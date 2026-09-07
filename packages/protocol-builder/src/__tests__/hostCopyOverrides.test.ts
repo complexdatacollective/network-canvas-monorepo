@@ -1,105 +1,273 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-// The jsdom environment does not give this module a `file:` URL, so the
-// package root comes from the runner's working directory instead. It is
-// asserted below rather than assumed, so a runner that moves makes this test
-// fail rather than quietly checking nothing.
-const packageSource = join(process.cwd(), 'src');
-
-const SOURCE_EXTENSIONS = ['.ts', '.tsx'];
-const FIXTURE = /(\.test\.|\.stories\.|__tests__|__mocks__)/;
+import {
+  NOT_CONVERTED_YET,
+  packageSource,
+  sourceFiles,
+  sourcePath,
+} from './packageSource.ts';
 
 /**
- * The areas whose conversion has not landed yet.
+ * A bundle of words a caller may hand in: `…Copy`, `…Confirm`, `…Words`.
  *
- * `resources/` is the localisation branch's to convert, and until that lands
- * `resourceKinds.ts` still holds a `ResourcePickerCopy` of plain strings. The
- * five interface families under `sections/` are family F's, whose sections
- * still carry a `copy?: Partial<…Copy>` each — the ids are reserved in
- * `src/locales/ID_MAP.md` (`networkCanvas`, `pedigree`, `narrativePedigree`,
- * `geospatial`, `anonymisation`) and the copy joins them there.
- *
- * Excluded by directory rather than by file, and deliberately narrow: these
- * are the only places in the package the rule below does not yet hold. What
- * has ALREADY crossed a converted seam is not excluded by this — a family's
- * `confirmClear`, its row nouns and the sentences it hands to `PromptsSection`
- * and `FormFieldsSection` are descriptors today, declared in that family's own
- * `*Messages.ts` and covered by the catalog guards. Each entry goes when its
- * family's conversion lands.
+ * Matched by NAME rather than by shape, because the shape is what is being
+ * judged. The three suffixes are the ones this package has reached for; a new
+ * synonym is a new entry here, and the prop rule below catches the case where
+ * somebody skips the bundle altogether.
  */
-const NOT_CONVERTED_YET =
-  /^(?:resources|sections\/(?:network|pedigree|narrativePedigree|geospatial|anonymisation))\//;
+const BUNDLE_NAME = /(?:Copy|Confirm|Words)$/;
 
-function sourceFiles(directory: string): string[] {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(directory, entry.name);
-    if (entry.isDirectory()) return sourceFiles(path);
-    if (
-      !SOURCE_EXTENSIONS.some((extension) => entry.name.endsWith(extension))
-    ) {
-      return [];
+const DECLARATION = /(?:^|\n)\s*(?:export\s+)?(type|interface)\s+(\w+)/g;
+
+/**
+ * The body of one type alias or interface, read by BALANCING braces rather
+ * than by stopping at the first `;` that ends a line.
+ *
+ * That shortcut is what the previous scan did (`([\s\S]*?);\n`), and every
+ * bundle in this package is written across several lines: the match stopped at
+ * the first member, so a descriptor on line one cleared the whole type and
+ * every `string` after it was never looked at. Reading to the real end of the
+ * declaration is the whole point of this function.
+ */
+const declarationBody = (
+  contents: string,
+  kind: string,
+  from: number,
+): string | null => {
+  let index = from;
+  if (kind === 'type') {
+    while (index < contents.length && contents[index] !== '=') {
+      // A generic parameter list can hold anything but `=`, and a declaration
+      // without one reaches the `=` immediately.
+      if (contents[index] === ';' || contents[index] === '\n') {
+        if (contents[index] === ';') return null;
+      }
+      index += 1;
     }
-    if (FIXTURE.test(path)) return [];
-    return NOT_CONVERTED_YET.test(relative(packageSource, path)) ? [] : [path];
+    index += 1;
+  } else {
+    while (index < contents.length && contents[index] !== '{') index += 1;
+  }
+
+  let depth = 0;
+  const start = index;
+  for (; index < contents.length; index += 1) {
+    const character = contents[index];
+    if (character === '{' || character === '(' || character === '[') depth += 1;
+    else if (character === '}' || character === ')' || character === ']') {
+      depth -= 1;
+      // An interface ends AT its closing brace; a type alias runs on to `;`.
+      if (depth === 0 && kind === 'interface') {
+        return contents.slice(start, index + 1);
+      }
+    } else if (character === ';' && depth === 0 && kind === 'type') {
+      return contents.slice(start, index);
+    }
+  }
+  return contents.slice(start);
+};
+
+type Declaration = Readonly<{ file: string; name: string; body: string }>;
+
+const declarationsIn = (path: string): Declaration[] => {
+  const contents = readFileSync(path, 'utf8');
+  const found: Declaration[] = [];
+  for (const match of contents.matchAll(DECLARATION)) {
+    const [, kind = '', name = ''] = match;
+    const body = declarationBody(
+      contents,
+      kind,
+      (match.index ?? 0) + match[0].length,
+    );
+    if (body === null) continue;
+    found.push({ file: sourcePath(path), name, body });
+  }
+  return found;
+};
+
+/**
+ * A member of this bundle is a plain string rather than a message.
+ *
+ * `: string` and `: React.ReactNode` are both holes: extraction never sees
+ * either, so neither reaches `src/locales/en.json`, the catalog guards or a
+ * translator. A string LITERAL type (`kind: 'authored'`) is not a hole — it is
+ * a discriminant, never read by anyone — so the check is anchored to the two
+ * words themselves.
+ */
+const PLAIN_WORDS = /:\s*(?:readonly\s+)?(?:string|(?:React\.)?ReactNode)\b/;
+
+const bundleOffends = (declaration: Declaration) =>
+  BUNDLE_NAME.test(declaration.name) && PLAIN_WORDS.test(declaration.body);
+
+/**
+ * A prop that hands a component its words as a hole a host drops English into.
+ *
+ * Named by every name the seam has been given, because renaming it is the
+ * cheapest way to bring it back: `copy`, and the synonyms an author reaches
+ * for when `copy` is taken. What is judged is the TYPE, not the name — a prop
+ * typed with a named `…Copy` bundle is the bundle rule's to judge, wherever
+ * that bundle is declared, and a prop naming one that holds descriptors is not
+ * a hole at all. This is what catches the two shapes that rule cannot see: a
+ * bundle written INLINE on the prop, and words handed over as bare `string`s.
+ */
+const COPY_PROP =
+  /^\s*(?:copy|copyOverrides|overrides|words|labels|wording)\??\s*:([^\n;]*)/gm;
+
+const copyPropOffenders = (contents: string): string[] =>
+  [...contents.matchAll(COPY_PROP)].flatMap((match) => {
+    const declared = match[1] ?? '';
+    return PLAIN_WORDS.test(`:${declared}`) || declared.includes('{')
+      ? [match[0].trim()]
+      : [];
   });
-}
-
-/**
- * A `copy` prop is a hole a host drops English into.
- *
- * Several sections used to take `copy?: Partial<…Copy>` so a host could rename
- * what they call a stage. Nothing ever passed one, and a string handed in that
- * way is invisible to `extractMessages`, absent from `src/locales/en.json`,
- * uncovered by the catalog guards and untranslatable — so the seam guaranteed
- * that the one place a host cared enough to customise was the one place that
- * stayed English. A caller that needs different words passes
- * `MessageDescriptor`s instead, which extraction still sees.
- *
- * Written as a source scan rather than as a type test because the defect is
- * the SHAPE of the prop, not any one component's signature: a new section
- * copying an old one is exactly how the seam would come back, and a type test
- * only covers the components somebody remembered to name.
- */
-const COPY_PROP = /^\s*copy\??\s*:/m;
-
-/**
- * A `…Copy` type is fine — the resource pickers use one — as long as it holds
- * descriptors. One holding `string` is the same hole with the prop renamed.
- */
-const COPY_TYPE_BLOCK = /(?:export\s+)?type\s+\w*Copy\s*=\s*([\s\S]*?);\n/g;
 
 describe('host copy overrides', () => {
   it('is looking at this package’s own source', () => {
     expect(existsSync(join(packageSource, 'protocol-context.ts'))).toBe(true);
-    expect(sourceFiles(packageSource).length).toBeGreaterThan(20);
+    expect(sourceFiles().length).toBeGreaterThan(20);
   });
 
   it('declares no copy prop anywhere in the package', () => {
-    const offenders = sourceFiles(packageSource).flatMap((path) =>
-      COPY_PROP.test(readFileSync(path, 'utf8'))
-        ? [relative(packageSource, path)]
-        : [],
+    const offenders = sourceFiles().flatMap((path) =>
+      copyPropOffenders(readFileSync(path, 'utf8')).map(
+        (declaration) => `${sourcePath(path)} — ${declaration}`,
+      ),
     );
 
     expect(offenders).toEqual([]);
   });
 
+  /**
+   * And it still refuses the shapes it was written for, including the two
+   * renames the old name-only rule waved through.
+   */
+  it('refuses a copy prop under any of its names', () => {
+    const verdicts = [
+      '  copy?: Partial<XCopy>;\n',
+      '  copyOverrides?: { title: string };\n',
+      '  words?: Readonly<{ title: string }>;\n',
+      '  labels?: string;\n',
+      '  words: SubjectWords;\n',
+      '  copy?: Partial<ConvertedCopy>;\n',
+    ].map((declaration) => copyPropOffenders(declaration).length > 0);
+
+    // The last two name a bundle rather than inlining one, which is the
+    // bundle rule's question and not this one's.
+    expect(verdicts).toEqual([false, true, true, true, false, false]);
+  });
+
   it('carries message descriptors in every copy bundle it keeps', () => {
-    const offenders = sourceFiles(packageSource).flatMap((path) => {
-      const contents = readFileSync(path, 'utf8');
-      return [...contents.matchAll(COPY_TYPE_BLOCK)].flatMap((match) => {
-        const body = match[1] ?? '';
-        // A bundle of words a caller may supply has to be descriptors: a
-        // `string` member is a translation that never happens.
-        return body.includes('MessageDescriptor') && !/:\s*string/.test(body)
-          ? []
-          : [`${relative(packageSource, path)} — ${match[0].trim()}`];
-      });
-    });
+    const offenders = sourceFiles()
+      .flatMap(declarationsIn)
+      .filter(bundleOffends)
+      .map(
+        (declaration) =>
+          `${declaration.file} — ${declaration.name} holds a plain string`,
+      );
 
     expect(offenders).toEqual([]);
+  });
+
+  /**
+   * The scan can SEE the two shapes the old one could not.
+   *
+   * Written against this file's own parser rather than against a fixture on
+   * disk, because what is being held in place is the reading: a multi-line
+   * bundle judged on its first member, and a bundle written as an interface,
+   * are the two ways the previous regex was blind, and both of them look
+   * exactly like a converted bundle from the outside.
+   */
+  it('reads a whole bundle, however it is written', () => {
+    const multiLine = [
+      'export type XCopy = Readonly<{',
+      '  title: MessageDescriptor;',
+      '  description: string;',
+      '}>;',
+      '',
+    ].join('\n');
+    const asInterface = 'export interface XCopy {\n  title: string;\n}\n';
+    const converted = [
+      'export type XCopy = Readonly<{',
+      '  title: MessageDescriptor;',
+      '  description: MessageDescriptor;',
+      '}>;',
+      '',
+    ].join('\n');
+    const discriminated = [
+      "type XCopy = Readonly<{ kind: 'authored'; sentence: MessageDescriptor }>;",
+      '',
+    ].join('\n');
+
+    const verdicts = [multiLine, asInterface, converted, discriminated].map(
+      (contents) => {
+        const match = DECLARATION.exec(contents);
+        DECLARATION.lastIndex = 0;
+        const [, kind = '', name = ''] = match ?? [];
+        const body =
+          declarationBody(
+            contents,
+            kind,
+            (match?.index ?? 0) + (match?.[0].length ?? 0),
+          ) ?? '';
+        return bundleOffends({ file: 'fixture.ts', name, body });
+      },
+    );
+
+    expect(verdicts).toEqual([true, true, false, false]);
+  });
+});
+
+describe('the not-yet-converted exclusions', () => {
+  /**
+   * An exclusion is a claim that a directory still holds an offender. When it
+   * stops being true the exclusion has outlived its conversion, and nothing
+   * else in this file would ever say so: excluding a clean directory silently
+   * widens the blind spot for everything added to it afterwards.
+   */
+  it('covers only directories that still hold something to excuse', () => {
+    const present = NOT_CONVERTED_YET.filter((directory) =>
+      existsSync(join(packageSource, directory)),
+    );
+
+    const stale = present.filter((directory) => {
+      const files = sourceFiles(join(packageSource, directory), {
+        excluding: [],
+      });
+      return !files.some(
+        (path) =>
+          copyPropOffenders(readFileSync(path, 'utf8')).length > 0 ||
+          declarationsIn(path).some(bundleOffends),
+      );
+    });
+
+    expect(stale).toEqual([]);
+  });
+
+  /**
+   * And the ones that are not on this branch at all are named, rather than
+   * skipped.
+   *
+   * Family F's five section directories are excluded here so that merging its
+   * branch is a union rather than a conflict, and until then the check above
+   * cannot say anything about them. Asserting the absent list is what makes
+   * their arrival visible: the moment family F lands, this fails and whoever
+   * merged has to move each directory into the checked set — or delete its
+   * exclusion, if the conversion came with it.
+   */
+  it('names the excluded directories this branch does not have yet', () => {
+    const absent = NOT_CONVERTED_YET.filter(
+      (directory) => !existsSync(join(packageSource, directory)),
+    );
+
+    expect(absent).toEqual([
+      'sections/network',
+      'sections/pedigree',
+      'sections/narrativePedigree',
+      'sections/geospatial',
+      'sections/anonymisation',
+    ]);
   });
 });

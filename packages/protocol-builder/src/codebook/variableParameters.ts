@@ -39,12 +39,6 @@ const messages = defineMessages({
     description:
       'Refusal shown under the field naming the high end of a sliding scale when the researcher has left it empty.',
   },
-  settingRequired: {
-    id: 'protocolBuilder.variableParameters.settingRequired',
-    defaultMessage: 'This setting is required.',
-    description:
-      'Refusal shown under one of an input control’s settings when it must hold a value and holds none, and nothing more specific is written for it.',
-  },
 });
 
 /**
@@ -228,10 +222,29 @@ const REQUIRED_PARAMETERS = {
   scalar: ['minLabel', 'maxLabel'],
 } as const satisfies Record<ParameterShape, readonly string[]>;
 
-const REQUIRED_MESSAGES: Readonly<Record<string, MessageDescriptor>> = {
+/**
+ * One of the settings some control cannot do without, whichever control that
+ * is. Derived from `REQUIRED_PARAMETERS` rather than written out, so the
+ * refusals below are exhaustive BY CONSTRUCTION.
+ */
+type RequiredParameterKey =
+  (typeof REQUIRED_PARAMETERS)[ParameterShape][number];
+
+/**
+ * What the researcher is told about each of them.
+ *
+ * Keyed on the union above and indexed without a fallback: a shape that starts
+ * requiring a new setting fails to compile until somebody writes the sentence
+ * for it. The open keying this replaces fell back to a generic "This setting
+ * is required.", so that same change compiled and shipped a placeholder under
+ * a field whose own refusal nobody had noticed was missing. The generic
+ * sentence is gone with the fallback: it had exactly one reader, and that
+ * reader was the defect.
+ */
+const REQUIRED_MESSAGES = {
   minLabel: messages.minLabelRequired,
   maxLabel: messages.maxLabelRequired,
-};
+} as const satisfies Record<RequiredParameterKey, MessageDescriptor>;
 
 /**
  * The protocol's own parameter schemas, so this editor and the save that
@@ -273,10 +286,7 @@ export const validateParameters = (
 
   for (const key of REQUIRED_PARAMETERS[shape]) {
     if (written[key] === undefined) {
-      add(
-        key,
-        intl.formatMessage(REQUIRED_MESSAGES[key] ?? messages.settingRequired),
-      );
+      add(key, intl.formatMessage(REQUIRED_MESSAGES[key]));
     }
   }
 

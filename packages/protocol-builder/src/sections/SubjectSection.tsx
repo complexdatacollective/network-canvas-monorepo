@@ -101,6 +101,11 @@ const messages = defineMessages({
  * into a shared frame: "a node" and "an edge" do not differ only in the noun
  * in every language, and this is the one place a researcher is told what the
  * stage is about.
+ *
+ * Formatted with no values, like every named descriptor a shared section
+ * takes: one carrying a placeholder renders the pattern on screen, and nothing
+ * in the types can refuse it. See `PromptsSection`'s own note and
+ * `sections/__tests__/namedDescriptorProps.test.tsx`.
  */
 type SubjectWords = Readonly<{
   title: MessageDescriptor;

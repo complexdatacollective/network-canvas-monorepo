@@ -529,17 +529,10 @@ function DialogItem({
 
   const handleDelete = () => {
     confirmRemoval({
-      title: intl.formatMessage(messages.removeRowTitle, {
-        itemLabel: rowNoun,
-      }),
-      description: intl.formatMessage(messages.removeRowDescription, {
-        itemLabel: rowNoun,
-      }),
-      confirmLabel: intl.formatMessage(messages.removeRow, {
-        itemLabel: rowNoun,
-      }),
-      cancelLabel: intl.formatMessage(commonMessages.cancel),
-      intent: 'destructive',
+      title: messages.removeRowTitle,
+      description: messages.removeRowDescription,
+      confirmLabel: messages.removeRow,
+      values: { itemLabel: rowNoun },
     });
   };
 

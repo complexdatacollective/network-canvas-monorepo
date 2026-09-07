@@ -25,7 +25,7 @@ const STATUS_LABELS = defineMessages({
     id: 'protocolBuilder.outline.errorStatus',
     defaultMessage: 'Has a problem',
     description:
-      'Spoken state of one section of a stage editor (a stage is one step of an interview): something the researcher has entered in it is not valid. Read out after the section’s own name, and never shown on screen — the same state is drawn as a colour and an icon.',
+      'Spoken state of one section of a stage editor (a stage is one step of an interview): something the researcher has entered in it is not valid. Read out after the section’s own name, and never shown on screen — the same state is drawn as a color and an icon.',
   },
   incomplete: {
     id: 'protocolBuilder.outline.incompleteStatus',
