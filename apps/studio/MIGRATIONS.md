@@ -127,7 +127,9 @@ and the [large-object functions](https://www.postgresql.org/docs/18/lo-funcs.htm
 
 Runtime roles may not hold TRUNCATE, REFERENCES (including column grants),
 TRIGGER, or MAINTAIN on ordinary or partitioned application tables. In
-particular, TRUNCATE bypasses row-level security. Studio supports invoker
+particular, TRUNCATE bypasses row-level security. Runtime sequence grants may
+include USAGE and SELECT but never UPDATE: setval can rewind or exhaust a
+sequence independently of table access. Studio supports invoker
 triggers, but refuses SECURITY DEFINER triggers and non-SELECT rewrite rules,
 including disabled definitions: [rewrite actions use the relation owner's
 privileges](https://www.postgresql.org/docs/18/rules-privileges.html) and can forge
@@ -142,6 +144,15 @@ CONNECT, missing explicit CONNECT, unsafe runtime or backup login attributes, an
 existing sessions from unenrolled non-superuser logins. Cluster superusers are
 trusted administrators and bypass database ACLs; never use their credentials
 for a deployed runtime.
+
+When schema work is pending, migration also refuses every existing runtime or
+backup session, even if its login is enrolled or has switched to a permitted
+role. It checks before pending SQL and refreshes the check immediately before
+commit, rolling back if a runtime reconnects during the transaction. A no-op
+verification can run with live services. These checks supplement the deployment
+admission drain: keep all runtime and backup processes stopped, and prevent new
+connections for the whole migration window. The migrator does not terminate
+sessions or change administrator-owned connection admission.
 
 For an existing database that previously allowed PUBLIC CONNECT, first stop
 its services and quarantine new admission with `ALLOW_CONNECTIONS false` from

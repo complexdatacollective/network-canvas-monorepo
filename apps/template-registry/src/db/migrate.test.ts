@@ -31,9 +31,27 @@ it('installs the shipped registry schema with real restricted logins and preserv
     expect((await renderRegistrySchema()).fingerprint).toBe(
       REGISTRY_SCHEMA_FINGERPRINT,
     );
-    await expect(readRegistrySchemaIdentity(installation.pool)).rejects.toThrow(
-      'REGISTRY_SCHEMA_NOT_CURRENT',
-    );
+    const preflight = await installation.pool.connect();
+    try {
+      await expect(readRegistrySchemaIdentity(preflight)).rejects.toThrow(
+        'REGISTRY_SCHEMA_NOT_CURRENT',
+      );
+    } finally {
+      preflight.release(true);
+    }
+    // Pending migrations require a drained runtime. Preserve the real
+    // pre-install refusal, then observe this probe's socket closing first.
+    await expect
+      .poll(
+        async () =>
+          (
+            await installation.owner.query<{ drained: boolean }>(
+              'SELECT NOT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND usename = $1) AS drained',
+              [installation.logins.app],
+            )
+          ).rows[0]?.drained,
+      )
+      .toBe(true);
     expect(
       await registryMigrator.migrate(
         installation.owner,

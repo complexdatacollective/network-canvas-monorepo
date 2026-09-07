@@ -2,7 +2,10 @@ import { escapeIdentifier, escapeLiteral } from 'pg';
 import type pg from 'pg';
 
 import type { Migration } from './postgres-migration-artifacts.ts';
-import { enforceMigrationSecurity } from './postgres-migration-security.ts';
+import {
+  enforceMigrationSecurity,
+  enforceMigrationQuiescence,
+} from './postgres-migration-security.ts';
 import { validateRoleNames } from './role-bootstrap.ts';
 
 export type PostgresMigrationConfig = {
@@ -283,6 +286,8 @@ async function migrateDatabase(
     const previous = applied.at(-1);
     if (previous)
       await verifyFingerprint(client, previous.fingerprint, fingerprintTable);
+    const pending = applied.length < migrations.length;
+    if (pending) await enforceMigrationQuiescence(client, applicationName);
 
     await client.query(`CREATE SCHEMA IF NOT EXISTS ${escapeIdentifier(historySchema)};
       REVOKE ALL ON SCHEMA ${escapeIdentifier(historySchema)} FROM PUBLIC;
@@ -321,6 +326,9 @@ async function migrateDatabase(
     await protectMigrationEvidence(client, config);
     await enforceMigrationSecurity(client, allowedLogins, config);
     await verifyFingerprint(client, expectedFingerprint, fingerprintTable);
+    // Refresh after SQL so a runtime that breaches the deployment drain
+    // cannot remain connected while this transaction commits a new schema.
+    if (pending) await enforceMigrationQuiescence(client, applicationName);
     await client.query('COMMIT');
     return completed;
   } catch (error) {

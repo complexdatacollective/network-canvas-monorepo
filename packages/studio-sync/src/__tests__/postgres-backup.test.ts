@@ -14,7 +14,7 @@ import {
   revokeLargeObjectPrivilegesSql,
   runtimeRolesSql,
 } from '../role-bootstrap.ts';
-import { PGPORT } from './test-env.ts';
+import { PGPASSWORD, PGPORT } from './test-env.ts';
 
 const configuration: PostgresBackupConfiguration = {
   role: 'registry_backup',
@@ -68,7 +68,7 @@ async function fixture() {
     host: '127.0.0.1',
     port: PGPORT,
     user: 'postgres',
-    password: 'spike',
+    password: PGPASSWORD,
     database: 'postgres',
     max: 1,
   });
@@ -76,7 +76,7 @@ async function fixture() {
     host: '127.0.0.1',
     port: PGPORT,
     user: 'postgres',
-    password: 'spike',
+    password: PGPASSWORD,
     database: databaseName,
     max: 1,
   });
@@ -139,6 +139,9 @@ async function fixture() {
     await admin.query(`CREATE ROLE ${escapeIdentifier(login)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD ${escapeLiteral(password)};
       GRANT ${escapeIdentifier(role)} TO ${escapeIdentifier(login)} WITH INHERIT FALSE, SET TRUE`);
     await admin.query(`CREATE DATABASE ${escapeIdentifier(databaseName)}`);
+    await owner.query(
+      `REVOKE TEMPORARY ON DATABASE ${escapeIdentifier(databaseName)} FROM PUBLIC, ${escapeIdentifier(role)}, ${escapeIdentifier(login)}`,
+    );
     await owner.query(revokeLargeObjectPrivilegesSql([role, login]));
     await owner.query(`REVOKE CREATE ON SCHEMA public FROM PUBLIC;
       CREATE SCHEMA ${escapeIdentifier(dataSchema)};

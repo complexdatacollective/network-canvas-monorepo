@@ -14,6 +14,7 @@ GRANT registry_backup TO registry_backup_login WITH SET TRUE, INHERIT FALSE;
 CREATE DATABASE registry OWNER registry_migrator ALLOW_CONNECTIONS false;
 BEGIN;
 REVOKE ALL ON DATABASE registry FROM PUBLIC;
+REVOKE TEMPORARY ON DATABASE registry FROM registry_app, registry_operator, registry_backup, registry_runtime, registry_operations, registry_backup_login;
 REVOKE CONNECT ON DATABASE registry FROM registry_app, registry_operator, registry_backup;
 GRANT CONNECT ON DATABASE registry TO registry_migrator, registry_runtime, registry_operations, registry_backup_login;
 COMMIT;
