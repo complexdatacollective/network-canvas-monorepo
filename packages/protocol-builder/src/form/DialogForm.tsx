@@ -126,6 +126,15 @@ export type DialogFormProps = Readonly<{
   ) => void | DialogFormErrors | Promise<void | DialogFormErrors>;
   /** Footer submit label — 'Save', 'Add rule'. */
   submitLabel: string;
+  /**
+   * Footer dismiss label, for a dialog whose dismissal is not simply Cancel.
+   *
+   * Left out it is the shared, translated `common.cancel` rather than an
+   * English literal: every one of this package's row editors mounts this
+   * dialog and none of them names its own, so a default written as a word here
+   * is the one string that stays English inside an otherwise translated
+   * dialog.
+   */
   cancelLabel?: string;
   /** Semantic width preset, forwarded to `Dialog`. */
   size?: DialogProps['size'];

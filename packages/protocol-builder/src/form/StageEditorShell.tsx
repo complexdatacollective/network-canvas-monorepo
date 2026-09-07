@@ -22,6 +22,13 @@ import type {
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
+import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
+import {
+  EnclosingHeadingLevel,
+  headingTagBelow,
+  useEnclosingHeadingLevel,
+} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { canonicalize, type Command } from '@codaco/studio-sync/apply';
 
@@ -33,7 +40,11 @@ import {
   SessionReadOnlyError,
   type StageFormDraft,
 } from '../session.ts';
-import { SectionOutlineStore } from './outlineStore.ts';
+import type { StageEditorActions } from '../stage-editor-contract.ts';
+import {
+  SectionOutlineStore,
+  type SectionValidationIssue,
+} from './outlineStore.ts';
 import { reseedStageForm } from './reseedStageForm.ts';
 import SectionOutline from './SectionOutline.tsx';
 import {
@@ -47,22 +58,20 @@ import {
 } from './stageEditorContext.ts';
 
 /**
- * What a host needs to render its own action chrome for the editor.
- *
- * The package owns the form and knows whether it can be submitted; the host
- * owns where the buttons live and what else sits beside them. `formId` is the
- * whole contract for a submit control rendered outside the form element.
+ * Where the slot's own types live is `stage-editor-contract.ts`: they are part
+ * of what a named editor takes, and the contract is a module of types a host
+ * can read without compiling a component tree. Carried on through here because
+ * this is the component that calls the slot.
  */
-export type StageEditorActionContext = Readonly<{
-  controller: StageEditorController;
-  formId: string;
-  readOnly: boolean;
-}>;
+export type {
+  StageEditorActionContext,
+  StageEditorActions,
+} from '../stage-editor-contract.ts';
 
 export type StageEditorShellProps = Readonly<{
   controller: StageEditorController;
   /** The host's action chrome. Receives the controller and the form id. */
-  actions?: (context: StageEditorActionContext) => ReactNode;
+  actions?: StageEditorActions;
   children: ReactNode;
   className?: string;
 }>;
@@ -358,6 +367,33 @@ function StageEditorFormBody({
     return [...(formErrors ?? []), refusedWrite];
   }, [formErrors, refusedWrite]);
 
+  /**
+   * What the session says is wrong with the stage, handed to the outline so
+   * the section that owns each problem can say so.
+   *
+   * The outline is otherwise built from the form's own field errors, which are
+   * the rules a control can state about itself. These are the other kind: a
+   * reference to a resource the protocol does not have, a subject naming a
+   * type a collaborator has deleted, a rule the schema states about the stage
+   * as a whole. Every control involved is holding a value it is perfectly
+   * happy with, so without this the save is refused with a message while every
+   * section on the page reads "Finished".
+   */
+  useEffect(() => {
+    outline.setValidationIssues(
+      stageIssuesOf(
+        snapshot.validation,
+        snapshot.editedSection.sectionId,
+        snapshot.editedSection.fields,
+      ),
+    );
+  }, [
+    outline,
+    snapshot.editedSection.fields,
+    snapshot.editedSection.sectionId,
+    snapshot.validation,
+  ]);
+
   // The outline lists the sections in the order they appear on the page, and
   // nothing tells it when that order changes: a component reordering sections
   // from its own state re-renders itself, not the outline beside it. Watching
@@ -369,6 +405,26 @@ function StageEditorFormBody({
     observer.observe(form, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, [outline]);
+
+  /**
+   * The level of the stage's own name, which every editor wears as the page's
+   * heading and which everything else in the form is a subsection of.
+   *
+   * Stated rather than left to Surface depth, which is a fact about how deep
+   * the card sits rather than about the outline: a section derived its level
+   * from depth alone, so it read as a peer of the stage title on a page and
+   * ignored a host that mounted this form beneath a heading of its own. A host
+   * that says what it encloses now pushes the whole ladder down — the title
+   * one below the host's heading, each section one below the title.
+   *
+   * `StageNameSection` writes the title AT this level, because it is the
+   * heading being described; everything else counts one below it.
+   */
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const stageTitleLevel =
+    enclosingHeadingLevel === null
+      ? 'h2'
+      : headingTagBelow(enclosingHeadingLevel);
 
   const layoutGroupId = useId();
   const context = useMemo(
@@ -383,6 +439,7 @@ function StageEditorFormBody({
             applyOwnCommands,
             reportRefusedWrite,
             identity: snapshot.editedSection.identity,
+            creation: snapshot.editedSection.creation,
             protocolContext: snapshot.protocolContext,
             readOnly,
             outline,
@@ -395,6 +452,7 @@ function StageEditorFormBody({
       outline,
       readOnly,
       reportRefusedWrite,
+      snapshot.editedSection.creation,
       snapshot.editedSection.identity,
       snapshot.protocolContext,
       storeApi,
@@ -417,10 +475,12 @@ function StageEditorFormBody({
               className="flex min-w-0 flex-col"
             >
               <LayoutGroup id={layoutGroupId}>
-                {reportedErrors && (
-                  <FormErrorsList key="form-errors" errors={reportedErrors} />
-                )}
-                {children}
+                <EnclosingHeadingLevel level={stageTitleLevel}>
+                  {reportedErrors && (
+                    <FormErrorsList key="form-errors" errors={reportedErrors} />
+                  )}
+                  {children}
+                </EnclosingHeadingLevel>
               </LayoutGroup>
             </form>
           </div>
@@ -429,6 +489,48 @@ function StageEditorFormBody({
       </ResourceGatewayProvider>
     </StageEditorFormContext>
   );
+}
+
+/**
+ * The session's validation issues that belong to the stage being edited, as
+ * paths INSIDE that stage.
+ *
+ * The session attributes every issue to the protocol section that owns it, so
+ * the ones about other sections — a codebook entity's own definition, the
+ * protocol's settings — are not this editor's to point at. What is left is
+ * addressed from the whole protocol (`stages`, then the stage's position in
+ * the interview), and the outline knows only the stage document, so those two
+ * segments are dropped.
+ *
+ * Each one is also asked the question the validator's own answer cannot
+ * settle: is this a value that is wrong, or a value that is not there? Zod
+ * finalises an issue without keeping what it was given, and the code is the
+ * same either way — a missing key and a number where a string belongs are both
+ * `invalid_type` — so the draft it judged is what says which. Read with the
+ * same predicate a required field is judged by, so "empty" means one thing in
+ * this editor: `required` owns emptiness, and a schema refusing an empty value
+ * is saying what the field already says about itself.
+ */
+function stageIssuesOf(
+  validation: ProtocolBuilderSnapshot['validation'],
+  stageSectionId: ProtocolBuilderSnapshot['editedSection']['sectionId'],
+  fields: StageFormDraft,
+): SectionValidationIssue[] {
+  if (validation.status !== 'invalid') return [];
+  return validation.issues.flatMap((issue) => {
+    if (issue.sectionId !== stageSectionId) return [];
+    const [root, position, ...inside] = issue.path;
+    if (root !== 'stages' || typeof position !== 'number') return [];
+    if (inside.length === 0) return [];
+    return [
+      {
+        path: inside,
+        code: issue.code,
+        message: issue.message,
+        absent: isUnanswered(getValue(fields, inside)),
+      },
+    ];
+  });
 }
 
 type CommittedDraft = Readonly<{
@@ -493,6 +595,24 @@ function useCommittedFields(
       fields,
       generation: committed.current.generation + (ownFlush ? 0 : 1),
     };
+  } else {
+    // A marker that describes no transition, thrown away here because this is
+    // the only place that can see it. A write leaves the marker, and the
+    // transition it explains retires it — but if something else moves the
+    // draft back within the same commit (a write and the undo of it, a submit
+    // and the rollback that followed), no transition is ever observed and the
+    // marker outlives what it was about. Left standing, it is spent on the
+    // next arrival AT that content — the redo — so the controls keep the
+    // undone values and write them back over it.
+    //
+    // Expired by content rather than by a sequence number handed back from the
+    // write, because a sequence number only answers this question if it counts
+    // EVERY move of the draft, which is exactly the moves this hook cannot see
+    // and the session would have to count for it. This hook already renders on
+    // every snapshot and already canonicalises the draft to notice a
+    // transition at all, so "no transition happened" is a reading it has for
+    // free.
+    flushed.current = null;
   }
   return committed.current;
 }

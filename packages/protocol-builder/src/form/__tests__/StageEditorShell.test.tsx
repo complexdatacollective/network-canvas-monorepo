@@ -699,10 +699,23 @@ describe('StageEditorShell', () => {
       ).toBeNull(),
     );
 
+    // Switching a capability off is an edit, so it leaves a batch — and a
+    // wholesale replacement is refused while any batch is still in flight,
+    // which is exactly what stops one from swallowing unsaved work. Applied
+    // here as the host that received it would, so the replacement below is the
+    // one this test is about rather than a conflict.
+    act(() => {
+      session.acknowledge({
+        fields: initialFields,
+        throughBatchId: session.getSnapshot().pendingCommands.at(-1)?.id ?? 0,
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
     act(() => {
       session.replaceAuthoritativeStage({
         fields: { ...initialFields, interviewScript: 'Read this instead' },
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+        manifestRevision: { sequence: 3n, hash: 'revision-3' },
       });
     });
 
