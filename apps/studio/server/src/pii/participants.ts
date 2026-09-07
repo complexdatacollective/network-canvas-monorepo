@@ -210,7 +210,11 @@ export async function readParticipantPiiField(
         if (!(await authorize(client, context, target.studyId, false)))
           return denied(audit, 'read');
         if (!row) throw new ParticipantPiiError('FORBIDDEN');
-        return { status: 'unchanged', result: null };
+        return {
+          status: 'succeeded',
+          result: null,
+          events: [event(audit, row, 'participant.pii.read', [target.column])],
+        };
       });
     }
     const api = createDataProtection(keys, {

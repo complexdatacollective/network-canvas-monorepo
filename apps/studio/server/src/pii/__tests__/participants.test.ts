@@ -206,4 +206,33 @@ describe('authorized and audited participant PII', () => {
       ).rejects.toMatchObject({ code: 'FORBIDDEN' });
     });
   });
+
+  it('audits an authorized null field without recording a PII value', async () => {
+    await fixture(async ({ scratch, keys, context, target }) => {
+      await expect(
+        readParticipantPiiField(keys, context, {
+          ...target,
+          column: 'email_ciphertext',
+        }),
+      ).resolves.toBeNull();
+      const audit = await scratch.pool.query<{
+        event_type: string;
+        details: unknown;
+        resource_id: string;
+        resource_label: string;
+      }>(
+        `SELECT event_type, details, resource_id, resource_label
+         FROM audit_events WHERE event_type = 'participant.pii.read'`,
+      );
+      expect(audit.rows).toEqual([
+        {
+          event_type: 'participant.pii.read',
+          details: { studyId: target.studyId, columns: ['email_ciphertext'] },
+          resource_id: target.participantId,
+          resource_label: 'P-0001',
+        },
+      ]);
+      expect(JSON.stringify(audit.rows)).not.toContain('person@example.org');
+    });
+  });
 });

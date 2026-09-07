@@ -136,7 +136,7 @@ async function wipe(client: pg.ClientBase): Promise<void> {
     begin
       for r in
         select tablename from pg_tables
-        where schemaname = current_schema() and tablename NOT IN ('schemaFingerprint', 'encryption_key_verifications', 'credential_audit_events')
+        where schemaname = current_schema() and tablename NOT IN ('schemaFingerprint', 'encryption_key_verifications', 'credential_audit_events', 'studio_instance', 'user', 'teams')
       loop
         execute format('select exists (select 1 from %I)', r.tablename)
           into populated;
@@ -144,6 +144,12 @@ async function wipe(client: pg.ClientBase): Promise<void> {
           execute format('truncate table %I restart identity cascade', r.tablename);
         end if;
       end loop;
+      -- studio_instance is the permanent setup-completion marker. Its two
+      -- ownership FKs are deliberately ON DELETE SET NULL, so remove their
+      -- former synthetic parents after every referencing table is empty rather
+      -- than truncating a parent with CASCADE into the marker.
+      delete from "user";
+      delete from teams;
     end $$;
   `);
 }
