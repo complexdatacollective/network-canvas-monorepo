@@ -1,4 +1,11 @@
 import {
+  createMessageError,
+  defineMessages,
+  type IntlShape,
+  type MessageDescriptor,
+  type MessageErrorValues,
+} from '@codaco/app-i18n/messages';
+import {
   findValidationContradictions,
   VARIABLE_REFERENCE_VALIDATIONS,
   VARIABLE_TYPE_COMPONENTS,
@@ -42,22 +49,173 @@ const NUMBER_RULES = new Set<string>([
 
 const VALUELESS_RULES = new Set<string>(['required', 'unique']);
 
-const VALIDATION_LABELS: Partial<Record<ValidationName, string>> = {
-  required: 'Required',
-  unique: 'Must be unique',
-  minLength: 'Minimum length',
-  maxLength: 'Maximum length',
-  minValue: 'Minimum value',
-  maxValue: 'Maximum value',
-  minSelected: 'Minimum selected',
-  maxSelected: 'Maximum selected',
-  differentFrom: 'Different from',
-  sameAs: 'Same as',
-  lessThanVariable: 'Less than',
-  greaterThanVariable: 'Greater than',
-  lessThanOrEqualToVariable: 'Less than or equal to',
-  greaterThanOrEqualToVariable: 'Greater than or equal to',
-};
+/**
+ * What each validation rule is called, keyed by the schema's own name for it
+ * so a rule the schema adds is named here or nowhere.
+ *
+ * These are the words on the checkbox a researcher ticks, and the words quoted
+ * back at them when the rule they ticked has no value yet.
+ */
+const VALIDATION_LABELS = defineMessages({
+  required: {
+    id: 'protocolBuilder.variableValidation.requiredLabel',
+    defaultMessage: 'Required',
+    description:
+      'Name of the validation rule that refuses an answer left blank. Shown as the label of the checkbox that turns the rule on.',
+  },
+  unique: {
+    id: 'protocolBuilder.variableValidation.uniqueLabel',
+    defaultMessage: 'Must be unique',
+    description:
+      'Name of the validation rule that refuses an answer another network member has already given for this attribute.',
+  },
+  minLength: {
+    id: 'protocolBuilder.variableValidation.minLengthLabel',
+    defaultMessage: 'Minimum length',
+    description:
+      'Name of the validation rule setting the fewest characters an answer may have.',
+  },
+  maxLength: {
+    id: 'protocolBuilder.variableValidation.maxLengthLabel',
+    defaultMessage: 'Maximum length',
+    description:
+      'Name of the validation rule setting the most characters an answer may have.',
+  },
+  minValue: {
+    id: 'protocolBuilder.variableValidation.minValueLabel',
+    defaultMessage: 'Minimum value',
+    description:
+      'Name of the validation rule setting the smallest number an answer may be.',
+  },
+  maxValue: {
+    id: 'protocolBuilder.variableValidation.maxValueLabel',
+    defaultMessage: 'Maximum value',
+    description:
+      'Name of the validation rule setting the largest number an answer may be.',
+  },
+  minSelected: {
+    id: 'protocolBuilder.variableValidation.minSelectedLabel',
+    defaultMessage: 'Minimum selected',
+    description:
+      'Name of the validation rule setting the fewest options a participant must choose.',
+  },
+  maxSelected: {
+    id: 'protocolBuilder.variableValidation.maxSelectedLabel',
+    defaultMessage: 'Maximum selected',
+    description:
+      'Name of the validation rule setting the most options a participant may choose.',
+  },
+  differentFrom: {
+    id: 'protocolBuilder.variableValidation.differentFromLabel',
+    defaultMessage: 'Different from',
+    description:
+      'Name of the validation rule requiring this attribute’s answer to differ from another attribute’s. The attribute compared against is chosen in a control beneath.',
+  },
+  sameAs: {
+    id: 'protocolBuilder.variableValidation.sameAsLabel',
+    defaultMessage: 'Same as',
+    description:
+      'Name of the validation rule requiring this attribute’s answer to match another attribute’s. The attribute compared against is chosen in a control beneath.',
+  },
+  lessThanVariable: {
+    id: 'protocolBuilder.variableValidation.lessThanVariableLabel',
+    defaultMessage: 'Less than',
+    description:
+      'Name of the validation rule requiring this attribute’s answer to be smaller than another attribute’s. The attribute compared against is chosen in a control beneath.',
+  },
+  greaterThanVariable: {
+    id: 'protocolBuilder.variableValidation.greaterThanVariableLabel',
+    defaultMessage: 'Greater than',
+    description:
+      'Name of the validation rule requiring this attribute’s answer to be larger than another attribute’s. The attribute compared against is chosen in a control beneath.',
+  },
+  lessThanOrEqualToVariable: {
+    id: 'protocolBuilder.variableValidation.lessThanOrEqualToVariableLabel',
+    defaultMessage: 'Less than or equal to',
+    description:
+      'Name of the validation rule requiring this attribute’s answer to be no larger than another attribute’s. The attribute compared against is chosen in a control beneath.',
+  },
+  greaterThanOrEqualToVariable: {
+    id: 'protocolBuilder.variableValidation.greaterThanOrEqualToVariableLabel',
+    defaultMessage: 'Greater than or equal to',
+    description:
+      'Name of the validation rule requiring this attribute’s answer to be no smaller than another attribute’s. The attribute compared against is chosen in a control beneath.',
+  },
+}) satisfies Partial<Record<ValidationName, MessageDescriptor>>;
+
+const messages = defineMessages({
+  requirementsHeading: {
+    id: 'protocolBuilder.variableValidation.requirementsHeading',
+    defaultMessage: 'Requirements',
+    description:
+      'Heading over the validation rules that say an answer must be given at all, rather than what it may contain.',
+  },
+  limitsHeading: {
+    id: 'protocolBuilder.variableValidation.limitsHeading',
+    defaultMessage: 'Limits',
+    description:
+      'Heading over the validation rules that bound an answer by a number the researcher types — a length, a value, or how many options may be chosen.',
+  },
+  comparisonsHeading: {
+    id: 'protocolBuilder.variableValidation.comparisonsHeading',
+    defaultMessage: 'Compare to another attribute',
+    description:
+      'Heading over the validation rules that judge this attribute’s answer against another attribute’s. "Attribute" is a codebook variable.',
+  },
+  incompleteReferenceRule: {
+    id: 'protocolBuilder.variableValidation.incompleteReferenceRule',
+    defaultMessage:
+      'Choose a comparison attribute for "{label}", or switch the rule off.',
+    description:
+      'Refusal shown when a rule comparing this attribute against another one has been switched on without saying which. label is that rule’s own name, already translated.',
+  },
+  incompleteValueRule: {
+    id: 'protocolBuilder.variableValidation.incompleteValueRule',
+    defaultMessage: 'Enter a value for "{label}", or switch the rule off.',
+    description:
+      'Refusal shown when a rule that needs a number has been switched on without one. label is that rule’s own name, already translated.',
+  },
+  wholeNumberRule: {
+    id: 'protocolBuilder.variableValidation.wholeNumberRule',
+    defaultMessage: '{rule} must be a whole number',
+    description:
+      'Refusal shown when a rule counting characters or choices was given a fraction. rule is the schema’s own name for the rule, such as minValue, and is not translated.',
+  },
+  ruleFloor: {
+    id: 'protocolBuilder.variableValidation.ruleFloor',
+    defaultMessage: '{rule} must be at least {floor, number}',
+    description:
+      'Refusal shown when a counting rule was given a number below what it allows. rule is the schema’s own name for the rule, such as maxSelected, and is not translated; floor is the smallest number it accepts.',
+  },
+  validatedElsewhere: {
+    id: 'protocolBuilder.variableValidation.validatedElsewhere',
+    defaultMessage:
+      '"{variableName}" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+    description:
+      'Refusal shown when a stage that writes an attribute without checking it picks one that a form elsewhere in the protocol collects with validation. variableName is the researcher’s own name for the attribute. A stage is one step of an interview.',
+  },
+  unvalidatedElsewhere: {
+    id: 'protocolBuilder.variableValidation.unvalidatedElsewhere',
+    defaultMessage:
+      '"{variableName}" is written without validation by another stage, so it cannot be used as a form field',
+    description:
+      'Refusal shown when a form field picks an attribute that another stage already writes without checking it. variableName is the researcher’s own name for the attribute. A stage is one step of an interview.',
+  },
+  draftValidatedElsewhere: {
+    id: 'protocolBuilder.variableValidation.draftValidatedElsewhere',
+    defaultMessage:
+      '"{variableName}" is collected by this stage\'s form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)',
+    description:
+      'The same refusal as validatedElsewhere, when the form doing the collecting belongs to the stage being edited. variableName is the researcher’s own name for the attribute. A prompt is the question a participant reads.',
+  },
+  draftUnvalidatedElsewhere: {
+    id: 'protocolBuilder.variableValidation.draftUnvalidatedElsewhere',
+    defaultMessage:
+      '"{variableName}" is assigned without validation by a prompt in this stage, so it cannot be used as a form field',
+    description:
+      'The same refusal as unvalidatedElsewhere, when the writer without validation is a prompt in the stage being edited. variableName is the researcher’s own name for the attribute. A prompt is the question a participant reads.',
+  },
+});
 
 const startCase = (value: string): string => {
   const words = value
@@ -70,9 +228,30 @@ const startCase = (value: string): string => {
     : `${words[0]?.toUpperCase() ?? ''}${words.slice(1)}`;
 };
 
-export const getValidationLabel = (validation: string): string => {
-  const labels: Record<string, string | undefined> = VALIDATION_LABELS;
-  return labels[validation] ?? startCase(validation);
+const validationLabelMessage = (
+  validation: string,
+): MessageDescriptor | undefined => {
+  const labels: Record<string, MessageDescriptor | undefined> =
+    VALIDATION_LABELS;
+  return labels[validation];
+};
+
+/**
+ * The name of one validation rule.
+ *
+ * The `startCase` fallback stays English on purpose: it start-cases a schema
+ * token this package has no name for, so what it produces is the token made
+ * readable rather than copy anyone wrote. A rule the schema adds should gain a
+ * descriptor above, not a translation of `minSomething`.
+ */
+export const getValidationLabel = (
+  validation: string,
+  intl: IntlShape,
+): string => {
+  const message = validationLabelMessage(validation);
+  return message === undefined
+    ? startCase(validation)
+    : intl.formatMessage(message);
 };
 
 export const isValidationWithoutValue = (validation: string): boolean =>
@@ -113,28 +292,29 @@ const validationNamesFor = (variableType: string): ValidationName[] => {
 export const getValidationOptionsForVariableType = (
   variableType: string,
   entity: string,
+  intl: IntlShape,
 ): ValidationOption[] =>
   validationNamesFor(variableType)
     .filter((validation) => entity !== 'ego' || validation !== 'unique')
     .map((validation) => ({
-      label: getValidationLabel(validation),
+      label: getValidationLabel(validation, intl),
       value: validation,
     }));
 
 const VALIDATION_GROUPS = [
   {
     id: 'requirements' as const,
-    heading: 'Requirements',
+    heading: messages.requirementsHeading,
     includes: isValidationWithoutValue,
   },
   {
     id: 'limits' as const,
-    heading: 'Limits',
+    heading: messages.limitsHeading,
     includes: isValidationWithNumberValue,
   },
   {
     id: 'comparisons' as const,
-    heading: 'Compare to another attribute',
+    heading: messages.comparisonsHeading,
     includes: isValidationWithListValue,
   },
 ] as const;
@@ -144,14 +324,22 @@ const groupsCache = new Map<string, ValidationGroup[]>();
 export const getGroupedValidationsForVariableType = (
   variableType: string,
   entity: string,
+  intl: IntlShape,
 ): ValidationGroup[] => {
-  const key = JSON.stringify([variableType, entity]);
+  // The reader's language is part of the cache key: the headings and rule
+  // names in a cached group are already formatted, so a cache keyed only by
+  // the variable type would serve whichever language asked first.
+  const key = JSON.stringify([variableType, entity, intl.locale]);
   const cached = groupsCache.get(key);
   if (cached !== undefined) return cached;
-  const options = getValidationOptionsForVariableType(variableType, entity);
+  const options = getValidationOptionsForVariableType(
+    variableType,
+    entity,
+    intl,
+  );
   const groups = VALIDATION_GROUPS.map(({ id, heading, includes }) => ({
     id,
-    heading,
+    heading: intl.formatMessage(heading),
     rules: options.filter(({ value }) => includes(value)),
   })).filter(({ rules }) => rules.length > 0);
   groupsCache.set(key, groups);
@@ -202,15 +390,33 @@ export const completeRuleValues = (
     ),
   );
 
+/**
+ * The rule's own name, as a value one refusal can carry to the other side of a
+ * string-only contract. A named rule travels as a reference to its descriptor
+ * so it is chosen in the reader's language when the sentence around it is;
+ * an unnamed one travels as the start-cased schema token, for the reason
+ * `getValidationLabel` records.
+ */
+const validationLabelValue = (
+  validation: string,
+): MessageErrorValues[string] => {
+  const message = validationLabelMessage(validation);
+  return message === undefined
+    ? startCase(validation)
+    : { messageError: createMessageError(message) };
+};
+
 export const incompleteRuleIssue = (
   rules: Readonly<UnknownRecord>,
 ): string | undefined => {
   for (const [ruleKey, value] of Object.entries(rules)) {
     if (isRuleValueComplete(ruleKey, value)) continue;
-    const label = getValidationLabel(ruleKey);
-    return isValidationWithListValue(ruleKey)
-      ? `Choose a comparison attribute for "${label}", or switch the rule off.`
-      : `Enter a value for "${label}", or switch the rule off.`;
+    return createMessageError(
+      isValidationWithListValue(ruleKey)
+        ? messages.incompleteReferenceRule
+        : messages.incompleteValueRule,
+      { label: validationLabelValue(ruleKey) },
+    );
   }
   return undefined;
 };
@@ -231,11 +437,11 @@ export const floorIssue = (
     typeof value === 'number' &&
     !Number.isInteger(value)
   ) {
-    return `${ruleKey} must be a whole number`;
+    return createMessageError(messages.wholeNumberRule, { rule: ruleKey });
   }
   const floor = RULE_FLOORS[ruleKey];
   return floor !== undefined && typeof value === 'number' && value < floor
-    ? `${ruleKey} must be at least ${floor}`
+    ? createMessageError(messages.ruleFloor, { rule: ruleKey, floor })
     : undefined;
 };
 
@@ -276,7 +482,13 @@ const draftVariableBase = (
         name:
           typeof draftVariableName === 'string' && draftVariableName.trim()
             ? draftVariableName
-            : 'this attribute',
+            : // Deliberately English, and deliberately not a descriptor: this is
+              // seeded into `@codaco/protocol-validation`'s contradiction
+              // analyser AS A VARIABLE NAME, standing in for the unnamed
+              // attribute being drafted. The analyser writes the sentence it
+              // lands inside, in English, so translating the placeholder alone
+              // would put a Spanish noun in an English sentence.
+              'this attribute',
         type: variableType,
       };
 
@@ -573,10 +785,10 @@ export const variableDisplayName = (
 };
 
 export const validatedElsewhereMessage = (variableName: string): string =>
-  `"${variableName}" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)`;
+  createMessageError(messages.validatedElsewhere, { variableName });
 
 export const unvalidatedElsewhereMessage = (variableName: string): string =>
-  `"${variableName}" is written without validation by another stage, so it cannot be used as a form field`;
+  createMessageError(messages.unvalidatedElsewhere, { variableName });
 
 export const crossClassConflictMessage: Record<
   WriterClass,
@@ -587,12 +799,12 @@ export const crossClassConflictMessage: Record<
 };
 
 export const draftValidatedElsewhereMessage = (variableName: string): string =>
-  `"${variableName}" is collected by this stage's form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)`;
+  createMessageError(messages.draftValidatedElsewhere, { variableName });
 
 export const draftUnvalidatedElsewhereMessage = (
   variableName: string,
 ): string =>
-  `"${variableName}" is assigned without validation by a prompt in this stage, so it cannot be used as a form field`;
+  createMessageError(messages.draftUnvalidatedElsewhere, { variableName });
 
 export const crossClassPickIssue = ({
   variableId,
