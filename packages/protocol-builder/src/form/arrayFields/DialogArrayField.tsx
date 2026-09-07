@@ -48,13 +48,18 @@ import {
   useStageEditorForm,
   type StageFormStoreApi,
 } from '../stageEditorContext.ts';
-import { reseatEditedRow, rowPathFor } from './arrayFieldCommands.ts';
+import {
+  reseatEditedRow,
+  rowIdentity,
+  rowPathFor,
+} from './arrayFieldCommands.ts';
 import { DEFAULT_ITEM_LABEL } from './arrayMessages.ts';
 import {
   readOnlyMessage,
   rowRemovedMessage,
   writeRefusalMessage,
 } from './arrayWriteRefusal.ts';
+import RowEditorBoundary from './RowEditorBoundary.tsx';
 import {
   ArrayFieldBindingContext,
   useArrayFieldCommands,
@@ -308,9 +313,9 @@ const safeFieldPath = (name: string): ObjectPath | null => {
   }
 };
 
-/** What every list inside a row dialog is: part of one row, not a key. */
+/** What every list inside a row dialog is: part of one row, not a place. */
 const NESTED_IN_A_ROW: ArrayFieldBinding = Object.freeze({
-  documentKey: undefined,
+  documentPath: undefined,
 });
 
 /**
@@ -508,8 +513,8 @@ function DialogItem({
 }: ArrayFieldItemProps<ArrayItem>) {
   const intl = useAppIntl();
   const { itemLabel, previewComponent, previewProps } = useDialogArrayContext();
-  // Resolved once for this row: every affordance below names the same noun,
-  // and it is this module's own markup that renders them.
+  // Resolved once for the whole row: every affordance below says the same noun,
+  // and the confirmation the delete button raises says it three more times.
   const rowNoun = intl.formatMessage(itemLabel);
   const { rowRef, confirmRemoval } = useConfirmRowRemoval({
     item,
@@ -523,17 +528,10 @@ function DialogItem({
 
   const handleDelete = () => {
     confirmRemoval({
-      title: intl.formatMessage(messages.removeRowTitle, {
-        itemLabel: rowNoun,
-      }),
-      description: intl.formatMessage(messages.removeRowDescription, {
-        itemLabel: rowNoun,
-      }),
-      confirmLabel: intl.formatMessage(messages.removeRow, {
-        itemLabel: rowNoun,
-      }),
-      cancelLabel: intl.formatMessage(commonMessages.cancel),
-      intent: 'destructive',
+      title: messages.removeRowTitle,
+      description: messages.removeRowDescription,
+      confirmLabel: messages.removeRow,
+      values: { itemLabel: rowNoun },
     });
   };
 
@@ -647,14 +645,14 @@ function DialogEditor({
    * Read from the LIST's binding, which is the one this component sits under:
    * the editor's own fields are wrapped in `NESTED_IN_A_ROW` below, and that
    * provider is inside this component's own JSX rather than above it.
-   * `undefined` for a list with no document key of its own — a list nested
+   * `undefined` for a list with no document path of its own — a list nested
    * inside another row — which is a row the dialog around it commits.
    */
   const listBinding = useContext(ArrayFieldBindingContext);
   const rowPath =
-    listBinding?.documentKey === undefined
+    listBinding?.documentPath === undefined
       ? undefined
-      : rowPathFor(listBinding.documentKey);
+      : rowPathFor(listBinding.documentPath);
 
   // `item` is undefined between edits. The last session stays mounted so the
   // dialog can animate closed, but every session gets its own `id` — and so
@@ -1130,26 +1128,33 @@ function DialogEditor({
     >
       <DialogStoreCapture apiRef={storeApiRef} />
       {/*
-        Nothing inside a row is a document key.
+       * The fields are a family's own code, mounted by machinery that knows
+       * nothing about them. One of them throwing must cost the researcher this
+       * dialog, not the stage editor behind it and everything typed into it.
+       */}
+      <RowEditorBoundary>
+        {/*
+          Nothing inside a row is a place in the document.
 
-        A list the researcher edits INSIDE this dialog — a prompt's sort
-        rules — is part of one row of THIS list, and this list is what holds
-        the document key. Left inherited, that key is what the inner list
-        would commit its own insertions and reorderings against: adding a sort
-        rule would insert a row into the array of prompts. It also must not
-        commit anything at all until the dialog saves, which is the same rule
-        `ProtocolArrayField` states for a list that finds itself in a nested
-        form store.
-      */}
-      <ArrayFieldBindingContext value={NESTED_IN_A_ROW}>
-        {createElement(editorFieldsComponent, {
-          ...itemValues,
-          ...editorProps,
-          item: itemValues,
-          editIndex,
-          form: editFormName,
-        })}
-      </ArrayFieldBindingContext>
+          A list the researcher edits INSIDE this dialog — a prompt's sort
+          rules — is part of one row of THIS list, and this list is what holds
+          the document path. Left inherited, that path is what the inner list
+          would commit its own insertions and reorderings against: adding a
+          sort rule would insert a row into the array of prompts. It also must
+          not commit anything at all until the dialog saves, which is the same
+          rule `ProtocolArrayField` states for a list that finds itself in a
+          nested form store.
+        */}
+        <ArrayFieldBindingContext value={NESTED_IN_A_ROW}>
+          {createElement(editorFieldsComponent, {
+            ...itemValues,
+            ...editorProps,
+            item: itemValues,
+            editIndex,
+            form: editFormName,
+          })}
+        </ArrayFieldBindingContext>
+      </RowEditorBoundary>
     </DialogForm>
   );
 }
@@ -1198,13 +1203,7 @@ export default function DialogArrayField<T extends ArrayItem>({
     } as Partial<T>;
   }, [itemTemplate]);
 
-  const resolveItemId = useMemo(
-    () =>
-      getId ??
-      ((candidate: T) =>
-        typeof candidate.id === 'string' ? candidate.id : undefined),
-    [getId],
-  );
+  const resolveItemId = useMemo(() => getId ?? rowIdentity, [getId]);
 
   // Handed on exactly as it arrived. The rows this list DREW out of it are
   // settled inside the hook, which is where a value an import or a migration

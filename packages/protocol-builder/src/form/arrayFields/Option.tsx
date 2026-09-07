@@ -10,7 +10,6 @@ import {
   type ComponentType,
 } from 'react';
 
-import { commonMessages } from '@codaco/app-i18n/common';
 import {
   createMessageError,
   defineMessage,
@@ -288,11 +287,9 @@ export default function Option({
 
   const handleDelete = () => {
     confirmRemoval({
-      title: intl.formatMessage(messages.removeOption),
-      description: intl.formatMessage(messages.removeOptionDescription),
-      confirmLabel: intl.formatMessage(messages.removeOption),
-      cancelLabel: intl.formatMessage(commonMessages.cancel),
-      intent: 'destructive',
+      title: messages.removeOption,
+      description: messages.removeOptionDescription,
+      confirmLabel: messages.removeOption,
     });
   };
 

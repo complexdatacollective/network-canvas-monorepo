@@ -2,7 +2,12 @@ import { createContext, useCallback, useContext, useMemo, useRef } from 'react';
 
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import type { ArrayFieldOperation } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import { canonicalize, type Command } from '@codaco/studio-sync/apply';
+import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
+import {
+  type Command,
+  commandTarget,
+  type CommandTarget,
+} from '@codaco/studio-sync/apply';
 
 import { useStageEditorForm } from '../stageEditorContext.ts';
 import {
@@ -13,7 +18,6 @@ import {
   movedRowIndex,
   readRows,
   reseatEditedRow,
-  resolveRowIndex,
 } from './arrayFieldCommands.ts';
 import { DEFAULT_ITEM_LABEL } from './arrayMessages.ts';
 import {
@@ -22,16 +26,22 @@ import {
 } from './arrayWriteRefusal.ts';
 
 /**
- * Which key of the stage document a list editor is bound to, or `undefined`
- * when it is not bound to one at all.
+ * Where in the stage document a list editor is bound, or `undefined` when it is
+ * not bound at all.
  *
- * A list nested inside a row — `additionalAttributes` on a prompt — has no key
- * of its own: the command vocabulary addresses a top-level document key, and
- * the row it lives in is edited as a whole by the dialog around it. Such a
- * list stays an ordinary form value and commits with its dialog, which is why
- * this is an option rather than a requirement.
+ * A path rather than a key, because a section can own a list nested inside a
+ * container — `nodeConfig.form.fields` — and the command vocabulary addresses a
+ * place in the document rather than only a top-level key.
+ *
+ * A list nested inside a ROW — `additionalAttributes` on a prompt — still has
+ * no place of its own that stays true: it is reached through the row's
+ * position, and the row it lives in is edited as a whole by the dialog around
+ * it. Such a list stays an ordinary form value and commits with its dialog,
+ * which is why this is an option rather than a requirement.
  */
-export type ArrayFieldBinding = Readonly<{ documentKey: string | undefined }>;
+export type ArrayFieldBinding = Readonly<{
+  documentPath: readonly string[] | undefined;
+}>;
 
 export const ArrayFieldBindingContext = createContext<ArrayFieldBinding | null>(
   null,
@@ -99,83 +109,12 @@ type BoundArray = Readonly<{
  * do. A hole is a document row the editor does not render, and it is answered
  * where that matters, at the index resolver: see `renderedRows` in
  * `arrayFieldCommands`.
- *
- * The rows the FORM HAS CLEARED are the one other thing a write replaces.
- * Switching a capability off empties the list in the form and nowhere else —
- * the clear reaches the session only with the save — so the session goes on
- * holding the rows meanwhile, and an operation resolved against them would
- * land the first row added afterwards beside the rows the researcher had just
- * confirmed the removal of, and put them back.
- *
- * Which rows those are is read off the draft the form is LEVEL WITH
- * (`committedFields`), not off the session: a field handed no list, or an
- * empty one, while that draft holds rows has cleared exactly those rows. The
- * session is the wrong baseline because it can be ahead of the form — a row
- * that arrived a moment ago, while a save that had already begun was still on
- * its way — and a mismatch read against it would call every such row cleared
- * and `set` it away. So the batch first `set`s the key to the session's list
- * with the cleared rows taken out of it, and a row the clear did not cover
- * stays where it is. A cleared row is found by its id when it has one, and
- * otherwise by content — as a MULTISET, each cleared row claiming the first
- * entry not already claimed, because an options list legitimately holds two
- * identical id-less rows and both of them were cleared: asking which of the
- * two each one is (the question `resolveRowIndex` rightly refuses to guess
- * at) would take neither out. The same rule as for a foreign value, for the
- * same reason, and with the same undo — one batch, one history entry, so
- * undoing the add puts the cleared rows back too. A hole is not a row, so a
- * document holding only holes is never mistaken for one the form cleared,
- * and a hole beside the cleared rows is left in place as it is everywhere
- * else.
  */
-const readArray = <T extends ArrayRow>(
-  key: string,
-  value: unknown,
-  rendered: unknown,
-  agreed: unknown,
-  getId: ArrayRowIdentity<T> | undefined,
-): BoundArray => {
-  if (Array.isArray(value)) {
-    // The rows the form has cleared: every row of the draft it is level with,
-    // when the field shows no list or an empty one. Nothing else leaves that
-    // shape — every other write to a bound list reaches the session first and
-    // is read back from it.
-    const cleared = showsNoRows(rendered) ? renderableRows<T>(agreed) : NO_ROWS;
-    const removed = new Set<number>();
-    for (const [index, row] of cleared.entries()) {
-      const at =
-        getId?.(row) === undefined
-          ? firstUnclaimedMatch(value, canonicalize(row), removed)
-          : resolveRowIndex(value, cleared, index, getId);
-      if (at !== undefined) removed.add(at);
-    }
-    if (removed.size === 0) return { current: [...value], repair: [] };
-    const remaining = value.filter((_, index) => !removed.has(index));
-    return {
-      current: remaining,
-      repair: [{ op: 'set', key, value: remaining }],
-    };
-  }
+const readArray = (key: CommandTarget, value: unknown): BoundArray => {
+  if (Array.isArray(value)) return { current: [...value], repair: [] };
   if (value === undefined || value === null) return { current: [], repair: [] };
   return { current: [], repair: [{ op: 'set', key, value: [] }] };
 };
-
-/** The first entry with this canonical `content` that no earlier cleared row has claimed. */
-const firstUnclaimedMatch = (
-  entries: readonly unknown[],
-  content: string,
-  claimed: ReadonlySet<number>,
-): number | undefined => {
-  const at = entries.findIndex(
-    (entry, index) => !claimed.has(index) && canonicalize(entry) === content,
-  );
-  return at === -1 ? undefined : at;
-};
-
-/** Whether a list field is showing nothing: no list at all, or an empty one. */
-const showsNoRows = (rendered: unknown): boolean =>
-  rendered === undefined ||
-  rendered === null ||
-  (Array.isArray(rendered) && rendered.length === 0);
 
 /**
  * What the list's form value becomes when it is brought level with the
@@ -197,7 +136,7 @@ const renderableRows = <T extends ArrayRow>(value: unknown): T[] =>
 const NO_ROWS: readonly never[] = [];
 
 /**
- * Whether a command needs the field to already hold a list. A whole-key `set`
+ * Whether a command needs the field to already hold a list. A whole-list `set`
  * replaces the foreign value itself, and a repair in front of one would make
  * two history entries out of a single edit.
  */
@@ -303,9 +242,8 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   getId?: ArrayRowIdentity<T>,
   itemLabel: MessageDescriptor = DEFAULT_ITEM_LABEL,
 ): ArrayFieldCommands<T> {
-  const { applyOwnCommands, committedFields, reportRefusedWrite } =
-    useStageEditorForm();
-  const documentKey = useContext(ArrayFieldBindingContext)?.documentKey;
+  const { applyOwnCommands, reportRefusedWrite } = useStageEditorForm();
+  const documentPath = useContext(ArrayFieldBindingContext)?.documentPath;
 
   // Read at commit time rather than closed over. A dialog's save can land
   // after the list has moved on, and the values it should be judged against
@@ -318,15 +256,12 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   getIdRef.current = getId;
 
   const readCurrent = useCallback(
-    (key: string) =>
+    (path: readonly string[]) =>
       readArray(
-        key,
-        applyOwnCommands([]).draft[key],
-        renderedRef.current,
-        committedFields[key],
-        getIdRef.current,
+        commandTarget(path),
+        getValue(applyOwnCommands([]).draft, [...path]),
       ),
-    [applyOwnCommands, committedFields],
+    [applyOwnCommands],
   );
 
   /**
@@ -352,7 +287,7 @@ export function useArrayFieldCommands<T extends ArrayRow>(
    */
   const applyCommit = useCallback(
     (
-      key: string,
+      path: readonly string[],
       bound: BoundArray,
       commands: readonly Command[],
       nothingToWrite: ArrayWriteRefusal,
@@ -364,7 +299,7 @@ export function useArrayFieldCommands<T extends ArrayRow>(
           : commands,
       );
       if (sessionRefused) return refused('session-refused');
-      onChangeRef.current?.(renderableRows<T>(draft[key]));
+      onChangeRef.current?.(renderableRows<T>(getValue(draft, [...path])));
       return WRITTEN;
     },
     [applyOwnCommands],
@@ -372,12 +307,12 @@ export function useArrayFieldCommands<T extends ArrayRow>(
 
   const commit = useCallback(
     (
-      key: string,
+      path: readonly string[],
       bound: BoundArray,
       commands: readonly Command[],
       nothingToWrite: ArrayWriteRefusal,
     ): ArrayWriteOutcome => {
-      const outcome = applyCommit(key, bound, commands, nothingToWrite);
+      const outcome = applyCommit(path, bound, commands, nothingToWrite);
       // Written for every attempt, so that an outcome cannot outlive the write
       // it describes and be read as the verdict on a later one.
       lastWriteRef.current = outcome;
@@ -414,16 +349,16 @@ export function useArrayFieldCommands<T extends ArrayRow>(
       // The handler ran and this list wrote nothing at all.
       //
       // For an UNBOUND list that is the ordinary case, and not a refusal: it
-      // has no document key to address, so its rows commit through the form
-      // value the handler was handed and the dispatch itself IS the write.
+      // has nowhere in the document to address, so its rows commit through the
+      // form value the handler was handed and the dispatch itself IS the write.
       //
       // For a bound list it is a refusal. Every route through the handler ends
       // in a command, so one that issued none is one that is no longer editing
       // the row — `ArrayField` drops its editing state the moment the row
       // leaves the value it renders, and its handler is silent about that.
-      return documentKey === undefined ? WRITTEN : refused('row-removed');
+      return documentPath === undefined ? WRITTEN : refused('row-removed');
     },
-    [documentKey],
+    [documentPath],
   );
 
   /**
@@ -453,13 +388,13 @@ export function useArrayFieldCommands<T extends ArrayRow>(
    * screen for good, in a list the document has not got.
    */
   const handleOperation = useCallback(
-    (key: string, operation: ArrayFieldOperation<T>): boolean => {
-      const bound = readCurrent(key);
+    (path: readonly string[], operation: ArrayFieldOperation<T>): boolean => {
+      const bound = readCurrent(path);
       const outcome = commit(
-        key,
+        path,
         bound,
         commandsForOperation(
-          key,
+          commandTarget(path),
           bound.current,
           renderedRef.current,
           operation,
@@ -491,13 +426,11 @@ export function useArrayFieldCommands<T extends ArrayRow>(
       // reads it, so a refusal and a write cannot leave the control saying
       // different things about the same document.
       //
-      // Not when the write would have replaced the document's value first,
-      // though — a value that is not a list, or rows the form has cleared. What
-      // the document holds is then not what the editor drew, and writing it
-      // into the form value for an edit that was refused would either replace a
-      // foreign value on the next submit or put the cleared rows back on
-      // screen: the discard, and the resurrection, that `readArray`'s rules
-      // refuse to make. A repair rides with a write or not at all.
+      // Not when the document holds something that is NOT a list, though. The
+      // empty list is what the editor drew for such a value, but writing it
+      // into the form value would replace the value on the next submit — for an
+      // edit that was refused, which is precisely the discard `readArray`'s
+      // rule refuses to make. A repair rides with a write or not at all.
       if (bound.repair.length === 0) {
         onChangeRef.current?.(renderableRows<T>(bound.current));
       }
@@ -507,15 +440,15 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   );
 
   // Built here rather than guarded inside the handler, so that "this list has
-  // no key to address" is a route that does not exist instead of a branch that
+  // nowhere to address" is a route that does not exist instead of a branch that
   // has to remember to say something.
   const onOperation = useMemo(
     () =>
-      documentKey === undefined
+      documentPath === undefined
         ? undefined
         : (operation: ArrayFieldOperation<T>) =>
-            handleOperation(documentKey, operation),
-    [documentKey, handleOperation],
+            handleOperation(documentPath, operation),
+    [documentPath, handleOperation],
   );
 
   const commitDetachedRow = useCallback(
@@ -525,10 +458,10 @@ export function useArrayFieldCommands<T extends ArrayRow>(
       isNewRow: boolean,
       base?: ArrayRow,
     ): ArrayWriteOutcome => {
-      if (documentKey === undefined) {
+      if (documentPath === undefined) {
         // The value this list was handed, when it is a list at all. A foreign
         // one holds no row to commit onto and is replaced by this write —
-        // `readArray`'s rule for a bound key, applied to the only place an
+        // `readArray`'s rule for a bound list, applied to the only place an
         // unbound list can write, which is its own form value.
         const committed: readonly T[] = Array.isArray(renderedRef.current)
           ? (renderedRef.current as readonly T[])
@@ -562,12 +495,12 @@ export function useArrayFieldCommands<T extends ArrayRow>(
         return WRITTEN;
       }
 
-      const bound = readCurrent(documentKey);
+      const bound = readCurrent(documentPath);
       return commit(
-        documentKey,
+        documentPath,
         bound,
         commandsForDetachedRow(
-          documentKey,
+          commandTarget(documentPath),
           bound.current,
           row,
           id,
@@ -578,7 +511,7 @@ export function useArrayFieldCommands<T extends ArrayRow>(
         'row-removed',
       );
     },
-    [commit, documentKey, readCurrent],
+    [commit, documentPath, readCurrent],
   );
 
   return useMemo(

@@ -7,7 +7,6 @@ import {
   type ComponentType,
 } from 'react';
 
-import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
@@ -118,6 +117,28 @@ const isCellEmpty = (cell: unknown) =>
   (typeof cell === 'string' && cell.trim() === '');
 
 /**
+ * A column whose cells can hold an id that no longer names anything.
+ *
+ * Emptiness is all a row can judge for itself, and it is not the whole of
+ * "unanswered": a cell holding the id of something that has since been deleted
+ * looks answered from here, renders blank (an option list that does not carry
+ * the id has nothing to show for it), and saves the dangling reference back.
+ * Only the owner knows what its ids name and which of them are gone, so the
+ * owner supplies both — the values, and the sentence a row holding one is
+ * refused with.
+ */
+export type DanglingCells = Readonly<{
+  fieldName: string;
+  /** The values in that column that no longer name anything. */
+  values: readonly string[];
+  /** What the researcher is told about a row holding one. */
+  message: string;
+}>;
+
+/** Stable identity for the common case: this is part of a field registration. */
+const NO_DANGLING_CELLS: readonly DanglingCells[] = Object.freeze([]);
+
+/**
  * The array-level rule every MultiSelect owner must put on its
  * `ProtocolArrayField` — the counterpart of the `required` the cells carry,
  * which is DISPLAY ONLY because a row is not a registered field (see
@@ -131,26 +152,58 @@ const isCellEmpty = (cell: unknown) =>
  * An absent or empty array is the unconfigured state these toggleable sections
  * legitimately sit in and passes; a wholly empty row does not, matching
  * `Options.tsx`'s `completeOptions`.
+ *
+ * A row is judged empty first and dangling second, so a row that is both is
+ * told what it is missing before it is told the id it kept is stale — the
+ * ordering `messageRuleValidation` documents, applied within the one rule that
+ * owns what "answered" means here.
  */
 const completeRows =
-  (properties: PropertyField[]) =>
-  (value: unknown): string | undefined =>
-    readRows(value).some((row) =>
-      properties.some(({ fieldName }) => isCellEmpty(row[fieldName])),
-    )
-      ? createMessageError(messages.incompleteRows)
-      : undefined;
+  (properties: PropertyField[], dangling: readonly DanglingCells[]) =>
+  (value: unknown): string | undefined => {
+    const rows = readRows(value);
+    if (
+      rows.some((row) =>
+        properties.some(({ fieldName }) => isCellEmpty(row[fieldName])),
+      )
+    ) {
+      return createMessageError(messages.incompleteRows);
+    }
+    return dangling.find(({ fieldName, values }) =>
+      rows.some((row) => {
+        const cell = row[fieldName];
+        return typeof cell === 'string' && values.includes(cell);
+      }),
+    )?.message;
+  };
 
 /**
  * Every array-level rule a MultiSelect owner needs, as one object to SPREAD
  * onto the owning `ProtocolArrayField` — the `Options.tsx` `optionsValidation`
  * idiom, so a call site cannot keep some and drop others.
  *
- * A factory because the rule has to know the columns. Memoize the result on
- * `properties`: it is a field prop, and a fresh identity per render is churn.
+ * A factory because the rule has to know the columns, and — where a column
+ * holds references — which of those references have gone stale. Memoize the
+ * result on both, so a field prop stops changing while nothing about the rules
+ * has.
+ *
+ * Not because a fresh identity would re-register the rule, which it would not:
+ * `useField` keys the registered validation on a `JSON.stringify` of the
+ * validation props, and `JSON.stringify` drops a function-valued property
+ * entirely — so a `custom` whose `schema` is a function serialises to exactly
+ * the key it had before, whatever this factory returns. What keeps the rule
+ * current is the other half of that: the registered function reads the props
+ * when validation RUNS, through a ref (see `useField`'s `validationPropsRef`).
+ * A rule rebuilt to judge against something that has changed — the orphans a
+ * `DanglingCells` names, the picks a cross-class gate escapes on — is
+ * therefore live without ever re-registering the field, which is what would
+ * delete its stored errors mid-edit.
  */
-export const makeMultiSelectValidation = (properties: PropertyField[]) => ({
-  custom: messageRuleValidation([completeRows(properties)]),
+export const makeMultiSelectValidation = (
+  properties: PropertyField[],
+  dangling: readonly DanglingCells[] = NO_DANGLING_CELLS,
+) => ({
+  custom: messageRuleValidation([completeRows(properties, dangling)]),
 });
 
 type MultiSelectContextValue = {
@@ -203,11 +256,9 @@ function MultiSelectRow({
 
   const handleDelete = () => {
     confirmRemoval({
-      title: intl.formatMessage(messages.removeItem),
-      description: intl.formatMessage(messages.removeItemDescription),
-      confirmLabel: intl.formatMessage(messages.removeItem),
-      cancelLabel: intl.formatMessage(commonMessages.cancel),
-      intent: 'destructive',
+      title: messages.removeItem,
+      description: messages.removeItemDescription,
+      confirmLabel: messages.removeItem,
     });
   };
 
@@ -340,9 +391,11 @@ export type MultiSelectProps = Omit<
 /**
  * A sortable list of always-editing rows, each a fixed set of selects/inputs.
  *
- * Rendered as `<ProtocolArrayField component={MultiSelect} … />`, so the whole
- * list arrives as ONE `value`/`onChange` pair; no row is ever registered as a
- * form field. Row controls therefore run their own validation locally (see
+ * Rendered as `<ProtocolArrayField component={…} … />`, so the whole list
+ * arrives as ONE `value`/`onChange` pair; no row is ever registered as a form
+ * field. Every section reaches it through `OptionalList`, which is where the
+ * decision an EMPTY list records lives: this component renders whatever it is
+ * handed and has no opinion about what emptying one means. Row controls therefore run their own validation locally (see
  * RowField) while keeping the `name[i].property` `data-field-name` paths E2E
  * specs target — which is why every owner also passes
  * `validation={{ completeRows: completeRows(properties) }}`, the only rule

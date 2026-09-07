@@ -7,7 +7,7 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createElement, useState, type ComponentType } from 'react';
+import { createElement, useContext, useState, type ComponentType } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as DialogModule from '@codaco/fresco-ui/dialogs/Dialog';
@@ -29,7 +29,10 @@ import StageEditorShell from '../../StageEditorShell.tsx';
 import DialogArrayField, {
   type DialogArrayEditorValidate,
 } from '../DialogArrayField.tsx';
-import { useArrayFieldCommands } from '../useArrayFieldCommands.ts';
+import {
+  ArrayFieldBindingContext,
+  useArrayFieldCommands,
+} from '../useArrayFieldCommands.ts';
 import { promptItemLabel } from './itemLabel.ts';
 
 /**
@@ -1317,5 +1320,78 @@ describe('a list key holding something that is not a list', () => {
         expect.objectContaining({ text: 'About work' }) as unknown as Prompt,
       ]),
     );
+  });
+});
+
+/**
+ * A list a family renders INSIDE the row dialog — a prompt's sort rules, a
+ * block's options — is part of one row of the list around it, and that outer
+ * list is what holds the document path.
+ *
+ * Left inherited, that path is what the inner list would commit its own
+ * insertions and reorderings against: adding a sort rule would insert a row
+ * into the array of prompts. It also must not commit anything at all until the
+ * dialog saves, which is the same rule `ProtocolArrayField` states for a list
+ * that finds itself in a nested form store — this closes the same gap for one
+ * that never goes through `ProtocolArrayField` at all.
+ */
+describe('a list nested inside a row dialog', () => {
+  function ReportedBinding() {
+    const binding = useContext(ArrayFieldBindingContext);
+    return (
+      <p>
+        Bound to:{' '}
+        {binding === null
+          ? 'no list at all'
+          : (binding.documentPath?.join('.') ?? 'no document path')}
+      </p>
+    );
+  }
+
+  function NestingPromptFields() {
+    return (
+      <>
+        <ReportedBinding />
+        <PromptFields />
+      </>
+    );
+  }
+
+  it('is bound to no place in the document of its own', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ prompts: [{ id: 'a', text: 'Alpha' }] });
+
+    function Host() {
+      const controller = useStageEditorController(session, 'stage-form');
+      return (
+        <StageEditorShell controller={controller}>
+          <BuilderSection title="Prompts">
+            <ProtocolArrayField
+              name="prompts"
+              label="Prompts"
+              component={DialogArrayField}
+              addButtonLabel="Create new prompt"
+              editorTitle="Edit prompt"
+              addTitle="Add prompt"
+              itemLabel={promptItemLabel}
+              previewComponent={PromptPreview}
+              editorFieldsComponent={NestingPromptFields}
+            />
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+
+    render(
+      <DialogProvider>
+        <Host />
+      </DialogProvider>,
+    );
+
+    await editRow(user, 0);
+
+    expect(
+      await screen.findByText('Bound to: no document path'),
+    ).toBeInTheDocument();
   });
 });

@@ -44,14 +44,15 @@ function createSession(fields: SectionDoc) {
  * The hook as a list editor holds it, inside a real stage form.
  *
  * A row operation is what reaches it in the product, but the branches below
- * belong to the hook: whether a list is bound to a document key at all, and
- * what a save that outlived its editing session may commit. Driving them
- * through a particular list would make each of them a fact about that list.
+ * belong to the hook: whether a list is bound to a place in the document at
+ * all, and what a save that outlived its editing session may commit. Driving
+ * them through a particular list would make each of them a fact about that
+ * list.
  */
 function renderCommands(
   session: ProtocolBuilderSessionStore,
   rendered: readonly Row[],
-  documentKey: string | undefined,
+  documentPath: readonly string[] | undefined,
   onChange: (next: Row[]) => void,
 ) {
   const held: { commands?: ArrayFieldCommands<Row> } = {};
@@ -65,10 +66,10 @@ function renderCommands(
     const controller = useStageEditorController(session, 'stage-form');
     return (
       <StageEditorShell controller={controller}>
-        {documentKey === undefined ? (
+        {documentPath === undefined ? (
           <Probe />
         ) : (
-          <ArrayFieldBindingContext value={{ documentKey }}>
+          <ArrayFieldBindingContext value={{ documentPath }}>
             <Probe />
           </ArrayFieldBindingContext>
         )}
@@ -85,10 +86,10 @@ function renderCommands(
   return held.commands!;
 }
 
-describe('a list bound to a document key', () => {
+describe('a list bound to a document path', () => {
   it('takes the list operations, so each row edit commits as what it was', () => {
     const session = createSession({ prompts: [A, B] });
-    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+    const commands = renderCommands(session, [A, B], ['prompts'], vi.fn());
 
     // Handed to `ArrayField`, which then reports the operation rather than
     // just the new array. An unbound list has no key to address and answers
@@ -99,7 +100,7 @@ describe('a list bound to a document key', () => {
   it('commits a save that outlived its editor onto the row it was made on', () => {
     const session = createSession({ prompts: [A, B] });
     const onChange = vi.fn();
-    const commands = renderCommands(session, [A, B], 'prompts', onChange);
+    const commands = renderCommands(session, [A, B], ['prompts'], onChange);
 
     let committed: ArrayWriteOutcome | undefined;
     act(() => {
@@ -120,7 +121,7 @@ describe('a list bound to a document key', () => {
   it('answers no when the row it was asked to commit to has gone', () => {
     const session = createSession({ prompts: [A] });
     const onChange = vi.fn();
-    const commands = renderCommands(session, [A, B], 'prompts', onChange);
+    const commands = renderCommands(session, [A, B], ['prompts'], onChange);
 
     let committed: ArrayWriteOutcome | undefined;
     act(() => {
@@ -144,12 +145,12 @@ describe('a list bound to a document key', () => {
 
 /**
  * The value a bound list is pointed at is whatever the stage document holds at
- * that key, and an import, a migration or a legacy protocol can leave it as
+ * that path, and an import, a migration or a legacy protocol can leave it as
  * something that is not a list at all. Every reader in the editor shows that
  * as an empty list with a working Add button, so the write behind that button
  * has to make the document hold the list it has been showing.
  */
-describe('a list bound to a key the document does not hold as a list', () => {
+describe('a list bound to a path the document does not hold as a list', () => {
   const legacyShape = () => ({ prompts: { text: 'a legacy object' } });
 
   it('replaces the foreign value in the same batch, so the added row lands in a list', () => {
@@ -157,7 +158,7 @@ describe('a list bound to a key the document does not hold as a list', () => {
     const onChange = vi.fn();
     // What every reader renders for a value that is not a list of rows, and
     // therefore what the operation's index was resolved against.
-    const commands = renderCommands(session, [], 'prompts', onChange);
+    const commands = renderCommands(session, [], ['prompts'], onChange);
 
     let answered: boolean | undefined;
     act(() => {
@@ -193,7 +194,7 @@ describe('a list bound to a key the document does not hold as a list', () => {
   it('replaces it for a save that outlived its editor too', () => {
     const session = createSession(legacyShape());
     const onChange = vi.fn();
-    const commands = renderCommands(session, [], 'prompts', onChange);
+    const commands = renderCommands(session, [], ['prompts'], onChange);
 
     let committed: ArrayWriteOutcome | undefined;
     act(() => {
@@ -213,7 +214,7 @@ describe('a list bound to a key the document does not hold as a list', () => {
     const onChange = vi.fn();
     // `ArrayField`'s own optimistic copy still showing a row the document
     // never took: the only way a remove, move or edit can be issued here.
-    const commands = renderCommands(session, [A], 'prompts', onChange);
+    const commands = renderCommands(session, [A], ['prompts'], onChange);
 
     const answers: (boolean | undefined)[] = [];
     act(() => {
@@ -255,7 +256,7 @@ describe('a list bound to a key the document does not hold as a list', () => {
 
   it('treats an absent list as the empty list it already is, repairing nothing', () => {
     const session = createSession({});
-    const commands = renderCommands(session, [], 'prompts', vi.fn());
+    const commands = renderCommands(session, [], ['prompts'], vi.fn());
 
     act(() => {
       commands.onOperation?.({ type: 'insert', index: 0, item: { id: 'n' } });
@@ -293,7 +294,7 @@ describe('a list the document holds with a hole in it', () => {
     const commands = renderCommands(
       session,
       [null as unknown as Row, A],
-      'prompts',
+      ['prompts'],
       vi.fn(),
     );
 
@@ -318,7 +319,7 @@ describe('a list the document holds with a hole in it', () => {
     const commands = renderCommands(
       session,
       [A, null as unknown as Row],
-      'prompts',
+      ['prompts'],
       vi.fn(),
     );
 
@@ -338,7 +339,7 @@ describe('a list the document holds with a hole in it', () => {
     const commands = renderCommands(
       session,
       [A, null as unknown as Row, B],
-      'prompts',
+      ['prompts'],
       vi.fn(),
     );
 
@@ -360,7 +361,7 @@ describe('a list the document holds with a hole in it', () => {
     const commands = renderCommands(
       session,
       [null as unknown as Row, A],
-      'prompts',
+      ['prompts'],
       onChange,
     );
 
@@ -400,7 +401,7 @@ describe('a list the document holds with a hole in it', () => {
 describe('a list drawn without the hole its document still holds', () => {
   it('inserts before the row on screen, at its document index', () => {
     const session = createSession({ prompts: [null, A, B] });
-    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+    const commands = renderCommands(session, [A, B], ['prompts'], vi.fn());
 
     act(() => {
       commands.onOperation?.({ type: 'insert', index: 1, item: { id: 'n' } });
@@ -416,7 +417,7 @@ describe('a list drawn without the hole its document still holds', () => {
 
   it('appends to the end of the document, not the end of the rows drawn', () => {
     const session = createSession({ prompts: [null, A, B] });
-    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+    const commands = renderCommands(session, [A, B], ['prompts'], vi.fn());
 
     act(() => {
       commands.onOperation?.({ type: 'insert', index: 2, item: { id: 'n' } });
@@ -432,7 +433,7 @@ describe('a list drawn without the hole its document still holds', () => {
 
   it('removes the row it names at its document index', () => {
     const session = createSession({ prompts: [null, A, B] });
-    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+    const commands = renderCommands(session, [A, B], ['prompts'], vi.fn());
 
     act(() => {
       commands.onOperation?.({ type: 'remove', index: 0 });
@@ -464,7 +465,12 @@ describe('a list drawn without the hole its document still holds', () => {
     // the front while the pointer was down, so the drop was measured against
     // [X, A, B, C] and asked for the place below Bravo.
     const session = createSession({ prompts: [X, A, B, C] });
-    const commands = renderCommands(session, [X, A, B, C], 'prompts', vi.fn());
+    const commands = renderCommands(
+      session,
+      [X, A, B, C],
+      ['prompts'],
+      vi.fn(),
+    );
 
     act(() => {
       commands.onOperation?.({ type: 'move', from: 0, to: 2, item: A });
@@ -480,7 +486,7 @@ describe('a list drawn without the hole its document still holds', () => {
 
   it('moves a row between document indices, leaving the hole where it is', () => {
     const session = createSession({ prompts: [null, A, B] });
-    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+    const commands = renderCommands(session, [A, B], ['prompts'], vi.fn());
 
     act(() => {
       commands.onOperation?.({ type: 'move', from: 1, to: 0, item: B });
@@ -497,7 +503,7 @@ describe('a list drawn without the hole its document still holds', () => {
   });
 });
 
-describe('a list with no document key of its own', () => {
+describe('a list with no document path of its own', () => {
   it('withholds the list operations, so it commits as an ordinary value', () => {
     const session = createSession({ prompts: [A, B] });
     const commands = renderCommands(session, [A, B], undefined, vi.fn());
@@ -563,7 +569,7 @@ describe('a list with no document key of its own', () => {
 describe('what a list write answers', () => {
   it('is written when the commands reach the document', () => {
     const session = createSession({ prompts: [A, B] });
-    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+    const commands = renderCommands(session, [A, B], ['prompts'], vi.fn());
 
     let outcome: ArrayWriteOutcome | undefined;
     act(() => {
@@ -583,7 +589,12 @@ describe('what a list write answers', () => {
     // be a guess; resolving to neither must not read as a save.
     const twin = { text: 'Same' };
     const session = createSession({ prompts: [null, twin, twin] });
-    const commands = renderCommands(session, [twin, twin], 'prompts', vi.fn());
+    const commands = renderCommands(
+      session,
+      [twin, twin],
+      ['prompts'],
+      vi.fn(),
+    );
 
     let outcome: ArrayWriteOutcome | undefined;
     act(() => {
@@ -610,7 +621,7 @@ describe('what a list write answers', () => {
     // move, and no amount of looking at the list again will bring it back —
     // which is what tells this apart from a row that could not be matched.
     const session = createSession({ prompts: [B] });
-    const commands = renderCommands(session, [B], 'prompts', vi.fn());
+    const commands = renderCommands(session, [B], ['prompts'], vi.fn());
 
     let outcome: ArrayWriteOutcome | undefined;
     act(() => {
@@ -628,7 +639,7 @@ describe('what a list write answers', () => {
     act(() => {
       session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
     });
-    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+    const commands = renderCommands(session, [A, B], ['prompts'], vi.fn());
 
     let operated: ArrayWriteOutcome | undefined;
     let detached: ArrayWriteOutcome | undefined;
@@ -651,7 +662,7 @@ describe('what a list write answers', () => {
 
   it('refuses a dispatch through a bound list that wrote nothing at all', () => {
     const session = createSession({ prompts: [A, B] });
-    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+    const commands = renderCommands(session, [A, B], ['prompts'], vi.fn());
 
     // What `ArrayField`'s own save handler does when it is no longer editing
     // the row: it returns, silently, having issued no operation. A bound list
@@ -669,7 +680,7 @@ describe('what a list write answers', () => {
     const session = createSession({ prompts: [A, B] });
     const commands = renderCommands(session, [A, B], undefined, vi.fn());
 
-    // An unbound list has no document key to address: its rows commit through
+    // An unbound list has no document path to address: its rows commit through
     // the form value the handler was handed, so the dispatch itself IS the
     // write and there is nothing here to have gone missing.
     let outcome: ArrayWriteOutcome | undefined;
@@ -682,7 +693,7 @@ describe('what a list write answers', () => {
 
   it('does not spend one write’s answer on the next', () => {
     const session = createSession({ prompts: [A, B] });
-    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+    const commands = renderCommands(session, [A, B], ['prompts'], vi.fn());
 
     act(() => {
       commands.onOperation?.({ type: 'remove', index: 1 });
@@ -697,192 +708,5 @@ describe('what a list write answers', () => {
     });
 
     expect(outcome).toEqual({ kind: 'refused', reason: 'row-removed' });
-  });
-});
-
-/**
- * Switching a capability off clears the list in the FORM, and the form keeps
- * that clear to itself until the save. The session goes on holding the rows
- * meanwhile — and every list operation is resolved against what the session
- * holds, so the first add after a clear would land beside the rows the
- * researcher had just confirmed the removal of, and put them back.
- */
-describe('a list the form has cleared', () => {
-  const addFirstRow = { type: 'insert', index: 0, item: { id: 'n' } } as const;
-
-  it('replaces the document’s rows in the same batch, so the added row lands in an empty list', () => {
-    const session = createSession({ prompts: [A, B] });
-    const onChange = vi.fn();
-    // The field was handed nothing: the clear emptied it.
-    const commands = renderCommands(session, [], 'prompts', onChange);
-
-    act(() => {
-      commands.onOperation?.(addFirstRow);
-    });
-
-    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
-      { id: 'n' },
-    ]);
-    // One batch, and so one history entry: undoing the add puts the cleared
-    // rows back too, because the clear reached the document with it.
-    expect(
-      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
-    ).toEqual([
-      [
-        { op: 'set', key: 'prompts', value: [] },
-        { op: 'insertItem', key: 'prompts', index: 0, item: { id: 'n' } },
-      ],
-    ]);
-    expect(onChange).toHaveBeenLastCalledWith([{ id: 'n' }]);
-  });
-
-  it('replaces them for a save that outlived its editor too', () => {
-    const session = createSession({ prompts: [A, B] });
-    const commands = renderCommands(session, [], 'prompts', vi.fn());
-
-    let committed: ArrayWriteOutcome | undefined;
-    act(() => {
-      committed = commands.commitDetachedRow({ id: 'n' }, 'n', true);
-    });
-
-    expect(committed).toEqual({ kind: 'written' });
-    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
-      { id: 'n' },
-    ]);
-  });
-
-  it('does not mistake a document holding only holes for a cleared list', () => {
-    // Nothing here was cleared: the document holds no ROW for the field to
-    // have drawn. A hole is never repaired away (see `readArray`), so the add
-    // appends past it exactly as it does for any other holed list.
-    const session = createSession({ prompts: [null] });
-    const commands = renderCommands(session, [], 'prompts', vi.fn());
-
-    act(() => {
-      commands.onOperation?.(addFirstRow);
-    });
-
-    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
-      null,
-      { id: 'n' },
-    ]);
-    expect(
-      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
-    ).toEqual([
-      [{ op: 'insertItem', key: 'prompts', index: 1, item: { id: 'n' } }],
-    ]);
-  });
-
-  it('keeps a row that arrived after the form fell behind the session', () => {
-    // Nothing was cleared here. The form is level with an empty list, and a
-    // row then reached the session that the form has not caught up with — the
-    // moment an asynchronous save can land in. `commands` is that form: the
-    // closure built before the arrival, which is the one such a save holds.
-    const session = createSession({ prompts: [] });
-    const commands = renderCommands(session, [], 'prompts', vi.fn());
-    act(() => {
-      session.acknowledge({
-        fields: { prompts: [A] },
-        throughBatchId: 0,
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
-    });
-
-    act(() => {
-      commands.onOperation?.(addFirstRow);
-    });
-
-    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
-      A,
-      { id: 'n' },
-    ]);
-    expect(
-      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
-    ).toEqual([
-      [{ op: 'insertItem', key: 'prompts', index: 1, item: { id: 'n' } }],
-    ]);
-  });
-
-  it('removes only the rows the clear covered when another arrived meanwhile', () => {
-    const session = createSession({ prompts: [A] });
-    // Level with Alpha and showing nothing: the form cleared Alpha, and only
-    // Alpha.
-    const commands = renderCommands(session, [], 'prompts', vi.fn());
-    act(() => {
-      session.acknowledge({
-        fields: { prompts: [A, B] },
-        throughBatchId: 0,
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
-    });
-
-    act(() => {
-      commands.onOperation?.(addFirstRow);
-    });
-
-    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
-      B,
-      { id: 'n' },
-    ]);
-    expect(
-      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
-    ).toEqual([
-      [
-        { op: 'set', key: 'prompts', value: [B] },
-        { op: 'insertItem', key: 'prompts', index: 1, item: { id: 'n' } },
-      ],
-    ]);
-  });
-
-  it('removes every duplicate the clear covered, and only those', () => {
-    // Rows with no id of their own, two of them identical — an options list
-    // holds exactly this while the researcher is still filling it in. Neither
-    // can be told from the other, and neither needs to be: the clear covered
-    // both, so two of them go, and the one that arrived beside them stays.
-    const blank: Row = { text: 'x' };
-    const session = createSession({ prompts: [blank, blank] });
-    const commands = renderCommands(session, [], 'prompts', vi.fn());
-    act(() => {
-      session.acknowledge({
-        fields: { prompts: [blank, blank, { text: 'y' }] },
-        throughBatchId: 0,
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
-    });
-
-    act(() => {
-      commands.onOperation?.(addFirstRow);
-    });
-
-    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
-      { text: 'y' },
-      { id: 'n' },
-    ]);
-    expect(
-      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
-    ).toEqual([
-      [
-        { op: 'set', key: 'prompts', value: [{ text: 'y' }] },
-        { op: 'insertItem', key: 'prompts', index: 1, item: { id: 'n' } },
-      ],
-    ]);
-  });
-
-  it('repairs nothing when the document is as empty as the list drawn', () => {
-    const session = createSession({ prompts: [] });
-    const commands = renderCommands(session, [], 'prompts', vi.fn());
-
-    act(() => {
-      commands.onOperation?.(addFirstRow);
-    });
-
-    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
-      { id: 'n' },
-    ]);
-    expect(
-      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
-    ).toEqual([
-      [{ op: 'insertItem', key: 'prompts', index: 0, item: { id: 'n' } }],
-    ]);
   });
 });

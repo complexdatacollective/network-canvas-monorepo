@@ -32,6 +32,8 @@ async function arrayIssue(
   const result = await schema.safeParseAsync(value);
   if (result.success) return undefined;
   const message = result.error.issues[0]?.message;
+  // Read the way `FormErrors` reads it: a rule that answers with an encoded
+  // descriptor is answering with the sentence, and a plain one passes through.
   return message === undefined ? undefined : readMessage(message);
 }
 
@@ -145,6 +147,55 @@ describe('makeMultiSelectValidation', () => {
     await expect(
       arrayIssue(custom, [{ property: 'name', direction: '   ' }]),
     ).resolves.toBe('Every row needs a value in each column.');
+  });
+
+  /**
+   * A column can hold an id that no longer names anything.
+   *
+   * Emptiness is not the whole of "unanswered": a cell holding a deleted id
+   * looks answered from here, renders blank (no live option carries it), and
+   * saves the dangling reference back. Only the owner knows which ids are
+   * gone, so the owner supplies them and the sentence to refuse them with.
+   */
+  describe('a column that can name something deleted', () => {
+    const MISSING = 'This rule points at an attribute that no longer exists.';
+
+    const { custom: withDangling } = makeMultiSelectValidation(
+      [
+        { fieldName: 'property', label: 'Property' },
+        { fieldName: 'direction', label: 'Direction' },
+      ],
+      [{ fieldName: 'property', values: ['nickname'], message: MISSING }],
+    );
+
+    it('refuses a complete row whose column names one', async () => {
+      await expect(
+        arrayIssue(withDangling, [{ property: 'nickname', direction: 'asc' }]),
+      ).resolves.toBe(MISSING);
+    });
+
+    it('passes a row naming something that still exists', async () => {
+      await expect(
+        arrayIssue(withDangling, [{ property: 'name', direction: 'asc' }]),
+      ).resolves.toBeUndefined();
+    });
+
+    it('says what is missing before it says the id is stale', async () => {
+      // Both failures are true of this row. Telling the researcher to find a
+      // different attribute, while the column beside it is still empty, sends
+      // them to fix the half of the row that is not the one blocking them.
+      await expect(
+        arrayIssue(withDangling, [{ property: 'nickname' }]),
+      ).resolves.toBe('Every row needs a value in each column.');
+    });
+
+    it('reads only the column the owner named', async () => {
+      // The values are ids of one kind of thing. A direction that happens to
+      // spell the same string is not a reference to it.
+      await expect(
+        arrayIssue(withDangling, [{ property: 'name', direction: 'nickname' }]),
+      ).resolves.toBeUndefined();
+    });
   });
 });
 
