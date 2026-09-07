@@ -8,6 +8,7 @@ import {
   motion,
   Reorder,
   useDragControls,
+  useIsPresent,
 } from 'motion/react';
 import {
   type ComponentType,
@@ -535,6 +536,13 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   ref: Ref<HTMLLIElement>,
 ) {
   const dragControls = useDragControls();
+  // A removed row stays mounted for as long as its exit animation runs. It is
+  // not part of the list any more: leaving it in the accessibility tree and in
+  // the tab ring means "the row at this index", "the last row" and every query
+  // for one of its controls can answer with a node that is about to be
+  // destroyed — and focus moved onto one of them falls back to `<body>` when
+  // it goes.
+  const isPresent = useIsPresent();
 
   const resolvedItemClasses =
     typeof itemClasses === 'function'
@@ -581,6 +589,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       onDragStart={() => onDragStartItem(item._internalId)}
       onDragEnd={onDragEndItem}
       className={cx(itemVariants(), resolvedItemClasses)}
+      aria-hidden={isPresent ? undefined : true}
+      inert={!isPresent}
       custom={hasMounted}
       layout
       layoutId={item._internalId}

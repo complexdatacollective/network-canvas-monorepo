@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo } from 'react';
 
+import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -16,6 +17,7 @@ import useExternalData from '../../../hooks/useExternalData';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { getPanelNodes } from '../../../selectors/name-generator';
 import { getStageSubject } from '../../../selectors/session';
+import { interfaceMessages } from '../../messages';
 import ExternalNodeItem from './ExternalNodeItem';
 
 type NodePanelProps = {
@@ -31,6 +33,7 @@ type NodePanelProps = {
 };
 
 function NodePanel(props: NodePanelProps) {
+  const intl = useAppIntl();
   const {
     panelNumber,
     id,
@@ -124,12 +127,16 @@ function NodePanel(props: NodePanelProps) {
       {isExternalData &&
       (status.state === 'idle' || status.state === 'loading') ? (
         <div className="flex flex-1 items-center justify-center">
-          <Loading message="Loading..." />
+          <Loading message={intl.formatMessage(interfaceMessages.loading)} />
         </div>
       ) : isExternalData && status.state === 'error' ? (
         <div className="flex flex-1 flex-col items-center justify-center">
-          <Heading level="h4">Something went wrong</Heading>
-          <Paragraph>External data could not be loaded.</Paragraph>
+          <Heading level="h4">
+            <AppMessage message={interfaceMessages.errorHeading} />
+          </Heading>
+          <Paragraph>
+            <AppMessage message={interfaceMessages.externalDataUnavailable} />
+          </Paragraph>
         </div>
       ) : (
         <NodeList

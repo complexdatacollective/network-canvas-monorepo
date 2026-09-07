@@ -2,6 +2,8 @@
 
 import type { ReactElement } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { AppMessage } from '@codaco/app-i18n/react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@codaco/fresco-ui/DropdownMenu';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+
+import { messages } from '../../messages';
 
 export type NodeContextMenuAction =
   | 'parent'
@@ -59,21 +63,21 @@ export default function NodeContextMenu({
           data-testid="pedigree-menu-parent"
           onClick={() => onAction('parent')}
         >
-          Add parent
+          <AppMessage message={messages.addParent} />
         </DropdownMenuItem>
         <DropdownMenuItem
           className={menuItemClass}
           data-testid="pedigree-menu-child"
           onClick={() => onAction('child')}
         >
-          Add child
+          <AppMessage message={messages.addChild} />
         </DropdownMenuItem>
         <DropdownMenuItem
           className={menuItemClass}
           data-testid="pedigree-menu-partner"
           onClick={() => onAction('partner')}
         >
-          Add partner
+          <AppMessage message={messages.addPartner} />
         </DropdownMenuItem>
         <DropdownMenuItem
           className={menuItemClass}
@@ -82,9 +86,13 @@ export default function NodeContextMenu({
           onClick={() => onAction('sibling')}
         >
           <span className="flex flex-col items-start">
-            <span>Add sibling</span>
+            <span>
+              <AppMessage message={messages.addSibling} />
+            </span>
             {!canAddSibling && (
-              <span className="text-xs opacity-70">Add a parent first</span>
+              <span className="text-xs opacity-70">
+                <AppMessage message={messages.addParentFirst} />
+              </span>
             )}
           </span>
         </DropdownMenuItem>
@@ -96,14 +104,14 @@ export default function NodeContextMenu({
               data-testid="pedigree-menu-edit"
               onClick={() => onAction('edit')}
             >
-              Edit
+              <AppMessage message={messages.edit} />
             </DropdownMenuItem>
             <DropdownMenuItem
               className={destructiveMenuItemClass}
               data-testid="pedigree-menu-delete"
               onClick={() => onAction('delete')}
             >
-              Delete
+              <AppMessage message={commonMessages.delete} />
             </DropdownMenuItem>
           </>
         )}

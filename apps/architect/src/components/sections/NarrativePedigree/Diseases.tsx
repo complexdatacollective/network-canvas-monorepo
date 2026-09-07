@@ -1,11 +1,17 @@
 import { useCallback, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Stage } from '@codaco/protocol-validation';
 import { normalizeForComparison } from '@codaco/shared-consts';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import {
+  arrayItemMessages,
+  arrayValidationMessages,
+} from '~/components/Form/arrayFields/arrayMessages';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
@@ -18,6 +24,50 @@ import { getStage } from '~/selectors/protocol';
 import { isVariableUsedBySibling } from '../Form/composerHelpers';
 import DiseaseFields from './DiseaseFields';
 import DiseasePreview from './DiseasePreview';
+const remainingMessages = defineMessages({
+  editDisease: {
+    id: 'architect.remaining.sections.narrativePedigree.diseases.editDisease',
+    defaultMessage: 'Edit Disease',
+    description:
+      'The addTitle text in components / sections / NarrativePedigree / Diseases.',
+  },
+});
+const additionalMessages = defineMessages({
+  createNewDisease: {
+    id: 'architect.additional.sections.narrativePedigree.diseases.createNewDisease',
+    defaultMessage: 'Create new disease',
+    description:
+      'The addButtonLabel text in components / sections / NarrativePedigree / Diseases.',
+  },
+});
+const messages = defineMessages({
+  anotherDiseaseAlreadyUsesThisName: {
+    id: 'architect.sections.narrativePedigree.diseases.anotherDiseaseAlreadyUsesThisName',
+    defaultMessage:
+      'Another disease already uses this name. Give this one a name participants can tell apart.',
+    description:
+      'The label text in components / sections / NarrativePedigree / Diseases.',
+  },
+  diseaseMappings: {
+    id: 'architect.sections.narrativePedigree.diseases.diseaseMappings',
+    defaultMessage: 'Disease mappings',
+    description:
+      'The title text in components / sections / NarrativePedigree / Diseases.',
+  },
+  diseases: {
+    id: 'architect.sections.narrativePedigree.diseases.diseases',
+    defaultMessage: 'Diseases',
+    description:
+      'The label text in components / sections / NarrativePedigree / Diseases.',
+  },
+  defineTheDiseasesToVisualizeOn: {
+    id: 'architect.sections.narrativePedigree.diseases.defineTheDiseasesToVisualizeOn',
+    defaultMessage:
+      'Define the diseases to visualize on the pedigree. Each disease maps to a boolean node attribute from the source Family Pedigree stage.',
+    description:
+      'Visible text in components / sections / NarrativePedigree / Diseases.',
+  },
+});
 
 // `DiseaseFields` declares `nodeType` as a required prop rather than the
 // array field's generic `Renderer` bag; DialogArrayField always spreads
@@ -46,6 +96,7 @@ type FamilyPedigreeStage = Extract<
   }
 >;
 const Diseases = (_props: StageEditorSectionProps) => {
+  const intl = useAppIntl();
   const sourceStageId = useStageFormValue<string>('sourceStageId');
   // `initialValue` seeds the array field once; every gate below reads the live
   // rows instead (see `editorValidate`).
@@ -80,8 +131,9 @@ const Diseases = (_props: StageEditorSectionProps) => {
       // so the two surfaces cannot drift; only the message is this domain's.
       if (isVariableUsedBySibling(diseaseRows, variable, props?.editIndex)) {
         return {
-          variable:
-            'This attribute is already mapped by another disease. Choose a different attribute, or edit the existing disease instead.',
+          variable: createMessageError(
+            arrayValidationMessages.duplicateDisease,
+          ),
         };
       }
       const label = typeof values.label === 'string' ? values.label : '';
@@ -100,8 +152,7 @@ const Diseases = (_props: StageEditorSectionProps) => {
         );
       if (duplicateLabel) {
         return {
-          label:
-            'Another disease already uses this name. Give this one a name participants can tell apart.',
+          label: createMessageError(messages.anotherDiseaseAlreadyUsesThisName),
         };
       }
       return {};
@@ -110,26 +161,27 @@ const Diseases = (_props: StageEditorSectionProps) => {
   );
 
   return (
-    <Section title="Disease mappings">
+    <Section title={intl.formatMessage(messages.diseaseMappings)}>
       <ArchitectArrayField
         name="diseases"
-        label="Diseases"
+        label={intl.formatMessage(messages.diseases)}
         hint={
           <Paragraph>
-            Define the diseases to visualize on the pedigree. Each disease maps
-            to a boolean node attribute from the source Family Pedigree stage.
+            {intl.formatMessage(messages.defineTheDiseasesToVisualizeOn)}
           </Paragraph>
         }
         component={DialogArrayField}
-        addButtonLabel="Create new disease"
-        validation={{ required: 'You must create at least one item.' }}
+        addButtonLabel={intl.formatMessage(additionalMessages.createNewDisease)}
+        validation={{
+          required: createMessageError(arrayValidationMessages.required),
+        }}
         initialValue={diseasesInitial ?? []}
-        addTitle="Edit Disease"
+        addTitle={intl.formatMessage(remainingMessages.editDisease)}
         editorFieldsComponent={DiseaseFields as unknown as Renderer}
         editorProps={{ nodeType, siblingDiseases: diseaseRows }}
-        editorTitle="Edit Disease"
+        editorTitle={intl.formatMessage(remainingMessages.editDisease)}
         editorValidate={editorValidate}
-        itemLabel="disease"
+        itemLabelMessage={arrayItemMessages.disease}
         itemTemplate={diseaseTemplate}
         previewComponent={DiseasePreview}
         requestedEditFormName="editable-list-form"

@@ -6,6 +6,8 @@ import { globSync } from 'tinyglobby';
 import { defineConfig, type Plugin } from 'vite';
 import dts from 'vite-plugin-dts';
 
+import { appI18n } from '@codaco/app-i18n/vite';
+
 // Tailwind v4 source CSS (`@source` directives, `@theme`, etc.) is meant to
 // reach the consumer's Tailwind compile untouched — routing it through Vite's
 // PostCSS pipe risks stripping or rewriting the directives. Mirror the
@@ -186,6 +188,7 @@ const addJsExtensionsToDeclarationSpecifiers = (content: string) =>
 
 export default defineConfig({
   plugins: [
+    isLibraryBuild && appI18n({ build: 'library' }),
     interfaceImagesNoInlinePlugin(),
     inlineWorkerPlugin(),
     isLibraryBuild && clientDirective.plugin,
@@ -231,6 +234,7 @@ export default defineConfig({
       // `protocol-schema-version` entry is its own bundle so a host's Node
       // scripts can import just that constant.
       entry: {
+        'locales': resolve(__dirname, 'src/locales/catalogs.ts'),
         'index': resolve(__dirname, 'src/index.ts'),
         'contract': resolve(__dirname, 'src/contract/index.ts'),
         'protocol-schema-version': resolve(

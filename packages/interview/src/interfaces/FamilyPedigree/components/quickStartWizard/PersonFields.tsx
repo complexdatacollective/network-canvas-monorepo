@@ -1,10 +1,12 @@
 'use client';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import type { BiologicalSex } from '@codaco/protocol-validation';
 
 import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';
+import { messages } from '../../messages';
 import BiologicalSexField from '../BiologicalSexField';
 import PersonNameField from '../PersonNameField';
 
@@ -23,9 +25,10 @@ type PersonFieldsProps = {
 export default function PersonFields({
   namespace,
   initial,
-  namePlaceholder = 'Enter name',
+  namePlaceholder,
   currentEntityId,
 }: PersonFieldsProps) {
+  const intl = useAppIntl();
   const { fieldComponents } = usePedigreeNodeForm({
     initialValues: initial?.attributes as
       | Record<string, FieldValue>
@@ -36,9 +39,9 @@ export default function PersonFields({
   const content = (
     <>
       <PersonNameField
-        label="Name"
-        placeholder={namePlaceholder}
-        hint="Leave blank if the name is not known"
+        label={intl.formatMessage(messages.name)}
+        placeholder={namePlaceholder ?? intl.formatMessage(messages.enterName)}
+        hint={intl.formatMessage(messages.unknownNameHint)}
         initialValue={initial?.name ?? ''}
         currentEntityId={currentEntityId}
       />

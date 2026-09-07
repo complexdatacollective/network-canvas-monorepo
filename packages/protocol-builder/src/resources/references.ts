@@ -1,9 +1,15 @@
+import { createMessageError } from '@codaco/app-i18n/messages';
 import {
   assetSchema,
   collectAssetReferences,
   type ProtocolValidationIssue,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
+
+import {
+  assetValidationReason,
+  resourceFailureMessages,
+} from './resourceMessages.ts';
 
 export type StageResourceReference = Readonly<{
   /** Path from the stage document root to the field holding the id. */
@@ -79,7 +85,9 @@ export function findDanglingResourceReferences(
         Object.freeze({
           code: 'custom',
           path,
-          message: `This stage uses a resource ("${reference.resourceId}") that is not in the protocol.`,
+          message: createMessageError(resourceFailureMessages.missingResource, {
+            resourceId: reference.resourceId,
+          }),
           resourceId: reference.resourceId,
         }),
       );
@@ -92,9 +100,10 @@ export function findDanglingResourceReferences(
         Object.freeze({
           code: 'custom',
           path,
-          message: `The resource ("${reference.resourceId}") this stage uses is not valid: ${
-            entry.error.issues[0]?.message ?? 'asset validation failed'
-          }`,
+          message: createMessageError(resourceFailureMessages.invalidResource, {
+            resourceId: reference.resourceId,
+            reason: assetValidationReason(entry.error.issues[0]?.message),
+          }),
           resourceId: reference.resourceId,
         }),
       );

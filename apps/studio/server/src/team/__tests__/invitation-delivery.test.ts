@@ -1,27 +1,62 @@
+import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { once } from 'node:events';
+import type { IncomingMessage, RequestOptions } from 'node:http';
+import { setTimeout as delay } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 
-import type pg from 'pg';
+import { escapeIdentifier, type Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import {
+  postmarkFixture,
+  type PostmarkReply,
+} from '../../../../../../packages/studio-sync/src/__tests__/postmark-fixture.ts';
 import {
   smtpFixture,
   type SmtpBehavior,
 } from '../../../../../../packages/studio-sync/src/__tests__/smtp-fixture.ts';
 import {
+  createScratchDatabase,
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import { createMailer, type InvitationMailer } from '../../auth/email.ts';
+import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
+import { migrateDatabase } from '../../db/migrations/migrate.ts';
+import { createPool } from '../../db/pool.ts';
+import { DEV } from '../../env/catalogue.ts';
 import type { OutboxLifecycleEvent } from '../../outbox/instrumentation.ts';
 import { cancelTeamInvitation } from '../commands.ts';
 import {
   InvitationDeliveryDispatcher,
   InvitationDeliveryRoleError,
+  startInvitationDeliveryWorker,
 } from '../invitation-delivery-dispatcher.ts';
 import { enqueueInvitationDelivery } from '../invitation-delivery-store.ts';
+
+const postmarkRouting = vi.hoisted(() => ({ url: '' }));
+vi.mock('node:https', async () => {
+  const http = await import('node:http');
+  return {
+    request: (
+      _url: string,
+      options: RequestOptions,
+      callback: (response: IncomingMessage) => void,
+    ) => {
+      if (!postmarkRouting.url) throw new Error('No local Postmark receiver');
+      const outgoing = http.request(postmarkRouting.url, options, callback);
+      outgoing.once('socket', (socket) => {
+        socket.once('connect', () => socket.emit('secureConnect'));
+      });
+      return outgoing;
+    },
+  };
+});
 
 const db = await reachableDb();
 
@@ -35,26 +70,30 @@ async function seededScratch() {
   if (!db) throw new Error('unreachable');
   const scratch = await createScratchSchema(db);
   await provisionScratchSchema(scratch.pool);
-  await scratch.pool.query(
+  await seedInviter(scratch.pool);
+  return scratch;
+}
+
+async function seedInviter(pool: Pool) {
+  await pool.query(
     `INSERT INTO "user" (
          id, name, email, "emailVerified", "createdAt", "updatedAt"
        ) VALUES ($1, 'Inviting Researcher', 'inviter@example.com', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
     [INVITER_ID],
   );
-  await scratch.pool.query(
+  await pool.query(
     `INSERT INTO teams (id, name, slug) VALUES ($1, 'Invitation Delivery Team', $1)`,
     [TEAM_ID],
   );
-  await scratch.pool.query(
+  await pool.query(
     `INSERT INTO team_members (id, team_id, user_id, role)
        VALUES ($1, $2, $3, 'owner')`,
     [INVITER_MEMBER_ID, TEAM_ID, INVITER_ID],
   );
-  return scratch;
 }
 
 async function seedInvitation(
-  scratch: ScratchSchema,
+  scratch: Pick<ScratchSchema, 'pool'>,
   input: {
     invitationId?: string;
     email?: string;
@@ -83,7 +122,7 @@ async function seedInvitation(
 }
 
 async function enqueue(
-  scratch: ScratchSchema,
+  scratch: Pick<ScratchSchema, 'app'>,
   invitation: Awaited<ReturnType<typeof seedInvitation>>,
 ) {
   const tenant = createTenantDb(scratch.app, TEAM_ID);
@@ -101,7 +140,7 @@ async function enqueue(
 }
 
 function dispatcher(
-  pool: pg.Pool,
+  pool: Pool,
   mailer: InvitationMailer,
   overrides: Partial<
     ConstructorParameters<typeof InvitationDeliveryDispatcher>[0]
@@ -724,7 +763,374 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
   });
 });
 
+describe('Postmark magic-link presentation', () => {
+  it('uses the same plaintext mail boundary without exposing links to logs', async () => {
+    const peer = await postmarkFixture();
+    postmarkRouting.url = peer.url;
+    const log = vi.spyOn(console, 'log');
+    try {
+      const mailer = createMailer({
+        kind: 'postmark',
+        serverToken: 'postmark-token-canary',
+        messageStream: 'outbound',
+        from: 'Studio <sender@example.test>',
+      });
+      await mailer.sendMagicLink({
+        email: 'private-recipient@example.test',
+        url: 'https://studio.example.test/secret-magic-link-canary',
+      });
+      expect(peer.messages).toHaveLength(1);
+      expect(peer.messages[0]?.body).toMatchObject({
+        To: 'private-recipient@example.test',
+        Subject: 'Sign in to Network Canvas Studio',
+        TextBody: expect.stringContaining(
+          'https://studio.example.test/secret-magic-link-canary',
+        ),
+        TrackLinks: 'None',
+        TrackOpens: false,
+      });
+      expect(log).not.toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+      postmarkRouting.url = '';
+      await peer.close();
+    }
+  });
+});
+
+describe.skipIf(!db)('Postmark invitation delivery outcomes', () => {
+  it.each([
+    [{}, 'sent', null],
+    [{ behavior: 'disconnect' }, 'uncertain', 'EMAIL_DELIVERY_UNCERTAIN'],
+    [{ behavior: 'silent' }, 'uncertain', 'EMAIL_DELIVERY_UNCERTAIN'],
+    [
+      {
+        status: 500,
+        body: { ErrorCode: 101, Message: 'private-provider-canary' },
+      },
+      'uncertain',
+      'EMAIL_DELIVERY_UNCERTAIN',
+    ],
+    [
+      {
+        status: 422,
+        body: { ErrorCode: 406, Message: 'private-provider-canary' },
+      },
+      'failed',
+      'EMAIL_DELIVERY_PERMANENT',
+    ],
+    [
+      { status: 429, body: { Message: 'private-provider-canary' } },
+      'retryable',
+      'EMAIL_DELIVERY_RETRYABLE',
+    ],
+    [
+      {
+        status: 503,
+        body: { ErrorCode: 100, Message: 'private-provider-canary' },
+      },
+      'retryable',
+      'EMAIL_DELIVERY_RETRYABLE',
+    ],
+  ] satisfies [PostmarkReply, string, string | null][])(
+    'persists actual Postmark outcome %# without repeating terminal sends',
+    async (reply: PostmarkReply, terminal, lastError) => {
+      const scratch = await seededScratch();
+      const peer = await postmarkFixture(reply);
+      postmarkRouting.url = peer.url;
+      try {
+        const invitation = await seedInvitation(scratch, {
+          email: 'private-recipient@example.test',
+        });
+        await enqueue(scratch, invitation);
+        const mailer = createMailer({
+          kind: 'postmark',
+          serverToken: 'postmark-token-canary',
+          messageStream: 'outbound',
+          from: 'Studio <sender@example.test>',
+        });
+        const events: OutboxLifecycleEvent[] = [];
+        const heartbeatRenewed = deferred();
+        const worker = dispatcher(scratch.maintenance, mailer, {
+          observer: (event) => {
+            events.push(event);
+            if (event.kind === 'heartbeat' && event.outcome === 'renewed')
+              heartbeatRenewed.resolve();
+          },
+        });
+        if (reply.behavior === 'silent')
+          vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        const running = worker.runOnce();
+        if (reply.behavior === 'silent') {
+          await peer.received();
+          await vi.advanceTimersByTimeAsync(20_001);
+          await heartbeatRenewed.promise;
+          await vi.advanceTimersByTimeAsync(10_000);
+        }
+        await running;
+        const stored = await scratch.pool.query<{
+          attempts: number;
+          sent: boolean;
+          failed: boolean;
+          uncertain: boolean;
+          last_error: string | null;
+        }>(
+          `SELECT attempt_count AS attempts, sent_at IS NOT NULL AS sent,
+          failed_at IS NOT NULL AS failed, uncertain_at IS NOT NULL AS uncertain, last_error
+          FROM team_invitation_deliveries WHERE invitation_id = $1`,
+          [invitation.invitationId],
+        );
+        expect(stored.rows).toEqual([
+          {
+            attempts: 1,
+            sent: terminal === 'sent',
+            failed: terminal === 'failed',
+            uncertain: terminal === 'uncertain',
+            last_error: lastError,
+          },
+        ]);
+        expect(peer.messages).toHaveLength(1);
+        expect(peer.messages[0]?.body).toMatchObject({
+          TextBody: expect.stringContaining(
+            `https://studio.example.test/invitations/${invitation.invitationId}`,
+          ),
+          Headers: [
+            {
+              Name: 'Message-ID',
+              Value: `<studio-invitation.${invitation.invitationId}@networkcanvas.local>`,
+            },
+          ],
+        });
+        expect(events).toContainEqual(
+          expect.objectContaining({
+            claimed: 1,
+            retried: terminal === 'retryable' ? 1 : 0,
+            uncertain: terminal === 'uncertain' ? 1 : 0,
+          }),
+        );
+        for (const canary of [
+          invitation.email,
+          invitation.invitationId,
+          'postmark-token-canary',
+          'private-provider-canary',
+        ]) {
+          expect(
+            JSON.stringify(stored.rows) + JSON.stringify(events),
+          ).not.toContain(canary);
+        }
+        const repeated = await dispatcher(
+          scratch.maintenance,
+          mailer,
+        ).runOnce();
+        expect(repeated.claimed).toBe(terminal === 'retryable' ? 1 : 0);
+        expect(peer.messages).toHaveLength(terminal === 'retryable' ? 2 : 1);
+      } finally {
+        vi.useRealTimers();
+        postmarkRouting.url = '';
+        await peer.close();
+        await scratch.dispose();
+      }
+    },
+  );
+});
+
 describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
+  it('the actual Node SIGTERM drain persists a held SMTP outcome before exiting', async () => {
+    if (!db) throw new Error('Database required for process drain test.');
+    const versioned = await createScratchDatabase(db);
+    const scratch = { ...versioned, app: createPool(versioned.db) };
+    const peer = await smtpFixture('silent_data');
+    const runtimeLogin = `smtp_runtime_${randomUUID().replaceAll('-', '')}`;
+    const runtimePassword = 'smtp-runtime-synthetic-only';
+    let runtimeCreated = false;
+    let child: ReturnType<typeof spawn> | undefined;
+    let exited: Promise<unknown[]> | undefined;
+    try {
+      const identity = (
+        await scratch.pool.query<{ database: string; login: string }>(
+          'SELECT current_database() AS database, session_user AS login',
+        )
+      ).rows[0]!;
+      await scratch.pool.query(`
+        REVOKE CONNECT ON DATABASE ${escapeIdentifier(identity.database)} FROM PUBLIC;
+        GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(identity.login)};
+      `);
+      const migrations = await readMigrations(
+        fileURLToPath(new URL('../../../migrations', import.meta.url)),
+      );
+      expect(migrations.length).toBeGreaterThan(0);
+      expect(
+        await migrateDatabase(scratch.pool, migrations, SCHEMA_FINGERPRINT, [
+          identity.login,
+        ]),
+      ).toEqual(migrations.map(({ manifest }) => manifest.id));
+      await scratch.pool.query(
+        `CREATE ROLE ${escapeIdentifier(runtimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+         GRANT studio_app, studio_maintenance TO ${escapeIdentifier(runtimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+         GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(runtimeLogin)}`,
+      );
+      runtimeCreated = true;
+      await seedInviter(scratch.pool);
+      const invitation = await seedInvitation(scratch);
+      await enqueue(scratch, invitation);
+      const runtimeUrl = new URL(scratch.db.url);
+      runtimeUrl.username = runtimeLogin;
+      runtimeUrl.password = runtimePassword;
+      const databaseUrl = runtimeUrl.href;
+      if (typeof databaseUrl !== 'string')
+        throw new Error('Missing fixture URL');
+      child = spawn(
+        process.execPath,
+        [fileURLToPath(new URL('../../index.ts', import.meta.url))],
+        {
+          env: {
+            NODE_ENV: 'production',
+            HOST: '127.0.0.1',
+            PORT: '0',
+            DATABASE_URL: databaseUrl,
+            BETTER_AUTH_SECRET:
+              'smtp-process-only-authentication-secret-32-characters',
+            PUBLIC_URL: 'https://studio.example.test',
+            SMTP_URL: peer.url,
+            EMAIL_FROM: 'Studio <sender@example.test>',
+          },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      );
+      exited = once(child, 'exit');
+      let output = '';
+      let stderr = '';
+      const started = deferred();
+      child.stdout?.on('data', (chunk: Buffer) => {
+        output += chunk.toString();
+        if (output.includes('STUDIO_SERVER_STARTED')) started.resolve();
+      });
+      child.stderr?.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString();
+      });
+      expect(
+        await Promise.race([
+          Promise.all([started.promise, peer.dataReceived]).then(() => true),
+          exited.then(() => false),
+          delay(8_000, false, { ref: false }),
+        ]),
+        `process must start and send fixture DATA: ${output} ${stderr}`,
+      ).toBe(true);
+      child.kill('SIGTERM');
+      expect(
+        await Promise.race([exited, delay(8_000, 'deadline', { ref: false })]),
+        'SIGTERM must settle SMTP and its durable outcome before the ten-second backstop',
+      ).toEqual([0, null]);
+      const stored = await scratch.pool.query(
+        `SELECT uncertain_at IS NOT NULL AS uncertain, lease_owner, attempt_count, last_error
+         FROM team_invitation_deliveries WHERE invitation_id = $1`,
+        [invitation.invitationId],
+      );
+      expect(stored.rows).toEqual([
+        {
+          uncertain: true,
+          lease_owner: null,
+          attempt_count: 1,
+          last_error: 'EMAIL_DELIVERY_UNCERTAIN',
+        },
+      ]);
+      expect(peer.messages).toHaveLength(1);
+      expect(stderr).toBe('');
+      expect(output).not.toContain('STUDIO_SHUTDOWN_FAILED');
+    } finally {
+      if (child && child.exitCode === null && child.signalCode === null)
+        child.kill('SIGKILL');
+      await exited;
+      await peer.close();
+      await scratch.app.end();
+      if (runtimeCreated)
+        await scratch.pool.query(
+          `REVOKE CONNECT ON DATABASE ${escapeIdentifier(new URL(scratch.db.url).pathname.slice(1))} FROM ${escapeIdentifier(runtimeLogin)};
+           DROP ROLE ${escapeIdentifier(runtimeLogin)}`,
+        );
+      await scratch.dispose();
+    }
+  }, 25_000);
+
+  it('cancels a held SMTP send and persists uncertainty within the shutdown budget', async () => {
+    const scratch = await seededScratch();
+    const peer = await smtpFixture('silent_data');
+    let stopping: Promise<void> | undefined;
+    try {
+      const invitation = await seedInvitation(scratch);
+      await enqueue(scratch, invitation);
+      const mailer = createMailer({
+        kind: 'smtp',
+        url: peer.url,
+        from: 'Studio <sender@example.test>',
+      });
+      const worker = startInvitationDeliveryWorker({
+        pool: scratch.maintenance,
+        mailer,
+        publicBaseUrl: 'https://studio.example.test',
+        pollIntervalMs: 60_000,
+      });
+      await peer.dataReceived;
+      stopping = worker.stop();
+      // The real process exits after ten seconds. A held SMTP peer produces no
+      // event until cancellation, so an eight-second deadline is the oracle.
+      const finished = await Promise.race([
+        stopping.then(() => true),
+        delay(8_000, false, { ref: false }),
+      ]);
+      expect(
+        finished,
+        'shutdown must finalize ambiguity before the process backstop',
+      ).toBe(true);
+      const stored = await scratch.pool.query(
+        `SELECT uncertain_at IS NOT NULL AS uncertain, lease_owner, attempt_count, last_error
+         FROM team_invitation_deliveries WHERE invitation_id = $1`,
+        [invitation.invitationId],
+      );
+      expect(stored.rows).toEqual([
+        {
+          uncertain: true,
+          lease_owner: null,
+          attempt_count: 1,
+          last_error: 'EMAIL_DELIVERY_UNCERTAIN',
+        },
+      ]);
+      const replacement = createMailer({
+        kind: 'smtp',
+        url: peer.url,
+        from: 'Studio <sender@example.test>',
+      });
+      expect(
+        (await dispatcher(scratch.maintenance, replacement).runOnce()).claimed,
+      ).toBe(0);
+      expect(peer.messages).toHaveLength(1);
+    } finally {
+      await peer.close();
+      await stopping;
+      await scratch.dispose();
+    }
+  });
+
+  it('delivers Mailpit magic links with the documented development sender', async () => {
+    const peer = await smtpFixture();
+    try {
+      const mailer = createMailer({
+        kind: 'smtp',
+        url: peer.url,
+        from: DEV.emailFrom,
+      });
+      await mailer.sendMagicLink({
+        email: 'developer@example.test',
+        url: 'http://localhost:5173/test-sign-in',
+      });
+      expect(peer.messages).toHaveLength(1);
+      expect(peer.commands).toContain(`MAIL FROM:<${DEV.emailFrom}>`);
+      expect(peer.messages[0]).toContain('http://localhost:5173/test-sign-in');
+    } finally {
+      await peer.close();
+    }
+  });
+
   it('persists post-DATA uncertainty after a transient heartbeat failure and does not send again', async () => {
     const scratch = await seededScratch();
     const peer = await smtpFixture('silent_data');
@@ -791,6 +1197,93 @@ describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
         }),
       );
       // Force immediate re-eligibility if the uncertainty marker is missing;
+      // this is a real SQL lease-clock boundary, independent of fake JS time.
+      await scratch.pool.query(
+        'DROP TRIGGER fail_smtp_heartbeat ON team_invitation_deliveries',
+      );
+      await scratch.pool.query(
+        `UPDATE team_invitation_deliveries SET lease_expires_at = clock_timestamp() - interval '1 second'
+        WHERE invitation_id = $1 AND lease_owner IS NOT NULL`,
+        [invitation.invitationId],
+      );
+      expect(
+        (await dispatcher(scratch.maintenance, mailer).runOnce()).claimed,
+      ).toBe(0);
+      expect(peer.messages).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+      await peer.close();
+      await scratch.dispose();
+    }
+  });
+
+  it('persists successful acceptance after a transient heartbeat failure and does not send again', async () => {
+    const scratch = await seededScratch();
+    const peer = await smtpFixture('silent_data');
+    try {
+      const invitation = await seedInvitation(scratch);
+      await enqueue(scratch, invitation);
+      await scratch.pool
+        .query(`CREATE FUNCTION fail_smtp_heartbeat() RETURNS trigger LANGUAGE plpgsql AS $body$
+        BEGIN
+          IF NEW.lease_owner = OLD.lease_owner
+            AND NEW.lease_owner IS NOT NULL
+            AND NEW.lease_expires_at IS DISTINCT FROM OLD.lease_expires_at THEN
+            RAISE EXCEPTION 'transient heartbeat failure';
+          END IF;
+          RETURN NEW;
+        END $body$;
+        CREATE TRIGGER fail_smtp_heartbeat BEFORE UPDATE ON team_invitation_deliveries
+        FOR EACH ROW EXECUTE FUNCTION fail_smtp_heartbeat()`);
+      const mailer = createMailer({
+        kind: 'smtp',
+        url: peer.url,
+        from: 'Studio <sender@example.test>',
+      });
+      const heartbeatFailed = deferred();
+      const events: OutboxLifecycleEvent[] = [];
+      const worker = dispatcher(scratch.maintenance, mailer, {
+        leaseMs: 30_000,
+        observer: (event) => {
+          events.push(event);
+          if (event.kind === 'heartbeat' && event.outcome === 'error')
+            heartbeatFailed.resolve();
+        },
+      });
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const running = worker.runOnce();
+      await peer.dataReceived;
+      await vi.advanceTimersByTimeAsync(10_001);
+      await heartbeatFailed.promise;
+      peer.acceptPending();
+      await running;
+      const stored = await scratch.pool.query<{
+        delivered: boolean;
+        attempts: number;
+        lease_owner: string | null;
+        last_error: string | null;
+      }>(
+        `SELECT sent_at IS NOT NULL AS delivered, attempt_count AS attempts, lease_owner, last_error
+        FROM team_invitation_deliveries WHERE invitation_id = $1`,
+        [invitation.invitationId],
+      );
+      expect(stored.rows).toEqual([
+        {
+          delivered: true,
+          attempts: 1,
+          lease_owner: null,
+          last_error: null,
+        },
+      ]);
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          kind: 'dispatch',
+          completed: 1,
+          retried: 0,
+          leaseLost: 0,
+        }),
+      );
+      // Force immediate re-eligibility if the delivered marker is missing;
       // this is a real SQL lease-clock boundary, independent of fake JS time.
       await scratch.pool.query(
         'DROP TRIGGER fail_smtp_heartbeat ON team_invitation_deliveries',

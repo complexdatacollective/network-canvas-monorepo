@@ -7,8 +7,7 @@ import {
   useRef,
 } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 
 import type { FlattenedErrors, FormConfig } from '../store/types';
 import useFormStore from './useFormStore';
@@ -23,7 +22,6 @@ const messages = defineMessages({
 });
 
 export function useForm(config: FormConfig) {
-  const intl = useAppIntl();
   const registeredRef = useRef(false);
   const configRef = useRef(config); // Config is static, so this avoids needing to specify it in effect deps
   configRef.current = config;
@@ -147,21 +145,14 @@ export function useForm(config: FormConfig) {
         requestErrorFocus();
       } catch {
         setErrors({
-          formErrors: [intl.formatMessage(messages.submitFailed)],
+          formErrors: [createMessageError(messages.submitFailed)],
           fieldErrors: {},
         });
       } finally {
         setSubmitting(false);
       }
     },
-    [
-      setSubmitting,
-      validateForm,
-      getFormValues,
-      setErrors,
-      requestErrorFocus,
-      intl,
-    ],
+    [setSubmitting, validateForm, getFormValues, setErrors, requestErrorFocus],
   );
 
   const handleReset = useCallback(() => {

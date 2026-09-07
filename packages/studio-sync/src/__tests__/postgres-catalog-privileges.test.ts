@@ -13,7 +13,7 @@ import {
 } from 'vitest';
 
 import { assertSafePostgresCatalogPrivileges } from '../postgres-catalog-privileges.ts';
-import { CI, PGPASSWORD, PGPORT } from './test-env.ts';
+import { CI, PGPASSWORD, PGPORT, PGUSER } from './test-env.ts';
 
 const UNSAFE = 'POSTGRES_CATALOG_PRIVILEGES_UNSAFE';
 const INVALID = 'POSTGRES_CATALOG_PRIVILEGES_INVALID';
@@ -29,7 +29,7 @@ const identities = [roles.runtime, roles.backup, roles.login];
 const connection = {
   host: '127.0.0.1',
   port: PGPORT,
-  user: 'postgres',
+  user: PGUSER,
   password: PGPASSWORD,
   database: 'postgres',
   max: 1,

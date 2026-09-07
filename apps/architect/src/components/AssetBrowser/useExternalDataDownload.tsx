@@ -1,17 +1,37 @@
 import { get } from 'es-toolkit/compat';
-import { useCallback } from 'react';
+import { createElement, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { assetMetadataMessages } from '~/components/Assets/assetMetadataMessages';
 import { getDisplayAssetManifest } from '~/selectors/protocol';
 import { getAssetById } from '~/utils/assetUtils';
 import { reportError } from '~/utils/reportError';
-
-const defaultMeta = {
-  name: 'Interview network',
-};
+const messages = defineMessages({
+  downloadFailed: {
+    id: 'architect.assetBrowser.useExternalDataDownload.downloadFailed',
+    defaultMessage: 'Download failed',
+    description:
+      'The title text in components / AssetBrowser / useExternalDataDownload.',
+  },
+  couldNotBeDownloaded: {
+    id: 'architect.assetBrowser.useExternalDataDownload.couldNotBeDownloaded',
+    defaultMessage: '"{value1}" could not be downloaded.',
+    description:
+      'The description text in components / AssetBrowser / useExternalDataDownload.',
+  },
+  oK: {
+    id: 'architect.assetBrowser.useExternalDataDownload.oK',
+    defaultMessage: 'OK',
+    description:
+      'The label text in components / AssetBrowser / useExternalDataDownload.',
+  },
+});
 
 const useExternalDataDownload = () => {
+  const intl = useAppIntl();
   const { openDialog } = useDialog();
   // The download is named after the card the researcher clicked, not after a
   // stored name it may share with another card — downloading two resources
@@ -22,11 +42,13 @@ const useExternalDataDownload = () => {
   const getAssetInfo = useCallback(
     (id: string) => {
       const source = get(assetManifest, [id, 'source'], '') as string;
-      const meta = get(assetManifest, id, defaultMeta) as { name: string };
+      const meta = get(assetManifest, id, {
+        name: intl.formatMessage(assetMetadataMessages.interviewNetwork),
+      }) as { name: string };
       const assetPath = `assets/${source}`;
       return [assetPath, meta] as const;
     },
-    [assetManifest],
+    [assetManifest, intl],
   );
 
   const handleDownload = useCallback(
@@ -63,9 +85,21 @@ const useExternalDataDownload = () => {
         void openDialog({
           type: 'acknowledge',
           intent: 'destructive',
-          title: 'Download failed',
-          description: `"${meta.name}" could not be downloaded.`,
-          actions: { primary: { label: 'OK', value: true } },
+          title: createElement(AppMessage, {
+            message: messages.downloadFailed,
+          }),
+          description: createElement(AppMessage, {
+            message: messages.couldNotBeDownloaded,
+            values: {
+              value1: meta.name,
+            },
+          }),
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
         });
       }
     },

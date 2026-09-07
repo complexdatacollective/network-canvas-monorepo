@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { useResourceGateway } from '../context.tsx';
 import type {
   ResourceGatewayFailure,
@@ -8,6 +11,15 @@ import type {
 import { callGateway } from '../gatewayCall.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import type { PreviewableResourceKind } from './resourceKinds.ts';
+
+const messages = defineMessages({
+  retry: {
+    id: 'protocolBuilder.resourcePreview.retry',
+    defaultMessage: 'Try loading the preview again',
+    description:
+      'Button beside a failure notice, which asks the host again for the URL that displays an imported image, video, or audio file. Named rather than generic because several parts of one field can be failing at once.',
+  },
+});
 
 export type ResourcePreviewProps = Readonly<{
   resourceId: string;
@@ -173,6 +185,7 @@ export default function ResourcePreview({
   className,
 }: ResourcePreviewProps) {
   const gateway = useResourceGateway();
+  const intl = useAppIntl();
   const [preview, setPreview] = useState<ResolvedPreview | undefined>(
     undefined,
   );
@@ -394,7 +407,7 @@ export default function ResourcePreview({
     return (
       <ResourceFailureNotice
         failure={failure}
-        retryLabel="Try loading the preview again"
+        retryLabel={intl.formatMessage(messages.retry)}
         onRetry={() => setAttempt((current) => current + 1)}
       />
     );

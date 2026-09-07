@@ -12,11 +12,21 @@ const { mapInstance, MapConstructor } = vi.hoisted(() => {
     on: vi.fn(),
     resize: vi.fn(),
     remove: vi.fn(),
+    getCanvas: vi.fn<() => HTMLCanvasElement>(),
+    getContainer: vi.fn<() => HTMLElement>(),
   };
   // A regular (non-arrow) function so it can be invoked with `new`.
   return {
     mapInstance: instance,
-    MapConstructor: vi.fn(function MapMock() {
+    MapConstructor: vi.fn(function MapMock(options: {
+      container: HTMLElement;
+      locale?: Record<string, string>;
+    }) {
+      const canvas = document.createElement('canvas');
+      canvas.setAttribute('aria-label', options.locale?.['Map.Title'] ?? 'Map');
+      options.container.append(canvas);
+      instance.getCanvas.mockReturnValue(canvas);
+      instance.getContainer.mockReturnValue(options.container);
       return instance;
     }),
   };
@@ -40,6 +50,7 @@ vi.mock('react-redux', () => ({
   useSelector: (selector: (state: unknown) => unknown) => selector({}),
 }));
 
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 // The hook under test (imported after mocks are declared)
 import {
   type ExtendedMapOptions,
@@ -197,5 +208,29 @@ describe('useMapbox resize handling', () => {
     expect(observerInstances[0]!.disconnectSpy).toHaveBeenCalled();
     expect(cancelRaf).toHaveBeenCalled();
     expect(mapInstance.remove).toHaveBeenCalled();
+  });
+});
+
+describe('useMapbox built-in locale changes', () => {
+  it('updates the existing map canvas when the Shell language changes without recreating or removing the map', () => {
+    const tree = (locale: string) => (
+      <InterviewI18nProvider requestedLocale={locale}>
+        <TestHarness mapOptions={baseMapOptions} />
+      </InterviewI18nProvider>
+    );
+    const { rerender } = render(tree('en'));
+    const canvas = mapInstance.getCanvas();
+    expect(canvas).toHaveAccessibleName('Map');
+    expect(MapConstructor).toHaveBeenCalledTimes(1);
+
+    rerender(tree('es'));
+    expect(mapInstance.getCanvas()).toBe(canvas);
+    expect(canvas).toHaveAccessibleName('Mapa');
+    expect(MapConstructor).toHaveBeenCalledTimes(1);
+    expect(mapInstance.remove).not.toHaveBeenCalled();
+
+    rerender(tree('en-GB'));
+    expect(canvas).toHaveAccessibleName('Map');
+    expect(MapConstructor).toHaveBeenCalledTimes(1);
   });
 });

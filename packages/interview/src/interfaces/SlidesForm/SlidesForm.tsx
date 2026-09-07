@@ -1,5 +1,4 @@
 'use client';
-
 import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react';
 import {
   forwardRef,
@@ -13,6 +12,8 @@ import {
   useState,
 } from 'react';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
+import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
@@ -44,9 +45,11 @@ import useProtocolForm from '../../forms/useProtocolForm';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useScrolledToBottom } from '../../hooks/useScrolledToBottom';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { Subject } from '../../selectors/forms';
 import type { AttributePatch } from '../../store/entityAttributePatch';
 import type { BeforeNextFunction, Direction } from '../../types';
+import { interfaceMessages } from '../messages';
 
 type FormKind = 'alter' | 'alter_edge' | 'ego' | 'slides';
 
@@ -71,11 +74,12 @@ const slideTransition = {
 };
 
 const discardChangesDialog = {
-  title: 'Discard changes?',
-  description:
-    'This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?',
-  confirmLabel: 'Discard changes',
-  cancelLabel: 'Keep changes',
+  title: <AppMessage message={interfaceMessages.discardChangesTitle} />,
+  description: (
+    <AppMessage message={interfaceMessages.discardChangesDescription} />
+  ),
+  confirmLabel: <AppMessage message={interfaceMessages.discardChanges} />,
+  cancelLabel: <AppMessage message={interfaceMessages.keepChanges} />,
   intent: 'destructive' as const,
 };
 
@@ -155,7 +159,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
       if (!patchResult.success) {
         return {
           success: false,
-          formErrors: ['An error occurred while submitting the form.'],
+          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
         };
       }
 
@@ -285,6 +289,7 @@ export default function SlidesForm({
   form,
   form_kind,
 }: SlidesFormProps & SlidesFormAnalyticsProps) {
+  const intl = useAppIntl();
   const { confirm } = useDialog();
   const track = useTrack();
 
@@ -448,7 +453,7 @@ export default function SlidesForm({
               <button
                 type="submit"
                 key="submit"
-                aria-label="Submit"
+                aria-label={intl.formatMessage(interfaceMessages.submit)}
                 hidden
                 onClick={handleEnterSubmit}
               />

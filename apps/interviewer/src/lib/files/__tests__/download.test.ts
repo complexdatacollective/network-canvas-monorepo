@@ -86,7 +86,7 @@ describe('saveBlob (rung 1: File System Access picker)', () => {
     const share = vi.fn();
     stubNavigator({ device: 'ipad', share, canShare: () => true });
 
-    const result = await saveBlob(makeBlob(), 'export.zip');
+    const result = await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
 
     expect(picker.showSaveFilePicker).toHaveBeenCalledWith(
       expect.objectContaining({ suggestedName: 'export.zip' }),
@@ -107,7 +107,7 @@ describe('saveBlob (rung 1: File System Access picker)', () => {
     stubNavigator({ device: 'ipad', share, canShare: () => true });
     const { createObjectURL } = stubAnchorDownload();
 
-    const result = await saveBlob(makeBlob(), 'export.zip');
+    const result = await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
 
     // A cancelled picker is a final "no" — offering another save mechanism
     // would recreate the nagging the ladder exists to remove.
@@ -129,7 +129,7 @@ describe('saveBlob (rung 1: File System Access picker)', () => {
     stubNavigator({});
     const { createObjectURL, click } = stubAnchorDownload();
 
-    const result = await saveBlob(makeBlob(), 'export.zip');
+    const result = await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(click).toHaveBeenCalledTimes(1);
@@ -144,7 +144,7 @@ describe('saveBlob (rung 1: File System Access picker)', () => {
     stubNavigator({});
     const { createObjectURL } = stubAnchorDownload();
 
-    const result = await saveBlob(makeBlob(), 'export.zip');
+    const result = await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ saved: true });
@@ -162,7 +162,7 @@ describe('saveBlob (rung 2: Web Share, no picker available)', () => {
     const canShare = vi.fn().mockReturnValue(true);
     stubNavigator({ device: 'iphone', share, canShare });
 
-    const result = await saveBlob(makeBlob(), 'export.zip');
+    const result = await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
 
     expect(canShare).toHaveBeenCalledWith(
       expect.objectContaining({ files: expect.any(Array) }),
@@ -181,7 +181,7 @@ describe('saveBlob (rung 2: Web Share, no picker available)', () => {
     const share = vi.fn().mockRejectedValue(abort);
     stubNavigator({ device: 'iphone', share, canShare: () => true });
 
-    const result = await saveBlob(makeBlob(), 'export.zip');
+    const result = await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
 
     expect(result).toEqual({ saved: false });
   });
@@ -195,7 +195,7 @@ describe('saveBlob (rung 2: Web Share, no picker available)', () => {
     stubNavigator({ device: 'ipad', share, canShare: () => true });
     const { createObjectURL, click } = stubAnchorDownload();
 
-    const result = await saveBlob(makeBlob(), 'export.zip');
+    const result = await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
 
     expect(share).toHaveBeenCalledTimes(1);
     expect(createObjectURL).toHaveBeenCalledTimes(1);
@@ -222,7 +222,7 @@ describe('the share rung is handheld-only', () => {
 
     expect(saveAction(makeBlob(), 'export.zip')).toBe('download');
 
-    const result = await saveBlob(makeBlob(), 'export.zip');
+    const result = await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
 
     expect(share).not.toHaveBeenCalled();
     expect(createObjectURL).toHaveBeenCalledTimes(1);
@@ -237,7 +237,7 @@ describe('the share rung is handheld-only', () => {
 
     expect(saveAction(makeBlob(), 'export.zip')).toBe('share');
 
-    await saveBlob(makeBlob(), 'export.zip');
+    await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
     expect(share).toHaveBeenCalledTimes(1);
   });
 
@@ -247,7 +247,7 @@ describe('the share rung is handheld-only', () => {
 
     expect(saveAction(makeBlob(), 'export.zip')).toBe('share');
 
-    await saveBlob(makeBlob(), 'export.zip');
+    await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
     expect(share).toHaveBeenCalledTimes(1);
   });
 
@@ -263,7 +263,7 @@ describe('the share rung is handheld-only', () => {
 
     expect(saveAction(makeBlob(), 'export.zip')).toBe('share');
 
-    await saveBlob(makeBlob(), 'export.zip');
+    await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
     expect(share).toHaveBeenCalledTimes(1);
   });
 });
@@ -283,7 +283,7 @@ describe('saveAction agrees with the rung saveBlob takes', () => {
 
     expect(saveAction(makeBlob(), 'export.zip')).toBe('save-as');
 
-    await saveBlob(makeBlob(), 'export.zip');
+    await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
     expect(picker.showSaveFilePicker).toHaveBeenCalledTimes(1);
   });
 
@@ -293,7 +293,7 @@ describe('saveAction agrees with the rung saveBlob takes', () => {
 
     expect(saveAction(makeBlob(), 'export.zip')).toBe('share');
 
-    await saveBlob(makeBlob(), 'export.zip');
+    await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
     expect(share).toHaveBeenCalledTimes(1);
   });
 
@@ -303,7 +303,7 @@ describe('saveAction agrees with the rung saveBlob takes', () => {
 
     expect(saveAction(makeBlob(), 'export.zip')).toBe('download');
 
-    await saveBlob(makeBlob(), 'export.zip');
+    await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
     expect(click).toHaveBeenCalledTimes(1);
   });
 });
@@ -318,7 +318,7 @@ describe('saveBlob (rung 3: anchor download, no picker or share)', () => {
     stubNavigator({});
     const { createObjectURL, click, anchor } = stubAnchorDownload();
 
-    const result = await saveBlob(makeBlob(), 'export.zip');
+    const result = await saveBlob(makeBlob(), 'export.zip', 'ZIP archive');
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(anchor.download).toBe('export.zip');

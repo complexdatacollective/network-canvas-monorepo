@@ -55,6 +55,11 @@ export {
   AuditActorKindSchema,
   AuditCategorySchema,
   AuditOutcomeSchema,
+  // Named here as well as used in the contract below, so the wire shape of a
+  // command can be tested directly. What a server built before nested command
+  // addressing accepts is a fact about this schema, and it is checked against
+  // a frozen copy of the version that predates it.
+  CommitSectionInputSchema,
   SOCIAL_PROVIDERS,
   STUDY_PARTICIPATION_MODES,
   STUDY_STATES,

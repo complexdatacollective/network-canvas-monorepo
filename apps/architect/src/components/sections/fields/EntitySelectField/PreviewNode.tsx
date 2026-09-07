@@ -1,9 +1,18 @@
 import type { ComponentProps } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Node, {
   type NodeColorSequence,
   type NodeShape,
 } from '@codaco/fresco-ui/Node';
+const extraMessages = defineMessages({
+  selectNode: {
+    id: 'architect.entityPreview.selectNode',
+    defaultMessage: 'Select node {label}',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 type NodeSize = ComponentProps<typeof Node>['size'];
 
@@ -37,12 +46,15 @@ const PreviewNode = ({
   className,
   ...buttonProps
 }: PreviewNodeProps) => {
+  const intl = useAppIntl();
   return (
     <Node
       {...buttonProps}
       label={label}
       ariaLabel={
-        buttonProps.role === 'radio' ? `Select node ${label}` : undefined
+        buttonProps.role === 'radio'
+          ? intl.formatMessage(extraMessages.selectNode, { label })
+          : undefined
       }
       selected={selected}
       color={color as NodeColorSequence}
