@@ -457,7 +457,7 @@
   },
   "protocolBuilder.formFields.newNameHint": {
     "defaultMessage": "How this attribute is named in the codebook and in exported data.",
-    "description": "Guidance under the new-attribute name field. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards."
+    "description": "Guidance under the new-attribute name field. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyzes afterwards."
   },
   "protocolBuilder.formFields.newNameLabel": {
     "defaultMessage": "Attribute name",
@@ -809,7 +809,7 @@
   },
   "protocolBuilder.outline.errorStatus": {
     "defaultMessage": "Has a problem",
-    "description": "Spoken state of one section of a stage editor (a stage is one step of an interview): something the researcher has entered in it is not valid. Read out after the section’s own name, and never shown on screen — the same state is drawn as a colour and an icon."
+    "description": "Spoken state of one section of a stage editor (a stage is one step of an interview): something the researcher has entered in it is not valid. Read out after the section’s own name, and never shown on screen — the same state is drawn as a color and an icon."
   },
   "protocolBuilder.outline.incompleteStatus": {
     "defaultMessage": "Not finished",

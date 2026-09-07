@@ -273,7 +273,7 @@ const messages = defineMessages({
     defaultMessage:
       'How this attribute is named in the codebook and in exported data.',
     description:
-      'Guidance under the new-attribute name field. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards.',
+      'Guidance under the new-attribute name field. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyzes afterwards.',
   },
   newNamePlaceholder: {
     id: 'protocolBuilder.formFields.newNamePlaceholder',
