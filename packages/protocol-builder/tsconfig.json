@@ -5,6 +5,10 @@
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
     "types": ["vite/client"]
   },
-  "include": [".storybook", "src"],
+  // `.storybook/**/*` rather than `.storybook`: a bare directory name expands
+  // to a wildcard, and TypeScript's wildcards never match a path segment
+  // beginning with a dot — so the shorter form silently typechecked nothing in
+  // there, and `mapboxMock.ts` had been shadowing the global `Map` unnoticed.
+  "include": [".storybook/**/*", "src"],
   "exclude": ["node_modules", "storybook-static"]
 }

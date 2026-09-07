@@ -68,6 +68,7 @@
     "csvtojson": "catalog:",
     "es-toolkit": "catalog:",
     "lucide-react": "catalog:",
+    "mapbox-gl": "^3.25.0",
     "remark-parse": "^11.0.0",
     "unified": "^11.0.5",
     "uuid": "catalog:",
