@@ -13,6 +13,11 @@ import IntroductionSection from '../sections/IntroductionSection.tsx';
 import AtRiskStatusesSection from '../sections/narrativePedigree/AtRiskStatusesSection.tsx';
 import DiseasesSection from '../sections/narrativePedigree/DiseasesSection.tsx';
 import SourceStageSection from '../sections/narrativePedigree/SourceStageSection.tsx';
+import AutomaticLayoutSection from '../sections/network/AutomaticLayoutSection.tsx';
+import BackgroundSection from '../sections/network/BackgroundSection.tsx';
+import NarrativeBehavioursSection from '../sections/network/NarrativeBehavioursSection.tsx';
+import { networkCanvasMessages } from '../sections/network/networkCanvasMessages.ts';
+import SociogramPromptsSection from '../sections/network/SociogramPromptsSection.tsx';
 import NetworkFilterSection from '../sections/NetworkFilterSection.tsx';
 import PageContentSection from '../sections/PageContentSection.tsx';
 import BoundaryOptionsSection from '../sections/pedigree/BoundaryOptionsSection.tsx';
@@ -39,8 +44,8 @@ import {
  * The labels the row-editor stand-ins put on screen.
  *
  * `rowFixtures.tsx` names a family's fields in English on purpose — the tests
- * around it read those names back — and one real area now happens to have
- * chosen the same words for a label of its own. See `SweepAllowances`.
+ * around it read those names back — and two real areas happen to have chosen
+ * the same words for their own labels. See `SweepAllowances`.
  */
 const FIXTURE_ROW_EDITOR_WORDS = [
   'Prompt text',
@@ -260,8 +265,8 @@ describe('the row dialogs under es', () => {
  * and each is swept once because a family is the unit a leak belongs to: the
  * sentences one family writes for itself are declared together, translated
  * together, and are exactly the words no OTHER family's sweep would ever
- * render. Sweeping one of a family's stage editors would leave the other
- * family's message file with nothing looking at it at all.
+ * render. Sweeping one stage editor per family would leave the message files
+ * of the families it did not reach with nothing looking at them at all.
  *
  * The sections mounted are the family-owned ones from that family's editor,
  * without the shared sections above them — those are swept by the stages at
@@ -273,6 +278,32 @@ describe('the interface families under es, at rest', () => {
     await waitFor(() => expect(harness.outline().length).toBeGreaterThan(0));
     return harness;
   };
+
+  it('sweeps a sociogram’s canvas sections', async () => {
+    const harness = renderStageEditor({
+      stageId: 'sociogram-1',
+      locale: 'es',
+      sections: (
+        <>
+          <SociogramPromptsSection />
+          <BackgroundSection allowsImage />
+          <AutomaticLayoutSection />
+          <NarrativeBehavioursSection
+            description={
+              networkCanvasMessages.sociogramCanvasInteractionDescription
+            }
+            repositioningHint={networkCanvasMessages.sociogramRepositioningHint}
+          />
+        </>
+      ),
+    });
+    await settled(harness);
+
+    expectNoLocaleLeaks(
+      'sociogram canvas sections at rest',
+      researcherWords(harness),
+    );
+  });
 
   it('sweeps a family pedigree', async () => {
     const harness = renderStageEditor({
