@@ -171,10 +171,11 @@ incident even if the database is healthy.
    5 minutes, and a measured recovery within 4 hours.
 
 The current self-host script restores both object-store archives and verifies
-referenced Registry artifacts. Exhaustive Studio-reference verification remains
-a recovery gate; there is no tested object-only repair command. Managed object
-versioning, immutable retention, cross-account recovery credentials, reconciler,
-and outage drill remain pending.
+referenced Registry artifacts. Run the exhaustive Studio-reference verification
+command documented in [BACKUPS.md](BACKUPS.md) while the recovered target remains
+quarantined. There is no object-only repair command. Managed object versioning,
+immutable retention, cross-account recovery credentials, reconciler, and outage
+drill remain pending.
 
 ## Dispatcher backlog
 
@@ -289,23 +290,29 @@ known-good backup/checkpoint identities.
    Registry authorization, and verifies referenced Registry blob hashes. It leaves
    public HTTP and every worker closed.
 
-4. Reconcile Studio account, team membership, operator, integration, OAuth and
+4. While the restored Studio runtime and maintenance LOGINs remain closed, run
+   the recovered-asset verifier documented in [BACKUPS.md](BACKUPS.md) against
+   the restored Studio database and object store. Retain its exact image,
+   database backup, object backup and successful count with the recovery
+   evidence. Any missing, truncated, corrupt, oversized or stalled object keeps
+   the stack quarantined.
+5. Reconcile Studio account, team membership, operator, integration, OAuth and
    deployment credential authorization against current trusted evidence. Invalidate
    restored sessions and one-time credentials. Current Studio reconciliation and
    bulk invalidation are not implemented in this checkpoint; do not reopen until a
    reviewed procedure supplies and records that evidence.
-5. Hold every restored delivery queue. Compare provider receipts and independent
+6. Hold every restored delivery queue. Compare provider receipts and independent
    records for work after the recovery point. Restored revoked credentials and
    already-sent work are mandatory negative controls. Any ambiguous send remains
    terminal and must never be automatically retried.
-6. Require current migration/role/CONNECT evidence, no surviving old writers,
+7. Require current migration/role/CONNECT evidence, no surviving old writers,
    complete historical-key verification, database content/count/sequence evidence,
    every referenced Studio and Registry object hash, authenticated Studio and
    Registry smoke, routing/TLS checks, and safely resumed worker proof. Record each
    component time and the single end-to-end RTO. A fingerprint or successful
    decryption alone cannot authorize reopening.
 
-There is no implemented command that completes step 4 or reopens a restored stack.
+There is no implemented command that completes step 5 or reopens a restored stack.
 The validated self-host boundary therefore ends in quarantine. Managed incident
 containment, provider credential rotation, independent validator, failover, traffic
 switch, and reopening procedures remain pending live qualification.

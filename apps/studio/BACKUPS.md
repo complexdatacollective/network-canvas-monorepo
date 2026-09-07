@@ -61,12 +61,46 @@ Restoring database bytes alone does not qualify application recovery. Keep a
 restored deployment quarantined until its current authorization, credential and
 delivery state has been reconciled.
 
+Before any restored Studio process or writer LOGIN is admitted, verify the
+restored object bytes from the matching image with the dedicated backup login:
+
+```sh
+DATABASE_URL="$STUDIO_BACKUP_DATABASE_URL" \
+STUDIO_DATABASE_ALLOWED_LOGINS='["studio_owner","studio_app_login","studio_maintenance_login","studio_backup_login"]' \
+S3_ENDPOINT="$RECOVERED_S3_ENDPOINT" S3_REGION="$RECOVERED_S3_REGION" \
+S3_BUCKET="$RECOVERED_S3_BUCKET" \
+S3_ACCESS_KEY_ID="$RECOVERED_S3_ACCESS_KEY_ID" \
+S3_SECRET_ACCESS_KEY="$RECOVERED_S3_SECRET_ACCESS_KEY" \
+node dist/recovery-assets.js
+```
+
+Use the deployment's real complete enrollment list; the names above only show
+the required JSON form. The command accepts no arguments and starts no server,
+authentication service or worker. It requires the application and maintenance
+LOGINs to be `NOLOGIN`, refuses their surviving sessions and prepared
+transactions, and verifies the current schema and dedicated read-only backup
+identity on one pinned `REPEATABLE READ READ ONLY` transaction. It counts and
+keyset-pages every restored `public.assets` row, then streams each corresponding
+`assets/<sha256>` object through an exact byte-size and SHA-256 check without
+buffering the object. Acquisition, database statements, each object request,
+stream-idle period, whole object and the complete operation have deadlines;
+timeout cancels the object request or stream and discards an interrupted
+database borrower.
+
+Success prints `Studio recovered assets verified (<count>).`. Missing,
+truncated, corrupt, oversized or stalled objects, an incomplete inventory,
+schema or privilege drift, and a writer that is still admitted all exit 1 with
+the fixed diagnostic `STUDIO_RECOVERED_ASSET_VERIFICATION_FAILED`. This is an
+integrity gate inside recovery quarantine. It neither repairs objects nor
+reconciles authorization, delivery state or credentials, and it does not reopen
+the deployment.
+
 The regression suite uses a real separately authenticated backup login, two
 tenants including closed studies, protected participant data and immutable audit
 evidence. It compares every schema table and migration row using counts and
 content digests, captures a real restricted `pg_dump`, restores into an isolated
 database, and compares every row digest and sequence value again. Negative
 controls prove unsafe grants can actually write through views/definer functions,
-then require verification to refuse them. Managed retention, independent-store
-integrity and complete application restore drills are additional deployment
-qualification requirements.
+then require verification to refuse them. Managed retention and complete
+application restore drills remain additional deployment qualification
+requirements.

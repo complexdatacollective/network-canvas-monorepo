@@ -5,7 +5,13 @@ import {
   parseDatabaseAdministrativeLogins,
 } from './env/database-enrollment.ts';
 import { resolveEncryptionEnv, type EncryptionEnv } from './env/encryption.ts';
-import { resolve, type DbEnv, type StudioEnv } from './env/resolve.ts';
+import {
+  resolve,
+  resolveS3,
+  type DbEnv,
+  type S3Env,
+  type StudioEnv,
+} from './env/resolve.ts';
 import { serverSchemas, type VariableName } from './env/variables.ts';
 
 // The single sanctioned environment boundary for the Studio server: the only
@@ -140,4 +146,24 @@ export function readMigrationAdministrativeLogins(
   /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
   const source = process.env.STUDIO_DATABASE_ADMINISTRATIVE_LOGINS;
   return parseDatabaseAdministrativeLogins(source, allowedLogins);
+}
+
+/** Offline object recovery needs only object-store credentials, never auth. */
+export function readAssetStorage(): S3Env {
+  /* oxlint-disable node/no-process-env -- the environment boundary */
+  const s3 = resolveS3({
+    S3_ENDPOINT: serverSchemas.S3_ENDPOINT.parse(process.env.S3_ENDPOINT),
+    S3_REGION: serverSchemas.S3_REGION.parse(process.env.S3_REGION),
+    S3_BUCKET: serverSchemas.S3_BUCKET.parse(process.env.S3_BUCKET),
+    S3_ACCESS_KEY_ID: serverSchemas.S3_ACCESS_KEY_ID.parse(
+      process.env.S3_ACCESS_KEY_ID,
+    ),
+    S3_SECRET_ACCESS_KEY: serverSchemas.S3_SECRET_ACCESS_KEY.parse(
+      process.env.S3_SECRET_ACCESS_KEY,
+    ),
+  });
+  /* oxlint-enable node/no-process-env */
+  if (!s3)
+    throw new Error('S3 configuration is required to verify recovered assets.');
+  return s3;
 }

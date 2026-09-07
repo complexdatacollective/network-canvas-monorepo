@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => ({
         'migrate': 'src/migrate.ts',
         'encryption': 'src/encryption.ts',
         'backup': 'src/backup.ts',
+        'recovery-assets': 'src/recovery-assets.ts',
         'configure': 'src/configure.ts',
         'diagnostics': 'src/diagnostics.ts',
         'client-cache': 'src/client-cache.ts',
