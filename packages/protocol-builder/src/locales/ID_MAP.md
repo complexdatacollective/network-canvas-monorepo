@@ -133,11 +133,11 @@ name not here adds it here first, in the same pull request.
 | `promptAttribute`           | `sections/prompts/PromptAttributeField.tsx`                                                                                                                                           | family E  |
 | `removeAfterConsideration`  | `sections/RemoveAfterConsiderationSection.tsx`                                                                                                                                        | family E  |
 | `ordinalColor`              | `fields/OrdinalColorField.tsx`                                                                                                                                                        | family E  |
-| `networkCanvas`             | `sections/network/`, `editors/network/SociogramStageEditor.tsx`                                                                                                                  | family F  |
-| `pedigree`                  | `sections/pedigree/`                                                                                                                                                             | family F  |
-| `narrativePedigree`         | `sections/narrativePedigree/`                                                                                                                                                    | family F  |
-| `geospatial`                | `sections/geospatial/`, `fields/geospatial/`                                                                                                                                     | family F  |
-| `anonymisation`             | `sections/anonymisation/`                                                                                                                                                        | family F  |
+| `networkCanvas`             | `sections/network/`, `editors/network/SociogramStageEditor.tsx`                                                                                                                       | family F  |
+| `pedigree`                  | `sections/pedigree/`                                                                                                                                                                  | family F  |
+| `narrativePedigree`         | `sections/narrativePedigree/`                                                                                                                                                         | family F  |
+| `geospatial`                | `sections/geospatial/`, `fields/geospatial/`                                                                                                                                          | family F  |
+| `anonymisation`             | `sections/anonymisation/`                                                                                                                                                             | family F  |
 
 Family D added two second-level segments the reserved list did not hold. One
 line each, because a closed list is only closed if adding to it is argued:

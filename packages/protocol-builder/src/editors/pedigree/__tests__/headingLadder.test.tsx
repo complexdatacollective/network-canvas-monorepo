@@ -47,9 +47,8 @@ async function expectHeadingOrder(judgedAtLeast: number): Promise<void> {
     ),
   ).toEqual([]);
   expect(
-    [...results.passes, ...results.incomplete].flatMap(
-      (result) => result.nodes,
-    ).length,
+    [...results.passes, ...results.incomplete].flatMap((result) => result.nodes)
+      .length,
   ).toBeGreaterThanOrEqual(judgedAtLeast);
 }
 
