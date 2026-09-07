@@ -170,10 +170,14 @@ describe('the two lists a family edits', () => {
 
   /** The lines between a list's own brackets, comments and blanks dropped. */
   const entriesOf = (name: string): string[] => {
-    // Every family has landed, so a list may legitimately be empty: `[]` on
-    // one line is what the formatter writes for it, and it holds no entries
-    // for two families to collide on.
-    if (new RegExp(`const ${name} = \\[\\] as const`).test(source)) return [];
+    // Every family has landed, so a list may legitimately be empty. The
+    // formatter writes `[] as const` right after the `=` when the whole
+    // declaration fits the print width, and wraps onto the next line when it
+    // does not (`AWAITING_STAGE_EDITORS`'s `satisfies` clause is long enough
+    // to force the wrap) — either way there are no entries for two families
+    // to collide on.
+    if (new RegExp(`const ${name} =\\s*\\[\\] as const`).test(source))
+      return [];
     const body = new RegExp(
       `const ${name} = \\[\\n([\\s\\S]*?)\\n\\] as const`,
     ).exec(source)?.[1];
