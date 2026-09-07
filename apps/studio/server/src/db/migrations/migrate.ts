@@ -2,6 +2,7 @@ import { escapeLiteral } from 'pg';
 import type pg from 'pg';
 
 import { copyPostgresAdministrativeLogins } from '@codaco/studio-sync/postgres-database-enrollment';
+import { validateRoleNames } from '@codaco/studio-sync/role-bootstrap';
 
 import { SCHEMA_LOCK_KEY, stampFingerprint } from '../schema.ts';
 import type { Migration } from './artifact.ts';
@@ -92,6 +93,7 @@ export async function migrateDatabase(
   // acquiring the client. Every security check in this transaction must use
   // the same validated policy as migration-command admission.
   const copiedAllowedLogins = [...allowedLogins];
+  validateRoleNames(copiedAllowedLogins);
   const copiedAdministrativeLogins = copyPostgresAdministrativeLogins(
     copiedAllowedLogins,
     administrativeLogins,
