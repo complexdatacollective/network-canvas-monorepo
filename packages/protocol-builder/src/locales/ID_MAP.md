@@ -119,18 +119,27 @@ name not here adds it here first, in the same pull request.
 | `contentBlock`              | `sections/contentBlocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                               | sections  |
 | `promptsSection`            | `sections/PromptsSection.tsx`                                                                                                                                                    | sections  |
 | `integerField`              | `fields/IntegerField.tsx`                                                                                                                                                        | family D  |
+| `rosterColumns`             | `sections/useRosterColumns.ts`                                                                                                                                                   | family D  |
 | `alterLimits`               | `sections/AlterLimitsSection.tsx`                                                                                                                                                | family D  |
+| `cardDisplay`               | `sections/CardDisplaySection.tsx`                                                                                                                                                | family D  |
+| `externalDataSource`        | `sections/ExternalDataSourceSection.tsx`                                                                                                                                         | family D  |
 | `nameGeneratorPrompts`      | `sections/NameGeneratorPromptsSection.tsx`                                                                                                                                       | family D  |
 | `nodePanels`                | `sections/NodePanelsSection.tsx`                                                                                                                                                 | family D  |
 | `quickAdd`                  | `sections/QuickAddSection.tsx`                                                                                                                                                   | family D  |
+| `searchOptions`             | `sections/SearchOptionsSection.tsx`                                                                                                                                              | family D  |
+| `sortOptions`               | `sections/SortOptionsSection.tsx`                                                                                                                                                | family D  |
 
-Family D added a second-level segment the reserved list did not hold. One line,
-because a closed list is only closed if adding to it is argued:
+Family D added two second-level segments the reserved list did not hold. One
+line each, because a closed list is only closed if adding to it is argued:
 
 - **`integerField`** — `fields/IntegerField.tsx` exports the whole-number rule
   every section that counts people owes its boxes, so the refusal belongs to
   the control rather than to whichever section happens to mount it, exactly as
   `entitySelect` and `variablePicker` own the words of the controls they are.
+- **`rosterColumns`** — `sections/useRosterColumns.ts` says what a row or a
+  checkbox naming a column the data file has not got is told, and card details,
+  roster order and roster search all ask it; none of the three owns the answer,
+  and a translator should read it once.
 
 `shell` covers `editors/saveStageAction.tsx` as well as the shell itself,
 rather than that control taking an area of its own: the fallback save button is
@@ -394,9 +403,9 @@ through that family's registry. A section sweep cannot see what only
 composition produces — a shell control no section test mounts, or one section
 rendering English between two that do not.
 
-`src/editors/__tests__/localeSweep.test.tsx` is family D's: the form-based and
-quick-add name generators, which between them mount every section the family
-has landed so far plus the frame all three of them share.
+`src/editors/__tests__/localeSweep.test.tsx` is family D's: the roster,
+form-based and quick-add name generators, which between them mount every
+section that family added plus the frame all three share.
 
 Three rules those sweeps put on everything else in the package. Each was a real
 defect, and each is the sweep reading something that is not a section's copy as

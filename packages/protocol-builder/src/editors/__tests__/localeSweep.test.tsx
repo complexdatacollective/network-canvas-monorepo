@@ -26,13 +26,13 @@ import { nameGeneratorStageEditors } from '../nameGeneratorStageEditors.ts';
  * is reached through its family's registry, so what is swept is also what a
  * host would dispatch to.
  *
- * Two stages rather than six: between them these generators mount every
- * section the family has landed so far — the form-based one's form fields,
- * prompt stamps and side panels; quick add's single attribute — plus the
- * nomination window and the frame they share. The four form editors mount
- * `FormFieldsSection` and `PageContentSection`, which the sibling sweep
- * already drives, and the form-based generator below mounts the first of them
- * again in composition. The roster joins this table with its own sections.
+ * Three stages rather than eight: between them the three name generators mount
+ * every section this family added — the roster's data file, cards, order and
+ * search; the form-based generator's form fields, prompt stamps and side
+ * panels; quick add's single attribute — plus the nomination window and the
+ * frame all three share. The four form editors mount `FormFieldsSection` and
+ * `PageContentSection`, which the sibling sweep already drives, and the
+ * form-based generator below mounts the first of them again in composition.
  */
 
 /**
@@ -109,6 +109,25 @@ const researcherWords = (harness: StageEditorHarness) =>
   );
 
 describe('the name-generator editors under es, at rest', () => {
+  it('sweeps a roster name generator', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-roster-1',
+      locale: 'es',
+      registry: nameGeneratorStageEditors,
+    });
+    await settled(harness);
+    // The columns of the data file arrive after the mount, and the four
+    // sections describing the roster say nothing until they do.
+    await screen.findByRole('list', {
+      name: /Atributos mostrados en una tarjeta/,
+    });
+
+    expectNoLocaleLeaks(
+      'a roster name generator at rest',
+      researcherWords(harness),
+    );
+  });
+
   it('sweeps a form-based name generator', async () => {
     const harness = renderStageEditor({
       stage: { type: 'NameGenerator', fields: PANELLED_NAME_GENERATOR },
