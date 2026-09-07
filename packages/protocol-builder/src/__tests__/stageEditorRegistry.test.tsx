@@ -295,10 +295,16 @@ describe('dispatching to a named editor', () => {
       .mockImplementation(() => undefined);
 
     try {
-      // Every stage type is still awaiting its family, so the package's own
-      // registry cannot render anything yet — and says so rather than
-      // rendering a blank page.
-      expect(() => renderStageEditor({ stageId: 'information-1' })).toThrow(
+      // An interface a landed family claims opens in that family's editor with
+      // no registry passed at all, which is how a host reaches one.
+      const harness = renderStageEditor({ stageId: 'information-1' });
+      expect(harness.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+        'Information',
+      );
+
+      // An interface still awaiting its family says so rather than rendering a
+      // blank page.
+      expect(() => renderStageEditor({ stageId: 'sociogram-1' })).toThrow(
         UnregisteredStageTypeError,
       );
     } finally {
