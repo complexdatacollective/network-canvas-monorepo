@@ -155,6 +155,62 @@ describe('resource surfaces in a reader’s own language', () => {
     );
     expect(announcement).toHaveAttribute('aria-live', 'polite');
   });
+
+  /**
+   * An announcement is the copy that waits longest for a reader.
+   *
+   * Nothing replaces it until the researcher makes another choice, so it is
+   * still in the live region when an application changes its language — and it
+   * is the one sentence a reader who cannot see the field has. Held as an
+   * encoded descriptor, it is read in whichever language the region is being
+   * read in now rather than the one the choice was made in.
+   */
+  it('re-reads the announcement it is holding when the language changes', async () => {
+    const user = userEvent.setup();
+    const picker = (
+      <DialogProvider>
+        <ResourceGatewayProvider
+          gateway={new InMemoryResourceGateway({ committed: [IMAGE_SEED] })}
+        >
+          <ImagePicker />
+        </ResourceGatewayProvider>
+      </DialogProvider>
+    );
+    const { rerender } = render(
+      <AppI18nProvider locale="en" locales={ecosystemLocales}>
+        {picker}
+      </AppI18nProvider>,
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an image' }),
+    );
+    await user.click(
+      within(
+        await screen.findByRole('list', { name: 'Resources in this protocol' }),
+      ).getByRole('button', { name: 'Neighbourhood photo' }),
+    );
+    expect(
+      await screen.findByText('Neighbourhood photo is now selected.'),
+    ).toBeVisible();
+
+    rerender(
+      <AppI18nProvider
+        locale="es"
+        locales={ecosystemLocales}
+        messages={protocolBuilderCatalogs.es}
+      >
+        {picker}
+      </AppI18nProvider>,
+    );
+
+    expect(
+      await screen.findByText('Neighbourhood photo está ahora seleccionado.'),
+    ).toBeVisible();
+    expect(
+      screen.queryByText('Neighbourhood photo is now selected.'),
+    ).not.toBeInTheDocument();
+  });
 });
 
 const IMAGE_SEED: InMemoryResourceSeed = {

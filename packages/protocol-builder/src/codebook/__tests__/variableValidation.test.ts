@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import { VARIABLE_TYPE_VALIDATIONS } from '@codaco/protocol-validation';
 
+import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import { enIntl, readMessage } from '../../testing/i18n.ts';
 import { variableRoleKey } from '../variableRoles.ts';
 import {
@@ -68,6 +71,40 @@ describe('variable validation options', () => {
     expect(
       getValidationOptionsForVariableType('unknown', 'node', enIntl),
     ).toEqual([]);
+  });
+
+  /**
+   * Two formatters for one language are not one formatter.
+   *
+   * `AppI18nProvider` builds a new `IntlShape` whenever its `messages` change,
+   * and the locale tag does not have to change with them: a host swapping in a
+   * catalog it has just loaded, a module replacement in development, or a
+   * nested provider mounted over the same language all produce a second
+   * formatter reading a different catalog under the same tag. The groups
+   * carry already-formatted headings and rule names, so a cache that files
+   * them under the tag hands the second formatter the first one's words.
+   */
+  it('gives each formatter its own words, however the catalog behind it changed', () => {
+    const catalog = protocolBuilderCatalogs.es ?? {};
+    const headingsFor = (intl: IntlShape) =>
+      getGroupedValidationsForVariableType('number', 'node', intl).map(
+        ({ heading }) => heading,
+      );
+
+    const shipped = createAppIntl({ locale: 'es', messages: catalog });
+    const revised = createAppIntl({
+      locale: 'es',
+      messages: {
+        ...catalog,
+        'protocolBuilder.variableValidation.limitsHeading': 'Límites revisados',
+      },
+    });
+
+    expect(headingsFor(shipped)).toContain('Límites');
+    expect(headingsFor(revised)).toContain('Límites revisados');
+    // Asked for again, so a cache that filed the revision under the language
+    // cannot pass by answering the first reader correctly once.
+    expect(headingsFor(shipped)).toContain('Límites');
   });
 });
 
