@@ -103,3 +103,18 @@ authenticated smoke. It uses two manifests of the same retained backend image;
 actual adjacent/oldest-supported image compatibility and GitHub OIDC signature
 qualification remain separate release requirements. The optional Registry
 deployment and its recovery are also a separate integration boundary.
+
+## Building the authenticated archive
+
+The release publisher stages every installer module, the raw templates, generated
+configuration, `release.json`, and its Sigstore bundle in a dedicated directory.
+Run `node scripts/studio-installer-archive.mjs <bundle-directory> <source-commit>
+<output.tar>` from the repository to generate a deterministic USTAR archive and
+its SHA-256/source/manifest metadata. The command validates the same complete
+inventory as the installed loader, writes through a private temporary file, and
+creates the final artifact atomically without replacing an existing file. The
+publisher must reconcile an existing immutable artifact before retrying.
+
+Archive inspection does not authenticate its signer. The independently installed
+trusted Cosign bootstrap must still verify the exact archive and its expected
+manifest binding before extraction or execution, as described above.

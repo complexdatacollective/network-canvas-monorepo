@@ -111,8 +111,8 @@ export function writePrivateFile(path, bytes) {
   }
 }
 
-/** The archive itself must be verified with trusted Cosign BEFORE extraction. */
-export function readInstallerBundle(directory, expectedDigest) {
+/** Complete bounded inventory, shared by publication and the authenticated installer. */
+export function readInstallerFiles(directory) {
   const root = realpathSync(directory);
   const files = new Map();
   let total = 0;
@@ -139,7 +139,30 @@ export function readInstallerBundle(directory, expectedDigest) {
     }
   }
   walk();
-  const inventory = files.get('installer.json');
+  return { directory: root, files };
+}
+
+/** Validate the same manifest binding and file inventory before and after packing.
+ * This does not authenticate signatures; trusted Cosign must do that first. */
+export function validateInstallerInventory(inventoryFiles, expectedDigest) {
+  let total = 0;
+  if (inventoryFiles.size > 1000)
+    throw new Error('Installer inventory is too large.');
+  for (const [path, bytes] of inventoryFiles) {
+    if (
+      !path
+        .split('/')
+        .every((part) => /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(part)) ||
+      path.split('/').length > 6
+    )
+      throw new Error('Invalid installer path.');
+    if (!Buffer.isBuffer(bytes) || bytes.length > 8 * 1024 * 1024)
+      throw new Error('Invalid installer file.');
+    total += bytes.length;
+    if (total > 32 * 1024 * 1024)
+      throw new Error('Installer inventory is too large.');
+  }
+  const inventory = inventoryFiles.get('installer.json');
   const metadata = JSON.parse(inventory?.toString() ?? 'null');
   if (
     metadata?.format !== 1 ||
@@ -163,8 +186,9 @@ export function readInstallerBundle(directory, expectedDigest) {
     ...configurationFiles.map((name) => `templates/${name}`),
     ...configurationFiles.map((name) => `configuration/${name}`),
   ])
-    if (!files.has(required))
+    if (!inventoryFiles.has(required))
       throw new Error('Installer bundle is incomplete.');
+  const files = new Map(inventoryFiles);
   files.delete('installer.json');
   if (
     Object.keys(metadata.files).toSorted(comparePaths).join('\n') !==
@@ -182,10 +206,14 @@ export function readInstallerBundle(directory, expectedDigest) {
     throw new Error(
       'The installer does not bind the independently selected release manifest.',
     );
+  return { ...parsed, files, inventory };
+}
+
+/** The archive itself must be verified with trusted Cosign BEFORE extraction. */
+export function readInstallerBundle(directory, expectedDigest) {
+  const bundle = readInstallerFiles(directory);
   return {
-    ...parsed,
-    directory: root,
-    files,
-    inventory,
+    ...validateInstallerInventory(bundle.files, expectedDigest),
+    directory: bundle.directory,
   };
 }
