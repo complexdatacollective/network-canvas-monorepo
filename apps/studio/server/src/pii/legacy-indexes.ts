@@ -17,14 +17,13 @@ export function isReservedLegacyIndexId(id: string): boolean {
   return RESERVED_LEGACY_INDEX_IDS.some((reserved) => reserved === id);
 }
 
-/**
- * Add this sidecar definition in the first composed migration after frozen
- * 0001-0006. It remains separate here so the remediation and its database
- * boundary can be tested on the PII-only history without claiming migration
- * number 0004, which already belongs to the audit history.
- */
+/** Database boundary for the reserved legacy-index remediation namespace. */
 export const LEGACY_INDEX_REMEDIATION_GUARD_SQL = `
-CREATE OR REPLACE FUNCTION public.legacy_blind_index_writes_are_guarded() RETURNS trigger AS $$
+-- Installation resolves these objects in the migration's controlled target
+-- schema. PostgreSQL stores the trigger function OID, and the function pins
+-- its execution search path to pg_catalog, so runtime search-path objects
+-- cannot replace either the guarded relation or the called function.
+CREATE OR REPLACE FUNCTION legacy_blind_index_writes_are_guarded() RETURNS trigger AS $$
 DECLARE
   raw_id text := CASE WHEN TG_TABLE_NAME = 'participants' THEN '${RAW_LEGACY_PARTICIPANT_INDEX_ID}' ELSE '${RAW_LEGACY_CONTACT_INDEX_ID}' END;
   classified_id text := '${CLASSIFIED_LEGACY_CONTACT_INDEX_ID}';
@@ -117,16 +116,16 @@ $$ LANGUAGE plpgsql SET search_path = pg_catalog;
 CREATE OR REPLACE TRIGGER participants_legacy_blind_index_guard
   BEFORE INSERT OR UPDATE OF blind_index_key_id, email_index, phone_index,
     email_ciphertext, phone_ciphertext, name_ciphertext, attributes_ciphertext,
-    pii_key_id, pii_algorithm ON public.participants
-  FOR EACH ROW EXECUTE FUNCTION public.legacy_blind_index_writes_are_guarded();
+    pii_key_id, pii_algorithm ON participants
+  FOR EACH ROW EXECUTE FUNCTION legacy_blind_index_writes_are_guarded();
 CREATE OR REPLACE TRIGGER message_deliveries_legacy_blind_index_guard
   BEFORE INSERT OR UPDATE OF blind_index_key_id, recipient_blind_index, channel
-  ON public.message_deliveries
-  FOR EACH ROW EXECUTE FUNCTION public.legacy_blind_index_writes_are_guarded();
+  ON message_deliveries
+  FOR EACH ROW EXECUTE FUNCTION legacy_blind_index_writes_are_guarded();
 CREATE OR REPLACE TRIGGER participant_contact_optouts_legacy_blind_index_guard
   BEFORE INSERT OR UPDATE OF blind_index_key_id, recipient_blind_index, channel
-  ON public.participant_contact_optouts
-  FOR EACH ROW EXECUTE FUNCTION public.legacy_blind_index_writes_are_guarded();
+  ON participant_contact_optouts
+  FOR EACH ROW EXECUTE FUNCTION legacy_blind_index_writes_are_guarded();
 `;
 
 // This value was public source code used only by the pre-encryption synthetic

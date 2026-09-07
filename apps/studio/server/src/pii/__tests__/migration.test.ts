@@ -24,7 +24,6 @@ import {
   CLASSIFIED_LEGACY_CONTACT_INDEX_ID,
   classifyLegacyContactIndexBatch,
   createClassifiedLegacyContactIndex,
-  LEGACY_INDEX_REMEDIATION_GUARD_SQL,
   RAW_LEGACY_CONTACT_INDEX_ID,
   RAW_LEGACY_PARTICIPANT_INDEX_ID,
 } from '../legacy-indexes.ts';
@@ -138,7 +137,6 @@ it('preserves populated legacy credentials and index bytes through migration0002
     ).resolves.toEqual(
       migrations.slice(1).map((migration) => migration.manifest.id),
     );
-    await scratch.pool.query(LEGACY_INDEX_REMEDIATION_GUARD_SQL);
     expect(
       (
         await scratch.pool.query(
@@ -419,19 +417,34 @@ it('authenticates and resumes every legacy index phase before OAuth and preserve
       SCHEMA_FINGERPRINT,
       allowedLogins,
     );
-    await scratch.pool.query(LEGACY_INDEX_REMEDIATION_GUARD_SQL);
     expect(
       (
-        await scratch.pool.query<{ proconfig: string[] }>(
-          `SELECT procedure.proconfig
+        await scratch.pool.query<{
+          proconfig: string[];
+          triggers: string[];
+        }>(
+          `SELECT procedure.proconfig,
+             array_agg(trigger.tgname::text ORDER BY trigger.tgname) AS triggers
            FROM pg_catalog.pg_proc AS procedure
            JOIN pg_catalog.pg_namespace AS namespace
              ON namespace.oid = procedure.pronamespace
-           WHERE namespace.nspname = 'public'
-             AND procedure.proname = 'legacy_blind_index_writes_are_guarded'`,
+           JOIN pg_catalog.pg_trigger AS trigger
+             ON trigger.tgfoid = procedure.oid AND NOT trigger.tgisinternal
+           WHERE namespace.nspname = current_schema()
+             AND procedure.proname = 'legacy_blind_index_writes_are_guarded'
+           GROUP BY procedure.oid, procedure.proconfig`,
         )
       ).rows,
-    ).toEqual([{ proconfig: ['search_path=pg_catalog'] }]);
+    ).toEqual([
+      {
+        proconfig: ['search_path=pg_catalog'],
+        triggers: [
+          'message_deliveries_legacy_blind_index_guard',
+          'participant_contact_optouts_legacy_blind_index_guard',
+          'participants_legacy_blind_index_guard',
+        ],
+      },
+    ]);
     const appTenant = createTenantDb(app, teamId);
     for (const runtime of [appTenant, createTenantDb(maintenance, teamId)]) {
       await expect(

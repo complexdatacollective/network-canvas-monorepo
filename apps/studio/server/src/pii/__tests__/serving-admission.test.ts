@@ -15,7 +15,7 @@ import { createMaintenancePool, createPool } from '../../db/pool.ts';
 import { createReadiness } from '../../observability/readiness.ts';
 import { initializeEncryption } from '../initialize.ts';
 import {
-  CLASSIFIED_LEGACY_CONTACT_INDEX_ID,
+  classifyLegacyContactIndexBatch,
   RAW_LEGACY_CONTACT_INDEX_ID,
 } from '../legacy-indexes.ts';
 import { initializeServingEncryption } from '../serving-admission.ts';
@@ -35,7 +35,9 @@ type ProvisionedDatabase = Awaited<ReturnType<typeof createScratchDatabase>> & {
   maintenance: pg.Pool;
 };
 
-async function createProvisionedDatabase(): Promise<ProvisionedDatabase> {
+async function createProvisionedDatabase(
+  beforeLatestMigration?: (pool: pg.Pool) => Promise<void>,
+): Promise<ProvisionedDatabase> {
   if (!database) throw new Error('A local PostgreSQL database is required.');
   const scratch = await createScratchDatabase(database);
   try {
@@ -46,6 +48,18 @@ async function createProvisionedDatabase(): Promise<ProvisionedDatabase> {
     const migrations = await readMigrations(
       fileURLToPath(new URL('../../../migrations', import.meta.url)),
     );
+    if (beforeLatestMigration) {
+      const prior = migrations.slice(0, -1);
+      const priorFingerprint = prior.at(-1)?.manifest.fingerprint;
+      if (!priorFingerprint) throw new Error('Prior migration missing.');
+      await migrateDatabase(
+        scratch.pool,
+        prior,
+        priorFingerprint,
+        allowedLogins,
+      );
+      await beforeLatestMigration(scratch.pool);
+    }
     await migrateDatabase(
       scratch.pool,
       migrations,
@@ -223,22 +237,44 @@ describe.skipIf(!database)('serving encryption database admission', () => {
   });
 
   it('accepts only classified legacy suppression in a read-only readiness transaction', async () => {
-    first = await createProvisionedDatabase();
+    const insertLegacyOptOut = (pool: pg.Pool) =>
+      pool
+        .query(
+          `INSERT INTO participant_contact_optouts
+          (channel, blind_index_key_id, recipient_blind_index, source)
+         VALUES ('email', $1, $2, 'researcher')`,
+          [RAW_LEGACY_CONTACT_INDEX_ID, Buffer.alloc(32, 41)],
+        )
+        .then(() => undefined);
+    first = await createProvisionedDatabase(insertLegacyOptOut);
+    second = await createProvisionedDatabase(insertLegacyOptOut);
+    await expect(
+      classifyLegacyContactIndexBatch(first.pool, 100),
+    ).resolves.toEqual({ processed: 1, passComplete: true });
     const keys = await initializeProofs(first.maintenance);
-    await first.pool.query(
-      `INSERT INTO participant_contact_optouts
-        (channel, blind_index_key_id, recipient_blind_index, source)
-       VALUES ('email', $1, $2, 'researcher')`,
-      [CLASSIFIED_LEGACY_CONTACT_INDEX_ID, Buffer.alloc(32, 41)],
+    const proofs = await first.pool.query<{
+      purpose: string;
+      keyId: string;
+      proof: Buffer;
+    }>(
+      `SELECT purpose, key_id AS "keyId", proof
+       FROM encryption_key_verifications`,
     );
-    const proofCount = async () =>
+    for (const proof of proofs.rows)
+      await second.maintenance.query(
+        `INSERT INTO encryption_key_verifications (purpose, key_id, proof)
+         VALUES ($1, $2, $3)`,
+        [proof.purpose, proof.keyId, proof.proof],
+      );
+    const proofCount = async (provisioned: ProvisionedDatabase) =>
       (
-        await first!.pool.query<{ count: number }>(
+        await provisioned.pool.query<{ count: number }>(
           'SELECT count(*)::integer AS count FROM encryption_key_verifications',
         )
       ).rows[0]?.count;
-    const before = await proofCount();
-    const readiness = createReadiness({
+    const firstBefore = await proofCount(first);
+    const secondBefore = await proofCount(second);
+    const classifiedReadiness = createReadiness({
       pool: first.app,
       maintenancePool: first.maintenance,
       encryptionKeys: keys,
@@ -246,22 +282,27 @@ describe.skipIf(!database)('serving encryption database admission', () => {
       assetStore,
       cacheMs: 0,
     });
+    const rawReadiness = createReadiness({
+      pool: second.app,
+      maintenancePool: second.maintenance,
+      encryptionKeys: keys,
+      allowUnversionedSchema: true,
+      assetStore,
+      cacheMs: 0,
+    });
     try {
-      expect(await readiness.check()).toMatchObject({ status: 'ready' });
-      expect(await proofCount()).toBe(before);
-      await first.pool.query(
-        `INSERT INTO participant_contact_optouts
-          (channel, blind_index_key_id, recipient_blind_index, source)
-         VALUES ('email', $1, $2, 'researcher')`,
-        [RAW_LEGACY_CONTACT_INDEX_ID, Buffer.alloc(32, 42)],
-      );
-      expect(await readiness.check()).toMatchObject({
+      expect(await classifiedReadiness.check()).toMatchObject({
+        status: 'ready',
+      });
+      expect(await proofCount(first)).toBe(firstBefore);
+      expect(await rawReadiness.check()).toMatchObject({
         status: 'not_ready',
         checks: { database: 'failed' },
       });
-      expect(await proofCount()).toBe(before);
+      expect(await proofCount(second)).toBe(secondBefore);
     } finally {
-      readiness.stop();
+      classifiedReadiness.stop();
+      rawReadiness.stop();
     }
   });
 });

@@ -158,7 +158,11 @@ export async function migrateDatabase(
     const pending = applied.length < migrations.length;
     if (pending) await enforceMigrationQuiescence(client);
 
-    await enforceMigrationSecurity(client, allowedLogins);
+    await enforceMigrationSecurity(
+      client,
+      copiedAllowedLogins,
+      copiedAdministrativeLogins,
+    );
 
     await client.query(`CREATE SCHEMA IF NOT EXISTS studio_migrations;
       REVOKE ALL ON SCHEMA studio_migrations FROM PUBLIC;

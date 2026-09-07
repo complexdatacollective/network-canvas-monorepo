@@ -1844,7 +1844,7 @@
 <!-- participants -->
 <g id="participants" class="node">
 <title>participants</title>
-<g id="a_participants"><a xlink:title="participants&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger participants_writable: BEFORE INSERT OR UPDATE OR DELETE calls participants_are_writable(); sidecar trigger participants_study_managed: AFTER INSERT calls participants_study_is_managed()">
+<g id="a_participants"><a xlink:title="participants&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger participants_writable: BEFORE INSERT OR UPDATE OR DELETE calls participants_are_writable(); sidecar trigger participants_study_managed: AFTER INSERT calls participants_study_is_managed(); sidecar trigger participants_legacy_blind_index_guard: BEFORE INSERT OR UPDATE OF blind_index_key_id, email_index, phone_index, email_ciphertext, phone_ciphertext, name_ciphertext, attributes_ciphertext, pii_key_id, pii_algorithm calls legacy_blind_index_writes_are_guarded()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="4448.22" cy="-7076.24" rx="301.87" ry="936.42"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4237.22,-7676.24 4237.22,-7736.24 4660.22,-7736.24 4660.22,-7676.24 4237.22,-7676.24"/>
 <polygon fill="none" stroke="#29235c" points="4237.22,-7676.24 4237.22,-7736.24 4660.22,-7736.24 4660.22,-7676.24 4237.22,-7676.24"/>
@@ -3346,7 +3346,7 @@
 <!-- message_deliveries -->
 <g id="message_deliveries" class="node">
 <title>message_deliveries</title>
-<g id="a_message_deliveries"><a xlink:title="message_deliveries&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger message_delivery_payload_immutable: BEFORE UPDATE calls message_delivery_payload_is_immutable(); sidecar trigger message_deliveries_template_applies: AFTER INSERT calls message_delivery_template_applies(); sidecar trigger message_deliveries_deletable: BEFORE DELETE calls message_deliveries_are_deletable()">
+<g id="a_message_deliveries"><a xlink:title="message_deliveries&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger message_delivery_payload_immutable: BEFORE UPDATE calls message_delivery_payload_is_immutable(); sidecar trigger message_deliveries_template_applies: AFTER INSERT calls message_delivery_template_applies(); sidecar trigger message_deliveries_deletable: BEFORE DELETE calls message_deliveries_are_deletable(); sidecar trigger message_deliveries_legacy_blind_index_guard: BEFORE INSERT OR UPDATE OF blind_index_key_id, recipient_blind_index, channel calls legacy_blind_index_writes_are_guarded()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="7144.23" cy="-10079.24" rx="547.1" ry="1190.54"/>
 <polygon fill="#1d71b8" stroke="transparent" points="6759.23,-10859.24 6759.23,-10919.24 7529.23,-10919.24 7529.23,-10859.24 6759.23,-10859.24"/>
 <polygon fill="none" stroke="#29235c" points="6759.23,-10859.24 6759.23,-10919.24 7529.23,-10919.24 7529.23,-10859.24 6759.23,-10859.24"/>
@@ -3994,6 +3994,7 @@
 <!-- participant_contact_optouts -->
 <g id="participant_contact_optouts" class="node">
 <title>participant_contact_optouts</title>
+<g id="a_participant_contact_optouts"><a xlink:title="participant_contact_optouts&#10;sidecar trigger participant_contact_optouts_legacy_blind_index_guard: BEFORE INSERT OR UPDATE OF blind_index_key_id, recipient_blind_index, channel calls legacy_blind_index_writes_are_guarded()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="566.39" cy="-16104.24" rx="382.59" ry="257.27"/>
 <polygon fill="#1d71b8" stroke="transparent" points="298.39,-16224.24 298.39,-16284.24 835.39,-16284.24 835.39,-16224.24 298.39,-16224.24"/>
 <polygon fill="none" stroke="#29235c" points="298.39,-16224.24 298.39,-16284.24 835.39,-16284.24 835.39,-16224.24 298.39,-16224.24"/>
@@ -4026,6 +4027,8 @@
 <text text-anchor="start" x="785.3" y="-15945.44" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
 <text text-anchor="start" x="794.19" y="-15945.44" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
 <polygon fill="none" stroke="#29235c" stroke-width="2" points="296.89,-15923.24 296.89,-16285.24 835.89,-16285.24 835.89,-15923.24 296.89,-15923.24"/>
+</a>
+</g>
 </g>
 <!-- templates -->
 <g id="templates" class="node">

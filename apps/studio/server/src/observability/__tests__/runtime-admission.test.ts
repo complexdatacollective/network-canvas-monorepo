@@ -756,7 +756,7 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
     ).toEqual([{ history: null }]);
     const configuredFresh = migrationCommand(administrativeLogins);
     expect(configuredFresh.error).toBeUndefined();
-    expect(configuredFresh.status).toBe(0);
+    expect(configuredFresh.status, configuredFresh.stderr).toBe(0);
     expect(configuredFresh.stdout).toContain('Applied Studio migrations:');
     expect(
       (
