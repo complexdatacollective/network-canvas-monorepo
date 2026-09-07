@@ -1,6 +1,15 @@
+import { readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { isLocalDatabase, readEnv } from '../../env.ts';
+import {
+  isLocalDatabase,
+  readEnv,
+  readMigrationDatabase,
+  readMigrationAllowedLogins,
+  readMigrationAdministrativeLogins,
+} from '../../env.ts';
 import { DEV, DEV_DATABASE_URL, DEV_S3_ENDPOINT } from '../catalogue.ts';
 
 // The suite runs with the committed .env.development loaded (see
@@ -43,8 +52,20 @@ describe('operational configuration', () => {
 
 describe('development defaults', () => {
   it('configures the whole stack from the committed file', () => {
+    // Integration runs can point DATABASE_URL at an isolated local container.
+    // This unit test specifically describes the committed defaults, so load
+    // those values explicitly rather than assuming the caller exported none.
+    const defaults = parseEnv(
+      readFileSync(
+        new URL('../../../.env.development', import.meta.url),
+        'utf8',
+      ),
+    );
+    for (const [name, value] of Object.entries(defaults))
+      vi.stubEnv(name, value);
     const env = readEnv();
     expect(env.db).toEqual({ url: DEV_DATABASE_URL });
+    expect(env.maintenanceDb).toEqual({ url: DEV_DATABASE_URL });
     expect(env.s3?.endpoint).toBe(DEV_S3_ENDPOINT);
     expect(env.s3?.bucket).toBe(DEV.s3Bucket);
     expect(env.auth?.baseUrl).toBe(DEV.baseUrl);
@@ -67,6 +88,126 @@ describe('development defaults', () => {
       kind: 'smtp',
       url: 'smtp://localhost:1025',
       from: DEV.emailFrom,
+    });
+  });
+});
+
+describe('migration environment', () => {
+  it.each([undefined, '', '[]', 'not-json', '["duplicate","duplicate"]'])(
+    'requires explicit production database enrollment despite validation skip (%s)',
+    (value) => {
+      vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+      vi.stubEnv('EMAIL_FROM', '');
+      vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', value);
+      vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
+      expect(() => readEnv()).toThrow('STUDIO_DATABASE_ALLOWED_LOGINS');
+      vi.stubEnv('SKIP_ENV_VALIDATION', 'false');
+      vi.stubEnv('STUDIO_DEV_DEFAULTS', 'true');
+      expect(readEnv().databaseAllowedLogins).toBeUndefined();
+      vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+      expect(
+        readEnv({ withoutDatabaseOrAuth: true }).databaseAllowedLogins,
+      ).toBeUndefined();
+    },
+  );
+  it('defaults administrative enrollment to empty and preserves an explicit non-owner operator', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    const allowed = ['owner', 'operator', 'runtime'];
+    vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', JSON.stringify(allowed));
+    vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', undefined);
+    expect(readEnv().databaseAdministrativeLogins).toEqual([]);
+    expect(readMigrationAdministrativeLogins(allowed)).toEqual([]);
+    vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', '');
+    expect(readMigrationAdministrativeLogins(allowed)).toEqual([]);
+    vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', '["operator"]');
+    expect(readEnv().databaseAdministrativeLogins).toEqual(['operator']);
+    expect(readMigrationAdministrativeLogins(allowed)).toEqual(['operator']);
+  });
+
+  it.each([
+    'null',
+    '{}',
+    '[1]',
+    '["operator","operator"]',
+    '["private-unenrolled-canary"]',
+    'not-json',
+  ])(
+    'refuses malformed or unenrolled administrative configuration privately (%s)',
+    (value) => {
+      const allowed = ['owner', 'operator', 'runtime'];
+      vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+      vi.stubEnv('EMAIL_FROM', '');
+      vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
+      vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', JSON.stringify(allowed));
+      vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', value);
+      for (const read of [
+        () => readEnv(),
+        () => readMigrationAdministrativeLogins(allowed),
+      ]) {
+        let failure: unknown;
+        try {
+          read();
+        } catch (error) {
+          failure = error;
+        }
+        expect(failure).toEqual(
+          new Error(
+            'STUDIO_DATABASE_ADMINISTRATIVE_LOGINS must be a JSON array of unique names enrolled in STUDIO_DATABASE_ALLOWED_LOGINS.',
+          ),
+        );
+        expect(String(failure)).not.toContain('private-unenrolled-canary');
+      }
+    },
+  );
+
+  it('supplies the same validated production enrollment to admission and offline migration', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    vi.stubEnv(
+      'STUDIO_DATABASE_ALLOWED_LOGINS',
+      '["studio_migrator","studio_runtime","studio_backup_login"]',
+    );
+    expect(readEnv().databaseAllowedLogins).toEqual(
+      readMigrationAllowedLogins(),
+    );
+  });
+
+  it.each([
+    undefined,
+    '',
+    'operator,runtime',
+    '[]',
+    '[1]',
+    '["operator","operator"]',
+    '["' + 'x'.repeat(64) + '"]',
+    '["' + 'é'.repeat(32) + '"]',
+    '["\\u0000"]',
+  ])('refuses missing or invalid explicit login enrollment (%s)', (value) => {
+    vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', value);
+    vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
+    expect(() => readMigrationAllowedLogins()).toThrow();
+  });
+
+  it('preserves arbitrary quoted login names from the explicit JSON enrollment', () => {
+    const logins = ['operator-name', 'runtime"$studio_roles$'];
+    vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', JSON.stringify(logins));
+    expect(readMigrationAllowedLogins()).toEqual(logins);
+  });
+
+  it('requires a database even when application validation is disabled', () => {
+    vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
+    vi.stubEnv('DATABASE_URL', '');
+    expect(() => readMigrationDatabase()).toThrow();
+  });
+
+  it('reads only the database for an offline migration command', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://operator@localhost/studio');
+    vi.stubEnv('BETTER_AUTH_SECRET', '');
+    vi.stubEnv('PUBLIC_URL', '');
+    vi.stubEnv('SMTP_URL', '');
+    expect(readMigrationDatabase()).toEqual({
+      url: 'postgres://operator@localhost/studio',
     });
   });
 });
@@ -102,6 +243,10 @@ describe('the development marker', () => {
 
   it('leaves a remote database alone once the marker is gone', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv(
+      'STUDIO_DATABASE_ALLOWED_LOGINS',
+      '["studio_migrator","studio_runtime"]',
+    );
     // Without the marker the file's unpaired EMAIL_FROM is a deployment
     // mistake in its own right, so this is the whole lane being left behind.
     vi.stubEnv('EMAIL_FROM', '');
@@ -116,12 +261,20 @@ describe('the development marker', () => {
     // NODE_ENV is not production. A deployment that forgot NODE_ENV still
     // never logs a sign-in link.
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv(
+      'STUDIO_DATABASE_ALLOWED_LOGINS',
+      '["studio_migrator","studio_runtime"]',
+    );
     vi.stubEnv('EMAIL_FROM', '');
     expect(readEnv().auth?.mailer).toEqual({ kind: 'refuse' });
   });
 
   it('is what tolerates an unpaired EMAIL_FROM, not NODE_ENV', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv(
+      'STUDIO_DATABASE_ALLOWED_LOGINS',
+      '["studio_migrator","studio_runtime"]',
+    );
     vi.stubEnv('EMAIL_FROM', 'signin@studio.example');
     vi.stubEnv('SMTP_URL', '');
     expect(() => readEnv()).toThrow(
@@ -194,12 +347,38 @@ describe('database and auth', () => {
     expect(readEnv().db).toEqual({
       url: 'postgres://app@localhost:5433/other',
     });
+    expect(readEnv().maintenanceDb).toEqual({
+      url: 'postgres://app@localhost:5433/other',
+    });
+  });
+
+  it('keeps a separately configured maintenance login distinct from the app login', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/other');
+    vi.stubEnv(
+      'STUDIO_MAINTENANCE_DATABASE_URL',
+      'postgres://maintenance@localhost:5433/other',
+    );
+    expect(readEnv().maintenanceDb).toEqual({
+      url: 'postgres://maintenance@localhost:5433/other',
+    });
+  });
+
+  it('refuses a maintenance login without an application database', () => {
+    vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv(
+      'STUDIO_MAINTENANCE_DATABASE_URL',
+      'postgres://maintenance@localhost:5433/other',
+    );
+    expect(() => readEnv()).toThrow(
+      'DATABASE_URL is required when STUDIO_MAINTENANCE_DATABASE_URL is set',
+    );
   });
 
   it('is unconfigured without DATABASE_URL, and auth follows it down', () => {
     vi.stubEnv('DATABASE_URL', '');
     const env = readEnv();
     expect(env.db).toBeUndefined();
+    expect(env.maintenanceDb).toBeUndefined();
     expect(env.auth).toBeUndefined();
   });
 

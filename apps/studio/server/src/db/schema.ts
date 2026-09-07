@@ -1,7 +1,21 @@
 import { getTableName, sql } from 'drizzle-orm';
 import { boolean, check, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
-import type pg from 'pg';
+import { Pool, type PoolClient } from 'pg';
 
+import {
+  assertSafePostgresDatabaseEnrollment,
+  copyPostgresAdministrativeLogins,
+  UnsafePostgresDatabaseEnrollmentError,
+} from '@codaco/studio-sync/postgres-database-enrollment';
+import {
+  assertSafePostgresMigrationEvidence,
+  UnsafePostgresMigrationEvidenceError,
+} from '@codaco/studio-sync/postgres-migration-evidence';
+import {
+  assertSafePostgresRestrictedIdentities,
+  UnsafePostgresRestrictedIdentitiesError,
+} from '@codaco/studio-sync/postgres-restricted-identities';
+import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
 import { ASSET_SIDECAR_SQL, ASSET_TABLES } from '../asset/schema.ts';
@@ -109,7 +123,7 @@ export const SCHEMA_LOCK_KEY = 4021775688147129;
 export type StaleSchema = {
   kind: 'stale';
   /** `unstamped` is a database carrying the tables but no fingerprint row. */
-  reason: 'mismatch' | 'unstamped';
+  reason: 'mismatch' | 'unsafe-evidence' | 'unstamped' | 'unversioned';
   found: string | null;
   appliedAt: Date | null;
 };
@@ -123,24 +137,162 @@ export type SchemaState =
 export type SchemaProblem = Exclude<SchemaState, { kind: 'current' }>;
 
 /**
- * Read-only verdict; application lives in scripts/apply.ts. A problem is
+ * Read-only verdict; deployment application lives in migrations/migrate.ts. A problem is
  * returned rather than thrown so callers can tell a verdict from a connection
  * failure: anything this throws is transient, and everything it returns is an
  * answer.
  */
 export async function checkSchema(
-  pool: pg.Pool | pg.PoolClient,
+  pool: Pool | PoolClient,
+  options: {
+    allowUnversioned?: boolean;
+    allowedLogins?: readonly string[];
+    administrativeLogins?: readonly string[];
+  } = {},
 ): Promise<SchemaState> {
-  const probe = await pool.query<{ stamped: boolean; tables: boolean }>(
-    `select to_regclass('"schemaFingerprint"') is not null as stamped,
+  const allowUnversioned = options.allowUnversioned === true;
+  const unsafe: SchemaState = {
+    kind: 'stale',
+    reason: 'unsafe-evidence',
+    found: null,
+    appliedAt: null,
+  };
+  let allowedLogins: string[] | undefined;
+  let administrativeLogins: string[];
+  try {
+    allowedLogins = options.allowedLogins
+      ? [...options.allowedLogins]
+      : undefined;
+    administrativeLogins = allowUnversioned
+      ? []
+      : copyPostgresAdministrativeLogins(
+          allowedLogins ?? [],
+          options.administrativeLogins,
+        );
+  } catch {
+    return unsafe;
+  }
+  if (pool instanceof Pool) {
+    const client = await pool.connect();
+    try {
+      return await checkSchema(client, {
+        allowUnversioned,
+        allowedLogins,
+        administrativeLogins,
+      });
+    } finally {
+      client.release();
+    }
+  }
+  if (!allowUnversioned) {
+    if (!allowedLogins) return unsafe;
+    try {
+      await assertSafePostgresDatabaseEnrollment(pool, allowedLogins);
+    } catch (error) {
+      if (!(error instanceof UnsafePostgresDatabaseEnrollmentError))
+        throw error;
+      return unsafe;
+    }
+  }
+  const probe = await pool.query<{
+    databaseOwner: string;
+    sessionLogin: string;
+    currentRole: string;
+    fingerprintSchema: string;
+    stamped: boolean;
+    tables: boolean;
+    versioned: boolean;
+  }>(
+    `select coalesce(fingerprint_namespace.nspname, current_schema(), 'public')
+              as "fingerprintSchema",
+            pg_catalog.pg_get_userbyid((SELECT datdba FROM pg_catalog.pg_database WHERE datname = pg_catalog.current_database())) AS "databaseOwner",
+            session_user AS "sessionLogin", current_user AS "currentRole",
+            fingerprint.oid is not null as stamped,
             ${SCHEMA_TABLES.map(
               (table) => `to_regclass('"${table}"') is not null`,
-            ).join(' or ')} as tables`,
+            ).join(' or ')} as tables,
+            EXISTS (
+              SELECT 1 FROM pg_class relation
+              JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+              WHERE namespace.nspname = 'studio_migrations'
+                AND relation.relname = 'history' AND relation.relkind = 'r'
+            ) AS versioned
+       from (select to_regclass('"schemaFingerprint"')::oid as oid) fingerprint
+       left join pg_class fingerprint_relation
+         on fingerprint_relation.oid = fingerprint.oid
+       left join pg_namespace fingerprint_namespace
+         on fingerprint_namespace.oid = fingerprint_relation.relnamespace`,
   );
-  const { stamped, tables } = probe.rows[0] ?? {
+  const {
+    fingerprintSchema,
+    stamped,
+    tables,
+    versioned,
+    databaseOwner,
+    sessionLogin,
+    currentRole,
+  } = probe.rows[0] ?? {
+    fingerprintSchema: 'public',
+    databaseOwner: '',
+    sessionLogin: '',
+    currentRole: '',
     stamped: false,
     tables: false,
+    versioned: false,
   };
+
+  const protectedRoles = allowUnversioned
+    ? []
+    : [
+        ...new Set([
+          ...Object.values(TENANT_ROLES),
+          BACKUP_ROLE,
+          ...(allowedLogins ?? []).filter(
+            (login) =>
+              login !== databaseOwner && !administrativeLogins.includes(login),
+          ),
+          // A scoped connection remains a runtime identity even if ownership drifts
+          // to its session LOGIN. Only the database owner or an explicitly configured
+          // offline administrator is exempt; evidence ownership never establishes trust.
+          ...(sessionLogin !== currentRole ||
+          Object.values(TENANT_ROLES).some((role) => role === currentRole)
+            ? [sessionLogin, currentRole]
+            : []),
+        ]),
+      ];
+  try {
+    await assertSafePostgresMigrationEvidence(
+      pool,
+      {
+        history: { schema: 'studio_migrations', name: 'history' },
+        fingerprint: { schema: fingerprintSchema, name: 'schemaFingerprint' },
+      },
+      protectedRoles,
+    );
+  } catch (error) {
+    if (!(error instanceof UnsafePostgresMigrationEvidenceError)) throw error;
+    return {
+      kind: 'stale',
+      reason: 'unsafe-evidence',
+      found: null,
+      appliedAt: null,
+    };
+  }
+
+  if (!allowUnversioned && (stamped || tables)) {
+    try {
+      await assertSafePostgresRestrictedIdentities(pool, {
+        allowedLogins: allowedLogins ?? [],
+        administrativeLogins,
+        runtimeRoleSets: [[TENANT_ROLES.app], [TENANT_ROLES.maintenance]],
+        backupRole: BACKUP_ROLE,
+      });
+    } catch (error) {
+      if (!(error instanceof UnsafePostgresRestrictedIdentitiesError))
+        throw error;
+      return unsafe;
+    }
+  }
 
   if (stamped) {
     const recorded = await pool.query<{
@@ -153,6 +305,17 @@ export async function checkSchema(
         return {
           kind: 'stale',
           reason: 'mismatch',
+          found: row.fingerprint,
+          appliedAt: row.appliedAt,
+        };
+      }
+      // Runtime roles may inspect catalogs but have no USAGE or SELECT on
+      // migration history. A development stamp alone is not deployment
+      // provenance; only the explicitly resolved development lane accepts it.
+      if (!allowUnversioned && !versioned) {
+        return {
+          kind: 'stale',
+          reason: 'unversioned',
           found: row.fingerprint,
           appliedAt: row.appliedAt,
         };
@@ -171,7 +334,7 @@ export async function checkSchema(
 }
 
 export async function stampFingerprint(
-  db: pg.Pool | pg.PoolClient,
+  db: Pool | PoolClient,
   fingerprint: string,
 ): Promise<void> {
   await db.query(
@@ -187,21 +350,38 @@ export function schemaProblemMessage(state: SchemaProblem): string {
       'The database has no Studio schema.',
       'Create it and start again:',
       '  pnpm --filter @codaco/studio-server db:reset        (local development)',
-      '  pnpm --filter @codaco/studio-server apply-schema    (a deployed database)',
+      '  docker compose run --rm studio migrate             (a deployed database)',
     ].join('\n');
   }
 
-  const detail =
-    state.reason === 'unstamped'
-      ? 'The database carries Studio tables but no fingerprint, so the SQL that built it is unknown.'
-      : `Expected ${SCHEMA_FINGERPRINT.slice(0, 12)}, found ${state.found?.slice(0, 12)} recorded ${state.appliedAt?.toISOString()}.`;
+  if (state.reason === 'unsafe-evidence') {
+    return [
+      'The database migration evidence has unsafe privileges or an unsupported relation shape.',
+      'Preserve the original database and its encryption keys. Restore a verified backup before starting Studio or applying migrations.',
+      'See apps/studio/MIGRATIONS.md for recovery and replacement procedures.',
+    ].join('\n');
+  }
+
+  if (state.reason === 'unstamped' || state.reason === 'unversioned') {
+    return [
+      state.reason === 'unversioned'
+        ? 'The database carries a Studio schema fingerprint but no versioned migration history.'
+        : 'The database carries Studio tables but no fingerprint, so the SQL that built it is unknown.',
+      'Preserve the original database and its encryption keys. The migration command cannot adopt this database.',
+      'For a previously versioned installation, restore a consistent backup that includes its migration history and fingerprint.',
+      'For an unversioned pre-release installation, export using its original Studio build, then set up a new empty database and import the supported exports.',
+      'See apps/studio/MIGRATIONS.md for recovery and replacement procedures.',
+      'Only for a disposable local development database:',
+      '  pnpm --filter @codaco/studio-server db:reset        (deletes existing data)',
+    ].join('\n');
+  }
 
   return [
     'The database was not built from the schema in this build.',
-    detail,
-    'Studio has no migration system yet: pre-release, drizzle-kit push reconciles the schema in place, or recreate the database.',
+    `Expected ${SCHEMA_FINGERPRINT.slice(0, 12)}, found ${state.found?.slice(0, 12)} recorded ${state.appliedAt?.toISOString()}.`,
+    'Back up the database and its encryption keys, then run the explicit migration command. Databases without migration history are not adopted automatically.',
     'Then start again:',
-    '  pnpm --filter @codaco/studio-server apply-schema    (reconcile in place)',
+    '  docker compose run --rm studio migrate             (apply versioned migrations)',
     '  pnpm --filter @codaco/studio-server db:reset        (recreate)',
   ].join('\n');
 }

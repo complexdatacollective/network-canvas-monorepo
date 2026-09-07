@@ -84,7 +84,14 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   const assetStore =
     deps.assetStore ?? (env.s3 ? createAssetStore(env.s3) : undefined);
   const observability =
-    deps.observability ?? createObservability({ pool, assetStore });
+    deps.observability ??
+    createObservability({
+      pool,
+      assetStore,
+      allowUnversionedSchema: env.devDefaults,
+      allowedLogins: env.databaseAllowedLogins,
+      administrativeLogins: env.databaseAdministrativeLogins,
+    });
   app.use(
     '*',
     observeRequests({

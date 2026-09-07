@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 
+import { escapeIdentifier } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { stubAuthService } from '../../__tests__/support/auth.ts';
 import {
   createScratchSchema,
+  createScratchDatabase,
   provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
@@ -12,6 +15,9 @@ import { createRpcClient } from '../../__tests__/support/rpc.ts';
 import { createApp } from '../../app.ts';
 import type { AssetStore } from '../../assets.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
+import { readMigrations } from '../../db/migrations/artifact.ts';
+import { migrateDatabase } from '../../db/migrations/migrate.ts';
+import { createPool, createMaintenancePool } from '../../db/pool.ts';
 import { stampFingerprint } from '../../db/schema.ts';
 import { seed } from '../../db/seed.ts';
 import { readEnv } from '../../env.ts';
@@ -31,6 +37,123 @@ const store: AssetStore = {
 };
 const CANARY = 'participant@example.test-Token-Answer-Protocol-Export';
 
+describe.skipIf(!db)('readiness migration provenance', () => {
+  it('requires actual migration history with no runtime history grant, and preserves explicit development', async () => {
+    if (!db)
+      throw new Error('Database required for readiness provenance test.');
+    const migrations = await readMigrations(
+      fileURLToPath(new URL('../../../migrations', import.meta.url)),
+    );
+    expect(migrations.length).toBeGreaterThan(0);
+    for (const versioned of [false, true]) {
+      const scratch = await createScratchDatabase(db);
+      const loginSuffix = randomUUID().replaceAll('-', '');
+      const appRuntimeLogin = `readiness_app_${loginSuffix}`;
+      const maintenanceRuntimeLogin = `readiness_maintenance_${loginSuffix}`;
+      const runtimePassword = 'readiness-runtime-synthetic-only';
+      const identity = (
+        await scratch.pool.query<{ database: string; login: string }>(
+          'SELECT current_database() AS database, session_user AS login',
+        )
+      ).rows[0]!;
+      const allowedLogins = [
+        identity.login,
+        appRuntimeLogin,
+        maintenanceRuntimeLogin,
+      ];
+      const runtimeUrl = new URL(scratch.db.url);
+      runtimeUrl.username = appRuntimeLogin;
+      runtimeUrl.password = runtimePassword;
+      const maintenanceUrl = new URL(scratch.db.url);
+      maintenanceUrl.username = maintenanceRuntimeLogin;
+      maintenanceUrl.password = runtimePassword;
+      const pool = createPool({ url: runtimeUrl.href });
+      const maintenancePool = createMaintenancePool({
+        url: maintenanceUrl.href,
+      });
+      let created = false;
+      try {
+        if (versioned) {
+          await scratch.pool
+            .query(`REVOKE CONNECT ON DATABASE ${escapeIdentifier(identity.database)} FROM PUBLIC;
+            GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(identity.login)}`);
+          expect(
+            await migrateDatabase(
+              scratch.pool,
+              migrations,
+              SCHEMA_FINGERPRINT,
+              [identity.login],
+            ),
+          ).toEqual(migrations.map(({ manifest }) => manifest.id));
+        } else {
+          await provisionScratchSchema(scratch.pool);
+        }
+        await scratch.pool
+          .query(`CREATE ROLE ${escapeIdentifier(appRuntimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+          CREATE ROLE ${escapeIdentifier(maintenanceRuntimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+          GRANT studio_app TO ${escapeIdentifier(appRuntimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+          GRANT studio_maintenance TO ${escapeIdentifier(maintenanceRuntimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+          GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)};
+          REVOKE INSERT, UPDATE, DELETE ON "schemaFingerprint" FROM studio_app, studio_maintenance`);
+        created = true;
+        expect((await pool.query('SELECT current_user AS role')).rows).toEqual([
+          { role: 'studio_app' },
+        ]);
+        const readiness = createReadiness({
+          pool,
+          maintenancePool,
+          allowedLogins,
+          assetStore: store,
+          cacheMs: 0,
+        });
+        try {
+          expect(await readiness.check()).toEqual({
+            status: versioned ? 'ready' : 'not_ready',
+            checks: {
+              database: 'ok',
+              object_store: 'ok',
+              schema: versioned ? 'current' : 'stale',
+            },
+          });
+        } finally {
+          readiness.stop();
+        }
+        if (versioned) {
+          await expect(
+            pool.query('SELECT * FROM studio_migrations.history'),
+          ).rejects.toMatchObject({ code: '42501' });
+        }
+        // The app's default observability construction must forward the same
+        // resolved development decision as the executable's construction.
+        for (const development of [false, true]) {
+          const app = createApp(
+            {
+              ...readEnv(),
+              db: { url: runtimeUrl.href },
+              maintenanceDb: { url: maintenanceUrl.href },
+              devDefaults: development,
+              databaseAllowedLogins: allowedLogins,
+            },
+            { pool, assetStore: store },
+          );
+          expect((await app.request('/readyz')).status).toBe(
+            versioned || development ? 200 : 503,
+          );
+        }
+      } finally {
+        await pool.end();
+        await maintenancePool.end();
+        if (created)
+          await scratch.pool.query(
+            `REVOKE CONNECT ON DATABASE ${escapeIdentifier(identity.database)} FROM ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)};
+             DROP ROLE ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)}`,
+          );
+        await scratch.dispose();
+      }
+    }
+  });
+});
+
 describe.skipIf(!db)(
   'operational probes against isolated PostgreSQL schemas',
   () => {
@@ -47,6 +170,7 @@ describe.skipIf(!db)(
     it('checks the current fingerprint on subsequent probes and never changes liveness', async () => {
       const runtime = createObservability({
         pool: scratch.app,
+        allowUnversionedSchema: true,
         assetStore: store,
         cacheMs: 0,
       });
@@ -75,6 +199,7 @@ describe.skipIf(!db)(
     it('fails readiness when object storage fails or is not configured', async () => {
       const failing = createReadiness({
         pool: scratch.app,
+        allowUnversionedSchema: true,
         assetStore: {
           ...store,
           checkHealth: () => Promise.reject(new Error(CANARY)),
@@ -85,7 +210,10 @@ describe.skipIf(!db)(
         status: 'not_ready',
         checks: { database: 'ok', object_store: 'failed', schema: 'current' },
       });
-      const missing = createReadiness({ pool: scratch.app });
+      const missing = createReadiness({
+        pool: scratch.app,
+        allowUnversionedSchema: true,
+      });
       expect((await missing.check()).checks.object_store).toBe('unconfigured');
       failing.stop();
       missing.stop();
@@ -96,6 +224,7 @@ describe.skipIf(!db)(
       const empty = await createScratchSchema(db);
       const readiness = createReadiness({
         pool: empty.pool,
+        allowUnversionedSchema: true,
         assetStore: store,
         cacheMs: 0,
       });
@@ -135,6 +264,7 @@ describe.skipIf(!db)(
         (
           await createReadiness({
             pool: scratch.app,
+            allowUnversionedSchema: true,
             assetStore: store,
             cacheMs: 0,
           }).check()
@@ -151,6 +281,7 @@ describe.skipIf(!db)(
       );
       const readiness = createReadiness({
         pool: scratch.app,
+        allowUnversionedSchema: true,
         assetStore: store,
         timeoutMs: 20,
         cacheMs: 0,
@@ -347,6 +478,7 @@ describe.skipIf(!db)(
       }
       const runtime = createObservability({
         pool: scratch.app,
+        allowUnversionedSchema: true,
         maintenancePool: scratch.maintenance,
         assetStore: store,
         cacheMs: 0,
@@ -396,6 +528,7 @@ describe.skipIf(!db)(
         const openRuntime = () =>
           createObservability({
             pool: isolated.app,
+            allowUnversionedSchema: true,
             maintenancePool: isolated.maintenance,
             assetStore: store,
             cacheMs: 0,

@@ -41,6 +41,8 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /deploy .
 COPY --from=builder /repo/apps/studio/server/dist ./dist
+COPY --from=builder /repo/apps/studio/server/migrations ./migrations
+COPY --chmod=755 apps/studio/docker-entrypoint.sh ./docker-entrypoint.sh
 # The server's default CLIENT_DIST resolves to ../client relative to the
 # bundle — this directory.
 COPY --from=builder /repo/apps/studio/client/dist ./client
@@ -48,4 +50,5 @@ USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
   CMD ["node", "-e", "fetch(`http://127.0.0.1:${process.env.PORT ?? 3000}/healthz`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
-CMD ["node", "dist/index.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["serve"]

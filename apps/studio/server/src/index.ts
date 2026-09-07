@@ -1,6 +1,10 @@
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
+import { assertSamePostgresDatabase } from '@codaco/studio-sync/postgres-database-identity';
+import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
+import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
+
 import { createApp } from './app.ts';
 import { createAssetStore } from './assets.ts';
 import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
@@ -18,6 +22,7 @@ import {
 } from './db/schema.ts';
 import { readEnv } from './env.ts';
 import { installFatalErrorHandlers } from './fatal-errors.ts';
+import { withProbeClient } from './observability/bounded-probe.ts';
 import { logOperational } from './observability/logger.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
 import { createObservability } from './observability/runtime.ts';
@@ -46,6 +51,13 @@ installFatalErrorHandlers({
 const { env, mailer } = (() => {
   try {
     const resolvedEnv = readEnv();
+    if (
+      resolvedEnv.db &&
+      !resolvedEnv.devDefaults &&
+      !resolvedEnv.maintenanceDb
+    ) {
+      throw new Error('Missing maintenance database configuration.');
+    }
     // One owned transport serves authentication and the invitation worker.
     // Validate it before database work or request admission.
     return {
@@ -71,13 +83,18 @@ if (env.telemetry) {
   }
 }
 const pool = env.db ? createPool(env.db) : undefined;
-const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
+const maintenancePool = env.maintenanceDb
+  ? createMaintenancePool(env.maintenanceDb)
+  : undefined;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
 const observability = createObservability({
   pool,
   maintenancePool,
   assetStore,
   monitorProcess: true,
+  allowUnversionedSchema: env.devDefaults,
+  allowedLogins: env.databaseAllowedLogins,
+  administrativeLogins: env.databaseAdministrativeLogins,
 });
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
 
@@ -98,6 +115,47 @@ function startDatabaseWorkers(): void {
     mailer,
     publicBaseUrl: env.auth.baseUrl,
   });
+}
+
+async function admitDatabaseRuntime(): Promise<boolean> {
+  if (!pool || !maintenancePool || env.devDefaults) return true;
+  const runtimeRoleSets = [
+    [TENANT_ROLES.app],
+    [TENANT_ROLES.maintenance],
+  ] as const;
+  try {
+    const signal = AbortSignal.timeout(10_000);
+    await withProbeClient(pool, signal, (app) =>
+      withProbeClient(maintenancePool, signal, async (maintenance) => {
+        try {
+          await app.query('BEGIN READ ONLY');
+          await maintenance.query('BEGIN READ ONLY');
+          for (const [client, intendedRole] of [
+            [app, TENANT_ROLES.app],
+            [maintenance, TENANT_ROLES.maintenance],
+          ] as const)
+            await assertSafePostgresRuntimeIdentity(client, {
+              intendedRole,
+              allowedRoles: [intendedRole],
+              runtimeRoleSets,
+              backupRole: BACKUP_ROLE,
+              allowedLogins: env.databaseAllowedLogins ?? [],
+              administrativeLogins: env.databaseAdministrativeLogins,
+            });
+          await assertSamePostgresDatabase(app, maintenance);
+        } finally {
+          await Promise.all([
+            app.query('ROLLBACK'),
+            maintenance.query('ROLLBACK'),
+          ]);
+        }
+      }),
+    );
+    return true;
+  } catch {
+    logOperational('STUDIO_DATABASE_IDENTITY_UNSAFE');
+    return process.exit(1);
+  }
 }
 
 // Outside development a stale or absent schema is a resolved answer, not a
@@ -130,11 +188,16 @@ if (pool) {
     const retry = setInterval(() => {
       if (attempting) return;
       attempting = true;
-      void checkSchema(pool)
-        .then((state) => {
+      void checkSchema(pool, {
+        allowedLogins: env.databaseAllowedLogins,
+        administrativeLogins: env.databaseAdministrativeLogins,
+        allowUnversioned: env.devDefaults,
+      })
+        .then(async (state) => {
           exitIfFatal(state);
           if (state.kind === 'current') {
             clearInterval(retry);
+            if (!(await admitDatabaseRuntime())) return undefined;
             startDatabaseWorkers();
             logOperational('STUDIO_SCHEMA_CURRENT');
           }
@@ -157,9 +220,13 @@ if (pool) {
   };
 
   try {
-    const state = await checkSchema(pool);
+    const state = await checkSchema(pool, {
+      allowedLogins: env.databaseAllowedLogins,
+      administrativeLogins: env.databaseAdministrativeLogins,
+      allowUnversioned: env.devDefaults,
+    });
     if (state.kind === 'current') {
-      startDatabaseWorkers();
+      if (await admitDatabaseRuntime()) startDatabaseWorkers();
     } else {
       waitForSchema(state);
     }

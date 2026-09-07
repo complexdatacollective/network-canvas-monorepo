@@ -145,12 +145,20 @@ const owner = createOwnerPool(env.db);
 const pool = createPool(env.db);
 
 try {
-  const schema = await checkSchema(owner);
+  const schema = await checkSchema(owner, {
+    allowedLogins: env.databaseAllowedLogins,
+    administrativeLogins: env.databaseAdministrativeLogins,
+    allowUnversioned: env.devDefaults,
+  });
   if (schema.kind === 'stale') {
     console.error(schemaProblemMessage(schema));
     process.exit(1);
   }
   if (schema.kind === 'absent') {
+    if (!env.devDefaults) {
+      console.error(schemaProblemMessage(schema));
+      process.exit(1);
+    }
     await applySchema(owner);
   }
 

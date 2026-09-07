@@ -101,6 +101,7 @@ export async function withProbeClient<T>(
 ): Promise<T> {
   const client = await pool.connect();
   let released = false;
+  let invoked = false;
   const release = (destroy = false) => {
     if (released) return;
     released = true;
@@ -110,7 +111,13 @@ export async function withProbeClient<T>(
   try {
     signal.throwIfAborted();
     signal.addEventListener('abort', abort, { once: true });
+    invoked = true;
     return await run(client);
+  } catch (error) {
+    // A failed check may have entered a transaction or failed its rollback.
+    // Discard that socket; a late checkout that never ran remains reusable.
+    release(invoked);
+    throw error;
   } finally {
     signal.removeEventListener('abort', abort);
     release();

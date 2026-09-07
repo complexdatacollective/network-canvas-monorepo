@@ -10,7 +10,10 @@ import { version } from './package.json';
 export default defineConfig(({ mode }) => ({
   plugins: studioSourceMaps(mode, import.meta.dirname, version),
   build: {
-    ssr: 'src/index.ts',
+    ssr: true,
+    rolldownOptions: {
+      input: { index: 'src/index.ts', migrate: 'src/migrate.ts' },
+    },
     outDir: 'dist',
     emptyOutDir: true,
     target: 'node24',
@@ -21,6 +24,10 @@ export default defineConfig(({ mode }) => ({
       '@codaco/shared-consts',
       '@codaco/studio-rpc',
       '@codaco/studio-sync',
+      // protocol-validation bundles JSZip in its published output, but this
+      // source-first consumer compiles it here. Its devDependency is absent
+      // from pnpm deploy --prod, so leaving the import external breaks boot.
+      'jszip',
     ],
   },
 }));

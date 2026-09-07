@@ -3,7 +3,11 @@ import process from 'node:process';
 
 import pg from 'pg';
 
-import { TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
+import { TENANT_ROLES, TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
+import {
+  runtimeRolesSql,
+  revokeLargeObjectPrivilegesSql,
+} from '@codaco/studio-sync/role-bootstrap';
 
 import { renderSchemaStatements } from '../../../scripts/apply.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
@@ -38,7 +42,9 @@ export async function reachableDb(): Promise<DbEnv | null> {
   try {
     // The application pools pin roles the schema apply creates; provisioning
     // them here means no suite depends on another having run first.
-    const probe = pool.query(TENANT_ROLES_SQL);
+    const probe = pool.query(
+      runtimeRolesSql(Object.values(TENANT_ROLES)) + TENANT_ROLES_SQL,
+    );
     // When the timeout wins the race, this query is still in flight and
     // `pool.end()` below rejects it. Promise.race has already settled by then,
     // so nothing is listening — and an unhandled rejection fails the run.
@@ -127,6 +133,7 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
  * owner pool: the statements are DDL.
  */
 export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
+  await pool.query(runtimeRolesSql(Object.values(TENANT_ROLES)));
   await pool.query((await renderSchemaStatements()).join('\n'));
   await stampFingerprint(pool, SCHEMA_FINGERPRINT);
 }
@@ -156,6 +163,14 @@ export async function createScratchDatabase(
   url.pathname = `/${name}`;
   const scratchDb = { url: url.toString() };
   const pool = createOwnerPool(scratchDb);
+  // Dedicated production databases require this administrator provisioning:
+  // PUBLIC otherwise permits persistent large-object writes without table DML.
+  await pool.query(revokeLargeObjectPrivilegesSql());
+  // TEMP implicitly grants CREATE on the current temporary namespace, even
+  // without a namespace ACL. Provision its denial before migration admission.
+  await pool.query(
+    `REVOKE CONNECT, TEMPORARY ON DATABASE ${pg.escapeIdentifier(name)} FROM PUBLIC`,
+  );
 
   return {
     db: scratchDb,

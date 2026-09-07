@@ -1,6 +1,10 @@
 import { createEnv } from '@t3-oss/env-core';
 
-import { resolve, type StudioEnv } from './env/resolve.ts';
+import {
+  parseDatabaseAllowedLogins,
+  parseDatabaseAdministrativeLogins,
+} from './env/database-enrollment.ts';
+import { resolve, type DbEnv, type StudioEnv } from './env/resolve.ts';
 import { serverSchemas, type VariableName } from './env/variables.ts';
 
 // The single sanctioned environment boundary for the Studio server: the only
@@ -102,4 +106,29 @@ export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
       runtimeEnv.STUDIO_TELEMETRY || undefined,
     ),
   });
+}
+
+/** Offline schema administration needs only database credentials, never auth. */
+export function readMigrationDatabase(): DbEnv {
+  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
+  const url = serverSchemas.DATABASE_URL.parse(process.env.DATABASE_URL);
+  if (!url)
+    throw new Error('DATABASE_URL is required to run Studio migrations.');
+  return { url };
+}
+
+/** Read the explicit, precommitted deployment enrollment without inferring logins. */
+export function readMigrationAllowedLogins(): string[] {
+  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
+  const source = process.env.STUDIO_DATABASE_ALLOWED_LOGINS;
+  return parseDatabaseAllowedLogins(source);
+}
+
+/** Optional explicit administrative exceptions for offline operator commands. */
+export function readMigrationAdministrativeLogins(
+  allowedLogins: readonly string[],
+): string[] {
+  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
+  const source = process.env.STUDIO_DATABASE_ADMINISTRATIVE_LOGINS;
+  return parseDatabaseAdministrativeLogins(source, allowedLogins);
 }
