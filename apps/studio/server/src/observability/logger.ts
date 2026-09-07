@@ -3,9 +3,11 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import pino, { type DestinationStream } from 'pino';
 
 const DIAGNOSTICS = {
+  STUDIO_AUDIT_ALERT_WORKER_ERROR: 'error',
   STUDIO_CONFIGURATION_INVALID: 'error',
   STUDIO_ENCRYPTION_INVALID: 'error',
   STUDIO_ENCRYPTION_MAINTENANCE_FAILED: 'error',
+  STUDIO_BACKUP_ACCESS_UNSAFE: 'error',
   STUDIO_PROCESS_FAILED: 'error',
   STUDIO_CLIENT_ASSETS_UNAVAILABLE: 'warn',
   STUDIO_DATABASE_IDLE_ERROR: 'error',
@@ -15,6 +17,8 @@ const DIAGNOSTICS = {
   STUDIO_SCHEMA_STALE: 'error',
   STUDIO_SCHEMA_CURRENT: 'info',
   STUDIO_SERVER_STARTED: 'info',
+  STUDIO_WEB_REPLICA_REFUSED: 'error',
+  STUDIO_WEB_LEASE_LOST: 'error',
   STUDIO_SHUTDOWN_FAILED: 'error',
   STUDIO_AUDIT_APPEND_FAILED: 'error',
   STUDIO_AUDIT_DENIAL_EVENT_LOST: 'error',

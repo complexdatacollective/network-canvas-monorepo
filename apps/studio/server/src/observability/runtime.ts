@@ -3,17 +3,21 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import type pg from 'pg';
 
 import type { AssetStore } from '../assets.ts';
+import type { EncryptionKeys } from '../pii/keys.ts';
 import { createOperationalMetrics } from './metrics.ts';
 import { createReadiness } from './readiness.ts';
 
 export function createObservability(options: {
   pool?: pg.Pool;
   maintenancePool?: pg.Pool;
+  encryptionKeys?: EncryptionKeys;
   assetStore?: AssetStore;
   monitorProcess?: boolean;
   timeoutMs?: number;
   cacheMs?: number;
   allowUnversionedSchema?: boolean;
+  allowedLogins?: readonly string[];
+  administrativeLogins?: readonly string[];
 }) {
   const readiness = createReadiness(options);
   const metrics = createOperationalMetrics({ ...options, readiness });

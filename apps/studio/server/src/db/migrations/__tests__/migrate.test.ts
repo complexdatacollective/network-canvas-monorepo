@@ -51,6 +51,13 @@ async function migrateTestDatabase(
   ]);
 }
 
+async function checkTestSchema(pool: pg.Pool | pg.PoolClient) {
+  const identity = (
+    await pool.query<{ login: string }>('SELECT session_user AS login')
+  ).rows[0]!;
+  return checkSchema(pool, { allowedLogins: [identity.login] });
+}
+
 type Snapshot = Awaited<ReturnType<typeof generateDrizzleJson>>;
 
 function artifact(
@@ -271,7 +278,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
               { rolsuper: false, rolcreaterole: createRole },
             ]);
             await migrateTestDatabase(owner, shipped, SCHEMA_FINGERPRINT);
-            expect(await checkSchema(owner)).toEqual({ kind: 'current' });
+            expect(await checkTestSchema(owner)).toEqual({ kind: 'current' });
             await expectSecurityContract(pool);
           } finally {
             await owner.end();
@@ -291,7 +298,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
       expect(
         await migrateTestDatabase(pool, shipped, SCHEMA_FINGERPRINT),
       ).toEqual(shipped.map(({ manifest }) => manifest.id));
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkTestSchema(pool)).toEqual({ kind: 'current' });
       await expectSecurityContract(pool);
       const constraints = await pool.query<{ conname: string }>(
         `SELECT conname FROM pg_constraint WHERE conrelid = 'public."user"'::regclass AND conname = 'user_locale_length_check'`,
@@ -304,6 +311,89 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
           `INSERT INTO public."user" (id, name, email, "emailVerified", locale) VALUES ('bad', 'Bad', 'bad@example.test', false, 'x')`,
         ),
       ).rejects.toMatchObject({ constraint: 'user_locale_length_check' });
+    });
+  });
+
+  it('upgrades a populated 0005 database to audit-alert delivery without rewriting existing evidence', async () => {
+    await withDatabase(async ({ pool }) => {
+      const previous = shipped.slice(0, -1);
+      const previousFingerprint = previous.at(-1)?.manifest.fingerprint;
+      const current = shipped.at(-1);
+      if (!previousFingerprint || !current)
+        throw new Error('The cumulative migration fixtures are incomplete.');
+      await migrateTestDatabase(pool, previous, previousFingerprint);
+      const eventId = randomUUID();
+      const outboxId = randomUUID();
+      await pool.query(
+        `INSERT INTO teams (id, name, slug) VALUES ('migration-alert-team', 'Existing team', 'migration-alert-team');
+         INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
+           VALUES ('migration-alert-user', 'Existing user', 'existing@example.test', true, now(), now());
+         INSERT INTO team_members (id, team_id, user_id, role)
+           VALUES ('migration-alert-member', 'migration-alert-team', 'migration-alert-user', 'owner')`,
+      );
+      await pool.query(
+        `INSERT INTO audit_events (
+           id, team_id, team_label, sequence, event_type, event_version,
+           category, outcome, actor_kind, actor_id, actor_label, subject_type,
+           subject_id, subject_label, resource_type, resource_id,
+           resource_label, request_id, details
+         ) VALUES (
+           $1, 'migration-alert-team', 'Existing team', 1,
+           'audit.read_denied', 1, 'audit', 'denied', 'user',
+           'migration-alert-user', 'Existing user', NULL, NULL, NULL, NULL,
+           NULL, NULL, $2, '{"procedure":"audit.list","reason":"insufficient_permission"}'::jsonb
+         )`,
+        [eventId, randomUUID()],
+      );
+      await pool.query(
+        `INSERT INTO audit_alert_outbox (
+           id, team_id, audit_event_id, audit_event_sequence, event_type,
+           event_version, alert_policy_key
+         ) VALUES (
+           $2, 'migration-alert-team', $1, 1, 'audit.read_denied', 1,
+           'repeated_denials'
+         )`,
+        [eventId, outboxId],
+      );
+      const evidence = (
+        await pool.query(
+          `SELECT id, audit_event_id, audit_event_sequence::text AS sequence,
+             event_type, event_version, alert_policy_key, created_at
+           FROM audit_alert_outbox WHERE id = $1`,
+          [outboxId],
+        )
+      ).rows;
+
+      expect(
+        await migrateTestDatabase(pool, shipped, SCHEMA_FINGERPRINT),
+      ).toEqual([current.manifest.id]);
+      expect(
+        (
+          await pool.query(
+            `SELECT id, audit_event_id, audit_event_sequence::text AS sequence,
+               event_type, event_version, alert_policy_key, created_at
+             FROM audit_alert_outbox WHERE id = $1`,
+            [outboxId],
+          )
+        ).rows,
+      ).toEqual(evidence);
+      expect(
+        (
+          await pool.query(
+            `SELECT uncertain_at, to_regclass('audit_alert_recipients')::text AS recipients,
+               to_regclass('audit_alert_deliveries')::text AS deliveries
+             FROM audit_alert_outbox WHERE id = $1`,
+            [outboxId],
+          )
+        ).rows,
+      ).toEqual([
+        {
+          uncertain_at: null,
+          recipients: 'audit_alert_recipients',
+          deliveries: 'audit_alert_deliveries',
+        },
+      ]);
+      expect(await checkTestSchema(pool)).toEqual({ kind: 'current' });
     });
   });
 
@@ -323,7 +413,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
         )
       ).rows;
       expect(before).toHaveLength(1);
-      expect(await checkSchema(pool)).toMatchObject({
+      expect(await checkTestSchema(pool)).toMatchObject({
         kind: 'stale',
         reason: 'mismatch',
       });
@@ -344,7 +434,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
       expect(
         (await pool.query('SELECT locale FROM public."user"')).rows,
       ).toEqual([{ locale: null }]);
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkTestSchema(pool)).toEqual({ kind: 'current' });
       await expectSecurityContract(pool);
     });
   });
@@ -454,7 +544,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
       await expect(
         migrateTestDatabase(pool, [predecessor, upgrade], SCHEMA_FINGERPRINT),
       ).rejects.toThrow('Applied migration history differs');
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkTestSchema(pool)).toEqual({ kind: 'current' });
     });
   });
 
@@ -544,7 +634,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
           )
         ).rows,
       ).toEqual([]);
-      expect(await checkSchema(pool)).toMatchObject({
+      expect(await checkTestSchema(pool)).toMatchObject({
         kind: 'stale',
         found: predecessor.manifest.fingerprint,
       });
@@ -655,7 +745,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
             )
           ).rows,
         ).toEqual([]);
-        expect(await checkSchema(pool)).toMatchObject({
+        expect(await checkTestSchema(pool)).toMatchObject({
           kind: 'stale',
           found: predecessor.manifest.fingerprint,
         });

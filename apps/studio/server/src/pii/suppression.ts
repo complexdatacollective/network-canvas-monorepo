@@ -2,6 +2,7 @@ import type pg from 'pg';
 
 import { type Contact, createContactBlindIndex } from './contacts.ts';
 import type { EncryptionKeys } from './keys.ts';
+import { createClassifiedLegacyContactIndex } from './legacy-indexes.ts';
 import { credentialTransaction } from './oauth.ts';
 
 /**
@@ -14,9 +15,12 @@ export function isContactSuppressed(
   keys: EncryptionKeys,
   contact: Contact,
 ): Promise<boolean> {
-  const indexes = keys
-    .ids('pii-index')
-    .map((id) => createContactBlindIndex(keys, contact, id));
+  const indexes = [
+    ...keys
+      .ids('pii-index')
+      .map((id) => createContactBlindIndex(keys, contact, id)),
+    createClassifiedLegacyContactIndex(contact),
+  ];
   return credentialTransaction(
     maintenancePool,
     async (client) => {

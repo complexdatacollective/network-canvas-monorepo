@@ -93,6 +93,22 @@
       // never by an import — see createSearchWorker.ts.
       "entry": ["src/collection/filtering/createSearchWorker.inline.ts"]
     },
+    // The registry coverage probes in type-tests/ are COMPILED, never
+    // imported: stageEditorRegistry.test.tsx runs `tsc --noEmit -p
+    // type-tests/tsconfig.json` and asserts which of them the compiler
+    // refuses. A probe that anything imported would have to compile, which is
+    // the opposite of what it is for.
+    //
+    // The two Mapbox mocks are reached through a resolver alias rather than an
+    // import — vitest.config.ts and .storybook/main.ts each swap `mapbox-gl`
+    // for one, so no test and no story can build a real map — which is exactly
+    // the shape knip cannot follow. Declared as entries so the mocks and their
+    // own exports count as used; the aliases themselves are held in place by
+    // src/testing/__tests__/mapboxIsAlwaysMocked.test.ts.
+    "packages/protocol-builder": {
+      "entry": [".storybook/mapboxMock.ts", "src/testing/mapboxMock.ts"],
+      "ignore": ["type-tests/**"]
+    },
     "packages/protocol-validation": {},
     "packages/network-exporters": {},
     "packages/interface-images": {},
@@ -182,9 +198,12 @@
         "scripts/auth-cli-config.ts!",
         // Resolved by vite.netlify.config.ts as a build input string, never
         // by an import — it is the Netlify Function entry.
-        "src/netlify.ts!"
+        "src/netlify.ts!",
+        // Explicit image commands are bundle input strings, not imports.
+        "src/configure.ts!",
+        "src/diagnostics.ts!"
       ],
-      "project": ["src/**/*.ts", "scripts/**/*.ts"]
+      "project": ["src/**/*.ts", "scripts/**/*.ts", "qualification/**/*.ts"]
     },
     "apps/interviewer": {
       "entry": [

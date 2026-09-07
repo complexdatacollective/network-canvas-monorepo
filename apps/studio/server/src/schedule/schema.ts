@@ -34,7 +34,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import {
-  teamIsolationPolicy,
+  teamIsolationPolicies,
   TENANT_ROLES,
   tenantTablesSql,
 } from '@codaco/studio-sync/rls';
@@ -196,7 +196,7 @@ const studySchedules = pgTable(
       sql`char_length(${table.name}) BETWEEN 1 AND 120
           AND ${table.name} ~ '[^[:space:]]'`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -272,7 +272,7 @@ const scheduleOccurrences = pgTable(
           AND ${table.expiresAt} > ${table.scheduledFor}
           AND char_length(${table.resolvedTimeZone}) BETWEEN 1 AND 64`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -351,7 +351,7 @@ const messageTemplates = pgTable(
       'message_templates_locale_check',
       sql`char_length(${table.locale}) BETWEEN 2 AND 35 AND ${table.version} >= 1`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -503,7 +503,7 @@ const messageDeliveries = pgTable(
           AND (${table.providerMessageId} IS NULL
                OR char_length(${table.providerMessageId}) BETWEEN 1 AND 255)`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -555,7 +555,7 @@ const messageDeliveryEvents = pgTable(
       'message_delivery_events_provider_event_id_check',
       sql`char_length(${table.providerEventId}) BETWEEN 1 AND 255`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 

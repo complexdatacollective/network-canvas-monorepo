@@ -548,18 +548,25 @@ describe.skipIf(!db)('experiment schema', () => {
     });
 
     it('allows one assignment per subject per experiment', async () => {
+      // This case exercises subject uniqueness, so use one explicit lifetime
+      // instead of comparing the host clock with PostgreSQL's default now().
+      const startedAt = new Date('2026-01-01T00:00:00Z');
       const experimentId = await newExperiment({
         state: 'running',
-        started_at: new Date(),
+        started_at: startedAt,
       });
       const subjectId = `user-${randomUUID().slice(0, 8)}`;
-      await newAssignment(experimentId, { subject_id: subjectId });
+      const subject = {
+        subject_id: subjectId,
+        assigned_at: new Date('2026-01-01T00:00:01Z'),
+      };
+      await newAssignment(experimentId, subject);
 
       await expect(
         insert(
           'experiment_assignments',
           assignmentRow(experimentId, {
-            subject_id: subjectId,
+            ...subject,
             variant_key: 'treatment',
           }),
         ),
@@ -575,7 +582,7 @@ describe.skipIf(!db)('experiment schema', () => {
         insert(
           'experiment_assignments',
           assignmentRow(experimentId, {
-            subject_id: subjectId,
+            ...subject,
             subject_kind: 'session',
           }),
         ),
@@ -583,13 +590,10 @@ describe.skipIf(!db)('experiment schema', () => {
       // As is the same subject in another experiment.
       const otherId = await newExperiment({
         state: 'running',
-        started_at: new Date(),
+        started_at: startedAt,
       });
       await expect(
-        insert(
-          'experiment_assignments',
-          assignmentRow(otherId, { subject_id: subjectId }),
-        ),
+        insert('experiment_assignments', assignmentRow(otherId, subject)),
       ).resolves.toMatchObject({ rowCount: 1 });
     });
 

@@ -1,5 +1,6 @@
 import { useId, useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -70,6 +71,7 @@ export default function SkipLogicDestinationField({
     identity,
     readOnly: sessionReadOnly,
   } = useStageEditorForm();
+  const intl = useAppIntl();
   const readOnly = readOnlyProp || sessionReadOnly;
   const problemId = useId();
   const stages = protocolContext.orderedStages;
@@ -79,10 +81,10 @@ export default function SkipLogicDestinationField({
     [identity.id, position, stages],
   );
   const options = useMemo(
-    () => skipLogicDestinationOptions(stages, placement, value),
-    [placement, stages, value],
+    () => skipLogicDestinationOptions(stages, placement, value, intl),
+    [intl, placement, stages, value],
   );
-  const problem = skipLogicDestinationProblem(value, stages, placement);
+  const problem = skipLogicDestinationProblem(value, stages, placement, intl);
 
   return (
     <div

@@ -115,6 +115,7 @@ describe('principal resolution', () => {
 
 describe('unconfigured auth', () => {
   const env: StudioEnv = {
+    role: 'both',
     telemetry: false,
     port: 3000,
     metricsToken: undefined,
@@ -123,10 +124,13 @@ describe('unconfigured auth', () => {
     clientDist: undefined,
     s3: undefined,
     db: undefined,
+    maintenanceDb: undefined,
     auth: undefined,
     devDefaults: false,
     deploymentMode: 'self-hosted',
     seedAdminPassword: undefined,
+    databaseAllowedLogins: undefined,
+    databaseAdministrativeLogins: [],
   };
 
   it('refuses /api/auth with 503 problem JSON', async () => {

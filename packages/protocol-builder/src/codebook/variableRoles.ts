@@ -1,3 +1,4 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
@@ -17,6 +18,31 @@ import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
 } from '../protocol-context.ts';
+
+/**
+ * The two refusals this module writes.
+ *
+ * Encoded rather than formatted: both are returned as a plain `string` to a
+ * caller that puts them in a field's error region, so the words are chosen in
+ * the reader's language where they are rendered rather than where the rule is
+ * decided.
+ */
+const messages = defineMessages({
+  interfaceOwnedPick: {
+    id: 'protocolBuilder.codebookVariable.interfaceOwnedPick',
+    defaultMessage:
+      'This attribute is set by {owner}, so it cannot be used here. Choose a different attribute.',
+    description:
+      'Refusal shown when a researcher picks an attribute (a codebook variable) that one kind of interview step writes for itself. owner is the name of that step, which is the researcher’s own or a built-in interface name and is not translated here.',
+  },
+  interfaceOwnedOptions: {
+    id: 'protocolBuilder.codebookVariable.interfaceOwnedOptions',
+    defaultMessage:
+      'These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.',
+    description:
+      'Refusal shown when a researcher edits the allowed values of an attribute (a codebook variable) whose values one kind of interview step owns. An interface is one kind of interview step.',
+  },
+});
 
 export type WriterClass = 'validated' | 'unvalidated';
 
@@ -271,7 +297,9 @@ export const interfaceOwnedPickIssue = (
   if (variableId === '') return undefined;
   const claim = slotMap[variableRoleKey(subject, variableId)];
   if (claim === undefined || claim.slot === ownSlot) return undefined;
-  return `This attribute is set by ${claim.owner}, so it cannot be used here. Choose a different attribute.`;
+  return createMessageError(messages.interfaceOwnedPick, {
+    owner: claim.owner,
+  });
 };
 
 const asOptionList = (
@@ -302,5 +330,5 @@ export const interfaceOwnedOptionsIssue = (
   const canonical = INTERFACE_OWNED_OPTION_SETS[ownedOptionSet].options;
   return optionsMatchInterfaceOwnedSet(asOptionList(draftOptions), canonical)
     ? undefined
-    : 'These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.';
+    : createMessageError(messages.interfaceOwnedOptions);
 };

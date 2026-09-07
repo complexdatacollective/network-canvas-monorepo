@@ -108,12 +108,14 @@ rule_files:
 | `studio_outbox_dispatch_results_total`                               | Shared dispatcher outcomes, including separate retried, failed and uncertain counts   |
 | `studio_outbox_dispatch_duration_seconds`                            | Shared dispatcher run histogram                                                       |
 | `studio_outbox_lease_renewals_total` / `studio_outbox_errors_total`  | Renewal outcomes and dispatcher/worker boundary errors                                |
-| `studio_outbox_last_failure_timestamp_seconds`                       | Newest retained terminal failure from database `failed_at`; zero for no failed rows   |
+| `studio_outbox_last_failure_timestamp_seconds`                       | Newest retained `failed_at` or `uncertain_at`; zero when neither exists               |
 | `studio_outbox_last_worker_error_timestamp_seconds`                  | Most recent worker polling error time in this process; absent before its first error  |
 
 Queue snapshots include `team_invitation_deliveries`, `audit_alert_outbox`,
 `audit_export_jobs`, `message_deliveries`, `webhook_deliveries`, and both
-`study_wave_rollups` and `study_stage_rollups` recompute worklists. Pending includes
+`study_wave_rollups` and `study_stage_rollups` recompute worklists. The
+`audit_alert_outbox` label counts per-recipient/channel `audit_alert_deliveries`,
+so partial delivery and uncertainty remain visible. Pending includes
 future work and leased work. Ready excludes future work and unexpired leases;
 expired leases become claimable. Uncertain rows are terminal and never appear
 as retryable failures. Rollups use `stale_at`; their schema has no lease or
@@ -135,7 +137,8 @@ Thresholds are starting values to tune from production measurements.
 
 Queue and worker failure notices use their last occurrence time, not an increase
 in a counter that might first be observed at one. Queue failure time comes from
-retained database `failed_at` values, so a restart still reports a recent failure.
+retained database `failed_at` and `uncertain_at` values, so a restart still reports
+a recent failure or interrupted handoff even before any outcome counter exists.
 Worker failure time is process-local; restarting cannot recover an error that
 was never scraped. Counters remain available for rates and totals.
 
@@ -152,7 +155,11 @@ for the study's lifetime. Operators inspect the failure and record or silence
 the incident in their incident receiver or work log; they must not clear
 `failed_at`, delete a delivery, or blindly resend to dismiss a warning. Old
 failures that have already been reconciled therefore do not produce permanent
-pages, and no new acknowledgement state is added to the delivery schema.
+pages from the recent-failure rule. The separate unresolved-uncertainty rule
+remains active while retained uncertain deliveries exist; silence a reconciled
+incident in the operator receiver. A researcher's audited acknowledgement in
+their personal alert feed records that they saw the uncertainty. It does not
+clear terminal state, claim provider acceptance, or dismiss an operator incident.
 
 Validate the file with `promtool check rules operator-rules.yml` and run its
 positive and negative cases with `promtool test rules operator-rules.test.yml`

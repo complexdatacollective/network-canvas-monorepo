@@ -65,8 +65,8 @@ tests:
             exp_annotations:
               summary: Studio has delivery acknowledgements requiring reconciliation
               description:
-                The provider accepted a delivery but database finalization failed.
-                Do not blindly resend uncertain work.
+                Delivery or database finalization was not confirmed. Reconcile the
+                provider outcome before considering a resend.
       - eval_time: 10m
         alertname: StudioApplicationErrors
         exp_alerts:
@@ -183,6 +183,47 @@ tests:
         alertname: StudioQueueFailure
         exp_alerts:
           - *a1
+  - name: 'Audit alerts: recovered uncertain handoff precedes the first scrape and survives restart'
+    interval: 1m
+    input_series:
+      - series: studio_outbox_last_failure_timestamp_seconds{job="studio",instance="server",queue="audit_alert_outbox"}
+        values: _ 60 60 stale _ 60+0x6
+      - series: studio_outbox_jobs{job="studio",instance="server",queue="audit_alert_outbox",state="uncertain"}
+        values: _ 1 1 stale _ 1+0x6
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: StudioQueueFailure
+        exp_alerts:
+          - &audit_uncertain_recent
+            exp_labels:
+              job: studio
+              instance: server
+              queue: audit_alert_outbox
+              audience: operators
+              severity: warning
+            exp_annotations:
+              summary: A Studio queue has a recent terminal failure
+              description: Investigate the affected queue through operator tooling without including delivery payloads in alerts.
+      - eval_time: 5m
+        alertname: StudioQueueFailure
+        exp_alerts:
+          - *audit_uncertain_recent
+      - eval_time: 6m
+        alertname: StudioQueueFailure
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: StudioUncertainDelivery
+        exp_alerts:
+          - exp_labels:
+              job: studio
+              instance: server
+              queue: audit_alert_outbox
+              state: uncertain
+              audience: operators
+              severity: warning
+            exp_annotations:
+              summary: Studio has delivery acknowledgements requiring reconciliation
+              description: Delivery or database finalization was not confirmed. Reconcile the provider outcome before considering a resend.
   - name:
       'StudioWorkerErrors: a zero counter observed before failure is a positive
       control'

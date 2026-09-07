@@ -16,6 +16,10 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/__tests__/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
+    // Several integration files launch fresh Node processes that import the
+    // source graph. Two workers leave enough CPU for those cold imports on
+    // the four-vCPU CI runner while retaining bounded file parallelism.
+    maxWorkers: 2,
     // The protocol suites validate whole fixture protocols and build a
     // fourteen-table schema per file.
     testTimeout: 30_000,

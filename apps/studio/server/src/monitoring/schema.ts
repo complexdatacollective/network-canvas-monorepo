@@ -16,7 +16,10 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
+import {
+  teamIsolationPolicies,
+  tenantTablesSql,
+} from '@codaco/studio-sync/rls';
 
 import { STUDY_TABLES } from '../study/schema.ts';
 
@@ -69,7 +72,7 @@ const studyWaveRollups = pgTable(
           AND ${table.sessionCompletedCount} >= 0 AND ${table.sessionAbandonedCount} >= 0
           AND ${table.deliveryFailedCount} >= 0`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -113,7 +116,7 @@ const studyStageRollups = pgTable(
           AND ${table.durationMsCount} >= 0 AND ${table.missingItemCount} >= 0
           AND char_length(${table.stageId}) BETWEEN 1 AND 128`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 

@@ -1031,10 +1031,6 @@
     "defaultMessage": "API access",
     "description": "Name of the API access screen at /settings/api, used as its heading."
   },
-  "studio.screens.teamSettingsDescription": {
-    "defaultMessage": "The team's name, the defaults every new study inherits from it, and deleting the team.",
-    "description": "What the Team settings screen at /settings will do, shown on it while it is not yet built."
-  },
   "studio.screens.teamSettingsMessagingDescription": {
     "defaultMessage": "How this team reaches participants by email and SMS, and the sender they will see it come from.",
     "description": "What the Messaging screen at /settings/messaging will do, shown on it while it is not yet built."
@@ -1042,10 +1038,6 @@
   "studio.screens.teamSettingsMessagingTitle": {
     "defaultMessage": "Messaging",
     "description": "Name of the Messaging screen at /settings/messaging, used as its heading."
-  },
-  "studio.screens.teamSettingsTitle": {
-    "defaultMessage": "Team settings",
-    "description": "Name of the Team settings screen at /settings, used as its heading."
   },
   "studio.screens.teamSettingsWebhooksDescription": {
     "defaultMessage": "Where Studio should tell another system that something happened in this team, and whether those messages are arriving.",
@@ -1062,10 +1054,6 @@
   "studio.screens.templatesTitle": {
     "defaultMessage": "Templates",
     "description": "Name of the Templates screen at /templates, used as its heading."
-  },
-  "studio.setup.complete": {
-    "defaultMessage": "Setup is complete. Sign in to continue.",
-    "description": "Confirmation after setup, also shown when reopening the completed setup page."
   },
   "studio.setup.email": {
     "defaultMessage": "Email address",
@@ -1830,6 +1818,178 @@
   "studio.teamRoles.unassigned": {
     "defaultMessage": "Unassigned",
     "description": "Shown where a membership record carries no role at all."
+  },
+  "studio.teamSettings.acknowledge": {
+    "defaultMessage": "Acknowledge uncertainty",
+    "description": "Opens a confirmation for acknowledging an uncertain email delivery."
+  },
+  "studio.teamSettings.acknowledgeTitle": {
+    "defaultMessage": "Acknowledge this delivery?",
+    "description": "Title of the uncertain email acknowledgement dialog."
+  },
+  "studio.teamSettings.acknowledged": {
+    "defaultMessage": "Uncertainty acknowledged",
+    "description": "Badge after the recipient acknowledges uncertain delivery."
+  },
+  "studio.teamSettings.actionFailed": {
+    "defaultMessage": "The update could not be confirmed. Refresh to check its current state.",
+    "description": "An alert read or acknowledgement could not be confirmed."
+  },
+  "studio.teamSettings.conflict": {
+    "defaultMessage": "These preferences changed elsewhere. Refresh and review the current choices before saving again.",
+    "description": "A settings revision conflict preserves the unsaved form for review."
+  },
+  "studio.teamSettings.contact": {
+    "defaultMessage": "Participant contact information accessed",
+    "description": "Fixed title for an authorized participant contact access alert."
+  },
+  "studio.teamSettings.credential": {
+    "defaultMessage": "Integration credential activity",
+    "description": "Fixed title for an integration credential access or update alert."
+  },
+  "studio.teamSettings.delivered": {
+    "defaultMessage": "Email sent",
+    "description": "The email provider accepted the alert."
+  },
+  "studio.teamSettings.denials": {
+    "defaultMessage": "Repeated access denials",
+    "description": "Fixed title for repeated protected-operation denials."
+  },
+  "studio.teamSettings.email": {
+    "defaultMessage": "Email",
+    "description": "Name of the email activity alert channel."
+  },
+  "studio.teamSettings.emailFor": {
+    "defaultMessage": "Email alerts for {name}",
+    "description": "Accessible label for a recipient email alert preference."
+  },
+  "studio.teamSettings.empty": {
+    "defaultMessage": "You have no activity alerts yet.",
+    "description": "Empty personal alert feed."
+  },
+  "studio.teamSettings.failed": {
+    "defaultMessage": "Activity alerts could not be loaded. Try refreshing.",
+    "description": "Generic alert query failure with no server diagnostic details."
+  },
+  "studio.teamSettings.feedHelp": {
+    "defaultMessage": "Only alerts addressed to your current membership and preferences appear here. Notifications contain no participant details.",
+    "description": "Explains the scope and privacy of the personal alert feed."
+  },
+  "studio.teamSettings.forbidden": {
+    "defaultMessage": "A verified owner or administrator account is required to view activity alerts.",
+    "description": "The server refused audit alert access."
+  },
+  "studio.teamSettings.heading": {
+    "defaultMessage": "Team settings",
+    "description": "Heading of the team settings screen."
+  },
+  "studio.teamSettings.inApp": {
+    "defaultMessage": "In Studio",
+    "description": "Name of the in-app activity alert channel."
+  },
+  "studio.teamSettings.inAppFor": {
+    "defaultMessage": "In Studio alerts for {name}",
+    "description": "Accessible label for a recipient in-app alert preference."
+  },
+  "studio.teamSettings.intro": {
+    "defaultMessage": "Choose who receives activity alerts for this team, and review your own alerts.",
+    "description": "Introduction to the team alert settings and personal feed."
+  },
+  "studio.teamSettings.invalid": {
+    "defaultMessage": "Choose up to {maximum} eligible recipients and use only available delivery channels.",
+    "description": "Recipient or channel validation failure."
+  },
+  "studio.teamSettings.loading": {
+    "defaultMessage": "Loading activity alerts…",
+    "description": "Accessible loading status for activity alerts."
+  },
+  "studio.teamSettings.markRead": {
+    "defaultMessage": "Mark as read",
+    "description": "Marks one personal in-app alert read."
+  },
+  "studio.teamSettings.missingRecipients": {
+    "defaultMessage": "Some configured recipients no longer qualify. Saving will remove their preferences.",
+    "description": "Warns that saving removes recipients whose membership or verification changed."
+  },
+  "studio.teamSettings.more": {
+    "defaultMessage": "Load more alerts",
+    "description": "Loads the next bounded page of personal alerts."
+  },
+  "studio.teamSettings.noEmail": {
+    "defaultMessage": "Email delivery is unavailable on this instance. Saving will remove email preferences; in-Studio alerts remain available.",
+    "description": "Explains unavailable email and the effect of saving preferences."
+  },
+  "studio.teamSettings.noneEligible": {
+    "defaultMessage": "No verified owners or administrators are available.",
+    "description": "Empty eligible recipient list."
+  },
+  "studio.teamSettings.pending": {
+    "defaultMessage": "Email pending",
+    "description": "Email is queued or retrying."
+  },
+  "studio.teamSettings.recipientHelp": {
+    "defaultMessage": "Choose up to {maximum} verified owners or administrators. Alerts cover participant contact access, integration credential activity, and repeated access denials. Changes apply to future activity.",
+    "description": "Explains the fixed alert policy, eligible recipients and when settings apply."
+  },
+  "studio.teamSettings.recipients": {
+    "defaultMessage": "Activity alert recipients",
+    "description": "Heading for team alert recipient configuration."
+  },
+  "studio.teamSettings.refresh": {
+    "defaultMessage": "Refresh",
+    "description": "Reloads current alert settings and the personal alert feed."
+  },
+  "studio.teamSettings.rejected": {
+    "defaultMessage": "Email failed",
+    "description": "The alert email reached a terminal rejected state."
+  },
+  "studio.teamSettings.save": {
+    "defaultMessage": "Save alert preferences",
+    "description": "Saves team alert recipient and channel preferences."
+  },
+  "studio.teamSettings.saveUnknown": {
+    "defaultMessage": "The save could not be confirmed. Refresh to check the current preferences before trying again.",
+    "description": "A save had an ambiguous network outcome."
+  },
+  "studio.teamSettings.saved": {
+    "defaultMessage": "Alert preferences saved.",
+    "description": "Success announcement after saving alert preferences."
+  },
+  "studio.teamSettings.savedRefreshFailed": {
+    "defaultMessage": "Alert preferences were saved. Refresh to load their current state.",
+    "description": "The preference write succeeded but its follow-up read failed."
+  },
+  "studio.teamSettings.suppressed": {
+    "defaultMessage": "Email suppressed",
+    "description": "An outdated or no longer eligible email was suppressed."
+  },
+  "studio.teamSettings.truncated": {
+    "defaultMessage": "This list shows the first 100 eligible members, including current recipients.",
+    "description": "Explains the bounded eligible member list."
+  },
+  "studio.teamSettings.uncertain": {
+    "defaultMessage": "Email delivery uncertain",
+    "description": "The alert email may have been accepted before interruption."
+  },
+  "studio.teamSettings.uncertaintyHelp": {
+    "defaultMessage": "An email attempt was interrupted. Check your inbox before acknowledging it. Acknowledgement records your review and does not resend the email.",
+    "description": "Explains manual reconciliation without suggesting duplicate sends."
+  },
+  "studio.teamSettings.unread": {
+    "defaultMessage": "Unread",
+    "description": "Badge on an unread in-app alert."
+  },
+  "studio.teamSettings.updated": {
+    "defaultMessage": "Alert updated.",
+    "description": "Accessible success announcement for personal alert state."
+  },
+  "studio.teamSettings.updatedRefreshFailed": {
+    "defaultMessage": "The alert was updated. Refresh to load its current state.",
+    "description": "An alert write succeeded but its follow-up read failed."
+  },
+  "studio.teamSettings.yourAlerts": {
+    "defaultMessage": "Your activity alerts",
+    "description": "Heading for the signed-in recipient personal alert feed."
   },
   "studio.teamStudies.anonymousParticipants": {
     "defaultMessage": "Anonymous participants",

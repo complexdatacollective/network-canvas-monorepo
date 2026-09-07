@@ -13,6 +13,7 @@ import {
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import { AUTH_RUNTIME_TABLES } from '../db/auth-schema.ts';
+import { LEGACY_INDEX_REMEDIATION_GUARD_SQL } from './legacy-indexes.ts';
 
 // A non-PII proof of every key the database has depended on. Keeping proofs
 // after live rotation makes dropping a historical restore key fail at boot.
@@ -160,4 +161,6 @@ REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON encryption_key_verificat
 GRANT SELECT, INSERT ON encryption_key_verifications TO ${TENANT_ROLES.maintenance};
 REVOKE SELECT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON credential_audit_events FROM ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance};
 GRANT INSERT ON credential_audit_events TO ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance};
+
+${LEGACY_INDEX_REMEDIATION_GUARD_SQL}
 `;

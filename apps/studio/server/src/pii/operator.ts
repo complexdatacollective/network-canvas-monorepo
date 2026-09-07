@@ -10,7 +10,7 @@ import {
   resumeEncryptionMaintenance,
 } from './initialize.ts';
 import {
-  migrateLegacyOAuthBatch,
+  migrateLegacyDataBatch,
   parseLegacyCursor,
   parseRotationCursor,
   rotateEncryptionBatch,
@@ -22,6 +22,11 @@ export async function runEncryptionCommand(
   args: string[],
   maintenancePool: pg.Pool,
   encryption: EncryptionEnv,
+  admission: {
+    allowedLogins: readonly string[];
+    administrativeLogins?: readonly string[];
+    schemaPool?: pg.Pool;
+  },
   legacyOperatorPool?: pg.Pool,
 ) {
   const { positionals, values } = parseArgs({
@@ -56,7 +61,14 @@ export async function runEncryptionCommand(
     cursor = parseRotationCursor(value);
   }
   const afterId = parseLegacyCursor(values['after-id'] ?? null);
-  if ((await checkSchema(maintenancePool)).kind !== 'current')
+  if (
+    (
+      await checkSchema(admission.schemaPool ?? maintenancePool, {
+        allowedLogins: admission.allowedLogins,
+        administrativeLogins: admission.administrativeLogins,
+      })
+    ).kind !== 'current'
+  )
     throw new Error('Encryption maintenance requires the current schema.');
   if (operation === 'migrate-legacy' && !legacyOperatorPool)
     throw new Error(
@@ -82,9 +94,14 @@ export async function runEncryptionCommand(
     };
   return {
     operation,
-    ...(await migrateLegacyOAuthBatch(legacyOperatorPool!, keys, {
-      limit,
-      afterId,
-    })),
+    ...(await migrateLegacyDataBatch(
+      maintenancePool,
+      legacyOperatorPool!,
+      keys,
+      {
+        limit,
+        afterId,
+      },
+    )),
   };
 }

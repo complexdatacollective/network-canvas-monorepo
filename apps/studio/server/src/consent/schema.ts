@@ -14,7 +14,10 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
+import {
+  teamIsolationPolicies,
+  tenantTablesSql,
+} from '@codaco/studio-sync/rls';
 
 import { ERASURE_GUC, STUDY_TABLES } from '../study/schema.ts';
 
@@ -97,7 +100,7 @@ const consentDocuments = pgTable(
           AND ${table.title} ~ '[^[:space:]]'
           AND char_length(${table.locale}) BETWEEN 2 AND 35`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -147,7 +150,7 @@ const consentItems = pgTable(
       sql`char_length(${table.prompt}) BETWEEN 1 AND 2000
           AND ${table.prompt} ~ '[^[:space:]]'`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -246,7 +249,7 @@ const participantConsents = pgTable(
       sql`${table.withdrawalNote} IS NULL
           OR char_length(${table.withdrawalNote}) BETWEEN 1 AND 1000`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -315,7 +318,7 @@ const participantConsentItemResponses = pgTable(
       'participant_consent_item_responses_item_key_check',
       sql`${table.itemKey} ~ '^[a-z][a-z0-9_]{0,63}$'`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 

@@ -6,6 +6,7 @@ import type { OutboxQueue } from '../outbox/instrumentation.ts';
 import { BoundedProbe, withProbeClient } from './bounded-probe.ts';
 
 type QueueShape = {
+  table?: string;
   pending: string;
   available: string;
   lease?: string;
@@ -27,11 +28,13 @@ const shapes = {
     suppressed: 'suppressed_at',
   },
   audit_alert_outbox: {
+    table: 'audit_alert_deliveries',
     pending:
-      'delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL',
+      'delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL',
     available: 'available_at',
     lease: 'lease_expires_at',
     failed: 'failed_at',
+    uncertain: 'uncertain_at',
     suppressed: 'suppressed_at',
   },
   audit_export_jobs: {
@@ -72,6 +75,12 @@ const queueSql = Object.entries(shapes)
   .map(([queue, shape]: [string, QueueShape]) => {
     const pending = `(${shape.pending})`;
     const ready = `${pending} AND ${shape.available} <= CURRENT_TIMESTAMP${shape.lease ? ` AND (${shape.lease} IS NULL OR ${shape.lease} <= CURRENT_TIMESTAMP)` : ''}`;
+    // A crash after provider handoff is terminal uncertainty, and can precede
+    // the first scrape just like a failed delivery. PostgreSQL GREATEST ignores
+    // NULL operands; an empty queue still reports the explicit zero sentinel.
+    const terminalTime = shape.uncertain
+      ? `GREATEST(${shape.failed}, ${shape.uncertain})`
+      : shape.failed;
     return `SELECT '${queue}' AS queue,
     ${count(pending)} AS pending,
     ${count(ready)} AS ready,
@@ -79,10 +88,10 @@ const queueSql = Object.entries(shapes)
     ${count(shape.lease && `${pending} AND ${shape.lease} > CURRENT_TIMESTAMP`)} AS leased,
     ${count(shape.lease && `${pending} AND ${shape.lease} <= CURRENT_TIMESTAMP`)} AS expired_leases,
     ${count(shape.failed && `${shape.failed} IS NOT NULL`)} AS failed,
-    ${shape.failed ? `COALESCE(EXTRACT(EPOCH FROM MAX(${shape.failed})), 0)::float8` : '0::float8'} AS last_failure_timestamp_seconds,
+    ${terminalTime ? `COALESCE(EXTRACT(EPOCH FROM MAX(${terminalTime})), 0)::float8` : '0::float8'} AS last_failure_timestamp_seconds,
     ${count(shape.uncertain && `${shape.uncertain} IS NOT NULL`)} AS uncertain,
     ${count(shape.suppressed && `${shape.suppressed} IS NOT NULL`)} AS suppressed
-    FROM ${queue}`;
+    FROM ${shape.table ?? queue}`;
   })
   .join('\nUNION ALL\n');
 

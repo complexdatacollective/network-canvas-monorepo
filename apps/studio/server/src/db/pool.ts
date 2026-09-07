@@ -1,19 +1,19 @@
 import type pg from 'pg';
 
 import { createPostgresPool } from '@codaco/studio-sync/postgres-pool';
-import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { DbEnv } from '../env.ts';
 import { logOperational } from '../observability/logger.ts';
 
-// The server uses a dedicated runtime login. The migration command supplies
-// the database owner's credentials separately through its own DATABASE_URL.
-// The application pool starts every session as a NOLOGIN role
-// instead (`role=` is a startup parameter: a missing role refuses the
-// connection, and even RESET ROLE returns to it), so the server never runs as
-// a role that could bypass row-level security — not in a deployment, and not
-// in development, where the login is the superuser. Garbage collection pins
-// the maintenance role the same way as durable delivery workers do.
+// Production supplies one restricted login per runtime role: DATABASE_URL for
+// studio_app and STUDIO_MAINTENANCE_DATABASE_URL for studio_maintenance. The
+// migration command supplies its administrative credentials separately
+// through its own DATABASE_URL. Each runtime pool starts every session as its
+// one NOLOGIN role (`role=` is a startup parameter: a missing role refuses the
+// connection, and even RESET ROLE returns to the restricted login). Explicit
+// local development may use one superuser URL for both pools; production
+// admission rejects that identity before request or worker startup.
 function connect(db: DbEnv, role?: string): pg.Pool {
   return createPostgresPool({
     connectionString: db.url,
@@ -31,6 +31,11 @@ export function createPool(db: DbEnv): pg.Pool {
 /** Background jobs: every session runs as the cross-team maintenance role. */
 export function createMaintenancePool(db: DbEnv): pg.Pool {
   return connect(db, TENANT_ROLES.maintenance);
+}
+
+/** Operator-only credentials: all-tenant, SELECT-only recovery reads. */
+export function createBackupPool(db: DbEnv): pg.Pool {
+  return connect(db, BACKUP_ROLE);
 }
 
 /** The connecting login itself: schema application, reset, and seeding. */

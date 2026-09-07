@@ -1,5 +1,9 @@
 import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
+import {
+  parseDatabaseAllowedLogins,
+  parseDatabaseAdministrativeLogins,
+} from './database-enrollment.ts';
 import type { RawEnv } from './variables.ts';
 
 export type S3Env = {
@@ -42,6 +46,7 @@ export type AuthEnv = {
 // An undefined s3, db, or auth means that surface is not configured and
 // refuses with 503; the server still boots.
 export type StudioEnv = {
+  role: 'web' | 'worker' | 'both';
   telemetry: boolean;
   port: number;
   metricsToken: string | undefined;
@@ -50,6 +55,9 @@ export type StudioEnv = {
   clientDist: string | undefined;
   s3: S3Env | undefined;
   db: DbEnv | undefined;
+  maintenanceDb: DbEnv | undefined;
+  databaseAllowedLogins: readonly string[] | undefined;
+  databaseAdministrativeLogins: readonly string[];
   auth: AuthEnv | undefined;
   devDefaults: boolean;
   deploymentMode: DeploymentMode;
@@ -260,6 +268,16 @@ export function resolve(raw: RawEnv): StudioEnv {
   }
 
   const db = raw.DATABASE_URL ? { url: raw.DATABASE_URL } : undefined;
+  if (raw.STUDIO_MAINTENANCE_DATABASE_URL && !db) {
+    throw new Error(
+      'DATABASE_URL is required when STUDIO_MAINTENANCE_DATABASE_URL is set',
+    );
+  }
+  const maintenanceDb = raw.STUDIO_MAINTENANCE_DATABASE_URL
+    ? { url: raw.STUDIO_MAINTENANCE_DATABASE_URL }
+    : devDefaults
+      ? db
+      : undefined;
 
   // The marker travels with a publicly-known signing secret, a console mailer,
   // and a boot that applies the schema to whatever DATABASE_URL names. An
@@ -275,7 +293,18 @@ export function resolve(raw: RawEnv): StudioEnv {
     );
   }
 
+  const databaseAllowedLogins =
+    db && !devDefaults
+      ? parseDatabaseAllowedLogins(raw.STUDIO_DATABASE_ALLOWED_LOGINS)
+      : undefined;
+  const databaseAdministrativeLogins = databaseAllowedLogins
+    ? parseDatabaseAdministrativeLogins(
+        raw.STUDIO_DATABASE_ADMINISTRATIVE_LOGINS,
+        databaseAllowedLogins,
+      )
+    : [];
   return {
+    role: raw.STUDIO_ROLE ?? 'both',
     telemetry: raw.STUDIO_TELEMETRY ?? true,
     port: raw.PORT ?? DEFAULT_PORT,
     metricsToken: raw.STUDIO_METRICS_TOKEN,
@@ -284,7 +313,10 @@ export function resolve(raw: RawEnv): StudioEnv {
     clientDist: raw.CLIENT_DIST,
     s3: resolveS3(raw),
     db,
+    maintenanceDb,
     auth: resolveAuth(raw, db, devDefaults),
+    databaseAllowedLogins,
+    databaseAdministrativeLogins,
     devDefaults,
     deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,
     bootstrapToken: raw.STUDIO_BOOTSTRAP_TOKEN,
