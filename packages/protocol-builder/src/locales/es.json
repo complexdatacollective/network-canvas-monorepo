@@ -569,7 +569,6 @@
   "protocolBuilder.variableParameters.resolutionLabel": "Precisión de la fecha",
   "protocolBuilder.variableParameters.resolutionMonth": "Año y mes (AAAA-MM)",
   "protocolBuilder.variableParameters.resolutionYear": "Solo el año (AAAA)",
-  "protocolBuilder.variableParameters.settingRequired": "Este ajuste es obligatorio.",
   "protocolBuilder.variablePicker.attributeTypeLabel": "Tipo de atributo: {attributeType}",
   "protocolBuilder.variablePicker.createAction": "Crear el atributo",
   "protocolBuilder.variablePicker.createHint": "Lo añade al libro de códigos de este tipo y lo selecciona arriba.",

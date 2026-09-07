@@ -2279,10 +2279,6 @@
     "defaultMessage": "Year only (YYYY)",
     "description": "Choice offered for how precise a date a field collects: a year on its own. The bracketed pattern is the literal format the protocol stores and is not translated."
   },
-  "protocolBuilder.variableParameters.settingRequired": {
-    "defaultMessage": "This setting is required.",
-    "description": "Refusal shown under one of an input control’s settings when it must hold a value and holds none, and nothing more specific is written for it."
-  },
   "protocolBuilder.variablePicker.attributeTypeLabel": {
     "defaultMessage": "Attribute type: {attributeType}",
     "description": "Accessible name of the badge stating what kind of answer the chosen attribute records. attributeType is a protocol schema token such as \"number\", \"text\" or \"categorical\", and is shown as it is stored rather than translated. Read as a label and its value, not as a sentence."
