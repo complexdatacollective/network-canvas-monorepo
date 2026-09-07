@@ -1,4 +1,7 @@
-import { findDraftContradictions } from './contradictions';
+import {
+  describeDraftContradiction,
+  findDraftContradictions,
+} from './contradictions';
 import { isValidationMap, ruleMapPrecheck } from './ruleValue';
 
 /**
@@ -46,7 +49,7 @@ export const ruleMapIssue = (
 
   if (!context.variableType) return undefined;
 
-  return findDraftContradictions({
+  const first = findDraftContradictions({
     allVariables: context.allVariables,
     currentVariableId: context.currentVariableId,
     variableType: context.variableType,
@@ -55,5 +58,8 @@ export const ruleMapIssue = (
     component: context.component,
     parameters: context.parameters,
     draftVariableName: context.draftVariableName,
-  })[0]?.message;
+  })[0];
+  return first
+    ? describeDraftContradiction(first, context.allVariables)
+    : undefined;
 };

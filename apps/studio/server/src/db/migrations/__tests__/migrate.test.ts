@@ -13,6 +13,14 @@ import { escapeIdentifier, Pool } from 'pg';
 import type pg from 'pg';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import {
+  jsonHash,
+  readMigrations,
+  sha256,
+  type Migration,
+  type MigrationManifest,
+} from '@codaco/studio-sync/postgres-migration-artifacts';
+
 import { applySchema } from '../../../../scripts/apply.ts';
 import {
   createScratchDatabase,
@@ -20,13 +28,6 @@ import {
 } from '../../../__tests__/support/postgres.ts';
 import { SCHEMA_FINGERPRINT } from '../../fingerprint.generated.ts';
 import { checkSchema, SCHEMA, SIDECARS } from '../../schema.ts';
-import {
-  jsonHash,
-  readMigrations,
-  sha256,
-  type Migration,
-  type MigrationManifest,
-} from '../artifact.ts';
 import { migrateDatabase } from '../migrate.ts';
 
 const database = await reachableDb();

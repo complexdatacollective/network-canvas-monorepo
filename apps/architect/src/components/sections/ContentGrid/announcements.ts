@@ -1,4 +1,27 @@
+import {
+  createAppIntl,
+  defineMessages,
+  type IntlShape,
+} from '@codaco/app-i18n/messages';
+const defaultIntl = createAppIntl({ locale: 'en' });
+
 import type { ContentSlotType } from './itemTypes';
+const localeMessages = defineMessages({
+  chosen: {
+    id: 'architect.content.announcement.chosen',
+    defaultMessage:
+      'Content type set to {type, select, text {Text} image {Image} audio {Audio} other {Video}}. A content field for it has been added below.',
+    description:
+      'Live announcement when changing content type; all saved authored drafts remain intact.',
+  },
+  changed: {
+    id: 'architect.content.announcement.changed',
+    defaultMessage:
+      'Content type changed to {type, select, text {Text} image {Image} audio {Audio} other {Video}}. {outcome, select, restored {The content you entered for {type, select, text {Text} image {Image} audio {Audio} other {Video}} earlier has been restored.} kept {The content you entered for the previous type is kept, and returns if you change back to it.} other {Nothing has been entered for {type, select, text {Text} image {Image} audio {Audio} other {Video}} yet.}}',
+    description:
+      'Live announcement when changing content type; all saved authored drafts remain intact.',
+  },
+});
 
 /**
  * What the item editor's `aria-live` region says when the researcher chooses
@@ -27,33 +50,12 @@ import type { ContentSlotType } from './itemTypes';
  */
 export type ContentDraftOutcome = 'restored' | 'kept' | 'empty';
 
-// The researcher-facing name of each type, matching the type control's own
-// options (a test pins them together, so the two cannot drift).
-const TYPE_LABELS: Record<ContentSlotType, string> = {
-  text: 'Text',
-  image: 'Image',
-  audio: 'Audio',
-  video: 'Video',
-};
-
 export const getContentTypeChosenAnnouncement = (
   type: ContentSlotType,
-): string =>
-  `Content type set to ${TYPE_LABELS[type]}. A content field for it has been added below.`;
-
+  intl: IntlShape = defaultIntl,
+): string => intl.formatMessage(localeMessages.chosen, { type });
 export const getContentTypeChangedAnnouncement = (
   type: ContentSlotType,
   outcome: ContentDraftOutcome,
-): string => {
-  const label = TYPE_LABELS[type];
-
-  if (outcome === 'restored') {
-    return `Content type changed to ${label}. The content you entered for ${label} earlier has been restored.`;
-  }
-
-  if (outcome === 'kept') {
-    return `Content type changed to ${label}. The content you entered for the previous type is kept, and returns if you change back to it.`;
-  }
-
-  return `Content type changed to ${label}. Nothing has been entered for ${label} yet.`;
-};
+  intl: IntlShape = defaultIntl,
+): string => intl.formatMessage(localeMessages.changed, { type, outcome });

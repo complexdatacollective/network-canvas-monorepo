@@ -4,6 +4,12 @@ import { FileUp } from 'lucide-react';
 import { use, useState, useTransition } from 'react';
 import superjson from 'superjson';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import {
@@ -25,6 +31,33 @@ import type {
 
 import ExportCSVInterviewURLs from './ExportCSVInterviewURLs';
 
+const messages = defineMessages({
+  error: {
+    id: 'fresco.interviews.GenerateInterviewURLs.error',
+    defaultMessage: 'Error',
+    description: 'Researcher-facing interviews / GenerateInterviewURLs: Error',
+  },
+  exportIncompleteInterviewURLs: {
+    id: 'fresco.interviews.GenerateInterviewURLs.exportIncompleteInterviewURLs',
+    defaultMessage: 'Export Incomplete Interview URLs',
+    description:
+      'Researcher-facing interviews / GenerateInterviewURLs: Export Incomplete Interview URLs',
+  },
+  generateACSVThatContainsUniqueInterview: {
+    id: 'fresco.interviews.GenerateInterviewURLs.generateACSVThatContainsUniqueInterview',
+    defaultMessage:
+      'Generate a CSV that contains unique interview URLs for all incomplete interviews by protocol.',
+    description:
+      'Researcher-facing interviews / GenerateInterviewURLs: Generate a CSV that contains unique interview URLs for all incomplete interviews by protocol.',
+  },
+  selectAProtocol: {
+    id: 'fresco.interviews.GenerateInterviewURLs.selectAProtocol',
+    defaultMessage: 'Select a Protocol...',
+    description:
+      'Researcher-facing interviews / GenerateInterviewURLs: Select a Protocol...',
+  },
+});
+
 export const GenerateInterviewURLs = ({
   protocolsPromise,
   className,
@@ -32,6 +65,8 @@ export const GenerateInterviewURLs = ({
   protocolsPromise: GetProtocolsReturnType;
   className?: string;
 }) => {
+  const intl = useAppIntl();
+
   const rawProtocols = use(protocolsPromise);
   const protocols = superjson.parse<GetProtocolsQuery>(rawProtocols);
   const { add } = useToast();
@@ -56,8 +91,8 @@ export const GenerateInterviewURLs = ({
       const result = await getIncompleteInterviewUrlData(protocol.id);
       if (result.error) {
         add({
-          title: 'Error',
-          description: result.error,
+          title: <AppMessage message={messages.error} />,
+          description: <AppErrorMessage error={result.error} />,
           variant: 'destructive',
         });
         return;
@@ -77,18 +112,21 @@ export const GenerateInterviewURLs = ({
           />
         }
       >
-        Export Incomplete Interview URLs
+        {intl.formatMessage(messages.exportIncompleteInterviewURLs)}
       </PopoverTrigger>
-      <PopoverContent className="flex max-w-sm flex-col gap-4">
+      <PopoverContent
+        aria-label={intl.formatMessage(messages.exportIncompleteInterviewURLs)}
+        className="flex max-w-sm flex-col gap-4"
+      >
         <Paragraph>
-          Generate a CSV that contains unique interview URLs for all incomplete
-          interviews by protocol.
+          {intl.formatMessage(messages.generateACSVThatContainsUniqueInterview)}
         </Paragraph>
 
         {!protocols ? (
           <Skeleton className="h-10 w-full rounded" />
         ) : (
           <SelectField
+            aria-label={intl.formatMessage(messages.selectAProtocol)}
             name="Protocol"
             size="sm"
             options={protocols.map((p) => ({ value: p.id, label: p.name }))}
@@ -96,7 +134,7 @@ export const GenerateInterviewURLs = ({
               if (value) handleSelectProtocol(value);
             }}
             value={selectedProtocol?.id}
-            placeholder="Select a Protocol..."
+            placeholder={intl.formatMessage(messages.selectAProtocol)}
           />
         )}
         <div className="flex justify-end">

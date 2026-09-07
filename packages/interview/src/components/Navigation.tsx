@@ -20,9 +20,12 @@ import {
   useState,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import LocaleSelect from '@codaco/fresco-ui/form/fields/LocaleSelect';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
   Popover,
@@ -33,6 +36,9 @@ import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
+import { useInterviewLocale } from '../i18n/InterviewI18nProvider';
+import { interviewLocales } from '../i18n/locales';
+import { navigationMessages as messages } from '../i18n/navigationMessages';
 import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
 import { useSyncFlush } from '../store/SyncFlushContext';
@@ -156,6 +162,7 @@ type NavigationProps = {
   reviewMode?: boolean;
   allowStageNavigation?: boolean;
   allowUserScaling?: boolean;
+  allowLanguageSelection?: boolean;
   textScale?: number;
   onTextScaleChange?: (scale: number) => void;
   className?: string;
@@ -179,11 +186,16 @@ const Navigation = ({
   reviewMode,
   allowStageNavigation,
   allowUserScaling,
+  allowLanguageSelection,
   textScale = 1,
   onTextScaleChange,
   className,
   goToStage,
 }: NavigationProps) => {
+  const intl = useAppIntl();
+  const language = useInterviewLocale();
+  const languageSelectionEnabled =
+    !!allowLanguageSelection && language !== null;
   const BackIcon = orientation === 'vertical' ? ChevronUp : ChevronLeft;
   const ForwardIcon = orientation === 'vertical' ? ChevronDown : ChevronRight;
 
@@ -197,7 +209,8 @@ const Navigation = ({
 
   // The settings popover hosts the exit action and the text-size control; with
   // neither available there is nothing to show, so the trigger is omitted.
-  const showSettingsPopover = !!onExit || userScalingEnabled;
+  const showSettingsPopover =
+    !!onExit || userScalingEnabled || languageSelectionEnabled;
 
   const matchedTextScaleIndex = TEXT_SCALE_OPTIONS.findIndex(
     (scale) => scale === textScale,
@@ -212,6 +225,7 @@ const Navigation = ({
     (TEXT_SCALE_OPTIONS[textScaleIndex] ?? 1) * 100,
   );
   const textSizeLabelId = useId();
+  const languageLabelId = useId();
   const textSizeControlRef = useRef<HTMLDivElement>(null);
   const [textScaleInputValue, setTextScaleInputValue] = useState(
     String(textScalePercent),
@@ -241,13 +255,18 @@ const Navigation = ({
   const confirmUnavailable = useCallback(
     async (availability: UnavailableStage) =>
       (await confirm({
-        title: 'Show this screen?',
-        description:
-          availability.kind === 'local-skip'
-            ? 'This screen is hidden based on the answers given so far. Do you want to show it anyway?'
-            : 'This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?',
-        confirmLabel: 'Show screen',
-        cancelLabel: 'Cancel',
+        title: <AppMessage message={messages.showTitle} />,
+        description: (
+          <AppMessage
+            message={
+              availability.kind === 'local-skip'
+                ? messages.hiddenScreen
+                : messages.outsidePath
+            }
+          />
+        ),
+        confirmLabel: <AppMessage message={messages.showScreen} />,
+        cancelLabel: <AppMessage message={commonMessages.cancel} />,
         intent: 'warning',
         onConfirm: () => {},
       })) === true,
@@ -257,12 +276,28 @@ const Navigation = ({
   const handleExit = useCallback(async () => {
     if (!onExit) return;
     const confirmed = await confirm({
-      title: reviewMode ? 'Exit this review?' : 'Exit this interview?',
-      description: reviewMode
-        ? 'Changes made during this review will not be saved.'
-        : 'Your answers so far will be saved and you can continue later.',
-      confirmLabel: reviewMode ? 'Exit review' : 'Exit interview',
-      cancelLabel: 'Cancel',
+      title: (
+        <AppMessage
+          message={
+            reviewMode ? messages.exitReviewTitle : messages.exitInterviewTitle
+          }
+        />
+      ),
+      description: (
+        <AppMessage
+          message={
+            reviewMode
+              ? messages.exitReviewDescription
+              : messages.exitInterviewDescription
+          }
+        />
+      ),
+      confirmLabel: (
+        <AppMessage
+          message={reviewMode ? messages.exitReview : messages.exitInterview}
+        />
+      ),
+      cancelLabel: <AppMessage message={commonMessages.cancel} />,
       intent: 'warning',
       onConfirm: () => {},
     });
@@ -330,7 +365,7 @@ const Navigation = ({
                     size="xl"
                     icon={<Settings />}
                     className="[&>.lucide]:h-[1.5em]!"
-                    aria-label="Settings"
+                    aria-label={intl.formatMessage(messages.settings)}
                     data-testid="settings-button"
                   />
                 }
@@ -339,17 +374,46 @@ const Navigation = ({
                 side={orientation === 'vertical' ? 'right' : 'top'}
                 align="start"
                 className="w-72 max-w-full"
-                aria-label="Interview settings"
+                aria-label={intl.formatMessage(messages.interviewSettings)}
               >
                 <div className="flex flex-col gap-2">
+                  {languageSelectionEnabled && (
+                    <div className="flex min-w-0 flex-col gap-1.5 px-2 py-1.5">
+                      <label
+                        id={languageLabelId}
+                        htmlFor={`${languageLabelId}-select`}
+                        className="text-sm font-semibold"
+                      >
+                        <AppMessage message={messages.interfaceLanguage} />
+                      </label>
+                      <LocaleSelect
+                        id={`${languageLabelId}-select`}
+                        options={interviewLocales}
+                        value={language.preference}
+                        onChange={language.setPreference}
+                        automaticLabel={intl.formatMessage(
+                          messages.automaticLanguage,
+                        )}
+                        aria-labelledby={languageLabelId}
+                        size="sm"
+                        className="w-full"
+                      />
+                    </div>
+                  )}
                   {userScalingEnabled && (
                     <fieldset className="m-0 flex min-w-0 flex-col gap-1.5 border-0 p-0">
                       <legend
                         id={textSizeLabelId}
                         className="px-2 py-1.5 text-sm font-semibold"
                       >
-                        Text size
-                        <span className="sr-only"> percentage</span>
+                        <AppMessage
+                          message={messages.textSize}
+                          values={{
+                            hidden: (chunks) => (
+                              <span className="sr-only">{chunks}</span>
+                            ),
+                          }}
+                        />
                       </legend>
                       <div ref={textSizeControlRef} className="w-full">
                         <InputField
@@ -386,8 +450,12 @@ const Navigation = ({
                             setTextScaleInputValue(String(textScalePercent));
                           }}
                           stepperLabels={{
-                            decrease: 'Decrease text size',
-                            increase: 'Increase text size',
+                            decrease: intl.formatMessage(
+                              messages.decreaseTextSize,
+                            ),
+                            increase: intl.formatMessage(
+                              messages.increaseTextSize,
+                            ),
                           }}
                           stepperDisabled={{
                             decrease:
@@ -397,6 +465,7 @@ const Navigation = ({
                               hasTextScaleInputPercent &&
                               textScaleInputPercent >= MAX_TEXT_SCALE_PERCENT,
                           }}
+                          // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Unit symbol; the live output formats the complete percentage for the active locale.
                           suffixComponent={<span aria-hidden="true">%</span>}
                           className="w-full! [&_input]:text-right"
                         />
@@ -405,14 +474,18 @@ const Navigation = ({
                           aria-atomic="true"
                           className="sr-only"
                         >
-                          Current text size: {textScalePercent}%
+                          <AppMessage
+                            message={messages.currentTextSize}
+                            values={{ size: textScalePercent / 100 }}
+                          />
                         </output>
                       </div>
                     </fieldset>
                   )}
-                  {userScalingEnabled && onExit && (
-                    <hr className="mx-auto my-1 h-px w-full rounded border-0 bg-current/20" />
-                  )}
+                  {(userScalingEnabled || languageSelectionEnabled) &&
+                    onExit && (
+                      <hr className="mx-auto my-1 h-px w-full rounded border-0 bg-current/20" />
+                    )}
                   {onExit && (
                     <Button
                       color="dynamic"
@@ -426,7 +499,13 @@ const Navigation = ({
                       className="w-full justify-start rounded-sm px-4"
                       data-testid="exit-button"
                     >
-                      {reviewMode ? 'Exit review' : 'Exit interview'}
+                      <AppMessage
+                        message={
+                          reviewMode
+                            ? messages.exitReview
+                            : messages.exitInterview
+                        }
+                      />
                     </Button>
                   )}
                 </div>
@@ -441,7 +520,7 @@ const Navigation = ({
           onClick={moveBackward}
           disabled={disableMoveBackward}
           icon={<BackIcon />}
-          aria-label="Previous Step"
+          aria-label={intl.formatMessage(messages.previousStep)}
           buttonRef={backButtonRef}
           data-testid="previous-button"
         />
@@ -451,7 +530,7 @@ const Navigation = ({
             type="button"
             aria-haspopup="dialog"
             aria-expanded={menuOpen}
-            aria-label="Go to another screen"
+            aria-label={intl.formatMessage(messages.goToScreen)}
             onClick={() => setMenuOpen(true)}
             variants={variants}
             className={cx(
@@ -487,7 +566,7 @@ const Navigation = ({
           onClick={moveForward}
           disabled={disableMoveForward}
           icon={<ForwardIcon className="size-8" strokeWidth="3px" />}
-          aria-label="Next Step"
+          aria-label={intl.formatMessage(messages.nextStep)}
           buttonRef={forwardButtonRef}
           data-testid="next-button"
         />
@@ -528,7 +607,7 @@ const Navigation = ({
               )}
             >
               <Drawer.Popup
-                aria-label="Go to another screen"
+                aria-label={intl.formatMessage(messages.goToScreen)}
                 initialFocus={() =>
                   document.getElementById(STAGES_MENU_LIST_ID)
                 }

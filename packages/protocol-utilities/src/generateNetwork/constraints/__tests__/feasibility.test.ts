@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import type {
   Stage,
   StructuralCodebook,
@@ -12,6 +13,8 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../../generateNetwork.ts';
+import { protocolUtilitiesCatalogs } from '../../../locales/catalogs.ts';
+import { formatConstraintConflictReason } from '../../../messages.ts';
 import { ValueGenerator } from '../../../ValueGenerator.ts';
 import { resolveGenerationConfig } from '../../config.ts';
 import { CONTENT_STAGE_TYPES } from '../../contentStages.ts';
@@ -3503,4 +3506,47 @@ describe('roster rows the rules turn away, at the seam the counts feed', () => {
       /up to 3 edges of this type can be generated/,
     );
   });
+});
+
+describe('localized generation refusal metadata', () => {
+  it.each([
+    {
+      type: 'text',
+      validation: { minLength: 24, maxLength: 10 },
+      code: 'invertedBounds',
+      spanish: 'El mínimo supera el máximo',
+    },
+    {
+      type: 'text',
+      validation: { required: true, maxLength: 0 },
+      code: 'requiredEmptyText',
+      spanish: 'La longitud máxima del texto es cero',
+    },
+    {
+      type: 'text',
+      validation: { minLength: MAX_TEXT_DRAW_LENGTH + 1 },
+      code: 'textGenerationLimit',
+      spanish: 'La longitud mínima del texto supera el tamaño',
+    },
+  ])(
+    'carries $code from the generator into Spanish guidance',
+    ({ type, validation, code, spanish }) => {
+      const codebook = codebookWith({
+        name: { name: 'Researcher name', type, validation },
+      });
+      const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+      expect(conflicts).toHaveLength(1);
+      const conflict = conflicts[0];
+      if (!conflict) throw new Error('Expected a generation refusal');
+      expect(conflict.reasonCode).toBe(code);
+      const diagnostic = conflict.reason;
+      const intl = createAppIntl({
+        locale: 'es',
+        messages: protocolUtilitiesCatalogs.es,
+      });
+      expect(formatConstraintConflictReason(conflict, intl)).toContain(spanish);
+      expect(conflict.variableNames).toEqual(['Researcher name']);
+      expect(conflict.reason).toBe(diagnostic);
+    },
+  );
 });

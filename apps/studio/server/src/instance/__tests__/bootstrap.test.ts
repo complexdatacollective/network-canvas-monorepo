@@ -7,6 +7,7 @@ import pg from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import type { CompleteSetupInput } from '@codaco/studio-rpc';
+import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 
 import { stubAuthService } from '../../__tests__/support/auth.ts';
 import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
@@ -20,7 +21,6 @@ import { createRpcClient } from '../../__tests__/support/rpc.ts';
 import { createApp } from '../../app.ts';
 import { createBetterAuthService } from '../../auth/better-auth.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
-import { readMigrations } from '../../db/migrations/artifact.ts';
 import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createPool } from '../../db/pool.ts';
 import { readEnv } from '../../env.ts';
@@ -88,6 +88,7 @@ function rpc(
       {
         auth: stubAuthService(),
         deployment: { mode, billing: false },
+        telemetry: false,
         pool,
         bootstrapToken,
         invitationDeliveryAvailable: false,

@@ -6,8 +6,11 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MotionConfig } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+
+import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
 import DialogProvider from '../../../dialogs/DialogProvider';
 import Surface from '../../../layout/Surface';
@@ -323,6 +326,59 @@ describe('ArrayField', () => {
     await user.click(deleteButtons[0]!);
 
     expect(onChange).toHaveBeenCalledWith([{ id: 'two', label: 'two' }]);
+  });
+
+  /**
+   * A deleted row stays mounted for as long as its exit animation runs. For
+   * that window the document holds a row that is no longer in the value, with
+   * every one of its controls still in the accessibility tree and still
+   * tabbable — so "the second row" and "the row at this index" answer with a
+   * node that is about to be destroyed. What follows is focus on a removed
+   * element, which falls back to `<body>`.
+   *
+   * Real Motion timing is the point of the test: with the suite's usual
+   * instant animations the window does not exist, and a ten-second transition
+   * makes it wide enough that the assertions do not race the exit.
+   */
+  it('drops a deleted row out of the list while it animates away', async () => {
+    await withAnimationsEnabled(async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <DialogProvider>
+          <MotionConfig transition={{ duration: 10 }}>
+            <ArrayField<Item>
+              value={[
+                { id: 'one', label: 'one' },
+                { id: 'two', label: 'two' },
+              ]}
+              getId={(item) => item.id}
+              onChange={onChange}
+              itemTemplate={() => ({ label: 'new' })}
+              itemComponent={TestItem}
+              confirmDelete={false}
+            />
+          </MotionConfig>
+        </DialogProvider>,
+      );
+
+      const [firstDelete, secondDelete] = screen.getAllByRole('button', {
+        name: 'Delete',
+      });
+      if (!firstDelete || !secondDelete) throw new Error('expected two rows');
+
+      await user.click(firstDelete);
+      expect(onChange).toHaveBeenCalledWith([{ id: 'two', label: 'two' }]);
+
+      // The removed row is still mounted — that window is what the assertions
+      // below are about, and they say nothing without it.
+      expect(firstDelete.isConnected).toBe(true);
+      expect(screen.getAllByRole('button', { name: 'Delete' })).toEqual([
+        secondDelete,
+      ]);
+      expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    });
   });
 
   it('passes the current item index to an external editor', async () => {

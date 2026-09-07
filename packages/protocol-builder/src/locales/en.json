@@ -1,0 +1,1594 @@
+{
+  "protocolBuilder.compoundEdit.assemblyFailed": {
+    "defaultMessage": "protocol assembly failed",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: the parts could not be put back together into a whole protocol, and nothing more specific is known."
+  },
+  "protocolBuilder.compoundEdit.assetInvalid": {
+    "defaultMessage": "asset {assetId}: {reason}",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: one of the resources in the protocol did not pass its checks. assetId identifies the resource; reason is the wording of the check that refused it."
+  },
+  "protocolBuilder.compoundEdit.assetInvalidReason": {
+    "defaultMessage": "asset validation failed",
+    "description": "Stands in for the reason a resource failed its checks when the checks said nothing more specific. Read inside the \"asset {assetId}: {reason}\" message."
+  },
+  "protocolBuilder.compoundEdit.duplicateSection": {
+    "defaultMessage": "a compound edit may touch each section only once",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it named the same part of the protocol twice."
+  },
+  "protocolBuilder.compoundEdit.editNeedsHash": {
+    "defaultMessage": "a compound section edit requires an expected content hash",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it did not say which version of that part of the protocol it was built from."
+  },
+  "protocolBuilder.compoundEdit.failed": {
+    "defaultMessage": "the compound edit failed",
+    "description": "Why the host could not change the codebook alongside the interview step being edited, when nothing more specific is known."
+  },
+  "protocolBuilder.compoundEdit.leaseEpochStale": {
+    "defaultMessage": "the primary section lease epoch is stale",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: editing of the step was handed over since the change was prepared."
+  },
+  "protocolBuilder.compoundEdit.leaseGone": {
+    "defaultMessage": "the primary section lease is no longer held",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: nobody holds the step for editing any more."
+  },
+  "protocolBuilder.compoundEdit.leaseTaken": {
+    "defaultMessage": "the primary section lease is now held by another editor",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: someone else is editing the step now."
+  },
+  "protocolBuilder.compoundEdit.missingId": {
+    "defaultMessage": "a compound edit requires an id and at least one section edit",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: the request was not formed correctly."
+  },
+  "protocolBuilder.compoundEdit.notSerializable": {
+    "defaultMessage": "the compound edit payload is not canonically serializable",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: the request could not be written down in a form the host can compare against a retry."
+  },
+  "protocolBuilder.compoundEdit.protocolInvalid": {
+    "defaultMessage": "protocol validation failed",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: the whole protocol did not pass its checks, and the checks said nothing more specific."
+  },
+  "protocolBuilder.compoundEdit.removalNeedsHash": {
+    "defaultMessage": "a compound section removal requires an expected content hash",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: a deletion did not say which version of that part of the protocol it was built from."
+  },
+  "protocolBuilder.compoundEdit.removeMissingSection": {
+    "defaultMessage": "cannot remove a compound section that does not exist",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: it was asked to delete a part of the protocol that is not there."
+  },
+  "protocolBuilder.compoundEdit.requestIdReused": {
+    "defaultMessage": "compound edit request id {requestId} was reused for a different payload",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: an identifier that must name one change was sent with different contents. requestId is that identifier."
+  },
+  "protocolBuilder.compoundEdit.requiresDescription": {
+    "defaultMessage": "a compound edit requires a description",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it did not say what it was doing."
+  },
+  "protocolBuilder.compoundEdit.requiresId": {
+    "defaultMessage": "a compound edit requires a stable request id",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it carried no identifier the host could use to apply it exactly once."
+  },
+  "protocolBuilder.compoundEdit.sectionExists": {
+    "defaultMessage": "cannot create a compound section that already exists",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: it was asked to add a part of the protocol that is already there."
+  },
+  "protocolBuilder.compoundEdit.sectionInvalid": {
+    "defaultMessage": "section validation failed",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: the changed part of the protocol did not pass its checks, and the checks said nothing more specific."
+  },
+  "protocolBuilder.compoundEdit.settingsInvalid": {
+    "defaultMessage": "settings validation failed",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: the protocol settings did not pass their checks, and the checks said nothing more specific."
+  },
+  "protocolBuilder.compoundEdit.settingsUnknownKey": {
+    "defaultMessage": "protocol settings contain unknown key {key}",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: the protocol settings hold something this version does not recognise. key is the unrecognised setting name."
+  },
+  "protocolBuilder.compoundEdit.stageIdMismatch": {
+    "defaultMessage": "the stage document id does not match its section id",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: the identifier inside the step disagrees with the one it is filed under. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.compoundEdit.stageIdentityLocked": {
+    "defaultMessage": "stage identity fields cannot be changed by a compound edit",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it would rename or retype the step itself. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.compoundEdit.stageOrderDuplicate": {
+    "defaultMessage": "stage order lists the same stage twice",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: one step appears twice in the interview step order. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.compoundEdit.stageOrderNotList": {
+    "defaultMessage": "stage order must be a list of non-empty stage ids",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: the record of the interview step order is not a list of steps. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.compoundEdit.stageOrderUnknownKey": {
+    "defaultMessage": "stage order contains an unknown key",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: the record of the interview step order holds something other than the order. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.compoundEdit.staleBase": {
+    "defaultMessage": "the compound edit was built from an outdated section document",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: that part of the protocol has changed since the edit was prepared."
+  },
+  "protocolBuilder.compoundEdit.structuralSectionLocked": {
+    "defaultMessage": "only codebook sections can be structurally created or removed",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it would add or delete a part of the protocol that is not a codebook entry."
+  },
+  "protocolBuilder.compoundEdit.touchesNothing": {
+    "defaultMessage": "a compound edit must touch at least one section",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it would change nothing."
+  },
+  "protocolBuilder.compoundEdit.unknownSection": {
+    "defaultMessage": "a compound edit contains an unknown section id",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it named a part of the protocol that does not exist."
+  },
+  "protocolBuilder.compoundEdit.unknownSectionNamed": {
+    "defaultMessage": "the compound edit names an unknown section",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: it named a part of the protocol this version does not recognise."
+  },
+  "protocolBuilder.compoundEdit.unsupportedSection": {
+    "defaultMessage": "the compound edit names an unsupported section",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: it named a part of the protocol this host cannot change."
+  },
+  "protocolBuilder.compoundEdit.updateMissingDocument": {
+    "defaultMessage": "cannot update a missing compound section document",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: the part of the protocol it was changing went missing partway through."
+  },
+  "protocolBuilder.compoundEdit.updateMissingSection": {
+    "defaultMessage": "cannot update a compound section that does not exist",
+    "description": "Why the host could not change the codebook alongside the interview step being edited: it was asked to change a part of the protocol that is not there."
+  },
+  "protocolBuilder.compoundEdit.updateNeedsCommands": {
+    "defaultMessage": "a compound section update requires at least one command",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: one of the parts it named would change nothing."
+  },
+  "protocolBuilder.compoundEdit.updateNeedsHash": {
+    "defaultMessage": "a compound section update requires an expected content hash",
+    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it did not say which version of that part of the protocol it was built from."
+  },
+  "protocolBuilder.interface.alterEdgeForm": {
+    "defaultMessage": "Per Alter Edge Form",
+    "description": "Researcher-facing interface name. Form for reporting relationships for each network member. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.alterForm": {
+    "defaultMessage": "Per Alter Form",
+    "description": "Researcher-facing interface name. Form for reporting attributes for each network member. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.anonymisation": {
+    "defaultMessage": "Anonymisation Interface",
+    "description": "Researcher-facing interface name. Interface that anonymizes network members. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.categoricalBin": {
+    "defaultMessage": "Categorical Bin",
+    "description": "Researcher-facing interface name. Interface that places network members into categories. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.dyadCensus": {
+    "defaultMessage": "Dyad Census",
+    "description": "Researcher-facing interface name. Interface that asks about every pair of network members. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.egoForm": {
+    "defaultMessage": "Ego Form",
+    "description": "Researcher-facing interface name. Form for attributes of the focal interview participant, called ego in network research. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.familyPedigree": {
+    "defaultMessage": "Family Pedigree",
+    "description": "Researcher-facing interface name. Interface for recording a family genealogy. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.geospatial": {
+    "defaultMessage": "Geospatial Interface",
+    "description": "Researcher-facing interface name. Interface for locating network members on a map. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.information": {
+    "defaultMessage": "Information",
+    "description": "Researcher-facing interface name. Interface for presenting researcher-authored information. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.nameGenerator": {
+    "defaultMessage": "Name Generator (using forms)",
+    "description": "Researcher-facing interface name. Interface for naming network members using forms. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.nameGeneratorQuickAdd": {
+    "defaultMessage": "Name Generator (quick add)",
+    "description": "Researcher-facing interface name. Interface for quickly naming network members. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.nameGeneratorRoster": {
+    "defaultMessage": "Name Generator for Roster Data",
+    "description": "Researcher-facing interface name. Interface for selecting network members from roster data. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.narrative": {
+    "defaultMessage": "Narrative",
+    "description": "Researcher-facing interface name. Interface for recording a narrative. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.narrativePedigree": {
+    "defaultMessage": "Narrative Pedigree",
+    "description": "Researcher-facing interface name. Interface combining a narrative with a family genealogy. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.networkComposer": {
+    "defaultMessage": "Network Composer",
+    "description": "Researcher-facing interface name. Interface for building and editing a network. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.oneToManyDyadCensus": {
+    "defaultMessage": "One to Many Dyad Census",
+    "description": "Researcher-facing interface name. Interface for asking about one network member's relationships with several others. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.ordinalBin": {
+    "defaultMessage": "Ordinal Bin",
+    "description": "Researcher-facing interface name. Interface for arranging network members in ordered categories. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.sociogram": {
+    "defaultMessage": "Sociogram",
+    "description": "Researcher-facing interface name. Interface for drawing and arranging a network. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.tieStrengthCensus": {
+    "defaultMessage": "Tie-Strength Census",
+    "description": "Researcher-facing interface name. Interface for reporting the strength of relationships between network members. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.operators.contains": {
+    "defaultMessage": "contains",
+    "description": "Researcher-facing name for the rule operator that matches an attribute whose text answer matches a regular expression. Read as a whole phrase before the pattern being compared against."
+  },
+  "protocolBuilder.operators.doesNotContain": {
+    "defaultMessage": "does not contain",
+    "description": "Researcher-facing name for the rule operator that matches an attribute whose text answer does not match a regular expression. Read as a whole phrase before the pattern being compared against."
+  },
+  "protocolBuilder.operators.exactly": {
+    "defaultMessage": "is exactly",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with exactly this value. Read as a whole phrase before the value being compared against."
+  },
+  "protocolBuilder.operators.excludes": {
+    "defaultMessage": "excludes",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with none of a chosen set of options. Read as a whole phrase before the options being compared against."
+  },
+  "protocolBuilder.operators.exists": {
+    "defaultMessage": "exists",
+    "description": "Researcher-facing name for the rule operator that matches when the thing being asked about is present in the interview network at all. Compares no value."
+  },
+  "protocolBuilder.operators.greaterThan": {
+    "defaultMessage": "is greater than",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with a number above this value. Read as a whole phrase before the value being compared against."
+  },
+  "protocolBuilder.operators.greaterThanOrEqual": {
+    "defaultMessage": "is greater than or exactly",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with a number above this value or equal to it. Read as a whole phrase before the value being compared against."
+  },
+  "protocolBuilder.operators.includes": {
+    "defaultMessage": "includes",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with one of a chosen set of options. Read as a whole phrase before the options being compared against."
+  },
+  "protocolBuilder.operators.lessThan": {
+    "defaultMessage": "is less than",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with a number below this value. Read as a whole phrase before the value being compared against."
+  },
+  "protocolBuilder.operators.lessThanOrEqual": {
+    "defaultMessage": "is less than or exactly",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with a number below this value or equal to it. Read as a whole phrase before the value being compared against."
+  },
+  "protocolBuilder.operators.not": {
+    "defaultMessage": "is not",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with anything other than this value. Read as a whole phrase before the value being compared against."
+  },
+  "protocolBuilder.operators.notExists": {
+    "defaultMessage": "does not exist",
+    "description": "Researcher-facing name for the rule operator that matches when the thing being asked about is absent from the interview network. Compares no value."
+  },
+  "protocolBuilder.operators.optionsEquals": {
+    "defaultMessage": "number of selected options is exactly",
+    "description": "Researcher-facing name for the rule operator that counts how many options a multiple-choice attribute was answered with and matches exactly this number. Read as a whole phrase before the number being compared against."
+  },
+  "protocolBuilder.operators.optionsGreaterThan": {
+    "defaultMessage": "number of selected options is greater than",
+    "description": "Researcher-facing name for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count above this number. Read as a whole phrase before the number being compared against."
+  },
+  "protocolBuilder.operators.optionsLessThan": {
+    "defaultMessage": "number of selected options is less than",
+    "description": "Researcher-facing name for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count below this number. Read as a whole phrase before the number being compared against."
+  },
+  "protocolBuilder.operators.optionsNotEquals": {
+    "defaultMessage": "number of selected options is not",
+    "description": "Researcher-facing name for the rule operator that counts how many options a multiple-choice attribute was answered with and matches any count other than this number. Read as a whole phrase before the number being compared against."
+  },
+  "protocolBuilder.protocolContext.duplicateEntityName": {
+    "defaultMessage": "Duplicate entity name \"{name}\" (first declared in {firstOwnerSectionId}).",
+    "description": "Why part of the codebook could not be read: two entity types share a name. name is the researcher-authored type name; firstOwnerSectionId identifies the part of the protocol that used it first."
+  },
+  "protocolBuilder.protocolContext.missingStageOrder": {
+    "defaultMessage": "Protocol sections do not include a stage order.",
+    "description": "Why the interview steps could not be put in order: the protocol has nothing saying what the order is."
+  },
+  "protocolBuilder.protocolContext.stageIdMismatch": {
+    "defaultMessage": "Stage document id {documentId} does not match section id {sectionStageId}.",
+    "description": "Why one interview step could not be read: the identifier inside it disagrees with the one it is filed under. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.protocolContext.stageMissingFromOrder": {
+    "defaultMessage": "Stage {stageId} is missing from the stage order.",
+    "description": "Why one interview step is not shown: the protocol has it but the order does not name it. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.protocolContext.stageOrderDuplicate": {
+    "defaultMessage": "Stage order must not list the same stage twice.",
+    "description": "Why the order of the interview steps could not be read: one step appears in it more than once. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.protocolContext.stageOrderMissingStage": {
+    "defaultMessage": "Stage order names missing stage {stageId}.",
+    "description": "Why the order of the interview steps could not be used: it names a step the protocol does not have. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.protocolContext.stageOrderNotList": {
+    "defaultMessage": "Stage order must be a list of non-empty stage ids.",
+    "description": "Why the order of the interview steps could not be read. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.protocolContext.unknownSectionId": {
+    "defaultMessage": "Unknown protocol section id.",
+    "description": "Why part of the protocol could not be read: it is filed under a name this version does not recognise."
+  },
+  "protocolBuilder.protocolContext.variableIdReused": {
+    "defaultMessage": "Attribute record key \"{variableId}\" is reused across entity types (first declared in {firstOwnerSectionId}).",
+    "description": "Why part of the codebook could not be read: two entity types store an attribute under the same key. variableId is the key; firstOwnerSectionId identifies the part of the protocol that used it first."
+  },
+  "protocolBuilder.resourceBrowser.emptyState": {
+    "defaultMessage": "There are no resources to choose from yet.",
+    "description": "Shown in place of the resource list when the protocol holds none of the kind this field accepts and none has been imported yet."
+  },
+  "protocolBuilder.resourceBrowser.libraryDescription": {
+    "defaultMessage": "Resources already saved, and anything imported since this stage was opened.",
+    "description": "Description under the heading of the resource list. \"Stage\" is one step of an interview."
+  },
+  "protocolBuilder.resourceBrowser.libraryTitle": {
+    "defaultMessage": "Resources in this protocol",
+    "description": "Heading over the list of resources — images, audio, video, participant data, API keys — a researcher can choose from. Also the accessible name of that list."
+  },
+  "protocolBuilder.resourceBrowser.loading": {
+    "defaultMessage": "Loading resources…",
+    "description": "Shown while the list of a protocol’s resources is being read for the first time."
+  },
+  "protocolBuilder.resourceBrowser.retryLibrary": {
+    "defaultMessage": "Try loading the resource list again",
+    "description": "Button beside a failure notice, which asks the host again for the list of resources. Named rather than generic because several parts of the dialog can be failing at once."
+  },
+  "protocolBuilder.resourceFailure.alreadyCommitted": {
+    "defaultMessage": "that resource is already part of the protocol",
+    "description": "Refusal shown when a save was asked to import a resource the protocol already holds. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.assetValidationFailed": {
+    "defaultMessage": "asset validation failed",
+    "description": "Fallback reason used when the protocol schema rejected an asset entry without saying why. Appears inside a longer sentence, so it is lower case and has no full stop."
+  },
+  "protocolBuilder.resourceFailure.downloadUnsupported": {
+    "defaultMessage": "secret material cannot be downloaded",
+    "description": "Refusal shown when something asked to download an API key’s content. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.fileEmpty": {
+    "defaultMessage": "the selected file is empty",
+    "description": "Refusal shown when the file a researcher chose holds no bytes at all. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.fileTooLarge": {
+    "defaultMessage": "the selected file is larger than the {limit, number} byte limit",
+    "description": "Refusal shown when the file a researcher chose exceeds what the host will store. limit is that size as an exact byte count, not a rounded one. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.hostUnavailable": {
+    "defaultMessage": "the resource host is temporarily unavailable",
+    "description": "Refusal shown when the store holding protocol resources cannot answer right now. Lower case and without a full stop: surfaces put it after a clause of their own."
+  },
+  "protocolBuilder.resourceFailure.invalidManifestEntry": {
+    "defaultMessage": "asset {resourceId}: {reason}",
+    "description": "Shown to a researcher when a host proposed a protocol asset entry the protocol schema rejects. resourceId is the asset id; reason is the schema’s own English message, or the generic fallback. Lower case because a surface may put it after a clause of its own."
+  },
+  "protocolBuilder.resourceFailure.invalidResource": {
+    "defaultMessage": "The resource (\"{resourceId}\") this stage uses is not valid: {reason}",
+    "description": "Validation problem shown against the field of an interview stage whose resource has an unusable entry in the protocol. resourceId is the asset id; reason is the schema’s own English message, or the generic fallback."
+  },
+  "protocolBuilder.resourceFailure.manifestUpdateFailed": {
+    "defaultMessage": "the asset manifest could not be updated",
+    "description": "Refusal shown when the protocol’s own list of resources could not be written while saving. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.missingResource": {
+    "defaultMessage": "This stage uses a resource (\"{resourceId}\") that is not in the protocol.",
+    "description": "Validation problem shown against the field of an interview stage (one step of an interview) that names a resource the protocol does not contain. resourceId is the asset id the field holds."
+  },
+  "protocolBuilder.resourceFailure.notFound": {
+    "defaultMessage": "that resource is no longer available",
+    "description": "Refusal shown when nothing in the protocol or this editing session has the requested resource id. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.previewUnsupported": {
+    "defaultMessage": "secret material cannot be previewed",
+    "description": "Refusal shown when something asked to display an API key’s content. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.promotionDuplicateResource": {
+    "defaultMessage": "a promotion may name each resource only once",
+    "description": "Refusal shown when a save of imported resources named the same one twice. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.promotionNeedsId": {
+    "defaultMessage": "a promotion requires a stable request id",
+    "description": "Refusal shown when a save of imported resources arrived without the identifier that makes it safe to repeat. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.promotionNeedsResource": {
+    "defaultMessage": "a promotion must name at least one staged resource",
+    "description": "Refusal shown when a save of imported resources named none of them. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.promotionRolledBack": {
+    "defaultMessage": "the resources could not be stored; nothing was changed",
+    "description": "Refusal shown when saving a stage’s imported resources failed partway and every part of it was undone. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.promotionUndecided": {
+    "defaultMessage": "the last attempt to save these resources did not say whether it finished, so they cannot be discarded until saving again settles it",
+    "description": "Refusal shown when a researcher asks to discard an imported resource whose last save never reported whether it committed. Lower case and without a full stop: surfaces put it after a clause of their own."
+  },
+  "protocolBuilder.resourceFailure.readOnly": {
+    "defaultMessage": "this protocol is open for viewing only, so its resources cannot change",
+    "description": "Refusal shown when a researcher tries to import, discard, or save a resource in a protocol opened read-only. Lower case and without a full stop because surfaces put it after a clause of their own."
+  },
+  "protocolBuilder.resourceFailure.resourceDiscarded": {
+    "defaultMessage": "That resource is no longer available: it was discarded while this list was open. Close and reopen the browser to see what there is.",
+    "description": "Refusal shown when a researcher picks a resource from a list read before that resource was discarded. \"The browser\" is this app’s resource-picking dialog, not the web browser."
+  },
+  "protocolBuilder.resourceFailure.resourceLeaving": {
+    "defaultMessage": "That resource is being discarded, so it cannot be used here. Choose a different one.",
+    "description": "Refusal shown when a researcher picks a resource another field is in the middle of discarding."
+  },
+  "protocolBuilder.resourceFailure.rosterAttributeNameUnusable": {
+    "defaultMessage": "the \"{name}\" attribute cannot be used as a variable name: names may hold only letters, digits, and the characters . _ - :",
+    "description": "Refusal shown when an imported roster carries a column or attribute name a protocol variable cannot take — a spreadsheet heading such as \"home address\". name is that heading, left exactly as the researcher wrote it. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterEmpty": {
+    "defaultMessage": "the selected file has no records in it, so a stage using it would have nobody to show",
+    "description": "Refusal shown when an imported roster parsed correctly but holds no entries. \"Stage\" is one step of an interview. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterNodeAttributesNotObject": {
+    "defaultMessage": "the attributes of node {position} are not an object",
+    "description": "Names the entry at fault in an imported roster whose attributes are malformed. \"Node\" is one person or entity in network data; position is its one-based place in the file. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterNodeNotObject": {
+    "defaultMessage": "node {position} is not an object",
+    "description": "Names the entry at fault in an imported roster. \"Node\" is the network-research term for one person or entity in the data; position is its one-based place in the file. Appears after a clause of its own, so it is lower case and has no full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterUnreadable": {
+    "defaultMessage": "the selected file is not a readable network",
+    "description": "Refusal shown when an imported roster (participant data an interview reads) cannot be parsed as network data. \"Network\" is the network-research sense: people and the ties between them. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterUnreadableDetail": {
+    "defaultMessage": "the selected file is not a readable network: {detail}",
+    "description": "The same refusal as rosterUnreadable, with the specific fault named. detail is one of the roster* messages below, already localized. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterValueUnusableInNode": {
+    "defaultMessage": "the \"{name}\" attribute of node {position} is not a value a variable can hold",
+    "description": "Names the attribute at fault in an imported JSON roster. name is the researcher’s own attribute name; \"node\" is one person or entity in network data and position is its one-based place in the file. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterValueUnusableInRow": {
+    "defaultMessage": "the \"{name}\" attribute of row {row} is not a value a variable can hold",
+    "description": "Names the cell at fault in an imported spreadsheet roster. name is the researcher’s own column heading; row is its one-based line in the file. \"Attribute\" and \"variable\" are the data fields a protocol records. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.saveInFlight": {
+    "defaultMessage": "these resources are being saved right now, so they cannot be discarded until the save finishes",
+    "description": "Refusal shown when a researcher asks to discard an imported resource while the stage that uses it is being saved. Lower case and without a full stop: surfaces put it after a clause of their own."
+  },
+  "protocolBuilder.resourceFailure.secretNeedsHandle": {
+    "defaultMessage": "a staged secret can only be promoted with its staged handle",
+    "description": "Refusal shown when a save tried to store an API key without the token the host issued for it. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.secretNeedsIdAndName": {
+    "defaultMessage": "a staged secret needs a stable request id and a name",
+    "description": "Refusal shown when an API key was submitted without the name or request identifier the host needs. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.secretValueEmpty": {
+    "defaultMessage": "the secret value is empty",
+    "description": "Refusal shown when an API key was submitted with no value in it. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.sessionCancelled": {
+    "defaultMessage": "this stage was discarded, so its resources can no longer be saved",
+    "description": "Refusal shown when a save is attempted after the interview stage being edited was discarded. \"Stage\" is one step of an interview. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.stagingEndedFile": {
+    "defaultMessage": "this editing session ended before the file finished staging, so it was not kept",
+    "description": "Refusal shown when a researcher’s imported file finished uploading after they had already discarded or saved the stage. Lower case and without a full stop: surfaces put it after a clause of their own."
+  },
+  "protocolBuilder.resourceFailure.stagingEndedSecret": {
+    "defaultMessage": "this editing session ended before the secret finished staging, so it was not kept",
+    "description": "Refusal shown when a researcher’s API key finished being stored after they had already discarded or saved the stage. Lower case and without a full stop: surfaces put it after a clause of their own."
+  },
+  "protocolBuilder.resourceFailure.unreachable": {
+    "defaultMessage": "The resource could not be reached. Try again in a moment.",
+    "description": "Shown to a researcher when the host storing protocol resources (images, audio, rosters, API keys) threw instead of answering. Deliberately says nothing about the host."
+  },
+  "protocolBuilder.resourceFailure.unsavableResource": {
+    "defaultMessage": "The resource (\"{resourceId}\") this stage uses cannot be saved: {reason}",
+    "description": "Validation problem shown when saving an interview stage and the host will not vouch for a resource it references. resourceId is the asset id; reason is the host’s own refusal, itself a localized sentence."
+  },
+  "protocolBuilder.resourceFailure.uploadNeedsFilename": {
+    "defaultMessage": "a staged file needs a filename without path separators",
+    "description": "Refusal shown when an imported file’s recorded filename still carries a folder path. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.uploadNeedsIdAndName": {
+    "defaultMessage": "a staged file needs a stable request id and a name",
+    "description": "Refusal shown when an imported file arrived without the name or request identifier the host needs. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceKinds.apikeyBrowserDescription": {
+    "defaultMessage": "Add an API key, or choose one already stored in this protocol.",
+    "description": "Description under the title of the dialog where a researcher picks or adds an API key."
+  },
+  "protocolBuilder.resourceKinds.apikeyBrowserTitle": {
+    "defaultMessage": "Choose an API key",
+    "description": "Title of the dialog where a researcher picks or adds an API key."
+  },
+  "protocolBuilder.resourceKinds.apikeyChangeAction": {
+    "defaultMessage": "Change the API key",
+    "description": "Button that opens the picker for a stage field that already holds an API key."
+  },
+  "protocolBuilder.resourceKinds.apikeyImportTitle": {
+    "defaultMessage": "Add an API key",
+    "description": "Heading over the form for adding a new API key inside the resource dialog."
+  },
+  "protocolBuilder.resourceKinds.apikeyLabel": {
+    "defaultMessage": "API key",
+    "description": "Name of the resource type that holds a map provider’s API key. Shown as a badge beside a resource in a protocol’s resource list."
+  },
+  "protocolBuilder.resourceKinds.apikeySelectAction": {
+    "defaultMessage": "Select an API key",
+    "description": "Button that opens the picker for a stage field that holds a map provider’s API key, when the field holds none yet."
+  },
+  "protocolBuilder.resourceKinds.audioBrowserDescription": {
+    "defaultMessage": "Import an audio file, or choose one already stored in this protocol.",
+    "description": "Description under the title of the dialog where a researcher picks or imports an audio file."
+  },
+  "protocolBuilder.resourceKinds.audioBrowserTitle": {
+    "defaultMessage": "Choose an audio file",
+    "description": "Title of the dialog where a researcher picks or imports an audio file."
+  },
+  "protocolBuilder.resourceKinds.audioChangeAction": {
+    "defaultMessage": "Change the audio file",
+    "description": "Button that opens the picker for a stage field that already holds an audio file."
+  },
+  "protocolBuilder.resourceKinds.audioImportTitle": {
+    "defaultMessage": "Import an audio file",
+    "description": "Heading over the file-import area for audio inside the resource dialog."
+  },
+  "protocolBuilder.resourceKinds.audioLabel": {
+    "defaultMessage": "Audio",
+    "description": "Name of the resource type that holds an audio recording. Shown as a badge beside a resource in a protocol’s resource list."
+  },
+  "protocolBuilder.resourceKinds.audioSelectAction": {
+    "defaultMessage": "Select an audio file",
+    "description": "Button that opens the picker for a stage field that holds an audio file, when the field holds none yet."
+  },
+  "protocolBuilder.resourceKinds.byteLengthBytes": {
+    "defaultMessage": "{size, number} bytes",
+    "description": "A resource’s stored size when it is under one kilobyte. size is the exact byte count."
+  },
+  "protocolBuilder.resourceKinds.byteLengthKilobytes": {
+    "defaultMessage": "{size, number, ::.0} KB",
+    "description": "A resource’s stored size in kilobytes, always to one decimal place. size is that already-rounded number; KB is the unit symbol."
+  },
+  "protocolBuilder.resourceKinds.byteLengthMegabytes": {
+    "defaultMessage": "{size, number, ::.0} MB",
+    "description": "A resource’s stored size in megabytes, always to one decimal place. size is that already-rounded number; MB is the unit symbol."
+  },
+  "protocolBuilder.resourceKinds.committedStatus": {
+    "defaultMessage": "Saved in this protocol",
+    "description": "Badge on a resource the protocol already contains, as opposed to one imported but not yet saved."
+  },
+  "protocolBuilder.resourceKinds.fileBrowserDescription": {
+    "defaultMessage": "Import a file, or choose a resource already stored in this protocol.",
+    "description": "Description under the title of the dialog where a researcher picks or imports a resource of any kind."
+  },
+  "protocolBuilder.resourceKinds.fileBrowserTitle": {
+    "defaultMessage": "Choose a resource",
+    "description": "Title of the dialog where a researcher picks or imports a resource of any kind."
+  },
+  "protocolBuilder.resourceKinds.fileChangeAction": {
+    "defaultMessage": "Change the resource",
+    "description": "Button that opens the picker for a stage field that accepts any kind of resource and already holds one."
+  },
+  "protocolBuilder.resourceKinds.fileImportTitle": {
+    "defaultMessage": "Import a file",
+    "description": "Heading over the file-import area for any kind of file inside the resource dialog."
+  },
+  "protocolBuilder.resourceKinds.fileSelectAction": {
+    "defaultMessage": "Select a resource",
+    "description": "Button that opens the picker for a stage field that accepts any kind of resource, when the field holds none yet."
+  },
+  "protocolBuilder.resourceKinds.geojsonBrowserDescription": {
+    "defaultMessage": "Import a GeoJSON map layer, or choose one already stored in this protocol.",
+    "description": "Description under the title of the dialog where a researcher picks or imports a GeoJSON map layer."
+  },
+  "protocolBuilder.resourceKinds.geojsonBrowserTitle": {
+    "defaultMessage": "Choose a map layer",
+    "description": "Title of the dialog where a researcher picks or imports a GeoJSON map layer."
+  },
+  "protocolBuilder.resourceKinds.geojsonChangeAction": {
+    "defaultMessage": "Change the map layer",
+    "description": "Button that opens the picker for a stage field that already holds a GeoJSON map layer."
+  },
+  "protocolBuilder.resourceKinds.geojsonImportTitle": {
+    "defaultMessage": "Import a map layer",
+    "description": "Heading over the file-import area for map layers inside the resource dialog."
+  },
+  "protocolBuilder.resourceKinds.geojsonLabel": {
+    "defaultMessage": "Map layer",
+    "description": "Name of the resource type that holds a GeoJSON map layer. Shown as a badge beside a resource in a protocol’s resource list."
+  },
+  "protocolBuilder.resourceKinds.geojsonSelectAction": {
+    "defaultMessage": "Select a map layer",
+    "description": "Button that opens the picker for a stage field that holds a GeoJSON map layer, when the field holds none yet."
+  },
+  "protocolBuilder.resourceKinds.imageBrowserDescription": {
+    "defaultMessage": "Import an image, or choose one already stored in this protocol.",
+    "description": "Description under the title of the dialog where a researcher picks or imports an image."
+  },
+  "protocolBuilder.resourceKinds.imageBrowserTitle": {
+    "defaultMessage": "Choose an image",
+    "description": "Title of the dialog where a researcher picks or imports an image."
+  },
+  "protocolBuilder.resourceKinds.imageChangeAction": {
+    "defaultMessage": "Change the image",
+    "description": "Button that opens the picker for a stage field that already holds an image."
+  },
+  "protocolBuilder.resourceKinds.imageImportTitle": {
+    "defaultMessage": "Import an image",
+    "description": "Heading over the file-import area for images inside the resource dialog."
+  },
+  "protocolBuilder.resourceKinds.imageLabel": {
+    "defaultMessage": "Image",
+    "description": "Name of the resource type that holds a picture. Shown as a badge beside a resource in a protocol’s resource list."
+  },
+  "protocolBuilder.resourceKinds.imageSelectAction": {
+    "defaultMessage": "Select an image",
+    "description": "Button that opens the picker for a stage field that holds an image, when the field holds none yet."
+  },
+  "protocolBuilder.resourceKinds.networkBrowserDescription": {
+    "defaultMessage": "Import a CSV or JSON data file, or choose one already stored in this protocol.",
+    "description": "Description under the title of the dialog where a researcher picks or imports participant data (a roster). CSV and JSON are file formats and stay untranslated."
+  },
+  "protocolBuilder.resourceKinds.networkBrowserTitle": {
+    "defaultMessage": "Choose a data file",
+    "description": "Title of the dialog where a researcher picks or imports participant data (a roster)."
+  },
+  "protocolBuilder.resourceKinds.networkChangeAction": {
+    "defaultMessage": "Change the data file",
+    "description": "Button that opens the picker for a stage field that already holds imported participant data."
+  },
+  "protocolBuilder.resourceKinds.networkImportTitle": {
+    "defaultMessage": "Import a data file",
+    "description": "Heading over the file-import area for participant data inside the resource dialog."
+  },
+  "protocolBuilder.resourceKinds.networkLabel": {
+    "defaultMessage": "Network data",
+    "description": "Name of the resource type that holds imported participant data — a roster of people and the ties between them, in the network-research sense. Shown as a badge beside a resource in a protocol’s resource list."
+  },
+  "protocolBuilder.resourceKinds.networkSelectAction": {
+    "defaultMessage": "Select a data file",
+    "description": "Button that opens the picker for a stage field that holds imported participant data, when the field holds none yet."
+  },
+  "protocolBuilder.resourceKinds.oversizeFile": {
+    "defaultMessage": "That file is too large to import. Files can be up to {size}.",
+    "description": "Refusal shown when a researcher chooses a file bigger than the editor will read. size is a rounded human-readable size such as \"8.0 MB\", already localized."
+  },
+  "protocolBuilder.resourceKinds.stagedStatus": {
+    "defaultMessage": "Imported, not yet saved",
+    "description": "Badge on a resource the researcher imported during this editing session, which the protocol will only hold once the stage (one step of an interview) is saved."
+  },
+  "protocolBuilder.resourceKinds.unsupportedFile": {
+    "defaultMessage": "That file cannot be imported here. Supported file types are: {types}.",
+    "description": "Refusal shown when a researcher chooses a file this stage field cannot hold. types is the list of accepted filename extensions, already joined for the reader’s language."
+  },
+  "protocolBuilder.resourceKinds.unsupportedKind": {
+    "defaultMessage": "That resource cannot be used in this field. It accepts: {kinds}.",
+    "description": "Refusal shown when a researcher picks a stored resource of a type this stage field cannot hold. kinds is the list of resource-type names it does accept, already joined for the reader’s language."
+  },
+  "protocolBuilder.resourceKinds.videoBrowserDescription": {
+    "defaultMessage": "Import a video, or choose one already stored in this protocol.",
+    "description": "Description under the title of the dialog where a researcher picks or imports a video."
+  },
+  "protocolBuilder.resourceKinds.videoBrowserTitle": {
+    "defaultMessage": "Choose a video",
+    "description": "Title of the dialog where a researcher picks or imports a video."
+  },
+  "protocolBuilder.resourceKinds.videoChangeAction": {
+    "defaultMessage": "Change the video",
+    "description": "Button that opens the picker for a stage field that already holds a video."
+  },
+  "protocolBuilder.resourceKinds.videoImportTitle": {
+    "defaultMessage": "Import a video",
+    "description": "Heading over the file-import area for videos inside the resource dialog."
+  },
+  "protocolBuilder.resourceKinds.videoLabel": {
+    "defaultMessage": "Video",
+    "description": "Name of the resource type that holds a video. Shown as a badge beside a resource in a protocol’s resource list."
+  },
+  "protocolBuilder.resourceKinds.videoSelectAction": {
+    "defaultMessage": "Select a video",
+    "description": "Button that opens the picker for a stage field that holds a video, when the field holds none yet."
+  },
+  "protocolBuilder.resourcePicker.discard": {
+    "defaultMessage": "Discard this resource",
+    "description": "Button that throws away a resource imported in this editing session, for the whole session rather than only for this field."
+  },
+  "protocolBuilder.resourcePicker.discardedAnnouncement": {
+    "defaultMessage": "The imported resource was discarded.",
+    "description": "Announced to assistive technology when a resource imported in this editing session is thrown away."
+  },
+  "protocolBuilder.resourcePicker.download": {
+    "defaultMessage": "Download this resource",
+    "description": "Button that saves a copy of the resource this stage field holds to the researcher’s computer."
+  },
+  "protocolBuilder.resourcePicker.downloadedAnnouncement": {
+    "defaultMessage": "{name} was downloaded.",
+    "description": "Announced to assistive technology once a copy of a resource has been saved to the researcher’s computer. name is the resource’s name."
+  },
+  "protocolBuilder.resourcePicker.importedFileOption": {
+    "defaultMessage": "Use an imported data file",
+    "description": "Radio option choosing imported participant data (a roster) rather than the network the interview has built so far."
+  },
+  "protocolBuilder.resourcePicker.interviewNetworkAnnouncement": {
+    "defaultMessage": "This stage will use the network from the interview itself.",
+    "description": "Announced to assistive technology when the field is set to read the network the interview builds rather than an imported file. \"Stage\" is one step of an interview."
+  },
+  "protocolBuilder.resourcePicker.interviewNetworkOption": {
+    "defaultMessage": "Use the network from the in-progress interview",
+    "description": "Radio option choosing the network the interview has built so far — the people and ties the participant has already named — rather than an imported data file."
+  },
+  "protocolBuilder.resourcePicker.noSelection": {
+    "defaultMessage": "No resource selected.",
+    "description": "Shown in place of a resource summary when this stage field holds nothing yet."
+  },
+  "protocolBuilder.resourcePicker.remove": {
+    "defaultMessage": "Remove this resource",
+    "description": "Button that clears this stage field, leaving the resource itself in the protocol."
+  },
+  "protocolBuilder.resourcePicker.removedAnnouncement": {
+    "defaultMessage": "The resource was removed from this field.",
+    "description": "Announced to assistive technology when this stage field is cleared, leaving the resource itself in the protocol."
+  },
+  "protocolBuilder.resourcePicker.retryAction": {
+    "defaultMessage": "Try that again",
+    "description": "Button beside a failure notice, which repeats the download or discard the researcher just asked for."
+  },
+  "protocolBuilder.resourcePicker.retryInspection": {
+    "defaultMessage": "Try loading this resource again",
+    "description": "Button beside a failure notice, which asks the host again for the details of the resource this field holds. Named rather than generic because several parts of one field can be failing at once."
+  },
+  "protocolBuilder.resourcePicker.selectedAnnouncement": {
+    "defaultMessage": "{name} is now selected.",
+    "description": "Announced to assistive technology when a resource is chosen for this field. name is the resource’s name as the protocol records it."
+  },
+  "protocolBuilder.resourcePicker.stillInUse": {
+    "defaultMessage": "This resource is still used elsewhere on this stage, so it was not discarded. Remove it from this field instead, or choose a different resource here.",
+    "description": "Refusal shown when a researcher asks to discard an imported resource another field of the same stage still names. \"Stage\" is one step of an interview."
+  },
+  "protocolBuilder.resourcePicker.unresolvedReference": {
+    "defaultMessage": "This field still refers to that resource. Removing it clears the reference; it does not delete anything.",
+    "description": "Shown beside a failure when the resource a stage field names could not be looked up, explaining what the Remove button beneath it does."
+  },
+  "protocolBuilder.resourcePreview.retry": {
+    "defaultMessage": "Try loading the preview again",
+    "description": "Button beside a failure notice, which asks the host again for the URL that displays an imported image, video, or audio file. Named rather than generic because several parts of one field can be failing at once."
+  },
+  "protocolBuilder.resourceSecret.addedAnnouncement": {
+    "defaultMessage": "{name} was added.",
+    "description": "Announced to assistive technology once an API key has been added. name is the name the researcher gave it."
+  },
+  "protocolBuilder.resourceSecret.duplicateName": {
+    "defaultMessage": "You already have a key called that. Choose a different name.",
+    "description": "Field error shown when a researcher names an API key the same as one the protocol already holds. Names are how keys are told apart, so two alike cannot be allowed."
+  },
+  "protocolBuilder.resourceSecret.nameHint": {
+    "defaultMessage": "How this key is listed in your protocol.",
+    "description": "Hint under the input naming the API key being added, saying what the name is for."
+  },
+  "protocolBuilder.resourceSecret.nameLabel": {
+    "defaultMessage": "Name",
+    "description": "Label of the input naming the API key being added."
+  },
+  "protocolBuilder.resourceSecret.nameRequired": {
+    "defaultMessage": "Enter a name for this key.",
+    "description": "Field error shown when a researcher submits an API key without naming it."
+  },
+  "protocolBuilder.resourceSecret.plaintextHint": {
+    "defaultMessage": "Pasted from your map provider. It is saved inside your protocol as plain text, so anyone you give the protocol file to can read it. It is not shown again here.",
+    "description": "Hint under the API key input for a host that writes the key into the protocol file itself. The researcher is deciding whether to put a credential into a file they will share, so the consequence is stated plainly."
+  },
+  "protocolBuilder.resourceSecret.retry": {
+    "defaultMessage": "Try adding the key again",
+    "description": "Button beside a failure notice, which repeats the identical request to add the same API key. Named rather than generic because several parts of the dialog can be failing at once."
+  },
+  "protocolBuilder.resourceSecret.submit": {
+    "defaultMessage": "Add API key",
+    "description": "Button that submits the name and value of a new API key to the host."
+  },
+  "protocolBuilder.resourceSecret.valueLabel": {
+    "defaultMessage": "Key",
+    "description": "Label of the password input holding the API key value itself."
+  },
+  "protocolBuilder.resourceSecret.valueRequired": {
+    "defaultMessage": "Enter the value of the key.",
+    "description": "Field error shown when a researcher submits an API key without pasting the key itself."
+  },
+  "protocolBuilder.resourceSecret.vaultHint": {
+    "defaultMessage": "Pasted from your map provider. It is kept by the host rather than saved inside your protocol, and is not shown again here.",
+    "description": "Hint under the API key input for a host that keeps the key itself rather than writing it into the protocol file."
+  },
+  "protocolBuilder.resourceSecret.waitingForNames": {
+    "defaultMessage": "Waiting for the keys this protocol already has, so this one can be checked against them.",
+    "description": "Why the button that adds an API key is not usable yet. One whole sentence about what the researcher is waiting for: a disabled button with no reason beside it reads as a broken one."
+  },
+  "protocolBuilder.resourceSummary.attributesTerm": {
+    "defaultMessage": "Attributes",
+    "description": "Label beside the attribute names an imported roster carries — the data fields the interview will read from it."
+  },
+  "protocolBuilder.resourceSummary.dimensions": {
+    "defaultMessage": "{width} × {height} pixels",
+    "description": "The pixel size of an image a researcher imported. width and height are exact pixel counts, so they are not grouped."
+  },
+  "protocolBuilder.resourceSummary.dimensionsTerm": {
+    "defaultMessage": "Dimensions",
+    "description": "Label beside the pixel width and height of an image."
+  },
+  "protocolBuilder.resourceSummary.duration": {
+    "defaultMessage": "{seconds, plural, one {# second} other {# seconds}}",
+    "description": "How long an imported audio or video resource plays for, rounded to whole seconds."
+  },
+  "protocolBuilder.resourceSummary.durationTerm": {
+    "defaultMessage": "Duration",
+    "description": "Label beside how long an audio or video resource plays for."
+  },
+  "protocolBuilder.resourceSummary.edgesTerm": {
+    "defaultMessage": "Edges",
+    "description": "Label beside how many edges an imported roster holds. \"Edge\" is the network-research term for a tie between two people or entities."
+  },
+  "protocolBuilder.resourceSummary.fileTerm": {
+    "defaultMessage": "File",
+    "description": "Label beside the original filename of a resource a researcher imported into their protocol."
+  },
+  "protocolBuilder.resourceSummary.nodesTerm": {
+    "defaultMessage": "Nodes",
+    "description": "Label beside how many nodes an imported roster holds. \"Node\" is the network-research term for one person or entity in the data."
+  },
+  "protocolBuilder.resourceSummary.sizeTerm": {
+    "defaultMessage": "Size",
+    "description": "Label beside how much storage a resource takes, shown as a rounded size such as \"1.5 KB\"."
+  },
+  "protocolBuilder.resourceUpload.chooseFile": {
+    "defaultMessage": "Choose a file from your computer",
+    "description": "Label of the file input a researcher uses to import a file into their protocol."
+  },
+  "protocolBuilder.resourceUpload.dropHint": {
+    "defaultMessage": "Drag and drop a file here to import it.",
+    "description": "Instruction inside the drop target of the file-import area. The keyboard-operable file input sits below it."
+  },
+  "protocolBuilder.resourceUpload.importedAnnouncement": {
+    "defaultMessage": "{name} was imported.",
+    "description": "Announced to assistive technology once a file has been imported. name is the filename the researcher chose."
+  },
+  "protocolBuilder.resourceUpload.importingAnnouncement": {
+    "defaultMessage": "Importing the file…",
+    "description": "Announced to assistive technology while a chosen file is being imported."
+  },
+  "protocolBuilder.resourceUpload.retry": {
+    "defaultMessage": "Try importing the file again",
+    "description": "Button beside a failure notice, which repeats the import of the same file. Named rather than generic because several parts of the dialog can be failing at once."
+  },
+  "protocolBuilder.resourceUpload.unreadable": {
+    "defaultMessage": "That file could not be read. Choose it again, or try a different file.",
+    "description": "Refusal shown when the browser could not read the bytes of the file a researcher chose — it was moved, renamed, or is unreadable."
+  },
+  "protocolBuilder.ruleCodebook.operatorNoLongerOffered": {
+    "defaultMessage": "{operator} (no longer offered)",
+    "description": "Label for an operator a stored rule already uses which this editor no longer offers, shown so the researcher can read their own rule. The protocol schema still accepts it, so it can be chosen again. operator is the operator phrase, e.g. \"is greater than\"."
+  },
+  "protocolBuilder.ruleCodebook.operatorNotValidHere": {
+    "defaultMessage": "{operator} (not valid for this attribute)",
+    "description": "Label for an operator a stored rule already uses which the protocol schema does not allow against this attribute type, usually because a collaborator changed the attribute. Shown but not selectable. operator is the operator phrase, e.g. \"is greater than\"."
+  },
+  "protocolBuilder.ruleCodebook.unusableValueBoolean": {
+    "defaultMessage": "a true/false value",
+    "description": "Noun phrase naming what a rule compares an attribute against when a yes/no value is stored where one option was expected. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of \"compares against\"."
+  },
+  "protocolBuilder.ruleCodebook.unusableValueEmpty": {
+    "defaultMessage": "an empty value",
+    "description": "Noun phrase naming what a rule compares an attribute against when nothing is stored there. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of \"compares against\"."
+  },
+  "protocolBuilder.ruleCodebook.unusableValueList": {
+    "defaultMessage": "a list",
+    "description": "Noun phrase naming what a rule compares an attribute against when several values are stored where one option was expected. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of \"compares against\"."
+  },
+  "protocolBuilder.ruleCodebook.unusableValueObject": {
+    "defaultMessage": "an object",
+    "description": "Noun phrase naming what a rule compares an attribute against when a structured value is stored where one option was expected. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of \"compares against\"."
+  },
+  "protocolBuilder.ruleCodebook.unusableValueOther": {
+    "defaultMessage": "a value an option cannot have",
+    "description": "Noun phrase naming what a rule compares an attribute against when the stored value is of no kind an authored option could ever be. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of \"compares against\"."
+  },
+  "protocolBuilder.ruleDescription.alterContains": {
+    "defaultMessage": "contains",
+    "description": "Phrase for the rule operator that matches an attribute whose text answer matches the regular expression that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterDoesNotContain": {
+    "defaultMessage": "does not contain",
+    "description": "Phrase for the rule operator that matches an attribute whose text answer does not match the regular expression that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterExactly": {
+    "defaultMessage": "is exactly equal to",
+    "description": "Phrase for the rule operator that matches an attribute answered with exactly the value that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterExcludes": {
+    "defaultMessage": "excludes",
+    "description": "Phrase for the rule operator that matches an attribute answered with none of the options that follow. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterExists": {
+    "defaultMessage": "where",
+    "description": "Phrase for the rule operator that asks only whether the attribute was answered at all. In the alter voice it introduces the attribute rather than following it, so the whole sentence reads \"Person where Age\". Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterGreaterThan": {
+    "defaultMessage": "is greater than",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number above the value that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterGreaterThanOrEqual": {
+    "defaultMessage": "is greater than or equal to",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number above the value that follows, or equal to it. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterIncludes": {
+    "defaultMessage": "includes",
+    "description": "Phrase for the rule operator that matches an attribute answered with one of the options that follow. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterLessThan": {
+    "defaultMessage": "is less than",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number below the value that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterLessThanOrEqual": {
+    "defaultMessage": "is less than or equal to",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number below the value that follows, or equal to it. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterNot": {
+    "defaultMessage": "is not",
+    "description": "Phrase for the rule operator that matches an attribute answered with anything other than the value that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterNotExists": {
+    "defaultMessage": "without",
+    "description": "Phrase for the rule operator that asks whether the attribute was left unanswered. In the alter voice it introduces the attribute rather than following it, so the whole sentence reads \"Person without Age\". Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterOptionsEquals": {
+    "defaultMessage": "has selected options equal to",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches exactly the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterOptionsGreaterThan": {
+    "defaultMessage": "has selected options greater than",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count above the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterOptionsLessThan": {
+    "defaultMessage": "has selected options less than",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count below the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterOptionsNotEquals": {
+    "defaultMessage": "has selected options not equal to",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches any count other than the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.dateResolutionFull": {
+    "defaultMessage": "a full date",
+    "description": "Noun phrase naming the precision a date attribute records answers at: a day, a month and a year together. Interpolated into a sentence about a rule that compares against a date, so it reads as the object of \"answered with\"."
+  },
+  "protocolBuilder.ruleDescription.dateResolutionMonth": {
+    "defaultMessage": "a month and a year",
+    "description": "Noun phrase naming the precision a date attribute records answers at: a month and a year, with no day. Interpolated into a sentence about a rule that compares against a date, so it reads as the object of \"answered with\"."
+  },
+  "protocolBuilder.ruleDescription.dateResolutionYear": {
+    "defaultMessage": "a year",
+    "description": "Noun phrase naming the precision a date attribute records answers at: a year alone. Interpolated into a sentence about a rule that compares against a date, so it reads as the object of \"answered with\"."
+  },
+  "protocolBuilder.ruleDescription.egoContains": {
+    "defaultMessage": "that contains",
+    "description": "Phrase for the rule operator that matches an attribute whose text answer matches the regular expression that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoDoesNotContain": {
+    "defaultMessage": "that does not contain",
+    "description": "Phrase for the rule operator that matches an attribute whose text answer does not match the regular expression that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoExactly": {
+    "defaultMessage": "that is exactly equal to",
+    "description": "Phrase for the rule operator that matches an attribute answered with exactly the value that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoExcludes": {
+    "defaultMessage": "that excludes",
+    "description": "Phrase for the rule operator that matches an attribute answered with none of the options that follow. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoExists": {
+    "defaultMessage": "has",
+    "description": "Phrase for the rule operator that asks only whether the attribute was answered at all. In the alter voice it introduces the attribute rather than following it, so the whole sentence reads \"Person where Age\". Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoGreaterThan": {
+    "defaultMessage": "that is greater than",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number above the value that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoGreaterThanOrEqual": {
+    "defaultMessage": "that is greater than or equal to",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number above the value that follows, or equal to it. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoIncludes": {
+    "defaultMessage": "that includes",
+    "description": "Phrase for the rule operator that matches an attribute answered with one of the options that follow. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoLabel": {
+    "defaultMessage": "Ego",
+    "description": "What a rule about the interview participant themselves is said to be about. \"Ego\" is the network-research term for that participant, as opposed to the alters they name. Reads as the subject of the rule sentence: \"Ego has Age\"."
+  },
+  "protocolBuilder.ruleDescription.egoLessThan": {
+    "defaultMessage": "that is less than",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number below the value that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoLessThanOrEqual": {
+    "defaultMessage": "that is less than or equal to",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number below the value that follows, or equal to it. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoNot": {
+    "defaultMessage": "that is not",
+    "description": "Phrase for the rule operator that matches an attribute answered with anything other than the value that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoNotExists": {
+    "defaultMessage": "without",
+    "description": "Phrase for the rule operator that asks whether the attribute was left unanswered. In the alter voice it introduces the attribute rather than following it, so the whole sentence reads \"Person without Age\". Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoOptionsEquals": {
+    "defaultMessage": "that has selected options equal to",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches exactly the number that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoOptionsGreaterThan": {
+    "defaultMessage": "that has selected options greater than",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count above the number that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoOptionsLessThan": {
+    "defaultMessage": "that has selected options less than",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count below the number that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoOptionsNotEquals": {
+    "defaultMessage": "that has selected options not equal to",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches any count other than the number that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.presenceExists": {
+    "defaultMessage": "exists",
+    "description": "The whole predicate of a rule that asks only whether any network member of a given type is present in the interview network: \"Person exists\". Follows the type name."
+  },
+  "protocolBuilder.ruleDescription.presenceNotExists": {
+    "defaultMessage": "does not exist",
+    "description": "The whole predicate of a rule that asks whether no network member of a given type is present in the interview network: \"Person does not exist\". Follows the type name."
+  },
+  "protocolBuilder.ruleDescription.problemDuplicateId": {
+    "defaultMessage": "Another rule in this set has the same identifier, so this protocol cannot be saved with both. Edit or delete the rule.",
+    "description": "Shown on the rows of both rules in a rule set that share one internal identifier. Opening and saving either rule gives it a fresh one."
+  },
+  "protocolBuilder.ruleDescription.problemIncomplete": {
+    "defaultMessage": "This rule is not complete. Edit it to fill in every part, or delete it.",
+    "description": "Shown on a rule’s row in the rule list when one of the rule’s parts was never answered."
+  },
+  "protocolBuilder.ruleDescription.problemInvalidOperand": {
+    "defaultMessage": "This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the stored comparison value is of a kind the attribute is never answered with, so the interview could never match it."
+  },
+  "protocolBuilder.ruleDescription.problemInvalidOperator": {
+    "defaultMessage": "This rule uses an operator that is not valid for its attribute type. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the comparison the rule makes is not one the protocol allows for that kind of attribute — usually because someone changed the attribute after the rule was written."
+  },
+  "protocolBuilder.ruleDescription.problemInvalidPattern": {
+    "defaultMessage": "This rule compares its attribute against a pattern that is not a valid regular expression, so the interview cannot apply the rule. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule’s comparison value is meant to be a regular expression and will not compile. \"The interview\" is the session a participant takes."
+  },
+  "protocolBuilder.ruleDescription.problemInvalidPresenceOperator": {
+    "defaultMessage": "This rule asks whether an entity type is present, but uses an operator that cannot ask that. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when a rule about whether any node or edge of a type exists at all uses a comparison that cannot answer that question."
+  },
+  "protocolBuilder.ruleDescription.problemMissingAttribute": {
+    "defaultMessage": "This rule refers to an attribute that is no longer in the codebook. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the attribute the rule asks about has been deleted. An attribute is one variable a study records about a node, an edge or the ego."
+  },
+  "protocolBuilder.ruleDescription.problemMissingEdgeType": {
+    "defaultMessage": "This rule refers to an edge type that is no longer in the codebook. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the edge type the rule names has been deleted. An edge is a relationship between two network members; the codebook is the protocol’s definition of the types and attributes a study records."
+  },
+  "protocolBuilder.ruleDescription.problemMissingEgo": {
+    "defaultMessage": "This rule refers to the ego, but this protocol no longer defines any ego attributes. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule is about the interview participant themselves (the ego) and the protocol records nothing about them any more."
+  },
+  "protocolBuilder.ruleDescription.problemMissingId": {
+    "defaultMessage": "This rule has no identifier, so this protocol cannot be saved with it. Edit the rule to give it one, or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule carries no internal identifier. Nothing on screen asks for one — opening and saving the rule supplies it — so the sentence names that repair."
+  },
+  "protocolBuilder.ruleDescription.problemMissingNodeType": {
+    "defaultMessage": "This rule refers to a node type that is no longer in the codebook. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the node type the rule names has been deleted. The codebook is the protocol’s definition of the node types, edge types and attributes a study records."
+  },
+  "protocolBuilder.ruleDescription.problemMissingOption": {
+    "defaultMessage": "This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule names one of a multiple-choice attribute’s options and that option has since been renamed or deleted."
+  },
+  "protocolBuilder.ruleDescription.problemUnknownTarget": {
+    "defaultMessage": "This rule does not say whether it is about a node, an edge, or the ego. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule never recorded what it is about. Node and edge are the two kinds of thing in a network; ego is the interview participant themselves."
+  },
+  "protocolBuilder.ruleDescription.problemUnusableDateImpossible": {
+    "defaultMessage": "This rule compares its attribute against “{value}”, which is not a date on the calendar. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule’s stored date is the right shape but not a real date, e.g. 31 February. value is the stored date, unchanged."
+  },
+  "protocolBuilder.ruleDescription.problemUnusableDateOutOfRange": {
+    "defaultMessage": "This rule compares its attribute against “{value}”, which is outside the dates that attribute can record. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule’s stored date falls outside the range the attribute’s own date picker offers. value is the stored date, unchanged."
+  },
+  "protocolBuilder.ruleDescription.problemUnusableDateWrongResolution": {
+    "defaultMessage": "This rule compares its attribute against “{value}”, but the attribute is now answered with {resolution}. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the attribute records dates at a different precision from the one the rule’s date is written at. value is the stored date, unchanged; resolution is a noun phrase such as \"a year\"."
+  },
+  "protocolBuilder.ruleDescription.problemUnusableNumberOptionCount": {
+    "defaultMessage": "This rule compares the number of selected options against {value}. This attribute offers {optionCount, plural, one {# option} other {# options}}, so between 0 and {optionCount, number} of them can be selected. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule counts how many options a multiple-choice attribute was answered with and names a count the option list puts out of reach. value is the number the rule names; optionCount is how many options the attribute offers."
+  },
+  "protocolBuilder.ruleDescription.problemUnusableNumberScale": {
+    "defaultMessage": "This rule compares its attribute against {value}. The attribute is answered on a scale from {min} to {max}. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the attribute records a reading on a fixed scale and the rule names a number off it. value is the number the rule names; min and max are the ends of the scale."
+  },
+  "protocolBuilder.ruleDescription.problemUnusableOption": {
+    "defaultMessage": "This rule compares its attribute against {describedAs}, which cannot be one of that attribute’s choices. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the stored comparison value is of no kind an authored option could ever be. describedAs is a noun phrase naming that kind, e.g. \"a true/false value\"."
+  },
+  "protocolBuilder.ruleDescription.sentenceAttributePresence": {
+    "defaultMessage": "{entity} {operator} {attribute}",
+    "description": "A whole rule sentence for a rule that asks only whether an attribute was answered at all, where the operator introduces the attribute: \"Person where Age\", \"Person without Age\". entity and attribute are the researcher’s own codebook names and are not translated; operator is the phrase for the comparison."
+  },
+  "protocolBuilder.ruleDescription.sentenceAttributePresenceUnknownEntity": {
+    "defaultMessage": "{operator} {attribute}",
+    "description": "The same sentence as sentenceAttributePresence, for a broken rule that never said what it is about, so there is no entity to name. attribute is the researcher’s own codebook name; operator is the phrase for the comparison."
+  },
+  "protocolBuilder.ruleDescription.subjectAlterAttribute": {
+    "defaultMessage": "{entity} where {attribute}",
+    "description": "Subject of a sentence reading a rule back to a researcher, for a rule about a network member (an alter) rather than about the interview participant. entity is the codebook name of the node or edge type; attribute is the codebook name of the variable the rule asks about. A comparison follows."
+  },
+  "protocolBuilder.ruleDescription.subjectAlterAttributeUnknownEntity": {
+    "defaultMessage": "where {attribute}",
+    "description": "The same subject as subjectAlterAttribute, for a broken rule that never said what it is about, so there is no entity to name. attribute is the codebook name of the variable the rule asks about. A comparison follows."
+  },
+  "protocolBuilder.ruleDescription.subjectEgoAttribute": {
+    "defaultMessage": "{entity} has {attribute}",
+    "description": "Subject of a sentence reading a rule back to a researcher, for a rule about the ego — the interview participant themselves. entity is the word for the ego; attribute is the codebook name of the ego variable the rule asks about. A comparison follows."
+  },
+  "protocolBuilder.ruleDescription.subjectEgoAttributeUnknownEntity": {
+    "defaultMessage": "has {attribute}",
+    "description": "The same subject as subjectEgoAttribute, for a broken rule that never said what it is about, so there is no entity to name. attribute is the codebook name of the ego variable the rule asks about. A comparison follows."
+  },
+  "protocolBuilder.ruleDescription.targetNotOfferedEdge": {
+    "defaultMessage": "This rule is about an edge, which these rules cannot ask about. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule asks about an edge — a relationship between two network members — and this kind of rule set is not allowed to."
+  },
+  "protocolBuilder.ruleDescription.targetNotOfferedEgo": {
+    "defaultMessage": "This rule is about the ego, which these rules cannot ask about. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule asks about the interview participant themselves (the ego) and this kind of rule set is not allowed to."
+  },
+  "protocolBuilder.ruleDescription.targetNotOfferedNode": {
+    "defaultMessage": "This rule is about a node, which these rules cannot ask about. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule asks about a node — a member of the interview network — and this kind of rule set is not allowed to."
+  },
+  "protocolBuilder.ruleDescription.unreadableOperand": {
+    "defaultMessage": "(a value this editor cannot read)",
+    "description": "Stands in for the value a rule compares against when the protocol holds something there that cannot be written out at all. Shown in place of the value inside the rule sentence, so the researcher can see which rule to repair."
+  },
+  "protocolBuilder.ruleEditor.attributeHint": {
+    "defaultMessage": "Select an attribute to base this rule on.",
+    "description": "Guidance under the control where a researcher chooses which attribute of a node or edge a rule asks about."
+  },
+  "protocolBuilder.ruleEditor.attributeOperatorHint": {
+    "defaultMessage": "Select the operator that will be used to compare the attribute to the value.",
+    "description": "Guidance under the comparison control, for a rule about one of a node or edge type’s attributes."
+  },
+  "protocolBuilder.ruleEditor.attributeRegExpHint": {
+    "defaultMessage": "Enter a regular expression to compare against.",
+    "description": "Guidance under the value control, for a rule about a node or edge attribute whose comparison matches text against a regular expression."
+  },
+  "protocolBuilder.ruleEditor.description": {
+    "defaultMessage": "Rules are used to filter the data in your study. You can use them to show or hide nodes and edges based on their attributes. For help with constructing rules, see our documentation articles on <skipLogic>skip logic</skipLogic> and <networkFiltering>network filtering</networkFiltering>.",
+    "description": "Opening paragraph of the rule editor. Nodes are the members of an interview network and edges the relationships between them. The two tags wrap the link text for documentation articles: skip logic decides whether a stage is shown to a participant, network filtering narrows what a stage works on."
+  },
+  "protocolBuilder.ruleEditor.edgeAttributeEmpty": {
+    "defaultMessage": "This edge type has no attributes a rule can compare.",
+    "description": "Shown in place of the attribute list when the chosen edge type records nothing a rule could compare."
+  },
+  "protocolBuilder.ruleEditor.edgeAttributeLabel": {
+    "defaultMessage": "Edge attribute",
+    "description": "Label of the control where a researcher chooses which attribute of an edge — a relationship between network members — a rule asks about."
+  },
+  "protocolBuilder.ruleEditor.edgeTypeHint": {
+    "defaultMessage": "Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.",
+    "description": "Guidance under the control where a researcher chooses which kind of edge a rule is about. One rule covers one type, so several types need several rules."
+  },
+  "protocolBuilder.ruleEditor.edgeTypeLabel": {
+    "defaultMessage": "Edge type",
+    "description": "Label of the control where a researcher chooses which kind of edge — which kind of relationship between network members — a rule is about."
+  },
+  "protocolBuilder.ruleEditor.egoAttributeEmpty": {
+    "defaultMessage": "This protocol has no ego attributes a rule can compare.",
+    "description": "Shown in place of the attribute list when the protocol records nothing about the ego — the interview participant themselves — that a rule could compare."
+  },
+  "protocolBuilder.ruleEditor.egoAttributeHint": {
+    "defaultMessage": "Select the ego attribute this rule will be based on.",
+    "description": "Guidance under the control where a researcher chooses which attribute of the ego — the interview participant themselves — a rule asks about."
+  },
+  "protocolBuilder.ruleEditor.egoAttributeLabel": {
+    "defaultMessage": "Ego attribute",
+    "description": "Label of the control where a researcher chooses which attribute of the ego — the interview participant themselves — a rule asks about."
+  },
+  "protocolBuilder.ruleEditor.egoOperatorHint": {
+    "defaultMessage": "Select the operator that will be used to compare the ego attribute to the value.",
+    "description": "Guidance under the comparison control, for a rule about the ego — the interview participant themselves."
+  },
+  "protocolBuilder.ruleEditor.egoRegExpHint": {
+    "defaultMessage": "Enter the value to compare against. You can use a regular expression to match multiple values.",
+    "description": "Guidance under the value control, for a rule about the ego — the interview participant themselves — whose comparison matches text against a regular expression."
+  },
+  "protocolBuilder.ruleEditor.entityHint": {
+    "defaultMessage": "Select which network entity your rule should target.",
+    "description": "Guidance under the control where a researcher chooses whether a rule is about a node, an edge, or the ego."
+  },
+  "protocolBuilder.ruleEditor.entityLabel": {
+    "defaultMessage": "Entity",
+    "description": "Label of the control where a researcher chooses whether a rule is about a node, an edge, or the ego. Entity is the general word for a thing in the interview network."
+  },
+  "protocolBuilder.ruleEditor.entityTypeOperatorHint": {
+    "defaultMessage": "Select the operator that will be used to compare the entity type to the value.",
+    "description": "Guidance under the comparison control, for a rule about whether anything of a node or edge type is in the interview network at all."
+  },
+  "protocolBuilder.ruleEditor.nodeAttributeEmpty": {
+    "defaultMessage": "This node type has no attributes a rule can compare.",
+    "description": "Shown in place of the attribute list when the chosen node type records nothing a rule could compare."
+  },
+  "protocolBuilder.ruleEditor.nodeAttributeLabel": {
+    "defaultMessage": "Node attribute",
+    "description": "Label of the control where a researcher chooses which attribute of a node — a member of the interview network — a rule asks about."
+  },
+  "protocolBuilder.ruleEditor.nodeTypeHint": {
+    "defaultMessage": "Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.",
+    "description": "Guidance under the control where a researcher chooses which kind of node a rule is about. One rule covers one type, so several types need several rules."
+  },
+  "protocolBuilder.ruleEditor.nodeTypeLabel": {
+    "defaultMessage": "Node type",
+    "description": "Label of the control where a researcher chooses which kind of node — which kind of network member — a rule is about."
+  },
+  "protocolBuilder.ruleEditor.operatorLabel": {
+    "defaultMessage": "Operator",
+    "description": "Label of the control where a researcher chooses the comparison a rule makes — is exactly, is greater than, and so on."
+  },
+  "protocolBuilder.ruleEditor.operatorPlaceholder": {
+    "defaultMessage": "Select an operator…",
+    "description": "Placeholder shown in the empty control where a researcher chooses the comparison a rule makes."
+  },
+  "protocolBuilder.ruleEditor.presenceConditionSection": {
+    "defaultMessage": "Presence condition",
+    "description": "Heading of the section where a researcher says whether the rule matches when an entity type is present or when it is absent."
+  },
+  "protocolBuilder.ruleEditor.refuseIncomplete": {
+    "defaultMessage": "This rule cannot be saved until this question is answered.",
+    "description": "Refusal shown on whichever control in the rule editor is still unanswered when the researcher tries to finish the rule."
+  },
+  "protocolBuilder.ruleEditor.refuseInvalidOperand": {
+    "defaultMessage": "This is not the kind of value this attribute is answered with. Enter one it can be compared against.",
+    "description": "Refusal shown on the value control when the stored comparison value is of a kind the attribute is never answered with, so the interview could never match it."
+  },
+  "protocolBuilder.ruleEditor.refuseInvalidOperator": {
+    "defaultMessage": "This operator is not valid for this attribute’s type. Choose another one.",
+    "description": "Refusal shown on the comparison control when the protocol does not allow that comparison against this kind of attribute, usually because someone changed the attribute after the rule was written."
+  },
+  "protocolBuilder.ruleEditor.refuseInvalidPresenceOperator": {
+    "defaultMessage": "This operator cannot ask whether an entity type is present. Choose another one.",
+    "description": "Refusal shown on the comparison control of a rule about whether anything of a node or edge type is in the interview network at all, when the chosen comparison cannot answer that question."
+  },
+  "protocolBuilder.ruleEditor.refuseMissingAttribute": {
+    "defaultMessage": "This rule is about \"{attributeId}\", which is no longer in the codebook. Choose another attribute.",
+    "description": "Refusal shown on the attribute control when the attribute the rule asks about has been deleted. attributeId is that attribute’s own identifier, shown unchanged so the researcher can match it against the rule."
+  },
+  "protocolBuilder.ruleEditor.refuseMissingAttributeUnnamed": {
+    "defaultMessage": "This rule is about an attribute that is no longer in the codebook. Choose another one.",
+    "description": "Refusal shown on the attribute control when the attribute the rule asks about has been deleted and the rule records no identifier to name."
+  },
+  "protocolBuilder.ruleEditor.refuseMissingEgo": {
+    "defaultMessage": "This protocol no longer defines any ego attributes, so this rule cannot be about the ego. Choose another target.",
+    "description": "Refusal shown on the target control when the rule is about the ego — the interview participant themselves — and the protocol records nothing about them any more."
+  },
+  "protocolBuilder.ruleEditor.refuseMissingEntityType": {
+    "defaultMessage": "This rule is pointed at \"{typeId}\", which is no longer in the codebook. Choose another type.",
+    "description": "Refusal shown on the type control when the node or edge type the rule names has been deleted. typeId is that type’s own identifier, shown unchanged so the researcher can match it against the rule. The codebook is the protocol’s definition of the types and attributes a study records."
+  },
+  "protocolBuilder.ruleEditor.refuseMissingEntityTypeUnnamed": {
+    "defaultMessage": "This rule is pointed at a type that is no longer in the codebook. Choose another one.",
+    "description": "Refusal shown on the type control when the node or edge type the rule names has been deleted and the rule records no identifier to name."
+  },
+  "protocolBuilder.ruleEditor.refuseMissingId": {
+    "defaultMessage": "This rule has no identifier. Answer this question again to give it one.",
+    "description": "Refusal shown on the first control of the rule editor when the rule carries no internal identifier. Nothing on screen asks for one, so answering the question again is what supplies it."
+  },
+  "protocolBuilder.ruleEditor.refuseRegExp": {
+    "defaultMessage": "This is not a valid regular expression. Correct it, or choose a different operator.",
+    "description": "Refusal shown on the value control when the pattern the rule compares against will not compile as a regular expression."
+  },
+  "protocolBuilder.ruleEditor.refuseTargetEdge": {
+    "defaultMessage": "These rules cannot ask about an edge. Choose another target.",
+    "description": "Refusal shown on the target control when the rule is about an edge — a relationship between network members — and this kind of rule set is not allowed to ask about one."
+  },
+  "protocolBuilder.ruleEditor.refuseTargetEgo": {
+    "defaultMessage": "These rules cannot ask about the ego. Choose another target.",
+    "description": "Refusal shown on the target control when the rule is about the ego — the interview participant themselves — and this kind of rule set is not allowed to ask about them."
+  },
+  "protocolBuilder.ruleEditor.refuseTargetNode": {
+    "defaultMessage": "These rules cannot ask about a node. Choose another target.",
+    "description": "Refusal shown on the target control when the rule is about a node — a member of the interview network — and this kind of rule set is not allowed to ask about one."
+  },
+  "protocolBuilder.ruleEditor.required": {
+    "defaultMessage": "This field is required.",
+    "description": "Shown under any unanswered control in the rule editor when the researcher tries to finish the rule. Addresses the researcher authoring the protocol, not a participant answering it."
+  },
+  "protocolBuilder.ruleEditor.ruleBasisSection": {
+    "defaultMessage": "Rule basis",
+    "description": "Heading of the section where a researcher says whether the rule asks about the presence of a node or edge type or about one of its attributes."
+  },
+  "protocolBuilder.ruleEditor.ruleKindAttribute": {
+    "defaultMessage": "Attribute",
+    "description": "One of two choices for what a rule is based on: one of the entity’s attributes — the variables a study records about it."
+  },
+  "protocolBuilder.ruleEditor.ruleKindEdgeAttributeHint": {
+    "defaultMessage": "Rule based on the value of this edge type's attributes.",
+    "description": "Explains the \"Attribute\" choice for a rule about an edge — a relationship between two network members."
+  },
+  "protocolBuilder.ruleEditor.ruleKindEdgePresenceHint": {
+    "defaultMessage": "Based on the presence or absence of this edge type in the interview network.",
+    "description": "Explains the \"Presence\" choice for a rule about an edge — a relationship between two network members."
+  },
+  "protocolBuilder.ruleEditor.ruleKindHint": {
+    "defaultMessage": "Select whether this rule will be based on the entity type or an attribute.",
+    "description": "Guidance under the control where a researcher says whether the rule asks about the presence of a node or edge type or about one of its attributes."
+  },
+  "protocolBuilder.ruleEditor.ruleKindLabel": {
+    "defaultMessage": "Rule type",
+    "description": "Label of the control where a researcher says whether the rule asks about the presence of a node or edge type or about one of its attributes."
+  },
+  "protocolBuilder.ruleEditor.ruleKindNodeAttributeHint": {
+    "defaultMessage": "Rule based on the value of this node type's attributes.",
+    "description": "Explains the \"Attribute\" choice for a rule about a node — a member of the interview network."
+  },
+  "protocolBuilder.ruleEditor.ruleKindNodePresenceHint": {
+    "defaultMessage": "Based on the presence or absence of this node type in the interview network.",
+    "description": "Explains the \"Presence\" choice for a rule about a node — a member of the interview network."
+  },
+  "protocolBuilder.ruleEditor.ruleKindPresence": {
+    "defaultMessage": "Presence",
+    "description": "One of two choices for what a rule is based on: whether anything of this type is in the interview network at all."
+  },
+  "protocolBuilder.ruleEditor.ruleStructureHint": {
+    "defaultMessage": "Choose an attribute, operator, and comparison value to define this rule.",
+    "description": "Guidance under the heading of the section where a researcher chooses the attribute, the comparison and the value a rule is made of."
+  },
+  "protocolBuilder.ruleEditor.ruleStructureSection": {
+    "defaultMessage": "Rule structure",
+    "description": "Heading of the section where a researcher chooses the attribute, the comparison and the value a rule is made of."
+  },
+  "protocolBuilder.ruleEditor.ruleTargetSection": {
+    "defaultMessage": "Rule target",
+    "description": "Heading of the first section of the rule editor, where the researcher says what the rule is about."
+  },
+  "protocolBuilder.ruleEditor.staleDateImpossible": {
+    "defaultMessage": "“{value}” is not a date on the calendar. Choose a real date.",
+    "description": "Refusal shown on the value control when the rule’s stored date is the right shape but not a real date, e.g. 31 February. value is the stored date, unchanged."
+  },
+  "protocolBuilder.ruleEditor.staleDateOutOfRange": {
+    "defaultMessage": "“{value}” is outside the dates this attribute can record. Choose a date inside them.",
+    "description": "Refusal shown on the value control when the rule’s stored date falls outside the range the attribute’s own date picker offers. value is the stored date, unchanged."
+  },
+  "protocolBuilder.ruleEditor.staleDateWrongResolution": {
+    "defaultMessage": "This attribute is now answered with {resolution}, which “{value}” is not. Choose a date it can record.",
+    "description": "Refusal shown on the value control when the attribute records dates at a different precision from the rule’s date. resolution is a noun phrase such as \"a year\"; value is the stored date, unchanged."
+  },
+  "protocolBuilder.ruleEditor.staleMissingOptions": {
+    "defaultMessage": "This rule compares against {list}, which this attribute no longer offers. Choose from the options it does.",
+    "description": "Refusal shown on the value control when the rule names options this attribute has since stopped offering. list is the offending values, joined for the reader’s language; text values are shown in quotation marks."
+  },
+  "protocolBuilder.ruleEditor.staleUnusableOptions": {
+    "defaultMessage": "This rule compares against {list}, which cannot be one of this attribute’s options. Choose from the options it offers.",
+    "description": "Refusal shown on the value control when the rule holds values of a kind no authored option could ever be. list is the offending values, joined for the reader’s language — each is a noun phrase such as \"a true/false value\"."
+  },
+  "protocolBuilder.ruleEditor.submit": {
+    "defaultMessage": "Finish and Close",
+    "description": "Action that commits the rule being built and closes the rule editor dialog."
+  },
+  "protocolBuilder.ruleEditor.targetNotOfferedEdgeLabel": {
+    "defaultMessage": "Edge (not offered in this rule set)",
+    "description": "The choice shown, and disabled, when a stored rule is about an edge — a relationship between two network members — and this rule set does not build edge rules."
+  },
+  "protocolBuilder.ruleEditor.targetNotOfferedEgoLabel": {
+    "defaultMessage": "Ego (not offered in this rule set)",
+    "description": "The choice shown, and disabled, when a stored rule is about the ego — the interview participant themselves — and this rule set does not build ego rules."
+  },
+  "protocolBuilder.ruleEditor.targetNotOfferedNodeLabel": {
+    "defaultMessage": "Node (not offered in this rule set)",
+    "description": "The choice shown, and disabled, when a stored rule is about a node — a member of the interview network — and this rule set does not build node rules. Shown so the researcher can read what their rule targets."
+  },
+  "protocolBuilder.ruleEditor.title": {
+    "defaultMessage": "Construct a Rule",
+    "description": "Title of the dialog a researcher builds one rule in. A rule decides which parts of an interview network a stage works on, or whether a stage is shown at all."
+  },
+  "protocolBuilder.ruleEditor.unreachableOptionCount": {
+    "defaultMessage": "This attribute offers {optionCount, plural, one {# option} other {# options}}, so between 0 and {optionCount, number} of them can be selected. Choose a number in that range.",
+    "description": "Refusal shown on the value control when a rule counts how many options a multiple-choice attribute was answered with and names a count the option list puts out of reach. optionCount is how many options the attribute offers."
+  },
+  "protocolBuilder.ruleEditor.unreachableScale": {
+    "defaultMessage": "This attribute is answered on a scale from {min} to {max}. Choose a number in that range.",
+    "description": "Refusal shown on the value control when the attribute records a reading on a fixed scale and the rule names a number off it. min and max are the ends of the scale."
+  },
+  "protocolBuilder.ruleList.deleteAction": {
+    "defaultMessage": "Delete rule:",
+    "description": "Read out before the rule itself to name the control that removes one row of a rule list, so a screen reader says \"Delete rule: Person where Age is greater than 30\". Not shown on screen."
+  },
+  "protocolBuilder.ruleList.editAction": {
+    "defaultMessage": "Edit rule:",
+    "description": "Read out before the rule itself to name the control that opens one row of a rule list for editing, so a screen reader says \"Edit rule: Person where Age is greater than 30\". Not shown on screen."
+  },
+  "protocolBuilder.ruleList.emptyState": {
+    "defaultMessage": "No rules have been created yet.",
+    "description": "Shown in place of the list when a researcher has added no rules to a rule set yet."
+  },
+  "protocolBuilder.ruleList.saveUnavailable": {
+    "defaultMessage": "These rules are no longer editable, so this rule cannot be saved. Copy anything you want to keep, then close the editor.",
+    "description": "Shown inside the rule editor when the list it was opened from stopped accepting changes while the dialog was open — the rule cannot be committed, and the draft is kept on screen so nothing the researcher wrote is lost."
+  },
+  "protocolBuilder.rulePreview.attribute": {
+    "defaultMessage": "{label} (attribute type: {type})",
+    "description": "Read out in place of the attribute chip in a rule preview, so assistive technology says what kind of attribute it is as well as its name. label is the researcher’s own name for the attribute; type is the schema’s own word for the kind of value it holds — text, number, boolean, ordinal, categorical, datetime, scalar, location or layout — and is not translated."
+  },
+  "protocolBuilder.rulePreview.attributeMissing": {
+    "defaultMessage": "{label} (attribute is no longer in the codebook)",
+    "description": "Read out in place of the attribute chip in a rule preview when the protocol’s codebook no longer describes that attribute, so its kind cannot be named. label is the researcher’s own name for the attribute."
+  },
+  "protocolBuilder.ruleSet.addFilterRule": {
+    "defaultMessage": "Add new filter rule",
+    "description": "Action that adds a rule to the set narrowing which parts of the interview network a stage works on. A stage is one step of an interview. Named for its own rule set because a stage editor commonly shows two rule builders at once."
+  },
+  "protocolBuilder.ruleSet.addSkipLogicRule": {
+    "defaultMessage": "Add new skip logic rule",
+    "description": "Action that adds a rule to the set deciding whether a stage is shown to a participant at all. A stage is one step of an interview. Named for its own rule set because a stage editor commonly shows two rule builders at once."
+  },
+  "protocolBuilder.ruleSet.joinAll": {
+    "defaultMessage": "All rules must match",
+    "description": "Choice offered to a researcher whose rule set holds more than one rule: the set only applies when every rule in it is satisfied."
+  },
+  "protocolBuilder.ruleSet.joinAny": {
+    "defaultMessage": "Any rule can match",
+    "description": "Choice offered to a researcher whose rule set holds more than one rule: the set applies as soon as any one rule in it is satisfied."
+  },
+  "protocolBuilder.ruleSet.joinHint": {
+    "defaultMessage": "When you have multiple rules, how should matching work?",
+    "description": "Guidance under the control where a researcher says whether every rule in a set has to match or any one of them will do."
+  },
+  "protocolBuilder.ruleSet.joinLabel": {
+    "defaultMessage": "Rule Matching",
+    "description": "Label of the control where a researcher says whether every rule in a set has to match or any one of them will do."
+  },
+  "protocolBuilder.ruleSet.noJoin": {
+    "defaultMessage": "Please choose how these rules should be combined.",
+    "description": "Shown when a rule set holds more than one rule and the researcher has not said whether every rule has to match or any one of them will do."
+  },
+  "protocolBuilder.ruleSet.noRules": {
+    "defaultMessage": "Please create at least one rule.",
+    "description": "Shown when a researcher has switched a rule builder on and created no rules, or deleted the last one. Also the rule-set field’s own required message, so both read alike."
+  },
+  "protocolBuilder.ruleSet.summaryCodebook": {
+    "defaultMessage": "{count, plural, one {Rule {position, number} no longer works with this protocol's codebook. Open it to fix it, or delete it.} other {# of these rules no longer work with this protocol's codebook. Open each marked rule to fix it, or delete it.}}",
+    "description": "The one error a rule-set field shows when a rule was finished and the protocol moved under it — an attribute or a type it names has been renamed, retyped or deleted. The codebook is the protocol’s definition of the node types, edge types and attributes a study records. count is how many rules are affected; position is the 1-based position of the single affected rule."
+  },
+  "protocolBuilder.ruleSet.summaryUnfinished": {
+    "defaultMessage": "{count, plural, one {Rule {position, number} is not finished. Open it to fill in every part, or delete it.} other {# of these rules are not finished. Open each marked rule to fill in every part, or delete it.}}",
+    "description": "The one error a rule-set field shows when a rule was never completed. count is how many rules are affected; position is the 1-based position of the single affected rule."
+  },
+  "protocolBuilder.ruleSet.summaryUnusable": {
+    "defaultMessage": "{count, plural, one {Rule {position, number} cannot be used as it stands. Open it to fix it, or delete it.} other {# of these rules cannot be used as they stand. Open each marked rule to fix it, or delete it.}}",
+    "description": "The one error a rule-set field shows when its rules are exactly as the researcher wrote them and the protocol still cannot use them where they sit. count is how many rules are affected; position is the 1-based position of the single affected rule, as the researcher counts the rows on screen. Each row also carries its own message saying what is wrong with it."
+  },
+  "protocolBuilder.ruleSet.targetEdge": {
+    "defaultMessage": "Edge - match an edge type or one of its attributes.",
+    "description": "Choice offered when a researcher starts a rule: the rule will be about an edge — a relationship between two network members — either that an edge of some type exists at all, or that one of its attributes has a particular value."
+  },
+  "protocolBuilder.ruleSet.targetEgo": {
+    "defaultMessage": "Ego - match one of the ego attributes.",
+    "description": "Choice offered when a researcher starts a rule: the rule will be about the ego — the interview participant themselves — and about one of the attributes recorded for them."
+  },
+  "protocolBuilder.ruleSet.targetNode": {
+    "defaultMessage": "Node - match a node type or one of its attributes.",
+    "description": "Choice offered when a researcher starts a rule: the rule will be about a node — a member of the interview network — either that a node of some type exists at all, or that one of its attributes has a particular value."
+  },
+  "protocolBuilder.ruleSet.unusableJoin": {
+    "defaultMessage": "These rules record a way of combining them that this protocol cannot use. Edit or delete a rule to clear it.",
+    "description": "Shown when a rule set of one rule still records how several rules combine, in a form the protocol will not accept. No control is on screen to choose again, so the sentence names the repair instead: editing or deleting a rule rewrites the set and clears it."
+  },
+  "protocolBuilder.ruleValue.compareHint": {
+    "defaultMessage": "Enter the value to compare against.",
+    "description": "Guidance under the control where a researcher enters the value a rule compares an attribute against."
+  },
+  "protocolBuilder.ruleValue.optionCountHint": {
+    "defaultMessage": "Enter the number of options that must be selected for this rule to pass.",
+    "description": "Guidance under the control where a researcher enters how many options a multiple-choice attribute must have been answered with. \"Pass\" means the rule matches."
+  },
+  "protocolBuilder.ruleValue.optionCountLabel": {
+    "defaultMessage": "Selected option count",
+    "description": "Label of the control where a researcher enters how many options a multiple-choice attribute must have been answered with for the rule to match."
+  },
+  "protocolBuilder.ruleValue.patternPlaceholder": {
+    "defaultMessage": "Enter a regular expression...",
+    "description": "Placeholder inside the empty control where a researcher enters the regular expression a rule matches an attribute’s text answer against."
+  },
+  "protocolBuilder.ruleValue.valueLabel": {
+    "defaultMessage": "Attribute value",
+    "description": "Label of the control where a researcher enters the value a rule compares an attribute against."
+  },
+  "protocolBuilder.ruleValue.valuePlaceholder": {
+    "defaultMessage": "Enter a value...",
+    "description": "Placeholder inside the empty control where a researcher enters the value a rule compares an attribute against."
+  },
+  "protocolBuilder.session.compoundConflictingRevision": {
+    "defaultMessage": "the compound result conflicts with the loaded authoritative revision",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: what came back cannot be reconciled with the version of the protocol on screen."
+  },
+  "protocolBuilder.session.compoundHostError": {
+    "defaultMessage": "the compound edit failed",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen, when the host gave no reason of its own."
+  },
+  "protocolBuilder.session.compoundIdentityChanged": {
+    "defaultMessage": "the authoritative response changed the edited stage identity",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: the answer came back naming a different step. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.session.compoundInFlight": {
+    "defaultMessage": "another compound edit is still in progress",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: one is already running."
+  },
+  "protocolBuilder.session.compoundInvalidStage": {
+    "defaultMessage": "the authoritative response contains an invalid edited stage",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: the step that came back could not be read. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.session.compoundLeaseLost": {
+    "defaultMessage": "editing access was lost before the compound edit completed",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: this researcher stopped being the one editing it partway through."
+  },
+  "protocolBuilder.session.compoundMissingStage": {
+    "defaultMessage": "the authoritative response omitted the current edited stage from its full protocol snapshot",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: the step being edited was missing from the answer. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.session.compoundNewerRevision": {
+    "defaultMessage": "a newer authoritative protocol revision is already loaded",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: a later version of the protocol is already on screen."
+  },
+  "protocolBuilder.session.compoundPendingCommands": {
+    "defaultMessage": "save the current stage changes before editing related sections",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: the step has unsaved changes."
+  },
+  "protocolBuilder.session.compoundSentChangesStale": {
+    "defaultMessage": "the stage changes already sent no longer apply to this session’s base, so nothing local was altered",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: earlier changes already sent no longer fit the step this session started from. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.session.compoundStageAlreadyApplied": {
+    "defaultMessage": "the stage changes this compound edit asks for have already been made",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: the step already carries everything the edit asked for. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.session.compoundStaleEpoch": {
+    "defaultMessage": "editing authority changed before the compound edit completed",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: someone else took over editing the step partway through."
+  },
+  "protocolBuilder.session.compoundStaleStage": {
+    "defaultMessage": "the authoritative stage changed while this change was being made, so nothing local was altered",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: the shared copy of the step moved on while the researcher was working. \"stage\" is one step of an interview."
+  },
+  "protocolBuilder.session.compoundUnavailable": {
+    "defaultMessage": "compound editing is unavailable",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: this host does not offer it."
+  },
+  "protocolBuilder.stageName.documentation": {
+    "defaultMessage": "Documentation",
+    "description": "Link to the documentation for this type of interview interface."
+  },
+  "protocolBuilder.stageName.name": {
+    "defaultMessage": "Stage name",
+    "description": "Section heading and accessible field label for the researcher-authored stage name."
+  },
+  "protocolBuilder.stageName.placeholder": {
+    "defaultMessage": "Enter stage name...",
+    "description": "Placeholder for the researcher-authored stage name field."
+  },
+  "protocolBuilder.stageName.position": {
+    "defaultMessage": "Stage {index, number} of {total, number}",
+    "description": "The current stage position in the interview. index is one-based."
+  },
+  "protocolBuilder.stageTypeImage.preview": {
+    "defaultMessage": "Preview of {interfaceName}",
+    "description": "Alternative text for a screenshot of an interview interface. interfaceName is the localized interface name, or an unchanged identifier for an unknown future interface."
+  }
+}

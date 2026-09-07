@@ -1,3 +1,4 @@
+import { createMessageError } from '@codaco/app-i18n/messages';
 import type { ProtocolValidationIssue } from '@codaco/protocol-validation';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -25,6 +26,7 @@ import {
   findDanglingResourceReferences,
   type DanglingResourceReference,
 } from './references.ts';
+import { resourceFailureMessages } from './resourceMessages.ts';
 
 const ASSETS_SECTION = sectionId({ kind: 'assets' });
 const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
@@ -1148,7 +1150,17 @@ async function unreadableResourceIssues(
         Object.freeze({
           code: 'custom',
           path: ['stages', options.stageIndex, ...reference.path],
-          message: `The resource ("${resourceId}") this stage uses cannot be saved: ${inspected.failure.message}`,
+          message: createMessageError(
+            resourceFailureMessages.unsavableResource,
+            {
+              resourceId,
+              // The host's own refusal, carried whole rather than pasted in as
+              // text: it is itself an encoded message wherever this package
+              // produced it, so it is resolved in the reader's language when
+              // the issue is rendered.
+              reason: { messageError: inspected.failure.message },
+            },
+          ),
           resourceId,
         }),
       );
@@ -1199,7 +1211,7 @@ function pathKey(path: readonly (string | number)[]): string {
 function readOnlyFailure<T>(): ResourceResult<T> {
   return resourceFailure(
     'read-only',
-    'this protocol is open for viewing only, so its resources cannot change',
+    createMessageError(resourceFailureMessages.readOnly),
   );
 }
 
@@ -1212,7 +1224,7 @@ function readOnlyFailure<T>(): ResourceResult<T> {
 function saveInFlightFailure<T>(resourceId?: string): ResourceResult<T> {
   return resourceFailure(
     'unavailable',
-    'these resources are being saved right now, so they cannot be discarded until the save finishes',
+    createMessageError(resourceFailureMessages.saveInFlight),
     resourceId === undefined ? {} : { resourceId },
   );
 }
@@ -1229,7 +1241,7 @@ function saveInFlightFailure<T>(resourceId?: string): ResourceResult<T> {
 function promotionUndecidedFailure<T>(resourceId?: string): ResourceResult<T> {
   return resourceFailure(
     'unavailable',
-    'the last attempt to save these resources did not say whether it finished, so they cannot be discarded until saving again settles it',
+    createMessageError(resourceFailureMessages.promotionUndecided),
     resourceId === undefined ? {} : { resourceId },
   );
 }
@@ -1242,7 +1254,7 @@ function promotionUndecidedFailure<T>(resourceId?: string): ResourceResult<T> {
 function sessionCancelledFailure<T>(): ResourceResult<T> {
   return resourceFailure(
     'read-only',
-    'this stage was discarded, so its resources can no longer be saved',
+    createMessageError(resourceFailureMessages.sessionCancelled),
   );
 }
 
@@ -1257,7 +1269,7 @@ function sessionCancelledFailure<T>(): ResourceResult<T> {
 function resourceLeavingFailure<T>(resourceId: string): ResourceResult<T> {
   return resourceFailure(
     'not-found',
-    'That resource is being discarded, so it cannot be used here. Choose a different one.',
+    createMessageError(resourceFailureMessages.resourceLeaving),
     { resourceId },
   );
 }
@@ -1272,7 +1284,7 @@ function resourceLeavingFailure<T>(resourceId: string): ResourceResult<T> {
 function resourceDiscardedFailure<T>(resourceId: string): ResourceResult<T> {
   return resourceFailure(
     'not-found',
-    'That resource is no longer available: it was discarded while this list was open. Close and reopen the browser to see what there is.',
+    createMessageError(resourceFailureMessages.resourceDiscarded),
     { resourceId },
   );
 }
@@ -1286,9 +1298,16 @@ function stagingEndedFailure<T>(
   resourceId: string,
   subject: 'file' | 'secret',
 ): ResourceResult<T> {
+  // Two whole sentences rather than one with the subject dropped into it: the
+  // word for a file and the word for a secret decline differently, and a
+  // translator needs the sentence around each of them.
   return resourceFailure(
     'not-found',
-    `this editing session ended before the ${subject} finished staging, so it was not kept`,
+    createMessageError(
+      subject === 'secret'
+        ? resourceFailureMessages.stagingEndedSecret
+        : resourceFailureMessages.stagingEndedFile,
+    ),
     { resourceId },
   );
 }

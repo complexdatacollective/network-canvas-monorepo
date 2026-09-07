@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { escapeIdentifier } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
+
 import { stubAuthService } from '../../__tests__/support/auth.ts';
 import {
   createScratchSchema,
@@ -15,7 +17,6 @@ import { createRpcClient } from '../../__tests__/support/rpc.ts';
 import { createApp } from '../../app.ts';
 import type { AssetStore } from '../../assets.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
-import { readMigrations } from '../../db/migrations/artifact.ts';
 import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createPool } from '../../db/pool.ts';
 import { stampFingerprint } from '../../db/schema.ts';

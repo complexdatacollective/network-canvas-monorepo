@@ -2,7 +2,10 @@
 
 import type { MapMouseEvent } from 'mapbox-gl/esm';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { ColorReference, MapOptions } from '@codaco/protocol-validation';
+
+import { getMapboxLocale, updateMapboxControlLocale } from './mapboxLocale';
 
 export type ExtendedMapOptions = MapOptions & {
   showTransit?: boolean;
@@ -131,6 +134,11 @@ export const useMapbox = ({
   initialSelectionValue,
   onSelectionChange,
 }: UseMapboxProps) => {
+  const intl = useAppIntl();
+  const intlRef = useRef(intl);
+  useEffect(() => {
+    intlRef.current = intl;
+  }, [intl]);
   const { isE2E } = useContractFlags();
   const captureException = useCaptureException();
   const {
@@ -211,6 +219,7 @@ export const useMapbox = ({
         zoom: initialZoom,
         style,
         accessToken,
+        locale: getMapboxLocale(intlRef.current),
       });
     } catch (err) {
       // mapbox-gl's Map constructor throws synchronously when the environment
@@ -478,6 +487,11 @@ export const useMapbox = ({
     isE2E,
     captureException,
   ]);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+    updateMapboxControlLocale(mapRef.current, intl);
+  }, [intl]);
 
   // handle selections
   useEffect(() => {

@@ -7,6 +7,7 @@
   - paragraph: Click the button below to get started.
   - button "Build family pedigree"
   - navigation:
+    - button "Settings"
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"

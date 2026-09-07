@@ -4,12 +4,47 @@ import { FileUp } from 'lucide-react';
 import { unparse } from 'papaparse';
 import { useTransition } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { getActivitiesForExport } from '~/actions/activityFeed';
 import { useDownload } from '~/hooks/useDownload';
 
+const messages = defineMessages({
+  success: {
+    id: 'fresco.ActivityFeed.ExportActivityFeed.success',
+    defaultMessage: 'Success',
+    description: 'Researcher-facing ActivityFeed / ExportActivityFeed: Success',
+  },
+  activityFeedExportedSuccessfully: {
+    id: 'fresco.ActivityFeed.ExportActivityFeed.activityFeedExportedSuccessfully',
+    defaultMessage: 'Activity feed exported successfully',
+    description:
+      'Researcher-facing ActivityFeed / ExportActivityFeed: Activity feed exported successfully',
+  },
+  error: {
+    id: 'fresco.ActivityFeed.ExportActivityFeed.error',
+    defaultMessage: 'Error',
+    description: 'Researcher-facing ActivityFeed / ExportActivityFeed: Error',
+  },
+  anErrorOccurredWhileExportingTheActivity: {
+    id: 'fresco.ActivityFeed.ExportActivityFeed.anErrorOccurredWhileExportingTheActivity',
+    defaultMessage: 'An error occurred while exporting the activity feed',
+    description:
+      'Researcher-facing ActivityFeed / ExportActivityFeed: An error occurred while exporting the activity feed',
+  },
+  exportCSV: {
+    id: 'fresco.ActivityFeed.ExportActivityFeed.exportCSV',
+    defaultMessage: 'Export CSV',
+    description:
+      'Researcher-facing ActivityFeed / ExportActivityFeed: Export CSV',
+  },
+});
+
 export default function ExportActivityFeed() {
+  const intl = useAppIntl();
+
   const download = useDownload();
   const { add } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -32,14 +67,20 @@ export default function ExportActivityFeed() {
         URL.revokeObjectURL(url);
 
         add({
-          title: 'Success',
-          description: 'Activity feed exported successfully',
+          title: <AppMessage message={messages.success} />,
+          description: (
+            <AppMessage message={messages.activityFeedExportedSuccessfully} />
+          ),
           variant: 'success',
         });
       } catch (error) {
         add({
-          title: 'Error',
-          description: 'An error occurred while exporting the activity feed',
+          title: <AppMessage message={messages.error} />,
+          description: (
+            <AppMessage
+              message={messages.anErrorOccurredWhileExportingTheActivity}
+            />
+          ),
           variant: 'destructive',
         });
       }
@@ -53,7 +94,7 @@ export default function ExportActivityFeed() {
       icon={<FileUp />}
       data-testid="export-activity-feed-button"
     >
-      Export CSV
+      {intl.formatMessage(messages.exportCSV)}
     </Button>
   );
 }

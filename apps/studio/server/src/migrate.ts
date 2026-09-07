@@ -1,7 +1,8 @@
 import { fileURLToPath } from 'node:url';
 
+import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
+
 import { SCHEMA_FINGERPRINT } from './db/fingerprint.generated.ts';
-import { readMigrations } from './db/migrations/artifact.ts';
 import { migrateDatabase } from './db/migrations/migrate.ts';
 import { createOwnerPool } from './db/pool.ts';
 import { readMigrationAllowedLogins, readMigrationDatabase } from './env.ts';

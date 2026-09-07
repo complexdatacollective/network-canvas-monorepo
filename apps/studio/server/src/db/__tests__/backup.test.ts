@@ -6,6 +6,7 @@ import { getTableName } from 'drizzle-orm';
 import pg from 'pg';
 import { expect, it } from 'vitest';
 
+import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
@@ -25,7 +26,6 @@ import {
 import { BACKUP_ACCESS_SIDECAR_SQL } from '../backup-access.ts';
 import { assertBackupAccess } from '../backup.ts';
 import { SCHEMA_FINGERPRINT } from '../fingerprint.generated.ts';
-import { readMigrations } from '../migrations/artifact.ts';
 import { migrateDatabase } from '../migrations/migrate.ts';
 import {
   createBackupPool,

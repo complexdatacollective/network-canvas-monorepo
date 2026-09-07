@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 
 import type { PrincipalVariables } from '../auth/principal.ts';
 import type { StudioEnv } from '../env.ts';
+import type { ServerTelemetry } from '../telemetry.ts';
 import type { OperationalLogger } from './logger.ts';
 import { observeRequests } from './requests.ts';
 import { authorizeMetrics, type createObservability } from './runtime.ts';
@@ -11,13 +12,15 @@ export function createOperationalApp(
   env: Pick<StudioEnv, 'metricsToken' | 'trustedProxies'>,
   observability: ReturnType<typeof createObservability>,
   logger?: OperationalLogger,
+  telemetry?: ServerTelemetry,
 ) {
   const app = new Hono<PrincipalVariables>();
-  app.onError((_error, c) =>
-    c.json({ title: 'Internal Server Error', status: 500 }, 500, {
+  app.onError((error, c) => {
+    telemetry?.capture('server_request', error);
+    return c.json({ title: 'Internal Server Error', status: 500 }, 500, {
       'Content-Type': 'application/problem+json',
-    }),
-  );
+    });
+  });
   app.use(
     '*',
     observeRequests({

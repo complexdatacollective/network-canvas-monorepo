@@ -116,6 +116,7 @@ describe('principal resolution', () => {
 describe('unconfigured auth', () => {
   const env: StudioEnv = {
     role: 'both',
+    telemetry: false,
     port: 3000,
     metricsToken: undefined,
     trustedProxies: [],

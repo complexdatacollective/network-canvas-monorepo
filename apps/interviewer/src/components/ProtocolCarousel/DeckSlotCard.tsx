@@ -1,5 +1,8 @@
 import { Download } from 'lucide-react';
 
+import type { MessageDescriptor, IntlShape } from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { StoredSession } from '~/lib/db/types';
 import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import type { ImportPhase } from '~/lib/protocol/importProtocol';
@@ -16,10 +19,45 @@ import {
 } from './DeckCard';
 import type { DeckEntry } from './deckEntries';
 
+const messages = defineMessages({
+  startNewInterview: {
+    id: 'interviewer.deckSlotCard.startNewInterview',
+    defaultMessage: 'Start new interview',
+    description: 'Visible copy in Interviewer Deck Slot Card.',
+  },
+  dismissTheSampleProtocol: {
+    id: 'interviewer.deckSlotCard.dismissTheSampleProtocol',
+    defaultMessage: 'Dismiss the sample protocol',
+    description: 'User-facing message in Interviewer Deck Slot Card.',
+  },
+  installSampleProtocol: {
+    id: 'interviewer.deckSlotCard.installSampleProtocol',
+    defaultMessage: 'Install sample protocol',
+    description: 'Visible copy in Interviewer Deck Slot Card.',
+  },
+  installDevelopmentProtocol: {
+    id: 'interviewer.deckSlotCard.installDevelopmentProtocol',
+    defaultMessage: 'Install development protocol',
+    description: 'Visible copy in Interviewer Deck Slot Card.',
+  },
+  extracting: {
+    id: 'interviewer.deckSlotCard.extracting',
+    defaultMessage: 'Extracting…',
+    description:
+      'Pending protocol card while the imported archive is being unpacked.',
+  },
+  saving: {
+    id: 'interviewer.deckSlotCard.saving',
+    defaultMessage: 'Saving…',
+    description:
+      'Pending protocol card while validated protocol content is saved on this device.',
+  },
+});
+
 // Status line shown on the loading card for each import phase.
-const PHASE_LABEL: Record<ImportPhase, string> = {
-  extracting: 'Extracting…',
-  saving: 'Saving…',
+const PHASE_LABEL: Record<ImportPhase, MessageDescriptor> = {
+  extracting: messages.extracting,
+  saving: messages.saving,
 };
 
 type DeckSlotCardProps = {
@@ -40,17 +78,20 @@ type DeckSlotCardProps = {
   };
 };
 
-function slotCardProps({
-  entry,
-  isActive,
-  activate,
-  sessionCount,
-  onDeleteProtocol,
-  onDismissSample,
-  onInstallSample,
-  onInstallDevelopment,
-  newSession,
-}: DeckSlotCardProps): DeckCardProps {
+function slotCardProps(
+  {
+    entry,
+    isActive,
+    activate,
+    sessionCount,
+    onDeleteProtocol,
+    onDismissSample,
+    onInstallSample,
+    onInstallDevelopment,
+    newSession,
+  }: DeckSlotCardProps,
+  intl: IntlShape,
+): DeckCardProps {
   if (entry.kind === 'protocol') {
     return {
       protocol: entry.protocol,
@@ -77,7 +118,7 @@ function slotCardProps({
       ) : isActive ? (
         <DeckCardFooter key="start-interview">
           <DeckCardFooterButton onClick={activate}>
-            Start new interview
+            {intl.formatMessage(messages.startNewInterview)}
           </DeckCardFooterButton>
         </DeckCardFooter>
       ) : undefined,
@@ -88,13 +129,13 @@ function slotCardProps({
       loading: true,
       protocol: {
         name: SAMPLE_PROTOCOL.name,
-        description: SAMPLE_PROTOCOL.description,
+        description: intl.formatMessage(SAMPLE_PROTOCOL.description),
       },
       isActive,
       hideMetadata: true,
       onActivate: activate,
       onDelete: onDismissSample,
-      deleteLabel: 'Dismiss the sample protocol',
+      deleteLabel: intl.formatMessage(messages.dismissTheSampleProtocol),
       footer: isActive ? (
         <DeckCardFooter key="install-sample">
           <DeckCardFooterButton
@@ -107,7 +148,7 @@ function slotCardProps({
             }
             onClick={onInstallSample}
           >
-            Install sample protocol
+            {intl.formatMessage(messages.installSampleProtocol)}
           </DeckCardFooterButton>
         </DeckCardFooter>
       ) : undefined,
@@ -121,7 +162,7 @@ function slotCardProps({
       loading: true,
       protocol: {
         name: DEVELOPMENT_PROTOCOL.name,
-        description: DEVELOPMENT_PROTOCOL.description,
+        description: intl.formatMessage(DEVELOPMENT_PROTOCOL.description),
       },
       isActive,
       hideMetadata: true,
@@ -138,7 +179,7 @@ function slotCardProps({
             }
             onClick={onInstallDevelopment}
           >
-            Install development protocol
+            {intl.formatMessage(messages.installDevelopmentProtocol)}
           </DeckCardFooterButton>
         </DeckCardFooter>
       ) : undefined,
@@ -155,7 +196,7 @@ function slotCardProps({
       <DeckCardFooter key="import-progress">
         <DeckCardProgressFooter
           progress={entry.pending.progress}
-          message={PHASE_LABEL[entry.pending.phase]}
+          message={intl.formatMessage(PHASE_LABEL[entry.pending.phase])}
         />
       </DeckCardFooter>
     ),
@@ -168,5 +209,6 @@ function slotCardProps({
 // installed protocol). Separate per-kind components would remount the card
 // and snap its content into place.
 export function DeckSlotCard(props: DeckSlotCardProps) {
-  return <DeckCard {...slotCardProps(props)} />;
+  const intl = useAppIntl();
+  return <DeckCard {...slotCardProps(props, intl)} />;
 }

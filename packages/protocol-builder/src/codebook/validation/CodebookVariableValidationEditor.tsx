@@ -6,6 +6,9 @@ import {
   type FormEvent,
 } from 'react';
 
+import { formatMessageError } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -79,9 +82,24 @@ const withVariableValidation = (
   ]);
 };
 
-const failureMessage = (failure: AuxiliaryCodebookDraftFailure): string => {
-  if (failure.kind === 'error') return failure.message;
-  if (failure.result.status === 'failed') return failure.result.message;
+/**
+ * `intl` rather than `useAppIntl()` inside, because the refusal being
+ * presented reaches here as a plain string: a compound edit's `message` is
+ * either this package's own encoded descriptor or a host's already-written
+ * sentence, and `formatMessageError(…) ?? text` is what tells them apart.
+ */
+const failureMessage = (
+  failure: AuxiliaryCodebookDraftFailure,
+  intl: IntlShape,
+): string => {
+  if (failure.kind === 'error') {
+    return formatMessageError(failure.message, intl) ?? failure.message;
+  }
+  if (failure.result.status === 'failed') {
+    return (
+      formatMessageError(failure.result.message, intl) ?? failure.result.message
+    );
+  }
   const blocker = failure.result.blockedSections[0];
   if (blocker?.holder !== undefined) {
     return `${blocker.holder.displayName} is currently editing a section needed for this change.`;
@@ -154,6 +172,7 @@ export default function CodebookVariableValidationEditor({
     session.getSnapshot.bind(session),
     session.getSnapshot.bind(session),
   );
+  const intl = useAppIntl();
   const failureRef = useRef<HTMLDivElement>(null);
   const activeRequestId = useRef<string | null>(null);
 
@@ -317,7 +336,7 @@ export default function CodebookVariableValidationEditor({
             >
               <AlertTitle>Could not save validation</AlertTitle>
               <AlertDescription>
-                {failureMessage(snapshot.lastFailure)}
+                {failureMessage(snapshot.lastFailure, intl)}
               </AlertDescription>
             </Alert>
           )}

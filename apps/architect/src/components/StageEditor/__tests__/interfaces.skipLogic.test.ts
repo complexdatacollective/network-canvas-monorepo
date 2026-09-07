@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { INTERFACE_TYPES } from '~/components/Screens/NewStageScreen/interfaceOptions';
+import { getInterfaceTypes } from '~/components/Screens/NewStageScreen/interfaceOptions';
 
 import { interfaceHasSkipLogicSection } from '../Interfaces';
 
@@ -21,9 +21,9 @@ describe('SkipLogic section coverage', () => {
     // This exists so that omission is a CONSCIOUS choice: whoever removes the
     // section from an interface must come here and exempt it, having read the
     // above.
-    const missing = INTERFACE_TYPES.map(({ type }) => type).filter(
-      (type) => !interfaceHasSkipLogicSection(type),
-    );
+    const missing = getInterfaceTypes()
+      .map(({ type }) => type)
+      .filter((type) => !interfaceHasSkipLogicSection(type));
     expect(missing).toEqual([]);
   });
 });

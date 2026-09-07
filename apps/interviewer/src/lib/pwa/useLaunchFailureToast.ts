@@ -1,5 +1,7 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { createElement, useEffect, useSyncExternalStore } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import { useToast } from '@codaco/fresco-ui/Toast';
 
 import {
@@ -7,6 +9,20 @@ import {
   subscribeLaunchFiles,
   takeLaunchFailureCount,
 } from './fileLaunchQueue';
+
+const messages = defineMessages({
+  couldNotOpenFile: {
+    id: 'interviewer.launchFailureToast.couldNotOpenFile',
+    defaultMessage: 'Could not open file',
+    description: 'User-facing message in Interviewer Launch Failure Toast.',
+  },
+  filesUnreadable: {
+    id: 'interviewer.launchFailureToast.filesUnreadable',
+    defaultMessage:
+      '{count, plural, one {# launched file could not be read. The file may have been moved, deleted, or become unavailable since it was opened.} other {# launched files could not be read. The files may have been moved, deleted, or become unavailable since they were opened.}}',
+    description: 'Administration text in Interviewer useLaunchFailureToast.',
+  },
+});
 
 // Surfaces a toast when an OS-launched file handle couldn't be read (file
 // moved/deleted, volume unmounted between the OS launch and consumption).
@@ -22,10 +38,12 @@ export function useLaunchFailureToast(): void {
   useEffect(() => {
     if (failureCount === 0) return;
     const count = takeLaunchFailureCount();
-    const noun = count === 1 ? 'file' : 'files';
     toast.toast({
-      title: 'Could not open file',
-      description: `${count} launched ${noun} could not be read. The ${noun} may have been moved, deleted, or become unavailable since ${count === 1 ? 'it was' : 'they were'} opened.`,
+      title: createElement(AppMessage, { message: messages.couldNotOpenFile }),
+      description: createElement(AppMessage, {
+        message: messages.filesUnreadable,
+        values: { count },
+      }),
       variant: 'destructive',
     });
   }, [failureCount, toast]);

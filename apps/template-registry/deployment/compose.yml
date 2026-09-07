@@ -1,0 +1,145 @@
+# Optional overlay copied by the signed installer to deployment/registry.
+# The primary Compose file owns ingress and its edge network. The registry
+# uses independent PostgreSQL and object-store volumes and credentials.
+services:
+  registry:
+    image: ${REGISTRY_IMAGE:?Select the signed registry image digest}
+    profiles: [registry]
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    read_only: true
+    tmpfs: ['/tmp:size=64m,mode=1777']
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 512m
+    pids_limit: 128
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      REGISTRY_PUBLIC_URL: https://${REGISTRY_DOMAIN:?Select the registry public domain}
+      REGISTRY_DATABASE_URL: postgresql://registry_runtime:${REGISTRY_DATABASE_PASSWORD:?Missing registry runtime password}@registry-postgres:5432/registry
+      REGISTRY_OPERATOR_DATABASE_URL: postgresql://registry_operations:${REGISTRY_OPERATOR_PASSWORD:?Missing registry operator password}@registry-postgres:5432/registry
+      REGISTRY_AUTH_SECRET: ${REGISTRY_AUTH_SECRET:?Missing registry authentication key}
+      REGISTRY_SMTP_URL: ${REGISTRY_SMTP_URL:-}
+      REGISTRY_POSTMARK_SERVER_TOKEN: ${REGISTRY_POSTMARK_SERVER_TOKEN:-}
+      REGISTRY_POSTMARK_MESSAGE_STREAM: ${REGISTRY_POSTMARK_MESSAGE_STREAM:-}
+      REGISTRY_MAIL_FROM: ${REGISTRY_MAIL_FROM:?Configure the registry sender address}
+      REGISTRY_S3_ENDPOINT: http://registry-minio:9000
+      REGISTRY_S3_INSECURE_PRIVATE_NETWORK: 'true'
+      REGISTRY_S3_REGION: us-east-1
+      REGISTRY_S3_BUCKET: registry
+      REGISTRY_S3_ACCESS_KEY_ID: ${REGISTRY_S3_ACCESS_KEY_ID:?Missing scoped registry object-store identity}
+      REGISTRY_S3_SECRET_ACCESS_KEY: ${REGISTRY_S3_SECRET_ACCESS_KEY:?Missing scoped registry object-store key}
+    networks: [edge, registry-data]
+    depends_on:
+      registry-postgres:
+        condition: service_healthy
+      registry-minio-init:
+        condition: service_completed_successfully
+
+  registry-migrate:
+    image: ${REGISTRY_IMAGE}
+    profiles: [registry-operator]
+    entrypoint: [node, dist/migrate.js]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    environment:
+      REGISTRY_MIGRATION_DATABASE_URL: postgresql://registry_migrator:${REGISTRY_MIGRATION_PASSWORD:?Missing registry migration password}@registry-postgres:5432/registry
+      REGISTRY_DATABASE_ALLOWED_LOGINS: '["registry_migrator","registry_runtime","registry_operations","registry_backup_login"]'
+    networks: [registry-data]
+    depends_on:
+      registry-postgres:
+        condition: service_healthy
+
+  registry-backup-verify:
+    image: ${REGISTRY_IMAGE}
+    profiles: [registry-operator]
+    entrypoint: [node, dist/backup.js]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    environment:
+      REGISTRY_BACKUP_DATABASE_URL: postgresql://registry_backup_login:${REGISTRY_BACKUP_PASSWORD:?Missing registry backup password}@registry-postgres:5432/registry
+    networks: [registry-data]
+    depends_on:
+      registry-postgres:
+        condition: service_healthy
+
+  registry-postgres:
+    image: postgres:18.6-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+    profiles: [registry]
+    restart: unless-stopped
+    command:
+      [
+        postgres,
+        -c,
+        shared_buffers=1GB,
+        -c,
+        work_mem=256MB,
+        -c,
+        max_connections=50,
+      ]
+    shm_size: 1gb
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${REGISTRY_POSTGRES_PASSWORD:?Missing registry database administrator password}
+      REGISTRY_MIGRATION_PASSWORD: ${REGISTRY_MIGRATION_PASSWORD}
+      REGISTRY_DATABASE_PASSWORD: ${REGISTRY_DATABASE_PASSWORD}
+      REGISTRY_OPERATOR_PASSWORD: ${REGISTRY_OPERATOR_PASSWORD}
+      REGISTRY_BACKUP_PASSWORD: ${REGISTRY_BACKUP_PASSWORD:?Missing registry backup password}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - registry-postgres:/var/lib/postgresql
+      - ./deployment/registry/postgres-init.sql:/docker-entrypoint-initdb.d/registry.sql:ro
+    networks: [registry-data]
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          'pg_isready -h 127.0.0.1 -U postgres -d postgres && psql -U postgres -d postgres -Atc "SELECT ''registry_migrator''::regrole"',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  registry-minio:
+    # Reuse the signed, patched MinIO image from the installation manifest.
+    image: ${MINIO_IMAGE:?Select the signed object-store image digest}
+    profiles: [registry]
+    restart: unless-stopped
+    command: [server, /data, --console-address, ':9001']
+    environment:
+      MINIO_ROOT_USER: ${REGISTRY_MINIO_ROOT_USER:?Missing registry object-store administrator}
+      MINIO_ROOT_PASSWORD: ${REGISTRY_MINIO_ROOT_PASSWORD:?Missing registry object-store administrator key}
+      MINIO_BROWSER: 'off'
+      MINIO_UPDATE: 'off'
+    volumes: [registry-minio:/data]
+    networks: [registry-data]
+
+  registry-minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
+    profiles: [registry]
+    entrypoint: [/bin/sh, /deployment/minio-init.sh]
+    environment:
+      REGISTRY_MINIO_ROOT_USER: ${REGISTRY_MINIO_ROOT_USER}
+      REGISTRY_MINIO_ROOT_PASSWORD: ${REGISTRY_MINIO_ROOT_PASSWORD}
+      REGISTRY_S3_ACCESS_KEY_ID: ${REGISTRY_S3_ACCESS_KEY_ID}
+      REGISTRY_S3_SECRET_ACCESS_KEY: ${REGISTRY_S3_SECRET_ACCESS_KEY}
+    volumes:
+      - ./deployment/registry/minio-init.sh:/deployment/minio-init.sh:ro
+      - ./deployment/registry/minio-policy.json:/deployment/minio-policy.json:ro
+    networks: [registry-data]
+    depends_on:
+      registry-minio:
+        condition: service_started
+
+networks:
+  registry-data:
+    internal: true
+
+volumes:
+  registry-postgres:
+  registry-minio:

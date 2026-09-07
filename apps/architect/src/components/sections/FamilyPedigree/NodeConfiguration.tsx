@@ -8,15 +8,20 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 import {
   FAMILY_PEDIGREE_SLOTS,
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
 } from '@codaco/protocol-validation';
-import { ensureError } from '@codaco/shared-consts';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
+import {
+  arrayItemMessages,
+  arrayValidationMessages,
+} from '~/components/Form/arrayFields/arrayMessages';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
@@ -58,6 +63,7 @@ import {
 } from '~/ducks/modules/protocol/codebook';
 import { getFamilyPedigreeNodeTypeChangeBlock } from '~/ducks/modules/protocol/stages';
 import type { RootState } from '~/ducks/store';
+import { toSubmissionError } from '~/i18n/submissionErrors';
 import {
   EMPTY_VARIABLES,
   getVariableOptionsForSubject,
@@ -77,6 +83,179 @@ import {
   makeSlotCrossClassValidator,
   selectSlotPickerOptions,
 } from './slotWiring';
+const remainingMessages = defineMessages({
+  youAttemptedToChangeTheNode: {
+    id: 'architect.remaining.sections.familyPedigree.nodeConfiguration.youAttemptedToChangeTheNode',
+    defaultMessage:
+      'You attempted to change the node type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?',
+    description:
+      'The promptBeforeChange text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  editField: {
+    id: 'architect.remaining.sections.familyPedigree.nodeConfiguration.editField',
+    defaultMessage: 'Edit Field',
+    description:
+      'The addTitle text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+});
+const chromeMessages = defineMessages({
+  thisFamilyPedigreeStageSNetworkIs: {
+    id: 'architect.chrome.sections.familyPedigree.nodeConfiguration.thisFamilyPedigreeStageSNetworkIs',
+    defaultMessage:
+      "{stageCount, plural, one {This Family Pedigree stage's network is used by the Narrative Pedigree stage {stageNames}. Change or remove that stage before changing the node type.} other {This Family Pedigree stage's network is used by the Narrative Pedigree stages {stageNames}. Change or remove those stages before changing the node type.}}",
+    description:
+      'Researcher-facing explanatory text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+});
+const additionalMessages = defineMessages({
+  createNewFormField: {
+    id: 'architect.additional.sections.familyPedigree.nodeConfiguration.createNewFormField',
+    defaultMessage: 'Create new form field',
+    description:
+      'The addButtonLabel text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+});
+const messages = defineMessages({
+  familyMemberData: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.familyMemberData',
+    defaultMessage: 'Family member data',
+    description:
+      'The title text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  chooseTheNodeTypeAndMap: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.chooseTheNodeTypeAndMap',
+    defaultMessage:
+      'Choose the node type and map the attributes used to represent family members.',
+    description:
+      'The description text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  nodeType: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.nodeType',
+    defaultMessage: 'Node type',
+    description:
+      'The description text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  familyMemberAttributes: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.familyMemberAttributes',
+    defaultMessage: 'Family member attributes',
+    description:
+      'The title text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  mapTheNodeAttributesUsedTo: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.mapTheNodeAttributesUsedTo',
+    defaultMessage:
+      'Map the node attributes used to label family members and store pedigree relationships.',
+    description:
+      'The description text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  displayLabelAttribute: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.displayLabelAttribute',
+    defaultMessage: 'Display label attribute',
+    description:
+      'The description text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  displayLabel: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.displayLabel',
+    defaultMessage: 'Display label',
+    description:
+      'The label text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  aTextAttributeUsedToStore: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.aTextAttributeUsedToStore',
+    defaultMessage:
+      'A text attribute used to store the display label for each family member other than the participant.',
+    description:
+      'The hint text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  participantIdentifierAttribute: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.participantIdentifierAttribute',
+    defaultMessage: 'Participant identifier attribute',
+    description:
+      'The description text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  participantIdentifier: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.participantIdentifier',
+    defaultMessage: 'Participant identifier',
+    description:
+      'The label text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  aBooleanAttributeUsedToIdentify: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.aBooleanAttributeUsedToIdentify',
+    defaultMessage:
+      'A boolean attribute used to identify which node represents the participant in the family pedigree.',
+    description:
+      'The hint text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  relationshipToParticipantAttribute: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.relationshipToParticipantAttribute',
+    defaultMessage: 'Relationship to participant attribute',
+    description:
+      'The description text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  relationshipToParticipant: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.relationshipToParticipant',
+    defaultMessage: 'Relationship to participant',
+    description:
+      'The label text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  storesEachPersonSRelationshipToThe: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.storesEachPersonSRelationshipToThe',
+    defaultMessage:
+      "Stores each person's relationship to the participant, such as mother, uncle, or daughter. The family pedigree interface calculates this value automatically.",
+    description:
+      'The hint text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  biologicalSexAttribute: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.biologicalSexAttribute',
+    defaultMessage: 'Biological sex attribute',
+    description:
+      'The description text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  biologicalSex: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.biologicalSex',
+    defaultMessage: 'Biological sex',
+    description:
+      'The label text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  storesEachFamilyMemberSSexRecorded: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.storesEachFamilyMemberSSexRecorded',
+    defaultMessage:
+      "Stores each family member's sex recorded at birth for sex-linked inheritance.",
+    description:
+      'The hint text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  formConfiguration: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.formConfiguration',
+    defaultMessage: 'Form configuration',
+    description:
+      'The title text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  optionallyAddFieldsShownWhenParticipants: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.optionallyAddFieldsShownWhenParticipants',
+    defaultMessage:
+      'Optionally add fields shown when participants add or edit family members.',
+    description:
+      'The description text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+  formFields: {
+    id: 'architect.sections.familyPedigree.nodeConfiguration.formFields',
+    defaultMessage: 'Form fields',
+    description:
+      'The label text in components / sections / FamilyPedigree / NodeConfiguration.',
+  },
+});
+const finalMessages = defineMessages({
+  untitled: {
+    id: 'architect.final.components.sections.FamilyPedigree.NodeConfiguration.untitled',
+    defaultMessage: 'Untitled',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  missing: {
+    id: 'architect.final.components.sections.FamilyPedigree.NodeConfiguration.missing',
+    defaultMessage: 'Attribute not found',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 // The form editor and its row/interactive previews carry their own specific
 // prop types rather than the array field's generic `Renderer` bag;
@@ -138,6 +317,7 @@ const OWN_SLOT_BY_FIELD: Partial<
 };
 
 const NodeConfiguration = (_props: StageEditorSectionProps) => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { storeApi, committedStage, stageId, draft } = useStageFormContext();
   const setStageValue = useSetStageValue();
@@ -164,11 +344,15 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
     : [];
   const nodeTypeChangeBlockReason =
     dependentNarrativeStages.length > 0
-      ? `This Family Pedigree stage's network is used by the following Narrative Pedigree stage(s): ${dependentNarrativeStages
-          .map((dependent) => `"${dependent.label || 'Untitled'}"`)
-          .join(
-            ', ',
-          )}. Change or remove those stage(s) before changing its node type.`
+      ? intl.formatMessage(chromeMessages.thisFamilyPedigreeStageSNetworkIs, {
+          stageCount: dependentNarrativeStages.length,
+          stageNames: intl.formatList(
+            dependentNarrativeStages.map(
+              (dependent) =>
+                dependent.label || intl.formatMessage(finalMessages.untitled),
+            ),
+          ),
+        })
       : null;
 
   // The `with*ChangeHandler` enhancer's replacement — a caller `onChange` on
@@ -313,6 +497,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
       undefined,
       hasUnvalidatedUseForSubject,
       resolvedFormViews,
+      undefined,
     );
     return (
       values: Record<string, unknown>,
@@ -332,8 +517,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
         isVariableUsedBySibling(pedigreeFormFields, variable, props?.editIndex)
       ) {
         return {
-          variable:
-            'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
+          variable: createMessageError(arrayValidationMessages.duplicateField),
         };
       }
       return validateField(values, props);
@@ -519,7 +703,10 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
         // where `useSelector` runs).
         const current = get(allVariables, variable ?? '');
         if (!current) {
-          return { success: false, formErrors: ['Attribute not found'] };
+          return {
+            success: false,
+            formErrors: [createMessageError(finalMessages.missing)],
+          };
         }
         await dispatch(
           updateVariableAsync({
@@ -549,7 +736,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
       } catch (e) {
         return {
           success: false,
-          fieldErrors: { variable: [ensureError(e).message] },
+          fieldErrors: { variable: [toSubmissionError(e)] },
         };
       }
     },
@@ -559,34 +746,41 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   return (
     <>
       <Section
-        title="Family member data"
-        description="Choose the node type and map the attributes used to represent family members."
+        title={intl.formatMessage(messages.familyMemberData)}
+        description={intl.formatMessage(messages.chooseTheNodeTypeAndMap)}
       >
-        <IssueAnchor fieldName="nodeConfig.type" description="Node type" />
+        <IssueAnchor
+          fieldName="nodeConfig.type"
+          description={intl.formatMessage(messages.nodeType)}
+        />
         <ArchitectField
           name="nodeConfig.type"
           component={EntitySelectControl}
           entityType="node"
-          promptBeforeChange="You attempted to change the node type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?"
+          promptBeforeChange={intl.formatMessage(
+            remainingMessages.youAttemptedToChangeTheNode,
+          )}
           blockChangeReason={nodeTypeChangeBlockReason}
           validation={{ required: true }}
-          label="Node type"
+          label={intl.formatMessage(messages.nodeType)}
           initialValue={nodeTypeInitial}
         />
 
         {nodeType && (
           <Section
-            title="Family member attributes"
-            description="Map the node attributes used to label family members and store pedigree relationships."
+            title={intl.formatMessage(messages.familyMemberAttributes)}
+            description={intl.formatMessage(
+              messages.mapTheNodeAttributesUsedTo,
+            )}
           >
             <IssueAnchor
               fieldName="nodeConfig.nodeLabelVariable"
-              description="Display label attribute"
+              description={intl.formatMessage(messages.displayLabelAttribute)}
             />
             <ArchitectField
               name="nodeConfig.nodeLabelVariable"
-              label="Display label"
-              hint="A text attribute used to store the display label for each family member other than the participant."
+              label={intl.formatMessage(messages.displayLabel)}
+              hint={intl.formatMessage(messages.aTextAttributeUsedToStore)}
               component={VariablePickerControl}
               validation={{
                 required: true,
@@ -610,12 +804,16 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
             )}
             <IssueAnchor
               fieldName="nodeConfig.egoVariable"
-              description="Participant identifier attribute"
+              description={intl.formatMessage(
+                messages.participantIdentifierAttribute,
+              )}
             />
             <ArchitectField
               name="nodeConfig.egoVariable"
-              label="Participant identifier"
-              hint="A boolean attribute used to identify which node represents the participant in the family pedigree."
+              label={intl.formatMessage(messages.participantIdentifier)}
+              hint={intl.formatMessage(
+                messages.aBooleanAttributeUsedToIdentify,
+              )}
               component={VariablePickerControl}
               validation={{
                 required: true,
@@ -631,12 +829,16 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
             />
             <IssueAnchor
               fieldName="nodeConfig.relationshipVariable"
-              description="Relationship to participant attribute"
+              description={intl.formatMessage(
+                messages.relationshipToParticipantAttribute,
+              )}
             />
             <ArchitectField
               name="nodeConfig.relationshipVariable"
-              label="Relationship to participant"
-              hint="Stores each person's relationship to the participant, such as mother, uncle, or daughter. The family pedigree interface calculates this value automatically."
+              label={intl.formatMessage(messages.relationshipToParticipant)}
+              hint={intl.formatMessage(
+                messages.storesEachPersonSRelationshipToThe,
+              )}
               component={VariablePickerControl}
               validation={{
                 required: true,
@@ -652,12 +854,14 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
             />
             <IssueAnchor
               fieldName="nodeConfig.biologicalSexVariable"
-              description="Biological sex attribute"
+              description={intl.formatMessage(messages.biologicalSexAttribute)}
             />
             <ArchitectField
               name="nodeConfig.biologicalSexVariable"
-              label="Biological sex"
-              hint="Stores each family member's sex recorded at birth for sex-linked inheritance."
+              label={intl.formatMessage(messages.biologicalSex)}
+              hint={intl.formatMessage(
+                messages.storesEachFamilyMemberSSexRecorded,
+              )}
               component={VariablePickerControl}
               validation={{
                 required: true,
@@ -676,19 +880,23 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
 
         {nodeType && (
           <Section
-            title="Form configuration"
-            description="Optionally add fields shown when participants add or edit family members."
+            title={intl.formatMessage(messages.formConfiguration)}
+            description={intl.formatMessage(
+              messages.optionallyAddFieldsShownWhenParticipants,
+            )}
             toggleable
             defaultOpen={pedigreeFormFields !== undefined}
           >
             <ArchitectArrayField
               name="nodeConfig.form"
-              label="Form fields"
+              label={intl.formatMessage(messages.formFields)}
               component={DialogArrayField}
-              addButtonLabel="Create new form field"
+              addButtonLabel={intl.formatMessage(
+                additionalMessages.createNewFormField,
+              )}
               validation={{}}
               initialValue={nodeConfigFormInitial ?? []}
-              addTitle="Edit Field"
+              addTitle={intl.formatMessage(remainingMessages.editField)}
               editorFieldsComponent={FieldFields as unknown as Renderer}
               editorPreviewComponent={FieldEditorPreview as unknown as Renderer}
               editorProps={{
@@ -697,9 +905,9 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
                 siblingFields: pedigreeFormFields,
               }}
               previewComponent={NodeFormFieldPreview as unknown as Renderer}
-              editorTitle="Edit Field"
+              editorTitle={intl.formatMessage(remainingMessages.editField)}
               editorValidate={editorValidate}
-              itemLabel="field"
+              itemLabelMessage={arrayItemMessages.field}
               sortable
               onBeforeSave={handleChangeFields}
               normalizeItem={(value: unknown) =>

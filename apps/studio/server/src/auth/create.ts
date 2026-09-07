@@ -3,7 +3,7 @@ import type pg from 'pg';
 import type { StudioEnv } from '../env.ts';
 import type { EncryptionKeys } from '../pii/keys.ts';
 import { createBetterAuthService } from './better-auth.ts';
-import { createMailer } from './email.ts';
+import { createMailer, type StudioMailer } from './email.ts';
 import { type AuthService, createDisabledAuthService } from './service.ts';
 
 // createApp is the single pool constructor; without one there is no database
@@ -11,13 +11,16 @@ import { type AuthService, createDisabledAuthService } from './service.ts';
 export function createAuthService(
   env: StudioEnv,
   pool?: pg.Pool,
-  encryptionKeys?: EncryptionKeys,
+  {
+    encryptionKeys,
+    mailer,
+  }: { encryptionKeys?: EncryptionKeys; mailer?: StudioMailer } = {},
 ): AuthService {
   if (!env.db || !env.auth || !pool) return createDisabledAuthService();
   return createBetterAuthService(
     env.auth,
     pool,
-    createMailer(env.auth.mailer),
+    mailer ?? createMailer(env.auth.mailer),
     { encryptionKeys, deploymentMode: env.deploymentMode },
   );
 }

@@ -10,13 +10,29 @@ import {
 
 import { buildCreateVariableRequest } from '../../codebook/editing.ts';
 import type {
+  CompoundEditResult,
   CompoundEditSubmission,
   ProtocolBuilderPresence,
 } from '../../session.ts';
+import { readMessage } from '../../testing/i18n.ts';
 import {
   InMemoryCompoundHost,
   type InMemoryCompoundHostLease,
 } from '../InMemoryCompoundHost.ts';
+
+/**
+ * A refusal as the researcher reads it.
+ *
+ * `message` is a plain string because a host writes its own into the same
+ * field, so the ones this package produces travel through it encoded and are
+ * decoded where they are rendered. Asserting on the decoded text is what the
+ * editors show; asserting on the raw string would pass for a message that had
+ * been silently replaced.
+ */
+const asRead = (result: CompoundEditResult): CompoundEditResult =>
+  result.status === 'failed'
+    ? { ...result, message: readMessage(result.message) }
+    : result;
 
 const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
 const secondStageSection = sectionId({
@@ -466,7 +482,7 @@ describe('InMemoryCompoundHost', () => {
       ),
     );
 
-    expect(result).toEqual({
+    expect(asRead(result)).toEqual({
       status: 'failed',
       reason: 'stale-epoch',
       message: 'the primary section lease epoch is stale',
@@ -581,15 +597,17 @@ describe('InMemoryCompoundHost', () => {
     const before = compoundHost.getSnapshot();
 
     expect(
-      compoundHost.submit(
-        submission('lost-primary-owner', [
-          {
-            kind: 'update',
-            sectionId: personSection,
-            expectedContentHash: baseHash(personSection),
-            commands: [{ op: 'set', key: 'name', value: 'People' }],
-          },
-        ]),
+      asRead(
+        compoundHost.submit(
+          submission('lost-primary-owner', [
+            {
+              kind: 'update',
+              sectionId: personSection,
+              expectedContentHash: baseHash(personSection),
+              commands: [{ op: 'set', key: 'name', value: 'People' }],
+            },
+          ]),
+        ),
       ),
     ).toEqual({
       status: 'failed',
@@ -633,7 +651,9 @@ describe('InMemoryCompoundHost', () => {
       draft: { name: 'local', type: 'text' },
     });
 
-    expect(compoundHost.submit(submission(request.id, request.edits))).toEqual({
+    expect(
+      asRead(compoundHost.submit(submission(request.id, request.edits))),
+    ).toEqual({
       status: 'failed',
       reason: 'stale-base',
       message: 'the compound edit was built from an outdated section document',
@@ -650,5 +670,113 @@ describe('InMemoryCompoundHost', () => {
     expect(
       compoundHost.getSnapshot().protocolSections[personSection]?.variables,
     ).not.toHaveProperty('local');
+  });
+});
+
+/**
+ * The other way a protocol on this host changes: not through a session's
+ * compound edit, but because someone else already changed it and this host is
+ * being told.
+ */
+describe('an authoritative change made outside every session', () => {
+  it('replaces and removes sections, and issues the revision for them', () => {
+    const compoundHost = host();
+
+    const applied = compoundHost.receiveAuthoritativeSections({
+      [personSection]: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        shape: { default: 'circle' },
+        variables: { nickname: { name: 'nickname', type: 'text' } },
+      },
+      [edgeSection]: null,
+    });
+
+    expect(applied.manifestRevision.sequence).toBe(8n);
+    expect(applied.manifestRevision.hash).not.toBe('revision-7');
+    expect(applied).toEqual(compoundHost.getSnapshot());
+    expect(applied.protocolSections[personSection]?.variables).toHaveProperty(
+      'nickname',
+    );
+    expect(applied.protocolSections).not.toHaveProperty(edgeSection);
+  });
+
+  /**
+   * Unchecked on purpose. An arrival is not a submission: it holds no lease,
+   * it IS the new base rather than being built on one, and whoever made it has
+   * already answered for it. A fixture seeds states no submission could
+   * produce — here, an attribute deleted out from under a form stage that
+   * still asks for it, which `rejects a compound edit that breaks an untouched
+   * stage dependency` above proves a submission cannot do — because that
+   * broken state is exactly what an editor has to be seen reacting to.
+   */
+  it('applies a change no submission could make', () => {
+    const personWithAge = {
+      ...initialSections[personSection],
+      variables: { age: { name: 'Age', type: 'number', component: 'Number' } },
+    } satisfies SectionDoc;
+    const compoundHost = new InMemoryCompoundHost({
+      protocolSections: {
+        ...initialSections,
+        [stageOrderSection]: { stages: ['stage-1', 'stage-2', 'form-stage'] },
+        [formStageSection]: {
+          id: 'form-stage',
+          type: 'AlterForm',
+          label: 'Person form',
+          subject: { entity: 'node', type: 'person' },
+          introductionPanel: { title: 'Questions', text: 'Answer these.' },
+          form: { fields: [{ variable: 'age', prompt: 'Age?' }] },
+        },
+        [personSection]: personWithAge,
+      },
+      manifestRevision: { sequence: 7n, hash: 'revision-7' },
+      leases: [lease(stageSection, 'owner-primary', 4n, primaryHolder)],
+    });
+
+    const applied = compoundHost.receiveAuthoritativeSections({
+      [personSection]: { ...personWithAge, variables: {} },
+    });
+
+    expect(applied.protocolSections[personSection]?.variables).toEqual({});
+    expect(
+      CurrentProtocolSchema.safeParse(
+        assembleProtocolSections(applied.protocolSections),
+      ).success,
+    ).toBe(false);
+  });
+
+  it('is a base the next compound edit is accepted against', () => {
+    const compoundHost = host();
+    const arrived = {
+      name: 'Person',
+      color: 'node-color-seq-1',
+      shape: { default: 'circle' },
+      variables: { nickname: { name: 'nickname', type: 'text' } },
+    } satisfies SectionDoc;
+    compoundHost.receiveAuthoritativeSections({ [personSection]: arrived });
+
+    const result = compoundHost.submit(
+      submission('rename-the-arrived-attribute', [
+        {
+          kind: 'update',
+          sectionId: personSection,
+          // Built from what the arrival said, which is what a session told
+          // about it would have been shown.
+          expectedContentHash: contentHash(arrived),
+          commands: [
+            {
+              op: 'set',
+              key: 'variables',
+              value: { nickname: { name: 'preferred_name', type: 'text' } },
+            },
+          ],
+        },
+      ]),
+    );
+
+    expect(result.status).toBe('applied');
+    expect(
+      compoundHost.getSnapshot().protocolSections[personSection]?.variables,
+    ).toEqual({ nickname: { name: 'preferred_name', type: 'text' } });
   });
 });
