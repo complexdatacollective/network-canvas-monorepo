@@ -110,6 +110,12 @@ name not here adds it here first, in the same pull request.
 | `schemaProblem`        | `form/schemaProblems.ts`                                                                                                                                                         | sections  |
 | `variableParameters`   | `codebook/variableParameters.ts`, `codebook/components/VariableParameterFields.tsx`                                                                                              | sections  |
 | `compoundFailure`      | `codebook/compoundFailureCopy.ts`                                                                                                                                                | sections  |
+| `sortOrder`            | `fields/sortOrderOptions.ts`, `sections/prompts/SortOrderRows.tsx`                                                                                                               | sections  |
+| `subjectSection`       | `sections/SubjectSection.tsx`                                                                                                                                                    | sections  |
+| `introduction`         | `sections/IntroductionSection.tsx`                                                                                                                                               | sections  |
+| `pageContent`          | `sections/PageContentSection.tsx`                                                                                                                                                | sections  |
+| `contentBlock`         | `sections/contentBlocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                               | sections  |
+| `promptsSection`       | `sections/PromptsSection.tsx`                                                                                                                                                    | sections  |
 
 `shell` covers `editors/saveStageAction.tsx` as well as the shell itself,
 rather than that control taking an area of its own: the fallback save button is
@@ -186,13 +192,7 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `<area>`                    | Will own the copy in                         | Expected in |
 | --------------------------- | -------------------------------------------- | ----------- |
 | `subjectSelect`             | `fields/SubjectSelectField.tsx`              | splits 3–6  |
-| `sortOrder`                 | `fields/sortOrderOptions`                    | splits 3–6  |
 | `formFields`                | `sections/FormFieldsSection`                 | splits 3–6  |
-| `subjectSection`            | `sections/SubjectSection`                    | splits 3–6  |
-| `introduction`              | `sections/IntroductionSection`               | splits 3–6  |
-| `pageContent`               | `sections/PageContentSection`                | splits 3–6  |
-| `contentBlock`              | `sections/contentBlocks/`                    | splits 3–6  |
-| `promptsSection`            | `sections/PromptsSection`                    | splits 3–6  |
 | `attributeCodebookControls` | `sections/AttributeCodebookControls`         | splits 3–6  |
 | `nodePanels`                | `sections/NodePanelsSection`                 | family D    |
 | `searchOptions`             | `sections/SearchOptionsSection`              | family D    |
@@ -228,9 +228,15 @@ for something else or reopens a decision that has been made:
 - **`builderSection`** — `sections/BuilderSection.tsx` renders only the words
   its section hands it, as `MessageDescriptor`s on `SectionCapability`, plus
   `commonMessages.cancel`.
-- **`subjectSelect`, `sortOrder`** — `fields/SubjectSelectField.tsx` and
-  `fields/sortOrderOptions` do not exist yet; the rows above keep the names
-  for the split that adds them.
+- **`subjectSelect`** — `fields/SubjectSelectField.tsx` exists now and holds no
+  copy of its own: it bridges the schema's `{entity, type}` subject to the bare
+  type ids `EntitySelectField` speaks, and every word around it — the label,
+  the hint, the empty state — belongs to the section that mounts it
+  (`subjectSection`) or to the control it wraps (`entitySelect`). The name
+  stays reserved rather than being reused for something else.
+
+`sections/StageHeading.tsx` holds no copy either: it composes `StageNameSection`
+from the protocol's own stage order, so every word on it is that section's.
 
 The RESOURCE half of `schemaProblem` — what a researcher is told about a stored
 resource entry the asset schema refuses — is declared in `form/schemaProblems.ts`

@@ -743,6 +743,142 @@
     "defaultMessage": "This change could not be saved, and nothing was altered. Wait a moment and try again.",
     "description": "Refusal shown in a codebook editor when saving threw with no explanation a researcher could act on. The last resort."
   },
+  "protocolBuilder.contentBlock.audioHint": {
+    "defaultMessage": "The audio the participant can play when they reach this block.",
+    "description": "Guidance under the file picker of a block that plays an audio recording."
+  },
+  "protocolBuilder.contentBlock.audioRequired": {
+    "defaultMessage": "Choose the audio file this block plays.",
+    "description": "Refusal shown under the file picker of an audio block when nothing has been chosen."
+  },
+  "protocolBuilder.contentBlock.contentLabel": {
+    "defaultMessage": "Content",
+    "description": "Label of the control holding what one piece of a page actually shows, whichever kind it is."
+  },
+  "protocolBuilder.contentBlock.imageHint": {
+    "defaultMessage": "The image the participant sees when they reach this block.",
+    "description": "Guidance under the file picker of a block that shows a picture."
+  },
+  "protocolBuilder.contentBlock.imageRequired": {
+    "defaultMessage": "Choose the image this block shows.",
+    "description": "Refusal shown under the file picker of a picture block when nothing has been chosen."
+  },
+  "protocolBuilder.contentBlock.kindAudio": {
+    "defaultMessage": "Audio",
+    "description": "Choice offered for what one piece of a page holds: an audio recording."
+  },
+  "protocolBuilder.contentBlock.kindChangedEmpty": {
+    "defaultMessage": "Content type changed to {kind}. Nothing has been entered for {kind} yet.",
+    "description": "Announcement made when a researcher changes what kind of thing one piece of a page holds and neither the old nor the new kind has anything in it. kind is the new choice, already in the reader’s language."
+  },
+  "protocolBuilder.contentBlock.kindChangedKept": {
+    "defaultMessage": "Content type changed to {kind}. The content you entered for the previous type is kept, and returns if you change back to it.",
+    "description": "Announcement made when a researcher changes what kind of thing one piece of a page holds, away from a kind they had filled in, which is kept rather than thrown away. kind is the new choice, already in the reader’s language."
+  },
+  "protocolBuilder.contentBlock.kindChangedRestored": {
+    "defaultMessage": "Content type changed to {kind}. The content you entered for {kind} earlier has been restored.",
+    "description": "Announcement made when a researcher changes what kind of thing one piece of a page holds, back to a kind they had already filled in, so their earlier answer comes back. kind is that choice, already in the reader’s language."
+  },
+  "protocolBuilder.contentBlock.kindChosen": {
+    "defaultMessage": "Content type set to {kind}. A content field for it has been added below.",
+    "description": "Announcement made when a researcher first says what kind of thing one piece of a page holds, which mounts a control for it. kind is that choice — Image, Video, Audio, Text — already in the reader’s language."
+  },
+  "protocolBuilder.contentBlock.kindHint": {
+    "defaultMessage": "Choose what this block shows the participant.",
+    "description": "Guidance under the content-type control."
+  },
+  "protocolBuilder.contentBlock.kindImage": {
+    "defaultMessage": "Image",
+    "description": "Choice offered for what one piece of a page holds: a picture."
+  },
+  "protocolBuilder.contentBlock.kindLabel": {
+    "defaultMessage": "Content type",
+    "description": "Label of the control choosing what kind of thing one piece of a page holds — a picture, a video, an audio recording, prose."
+  },
+  "protocolBuilder.contentBlock.kindRequired": {
+    "defaultMessage": "Choose what kind of content this block holds.",
+    "description": "Refusal shown under the content-type control when the researcher has chosen nothing."
+  },
+  "protocolBuilder.contentBlock.kindText": {
+    "defaultMessage": "Text",
+    "description": "Choice offered for what one piece of a page holds: prose the participant reads."
+  },
+  "protocolBuilder.contentBlock.kindVideo": {
+    "defaultMessage": "Video",
+    "description": "Choice offered for what one piece of a page holds: a video."
+  },
+  "protocolBuilder.contentBlock.missingResource": {
+    "defaultMessage": "This block’s resource is no longer in this protocol. Choose a content type above to replace it.",
+    "description": "Warning body shown when a piece of a page points at a file that has been deleted from the protocol, so it needs replacing."
+  },
+  "protocolBuilder.contentBlock.previewEmpty": {
+    "defaultMessage": "This block has no content yet.",
+    "description": "Shown in the collapsed row of a page’s list of blocks when the researcher has not yet said what that piece of the page holds."
+  },
+  "protocolBuilder.contentBlock.previewUnusable": {
+    "defaultMessage": "This block’s resource is not in this protocol, or is not something a page can show.",
+    "description": "Shown in the collapsed row of a page’s list of blocks when that piece points at a file the protocol no longer holds, or at one a page cannot present — a roster of people, a map layer, a key."
+  },
+  "protocolBuilder.contentBlock.sectionDescription": {
+    "defaultMessage": "Choose what kind of content this block holds, and provide the content itself.",
+    "description": "Description under the block-details heading."
+  },
+  "protocolBuilder.contentBlock.sectionTitle": {
+    "defaultMessage": "Block details",
+    "description": "Heading of the dialog where a researcher says what one piece of a page holds and provides it."
+  },
+  "protocolBuilder.contentBlock.sizeFull": {
+    "defaultMessage": "Full size",
+    "description": "Choice offered for how tall a picture or video on a page is drawn: however tall it naturally is, unconstrained."
+  },
+  "protocolBuilder.contentBlock.sizeHint": {
+    "defaultMessage": "Optionally constrain the height of this block. Full size lets it show at its natural height.",
+    "description": "Guidance under the display-size control. \"Full size\" is the wording of the unconstrained choice it offers."
+  },
+  "protocolBuilder.contentBlock.sizeLabel": {
+    "defaultMessage": "Display size",
+    "description": "Label of the control constraining how tall a picture or video is drawn on a page."
+  },
+  "protocolBuilder.contentBlock.sizeLarge": {
+    "defaultMessage": "Large",
+    "description": "Choice offered for how tall a picture or video on a page is drawn."
+  },
+  "protocolBuilder.contentBlock.sizeMedium": {
+    "defaultMessage": "Medium",
+    "description": "Choice offered for how tall a picture or video on a page is drawn."
+  },
+  "protocolBuilder.contentBlock.sizeSmall": {
+    "defaultMessage": "Small",
+    "description": "Choice offered for how tall a picture or video on a page is drawn."
+  },
+  "protocolBuilder.contentBlock.textHint": {
+    "defaultMessage": "What the participant reads when they reach this block. Supports markdown formatting.",
+    "description": "Guidance under the control holding the prose of a text block. Markdown is the name of the formatting syntax and is not translated."
+  },
+  "protocolBuilder.contentBlock.textPlaceholder": {
+    "defaultMessage": "Enter the text for this block...",
+    "description": "Placeholder shown in the empty prose control of a text block. The trailing dots are an ellipsis written as three full stops."
+  },
+  "protocolBuilder.contentBlock.textRequired": {
+    "defaultMessage": "Write the text this block shows.",
+    "description": "Refusal shown under the prose control of a text block when it has been left empty."
+  },
+  "protocolBuilder.contentBlock.unpresentableResource": {
+    "defaultMessage": "This block’s resource is not an image, audio or video file, so this block cannot show it. Choose a content type above to replace it.",
+    "description": "Warning body shown when a piece of a page points at a file that IS in the protocol but is not something a page can present — a roster of people, a map layer, a key. Distinct from a deleted file, because there is nothing missing to go looking for."
+  },
+  "protocolBuilder.contentBlock.unusableTitle": {
+    "defaultMessage": "This block cannot be shown",
+    "description": "Warning heading shown when a piece of a page points at a file the page cannot present."
+  },
+  "protocolBuilder.contentBlock.videoHint": {
+    "defaultMessage": "The video the participant can play when they reach this block.",
+    "description": "Guidance under the file picker of a block that plays a video."
+  },
+  "protocolBuilder.contentBlock.videoRequired": {
+    "defaultMessage": "Choose the video this block plays.",
+    "description": "Refusal shown under the file picker of a video block when nothing has been chosen."
+  },
   "protocolBuilder.dialogForm.discardConfirm": {
     "defaultMessage": "Discard changes",
     "description": "Button that closes an editing dialog and throws away the unsaved work in it."
@@ -890,6 +1026,38 @@
   "protocolBuilder.interviewerGuidance.title": {
     "defaultMessage": "Interviewer guidance",
     "description": "Heading of the section holding notes written for the person running the interview. Never shown to a participant."
+  },
+  "protocolBuilder.introduction.description": {
+    "defaultMessage": "Introduce this task to the participant before they start it.",
+    "description": "Description of the task-introduction section."
+  },
+  "protocolBuilder.introduction.headingHint": {
+    "defaultMessage": "The heading shown at the top of the introduction screen.",
+    "description": "Guidance under the introduction-heading field."
+  },
+  "protocolBuilder.introduction.headingLabel": {
+    "defaultMessage": "Introduction heading",
+    "description": "Label of the field holding the heading at the top of the introduction screen a participant reads."
+  },
+  "protocolBuilder.introduction.headingPlaceholder": {
+    "defaultMessage": "Enter a heading...",
+    "description": "Placeholder shown in the empty introduction-heading field. The trailing dots are an ellipsis written as three full stops."
+  },
+  "protocolBuilder.introduction.textHint": {
+    "defaultMessage": "Explain what the participant is about to do. This is the only thing they will read before the task begins.",
+    "description": "Guidance under the introduction-text field."
+  },
+  "protocolBuilder.introduction.textLabel": {
+    "defaultMessage": "Introduction text",
+    "description": "Label of the field holding the prose a participant reads before this step of the interview begins."
+  },
+  "protocolBuilder.introduction.textPlaceholder": {
+    "defaultMessage": "Enter your introduction here...",
+    "description": "Placeholder shown in the empty introduction-text field. The trailing dots are an ellipsis written as three full stops."
+  },
+  "protocolBuilder.introduction.title": {
+    "defaultMessage": "Task introduction",
+    "description": "Heading of the section where a researcher writes what a participant reads before this step of the interview begins."
   },
   "protocolBuilder.multiSelect.emptyState": {
     "defaultMessage": "No items available.",
@@ -1126,6 +1294,162 @@
   "protocolBuilder.outline.unavailableStatus": {
     "defaultMessage": "Not available yet",
     "description": "Spoken state of one section of a stage editor: it cannot be filled in until something else in the stage has been chosen. Read out after the section’s own name, and never shown on screen."
+  },
+  "protocolBuilder.pageContent.atLeastOne": {
+    "defaultMessage": "Add at least one block. A page with no content shows the participant nothing.",
+    "description": "Refusal shown above the list of blocks when a researcher saves a page that shows nothing. A block is one piece of a page — a passage of text, a picture, a video."
+  },
+  "protocolBuilder.pageContent.headingHint": {
+    "defaultMessage": "The large heading shown at the top of the page.",
+    "description": "Guidance under the page-heading field."
+  },
+  "protocolBuilder.pageContent.headingLabel": {
+    "defaultMessage": "Page heading",
+    "description": "Label of the field holding the large heading at the top of a page a participant reads."
+  },
+  "protocolBuilder.pageContent.headingPlaceholder": {
+    "defaultMessage": "Enter a heading...",
+    "description": "Placeholder shown in the empty page-heading field. The trailing dots are an ellipsis written as three full stops."
+  },
+  "protocolBuilder.pageContent.introAddLabel": {
+    "defaultMessage": "Create new introduction block",
+    "description": "Button that opens the dialog for adding one more piece to an introduction screen."
+  },
+  "protocolBuilder.pageContent.introAddTitle": {
+    "defaultMessage": "Create introduction block",
+    "description": "Title of the dialog a researcher fills in to add one more piece to an introduction screen."
+  },
+  "protocolBuilder.pageContent.introClearConfirm": {
+    "defaultMessage": "Remove the introduction screen",
+    "description": "Action that confirms switching the introduction screen off and discarding its blocks."
+  },
+  "protocolBuilder.pageContent.introClearDescription": {
+    "defaultMessage": "This will delete every block on the introduction screen, and the participant will start the task straight away. Do you want to continue?",
+    "description": "Body of the confirmation asked before switching the introduction screen off, which throws every block on it away."
+  },
+  "protocolBuilder.pageContent.introClearTitle": {
+    "defaultMessage": "This will remove the introduction screen",
+    "description": "Title of the confirmation asked before switching the introduction screen off, which throws every block on it away."
+  },
+  "protocolBuilder.pageContent.introDescription": {
+    "defaultMessage": "Show the participant a screen of text and media before this task begins.",
+    "description": "Description of the introduction-screen section."
+  },
+  "protocolBuilder.pageContent.introEditTitle": {
+    "defaultMessage": "Edit introduction block",
+    "description": "Title of the dialog a researcher fills in to change a piece of an introduction screen."
+  },
+  "protocolBuilder.pageContent.introEmptyState": {
+    "defaultMessage": "No blocks yet. Create one to explain this task before the participant starts it.",
+    "description": "Shown in place of the list of blocks while an introduction screen holds nothing yet."
+  },
+  "protocolBuilder.pageContent.introItemNoun": {
+    "defaultMessage": "introduction block",
+    "description": "What one piece of an introduction screen is called inside things said ABOUT it — \"Edit introduction block\" — so it is lower case and singular."
+  },
+  "protocolBuilder.pageContent.introItemsHint": {
+    "defaultMessage": "The participant scrolls through these in order before starting the task. Drag to reorder them.",
+    "description": "Guidance under the list of blocks on an introduction screen."
+  },
+  "protocolBuilder.pageContent.introItemsLabel": {
+    "defaultMessage": "Introduction blocks",
+    "description": "Label of the ordered list of pieces the introduction screen is built from."
+  },
+  "protocolBuilder.pageContent.introTitle": {
+    "defaultMessage": "Introduction screen",
+    "description": "Heading of the section where a researcher builds a page of text and media shown before this step of the interview’s own task begins."
+  },
+  "protocolBuilder.pageContent.pageAddLabel": {
+    "defaultMessage": "Create new content block",
+    "description": "Button that opens the dialog for adding one more piece to a page. Whole rather than a generic \"Add\", because a stage editor shows several lists at once."
+  },
+  "protocolBuilder.pageContent.pageAddTitle": {
+    "defaultMessage": "Create content block",
+    "description": "Title of the dialog a researcher fills in to add one more piece to a page."
+  },
+  "protocolBuilder.pageContent.pageClearConfirm": {
+    "defaultMessage": "Clear the page",
+    "description": "Action that confirms switching a page off and discarding its blocks."
+  },
+  "protocolBuilder.pageContent.pageClearDescription": {
+    "defaultMessage": "This will remove every block on this page. Do you want to continue?",
+    "description": "Body of the confirmation asked before switching a page off, which throws every block on it away."
+  },
+  "protocolBuilder.pageContent.pageClearTitle": {
+    "defaultMessage": "This will clear the page",
+    "description": "Title of the confirmation asked before switching a page off, which throws every block on it away."
+  },
+  "protocolBuilder.pageContent.pageDescription": {
+    "defaultMessage": "Write the page heading and build the sequence of blocks the participant reads.",
+    "description": "Description of the page-content section."
+  },
+  "protocolBuilder.pageContent.pageEditTitle": {
+    "defaultMessage": "Edit content block",
+    "description": "Title of the dialog a researcher fills in to change a piece of a page."
+  },
+  "protocolBuilder.pageContent.pageEmptyState": {
+    "defaultMessage": "No blocks yet. Create one to put text or media on this page.",
+    "description": "Shown in place of the list of blocks while a page holds nothing yet."
+  },
+  "protocolBuilder.pageContent.pageItemNoun": {
+    "defaultMessage": "block",
+    "description": "What one piece of a page is called inside things said ABOUT it — \"Edit block\", \"Remove this block?\" — so it is lower case and singular."
+  },
+  "protocolBuilder.pageContent.pageItemsHint": {
+    "defaultMessage": "The participant scrolls through these in order, so add as many as you need. Drag to reorder them.",
+    "description": "Guidance under the list of blocks on a page."
+  },
+  "protocolBuilder.pageContent.pageItemsLabel": {
+    "defaultMessage": "Content blocks",
+    "description": "Label of the ordered list of pieces a page is built from — passages of text, pictures, videos."
+  },
+  "protocolBuilder.pageContent.pageTitle": {
+    "defaultMessage": "Page content",
+    "description": "Heading of the section where a researcher builds a page of text and media that a participant reads instead of doing a task."
+  },
+  "protocolBuilder.promptsSection.addLabel": {
+    "defaultMessage": "Create new prompt",
+    "description": "Button that opens the dialog for writing one more question. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  },
+  "protocolBuilder.promptsSection.addTitle": {
+    "defaultMessage": "Create prompt",
+    "description": "Title of the dialog a researcher fills in to write one more question."
+  },
+  "protocolBuilder.promptsSection.atLeastOne": {
+    "defaultMessage": "Create at least one prompt. A stage with no prompts asks the participant nothing.",
+    "description": "Refusal shown above the prompt list when a researcher saves a stage that asks nothing. A prompt is one question a participant is asked; a stage is one step of an interview."
+  },
+  "protocolBuilder.promptsSection.description": {
+    "defaultMessage": "Write the questions this stage asks, and drag them into the order the participant answers them.",
+    "description": "Description of the prompts section. A stage is one step of an interview."
+  },
+  "protocolBuilder.promptsSection.editTitle": {
+    "defaultMessage": "Edit prompt",
+    "description": "Title of the dialog a researcher fills in to change a question they have already written."
+  },
+  "protocolBuilder.promptsSection.emptyState": {
+    "defaultMessage": "No prompts yet. Create one to say what this stage asks the participant.",
+    "description": "Shown in place of the prompt list while a stage asks nothing yet."
+  },
+  "protocolBuilder.promptsSection.fieldHint": {
+    "defaultMessage": "The participant answers these one at a time, in this order. Add at least one.",
+    "description": "Guidance under the list of prompts."
+  },
+  "protocolBuilder.promptsSection.fieldLabel": {
+    "defaultMessage": "Prompts",
+    "description": "Label of the list of questions inside the prompts section. The same word as the section heading, and translated once for each: the heading names the part of the stage, and this names the control."
+  },
+  "protocolBuilder.promptsSection.itemNoun": {
+    "defaultMessage": "prompt",
+    "description": "What one row of the prompt list is called inside things said ABOUT it — \"Edit prompt\", \"Remove this prompt?\" — so it is lower case and singular. A prompt is one question a participant is asked."
+  },
+  "protocolBuilder.promptsSection.title": {
+    "defaultMessage": "Prompts",
+    "description": "Heading of the section holding the questions this step of the interview asks the participant."
+  },
+  "protocolBuilder.promptsSection.waitingDescription": {
+    "defaultMessage": "Choose what this stage works with before writing its prompts.",
+    "description": "Shown in place of the prompts section’s description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against."
   },
   "protocolBuilder.protocolContext.duplicateEntityName": {
     "defaultMessage": "Duplicate entity name \"{name}\" (first declared in {firstOwnerSectionId}).",
@@ -2635,6 +2959,34 @@
     "defaultMessage": "Stage {position, number} — Untitled stage",
     "description": "The same offered destination as stageOption, for a stage the researcher has not named yet, so there is no name to show. position is where that stage will sit in the finished interview, counting from one."
   },
+  "protocolBuilder.sortOrder.ascending": {
+    "defaultMessage": "Ascending",
+    "description": "Direction offered for one sort rule: lowest or earliest first."
+  },
+  "protocolBuilder.sortOrder.descending": {
+    "defaultMessage": "Descending",
+    "description": "Direction offered for one sort rule: highest or latest first."
+  },
+  "protocolBuilder.sortOrder.directionLabel": {
+    "defaultMessage": "Direction",
+    "description": "Visible text and accessible name of the column of a sort rule that chooses whether it sorts ascending or descending."
+  },
+  "protocolBuilder.sortOrder.missingProperty": {
+    "defaultMessage": "{property} — this attribute is no longer in the codebook",
+    "description": "Label of the only choice left standing for a sort rule that names an attribute a collaborator has since deleted. property is the attribute’s stored record id, which the researcher never chose and which is all that is left of it. Rendered inside a plain dropdown option, which can carry no styling, so the explanation is part of the label."
+  },
+  "protocolBuilder.sortOrder.missingPropertyRefusal": {
+    "defaultMessage": "This rule points at an attribute no longer in the codebook. Choose another or delete the rule.",
+    "description": "Shown above a prompt’s sort rules when one of them names an attribute that has been deleted from the codebook — the protocol’s definition of what an interview records. Names both ways out, because the rule looks complete and is not."
+  },
+  "protocolBuilder.sortOrder.originalOrder": {
+    "defaultMessage": "*",
+    "description": "The choice a sort rule offers for \"leave these in the order they already have\" — the order network members were placed in, or the order a data file lists them in. Written as an asterisk because that is the value the protocol stores and the shorthand researchers already read in Architect; a language that has a better one-character shorthand may use it."
+  },
+  "protocolBuilder.sortOrder.propertyLabel": {
+    "defaultMessage": "Property",
+    "description": "Visible text and accessible name of the column of a sort rule that chooses what the rule sorts by — an attribute of the node, or one of the orders the interview itself can supply."
+  },
   "protocolBuilder.stageName.documentation": {
     "defaultMessage": "Documentation",
     "description": "Link to the documentation for this type of interview interface."
@@ -2654,6 +3006,54 @@
   "protocolBuilder.stageTypeImage.preview": {
     "defaultMessage": "Preview of {interfaceName}",
     "description": "Alternative text for a screenshot of an interview interface. interfaceName is the localized interface name, or an unchanged identifier for an unknown future interface."
+  },
+  "protocolBuilder.subjectSection.edgeCreateDescription": {
+    "defaultMessage": "Create an edge type and use it on this stage",
+    "description": "Description shown inside the dialog for inventing a kind of relationship, and what the change is called in the record a host keeps of protocol edits."
+  },
+  "protocolBuilder.subjectSection.edgeCreateLabel": {
+    "defaultMessage": "Create a new edge type",
+    "description": "Button that opens an editor for inventing a kind of relationship without leaving the stage being configured. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.subjectSection.edgeDescription": {
+    "defaultMessage": "Choose the type of edge this stage works with.",
+    "description": "Description of the edge-type section. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.edgeFieldHint": {
+    "defaultMessage": "Every edge this stage creates or shows will be of the type you choose here.",
+    "description": "Guidance under the edge-type control."
+  },
+  "protocolBuilder.subjectSection.edgeFieldLabel": {
+    "defaultMessage": "Edge type",
+    "description": "Label of the control choosing which kind of relationship this step of the interview is about. The same words as the section heading, and translated once for each."
+  },
+  "protocolBuilder.subjectSection.edgeTitle": {
+    "defaultMessage": "Edge type",
+    "description": "Heading of the section where a researcher says which kind of relationship this step of the interview is about. An edge is a connection between two members of the network."
+  },
+  "protocolBuilder.subjectSection.nodeCreateDescription": {
+    "defaultMessage": "Create a node type and use it on this stage",
+    "description": "Description shown inside the dialog for inventing a kind of network member, and what the change is called in the record a host keeps of protocol edits."
+  },
+  "protocolBuilder.subjectSection.nodeCreateLabel": {
+    "defaultMessage": "Create a new node type",
+    "description": "Button that opens an editor for inventing a kind of network member without leaving the stage being configured. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.subjectSection.nodeDescription": {
+    "defaultMessage": "Choose the type of node this stage works with.",
+    "description": "Description of the node-type section. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.nodeFieldHint": {
+    "defaultMessage": "Every node this stage creates or shows will be of the type you choose here.",
+    "description": "Guidance under the node-type control."
+  },
+  "protocolBuilder.subjectSection.nodeFieldLabel": {
+    "defaultMessage": "Node type",
+    "description": "Label of the control choosing which kind of network member this step of the interview is about. The same words as the section heading, and translated once for each: the heading names the part of the stage, and this names the control."
+  },
+  "protocolBuilder.subjectSection.nodeTitle": {
+    "defaultMessage": "Node type",
+    "description": "Heading of the section where a researcher says which kind of network member this step of the interview is about. A node is one member of the network a participant describes."
   },
   "protocolBuilder.variableParameters.afterHint": {
     "defaultMessage": "How far forward from the anchor the participant can choose. Left empty, {days, number} days.",
