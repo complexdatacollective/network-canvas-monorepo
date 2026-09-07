@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 
 import { deriveMinioSourceEvidence } from './studio-image-evidence.mjs';
 import { distributionAncestry } from './studio-release-ancestry.mjs';
+import { assertSuccessfulStudioSourceCI } from './studio-release-ci-admission.mjs';
 import {
   readStudioCandidate,
   studioReleaseEligibility,
@@ -11,7 +12,7 @@ import {
 /** Called under the publication lock after fetching origin/main and all tags.
  * Build inputs are read from committed Git objects by the shared release policy.
  * The checkout must match that same reviewed source before executing its build. */
-export async function evaluateStudioPublication(cwd, source) {
+export async function evaluateStudioPublication(cwd, source, { request } = {}) {
   if (typeof source !== 'string' || !/^[a-f0-9]{40}$/.test(source))
     throw new Error('A complete reviewed Studio source commit is required.');
   const git = (args) =>
@@ -27,10 +28,12 @@ export async function evaluateStudioPublication(cwd, source) {
   )
     throw new Error('Studio publication requires the clean reviewed checkout.');
   git(['merge-base', '--is-ancestor', source, 'refs/remotes/origin/main']);
+  const ci = await assertSuccessfulStudioSourceCI(source, { request });
   const candidate = readStudioCandidate(cwd, source);
   const eligibility = await studioReleaseEligibility(candidate);
   const ancestry = distributionAncestry(cwd, source);
   return {
+    ci,
     eligibility,
     ancestry,
     minioSource: deriveMinioSourceEvidence(

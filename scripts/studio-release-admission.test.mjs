@@ -6,6 +6,10 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import { evaluateStudioPublication } from './studio-release-admission.mjs';
+import {
+  successfulCIRequest,
+  successfulRun,
+} from './test-support/studio-release-ci.mjs';
 import { fixture } from './test-support/studio-release-policy.mjs';
 
 function originMain(f, t) {
@@ -22,7 +26,9 @@ function source(f) {
 
 async function admission(f, t) {
   originMain(f, t);
-  return evaluateStudioPublication(f.cwd, source(f));
+  return evaluateStudioPublication(f.cwd, source(f), {
+    request: successfulCIRequest(source(f)),
+  });
 }
 
 test('a clean origin/main source with a pending changeset is deferred before npm', async (t) => {
@@ -31,6 +37,7 @@ test('a clean origin/main source with a pending changeset is deferred before npm
   f.commit();
   const result = await admission(f, t);
   assert.equal(result.eligibility.status, 'deferred');
+  assert.deepEqual(result.ci, { source: source(f), runId: 12, attempt: 1 });
   assert.equal(
     result.eligibility.blockers.some(
       ({ code }) => code === 'pending_changeset',
@@ -40,6 +47,21 @@ test('a clean origin/main source with a pending changeset is deferred before npm
   assert.equal(result.minioSource.commit, 'c'.repeat(40));
   assert.equal(result.minioSource.sha256, 'b'.repeat(64));
   assert.equal(result.ancestry.source, source(f));
+});
+
+test('a clean main source with failed CI is refused before release eligibility', async (t) => {
+  const f = fixture(t);
+  originMain(f, t);
+  const run = successfulRun(source(f), { conclusion: 'failure' });
+  const request = async ({ query }) => ({
+    bytes: Buffer.from(
+      JSON.stringify(query ? { total_count: 1, workflow_runs: [run] } : run),
+    ),
+  });
+  await assert.rejects(
+    () => evaluateStudioPublication(f.cwd, source(f), { request }),
+    /latest main-source CI attempt has not succeeded/,
+  );
 });
 
 test('refuses wrong HEAD and tracked or untracked checkout changes before policy evaluation', async (t) => {
@@ -83,7 +105,9 @@ test('derives MinIO evidence from a clean committed Dockerfile revision', async 
   );
   f.commit();
   originMain(f, t);
-  const result = await evaluateStudioPublication(f.cwd, source(f));
+  const result = await evaluateStudioPublication(f.cwd, source(f), {
+    request: successfulCIRequest(source(f)),
+  });
   assert.equal(result.minioSource.repository, 'https://github.com/minio/minio');
   assert.equal(result.minioSource.commit, 'e'.repeat(40));
   assert.equal(result.minioSource.sha256, 'd'.repeat(64));
@@ -98,7 +122,9 @@ test('reports a reserved distribution source that is not an ancestor as supersed
   const reserved = f.commit();
   f.git('tag', `studio-distribution-${reserved}`, reserved);
   f.git('checkout', '-q', 'main');
-  const result = await evaluateStudioPublication(f.cwd, main);
+  const result = await evaluateStudioPublication(f.cwd, main, {
+    request: successfulCIRequest(main),
+  });
   assert.equal(result.ancestry.status, 'superseded');
   assert.equal(result.ancestry.conflictingRelease, reserved);
 });
