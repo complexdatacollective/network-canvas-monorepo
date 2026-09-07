@@ -123,8 +123,8 @@ describe('composing the registry from family parts', () => {
 });
 
 /**
- * Nineteen families are still to land, on branches of their own, and each of
- * them edits the same two lists in `stageEditorRegistry.ts`. Written as one
+ * Families are still landing, on branches of their own, and each of them
+ * edits the same two lists in `stageEditorRegistry.ts`. Written as one
  * entry per line in a fixed alphabetical order, three concurrent one-line
  * changes touch three different lines and merge; written any other way — a
  * list collapsed onto one line, two entries sharing a line, an order nobody
@@ -295,9 +295,9 @@ describe('dispatching to a named editor', () => {
       .mockImplementation(() => undefined);
 
     try {
-      // Every stage type is still awaiting its family, so the package's own
-      // registry cannot render anything yet — and says so rather than
-      // rendering a blank page.
+      // `Information` is still awaiting its family, so the package's own
+      // registry cannot render it — and says so rather than rendering a blank
+      // page.
       expect(() => renderStageEditor({ stageId: 'information-1' })).toThrow(
         UnregisteredStageTypeError,
       );

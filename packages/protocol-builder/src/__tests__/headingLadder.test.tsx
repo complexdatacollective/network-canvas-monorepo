@@ -15,6 +15,7 @@ import * as variableEditorStories from '../codebook/components/VariableEditor.st
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import * as validationEditorStories from '../codebook/validation/CodebookVariableValidationEditor.stories.tsx';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
+import * as familyPedigreeEditorStories from '../editors/pedigree/FamilyPedigreeStageEditor.stories.tsx';
 import * as shellStories from '../form/StageEditorShell.stories.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
@@ -295,6 +296,14 @@ describe('every story of a surface that writes its own heading', () => {
     ),
     ...from('StageEditorShell', composeStories(shellStories)),
     ...from('StageEditorStoryHost', composeStories(storyHostStories)),
+    // The named editors, which are where a section actually sits inside
+    // another one: a heading written at a fixed level is right at the depth
+    // its author happened to be looking at and wrong one rung down, and only
+    // a whole editor puts both depths on screen at once.
+    ...from(
+      'FamilyPedigreeStageEditor',
+      composeStories(familyPedigreeEditorStories),
+    ),
   ];
 
   it.each(stories)('has no heading skip in %s', async (_name, Story) => {
