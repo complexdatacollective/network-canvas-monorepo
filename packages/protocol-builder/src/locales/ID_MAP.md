@@ -296,3 +296,27 @@ protocol stage labels, is the existing case, and it is English deliberately.
   prompt = _pregunta_, attribute = _atributo_, node = _nodo_, edge = _vínculo_,
   ego = _ego_, alter = _álter_, network = _red_, rule = _regla_, roster =
   _lista_, resource = _recurso_, interview = _entrevista_.
+
+## Reading a story in another language
+
+This package's Storybook carries the shared **Language** and **Direction**
+toolbar controls from `@codaco/storybook-config` — the same ones
+`@codaco/fresco-ui`'s Storybook mounts, wired here in
+`.storybook/i18n.ts` and mounted as the preview's only decorator. Language
+offers every `ecosystemLocales` entry plus the `en-XA` pseudo-locale, and the
+decorator mounts an `AppI18nProvider` over `common.*`, `frescoUi.*` and
+`protocolBuilder.*` merged in that host order, so a section renders the words
+an app will actually show it. **It opens on `en` and stays there until somebody
+changes it**: `en` has no catalog in any of the three, so every descriptor
+renders its `defaultMessage` and the stories, their play functions and the
+Chromatic captures are byte-for-byte what they were before the control existed
+(the choice is remembered per browser, but never under Chromatic, Playwright or
+any other automated host). Switching to Español is the cheapest way to see
+whether a section is converted at all: a string that stays English there has no
+descriptor behind it — the provider-less English fallback in `useAppIntl()`
+makes an unconverted string and an untranslated one look identical until you
+switch. A story's own hardcoded host copy stays English too, which is expected;
+so is a play function that asserts an English literal failing when the language
+is forced, since plays are written against the source locale. The URL form is
+`?id=<story>&globals=appLocale:es`, and
+`src/__tests__/storybookLocaleSwitcher.test.tsx` holds the wiring in place.
