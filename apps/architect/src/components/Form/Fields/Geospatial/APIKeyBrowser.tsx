@@ -1,6 +1,9 @@
 import { ArrowRight } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -20,15 +23,99 @@ import ArchitectField from '~/components/Form/ArchitectField';
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
 import { getProtocolLockState } from '~/ducks/modules/app';
 import { getAssetManifest } from '~/selectors/protocol';
-import { refusedCommitMessage } from '~/utils/protocolLockMessages';
+import { refusedCommitError } from '~/utils/protocolLockMessages';
 
 import { addApiKeyAsset } from '../../../../ducks/modules/protocol/assetManifest';
+const messages = defineMessages({
+  aPIKeyBrowser: {
+    id: 'architect.form.fields.geospatial.aPIKeyBrowser.aPIKeyBrowser',
+    defaultMessage: 'API Key Browser',
+    description:
+      'The title text in components / Form / Fields / Geospatial / APIKeyBrowser.',
+  },
+  createAPIKey: {
+    id: 'architect.form.fields.geospatial.aPIKeyBrowser.createAPIKey',
+    defaultMessage: 'Create API key',
+    description:
+      'The title text in components / Form / Fields / Geospatial / APIKeyBrowser.',
+  },
+  thisKeyIsSavedInsideYour: {
+    id: 'architect.form.fields.geospatial.aPIKeyBrowser.thisKeyIsSavedInsideYour',
+    defaultMessage:
+      'This key is saved inside your protocol and included as plain text in exported <code>.netcanvas</code> files, so only use a key you are comfortable distributing.',
+    description:
+      'Visible text in components / Form / Fields / Geospatial / APIKeyBrowser.',
+  },
+  keyName: {
+    id: 'architect.form.fields.geospatial.aPIKeyBrowser.keyName',
+    defaultMessage: 'Key name',
+    description:
+      'The label text in components / Form / Fields / Geospatial / APIKeyBrowser.',
+  },
+  nameThisKey: {
+    id: 'architect.form.fields.geospatial.aPIKeyBrowser.nameThisKey',
+    defaultMessage: 'Name this key',
+    description:
+      'The placeholder text in components / Form / Fields / Geospatial / APIKeyBrowser.',
+  },
+  keyValue: {
+    id: 'architect.form.fields.geospatial.aPIKeyBrowser.keyValue',
+    defaultMessage: 'Key value',
+    description:
+      'The label text in components / Form / Fields / Geospatial / APIKeyBrowser.',
+  },
+  enterAnAPIKey: {
+    id: 'architect.form.fields.geospatial.aPIKeyBrowser.enterAnAPIKey',
+    defaultMessage: 'Enter an API Key...',
+    description:
+      'The placeholder text in components / Form / Fields / Geospatial / APIKeyBrowser.',
+  },
+  createKey: {
+    id: 'architect.form.fields.geospatial.aPIKeyBrowser.createKey',
+    defaultMessage: 'Create Key',
+    description:
+      'Visible text in components / Form / Fields / Geospatial / APIKeyBrowser.',
+  },
+  savedAPIKeys: {
+    id: 'architect.form.fields.geospatial.aPIKeyBrowser.savedAPIKeys',
+    defaultMessage: 'Saved API keys',
+    description:
+      'The title text in components / Form / Fields / Geospatial / APIKeyBrowser.',
+  },
+  selectAnAPIKeyAlreadyStored: {
+    id: 'architect.form.fields.geospatial.aPIKeyBrowser.selectAnAPIKeyAlreadyStored',
+    defaultMessage: 'Select an API key already stored in this protocol.',
+    description:
+      'The description text in components / Form / Fields / Geospatial / APIKeyBrowser.',
+  },
+});
 
 // Researcher-facing, whole sentences: what is wrong, and what to do about it.
-const NAME_REQUIRED_MESSAGE = 'Enter a name for this key.';
-const VALUE_REQUIRED_MESSAGE = 'Enter the value of the key.';
-const DUPLICATE_NAME_MESSAGE =
-  'A key with this name already exists. Choose a different name.';
+const NAME_REQUIRED_MESSAGE = defineMessages({
+  message: {
+    id: 'architect.constants.components.form.fields.geospatial.apikeybrowser.nameRequiredMessage',
+    defaultMessage: 'Enter a name for this key.',
+    description:
+      'Researcher-facing status or validation message. Context: components/Form/Fields/Geospatial/APIKeyBrowser.tsx.',
+  },
+}).message;
+const VALUE_REQUIRED_MESSAGE = defineMessages({
+  message: {
+    id: 'architect.constants.components.form.fields.geospatial.apikeybrowser.valueRequiredMessage',
+    defaultMessage: 'Enter the value of the key.',
+    description:
+      'Researcher-facing status or validation message. Context: components/Form/Fields/Geospatial/APIKeyBrowser.tsx.',
+  },
+}).message;
+const DUPLICATE_NAME_MESSAGE = defineMessages({
+  message: {
+    id: 'architect.constants.components.form.fields.geospatial.apikeybrowser.duplicateNameMessage',
+    defaultMessage:
+      'A key with this name already exists. Choose a different name.',
+    description:
+      'Researcher-facing status or validation message. Context: components/Form/Fields/Geospatial/APIKeyBrowser.tsx.',
+  },
+}).message;
 
 // Creating a key writes the protocol's own `assetManifest`, so it is a
 // persistence gate and has to ask the question every other one asks
@@ -70,6 +157,7 @@ const APIKeyBrowserBody = ({
   onSelect = () => {},
   selected = null,
 }: APIKeyBrowserProps) => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const store = useAppStore();
   const [preview, handleShowPreview] = useExternalDataPreview();
@@ -135,8 +223,10 @@ const APIKeyBrowserBody = ({
       // input before this runs (`isUnanswered`); this is the backstop that
       // keeps the handler total, so no path can mint a nameless key.
       const fieldErrors: Record<string, string[]> = {};
-      if (!name) fieldErrors.keyName = [NAME_REQUIRED_MESSAGE];
-      if (!value) fieldErrors.keyValue = [VALUE_REQUIRED_MESSAGE];
+      if (!name)
+        fieldErrors.keyName = [createMessageError(NAME_REQUIRED_MESSAGE)];
+      if (!value)
+        fieldErrors.keyValue = [createMessageError(VALUE_REQUIRED_MESSAGE)];
 
       // `normalizeForComparison`, the one question every uniqueness check in
       // Architect asks: case-insensitive AND Unicode-canonical. Comparing raw
@@ -151,7 +241,7 @@ const APIKeyBrowserBody = ({
           normalizeForComparison(asset.name.trim()) === normalizedName,
       );
       if (name && isDuplicateName) {
-        fieldErrors.keyName = [DUPLICATE_NAME_MESSAGE];
+        fieldErrors.keyName = [createMessageError(DUPLICATE_NAME_MESSAGE)];
       }
 
       if (Object.keys(fieldErrors).length > 0) {
@@ -164,7 +254,7 @@ const APIKeyBrowserBody = ({
       // dialog actually renders and `focusFirstError` can reach — a form-level
       // error would be refused in silence here, which is the defect, not the
       // fix.
-      const refusal = refusedCommitMessage(
+      const refusal = refusedCommitError(
         getProtocolLockState(store.getState()),
         'api-key',
       );
@@ -183,50 +273,50 @@ const APIKeyBrowserBody = ({
     <Dialog
       open={show}
       closeDialog={requestClose}
-      title="API Key Browser"
+      title={intl.formatMessage(messages.aPIKeyBrowser)}
       size="workspace"
       footer={
         <Button color="default" onClick={requestClose}>
-          Cancel
+          {intl.formatMessage(commonMessages.cancel)}
         </Button>
       }
     >
       <FormWithoutProvider onSubmit={handleSubmit}>
         <Section
-          title="Create API key"
+          title={intl.formatMessage(messages.createAPIKey)}
           description={
             <>
-              This key is saved inside your protocol and included as plain text
-              in exported <code>.netcanvas</code> files, so only use a key you
-              are comfortable distributing.
+              {intl.formatMessage(messages.thisKeyIsSavedInsideYour, {
+                code: (chunks) => <code>{chunks}</code>,
+              })}
             </>
           }
         >
           <ArchitectField
             name="keyName"
-            label="Key name"
+            label={intl.formatMessage(messages.keyName)}
             component={InputField}
             validation={{ required: true }}
             type="text"
-            placeholder="Name this key"
+            placeholder={intl.formatMessage(messages.nameThisKey)}
           />
           <ArchitectField
             name="keyValue"
-            label="Key value"
+            label={intl.formatMessage(messages.keyValue)}
             component={InputField}
             validation={{ required: true }}
             type="text"
-            placeholder="Enter an API Key..."
+            placeholder={intl.formatMessage(messages.enterAnAPIKey)}
           />
           <div className="pt-4">
             <SubmitButton key="save" iconPosition="right" icon={<ArrowRight />}>
-              Create Key
+              {intl.formatMessage(messages.createKey)}
             </SubmitButton>
           </div>
         </Section>
         <Section
-          title="Saved API keys"
-          description="Select an API key already stored in this protocol."
+          title={intl.formatMessage(messages.savedAPIKeys)}
+          description={intl.formatMessage(messages.selectAnAPIKeyAlreadyStored)}
         >
           <Assets
             onSelect={handleSelectAsset}

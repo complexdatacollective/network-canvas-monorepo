@@ -23,8 +23,7 @@ vi.mock('@codaco/protocol-builder/interfaces/StageTypeImage', () => ({
 }));
 
 vi.mock('./Interfaces', () => ({
-  getInterface: (type: string) => ({
-    name: `Interface:${type}`,
+  getInterface: () => ({
     documentation: undefined,
   }),
 }));
@@ -32,14 +31,18 @@ vi.mock('./Interfaces', () => ({
 import StageHeading from './StageHeading';
 
 describe('StageHeading', () => {
-  it('reads the stage type from the committed stage', () => {
+  it.each([
+    ['NameGenerator', 'Name Generator (using forms)'],
+    ['Sociogram', 'Sociogram'],
+  ])('reads the committed %s stage type and displays %s', (type, label) => {
     mockUseStageInitialValue.mockImplementation((path: string) =>
-      path === 'type' ? 'NameGenerator' : undefined,
+      path === 'type' ? type : undefined,
     );
 
     render(<StageHeading stageNumber={1} totalStages={3} isNewStage={false} />);
 
-    expect(screen.getByText('Interface:NameGenerator')).toBeInTheDocument();
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.getByText('Stage 1 of 3')).toBeInTheDocument();
   });
 
   it('renders nothing when the stage type is absent', () => {

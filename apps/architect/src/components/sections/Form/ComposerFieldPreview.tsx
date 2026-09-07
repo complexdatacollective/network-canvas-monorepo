@@ -2,6 +2,7 @@ import { get } from 'es-toolkit/compat';
 import { useSelector } from 'react-redux';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
+import AttributeControlDescription from '~/components/Form/AttributeControlDescription';
 import { getColorForType } from '~/config/variables';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubject } from '~/selectors/codebook';
@@ -39,12 +40,10 @@ const ComposerFieldPreview = ({
       <strong>{label ?? codebookVariable.name ?? variable}</strong>
       <div>
         <Badge color={getColorForType(codebookVariable.type)}>
-          <span>
-            <strong>{codebookVariable.type}</strong>
-            {' attribute using '}
-            <strong>{component}</strong>
-            {' input control'}
-          </span>
+          <AttributeControlDescription
+            type={codebookVariable.type}
+            component={component}
+          />
         </Badge>
       </div>
     </div>

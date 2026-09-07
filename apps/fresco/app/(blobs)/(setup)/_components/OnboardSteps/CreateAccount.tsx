@@ -1,10 +1,27 @@
+'use client';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { SignUpForm } from '~/app/(blobs)/(setup)/_components/SignUpForm';
 
+const messages = defineMessages({
+  createAnAdminAccount: {
+    id: 'fresco.OnboardSteps.CreateAccount.createAnAdminAccount',
+    defaultMessage: 'Create an Admin Account',
+    description:
+      'Researcher-facing OnboardSteps / CreateAccount: Create an Admin Account',
+  },
+});
+
 function CreateAccount() {
+  const intl = useAppIntl();
+
   return (
     <div className="w-full">
-      <Heading level="h2">Create an Admin Account</Heading>
+      <Heading level="h2">
+        {intl.formatMessage(messages.createAnAdminAccount)}
+      </Heading>
       {/* <Alert variant="warning">
         <AlertTitle>Important</AlertTitle>
         <AlertDescription>

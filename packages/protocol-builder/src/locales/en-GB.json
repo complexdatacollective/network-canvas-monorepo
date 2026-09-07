@@ -4,5 +4,8 @@
   "protocolBuilder.codebookEntity.colorHint": "{entity, select, node {Choose a colour reference for this node type.} edge {Choose a colour reference for this edge type.} other {Choose a colour reference for this ego definition.}}",
   "protocolBuilder.codebookEntity.colorLabel": "Protocol colour",
   "protocolBuilder.codebookEntity.colorPlaceholder": "Choose a colour…",
+  "protocolBuilder.codebookEntity.colorRequired": "Choose a colour.",
+  "protocolBuilder.codebookEntity.edgeColorOption": "Edge colour {index, number}",
+  "protocolBuilder.codebookEntity.nodeColorOption": "Node colour {index, number}",
   "protocolBuilder.ordinalColor.groupLabel": "Colour gradient"
 }

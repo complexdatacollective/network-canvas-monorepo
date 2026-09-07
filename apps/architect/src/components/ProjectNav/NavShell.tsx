@@ -9,12 +9,32 @@ import type React from 'react';
 import { useCallback, useId, useState } from 'react';
 import { useLocation } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import Brand from '~/components/Brand';
 import { useRunOnce } from '~/hooks/useRunOnce';
+import LanguageSettings from '~/i18n/LanguageSettings';
 import { cx } from '~/utils/cva';
+const messages = defineMessages({
+  openMenu: {
+    id: 'architect.projectNav.navShell.openMenu',
+    defaultMessage: 'Open menu',
+    description: 'The aria-label text in components / ProjectNav / NavShell.',
+  },
+  mobileNavigation: {
+    id: 'architect.projectNav.navShell.mobileNavigation',
+    defaultMessage: 'Mobile navigation',
+    description: 'The aria-label text in components / ProjectNav / NavShell.',
+  },
+  closeMenu: {
+    id: 'architect.projectNav.navShell.closeMenu',
+    defaultMessage: 'Close menu',
+    description: 'The aria-label text in components / ProjectNav / NavShell.',
+  },
+});
 
 const NAV_SURFACE =
   'effect-shadow-md pointer-events-auto bg-fresco-purple text-fresco-purple-contrast';
@@ -50,6 +70,7 @@ type NavShellProps = {
 };
 
 const NavShell = ({ leading, trailing }: NavShellProps) => {
+  const intl = useAppIntl();
   const shouldReduceMotion = useReducedMotion();
   const isFirstMount = useRunOnce('nav-bar-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
@@ -94,6 +115,7 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
           </motion.div>
           {leading}
         </div>
+        <LanguageSettings />
         {trailing && (
           <>
             <LayoutGroup id={inlineLayoutId}>
@@ -104,7 +126,7 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
             <IconButton
               variant="text"
               onClick={() => setMenuOpen(true)}
-              aria-label="Open menu"
+              aria-label={intl.formatMessage(messages.openMenu)}
               aria-expanded={menuOpen}
               icon={<Menu />}
               className="tablet-portrait:hidden"
@@ -118,14 +140,14 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
                 transition={{ type: 'tween', duration: 0.3 }}
               >
                 <nav
-                  aria-label="Mobile navigation"
+                  aria-label={intl.formatMessage(messages.mobileNavigation)}
                   className="flex h-full flex-col"
                 >
                   <div className="flex items-center justify-end p-4">
                     <IconButton
                       variant="text"
                       onClick={closeMenu}
-                      aria-label="Close menu"
+                      aria-label={intl.formatMessage(messages.closeMenu)}
                       icon={<X />}
                     />
                   </div>

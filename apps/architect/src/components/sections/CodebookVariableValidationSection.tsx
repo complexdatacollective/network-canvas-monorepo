@@ -1,6 +1,8 @@
 import { isEqual, omit } from 'es-toolkit/compat';
 import { useEffect, useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
@@ -16,6 +18,40 @@ import {
 } from '~/selectors/codebook';
 
 import ValidationSection from './ValidationSection';
+const defaultMessages = defineMessages({
+  sectionLabel: {
+    id: 'architect.defaults.components.sections.CodebookVariableValidationSection.sectionLabel',
+    defaultMessage: 'Validation',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own sectionLabel.',
+  },
+  sectionSummary: {
+    id: 'architect.defaults.components.sections.CodebookVariableValidationSection.sectionSummary',
+    defaultMessage: 'Enable to add validation rules to the attribute.',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own sectionSummary.',
+  },
+});
+const messages = defineMessages({
+  options: {
+    id: 'architect.sections.codebookVariableValidationSection.options',
+    defaultMessage: 'Options',
+    description:
+      'The label text in components / sections / CodebookVariableValidationSection.',
+  },
+  component: {
+    id: 'architect.sections.codebookVariableValidationSection.component',
+    defaultMessage: 'Component',
+    description:
+      'The label text in components / sections / CodebookVariableValidationSection.',
+  },
+  parameters: {
+    id: 'architect.sections.codebookVariableValidationSection.parameters',
+    defaultMessage: 'Parameters',
+    description:
+      'The label text in components / sections / CodebookVariableValidationSection.',
+  },
+});
 
 type Entity = 'node' | 'edge' | 'ego';
 type ValidationValue = boolean | number | string | null;
@@ -50,39 +86,42 @@ const NoRenderField = (_props: {
  * hidden registrations: the form store reports registered fields only, so a
  * value no Field ever mounts for is otherwise unreadable.
  */
-const VariableSiblingFieldMirror = ({ variable }: { variable: Variable }) => (
-  <div className="hidden" aria-hidden>
-    <Field
-      name="options"
-      label="Options"
-      labelHidden
-      component={NoRenderField}
-      initialValue={
-        ('options' in variable ? variable.options : undefined) as
-          | FieldValue
-          | undefined
-      }
-    />
-    <Field
-      name="component"
-      label="Component"
-      labelHidden
-      component={NoRenderField}
-      initialValue={'component' in variable ? variable.component : undefined}
-    />
-    <Field
-      name="parameters"
-      label="Parameters"
-      labelHidden
-      component={NoRenderField}
-      initialValue={
-        ('parameters' in variable ? variable.parameters : undefined) as
-          | FieldValue
-          | undefined
-      }
-    />
-  </div>
-);
+const VariableSiblingFieldMirror = ({ variable }: { variable: Variable }) => {
+  const intl = useAppIntl();
+  return (
+    <div className="hidden" aria-hidden>
+      <Field
+        name="options"
+        label={intl.formatMessage(messages.options)}
+        labelHidden
+        component={NoRenderField}
+        initialValue={
+          ('options' in variable ? variable.options : undefined) as
+            | FieldValue
+            | undefined
+        }
+      />
+      <Field
+        name="component"
+        label={intl.formatMessage(messages.component)}
+        labelHidden
+        component={NoRenderField}
+        initialValue={'component' in variable ? variable.component : undefined}
+      />
+      <Field
+        name="parameters"
+        label={intl.formatMessage(messages.parameters)}
+        labelHidden
+        component={NoRenderField}
+        initialValue={
+          ('parameters' in variable ? variable.parameters : undefined) as
+            | FieldValue
+            | undefined
+        }
+      />
+    </div>
+  );
+};
 
 /**
  * Writes a committed change in the nested validation-only form back to the
@@ -152,13 +191,20 @@ type CodebookVariableValidationSectionProps = {
  * instead via `ValidationCommitObserver`.
  */
 const CodebookVariableValidationSection = ({
-  sectionLabel = 'Validation',
-  sectionSummary = 'Enable to add validation rules to the attribute.',
+  sectionLabel: providedSectionLabel,
+  sectionSummary: providedSectionSummary,
   fieldName,
   entity,
   type,
   variableId,
 }: CodebookVariableValidationSectionProps) => {
+  const intl = useAppIntl();
+  const sectionLabel =
+    providedSectionLabel ?? intl.formatMessage(defaultMessages.sectionLabel);
+  const sectionSummary =
+    providedSectionSummary ??
+    intl.formatMessage(defaultMessages.sectionSummary);
+
   const dispatch = useAppDispatch();
   const subject = useMemo(
     () =>

@@ -157,12 +157,11 @@ export type DialogArrayFieldProps<T extends ArrayItem> = Omit<
   editorDialogSize?: DialogProps['size'];
   editorValidate?: DialogArrayEditorValidate;
   /**
-   * Noun used in row affordances ("Edit prompt", "Remove prompt").
-   *
-   * A descriptor rather than a word: every sentence it goes into is either
+   * Noun used in row affordances ("Edit prompt", "Remove prompt"), as a
+   * descriptor rather than a word: every sentence it goes into is either
    * formatted where it is read or encoded for a reader further on, so a caller
-   * that resolved it to English first would put an English noun in a Spanish
-   * sentence.
+   * that resolved it first would put its own language's noun into someone
+   * else's sentence.
    */
   itemLabel?: MessageDescriptor;
   itemSelector?: DialogArrayItemSelector;
@@ -554,7 +553,10 @@ function DialogItem({
           disabled={interactionDisabled}
           label={intl.formatMessage(messages.reorderRow, {
             itemLabel: rowNoun,
-            position: index + 1,
+            // The row's own place in the list, which the researcher reads as
+            // this row's number rather than as a quantity — so it is passed as
+            // they would say it, ungrouped.
+            position: String(index + 1),
             count: itemCount,
           })}
         />
@@ -618,7 +620,6 @@ function DialogEditor({
   onCancel,
   getEditorTrigger,
 }: ArrayFieldEditorProps<ArrayItem>) {
-  const intl = useAppIntl();
   const {
     addTitle,
     commitDetachedRow,
@@ -636,6 +637,7 @@ function DialogEditor({
     onBeforeSave,
     writeThrough,
   } = useDialogArrayContext();
+  const intl = useAppIntl();
   const { protocolContext, readOnly } = useStageEditorForm();
   /**
    * Where the rows of the list this dialog edits live in the stage document.

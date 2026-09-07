@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
@@ -550,27 +551,30 @@ export const BreakpointMatrix: Story = {
  * props.
  */
 export const SampleProtocol: Story = {
-  render: ({ size }) => (
-    <ResizableFrame size={size}>
-      <DeckCard
-        loading
-        protocol={{
-          name: SAMPLE_PROTOCOL.name,
-          description: SAMPLE_PROTOCOL.description,
-        }}
-        isActive
-        hideMetadata
-        onActivate={() => {}}
-        onDelete={() => {}}
-        deleteLabel="Dismiss the sample protocol"
-        footer={
-          <DeckCardFooter key="install-sample">
-            <DeckCardFooterButton color="primary" onClick={() => {}}>
-              Install sample protocol
-            </DeckCardFooterButton>
-          </DeckCardFooter>
-        }
-      />
-    </ResizableFrame>
-  ),
+  render: function SampleProtocolStory({ size }) {
+    const intl = useAppIntl();
+    return (
+      <ResizableFrame size={size}>
+        <DeckCard
+          loading
+          protocol={{
+            name: SAMPLE_PROTOCOL.name,
+            description: intl.formatMessage(SAMPLE_PROTOCOL.description),
+          }}
+          isActive
+          hideMetadata
+          onActivate={() => {}}
+          onDelete={() => {}}
+          deleteLabel="Dismiss the sample protocol"
+          footer={
+            <DeckCardFooter key="install-sample">
+              <DeckCardFooterButton color="primary" onClick={() => {}}>
+                Install sample protocol
+              </DeckCardFooterButton>
+            </DeckCardFooter>
+          }
+        />
+      </ResizableFrame>
+    );
+  },
 };

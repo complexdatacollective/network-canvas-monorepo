@@ -1,6 +1,6 @@
-import { startCase } from 'es-toolkit/compat';
 import { Trash2 } from 'lucide-react';
 import {
+  createElement,
   createContext,
   useCallback,
   useContext,
@@ -8,6 +8,13 @@ import {
   type ComponentType,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import {
+  createAppIntl,
+  defineMessages,
+  type IntlShape,
+} from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ArrayField, {
@@ -20,6 +27,42 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 
 import RowField from './RowField';
+const defaultMessages = defineMessages({
+  emptyStateMessage: {
+    id: 'architect.defaults.components.Form.arrayFields.MultiSelect.emptyStateMessage',
+    defaultMessage: 'No items available.',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own emptyStateMessage.',
+  },
+});
+const messages = defineMessages({
+  removeItem: {
+    id: 'architect.form.arrayFields.multiSelect.removeItem',
+    defaultMessage: 'Remove item',
+    description:
+      'The title text in components / Form / arrayFields / MultiSelect.',
+  },
+  areYouSureYouWantTo: {
+    id: 'architect.form.arrayFields.multiSelect.areYouSureYouWantTo',
+    defaultMessage: 'Are you sure you want to remove this item?',
+    description:
+      'The description text in components / Form / arrayFields / MultiSelect.',
+  },
+  reorderItemOf: {
+    id: 'architect.form.arrayFields.multiSelect.reorderItemOf',
+    defaultMessage: 'Reorder item {value1, number} of {itemCount, number}',
+    description:
+      'The label text in components / Form / arrayFields / MultiSelect.',
+  },
+});
+const rowMessages = defineMessages({
+  complete: {
+    id: 'architect.arrayRows.complete',
+    defaultMessage: 'Every row needs a value in each column.',
+    description:
+      'Validation error for an incomplete row of display or sorting properties.',
+  },
+});
 
 // Row background reads `--rule-bg` so callers (e.g. Validations error state)
 // can flip it without re-defining the row layout.
@@ -85,13 +128,15 @@ const isCellEmpty = (cell: unknown) =>
  * `Options.tsx`'s `completeOptions` (and pre-migration behaviour, where both
  * cells were registered required fields).
  */
+const defaultIntl = createAppIntl({ locale: 'en' });
+
 export const completeRows =
-  (properties: PropertyField[]) =>
+  (properties: PropertyField[], intl: IntlShape = defaultIntl) =>
   (value: unknown): string | undefined =>
     readRows(value).some((row) =>
       properties.some(({ fieldName }) => isCellEmpty(row[fieldName])),
     )
-      ? 'Every row needs a value in each column.'
+      ? intl.formatMessage(rowMessages.complete)
       : undefined;
 
 type MultiSelectContextValue = {
@@ -126,6 +171,7 @@ const MultiSelectRow = ({
   disabled,
   readOnly,
 }: ArrayFieldItemProps<ItemValue>) => {
+  const intl = useAppIntl();
   const { arrayName, properties, options, allValues } = useMultiSelectContext();
   const { confirm } = useDialog();
   const interactionDisabled = disabled || readOnly;
@@ -136,10 +182,14 @@ const MultiSelectRow = ({
 
   const handleDelete = () => {
     void confirm({
-      title: 'Remove item',
-      description: 'Are you sure you want to remove this item?',
-      confirmLabel: 'Remove item',
-      cancelLabel: 'Cancel',
+      title: createElement(AppMessage, { message: messages.removeItem }),
+      description: createElement(AppMessage, {
+        message: messages.areYouSureYouWantTo,
+      }),
+      confirmLabel: createElement(AppMessage, { message: messages.removeItem }),
+      cancelLabel: createElement(AppMessage, {
+        message: commonMessages.cancel,
+      }),
       intent: 'destructive',
       onConfirm: () => onDelete?.(),
     });
@@ -170,7 +220,10 @@ const MultiSelectRow = ({
             itemCount={itemCount}
             onMove={onMove}
             disabled={interactionDisabled}
-            label={`Reorder item ${index + 1} of ${itemCount}`}
+            label={intl.formatMessage(messages.reorderItemOf, {
+              value1: index + 1,
+              itemCount: itemCount,
+            })}
             className="text-sortable-contrast"
           />
         </div>
@@ -182,7 +235,13 @@ const MultiSelectRow = ({
             {
               fieldName: propertyFieldName,
               control = 'select',
-              label = startCase(propertyFieldName),
+              label = propertyFieldName in propertyMessages
+                ? intl.formatMessage(
+                    propertyMessages[
+                      propertyFieldName as keyof typeof propertyMessages
+                    ],
+                  )
+                : propertyFieldName,
               ...rest
             },
             propertyIndex,
@@ -219,7 +278,7 @@ const MultiSelectRow = ({
       <div className={MULTI_SELECT_CONTROL_CLASSES}>
         <IconButton
           icon={<Trash2 />}
-          aria-label="Remove item"
+          aria-label={intl.formatMessage(messages.removeItem)}
           color="destructive"
           disabled={interactionDisabled}
           className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
@@ -278,7 +337,7 @@ export type MultiSelectProps = Omit<
  */
 const MultiSelect = ({
   value = EMPTY_ITEMS,
-  emptyStateMessage = 'No items available.',
+  emptyStateMessage: providedEmptyStateMessage,
   onChange,
   name = '',
   addButtonLabel,
@@ -287,6 +346,10 @@ const MultiSelect = ({
   maxItems = null,
   ...arrayFieldProps
 }: MultiSelectProps) => {
+  const intl = useAppIntl();
+  const emptyStateMessage =
+    providedEmptyStateMessage ??
+    intl.formatMessage(defaultMessages.emptyStateMessage);
   const context = useMemo<MultiSelectContextValue>(
     () => ({ arrayName: name, properties, options, allValues: value }),
     [name, options, properties, value],
@@ -318,3 +381,31 @@ const MultiSelect = ({
 };
 
 export default MultiSelect;
+
+const propertyMessages = defineMessages({
+  property: {
+    id: 'architect.arrayField.column.property',
+    defaultMessage: 'Property',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  direction: {
+    id: 'architect.arrayField.column.direction',
+    defaultMessage: 'Direction',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  variable: {
+    id: 'architect.arrayField.column.variable',
+    defaultMessage: 'Attribute',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  label: {
+    id: 'architect.arrayField.column.label',
+    defaultMessage: 'Label',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  value: {
+    id: 'architect.arrayField.column.value',
+    defaultMessage: 'Value',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
