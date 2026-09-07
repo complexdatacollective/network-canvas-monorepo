@@ -675,6 +675,44 @@ it('refuses a historical key shared with a nonlegacy contact-index shape', async
   }
 });
 
+it('refuses a historical key shared with an empty null-marker PII reference', async () => {
+  const fixture = await createLegacyNoContactUpgrade();
+  try {
+    await fixture.scratch.pool.query(
+      `INSERT INTO participants
+        (id, team_id, study_id, participant_code, pii_key_id, pii_algorithm)
+       VALUES ($1, $2, $3, 'P-empty-mixed', 'v1', 'aes-256-gcm.v1')`,
+      [randomUUID(), fixture.teamId, fixture.studyId],
+    );
+    await expect(
+      initializeCredentialMigration({
+        maintenancePool: fixture.maintenance,
+        configuration: fixture.config,
+        loadRootKey: async (reference) =>
+          reference === 'TEST_ROOT_ONE' ? rootOne : Buffer.alloc(32, 93),
+      }),
+    ).rejects.toThrow(EncryptionStartupError);
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          'SELECT * FROM encryption_key_verifications',
+        )
+      ).rowCount,
+    ).toBe(0);
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          'SELECT pii_key_id FROM participants WHERE id = $1',
+          [fixture.participantId],
+        )
+      ).rows,
+    ).toEqual([{ pii_key_id: 'v1' }]);
+  } finally {
+    await fixture.maintenance.end();
+    await fixture.scratch.dispose();
+  }
+});
+
 it.each([
   ['corrupt ciphertext', true, rootOne],
   ['wrong historical root', false, Buffer.alloc(32, 18)],

@@ -125,14 +125,14 @@ export async function verifyEncryptionKeyTransaction(
     ? await client.query<{ keyId: string }>(
         `SELECT pii_key_id AS "keyId" FROM participants
          WHERE pii_key_id IS NOT NULL GROUP BY pii_key_id
-         HAVING bool_and(
+         HAVING bool_and(coalesce(
            blind_index_key_id = $1 OR (
              blind_index_key_id IS NULL
              AND email_index IS NULL AND phone_index IS NULL
              AND email_ciphertext IS NULL AND phone_ciphertext IS NULL
              AND (name_ciphertext IS NOT NULL OR attributes_ciphertext IS NOT NULL)
-           )
-         )`,
+           ), false
+         ))`,
         [RAW_LEGACY_PARTICIPANT_INDEX_ID],
       )
     : { rows: [] as { keyId: string }[] };
