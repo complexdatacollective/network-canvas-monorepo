@@ -1,0 +1,37 @@
+estate_name                        = "networkcanvas-studio"
+cloudflare_account_id              = "00000000000000000000000000000000"
+crunchybridge_team_id              = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+crunchybridge_hobby_2_plan_id       = "REPLACE_FROM_ACCOUNT_PLAN_INVENTORY"
+postgres_storage_gb                 = 20
+b2_endpoint                         = "https://api.backblazeb2.com"
+b2_bucket_name                      = "REPLACE-GLOBALLY-UNIQUE-INDEPENDENT-RECOVERY"
+b2_region                           = "us-west-004"
+kms_admin_principal_arns            = ["arn:aws:iam::000000000000:role/REPLACE-KMS-ADMIN"]
+kms_runtime_decrypt_principal_arns  = {
+  production = ["arn:aws:iam::000000000000:role/REPLACE-PRODUCTION-RUNTIME"]
+  staging    = ["arn:aws:iam::000000000000:role/REPLACE-STAGING-RUNTIME"]
+}
+kms_wrapping_principal_arns = {
+  production = ["arn:aws:iam::000000000000:role/REPLACE-PRODUCTION-WRAPPER"]
+  staging    = ["arn:aws:iam::000000000000:role/REPLACE-STAGING-WRAPPER"]
+}
+deployment_ids = {
+  production = "REPLACE-STABLE-PRODUCTION-ID"
+  staging    = "REPLACE-STABLE-STAGING-ID"
+}
+signed_image_references = {
+  studio   = "ghcr.io/complexdatacollective/studio@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  registry = "ghcr.io/complexdatacollective/template-registry@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+}
+service_resources = {
+  studio-production   = { cpu_kind = "shared", cpus = 1, memory_mb = 512 }
+  studio-staging      = { cpu_kind = "shared", cpus = 1, memory_mb = 512 }
+  registry-production = { cpu_kind = "shared", cpus = 1, memory_mb = 512 }
+  registry-staging    = { cpu_kind = "shared", cpus = 1, memory_mb = 512 }
+}
+
+# Supply credentials only at plan/apply time; do not add them to this file:
+# TF_VAR_cloudflare_api_token
+# TF_VAR_crunchybridge_application_secret
+# TF_VAR_b2_application_key_id
+# TF_VAR_b2_application_key

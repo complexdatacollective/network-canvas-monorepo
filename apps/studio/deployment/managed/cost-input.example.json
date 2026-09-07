@@ -1,0 +1,150 @@
+{
+  "monthlyCapUsd": 100,
+  "minimumHeadroomUsd": 10,
+  "freeCreditsUsd": 0,
+  "qualificationComplete": false,
+  "evidenceGates": {
+    "providerQuotesCurrent": false,
+    "trafficMeasured": false,
+    "capacityQualified": false,
+    "recoveryQualified": false,
+    "retentionQualified": false,
+    "alertDeliveryQualified": false
+  },
+  "flySingletonCount": 4,
+  "logicalDatabaseCount": 4,
+  "postgresSharedBuffersBytes": 1073741824,
+  "postgresAppRoleWorkMemBytes": 268435456,
+  "monitoringRetentionDays": 30,
+  "newRelicPaidUpgradeAllowed": false,
+  "newRelicHardStopConfigured": true,
+  "newRelicMonthlyIngestGb": 50,
+  "newRelicFreeIngestLimitGb": 100,
+  "primaryIngressGb": 0,
+  "primaryObjectStoredGb": 20,
+  "primaryObjectClassARequests": 1000000,
+  "primaryObjectClassBRequests": 10000000,
+  "primaryObjectEgressGb": 50,
+  "databaseTransferGb": 10,
+  "validatorRequestCount": 11904,
+  "validatorTransferGb": 5952,
+  "backupStoredGb": 143.6,
+  "backupRequestCount": 11904,
+  "backupEgressGb": 1190.4,
+  "lineItems": [
+    {
+      "category": "compute",
+      "quantity": 4,
+      "unitPriceUsd": 3.294432,
+      "evidence": "candidate shared-cpu-1x 512 MB, 31 days"
+    },
+    {
+      "category": "database-plan",
+      "quantity": 1,
+      "unitPriceUsd": 35,
+      "evidence": "Crunchy Hobby-2 public list price"
+    },
+    {
+      "category": "database-storage",
+      "quantity": 20,
+      "unitPriceUsd": 0.1,
+      "evidence": "candidate 20 GB"
+    },
+    {
+      "category": "database-transfer",
+      "quantity": 10,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring a current quote"
+    },
+    {
+      "category": "primary-object-storage",
+      "quantity": 20,
+      "unitPriceUsd": 0.015,
+      "evidence": "R2 Standard candidate"
+    },
+    {
+      "category": "primary-object-class-a",
+      "quantity": 1,
+      "unitPriceUsd": 4.5,
+      "evidence": "one million operations"
+    },
+    {
+      "category": "primary-object-class-b",
+      "quantity": 10,
+      "unitPriceUsd": 0.36,
+      "evidence": "ten million operations"
+    },
+    {
+      "category": "primary-object-egress",
+      "quantity": 50,
+      "unitPriceUsd": 0,
+      "evidence": "explicit candidate, verify limits and destination"
+    },
+    {
+      "category": "kms-keys",
+      "quantity": 6,
+      "unitPriceUsd": 1,
+      "evidence": "two logical keys after two retained annual rotations"
+    },
+    {
+      "category": "kms-requests",
+      "quantity": 100000,
+      "unitPriceUsd": 0.000003,
+      "evidence": "illustrative request volume"
+    },
+    {
+      "category": "backup-storage",
+      "quantity": 0.1436,
+      "unitPriceUsd": 6.95,
+      "evidence": "B2 TB-month candidate"
+    },
+    {
+      "category": "backup-requests",
+      "quantity": 11904,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring request quote"
+    },
+    {
+      "category": "backup-egress",
+      "quantity": 1190.4,
+      "unitPriceUsd": 0,
+      "evidence": "explicit estimate; free-egress eligibility must be proven"
+    },
+    {
+      "category": "validator-compute",
+      "quantity": 1,
+      "unitPriceUsd": 5.95,
+      "evidence": "illustrative 5952 runs x 2 GB x 30 seconds"
+    },
+    {
+      "category": "validator-transfer",
+      "quantity": 119.04,
+      "unitPriceUsd": 0,
+      "evidence": "0.02 GB per validation; placeholder requiring a current egress quote"
+    },
+    {
+      "category": "mail",
+      "quantity": 1,
+      "unitPriceUsd": 15,
+      "evidence": "Postmark candidate"
+    },
+    {
+      "category": "monitoring",
+      "quantity": 1,
+      "unitPriceUsd": 0,
+      "evidence": "New Relic Free candidate; hard stop required"
+    },
+    {
+      "category": "dns-ingress",
+      "quantity": 1,
+      "unitPriceUsd": 0,
+      "evidence": "explicit placeholder requiring traffic measurement"
+    },
+    {
+      "category": "reserve",
+      "quantity": 1,
+      "unitPriceUsd": 0,
+      "evidence": "must be raised from zero before qualification"
+    }
+  ]
+}
