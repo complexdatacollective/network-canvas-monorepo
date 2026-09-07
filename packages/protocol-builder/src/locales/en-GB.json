@@ -1,4 +1,7 @@
 {
+  "protocolBuilder.codebookEntity.colorHint": "{entity, select, node {Choose a colour reference for this node type.} edge {Choose a colour reference for this edge type.} other {Choose a colour reference for this ego definition.}}",
+  "protocolBuilder.codebookEntity.colorLabel": "Protocol colour",
+  "protocolBuilder.codebookEntity.colorPlaceholder": "Choose a colour…",
   "protocolBuilder.geospatial.centerLabel": "Starting centre",
   "protocolBuilder.geospatial.colorHint": "Selectable areas are outlined in this colour, and the area a participant chooses is filled with it.",
   "protocolBuilder.geospatial.colorLabel": "Highlight colour",

@@ -80,6 +80,7 @@
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/network-query": "workspace:^",
     "@codaco/protocols": "workspace:^",
+    "@codaco/storybook-config": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",

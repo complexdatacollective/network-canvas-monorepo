@@ -9,6 +9,7 @@ import {
   type FormEvent,
 } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -131,6 +132,84 @@ const validateFields = (
   return errors;
 };
 
+/**
+ * The entity editor's own field chrome.
+ *
+ * Filed under `codebookEntity` beside `CodebookSurface`'s, which is the same
+ * area: the surface names the card, this names what is inside it, and a
+ * translator reads both under one heading. The entity kind is a `select`
+ * argument rather than a phrase spliced into a template — "node type" is a
+ * noun phrase whose position and agreement differ by language, and a sentence
+ * built by concatenation gives a translator nowhere to move it.
+ */
+const messages = defineMessages({
+  nameLabel: {
+    id: 'protocolBuilder.codebookEntity.nameLabel',
+    defaultMessage:
+      '{entity, select, node {Node type name} other {Edge type name}}',
+    description:
+      'Label of the field holding the researcher’s own name for this entity type. entity is node or edge; the ego has no type name.',
+  },
+  nameHint: {
+    id: 'protocolBuilder.codebookEntity.nameHint',
+    defaultMessage:
+      '{entity, select, node {This name identifies the node type in the codebook and exported data.} edge {This name identifies the edge type in the codebook and exported data.} other {This name identifies the ego definition in the codebook and exported data.}}',
+    description:
+      'Guidance under the name field, saying where the name is read back. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards.',
+  },
+  colorLabel: {
+    id: 'protocolBuilder.codebookEntity.colorLabel',
+    defaultMessage: 'Protocol color',
+    description:
+      'Label of the field choosing which position in the protocol’s palette this entity type is drawn in.',
+  },
+  colorHint: {
+    id: 'protocolBuilder.codebookEntity.colorHint',
+    defaultMessage:
+      '{entity, select, node {Choose a color reference for this node type.} edge {Choose a color reference for this edge type.} other {Choose a color reference for this ego definition.}}',
+    description:
+      'Guidance under the colour field. entity is node, edge or ego. A colour reference is a position in the protocol’s palette rather than a literal colour.',
+  },
+  colorPlaceholder: {
+    id: 'protocolBuilder.codebookEntity.colorPlaceholder',
+    defaultMessage: 'Choose a color…',
+    description:
+      'Placeholder shown in the colour field of the entity editor before a choice is made.',
+  },
+  shapeLabel: {
+    id: 'protocolBuilder.codebookEntity.shapeLabel',
+    defaultMessage: 'Default shape',
+    description:
+      'Label of the field choosing the shape a node type is drawn as when nothing overrides it.',
+  },
+  shapeHint: {
+    id: 'protocolBuilder.codebookEntity.shapeHint',
+    defaultMessage:
+      'Choose the shape used when no dynamic shape mapping applies.',
+    description:
+      'Guidance under the shape field. A dynamic shape mapping is a protocol rule that draws a node differently depending on one of its attributes.',
+  },
+  shapePlaceholder: {
+    id: 'protocolBuilder.codebookEntity.shapePlaceholder',
+    defaultMessage: 'Choose a shape…',
+    description:
+      'Placeholder shown in the shape field of the node type editor before a choice is made.',
+  },
+  iconLabel: {
+    id: 'protocolBuilder.codebookEntity.iconLabel',
+    defaultMessage: 'Interface icon',
+    description:
+      'Label of the field naming the icon shown on the buttons an interview offers for creating this node type. An interface is one kind of interview step.',
+  },
+  iconHint: {
+    id: 'protocolBuilder.codebookEntity.iconHint',
+    defaultMessage:
+      'Enter the Lucide or Network Canvas icon name shown by interfaces that create this type.',
+    description:
+      'Guidance under the icon field. "Lucide" is an icon library and "Network Canvas" the product; both are names and stay as they are. An interface is one kind of interview step.',
+  },
+});
+
 export type CodebookEntityFieldsProps = Readonly<{
   subject: CodebookSubject;
   draft: CodebookEntityDraft;
@@ -147,6 +226,7 @@ export function CodebookEntityFields({
   errors = {},
   disabled = false,
 }: CodebookEntityFieldsProps) {
+  const intl = useAppIntl();
   if (subject.entity === 'ego') {
     return (
       <Alert variant="info" appearance="soft" density="compact">
@@ -158,7 +238,6 @@ export function CodebookEntityFields({
     );
   }
 
-  const subjectLabel = subject.entity === 'node' ? 'Node' : 'Edge';
   const colorOptions =
     subject.entity === 'node' ? NODE_COLOR_OPTIONS : EDGE_COLOR_OPTIONS;
 
@@ -166,8 +245,12 @@ export function CodebookEntityFields({
     <div className="flex flex-col gap-6">
       <UnconnectedField
         name="name"
-        label={`${subjectLabel} type name`}
-        hint={`This name identifies the ${entityLabel(subject)} in the codebook and exported data.`}
+        label={intl.formatMessage(messages.nameLabel, {
+          entity: subject.entity,
+        })}
+        hint={intl.formatMessage(messages.nameHint, {
+          entity: subject.entity,
+        })}
         component={InputField}
         value={stringValue(draft.name)}
         onChange={(value) =>
@@ -181,15 +264,17 @@ export function CodebookEntityFields({
 
       <UnconnectedField
         name="color"
-        label="Protocol color"
-        hint={`Choose a color reference for this ${entityLabel(subject)}.`}
+        label={intl.formatMessage(messages.colorLabel)}
+        hint={intl.formatMessage(messages.colorHint, {
+          entity: subject.entity,
+        })}
         component={NativeSelect}
         value={stringValue(draft.color)}
         onChange={(value) =>
           onChange(replaceDraftProperty(draft, 'color', value))
         }
         options={colorOptions}
-        placeholder="Choose a color…"
+        placeholder={intl.formatMessage(messages.colorPlaceholder)}
         required
         disabled={disabled}
         errors={errors.color === undefined ? undefined : [errors.color]}
@@ -200,8 +285,8 @@ export function CodebookEntityFields({
         <>
           <UnconnectedField
             name="shape"
-            label="Default shape"
-            hint="Choose the shape used when no dynamic shape mapping applies."
+            label={intl.formatMessage(messages.shapeLabel)}
+            hint={intl.formatMessage(messages.shapeHint)}
             component={NativeSelect}
             value={
               isRecord(draft.shape) ? stringValue(draft.shape.default) : ''
@@ -210,7 +295,7 @@ export function CodebookEntityFields({
               onChange(replaceDefaultShape(draft, String(value)))
             }
             options={NODE_SHAPE_OPTIONS}
-            placeholder="Choose a shape…"
+            placeholder={intl.formatMessage(messages.shapePlaceholder)}
             required
             disabled={disabled}
             errors={errors.shape === undefined ? undefined : [errors.shape]}
@@ -219,8 +304,8 @@ export function CodebookEntityFields({
 
           <UnconnectedField
             name="icon"
-            label="Interface icon"
-            hint="Enter the Lucide or Network Canvas icon name shown by interfaces that create this type."
+            label={intl.formatMessage(messages.iconLabel)}
+            hint={intl.formatMessage(messages.iconHint)}
             component={InputField}
             value={stringValue(draft.icon)}
             onChange={(value) =>

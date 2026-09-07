@@ -2784,6 +2784,9 @@ importers:
       '@codaco/protocols':
         specifier: workspace:^
         version: link:../protocols
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/tailwind-config':
         specifier: workspace:^
         version: link:../../tooling/tailwind
@@ -8184,12 +8187,15 @@ packages:
 
   '@standardserver/aws-lambda@0.7.1':
     resolution: {integrity: sha512-fuwAx2M2O5Bnjk2JdFrtEQALmBwVtnn4jKApzFVmlIivWA7EGMj5kOzCNaJizxCQXlhPmC+doDHqf/H7FKMaNA==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@standardserver/core@0.7.1':
     resolution: {integrity: sha512-ZMoFDR92p9HnaI6vXK1iNFKXyLK8/6r3D4EJUM+SqeyReUH3OEJO4CZKU8BfXyzAV1A6Nsa7y2dGqDOYqH5LlQ==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@standardserver/fastify@0.7.1':
     resolution: {integrity: sha512-Oa+ttR0CyNkFjNczs2dO/WFFeZ4sAszVBKIOhKb1FFcDtD9VdqDgMBhbQ4sFR885fwpYckoYjFU6xXWWTueBlw==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     peerDependencies:
       fastify: '>=5.6.1'
     peerDependenciesMeta:
@@ -8198,15 +8204,19 @@ packages:
 
   '@standardserver/fetch@0.7.1':
     resolution: {integrity: sha512-BeiAWESedv0woYpoBHCnq2Y3xLZZ3voFahdzpFd+HqLyenXIL4XX3z7/WgWNQnf+WsSQrK6HzBkDWCicCXVoKQ==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@standardserver/node@0.7.1':
     resolution: {integrity: sha512-Ikc07cGBTJ8tJgPd1OanNKVNpijcbixB1iKk0GdL/b1vkYbriGgNW3oHvbApM7+XqeCeNHj5XawHk6q90mwEEA==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@standardserver/peer@0.7.1':
     resolution: {integrity: sha512-ggqPbwz4X4GIziQgoyCTDHFw9nM9YuEvlSpO21pfoXLYF80ijtpN/iq4P0zKpb4kcXnBoSVDRUSnBJSZi0SJDg==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@standardserver/shared@0.7.1':
     resolution: {integrity: sha512-tBDheI3Me1gQEKPU+XhcCZ6/njmkKgJhA5rhi1/m6GauGhHq87UuVslDNc8qB+T/xsxVch/qETFhssEWO9c6BA==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@storybook/addon-a11y@10.5.10':
     resolution: {integrity: sha512-RpRQV5xUbrl6hCiNrd5FSMIo6pnRZ0VZxWvEW/ASLcreGkKUW5jl2AeLCe5YROE2i80s/dU+6VPzOYKrwWNFbQ==}

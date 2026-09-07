@@ -74,21 +74,6 @@ export type BooleanAnswer = Readonly<{
 /** Both of them, in the order the protocol stores them. */
 export type BooleanAnswers = readonly [BooleanAnswer, BooleanAnswer];
 
-/**
- * The words the interview shows for a boolean that names no answers of its
- * own, which are what the editor offers as placeholders.
- *
- * fresco-ui's boolean control supplies these when the `options` prop is absent
- * (a destructuring default), so an attribute nobody has written words for is
- * not an unanswerable one — it is a Yes/No question. Keyed by the value each
- * answer records rather than by position, because the protocol decides the
- * order and not this editor.
- */
-export const DEFAULT_BOOLEAN_LABELS = {
-  true: 'Yes',
-  false: 'No',
-} as const satisfies Record<'true' | 'false', string>;
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 

@@ -10,7 +10,8 @@ import {
   type ComponentType,
 } from 'react';
 
-import { defineMessage } from '@codaco/app-i18n/messages';
+import { defineMessage, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import {
   ArrayFieldDragHandle,
@@ -57,6 +58,81 @@ const optionNoun = defineMessage({
   defaultMessage: 'option',
   description:
     'Noun for one row of the list of options a categorical or ordinal attribute offers. Interpolated mid-sentence into things said ABOUT a row ("This option was replaced…"), so it is lower case and singular.',
+});
+
+const messages = defineMessages({
+  removeOption: {
+    id: 'protocolBuilder.option.removeOption',
+    defaultMessage: 'Remove option',
+    description:
+      'Action that deletes one option from the list. Used as the title of the confirmation it raises and as that confirmation’s own confirm button.',
+  },
+  removeOptionDescription: {
+    id: 'protocolBuilder.option.removeOptionDescription',
+    defaultMessage: 'Are you sure you want to remove this option?',
+    description:
+      'Body of the confirmation raised when a researcher deletes one option from the list.',
+  },
+  reorderOption: {
+    id: 'protocolBuilder.option.reorderOption',
+    defaultMessage: 'Reorder option {position} of {count, number}',
+    description:
+      'Accessible name of the handle that drags one option into a different position. position is the option’s own place in the list, counting from one; count is how many options the list holds.',
+  },
+  editOption: {
+    id: 'protocolBuilder.option.editOption',
+    defaultMessage: 'Edit option {position}',
+    description:
+      'Accessible name of the button that opens one option for editing. position is the option’s own place in the list, counting from one — the only thing that tells two blank options apart.',
+  },
+  removeOptionAt: {
+    id: 'protocolBuilder.option.removeOptionAt',
+    defaultMessage: 'Remove option {position}',
+    description:
+      'Accessible name of the button that deletes one option. position is the option’s own place in the list, counting from one — the only thing that tells two blank options apart.',
+  },
+  finishEditing: {
+    id: 'protocolBuilder.option.finishEditing',
+    defaultMessage: 'Finish editing option',
+    description:
+      'Accessible name of the button that collapses an option back to a single line once the researcher has filled it in.',
+  },
+  untitled: {
+    id: 'protocolBuilder.option.untitled',
+    defaultMessage: 'Untitled option',
+    description:
+      'Stands in for an option’s label on the collapsed row while the researcher has not written one yet.',
+  },
+  noValue: {
+    id: 'protocolBuilder.option.noValue',
+    defaultMessage: 'No value',
+    description:
+      'Stands in for an option’s stored value on the collapsed row while the researcher has not entered one yet.',
+  },
+  labelLabel: {
+    id: 'protocolBuilder.option.labelLabel',
+    defaultMessage: 'Label',
+    description:
+      'Label of the field holding what a participant reads for this option.',
+  },
+  labelPlaceholder: {
+    id: 'protocolBuilder.option.labelPlaceholder',
+    defaultMessage: 'Enter a label...',
+    description:
+      'Placeholder in the empty field holding what a participant reads for this option.',
+  },
+  valueLabel: {
+    id: 'protocolBuilder.option.valueLabel',
+    defaultMessage: 'Value',
+    description:
+      'Label of the field holding what this option is stored and exported as, as opposed to what a participant reads.',
+  },
+  valuePlaceholder: {
+    id: 'protocolBuilder.option.valuePlaceholder',
+    defaultMessage: 'Enter a value...',
+    description:
+      'Placeholder in the empty field holding what this option is stored and exported as.',
+  },
 });
 
 export type OptionValue = VariableOptions[number];
@@ -140,6 +216,7 @@ export default function Option({
   readOnly,
   getAddTrigger,
 }: ArrayFieldItemProps<OptionValue>) {
+  const intl = useAppIntl();
   const { arrayName, allValues, showArrayError } = useOptionsContext();
   const { rowRef, confirmRemoval } = useConfirmRowRemoval({
     item,
@@ -188,11 +265,9 @@ export default function Option({
 
   const handleDelete = () => {
     confirmRemoval({
-      title: 'Remove option',
-      description: 'Are you sure you want to remove this option?',
-      confirmLabel: 'Remove option',
-      cancelLabel: 'Cancel',
-      intent: 'destructive',
+      title: messages.removeOption,
+      description: messages.removeOptionDescription,
+      confirmLabel: messages.removeOption,
     });
   };
 
@@ -216,12 +291,15 @@ export default function Option({
             itemCount={itemCount}
             onMove={onMove}
             disabled={interactionDisabled}
-            label={`Reorder option ${index + 1} of ${itemCount}`}
+            label={intl.formatMessage(messages.reorderOption, {
+              position: index + 1,
+              count: itemCount,
+            })}
           />
         )}
         <div className="min-w-0 flex-1 truncate">
           <span className={!hasLabel ? 'text-current/50 italic' : undefined}>
-            {hasLabel ? item.label : 'Untitled option'}
+            {hasLabel ? item.label : intl.formatMessage(messages.untitled)}
           </span>
           <span className="text-current/50"> — </span>
           <span
@@ -230,13 +308,17 @@ export default function Option({
               !hasValue && 'text-current/50 italic',
             )}
           >
-            {hasValue ? String(item.value) : 'No value'}
+            {hasValue
+              ? String(item.value)
+              : intl.formatMessage(messages.noValue)}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <IconButton
             icon={<Pencil />}
-            aria-label={`Edit option ${index + 1}`}
+            aria-label={intl.formatMessage(messages.editOption, {
+              position: index + 1,
+            })}
             color="dynamic"
             disabled={interactionDisabled}
             onClick={onEdit}
@@ -244,7 +326,9 @@ export default function Option({
           <IconButton
             {...rowRemovalControlProps}
             icon={<Trash2 />}
-            aria-label={`Remove option ${index + 1}`}
+            aria-label={intl.formatMessage(messages.removeOptionAt, {
+              position: index + 1,
+            })}
             color="destructive"
             disabled={interactionDisabled}
             onClick={handleDelete}
@@ -271,7 +355,7 @@ export default function Option({
       <div className="flex items-center justify-end gap-2">
         <IconButton
           icon={<Check />}
-          aria-label="Finish editing option"
+          aria-label={intl.formatMessage(messages.finishEditing)}
           size="lg"
           color="primary"
           disabled={interactionDisabled}
@@ -280,7 +364,9 @@ export default function Option({
         <IconButton
           {...rowRemovalControlProps}
           icon={<Trash2 />}
-          aria-label={`Remove option ${index + 1}`}
+          aria-label={intl.formatMessage(messages.removeOptionAt, {
+            position: index + 1,
+          })}
           color="destructive"
           disabled={interactionDisabled}
           onClick={handleDelete}
@@ -288,9 +374,9 @@ export default function Option({
       </div>
       <RowField
         name={`${rowFieldName}.label`}
-        label="Label"
+        label={intl.formatMessage(messages.labelLabel)}
         component={FrescoRichTextEditorField}
-        placeholder="Enter a label..."
+        placeholder={intl.formatMessage(messages.labelPlaceholder)}
         changeMode="input"
         toolbarOptions={RICH_TEXT_TOOLBAR}
         value={labelContent}
@@ -318,9 +404,9 @@ export default function Option({
       />
       <RowField
         name={`${rowFieldName}.value`}
-        label="Value"
+        label={intl.formatMessage(messages.valueLabel)}
         component={FrescoInputField}
-        placeholder="Enter a value..."
+        placeholder={intl.formatMessage(messages.valuePlaceholder)}
         value={item.value}
         onChange={(value: unknown) =>
           onUpdate?.({

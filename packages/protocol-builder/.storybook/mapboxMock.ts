@@ -27,6 +27,18 @@
 /** `load`, `error` and `move` are the three the preview dialog registers. */
 type MapEvent = string;
 
+/**
+ * The real `Map`, captured before this module's own export shadows the name.
+ *
+ * The SDK's class is called `Map`, so inside this file the identifier means
+ * the mock — and `new Map<MapEvent, () => void>()` was building a second mock
+ * map from an undefined options object rather than a handler table. Nothing
+ * caught it because the tsconfig's `include` never reached this directory; a
+ * story that mounted a starting-view preview would have thrown on the first
+ * line of the constructor.
+ */
+const HandlerTable = globalThis.Map;
+
 type MapOptions = {
   container?: HTMLElement;
   style?: string;
@@ -35,7 +47,7 @@ type MapOptions = {
 };
 
 export class Map {
-  private readonly handlers = new Map<MapEvent, () => void>();
+  private readonly handlers = new HandlerTable<MapEvent, () => void>();
   private center: { lng: number; lat: number };
   private zoom: number;
   private readonly placeholder: HTMLElement | undefined;

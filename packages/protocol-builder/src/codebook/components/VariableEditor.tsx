@@ -11,7 +11,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 
-import type { IntlShape } from '@codaco/app-i18n/messages';
+import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
@@ -72,6 +72,56 @@ import {
 } from '../variableParameters.ts';
 import VariableBooleanAnswerFields from './VariableBooleanAnswerFields.tsx';
 import VariableParameterFields from './VariableParameterFields.tsx';
+
+/**
+ * The attribute editor's own field chrome, under `codebookVariable` — the area
+ * that owns everything said about one codebook attribute.
+ */
+const fieldMessages = defineMessages({
+  nameLabel: {
+    id: 'protocolBuilder.codebookVariable.nameLabel',
+    defaultMessage: 'Attribute name',
+    description:
+      'Label of the field holding the researcher’s own name for this attribute (a codebook variable).',
+  },
+  nameHint: {
+    id: 'protocolBuilder.codebookVariable.nameHint',
+    defaultMessage:
+      'This name is used when referring to the attribute and in exported data.',
+    description:
+      'Guidance under the attribute name field. Exported data is the file a researcher analyses after the interviews.',
+  },
+  typeLabel: {
+    id: 'protocolBuilder.codebookVariable.typeLabel',
+    defaultMessage: 'Attribute type',
+    description:
+      'Label of the field choosing what kind of answer this attribute records.',
+  },
+  typePlaceholder: {
+    id: 'protocolBuilder.codebookVariable.typePlaceholder',
+    defaultMessage: 'Select an attribute type',
+    description:
+      'Placeholder shown in the attribute type field before a choice is made.',
+  },
+  optionLabelField: {
+    id: 'protocolBuilder.codebookVariable.optionLabelField',
+    defaultMessage: 'Option {index} label',
+    description:
+      'Label of the field holding what a participant reads for one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
+  },
+  optionValueField: {
+    id: 'protocolBuilder.codebookVariable.optionValueField',
+    defaultMessage: 'Option {index} value',
+    description:
+      'Label of the field holding what the export records for one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
+  },
+  removeOption: {
+    id: 'protocolBuilder.codebookVariable.removeOption',
+    defaultMessage: 'Remove option {index}',
+    description:
+      'Accessible name of the button that deletes one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
+  },
+});
 
 const VARIABLE_TYPE_OPTIONS = [
   { label: 'Text', value: VariableTypes.text },
@@ -641,8 +691,8 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
         <form className="mt-8" onSubmit={(event) => void handleSubmit(event)}>
           <UnconnectedField
             name="variable-name"
-            label="Attribute name"
-            hint="This name is used when referring to the attribute and in exported data."
+            label={intl.formatMessage(fieldMessages.nameLabel)}
+            hint={intl.formatMessage(fieldMessages.nameHint)}
             component={InputField}
             value={
               typeof snapshot.draft.name === 'string' ? snapshot.draft.name : ''
@@ -656,9 +706,9 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           />
           <UnconnectedField
             name="variable-type"
-            label="Attribute type"
+            label={intl.formatMessage(fieldMessages.typeLabel)}
             component={NativeSelectField}
-            placeholder="Select an attribute type"
+            placeholder={intl.formatMessage(fieldMessages.typePlaceholder)}
             options={typeOptions}
             value={selectedType ?? ''}
             onChange={handleTypeChange}
@@ -702,7 +752,14 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                         <div className="min-w-0 flex-1">
                           <UnconnectedField
                             name={`option-${index + 1}-label`}
-                            label={`Option ${index + 1} label`}
+                            label={intl.formatMessage(
+                              fieldMessages.optionLabelField,
+                              // The one-based position is passed as text, not
+                              // as a number: the researcher reads it as this
+                              // row's name, and a grouped thousands separator
+                              // would make it a different name.
+                              { index: String(index + 1) },
+                            )}
                             component={InputField}
                             value={option.label}
                             onChange={(label) => {
@@ -715,7 +772,10 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                           />
                           <UnconnectedField
                             name={`option-${index + 1}-value`}
-                            label={`Option ${index + 1} value`}
+                            label={intl.formatMessage(
+                              fieldMessages.optionValueField,
+                              { index: String(index + 1) },
+                            )}
                             component={InputField}
                             value={String(option.value)}
                             onChange={(value) => {
@@ -732,7 +792,10 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                         </div>
                         <IconButton
                           icon={<Trash2 aria-hidden="true" />}
-                          aria-label={`Remove option ${index + 1}`}
+                          aria-label={intl.formatMessage(
+                            fieldMessages.removeOption,
+                            { index: String(index + 1) },
+                          )}
                           color="destructive"
                           disabled={interactionDisabled}
                           onClick={() => {
