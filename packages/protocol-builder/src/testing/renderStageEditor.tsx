@@ -2,8 +2,8 @@ import {
   act,
   render,
   type RenderResult,
-  screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { isEqual } from 'es-toolkit/compat';
@@ -49,7 +49,7 @@ import {
   openFixtureStageSession,
   type SeededStage,
 } from './fixtureSession.ts';
-import { loadFixtureStage } from './protocolFixture.ts';
+import { type FixtureStageId, loadFixtureStage } from './protocolFixture.ts';
 
 /**
  * A catalog entry and a `defaultMessage` are both typed as the string OR the
@@ -87,8 +87,26 @@ const defaultSubmitLabel = (locale: string | undefined): string => {
   return label;
 };
 
-/** DOM id of the stage form the harness mounts. See `HarnessEditor`. */
-const STAGE_FORM_ID = 'stage-form';
+/**
+ * A DOM id for the stage form of one mounted harness.
+ *
+ * One id per harness rather than one for the package, because a test may mount
+ * two — comparing two interfaces, or an editor against the sections it is
+ * built from — and the id is not decoration. It is the whole contract for a
+ * submit control the host renders OUTSIDE the form (`<button form={formId}>`,
+ * which is where the shell puts the action slot), so two forms answering to
+ * `stage-form` left the second harness's save button submitting the FIRST
+ * harness's form. Duplicated ids are also why `document.getElementById` could
+ * be read as "this harness's form" for as long as only one was ever mounted.
+ *
+ * The counter is not reset between tests, and nothing may depend on the
+ * number: a test that needs the id reads `formId` off the harness.
+ */
+let harnessesMounted = 0;
+const nextStageFormId = (): string => {
+  harnessesMounted += 1;
+  return `stage-form-${harnessesMounted}`;
+};
 
 /**
  * A change to the codebook made somewhere other than this editor.
@@ -110,6 +128,15 @@ export type StageEditorHarness = RenderResult &
     host: InMemoryCompoundHost;
     gateway: InMemoryResourceGateway;
     user: ReturnType<typeof userEvent.setup>;
+    /**
+     * The DOM id of THIS harness's stage form, which is what a host's own
+     * action chrome is given as `formId`.
+     *
+     * One per mounted harness — see `nextStageFormId` — so a test that asserts
+     * on the contract a host is handed reads it here rather than writing the
+     * id down.
+     */
+    formId: string;
     /** The stage the editor opened on, exactly as it was seeded. */
     seeded: Readonly<{ id: string; type: StageType; fields: SectionDoc }>;
     /**
@@ -302,27 +329,76 @@ type StageEditorMounting<T extends StageType> =
       registry?: Partial<StageEditorRegistry>;
     }>;
 
+/**
+ * Which stage the harness opens: one of three ways, and they are alternatives
+ * rather than settings that combine.
+ *
+ * `stageId` opens a stage the shared all-interfaces protocol already holds.
+ * `stage` builds one from a document the call writes. `create` opens a stage
+ * that does not exist yet, the way a host opens a new one. Each answers "which
+ * stage is under test?" with a different stage, so a call means exactly one.
+ *
+ * Written as a union so the compiler says that. They were three independent
+ * optionals, and `seedFrom` simply preferred `create`, then `stage`, then
+ * `stageId`: a call giving two opened one of them and dropped the other in
+ * silence — so a test could name the fixture stage it meant to exercise and be
+ * running against a document built beside it.
+ *
+ * `assertOneStageSource` refuses the same combination at runtime, for the same
+ * reason `assertOneMountingMode` does: the compiler only sees the calls it can
+ * type.
+ */
+type StageEditorSeeding<T extends StageType> =
+  | Readonly<{
+      /**
+       * Open this stage of the shared all-interfaces protocol.
+       *
+       * Narrowed to the stages that ARE `T` as soon as the call has named an
+       * interface — which, for this mounting mode, means as soon as it names
+       * the editor under test. `T` used to come from the editor alone, and the
+       * stage type the harness hands that editor is a runtime string the
+       * call's own type parameter relabelled: an `Information` editor over
+       * `ego-form-1` compiled, mounted, and was told it was editing an
+       * EgoForm. See `FixtureStageId`.
+       *
+       * A call that has NOT named an interface — sections under test, the
+       * dispatcher under test, a family helper passing an id it computed —
+       * leaves `T` at the whole union and may pass any string; those are the
+       * calls `assertDeclaredStageType` covers at open time.
+       */
+      stageId?: StageType extends T ? string : FixtureStageId<T>;
+      stage?: never;
+      create?: never;
+    }>
+  | Readonly<{
+      stageId?: never;
+      /** Or open a stage of this type holding these fields. */
+      stage?: Readonly<{ id?: string; type: T; fields: SectionDoc }>;
+      create?: never;
+    }>
+  | Readonly<{
+      stageId?: never;
+      stage?: never;
+      /**
+       * Or CREATE a stage of this type, the way a host opens a new one: it
+       * starts from the interface's own template, it is not in the interview
+       * yet, and `position` is where the host will insert it, counting from
+       * zero.
+       *
+       * The session is opened with that creation, so everything a section
+       * derives from it — the proposed name, the destinations a skip may
+       * continue at — is exercised here exactly as it will be in the host.
+       */
+      create?: Readonly<{
+        type: T;
+        position: number;
+        /** Fields on top of the interface's template. */
+        fields?: SectionDoc;
+      }>;
+    }>;
+
 export type RenderStageEditorOptions<T extends StageType = StageType> =
   Readonly<{
-    /** Open this stage of the shared all-interfaces protocol. */
-    stageId?: string;
-    /** Or open a stage of this type holding these fields. */
-    stage?: Readonly<{ id?: string; type: T; fields: SectionDoc }>;
-    /**
-     * Or CREATE a stage of this type, the way a host opens a new one: it starts
-     * from the interface's own template, it is not in the interview yet, and
-     * `position` is where the host will insert it, counting from zero.
-     *
-     * The session is opened with that creation, so everything a section derives
-     * from it — the proposed name, the destinations a skip may continue at — is
-     * exercised here exactly as it will be in the host.
-     */
-    create?: Readonly<{
-      type: T;
-      position: number;
-      /** Fields on top of the interface's template. */
-      fields?: SectionDoc;
-    }>;
     /**
      * Extra manifest entries this stage may reference, keyed by asset id.
      *
@@ -396,34 +472,58 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      */
     applyLive?: boolean;
   }> &
-    StageEditorMounting<T>;
+    StageEditorMounting<T> &
+    StageEditorSeeding<T>;
 
-/** The three, in the order a refusal names them. */
+/** The three ways to mount, in the order a refusal names them. */
 const MOUNTING_OPTIONS = ['editor', 'sections', 'registry'] as const;
 
+/** The three ways to say which stage, in the order a refusal names them. */
+const STAGE_OPTIONS = ['stageId', 'stage', 'create'] as const;
+
 /**
- * Refuses a call that gave two ways of mounting the same thing.
+ * Refuses a call that gave two alternatives where one was meant.
  *
  * Named rather than resolved: there is no answer to which of them a test meant,
  * and the harness preferring one is how a test came to be about something
  * other than what it names. Both options are in the message, because the call
  * that has to change is the one that gave two.
+ *
+ * One function for both sets, because the mistake and its remedy are the same
+ * in both: the only thing that differs is which options are alternatives and
+ * what each of them does.
  */
-function assertOneMountingMode(
-  options: Readonly<{
-    editor?: unknown;
-    sections?: unknown;
-    registry?: unknown;
-  }>,
+function assertOneOf(
+  options: Readonly<Record<string, unknown>>,
+  alternatives: readonly string[],
+  explanation: string,
 ): void {
-  const given = MOUNTING_OPTIONS.filter(
-    (option) => options[option] !== undefined,
-  );
+  const given = alternatives.filter((option) => options[option] !== undefined);
   if (given.length < 2) return;
   throw new Error(
-    `renderStageEditor was given both \`${given[0]}\` and \`${given[1]}\`, which are alternative ways to mount what is under test: \`editor\` mounts a named editor, \`sections\` puts sections in the shared shell, and \`registry\` (or none of the three) mounts the package's dispatcher. Pass exactly one.`,
+    `renderStageEditor was given both \`${given[0]}\` and \`${given[1]}\`, which are alternative ${explanation}. Pass exactly one.`,
   );
 }
+
+const assertOneMountingMode = (
+  options: Readonly<Record<string, unknown>>,
+): void => {
+  assertOneOf(
+    options,
+    MOUNTING_OPTIONS,
+    "ways to mount what is under test: `editor` mounts a named editor, `sections` puts sections in the shared shell, and `registry` (or none of the three) mounts the package's dispatcher",
+  );
+};
+
+const assertOneStageSource = (
+  options: Readonly<Record<string, unknown>>,
+): void => {
+  assertOneOf(
+    options,
+    STAGE_OPTIONS,
+    'ways to say which stage the editor opens: `stageId` opens one the shared all-interfaces protocol holds, `stage` builds one from a document, and `create` opens a stage that does not exist yet',
+  );
+};
 
 /**
  * Mounts a stage editor over a real editing session.
@@ -469,6 +569,7 @@ export function renderStageEditor<T extends StageType = StageType>(
   options: RenderStageEditorOptions<T> = {},
 ): StageEditorHarness {
   assertOneMountingMode(options);
+  assertOneStageSource(options);
   const seeded = seedFrom(options);
   const stageSectionId = sectionId({ kind: 'stage', stageId: seeded.id });
   const finishRequests: FinishRequest[] = [];
@@ -500,6 +601,7 @@ export function renderStageEditor<T extends StageType = StageType>(
   });
 
   const submitLabel = options.submitLabel ?? defaultSubmitLabel(options.locale);
+  const formId = nextStageFormId();
   const view = render(
     <LocaleFrame
       {...(options.locale === undefined ? {} : { locale: options.locale })}
@@ -507,6 +609,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       <DialogProvider>
         <HarnessEditor
           session={session}
+          formId={formId}
           submitLabel={submitLabel}
           {...(options.actions === undefined
             ? {}
@@ -548,9 +651,49 @@ export function renderStageEditor<T extends StageType = StageType>(
   // the number the host gives it.
   let fabrications = 0n;
 
+  /**
+   * THIS harness's stage form, or `null` when what is mounted has none.
+   *
+   * Found inside this harness's own container and by this harness's own id.
+   * `document.getElementById('stage-form')` answered with whichever form the
+   * document held first, which is the first harness a test mounted — so a
+   * second harness reported the first one's fields as its own, and every
+   * question asked of it was answered about something else.
+   *
+   * `null` rather than a throw, because a call may legitimately mount
+   * something that is not the shared shell — a stand-in editor rendering a
+   * paragraph, a section list under test — and "no form" is the honest answer
+   * for those. The callers say what they make of it.
+   */
+  const stageForm = (): HTMLFormElement | null =>
+    [...view.container.querySelectorAll('form')].find(
+      (form) => form.id === formId,
+    ) ?? null;
+
+  /**
+   * The form a `submit()` is waiting on, or a refusal saying there is none.
+   *
+   * A call may legitimately mount something with no shared shell under it — a
+   * stand-in editor that renders a paragraph — and `submit()` on one of those
+   * has nothing to wait for. Said rather than waited out: without this the
+   * wait below would never be satisfied and the test would die at the suite's
+   * timeout, naming neither the harness nor the editor that has no form.
+   */
+  const submittingForm = (): HTMLFormElement => {
+    const form = stageForm();
+    if (form === null) {
+      throw new Error(
+        `renderStageEditor: submit() found no form "${formId}" under this harness. What is mounted here does not build on \`StageEditorShell\`, so there is no stage form to submit or to wait on.`,
+      );
+    }
+    return form;
+  };
+
   const submit = async (): Promise<FinishRequest | null> => {
     const before = finishRequests.length;
-    const button = screen.getByRole('button', { name: submitLabel });
+    const button = within(view.container).getByRole('button', {
+      name: submitLabel,
+    });
     await user.click(button);
     await waitFor(() => {
       if (finishRequests.length > before) return;
@@ -558,8 +701,17 @@ export function renderStageEditor<T extends StageType = StageType>(
       // screen: the form's own errors, or a field marked invalid for
       // `focusFirstError` to reach. Asserting both is what stops a submit
       // still in flight from being read as a refusal.
-      expect(button).toHaveAttribute('aria-busy', 'false');
-      expect(refusalOnScreen(view.baseElement)).toBe(true);
+      //
+      // Settling is read from the FORM, not from the control that was
+      // clicked. It used to be read from the control's `aria-busy`, which only
+      // the package's own `SubmitButton` says — so a host rendering a plain
+      // `<button form={formId}>`, which the action-context contract allows and
+      // several hosts do, never satisfied it: the refusal was on screen and
+      // the form had settled, and the wait ran on to the suite's timeout,
+      // failing against whatever the test was doing next rather than against
+      // the control the host supplied.
+      expect(submittingForm()).toHaveAttribute('aria-busy', 'false');
+      expect(refusalOnScreen(view.container)).toBe(true);
     });
     // Answered against the count taken before the click, never `at(-1)`: after
     // one save has succeeded, the last request is a request — and a refused
@@ -576,6 +728,7 @@ export function renderStageEditor<T extends StageType = StageType>(
     host,
     gateway,
     user,
+    formId,
     seeded,
     submit,
     cancel: async () => {
@@ -643,11 +796,11 @@ export function renderStageEditor<T extends StageType = StageType>(
       }
       return [...liveCommands];
     },
-    ownedKeys: () => readOwnedKeys(),
+    ownedKeys: () => readOwnedKeys(stageForm()),
     roundTrip: async ({ unowned = [] } = {}) => {
       // Before the save, because it is a question about what is on screen and
       // the save's own failure would otherwise hide it.
-      const owned = new Set(readOwnedKeys());
+      const owned = new Set(readOwnedKeys(stageForm()));
       const orphaned = Object.keys(seeded.fields).filter(
         (key) => !owned.has(key) && !unowned.includes(key),
       );
@@ -659,7 +812,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       const request = await submit();
       if (request === null) {
         throw new Error(
-          `The stage did not save, so nothing round-tripped. The editor is showing: ${visibleProblems(view.baseElement)}`,
+          `The stage did not save, so nothing round-tripped. The editor is showing: ${visibleProblems(view.container)}`,
         );
       }
       // `id` and `type` are the session's, never the editor's: `seeded.fields`
@@ -680,7 +833,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       }
       return request;
     },
-    outline: () => readOutline(),
+    outline: () => readOutline(view.container),
     setReadOnly: (readOnly = true) => {
       act(() => {
         session.setAccess(
@@ -820,6 +973,7 @@ function withSafeTypingIntoRichText(keyboard: HarnessUser): HarnessUser {
 
 function HarnessEditor<T extends StageType>({
   session,
+  formId,
   submitLabel,
   actions,
   editor: Editor,
@@ -827,13 +981,15 @@ function HarnessEditor<T extends StageType>({
   registry,
 }: Readonly<{
   session: ProtocolBuilderSessionStore;
+  /** This harness's own form id. See `nextStageFormId`. */
+  formId: string;
   submitLabel: string;
   actions?: StageEditorActions;
   editor?: StageEditorComponent<T>;
   sections?: ReactNode;
   registry?: Partial<StageEditorRegistry>;
 }>) {
-  const controller = useStageEditorController(session, STAGE_FORM_ID);
+  const controller = useStageEditorController(session, formId);
 
   if (Editor !== undefined) {
     // The stage the session opened, as the editor's own stage type. They are
@@ -864,10 +1020,11 @@ function HarnessEditor<T extends StageType>({
     <StageEditorShell
       controller={controller}
       actions={
+        // This harness's own id, which is what the shell hands the slot
+        // anyway: read from the prop rather than out of the context so the
+        // name means one thing in this component.
         actions ??
-        (({ formId }) => (
-          <SubmitButton form={formId}>{submitLabel}</SubmitButton>
-        ))
+        (() => <SubmitButton form={formId}>{submitLabel}</SubmitButton>)
       }
     >
       {sections}
@@ -875,6 +1032,14 @@ function HarnessEditor<T extends StageType>({
   );
 }
 
+/**
+ * The stage the session is opened on, from whichever of the three the call
+ * gave.
+ *
+ * The order below is not a preference: `assertOneStageSource` has already
+ * refused a call that gave two, so at most one of these branches can be taken.
+ * See `StageEditorSeeding`.
+ */
 function seedFrom<T extends StageType>(
   options: RenderStageEditorOptions<T>,
 ): SeededStage {
@@ -1036,8 +1201,7 @@ function collectDifferences(
  * own in a portal outside it, and its fields are named after the row's
  * properties — `text`, `content` — which are not stage keys at all.
  */
-function readOwnedKeys(): string[] {
-  const form = document.getElementById(STAGE_FORM_ID);
+function readOwnedKeys(form: HTMLFormElement | null): string[] {
   if (form === null) return [];
   const keys = new Set<string>();
   for (const field of form.querySelectorAll('[data-field-path]')) {
@@ -1056,12 +1220,19 @@ function readOwnedKeys(): string[] {
   return [...keys].toSorted();
 }
 
-function readOutline(): { title: string; state: string }[] {
-  // By role alone, not by the landmark's own name: the harness mounts exactly
+function readOutline(container: HTMLElement): {
+  title: string;
+  state: string;
+}[] {
+  // By role alone, not by the landmark's own name: THIS harness mounts exactly
   // one navigation, and the name is copy — read under a locale that translates
   // it, a name-matched query would find nothing and report an editor with no
   // sections at all, which is a passing assertion about the wrong thing.
-  const [nav] = screen.queryAllByRole('navigation');
+  //
+  // Scoped to this harness's own container rather than read off `screen`,
+  // which is the whole document: a test mounting two harnesses got the first
+  // one's outline from both of them.
+  const [nav] = within(container).queryAllByRole('navigation');
   if (nav === undefined) return [];
   return [...nav.querySelectorAll('button')].map((button) => {
     const [title, state] = [...button.querySelectorAll('span')];
