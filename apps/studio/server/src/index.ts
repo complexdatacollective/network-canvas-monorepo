@@ -49,6 +49,13 @@ installFatalErrorHandlers({
 const { env, mailer } = (() => {
   try {
     const resolvedEnv = readEnv();
+    if (
+      resolvedEnv.db &&
+      !resolvedEnv.devDefaults &&
+      !resolvedEnv.maintenanceDb
+    ) {
+      throw new Error('Missing maintenance database configuration.');
+    }
     // One owned transport serves authentication and the invitation worker.
     // Validate it before database work or request admission.
     return {
@@ -74,7 +81,9 @@ if (env.telemetry) {
   }
 }
 const pool = env.db ? createPool(env.db) : undefined;
-const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
+const maintenancePool = env.maintenanceDb
+  ? createMaintenancePool(env.maintenanceDb)
+  : undefined;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
 const observability = createObservability({
   pool,
@@ -108,7 +117,10 @@ function startDatabaseWorkers(): void {
 
 async function admitDatabaseRuntime(): Promise<boolean> {
   if (!pool || !maintenancePool || env.devDefaults) return true;
-  const roles = Object.values(TENANT_ROLES);
+  const runtimeRoleSets = [
+    [TENANT_ROLES.app],
+    [TENANT_ROLES.maintenance],
+  ] as const;
   try {
     for (const [runtimePool, intendedRole] of [
       [pool, TENANT_ROLES.app],
@@ -118,8 +130,8 @@ async function admitDatabaseRuntime(): Promise<boolean> {
       try {
         await assertSafePostgresRuntimeIdentity(client, {
           intendedRole,
-          allowedRoles: roles,
-          runtimeRoleSets: [roles],
+          allowedRoles: [intendedRole],
+          runtimeRoleSets,
           backupRole: BACKUP_ROLE,
           allowedLogins: env.databaseAllowedLogins ?? [],
           administrativeLogins: env.databaseAdministrativeLogins,

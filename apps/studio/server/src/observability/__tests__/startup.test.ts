@@ -30,6 +30,7 @@ describe.skipIf(!database)('startup migration provenance', () => {
         development: boolean,
         databaseUrl = scratch.db.url,
         allowedLogins = [decodeURIComponent(new URL(scratch.db.url).username)],
+        maintenanceDatabaseUrl = databaseUrl,
       ) =>
         spawnSync(
           process.execPath,
@@ -43,6 +44,11 @@ describe.skipIf(!database)('startup migration provenance', () => {
               NODE_ENV: development ? 'development' : 'production',
               STUDIO_DEV_DEFAULTS: String(development),
               DATABASE_URL: databaseUrl,
+              ...(development
+                ? {}
+                : {
+                    STUDIO_MAINTENANCE_DATABASE_URL: maintenanceDatabaseUrl,
+                  }),
               STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(allowedLogins),
               BETTER_AUTH_SECRET:
                 'migration-provenance-local-test-secret-64-characters-long-enough',
@@ -65,7 +71,9 @@ describe.skipIf(!database)('startup migration provenance', () => {
       expect(deployed.stdout).toContain('"code":"STUDIO_SCHEMA_STALE"');
       expect(deployed.stdout).not.toContain('"marker":"startup-completed"');
       const versioned = await createScratchDatabase(database);
-      const runtimeLogin = `startup_runtime_${randomUUID().replaceAll('-', '')}`;
+      const runtimeSuffix = randomUUID().replaceAll('-', '');
+      const appRuntimeLogin = `startup_app_${runtimeSuffix}`;
+      const maintenanceRuntimeLogin = `startup_maintenance_${runtimeSuffix}`;
       let runtimeCreated = false;
       try {
         const identity = (
@@ -89,12 +97,18 @@ describe.skipIf(!database)('startup migration provenance', () => {
           ),
         ).toEqual(migrations.map(({ manifest }) => manifest.id));
         await versioned.pool.query(
-          `CREATE ROLE ${escapeIdentifier(runtimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
-           GRANT studio_app, studio_maintenance TO ${escapeIdentifier(runtimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
-           GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(runtimeLogin)}`,
+          `CREATE ROLE ${escapeIdentifier(appRuntimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+           CREATE ROLE ${escapeIdentifier(maintenanceRuntimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+           GRANT studio_app TO ${escapeIdentifier(appRuntimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+           GRANT studio_maintenance TO ${escapeIdentifier(maintenanceRuntimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+           GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)}`,
         );
         runtimeCreated = true;
-        const allowedLogins = [identity.login, runtimeLogin];
+        const allowedLogins = [
+          identity.login,
+          appRuntimeLogin,
+          maintenanceRuntimeLogin,
+        ];
         const ownerBacked = run(false, versioned.db.url, allowedLogins);
         expect(ownerBacked.error).toBeUndefined();
         expect(ownerBacked.status).toBe(1);
@@ -103,9 +117,17 @@ describe.skipIf(!database)('startup migration provenance', () => {
           '"marker":"startup-completed"',
         );
         const runtimeUrl = new URL(versioned.db.url);
-        runtimeUrl.username = runtimeLogin;
+        runtimeUrl.username = appRuntimeLogin;
         runtimeUrl.password = runtimePassword;
-        const current = run(false, runtimeUrl.href, allowedLogins);
+        const maintenanceUrl = new URL(versioned.db.url);
+        maintenanceUrl.username = maintenanceRuntimeLogin;
+        maintenanceUrl.password = runtimePassword;
+        const current = run(
+          false,
+          runtimeUrl.href,
+          allowedLogins,
+          maintenanceUrl.href,
+        );
         expect(current.error).toBeUndefined();
         expect(current.status).toBe(0);
         expect(current.stdout).toContain('"marker":"startup-completed"');
@@ -150,7 +172,12 @@ describe.skipIf(!database)('startup migration provenance', () => {
             )
           ).rows,
         ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
-        const forgedCurrent = run(false, runtimeUrl.href, allowedLogins);
+        const forgedCurrent = run(
+          false,
+          runtimeUrl.href,
+          allowedLogins,
+          maintenanceUrl.href,
+        );
         expect(forgedCurrent.error).toBeUndefined();
         expect(forgedCurrent.status).toBe(1);
         expect(forgedCurrent.stderr).toBe('');
@@ -161,8 +188,8 @@ describe.skipIf(!database)('startup migration provenance', () => {
       } finally {
         if (runtimeCreated)
           await versioned.pool.query(
-            `REVOKE CONNECT ON DATABASE ${escapeIdentifier(new URL(versioned.db.url).pathname.slice(1))} FROM ${escapeIdentifier(runtimeLogin)};
-             DROP ROLE ${escapeIdentifier(runtimeLogin)}`,
+            `REVOKE CONNECT ON DATABASE ${escapeIdentifier(new URL(versioned.db.url).pathname.slice(1))} FROM ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)};
+             DROP ROLE ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)}`,
           );
         await versioned.dispose();
       }

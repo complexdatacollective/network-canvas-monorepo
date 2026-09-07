@@ -103,7 +103,7 @@ export async function enforceMigrationSecurity(
     await assertSafePostgresRestrictedIdentities(client, {
       allowedLogins,
       administrativeLogins: [...new Set(administrators)],
-      runtimeRoleSets: [Object.values(TENANT_ROLES)],
+      runtimeRoleSets: [[TENANT_ROLES.app], [TENANT_ROLES.maintenance]],
       backupRole: BACKUP_ROLE,
     });
   } catch (error) {
@@ -116,7 +116,7 @@ export async function enforceMigrationSecurity(
         'parents':
           'Enrolled Studio logins must not have memberships granted to unenrolled roles.',
         'memberships':
-          'Runtime and backup login memberships must grant exactly SET access to both Studio runtime roles or to the separate backup role, without inheritance or administration; backup membership must remain separate.',
+          'Application, maintenance, and backup login memberships must each grant exactly SET access to their one reviewed Studio role, without inheritance or administration; backup membership must remain separate.',
         'parameters':
           'Studio runtime and backup identities must not have SET on lo_compat_privileges or session_replication_role; migration requires lo_compat_privileges off and session_replication_role origin.',
         'persisted':

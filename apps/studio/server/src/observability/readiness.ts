@@ -29,6 +29,10 @@ export function createReadiness(options: {
   const administrativeLogins = options.administrativeLogins
     ? [...options.administrativeLogins]
     : [];
+  const runtimeRoleSets = [
+    [TENANT_ROLES.app],
+    [TENANT_ROLES.maintenance],
+  ] as const;
   const database = new BoundedProbe<SchemaState>(
     pool
       ? (signal) =>
@@ -37,8 +41,8 @@ export function createReadiness(options: {
             if (!allowUnversionedSchema)
               await assertSafePostgresRuntimeIdentity(client, {
                 intendedRole: TENANT_ROLES.app,
-                allowedRoles: Object.values(TENANT_ROLES),
-                runtimeRoleSets: [Object.values(TENANT_ROLES)],
+                allowedRoles: [TENANT_ROLES.app],
+                runtimeRoleSets,
                 backupRole: BACKUP_ROLE,
                 allowedLogins,
                 administrativeLogins,
@@ -52,8 +56,8 @@ export function createReadiness(options: {
               await withProbeClient(maintenancePool, signal, (maintenance) =>
                 assertSafePostgresRuntimeIdentity(maintenance, {
                   intendedRole: TENANT_ROLES.maintenance,
-                  allowedRoles: Object.values(TENANT_ROLES),
-                  runtimeRoleSets: [Object.values(TENANT_ROLES)],
+                  allowedRoles: [TENANT_ROLES.maintenance],
+                  runtimeRoleSets,
                   backupRole: BACKUP_ROLE,
                   allowedLogins,
                   administrativeLogins,

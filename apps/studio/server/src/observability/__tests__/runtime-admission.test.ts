@@ -25,7 +25,8 @@ import { createReadiness } from '../readiness.ts';
 
 const database = await reachableDb();
 const suffix = randomUUID().replaceAll('-', '');
-const runtimeLogin = `admission_runtime_${suffix}`;
+const appRuntimeLogin = `admission_app_${suffix}`;
+const maintenanceRuntimeLogin = `admission_maintenance_${suffix}`;
 const outsideLogin = `admission_outside_${suffix}`;
 const password = 'admission-synthetic-local-only';
 
@@ -36,7 +37,8 @@ describe.skipIf(!database)(
     let runtime: ReturnType<typeof createPool>;
     let maintenance: ReturnType<typeof createMaintenancePool>;
     let allowedLogins: string[];
-    let runtimeUrl: string;
+    let appRuntimeUrl: string;
+    let maintenanceRuntimeUrl: string;
     let databaseName: string;
 
     beforeAll(async () => {
@@ -55,25 +57,37 @@ describe.skipIf(!database)(
       await migrateDatabase(scratch.pool, migrations, SCHEMA_FINGERPRINT, [
         identity.login,
       ]);
-      for (const login of [runtimeLogin, outsideLogin]) {
+      for (const [login, role] of [
+        [appRuntimeLogin, 'studio_app'],
+        [maintenanceRuntimeLogin, 'studio_maintenance'],
+        [outsideLogin, 'studio_app'],
+      ] as const) {
         await scratch.pool
           .query(`CREATE ROLE ${escapeIdentifier(login)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${password}';
-        GRANT studio_app, studio_maintenance TO ${escapeIdentifier(login)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`);
+        GRANT ${role} TO ${escapeIdentifier(login)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`);
       }
       await scratch.pool
-        .query(`GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO ${escapeIdentifier(runtimeLogin)};
+        .query(`GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)};
       CREATE SEQUENCE evidence_read_canary;
       GRANT USAGE ON evidence_read_canary TO studio_app, studio_maintenance;
       ALTER TABLE "schemaFingerprint" ENABLE ROW LEVEL SECURITY;
       CREATE POLICY evidence_read_canary ON "schemaFingerprint" FOR SELECT TO studio_app, studio_maintenance USING (nextval('evidence_read_canary') > 0);
       CREATE POLICY evidence_write_control ON "schemaFingerprint" FOR UPDATE TO studio_app, studio_maintenance USING (true) WITH CHECK (true)`);
-      allowedLogins = [identity.login, runtimeLogin];
-      const url = new URL(scratch.db.url);
-      url.username = runtimeLogin;
-      url.password = password;
-      runtimeUrl = url.href;
-      runtime = createPool({ url: runtimeUrl });
-      maintenance = createMaintenancePool({ url: runtimeUrl });
+      allowedLogins = [
+        identity.login,
+        appRuntimeLogin,
+        maintenanceRuntimeLogin,
+      ];
+      const appUrl = new URL(scratch.db.url);
+      appUrl.username = appRuntimeLogin;
+      appUrl.password = password;
+      appRuntimeUrl = appUrl.href;
+      const maintenanceUrl = new URL(scratch.db.url);
+      maintenanceUrl.username = maintenanceRuntimeLogin;
+      maintenanceUrl.password = password;
+      maintenanceRuntimeUrl = maintenanceUrl.href;
+      runtime = createPool({ url: appRuntimeUrl });
+      maintenance = createMaintenancePool({ url: maintenanceRuntimeUrl });
     });
     afterAll(async () => {
       await Promise.all([runtime.end(), maintenance.end()]);
@@ -83,7 +97,7 @@ describe.skipIf(!database)(
       const client = await cleanup.connect();
       try {
         await client.query(
-          `DROP ROLE ${escapeIdentifier(runtimeLogin)}, ${escapeIdentifier(outsideLogin)}`,
+          `DROP ROLE ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)}, ${escapeIdentifier(outsideLogin)}`,
         );
       } finally {
         client.release();
@@ -108,6 +122,7 @@ describe.skipIf(!database)(
     const boot = (
       logins: readonly string[] | null = allowedLogins,
       administrativeLogins: readonly string[] = [],
+      maintenanceDatabaseUrl: string | null = maintenanceRuntimeUrl,
     ) =>
       spawnSync(
         process.execPath,
@@ -119,7 +134,12 @@ describe.skipIf(!database)(
         {
           env: {
             NODE_ENV: 'production',
-            DATABASE_URL: runtimeUrl,
+            DATABASE_URL: appRuntimeUrl,
+            ...(maintenanceDatabaseUrl
+              ? {
+                  STUDIO_MAINTENANCE_DATABASE_URL: maintenanceDatabaseUrl,
+                }
+              : {}),
             BETTER_AUTH_SECRET:
               'admission-local-signing-secret-at-least-32-characters',
             PUBLIC_URL: 'http://127.0.0.1:3000',
@@ -153,6 +173,12 @@ describe.skipIf(!database)(
           pool.query('SELECT * FROM studio_migrations.history'),
         ).rejects.toMatchObject({ code: '42501' });
       }
+      await expect(
+        runtime.query('SET ROLE studio_maintenance'),
+      ).rejects.toMatchObject({ code: '42501' });
+      await expect(
+        maintenance.query('SET ROLE studio_app'),
+      ).rejects.toMatchObject({ code: '42501' });
       const probe = readiness();
       try {
         expect((await probe.check()).status).toBe('ready');
@@ -288,7 +314,7 @@ describe.skipIf(!database)(
     it('rejects history writes and arbitrary enrolled login writes independently of the current runtime role', async () => {
       await scratch.pool
         .query(`GRANT UPDATE ON studio_migrations.history TO studio_maintenance;
-      GRANT UPDATE(fingerprint) ON "schemaFingerprint" TO ${escapeIdentifier(runtimeLogin)}`);
+      GRANT UPDATE(fingerprint) ON "schemaFingerprint" TO ${escapeIdentifier(appRuntimeLogin)}`);
       try {
         expect(await checkSchema(runtime, { allowedLogins })).toMatchObject({
           kind: 'stale',
@@ -304,7 +330,7 @@ describe.skipIf(!database)(
       } finally {
         await scratch.pool
           .query(`REVOKE UPDATE ON studio_migrations.history FROM studio_maintenance;
-        REVOKE UPDATE(fingerprint) ON "schemaFingerprint" FROM ${escapeIdentifier(runtimeLogin)}`);
+        REVOKE UPDATE(fingerprint) ON "schemaFingerprint" FROM ${escapeIdentifier(appRuntimeLogin)}`);
       }
     });
 
@@ -322,7 +348,7 @@ describe.skipIf(!database)(
           await scratch.pool
             .query(`REVOKE studio_app, studio_maintenance FROM ${escapeIdentifier(outsideLogin)};
             GRANT ${BACKUP_ROLE} TO ${escapeIdentifier(outsideLogin)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`);
-        const otherUrl = new URL(runtimeUrl);
+        const otherUrl = new URL(appRuntimeUrl);
         otherUrl.username = outsideLogin;
         const other = createOwnerPool({ url: otherUrl.href });
         try {
@@ -372,7 +398,7 @@ describe.skipIf(!database)(
           if (kind === 'backup')
             await scratch.pool
               .query(`REVOKE ${BACKUP_ROLE} FROM ${escapeIdentifier(outsideLogin)};
-              GRANT studio_app, studio_maintenance TO ${escapeIdentifier(outsideLogin)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`);
+              GRANT studio_app TO ${escapeIdentifier(outsideLogin)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`);
         }
       },
     );
@@ -438,7 +464,7 @@ describe.skipIf(!database)(
     );
 
     it('refuses a configured administrative serving login despite otherwise-safe runtime capabilities', async () => {
-      const administrativeLogins = [runtimeLogin];
+      const administrativeLogins = [appRuntimeLogin];
       const probe = createReadiness({
         pool: runtime,
         maintenancePool: maintenance,
@@ -484,6 +510,36 @@ describe.skipIf(!database)(
       }
     });
 
+    it('refuses a sibling maintenance-role grant before readiness or startup can admit app traffic', async () => {
+      await scratch.pool.query(
+        `GRANT studio_maintenance TO ${escapeIdentifier(appRuntimeLogin)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`,
+      );
+      try {
+        expect(
+          (await runtime.query('SET ROLE studio_maintenance')).rows,
+        ).toEqual([]);
+        await runtime.query('SET ROLE studio_app');
+        const probe = readiness();
+        try {
+          expect((await probe.check()).status).toBe('not_ready');
+        } finally {
+          probe.stop();
+        }
+        const result = boot();
+        expect(result.error).toBeUndefined();
+        expect(result.status).toBe(1);
+        expect(result.stdout).not.toContain('admission-listener-started');
+        const reusedLogin = boot(allowedLogins, [], appRuntimeUrl);
+        expect(reusedLogin.error).toBeUndefined();
+        expect(reusedLogin.status).toBe(1);
+        expect(reusedLogin.stdout).not.toContain('admission-listener-started');
+      } finally {
+        await scratch.pool.query(
+          `REVOKE studio_maintenance FROM ${escapeIdentifier(appRuntimeLogin)}`,
+        );
+      }
+    });
+
     it('fails closed before evidence reads when production enrollment is missing', async () => {
       await scratch.pool.query(
         "SELECT setval('evidence_read_canary', 1, false)",
@@ -502,6 +558,14 @@ describe.skipIf(!database)(
       expect(missing.stdout).toContain('STUDIO_CONFIGURATION_INVALID');
       expect(missing.stdout).not.toContain('admission-listener-started');
     });
+
+    it('fails closed before request admission when the maintenance connection is missing', () => {
+      const missing = boot(allowedLogins, [], null);
+      expect(missing.error).toBeUndefined();
+      expect(missing.status).toBe(1);
+      expect(missing.stdout).toContain('STUDIO_CONFIGURATION_INVALID');
+      expect(missing.stdout).not.toContain('admission-listener-started');
+    });
   },
 );
 
@@ -512,6 +576,7 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
   const unique = randomUUID().replaceAll('-', '');
   const migrationLogin = `separate_migrator_${unique}`;
   const separateRuntimeLogin = `separate_runtime_${unique}`;
+  const separateMaintenanceLogin = `separate_maintenance_${unique}`;
   const ownerName = (
     await scratch.pool.query<{ login: string }>('SELECT session_user AS login')
   ).rows[0]!.login;
@@ -523,9 +588,17 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
   operatorUrl.password = password;
   const runtimeUrl = new URL(operatorUrl);
   runtimeUrl.username = separateRuntimeLogin;
+  const maintenanceUrl = new URL(operatorUrl);
+  maintenanceUrl.username = separateMaintenanceLogin;
   const operator = createOwnerPool({ url: operatorUrl.href });
   const runtime = createPool({ url: runtimeUrl.href });
-  const allowedLogins = [ownerName, migrationLogin, separateRuntimeLogin];
+  const maintenance = createMaintenancePool({ url: maintenanceUrl.href });
+  const allowedLogins = [
+    ownerName,
+    migrationLogin,
+    separateRuntimeLogin,
+    separateMaintenanceLogin,
+  ];
   const administrativeLogins = [migrationLogin];
   const scopedOperator = createMaintenancePool({ url: operatorUrl.href });
   const migrationCommand = (administrators?: readonly string[]) =>
@@ -548,12 +621,16 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
       },
     );
   try {
-    for (const login of [migrationLogin, separateRuntimeLogin])
+    for (const [login, grantedRoles] of [
+      [migrationLogin, 'studio_app, studio_maintenance'],
+      [separateRuntimeLogin, 'studio_app'],
+      [separateMaintenanceLogin, 'studio_maintenance'],
+    ] as const)
       await scratch.pool
         .query(`CREATE ROLE ${escapeIdentifier(login)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${password}';
-        GRANT studio_app, studio_maintenance TO ${escapeIdentifier(login)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`);
+        GRANT ${grantedRoles} TO ${escapeIdentifier(login)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`);
     await scratch.pool
-      .query(`GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO ${[migrationLogin, separateRuntimeLogin].map(escapeIdentifier).join(', ')};
+      .query(`GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO ${[migrationLogin, separateRuntimeLogin, separateMaintenanceLogin].map(escapeIdentifier).join(', ')};
       GRANT CREATE ON DATABASE ${escapeIdentifier(databaseName)} TO ${escapeIdentifier(migrationLogin)};
       GRANT USAGE, CREATE ON SCHEMA public TO ${escapeIdentifier(migrationLogin)}`);
     const undeclared = migrationCommand();
@@ -610,6 +687,7 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
     expect(configured.stdout).toContain('already current');
     const probe = createReadiness({
       pool: runtime,
+      maintenancePool: maintenance,
       allowedLogins,
       administrativeLogins,
       cacheMs: 0,
@@ -637,6 +715,7 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
         env: {
           NODE_ENV: 'production',
           DATABASE_URL: runtimeUrl.href,
+          STUDIO_MAINTENANCE_DATABASE_URL: maintenanceUrl.href,
           STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(allowedLogins),
           STUDIO_DATABASE_ADMINISTRATIVE_LOGINS:
             JSON.stringify(administrativeLogins),
@@ -680,12 +759,17 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
       serving.release();
     }
   } finally {
-    await Promise.all([operator.end(), runtime.end(), scopedOperator.end()]);
+    await Promise.all([
+      operator.end(),
+      runtime.end(),
+      maintenance.end(),
+      scopedOperator.end(),
+    ]);
     await scratch.dispose();
     const cleanup = createOwnerPool(database);
     try {
       await cleanup.query(
-        `DROP ROLE IF EXISTS ${[migrationLogin, separateRuntimeLogin].map(escapeIdentifier).join(', ')}`,
+        `DROP ROLE IF EXISTS ${[migrationLogin, separateRuntimeLogin, separateMaintenanceLogin].map(escapeIdentifier).join(', ')}`,
       );
     } finally {
       await cleanup.end();

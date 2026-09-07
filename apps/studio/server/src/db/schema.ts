@@ -284,7 +284,7 @@ export async function checkSchema(
       await assertSafePostgresRestrictedIdentities(pool, {
         allowedLogins: allowedLogins ?? [],
         administrativeLogins,
-        runtimeRoleSets: [Object.values(TENANT_ROLES)],
+        runtimeRoleSets: [[TENANT_ROLES.app], [TENANT_ROLES.maintenance]],
         backupRole: BACKUP_ROLE,
       });
     } catch (error) {
