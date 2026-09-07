@@ -379,6 +379,69 @@ stood behind**: the catalog is what it compares against, so a hardcoded literal
 with no id is invisible to it — the JSX-attribute scan is the structural half,
 and the two are meant to be read together.
 
+It does not open the dialogs behind "Create node type" and its siblings.
+`codebook/components/CodebookEntityEditor.tsx` still renders `'Save entity'`,
+`'Saving…'` and `'Could not save this entity'` as literals with no id, which is
+the `codebookEntity` work named above as i18n-2's to finish; sweeping them from
+here would report that work against whichever section was open.
+
+Each interface family adds its own sweep of whole EDITORS beside these, reached
+through that family's registry. A section sweep cannot see what only
+composition produces — a shell control no section test mounts, or one section
+rendering English between two that do not.
+
+Three rules those sweeps put on everything else in the package. Each was a real
+defect, and each is the sweep reading something that is not a section's copy as
+though it were:
+
+- **A fixture's own words are declared, not renamed.**
+  `sections/__tests__/rowFixtures.tsx` labels its stand-in prompt field
+  `Prompt text`, and an interface family may well choose those same words for a
+  real label — the sweep indexes by the English SENTENCE rather than by where it
+  was rendered, so the fixture's stand-in gets reported under whichever id is
+  spelled the same. The dialog sweeps name those labels in `fixtureWords`, which
+  says "a fixture put this here" — the same claim `packageSource.ts` makes about
+  a fixture FILE. Renaming the fixture's labels was tried on two branches and
+  rejected: it moves the collision rather than removing it, the next family to
+  pick those words is back where it started, and every test that reads a label
+  back has to move with it.
+- **The harness's stand-in controls say what the real ones say.**
+  `testing/renderStageEditor.tsx` wrote its fallback submit button's label as
+  the literal `'Save stage'`, which is `shell.saveStage`; it now reads that
+  descriptor out of the same catalog the provider was given, so the button is
+  Spanish on a Spanish surface and unchanged everywhere else.
+- **Every section of the protocol is content, not just the stage on screen.** A
+  section can show a researcher's words from anywhere in the protocol: a skip
+  logic destination is named by the researcher's label for the stage it
+  continues at, and a narrative pedigree lists its source stages by theirs. Both
+  of those labels are also what this package calls the interface, so a sweep
+  reading only the stage the harness seeded reported a researcher's own stage
+  name as a translation defect. `protocolContent` reads the whole
+  `protocolSections` snapshot for that reason.
+
+An English sentence this package suggests is only protocol content when the
+protocol holds it. `interface.sociogram` is "Sociogram", which is also what a
+researcher calls the stage — because the package suggested it. Rendered where
+the protocol does NOT hold it, it is a leak, and the sweep's own tests state
+both halves.
+
+Two allowances, both declared at the call site and both exact lists rather than
+filters, because a sweep that quietly forgave either would be a green tick over
+the defect it exists to find:
+
+- **`fixtureWords`** subtracts a fixture's own labels, as above.
+- **`stillEnglish`** is what an area that is not converted yet still puts on
+  screen, in full, asserted as an EQUALITY rather than subtracted. It is an
+  expected FAILURE and not an exemption: when the area lands its conversion the
+  leak stops, the equality stops matching, and whoever converted it deletes the
+  entry. That is the same discipline `hostCopyOverrides.test.ts` applies to
+  `NOT_CONVERTED_YET`, and it is the only reason a sweep may pass over a surface
+  genuinely showing a reader English. `src/resources` is what it is for — a
+  resource summary writes `<Detail term="Attributes">`, the English of
+  `codebookEntity.attributesHeading`, and `resourceKinds.ts` still names a
+  GeoJSON layer "Map layer" — so an editor sweep that mounts the resource picker
+  names those leaks rather than hiding them.
+
 ## Reading a story in another language
 
 This package's Storybook carries the shared **Language** and **Direction**
