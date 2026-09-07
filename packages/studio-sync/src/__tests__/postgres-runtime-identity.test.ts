@@ -165,6 +165,43 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
     }
   });
 
+  it('rejects an outside login that can inherit CONNECT and SET through the runtime login', async () => {
+    await databaseAdmin.query(
+      `ALTER ROLE ${escapeIdentifier(roles.outside)} LOGIN INHERIT PASSWORD '${password}';
+       GRANT ${escapeIdentifier(roles.login)} TO ${escapeIdentifier(roles.outside)} WITH ADMIN FALSE, INHERIT TRUE, SET TRUE;
+       CREATE TABLE runtime_membership_chain (id integer PRIMARY KEY);
+       GRANT INSERT ON runtime_membership_chain TO ${escapeIdentifier(roles.app)}`,
+    );
+    try {
+      await withClient(
+        runtimePool(roles.outside, roles.app),
+        async (client) => {
+          expect(
+            (
+              await client.query(
+                'INSERT INTO runtime_membership_chain VALUES (1)',
+              )
+            ).rowCount,
+          ).toBe(1);
+        },
+      );
+      await withClient(runtimePool(roles.login, roles.app), async (client) => {
+        await expect(
+          assertSafePostgresRuntimeIdentity(client, {
+            intendedRole: roles.app,
+            allowedRoles,
+          }),
+        ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_UNSAFE');
+      });
+    } finally {
+      await databaseAdmin.query(
+        `DROP TABLE runtime_membership_chain;
+         REVOKE ${escapeIdentifier(roles.login)} FROM ${escapeIdentifier(roles.outside)};
+         ALTER ROLE ${escapeIdentifier(roles.outside)} NOLOGIN NOINHERIT`,
+      );
+    }
+  });
+
   it('rejects direct data access held by the connecting login', async () => {
     await databaseAdmin.query(
       `CREATE TABLE runtime_direct_access (id integer);

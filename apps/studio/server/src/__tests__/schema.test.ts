@@ -410,11 +410,53 @@ describe.skipIf(!db)('schema verification', () => {
       ).toEqual([{ relkind: 'v' }]);
       expect(await checkSchema(pool)).toMatchObject({
         kind: 'stale',
-        reason: 'unversioned',
+        reason: 'unsafe-evidence',
       });
-      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
-        kind: 'current',
-      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
+        {
+          kind: 'stale',
+          reason: 'unsafe-evidence',
+        },
+      );
+    });
+  });
+
+  it('checks the exact resolved fingerprint namespace behind an empty search-path prefix before reading it', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await provisionScratchSchema(pool);
+      await pool.query(`CREATE SCHEMA empty_search_path_prefix;
+        CREATE FUNCTION public.fingerprint_namespace_read_trap()
+          RETURNS text LANGUAGE plpgsql AS
+          'BEGIN RAISE EXCEPTION ''fingerprint view read before shape check''; END';
+        ALTER TABLE public."schemaFingerprint"
+          RENAME TO fingerprint_namespace_storage;
+        CREATE VIEW public."schemaFingerprint" AS
+          SELECT id, fingerprint_namespace_read_trap() AS fingerprint, "appliedAt"
+          FROM public.fingerprint_namespace_storage`);
+      const client = await pool.connect();
+      try {
+        await client.query(
+          'SET search_path = empty_search_path_prefix, public',
+        );
+        expect(
+          (
+            await client.query<{ schema: string }>(
+              `SELECT namespace.nspname AS schema
+                 FROM pg_class relation
+                 JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+                WHERE relation.oid = to_regclass('"schemaFingerprint"')`,
+            )
+          ).rows,
+        ).toEqual([{ schema: 'public' }]);
+        await expect(
+          client.query('SELECT * FROM "schemaFingerprint"'),
+        ).rejects.toThrow('fingerprint view read before shape check');
+        expect(
+          await checkSchema(client, { allowUnversioned: true }),
+        ).toMatchObject({ kind: 'stale', reason: 'unsafe-evidence' });
+      } finally {
+        client.release();
+      }
     });
   });
 
@@ -769,6 +811,19 @@ describe('schema problem message', () => {
     expect(message).toContain('no versioned migration history');
     expect(message).toContain('Preserve the original database');
     expect(message).toContain('new empty database');
+    expect(message).not.toContain('docker compose run --rm studio migrate');
+  });
+
+  it('directs unsafe migration evidence to verified-backup recovery without echoing evidence', () => {
+    const message = schemaProblemMessage({
+      ...stale,
+      reason: 'unsafe-evidence',
+      found: null,
+      appliedAt: null,
+    });
+    expect(message).toContain('unsupported relation shape');
+    expect(message).toContain('Restore a verified backup');
+    expect(message).not.toContain(stale.found!);
     expect(message).not.toContain('docker compose run --rm studio migrate');
   });
 

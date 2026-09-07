@@ -673,6 +673,86 @@ describe.skipIf(!database)('migration security invariants', () => {
     },
   );
 
+  it.each([
+    [
+      'check constraint',
+      'value integer CHECK (value = stored_owner_value())',
+      '(value) VALUES (7)',
+    ],
+    [
+      'column default',
+      'value integer DEFAULT stored_owner_value()',
+      'DEFAULT VALUES',
+    ],
+    [
+      'generated column',
+      'input integer, value integer GENERATED ALWAYS AS (stored_owner_value()) STORED',
+      '(input) VALUES (1)',
+    ],
+  ])(
+    'enforces PostgreSQL function EXECUTE for a definer in a %s',
+    async (_label, columns, insertion) => {
+      await withDeployment(async ({ owner, url, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await owner.query(`CREATE FUNCTION stored_owner_value() RETURNS integer LANGUAGE plpgsql IMMUTABLE SECURITY DEFINER AS 'BEGIN RETURN 7; END';
+        REVOKE ALL ON FUNCTION stored_owner_value() FROM PUBLIC, studio_app, studio_maintenance;
+        CREATE TABLE stored_expression_probe (${columns});
+        GRANT INSERT, SELECT ON stored_expression_probe TO studio_app`);
+        await connectAs(
+          url,
+          logins[1],
+          '-c role=studio_app',
+          async (runtime) => {
+            await expect(
+              runtime.query('SELECT stored_owner_value()'),
+            ).rejects.toMatchObject({ code: '42501' });
+            await expect(
+              runtime.query(
+                `INSERT INTO stored_expression_probe ${insertion} RETURNING value`,
+              ),
+            ).rejects.toMatchObject({ code: '42501' });
+            expect(
+              (
+                await runtime.query(
+                  'SELECT count(*)::integer AS count FROM stored_expression_probe',
+                )
+              ).rows,
+            ).toEqual([{ count: 0 }]);
+          },
+        );
+        // The database expression executor checks the current caller's EXECUTE
+        // ACL. Granting that same privilege enables the identical insertion and
+        // is already refused by migration admission's executable-definer check.
+        await owner.query(
+          'GRANT EXECUTE ON FUNCTION stored_owner_value() TO studio_app',
+        );
+        await connectAs(
+          url,
+          logins[1],
+          '-c role=studio_app',
+          async (runtime) => {
+            expect(
+              (
+                await runtime.query(
+                  `INSERT INTO stored_expression_probe ${insertion} RETURNING value`,
+                )
+              ).rows,
+            ).toEqual([{ value: 7 }]);
+          },
+        );
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).rejects.toThrow('executable SECURITY DEFINER');
+        await owner.query(
+          'REVOKE EXECUTE ON FUNCTION stored_owner_value() FROM studio_app',
+        );
+        expect(
+          await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).toEqual([]);
+      });
+    },
+  );
+
   it('allows invoker triggers and standalone non-executable definer routines', async () => {
     await withDeployment(async ({ owner, url, logins }) => {
       await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
@@ -1102,6 +1182,124 @@ describe.skipIf(!database)('migration security invariants', () => {
       ).rejects.toThrow(
         'migration evidence must be standalone ordinary tables',
       );
+    });
+  });
+
+  it('rejects a direct delete cascade into migration history before reading evidence', async () => {
+    await withDeployment(async ({ administrator, owner, url, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      const before = Number(
+        (
+          await administrator.query<{ count: string }>(
+            'SELECT count(*) FROM studio_migrations.history',
+          )
+        ).rows[0]?.count,
+      );
+      await administrator.query(`CREATE TABLE public.history_action_parent
+          (checksum text PRIMARY KEY);
+        INSERT INTO public.history_action_parent
+          SELECT checksum FROM studio_migrations.history;
+        ALTER TABLE studio_migrations.history
+          ADD CONSTRAINT history_action_path
+          FOREIGN KEY (checksum) REFERENCES public.history_action_parent(checksum)
+          ON DELETE CASCADE;
+        GRANT SELECT, DELETE ON public.history_action_parent TO studio_app`);
+      await owner.query(`CREATE FUNCTION history_action_read_trap()
+          RETURNS boolean LANGUAGE plpgsql AS
+          'BEGIN RAISE EXCEPTION ''history evidence read before action-path preflight''; END';
+        ALTER TABLE studio_migrations.history ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE studio_migrations.history FORCE ROW LEVEL SECURITY;
+        CREATE POLICY history_action_read_trap ON studio_migrations.history
+          FOR SELECT USING (history_action_read_trap())`);
+      await expect(
+        owner.query('SELECT * FROM studio_migrations.history'),
+      ).rejects.toThrow('history evidence read before action-path preflight');
+      await connectAs(url, logins[1], '-c role=studio_app', async (runtime) => {
+        expect(
+          (
+            await runtime.query(`DELETE FROM public.history_action_parent
+              WHERE checksum = (SELECT checksum FROM public.history_action_parent ORDER BY checksum LIMIT 1)`)
+          ).rowCount,
+        ).toBe(1);
+      });
+      expect(
+        Number(
+          (
+            await administrator.query<{ count: string }>(
+              'SELECT count(*) FROM studio_migrations.history',
+            )
+          ).rows[0]?.count,
+        ),
+      ).toBe(before - 1);
+      expect(
+        (
+          await administrator.query(
+            "SELECT has_table_privilege('studio_app', 'studio_migrations.history', 'DELETE') AS direct",
+          )
+        ).rows,
+      ).toEqual([{ direct: false }]);
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow('cascading foreign-key action paths');
+    });
+  });
+
+  it('rejects an indirect update cascade into the schema fingerprint before reading evidence', async () => {
+    await withDeployment(async ({ administrator, owner, url, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      const forged = 'f'.repeat(64);
+      await administrator.query(`CREATE TABLE public.fingerprint_action_root
+          (fingerprint text PRIMARY KEY);
+        CREATE TABLE public.fingerprint_action_middle
+          (fingerprint text PRIMARY KEY REFERENCES public.fingerprint_action_root(fingerprint) ON UPDATE CASCADE);
+        INSERT INTO public.fingerprint_action_root
+          SELECT fingerprint FROM public."schemaFingerprint";
+        INSERT INTO public.fingerprint_action_middle
+          SELECT fingerprint FROM public."schemaFingerprint";
+        ALTER TABLE public."schemaFingerprint"
+          ADD CONSTRAINT fingerprint_action_path
+          FOREIGN KEY (fingerprint) REFERENCES public.fingerprint_action_middle(fingerprint)
+          ON UPDATE CASCADE;
+        GRANT SELECT, UPDATE ON public.fingerprint_action_root TO studio_app`);
+      await connectAs(url, logins[1], '-c role=studio_app', async (runtime) => {
+        expect(
+          (
+            await runtime.query(
+              `UPDATE public.fingerprint_action_root SET fingerprint = $1`,
+              [forged],
+            )
+          ).rowCount,
+        ).toBe(1);
+      });
+      expect(
+        (
+          await administrator.query(
+            'SELECT fingerprint FROM public."schemaFingerprint"',
+          )
+        ).rows,
+      ).toEqual([{ fingerprint: forged }]);
+      expect(
+        (
+          await administrator.query(
+            "SELECT has_table_privilege('studio_app', 'public.\"schemaFingerprint\"', 'UPDATE') AS direct",
+          )
+        ).rows,
+      ).toEqual([{ direct: false }]);
+      await owner.query(`CREATE FUNCTION fingerprint_action_read_trap()
+          RETURNS boolean LANGUAGE plpgsql AS
+          'BEGIN RAISE EXCEPTION ''fingerprint evidence read before action-path preflight''; END';
+        ALTER TABLE public."schemaFingerprint" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE public."schemaFingerprint" FORCE ROW LEVEL SECURITY;
+        CREATE POLICY fingerprint_action_read_trap ON public."schemaFingerprint"
+          FOR SELECT USING (fingerprint_action_read_trap())`);
+      await expect(
+        owner.query('SELECT * FROM public."schemaFingerprint"'),
+      ).rejects.toThrow(
+        'fingerprint evidence read before action-path preflight',
+      );
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow('cascading foreign-key action paths');
     });
   });
 
