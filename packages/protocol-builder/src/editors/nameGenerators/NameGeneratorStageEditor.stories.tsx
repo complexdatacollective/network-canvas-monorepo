@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
+import { dispatchThroughPart } from '../../testing/incompleteRegistry.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { nameGeneratorStageEditors } from '../nameGeneratorStageEditors.ts';
 
@@ -12,12 +13,14 @@ const meta = {
   component: StageEditorStoryHost,
   args: {
     stageId: 'name-generator-1',
-    // Through the dispatcher rather than by naming the component, so the story
-    // also shows that this family claims the interface its stage is of.
+    // Through the dispatcher over this family's part alone, rather than by
+    // naming the component, so the story also shows that this family claims
+    // the interface its stage is of: every interface the part does not claim
+    // refuses on the page instead of rendering.
     renderEditor: ({ controller, actions }) => (
       <StageEditor
         controller={controller}
-        registry={nameGeneratorStageEditors}
+        registry={dispatchThroughPart(nameGeneratorStageEditors)}
         actions={actions}
       />
     ),

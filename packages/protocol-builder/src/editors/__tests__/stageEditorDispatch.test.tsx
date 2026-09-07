@@ -3,10 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { StageType } from '@codaco/protocol-validation';
 
 import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
-import {
-  fixtureStageIds,
-  loadFixtureStage,
-} from '../../testing/protocolFixture.ts';
+import { fixtureStageOfType } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { GeospatialStageEditor } from '../network/GeospatialStageEditor.tsx';
 import { NarrativeStageEditor } from '../network/NarrativeStageEditor.tsx';
@@ -71,26 +68,6 @@ const CLAIMED = [
   editor: unknown;
   sections: readonly string[];
 }[];
-
-/**
- * The fixture stage of a given interface, found by its type.
- *
- * By type rather than by a stage id spelled here, so this test cannot drift
- * from the protocol it opens: a fixture that renamed a stage would still be
- * found, and one that dropped an interface fails with the interface named
- * rather than with an id nobody recognises.
- */
-function fixtureStageOfType(stageType: StageType): string {
-  const stageId = fixtureStageIds().find(
-    (candidate) => loadFixtureStage(candidate).type === stageType,
-  );
-  if (stageId === undefined) {
-    throw new Error(
-      `The all-interfaces protocol has no "${stageType}" stage, so nothing here can open one.`,
-    );
-  }
-  return stageId;
-}
 
 describe('the interfaces the network, spatial and pedigree families claim', () => {
   /**

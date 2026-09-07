@@ -35,7 +35,10 @@ import { formStageEditors } from './editors/formStageEditors.ts';
 import { nameGeneratorStageEditors } from './editors/nameGeneratorStageEditors.ts';
 import { networkStageEditors } from './editors/networkStageEditors.ts';
 import { pedigreeAndAnonymisationStageEditors } from './editors/pedigreeAndAnonymisationStageEditors.ts';
-import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
+import type {
+  StageEditorRegistry,
+  StageEditorRegistryPart,
+} from './stage-editor-contract.ts';
 
 /**
  * Thrown when two families claim the same interface.
@@ -58,6 +61,14 @@ export class DuplicateStageEditorError extends Error {
   }
 }
 
+/** The intersection of a tuple of family parts. `keyof` it is the coverage. */
+type MergeAll<Parts extends readonly unknown[]> = Parts extends readonly [
+  infer Head,
+  ...infer Rest,
+]
+  ? Head & MergeAll<Rest>
+  : unknown;
+
 /**
  * Merges family parts into the registry the package dispatches through.
  *
@@ -66,10 +77,17 @@ export class DuplicateStageEditorError extends Error {
  * same thing at build time for the parts listed below, which is the check that
  * actually stops a duplicate reaching a review — this one covers the registry
  * a HOST composes, which the package never sees.
+ *
+ * ANSWERS WITH THE PARTS MERGED, NOT WITH `StageEditorRegistryPart`. What the
+ * parts claim between them is the only thing that can say whether a composed
+ * registry is complete, and a return type of "some subset of the interfaces"
+ * throws that away — which is what used to leave `stageEditorRegistry` typed
+ * as a partial registry, and the dispatcher below it with a runtime branch for
+ * an interface the type system could no longer prove was covered.
  */
-export function composeStageEditorRegistry(
-  ...parts: readonly StageEditorRegistryPart[]
-): StageEditorRegistryPart {
+export function composeStageEditorRegistry<
+  const Parts extends readonly StageEditorRegistryPart[],
+>(...parts: Parts): MergeAll<Parts> {
   const claimed = new Set<string>();
   for (const part of parts) {
     for (const [stageType, editor] of Object.entries(part)) {
@@ -84,7 +102,12 @@ export function composeStageEditorRegistry(
 
   const composed: StageEditorRegistryPart = {};
   for (const part of parts) Object.assign(composed, part);
-  return Object.freeze(composed);
+  // The key set is exactly the union of the parts' own key sets, which is what
+  // `MergeAll` says and what `Object.assign` discards. Asserted here, in the
+  // one function that does the merging, rather than at each of the call sites
+  // that would otherwise have to.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return Object.freeze(composed) as MergeAll<Parts>;
 }
 
 /**
@@ -105,16 +128,20 @@ const REGISTRY_PARTS = [
   pedigreeAndAnonymisationStageEditors,
 ] as const satisfies readonly StageEditorRegistryPart[];
 
-export const stageEditorRegistry: StageEditorRegistryPart =
+/**
+ * The registry the package dispatches through, and the proof that it is
+ * complete.
+ *
+ * THE ANNOTATION IS THE PROOF. `StageEditorRegistry` requires an entry for
+ * every `StageType`, and `composeStageEditorRegistry` answers with exactly
+ * what the parts above claim between them — so a schema member no family has
+ * claimed fails to compile HERE, on the line that defines the thing every host
+ * renders through, rather than reaching a researcher as a stage that opens on
+ * nothing. It is also what lets `StageEditor` look an editor up without a
+ * branch for the case where there is none: there is no such case.
+ */
+export const stageEditorRegistry: StageEditorRegistry =
   composeStageEditorRegistry(...REGISTRY_PARTS);
-
-/** The intersection of a tuple of family parts. `keyof` it is the coverage. */
-type MergeAll<Parts extends readonly unknown[]> = Parts extends readonly [
-  infer Head,
-  ...infer Rest,
-]
-  ? Head & MergeAll<Rest>
-  : unknown;
 
 /** The stage types a tuple of family parts covers between them. */
 export type RegisteredIn<Parts extends readonly StageEditorRegistryPart[]> =
@@ -131,6 +158,11 @@ export type AwaitingListIsComplete<
 > = [Exclude<UnregisteredIn<Parts>, Listed[number]>] extends [never]
   ? true
   : false;
+
+/** `true` only when the parts name an editor for every `StageType`. */
+export type PartsCoverEveryStageType<
+  Parts extends readonly StageEditorRegistryPart[],
+> = [UnregisteredIn<Parts>] extends [never] ? true : false;
 
 /** `true` only when no two parts in the tuple claim the same stage type. */
 export type PartsAreDisjoint<Parts extends readonly StageEditorRegistryPart[]> =
@@ -172,6 +204,19 @@ export type Assert<T extends true> = T;
  */
 export type UnregisteredStageTypesAreListed = Assert<
   AwaitingListIsComplete<typeof REGISTRY_PARTS, typeof AWAITING_STAGE_EDITORS>
+>;
+
+/**
+ * Compile-time proof that every interface in the schema has an editor.
+ *
+ * The same fact the annotation on `stageEditorRegistry` above proves, said in
+ * the one form a probe in `type-tests/` can be written against: that one is a
+ * claim about a value, and a type test cannot rebuild the value without
+ * rebuilding every family with it. `type-tests/incompleteRegistry.ts` is that
+ * probe, and this line is its control.
+ */
+export type EveryStageTypeHasAnEditor = Assert<
+  PartsCoverEveryStageType<typeof REGISTRY_PARTS>
 >;
 
 /**

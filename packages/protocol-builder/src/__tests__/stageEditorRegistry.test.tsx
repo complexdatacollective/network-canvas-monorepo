@@ -12,14 +12,15 @@ import {
 import type {
   StageEditorComponent,
   StageEditorProps,
+  StageEditorRegistryPart,
 } from '../stage-editor-contract.ts';
-import { UnregisteredStageTypeError } from '../StageEditor.tsx';
 import {
   AWAITING_STAGE_EDITORS,
   composeStageEditorRegistry,
   DuplicateStageEditorError,
   stageEditorRegistry,
 } from '../stageEditorRegistry.ts';
+import { UnregisteredStageTypeError } from '../testing/incompleteRegistry.ts';
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
 
 const InformationEditor: StageEditorComponent<'Information'> = ({
@@ -139,12 +140,21 @@ describe('composing the registry from family parts', () => {
   /**
    * A key present but holding nothing claims nothing, which is the same
    * reading `missingStageEditors` takes of the composed registry.
+   *
+   * Both parts are ANNOTATED rather than written inline, because inline they
+   * are two literals the compiler can compare: one says `Information` holds
+   * nothing and the other says it holds an editor, and the merged type of the
+   * two is `never` — which is the right answer for a package whose parts the
+   * compiler can see. This is the other case, the one the runtime check exists
+   * for: a registry a HOST composed out of values typed as parts, where the
+   * key sets are no longer literals and nothing but the check itself can say
+   * whether an entry claims anything.
    */
   it('does not count an entry a part left empty as a claim', () => {
-    const registry = composeStageEditorRegistry(
-      { Information: undefined },
-      { Information: InformationEditor },
-    );
+    const empty: StageEditorRegistryPart = { Information: undefined };
+    const claimed: StageEditorRegistryPart = { Information: InformationEditor };
+
+    const registry = composeStageEditorRegistry(empty, claimed);
 
     expect(registry.Information).toBe(InformationEditor);
   });
@@ -179,7 +189,7 @@ describe('the two lists a family edits', () => {
     if (new RegExp(`const ${name} =\\s*\\[\\] as const`).test(source))
       return [];
     const body = new RegExp(
-      `const ${name} = \\[\\n([\\s\\S]*?)\\n\\] as const`,
+      `const ${name} =\\s+\\[\\n([\\s\\S]*?)\\n\\] as const`,
     ).exec(source)?.[1];
     if (body === undefined) {
       throw new Error(
@@ -242,6 +252,15 @@ describe('the two lists a family edits', () => {
  * fourth probe: an editor may ignore the host's action chrome or forward it,
  * and only one that INSISTS on it is refused.
  *
+ * `incompleteRegistry.ts` is the probe for the claim the dispatcher rests on:
+ * that the parts cover the whole schema, which is what lets `StageEditor` look
+ * an editor up without a branch for there being none. Its control is
+ * `EveryStageTypeHasAnEditor` in `stageEditorRegistry.ts` — the same assertion
+ * over the real parts, which compiles. `unknownEntry.ts` is its mirror: an
+ * editor registered under an interface the schema does not have, which no
+ * coverage check downstream can report because a key that is not a stage type
+ * subtracts nothing from anything.
+ *
  * `partFromRegistry.ts` is a probe about the import graph rather than about
  * coverage: the registry imports every family's part, so the helper a part is
  * declared with must not be reachable through the registry, or a family closes
@@ -249,7 +268,7 @@ describe('the two lists a family edits', () => {
  * import that helper from `stage-editor-contract.ts` and all compile.
  */
 describe('the compile-time coverage checks', () => {
-  it('refuses a missing entry, a stale entry, a duplicate claim, an editor that insists on chrome, and a part helper read from the registry', () => {
+  it('refuses a missing entry, a stale entry, an unknown interface, an uncovered schema, a duplicate claim, an editor that insists on chrome, and a part helper read from the registry', () => {
     const packageRoot = join(import.meta.dirname, '..', '..');
     let output = '';
     try {
@@ -267,10 +286,12 @@ describe('the compile-time coverage checks', () => {
     // exactly what each probe is about.
     expect(filesWithErrors(output)).toEqual([
       'type-tests/duplicateEntry.ts',
+      'type-tests/incompleteRegistry.ts',
       'type-tests/missingEntry.ts',
       'type-tests/partFromRegistry.ts',
       'type-tests/requiredActions.ts',
       'type-tests/staleEntry.ts',
+      'type-tests/unknownEntry.ts',
     ]);
   });
 });
@@ -304,11 +325,14 @@ describe('dispatching to a named editor', () => {
   });
 
   /**
-   * Thrown rather than reported: there is no editor to fall back to, and
-   * rendering nothing would leave a researcher on an empty page with no
-   * account of why.
+   * A registry that claims nothing is not a state a host can reach —
+   * `StageEditor` takes a whole `StageEditorRegistry` and the package composes
+   * one — so what is under test here is the harness's own refusal, which is
+   * what makes "this family's part claims this interface" a claim a family
+   * test can fail. It names the interface, so such a test fails saying which
+   * one rather than on a section that is missing for no visible reason.
    */
-  it('names the interface nothing is registered for', () => {
+  it('names the interface a part under test does not claim', () => {
     const consoleError = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);

@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
+import { dispatchThroughPart } from '../../testing/incompleteRegistry.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { nameGeneratorStageEditors } from '../nameGeneratorStageEditors.ts';
 
@@ -15,7 +16,7 @@ const meta = {
     renderEditor: ({ controller, actions }) => (
       <StageEditor
         controller={controller}
-        registry={nameGeneratorStageEditors}
+        registry={dispatchThroughPart(nameGeneratorStageEditors)}
         actions={actions}
       />
     ),
