@@ -313,7 +313,7 @@ function causeCommands(
  * opaque — a protocol-authored variable id containing a dot, or a key with a
  * space — and the string API would read that as a route rather than a name.
  */
-function useClearStageValue(): (path: string) => void {
+export function useClearStageValue(): (path: string) => void {
   const { storeApi } = useStageEditorForm();
   return useCallback(
     (path: string) => {
