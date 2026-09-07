@@ -1,8 +1,6 @@
 import { createEnv } from '@t3-oss/env-core';
-import { z } from 'zod';
 
-import { validateRoleNames } from '@codaco/studio-sync/role-bootstrap';
-
+import { parseDatabaseAllowedLogins } from './env/database-enrollment.ts';
 import { resolve, type DbEnv, type StudioEnv } from './env/resolve.ts';
 import { serverSchemas, type VariableName } from './env/variables.ts';
 
@@ -120,15 +118,5 @@ export function readMigrationDatabase(): DbEnv {
 export function readMigrationAllowedLogins(): string[] {
   /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
   const source = process.env.STUDIO_DATABASE_ALLOWED_LOGINS;
-  let value: unknown;
-  try {
-    value = JSON.parse(source ?? '');
-  } catch {
-    throw new Error(
-      'STUDIO_DATABASE_ALLOWED_LOGINS is required as a JSON array of this deployment’s login names.',
-    );
-  }
-  const logins = z.array(z.string()).parse(value);
-  validateRoleNames(logins);
-  return logins;
+  return parseDatabaseAllowedLogins(source);
 }

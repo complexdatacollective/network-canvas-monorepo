@@ -988,6 +988,10 @@ describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
             HOST: '127.0.0.1',
             PORT: '0',
             DATABASE_URL: databaseUrl,
+            STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify([
+              identity.login,
+              runtimeLogin,
+            ]),
             BETTER_AUTH_SECRET:
               'smtp-process-only-authentication-secret-32-characters',
             PUBLIC_URL: 'https://studio.example.test',

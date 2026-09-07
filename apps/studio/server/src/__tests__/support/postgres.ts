@@ -169,7 +169,7 @@ export async function createScratchDatabase(
   // TEMP implicitly grants CREATE on the current temporary namespace, even
   // without a namespace ACL. Provision its denial before migration admission.
   await pool.query(
-    `REVOKE TEMPORARY ON DATABASE ${pg.escapeIdentifier(name)} FROM PUBLIC`,
+    `REVOKE CONNECT, TEMPORARY ON DATABASE ${pg.escapeIdentifier(name)} FROM PUBLIC`,
   );
 
   return {

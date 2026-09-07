@@ -82,6 +82,7 @@ const observability = createObservability({
   assetStore,
   monitorProcess: true,
   allowUnversionedSchema: env.devDefaults,
+  allowedLogins: env.databaseAllowedLogins,
 });
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
 
@@ -117,6 +118,7 @@ async function admitDatabaseRuntime(): Promise<boolean> {
         await assertSafePostgresRuntimeIdentity(client, {
           intendedRole,
           allowedRoles: roles,
+          allowedLogins: env.databaseAllowedLogins ?? [],
         });
       } finally {
         client.release();
@@ -159,7 +161,10 @@ if (pool) {
     const retry = setInterval(() => {
       if (attempting) return;
       attempting = true;
-      void checkSchema(pool, { allowUnversioned: env.devDefaults })
+      void checkSchema(pool, {
+        allowedLogins: env.databaseAllowedLogins,
+        allowUnversioned: env.devDefaults,
+      })
         .then(async (state) => {
           exitIfFatal(state);
           if (state.kind === 'current') {
@@ -188,6 +193,7 @@ if (pool) {
 
   try {
     const state = await checkSchema(pool, {
+      allowedLogins: env.databaseAllowedLogins,
       allowUnversioned: env.devDefaults,
     });
     if (state.kind === 'current') {

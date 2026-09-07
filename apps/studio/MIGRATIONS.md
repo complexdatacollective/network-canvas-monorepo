@@ -318,3 +318,14 @@ Development keeps its separate `db:reset` workflow and destructive synthetic
 seeding. It recreates `public` and discards migration history, then applies the
 current definitions directly. The test fixtures and protocol demo retain this
 developer-only schema helper; production has no `apply-schema` command.
+
+The persistent server also requires `STUDIO_DATABASE_ALLOWED_LOGINS` outside
+explicit local development. Supply the same complete, committed enrollment to
+migration, startup, and readiness: database owner, runtime login, and separately
+provisioned backup login. Shared cluster-wide runtime roles do not enroll a login
+in another deployment. Revoking CONNECT does not disconnect an existing session;
+administrator admission quarantine and session removal remain necessary.
+Runtime admission verifies login capabilities separately from this enrollment.
+Fingerprint/history ACL or owner-backed-action drift makes existing evidence
+untrusted and requires investigation and verified-backup recovery, not an
+in-process grant repair.

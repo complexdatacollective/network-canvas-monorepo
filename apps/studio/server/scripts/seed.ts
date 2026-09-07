@@ -36,7 +36,10 @@ const { db } = confirmDestructiveTarget(env, values.force, 'wipe and reseed');
 const pool = createOwnerPool(db);
 
 try {
-  const state = await checkSchema(pool, { allowUnversioned: env.devDefaults });
+  const state = await checkSchema(pool, {
+    allowedLogins: env.databaseAllowedLogins,
+    allowUnversioned: env.devDefaults,
+  });
   if (state.kind !== 'current') {
     console.error(schemaProblemMessage(state));
     process.exit(1);
