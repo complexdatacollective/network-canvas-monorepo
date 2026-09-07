@@ -1,4 +1,6 @@
 import { createMessageError } from '@codaco/app-i18n/messages';
+import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import {
   assetSchema,
   collectAssetReferences,
@@ -6,10 +8,8 @@ import {
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import {
-  assetValidationReason,
-  resourceFailureMessages,
-} from './resourceMessages.ts';
+import { resourceProblemMessage } from '../form/schemaProblems.ts';
+import { resourceFailureMessages } from './resourceMessages.ts';
 
 export type StageResourceReference = Readonly<{
   /** Path from the stage document root to the field holding the id. */
@@ -100,10 +100,11 @@ export function findDanglingResourceReferences(
         Object.freeze({
           code: 'custom',
           path,
-          message: createMessageError(resourceFailureMessages.invalidResource, {
-            resourceId: reference.resourceId,
-            reason: assetValidationReason(entry.error.issues[0]?.message),
-          }),
+          message: unreadableResourceMessage(
+            manifest,
+            reference.resourceId,
+            entry.error.issues[0],
+          ),
           resourceId: reference.resourceId,
         }),
       );
@@ -111,4 +112,66 @@ export function findDanglingResourceReferences(
   }
 
   return Object.freeze(problems);
+}
+
+/**
+ * What a researcher is told about a resource whose stored entry the schema
+ * refuses: which resource it is, and what is wrong with it in this package's
+ * own words.
+ *
+ * The validator's own message is no part of it. "Invalid input: expected
+ * string, received undefined" is a sentence about a schema, and a researcher
+ * authoring an interview is not holding one — so the words for each kind of
+ * refusal live in `schemaProblems.ts`, beside the words for every other
+ * refusal this editor reports, rather than being repeated from Zod.
+ *
+ * The refusal is optional because a failed parse carrying no issue is a shape
+ * the types allow and nothing produces: with none, what comes back is the
+ * sentence for a refusal this package has no words for, which is what that is.
+ *
+ * Encoded rather than formatted: this runs where a draft is judged, with no
+ * reader and no language, and the sentence travels on a
+ * `ProtocolValidationIssue.message` — a string-only contract — to whichever
+ * form region reports it. `FormErrors` and `SectionOutline` decode it there.
+ */
+function unreadableResourceMessage(
+  manifest: SectionDoc,
+  resourceId: string,
+  refusal: Readonly<{ code: string; path: readonly PropertyKey[] }> | undefined,
+): string {
+  return createMessageError(
+    resourceProblemMessage({
+      code: refusal?.code ?? '',
+      absent:
+        refusal !== undefined &&
+        isMissingAt(manifest, [resourceId, ...refusal.path]),
+    }),
+    { resourceId },
+  );
+}
+
+/**
+ * Is there nothing at all where the schema refused a value?
+ *
+ * The question the validator's own answer cannot settle, asked of the manifest
+ * the way the stage editor asks it of a draft: Zod finalises an issue without
+ * keeping what it was given, and a key that is not there and a number where a
+ * string belongs are both `invalid_type`, so the manifest it judged is what
+ * says which. Read with the predicate this editor reads every emptiness by, so
+ * an entry holding `""` counts as missing here exactly as it would in a form.
+ *
+ * A path with a symbol in it is not read at all: nothing in a manifest is
+ * keyed by one, and a read that quietly skipped the segment would answer about
+ * the wrong value rather than decline to answer.
+ */
+function isMissingAt(
+  manifest: SectionDoc,
+  path: readonly PropertyKey[],
+): boolean {
+  const readable: (string | number)[] = [];
+  for (const segment of path) {
+    if (typeof segment === 'symbol') return false;
+    readable.push(segment);
+  }
+  return isUnanswered(getValue(manifest, readable));
 }
