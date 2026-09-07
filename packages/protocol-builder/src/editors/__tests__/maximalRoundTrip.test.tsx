@@ -242,6 +242,35 @@ const MAXIMAL_STAGES: MaximalStage[] = [
     },
     settle: stageName,
   },
+  {
+    interfaceName: 'NameGeneratorRoster',
+    type: 'NameGeneratorRoster',
+    registry: nameGeneratorStageEditors,
+    fields: {
+      label: 'Name Generator Roster',
+      interviewScript: 'Guidance.',
+      skipLogic,
+      subject: { entity: 'node', type: 'person' },
+      dataSource: 'roster_data',
+      cardOptions: {
+        additionalProperties: [{ label: 'Age', variable: 'age' }],
+      },
+      sortOptions: {
+        sortOrder: [{ property: 'age', direction: 'desc' }],
+        sortableProperties: [{ label: 'Age', variable: 'age' }],
+      },
+      searchOptions: { fuzziness: 0.4, matchProperties: ['name', 'age'] },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Select people from the roster',
+          additionalAttributes: [{ variable: 'flagged', value: true }],
+        },
+      ],
+      behaviours: { minNodes: 1, maxNodes: 8 },
+    },
+    settle: stageName,
+  },
 ];
 
 /**
