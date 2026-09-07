@@ -703,17 +703,10 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
         )
       ).rows,
     ).toEqual([{ history: null }]);
-    const migrations = await readMigrations(
-      fileURLToPath(new URL('../../../migrations', import.meta.url)),
-    );
-    expect(
-      await migrateDatabase(
-        operator,
-        migrations,
-        SCHEMA_FINGERPRINT,
-        allowedLogins,
-      ),
-    ).toEqual(migrations.map(({ manifest }) => manifest.id));
+    const configuredFresh = migrationCommand(administrativeLogins);
+    expect(configuredFresh.error).toBeUndefined();
+    expect(configuredFresh.status).toBe(0);
+    expect(configuredFresh.stdout).toContain('Applied Studio migrations:');
     expect(
       (
         await operator.query(
@@ -737,10 +730,10 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
         administrativeLogins,
       }),
     ).toMatchObject({ kind: 'stale', reason: 'unsafe-evidence' });
-    const configured = migrationCommand(administrativeLogins);
-    expect(configured.error).toBeUndefined();
-    expect(configured.status).toBe(0);
-    expect(configured.stdout).toContain('already current');
+    const configuredNoOp = migrationCommand(administrativeLogins);
+    expect(configuredNoOp.error).toBeUndefined();
+    expect(configuredNoOp.status).toBe(0);
+    expect(configuredNoOp.stdout).toContain('already current');
     const probe = createReadiness({
       pool: runtime,
       maintenancePool: maintenance,
