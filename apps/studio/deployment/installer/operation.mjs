@@ -71,10 +71,9 @@ function loadJournal(path, digest, kind) {
     return { format: 1, digest, phase: 'accepted', kind, reuse: false };
   const value = JSON.parse(privateFile(path));
   if (
-    ![
-      'digest,format,kind,phase',
-      'digest,format,kind,phase,reuse',
-    ].includes(Object.keys(value).toSorted().join(',')) ||
+    !['digest,format,kind,phase', 'digest,format,kind,phase,reuse'].includes(
+      Object.keys(value).toSorted().join(','),
+    ) ||
     value.format !== 1 ||
     value.digest !== digest ||
     !phases.includes(value.phase) ||
@@ -147,22 +146,55 @@ function checkTemplates(bundle, configuration) {
   }
 }
 
-function normalizeDeployment(value, roots) {
-  if (typeof value === 'string') {
-    for (const root of roots)
-      if (value === root || value.startsWith(`${root}${sep}`))
-        return `$CONFIGURATION${value.slice(root.length)}`;
-    return value;
+function normalizeConfigurationPath(path, roots) {
+  for (const root of roots)
+    if (path === root || path.startsWith(`${root}${sep}`))
+      return `$CONFIGURATION${path.slice(root.length)}`;
+  return path;
+}
+
+function normalizeDeployment(deployment, roots) {
+  const value = JSON.parse(JSON.stringify(deployment));
+  for (const service of Object.values(value.services ?? {})) {
+    if (Array.isArray(service.volumes))
+      for (const volume of service.volumes)
+        if (volume?.type === 'bind' && typeof volume.source === 'string')
+          volume.source = normalizeConfigurationPath(volume.source, roots);
+    if (Array.isArray(service.env_file))
+      service.env_file = service.env_file.map((file) =>
+        typeof file === 'string'
+          ? normalizeConfigurationPath(file, roots)
+          : file,
+      );
   }
-  if (Array.isArray(value)) return value.map((item) => normalizeDeployment(item, roots));
-  if (value && typeof value === 'object')
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [
-        key,
-        normalizeDeployment(item, roots),
-      ]),
-    );
+  for (const section of ['configs', 'secrets'])
+    for (const item of Object.values(value[section] ?? {}))
+      if (typeof item.file === 'string')
+        item.file = normalizeConfigurationPath(item.file, roots);
   return value;
+}
+
+function sameRuntimeInputs(previous, configuration) {
+  if (
+    !privateFile(join(previous, '.env')).equals(
+      privateFile(join(configuration, '.env')),
+    ) ||
+    !privateFile(join(previous, 'deployment/encryption.env')).equals(
+      privateFile(join(configuration, 'deployment/encryption.env')),
+    )
+  )
+    return false;
+  // Every deployment file is either bound into a long-running/initialization
+  // service or consumed by an operator step. Keep reuse conservative: an
+  // input change takes the full offline path, while Compose comments remain
+  // harmless because the effective deployment comparison handles that file.
+  return configurationFiles
+    .filter((name) => name.startsWith('deployment/'))
+    .every((name) =>
+      readFileSync(join(previous, name)).equals(
+        readFileSync(join(configuration, name)),
+      ),
+    );
 }
 
 function backupParents(options, root) {
@@ -252,7 +284,7 @@ export function executeOperation(options, run = command) {
   const archivedBundle = join(generation, 'bundle');
   storeBundle(bundle, archivedBundle);
   const oldGeneration = updating
-    ? join(releases, previous.active.digest)
+    ? join(releases, previous.runtime.digest)
     : null;
   const oldConfiguration = oldGeneration
     ? join(oldGeneration, 'configuration')
@@ -261,7 +293,7 @@ export function executeOperation(options, run = command) {
     checkTemplates(
       readInstallerBundle(
         join(oldGeneration, 'bundle'),
-        previous.active.digest,
+        previous.runtime.digest,
       ),
       oldConfiguration,
     );
@@ -526,12 +558,7 @@ export function executeOperation(options, run = command) {
       previousRelease.postgresMajor !== bundle.release.postgresMajor ||
       JSON.stringify(previousRelease.schemas.studio) !==
         JSON.stringify(bundle.release.schemas.studio) ||
-      !privateFile(join(oldConfiguration, '.env')).equals(
-        privateFile(join(configuration, '.env')),
-      ) ||
-      !privateFile(join(oldConfiguration, 'deployment/encryption.env')).equals(
-        privateFile(join(configuration, 'deployment/encryption.env')),
-      )
+      !sameRuntimeInputs(oldConfiguration, configuration)
     )
       return false;
     const oldEffective = JSON.parse(
@@ -553,7 +580,10 @@ export function executeOperation(options, run = command) {
     smoke(configuration);
     journal.reuse = true;
     advance('verified');
-    saveState(control, activateRelease(accepted, bundle.current));
+    saveState(
+      control,
+      activateRelease(accepted, bundle.current, { runtime: previous.runtime }),
+    );
     advance('active');
     return { state: 'active', release: bundle.current.digest, configuration };
   }

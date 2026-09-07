@@ -307,9 +307,7 @@ networks:
     ).toEqual({ state: 'complete' });
     expect((await fetch(`${fixture.origin}/setup`)).status).toBe(404);
     const beforeUpdate = containerIds(first.configuration);
-    expect(Object.values(beforeUpdate).every((id) => id.length > 0)).toBe(
-      true,
-    );
+    expect(Object.values(beforeUpdate).every((id) => id.length > 0)).toBe(true);
     const commandsBeforeUpdate = readFileSync(commands, 'utf8').length;
     const nextOptions = await bundle(2, [firstRelease]);
     const nextRelease = release!;
@@ -327,9 +325,14 @@ networks:
     expect(countsBeforeRetry).toHaveLength(0);
     const protectedState = JSON.parse(
       await readFile(join(root, 'control/state.json'), 'utf8'),
-    ) as { active: { digest: string }; highest: { digest: string } };
+    ) as {
+      active: { digest: string };
+      highest: { digest: string };
+      runtime: { digest: string };
+    };
     expect(protectedState.active.digest).toBe(firstRelease.current.digest);
     expect(protectedState.highest.digest).toBe(nextRelease.current.digest);
+    expect(protectedState.runtime.digest).toBe(firstRelease.current.digest);
     const retry = executeOperation(nextOptions, run);
     selectedConfiguration = retry.configuration;
     expect(retry.setup).toBeUndefined();
@@ -357,9 +360,16 @@ networks:
       (
         JSON.parse(
           await readFile(join(root, 'control/state.json'), 'utf8'),
-        ) as { active: { digest: string } }
+        ) as { active: { digest: string }; runtime: { digest: string } }
       ).active.digest,
     ).toBe(nextRelease.current.digest);
+    expect(
+      (
+        JSON.parse(
+          await readFile(join(root, 'control/state.json'), 'utf8'),
+        ) as { runtime: { digest: string } }
+      ).runtime.digest,
+    ).toBe(firstRelease.current.digest);
     const exactRetryStart = readFileSync(commands, 'utf8').length;
     expect(executeOperation(nextOptions, run).state).toBe('active');
     expect(containerIds(retry.configuration)).toEqual(beforeUpdate);

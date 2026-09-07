@@ -190,7 +190,17 @@ export function readRelease(bytes) {
 export function readState(bytes) {
   if (bytes.length > 16_384) throw new Error('Invalid release state.');
   const state = JSON.parse(bytes.toString('utf8'));
-  object(state, ['format', 'highest', 'active']);
+  if (
+    !state ||
+    typeof state !== 'object' ||
+    Array.isArray(state) ||
+    !['active,format,highest', 'active,format,highest,runtime'].includes(
+      Object.keys(state ?? {})
+        .toSorted()
+        .join(','),
+    )
+  )
+    throw new Error('Unexpected release metadata.');
   if (state.format !== 1) throw new Error('Unsupported release state.');
   identity(state.highest);
   if (state.active !== null) {
@@ -203,7 +213,11 @@ export function readState(bytes) {
     )
       throw new Error('Inconsistent release state.');
   }
-  return state;
+  const runtime = state.runtime ?? state.active;
+  if ((state.active === null && runtime !== null) || (runtime && !state.active))
+    throw new Error('Inconsistent runtime release state.');
+  if (runtime !== null) identity(runtime);
+  return { ...state, runtime };
 }
 
 /** No filesystem/service effects: all refusals precede acceptance and drain. */
@@ -259,11 +273,21 @@ export function acceptRelease(
     !state || current.generation > state.highest.generation
       ? current
       : state.highest;
-  return { format: 1, highest, active: state?.active ?? null };
+  return {
+    format: 1,
+    highest,
+    active: state?.active ?? null,
+    runtime: state?.runtime ?? null,
+  };
 }
 
-export function activateRelease(state, current, { recovery = false } = {}) {
+export function activateRelease(
+  state,
+  current,
+  { recovery = false, runtime = current } = {},
+) {
   identity(current);
+  identity(runtime);
   if (
     current.generation > state.highest.generation ||
     (current.generation === state.highest.generation &&
@@ -272,7 +296,15 @@ export function activateRelease(state, current, { recovery = false } = {}) {
     (!recovery && current.digest !== state.highest.digest)
   )
     throw new Error('Cannot activate an unaccepted release.');
-  return { ...state, active: current };
+  if (
+    runtime.digest !== current.digest &&
+    (!state.runtime ||
+      runtime.digest !== state.runtime.digest ||
+      runtime.source !== state.runtime.source ||
+      runtime.generation !== state.runtime.generation)
+  )
+    throw new Error('Cannot retain an unverified runtime release.');
+  return { ...state, active: current, runtime };
 }
 
 /** Both manifest and image verification pin the same fixed workflow/issuer. */

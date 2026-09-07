@@ -25,7 +25,10 @@ import {
   parseArguments,
 } from '../apps/studio/deployment/installer/install.mjs';
 import { executeOperation } from '../apps/studio/deployment/installer/operation.mjs';
-import { readRelease, sha256 } from '../apps/studio/deployment/installer/release.mjs';
+import {
+  readRelease,
+  sha256,
+} from '../apps/studio/deployment/installer/release.mjs';
 import { releasedDistribution } from './test-support/studio-release.mjs';
 
 const custodyBytes = Buffer.from(
@@ -283,6 +286,9 @@ function fixture(t) {
     state,
     select,
     run,
+    setTemplate: (name, bytes) => {
+      templates[name] = bytes;
+    },
     setFailure: (value) => {
       failure = value;
     },
@@ -361,6 +367,45 @@ test('an installer-only release preserves the running backend across smoke inter
     [],
     'an exact active retry must not recreate unchanged containers',
   );
+});
+
+test('a changed retained deployment input takes the full offline update path', (t) => {
+  const f = fixture(t);
+  const old = releasedDistribution();
+  executeOperation(f.select(old), f.run);
+  f.setTemplate(
+    'deployment/traefik.yml',
+    Buffer.from('# selected proxy policy changed\n'),
+  );
+  const next = sameRuntimeRelease(2, old);
+  f.state.trace = [];
+  executeOperation(f.select(next), f.run);
+  assert.ok(f.state.trace.includes('stop:traefik'));
+  assert.ok(f.state.trace.includes('backup'));
+  assert.ok(f.state.trace.includes('run:migrate'));
+  assert.equal(f.state.public, true);
+  assert.deepEqual(f.protectedState().active, next.current);
+  assert.deepEqual(f.protectedState().runtime, next.current);
+});
+
+test('a chained reuse remembers the actual runtime generation for a later full update', (t) => {
+  const f = fixture(t);
+  const old = releasedDistribution();
+  const first = executeOperation(f.select(old), f.run);
+  const reused = sameRuntimeRelease(2, old);
+  executeOperation(f.select(reused), f.run);
+  assert.deepEqual(f.protectedState().active, reused.current);
+  assert.deepEqual(f.protectedState().runtime, old.current);
+  const changed = releasedDistribution(3, [reused]);
+  f.state.trace = [];
+  executeOperation(f.select(changed), f.run);
+  const backup = f.calls.findLast(({ program }) => program === 'sh');
+  assert.equal(
+    backup.args[0],
+    join(first.configuration, 'deployment/backup.sh'),
+  );
+  assert.deepEqual(f.protectedState().active, changed.current);
+  assert.deepEqual(f.protectedState().runtime, changed.current);
 });
 
 for (const phase of ['backup', 'migration', 'smoke'])

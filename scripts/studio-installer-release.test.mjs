@@ -38,6 +38,7 @@ test('first install requires the independently selected manifest digest even whe
       format: 1,
       highest: latest.current,
       active: null,
+      runtime: null,
     },
   );
 });
