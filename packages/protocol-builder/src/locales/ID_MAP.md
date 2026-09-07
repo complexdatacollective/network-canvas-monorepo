@@ -121,6 +121,7 @@ name not here adds it here first, in the same pull request.
 | `networkCanvas`             | `sections/network/`, `editors/network/SociogramStageEditor.tsx`                                                                                                                  | family F  |
 | `pedigree`                  | `sections/pedigree/`                                                                                                                                                             | family F  |
 | `narrativePedigree`         | `sections/narrativePedigree/`                                                                                                                                                    | family F  |
+| `geospatial`                | `sections/geospatial/`, `fields/geospatial/`                                                                                                                                     | family F  |
 
 `shell` covers `editors/saveStageAction.tsx` as well as the shell itself,
 rather than that control taking an area of its own: the fallback save button is
@@ -150,10 +151,11 @@ has to have exactly one:
 - `form/arrayFields/arrayMessages.ts` — the generic row noun every array-field
   sentence is built around.
 - `sections/network/networkCanvasMessages.ts`,
-  `sections/pedigree/pedigreeMessages.ts` and
-  `sections/narrativePedigree/narrativePedigreeMessages.ts` — one file per
-  interface family, holding EVERYTHING that family says rather than only its
-  shared strings. See "One file per family", below.
+  `sections/pedigree/pedigreeMessages.ts`,
+  `sections/narrativePedigree/narrativePedigreeMessages.ts` and
+  `sections/geospatial/geospatialMessages.ts` — one file per interface family,
+  holding EVERYTHING that family says rather than only its shared strings. See
+  "One file per family", below.
 
 `controller.ts` renders no copy of its own, so the `session` area covers
 `session.ts` alone until it does.
@@ -237,10 +239,10 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `networkCanvas`     | `sections/network/`, `editors/network/SociogramStageEditor.tsx` | `sections/network/networkCanvasMessages.ts`               |
 | `pedigree`          | `sections/pedigree/`                                            | `sections/pedigree/pedigreeMessages.ts`                   |
 | `narrativePedigree` | `sections/narrativePedigree/`                                   | `sections/narrativePedigree/narrativePedigreeMessages.ts` |
+| `geospatial`        | `sections/geospatial/`, `fields/geospatial/`                    | `sections/geospatial/geospatialMessages.ts`               |
 
-The remaining two families of the same series — `geospatial` and
-`anonymisation` — keep their reserved names above and add a row here as each
-lands.
+The last family of the same series — `anonymisation` — keeps its reserved name
+above and adds a row here when it lands.
 
 A `*Messages.ts` per family, holding every id the family declares — rather than
 descriptors beside each section's markup, which is the rule everywhere else in
