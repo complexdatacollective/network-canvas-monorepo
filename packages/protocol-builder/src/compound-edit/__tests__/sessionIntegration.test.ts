@@ -778,6 +778,82 @@ describe('the stage document a session hands out after an acknowledgement', () =
 });
 
 /**
+ * The same three questions of the host that has no acknowledgement to give.
+ *
+ * A host that buffers `onCommands` until finish holds nothing of the
+ * researcher's work until the save, and answers the save with nothing at all —
+ * `onFinish` returns `void`. So the finish is the only moment that can bring
+ * this session's own copy of its stage level with the host, and until it does,
+ * every reader of that copy goes on describing the stage as it was BEFORE the
+ * researcher saved it: for the rest of the session, not for a round trip.
+ */
+describe('the stage document a session hands out after a finish', () => {
+  it('holds what the host holds', async () => {
+    const { host, session } = createSession();
+    session.dispatch([{ op: 'set', key: 'label', value: 'Places' }]);
+    await session.finish();
+
+    // The host really took it, so "level with the host" is a real question.
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      label: 'Places',
+    });
+    expect(session.getSnapshot().protocolSections[stageSection]).toEqual(
+      host.getSnapshot().protocolSections[stageSection],
+    );
+  });
+
+  it('renames the stage the skip destinations and auto-naming read', async () => {
+    const { session } = createSession();
+    session.dispatch([{ op: 'set', key: 'label', value: 'Places' }]);
+    await session.finish();
+
+    expect(
+      session
+        .getSnapshot()
+        .protocolContext.orderedStages.map((stage) => stage.label),
+    ).toEqual(['Places']);
+  });
+
+  /**
+   * The sharpest of the three: a caller can only name the authoritative stage
+   * by the document the snapshot shows it, so a snapshot still holding the
+   * pre-save stage gets the researcher's next nested codebook action refused —
+   * as `stale-base`, which tells them somebody else changed a stage only they
+   * had just saved.
+   */
+  it('names a document the host will accept a stage edit against', async () => {
+    const { host, session } = createSession();
+    session.dispatch([{ op: 'set', key: 'label', value: 'Places' }]);
+    await session.finish();
+
+    // Exactly what `withStageSectionEdit` does: read the authoritative stage
+    // out of the snapshot and hash it.
+    const authoritative =
+      session.getSnapshot().protocolSections[stageSection] ?? {};
+    await expect(
+      session.requestCompoundEdit({
+        id: 'create-place-after-saving',
+        description: 'Retitle the stage and create a place',
+        edits: [
+          {
+            kind: 'update',
+            sectionId: stageSection,
+            expectedContentHash: contentHash(authoritative),
+            commands: [{ op: 'set', key: 'title', value: 'Places nearby' }],
+          },
+          request.edits[1]!,
+        ],
+      }),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      label: 'Places',
+      title: 'Places nearby',
+    });
+  });
+});
+
+/**
  * Which of this session's batches the host already holds turns on what it has
  * been GIVEN — a host handed a batch applies it, and one handed nothing until
  * finish holds none — but a codebook-only request is answered with the stage
