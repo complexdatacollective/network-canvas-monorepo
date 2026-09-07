@@ -89,9 +89,10 @@ database, authentication or decrypting worker and reads no encryption settings.
 Persistent servers use separate `DATABASE_URL` and
 `STUDIO_MAINTENANCE_DATABASE_URL` credentials. Their logins can assume only
 `studio_app` and `studio_maintenance`, respectively. Startup and readiness check
-the complete `STUDIO_DATABASE_ALLOWED_LOGINS` enrollment and each runtime login's
-capabilities before encryption initialization. Administrative credentials belong
-only in the isolated offline command environment.
+that both URLs reach the same live database, the complete
+`STUDIO_DATABASE_ALLOWED_LOGINS` enrollment and each runtime login's capabilities.
+Startup completes these checks before encryption initialization. Administrative
+credentials belong only in the isolated offline command environment.
 
 Set `STUDIO_ENCRYPTION_KEYSET` to JSON such as:
 

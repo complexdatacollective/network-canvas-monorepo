@@ -3,6 +3,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
+import { assertSamePostgresDatabase } from '@codaco/studio-sync/postgres-database-identity';
 import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
 import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
@@ -19,6 +20,7 @@ import {
 import { checkSchema, type SchemaState } from './db/schema.ts';
 import { readEncryptionEnv, readEnv } from './env.ts';
 import { installFatalErrorHandlers } from './fatal-errors.ts';
+import { withProbeClient } from './observability/bounded-probe.ts';
 import { logOperational } from './observability/logger.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
 import { createObservability } from './observability/runtime.ts';
@@ -113,24 +115,33 @@ async function admitDatabaseRuntime(): Promise<boolean> {
     [TENANT_ROLES.maintenance],
   ] as const;
   try {
-    for (const [runtimePool, intendedRole] of [
-      [pool, TENANT_ROLES.app],
-      [maintenancePool, TENANT_ROLES.maintenance],
-    ] as const) {
-      const client = await runtimePool.connect();
-      try {
-        await assertSafePostgresRuntimeIdentity(client, {
-          intendedRole,
-          allowedRoles: [intendedRole],
-          runtimeRoleSets,
-          backupRole: BACKUP_ROLE,
-          allowedLogins: env.databaseAllowedLogins ?? [],
-          administrativeLogins: env.databaseAdministrativeLogins,
-        });
-      } finally {
-        client.release();
-      }
-    }
+    const signal = AbortSignal.timeout(10_000);
+    await withProbeClient(pool, signal, (app) =>
+      withProbeClient(maintenancePool, signal, async (maintenance) => {
+        try {
+          await app.query('BEGIN READ ONLY');
+          await maintenance.query('BEGIN READ ONLY');
+          for (const [client, intendedRole] of [
+            [app, TENANT_ROLES.app],
+            [maintenance, TENANT_ROLES.maintenance],
+          ] as const)
+            await assertSafePostgresRuntimeIdentity(client, {
+              intendedRole,
+              allowedRoles: [intendedRole],
+              runtimeRoleSets,
+              backupRole: BACKUP_ROLE,
+              allowedLogins: env.databaseAllowedLogins ?? [],
+              administrativeLogins: env.databaseAdministrativeLogins,
+            });
+          await assertSamePostgresDatabase(app, maintenance);
+        } finally {
+          await Promise.all([
+            app.query('ROLLBACK'),
+            maintenance.query('ROLLBACK'),
+          ]);
+        }
+      }),
+    );
     return true;
   } catch {
     logOperational('STUDIO_DATABASE_IDENTITY_UNSAFE');
