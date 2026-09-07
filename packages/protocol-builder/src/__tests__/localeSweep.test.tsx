@@ -248,6 +248,22 @@ describe('the sweep itself', () => {
     ]);
   });
 
+  /**
+   * The half a whole-message comparison cannot see. A message carrying an ICU
+   * argument is never rendered as its pattern, so nothing matched
+   * `Node color {index, number}` — and a colour list rebuilt by hand as
+   * `` `Node color ${index + 1}` `` was reported by nothing at all. What
+   * survives formatting is the text between the arguments, so that is what is
+   * compared.
+   */
+  it('names a run of English from inside a message that takes an argument', () => {
+    document.body.innerHTML = '<option>Node color 1</option>';
+
+    expect(localeLeaks()).toEqual([
+      'protocolBuilder.codebookEntity.nodeColorOption rendered in English: Node color',
+    ]);
+  });
+
   it('names an encoded message nobody decoded', () => {
     document.body.innerHTML =
       '<p>@codaco/app-i18n/error/v1:{"id":"protocolBuilder.arrayField.rowReplacedRefusal"}</p>';
