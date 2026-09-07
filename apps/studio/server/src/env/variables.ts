@@ -25,6 +25,7 @@ export const serverSchemas = {
   STUDIO_DEV_DEFAULTS: z.stringbool().optional(),
 
   STUDIO_ROLE: z.enum(['web', 'worker', 'both']).optional(),
+  STUDIO_TELEMETRY: z.stringbool().optional(),
 
   PORT: z.coerce.number().int().min(0).max(65535).optional(),
   HOST: z.string().min(1).optional(),

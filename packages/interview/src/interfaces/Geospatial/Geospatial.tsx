@@ -14,6 +14,7 @@ import {
 import { useDispatch } from 'react-redux';
 import type { ThunkDispatch } from 'redux-thunk';
 
+import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
@@ -35,6 +36,7 @@ import type { AttributePatch } from '../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../store/modules/session';
 import type { RootState } from '../../store/store';
 import type { Direction, NavigationIntent, StageProps } from '../../types';
+import { interfaceMessages } from '../messages';
 import CollapsablePrompts from '../Sociogram/CollapsablePrompts';
 import { isMapboxStubBrowser } from './isMapboxStubBrowser';
 import { useMapbox } from './useMapbox';
@@ -117,6 +119,7 @@ export function locationValueToAttributePatch(
 export default function GeospatialInterface({
   stage,
 }: GeospatialInterfaceProps) {
+  const intl = useAppIntl();
   const dispatch = useDispatch<ThunkDispatch<RootState, unknown, Action>>();
   const dragSafeRef = useRef(null);
 
@@ -402,7 +405,7 @@ export default function GeospatialInterface({
         {useStub && (
           <button
             type="button"
-            aria-label="Stubbed map (click to select test feature)"
+            aria-label={intl.formatMessage(interfaceMessages.stubMap)}
             onClick={handleStubMapClick}
             disabled={!stubReady}
             data-testid="geospatial-stub-click-area"
@@ -420,12 +423,13 @@ export default function GeospatialInterface({
           >
             <div className="bg-background absolute inset-0 opacity-90" />
             <div className="relative z-20 flex w-2/3 max-w-xl flex-col items-center gap-4 text-center">
-              <h2>The map could not be displayed</h2>
+              <h2>
+                <AppMessage message={interfaceMessages.mapUnavailable} />
+              </h2>
               <p>
-                This can happen if your browser or device does not support the
-                features the map requires (for example, WebGL). Try a different
-                browser or device, or contact the study organizer. You may be
-                able to continue your interview by selecting the next arrow.
+                <AppMessage
+                  message={interfaceMessages.mapUnavailableDescription}
+                />
               </p>
             </div>
           </div>
@@ -440,8 +444,7 @@ export default function GeospatialInterface({
             <div className="bg-background absolute inset-0 opacity-75" />
             <div className="relative z-20 flex w-1/3 flex-col items-center gap-6 text-center">
               <h2>
-                You have indicated an area outside of the selectable map. If
-                this is correct, please select the next arrow to proceed.
+                <AppMessage message={interfaceMessages.outsideMapDescription} />
               </h2>
               <Button
                 size="sm"
@@ -451,7 +454,7 @@ export default function GeospatialInterface({
                 color="primary"
                 data-testid="deselect-outside-area-button"
               >
-                Deselect
+                <AppMessage message={interfaceMessages.deselect} />
               </Button>
             </div>
           </div>
@@ -502,7 +505,7 @@ export default function GeospatialInterface({
             size="lg"
             onClick={onZoomIn}
             icon={<ZoomIn />}
-            aria-label="Zoom In"
+            aria-label={intl.formatMessage(interfaceMessages.zoomIn)}
             color="dynamic"
             data-testid="map-zoom-in"
           />
@@ -510,7 +513,7 @@ export default function GeospatialInterface({
             size="lg"
             onClick={onZoomOut}
             icon={<ZoomOut />}
-            aria-label="Zoom Out"
+            aria-label={intl.formatMessage(interfaceMessages.zoomOut)}
             color="dynamic"
             data-testid="map-zoom-out"
           />
@@ -518,7 +521,7 @@ export default function GeospatialInterface({
             size="lg"
             onClick={onRecenter}
             icon={<LocateFixed />}
-            aria-label="Recenter Map"
+            aria-label={intl.formatMessage(interfaceMessages.recenterMap)}
             color="dynamic"
             data-testid="map-recenter"
           />
@@ -554,7 +557,7 @@ export default function GeospatialInterface({
             disabled={initialSelectionValue === 'outside-selectable-areas'}
             data-testid="outside-selectable-areas-button"
           >
-            Outside Selectable Areas
+            <AppMessage message={interfaceMessages.outsideSelectableAreas} />
           </Button>
         </CollapsablePrompts>
       </motion.div>

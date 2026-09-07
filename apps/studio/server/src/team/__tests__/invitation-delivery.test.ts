@@ -5,7 +5,7 @@ import type { IncomingMessage, RequestOptions } from 'node:http';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import type pg from 'pg';
+import { escapeIdentifier, type Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createTenantDb } from '@codaco/studio-sync/tenant';
@@ -19,11 +19,16 @@ import {
   type SmtpBehavior,
 } from '../../../../../../packages/studio-sync/src/__tests__/smtp-fixture.ts';
 import {
+  createScratchDatabase,
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import { createMailer, type InvitationMailer } from '../../auth/email.ts';
+import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
+import { readMigrations } from '../../db/migrations/artifact.ts';
+import { migrateDatabase } from '../../db/migrations/migrate.ts';
+import { createPool } from '../../db/pool.ts';
 import { DEV } from '../../env/catalogue.ts';
 import type { OutboxLifecycleEvent } from '../../outbox/instrumentation.ts';
 import { encryptionEnvironment } from '../../pii/__tests__/fixtures.ts';
@@ -66,26 +71,30 @@ async function seededScratch() {
   if (!db) throw new Error('unreachable');
   const scratch = await createScratchSchema(db);
   await provisionScratchSchema(scratch.pool);
-  await scratch.pool.query(
+  await seedInviter(scratch.pool);
+  return scratch;
+}
+
+async function seedInviter(pool: Pool) {
+  await pool.query(
     `INSERT INTO "user" (
          id, name, email, "emailVerified", "createdAt", "updatedAt"
        ) VALUES ($1, 'Inviting Researcher', 'inviter@example.com', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
     [INVITER_ID],
   );
-  await scratch.pool.query(
+  await pool.query(
     `INSERT INTO teams (id, name, slug) VALUES ($1, 'Invitation Delivery Team', $1)`,
     [TEAM_ID],
   );
-  await scratch.pool.query(
+  await pool.query(
     `INSERT INTO team_members (id, team_id, user_id, role)
        VALUES ($1, $2, $3, 'owner')`,
     [INVITER_MEMBER_ID, TEAM_ID, INVITER_ID],
   );
-  return scratch;
 }
 
 async function seedInvitation(
-  scratch: ScratchSchema,
+  scratch: Pick<ScratchSchema, 'pool'>,
   input: {
     invitationId?: string;
     email?: string;
@@ -114,7 +123,7 @@ async function seedInvitation(
 }
 
 async function enqueue(
-  scratch: ScratchSchema,
+  scratch: Pick<ScratchSchema, 'app'>,
   invitation: Awaited<ReturnType<typeof seedInvitation>>,
 ) {
   const tenant = createTenantDb(scratch.app, TEAM_ID);
@@ -132,7 +141,7 @@ async function enqueue(
 }
 
 function dispatcher(
-  pool: pg.Pool,
+  pool: Pool,
   mailer: InvitationMailer,
   overrides: Partial<
     ConstructorParameters<typeof InvitationDeliveryDispatcher>[0]
@@ -928,14 +937,47 @@ describe.skipIf(!db)('Postmark invitation delivery outcomes', () => {
 
 describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
   it('the actual Node SIGTERM drain persists a held SMTP outcome before exiting', async () => {
-    const scratch = await seededScratch();
+    if (!db) throw new Error('Database required for process drain test.');
+    const versioned = await createScratchDatabase(db);
+    const scratch = { ...versioned, app: createPool(versioned.db) };
     const peer = await smtpFixture('silent_data');
+    const runtimeLogin = `smtp_runtime_${randomUUID().replaceAll('-', '')}`;
+    const runtimePassword = 'smtp-runtime-synthetic-only';
+    let runtimeCreated = false;
     let child: ReturnType<typeof spawn> | undefined;
     let exited: Promise<unknown[]> | undefined;
     try {
+      const identity = (
+        await scratch.pool.query<{ database: string; login: string }>(
+          'SELECT current_database() AS database, session_user AS login',
+        )
+      ).rows[0]!;
+      await scratch.pool.query(`
+        REVOKE CONNECT ON DATABASE ${escapeIdentifier(identity.database)} FROM PUBLIC;
+        GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(identity.login)};
+      `);
+      const migrations = await readMigrations(
+        fileURLToPath(new URL('../../../migrations', import.meta.url)),
+      );
+      expect(migrations.length).toBeGreaterThan(0);
+      expect(
+        await migrateDatabase(scratch.pool, migrations, SCHEMA_FINGERPRINT, [
+          identity.login,
+        ]),
+      ).toEqual(migrations.map(({ manifest }) => manifest.id));
+      await scratch.pool.query(
+        `CREATE ROLE ${escapeIdentifier(runtimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+         GRANT studio_app, studio_maintenance TO ${escapeIdentifier(runtimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+         GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(runtimeLogin)}`,
+      );
+      runtimeCreated = true;
+      await seedInviter(scratch.pool);
       const invitation = await seedInvitation(scratch);
       await enqueue(scratch, invitation);
-      const databaseUrl = scratch.pool.options.connectionString;
+      const runtimeUrl = new URL(scratch.db.url);
+      runtimeUrl.username = runtimeLogin;
+      runtimeUrl.password = runtimePassword;
+      const databaseUrl = runtimeUrl.href;
       if (typeof databaseUrl !== 'string')
         throw new Error('Missing fixture URL');
       child = spawn(
@@ -948,6 +990,7 @@ describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
             HOST: '127.0.0.1',
             PORT: '0',
             DATABASE_URL: databaseUrl,
+            ...encryptionEnvironment(),
             BETTER_AUTH_SECRET:
               'smtp-process-only-authentication-secret-32-characters',
             PUBLIC_URL: 'https://studio.example.test',
@@ -1002,6 +1045,12 @@ describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
         child.kill('SIGKILL');
       await exited;
       await peer.close();
+      await scratch.app.end();
+      if (runtimeCreated)
+        await scratch.pool.query(
+          `REVOKE CONNECT ON DATABASE ${escapeIdentifier(new URL(scratch.db.url).pathname.slice(1))} FROM ${escapeIdentifier(runtimeLogin)};
+           DROP ROLE ${escapeIdentifier(runtimeLogin)}`,
+        );
       await scratch.dispose();
     }
   }, 25_000);

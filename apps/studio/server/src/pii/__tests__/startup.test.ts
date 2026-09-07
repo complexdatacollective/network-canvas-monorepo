@@ -1,28 +1,28 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
+import { escapeIdentifier, escapeLiteral } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
+import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
-  provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
+import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
+import { readMigrations } from '../../db/migrations/artifact.ts';
+import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createMaintenancePool } from '../../db/pool.ts';
 import type { DbEnv } from '../../env.ts';
 import { runEncryptionCommand } from '../operator.ts';
-import { configuration, rootOne } from './fixtures.ts';
+import { configuration, encryptionEnvironment, rootOne } from './fixtures.ts';
 
 const database = await reachableDb();
 const entry = fileURLToPath(new URL('../../index.ts', import.meta.url));
 const operator = fileURLToPath(new URL('../../encryption.ts', import.meta.url));
 
 function environment(db: DbEnv) {
-  const config = configuration();
-  config.roots = config.roots.map((root) => ({
-    ...root,
-    reference: `STUDIO_ENCRYPTION_ROOT_${root.reference}`,
-  }));
   return {
     NODE_ENV: 'production',
     HOST: '127.0.0.1',
@@ -30,9 +30,7 @@ function environment(db: DbEnv) {
     DATABASE_URL: db.url,
     BETTER_AUTH_SECRET: 'synthetic-studio-entrypoint-secret-for-tests',
     PUBLIC_URL: 'https://studio.example.org',
-    STUDIO_ENCRYPTION_KEYSET: JSON.stringify(config),
-    STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: rootOne.toString('base64'),
-    STUDIO_ENCRYPTION_ROOT_TEST_ROOT_TWO: rootOne.toString('base64'),
+    ...encryptionEnvironment(),
   };
 }
 
@@ -44,7 +42,19 @@ async function withDatabase(
   if (!database) throw new Error('A local database is required.');
   const scratch = await createScratchDatabase(database);
   try {
-    await provisionScratchSchema(scratch.pool);
+    const allowedLogins = await enrollMigrationTestDatabase(
+      scratch.pool,
+      database,
+    );
+    const migrations = await readMigrations(
+      fileURLToPath(new URL('../../../migrations', import.meta.url)),
+    );
+    await migrateDatabase(
+      scratch.pool,
+      migrations,
+      SCHEMA_FINGERPRINT,
+      allowedLogins,
+    );
     await work(scratch);
   } finally {
     await scratch.dispose();
@@ -58,6 +68,10 @@ function runNode(file: string, args: string[], env: Record<string, string>) {
     timeout: 10_000,
   });
   expect(child.error).toBeUndefined();
+  expect(
+    child.signal,
+    'operator must finish before the test deadline',
+  ).toBeNull();
   expect(child.stderr).toBe('');
   return {
     status: child.status,
@@ -93,6 +107,10 @@ async function runServer(env: Record<string, string>) {
       child.once('error', reject);
       child.once('close', resolve);
     });
+    expect(
+      child.signalCode,
+      'server must finish startup and shutdown before the test deadline',
+    ).toBeNull();
     expect(errors.join('')).toBe('');
     return {
       status,
@@ -126,29 +144,47 @@ describe('actual server encryption startup and operator entrypoints', () => {
         (await pool.query('SELECT * FROM encryption_key_verifications'))
           .rowCount,
       ).toBe(8);
-      expect(await runServer(env)).toMatchObject({ status: 0, started: true });
-      for (const root of [
-        'synthetic-secret-invalid-root',
-        Buffer.alloc(32, 44).toString('base64'),
-        '',
-      ]) {
-        const result = await runServer({
-          ...env,
-          STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: root,
+      const login = `pii_runtime_${randomUUID().replaceAll('-', '')}`;
+      const password = 'pii-runtime-synthetic-only';
+      const url = new URL(db.url);
+      const databaseName = escapeIdentifier(url.pathname.slice(1));
+      await pool.query(`CREATE ROLE ${escapeIdentifier(login)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD ${escapeLiteral(password)};
+        GRANT studio_app, studio_maintenance TO ${escapeIdentifier(login)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+        GRANT CONNECT ON DATABASE ${databaseName} TO ${escapeIdentifier(login)}`);
+      url.username = login;
+      url.password = password;
+      const runtimeEnv = { ...env, DATABASE_URL: url.href };
+      try {
+        expect(await runServer(runtimeEnv)).toMatchObject({
+          status: 0,
+          started: true,
         });
-        expect(result.status).toBe(1);
-        expect(result.started).toBe(false);
-        expect(result.records).toEqual([
-          {
-            level: 50,
-            time: expect.any(String),
-            event: 'operational',
-            code: 'STUDIO_ENCRYPTION_INVALID',
-          },
-        ]);
-        expect(JSON.stringify(result.records)).not.toContain(
-          root || 'STUDIO_SERVER_STARTED',
-        );
+        for (const root of [
+          'synthetic-secret-invalid-root',
+          Buffer.alloc(32, 44).toString('base64'),
+          '',
+        ]) {
+          const result = await runServer({
+            ...runtimeEnv,
+            STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: root,
+          });
+          expect(result.status).toBe(1);
+          expect(result.started).toBe(false);
+          expect(result.records).toEqual([
+            {
+              level: 50,
+              time: expect.any(String),
+              event: 'operational',
+              code: 'STUDIO_ENCRYPTION_INVALID',
+            },
+          ]);
+          expect(JSON.stringify(result.records)).not.toContain(
+            root || 'STUDIO_SERVER_STARTED',
+          );
+        }
+      } finally {
+        await pool.query(`REVOKE CONNECT ON DATABASE ${databaseName} FROM ${escapeIdentifier(login)};
+          DROP ROLE ${escapeIdentifier(login)}`);
       }
     });
   });
@@ -187,7 +223,7 @@ describe('actual server encryption startup and operator entrypoints', () => {
   });
 
   it('exposes bounded maintenance results without starting unrelated application services', async () => {
-    await withDatabase(async ({ db }) => {
+    await withDatabase(async ({ db, pool }) => {
       const maintenance = createMaintenancePool(db);
       const encryption = {
         configuration: configuration(),
@@ -203,7 +239,8 @@ describe('actual server encryption startup and operator entrypoints', () => {
         ).resolves.toEqual({
           operation: 'rotate',
           processed: 0,
-          remaining: 0,
+          scanned: 0,
+          passComplete: true,
           cursor: null,
         });
         await expect(
@@ -211,13 +248,96 @@ describe('actual server encryption startup and operator entrypoints', () => {
             ['migrate-legacy', '--limit', '1'],
             maintenance,
             encryption,
+            pool,
           ),
         ).resolves.toEqual({
           operation: 'migrate-legacy',
           processed: 0,
-          remaining: 0,
+          scanned: 0,
+          passComplete: true,
           afterId: null,
         });
+      } finally {
+        await maintenance.end();
+      }
+    });
+  });
+
+  it('performs a full first-batch verification and proof-only resume without corpus scans', async () => {
+    await withDatabase(async ({ db, pool }) => {
+      await pool.query(
+        `INSERT INTO "user" (id, name, email, "emailVerified") VALUES ('bounded-user', 'Synthetic', 'bounded@example.test', true)`,
+      );
+      await pool.query(
+        `INSERT INTO account (id, "userId", "accountId", "providerId", issuer, "updatedAt") VALUES ('bounded-account', 'bounded-user', 'bounded-account', 'google', 'https://accounts.google.com', now())`,
+      );
+      const maintenance = createMaintenancePool(db);
+      const encryption = {
+        configuration: configuration(),
+        loadRootKey: async () => rootOne,
+      };
+      try {
+        const client = await maintenance.connect();
+        const queries = vi.spyOn(client, 'query');
+        client.release();
+        const first = await runEncryptionCommand(
+          ['rotate', '--limit', '1'],
+          maintenance,
+          encryption,
+        );
+        expect(first).toMatchObject({
+          operation: 'rotate',
+          processed: 0,
+          scanned: 1,
+          passComplete: false,
+        });
+        expect(
+          queries.mock.calls.some(
+            ([sql]) =>
+              typeof sql === 'string' &&
+              sql.includes("SELECT DISTINCT 'pii-enc'"),
+          ),
+        ).toBe(true);
+        if (!('cursor' in first) || !first.cursor)
+          throw new Error('Expected a real resumable cursor.');
+        queries.mockClear();
+        expect(
+          await runEncryptionCommand(
+            [
+              'rotate',
+              '--limit',
+              '1',
+              '--cursor',
+              JSON.stringify(first.cursor),
+            ],
+            maintenance,
+            encryption,
+          ),
+        ).toEqual({
+          operation: 'rotate',
+          processed: 0,
+          scanned: 0,
+          passComplete: true,
+          cursor: null,
+        });
+        const resumed = queries.mock.calls.map(([sql]) =>
+          typeof sql === 'string' ? sql : '',
+        );
+        expect(
+          resumed.some((sql) => sql.includes('SELECT purpose, key_id')),
+        ).toBe(true);
+        expect(
+          resumed.some((sql) =>
+            /SELECT DISTINCT|count\(|SELECT EXISTS|INSERT INTO encryption_key_verifications/i.test(
+              sql,
+            ),
+          ),
+        ).toBe(false);
+        queries.mockRestore();
+        expect(
+          (await pool.query('SELECT * FROM encryption_key_verifications'))
+            .rowCount,
+        ).toBe(8);
       } finally {
         await maintenance.end();
       }

@@ -2,6 +2,7 @@
 
 import React, { Component, type ReactNode } from 'react';
 
+import { AppMessage } from '@codaco/app-i18n/react';
 import Icon from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -9,6 +10,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useCaptureException } from '../analytics/useTrack';
 import useOnline from '../hooks/useOnline';
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import CopyDebugInfoButton from './CopyDebugInfoButton';
 
 // Build the copyable debug string. The stack alone is not enough: Firefox's
@@ -64,25 +66,20 @@ class StageErrorBoundaryInner extends Component<
             </div>
             {isOffline ? (
               <div data-testid="offline-error-message">
-                <Heading>This task needs an internet connection</Heading>
+                <Heading>
+                  <AppMessage message={messages.offlineTaskTitle} />
+                </Heading>
                 <Paragraph>
-                  You appear to be offline, and this task could not be
-                  displayed. Some tasks (such as maps) need a connection. Check
-                  your connection and refresh the page. You may be able to
-                  continue by selecting the next arrow. If the problem persists
-                  once you are back online, please contact the study organizer
-                  and provide the debug information below.
+                  <AppMessage message={messages.offlineTaskDescription} />
                 </Paragraph>
               </div>
             ) : (
               <div>
-                <Heading>A problem occurred!</Heading>
+                <Heading>
+                  <AppMessage message={messages.taskErrorTitle} />
+                </Heading>
                 <Paragraph>
-                  There was an error with the interview software, and this task
-                  could not be displayed. Try refreshing the page. If the
-                  problem persists, please contact the study organizer and
-                  provide the debug information below. You may be able to
-                  continue your interview by clicking the next button.
+                  <AppMessage message={messages.taskErrorDescription} />
                 </Paragraph>
               </div>
             )}

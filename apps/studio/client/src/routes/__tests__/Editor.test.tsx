@@ -1027,3 +1027,47 @@ describe('Studio editor shell', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('the protocol problems the inspector lists', () => {
+  it('reads a resource problem as a sentence, not as an encoded payload', async () => {
+    // An Information screen whose asset item names a resource the protocol
+    // does not carry. The item is schema-valid in itself, so nothing in the
+    // schema reports on that path and the problem is the builder's own
+    // resource check — which crosses `ProtocolValidationIssue`'s string-only
+    // `message` as a descriptor `createMessageError` encoded, for the render
+    // site to resolve in the reader's language.
+    const holed = {
+      ...DRAFT,
+      sections: {
+        ...DRAFT.sections,
+        [`stage:${STAGE_A}`]: {
+          ...DRAFT.sections[`stage:${STAGE_A}`],
+          items: [
+            {
+              id: 'item-1',
+              type: 'asset',
+              content: 'deleted-photo',
+              size: 'MEDIUM',
+            },
+          ],
+        },
+      },
+    };
+    queryDraft.mockResolvedValue(holed);
+    vi.mocked(rpcClient.protocols.draft).mockResolvedValue(holed);
+
+    renderEditor();
+
+    expect(
+      await screen.findByText(
+        'This stage uses a resource ("deleted-photo") that is not in the protocol.',
+      ),
+    ).toBeInTheDocument();
+    // The encoded form is unreadable — an id, a JSON payload and the English
+    // source string all at once — so its absence is the half of this that a
+    // renderer reaching for `issue.message` directly would fail.
+    expect(
+      screen.queryByText(/@codaco\/app-i18n\/error/),
+    ).not.toBeInTheDocument();
+  });
+});

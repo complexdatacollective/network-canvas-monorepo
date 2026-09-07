@@ -2,8 +2,8 @@
   "format": 1,
   "id": "0002_pii_encryption",
   "previous": "0001_initial_studio_schema",
-  "fingerprint": "1da550d8f6fe27991609c86a20890993485e88c64a649498aadd975d76a4a886",
-  "snapshotHash": "00361e76b573eed75ce2f715c576cbda011b34320b16fc0d61107a407a1eddff",
-  "sqlHash": "7ed8fcd2654c5f1e3f82c2bc916c0fde338c81d2dae1865bdfcc7d541db9d659",
-  "sidecarsHash": "70cce1f5b0706e2dd52a4de052b9e44c735ba1d385749b880d554dbad1341de4"
+  "fingerprint": "cfb71bdc627a50f657899684877cdc4191d54c1614e42a7f6b495c1552e890c5",
+  "snapshotHash": "3586256d674b93fdd2d8dceb74b36e2721ef63e15af31a95c304d28f7ce71839",
+  "sqlHash": "e4262374936aa3c4a6366a62fae470e42417a1879847c80869ec16d4d568620a",
+  "sidecarsHash": "386bd34aa9e874c40de3d268697dfbb7d6c550f7b62b1b5bf857391fe2c16044"
 }

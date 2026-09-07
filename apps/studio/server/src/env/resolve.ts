@@ -43,6 +43,7 @@ export type AuthEnv = {
 // refuses with 503; the server still boots.
 export type StudioEnv = {
   role: 'web' | 'worker' | 'both';
+  telemetry: boolean;
   port: number;
   metricsToken: string | undefined;
   trustedProxies: string[];
@@ -277,6 +278,7 @@ export function resolve(raw: RawEnv): StudioEnv {
 
   return {
     role: raw.STUDIO_ROLE ?? 'both',
+    telemetry: raw.STUDIO_TELEMETRY ?? true,
     port: raw.PORT ?? DEFAULT_PORT,
     metricsToken: raw.STUDIO_METRICS_TOKEN,
     trustedProxies: raw.TRUSTED_PROXIES ?? [],

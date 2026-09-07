@@ -11,13 +11,15 @@ export function createOperationalApp(
   env: Pick<StudioEnv, 'metricsToken' | 'trustedProxies'>,
   observability: ReturnType<typeof createObservability>,
   logger?: OperationalLogger,
+  reportError?: (error: unknown) => void,
 ) {
   const app = new Hono<PrincipalVariables>();
-  app.onError((_error, c) =>
-    c.json({ title: 'Internal Server Error', status: 500 }, 500, {
+  app.onError((error, c) => {
+    reportError?.(error);
+    return c.json({ title: 'Internal Server Error', status: 500 }, 500, {
       'Content-Type': 'application/problem+json',
-    }),
-  );
+    });
+  });
   app.use(
     '*',
     observeRequests({

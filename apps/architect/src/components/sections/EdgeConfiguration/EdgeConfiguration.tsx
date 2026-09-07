@@ -1,6 +1,8 @@
 import { useCallback, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import EditableAttributesList from '~/components/Form/arrayFields/EditableAttributesList';
@@ -14,6 +16,75 @@ import { getCodebook } from '~/selectors/protocol';
 
 import { useComposerFieldCommit } from '../Form/fieldCommit';
 import EdgeTypeMultiSelectField from './EdgeTypeMultiSelect';
+const additionalMessages = defineMessages({
+  createNewAttributeFor: {
+    id: 'architect.additional.sections.edgeConfiguration.edgeConfiguration.createNewAttributeFor',
+    defaultMessage: 'Create new attribute for {edgeLabel}',
+    description:
+      'The addButtonLabel text in components / sections / EdgeConfiguration / EdgeConfiguration.',
+  },
+});
+const messages = defineMessages({
+  configureTheAttributesCollectedForThis: {
+    id: 'architect.sections.edgeConfiguration.edgeConfiguration.configureTheAttributesCollectedForThis',
+    defaultMessage:
+      'Configure the attributes collected for this connection type.',
+    description:
+      'The description text in components / sections / EdgeConfiguration / EdgeConfiguration.',
+  },
+  editableAttributes: {
+    id: 'architect.sections.edgeConfiguration.edgeConfiguration.editableAttributes',
+    defaultMessage: 'Editable attributes',
+    description:
+      'The title text in components / sections / EdgeConfiguration / EdgeConfiguration.',
+  },
+  theAttributesShownInTheSide: {
+    id: 'architect.sections.edgeConfiguration.edgeConfiguration.theAttributesShownInTheSide',
+    defaultMessage:
+      'The attributes shown in the side panel when an edge is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it.',
+    description:
+      'The description text in components / sections / EdgeConfiguration / EdgeConfiguration.',
+  },
+  edgeConfiguration: {
+    id: 'architect.sections.edgeConfiguration.edgeConfiguration.edgeConfiguration',
+    defaultMessage: 'Edge configuration',
+    description:
+      'The title text in components / sections / EdgeConfiguration / EdgeConfiguration.',
+  },
+  defineTheConnectionTypesParticipantsCan: {
+    id: 'architect.sections.edgeConfiguration.edgeConfiguration.defineTheConnectionTypesParticipantsCan',
+    defaultMessage:
+      'Define the connection types participants can draw and the attributes collected for each type.',
+    description:
+      'The description text in components / sections / EdgeConfiguration / EdgeConfiguration.',
+  },
+  connectionTypes: {
+    id: 'architect.sections.edgeConfiguration.edgeConfiguration.connectionTypes',
+    defaultMessage: 'Connection types',
+    description:
+      'The title text in components / sections / EdgeConfiguration / EdgeConfiguration.',
+  },
+  selectTheEdgeTypesParticipantsCan: {
+    id: 'architect.sections.edgeConfiguration.edgeConfiguration.selectTheEdgeTypesParticipantsCan',
+    defaultMessage:
+      'Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.',
+    description:
+      'The description text in components / sections / EdgeConfiguration / EdgeConfiguration.',
+  },
+  edgeTypes: {
+    id: 'architect.sections.edgeConfiguration.edgeConfiguration.edgeTypes',
+    defaultMessage: 'Edge types',
+    description:
+      'The label text in components / sections / EdgeConfiguration / EdgeConfiguration.',
+  },
+  edgeAttributes: {
+    id: 'architect.sections.edgeConfiguration.edgeConfiguration.edgeAttributes',
+    defaultMessage: 'Edge Attributes — {value1}',
+    description:
+      'The title text in components / sections / EdgeConfiguration / EdgeConfiguration.',
+  },
+});
+
 type EdgeEntry = {
   id: string;
   subject: {
@@ -77,6 +148,7 @@ const EdgeAttributeBlock = ({
   fields,
   onFieldsChange,
 }: EdgeAttributeBlockProps) => {
+  const intl = useAppIntl();
   const handleChangeFields = useComposerFieldCommit({ entity, type });
   // Addressed by the edge's own id rather than by its position: the list this
   // writes back into is the one the researcher can delete from, and a delete
@@ -93,11 +165,13 @@ const EdgeAttributeBlock = ({
   return (
     <Section
       title={title}
-      description="Configure the attributes collected for this connection type."
+      description={intl.formatMessage(
+        messages.configureTheAttributesCollectedForThis,
+      )}
     >
       <Section
-        title="Editable attributes"
-        description="The attributes shown in the side panel when an edge is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it."
+        title={intl.formatMessage(messages.editableAttributes)}
+        description={intl.formatMessage(messages.theAttributesShownInTheSide)}
       >
         <EditableAttributesList
           fieldName={fieldName}
@@ -108,7 +182,10 @@ const EdgeAttributeBlock = ({
           // type's own name is the only thing that tells its add button from
           // the next one's. A placeholder for a name the researcher authored,
           // not a sentence assembled from fragments.
-          addButtonLabel={`Create new attribute for ${edgeLabel}`}
+          addButtonLabel={intl.formatMessage(
+            additionalMessages.createNewAttributeFor,
+            { edgeLabel: edgeLabel },
+          )}
           handleChangeFields={handleChangeFields}
           value={fields}
           onChange={handleChange}
@@ -122,6 +199,7 @@ const resolveEdgeLabel = (
   type: string,
 ) => codebook?.edge?.[type]?.name ?? type;
 const EdgeConfiguration = (_props: StageEditorSectionProps) => {
+  const intl = useAppIntl();
   const codebook = useSelector(getCodebook);
   const edges = toEdgeEntries(useStageFormValue('edges'));
   const initialEdges = useStageInitialValue<EdgeEntry[]>('edges');
@@ -162,16 +240,20 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
   return (
     <>
       <Section
-        title="Edge configuration"
-        description="Define the connection types participants can draw and the attributes collected for each type."
+        title={intl.formatMessage(messages.edgeConfiguration)}
+        description={intl.formatMessage(
+          messages.defineTheConnectionTypesParticipantsCan,
+        )}
       >
         <Section
-          title="Connection types"
-          description="Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below."
+          title={intl.formatMessage(messages.connectionTypes)}
+          description={intl.formatMessage(
+            messages.selectTheEdgeTypesParticipantsCan,
+          )}
         >
           <ArchitectField
             name="edges"
-            label="Edge types"
+            label={intl.formatMessage(messages.edgeTypes)}
             component={EdgeTypeMultiSelectField}
             initialValue={initialEdges}
           />
@@ -189,7 +271,9 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
           // `data-field-name`.
           fieldName={`edges[${index}].form.fields`}
           editFormName={`edge-attr-edit-${edge.subject.type}`}
-          title={`Edge Attributes — ${resolveEdgeLabel(codebook, edge.subject.type)}`}
+          title={intl.formatMessage(messages.edgeAttributes, {
+            value1: resolveEdgeLabel(codebook, edge.subject.type),
+          })}
           edgeLabel={resolveEdgeLabel(codebook, edge.subject.type)}
           fields={toFields(edge.form)}
           onFieldsChange={handleFieldsChange}

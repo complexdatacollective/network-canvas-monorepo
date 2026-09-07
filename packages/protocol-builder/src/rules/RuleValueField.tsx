@@ -1,5 +1,7 @@
 import { useMemo, useState, type FocusEvent, type ReactNode } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
@@ -20,15 +22,50 @@ import {
   type RuleChoiceOption,
   type RuleDateParameters,
 } from './ruleCodebook.ts';
+import { ruleEditorRequiredMessage } from './ruleMessages.ts';
+
+const messages = defineMessages({
+  optionCountLabel: {
+    id: 'protocolBuilder.ruleValue.optionCountLabel',
+    defaultMessage: 'Selected option count',
+    description:
+      'Label of the control where a researcher enters how many options a multiple-choice attribute must have been answered with for the rule to match.',
+  },
+  optionCountHint: {
+    id: 'protocolBuilder.ruleValue.optionCountHint',
+    defaultMessage:
+      'Enter the number of options that must be selected for this rule to pass.',
+    description:
+      'Guidance under the control where a researcher enters how many options a multiple-choice attribute must have been answered with. "Pass" means the rule matches.',
+  },
+  valueLabel: {
+    id: 'protocolBuilder.ruleValue.valueLabel',
+    defaultMessage: 'Attribute value',
+    description:
+      'Label of the control where a researcher enters the value a rule compares an attribute against.',
+  },
+  compareHint: {
+    id: 'protocolBuilder.ruleValue.compareHint',
+    defaultMessage: 'Enter the value to compare against.',
+    description:
+      'Guidance under the control where a researcher enters the value a rule compares an attribute against.',
+  },
+  valuePlaceholder: {
+    id: 'protocolBuilder.ruleValue.valuePlaceholder',
+    defaultMessage: 'Enter a value...',
+    description:
+      'Placeholder inside the empty control where a researcher enters the value a rule compares an attribute against.',
+  },
+  patternPlaceholder: {
+    id: 'protocolBuilder.ruleValue.patternPlaceholder',
+    defaultMessage: 'Enter a regular expression...',
+    description:
+      'Placeholder inside the empty control where a researcher enters the regular expression a rule matches an attribute’s text answer against.',
+  },
+});
 
 /** Every rule operand is stored under this one path. */
 export const RULE_VALUE_FIELD = 'options.value';
-
-/**
- * Fresco's built-in required copy addresses a participant mid-interview. A
- * protocol is authored by a researcher, so the rule is stated instead.
- */
-const REQUIRED_MESSAGE = 'This field is required.';
 
 /** An operand requirement that actually asks for a value. */
 type ValueRequirement = Extract<OperandRequirement, { kind: 'value' }>;
@@ -218,6 +255,7 @@ function RuleValueField({
   minValue,
   maxValue,
 }: RuleValueFieldProps) {
+  const intl = useAppIntl();
   const { control, parse } = requirement;
   // `initialValue` is a registration dependency, so a value rebuilt every
   // render would re-register the field on every keystroke elsewhere.
@@ -229,7 +267,7 @@ function RuleValueField({
     // Every operand a rule asks for has to be answered — the operator would
     // not be comparing anything otherwise. Stated as the researcher's rule
     // rather than as `true`, whose Fresco wording addresses a participant.
-    required: REQUIRED_MESSAGE,
+    required: intl.formatMessage(ruleEditorRequiredMessage),
     ...(minValue === undefined ? {} : { minValue }),
     ...(maxValue === undefined ? {} : { maxValue }),
   };
@@ -364,6 +402,7 @@ export function RuleOperandField({
   initialValue,
   regExpHint,
 }: RuleOperandFieldProps) {
+  const intl = useAppIntl();
   const requirement = operandRequirement(variableType, operator);
   if (requirement === undefined || requirement.kind === 'none') return null;
 
@@ -385,9 +424,9 @@ export function RuleOperandField({
   if (requirement.operandKind === 'integer') {
     return (
       <RuleValueField
-        label="Selected option count"
-        hint="Enter the number of options that must be selected for this rule to pass."
-        placeholder="Enter a value..."
+        label={intl.formatMessage(messages.optionCountLabel)}
+        hint={intl.formatMessage(messages.optionCountHint)}
+        placeholder={intl.formatMessage(messages.valuePlaceholder)}
         requirement={requirement}
         initialValue={initialValue}
         // Bounded below whether or not the attribute's options are known, so a
@@ -401,13 +440,17 @@ export function RuleOperandField({
 
   return (
     <RuleValueField
-      label="Attribute value"
-      hint={requirement.operandKind === 'string' ? regExpHint : COMPARE_HINT}
-      placeholder={
+      label={intl.formatMessage(messages.valueLabel)}
+      hint={
         requirement.operandKind === 'string'
-          ? 'Enter a regular expression...'
-          : 'Enter a value...'
+          ? regExpHint
+          : intl.formatMessage(messages.compareHint)
       }
+      placeholder={intl.formatMessage(
+        requirement.operandKind === 'string'
+          ? messages.patternPlaceholder
+          : messages.valuePlaceholder,
+      )}
       requirement={requirement}
       options={options}
       dateParameters={dateParameters}
@@ -416,5 +459,3 @@ export function RuleOperandField({
     />
   );
 }
-
-const COMPARE_HINT = 'Enter the value to compare against.';

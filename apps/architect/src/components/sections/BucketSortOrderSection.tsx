@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
@@ -8,6 +10,49 @@ import MultiSelect, {
   type OptionGetter,
   type PropertyField,
 } from '~/components/Form/arrayFields/MultiSelect';
+const defaultMessages = defineMessages({
+  description: {
+    id: 'architect.defaults.components.sections.BucketSortOrderSection.description',
+    defaultMessage: 'Set the order of nodes before they are placed.',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own description.',
+  },
+});
+const additionalMessages = defineMessages({
+  noSortRulesHaveBeenCreated: {
+    id: 'architect.additional.sections.bucketSortOrderSection.noSortRulesHaveBeenCreated',
+    defaultMessage: 'No sort rules have been created yet.',
+    description:
+      'The emptyStateMessage text in components / sections / BucketSortOrderSection.',
+  },
+  addNewBucketSortRule: {
+    id: 'architect.additional.sections.bucketSortOrderSection.addNewBucketSortRule',
+    defaultMessage: 'Add new bucket sort rule',
+    description:
+      'The addButtonLabel text in components / sections / BucketSortOrderSection.',
+  },
+});
+const messages = defineMessages({
+  bucketOrder: {
+    id: 'architect.sections.bucketSortOrderSection.bucketOrder',
+    defaultMessage: 'Bucket order',
+    description:
+      'The title text in components / sections / BucketSortOrderSection.',
+  },
+  bucketSortRules: {
+    id: 'architect.sections.bucketSortOrderSection.bucketSortRules',
+    defaultMessage: 'Bucket sort rules',
+    description:
+      'The label text in components / sections / BucketSortOrderSection.',
+  },
+  addOneOrMoreRulesTo: {
+    id: 'architect.sections.bucketSortOrderSection.addOneOrMoreRulesTo',
+    defaultMessage:
+      'Add one or more rules to determine the order in which nodes are displayed in the bucket before they are placed. Use the asterisk property to sort by the order that nodes were created.',
+    description:
+      'The hint text in components / sections / BucketSortOrderSection.',
+  },
+});
 
 type BucketSortOrderSectionProps = {
   /**
@@ -28,20 +73,24 @@ const SORT_RULE_PROPERTIES: PropertyField[] = [
 
 // A row's own cells cannot block the save (see RowField), and a rule missing
 // its direction fails `SortRuleSchema` after `prune`.
-const SORT_RULE_VALIDATION = {
-  completeRows: completeRows(SORT_RULE_PROPERTIES),
-};
 
 const BucketSortOrderSection = ({
   initialValue,
   disabled = false,
   maxItems = 5,
   optionGetter,
-  description = 'Set the order of nodes before they are placed.',
+  description: providedDescription,
 }: BucketSortOrderSectionProps) => {
+  const intl = useAppIntl();
+  const description =
+    providedDescription ?? intl.formatMessage(defaultMessages.description);
+
+  const SORT_RULE_VALIDATION = {
+    completeRows: completeRows(SORT_RULE_PROPERTIES, intl),
+  };
   return (
     <Section
-      title="Bucket order"
+      title={intl.formatMessage(messages.bucketOrder)}
       description={description}
       toggleable
       disabled={disabled}
@@ -49,11 +98,15 @@ const BucketSortOrderSection = ({
     >
       <ArchitectArrayField
         name="bucketSortOrder"
-        label="Bucket sort rules"
-        hint="Add one or more rules to determine the order in which nodes are displayed in the bucket before they are placed. Use the asterisk property to sort by the order that nodes were created."
+        label={intl.formatMessage(messages.bucketSortRules)}
+        hint={intl.formatMessage(messages.addOneOrMoreRulesTo)}
         component={MultiSelect}
-        emptyStateMessage="No sort rules have been created yet."
-        addButtonLabel="Add new bucket sort rule"
+        emptyStateMessage={intl.formatMessage(
+          additionalMessages.noSortRulesHaveBeenCreated,
+        )}
+        addButtonLabel={intl.formatMessage(
+          additionalMessages.addNewBucketSortRule,
+        )}
         initialValue={initialValue}
         properties={SORT_RULE_PROPERTIES}
         validation={SORT_RULE_VALIDATION}

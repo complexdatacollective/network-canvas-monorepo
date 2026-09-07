@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -8,6 +8,7 @@ import {
   renderStageForm,
 } from '~/components/StageEditor/__tests__/stageFormTestHarness';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
+import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
 const confirm = vi.fn();
 
@@ -107,8 +108,10 @@ describe('SkipLogic', () => {
 
     fireEvent.click(screen.getByRole('switch', { name: 'Skip logic' }));
 
-    expect(confirm).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'This will clear your skip logic' }),
+    expect(confirm).toHaveBeenCalledTimes(1);
+    const confirmation = confirm.mock.calls[0]?.[0] as { title?: ReactNode };
+    expect(renderQueuedMessage(confirmation.title)).toBe(
+      'This will clear your skip logic',
     );
 
     await waitFor(() => {

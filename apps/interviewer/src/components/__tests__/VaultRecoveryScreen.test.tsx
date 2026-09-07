@@ -79,7 +79,9 @@ describe('VaultRecoveryScreen', () => {
       await screen.findByRole('button', { name: /permanently delete/i }),
     );
 
-    expect(await screen.findByText(/boom/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText('The app data could not be reset.'),
+    ).toBeInTheDocument();
     // Confirm stays open and the destructive action is usable again.
     expect(
       screen.getByRole('button', { name: /permanently delete/i }),

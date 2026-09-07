@@ -12,7 +12,8 @@
   "type": "module",
   "exports": {
     ".": "./src/contract.ts",
-    "./surfaces": "./src/surfaces.ts"
+    "./surfaces": "./src/surfaces.ts",
+    "./telemetry": "./src/telemetry.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

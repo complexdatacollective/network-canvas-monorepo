@@ -45,7 +45,10 @@ const cursorSchema = z.strictObject({
 export type RotationCursor = z.infer<typeof cursorSchema>;
 
 export function parseRotationCursor(value: unknown): RotationCursor {
-  return cursorSchema.parse(value);
+  const cursor = cursorSchema.parse(value);
+  if (cursor.afterId !== null && cursor.phase !== 'oauth')
+    z.uuid().parse(cursor.afterId);
+  return cursor;
 }
 
 export function parseLegacyCursor(value: unknown): string | null {
@@ -340,14 +343,83 @@ async function rotateOAuth(
   );
 }
 
-const OLD_OAUTH = OAUTH_FIELDS.map(
-  ({ keyColumn }) => `(${keyColumn} IS NOT NULL AND ${keyColumn} <> $1)`,
-).join(' OR ');
+/**
+ * Offline conversion uses the connecting operator itself, never a SET ROLE
+ * capability available to the web/worker login. Check direct SELECT ACLs (or
+ * ownership/superuser authority), not has_column_privilege's inherited grants.
+ */
+async function legacyOperatorTransaction<T>(
+  pool: pg.Pool,
+  work: (client: pg.PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const access = await client.query<{ allowed: boolean }>(`
+      SELECT current_user = session_user AND identity.rolcanlogin
+        AND identity.rolname NOT IN ('studio_app', 'studio_maintenance', 'studio_backup')
+        AND (identity.rolsuper OR account.relowner = identity.oid OR NOT EXISTS (
+          SELECT 1 FROM unnest(ARRAY['accessToken', 'refreshToken', 'idToken']) required(name)
+          WHERE NOT EXISTS (
+            SELECT 1 FROM aclexplode(account.relacl) grant_entry
+            WHERE grant_entry.grantee = identity.oid AND grant_entry.privilege_type = 'SELECT'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM pg_attribute column_definition,
+              aclexplode(column_definition.attacl) grant_entry
+            WHERE column_definition.attrelid = account.oid
+              AND column_definition.attname = required.name AND NOT column_definition.attisdropped
+              AND grant_entry.grantee = identity.oid AND grant_entry.privilege_type = 'SELECT'
+          )
+        )) AS allowed
+      FROM pg_roles identity CROSS JOIN pg_class account
+      WHERE identity.rolname = session_user AND account.oid = to_regclass('account')
+        AND account.relkind = 'r' AND account.relpersistence = 'p'
+    `);
+    if (access.rows[0]?.allowed !== true) throw new ProtectedDataError();
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function readOrderedPage<Row extends pg.QueryResultRow>(
+  client: pg.PoolClient,
+  statement: string,
+  values: (string | number)[],
+): Promise<pg.QueryResult<Row>> {
+  await client.query(
+    'SET LOCAL enable_bitmapscan = off; SET LOCAL enable_seqscan = off; SET LOCAL enable_sort = off',
+  );
+  return client.query<Row>(statement, values);
+}
 
 /**
- * One bounded, resumable pass. The cursor is non-secret, binds target key IDs,
- * and advances only after committed records. Failure leaves the caller's last
- * returned cursor safe to replay. No keys/proofs are deleted on completion.
+ * RLS selectivity estimates can otherwise choose an eager bitmap/heap sort of
+ * the entire suffix before LIMIT. These maintenance-only, transaction-local
+ * settings retain native PK ordering and never affect application sessions.
+ */
+async function readMaintenancePage<Row extends pg.QueryResultRow>(
+  pool: pg.Pool,
+  statement: string,
+  values: (string | number)[],
+): Promise<pg.QueryResult<Row>> {
+  return credentialTransaction(
+    pool,
+    (client) => readOrderedPage<Row>(client, statement, values),
+    true,
+  );
+}
+
+/**
+ * Visit at most limit rows in native primary-key order, including rows already
+ * using the target keys. No remaining-corpus scan runs between pages. A cursor
+ * advances only after committed records and binds both target key purposes.
+ * passComplete means traversal exhaustion, not permission to retire old roots.
  */
 export async function rotateEncryptionBatch(
   pool: pg.Pool,
@@ -355,8 +427,9 @@ export async function rotateEncryptionBatch(
   input: { limit: number; cursor?: RotationCursor | null },
 ): Promise<{
   processed: number;
+  scanned: number;
+  passComplete: boolean;
   cursor: RotationCursor | null;
-  remaining: number;
 }> {
   const limit = limitSchema.parse(input.limit);
   const start: RotationCursor = input.cursor
@@ -375,58 +448,72 @@ export async function rotateEncryptionBatch(
   await credentialTransaction(pool, async () => undefined, true);
   let cursor = { ...start };
   let processed = 0;
-  while (processed < limit) {
-    const cap = limit - processed;
+  let scanned = 0;
+  while (scanned < limit) {
+    const cap = limit - scanned;
+    // Separate first/subsequent-page predicates let PostgreSQL use the native
+    // PK index directly, including when the prepared plan becomes generic.
+    const where = cursor.afterId === null ? '' : 'WHERE id > $2';
+    const values = cursor.afterId === null ? [cap] : [cap, cursor.afterId];
     let ids: string[];
     if (cursor.phase === 'participants') {
-      const selected = await pool.query<ParticipantCiphertextRow>(
-        `SELECT id, team_id, study_id, participant_code, pii_key_id, pii_algorithm, email_ciphertext, phone_ciphertext, name_ciphertext, attributes_ciphertext FROM participants WHERE pii_key_id IS NOT NULL AND pii_key_id <> $1 AND ($2::text IS NULL OR id::text > $2) ORDER BY id::text LIMIT $3`,
-        [cursor.piiKeyId, cursor.afterId, cap],
+      const selected = await readMaintenancePage<ParticipantCiphertextRow>(
+        pool,
+        `SELECT id, team_id, study_id, participant_code, pii_key_id, pii_algorithm, email_ciphertext, phone_ciphertext, name_ciphertext, attributes_ciphertext FROM participants ${where} ORDER BY id LIMIT $1`,
+        values,
       );
       ids = selected.rows.map((row) => row.id);
-      for (const row of selected.rows) await rotateParticipant(pool, keys, row);
+      for (const row of selected.rows) {
+        if (row.pii_key_id !== null && row.pii_key_id !== cursor.piiKeyId) {
+          await rotateParticipant(pool, keys, row);
+          processed += 1;
+        }
+      }
     } else if (cursor.phase === 'webhooks') {
-      const selected = await pool.query<WebhookCiphertextRow>(
-        'SELECT id, team_id, secret_ciphertext, secret_key_id, secret_algorithm, state FROM webhook_subscriptions WHERE secret_key_id <> $1 AND ($2::text IS NULL OR id::text > $2) ORDER BY id::text LIMIT $3',
-        [cursor.integrationKeyId, cursor.afterId, cap],
+      const selected = await readMaintenancePage<WebhookCiphertextRow>(
+        pool,
+        `SELECT id, team_id, secret_ciphertext, secret_key_id, secret_algorithm, state FROM webhook_subscriptions ${where} ORDER BY id LIMIT $1`,
+        values,
       );
       ids = selected.rows.map((row) => row.id);
-      for (const row of selected.rows) await rotateWebhook(pool, keys, row);
+      for (const row of selected.rows) {
+        if (row.secret_key_id !== cursor.integrationKeyId) {
+          await rotateWebhook(pool, keys, row);
+          processed += 1;
+        }
+      }
     } else {
-      const selected = await pool.query<OAuthRow>(
-        `SELECT ${OAUTH_SELECT} FROM account WHERE (${OLD_OAUTH}) AND ($2::text IS NULL OR id > $2) ORDER BY id LIMIT $3`,
-        [cursor.integrationKeyId, cursor.afterId, cap],
+      const selected = await readMaintenancePage<OAuthRow>(
+        pool,
+        `SELECT ${OAUTH_SELECT} FROM account ${where} ORDER BY id LIMIT $1`,
+        values,
       );
       ids = selected.rows.map((row) => row.id);
-      for (const row of selected.rows) await rotateOAuth(pool, keys, row);
+      for (const row of selected.rows) {
+        if (
+          OAUTH_FIELDS.some(
+            ({ keyId }) =>
+              row[keyId] !== null && row[keyId] !== cursor.integrationKeyId,
+          )
+        ) {
+          await rotateOAuth(pool, keys, row);
+          processed += 1;
+        }
+      }
     }
-    processed += ids.length;
-    if (ids.length === cap) {
-      cursor.afterId = ids.at(-1)!;
-      break;
-    }
+    scanned += ids.length;
+    if (ids.length === cap)
+      return {
+        processed,
+        scanned,
+        passComplete: false,
+        cursor: { ...cursor, afterId: ids.at(-1)! },
+      };
     const next = PHASES[PHASES.indexOf(cursor.phase) + 1];
-    if (!next) break;
+    if (!next) return { processed, scanned, passComplete: true, cursor: null };
     cursor = { ...cursor, phase: next, afterId: null };
   }
-  const count = await pool.query<{ remaining: number }>(
-    `SELECT ((SELECT count(*) FROM participants WHERE pii_key_id IS NOT NULL AND pii_key_id <> $2) + (SELECT count(*) FROM webhook_subscriptions WHERE secret_key_id <> $1) + (SELECT count(*) FROM account WHERE ${OLD_OAUTH}))::int AS remaining`,
-    [cursor.integrationKeyId, cursor.piiKeyId],
-  );
-  const remaining = count.rows[0]?.remaining ?? -1;
-  if (remaining < 0) throw new ProtectedDataError();
-  // Another old replica may have written behind this cursor. Restart a pass
-  // instead of falsely reporting success; operators stop old writers first.
-  return {
-    processed,
-    remaining,
-    cursor:
-      remaining === 0
-        ? null
-        : processed < limit
-          ? { ...start, phase: 'participants', afterId: null }
-          : cursor,
-  };
+  throw new ProtectedDataError();
 }
 
 /** Offline only: preserve legacy values until encryption and audit commit. */
@@ -434,65 +521,61 @@ export async function migrateLegacyOAuthBatch(
   pool: pg.Pool,
   keys: EncryptionKeys,
   input: { limit: number; afterId?: string | null },
-): Promise<{ processed: number; afterId: string | null; remaining: number }> {
+): Promise<{
+  processed: number;
+  scanned: number;
+  afterId: string | null;
+  passComplete: boolean;
+}> {
   const limit = limitSchema.parse(input.limit);
   const afterId = parseLegacyCursor(input.afterId ?? null);
-  const legacyWhere =
-    '"accessToken" IS NOT NULL OR "refreshToken" IS NOT NULL OR "idToken" IS NOT NULL';
-  await credentialTransaction(pool, async () => undefined, true);
-  const ids = await pool.query<{ id: string }>(
-    `SELECT id FROM account WHERE (${legacyWhere}) AND ($1::text IS NULL OR id > $1) ORDER BY id LIMIT $2`,
-    [afterId, limit],
+  const ids = await legacyOperatorTransaction(pool, (client) =>
+    readOrderedPage<{ id: string; legacy: boolean }>(
+      client,
+      `SELECT id, legacy_tokens_present AS legacy FROM account ${afterId === null ? '' : 'WHERE id > $2'} ORDER BY id LIMIT $1`,
+      afterId === null ? [limit] : [limit, afterId],
+    ),
   );
-  for (const { id } of ids.rows) {
-    await credentialTransaction(
-      pool,
-      async (client) => {
-        const selected = await client.query<
-          OAuthRow & {
-            legacy_access: string | null;
-            legacy_refresh: string | null;
-            legacy_id: string | null;
-          }
-        >(
-          `SELECT ${OAUTH_SELECT}, "accessToken" AS legacy_access, "refreshToken" AS legacy_refresh, "idToken" AS legacy_id FROM account WHERE id = $1 FOR UPDATE`,
-          [id],
-        );
-        const row = selected.rows[0];
-        if (
-          !row ||
-          [row.legacy_access, row.legacy_refresh, row.legacy_id].every(
-            (value) => value === null,
-          )
+  let processed = 0;
+  for (const { id, legacy } of ids.rows) {
+    if (!legacy) continue;
+    const converted = await legacyOperatorTransaction(pool, async (client) => {
+      const selected = await client.query<
+        OAuthRow & {
+          legacy_access: string | null;
+          legacy_refresh: string | null;
+          legacy_id: string | null;
+        }
+      >(
+        `SELECT ${OAUTH_SELECT}, "accessToken" AS legacy_access, "refreshToken" AS legacy_refresh, "idToken" AS legacy_id FROM account WHERE id = $1 FOR UPDATE`,
+        [id],
+      );
+      const row = selected.rows[0];
+      if (
+        !row ||
+        [row.legacy_access, row.legacy_refresh, row.legacy_id].every(
+          (value) => value === null,
         )
-          return;
-        if (OAUTH_FIELDS.some(({ field }) => row[field] !== null))
-          throw new ProtectedDataError();
-        const sealed = sealOAuthFields(keys, row, {
-          accessToken: row.legacy_access,
-          refreshToken: row.legacy_refresh,
-          idToken: row.legacy_id,
-        });
-        await writeOAuth(client, id, sealed, true);
-        await appendCredentialAudit(
-          client,
-          row,
-          'migrate_legacy',
-          randomUUID(),
-        );
-      },
-      true,
-    );
+      )
+        return false;
+      if (OAUTH_FIELDS.some(({ field }) => row[field] !== null))
+        throw new ProtectedDataError();
+      const sealed = sealOAuthFields(keys, row, {
+        accessToken: row.legacy_access,
+        refreshToken: row.legacy_refresh,
+        idToken: row.legacy_id,
+      });
+      await writeOAuth(client, id, sealed, true);
+      await appendCredentialAudit(client, row, 'migrate_legacy', randomUUID());
+      return true;
+    });
+    if (converted) processed += 1;
   }
-  const count = await pool.query<{ remaining: number }>(
-    `SELECT count(*)::int AS remaining FROM account WHERE ${legacyWhere}`,
-  );
-  const remaining = count.rows[0]?.remaining ?? -1;
-  if (remaining < 0) throw new ProtectedDataError();
+  const passComplete = ids.rows.length < limit;
   return {
-    processed: ids.rows.length,
-    remaining,
-    afterId:
-      remaining === 0 || ids.rows.length < limit ? null : ids.rows.at(-1)!.id,
+    processed,
+    scanned: ids.rows.length,
+    passComplete,
+    afterId: passComplete ? null : ids.rows.at(-1)!.id,
   };
 }

@@ -19,6 +19,7 @@ import protocolValidation from '~/ducks/modules/protocolValidation';
 import stageEditorDraft, {
   draftTimelineActions,
 } from '~/ducks/modules/stageEditorDraft';
+import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
 import NestedDraftReclaimDialog from '../NestedDraftReclaimDialog';
 
@@ -64,12 +65,12 @@ const renderDialog = (store: TestStore, editor: ReactNode = <NestedEditor />) =>
 
 const lastDialog = () =>
   openDialogMock.mock.calls.at(-1)?.[0] as {
-    title: string;
-    description: string;
+    title: ReactNode;
+    description: ReactNode;
     intent: string;
     actions: {
-      primary: { label: string; value: string };
-      cancel: { label: string; value: null };
+      primary: { label: ReactNode; value: string };
+      cancel: { label: ReactNode; value: null };
     };
   };
 
@@ -125,13 +126,21 @@ describe('NestedDraftReclaimDialog', () => {
       expect(openDialogMock).toHaveBeenCalledTimes(1);
     });
     const dialog = lastDialog();
-    expect(dialog.title).toBe('An editor is still open');
-    expect(dialog.description).toMatch(/cancel that editor to continue/i);
-    expect(dialog.description).not.toMatch(/finish that editor/i);
+    expect(renderQueuedMessage(dialog.title)).toBe('An editor is still open');
+    expect(renderQueuedMessage(dialog.description)).toMatch(
+      /cancel that editor to continue/i,
+    );
+    expect(renderQueuedMessage(dialog.description)).not.toMatch(
+      /finish that editor/i,
+    );
     // Nothing offered here downloads anything: the stage flow's copy is built
     // from the stage draft, which does not contain this editor's values.
-    expect(dialog.actions.primary.label).toBe('Back to the Editor');
-    expect(dialog.actions.cancel.label).toBe('Decide Later');
+    expect(renderQueuedMessage(dialog.actions.primary.label)).toBe(
+      'Back to the Editor',
+    );
+    expect(renderQueuedMessage(dialog.actions.cancel.label)).toBe(
+      'Decide Later',
+    );
     // `DialogProvider` autofocuses cancel on a warning and primary otherwise;
     // nothing here is discouraged, so focus belongs on the primary action.
     expect(dialog.intent).toBe('info');
@@ -150,10 +159,12 @@ describe('NestedDraftReclaimDialog', () => {
       expect(openDialogMock).toHaveBeenCalledTimes(1);
     });
     const dialog = lastDialog();
-    expect(dialog.description).toMatch(
+    expect(renderQueuedMessage(dialog.description)).toMatch(
       /Finish that editor to move its changes into this stage/i,
     );
-    expect(dialog.description).toMatch(/or cancel it to discard them/i);
+    expect(renderQueuedMessage(dialog.description)).toMatch(
+      /or cancel it to discard them/i,
+    );
   });
 
   it('takes the question away once the editor that raised it is gone', async () => {

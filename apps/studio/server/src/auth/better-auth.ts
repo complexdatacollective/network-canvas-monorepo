@@ -42,6 +42,9 @@ export function createBetterAuthInstance(
         );
       },
     },
+    // Better Call otherwise prints unhandled errors after the configured logger.
+    // Let the owned HTTP boundary return a fixed diagnostic instead.
+    onAPIError: { throw: true },
     baseURL: env.baseUrl,
     basePath: '/api/auth',
     secret: env.secret,
@@ -136,9 +139,10 @@ export function createBetterAuthInstance(
           returned: false,
         },
       },
-      // Managed deployments retain their provider trust policy. Self-hosted
-      // linking requires an actual verified-email claim, including for an
-      // existing owner: some Entra tenants omit it and must use a magic link.
+      // Self-hosts do not trust a provider name as proof of an email address.
+      // In particular, an Entra email claim is mutable; the enrollment hook
+      // requires provider-verified email evidence or the existing mailbox-proof
+      // flow. The managed provider policy remains separately configured below.
       accountLinking: {
         enabled: true,
         trustedProviders:
@@ -210,7 +214,25 @@ export function createBetterAuthService(
   const auth = createBetterAuthInstance(env, pool, mailer, options);
   const db = drizzle({ client: pool });
   return {
-    handler: (request) => auth.handler(request),
+    handler: async (request) => {
+      try {
+        const response = await auth.handler(request);
+        if (response.status < 500) return response;
+      } catch {
+        // Provider and database errors may contain credentials or identities.
+      }
+      logOperational('STUDIO_AUTH_ERROR');
+      return Response.json(
+        { code: 'STUDIO_AUTH_UNAVAILABLE' },
+        {
+          status: 503,
+          headers: {
+            'Cache-Control': 'no-store',
+            'Referrer-Policy': 'no-referrer',
+          },
+        },
+      );
+    },
     getSession: async (headers) => {
       const result = await auth.api.getSession({ headers });
       if (!result) return null;

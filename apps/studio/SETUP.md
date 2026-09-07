@@ -45,7 +45,11 @@ addresses. Existing accounts can still sign in with their password. Accepting
 an invitation remains a separate, audited action that checks its current
 status and the signed-in email. OAuth linking to an existing self-hosted
 account also requires a provider-verified email claim. A provider that omits
-that claim cannot enroll or link that identity; use a magic link instead.
+that evidence cannot enroll or link that identity; use a magic link instead.
+Microsoft accounts may provide `email_verified` or an exact mailbox match in
+`verified_primary_email`/`verified_secondary_email`. An ordinary mutable email
+claim or email-domain ownership alone does not establish mailbox ownership;
+signing in locally does not override that provider linking requirement.
 
 Managed deployments do not expose `/setup` or its setup RPCs and retain
 their managed enrollment behavior.

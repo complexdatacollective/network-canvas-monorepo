@@ -1,5 +1,13 @@
+import {
+  type IntlShape,
+  createAppIntl,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+
+const defaultIntl = createAppIntl({ locale: 'en' });
 import { useState, useSyncExternalStore } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   type BrowserStorageProfile,
   getBrowserStorageProfile,
@@ -12,6 +20,50 @@ import {
   subscribeInstalled,
   subscribeInstallPrompt,
 } from '~/utils/installPrompt';
+const utilityMessages = defineMessages({
+  rarelyRemovesNetworkCanvasData: {
+    id: 'architect.utility.installBanner.rarelyRemovesNetworkCanvasData',
+    defaultMessage:
+      '{browserName} rarely removes Network Canvas data automatically, but data stored in a browser tab is not guaranteed. Install Architect now to protect your protocols from being deleted.',
+    description:
+      'Researcher-facing explanatory text in components / InstallBanner.',
+  },
+  rarelyRemovesNetworkCanvasData16bdc: {
+    id: 'architect.utility.installBanner.rarelyRemovesNetworkCanvasData16bdc',
+    defaultMessage:
+      "{browserName} rarely removes Network Canvas data automatically, but data stored in a browser tab is not guaranteed. Use the install icon in the browser's address bar to install Architect now and protect your protocols from being deleted.",
+    description:
+      'Researcher-facing explanatory text in components / InstallBanner.',
+  },
+  mayRemoveNetworkCanvasData: {
+    id: 'architect.utility.installBanner.mayRemoveNetworkCanvasData',
+    defaultMessage:
+      '{browserName} may remove Network Canvas data when this device runs low on storage. Allow persistent storage when {browserNameValue} asks, and install Architect if your device supports it to protect your protocols from being deleted.',
+    description:
+      'Researcher-facing explanatory text in components / InstallBanner.',
+  },
+  after7DaysOfInactivity: {
+    id: 'architect.utility.installBanner.after7DaysOfInactivity',
+    defaultMessage:
+      '{usesWebKit, select, true {{browserName} uses WebKit, which is known to remove Network Canvas data after 7 days of inactivity.} other {{browserName} is known to remove Network Canvas data after 7 days of inactivity.}} Install Architect now to protect your protocols from being deleted: choose Share → Add to Dock.',
+    description:
+      'Researcher-facing explanatory text in components / InstallBanner.',
+  },
+  after7DaysOfInactivity7c6c0: {
+    id: 'architect.utility.installBanner.after7DaysOfInactivity7c6c0',
+    defaultMessage:
+      '{usesWebKit, select, true {{browserName} uses WebKit, which is known to remove Network Canvas data after 7 days of inactivity.} other {{browserName} is known to remove Network Canvas data after 7 days of inactivity.}} Install Architect now to protect your protocols from being deleted: choose Share → Add to Home Screen.',
+    description:
+      'Researcher-facing explanatory text in components / InstallBanner.',
+  },
+});
+const messages = defineMessages({
+  installArchitect: {
+    id: 'architect.installBanner.installArchitect',
+    defaultMessage: 'Install Architect',
+    description: 'The aria-label text in components / InstallBanner.',
+  },
+});
 
 const SESSION_DISMISS_KEY = 'architect:install-banner-dismissed';
 
@@ -28,15 +80,24 @@ const readSessionDismissed = () => {
 const bannerMessage = (
   profile: BrowserStorageProfile,
   canPromptInstall: boolean,
+  intl: IntlShape = defaultIntl,
 ): string => {
   const { browserName, engine, risk } = profile;
   if (risk === 3) {
     return canPromptInstall
-      ? `${browserName} rarely removes Network Canvas data automatically, but data stored in a browser tab is not guaranteed. Install Architect now to protect your protocols from being deleted.`
-      : `${browserName} rarely removes Network Canvas data automatically, but data stored in a browser tab is not guaranteed. Use the install icon in the browser's address bar to install Architect now and protect your protocols from being deleted.`;
+      ? intl.formatMessage(utilityMessages.rarelyRemovesNetworkCanvasData, {
+          browserName: browserName,
+        })
+      : intl.formatMessage(
+          utilityMessages.rarelyRemovesNetworkCanvasData16bdc,
+          { browserName: browserName },
+        );
   }
   if (risk === 2) {
-    return `${browserName} may remove Network Canvas data when this device runs low on storage. Allow persistent storage when ${browserName} asks, and install Architect if your device supports it to protect your protocols from being deleted.`;
+    return intl.formatMessage(utilityMessages.mayRemoveNetworkCanvasData, {
+      browserName: browserName,
+      browserNameValue: browserName,
+    });
   }
   // WebKit: the 7-day eviction is its documented behaviour, and the install
   // path depends on the device. This also covers Chrome/Firefox on iOS, where
@@ -44,13 +105,16 @@ const bannerMessage = (
   // have no touchscreen.
   const isMac =
     navigator.platform.startsWith('Mac') && navigator.maxTouchPoints === 0;
-  const storagePolicyDescription =
-    engine === 'webkit' && browserName !== 'Safari'
-      ? `${browserName} uses WebKit, which is known to remove Network Canvas data`
-      : `${browserName} is known to remove Network Canvas data`;
+  const usesWebKit = engine === 'webkit' && browserName !== 'Safari';
   return isMac
-    ? `${storagePolicyDescription} after 7 days of inactivity. Install Architect now to protect your protocols from being deleted: choose Share → Add to Dock.`
-    : `${storagePolicyDescription} after 7 days of inactivity. Install Architect now to protect your protocols from being deleted: choose Share → Add to Home Screen.`;
+    ? intl.formatMessage(utilityMessages.after7DaysOfInactivity, {
+        browserName,
+        usesWebKit: String(usesWebKit),
+      })
+    : intl.formatMessage(utilityMessages.after7DaysOfInactivity7c6c0, {
+        browserName,
+        usesWebKit: String(usesWebKit),
+      });
 };
 
 function InstallBannerView({
@@ -64,14 +128,15 @@ function InstallBannerView({
   onInstall: () => void;
   onDismiss: () => void;
 }) {
+  const intl = useAppIntl();
   return (
     <StorageRiskBanner
-      aria-label="Install Architect"
+      aria-label={intl.formatMessage(messages.installArchitect)}
       risk={profile.risk}
       installAction={canPromptInstall ? onInstall : undefined}
       onDismiss={onDismiss}
     >
-      {bannerMessage(profile, canPromptInstall)}
+      {bannerMessage(profile, canPromptInstall, intl)}
     </StorageRiskBanner>
   );
 }

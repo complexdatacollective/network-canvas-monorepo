@@ -16,14 +16,19 @@ import {
 } from '../../__tests__/support/postgres.ts';
 import { readEnv } from '../../env.ts';
 import { completeSetup } from '../../instance/bootstrap.ts';
+import { operationalLogger } from '../../observability/logger.ts';
 import { configuration, rootOne } from '../../pii/__tests__/fixtures.ts';
 import { initializeEncryption } from '../../pii/initialize.ts';
-import { createBetterAuthInstance } from '../better-auth.ts';
+import {
+  createBetterAuthInstance,
+  createBetterAuthService,
+} from '../better-auth.ts';
 
 const db = await reachableDb();
 const env = readEnv();
 const ownerEmail = 'owner@example.com';
 const newEmail = 'invited@example.com';
+const microsoftTenant = '11111111-2222-4333-8444-555555555555';
 const { publicKey, privateKey } = generateKeyPairSync('rsa', {
   modulusLength: 2048,
 });
@@ -34,7 +39,10 @@ const jwk = {
   use: 'sig',
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 async function fixture(mode: DeploymentMode = 'self-hosted') {
   if (!db || !env.auth)
@@ -68,6 +76,11 @@ async function fixture(mode: DeploymentMode = 'self-hosted') {
           clientId: 'enrollment-test-client',
           clientSecret: 'enrollment-test-secret',
         },
+        microsoft: {
+          clientId: 'enrollment-test-client',
+          clientSecret: 'enrollment-test-secret',
+          tenantId: microsoftTenant,
+        },
       },
     },
     scratch.app,
@@ -78,7 +91,7 @@ async function fixture(mode: DeploymentMode = 'self-hosted') {
     },
     { encryptionKeys: keys, deploymentMode: mode },
   );
-  return { scratch, auth, sent };
+  return { scratch, auth, sent, keys };
 }
 
 type Fixture = Awaited<ReturnType<typeof fixture>>;
@@ -101,7 +114,12 @@ async function invitation(
   );
 }
 
-function request(auth: Fixture['auth'], path: string, body: object) {
+function request(
+  auth: Pick<Fixture['auth'], 'handler'>,
+  path: string,
+  body: object,
+  cookie?: string,
+) {
   if (!env.auth) throw new Error('Missing auth fixture');
   return auth.handler(
     new Request(new URL(path, env.auth.baseUrl), {
@@ -109,6 +127,7 @@ function request(auth: Fixture['auth'], path: string, body: object) {
       headers: {
         'content-type': 'application/json',
         'origin': env.auth.baseUrl,
+        ...(cookie ? { cookie } : {}),
       },
       body: JSON.stringify(body),
     }),
@@ -139,17 +158,27 @@ function sessionCookie(response: Response) {
     .find((cookie) => /(?:^|\.)session_token=[^;]/.test(cookie));
 }
 
-async function googleCallback(
+async function socialCallback(
   f: Fixture,
+  provider: 'google' | 'microsoft',
   email: string,
-  verified: boolean | undefined,
+  claims: Record<string, unknown>,
+  linkCookie?: string,
 ) {
+  const tokenUrl =
+    provider === 'google'
+      ? 'https://oauth2.googleapis.com/token'
+      : `https://login.microsoftonline.com/${microsoftTenant}/oauth2/v2.0/token`;
+  const keysUrl =
+    provider === 'google'
+      ? 'https://www.googleapis.com/oauth2/v3/certs'
+      : `https://login.microsoftonline.com/${microsoftTenant}/discovery/v2.0/keys`;
   let idToken = '';
   const calls: string[] = [];
   vi.stubGlobal('fetch', async (input: string | URL | Request) => {
     const url = input instanceof Request ? input.url : input.toString();
     calls.push(url);
-    if (url === 'https://oauth2.googleapis.com/token')
+    if (url === tokenUrl)
       return Response.json({
         access_token: 'synthetic-enrollment-access',
         refresh_token: 'synthetic-enrollment-refresh',
@@ -157,15 +186,24 @@ async function googleCallback(
         token_type: 'Bearer',
         expires_in: 3600,
       });
-    if (url === 'https://www.googleapis.com/oauth2/v3/certs')
-      return Response.json({ keys: [jwk] });
+    if (url === keysUrl) return Response.json({ keys: [jwk] });
+    if (
+      provider === 'microsoft' &&
+      url === 'https://graph.microsoft.com/v1.0/me/photos/48x48/%24value'
+    )
+      return new Response(null, { status: 404 });
     throw new Error(`Unexpected OAuth transport: ${url}`);
   });
-  const start = await request(f.auth, '/api/auth/sign-in/social', {
-    provider: 'google',
-    callbackURL: '/sign-in',
-    errorCallbackURL: '/sign-in',
-  });
+  const start = await request(
+    f.auth,
+    linkCookie ? '/api/auth/link-social' : '/api/auth/sign-in/social',
+    {
+      provider,
+      callbackURL: '/sign-in',
+      errorCallbackURL: '/sign-in',
+    },
+    linkCookie,
+  );
   expect(start.status).toBe(200);
   const body = (await start.json()) as { url: string };
   const authorization = new URL(body.url);
@@ -175,34 +213,51 @@ async function googleCallback(
     Buffer.from(JSON.stringify(value)).toString('base64url');
   const now = Math.floor(Date.now() / 1000);
   const unsigned = `${encode({ alg: 'RS256', kid: jwk.kid })}.${encode({
-    iss: 'https://accounts.google.com',
+    iss:
+      provider === 'google'
+        ? 'https://accounts.google.com'
+        : `https://login.microsoftonline.com/${microsoftTenant}/v2.0`,
+    ...(provider === 'microsoft'
+      ? { tid: microsoftTenant, oid: randomUUID() }
+      : {}),
     aud: 'enrollment-test-client',
     sub: randomUUID(),
     iat: now,
     exp: now + 300,
     email,
-    email_verified: verified,
+    ...claims,
     name: 'Invited Researcher',
     ...(authorization.searchParams.get('nonce')
       ? { nonce: authorization.searchParams.get('nonce') }
       : {}),
   })}`;
   idToken = `${unsigned}.${sign('RSA-SHA256', Buffer.from(unsigned), privateKey).toString('base64url')}`;
-  const callback = new URL('/api/auth/callback/google', env.auth!.baseUrl);
+  const callback = new URL(`/api/auth/callback/${provider}`, env.auth!.baseUrl);
   callback.searchParams.set('state', state!);
   callback.searchParams.set('code', 'synthetic-authorization-code');
   const response = await f.auth.handler(
     new Request(callback, {
       headers: {
-        cookie: start.headers
-          .getSetCookie()
-          .map((cookie) => cookie.split(';')[0])
+        cookie: [
+          linkCookie,
+          ...start.headers.getSetCookie().map((cookie) => cookie.split(';')[0]),
+        ]
+          .filter(Boolean)
           .join('; '),
       },
     }),
   );
-  expect(calls).toContain('https://oauth2.googleapis.com/token');
+  expect(calls).toContain(tokenUrl);
+  expect(response.status).toBe(302);
   return response;
+}
+
+function googleCallback(
+  f: Fixture,
+  email: string,
+  verified: boolean | undefined,
+) {
+  return socialCallback(f, 'google', email, { email_verified: verified });
 }
 
 describe.skipIf(!db)(
@@ -380,6 +435,169 @@ describe.skipIf(!db)(
         }
       },
     );
+
+    it.each([
+      {
+        name: 'email_verified',
+        claims: { email_verified: true },
+        accepted: true,
+      },
+      {
+        name: 'verified_primary_email',
+        claims: { verified_primary_email: [newEmail] },
+        accepted: true,
+      },
+      {
+        name: 'verified_secondary_email',
+        claims: { verified_secondary_email: [newEmail] },
+        accepted: true,
+      },
+      { name: 'ordinary mutable email', claims: {}, accepted: false },
+      {
+        name: 'different verified mailbox',
+        claims: { verified_primary_email: ['someone-else@example.com'] },
+        accepted: false,
+      },
+      {
+        name: 'explicit false overrides verified list',
+        claims: { email_verified: false, verified_primary_email: [newEmail] },
+        accepted: false,
+      },
+      {
+        name: 'domain ownership only',
+        claims: { xms_edov: true },
+        accepted: false,
+      },
+    ])(
+      'uses native Microsoft $name evidence for invited enrollment',
+      async ({ claims, accepted }) => {
+        const f = await fixture();
+        try {
+          await invitation(f);
+          const response = await socialCallback(
+            f,
+            'microsoft',
+            newEmail,
+            claims,
+          );
+          const error = new URL(
+            response.headers.get('location')!,
+            env.auth!.baseUrl,
+          ).searchParams.get('error');
+          expect(error).toBe(accepted ? null : 'INVITATION_REQUIRED');
+          expect(Boolean(sessionCookie(response))).toBe(accepted);
+          expect(await users(f)).toEqual(
+            accepted
+              ? [{ email: newEmail }, { email: ownerEmail }]
+              : [{ email: ownerEmail }],
+          );
+          const accounts = (
+            await f.scratch.pool.query(
+              `SELECT "accessToken", "refreshToken", "idToken", access_token_ciphertext FROM account WHERE "providerId" = 'microsoft'`,
+            )
+          ).rows;
+          expect(accounts).toHaveLength(accepted ? 1 : 0);
+          if (accepted) {
+            expect(accounts[0]).toMatchObject({
+              accessToken: null,
+              refreshToken: null,
+              idToken: null,
+            });
+            expect(Buffer.isBuffer(accounts[0]?.access_token_ciphertext)).toBe(
+              true,
+            );
+          }
+        } finally {
+          await f.scratch.dispose();
+        }
+      },
+    );
+
+    it.each(['implicit', 'authenticated explicit'])(
+      'keeps a verified local mailbox safe from Microsoft %s linking without provider mailbox evidence',
+      async (linkMode) => {
+        const f = await fixture();
+        try {
+          await invitation(f);
+          const proof = await verifyMagicLink(f, newEmail);
+          const cookie = sessionCookie(proof)?.split(';')[0];
+          expect(cookie).toBeTruthy();
+          const response = await socialCallback(
+            f,
+            'microsoft',
+            newEmail,
+            {},
+            linkMode === 'authenticated explicit' ? cookie : undefined,
+          );
+          expect(
+            new URL(
+              response.headers.get('location')!,
+              env.auth!.baseUrl,
+            ).searchParams.get('error'),
+          ).toBeTruthy();
+          expect(sessionCookie(response)).toBeUndefined();
+          expect(
+            (
+              await f.scratch.pool.query(
+                `SELECT id FROM account WHERE "providerId" = 'microsoft'`,
+              )
+            ).rows,
+          ).toEqual([]);
+          expect(await users(f)).toEqual([
+            { email: newEmail },
+            { email: ownerEmail },
+          ]);
+          // Mailbox-proof authentication remains usable after the refused link.
+          expect(
+            (
+              await f.auth.api.getSession({
+                headers: new Headers({ cookie: cookie! }),
+              })
+            )?.user.email,
+          ).toBe(newEmail);
+        } finally {
+          await f.scratch.dispose();
+        }
+      },
+    );
+
+    it('contains an actual Better Auth transport failure before framework logging or response exposure', async () => {
+      const f = await fixture();
+      try {
+        const raw = vi
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const diagnostic = vi
+          .spyOn(operationalLogger, 'diagnostic')
+          .mockImplementation(() => undefined);
+        const canary = 'private-researcher@example.test-provider-token-canary';
+        const failing = createBetterAuthService(
+          env.auth!,
+          f.scratch.app,
+          {
+            sendMagicLink: async () => {
+              throw new Error(canary);
+            },
+          },
+          { deploymentMode: 'self-hosted', encryptionKeys: f.keys },
+        );
+        const response = await request(
+          failing,
+          '/api/auth/sign-in/magic-link',
+          { email: newEmail, callbackURL: '/sign-in' },
+        );
+        expect(raw).not.toHaveBeenCalled();
+        expect(response.status).toBe(503);
+        expect(await response.json()).toEqual({
+          code: 'STUDIO_AUTH_UNAVAILABLE',
+        });
+        expect(diagnostic).toHaveBeenCalledWith('STUDIO_AUTH_ERROR', undefined);
+        expect(JSON.stringify(diagnostic.mock.calls)).not.toContain(canary);
+        expect(await users(f)).toEqual([{ email: ownerEmail }]);
+      } finally {
+        await f.scratch.dispose();
+      }
+    });
 
     it('preserves managed public password enrollment', async () => {
       const f = await fixture('managed');

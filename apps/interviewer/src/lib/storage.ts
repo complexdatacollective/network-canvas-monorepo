@@ -1,3 +1,20 @@
+import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+
+const messages = defineMessages({
+  unknown: {
+    id: 'interviewer.storage.unknown',
+    defaultMessage: 'unknown',
+    description: 'Storage size when the browser cannot report device usage.',
+  },
+  size: {
+    id: 'interviewer.storage.size',
+    defaultMessage: '{value} {unit}',
+    description:
+      'Formatted storage size and stable byte unit such as MB; value is already locale-formatted.',
+  },
+});
+
 export type StorageEstimate = {
   usage: number | null;
   quota: number | null;
@@ -71,9 +88,16 @@ export async function estimateStorage(): Promise<StorageEstimate> {
   }
 }
 
-export function formatBytes(bytes: number | null): string {
-  if (bytes === null) return 'unknown';
-  if (bytes < 1024) return `${bytes} B`;
+export function formatBytes(
+  bytes: number | null,
+  intl: IntlShape = createAppIntl({ locale: 'en' }),
+): string {
+  if (bytes === null) return intl.formatMessage(messages.unknown);
+  if (bytes < 1024)
+    return intl.formatMessage(messages.size, {
+      value: intl.formatNumber(bytes),
+      unit: 'B',
+    });
   const units = ['KB', 'MB', 'GB', 'TB'];
   let value = bytes / 1024;
   let unitIndex = 0;
@@ -81,5 +105,12 @@ export function formatBytes(bytes: number | null): string {
     value /= 1024;
     unitIndex += 1;
   }
-  return `${value.toFixed(value < 10 ? 2 : 1)} ${units[unitIndex]}`;
+  const digits = value < 10 ? 2 : 1;
+  return intl.formatMessage(messages.size, {
+    value: intl.formatNumber(value, {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    }),
+    unit: units[unitIndex],
+  });
 }

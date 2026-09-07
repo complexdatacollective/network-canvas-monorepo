@@ -2,6 +2,7 @@
 
 import {
   cloneElement,
+  isValidElement,
   type MouseEvent,
   type ReactElement,
   type ReactNode,
@@ -29,6 +30,41 @@ export const ALLOWED_MARKDOWN_SECTION_TAGS = [
   'hr',
   'a',
 ];
+
+const defaultMarkdownOptions = {
+  allowedElements: ALLOWED_MARKDOWN_LABEL_TAGS,
+  remarkPlugins: [remarkGemoji, remarkGfm],
+  rehypePlugins: [rehypeRaw, rehypeSanitize],
+  unwrapDisallowed: true,
+} satisfies Options;
+
+const renderedText = (node: unknown): string => {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node);
+  }
+  if (Array.isArray(node)) return node.map(renderedText).join('');
+  if (
+    typeof node === 'object' &&
+    node !== null &&
+    isValidElement<{ children?: ReactNode }>(node)
+  ) {
+    return renderedText(node.props.children);
+  }
+  return '';
+};
+
+/**
+ * Text produced by RenderMarkdown's default label dialect, including GFM,
+ * emoji, sanitized HTML and unwrapped tags. Does not apply custom components
+ * or section options. Useful for grammar around an unchanged authored label.
+ */
+const getMarkdownLabelText = (markdown: string): string =>
+  // react-markdown's synchronous entry point processes to an intrinsic React
+  // tree without hooks. Reading that tree also includes its final allow-list
+  // and URL processing, without a second parser or a browser/server render.
+  renderedText(
+    ReactMarkdown({ ...defaultMarkdownOptions, children: markdown }),
+  );
 
 // Open links in the OS browser, never inside the app. `window.open` is the one
 // call that does the right thing on every target: Electron's
@@ -114,14 +150,18 @@ const RenderMarkdown = ({
 }: RenderMarkdownProps) => {
   const markdownContent = (
     <ReactMarkdown
-      allowedElements={allowedElements ?? ALLOWED_MARKDOWN_LABEL_TAGS}
+      allowedElements={
+        allowedElements ?? defaultMarkdownOptions.allowedElements
+      }
       components={{
         ...defaultMarkdownRenderers,
         ...components,
       }}
-      remarkPlugins={remarkPlugins ?? [remarkGemoji, remarkGfm]}
-      rehypePlugins={rehypePlugins ?? [rehypeRaw, rehypeSanitize]}
-      unwrapDisallowed={unwrapDisallowed ?? true}
+      remarkPlugins={remarkPlugins ?? defaultMarkdownOptions.remarkPlugins}
+      rehypePlugins={rehypePlugins ?? defaultMarkdownOptions.rehypePlugins}
+      unwrapDisallowed={
+        unwrapDisallowed ?? defaultMarkdownOptions.unwrapDisallowed
+      }
       {...props}
     >
       {children}
@@ -135,4 +175,4 @@ const RenderMarkdown = ({
   return markdownContent;
 };
 
-export { RenderMarkdown };
+export { getMarkdownLabelText, RenderMarkdown };

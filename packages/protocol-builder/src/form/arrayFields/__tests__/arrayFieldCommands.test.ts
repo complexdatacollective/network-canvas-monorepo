@@ -96,8 +96,35 @@ describe('resolveMove', () => {
     });
   });
 
+  it('anchors on the nearest surviving row when the one it would follow has gone', () => {
+    // Rendered [A, B, C]; A is dragged to the bottom, and C has been deleted
+    // since. The row A was to follow is gone, and the row it was also moving
+    // past still says where it belongs: after B.
+    expect(resolveMove([A, B], [A, B, C], 0, 2, byId)).toEqual({
+      from: 0,
+      to: 1,
+    });
+  });
+
+  it('anchors on the nearest surviving row it precedes when the rows above have gone', () => {
+    // Rendered [A, B, C]; C is dragged to the top, and A has been deleted
+    // since. Nothing the researcher could see survives above C's destination,
+    // so the row it will PRECEDE is the anchor, and C stays in front of B.
+    expect(resolveMove([B, C], [A, B, C], 2, 0, byId)).toEqual({
+      from: 1,
+      to: 0,
+    });
+  });
+
   it('refuses a move whose row has gone', () => {
     expect(resolveMove([A, C], [A, B, C], 1, 0, byId)).toBeUndefined();
+  });
+
+  it('refuses a move no row the editor could see still anchors', () => {
+    // Rendered [A, B, C]; A is dragged to the bottom. Both rows it was to move
+    // past have gone, and the row that arrived in their place is one the
+    // researcher never saw — nothing they did says where A belongs beside it.
+    expect(resolveMove([REMOTE, A], [A, B, C], 0, 2, byId)).toBeUndefined();
   });
 });
 

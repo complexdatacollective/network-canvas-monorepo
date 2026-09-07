@@ -17,8 +17,7 @@ import { protocolLibraryListenerMiddleware } from './middleware/protocolLibraryL
 import { protocolValidationListenerMiddleware } from './middleware/protocolValidationListener';
 import { scrollPositionsListenerMiddleware } from './middleware/scrollPositionsListener';
 import { getActiveProtocolId } from './modules/app';
-import type { RootState } from './modules/root';
-import { rootReducer } from './modules/root';
+import { type RootState, rootReducer } from './modules/root';
 import { createStoreRehydrationGate } from './storeRehydration';
 
 // sessionStorage remembers only which library row this tab had open. Protocol

@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
 import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/protocol-validation';
+import { messageSubmissionResult } from '~/test/messageText';
 
 import { useVariableOptionsCommit } from '../useVariableOptionsCommit';
 
@@ -114,7 +115,7 @@ describe('useVariableOptionsCommit interface-owned options', () => {
         option.value === 'female' ? { ...option, label: 'Woman' } : option,
       ),
     });
-    expect(result).toEqual({
+    expect(messageSubmissionResult(result)).toEqual({
       success: false,
       fieldErrors: {
         variableOptions: [
@@ -137,7 +138,9 @@ describe('useVariableOptionsCommit interface-owned options', () => {
       variable: 'biologicalSex',
       variableOptions: [...BIOLOGICAL_SEX_OPTIONS].toReversed(),
     });
-    expect(result).toEqual({ variable: 'biologicalSex' });
+    expect(messageSubmissionResult(result)).toEqual({
+      variable: 'biologicalSex',
+    });
     expect(dispatched).toEqual([]);
   });
 
@@ -148,7 +151,7 @@ describe('useVariableOptionsCommit interface-owned options', () => {
       variable: 'biologicalSex',
       variableOptions: [first, first, ...others.slice(1)],
     });
-    expect(result).toMatchObject({
+    expect(messageSubmissionResult(result)).toMatchObject({
       success: false,
       fieldErrors: {
         variableOptions: [expect.stringContaining('set by the interface')],
@@ -164,7 +167,7 @@ describe('useVariableOptionsCommit structural-slot gate', () => {
       variable: 'isEgo',
       variableOptions: [],
     });
-    expect(result).toMatchObject({
+    expect(messageSubmissionResult(result)).toMatchObject({
       success: false,
       fieldErrors: {
         variable: [expect.stringContaining('cannot be used here')],

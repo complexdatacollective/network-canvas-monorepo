@@ -11,8 +11,10 @@ import { type AuthService, createDisabledAuthService } from './service.ts';
 export function createAuthService(
   env: StudioEnv,
   pool?: pg.Pool,
-  encryptionKeys?: EncryptionKeys,
-  mailer?: StudioMailer,
+  {
+    encryptionKeys,
+    mailer,
+  }: { encryptionKeys?: EncryptionKeys; mailer?: StudioMailer } = {},
 ): AuthService {
   if (!env.db || !env.auth || !pool) return createDisabledAuthService();
   return createBetterAuthService(

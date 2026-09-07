@@ -2,6 +2,10 @@ import { getTableName, sql } from 'drizzle-orm';
 import { boolean, check, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import type pg from 'pg';
 
+import {
+  assertSafePostgresMigrationEvidence,
+  UnsafePostgresMigrationEvidenceError,
+} from '@codaco/studio-sync/postgres-migration-evidence';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
 import { ASSET_SIDECAR_SQL, ASSET_TABLES } from '../asset/schema.ts';
@@ -121,7 +125,7 @@ export const SCHEMA_LOCK_KEY = 4021775688147129;
 export type StaleSchema = {
   kind: 'stale';
   /** `unstamped` is a database carrying the tables but no fingerprint row. */
-  reason: 'mismatch' | 'unstamped';
+  reason: 'mismatch' | 'unsafe-evidence' | 'unstamped' | 'unversioned';
   found: string | null;
   appliedAt: Date | null;
 };
@@ -142,17 +146,53 @@ export type SchemaProblem = Exclude<SchemaState, { kind: 'current' }>;
  */
 export async function checkSchema(
   pool: pg.Pool | pg.PoolClient,
+  options: { allowUnversioned?: boolean } = {},
 ): Promise<SchemaState> {
-  const probe = await pool.query<{ stamped: boolean; tables: boolean }>(
-    `select to_regclass('"schemaFingerprint"') is not null as stamped,
+  const probe = await pool.query<{
+    fingerprintSchema: string;
+    stamped: boolean;
+    tables: boolean;
+    versioned: boolean;
+  }>(
+    `select coalesce(fingerprint_namespace.nspname, current_schema(), 'public')
+              as "fingerprintSchema",
+            fingerprint.oid is not null as stamped,
             ${SCHEMA_TABLES.map(
               (table) => `to_regclass('"${table}"') is not null`,
-            ).join(' or ')} as tables`,
+            ).join(' or ')} as tables,
+            EXISTS (
+              SELECT 1 FROM pg_class relation
+              JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+              WHERE namespace.nspname = 'studio_migrations'
+                AND relation.relname = 'history' AND relation.relkind = 'r'
+            ) AS versioned
+       from (select to_regclass('"schemaFingerprint"')::oid as oid) fingerprint
+       left join pg_class fingerprint_relation
+         on fingerprint_relation.oid = fingerprint.oid
+       left join pg_namespace fingerprint_namespace
+         on fingerprint_namespace.oid = fingerprint_relation.relnamespace`,
   );
-  const { stamped, tables } = probe.rows[0] ?? {
+  const { fingerprintSchema, stamped, tables, versioned } = probe.rows[0] ?? {
+    fingerprintSchema: 'public',
     stamped: false,
     tables: false,
+    versioned: false,
   };
+
+  try {
+    await assertSafePostgresMigrationEvidence(pool, {
+      history: { schema: 'studio_migrations', name: 'history' },
+      fingerprint: { schema: fingerprintSchema, name: 'schemaFingerprint' },
+    });
+  } catch (error) {
+    if (!(error instanceof UnsafePostgresMigrationEvidenceError)) throw error;
+    return {
+      kind: 'stale',
+      reason: 'unsafe-evidence',
+      found: null,
+      appliedAt: null,
+    };
+  }
 
   if (stamped) {
     const recorded = await pool.query<{
@@ -165,6 +205,17 @@ export async function checkSchema(
         return {
           kind: 'stale',
           reason: 'mismatch',
+          found: row.fingerprint,
+          appliedAt: row.appliedAt,
+        };
+      }
+      // Runtime roles may inspect catalogs but have no USAGE or SELECT on
+      // migration history. A development stamp alone is not deployment
+      // provenance; only the explicitly resolved development lane accepts it.
+      if (!options.allowUnversioned && !versioned) {
+        return {
+          kind: 'stale',
+          reason: 'unversioned',
           found: row.fingerprint,
           appliedAt: row.appliedAt,
         };
@@ -203,9 +254,19 @@ export function schemaProblemMessage(state: SchemaProblem): string {
     ].join('\n');
   }
 
-  if (state.reason === 'unstamped') {
+  if (state.reason === 'unsafe-evidence') {
     return [
-      'The database carries Studio tables but no fingerprint, so the SQL that built it is unknown.',
+      'The database migration evidence has an unsupported relation shape.',
+      'Preserve the original database and its encryption keys. Restore a verified backup before starting Studio or applying migrations.',
+      'See apps/studio/MIGRATIONS.md for recovery and replacement procedures.',
+    ].join('\n');
+  }
+
+  if (state.reason === 'unstamped' || state.reason === 'unversioned') {
+    return [
+      state.reason === 'unversioned'
+        ? 'The database carries a Studio schema fingerprint but no versioned migration history.'
+        : 'The database carries Studio tables but no fingerprint, so the SQL that built it is unknown.',
       'Preserve the original database and its encryption keys. The migration command cannot adopt this database.',
       'For a previously versioned installation, restore a consistent backup that includes its migration history and fingerprint.',
       'For an unversioned pre-release installation, export using its original Studio build, then set up a new empty database and import the supported exports.',

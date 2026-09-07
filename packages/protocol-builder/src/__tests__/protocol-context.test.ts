@@ -9,6 +9,7 @@ import {
   variableForSubject,
   variablesForSubject,
 } from '../protocol-context.ts';
+import { readMessage } from '../testing/i18n.ts';
 
 const FIRST_STAGE = 'stage-first';
 const SECOND_STAGE = 'stage-second';
@@ -151,7 +152,7 @@ describe('protocolContextFromSections', () => {
     );
     expect(
       context.issues.filter(({ message }) =>
-        message.includes('Attribute record key "age"'),
+        readMessage(message).includes('Attribute record key "age"'),
       ),
     ).toEqual([
       expect.objectContaining({
@@ -178,7 +179,12 @@ describe('protocolContextFromSections', () => {
     expect(
       entityForSubject(context, { entity: 'edge', type: 'knows' }),
     ).toMatchObject({ name: 'Person' });
-    expect(context.issues).toContainEqual({
+    expect(
+      context.issues.map((issue) => ({
+        ...issue,
+        message: readMessage(issue.message),
+      })),
+    ).toContainEqual({
       sectionId: edgeId,
       path: ['name'],
       message: expect.stringContaining('Duplicate entity name "Person"'),
@@ -194,7 +200,7 @@ describe('protocolContextFromSections', () => {
     const context = protocolContextFromSections(sections);
 
     expect(context.orderedStages.map(({ id }) => id)).toEqual([SECOND_STAGE]);
-    expect(context.issues.map(({ message }) => message)).toEqual(
+    expect(context.issues.map(({ message }) => readMessage(message))).toEqual(
       expect.arrayContaining([
         'Stage order names missing stage missing-stage.',
         `Stage ${FIRST_STAGE} is missing from the stage order.`,

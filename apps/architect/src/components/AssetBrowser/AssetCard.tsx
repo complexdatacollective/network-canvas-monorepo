@@ -18,15 +18,76 @@ import {
   useState,
 } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge, type BadgeColor } from '@codaco/fresco-ui/Badge';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { assetMetadataMessages } from '~/components/Assets/assetMetadataMessages';
 import { getBundledAssetUrl } from '~/templates/bundled-asset-url';
 import { getAssetBlobUrl, revokeBlobUrl } from '~/utils/assetUtils';
 import { cx } from '~/utils/cva';
 import { reportError } from '~/utils/reportError';
+const messages = defineMessages({
+  videoPreview: {
+    id: 'architect.assetBrowser.assetCard.videoPreview',
+    defaultMessage: '{name} video preview',
+    description:
+      'The aria-label text in components / AssetBrowser / AssetCard.',
+  },
+  preview: {
+    id: 'architect.assetBrowser.assetCard.preview',
+    defaultMessage: 'Preview {name}',
+    description:
+      'The aria-label text in components / AssetBrowser / AssetCard.',
+  },
+  previewResource: {
+    id: 'architect.assetBrowser.assetCard.previewResource',
+    defaultMessage: 'Preview resource',
+    description: 'The title text in components / AssetBrowser / AssetCard.',
+  },
+  download: {
+    id: 'architect.assetBrowser.assetCard.download',
+    defaultMessage: 'Download {name}',
+    description:
+      'The aria-label text in components / AssetBrowser / AssetCard.',
+  },
+  downloadResource: {
+    id: 'architect.assetBrowser.assetCard.downloadResource',
+    defaultMessage: 'Download resource',
+    description: 'The title text in components / AssetBrowser / AssetCard.',
+  },
+  isInUseAndCannot: {
+    id: 'architect.assetBrowser.assetCard.isInUseAndCannot',
+    defaultMessage: '{name} is in use and cannot be deleted',
+    description:
+      'The aria-label text in components / AssetBrowser / AssetCard.',
+  },
+  delete: {
+    id: 'architect.assetBrowser.assetCard.delete',
+    defaultMessage: 'Delete {name}',
+    description:
+      'The aria-label text in components / AssetBrowser / AssetCard.',
+  },
+  thisResourceIsInUseBy: {
+    id: 'architect.assetBrowser.assetCard.thisResourceIsInUseBy',
+    defaultMessage:
+      'This resource is in use by the protocol and cannot be deleted',
+    description: 'The title text in components / AssetBrowser / AssetCard.',
+  },
+  deleteResource: {
+    id: 'architect.assetBrowser.assetCard.deleteResource',
+    defaultMessage: 'Delete resource',
+    description: 'The title text in components / AssetBrowser / AssetCard.',
+  },
+  unused: {
+    id: 'architect.assetBrowser.assetCard.unused',
+    defaultMessage: 'Unused',
+    description: 'Visible text in components / AssetBrowser / AssetCard.',
+  },
+});
 
 type AssetType = 'image' | 'video' | 'audio' | 'network' | 'apikey' | 'geojson';
 
@@ -41,15 +102,6 @@ type AssetCardProps = {
   onDelete?: ((id: string, isUsed: boolean) => void) | null;
   onDownload?: ((id: string) => void) | null;
   onPreview?: ((id: string) => void) | null;
-};
-
-const ASSET_TYPE_LABELS: Record<AssetType, string> = {
-  image: 'Image',
-  video: 'Video',
-  audio: 'Audio',
-  network: 'Network',
-  apikey: 'API key',
-  geojson: 'GeoJSON',
 };
 
 const ASSET_TYPE_BADGE_COLORS = {
@@ -154,6 +206,7 @@ const AssetPreview = ({
   source?: string;
   type: AssetType;
 }) => {
+  const intl = useAppIntl();
   const previewUrl = useAssetPreviewUrl(id, source, type);
   const Icon = ASSET_TYPE_ICONS[type];
 
@@ -181,7 +234,7 @@ const AssetPreview = ({
       >
         <video
           src={previewUrl}
-          aria-label={`${name} video preview`}
+          aria-label={intl.formatMessage(messages.videoPreview, { name: name })}
           className="size-full object-contain"
           muted
           playsInline
@@ -211,7 +264,8 @@ const AssetCard = ({
   onDownload = null,
   onPreview = null,
 }: AssetCardProps) => {
-  const typeLabel = ASSET_TYPE_LABELS[type];
+  const intl = useAppIntl();
+  const typeLabel = intl.formatMessage(assetMetadataMessages[type]);
   const typeColor = ASSET_TYPE_BADGE_COLORS[type];
   const handleDelete = useCallback(
     (event: MouseEvent) => {
@@ -243,8 +297,8 @@ const AssetCard = ({
         <IconButton
           key="preview"
           icon={<Eye />}
-          aria-label={`Preview ${name}`}
-          title="Preview resource"
+          aria-label={intl.formatMessage(messages.preview, { name: name })}
+          title={intl.formatMessage(messages.previewResource)}
           color="info"
           variant="text"
           size="sm"
@@ -256,8 +310,8 @@ const AssetCard = ({
         <IconButton
           key="download"
           icon={<Download />}
-          aria-label={`Download ${name}`}
-          title="Download resource"
+          aria-label={intl.formatMessage(messages.download, { name: name })}
+          title={intl.formatMessage(messages.downloadResource)}
           color="success"
           variant="text"
           size="sm"
@@ -271,13 +325,13 @@ const AssetCard = ({
           icon={<Trash2 />}
           aria-label={
             isUsed
-              ? `${name} is in use and cannot be deleted`
-              : `Delete ${name}`
+              ? intl.formatMessage(messages.isInUseAndCannot, { name: name })
+              : intl.formatMessage(messages.delete, { name: name })
           }
           title={
             isUsed
-              ? 'This resource is in use by the protocol and cannot be deleted'
-              : 'Delete resource'
+              ? intl.formatMessage(messages.thisResourceIsInUseBy)
+              : intl.formatMessage(messages.deleteResource)
           }
           color="destructive"
           variant="text"
@@ -296,6 +350,7 @@ const AssetCard = ({
       onDelete,
       onDownload,
       onPreview,
+      intl,
     ],
   );
 
@@ -320,7 +375,7 @@ const AssetCard = ({
             variant="destructive"
             className="absolute top-3 left-3 border-0"
           >
-            Unused
+            {intl.formatMessage(messages.unused)}
           </Badge>
         )}
       </div>

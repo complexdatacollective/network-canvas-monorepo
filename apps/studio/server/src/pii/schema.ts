@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { getTableColumns, sql } from 'drizzle-orm';
 import {
   bytea,
   check,
@@ -11,6 +11,8 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+
+import { AUTH_RUNTIME_TABLES } from '../db/auth-schema.ts';
 
 // A non-PII proof of every key the database has depended on. Keeping proofs
 // after live rotation makes dropping a historical restore key fail at boot.
@@ -66,7 +68,7 @@ const credentialAuditEvents = pgTable(
     ),
     check(
       'credential_audit_events_action_check',
-      sql`${table.action} IN ('read', 'write', 'rotate', 'migrate_legacy')`,
+      sql`${table.action} IN ('read', 'write', 'rotate', 'migrate_legacy', 'delete')`,
     ),
     check(
       'credential_audit_events_outcome_check',
@@ -81,17 +83,50 @@ const credentialAuditEvents = pgTable(
 
 export const PII_TABLES = { encryptionKeyVerifications, credentialAuditEvents };
 
+const runtimeAccountColumns = Object.values(
+  getTableColumns(AUTH_RUNTIME_TABLES.account),
+)
+  .map((column) => `"${column.name.replaceAll('"', '""')}"`)
+  .join(', ');
+
 export const PII_SIDECAR_SQL = `
 -- Historical OAuth plaintext is readable only by the offline converter.
--- Runtime code cannot introduce another value into these legacy columns.
+-- Runtime code cannot insert, clear or replace a retained legacy value.
+-- The general auth grants run earlier, so remove both table- and column-level
+-- access before enrolling the adapter's explicit non-legacy column projection.
+REVOKE SELECT, INSERT, UPDATE ON account FROM PUBLIC, ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance};
+REVOKE SELECT ("accessToken", "refreshToken", "idToken"), INSERT ("accessToken", "refreshToken", "idToken"), UPDATE ("accessToken", "refreshToken", "idToken") ON account FROM PUBLIC, ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance};
+REVOKE INSERT (legacy_tokens_present), UPDATE (legacy_tokens_present) ON account FROM PUBLIC, ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance};
+${['SELECT', 'INSERT', 'UPDATE'].map((privilege) => `GRANT ${privilege} (${runtimeAccountColumns}) ON account TO ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance};`).join('\n')}
+GRANT SELECT (legacy_tokens_present) ON account TO ${TENANT_ROLES.maintenance};
+
+-- SECURITY INVOKER is intentional: the deleting role must also be allowed to
+-- append the mandatory event. A failed audit aborts single/bulk/cascade deletes.
+-- Every account is a credential identity, including local password accounts.
+CREATE OR REPLACE FUNCTION account_audit_deletion() RETURNS trigger AS $$
+BEGIN
+  -- Bind the target to the triggering table, not an invoker's search_path:
+  -- a temporary table must never absorb mandatory durable evidence.
+  EXECUTE pg_catalog.format(
+    'INSERT INTO %I.credential_audit_events (id, user_id, account_id, action, outcome, request_id) VALUES (pg_catalog.gen_random_uuid(), $1, $2, ''delete'', ''succeeded'', pg_catalog.gen_random_uuid())',
+    TG_TABLE_SCHEMA
+  ) USING OLD."userId", OLD.id;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER;
+CREATE OR REPLACE TRIGGER account_audit_deletion
+  BEFORE DELETE ON account
+  FOR EACH ROW EXECUTE FUNCTION account_audit_deletion();
+
 CREATE OR REPLACE FUNCTION account_refuse_new_plaintext_tokens() RETURNS trigger AS $$
 BEGIN
   IF current_user IN ('studio_app', 'studio_maintenance') AND (
-    (NEW."accessToken" IS NOT NULL AND (TG_OP = 'INSERT' OR NEW."accessToken" IS DISTINCT FROM OLD."accessToken"))
-    OR (NEW."refreshToken" IS NOT NULL AND (TG_OP = 'INSERT' OR NEW."refreshToken" IS DISTINCT FROM OLD."refreshToken"))
-    OR (NEW."idToken" IS NOT NULL AND (TG_OP = 'INSERT' OR NEW."idToken" IS DISTINCT FROM OLD."idToken"))
+    (TG_OP = 'INSERT' AND (NEW."accessToken" IS NOT NULL OR NEW."refreshToken" IS NOT NULL OR NEW."idToken" IS NOT NULL))
+    OR (TG_OP = 'UPDATE' AND (NEW."accessToken" IS DISTINCT FROM OLD."accessToken"
+      OR NEW."refreshToken" IS DISTINCT FROM OLD."refreshToken"
+      OR NEW."idToken" IS DISTINCT FROM OLD."idToken"))
   ) THEN
-    RAISE EXCEPTION 'plaintext OAuth token writes are forbidden';
+    RAISE EXCEPTION 'retained OAuth token writes are forbidden';
   END IF;
   RETURN NEW;
 END;
