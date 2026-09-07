@@ -24,6 +24,7 @@ import {
   ProtocolBuilderSessionStore,
   SessionReadOnlyError,
 } from '../../../session.ts';
+import { fixtureMessage } from '../../../testing/i18n.ts';
 import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import ProtocolField from '../../ProtocolField.tsx';
 import StageEditorShell from '../../StageEditorShell.tsx';
@@ -86,9 +87,9 @@ function withRevocableDispatch(
 const OPTIONS_CAPABILITY = {
   fields: ['options'],
   confirmClear: {
-    title: 'This will clear your answer options',
-    description: 'The options you entered will be deleted.',
-    confirmLabel: 'Clear options',
+    title: fixtureMessage('This will clear your answer options'),
+    description: fixtureMessage('The options you entered will be deleted.'),
+    confirmLabel: fixtureMessage('Clear options'),
   },
 };
 
@@ -157,8 +158,8 @@ function renderOptions(session: ProtocolBuilderSession) {
 }
 
 const SORT_PROPERTIES: PropertyField[] = [
-  { fieldName: 'property', control: 'input' },
-  { fieldName: 'direction', control: 'input' },
+  { fieldName: 'property', control: 'input', label: 'Property' },
+  { fieldName: 'direction', control: 'input', label: 'Direction' },
 ];
 
 function renderSortRules(session: ProtocolBuilderSession) {

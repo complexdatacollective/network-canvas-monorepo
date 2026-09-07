@@ -1,3 +1,6 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+
 /**
  * Why a list write did not reach the document, and what each reason is called
  * on screen.
@@ -33,12 +36,55 @@ export type ArrayWriteRefusal =
   | 'row-unresolved';
 
 /**
+ * The three refusals, keyed by the reason they answer.
+ *
+ * `itemLabel` is the list's own noun for its rows, which arrives as a
+ * descriptor of its own and is resolved by whoever reads the sentence — see
+ * `arrayMessages`. Each is a WHOLE sentence with the noun in it rather than a
+ * stem the noun is glued onto, so a translator can put it where their language
+ * wants it.
+ */
+const refusalMessages = defineMessages({
+  rowRemoved: {
+    id: 'protocolBuilder.arrayField.rowRemovedRefusal',
+    defaultMessage:
+      'This {itemLabel} was removed while your changes were being saved, so there is nothing left to save them to. Copy anything you want to keep, then cancel and add a new {itemLabel}.',
+    description:
+      'Shown to a researcher whose edit to one row of a list was saved after that row had already been deleted. itemLabel is the list’s own noun for one of its rows — "prompt", "option", "item" — already in the reader’s language.',
+  },
+  readOnly: {
+    id: 'protocolBuilder.arrayField.readOnlyRefusal',
+    defaultMessage:
+      'This stage is read-only, so this {itemLabel} was not saved. Take over editing and try again.',
+    description:
+      'Shown to a researcher whose edit to one row of a list was refused because they no longer hold the right to edit the stage (one step of an interview). itemLabel is the list’s own noun for one of its rows, already in the reader’s language. Taking over editing is an action offered elsewhere in the host application.',
+  },
+  rowUnresolved: {
+    id: 'protocolBuilder.arrayField.rowUnresolvedRefusal',
+    defaultMessage:
+      'This list changed while you were editing, so this {itemLabel} could not be matched to a row in it and nothing was saved. Copy anything you want to keep, then check the list and make the change again.',
+    description:
+      'Shown to a researcher whose edit could not be matched to any one row of the list, because the list moved while they were editing. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+});
+
+/**
+ * The noun this sentence is about, as a value the sentence can carry across a
+ * string-only contract: a nested reference resolved in the reader's language
+ * at the moment the sentence is rendered, rather than a word resolved here in
+ * whatever language happened to be current when the write was refused.
+ */
+const itemLabelValue = (itemLabel: MessageDescriptor) => ({
+  itemLabel: { messageError: createMessageError(itemLabel) },
+});
+
+/**
  * The researcher-facing account of a save that landed after its row was gone.
  * This is an authoring tool, so it says what happened and what to do next
  * rather than reporting a failure.
  */
-export const rowRemovedMessage = (itemLabel: string) =>
-  `This ${itemLabel} was removed while your changes were being saved, so there is nothing left to save them to. Copy anything you want to keep, then cancel and add a new ${itemLabel}.`;
+export const rowRemovedMessage = (itemLabel: MessageDescriptor) =>
+  createMessageError(refusalMessages.rowRemoved, itemLabelValue(itemLabel));
 
 /**
  * Said when the stage stopped accepting writes while the edit was being made.
@@ -46,8 +92,8 @@ export const rowRemovedMessage = (itemLabel: string) =>
  * lease that has gone: the researcher's next move is to take editing back, and
  * anything still on screen stays there meanwhile.
  */
-export const readOnlyMessage = (itemLabel: string) =>
-  `This stage is read-only, so this ${itemLabel} was not saved. Take over editing and try again.`;
+export const readOnlyMessage = (itemLabel: MessageDescriptor) =>
+  createMessageError(refusalMessages.readOnly, itemLabelValue(itemLabel));
 
 /**
  * Said when the commit resolved to no row at all.
@@ -58,8 +104,8 @@ export const readOnlyMessage = (itemLabel: string) =>
  * and writing to either would be a guess that lands the edit on a row they
  * never opened. So the list is what has to be looked at, not the row.
  */
-const rowUnresolvedMessage = (itemLabel: string) =>
-  `This list changed while you were editing, so this ${itemLabel} could not be matched to a row in it and nothing was saved. Copy anything you want to keep, then check the list and make the change again.`;
+const rowUnresolvedMessage = (itemLabel: MessageDescriptor) =>
+  createMessageError(refusalMessages.rowUnresolved, itemLabelValue(itemLabel));
 
 /**
  * What a refused list write is called on screen.
@@ -69,7 +115,7 @@ const rowUnresolvedMessage = (itemLabel: string) =>
  * researcher as silence — or as the wrong thing to do about it.
  */
 const WRITE_REFUSAL_MESSAGES: Readonly<
-  Record<ArrayWriteRefusal, (itemLabel: string) => string>
+  Record<ArrayWriteRefusal, (itemLabel: MessageDescriptor) => string>
 > = Object.freeze({
   'session-refused': readOnlyMessage,
   'row-removed': rowRemovedMessage,
@@ -78,14 +124,5 @@ const WRITE_REFUSAL_MESSAGES: Readonly<
 
 export const writeRefusalMessage = (
   reason: ArrayWriteRefusal,
-  itemLabel: string,
+  itemLabel: MessageDescriptor,
 ) => WRITE_REFUSAL_MESSAGES[reason](itemLabel);
-
-/**
- * What a list calls its rows when its caller has not said. Every list that
- * edits rows one dialog at a time names them (`prompt`, `option`), and the
- * always-editing inline lists are the ones that do not: they are generic by
- * construction — the same `MultiSelect` is a sort rule here and a display
- * property there — so the noun is generic too rather than guessed at.
- */
-export const DEFAULT_ITEM_LABEL = 'item';

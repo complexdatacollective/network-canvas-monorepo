@@ -1,4 +1,3 @@
-import { startCase } from 'es-toolkit/compat';
 import { Trash2 } from 'lucide-react';
 import {
   createContext,
@@ -8,6 +7,9 @@ import {
   type ComponentType,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import ArrayField, {
   ArrayFieldDragHandle,
@@ -19,6 +21,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
+import { DEFAULT_ITEM_LABEL } from './arrayMessages.ts';
 import RowField from './RowField.tsx';
 import { requiredRow } from './rowValidators.ts';
 import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
@@ -26,6 +29,39 @@ import {
   rowRemovalControlProps,
   useConfirmRowRemoval,
 } from './useConfirmRowRemoval.ts';
+
+const messages = defineMessages({
+  incompleteRows: {
+    id: 'protocolBuilder.multiSelect.incompleteRows',
+    defaultMessage: 'Every row needs a value in each column.',
+    description:
+      'Shown above a list of rows in a stage editor when the researcher tries to save with a row that has an empty cell in it. Each row here is a set of dropdowns filled in together — a sort rule, a display property.',
+  },
+  removeItem: {
+    id: 'protocolBuilder.multiSelect.removeItem',
+    defaultMessage: 'Remove item',
+    description:
+      'Action that deletes one row of a list. Used as the button on the row, as the title of the confirmation it raises, and as that confirmation’s own confirm button.',
+  },
+  removeItemDescription: {
+    id: 'protocolBuilder.multiSelect.removeItemDescription',
+    defaultMessage: 'Are you sure you want to remove this item?',
+    description:
+      'Body of the confirmation raised when a researcher deletes one row of a list.',
+  },
+  reorderItem: {
+    id: 'protocolBuilder.multiSelect.reorderItem',
+    defaultMessage: 'Reorder item {position} of {count, number}',
+    description:
+      'Accessible name of the handle that drags one row of a list into a different position. position is the row’s own place in the list, counting from one; count is how many rows the list holds.',
+  },
+  emptyState: {
+    id: 'protocolBuilder.multiSelect.emptyState',
+    defaultMessage: 'No items available.',
+    description:
+      'Shown in place of the rows when a list has none, and the list’s caller has offered no wording of its own.',
+  },
+});
 
 // Row background reads `--rule-bg` so callers (e.g. Validations error state)
 // can flip it without re-defining the row layout.
@@ -45,8 +81,14 @@ const CELL_VALIDATORS = [requiredRow()] as const;
 export type PropertyField = {
   fieldName: string;
   control?: 'input' | 'select';
-  /** Defaults to `startCase(fieldName)`. */
-  label?: string;
+  /**
+   * Visible text and accessible name of this column's control — REQUIRED, for
+   * the reason `addButtonLabel` below is. It used to default to
+   * `startCase(fieldName)`, which builds a label out of a code identifier by
+   * capitalising it: a word no translator is ever handed, and one that stays
+   * English in every language.
+   */
+  label: string;
   placeholder?: string;
 };
 
@@ -96,7 +138,7 @@ const completeRows =
     readRows(value).some((row) =>
       properties.some(({ fieldName }) => isCellEmpty(row[fieldName])),
     )
-      ? 'Every row needs a value in each column.'
+      ? createMessageError(messages.incompleteRows)
       : undefined;
 
 /**
@@ -144,10 +186,11 @@ function MultiSelectRow({
   readOnly,
   getAddTrigger,
 }: ArrayFieldItemProps<ItemValue>) {
+  const intl = useAppIntl();
   const { arrayName, properties, options, allValues } = useMultiSelectContext();
   const { rowRef, confirmRemoval } = useConfirmRowRemoval({
     item,
-    itemLabel: 'item',
+    itemLabel: DEFAULT_ITEM_LABEL,
     index,
     onDelete,
     getAddTrigger,
@@ -160,10 +203,10 @@ function MultiSelectRow({
 
   const handleDelete = () => {
     confirmRemoval({
-      title: 'Remove item',
-      description: 'Are you sure you want to remove this item?',
-      confirmLabel: 'Remove item',
-      cancelLabel: 'Cancel',
+      title: intl.formatMessage(messages.removeItem),
+      description: intl.formatMessage(messages.removeItemDescription),
+      confirmLabel: intl.formatMessage(messages.removeItem),
+      cancelLabel: intl.formatMessage(commonMessages.cancel),
       intent: 'destructive',
     });
   };
@@ -193,7 +236,13 @@ function MultiSelectRow({
             itemCount={itemCount}
             onMove={onMove}
             disabled={interactionDisabled}
-            label={`Reorder item ${index + 1} of ${itemCount}`}
+            label={intl.formatMessage(messages.reorderItem, {
+              // The row's own place in the list, which the researcher reads as
+              // this row's number rather than as a quantity — so it is passed
+              // as they would say it, ungrouped.
+              position: String(index + 1),
+              count: itemCount,
+            })}
             className="text-sortable-contrast"
           />
         </div>
@@ -205,7 +254,7 @@ function MultiSelectRow({
             {
               fieldName: propertyFieldName,
               control = 'select',
-              label = startCase(propertyFieldName),
+              label,
               ...rest
             },
             propertyIndex,
@@ -243,7 +292,7 @@ function MultiSelectRow({
         <IconButton
           {...rowRemovalControlProps}
           icon={<Trash2 />}
-          aria-label="Remove item"
+          aria-label={intl.formatMessage(messages.removeItem)}
           color="destructive"
           disabled={interactionDisabled}
           className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
@@ -301,7 +350,7 @@ export type MultiSelectProps = Omit<
  */
 export default function MultiSelect({
   value = EMPTY_ITEMS,
-  emptyStateMessage = 'No items available.',
+  emptyStateMessage,
   onChange,
   name = '',
   addButtonLabel,
@@ -310,6 +359,7 @@ export default function MultiSelect({
   maxItems,
   ...arrayFieldProps
 }: MultiSelectProps) {
+  const intl = useAppIntl();
   const context = useMemo<MultiSelectContextValue>(
     () => ({ arrayName: name, properties, options, allValues: value }),
     [name, options, properties, value],
@@ -331,7 +381,9 @@ export default function MultiSelect({
           itemTemplate={itemTemplate}
           itemClasses="p-0! shadow-none"
           addButtonLabel={addButtonLabel}
-          emptyStateMessage={emptyStateMessage}
+          emptyStateMessage={
+            emptyStateMessage ?? intl.formatMessage(messages.emptyState)
+          }
           immediateAdd
           sortable
           confirmDelete={false}

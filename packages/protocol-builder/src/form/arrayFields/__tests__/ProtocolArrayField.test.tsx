@@ -20,6 +20,7 @@ import ProtocolField from '../../ProtocolField.tsx';
 import StageEditorShell from '../../StageEditorShell.tsx';
 import DialogArrayField from '../DialogArrayField.tsx';
 import Options, { optionsValidation } from '../Options.tsx';
+import { promptItemLabel } from './itemLabel.ts';
 
 type Prompt = { id: string; text: string };
 
@@ -93,7 +94,7 @@ function renderPromptList(
             addButtonLabel="Create new prompt"
             editorTitle="Edit prompt"
             addTitle="Add prompt"
-            itemLabel="prompt"
+            itemLabel={promptItemLabel}
             previewComponent={PromptPreview}
             editorFieldsComponent={PromptFields}
             {...(extra?.onBeforeSave === undefined
@@ -472,7 +473,7 @@ function renderPromptListWithTags(session: ProtocolBuilderSessionStore) {
             addButtonLabel="Create new prompt"
             editorTitle="Edit prompt"
             addTitle="Add prompt"
-            itemLabel="prompt"
+            itemLabel={promptItemLabel}
             previewComponent={PromptPreview}
             editorFieldsComponent={PromptFieldsWithTags}
           />

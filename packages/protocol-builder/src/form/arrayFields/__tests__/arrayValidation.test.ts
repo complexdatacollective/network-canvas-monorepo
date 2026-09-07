@@ -2,16 +2,24 @@ import { describe, expect, it } from 'vitest';
 
 import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 
+import { readMessage } from '../../../testing/i18n.ts';
 import { makeAssignAttributesValidation } from '../AssignAttributes.tsx';
 import { makeMultiSelectValidation } from '../MultiSelect.tsx';
 import { optionsValidation } from '../Options.tsx';
 
 /**
- * What the field would report for this whole array.
+ * What the field would report for this whole array, as the researcher reads
+ * it.
  *
  * The rules are exercised through the bag a call site actually passes, not one
  * by one: the bag is the unit — a call site cannot keep some of it and drop
  * others — and reaching past it would leave the composition itself untested.
+ *
+ * Every rule here answers with an encoded descriptor rather than a sentence
+ * (see `createMessageError`), because the message travels through Fresco's
+ * string-only validation contract before `FieldErrors` renders it. `readMessage`
+ * is the same decode that render site does, so these assertions still name the
+ * words on screen — and still fail when the copy behind a rule changes.
  */
 async function arrayIssue(
   custom: CustomFieldValidation,
@@ -22,7 +30,9 @@ async function arrayIssue(
       ? await custom.schema({})
       : custom.schema;
   const result = await schema.safeParseAsync(value);
-  return result.success ? undefined : result.error.issues[0]?.message;
+  if (result.success) return undefined;
+  const message = result.error.issues[0]?.message;
+  return message === undefined ? undefined : readMessage(message);
 }
 
 describe('optionsValidation', () => {
@@ -112,8 +122,8 @@ describe('optionsValidation', () => {
 
 describe('makeMultiSelectValidation', () => {
   const { custom } = makeMultiSelectValidation([
-    { fieldName: 'property' },
-    { fieldName: 'direction' },
+    { fieldName: 'property', label: 'Property' },
+    { fieldName: 'direction', label: 'Direction' },
   ]);
 
   it('passes the unconfigured state', async () => {

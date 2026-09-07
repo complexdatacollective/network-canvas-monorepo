@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import {
   collectEntityTypeReferencesFromSchema,
@@ -33,47 +36,107 @@ const FILTER_FIELD = 'filter';
  */
 export type NetworkFilterSubject = 'node' | 'edge';
 
-export type NetworkFilterCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  fieldLabel: string;
-  fieldHint: string;
-}>;
+const messages = defineMessages({
+  title: {
+    id: 'protocolBuilder.networkFilter.title',
+    defaultMessage: 'Stage filter',
+    description:
+      'Heading of the section where a researcher narrows which parts of the interview network one stage works on. A stage is one step of an interview.',
+  },
+  rulesLabel: {
+    id: 'protocolBuilder.networkFilter.rulesLabel',
+    defaultMessage: 'Filter rules',
+    description:
+      'Label of the rule builder inside the stage-filter section, where a researcher writes the rules that decide what reaches the stage.',
+  },
+  clearTitle: {
+    id: 'protocolBuilder.networkFilter.clearTitle',
+    defaultMessage: 'This will clear your filter',
+    description:
+      'Title of the confirmation asked before switching the stage filter off, which throws away every rule in it.',
+  },
+  clearDescription: {
+    id: 'protocolBuilder.networkFilter.clearDescription',
+    defaultMessage:
+      'This will clear your filter, and delete any rules you have created. Do you want to continue?',
+    description:
+      'Body of the confirmation asked before switching the stage filter off, which throws away every rule in it.',
+  },
+  clearConfirm: {
+    id: 'protocolBuilder.networkFilter.clearConfirm',
+    defaultMessage: 'Clear filter',
+    description:
+      'Action that confirms switching the stage filter off and discarding its rules.',
+  },
+  hiddenEdgesTitle: {
+    id: 'protocolBuilder.networkFilter.hiddenEdgesTitle',
+    defaultMessage: 'Filter rules hide configured values',
+    description:
+      'Warning heading shown when a stage’s own filter would keep out the edges — the relationships between network members — that the same stage is configured to create or display.',
+  },
+  hiddenEdgesDescription: {
+    id: 'protocolBuilder.networkFilter.hiddenEdgesDescription',
+    defaultMessage:
+      'This stage creates or displays edges that these rules will not let through, so participants will not see them.',
+    description:
+      'Warning body shown when a stage’s own filter would keep out the edges — the relationships between network members — that the same stage is configured to create or display.',
+  },
+});
 
-const DEFAULT_COPY: Readonly<Record<NetworkFilterSubject, NetworkFilterCopy>> =
-  Object.freeze({
-    node: Object.freeze({
-      sectionTitle: 'Stage filter',
-      description:
-        'Create rules that limit which nodes are available on this stage.',
-      fieldLabel: 'Filter rules',
-      fieldHint:
-        'Create one or more rules that must match in order for a node to be shown on this stage.',
-    }),
-    edge: Object.freeze({
-      sectionTitle: 'Stage filter',
-      description:
-        'Create rules that limit which edges are available on this stage.',
-      fieldLabel: 'Filter rules',
-      fieldHint:
-        'Create one or more rules that must match in order for an edge to be shown on this stage.',
-    }),
-  });
+/**
+ * What the filter is said to narrow, per subject.
+ *
+ * Whole sentences per subject rather than one sentence with the noun swapped:
+ * "a node" and "an edge" do not differ only in the noun in every language, and
+ * a researcher configuring an edge stage must not be told they are filtering
+ * nodes. Keyed by the subject union so a third subject arrives here as a
+ * typecheck failure rather than as a missing sentence.
+ */
+const SUBJECT_DESCRIPTIONS = defineMessages({
+  node: {
+    id: 'protocolBuilder.networkFilter.nodeDescription',
+    defaultMessage:
+      'Create rules that limit which nodes are available on this stage.',
+    description:
+      'Description of the stage-filter section on a stage whose filter narrows nodes — the members of the interview network.',
+  },
+  edge: {
+    id: 'protocolBuilder.networkFilter.edgeDescription',
+    defaultMessage:
+      'Create rules that limit which edges are available on this stage.',
+    description:
+      'Description of the stage-filter section on a stage whose filter narrows edges — the relationships between network members.',
+  },
+}) satisfies Record<NetworkFilterSubject, MessageDescriptor>;
+
+const SUBJECT_RULE_HINTS = defineMessages({
+  node: {
+    id: 'protocolBuilder.networkFilter.nodeRulesHint',
+    defaultMessage:
+      'Create one or more rules that must match in order for a node to be shown on this stage.',
+    description:
+      'Guidance under the rule builder on a stage whose filter narrows nodes — the members of the interview network.',
+  },
+  edge: {
+    id: 'protocolBuilder.networkFilter.edgeRulesHint',
+    defaultMessage:
+      'Create one or more rules that must match in order for an edge to be shown on this stage.',
+    description:
+      'Guidance under the rule builder on a stage whose filter narrows edges — the relationships between network members.',
+  },
+}) satisfies Record<NetworkFilterSubject, MessageDescriptor>;
 
 const FILTER_CAPABILITY: SectionCapability = {
   fields: [FILTER_FIELD],
   confirmClear: {
-    title: 'This will clear your filter',
-    description:
-      'This will clear your filter, and delete any rules you have created. Do you want to continue?',
-    confirmLabel: 'Clear filter',
+    title: messages.clearTitle,
+    description: messages.clearDescription,
+    confirmLabel: messages.clearConfirm,
   },
 };
 
 export type NetworkFilterSectionProps = Readonly<{
   subject: NetworkFilterSubject;
-  copy?: Partial<NetworkFilterCopy>;
 }>;
 
 /**
@@ -94,9 +157,8 @@ export type NetworkFilterSectionProps = Readonly<{
  */
 export default function NetworkFilterSection({
   subject,
-  copy,
 }: NetworkFilterSectionProps) {
-  const words = { ...DEFAULT_COPY[subject], ...copy };
+  const intl = useAppIntl();
   const { identity } = useStageEditorForm();
   const filter = useStageValue(FILTER_FIELD);
   const prompts = useStageValue('prompts');
@@ -112,16 +174,17 @@ export default function NetworkFilterSection({
 
   return (
     <BuilderSection
-      title={words.sectionTitle}
-      description={words.description}
+      title={intl.formatMessage(messages.title)}
+      description={intl.formatMessage(SUBJECT_DESCRIPTIONS[subject])}
       capability={FILTER_CAPABILITY}
     >
       {hidesConfiguredEdges && (
         <Alert variant="warning" className="my-7">
-          <AlertTitle>Filter rules hide configured values</AlertTitle>
+          <AlertTitle>
+            {intl.formatMessage(messages.hiddenEdgesTitle)}
+          </AlertTitle>
           <AlertDescription>
-            This stage creates or displays edges that these rules will not let
-            through, so participants will not see them.
+            {intl.formatMessage(messages.hiddenEdgesDescription)}
           </AlertDescription>
         </Alert>
       )}
@@ -134,8 +197,8 @@ export default function NetworkFilterSection({
       */}
       <ProtocolField<typeof FilterRuleSetField>
         name={FILTER_FIELD}
-        label={words.fieldLabel}
-        hint={words.fieldHint}
+        label={intl.formatMessage(messages.rulesLabel)}
+        hint={intl.formatMessage(SUBJECT_RULE_HINTS[subject])}
         component={FilterRuleSetField}
         required={NO_RULES_MESSAGE}
         custom={rulesValidation}
