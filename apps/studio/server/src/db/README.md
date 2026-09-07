@@ -137,8 +137,20 @@ helper for disposable developer resets, demos and test fixtures.
   part-way cannot leave a drifted database reading as current), runs
   `drizzle-kit push`, executes the sidecars, and stamps the fingerprint.
 - At boot, `checkSchema()` returns `current`, `absent`, or `stale` (either
-  `mismatch` or `unstamped`). A database carrying the tables with no
+  `mismatch`, `unstamped`, `unversioned`, or `unsafe-evidence`). A database carrying the tables with no
   fingerprint is refused rather than adopted: the SQL that built it is unknown.
+  Outside explicit local development, the caller supplies the validated
+  `STUDIO_DATABASE_ALLOWED_LOGINS` enrollment. The check pins a single connection,
+  verifies database CONNECT and existing sessions, and checks evidence shape,
+  effective table/column write privileges, owner-backed triggers, and rewrite
+  rules before reading the fingerprint. Designated runtime/backup roles and
+  every enrolled non-administrative login remain protected regardless of evidence
+  ownership; the actual runtime session is protected even if it becomes the
+  database owner. An offline database owner or explicitly configured administrative login remains able to administer evidence; configuring the actual scoped serving login as administrative never exempts it.
+  Startup and readiness additionally verify the actual app and maintenance login
+  capabilities. Only `allowUnversioned: true`, passed from validated local
+  development configuration, skips enrollment/ACL provenance requirements;
+  relation-shape and owner-backed-action checks still apply.
 
 Domain test suites take a different path. `provisionScratchSchema()` runs the composed
 statements directly instead of pushing, because `drizzle-kit push` introspects

@@ -22,12 +22,13 @@ const database = await reachableDb();
 const entry = fileURLToPath(new URL('../../index.ts', import.meta.url));
 const operator = fileURLToPath(new URL('../../encryption.ts', import.meta.url));
 
-function environment(db: DbEnv) {
+function environment(db: DbEnv, allowedLogins: readonly string[]) {
   return {
     NODE_ENV: 'production',
     HOST: '127.0.0.1',
     PORT: '0',
     DATABASE_URL: db.url,
+    STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(allowedLogins),
     BETTER_AUTH_SECRET: 'synthetic-studio-entrypoint-secret-for-tests',
     PUBLIC_URL: 'https://studio.example.org',
     ...encryptionEnvironment(),
@@ -36,7 +37,9 @@ function environment(db: DbEnv) {
 
 async function withDatabase(
   work: (
-    scratch: Awaited<ReturnType<typeof createScratchDatabase>>,
+    scratch: Awaited<ReturnType<typeof createScratchDatabase>> & {
+      allowedLogins: string[];
+    },
   ) => Promise<void>,
 ) {
   if (!database) throw new Error('A local database is required.');
@@ -55,7 +58,7 @@ async function withDatabase(
       SCHEMA_FINGERPRINT,
       allowedLogins,
     );
-    await work(scratch);
+    await work({ ...scratch, allowedLogins });
   } finally {
     await scratch.dispose();
   }
@@ -129,8 +132,8 @@ async function runServer(env: Record<string, string>) {
 
 describe('actual server encryption startup and operator entrypoints', () => {
   it('verifies through the operator command, starts with correct roots, and refuses wrong or missing roots before traffic', async () => {
-    await withDatabase(async ({ db, pool }) => {
-      const env = environment(db);
+    await withDatabase(async ({ db, pool, allowedLogins }) => {
+      const env = environment(db, allowedLogins);
       const {
         BETTER_AUTH_SECRET: _authSecret,
         PUBLIC_URL: _origin,
@@ -153,7 +156,14 @@ describe('actual server encryption startup and operator entrypoints', () => {
         GRANT CONNECT ON DATABASE ${databaseName} TO ${escapeIdentifier(login)}`);
       url.username = login;
       url.password = password;
-      const runtimeEnv = { ...env, DATABASE_URL: url.href };
+      const runtimeEnv = {
+        ...env,
+        DATABASE_URL: url.href,
+        STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify([
+          ...allowedLogins,
+          login,
+        ]),
+      };
       try {
         expect(await runServer(runtimeEnv)).toMatchObject({
           status: 0,
@@ -190,8 +200,8 @@ describe('actual server encryption startup and operator entrypoints', () => {
   });
 
   it('never selects public roots in the operator lane and keeps failures value-free', async () => {
-    await withDatabase(async ({ db }) => {
-      const env = environment(db);
+    await withDatabase(async ({ db, allowedLogins }) => {
+      const env = environment(db, allowedLogins);
       const { STUDIO_ENCRYPTION_KEYSET: _keyset, ...withoutKeys } = env;
       const result = runNode(operator, ['verify'], {
         ...withoutKeys,
@@ -223,7 +233,7 @@ describe('actual server encryption startup and operator entrypoints', () => {
   });
 
   it('exposes bounded maintenance results without starting unrelated application services', async () => {
-    await withDatabase(async ({ db, pool }) => {
+    await withDatabase(async ({ db, pool, allowedLogins }) => {
       const maintenance = createMaintenancePool(db);
       const encryption = {
         configuration: configuration(),
@@ -235,6 +245,7 @@ describe('actual server encryption startup and operator entrypoints', () => {
             ['rotate', '--limit', '1'],
             maintenance,
             encryption,
+            { allowedLogins, schemaPool: pool },
           ),
         ).resolves.toEqual({
           operation: 'rotate',
@@ -248,6 +259,7 @@ describe('actual server encryption startup and operator entrypoints', () => {
             ['migrate-legacy', '--limit', '1'],
             maintenance,
             encryption,
+            { allowedLogins, schemaPool: pool },
             pool,
           ),
         ).resolves.toEqual({
@@ -264,7 +276,7 @@ describe('actual server encryption startup and operator entrypoints', () => {
   });
 
   it('performs a full first-batch verification and proof-only resume without corpus scans', async () => {
-    await withDatabase(async ({ db, pool }) => {
+    await withDatabase(async ({ db, pool, allowedLogins }) => {
       await pool.query(
         `INSERT INTO "user" (id, name, email, "emailVerified") VALUES ('bounded-user', 'Synthetic', 'bounded@example.test', true)`,
       );
@@ -284,6 +296,7 @@ describe('actual server encryption startup and operator entrypoints', () => {
           ['rotate', '--limit', '1'],
           maintenance,
           encryption,
+          { allowedLogins, schemaPool: pool },
         );
         expect(first).toMatchObject({
           operation: 'rotate',
@@ -312,6 +325,7 @@ describe('actual server encryption startup and operator entrypoints', () => {
             ],
             maintenance,
             encryption,
+            { allowedLogins, schemaPool: pool },
           ),
         ).toEqual({
           operation: 'rotate',
@@ -345,7 +359,7 @@ describe('actual server encryption startup and operator entrypoints', () => {
   });
 
   it('rejects malformed legacy cursors before loading roots or registering permanent proofs', async () => {
-    await withDatabase(async ({ db, pool }) => {
+    await withDatabase(async ({ db, pool, allowedLogins }) => {
       const maintenance = createMaintenancePool(db);
       const loadRootKey = vi.fn(async () => rootOne);
       try {
@@ -355,6 +369,7 @@ describe('actual server encryption startup and operator entrypoints', () => {
               ['migrate-legacy', '--after-id', afterId],
               maintenance,
               { configuration: configuration(), loadRootKey },
+              { allowedLogins, schemaPool: pool },
             ),
           ).rejects.toThrow();
           expect({

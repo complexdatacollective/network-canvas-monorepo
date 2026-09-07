@@ -9,6 +9,7 @@ import {
   readEnv,
   readMigrationDatabase,
   readMigrationAllowedLogins,
+  readMigrationAdministrativeLogins,
 } from '../../env.ts';
 import { DEV, DEV_DATABASE_URL, DEV_S3_ENDPOINT } from '../catalogue.ts';
 
@@ -123,6 +124,86 @@ describe('development defaults', () => {
 });
 
 describe('migration environment', () => {
+  it.each([undefined, '', '[]', 'not-json', '["duplicate","duplicate"]'])(
+    'requires explicit production database enrollment despite validation skip (%s)',
+    (value) => {
+      vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+      vi.stubEnv('EMAIL_FROM', '');
+      vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', value);
+      vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
+      expect(() => readEnv()).toThrow('STUDIO_DATABASE_ALLOWED_LOGINS');
+      vi.stubEnv('SKIP_ENV_VALIDATION', 'false');
+      vi.stubEnv('STUDIO_DEV_DEFAULTS', 'true');
+      expect(readEnv().databaseAllowedLogins).toBeUndefined();
+      vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+      expect(
+        readEnv({ withoutDatabaseOrAuth: true }).databaseAllowedLogins,
+      ).toBeUndefined();
+    },
+  );
+  it('defaults administrative enrollment to empty and preserves an explicit non-owner operator', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    const allowed = ['owner', 'operator', 'runtime'];
+    vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', JSON.stringify(allowed));
+    vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', undefined);
+    expect(readEnv().databaseAdministrativeLogins).toEqual([]);
+    expect(readMigrationAdministrativeLogins(allowed)).toEqual([]);
+    vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', '');
+    expect(readMigrationAdministrativeLogins(allowed)).toEqual([]);
+    vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', '["operator"]');
+    expect(readEnv().databaseAdministrativeLogins).toEqual(['operator']);
+    expect(readMigrationAdministrativeLogins(allowed)).toEqual(['operator']);
+  });
+
+  it.each([
+    'null',
+    '{}',
+    '[1]',
+    '["operator","operator"]',
+    '["private-unenrolled-canary"]',
+    'not-json',
+  ])(
+    'refuses malformed or unenrolled administrative configuration privately (%s)',
+    (value) => {
+      const allowed = ['owner', 'operator', 'runtime'];
+      vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+      vi.stubEnv('EMAIL_FROM', '');
+      vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
+      vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', JSON.stringify(allowed));
+      vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', value);
+      for (const read of [
+        () => readEnv(),
+        () => readMigrationAdministrativeLogins(allowed),
+      ]) {
+        let failure: unknown;
+        try {
+          read();
+        } catch (error) {
+          failure = error;
+        }
+        expect(failure).toEqual(
+          new Error(
+            'STUDIO_DATABASE_ADMINISTRATIVE_LOGINS must be a JSON array of unique names enrolled in STUDIO_DATABASE_ALLOWED_LOGINS.',
+          ),
+        );
+        expect(String(failure)).not.toContain('private-unenrolled-canary');
+      }
+    },
+  );
+
+  it('supplies the same validated production enrollment to admission and offline migration', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    vi.stubEnv(
+      'STUDIO_DATABASE_ALLOWED_LOGINS',
+      '["studio_migrator","studio_runtime","studio_backup_login"]',
+    );
+    expect(readEnv().databaseAllowedLogins).toEqual(
+      readMigrationAllowedLogins(),
+    );
+  });
+
   it.each([
     undefined,
     '',
@@ -193,6 +274,10 @@ describe('the development marker', () => {
 
   it('leaves a remote database alone once the marker is gone', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv(
+      'STUDIO_DATABASE_ALLOWED_LOGINS',
+      '["studio_migrator","studio_runtime"]',
+    );
     // Without the marker the file's unpaired EMAIL_FROM is a deployment
     // mistake in its own right, so this is the whole lane being left behind.
     vi.stubEnv('EMAIL_FROM', '');
@@ -207,12 +292,20 @@ describe('the development marker', () => {
     // NODE_ENV is not production. A deployment that forgot NODE_ENV still
     // never logs a sign-in link.
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv(
+      'STUDIO_DATABASE_ALLOWED_LOGINS',
+      '["studio_migrator","studio_runtime"]',
+    );
     vi.stubEnv('EMAIL_FROM', '');
     expect(readEnv().auth?.mailer).toEqual({ kind: 'refuse' });
   });
 
   it('is what tolerates an unpaired EMAIL_FROM, not NODE_ENV', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv(
+      'STUDIO_DATABASE_ALLOWED_LOGINS',
+      '["studio_migrator","studio_runtime"]',
+    );
     vi.stubEnv('EMAIL_FROM', 'signin@studio.example');
     vi.stubEnv('SMTP_URL', '');
     expect(() => readEnv()).toThrow(

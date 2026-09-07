@@ -2,6 +2,10 @@ import type pg from 'pg';
 
 import { assertSafePostgresCatalogPrivileges } from './postgres-catalog-privileges.ts';
 import {
+  assertSafePostgresDatabaseEnrollment,
+  copyPostgresAdministrativeLogins,
+} from './postgres-database-enrollment.ts';
+import {
   RESTRICTED_LARGE_OBJECT_FUNCTIONS,
   validateRoleNames,
 } from './role-bootstrap.ts';
@@ -9,6 +13,8 @@ import {
 export type PostgresRuntimeIdentity = Readonly<{
   intendedRole: string;
   allowedRoles: readonly string[];
+  allowedLogins: readonly string[];
+  administrativeLogins?: readonly string[];
 }>;
 
 /** Verify the real LOGIN as well as the pool's pinned role before runtime
@@ -24,9 +30,24 @@ export async function assertSafePostgresRuntimeIdentity(
 ): Promise<void> {
   let roles: string[];
   let intendedRole: string;
+  let logins: string[];
+  let administrators: string[];
   try {
     const candidateRole: unknown = configuration.intendedRole;
     const candidateRoles: unknown = configuration.allowedRoles;
+    const candidateLogins: unknown = configuration.allowedLogins;
+    if (!Array.isArray(candidateLogins)) throw new Error();
+    const copiedLogins: unknown[] = [...candidateLogins];
+    if (
+      !copiedLogins.every((login): login is string => typeof login === 'string')
+    )
+      throw new Error();
+    validateRoleNames(copiedLogins);
+    logins = copiedLogins;
+    administrators = copyPostgresAdministrativeLogins(
+      logins,
+      configuration.administrativeLogins,
+    );
     if (!Array.isArray(candidateRoles)) throw new Error();
     const copied: unknown[] = [...candidateRoles];
     if (!copied.every((role): role is string => typeof role === 'string')) {
@@ -43,6 +64,7 @@ export async function assertSafePostgresRuntimeIdentity(
   }
 
   try {
+    await assertSafePostgresDatabaseEnrollment(client, logins);
     const result = await client.query<{ safe: boolean; session_name: string }>(
       `WITH database AS MATERIALIZED (
         SELECT oid, datdba, datacl FROM pg_catalog.pg_database WHERE datname = pg_catalog.current_database()
@@ -60,6 +82,9 @@ export async function assertSafePostgresRuntimeIdentity(
         WHERE privilege.privilege_type = 'CONNECT'
       ) SELECT session_user AS session_name,
         current_user = $2::pg_catalog.text AND session_user <> ALL($1::pg_catalog.text[])
+        AND session_user = ANY($4::pg_catalog.text[])
+        AND session_user <> ALL($5::pg_catalog.text[])
+        AND current_user <> ALL($5::pg_catalog.text[])
         AND (SELECT count(*) FROM scoped) = pg_catalog.cardinality($1::pg_catalog.text[])
         AND EXISTS (SELECT 1 FROM login WHERE rolcanlogin AND NOT (
           rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication OR rolinherit))
@@ -128,7 +153,13 @@ export async function assertSafePostgresRuntimeIdentity(
               ELSE false END)
         AND NOT EXISTS (SELECT 1 FROM identities identity CROSS JOIN unnest($3::pg_catalog.regprocedure[]) routine
           WHERE pg_catalog.has_function_privilege(identity.oid, routine, 'EXECUTE')) AS safe`,
-      [roles, intendedRole, RESTRICTED_LARGE_OBJECT_FUNCTIONS],
+      [
+        roles,
+        intendedRole,
+        RESTRICTED_LARGE_OBJECT_FUNCTIONS,
+        logins,
+        administrators,
+      ],
     );
     const identity = result.rows[0];
     if (identity?.safe !== true) throw new Error();

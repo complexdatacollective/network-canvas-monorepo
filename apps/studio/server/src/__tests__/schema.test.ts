@@ -384,7 +384,15 @@ describe.skipIf(!db)('schema verification', () => {
   it('requires versioned history by default for a current development fingerprint', async () => {
     await withScratch(createScratchDatabase, async (pool) => {
       await provisionScratchSchema(pool);
-      expect(await checkSchema(pool)).toMatchObject({
+      await pool.query(
+        'REVOKE INSERT, UPDATE, DELETE ON "schemaFingerprint" FROM studio_app, studio_maintenance',
+      );
+      const enrollment = (
+        await pool.query<{ login: string }>('SELECT session_user AS login')
+      ).rows[0]!;
+      expect(
+        await checkSchema(pool, { allowedLogins: [enrollment.login] }),
+      ).toMatchObject({
         kind: 'stale',
         reason: 'unversioned',
         found: SCHEMA_FINGERPRINT,
@@ -399,6 +407,12 @@ describe.skipIf(!db)('schema verification', () => {
     await withScratch(createScratchDatabase, async (pool) => {
       await provisionScratchSchema(pool);
       await pool.query(
+        'REVOKE INSERT, UPDATE, DELETE ON "schemaFingerprint" FROM studio_app, studio_maintenance',
+      );
+      const identity = (
+        await pool.query<{ login: string }>('SELECT session_user AS login')
+      ).rows[0]!;
+      await pool.query(
         'CREATE SCHEMA studio_migrations; CREATE VIEW studio_migrations.history AS SELECT 1 AS position',
       );
       expect(
@@ -408,7 +422,9 @@ describe.skipIf(!db)('schema verification', () => {
           )
         ).rows,
       ).toEqual([{ relkind: 'v' }]);
-      expect(await checkSchema(pool)).toMatchObject({
+      expect(
+        await checkSchema(pool, { allowedLogins: [identity.login] }),
+      ).toMatchObject({
         kind: 'stale',
         reason: 'unsafe-evidence',
       });
@@ -585,7 +601,9 @@ describe.skipIf(!db)('schema verification', () => {
 
   it('reports a never-provisioned database as absent', async () => {
     await withScratch(createScratchSchema, async (pool) => {
-      expect(await checkSchema(pool)).toEqual({ kind: 'absent' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'absent',
+      });
     });
   });
 
@@ -596,7 +614,7 @@ describe.skipIf(!db)('schema verification', () => {
         'deadbeef'.repeat(8),
       ]);
 
-      const state = await checkSchema(pool);
+      const state = await checkSchema(pool, { allowUnversioned: true });
       expect(state.kind).toBe('stale');
       expect(state).toMatchObject({
         reason: 'mismatch',
@@ -610,11 +628,13 @@ describe.skipIf(!db)('schema verification', () => {
       await provisionScratchSchema(pool);
       await pool.query('drop table "schemaFingerprint"');
 
-      expect(await checkSchema(pool)).toMatchObject({
-        kind: 'stale',
-        reason: 'unstamped',
-        found: null,
-      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
+        {
+          kind: 'stale',
+          reason: 'unstamped',
+          found: null,
+        },
+      );
     });
   });
 
@@ -623,10 +643,12 @@ describe.skipIf(!db)('schema verification', () => {
       await provisionScratchSchema(pool);
       await pool.query('delete from "schemaFingerprint"');
 
-      expect(await checkSchema(pool)).toMatchObject({
-        kind: 'stale',
-        reason: 'unstamped',
-      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
+        {
+          kind: 'stale',
+          reason: 'unstamped',
+        },
+      );
     });
   });
 
@@ -638,10 +660,12 @@ describe.skipIf(!db)('schema verification', () => {
       // recognisable by the "user" table alone, but still not ours to stamp.
       await pool.query('drop table "user" cascade');
 
-      expect(await checkSchema(pool)).toMatchObject({
-        kind: 'stale',
-        reason: 'unstamped',
-      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
+        {
+          kind: 'stale',
+          reason: 'unstamped',
+        },
+      );
     });
   });
 });

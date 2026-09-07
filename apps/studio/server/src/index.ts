@@ -110,6 +110,8 @@ async function admitDatabaseRuntime(): Promise<boolean> {
         await assertSafePostgresRuntimeIdentity(client, {
           intendedRole,
           allowedRoles: roles,
+          allowedLogins: env.databaseAllowedLogins ?? [],
+          administrativeLogins: env.databaseAdministrativeLogins,
         });
       } finally {
         client.release();
@@ -146,6 +148,8 @@ if (pool) {
     try {
       const state = await checkSchema(pool, {
         allowUnversioned: env.devDefaults,
+        allowedLogins: env.databaseAllowedLogins,
+        administrativeLogins: env.databaseAdministrativeLogins,
       });
       if (state.kind === 'current') break;
       exitIfFatal(state);
@@ -189,6 +193,8 @@ const observability = createObservability({
   assetStore,
   monitorProcess: true,
   allowUnversionedSchema: env.devDefaults,
+  allowedLogins: env.databaseAllowedLogins,
+  administrativeLogins: env.databaseAdministrativeLogins,
 });
 startDatabaseWorkers();
 

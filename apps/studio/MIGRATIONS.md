@@ -366,3 +366,24 @@ Development keeps its separate `db:reset` workflow and destructive synthetic
 seeding. It recreates `public` and discards migration history, then applies the
 current definitions directly. The test fixtures and protocol demo retain this
 developer-only schema helper; production has no `apply-schema` command.
+
+The persistent server also requires `STUDIO_DATABASE_ALLOWED_LOGINS` outside
+explicit local development. Supply the same complete, committed enrollment to
+migration, startup, and readiness: database owner, runtime login, and separately
+provisioned backup login. Shared cluster-wide runtime roles do not enroll a login
+in another deployment. Revoking CONNECT does not disconnect an existing session;
+administrator admission quarantine and session removal remain necessary.
+Runtime admission verifies login capabilities separately from this enrollment.
+Fingerprint/history ACL or owner-backed-action drift makes existing evidence
+untrusted and requires investigation and verified-backup recovery, not an
+in-process grant repair.
+
+When a separately provisioned migration or conversion login is not the database
+owner, declare it in `STUDIO_DATABASE_ADMINISTRATIVE_LOGINS` as well as the full
+`STUDIO_DATABASE_ALLOWED_LOGINS` enrollment. The optional administrative array
+defaults to empty. Its names must be unique and enrolled; evidence-table ownership
+never supplies this exception. The migration CLI refuses an undeclared non-owner
+operator before applying SQL. Serving app and maintenance connections refuse
+configured administrative logins even if their other capabilities appear safe.
+Offline conversion uses a separately owned, unpinned administrative connection
+for schema inspection while its row operations retain their scoped connection.

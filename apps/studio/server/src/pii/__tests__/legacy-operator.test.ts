@@ -52,6 +52,7 @@ async function withDeployment(
     runtimeName: string;
     operatorUrl: URL;
     runtimeUrl: URL;
+    allowedLogins: string[];
     keys: Awaited<ReturnType<typeof initializeCredentialMigration>>;
   }) => Promise<void>,
 ) {
@@ -124,6 +125,7 @@ async function withDeployment(
       runtimeName,
       operatorUrl,
       runtimeUrl,
+      allowedLogins,
       keys,
     });
   } finally {
@@ -430,7 +432,14 @@ describe('operator-only retained OAuth credentials', () => {
   it('refuses the real converter process with runtime credentials and succeeds with the separate operator credentials', async () => {
     await withDeployment(
       'accessToken',
-      async ({ operator, maintenance, runtimeUrl, operatorUrl }) => {
+      async ({
+        operator,
+        maintenance,
+        runtimeUrl,
+        operatorUrl,
+        operatorName,
+        allowedLogins,
+      }) => {
         const entry = fileURLToPath(
           new URL('../../encryption.ts', import.meta.url),
         );
@@ -445,6 +454,10 @@ describe('operator-only retained OAuth credentials', () => {
               env: {
                 NODE_ENV: 'production',
                 DATABASE_URL: url.href,
+                STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(allowedLogins),
+                STUDIO_DATABASE_ADMINISTRATIVE_LOGINS: JSON.stringify([
+                  operatorName,
+                ]),
                 ...encryptionEnvironment(),
               },
               encoding: 'utf8',
@@ -491,6 +504,7 @@ describe('operator-only retained OAuth credentials', () => {
                   configuration: configuration(),
                   loadRootKey: async () => rootOne,
                 },
+                { allowedLogins, administrativeLogins: [operatorName] },
                 operator,
               ),
             ).resolves.toMatchObject({ operation: command });
