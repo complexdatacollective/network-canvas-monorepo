@@ -1,11 +1,13 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MotionConfig, type Transition } from 'motion/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
 import { useStageEditorController } from '../../../controller.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
@@ -118,6 +120,12 @@ function createSession(fields: SectionDoc) {
 function renderInShell(
   session: ProtocolBuilderSessionStore,
   children: ReactNode,
+  /**
+   * Motion timing for the whole editor. Left undefined by every case except
+   * the one about a row's exit window, where the suite's instant animation
+   * would close the window before it can be observed.
+   */
+  transition?: Transition,
 ) {
   function Host() {
     const controller = useStageEditorController(session, 'stage-form');
@@ -129,9 +137,11 @@ function renderInShell(
   }
 
   return render(
-    <DialogProvider>
-      <Host />
-    </DialogProvider>,
+    <MotionConfig transition={transition}>
+      <DialogProvider>
+        <Host />
+      </DialogProvider>
+    </MotionConfig>,
   );
 }
 
@@ -333,5 +343,63 @@ describe('a row removal confirm', () => {
 
     const remaining = screen.getAllByRole('button', { name: 'Remove prompt' });
     expect(focusTarget()).toBe(remaining[1]);
+  });
+
+  /**
+   * A confirm's `finalFocus` is resolved as the confirm closes, which is
+   * inside the window where the removed row is still mounted playing its exit
+   * animation. Counted then, the list's Remove controls include the one just
+   * confirmed away, and "the row at this index" answers with the dying row's
+   * own button — a node destroyed a fraction of a second later, from which
+   * focus falls back to `<body>`.
+   *
+   * Real Motion timing and a long transition make the window deterministic
+   * rather than a matter of how loaded the machine is.
+   */
+  it('passes over the option that is still animating away', async () => {
+    await withAnimationsEnabled(async () => {
+      const user = userEvent.setup();
+      const session = createSession({
+        options: [
+          { label: 'Alpha', value: 'alpha' },
+          { label: 'Bravo', value: 'bravo' },
+          { label: 'Charlie', value: 'charlie' },
+        ],
+      });
+      renderInShell(
+        session,
+        <ProtocolArrayField
+          name="options"
+          label="Answer options"
+          component={Options}
+          addButtonLabel="Create new option"
+          {...optionsValidation}
+        />,
+        { duration: 10 },
+      );
+
+      const opener = await screen.findByRole('button', {
+        name: 'Remove option 2',
+      });
+      // Charlie's Remove control: the row that takes the removed one's place,
+      // and after the removal the row called "Remove option 2".
+      const survivor = screen.getByRole('button', { name: 'Remove option 3' });
+      await user.click(opener);
+      answerConfirm();
+      await waitFor(() =>
+        expect(session.getSnapshot().editedSection.fields.options).toHaveLength(
+          2,
+        ),
+      );
+
+      // The removed row is still in the document — the assertions below say
+      // nothing without it.
+      expect(opener.isConnected).toBe(true);
+      const target = focusTarget();
+      expect(target, 'the confirm named the dying row’s own control').not.toBe(
+        opener,
+      );
+      expect(target).toBe(survivor);
+    });
   });
 });
