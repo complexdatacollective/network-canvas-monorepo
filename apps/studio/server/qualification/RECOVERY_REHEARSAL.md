@@ -76,3 +76,75 @@ Studio retained one instance, one participant with code `RESTORE-CANARY`, and
 one asset reference. Registry retained the fixture auth user and its active,
 unsuspended publisher. Reading each restored object through its MinIO service
 produced the two SHA-256 values recorded in the fixture.
+
+## Fail-closed restore repair follow-up
+
+The initial rehearsal exposed three restore defects after its successful path:
+fresh Registry initialization enrolled writer logins before the cleanup trap,
+the trap closed only the migrator after later failures, and verified inputs
+were reread from caller-owned paths. The repaired restore now snapshots every
+regular, non-symlinked backup, custody, and reconciliation input into a new
+mode-0700 directory; verifies and consumes only that snapshot; and removes it
+on every exit. Cleanup is armed before either database starts. It quarantines
+all six Studio and Registry writer roles and terminates matching sessions. The
+Registry backup verifier runs with its supported closed-login exception, so
+only `registry_migrator` receives a temporary login for the recovery
+transaction; `registry_runtime` and `registry_operations` never open.
+
+The executable full-script harness covers ordinary failures and a real `TERM`
+delivered after the owner opens:
+
+```sh
+node --test scripts/studio-restore-failure.test.mjs scripts/studio-restore-order.test.mjs
+STUDIO_RESTORE_SCRIPT=/tmp/studio-restore-39b2.sh node --test scripts/studio-restore-failure.test.mjs
+```
+
+The repaired script passed all 17 checks. The second command, using the exact
+pre-repair `39b2ff7fa844fce50ea64e21c6b58e00db8d2001` script, failed all 13
+applicable checks, including both forced termination failures. The role-state
+model proves that the repaired script commits `NOLOGIN` before termination,
+while the old combined transaction rolls it back. The remaining failures cover
+quarantine, symlink, and stable-snapshot controls. This is negative control
+evidence, not a simulated successful recovery.
+
+Three additional fresh-volume projects exercised the actual retained images,
+PostgreSQL databases, and MinIO stores. `nc-recovery-review-pre-v2` used a
+checksum-consistent invalid Registry dump and failed at the real `pg_restore`
+before the owner window. `nc-recovery-review-post-v2` used independently hashed
+but intentionally wrong current reconciliation evidence and reported
+`REGISTRY_RECOVERY_FAILED` after the owner window opened. Both failure targets
+ended with every Registry writer `NOLOGIN` and zero matching sessions.
+`nc-recovery-review-success-v2` restored the unchanged prior backup and reported
+`REGISTRY_RECOVERY_RECONCILED`. Its read-only result was:
+
+```text
+studio_backup_login=true
+studio_maintenance_runtime=false
+studio_migrator=false
+studio_runtime=false
+registry_backup_login=true
+registry_migrator=false
+registry_operations=false
+registry_runtime=false
+studio_writer_sessions=0
+registry_writer_sessions=0
+studio_canary=1,1,1
+registry_canary=1,1
+studio_object_sha=09a7edd8557110e99d1211af88630233b9c649189264d52e2eaf93a5418fb174
+registry_object_sha=18eb36ad9fe8ad57f26686117b34db595fcf04afa17a389d415ba3d58a485afd
+running=minio,postgres,registry-minio,registry-postgres
+```
+
+A real PostgreSQL reconnect control then briefly opened the synthetic
+`registry_runtime` login on the isolated successful target and held one live
+writer session. After the repaired role-close transaction committed, a fresh
+password connection was rejected (status 2); the separate termination step
+ended the held session (status 2). The final query again returned all three
+Registry writers `NOLOGIN` and zero matching sessions. This directly checks
+the admission boundary that a combined role-close/termination transaction
+could not enforce.
+
+These follow-up projects used no published ports and did not alter the retained
+source or original successful target. The evidence remains local arm64
+recovery evidence with the qualification limits stated at the top of this
+document.

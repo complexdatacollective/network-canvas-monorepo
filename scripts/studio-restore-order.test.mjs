@@ -72,37 +72,37 @@ test('restore quarantines every Studio writer before the first restore write', a
   assert.doesNotMatch(restore, /ALTER ROLE studio_backup_login NOLOGIN;/);
 });
 
-test('restore grants only a trapped Registry owner login window during recovery', async () => {
+test('restore grants only the Registry owner a fully trapped recovery window', async () => {
   const restore = await readFile(restorePath, 'utf8');
-  const armExitTrap = restore.indexOf('trap close_registry_migrator EXIT');
-  const armSignalTrap = restore.indexOf("trap 'exit 1' HUP INT TERM");
-  const open = restore.indexOf('registry_migrator_open=1');
+  const armExitTrap = restore.indexOf('trap cleanup_restore EXIT');
+  const databaseStart = restore.indexOf(
+    'compose up -d --wait postgres registry-postgres',
+  );
+  const initialQuarantine = restore.indexOf(
+    'close_writer_logins',
+    databaseStart,
+  );
+  const backupVerify = restore.indexOf(
+    'compose run --rm --no-deps -T registry-backup-verify',
+  );
   const grantOwnerLogin = restore.indexOf(
     'ALTER ROLE registry_migrator LOGIN;',
-  );
-  const closeRuntime = restore.indexOf(
-    'ALTER ROLE registry_runtime NOLOGIN;',
-    open,
   );
   const recover = restore.indexOf(
     'compose run --rm --no-deps -T registry-recover-verify',
   );
-  const closeOwner = restore.indexOf('close_registry_migrator\n', recover);
-  const disarmTrap = restore.indexOf('trap - EXIT HUP INT TERM', closeOwner);
+  const finalQuarantine = restore.indexOf('close_writer_logins', recover);
 
   assert.ok(armExitTrap >= 0);
-  assert.ok(armSignalTrap > armExitTrap);
-  assert.ok(open > armSignalTrap);
-  assert.ok(grantOwnerLogin > open);
-  assert.ok(closeRuntime > open);
-  assert.ok(recover > closeRuntime);
-  assert.ok(closeOwner > recover);
-  assert.ok(disarmTrap > closeOwner);
-
-  const runtimeQuarantine = restore.slice(closeRuntime, recover);
-  assert.match(runtimeQuarantine, /ALTER ROLE registry_operations NOLOGIN;/);
+  assert.ok(armExitTrap < databaseStart);
+  assert.ok(initialQuarantine > databaseStart);
+  assert.ok(backupVerify > initialQuarantine);
+  assert.ok(grantOwnerLogin > backupVerify);
+  assert.ok(recover > grantOwnerLogin);
+  assert.ok(finalQuarantine > recover);
   assert.doesNotMatch(
-    runtimeQuarantine,
-    /ALTER ROLE registry_migrator NOLOGIN;/,
+    restore,
+    /ALTER ROLE registry_(runtime|operations) LOGIN;/,
   );
+  assert.doesNotMatch(restore, /registry-migrate/);
 });

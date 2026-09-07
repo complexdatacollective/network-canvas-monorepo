@@ -16,7 +16,124 @@ cd "$(dirname "$0")/.."
 . ./deployment/checksum.sh
 command -v jq >/dev/null 2>&1 || { echo 'Restore requires jq on the host.' >&2; exit 2; }
 compose() { docker compose --env-file .env --env-file registry.env -f docker-compose.yml -f deployment/registry/compose.yml -f deployment/recovery-images.yml -f deployment/registry/recovery.yml --profile '*' "$@"; }
-test -f "$backup/COMPLETE"
+
+# Every verified byte is consumed from one new private snapshot. Reject links
+# and special files before and after the copy so later image, dump, key and
+# reconciliation reads cannot follow a substituted operator path.
+for path in "$backup" "$custody" "$registry_custody" "$reconciliation"; do
+  if [ -L "$path" ]; then
+    echo 'Restore refused: backup and independently supplied inputs must not be symbolic links.' >&2
+    exit 1
+  fi
+done
+test -d "$backup"
+test -f "$custody"
+test -f "$registry_custody"
+test -f "$reconciliation"
+if find "$backup" \( -type l -o \( ! -type d ! -type f \) \) -print -quit | grep -q .; then
+  echo 'Restore refused: backup contains a symbolic link or special file.' >&2
+  exit 1
+fi
+snapshot=$(mktemp -d "${TMPDIR:-/tmp}/studio-restore.XXXXXX")
+chmod 700 "$snapshot"
+# Until the database-aware cleanup replaces it below, cover copy/check failures
+# and signals with a minimal private-snapshot cleanup.
+trap 'rm -rf "$snapshot"' EXIT
+trap 'exit 1' HUP INT TERM
+mkdir "$snapshot/backup"
+cp -R "$backup/." "$snapshot/backup/"
+cp "$custody" "$snapshot/encryption.env"
+cp "$registry_custody" "$snapshot/registry.env"
+cp "$reconciliation" "$snapshot/reconciliation.json"
+if find "$snapshot" \( -type l -o \( ! -type d ! -type f \) \) -print -quit | grep -q .; then
+  echo 'Restore refused: private input snapshot contains a symbolic link or special file.' >&2
+  rm -rf "$snapshot"
+  exit 1
+fi
+backup=$snapshot/backup
+custody=$snapshot/encryption.env
+registry_custody=$snapshot/registry.env
+reconciliation=$snapshot/reconciliation.json
+databases_started=0
+restore_complete=0
+close_writer_logins() {
+  close_failed=0
+  # Commit admission closure before trying to terminate sessions. A failed
+  # termination or assertion must never roll writer LOGIN state back.
+  if ! compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
+BEGIN;
+ALTER ROLE studio_runtime NOLOGIN;
+ALTER ROLE studio_maintenance_runtime NOLOGIN;
+ALTER ROLE studio_migrator NOLOGIN;
+COMMIT;
+SQL
+  then close_failed=1
+  elif ! compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
+SELECT pg_catalog.pg_terminate_backend(activity.pid, 5000)
+FROM pg_catalog.pg_stat_activity activity
+JOIN pg_catalog.pg_roles login ON login.oid = activity.usesysid
+WHERE login.rolname = ANY(ARRAY['studio_runtime', 'studio_maintenance_runtime', 'studio_migrator'])
+  AND activity.pid <> pg_catalog.pg_backend_pid();
+SELECT pg_catalog.pg_stat_clear_snapshot();
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_activity activity
+    JOIN pg_catalog.pg_roles login ON login.oid = activity.usesysid
+    WHERE login.rolname = ANY(ARRAY['studio_runtime', 'studio_maintenance_runtime', 'studio_migrator'])
+  ) THEN RAISE EXCEPTION 'Studio writer session survived recovery quarantine'; END IF;
+END $$;
+SQL
+  then close_failed=1
+  fi
+  if ! compose exec -T registry-postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
+BEGIN;
+ALTER ROLE registry_runtime NOLOGIN;
+ALTER ROLE registry_operations NOLOGIN;
+ALTER ROLE registry_migrator NOLOGIN;
+COMMIT;
+SQL
+  then close_failed=1
+  elif ! compose exec -T registry-postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
+SELECT pg_catalog.pg_terminate_backend(activity.pid, 5000)
+FROM pg_catalog.pg_stat_activity activity
+JOIN pg_catalog.pg_roles login ON login.oid = activity.usesysid
+WHERE login.rolname = ANY(ARRAY['registry_runtime', 'registry_operations', 'registry_migrator'])
+  AND activity.pid <> pg_catalog.pg_backend_pid();
+SELECT pg_catalog.pg_stat_clear_snapshot();
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_activity activity
+    JOIN pg_catalog.pg_roles login ON login.oid = activity.usesysid
+    WHERE login.rolname = ANY(ARRAY['registry_runtime', 'registry_operations', 'registry_migrator'])
+  ) THEN RAISE EXCEPTION 'Registry writer session survived recovery quarantine'; END IF;
+END $$;
+SQL
+  then close_failed=1
+  fi
+  return "$close_failed"
+}
+cleanup_restore() {
+  status=$?
+  trap - EXIT HUP INT TERM
+  cleanup_failed=0
+  if [ "$databases_started" -eq 1 ] && ! close_writer_logins; then
+    echo 'Restore cleanup could not prove every writer login closed.' >&2
+    cleanup_failed=1
+  fi
+  if ! rm -rf "$snapshot"; then
+    echo 'Restore cleanup could not remove the private input snapshot.' >&2
+    cleanup_failed=1
+  fi
+  if [ "$cleanup_failed" -ne 0 ]; then status=1; fi
+  if [ "$status" -eq 0 ] && [ "$restore_complete" -eq 1 ]; then
+    printf '%s\n' 'Data restored and Registry custody reconciled. Admission, Registry HTTP, and all workers remain closed.'
+  fi
+  exit "$status"
+}
+trap cleanup_restore EXIT
+trap 'exit 1' HUP INT TERM
+
+test "$(cat "$backup/COMPLETE")" = 'Studio quiesced backup v1'
 test -s "$backup/studio.dump"
 test -s "$backup/registry.dump"
 test -s "$backup/minio.tar"
@@ -34,7 +151,6 @@ fi
 test -s "$custody"
 test -s "$registry_custody"
 test -s "$reconciliation"
-test ! -L "$reconciliation"
 # Compose must parse its narrow env_file even for operator services. Point it
 # at the independently held file; it is not copied into the data backup.
 export STUDIO_ENCRYPTION_FILE="$custody"
@@ -167,7 +283,12 @@ cp "$backup/deployment/recovery-images.yml" deployment/recovery-images.yml
 export COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}:deployment/recovery-images.yml"
 cp "$custody" deployment/encryption.env
 chmod 600 deployment/encryption.env
+databases_started=1
 compose up -d --wait postgres registry-postgres
+# Fresh database initialization creates enrolled roles with LOGIN. Close every
+# writer immediately, terminate any matching session, and retain only the
+# read-only backup logins before inspecting or writing restored data.
+close_writer_logins
 # Refuse populated targets and live writers before the first restore write.
 compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d studio <<'SQL'
 DO $$ BEGIN
@@ -179,12 +300,6 @@ DO $$ BEGIN
     RAISE EXCEPTION 'Restore requires an empty database without other connections';
   END IF;
 END $$;
--- Recovery never opens the Studio application identities. Quarantine them
--- before the first restore write and retain only the read-only backup login
--- needed for the later recovery verification.
-ALTER ROLE studio_runtime NOLOGIN;
-ALTER ROLE studio_maintenance_runtime NOLOGIN;
-ALTER ROLE studio_migrator NOLOGIN;
 SQL
 compose exec -T registry-postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d registry <<'SQL'
 DO $$ BEGIN
@@ -228,37 +343,15 @@ compose up -d minio registry-minio
 compose run --rm --no-deps -T minio-init
 compose run --rm --no-deps -T registry-minio-init
 # Validate the restored enrollment while every HTTP and cleanup process remains
-# stopped. Recovery alone receives a bounded database-owner login window; the
-# trap closes it after any later failure without reopening runtime identities.
-registry_migrator_open=0
-close_registry_migrator() {
-  if [ "$registry_migrator_open" -eq 1 ]; then
-    compose exec -T registry-postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
-ALTER ROLE registry_migrator NOLOGIN;
-SQL
-    registry_migrator_open=0
-  fi
-}
-trap close_registry_migrator EXIT
-trap 'exit 1' HUP INT TERM
-registry_migrator_open=1
+# stopped. The backup verifier explicitly accepts closed enrolled logins, so it
+# never requires either serving identity or the database owner to open.
+compose run --rm --no-deps -T registry-backup-verify
+# Only the offline recovery transaction needs its pinned database owner. The
+# process itself proves runtime/operator NOLOGIN and rejects surviving sessions.
 compose exec -T registry-postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
-ALTER ROLE registry_runtime LOGIN;
-ALTER ROLE registry_operations LOGIN;
 ALTER ROLE registry_migrator LOGIN;
 SQL
-compose run --rm --no-deps -T registry-migrate
-compose run --rm --no-deps -T registry-backup-verify
-compose exec -T registry-postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
-ALTER ROLE registry_runtime NOLOGIN;
-ALTER ROLE registry_operations NOLOGIN;
-DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = 'registry') THEN
-    RAISE EXCEPTION 'Registry recovery requires no surviving database sessions';
-  END IF;
-END $$;
-SQL
 compose run --rm --no-deps -T registry-recover-verify
-close_registry_migrator
-trap - EXIT HUP INT TERM
-printf '%s\n' 'Data restored and Registry custody reconciled. Admission, Registry HTTP, and all workers remain closed.'
+close_writer_logins
+restore_complete=1
+exit 0
