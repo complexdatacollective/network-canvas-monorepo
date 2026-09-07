@@ -15,6 +15,7 @@ const REQUIRED_CATEGORIES = new Set([
   'backup-requests',
   'backup-egress',
   'validator-compute',
+  'validator-requests',
   'validator-transfer',
   'mail',
   'monitoring',
@@ -49,6 +50,12 @@ export function evaluateManagedEstateCost(
     fail('flySingletonCount must be exactly four');
   if (input.logicalDatabaseCount !== 4)
     fail('logicalDatabaseCount must be exactly four');
+  for (const field of [
+    'postgresSharedBuffersBytes',
+    'postgresAppRoleWorkMemBytes',
+    'monitoringRetentionDays',
+  ])
+    finiteNonNegative(input[field], field);
   if (input.postgresSharedBuffersBytes < 1_073_741_824)
     fail('shared_buffers must remain at least 1 GB');
   if (input.postgresAppRoleWorkMemBytes < 268_435_456)
@@ -57,6 +64,10 @@ export function evaluateManagedEstateCost(
     fail('logs and metrics require at least 30 days of retention');
   if (input.newRelicPaidUpgradeAllowed !== false)
     fail('New Relic paid upgrades must be disabled');
+  if (input.newRelicFreeIngestLimitGb !== 100)
+    fail(
+      'New Relic Free includes 100 GB per month; a larger allowance requires a new reviewed cost model',
+    );
   if (input.newRelicMonthlyIngestGb > input.newRelicFreeIngestLimitGb)
     fail('New Relic ingest exceeds the explicit free limit');
   if (input.newRelicMonthlyIngestGb * 2 > input.newRelicFreeIngestLimitGb)
@@ -67,6 +78,9 @@ export function evaluateManagedEstateCost(
   for (const field of [
     'newRelicMonthlyIngestGb',
     'newRelicFreeIngestLimitGb',
+    'postgresStorageGb',
+    'kmsBillableKeyVersions',
+    'kmsRequestCount',
     'primaryIngressGb',
     'primaryObjectStoredGb',
     'primaryObjectClassARequests',
@@ -74,12 +88,46 @@ export function evaluateManagedEstateCost(
     'primaryObjectEgressGb',
     'databaseTransferGb',
     'validatorRequestCount',
+    'validatorRunCount',
     'validatorTransferGb',
     'backupStoredGb',
     'backupRequestCount',
     'backupEgressGb',
   ])
     finiteNonNegative(input[field], field);
+
+  if (input.postgresStorageGb < 20)
+    fail('postgresStorageGb must price at least the 20 GB resource minimum');
+  if (input.kmsBillableKeyVersions < 6)
+    fail(
+      'kmsBillableKeyVersions must price both keys and two annual rotations',
+    );
+
+  // Bind the quote's billing units to the declared estate and measured usage.
+  // Keeping an independent editable quantity would let a four-service estate
+  // claim zero compute cost or price only a fraction of its recovery traffic.
+  const quantities = {
+    'compute': input.flySingletonCount,
+    'database-plan': 1,
+    'database-storage': input.postgresStorageGb,
+    'database-transfer': input.databaseTransferGb,
+    'primary-object-storage': input.primaryObjectStoredGb,
+    'primary-object-class-a': input.primaryObjectClassARequests / 1_000_000,
+    'primary-object-class-b': input.primaryObjectClassBRequests / 1_000_000,
+    'primary-object-egress': input.primaryObjectEgressGb,
+    'kms-keys': input.kmsBillableKeyVersions,
+    'kms-requests': input.kmsRequestCount,
+    'backup-storage': input.backupStoredGb / 1_000,
+    'backup-requests': input.backupRequestCount,
+    'backup-egress': input.backupEgressGb,
+    'validator-compute': input.validatorRunCount,
+    'validator-requests': input.validatorRequestCount,
+    'validator-transfer': input.validatorTransferGb,
+    'mail': 1,
+    'monitoring': 1,
+    'dns-ingress': 1,
+    'reserve': 1,
+  };
 
   if (!Array.isArray(input.lineItems) || input.lineItems.length === 0)
     fail('lineItems must be a non-empty array');
@@ -95,12 +143,19 @@ export function evaluateManagedEstateCost(
       fail(
         `category ${item.category} must have exactly one explicit line item`,
       );
+    if (item.quantity !== quantities[item.category])
+      fail(
+        `category ${item.category} quantity does not match its declared estate/usage`,
+      );
+    if (typeof item.evidence !== 'string' || !item.evidence.trim())
+      fail(`category ${item.category} requires explicit price evidence`);
     seen.add(item.category);
     const itemSubtotal =
       finiteNonNegative(item.quantity, `lineItems[${index}].quantity`) *
       finiteNonNegative(item.unitPriceUsd, `lineItems[${index}].unitPriceUsd`);
     subtotals.set(item.category, itemSubtotal);
     subtotalUsd += itemSubtotal;
+    finiteNonNegative(subtotalUsd, 'total');
   }
   const missing = [...REQUIRED_CATEGORIES].filter(
     (category) => !seen.has(category),
@@ -113,7 +168,7 @@ export function evaluateManagedEstateCost(
     input.minimumHeadroomUsd,
     'minimumHeadroomUsd',
   );
-  const withinCap = totalUsd <= input.monthlyCapUsd;
+  const withinCap = subtotalUsd <= input.monthlyCapUsd;
   const qualificationComplete = input.qualificationComplete === true;
   const requiredEvidence = [
     'providerQuotesCurrent',

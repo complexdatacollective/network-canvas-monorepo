@@ -73,7 +73,12 @@ configuration archive, and their account-recovery paths.
    credits, paid New Relic fallback, fewer than four services/databases, or the
    weakened PostgreSQL minimums. The earlier $91.67 estimate and the checked-in
    model's current $86.83 result are both illustrative rather than complete
-   quotes; the checked-in input is designed to fail qualification. Measure
+   quotes; the checked-in input is designed to fail qualification. Quantities
+   are tied to the declared estate and measured usage, including validator
+   invocations and traffic; missing memory or retention measurements refuse
+   evaluation. Per-request and per-run prices must include the quoted execution
+   size and duration. The gate checks the supplied evidence declarations, not
+   provider accounts; a true Boolean is not independent proof. Measure
    ingress, database transfer, R2
    storage/Class A/Class B/egress, KMS requests, B2 storage/requests/egress,
    validator requests/traffic, mail, DNS, and a non-zero recovery reserve. Total
