@@ -80,6 +80,7 @@
   "protocolBuilder.codebookEntity.shapePlaceholder": "Elige una forma…",
   "protocolBuilder.codebookEntity.subjectDescription": "{entity, select, node {Tipo de nodo: {name}} edge {Tipo de vínculo: {name}} other {Atributos de Ego}}",
   "protocolBuilder.codebookVariable.booleanAnswerLabel": "{records, select, true {Etiqueta de «true»} other {Etiqueta de «false»}}",
+  "protocolBuilder.codebookVariable.booleanAnswerPlaceholder": "{records, select, true {Sí} other {No}}",
   "protocolBuilder.codebookVariable.booleanNegativeLabel": "{records, select, true {Mostrar «true» como respuesta negativa} other {Mostrar «false» como respuesta negativa}}",
   "protocolBuilder.codebookVariable.nameHint": "Este nombre se usa para referirse al atributo y en los datos exportados.",
   "protocolBuilder.codebookVariable.nameLabel": "Nombre del atributo",

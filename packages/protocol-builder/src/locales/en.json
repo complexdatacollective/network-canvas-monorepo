@@ -323,6 +323,10 @@
     "defaultMessage": "{records, select, true {Label for “true”} other {Label for “false”}}",
     "description": "Label of the field holding the words on one of the two answers a yes/no attribute offers. records says which of the two stored values this answer records; “true” and “false” are the literal values the protocol stores and an export records, so they stay as they are."
   },
+  "protocolBuilder.codebookVariable.booleanAnswerPlaceholder": {
+    "defaultMessage": "{records, select, true {Yes} other {No}}",
+    "description": "Placeholder in the field holding the words on one of the two answers a yes/no attribute offers, shown while the researcher has written none. It has to read exactly as the interview’s own yes/no control does for an attribute that names no answers — frescoUi.booleanField.yes and frescoUi.booleanField.no — because that is literally what the participant will see. records says which of the two stored values this answer records."
+  },
   "protocolBuilder.codebookVariable.booleanNegativeLabel": {
     "defaultMessage": "{records, select, true {Style “true” as negative} other {Style “false” as negative}}",
     "description": "Label of the switch that draws one of the two answers of a yes/no attribute in red when a participant selects it. records says which of the two stored values this answer records; “true” and “false” are the literal values the protocol stores and stay as they are."
