@@ -17,6 +17,7 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 import { renderStageForm } from '~/components/StageEditor/__tests__/stageFormTestHarness';
+import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
 import ArchitectArrayField from '../../ArchitectArrayField';
 import ArchitectField from '../../ArchitectField';
@@ -636,9 +637,10 @@ describe('DialogArrayField', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove item' }));
 
     await waitFor(() => expect(getItems()).toEqual([]));
-    expect(globalThis.__architectDialogMocks.confirm).toHaveBeenCalledWith(
-      expect.objectContaining({ confirmLabel: 'Remove item' }),
-    );
+    expect(globalThis.__architectDialogMocks.confirm).toHaveBeenCalledTimes(1);
+    const confirmation = globalThis.__architectDialogMocks.confirm.mock
+      .calls[0]?.[0] as { confirmLabel?: ReactNode };
+    expect(renderQueuedMessage(confirmation.confirmLabel)).toBe('Remove item');
   });
 
   /**

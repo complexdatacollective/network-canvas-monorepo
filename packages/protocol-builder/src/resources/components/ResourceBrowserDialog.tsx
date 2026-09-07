@@ -1,5 +1,8 @@
 import { useCallback, useRef } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Section from '@codaco/fresco-ui/Section';
@@ -19,6 +22,40 @@ import {
 import ResourceSecretControl from './ResourceSecretControl.tsx';
 import ResourceUploadControl from './ResourceUploadControl.tsx';
 import { useResourceLibrary } from './useResourceLibrary.ts';
+
+const messages = defineMessages({
+  libraryTitle: {
+    id: 'protocolBuilder.resourceBrowser.libraryTitle',
+    defaultMessage: 'Resources in this protocol',
+    description:
+      'Heading over the list of resources — images, audio, video, participant data, API keys — a researcher can choose from. Also the accessible name of that list.',
+  },
+  libraryDescription: {
+    id: 'protocolBuilder.resourceBrowser.libraryDescription',
+    defaultMessage:
+      'Resources already saved, and anything imported since this stage was opened.',
+    description:
+      'Description under the heading of the resource list. "Stage" is one step of an interview.',
+  },
+  retryLibrary: {
+    id: 'protocolBuilder.resourceBrowser.retryLibrary',
+    defaultMessage: 'Try loading the resource list again',
+    description:
+      'Button beside a failure notice, which asks the host again for the list of resources. Named rather than generic because several parts of the dialog can be failing at once.',
+  },
+  loading: {
+    id: 'protocolBuilder.resourceBrowser.loading',
+    defaultMessage: 'Loading resources…',
+    description:
+      'Shown while the list of a protocol’s resources is being read for the first time.',
+  },
+  emptyState: {
+    id: 'protocolBuilder.resourceBrowser.emptyState',
+    defaultMessage: 'There are no resources to choose from yet.',
+    description:
+      'Shown in place of the resource list when the protocol holds none of the kind this field accepts and none has been imported yet.',
+  },
+});
 
 export type ResourceBrowserDialogProps = Readonly<{
   open: boolean;
@@ -47,6 +84,7 @@ export default function ResourceBrowserDialog({
   onClose,
   disabled = false,
 }: ResourceBrowserDialogProps) {
+  const intl = useAppIntl();
   const copy = RESOURCE_PICKER_COPY[kind];
   /**
    * Whether the import control inside is holding work of the researcher's.
@@ -72,12 +110,12 @@ export default function ResourceBrowserDialog({
     <Dialog
       open={open}
       closeDialog={requestClose}
-      title={copy.browserTitle}
-      description={copy.browserDescription}
+      title={intl.formatMessage(copy.browserTitle)}
+      description={intl.formatMessage(copy.browserDescription)}
       size="workspace"
       footer={
         <Button type="button" color="default" onClick={requestClose}>
-          Cancel
+          {intl.formatMessage(commonMessages.cancel)}
         </Button>
       }
     >
@@ -112,6 +150,7 @@ function ResourceBrowserBody({
   onDraftChange,
   disabled,
 }: ResourceBrowserBodyProps) {
+  const intl = useAppIntl();
   const copy = RESOURCE_PICKER_COPY[kind];
   const library = useResourceLibrary(browsableKinds(kind));
   const readLibrary = library.read;
@@ -127,7 +166,7 @@ function ResourceBrowserBody({
 
   return (
     <div className="flex flex-col gap-6">
-      <Section title={copy.importTitle}>
+      <Section title={intl.formatMessage(copy.importTitle)}>
         {kind === 'apikey' ? (
           <ResourceSecretControl
             onStaged={onSelect}
@@ -147,29 +186,29 @@ function ResourceBrowserBody({
       </Section>
 
       <Section
-        title="Resources in this protocol"
-        description="Resources already saved, and anything imported since this stage was opened."
+        title={intl.formatMessage(messages.libraryTitle)}
+        description={intl.formatMessage(messages.libraryDescription)}
       >
         {library.failure !== undefined && (
           <ResourceFailureNotice
             failure={library.failure}
             onRetry={library.retry}
-            retryLabel="Try loading the resource list again"
+            retryLabel={intl.formatMessage(messages.retryLibrary)}
             busy={library.busy}
           />
         )}
 
         {library.failure === undefined && library.resources.length === 0 && (
           <Paragraph margin="none" emphasis="muted">
-            {library.busy
-              ? 'Loading resources…'
-              : 'There are no resources to choose from yet.'}
+            {intl.formatMessage(
+              library.busy ? messages.loading : messages.emptyState,
+            )}
           </Paragraph>
         )}
 
         {library.resources.length > 0 && (
           <ul
-            aria-label="Resources in this protocol"
+            aria-label={intl.formatMessage(messages.libraryTitle)}
             className="flex flex-col gap-2"
           >
             {library.resources.map((descriptor) => (
@@ -190,14 +229,14 @@ function ResourceBrowserBody({
                   {descriptor.name}
                 </Button>
                 <Paragraph intent="smallText" emphasis="muted" margin="none">
-                  {resourceKindLabel(descriptor.kind)}
+                  {resourceKindLabel(descriptor.kind, intl)}
                 </Paragraph>
                 <Paragraph intent="smallText" emphasis="muted" margin="none">
-                  {resourceStatusLabel(descriptor.status)}
+                  {resourceStatusLabel(descriptor.status, intl)}
                 </Paragraph>
                 {descriptor.byteLength !== undefined && (
                   <Paragraph intent="smallText" emphasis="muted" margin="none">
-                    {formatByteLength(descriptor.byteLength)}
+                    {formatByteLength(descriptor.byteLength, intl)}
                   </Paragraph>
                 )}
               </li>

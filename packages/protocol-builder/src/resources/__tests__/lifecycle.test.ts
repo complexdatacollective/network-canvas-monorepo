@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { readMessage } from '../../testing/i18n.ts';
 import {
   resourceFailure,
   type ManifestApplyOutcome,
@@ -934,8 +935,10 @@ describe('finishStagedResources', () => {
       throw new Error('the finish was not refused');
     }
     // The host's own words, so the researcher is told what is wrong with the
-    // file rather than that "something" is.
-    expect(outcome.issues[0]?.message).toContain(
+    // file rather than that "something" is. Read back through the same decode
+    // the render site does: the raw `message` is the encoded descriptor, and
+    // asserting on that would pass on the id alone.
+    expect(readMessage(outcome.issues[0]?.message ?? '')).toContain(
       'the selected file is not a readable network',
     );
     // Nothing was committed and nothing was thrown away: the researcher can
@@ -1179,6 +1182,11 @@ function throwingHost(
   };
 }
 
+/**
+ * What a researcher reads when an adapter throws. Asserted after decoding
+ * rather than against the raw `message`, which carries the descriptor rather
+ * than the sentence.
+ */
 const UNREACHABLE = 'The resource could not be reached. Try again in a moment.';
 
 describe('a host that throws instead of reporting', () => {
@@ -1194,9 +1202,9 @@ describe('a host that throws instead of reporting', () => {
 
     expect(failure).toMatchObject({
       reason: 'unavailable',
-      message: UNREACHABLE,
       retryable: true,
     });
+    expect(readMessage(failure.message)).toBe(UNREACHABLE);
   });
 
   it('answers a cancel on the result channel', async () => {

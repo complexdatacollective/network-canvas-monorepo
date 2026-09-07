@@ -1,6 +1,8 @@
 import { values } from 'es-toolkit/compat';
 import { useCallback, useMemo, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type {
   CreateFormFieldProps,
   FieldValue,
@@ -10,7 +12,6 @@ import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
 import type { Variable, VariableOption } from '@codaco/protocol-validation';
-import { ensureError } from '@codaco/shared-consts';
 import DialogForm from '~/components/DialogForm/DialogForm';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -26,8 +27,107 @@ import {
 } from '~/config/variables';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
+import { type FormattedConfig, formatConfig } from '~/i18n/formatConfig';
+import { toSubmissionError } from '~/i18n/submissionErrors';
 import { getVariablesForSubject } from '~/selectors/codebook';
 import safeName from '~/utils/safeName';
+const additionalMessages = defineMessages({
+  createNewOption: {
+    id: 'architect.additional.newVariableWindow.newVariableWindow.createNewOption',
+    defaultMessage: 'Create new option',
+    description:
+      'The addButtonLabel text in components / NewVariableWindow / NewVariableWindow.',
+  },
+});
+const messages = defineMessages({
+  attributeDefinition: {
+    id: 'architect.newVariableWindow.newVariableWindow.attributeDefinition',
+    defaultMessage: 'Attribute definition',
+    description:
+      'The title text in components / NewVariableWindow / NewVariableWindow.',
+  },
+  defineTheAttributeSIdentityDataType: {
+    id: 'architect.newVariableWindow.newVariableWindow.defineTheAttributeSIdentityDataType',
+    defaultMessage:
+      "Define the attribute's identity, data type, and available values.",
+    description:
+      'The description text in components / NewVariableWindow / NewVariableWindow.',
+  },
+  identity: {
+    id: 'architect.newVariableWindow.newVariableWindow.identity',
+    defaultMessage: 'Identity',
+    description:
+      'The title text in components / NewVariableWindow / NewVariableWindow.',
+  },
+  attributeName: {
+    id: 'architect.newVariableWindow.newVariableWindow.attributeName',
+    defaultMessage: 'Attribute name',
+    description:
+      'The description text in components / NewVariableWindow / NewVariableWindow.',
+  },
+  theAttributeNameIsHowYou: {
+    id: 'architect.newVariableWindow.newVariableWindow.theAttributeNameIsHowYou',
+    defaultMessage:
+      'The attribute name is how you will reference the attribute elsewhere, including in exported data.',
+    description:
+      'The hint text in components / NewVariableWindow / NewVariableWindow.',
+  },
+  eGNickname: {
+    id: 'architect.newVariableWindow.newVariableWindow.eGNickname',
+    defaultMessage: 'e.g. Nickname',
+    description:
+      'The placeholder text in components / NewVariableWindow / NewVariableWindow.',
+  },
+  dataType: {
+    id: 'architect.newVariableWindow.newVariableWindow.dataType',
+    defaultMessage: 'Data type',
+    description:
+      'The title text in components / NewVariableWindow / NewVariableWindow.',
+  },
+  attributeType: {
+    id: 'architect.newVariableWindow.newVariableWindow.attributeType',
+    defaultMessage: 'Attribute type',
+    description:
+      'The description text in components / NewVariableWindow / NewVariableWindow.',
+  },
+  selectAttributeType: {
+    id: 'architect.newVariableWindow.newVariableWindow.selectAttributeType',
+    defaultMessage: 'Select attribute type',
+    description:
+      'The placeholder text in components / NewVariableWindow / NewVariableWindow.',
+  },
+  allowedValues: {
+    id: 'architect.newVariableWindow.newVariableWindow.allowedValues',
+    defaultMessage: 'Allowed values',
+    description:
+      'The title text in components / NewVariableWindow / NewVariableWindow.',
+  },
+  options: {
+    id: 'architect.newVariableWindow.newVariableWindow.options',
+    defaultMessage: 'Options',
+    description:
+      'The label text in components / NewVariableWindow / NewVariableWindow.',
+  },
+  createTheValuesThisInputControl: {
+    id: 'architect.newVariableWindow.newVariableWindow.createTheValuesThisInputControl',
+    defaultMessage:
+      'Create the values this input control offers the participant.',
+    description:
+      'The hint text in components / NewVariableWindow / NewVariableWindow.',
+  },
+  createNewAttribute: {
+    id: 'architect.newVariableWindow.newVariableWindow.createNewAttribute',
+    defaultMessage: 'Create New Attribute',
+    description:
+      'The title text in components / NewVariableWindow / NewVariableWindow.',
+  },
+  saveAndClose: {
+    id: 'architect.newVariableWindow.newVariableWindow.saveAndClose',
+    defaultMessage: 'Save and Close',
+    description:
+      'The submitLabel text in components / NewVariableWindow / NewVariableWindow.',
+  },
+});
 
 const FORM_ID = 'create-new-variable';
 
@@ -74,7 +174,7 @@ export type Entity = 'node' | 'edge' | 'ego';
 
 type NewVariableFieldsProps = {
   existingVariableNames: string[];
-  variableTypeOptions: typeof VARIABLE_OPTIONS;
+  variableTypeOptions: FormattedConfig<typeof VARIABLE_OPTIONS>;
   initialValues: Record<string, unknown>;
   typeLocked: boolean;
   lockedOptions: LockedVariableOptions | null;
@@ -87,6 +187,7 @@ const NewVariableFields = ({
   typeLocked,
   lockedOptions,
 }: NewVariableFieldsProps) => {
+  const intl = useAppIntl();
   const variableType = useFormStore((state) => {
     const value = state.getFieldState('type')?.value;
     return typeof value === 'string' ? value : undefined;
@@ -97,17 +198,22 @@ const NewVariableFields = ({
 
   return (
     <Section
-      title="Attribute definition"
-      description="Define the attribute's identity, data type, and available values."
+      title={intl.formatMessage(messages.attributeDefinition)}
+      description={intl.formatMessage(
+        messages.defineTheAttributeSIdentityDataType,
+      )}
     >
-      <Section title="Identity">
-        <IssueAnchor fieldName="name" description="Attribute name" />
+      <Section title={intl.formatMessage(messages.identity)}>
+        <IssueAnchor
+          fieldName="name"
+          description={intl.formatMessage(messages.attributeName)}
+        />
         <ArchitectField
           name="name"
-          label="Attribute name"
-          hint="The attribute name is how you will reference the attribute elsewhere, including in exported data."
+          label={intl.formatMessage(messages.attributeName)}
+          hint={intl.formatMessage(messages.theAttributeNameIsHowYou)}
           component={VariableNameField}
-          placeholder="e.g. Nickname"
+          placeholder={intl.formatMessage(messages.eGNickname)}
           initialValue={
             typeof initialValues.name === 'string'
               ? initialValues.name
@@ -120,13 +226,16 @@ const NewVariableFields = ({
           }}
         />
       </Section>
-      <Section title="Data type">
-        <IssueAnchor fieldName="type" description="Attribute type" />
+      <Section title={intl.formatMessage(messages.dataType)}>
+        <IssueAnchor
+          fieldName="type"
+          description={intl.formatMessage(messages.attributeType)}
+        />
         <ArchitectField
           name="type"
-          label="Attribute type"
+          label={intl.formatMessage(messages.attributeType)}
           component={StyledSelectField}
-          placeholder="Select attribute type"
+          placeholder={intl.formatMessage(messages.selectAttributeType)}
           options={variableTypeOptions}
           initialValue={
             typeof initialValues.type === 'string'
@@ -142,19 +251,26 @@ const NewVariableFields = ({
         />
       </Section>
       {isOrdinalOrCategoricalType(variableType) && (
-        <Section title="Allowed values">
-          <IssueAnchor fieldName="options" description="Allowed values" />
+        <Section title={intl.formatMessage(messages.allowedValues)}>
+          <IssueAnchor
+            fieldName="options"
+            description={intl.formatMessage(messages.allowedValues)}
+          />
           {lockedOptions ? (
             <LockedOptions options={lockedOptions} />
           ) : (
             <ArchitectArrayField
               name="options"
-              label="Options"
-              hint="Create the values this input control offers the participant."
+              label={intl.formatMessage(messages.options)}
+              hint={intl.formatMessage(
+                messages.createTheValuesThisInputControl,
+              )}
               component={Options}
-              addButtonLabel="Create new option"
+              addButtonLabel={intl.formatMessage(
+                additionalMessages.createNewOption,
+              )}
               initialValue={initialOptions}
-              validation={optionsValidation}
+              validation={optionsValidation(intl)}
             />
           )}
         </Section>
@@ -185,6 +301,7 @@ export default function NewVariableWindow({
   initialValues = null,
   lockedOptions = null,
 }: NewVariableWindowProps) {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   // Memoize subject to avoid creating new object on every render, which breaks selector memoization
   const subject = useMemo(() => ({ entity, type }), [entity, type]);
@@ -198,11 +315,12 @@ export default function NewVariableWindow({
   const filteredVariableOptions = useMemo(
     () =>
       allowVariableTypes
-        ? VARIABLE_OPTIONS.filter(({ value: optionVariableType }) =>
-            allowVariableTypes.includes(optionVariableType),
+        ? formatConfig(VARIABLE_OPTIONS, intl).filter(
+            ({ value: optionVariableType }) =>
+              allowVariableTypes.includes(optionVariableType),
           )
-        : VARIABLE_OPTIONS,
-    [allowVariableTypes],
+        : formatConfig(VARIABLE_OPTIONS, intl),
+    [allowVariableTypes, intl],
   );
   // Merge locked options into initial values if provided
   const mergedInitialValues = useMemo(() => {
@@ -238,7 +356,7 @@ export default function NewVariableWindow({
         // Keep the dialog open and say why, rather than closing on a failure.
         return {
           success: false as const,
-          formErrors: [ensureError(error).message],
+          formErrors: [toSubmissionError(error)],
         };
       }
     },
@@ -281,9 +399,9 @@ export default function NewVariableWindow({
       key={openCount}
       open={show}
       onClose={onCancel}
-      title="Create New Attribute"
+      title={intl.formatMessage(messages.createNewAttribute)}
       formId={FORM_ID}
-      submitLabel="Save and Close"
+      submitLabel={intl.formatMessage(messages.saveAndClose)}
       onSubmit={handleSubmit}
     >
       <NewVariableFields

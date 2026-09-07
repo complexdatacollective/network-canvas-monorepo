@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { messageSubmissionResult } from '~/test/messageText';
+
 type UpdateVariableArg = {
   replaceProperties: readonly string[];
   configuration: Record<string, unknown>;
@@ -132,10 +134,12 @@ describe('useFormFieldCommit', () => {
       component: 'Text',
     });
 
-    expect(result).toEqual({
+    expect(messageSubmissionResult(result)).toEqual({
       success: false,
       fieldErrors: {
-        variable: ['Variable name contains no valid characters'],
+        variable: [
+          'These changes could not be saved. Check the current settings and try again.',
+        ],
       },
     });
   });
@@ -146,7 +150,7 @@ describe('useFormFieldCommit', () => {
 
     const result = await commit({ variable: 'gone', component: 'Text' });
 
-    expect(result).toEqual({
+    expect(messageSubmissionResult(result)).toEqual({
       success: false,
       formErrors: ['Attribute not found'],
     });
@@ -209,10 +213,12 @@ describe('useComposerFieldCommit', () => {
       component: 'Text',
     });
 
-    expect(result).toEqual({
+    expect(messageSubmissionResult(result)).toEqual({
       success: false,
       fieldErrors: {
-        variable: ['Variable name contains no valid characters'],
+        variable: [
+          'These changes could not be saved. Check the current settings and try again.',
+        ],
       },
     });
   });

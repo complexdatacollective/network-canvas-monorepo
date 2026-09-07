@@ -5,6 +5,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { protocolContextFromSections } from '../../protocol-context.ts';
+import { readMessage } from '../../testing/i18n.ts';
 import {
   buildEntityTypeUsageIndex,
   buildExclusiveVariableSlotMap,
@@ -194,7 +195,13 @@ describe('variable role helpers', () => {
       ).map(({ value }) => value),
     ).toEqual(['isEgo', 'otherFlag']);
 
-    expect(interfaceOwnedPickIssue(slotMap, FAMILY_SUBJECT, 'isEgo')).toBe(
+    // The refusal crossed a string-only contract, so it is read back the way a
+    // field's error region renders it.
+    expect(
+      readMessage(
+        interfaceOwnedPickIssue(slotMap, FAMILY_SUBJECT, 'isEgo') ?? '',
+      ),
+    ).toBe(
       'This attribute is set by the Family Pedigree interface, which marks the participant, so it cannot be used here. Choose a different attribute.',
     );
     expect(
@@ -226,12 +233,16 @@ describe('variable role helpers', () => {
         reversedCanonical,
       ),
     ).toBeUndefined();
+    // The refusal crossed a string-only contract, so it is read back the way a
+    // field's error region renders it.
     expect(
-      interfaceOwnedOptionsIssue(
-        optionMap,
-        FAMILY_SUBJECT,
-        'biologicalSex',
-        staleOptions,
+      readMessage(
+        interfaceOwnedOptionsIssue(
+          optionMap,
+          FAMILY_SUBJECT,
+          'biologicalSex',
+          staleOptions,
+        ) ?? '',
       ),
     ).toBe(
       'These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.',
