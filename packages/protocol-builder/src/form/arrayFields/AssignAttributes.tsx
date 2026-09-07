@@ -1,5 +1,7 @@
 import { type ComponentType, useCallback, useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
@@ -25,6 +27,21 @@ export type {
   CreateAttributeVariable,
   VariableOption,
 } from './Attribute.tsx';
+
+const messages = defineMessages({
+  addButton: {
+    id: 'protocolBuilder.assignAttributes.addButton',
+    defaultMessage: 'Add new attribute to assign',
+    description:
+      'Visible text and accessible name of the button that adds another row to the list of attributes a prompt stamps onto every node it creates. Named in full rather than “Add new”, because a prompt editor mounts several lists side by side and a researcher navigating by buttons reads only these words.',
+  },
+  emptyState: {
+    id: 'protocolBuilder.assignAttributes.emptyState',
+    defaultMessage: 'No additional attributes assigned.',
+    description:
+      'Shown in place of the list while a prompt stamps nothing onto the nodes it creates. Not a problem to fix: assigning nothing is the ordinary case.',
+  },
+});
 
 const ALLOWED_TYPES = ['boolean'];
 
@@ -195,6 +212,7 @@ export default function AssignAttributes({
   'aria-invalid': ariaInvalid,
   ...arrayFieldProps
 }: AssignAttributesProps) {
+  const intl = useAppIntl();
   /**
    * The rows, for everything here that has to READ them.
    *
@@ -272,8 +290,8 @@ export default function AssignAttributes({
         // The row renders its own Surface, so ArrayField's wrapper stays bare
         // rather than nesting two levels of padded, shadowed surface.
         itemClasses="p-0! shadow-none bg-transparent"
-        addButtonLabel="Add new attribute to assign"
-        emptyStateMessage="No additional attributes assigned."
+        addButtonLabel={intl.formatMessage(messages.addButton)}
+        emptyStateMessage={intl.formatMessage(messages.emptyState)}
         immediateAdd
         confirmDelete={false}
       />
