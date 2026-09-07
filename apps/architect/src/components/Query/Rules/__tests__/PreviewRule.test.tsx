@@ -148,7 +148,7 @@ describe('PreviewRule', () => {
       within(values?.[1] as HTMLElement).getByText('No. I decline to'),
     ).toBeVisible();
     expect(preview).toHaveTextContent(
-      'that includes Family, No. I decline to participate',
+      'that includes Family and No. I decline to participate',
     );
   });
 
@@ -305,7 +305,7 @@ describe('the printable summary says the same thing as the editor preview', () =
   /**
    * The summary lays a rule out in three columns so a page of rules
    * aligns under one another. `Value` renders one token per selected option
-   * with a bare ", " between them, and as direct children of the grid every
+   * with text separators between them, and as direct children of the grid every
    * token — and every separator — took a column of its own, wrapping the tail
    * of the list onto a second row underneath the entity. Reachable from
    * shipped content: the development protocol's stage 21 filters on a
@@ -337,7 +337,7 @@ describe('the printable summary says the same thing as the editor preview', () =
       2,
     );
     expect(cells).toHaveLength(3);
-    expect(cells[2]).toHaveTextContent('Family, Friends');
+    expect(cells[2]).toHaveTextContent('Family and Friends');
     expect(cells[2]?.querySelectorAll('[data-rule-part="value"]')).toHaveLength(
       2,
     );

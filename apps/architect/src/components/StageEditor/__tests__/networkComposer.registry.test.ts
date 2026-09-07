@@ -9,7 +9,7 @@ import {
 import EdgeConfiguration from '~/components/sections/EdgeConfiguration/EdgeConfiguration';
 import NodeConfiguration from '~/components/sections/NodeConfiguration/NodeConfiguration';
 
-import { INTERFACE_TYPES } from '../../Screens/NewStageScreen/interfaceOptions';
+import { getInterfaceTypes } from '../../Screens/NewStageScreen/interfaceOptions';
 import { getInterface } from '../Interfaces';
 
 describe('NetworkComposer registry', () => {
@@ -35,7 +35,7 @@ describe('NetworkComposer registry', () => {
   });
 
   it('appears in the stage-type picker as a Sociograms entry', () => {
-    const entry = INTERFACE_TYPES.find((i) => i.type === 'NetworkComposer');
+    const entry = getInterfaceTypes().find((i) => i.type === 'NetworkComposer');
     expect(entry).toBeDefined();
     expect(entry?.category).toBe('Sociograms');
   });

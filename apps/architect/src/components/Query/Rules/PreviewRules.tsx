@@ -1,6 +1,8 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { createContext, useContext, useEffect, useId, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import ArrayField, {
   stripManagedProperties,
@@ -13,6 +15,26 @@ import type { RuleTypeOption } from './ruleCodebook';
 import RuleEditor, { type EditableRule } from './RuleEditor';
 import type { Rule } from './validateRule';
 import { getRuleDisplayOptions } from './withDisplayOptions';
+const additionalMessages = defineMessages({
+  noRulesHaveBeenCreatedYet: {
+    id: 'architect.additional.query.rules.previewRules.noRulesHaveBeenCreatedYet',
+    defaultMessage: 'No rules have been created yet.',
+    description:
+      'The emptyStateMessage text in components / Query / Rules / PreviewRules.',
+  },
+});
+const messages = defineMessages({
+  editRule: {
+    id: 'architect.query.rules.previewRules.editRule',
+    defaultMessage: 'Edit rule:',
+    description: 'Visible text in components / Query / Rules / PreviewRules.',
+  },
+  deleteRule: {
+    id: 'architect.query.rules.previewRules.deleteRule',
+    defaultMessage: 'Delete rule:',
+    description: 'Visible text in components / Query / Rules / PreviewRules.',
+  },
+});
 
 type RuleListContextValue = {
   codebook: Record<string, unknown>;
@@ -50,6 +72,7 @@ const RuleListItem = ({
   disabled,
   readOnly,
 }: ArrayFieldItemProps<EditableRule>) => {
+  const intl = useAppIntl();
   const { codebook } = useRuleListContext();
   const rule = toRule(item);
   const textId = useId();
@@ -71,10 +94,10 @@ const RuleListItem = ({
         with the visible preview without duplicating content visually.
       */}
       <span id={editActionId} hidden>
-        Edit rule:
+        {intl.formatMessage(messages.editRule)}
       </span>
       <span id={deleteActionId} hidden>
-        Delete rule:
+        {intl.formatMessage(messages.deleteRule)}
       </span>
       <div className="@container w-full">
         <div className="flex w-full min-w-0 flex-col gap-3 @min-[34rem]:flex-row @min-[34rem]:items-center">
@@ -205,21 +228,26 @@ const PreviewRules = ({
   addButtonLabel,
   onChange,
   hasError = false,
-}: PreviewRulesProps) => (
-  <RuleListContext.Provider value={{ codebook, ruleTypes }}>
-    <ArrayField<EditableRule>
-      value={rules as EditableRule[]}
-      onChange={(nextRules) => onChange(nextRules ?? [])}
-      getId={getRuleId}
-      itemTemplate={createEmptyRule}
-      itemComponent={RuleListItem}
-      editorComponent={RuleListEditor}
-      addButtonLabel={addButtonLabel}
-      emptyStateMessage="No rules have been created yet."
-      itemClasses="elevation-low"
-      aria-invalid={hasError}
-    />
-  </RuleListContext.Provider>
-);
+}: PreviewRulesProps) => {
+  const intl = useAppIntl();
+  return (
+    <RuleListContext.Provider value={{ codebook, ruleTypes }}>
+      <ArrayField<EditableRule>
+        value={rules as EditableRule[]}
+        onChange={(nextRules) => onChange(nextRules ?? [])}
+        getId={getRuleId}
+        itemTemplate={createEmptyRule}
+        itemComponent={RuleListItem}
+        editorComponent={RuleListEditor}
+        addButtonLabel={addButtonLabel}
+        emptyStateMessage={intl.formatMessage(
+          additionalMessages.noRulesHaveBeenCreatedYet,
+        )}
+        itemClasses="elevation-low"
+        aria-invalid={hasError}
+      />
+    </RuleListContext.Provider>
+  );
+};
 
 export default PreviewRules;

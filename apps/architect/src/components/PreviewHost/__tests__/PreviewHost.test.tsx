@@ -1,9 +1,21 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import type { ComponentProps, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AppI18nProvider } from '@codaco/app-i18n/react';
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
   type FinishHandler,
   getLastAvailableAuthoredStageIndex,
+  InterviewI18nProvider,
   type InterviewPayload,
 } from '@codaco/interview';
 import {
@@ -15,8 +27,13 @@ import {
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
+import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
+import { architectProductionLocales } from '~/i18n/locales';
+import { ARCHITECT_LOCALE_KEY } from '~/i18n/preference';
 
 import type { PreviewPayload } from '../messages';
+
+vi.unmock('@codaco/fresco-ui/dialogs/useDialog');
 
 const { shellMock } = vi.hoisted(() => ({ shellMock: vi.fn() }));
 vi.mock('@codaco/interview', async () => {
@@ -26,9 +43,17 @@ vi.mock('@codaco/interview', async () => {
     );
   return {
     ...actual,
-    Shell: (props: Record<string, unknown>) => {
+    Shell: (props: ComponentProps<typeof actual.Shell>) => {
       shellMock(props);
-      return <div data-testid="shell-mounted" />;
+      return (
+        <div data-testid="shell-mounted">
+          <actual.InterviewI18nProvider requestedLocale={props.requestedLocale}>
+            <span data-testid="shell-finish-description">
+              {props.finishConfirmationDescription}
+            </span>
+          </actual.InterviewI18nProvider>
+        </div>
+      );
     },
   };
 });
@@ -38,6 +63,30 @@ vi.mock('~/utils/assetDB', () => ({
 }));
 
 import { PreviewHost } from '../PreviewHost';
+
+function QueuePreviewConfirmation({
+  description,
+  onConfirm,
+}: {
+  description: ReactNode;
+  onConfirm: () => void;
+}) {
+  const { confirm } = useDialog();
+  return (
+    <button
+      onClick={() =>
+        void confirm({
+          title: 'Preview confirmation proof',
+          description,
+          confirmLabel: 'Confirm preview proof',
+          onConfirm,
+        })
+      }
+    >
+      Open preview confirmation
+    </button>
+  );
+}
 
 function makeProtocol() {
   return {
@@ -611,7 +660,9 @@ describe('PreviewHost', () => {
     expect(screen.getByText(/Person/)).toBeInTheDocument();
     expect(screen.getByText(/Code/)).toBeInTheDocument();
     expect(
-      screen.getByText(/minLength 24 exceeds maxLength 10/i),
+      screen.getByText(
+        'The minimum exceeds the maximum, so no answer is allowed. Adjust these limits.',
+      ),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /try again/i }),
@@ -666,7 +717,11 @@ describe('PreviewHost', () => {
     expect(
       screen.queryByText(/protocol can't be previewed/i),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/minLength 24 exceeds maxLength 10/i)).toBeNull();
+    expect(
+      screen.queryByText(
+        'The minimum exceeds the maximum, so no answer is allowed. Adjust these limits.',
+      ),
+    ).toBeNull();
     expect(
       screen.getByRole('button', { name: /try again/i }),
     ).toBeInTheDocument();
@@ -695,7 +750,9 @@ describe('PreviewHost', () => {
       await screen.findByText(/protocol can't be previewed/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/minLength 24 exceeds maxLength 10/i),
+      screen.getByText(
+        'The minimum exceeds the maximum, so no answer is allowed. Adjust these limits.',
+      ),
     ).toBeInTheDocument();
     // The generic screen's retry can only fail the same way here, so no part of
     // it may survive alongside the conflict list.
@@ -787,7 +844,9 @@ describe('PreviewHost', () => {
       await screen.findByText(/protocol can't be previewed/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/minLength 24 exceeds maxLength 10/i),
+      screen.getByText(
+        'The minimum exceeds the maximum, so no answer is allowed. Adjust these limits.',
+      ),
     ).toBeInTheDocument();
     // Architect answered, so blaming the connection hides the rules the user
     // can actually correct.
@@ -852,7 +911,7 @@ describe('PreviewHost', () => {
     const lastShellProps = () =>
       shellMock.mock.calls.at(-1)?.[0] as {
         onFinish: FinishHandler;
-        finishConfirmationDescription?: string;
+        finishConfirmationDescription?: ReactNode;
         payload: InterviewPayload;
       };
 
@@ -910,8 +969,102 @@ describe('PreviewHost', () => {
       // Without this the Shell falls back to the participant default
       // ("…satisfied with your responses"), which promises a permanence the
       // preview never had.
-      expect(lastShellProps().finishConfirmationDescription).toMatch(
+      expect(screen.getByTestId('shell-finish-description')).toHaveTextContent(
         /nothing is saved/i,
+      );
+    });
+
+    it('passes the active host locale into Shell and formats preview-specific copy inside its isolated catalog', async () => {
+      const languages = vi
+        .spyOn(navigator, 'languages', 'get')
+        .mockReturnValue(['en-US']);
+      localStorage.removeItem(ARCHITECT_LOCALE_KEY);
+      try {
+        render(
+          <ArchitectI18nProvider>
+            <PreviewHost />
+          </ArchitectI18nProvider>,
+        );
+        postPayload(openerStub, makePayload());
+        await screen.findByTestId('shell-mounted');
+        const initialPayload = lastShellProps().payload;
+        expect(shellMock.mock.calls.at(-1)?.[0].requestedLocale).toBe('en');
+        const description = screen.getByTestId('shell-finish-description');
+        expect(description).toHaveTextContent(
+          'This is a preview, so nothing is saved.',
+        );
+        act(() => {
+          localStorage.setItem(ARCHITECT_LOCALE_KEY, 'es');
+          window.dispatchEvent(
+            new StorageEvent('storage', {
+              key: ARCHITECT_LOCALE_KEY,
+              newValue: 'es',
+            }),
+          );
+        });
+        expect(shellMock.mock.calls.at(-1)?.[0].requestedLocale).toBe('es');
+        expect(lastShellProps().payload).toBe(initialPayload);
+        expect(screen.getByTestId('shell-finish-description')).toBe(
+          description,
+        );
+        expect(description).toHaveTextContent(
+          'Esto es una vista previa, así que no se guarda nada. Al finalizar se cierra esta prueba del protocolo, y puedes iniciarla de nuevo después.',
+        );
+        expect(document.documentElement.lang).toBe('es');
+      } finally {
+        languages.mockRestore();
+        localStorage.removeItem(ARCHITECT_LOCALE_KEY);
+      }
+    });
+
+    it('keeps the actual queued preview confirmation subscribed to its independent interface language', async () => {
+      const preview = render(<PreviewHost />);
+      postPayload(openerStub, makePayload());
+      await screen.findByTestId('shell-mounted');
+      // Capture the actual production node before a different provider renders
+      // it. React elements do not retain the context where they were created.
+      const description = lastShellProps().finishConfirmationDescription;
+      expect(description).toBeDefined();
+      preview.unmount();
+      const finish = vi.fn();
+      const content = (locale: string) => (
+        <AppI18nProvider locale="en-GB" locales={architectProductionLocales}>
+          <InterviewI18nProvider requestedLocale={locale}>
+            <DialogProvider>
+              <QueuePreviewConfirmation
+                description={description}
+                onConfirm={finish}
+              />
+            </DialogProvider>
+          </InterviewI18nProvider>
+        </AppI18nProvider>
+      );
+      const queued = render(content('en'));
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Open preview confirmation' }),
+      );
+      const dialog = await screen.findByRole('dialog');
+      expect(dialog).toHaveTextContent(
+        'This is a preview, so nothing is saved.',
+      );
+      queued.rerender(content('es-MX'));
+      expect(screen.getByRole('dialog')).toBe(dialog);
+      expect(dialog).toHaveTextContent(
+        'Esto es una vista previa, así que no se guarda nada. Al finalizar se cierra esta prueba del protocolo, y puedes iniciarla de nuevo después.',
+      );
+      expect(document.documentElement.lang).toBe('en-GB');
+      queued.rerender(content('en-GB'));
+      expect(screen.getByRole('dialog')).toBe(dialog);
+      expect(dialog).toHaveTextContent(
+        'This is a preview, so nothing is saved. Finishing ends this run of the protocol, and you can start it again afterwards.',
+      );
+      expect(document.documentElement.lang).toBe('en-GB');
+      expect(finish).not.toHaveBeenCalled();
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: 'Confirm preview proof' }),
+      );
+      await waitFor(() =>
+        expect(finish).toHaveBeenCalledExactlyOnceWith(expect.any(AbortSignal)),
       );
     });
 
