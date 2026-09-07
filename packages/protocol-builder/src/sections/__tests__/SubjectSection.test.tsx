@@ -179,7 +179,7 @@ describe('changing what a stage is about', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      await screen.findByRole('textbox', { name: 'Fixture prompt text' }),
       'Which family members?',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -357,7 +357,7 @@ describe('creating the type a stage needs without leaving it', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      await screen.findByRole('textbox', { name: 'Fixture prompt text' }),
       'And who else?',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));

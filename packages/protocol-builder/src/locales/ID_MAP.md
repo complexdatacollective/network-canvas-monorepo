@@ -410,6 +410,38 @@ stood behind**: the catalog is what it compares against, so a hardcoded literal
 with no id is invisible to it — the JSX-attribute scan is the structural half,
 and the two are meant to be read together.
 
+`src/editors/census/__tests__/censusEditorLocaleSweep.test.tsx` asks the same
+question of the five census and bin editors, as whole editors rather than as
+their prompt sections: a family mounts the shared subject, filter,
+introduction, skip logic and interviewer guidance sections too, and a sweep of
+its own section would read none of their words. Each is swept at rest, with
+every optional section switched on, and through adding, editing and removing a
+prompt — with every switch inside the row dialog turned on as well, which is
+how each family's own fields (the bins' sort orders, a census's edge creation,
+a categorical bin's group for everything else) get read.
+
+It does not open the dialogs behind "Create node type" and its siblings.
+`codebook/components/CodebookEntityEditor.tsx` still renders `'Cancel'`,
+`'Save entity'`, `'Saving…'` and `'Could not save this entity'` as literals
+with no id, which is the `codebookEntity` work named above as i18n-2's to
+finish. Sweeping them from here would report that work as this family's.
+
+Two things the sweep itself needed before it could read those surfaces:
+
+- **A fixture must not render copy the catalog owns.** `rowFixtures.tsx`'s
+  stand-in prompt editor said `label="Prompt text"`, which is what
+  `protocolBuilder.promptText.label` says. The sweep reads the rendered
+  document and cannot tell a fixture's words from a section's, so every
+  surface mounting that fixture reported the real field as untranslated. The
+  fixture's label is now `Fixture prompt text`.
+- **The interview's other stage names are protocol content.** A skip logic
+  destination is named by the researcher's label for the stage it continues at
+  ("Stage 9 — One to Many Dyad Census"). The harness seeds one stage, so
+  `protocolContent` saw only that one's words, and the shared fixture names
+  each stage after its interface — so switching skip logic on reported
+  `protocolBuilder.interface.oneToManyDyadCensus` against a researcher's own
+  stage name. Every fixture stage's label now counts as content.
+
 ## Reading a story in another language
 
 This package's Storybook carries the shared **Language** and **Direction**

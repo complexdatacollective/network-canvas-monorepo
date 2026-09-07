@@ -4,6 +4,7 @@ import { commonCatalogs, commonMessages } from '@codaco/app-i18n/common';
 
 import { protocolBuilderCatalogs } from '../locales/catalogs.ts';
 import enCatalog from '../locales/en.json';
+import { fixtureStageIds, loadFixtureStage } from './protocolFixture.ts';
 import type { StageEditorHarness } from './renderStageEditor.tsx';
 
 /**
@@ -147,6 +148,19 @@ const protocolContent = (harness: StageEditorHarness): ReadonlySet<string> => {
   };
   collect(harness.seeded.fields);
   collect(harness.hostCodebook());
+  // Every OTHER stage's own name, which one section on screen renders: a skip
+  // logic destination is a stage the interview may continue at, and it is
+  // named by the researcher's label for it — "Stage 9 — One to Many Dyad
+  // Census". The harness seeds ONE stage, so the two lines above see only that
+  // one's words, and a sweep that switches skip logic on reads every other
+  // stage's name with nothing to say it is content. The shared fixture names
+  // each of its stages after its interface, so what came back was
+  // `protocolBuilder.interface.oneToManyDyadCensus` reported against the
+  // researcher's own stage name — the exact confusion this set exists to
+  // prevent, one stage further out than it reached.
+  for (const stageId of fixtureStageIds()) {
+    collect(loadFixtureStage(stageId).fields.label);
+  }
   return strings;
 };
 
