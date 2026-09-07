@@ -655,6 +655,25 @@ export function renderStageEditor<T extends StageType = StageType>(
       (form) => form.id === formId,
     ) ?? null;
 
+  /**
+   * The form a `submit()` is waiting on, or a refusal saying there is none.
+   *
+   * A call may legitimately mount something with no shared shell under it — a
+   * stand-in editor that renders a paragraph — and `submit()` on one of those
+   * has nothing to wait for. Said rather than waited out: without this the
+   * wait below would never be satisfied and the test would die at the suite's
+   * timeout, naming neither the harness nor the editor that has no form.
+   */
+  const submittingForm = (): HTMLFormElement => {
+    const form = stageForm();
+    if (form === null) {
+      throw new Error(
+        `renderStageEditor: submit() found no form "${formId}" under this harness. What is mounted here does not build on \`StageEditorShell\`, so there is no stage form to submit or to wait on.`,
+      );
+    }
+    return form;
+  };
+
   const submit = async (): Promise<FinishRequest | null> => {
     const before = finishRequests.length;
     const button = within(view.container).getByRole('button', {
@@ -667,7 +686,16 @@ export function renderStageEditor<T extends StageType = StageType>(
       // screen: the form's own errors, or a field marked invalid for
       // `focusFirstError` to reach. Asserting both is what stops a submit
       // still in flight from being read as a refusal.
-      expect(button).toHaveAttribute('aria-busy', 'false');
+      //
+      // Settling is read from the FORM, not from the control that was
+      // clicked. It used to be read from the control's `aria-busy`, which only
+      // the package's own `SubmitButton` says — so a host rendering a plain
+      // `<button form={formId}>`, which the action-context contract allows and
+      // several hosts do, never satisfied it: the refusal was on screen and
+      // the form had settled, and the wait ran on to the suite's timeout,
+      // failing against whatever the test was doing next rather than against
+      // the control the host supplied.
+      expect(submittingForm()).toHaveAttribute('aria-busy', 'false');
       expect(refusalOnScreen(view.container)).toBe(true);
     });
     // Answered against the count taken before the click, never `at(-1)`: after
