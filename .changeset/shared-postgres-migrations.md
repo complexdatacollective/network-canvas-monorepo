@@ -18,3 +18,5 @@ Refuse SECURITY DEFINER triggers and identities able to bypass large-object perm
 Require explicitly configured runtime login membership sets and administrator removal of large-object creation capabilities. Refuse owner-backed rewrite rules, unsafe persisted session settings, and ordinary relation privileges that bypass application access controls.
 
 Use the shared database enrollment and migration evidence guards for every configured migration runner. Preserve each application's role sets and schema identifiers while refusing outside CONNECT and effective evidence-write privileges before recorded history is trusted.
+
+Use the same complete restricted-identity capability policy as runtime admission, preserving independent role classes and rejecting direct enrolled-login data grants and owner-backed view access. Validate disjoint classes before a migration connection can be supplied.

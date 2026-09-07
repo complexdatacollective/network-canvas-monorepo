@@ -12,6 +12,32 @@ export class UnsafePostgresDatabaseEnrollmentError extends Error {
   }
 }
 
+/** Snapshot the optional administrative exception before a caller can await.
+ * These names express deployment intent, never inferred object ownership. */
+export function copyPostgresAdministrativeLogins(
+  allowedLogins: readonly string[],
+  administrativeLogins: readonly string[] = [],
+): string[] {
+  try {
+    if (!Array.isArray(allowedLogins) || !Array.isArray(administrativeLogins))
+      throw new Error();
+    const enrolled: unknown[] = [...allowedLogins];
+    const administrators: unknown[] = [...administrativeLogins];
+    if (
+      !enrolled.every((name): name is string => typeof name === 'string') ||
+      !administrators.every((name): name is string => typeof name === 'string')
+    )
+      throw new Error();
+    validateRoleNames(enrolled);
+    if (administrators.length) validateRoleNames(administrators);
+    if (administrators.some((name) => !enrolled.includes(name)))
+      throw new Error();
+    return administrators;
+  } catch {
+    throw new UnsafePostgresDatabaseEnrollmentError('configuration');
+  }
+}
+
 /** Recheck the administrator's explicit, committed database admission policy.
  * Shared cluster roles do not identify which deployment a LOGIN belongs to.
  * This is read-only; the caller owns the pinned connection and transaction. */

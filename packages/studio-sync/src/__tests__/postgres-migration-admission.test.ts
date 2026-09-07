@@ -223,6 +223,73 @@ describe.skipIf(!reachable)('configured migration admission boundary', () => {
     },
   );
 
+  it.each(['app', 'operator', 'backup'] as const)(
+    'refuses actual direct data writes by enrolled %s login on a populated no-op',
+    async (identity) => {
+      await owner.query(`GRANT USAGE ON SCHEMA ${escapeIdentifier(schemaName)} TO ${escapeIdentifier(login[identity])};
+        GRANT UPDATE(value) ON ${qualifiedData} TO ${escapeIdentifier(login[identity])}`);
+      const runtime = fixturePool({
+        ...connection,
+        user: login[identity],
+        password,
+        database,
+        options: `-c role=${role[identity]}`,
+      });
+      try {
+        await runtime.query('SET ROLE NONE');
+        expect(
+          (await runtime.query(`UPDATE ${qualifiedData} SET value = 17`))
+            .rowCount,
+        ).toBe(1);
+        await expect(
+          migrator.migrate(owner, migrations, fingerprint, allowedLogins),
+        ).rejects.toThrow(
+          'hold no access outside their reviewed Custom Registry roles',
+        );
+      } finally {
+        await closeFixturePool(runtime);
+        await owner.query(`REVOKE UPDATE(value) ON ${qualifiedData} FROM ${escapeIdentifier(login[identity])};
+          REVOKE USAGE ON SCHEMA ${escapeIdentifier(schemaName)} FROM ${escapeIdentifier(login[identity])}`);
+      }
+    },
+  );
+
+  it('refuses owner-backed automatic view updates with readonly evidence ACLs', async () => {
+    const view = `${escapeIdentifier(schemaName)}.owner_evidence_view`;
+    await owner.query(`CREATE VIEW ${view} AS SELECT fingerprint FROM ${qualifiedFingerprint};
+      GRANT UPDATE(fingerprint) ON ${view} TO ${escapeIdentifier(role.app)}`);
+    const runtime = fixturePool({
+      ...connection,
+      user: login.app,
+      password,
+      database,
+      options: `-c role=${role.app}`,
+    });
+    try {
+      expect(
+        (
+          await runtime.query(`UPDATE ${view} SET fingerprint = $1`, [
+            fingerprint,
+          ])
+        ).rowCount,
+      ).toBe(1);
+      expect(
+        (
+          await runtime.query(
+            'SELECT has_any_column_privilege(current_user, $1, $2) AS writable',
+            [qualifiedFingerprint, 'UPDATE'],
+          )
+        ).rows,
+      ).toEqual([{ writable: false }]);
+      await expect(
+        migrator.migrate(owner, migrations, fingerprint, allowedLogins),
+      ).rejects.toThrow('view');
+    } finally {
+      await closeFixturePool(runtime);
+      await owner.query(`DROP VIEW ${view}`);
+    }
+  });
+
   it('refuses a connected outside login with a shared runtime role and custom enrollment name', async () => {
     await owner.query(
       `GRANT CONNECT ON DATABASE ${escapeIdentifier(database)} TO ${escapeIdentifier(login.outside)}`,

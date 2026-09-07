@@ -4,12 +4,17 @@ import { Pool, type PoolClient } from 'pg';
 
 import {
   assertSafePostgresDatabaseEnrollment,
+  copyPostgresAdministrativeLogins,
   UnsafePostgresDatabaseEnrollmentError,
 } from '@codaco/studio-sync/postgres-database-enrollment';
 import {
   assertSafePostgresMigrationEvidence,
   UnsafePostgresMigrationEvidenceError,
 } from '@codaco/studio-sync/postgres-migration-evidence';
+import {
+  assertSafePostgresRestrictedIdentities,
+  UnsafePostgresRestrictedIdentitiesError,
+} from '@codaco/studio-sync/postgres-restricted-identities';
 import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
@@ -142,26 +147,43 @@ export async function checkSchema(
   options: {
     allowUnversioned?: boolean;
     allowedLogins?: readonly string[];
+    administrativeLogins?: readonly string[];
   } = {},
 ): Promise<SchemaState> {
   const allowUnversioned = options.allowUnversioned === true;
-  const allowedLogins = options.allowedLogins
-    ? [...options.allowedLogins]
-    : undefined;
-  if (pool instanceof Pool) {
-    const client = await pool.connect();
-    try {
-      return await checkSchema(client, { allowUnversioned, allowedLogins });
-    } finally {
-      client.release();
-    }
-  }
   const unsafe: SchemaState = {
     kind: 'stale',
     reason: 'unsafe-evidence',
     found: null,
     appliedAt: null,
   };
+  let allowedLogins: string[] | undefined;
+  let administrativeLogins: string[];
+  try {
+    allowedLogins = options.allowedLogins
+      ? [...options.allowedLogins]
+      : undefined;
+    administrativeLogins = allowUnversioned
+      ? []
+      : copyPostgresAdministrativeLogins(
+          allowedLogins ?? [],
+          options.administrativeLogins,
+        );
+  } catch {
+    return unsafe;
+  }
+  if (pool instanceof Pool) {
+    const client = await pool.connect();
+    try {
+      return await checkSchema(client, {
+        allowUnversioned,
+        allowedLogins,
+        administrativeLogins,
+      });
+    } finally {
+      client.release();
+    }
+  }
   if (!allowUnversioned) {
     if (!allowedLogins) return unsafe;
     try {
@@ -225,13 +247,16 @@ export async function checkSchema(
         ...new Set([
           ...Object.values(TENANT_ROLES),
           BACKUP_ROLE,
-          ...(allowedLogins ?? []).filter((login) => login !== databaseOwner),
+          ...(allowedLogins ?? []).filter(
+            (login) =>
+              login !== databaseOwner && !administrativeLogins.includes(login),
+          ),
           // A scoped connection remains a runtime identity even if ownership drifts
-          // to its session LOGIN. Only an independently identified offline owner is
-          // exempt; the evidence relation's current owner never establishes trust.
+          // to its session LOGIN. Only the database owner or an explicitly configured
+          // offline administrator is exempt; evidence ownership never establishes trust.
           ...(sessionLogin !== currentRole ||
           Object.values(TENANT_ROLES).some((role) => role === currentRole)
-            ? [sessionLogin]
+            ? [sessionLogin, currentRole]
             : []),
         ]),
       ];
@@ -252,6 +277,21 @@ export async function checkSchema(
       found: null,
       appliedAt: null,
     };
+  }
+
+  if (!allowUnversioned && (stamped || tables)) {
+    try {
+      await assertSafePostgresRestrictedIdentities(pool, {
+        allowedLogins: allowedLogins ?? [],
+        administrativeLogins,
+        runtimeRoleSets: [Object.values(TENANT_ROLES)],
+        backupRole: BACKUP_ROLE,
+      });
+    } catch (error) {
+      if (!(error instanceof UnsafePostgresRestrictedIdentitiesError))
+        throw error;
+      return unsafe;
+    }
   }
 
   if (stamped) {

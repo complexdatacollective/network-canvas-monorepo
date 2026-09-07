@@ -1,7 +1,7 @@
 import type pg from 'pg';
 
 import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
-import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { AssetStore } from '../assets.ts';
 import { checkSchema, type SchemaState } from '../db/schema.ts';
@@ -15,6 +15,7 @@ export function createReadiness(options: {
   cacheMs?: number;
   allowUnversionedSchema?: boolean;
   allowedLogins?: readonly string[];
+  administrativeLogins?: readonly string[];
 }) {
   const {
     pool,
@@ -25,6 +26,9 @@ export function createReadiness(options: {
     allowUnversionedSchema,
   } = options;
   const allowedLogins = options.allowedLogins ? [...options.allowedLogins] : [];
+  const administrativeLogins = options.administrativeLogins
+    ? [...options.administrativeLogins]
+    : [];
   const database = new BoundedProbe<SchemaState>(
     pool
       ? (signal) =>
@@ -34,18 +38,25 @@ export function createReadiness(options: {
               await assertSafePostgresRuntimeIdentity(client, {
                 intendedRole: TENANT_ROLES.app,
                 allowedRoles: Object.values(TENANT_ROLES),
+                runtimeRoleSets: [Object.values(TENANT_ROLES)],
+                backupRole: BACKUP_ROLE,
                 allowedLogins,
+                administrativeLogins,
               });
             const state = await checkSchema(client, {
               allowUnversioned: allowUnversionedSchema,
               allowedLogins,
+              administrativeLogins,
             });
             if (!allowUnversionedSchema && maintenancePool) {
               await withProbeClient(maintenancePool, signal, (maintenance) =>
                 assertSafePostgresRuntimeIdentity(maintenance, {
                   intendedRole: TENANT_ROLES.maintenance,
                   allowedRoles: Object.values(TENANT_ROLES),
+                  runtimeRoleSets: [Object.values(TENANT_ROLES)],
+                  backupRole: BACKUP_ROLE,
                   allowedLogins,
+                  administrativeLogins,
                 }),
               );
             }
