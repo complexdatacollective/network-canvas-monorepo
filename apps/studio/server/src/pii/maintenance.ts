@@ -196,6 +196,10 @@ type LegacyParticipantRow = ParticipantCiphertextRow & {
   phone_index: Buffer | null;
   blind_index_key_id: string | null;
 };
+type MigratableLegacyParticipantRow = LegacyParticipantRow & {
+  pii_key_id: string;
+  pii_algorithm: string;
+};
 
 function sameLegacyParticipant(
   left: LegacyParticipantRow,
@@ -224,17 +228,31 @@ async function selectLegacyParticipant(
   return selected.rows[0];
 }
 
-async function migrateLegacyParticipantIndex(
+function isLegacyParticipant(
+  row: LegacyParticipantRow,
+  currentKeyId: string,
+): row is MigratableLegacyParticipantRow {
+  if (!row.pii_key_id || !row.pii_algorithm || row.pii_key_id === currentKeyId)
+    return false;
+  if (row.blind_index_key_id === RAW_LEGACY_PARTICIPANT_INDEX_ID) return true;
+  // A participant can carry encrypted name/attributes without a contact blind
+  // index. Its historical key is the durable migration marker for this shape.
+  return (
+    row.blind_index_key_id === null &&
+    row.email_index === null &&
+    row.phone_index === null &&
+    row.email_ciphertext === null &&
+    row.phone_ciphertext === null &&
+    (row.name_ciphertext !== null || row.attributes_ciphertext !== null)
+  );
+}
+
+async function migrateLegacyParticipant(
   pool: pg.Pool,
   keys: EncryptionKeys,
   row: LegacyParticipantRow,
 ): Promise<void> {
-  if (
-    !row.pii_key_id ||
-    !row.pii_algorithm ||
-    row.blind_index_key_id !== RAW_LEGACY_PARTICIPANT_INDEX_ID ||
-    row.pii_key_id === keys.currentId('pii-enc')
-  )
+  if (!isLegacyParticipant(row, keys.currentId('pii-enc')))
     throw new ProtectedDataError();
   const tenant = createTenantDb(pool, row.team_id);
   const command = {
@@ -357,7 +375,7 @@ async function migrateLegacyParticipantIndex(
   }
 }
 
-async function migrateLegacyParticipantIndexBatch(
+async function migrateLegacyParticipantBatch(
   pool: pg.Pool,
   keys: EncryptionKeys,
   limit: number,
@@ -367,11 +385,17 @@ async function migrateLegacyParticipantIndexBatch(
     `SELECT id, team_id, study_id, participant_code, pii_key_id, pii_algorithm,
       email_ciphertext, phone_ciphertext, name_ciphertext, attributes_ciphertext,
       email_index, phone_index, blind_index_key_id
-     FROM participants WHERE blind_index_key_id = $2 ORDER BY id LIMIT $1`,
-    [limit, RAW_LEGACY_PARTICIPANT_INDEX_ID],
+     FROM participants WHERE blind_index_key_id = $2 OR (
+       blind_index_key_id IS NULL
+       AND pii_key_id IS NOT NULL AND pii_key_id <> $3
+       AND email_index IS NULL AND phone_index IS NULL
+       AND email_ciphertext IS NULL AND phone_ciphertext IS NULL
+       AND (name_ciphertext IS NOT NULL OR attributes_ciphertext IS NOT NULL)
+     ) ORDER BY id LIMIT $1`,
+    [limit, RAW_LEGACY_PARTICIPANT_INDEX_ID, keys.currentId('pii-enc')],
   );
   for (const row of selected.rows)
-    await migrateLegacyParticipantIndex(pool, keys, row);
+    await migrateLegacyParticipant(pool, keys, row);
   return {
     processed: selected.rows.length,
     passComplete: selected.rows.length < limit,
@@ -792,7 +816,7 @@ export async function migrateLegacyDataBatch(
 }> {
   const limit = limitSchema.parse(input.limit);
   const afterId = parseLegacyCursor(input.afterId ?? null);
-  const participants = await migrateLegacyParticipantIndexBatch(
+  const participants = await migrateLegacyParticipantBatch(
     maintenancePool,
     keys,
     limit,

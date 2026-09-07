@@ -230,10 +230,11 @@ For an existing deployment:
    ```
 
    This command first authenticates and re-encrypts legacy participant data,
-   then classifies retained contact suppression and delivery indexes, and finally
-   converts OAuth credentials. Classification preserves the original contact
-   digest; it does not claim that an old public HMAC was secret or create a key
-   proof for it. See the [legacy-data contract](server/src/pii/README.md).
+   including name-only and attributes-only records that have no contact blind
+   index, then classifies retained contact suppression and delivery indexes, and
+   finally converts OAuth credentials. Classification preserves the original
+   contact digest; it does not claim that an old public HMAC was secret or create
+   a key proof for it. See the [legacy-data contract](server/src/pii/README.md).
 
    Save the returned JSON. If `passComplete` is false and `afterId` is null,
    repeat the command without `--after-id`: the pre-OAuth phases resume from

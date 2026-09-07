@@ -118,11 +118,21 @@ export async function verifyEncryptionKeyTransaction(
   const references = await client.query<KeyReference>(
     STORED_KEY_REFERENCES_SQL,
   );
+  // Migration 0002 could mark only participants with contact indexes. A valid
+  // historical name/attributes-only row has no index column on which to retain
+  // that marker, so admit exactly that shape to authenticated replacement too.
   const legacyPii = allowLegacyCredentials
     ? await client.query<{ keyId: string }>(
         `SELECT pii_key_id AS "keyId" FROM participants
          WHERE pii_key_id IS NOT NULL GROUP BY pii_key_id
-         HAVING bool_and(blind_index_key_id = $1)`,
+         HAVING bool_and(
+           blind_index_key_id = $1 OR (
+             blind_index_key_id IS NULL
+             AND email_index IS NULL AND phone_index IS NULL
+             AND email_ciphertext IS NULL AND phone_ciphertext IS NULL
+             AND (name_ciphertext IS NOT NULL OR attributes_ciphertext IS NOT NULL)
+           )
+         )`,
         [RAW_LEGACY_PARTICIPANT_INDEX_ID],
       )
     : { rows: [] as { keyId: string }[] };
