@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
+import { sha256 } from '../apps/studio/deployment/installer/release.mjs';
 import {
   createGhRequest,
   createGitHubDistributionStore,
@@ -129,6 +130,56 @@ function store(f) {
     tagger: { name: 'Joshua Melville', email: 'joshua@northwestern.edu' },
   });
 }
+
+async function publishedFixture() {
+  const f = fixture();
+  const distribution = store(f);
+  const bytes = Buffer.from('exact manifest bytes');
+  const bundle = Buffer.from('retained signature bundle');
+  const input = { tag, source, manifestSha256: sha256(bytes) };
+  await distribution.ensureDraft(input);
+  await distribution.uploadAsset(tag, 'release.json', bytes);
+  await distribution.uploadAsset(tag, 'release.sigstore.json', bundle);
+  return { f, distribution, bytes, bundle, input };
+}
+
+test('reads only published manifests bound to both the annotated tag and release', async () => {
+  const p = await publishedFixture();
+  assert.equal(
+    await p.distribution.readPublishedManifest({ tag, source }),
+    null,
+  );
+  await p.distribution.publish(p.input);
+  assert.deepEqual(
+    await p.distribution.readPublishedManifest({ tag, source }),
+    {
+      bytes: p.bytes,
+      bundle: p.bundle,
+      manifestSha256: sha256(p.bytes),
+    },
+  );
+});
+
+for (const defect of [
+  'missing-release',
+  'missing-bundle',
+  'tag-binding',
+  'release-binding',
+])
+  test(`refuses ${defect} when reading published authentication evidence`, async () => {
+    const p = await publishedFixture();
+    await p.distribution.publish(p.input);
+    if (defect === 'missing-release') p.f.releases.delete(tag);
+    if (defect === 'missing-bundle')
+      p.f.assets.get(p.f.releases.get(tag).id).splice(1, 1);
+    if (defect === 'tag-binding')
+      p.f.tags.get(p.f.refs.get(tag).sha).message = 'substituted';
+    if (defect === 'release-binding')
+      p.f.releases.get(tag).body = 'substituted';
+    await assert.rejects(() =>
+      p.distribution.readPublishedManifest({ tag, source }),
+    );
+  });
 
 test('does not create a release if its newly written final tag cannot be read back', async () => {
   const f = fixture();

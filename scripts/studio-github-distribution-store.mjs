@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
 
+import { sha256 } from '../apps/studio/deployment/installer/release.mjs';
+
 const REPOSITORY = 'complexdatacollective/network-canvas-monorepo';
 const API = `repos/${REPOSITORY}`;
 const ASSET_LIMIT = 64 * 1024 * 1024;
@@ -610,6 +612,39 @@ export function createGitHubDistributionStore({
     async readAsset(releaseTag, name) {
       tag(releaseTag);
       return readAssetFromRelease(await findRelease(releaseTag), name);
+    },
+
+    /** Publication history excludes interrupted drafts. A final annotated tag
+     * without its release is incomplete evidence, not an empty history. The
+     * caller must still authenticate the returned bytes with Cosign. */
+    async readPublishedManifest({ tag: releaseTag, source: commit }) {
+      exactTag(releaseTag, commit);
+      const release = await findRelease(releaseTag);
+      if (!release)
+        throw new Error('A tagged distribution release is missing.');
+      releaseId(release);
+      if (release.draft) return null;
+      const bytes = await readAssetFromRelease(release, 'release.json');
+      const bundle = await readAssetFromRelease(
+        release,
+        'release.sigstore.json',
+      );
+      if (!bytes?.length || !bundle?.length)
+        throw new Error(
+          'Published release authentication evidence is missing.',
+        );
+      const manifestSha256 = sha256(bytes);
+      await exactRelease({
+        tag: releaseTag,
+        source: commit,
+        manifestSha256,
+        create: false,
+      });
+      if (
+        !(await verifyTag({ tag: releaseTag, source: commit, manifestSha256 }))
+      )
+        throw new Error('A published distribution tag is missing.');
+      return { bytes, bundle, manifestSha256 };
     },
 
     async uploadAsset(releaseTag, name, bytes) {
