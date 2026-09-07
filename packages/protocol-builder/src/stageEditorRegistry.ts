@@ -158,7 +158,6 @@ export const AWAITING_STAGE_EDITORS = [
   'DyadCensus',
   'FamilyPedigree',
   'Geospatial',
-  'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
   'Narrative',
   'NarrativePedigree',

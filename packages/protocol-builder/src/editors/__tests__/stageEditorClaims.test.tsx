@@ -8,6 +8,7 @@ import { AlterEdgeFormStageEditor } from '../forms/AlterEdgeFormStageEditor.tsx'
 import { AlterFormStageEditor } from '../forms/AlterFormStageEditor.tsx';
 import { EgoFormStageEditor } from '../forms/EgoFormStageEditor.tsx';
 import { InformationStageEditor } from '../forms/InformationStageEditor.tsx';
+import { NameGeneratorQuickAddStageEditor } from '../nameGenerators/NameGeneratorQuickAddStageEditor.tsx';
 import { NameGeneratorStageEditor } from '../nameGenerators/NameGeneratorStageEditor.tsx';
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
@@ -73,6 +74,12 @@ const CLAIMS = [
     label: 'Name Generator',
     editor: NameGeneratorStageEditor,
   },
+  {
+    stageType: 'NameGeneratorQuickAdd',
+    stageId: 'name-generator-quick-add-1',
+    label: 'Name Generator Quick Add',
+    editor: NameGeneratorQuickAddStageEditor,
+  },
 ] as const;
 
 /**
@@ -113,7 +120,7 @@ describe('the interfaces the form and name-generator families claim', () => {
    * Orientation is not an interface's own decision.
    *
    * The position line used to be a name-generator frame's private component,
-   * so one of these five said where the researcher was in the interview and
+   * so two of these six said where the researcher was in the interview and
    * four did not — the same protocol, opened from the same timeline, orienting
    * the researcher or not depending on which stage they clicked. It is read
    * from the protocol the editor is already holding, so the expected number is
