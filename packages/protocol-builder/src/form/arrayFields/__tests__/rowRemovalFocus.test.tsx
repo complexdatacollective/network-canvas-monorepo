@@ -74,12 +74,29 @@ const focusTarget = () => {
 };
 
 /** Answers the confirm the way the researcher's Remove click would. */
-const confirmRemoval = async () => {
+const answerConfirm = () => {
   const { onConfirm } = lastConfirm();
   expect(onConfirm).toBeDefined();
   act(() => {
     onConfirm!();
   });
+};
+
+/**
+ * Answers the confirm and waits for the removed row to leave the document.
+ *
+ * `ArrayField` keeps a removed row mounted while its exit animation plays. The
+ * suite finishes Motion's animations instantly, but "instantly" is the next
+ * animation frame, not the act that removed the row — and the session
+ * snapshot is no oracle for that window, since it has already changed by the
+ * time the row starts leaving. Everything the tests below ask is asked of the
+ * document, where the removed row and the row that took its place are both
+ * present until that frame, so the wait is for `opener` — the removed row's
+ * own Remove control — to be gone.
+ */
+const confirmRemoval = async (opener: HTMLElement) => {
+  answerConfirm();
+  await waitFor(() => expect(opener).not.toBeInTheDocument());
 };
 
 function createSession(fields: SectionDoc) {
@@ -157,10 +174,11 @@ describe('a row removal confirm', () => {
       />,
     );
 
-    await user.click(
-      await screen.findByRole('button', { name: 'Remove option 2' }),
-    );
-    await confirmRemoval();
+    const opener = await screen.findByRole('button', {
+      name: 'Remove option 2',
+    });
+    await user.click(opener);
+    await confirmRemoval(opener);
     await waitFor(() =>
       expect(session.getSnapshot().editedSection.fields.options).toHaveLength(
         2,
@@ -220,10 +238,11 @@ describe('a row removal confirm', () => {
       />,
     );
 
-    await user.click(
-      await screen.findByRole('button', { name: 'Remove option 1' }),
-    );
-    await confirmRemoval();
+    const opener = await screen.findByRole('button', {
+      name: 'Remove option 1',
+    });
+    await user.click(opener);
+    await confirmRemoval(opener);
     await waitFor(() =>
       expect(session.getSnapshot().editedSection.fields.options).toHaveLength(
         0,
@@ -263,7 +282,7 @@ describe('a row removal confirm', () => {
       name: 'Remove item',
     });
     await user.click(firstRemove!);
-    await confirmRemoval();
+    await confirmRemoval(firstRemove!);
     await waitFor(() =>
       expect(session.getSnapshot().editedSection.fields.sortOrder).toHaveLength(
         1,
@@ -305,7 +324,7 @@ describe('a row removal confirm', () => {
       name: 'Remove prompt',
     });
     await user.click(removes[1]!);
-    await confirmRemoval();
+    await confirmRemoval(removes[1]!);
     await waitFor(() =>
       expect(session.getSnapshot().editedSection.fields.prompts).toHaveLength(
         2,
