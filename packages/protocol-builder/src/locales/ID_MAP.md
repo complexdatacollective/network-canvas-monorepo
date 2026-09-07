@@ -118,6 +118,7 @@ name not here adds it here first, in the same pull request.
 | `pageContent`               | `sections/PageContentSection.tsx`                                                                                                                                                | sections  |
 | `contentBlock`              | `sections/contentBlocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                               | sections  |
 | `promptsSection`            | `sections/PromptsSection.tsx`                                                                                                                                                    | sections  |
+| `pedigree`                  | `sections/pedigree/`                                                                                                                                                             | family F  |
 
 `shell` covers `editors/saveStageAction.tsx` as well as the shell itself,
 rather than that control taking an area of its own: the fallback save button is
@@ -146,6 +147,9 @@ has to have exactly one:
   be the single home of each id.
 - `form/arrayFields/arrayMessages.ts` — the generic row noun every array-field
   sentence is built around.
+- `sections/pedigree/pedigreeMessages.ts` — one file per interface family,
+  holding EVERYTHING that family says rather than only its shared strings. See
+  "One file per family", below.
 
 `controller.ts` renders no copy of its own, so the `session` area covers
 `session.ts` alone until it does.
@@ -222,14 +226,33 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `geospatial`               | `sections/geospatial/`, geospatial `fields/` | family F    |
 | `anonymisation`            | `sections/anonymisation/`                    | family F    |
 
-Family F's five areas each declare their ids in one `*Messages.ts` beside the
-sections — `sections/network/networkCanvasMessages.ts` and its four siblings —
-rather than beside each section's markup, which is the rule for a converted
-module. The reason is the seam: every id there is rendered somewhere ELSE, in
-`BuilderSection`'s confirmation, in `DialogArrayField`'s refusals, and in the
-shared prompt and form sections — so a translator reading one of those files
-sees the whole of what a family says through other people's components, and
-the family's own copy joins it there when the rest is converted.
+### One file per family — the interface families
+
+| `<area>`   | Owns the copy in     | Declared in                             |
+| ---------- | -------------------- | --------------------------------------- |
+| `pedigree` | `sections/pedigree/` | `sections/pedigree/pedigreeMessages.ts` |
+
+The remaining four families of the same series — `narrativePedigree`,
+`networkCanvas`, `geospatial` and `anonymisation` — keep their reserved names
+above and add a row here as each lands.
+
+A `*Messages.ts` per family, holding every id the family declares — rather than
+descriptors beside each section's markup, which is the rule everywhere else in
+this package. The reason is the seam. Much of what these families say is
+rendered somewhere ELSE: in `BuilderSection`'s confirmation before a capability
+is switched off, in `DialogArrayField`'s row affordances and write refusals, in
+the sentences `PromptsSection` and `FormFieldsSection` say for one interface.
+Splitting a family's words between the file that renders them and the file that
+hands them to somebody else would leave a translator answering half a question
+in two places, so one file per family answers it once.
+
+A family that needs different words from a shared section names them one at a
+time as `MessageDescriptor` props — `PromptsSection`'s `description`,
+`FormFieldsSection`'s `title`, `SectionCapability.confirmClear` — never as
+strings and never as a `copy` bundle. `src/__tests__/hostCopyOverrides.test.ts`
+is the scan that keeps it that way, and it covers these directories the moment
+they exist: its `NOT_CONVERTED_YET` exclusion list is empty, so a section
+reintroducing a `copy?:` prop or a string-bearing `…Copy` type fails there.
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name

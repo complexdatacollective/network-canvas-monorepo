@@ -4,5 +4,6 @@
   "protocolBuilder.codebookEntity.colorPlaceholder": "Choose a colour…",
   "protocolBuilder.codebookEntity.colorRequired": "Choose a colour.",
   "protocolBuilder.codebookEntity.edgeColorOption": "Edge colour {index, number}",
-  "protocolBuilder.codebookEntity.nodeColorOption": "Node colour {index, number}"
+  "protocolBuilder.codebookEntity.nodeColorOption": "Node colour {index, number}",
+  "protocolBuilder.pedigree.dependentStagesDescription": "These stages visualise this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have."
 }
