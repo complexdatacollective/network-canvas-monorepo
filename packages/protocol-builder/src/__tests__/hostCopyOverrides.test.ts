@@ -295,4 +295,19 @@ describe('the not-yet-converted exclusions', () => {
 
     expect(covered).toEqual(present);
   });
+
+  /**
+   * And `resources/` — the last name this list carried — is inside the scan.
+   *
+   * The two checks above are dormant while the list is empty: filtering an
+   * empty list yields an empty list whatever the package looks like, so
+   * neither of them can fail today. This is the one that says what emptying
+   * the list CLAIMED, and it fails the moment anybody re-excludes the
+   * directory rather than fixing what made them want to.
+   */
+  it('reaches the resources directory the list used to excuse', () => {
+    const scanned = sourceFiles().map(sourcePath);
+
+    expect(scanned.some((path) => path.startsWith('resources/'))).toBe(true);
+  });
 });

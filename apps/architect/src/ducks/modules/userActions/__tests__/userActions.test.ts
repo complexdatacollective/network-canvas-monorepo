@@ -4,6 +4,7 @@ import {
   type CurrentProtocol,
   ProtocolValidationError,
 } from '@codaco/protocol-validation';
+import { messageFields } from '~/test/messageText';
 
 const capture = vi.fn();
 const setImportInProgress = vi.fn();
@@ -325,12 +326,12 @@ describe('userActions', () => {
 
       const result = await runThunk(openLibraryProtocol({ id: 'older' }));
 
-      expect(result.payload).toEqual({
+      expect(messageFields(result.payload)).toEqual({
         status: 'error',
         title: 'Failed to Open Protocol',
-        message: expect.stringContaining(
-          'This protocol could not be brought up to date.',
-        ) as string,
+        message:
+          'This protocol could not be brought up to date. Open it in the version of Architect that created it, check its settings, and try again.',
+        detail: 'Migration resulted in invalid protocol: nope',
       });
       expect(putStoredProtocol).not.toHaveBeenCalled();
       expect(markStoredProtocolValidated).not.toHaveBeenCalled();

@@ -7,6 +7,7 @@ import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { Stage } from '@codaco/protocol-validation';
 import StageFormBridge from '~/components/StageEditor/StageFormBridge';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
+import { messageFields } from '~/test/messageText';
 
 // The cross-class exclusivity gate now runs as `editorValidate`, captured
 // from the mocked `DialogArrayField`, the same way an earlier revision
@@ -108,7 +109,9 @@ describe('GeospatialPrompts editorValidate cross-class gate', () => {
   it('returns a field error keyed at variable with the mirror message', () => {
     const editorValidate = renderWithStore(PROTOCOL_WITH_FORM_CONFLICT);
 
-    expect(editorValidate({ id: 'p1', text: 'T', variable: 'loc' })).toEqual({
+    expect(
+      messageFields(editorValidate({ id: 'p1', text: 'T', variable: 'loc' })),
+    ).toEqual({
       variable:
         '"Location" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
     });
@@ -118,9 +121,11 @@ describe('GeospatialPrompts editorValidate cross-class gate', () => {
     const editorValidate = renderWithStore(PROTOCOL_WITH_FORM_CONFLICT);
 
     expect(
-      editorValidate(
-        { id: 'p1', text: 'T', variable: 'loc' },
-        { initialValues: { variable: 'loc' } },
+      messageFields(
+        editorValidate(
+          { id: 'p1', text: 'T', variable: 'loc' },
+          { initialValues: { variable: 'loc' } },
+        ),
       ),
     ).toBeUndefined();
   });
@@ -133,7 +138,7 @@ describe('GeospatialPrompts editorValidate cross-class gate', () => {
     const editorValidate = renderWithStore(geospatialOnly);
 
     expect(
-      editorValidate({ id: 'p1', text: 'T', variable: 'loc' }),
+      messageFields(editorValidate({ id: 'p1', text: 'T', variable: 'loc' })),
     ).toBeUndefined();
   });
 });

@@ -6,8 +6,9 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 
 /**
  * Filed under `dialogForm`, the area that owns the dialog this guard is the
- * dismissal route of. The confirm is raised by `DialogForm` and is never a
- * surface of its own.
+ * dismissal route of. The confirm is raised by `DialogForm` — and by the
+ * resource browser, which is the same dialog shape one level down — and is
+ * never a surface of its own.
  */
 const messages = defineMessages({
   discardTitle: {

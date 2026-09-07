@@ -13,13 +13,18 @@ import {
   initFileLaunchCapture,
 } from './lib/pwa/fileLaunchQueue';
 import { initInstallPromptCapture } from './lib/pwa/installPrompt';
-import { removeLoadingScreen } from './lib/pwa/loadingScreen';
+import {
+  announceLoadingScreen,
+  removeLoadingScreen,
+} from './lib/pwa/loadingScreen';
 import { initSwipeNavigationGuard } from './lib/pwa/swipeNavigationGuard';
 import { initVisualViewportSizing } from './lib/pwa/visualViewportSizing';
 import {
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './lib/storage';
+
+announceLoadingScreen();
 
 // Register before the startup update check so every active interview leases
 // the precache matching the bundle it is actually running.

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // Studio's. It is imported only from test files (vitest is a devDependency and
 // no runtime module imports this one), and it lives in `src` rather than
 // `__tests__` so an adapter that lives in another workspace can run it.
+import { createAppIntl, formatMessageError } from '@codaco/app-i18n/messages';
 import { assetSchema } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -17,6 +18,22 @@ import type {
   ResourceResult,
   ResourceSecretStorage,
 } from './gateway.ts';
+
+/**
+ * A refusal as the researcher reads it.
+ *
+ * `ResourceGatewayFailure.message` carries either one of this package's
+ * encoded descriptors or a sentence the adapter wrote itself, and this is the
+ * `formatMessageError(text, intl) ?? text` every render site applies. Built
+ * here rather than imported from `src/testing/` on purpose: an adapter in
+ * another workspace runs this contract, and it should not have to resolve this
+ * package's own message catalogs to do so. English, because the contract
+ * asserts on the English the descriptors declare.
+ */
+const contractIntl = createAppIntl({ locale: 'en' });
+
+const asRead = (message: string): string =>
+  formatMessageError(message, contractIntl) ?? message;
 
 /**
  * What the host behind this adapter can do, for the rows that only mean
@@ -418,7 +435,7 @@ export function describeResourceGatewayContract(
         // was told about somewhere nobody decided on.
         expect(refusal.reason).toBe('unsupported-kind');
         expect(refusal.retryable).toBe(false);
-        expect(refusal.message).not.toBe('');
+        expect(asRead(refusal.message)).not.toBe('');
         expect(JSON.stringify(refusal)).not.toContain(SECRET_VALUE);
         expect(expectOk(await gateway().list({ status: 'staged' }))).toEqual(
           [],
@@ -502,11 +519,18 @@ export function describeResourceGatewayContract(
       // roster that fails the moment the interview opens it — with a manifest
       // entry that looks perfectly valid. The row is named because that is the
       // one thing the researcher has to go and fix.
+      //
+      // Read through the same decode the editor's failure notice does. An
+      // adapter of this package's own produces the message as a descriptor and
+      // its values, so a raw-string assertion would be asserting on JSON; a
+      // host adapter is free to supply its own already-localized sentence, and
+      // that falls through the decode unchanged. Either way, this asserts on
+      // what the researcher actually reads.
       expect(holedFailure.reason).toBe('invalid-content');
       expect(holedFailure.retryable).toBe(false);
-      expect(holedFailure.message).toContain('node 2');
+      expect(asRead(holedFailure.message)).toContain('node 2');
       expect(attributesFailure.reason).toBe('invalid-content');
-      expect(attributesFailure.message).toContain('node 1');
+      expect(asRead(attributesFailure.message)).toContain('node 1');
     });
 
     it('refuses a JSON roster carrying an attribute value the interview cannot hold, and names it', async () => {
@@ -528,8 +552,8 @@ export function describeResourceGatewayContract(
       // between them they are the whole of what the researcher has to fix.
       expect(failure.reason).toBe('invalid-content');
       expect(failure.retryable).toBe(false);
-      expect(failure.message).toContain('node 2');
-      expect(failure.message).toContain('address');
+      expect(asRead(failure.message)).toContain('node 2');
+      expect(asRead(failure.message)).toContain('address');
     });
 
     it('reads the attribute values the interview accepts, and passes over the empty ones', async () => {
@@ -596,9 +620,9 @@ export function describeResourceGatewayContract(
       // name is reported because it is the whole of what they have to fix.
       expect(jsonFailure.reason).toBe('invalid-content');
       expect(jsonFailure.retryable).toBe(false);
-      expect(jsonFailure.message).toContain('home address');
+      expect(asRead(jsonFailure.message)).toContain('home address');
       expect(csvFailure.reason).toBe('invalid-content');
-      expect(csvFailure.message).toContain('home address');
+      expect(asRead(csvFailure.message)).toContain('home address');
     });
 
     it('refuses a roster with no records at all', async () => {
@@ -1005,7 +1029,7 @@ export function describeResourceGatewayContract(
       ];
 
       for (const failure of failures) {
-        expect(failure.message).not.toBe('');
+        expect(asRead(failure.message)).not.toBe('');
         expect(typeof failure.retryable).toBe('boolean');
         for (const marker of markers) {
           expect(JSON.stringify(failure)).not.toContain(marker);

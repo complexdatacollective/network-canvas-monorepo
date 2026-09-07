@@ -1,5 +1,11 @@
 import { useState } from 'react';
 
+import {
+  createMessageError,
+  defineMessages,
+  formatMessageError,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
@@ -30,32 +36,122 @@ import { useStageResourceUsage } from './useStageResourceUsage.ts';
  */
 const INTERVIEW_NETWORK = 'existing';
 
-/**
- * Said when the researcher asks to discard an imported resource another field
- * on the same stage is still using. Whole, so it can be translated: it names
- * what happened and what can be done instead.
- *
- * Moving the other field off it first is not among the offers, because the
- * other field is in exactly this state too: both name the resource, so neither
- * can discard it, and each would be told to go and do what the other cannot.
- * Letting this field go of it is the way out that always exists, so it is
- * offered here as a control rather than described as a chore.
- */
-const STILL_IN_USE_MESSAGE =
-  'This resource is still used elsewhere on this stage, so it was not discarded. Remove it from this field instead, or choose a different resource here.';
-
-/**
- * Said beside the failure when a field's resource could not be looked up at
- * all, which is the one state where nothing on the card can describe what the
- * field is holding.
- *
- * The removal has to be offered anyway. A resource deleted out from under the
- * draft leaves a reference the stage cannot be saved with, and the only other
- * control here asks for a replacement — which a researcher who simply wants
- * the field empty, or who has no replacement yet, cannot give it.
- */
-const UNRESOLVED_REFERENCE_MESSAGE =
-  'This field still refers to that resource. Removing it clears the reference; it does not delete anything.';
+const messages = defineMessages({
+  /**
+   * Said when the researcher asks to discard an imported resource another
+   * field on the same stage is still using. Whole, so it can be translated: it
+   * names what happened and what can be done instead.
+   *
+   * Moving the other field off it first is not among the offers, because the
+   * other field is in exactly this state too: both name the resource, so
+   * neither can discard it, and each would be told to go and do what the other
+   * cannot. Letting this field go of it is the way out that always exists, so
+   * it is offered here as a control rather than described as a chore.
+   */
+  stillInUse: {
+    id: 'protocolBuilder.resourcePicker.stillInUse',
+    defaultMessage:
+      'This resource is still used elsewhere on this stage, so it was not discarded. Remove it from this field instead, or choose a different resource here.',
+    description:
+      'Refusal shown when a researcher asks to discard an imported resource another field of the same stage still names. "Stage" is one step of an interview.',
+  },
+  /**
+   * Said beside the failure when a field's resource could not be looked up at
+   * all, which is the one state where nothing on the card can describe what
+   * the field is holding.
+   *
+   * The removal has to be offered anyway. A resource deleted out from under
+   * the draft leaves a reference the stage cannot be saved with, and the only
+   * other control here asks for a replacement — which a researcher who simply
+   * wants the field empty, or who has no replacement yet, cannot give it.
+   */
+  unresolvedReference: {
+    id: 'protocolBuilder.resourcePicker.unresolvedReference',
+    defaultMessage:
+      'This field still refers to that resource. Removing it clears the reference; it does not delete anything.',
+    description:
+      'Shown beside a failure when the resource a stage field names could not be looked up, explaining what the Remove button beneath it does.',
+  },
+  noSelection: {
+    id: 'protocolBuilder.resourcePicker.noSelection',
+    defaultMessage: 'No resource selected.',
+    description:
+      'Shown in place of a resource summary when this stage field holds nothing yet.',
+  },
+  retryInspection: {
+    id: 'protocolBuilder.resourcePicker.retryInspection',
+    defaultMessage: 'Try loading this resource again',
+    description:
+      'Button beside a failure notice, which asks the host again for the details of the resource this field holds. Named rather than generic because several parts of one field can be failing at once.',
+  },
+  retryAction: {
+    id: 'protocolBuilder.resourcePicker.retryAction',
+    defaultMessage: 'Try that again',
+    description:
+      'Button beside a failure notice, which repeats the download or discard the researcher just asked for.',
+  },
+  remove: {
+    id: 'protocolBuilder.resourcePicker.remove',
+    defaultMessage: 'Remove this resource',
+    description:
+      'Button that clears this stage field, leaving the resource itself in the protocol.',
+  },
+  download: {
+    id: 'protocolBuilder.resourcePicker.download',
+    defaultMessage: 'Download this resource',
+    description:
+      'Button that saves a copy of the resource this stage field holds to the researcher’s computer.',
+  },
+  discard: {
+    id: 'protocolBuilder.resourcePicker.discard',
+    defaultMessage: 'Discard this resource',
+    description:
+      'Button that throws away a resource imported in this editing session, for the whole session rather than only for this field.',
+  },
+  interviewNetworkOption: {
+    id: 'protocolBuilder.resourcePicker.interviewNetworkOption',
+    defaultMessage: 'Use the network from the in-progress interview',
+    description:
+      'Radio option choosing the network the interview has built so far — the people and ties the participant has already named — rather than an imported data file.',
+  },
+  importedFileOption: {
+    id: 'protocolBuilder.resourcePicker.importedFileOption',
+    defaultMessage: 'Use an imported data file',
+    description:
+      'Radio option choosing imported participant data (a roster) rather than the network the interview has built so far.',
+  },
+  selectedAnnouncement: {
+    id: 'protocolBuilder.resourcePicker.selectedAnnouncement',
+    defaultMessage: '{name} is now selected.',
+    description:
+      'Announced to assistive technology when a resource is chosen for this field. name is the resource’s name as the protocol records it.',
+  },
+  removedAnnouncement: {
+    id: 'protocolBuilder.resourcePicker.removedAnnouncement',
+    defaultMessage: 'The resource was removed from this field.',
+    description:
+      'Announced to assistive technology when this stage field is cleared, leaving the resource itself in the protocol.',
+  },
+  discardedAnnouncement: {
+    id: 'protocolBuilder.resourcePicker.discardedAnnouncement',
+    defaultMessage: 'The imported resource was discarded.',
+    description:
+      'Announced to assistive technology when a resource imported in this editing session is thrown away.',
+  },
+  downloadedAnnouncement: {
+    id: 'protocolBuilder.resourcePicker.downloadedAnnouncement',
+    defaultMessage: '{name} was downloaded.',
+    description:
+      'Announced to assistive technology once a copy of a resource has been saved to the researcher’s computer. name is the resource’s name.',
+  },
+  interviewNetworkAnnouncement: {
+    id: 'protocolBuilder.resourcePicker.interviewNetworkAnnouncement',
+    defaultMessage:
+      'This stage will use the network from the interview itself.',
+    description:
+      'Announced to assistive technology when the field is set to read the network the interview builds rather than an imported file. "Stage" is one step of an interview.',
+  },
+});
 
 export type ResourcePickerControlProps = CreateFormFieldProps<
   string,
@@ -100,10 +196,24 @@ export default function ResourcePickerControl({
   'aria-required': ariaRequired,
 }: ResourcePickerControlProps) {
   const gateway = useResourceGateway();
+  const intl = useAppIntl();
   const action = useResourceAttempt();
   const referenceCount = useStageResourceUsage();
   const [browserOpen, setBrowserOpen] = useState(false);
+  /**
+   * What was announced last, encoded for the same reason the refusal below is:
+   * an announcement stays in its live region until another replaces it, so a
+   * sentence formatted when the choice was made would be the one thing left in
+   * the old language after the application changes its own.
+   */
   const [status, setStatus] = useState('');
+  /**
+   * Why the last choice was refused, encoded rather than formatted. Some of
+   * these refusals are this control's own and some cross the gateway's
+   * string-only `message`, so all of them are held as they arrive and decoded
+   * where they are rendered — which also keeps one on screen readable after a
+   * change of language.
+   */
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
   /**
    * The researcher has asked for an imported file while the field still holds
@@ -171,7 +281,9 @@ export default function ResourcePickerControl({
     setRefusal(undefined);
     action.clear();
     onChange?.(chosen.id);
-    setStatus(`${chosen.name} is now selected.`);
+    setStatus(
+      createMessageError(messages.selectedAnnouncement, { name: chosen.name }),
+    );
   };
 
   const handleRemove = () => {
@@ -181,7 +293,7 @@ export default function ResourcePickerControl({
     action.clear();
     setRefusal(undefined);
     onChange?.(undefined);
-    setStatus('The resource was removed from this field.');
+    setStatus(createMessageError(messages.removedAnnouncement));
   };
 
   const handleDiscard = () => {
@@ -191,7 +303,7 @@ export default function ResourcePickerControl({
     // dropping it would leave that field pointing at nothing and the stage
     // unable to save, which is not what "discard this one" asked for.
     if (referenceCount(selectedId) > 1) {
-      setRefusal(STILL_IN_USE_MESSAGE);
+      setRefusal(createMessageError(messages.stillInUse));
       return;
     }
     setRefusal(undefined);
@@ -202,7 +314,7 @@ export default function ResourcePickerControl({
         // The field goes with it: a discarded resource is gone from the host,
         // so a reference left behind could only ever be dangling.
         onChange?.(undefined);
-        setStatus('The imported resource was discarded.');
+        setStatus(createMessageError(messages.discardedAnnouncement));
       },
     );
   };
@@ -214,7 +326,11 @@ export default function ResourcePickerControl({
       () => gateway.download(selectedId),
       (content) => {
         downloadResourceContent(content, descriptor.source ?? descriptor.name);
-        setStatus(`${descriptor.name} was downloaded.`);
+        setStatus(
+          createMessageError(messages.downloadedAnnouncement, {
+            name: descriptor.name,
+          }),
+        );
       },
     );
   };
@@ -226,7 +342,7 @@ export default function ResourcePickerControl({
       setRefusal(undefined);
       action.clear();
       onChange?.(INTERVIEW_NETWORK);
-      setStatus('This stage will use the network from the interview itself.');
+      setStatus(createMessageError(messages.interviewNetworkAnnouncement));
       return;
     }
     if (next === 'resource') {
@@ -303,9 +419,12 @@ export default function ResourcePickerControl({
           options={[
             {
               value: INTERVIEW_NETWORK,
-              label: 'Use the network from the in-progress interview',
+              label: intl.formatMessage(messages.interviewNetworkOption),
             },
-            { value: 'resource', label: 'Use an imported data file' },
+            {
+              value: 'resource',
+              label: intl.formatMessage(messages.importedFileOption),
+            },
           ]}
         />
       )}
@@ -314,7 +433,7 @@ export default function ResourcePickerControl({
         <div className="mt-3 flex flex-col gap-3">
           {selectedId === undefined && (
             <Paragraph margin="none" emphasis="muted">
-              No resource selected.
+              {intl.formatMessage(messages.noSelection)}
             </Paragraph>
           )}
 
@@ -322,7 +441,7 @@ export default function ResourcePickerControl({
             <ResourceFailureNotice
               failure={failure}
               onRetry={retry}
-              retryLabel="Try loading this resource again"
+              retryLabel={intl.formatMessage(messages.retryInspection)}
               busy={busy}
             />
           )}
@@ -335,7 +454,7 @@ export default function ResourcePickerControl({
             failure !== undefined && (
               <div className="flex flex-col items-start gap-2">
                 <Paragraph margin="none" emphasis="muted">
-                  {UNRESOLVED_REFERENCE_MESSAGE}
+                  {intl.formatMessage(messages.unresolvedReference)}
                 </Paragraph>
                 <Button
                   type="button"
@@ -344,7 +463,7 @@ export default function ResourcePickerControl({
                   disabled={locked}
                   onClick={handleRemove}
                 >
-                  Remove this resource
+                  {intl.formatMessage(messages.remove)}
                 </Button>
               </div>
             )}
@@ -368,7 +487,7 @@ export default function ResourcePickerControl({
                     disabled={action.busy}
                     onClick={handleDownload}
                   >
-                    Download this resource
+                    {intl.formatMessage(messages.download)}
                   </Button>
                 )}
                 {descriptor.status === 'staged' ? (
@@ -380,7 +499,7 @@ export default function ResourcePickerControl({
                     disabled={locked || action.busy}
                     onClick={handleDiscard}
                   >
-                    Discard this resource
+                    {intl.formatMessage(messages.discard)}
                   </Button>
                 ) : (
                   <Button
@@ -390,7 +509,7 @@ export default function ResourcePickerControl({
                     disabled={locked}
                     onClick={handleRemove}
                   >
-                    Remove this resource
+                    {intl.formatMessage(messages.remove)}
                   </Button>
                 )}
               </div>
@@ -400,7 +519,7 @@ export default function ResourcePickerControl({
           {refusal !== undefined && (
             <div className="flex flex-col items-start gap-2">
               <div role="alert" className="text-destructive text-sm">
-                {refusal}
+                {formatMessageError(refusal, intl) ?? refusal}
               </div>
               {/* Offered only when there is something to remove. A refusal can
                   also reach a field that holds nothing — one that tried to
@@ -415,7 +534,7 @@ export default function ResourcePickerControl({
                   disabled={locked}
                   onClick={handleRemove}
                 >
-                  Remove this resource
+                  {intl.formatMessage(messages.remove)}
                 </Button>
               )}
             </div>
@@ -425,7 +544,7 @@ export default function ResourcePickerControl({
             <ResourceFailureNotice
               failure={action.failure}
               onRetry={action.retry}
-              retryLabel="Try that again"
+              retryLabel={intl.formatMessage(messages.retryAction)}
               busy={action.busy}
             />
           )}
@@ -437,7 +556,9 @@ export default function ResourcePickerControl({
             disabled={!canBrowse}
             onClick={() => setBrowserOpen(true)}
           >
-            {selectedId === undefined ? copy.selectAction : copy.changeAction}
+            {intl.formatMessage(
+              selectedId === undefined ? copy.selectAction : copy.changeAction,
+            )}
           </Button>
         </div>
       )}
@@ -454,7 +575,7 @@ export default function ResourcePickerControl({
       {/* Mounted with the field rather than with the message, so the first
           announcement is an update to a region that was already there. */}
       <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {status}
+        {formatMessageError(status, intl) ?? status}
       </span>
     </div>
   );

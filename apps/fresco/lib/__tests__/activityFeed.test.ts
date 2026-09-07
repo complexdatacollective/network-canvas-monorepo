@@ -70,7 +70,10 @@ describe('activity feed', () => {
     it('registers before the feed write settles', () => {
       mockCreateMany.mockReturnValue(new Promise(() => undefined));
 
-      void addEvent('Protocol Uninstalled', 'User admin uninstalled "Study"');
+      void addEvent('Protocol Uninstalled', 'User admin uninstalled "Study"', {
+        kind: 'protocolUninstalled',
+        values: { username: 'admin', protocol: 'Study' },
+      });
 
       expect(afterCallbacks).toHaveLength(1);
     });
@@ -86,7 +89,10 @@ describe('activity feed', () => {
         }),
       );
 
-      void addEvent('Protocol Uninstalled', 'User admin uninstalled "Study"');
+      void addEvent('Protocol Uninstalled', 'User admin uninstalled "Study"', {
+        kind: 'protocolUninstalled',
+        values: { username: 'admin', protocol: 'Study' },
+      });
 
       const callback = afterCallbacks[0];
       expect(callback).toBeDefined();
@@ -107,7 +113,10 @@ describe('activity feed', () => {
     });
 
     it('reports the activity even when the caller does not await it', async () => {
-      void addEvent('Protocol Uninstalled', 'User admin uninstalled "Study"');
+      void addEvent('Protocol Uninstalled', 'User admin uninstalled "Study"', {
+        kind: 'protocolUninstalled',
+        values: { username: 'admin', protocol: 'Study' },
+      });
       await flushAfterCallbacks();
 
       expect(mockCaptureEvent).toHaveBeenCalledWith(
@@ -125,6 +134,10 @@ describe('activity feed', () => {
       await addEvent(
         'Interview Started',
         'Participant "Ada Lovelace (P-001)" started an interview',
+        {
+          kind: 'interviewStarted',
+          values: { participant: 'Ada Lovelace (P-001)' },
+        },
       );
       await flushAfterCallbacks();
 
@@ -137,9 +150,14 @@ describe('activity feed', () => {
     });
 
     it('reports explicitly-passed properties', async () => {
-      await addEvent('Data Exported', 'User admin exported 3 interview(s)', {
-        interviewCount: 3,
-      });
+      await addEvent(
+        'Data Exported',
+        'User admin exported 3 interview(s)',
+        { kind: 'dataExported', values: { username: 'admin', count: 3 } },
+        {
+          interviewCount: 3,
+        },
+      );
       await flushAfterCallbacks();
 
       expect(mockCaptureEvent).toHaveBeenCalledWith('Data Exported', {
@@ -154,6 +172,10 @@ describe('activity feed', () => {
       const result = await addEvent(
         'Protocol Uninstalled',
         'User admin uninstalled "Study"',
+        {
+          kind: 'protocolUninstalled',
+          values: { username: 'admin', protocol: 'Study' },
+        },
       );
       await flushAfterCallbacks();
 
@@ -167,13 +189,20 @@ describe('activity feed', () => {
 
   describe('the feed', () => {
     it('writes the message and invalidates the feed', async () => {
-      await addEvent('Protocol Uninstalled', 'User admin uninstalled "Study"');
+      await addEvent('Protocol Uninstalled', 'User admin uninstalled "Study"', {
+        kind: 'protocolUninstalled',
+        values: { username: 'admin', protocol: 'Study' },
+      });
 
       expect(mockCreateMany).toHaveBeenCalledWith({
         data: [
           {
             type: 'Protocol Uninstalled',
             message: 'User admin uninstalled "Study"',
+            localization: {
+              kind: 'protocolUninstalled',
+              values: { username: 'admin', protocol: 'Study' },
+            },
           },
         ],
       });
@@ -191,6 +220,10 @@ describe('activity feed', () => {
       const result = await addEvent(
         'Protocol Uninstalled',
         'User admin uninstalled "Study"',
+        {
+          kind: 'protocolUninstalled',
+          values: { username: 'admin', protocol: 'Study' },
+        },
       );
 
       expect(result).toEqual({ success: true, error: null });
@@ -200,8 +233,22 @@ describe('activity feed', () => {
   describe('batches', () => {
     it('writes one row per activity and reports each one', async () => {
       await addEvents([
-        { type: 'Protocol Uninstalled', message: 'User admin removed "A"' },
-        { type: 'Protocol Uninstalled', message: 'User admin removed "B"' },
+        {
+          type: 'Protocol Uninstalled',
+          message: 'User admin removed "A"',
+          localization: {
+            kind: 'protocolUninstalled',
+            values: { username: 'admin', protocol: 'A' },
+          },
+        },
+        {
+          type: 'Protocol Uninstalled',
+          message: 'User admin removed "B"',
+          localization: {
+            kind: 'protocolUninstalled',
+            values: { username: 'admin', protocol: 'B' },
+          },
+        },
       ]);
       await flushAfterCallbacks();
 
@@ -209,8 +256,22 @@ describe('activity feed', () => {
       expect(mockCreateMany.mock.calls[0]).toEqual([
         {
           data: [
-            { type: 'Protocol Uninstalled', message: 'User admin removed "A"' },
-            { type: 'Protocol Uninstalled', message: 'User admin removed "B"' },
+            {
+              type: 'Protocol Uninstalled',
+              message: 'User admin removed "A"',
+              localization: {
+                kind: 'protocolUninstalled',
+                values: { username: 'admin', protocol: 'A' },
+              },
+            },
+            {
+              type: 'Protocol Uninstalled',
+              message: 'User admin removed "B"',
+              localization: {
+                kind: 'protocolUninstalled',
+                values: { username: 'admin', protocol: 'B' },
+              },
+            },
           ],
         },
       ]);
@@ -221,9 +282,30 @@ describe('activity feed', () => {
     // instance. One callback per activity would race its own siblings.
     it('shuts the analytics client down once for the whole batch', async () => {
       await addEvents([
-        { type: 'Protocol Uninstalled', message: 'User admin removed "A"' },
-        { type: 'Protocol Uninstalled', message: 'User admin removed "B"' },
-        { type: 'Protocol Uninstalled', message: 'User admin removed "C"' },
+        {
+          type: 'Protocol Uninstalled',
+          message: 'User admin removed "A"',
+          localization: {
+            kind: 'protocolUninstalled',
+            values: { username: 'admin', protocol: 'A' },
+          },
+        },
+        {
+          type: 'Protocol Uninstalled',
+          message: 'User admin removed "B"',
+          localization: {
+            kind: 'protocolUninstalled',
+            values: { username: 'admin', protocol: 'B' },
+          },
+        },
+        {
+          type: 'Protocol Uninstalled',
+          message: 'User admin removed "C"',
+          localization: {
+            kind: 'protocolUninstalled',
+            values: { username: 'admin', protocol: 'C' },
+          },
+        },
       ]);
 
       expect(afterCallbacks).toHaveLength(1);

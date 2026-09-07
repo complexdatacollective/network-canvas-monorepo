@@ -1,6 +1,7 @@
 import { get } from 'es-toolkit/compat';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
+import AttributeControlDescription from '~/components/Form/AttributeControlDescription';
 import Markdown from '~/components/Markdown';
 import { useStageFormValue } from '~/components/StageEditor/stageFormHooks';
 import { getColorForType } from '~/config/variables';
@@ -31,12 +32,10 @@ const NodeFormFieldPreview = ({
       <Markdown label={prompt} className="[&>p]:m-0" />
       <div>
         <Badge color={getColorForType(codebookVariable.type)}>
-          <span>
-            <strong>{codebookVariable.type}</strong>
-            {' attribute using '}
-            <strong>{codebookVariable.component}</strong>
-            {' input control'}
-          </span>
+          <AttributeControlDescription
+            type={codebookVariable.type}
+            component={codebookVariable.component}
+          />
         </Badge>
       </div>
     </div>

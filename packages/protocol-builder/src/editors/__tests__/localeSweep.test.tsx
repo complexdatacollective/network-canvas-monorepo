@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { expectNoLocaleLeaks } from '../../testing/localeSweep.ts';
+import {
+  expectNoLocaleLeaks,
+  protocolStrings,
+} from '../../testing/localeSweep.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -86,20 +89,24 @@ const settled = async (harness: StageEditorHarness) => {
 };
 
 /**
- * The one leak a roster stage still has, and whose it is.
+ * Everything on screen that belongs to the researcher rather than to this
+ * package: the whole protocol the harness is mounted over, the stage's own
+ * seeded fields, and the codebook the sections read type and attribute names
+ * out of.
  *
- * `ExternalDataSourceSection` mounts the shared resource picker, and the
- * summary it shows of the chosen file writes its own terms as JSX attributes
- * — `<Detail term="Attributes">` among them, which is the English of an id
- * this package already translates. `src/resources` is the localisation
- * branch's to convert and is listed as such in `NOT_CONVERTED_YET`, so the
- * fix belongs there rather than here; recorded instead, so that a Spanish
- * researcher reading "Attributes" inside a Spanish stage is a fact this
- * suite states rather than one it passes over.
+ * Mirrors the sibling sweep's `researcherWords` in
+ * `src/__tests__/localeSweep.test.tsx` for the same reason: a section can
+ * show a researcher's own words from anywhere in the protocol or codebook,
+ * not only from the stage under test, so what is exempted from the sweep has
+ * to be read out of what the harness actually mounted rather than listed by
+ * hand.
  */
-const RESOURCE_SUMMARY_IS_ENGLISH = [
-  'protocolBuilder.codebookEntity.attributesHeading rendered in English: Attributes',
-];
+const researcherWords = (harness: StageEditorHarness) =>
+  protocolStrings(
+    harness.session.getSnapshot().protocolSections,
+    harness.seeded.fields,
+    harness.hostCodebook(),
+  );
 
 describe('the name-generator editors under es, at rest', () => {
   it('sweeps a roster name generator', async () => {
@@ -115,9 +122,10 @@ describe('the name-generator editors under es, at rest', () => {
       name: /Atributos mostrados en una tarjeta/,
     });
 
-    expectNoLocaleLeaks('a roster name generator at rest', harness, {
-      stillEnglish: RESOURCE_SUMMARY_IS_ENGLISH,
-    });
+    expectNoLocaleLeaks(
+      'a roster name generator at rest',
+      researcherWords(harness),
+    );
   });
 
   it('sweeps a form-based name generator', async () => {
@@ -129,7 +137,10 @@ describe('the name-generator editors under es, at rest', () => {
     await settled(harness);
     await screen.findByRole('list', { name: /Paneles/ });
 
-    expectNoLocaleLeaks('a form-based name generator at rest', harness);
+    expectNoLocaleLeaks(
+      'a form-based name generator at rest',
+      researcherWords(harness),
+    );
   });
 
   it('sweeps a quick-add name generator', async () => {
@@ -140,6 +151,9 @@ describe('the name-generator editors under es, at rest', () => {
     });
     await settled(harness);
 
-    expectNoLocaleLeaks('a quick-add name generator at rest', harness);
+    expectNoLocaleLeaks(
+      'a quick-add name generator at rest',
+      researcherWords(harness),
+    );
   });
 });
