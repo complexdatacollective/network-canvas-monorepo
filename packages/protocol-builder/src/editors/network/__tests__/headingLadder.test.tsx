@@ -4,14 +4,14 @@ import axe from 'axe-core';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
-import { harnessEditor } from './editorFixtures.tsx';
+import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import * as geospatialEditorStories from '../GeospatialStageEditor.stories.tsx';
 import * as narrativeEditorStories from '../NarrativeStageEditor.stories.tsx';
 import * as composerEditorStories from '../NetworkComposerStageEditor.stories.tsx';
 import { NetworkComposerStageEditor } from '../NetworkComposerStageEditor.tsx';
 import * as sociogramEditorStories from '../SociogramStageEditor.stories.tsx';
+import { harnessEditor } from './editorFixtures.tsx';
 
 /**
  * Every heading in the document, as `level: text`, in the order a reader
@@ -50,9 +50,8 @@ async function expectHeadingOrder(judgedAtLeast: number): Promise<void> {
     ),
   ).toEqual([]);
   expect(
-    [...results.passes, ...results.incomplete].flatMap(
-      (result) => result.nodes,
-    ).length,
+    [...results.passes, ...results.incomplete].flatMap((result) => result.nodes)
+      .length,
   ).toBeGreaterThanOrEqual(judgedAtLeast);
 }
 

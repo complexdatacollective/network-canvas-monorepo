@@ -158,7 +158,8 @@ export type UnregisteredStageType = UnregisteredIn<typeof REGISTRY_PARTS>;
  * and adding a schema member then breaks the build in this package until an
  * editor exists for it.
  */
-export const AWAITING_STAGE_EDITORS = [] as const satisfies readonly UnregisteredStageType[];
+export const AWAITING_STAGE_EDITORS =
+  [] as const satisfies readonly UnregisteredStageType[];
 
 export type Assert<T extends true> = T;
 
