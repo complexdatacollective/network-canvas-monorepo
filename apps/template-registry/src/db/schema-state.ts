@@ -3,7 +3,10 @@ import { randomBytes } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
 
+import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
+
 import { REGISTRY_SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
+import { REGISTRY_ROLES } from './schema.ts';
 
 const stampSchema = z.strictObject({
   fingerprint: z.literal(REGISTRY_SCHEMA_FINGERPRINT),
@@ -47,24 +50,33 @@ export async function verifyRegistryDatabases(
   pool: pg.Pool,
   operatorPool: pg.Pool,
 ): Promise<string> {
-  const identities = await Promise.all([
-    readRegistrySchemaIdentity(pool),
-    readRegistrySchemaIdentity(operatorPool),
-  ]);
-  if (identities[0] !== identities[1])
-    throw new Error('REGISTRY_DATABASES_DO_NOT_MATCH');
-  // Backups retain their installation ID. A fresh random database-scoped lock
-  // proves that both sockets see the same live PostgreSQL lock manager as well.
-  // Transaction-scoped locks leave no persistent probe rows or pooled locks.
-  const key = randomBytes(8).readBigInt64BE().toString();
   const app = await pool.connect();
   let operator: pg.PoolClient | undefined;
   let appDiscard = false;
   let operatorDiscard = false;
   try {
     operator = await operatorPool.connect();
-    await app.query('BEGIN');
-    await operator.query('BEGIN');
+    await app.query('BEGIN READ ONLY');
+    await operator.query('BEGIN READ ONLY');
+    // Validate the actual LOGIN behind each pinned role. Keep identity, schema
+    // and lock-manager checks on these same serving connections.
+    await assertSafePostgresRuntimeIdentity(app, {
+      intendedRole: REGISTRY_ROLES.app,
+      allowedRoles: [REGISTRY_ROLES.app],
+    });
+    await assertSafePostgresRuntimeIdentity(operator, {
+      intendedRole: REGISTRY_ROLES.operator,
+      allowedRoles: [REGISTRY_ROLES.operator],
+    });
+    const identities = await Promise.all([
+      readRegistrySchemaIdentity(app),
+      readRegistrySchemaIdentity(operator),
+    ]);
+    if (identities[0] !== identities[1])
+      throw new Error('REGISTRY_DATABASES_DO_NOT_MATCH');
+    // Restores retain their installation ID. A random database-scoped lock
+    // proves both sockets reach the same live PostgreSQL lock manager.
+    const key = randomBytes(8).readBigInt64BE().toString();
     await app.query('SELECT pg_advisory_xact_lock($1::bigint)', [key]);
     const challenge = await operator.query<{ acquired: boolean }>(
       'SELECT pg_try_advisory_xact_lock($1::bigint) AS acquired',
@@ -72,6 +84,11 @@ export async function verifyRegistryDatabases(
     );
     if (challenge.rows[0]?.acquired !== false)
       throw new Error('REGISTRY_DATABASES_DO_NOT_MATCH');
+    return identities[0];
+  } catch (error) {
+    appDiscard = true;
+    operatorDiscard = true;
+    throw error;
   } finally {
     try {
       await app.query('ROLLBACK');
@@ -86,7 +103,6 @@ export async function verifyRegistryDatabases(
     app.release(appDiscard);
     operator?.release(operatorDiscard);
   }
-  return identities[0];
 }
 
 /** The instance identity survives schema upgrades and backup restoration. */

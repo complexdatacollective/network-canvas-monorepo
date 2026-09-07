@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
+import { escapeIdentifier } from 'pg';
 import { expect, it, vi } from 'vitest';
 
 import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
@@ -21,7 +22,7 @@ const migrations = await readMigrations(
   'Template Registry',
 );
 
-async function fixture(stamped = true) {
+async function fixture(stamped = true, ownerConnection?: 'app' | 'operator') {
   const assets = await createAccountAssetsFixture();
   const database = await createRegistryInstallation();
   await registryMigrator.migrate(
@@ -32,6 +33,13 @@ async function fixture(stamped = true) {
   );
   if (!stamped)
     await database.owner.query('DELETE FROM registry_schema_fingerprint');
+  if (ownerConnection) {
+    await database.withAdministrator((administrator) =>
+      administrator.query(
+        `GRANT ${escapeIdentifier(database.roles[ownerConnection])} TO ${escapeIdentifier(database.logins.owner)} WITH SET TRUE, INHERIT FALSE`,
+      ),
+    );
+  }
   const poolFor = (role: string, connectionString: string) => {
     const pool = createPostgresPool({
       connectionString,
@@ -43,10 +51,17 @@ async function fixture(stamped = true) {
     setRegistryPoolBounds(pool);
     return pool;
   };
-  const pool = poolFor(database.roles.app, database.runtimeDatabaseUrl);
+  const pool = poolFor(
+    database.roles.app,
+    ownerConnection === 'app'
+      ? database.databaseUrl
+      : database.runtimeDatabaseUrl,
+  );
   const operatorPool = poolFor(
     database.roles.operator,
-    database.operatorDatabaseUrl,
+    ownerConnection === 'operator'
+      ? database.databaseUrl
+      : database.operatorDatabaseUrl,
   );
   const configuration = readRegistryEnv({
     REGISTRY_PUBLIC_URL: 'https://registry.example.test',
@@ -89,6 +104,45 @@ async function fixture(stamped = true) {
     },
   };
 }
+
+it.each(['app', 'operator'] as const)(
+  'refuses a database owner behind the expected %s role before storage or auth admission',
+  async (purpose) => {
+    const inputs = await fixture(true, purpose);
+    let unexpectedRuntime: RegistryRuntime | undefined;
+    try {
+      // The installation already contains valid, separate restricted logins.
+      // Selecting the expected NOLOGIN role does not make an owner URL safe.
+      const unsafe = purpose === 'app' ? inputs.pool : inputs.operatorPool;
+      const client = await unsafe.connect();
+      try {
+        await client.query('SET ROLE NONE');
+        const ownership = await client.query<{ owns_database: boolean }>(
+          'SELECT datdba = (SELECT oid FROM pg_roles WHERE rolname = current_user) AS owns_database FROM pg_database WHERE datname = current_database()',
+        );
+        expect(ownership.rows).toEqual([{ owns_database: true }]);
+        await client.query(`SET ROLE ${inputs.database.roles[purpose]}`);
+      } finally {
+        client.release();
+      }
+      await expect(
+        initializeRegistry(inputs).then((runtime) => {
+          unexpectedRuntime = runtime;
+          return runtime;
+        }),
+      ).rejects.toThrow('REGISTRY_STARTUP_FAILED');
+      expect(inputs.blobs.ready).not.toHaveBeenCalled();
+      expect(inputs.blobs.close).toHaveBeenCalledTimes(1);
+      expect(
+        (await inputs.database.owner.query('SELECT * FROM registry_auth_user'))
+          .rows,
+      ).toEqual([]);
+    } finally {
+      await unexpectedRuntime?.close();
+      await inputs.dispose();
+    }
+  },
+);
 
 it('refuses an unstamped database before storage, auth, workers or a listener can start, and closes owned resources', async () => {
   const inputs = await fixture(false);
@@ -203,6 +257,38 @@ it('serves live health and public reads, refuses stale readiness, drains admissi
     await inputs.dispose();
   }
 });
+
+it.each(['app', 'operator'] as const)(
+  'refuses readiness when the serving %s login acquires direct data privileges',
+  async (purpose) => {
+    const inputs = await fixture();
+    const runtime = await initializeRegistry(inputs);
+    const listener = await listenRegistry(runtime, 0, '127.0.0.1');
+    const login = escapeIdentifier(inputs.database.logins[purpose]);
+    try {
+      const address = listener.server.address();
+      if (!address || typeof address === 'string')
+        throw new Error('REGISTRY_TEST_HTTP_ADDRESS_MISSING');
+      const ready = `http://127.0.0.1:${address.port}/readyz`;
+      expect((await fetch(ready)).status).toBe(200);
+      await inputs.database.owner.query(
+        `GRANT SELECT ON registry_auth_user TO ${login}`,
+      );
+      expect((await fetch(ready)).status).toBe(503);
+      expect(inputs.onDiagnostic).toHaveBeenCalledWith(
+        'REGISTRY_READINESS_FAILED',
+        expect.stringMatching(/^[0-9a-f-]{36}$/),
+      );
+      await inputs.database.owner.query(
+        `REVOKE SELECT ON registry_auth_user FROM ${login}`,
+      );
+      expect((await fetch(ready)).status).toBe(200);
+    } finally {
+      await listener.close();
+      await inputs.dispose();
+    }
+  },
+);
 
 it('refuses unversioned startup before storage or auth despite a matching fingerprint', async () => {
   const inputs = await fixture();

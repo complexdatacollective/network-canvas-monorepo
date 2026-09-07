@@ -438,6 +438,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: spike
           POSTGRES_DB: studio_dev
+          POSTGRES_INITDB_ARGS: --set=max_prepared_transactions=10
         ports:
           - 54318:5432
         options: >-
@@ -630,6 +631,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: spike
           POSTGRES_DB: studio_dev
+          POSTGRES_INITDB_ARGS: --set=max_prepared_transactions=10
         ports:
           - 54318:5432
         options: >-

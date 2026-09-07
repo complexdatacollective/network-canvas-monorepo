@@ -21,6 +21,7 @@
     "./tenant": "./src/tenant.ts",
     "./postgres-pool": "./src/postgres-pool.ts",
     "./postgres-catalog-privileges": "./src/postgres-catalog-privileges.ts",
+    "./postgres-runtime-identity": "./src/postgres-runtime-identity.ts",
     "./section-validation": "./src/section-validation.ts",
     "./template-metadata": "./src/template-metadata.ts",
     "./template-exchange": "./src/template-exchange.ts",

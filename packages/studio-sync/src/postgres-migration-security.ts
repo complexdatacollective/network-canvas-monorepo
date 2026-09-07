@@ -246,6 +246,30 @@ export async function enforceMigrationSecurity(
       `${applicationName} does not support owner-backed rewrite rules on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.`,
     );
   }
+  const evidenceRelations = [
+    `${escapeIdentifier(config.historySchema)}.history`,
+    `${escapeIdentifier(config.schemaName)}.${escapeIdentifier(config.fingerprintTable)}`,
+  ];
+  // Evidence is authored as standalone ordinary tables. Inheritance and
+  // partition routing authorize against a parent, bypassing these tables' own
+  // ACLs; inherited children also contribute rows to ordinary evidence reads.
+  // Reject either direction before the runner trusts any recorded history.
+  const evidenceShape = await client.query<{ safe: boolean }>(
+    `SELECT NOT EXISTS (
+      SELECT 1 FROM pg_catalog.pg_class evidence
+      WHERE evidence.oid IN (pg_catalog.to_regclass($1), pg_catalog.to_regclass($2))
+        AND (evidence.relkind <> 'r' OR evidence.relispartition OR EXISTS (
+          SELECT 1 FROM pg_catalog.pg_inherits inheritance
+          WHERE inheritance.inhrelid = evidence.oid OR inheritance.inhparent = evidence.oid
+        ))
+    ) AS safe`,
+    evidenceRelations,
+  );
+  if (evidenceShape.rows[0]?.safe !== true) {
+    throw new Error(
+      `${applicationName} migration evidence must be standalone ordinary tables without inheritance or partitions. Existing evidence is untrusted; restore a verified backup before migrating.`,
+    );
+  }
   const loginAccess = await client.query<{
     safe: boolean;
     evidence_safe: boolean;
@@ -336,8 +360,7 @@ export async function enforceMigrationSecurity(
       restrictedLogins,
       [...runtimeRoles, ...optionalRoles],
       backupRole ?? null,
-      `${escapeIdentifier(config.historySchema)}.history`,
-      `${escapeIdentifier(config.schemaName)}.${escapeIdentifier(config.fingerprintTable)}`,
+      ...evidenceRelations,
     ],
   );
   if (loginAccess.rows[0]?.evidence_safe !== true) {
@@ -429,11 +452,18 @@ export async function enforceMigrationQuiescence(
         JOIN pg_database database ON database.datname = activity.datname
       WHERE activity.datname = current_database() AND NOT login.rolsuper
         AND login.oid <> database.datdba AND login.rolname <> session_user
+    ) OR EXISTS (
+      SELECT 1 FROM pg_prepared_xacts prepared
+        JOIN pg_roles owner_role ON owner_role.rolname = prepared.owner
+        JOIN pg_database database ON database.datname = prepared.database
+      WHERE prepared.database = current_database() AND NOT owner_role.rolsuper
+        AND owner_role.oid <> database.datdba
+        AND owner_role.rolname <> session_user
     ) AS present
   `);
   if (sessions.rows[0]?.present !== false) {
     throw new Error(
-      `${applicationName} has existing runtime connections. Keep admission closed and stop all web, worker and backup processes before applying pending migrations.`,
+      `${applicationName} has existing runtime connections or prepared transactions. Keep admission closed and stop all web, worker and backup processes before applying pending migrations.`,
     );
   }
 }

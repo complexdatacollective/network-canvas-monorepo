@@ -10,11 +10,7 @@ import { escapeIdentifier } from 'pg';
 import { createPostgresPool } from '@codaco/studio-sync/postgres-pool';
 
 import { setRegistryPoolBounds } from '../db/pool.ts';
-
-// Public disposable PostgreSQL; this test boundary never loads deployment env.
-// oxlint-disable-next-line node/no-process-env
-const port = Number(process.env.PGPORT ?? 54318);
-const databaseUrl = `postgres://postgres:spike@127.0.0.1:${port}/postgres`;
+import { REGISTRY_TEST_DATABASE_URL as databaseUrl } from './test-env.ts';
 
 export async function createRegistryTestDatabase(
   schema: Parameters<typeof generateDrizzleJson>[0],

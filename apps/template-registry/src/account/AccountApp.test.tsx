@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { expect, it, vi } from 'vitest';
 
@@ -101,27 +102,29 @@ function deferred<T>() {
   });
   return { promise, resolve };
 }
-async function issue() {
-  fireEvent.change(await screen.findByLabelText(/^Credential name/), {
-    target: { value: 'Trusted tool' },
-  });
-  fireEvent.click(screen.getByRole('button', { name: 'Create credential' }));
+
+async function issue(user: ReturnType<typeof userEvent.setup>) {
+  const name = await screen.findByLabelText(/^Credential name/);
+  await user.type(name, 'Trusted tool');
+  await user.click(screen.getByRole('button', { name: 'Create credential' }));
 }
 
 it('validates and focuses email, then announces a successful explicit sign-in request', async () => {
   const client = clientFixture();
   client.account.mockRejectedValue(new AccountRequestError('signed_out'));
   mount(client);
+  const user = userEvent.setup();
   const send = await screen.findByRole('button', { name: 'Send sign-in link' });
-  fireEvent.click(send);
+  await user.click(send);
   await waitFor(() =>
     expect(screen.getByLabelText(/Email address/)).toHaveFocus(),
   );
   expect(client.sendLink).not.toHaveBeenCalled();
-  fireEvent.change(screen.getByLabelText(/Email address/), {
-    target: { value: 'researcher@example.test' },
-  });
-  fireEvent.click(send);
+  await user.type(
+    screen.getByLabelText(/Email address/),
+    'researcher@example.test',
+  );
+  await user.click(send);
   await waitFor(() => expect(client.sendLink).toHaveBeenCalledTimes(1));
   expect(client.sendLink.mock.calls[0]?.[0]).toBe('researcher@example.test');
   const notice = await screen.findByText(
@@ -138,10 +141,10 @@ it('keeps raw errors out of sign-in output and never automatically retries an am
     new Error('private-address-token-provider-canary'),
   );
   mount(client);
-  fireEvent.change(await screen.findByLabelText(/Email address/), {
-    target: { value: 'researcher@example.test' },
-  });
-  fireEvent.click(screen.getByRole('button', { name: 'Send sign-in link' }));
+  const user = userEvent.setup();
+  const email = await screen.findByLabelText(/Email address/);
+  await user.type(email, 'researcher@example.test');
+  await user.click(screen.getByRole('button', { name: 'Send sign-in link' }));
   expect(
     await screen.findByText(
       'The request could not be completed. Wait a moment and try again.',
@@ -156,13 +159,13 @@ it('keeps raw errors out of sign-in output and never automatically retries an am
 it('shows a credential once, focuses it, copies it explicitly and clears it on dismissal', async () => {
   const client = clientFixture();
   const writeText = vi.fn().mockResolvedValue(undefined);
+  client.tokens.mockResolvedValue({ data: [credential] });
+  mount(client);
+  await issue(userEvent.setup());
   Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
     value: { writeText },
   });
-  client.tokens.mockResolvedValue({ data: [credential] });
-  mount(client);
-  await issue();
   const value = await screen.findByText(secret);
   expect(value).toHaveFocus();
   expect(
@@ -187,7 +190,7 @@ it('retains the shared submit busy guard and discards a late secret after sign-o
     deferred<Awaited<ReturnType<RegistryAccountClient['createToken']>>>();
   client.createToken.mockReturnValue(pending.promise);
   mount(client);
-  await issue();
+  await issue(userEvent.setup());
   await waitFor(() => expect(client.createToken).toHaveBeenCalledTimes(1));
   expect(
     screen.getByRole('button', { name: 'Create credential' }),
@@ -216,7 +219,7 @@ it('does not replace the post-issuance credential list with an older pending rea
   await screen.findByRole('heading', { name: 'Registry credentials' });
   await waitFor(() => expect(client.tokens).toHaveBeenCalled());
   client.tokens.mockResolvedValue({ data: [credential] });
-  await issue();
+  await issue(userEvent.setup());
   await screen.findByRole('button', { name: 'Revoke' });
   await act(async () => previous.resolve({ data: [] }));
   expect(screen.getByRole('button', { name: 'Revoke' })).toBeVisible();
@@ -226,7 +229,7 @@ it('does not replace the post-issuance credential list with an older pending rea
 it('discards an old account refresh after sign-out and clears an already visible credential', async () => {
   const client = clientFixture();
   mount(client);
-  await issue();
+  await issue(userEvent.setup());
   await screen.findByText(secret);
   const pending = deferred<RegistryAccount>();
   client.account.mockReturnValue(pending.promise);
@@ -273,15 +276,14 @@ it('reveals operator actions only with live access and confirms before calling t
   client.account.mockResolvedValue({ ...account, operator: true });
   fireEvent.click(screen.getByRole('button', { name: 'Refresh account' }));
   await screen.findByRole('heading', { name: 'Registry administration' });
+  const user = userEvent.setup();
   const id = '4b90c0bf-20d2-45b8-9490-f91539b12c97';
   const target = screen.getByLabelText(/^Entry ID/);
-  fireEvent.change(target, { target: { value: id } });
+  await user.type(target, id);
   const form = target.closest('form');
   if (!form) throw new Error('Entry form missing');
-  fireEvent.change(within(form).getByLabelText(/^Action/), {
-    target: { value: 'takedown' },
-  });
-  fireEvent.click(within(form).getByRole('button', { name: 'Apply action' }));
+  await user.selectOptions(within(form).getByLabelText(/^Action/), 'takedown');
+  await user.click(within(form).getByRole('button', { name: 'Apply action' }));
   const dialog = await screen.findByRole('dialog');
   expect(client.visibility).not.toHaveBeenCalled();
   fireEvent.click(
@@ -311,16 +313,13 @@ it('closes an open operator confirmation when a focus refresh reports revoked ac
   const client = clientFixture();
   client.account.mockResolvedValue({ ...account, operator: true });
   mount(client);
+  const user = userEvent.setup();
   const target = await screen.findByLabelText(/^Entry ID/);
-  fireEvent.change(target, {
-    target: { value: '4b90c0bf-20d2-45b8-9490-f91539b12c97' },
-  });
+  await user.type(target, '4b90c0bf-20d2-45b8-9490-f91539b12c97');
   const form = target.closest('form');
   if (!form) throw new Error('Entry form missing');
-  fireEvent.change(within(form).getByLabelText(/^Action/), {
-    target: { value: 'takedown' },
-  });
-  fireEvent.click(within(form).getByRole('button', { name: 'Apply action' }));
+  await user.selectOptions(within(form).getByLabelText(/^Action/), 'takedown');
+  await user.click(within(form).getByRole('button', { name: 'Apply action' }));
   expect(await screen.findByRole('dialog')).toBeVisible();
   expect(client.visibility).not.toHaveBeenCalled();
 
