@@ -1,10 +1,37 @@
-import { startCase, without } from 'es-toolkit/compat';
+import { without } from 'es-toolkit/compat';
 
+import {
+  createAppIntl,
+  defineMessages,
+  type IntlShape,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import {
   VARIABLE_REFERENCE_VALIDATIONS,
   VARIABLE_TYPE_VALIDATIONS,
   type ValidationName,
 } from '@codaco/protocol-validation';
+import {
+  formatValidationRule,
+  validationRuleMessages,
+} from '@codaco/protocol-validation/messages';
+const groupMessages = defineMessages({
+  requirements: {
+    id: 'architect.validation.group.requirements',
+    defaultMessage: 'Requirements',
+    description: 'Group heading for related validation rules.',
+  },
+  limits: {
+    id: 'architect.validation.group.limits',
+    defaultMessage: 'Limits',
+    description: 'Group heading for related validation rules.',
+  },
+  comparisons: {
+    id: 'architect.validation.group.comparisons',
+    defaultMessage: 'Compare to another attribute',
+    description: 'Group heading for related validation rules.',
+  },
+});
 
 // The Anonymisation stage's passphrase is not a codebook variable — its
 // validation lives on the stage schema — so it has no entry in the shared
@@ -32,22 +59,8 @@ const VALIDATIONS_WITHOUT_VALUES = ['required', 'unique'];
 
 // Human-readable labels for each rule's row in the editor. Anything not listed
 // here (there shouldn't be any) falls back to a start-cased version of the key.
-const VALIDATION_LABELS: Partial<Record<ValidationName, string>> = {
-  required: 'Required',
-  unique: 'Must be unique',
-  minLength: 'Minimum length',
-  maxLength: 'Maximum length',
-  minValue: 'Minimum value',
-  maxValue: 'Maximum value',
-  minSelected: 'Minimum selected',
-  maxSelected: 'Maximum selected',
-  differentFrom: 'Different from',
-  sameAs: 'Same as',
-  lessThanVariable: 'Less than',
-  greaterThanVariable: 'Greater than',
-  lessThanOrEqualToVariable: 'Less than or equal to',
-  greaterThanOrEqualToVariable: 'Greater than or equal to',
-};
+
+const defaultIntl = createAppIntl({ locale: 'en' });
 
 /**
  * Widened to `string` because callers that read a rule name out of a committed
@@ -56,10 +69,16 @@ const VALIDATION_LABELS: Partial<Record<ValidationName, string>> = {
  * than an assertion, so an unknown key falls through to the start-cased
  * fallback instead of being asserted into `ValidationName`.
  */
-const getValidationLabel = (validation: string): string => {
-  const labels: Record<string, string | undefined> = VALIDATION_LABELS;
-  return labels[validation] ?? startCase(validation);
-};
+export const getValidationDescriptor = (
+  validation: string,
+): MessageDescriptor | undefined =>
+  Object.entries(validationRuleMessages).find(
+    ([key]) => key === validation,
+  )?.[1];
+const getValidationLabel = (
+  validation: string,
+  intl: IntlShape = defaultIntl,
+): string => formatValidationRule(validation, intl);
 
 const isValidationWithoutValue = (validation: string): boolean =>
   VALIDATIONS_WITHOUT_VALUES.includes(validation);
@@ -97,12 +116,13 @@ const getValidationsForEntity = (
 const getValidationOptionsForVariableType = (
   variableType: string,
   entity: string,
+  intl: IntlShape = defaultIntl,
 ): ValidationOption[] =>
   getValidationsForEntity(
     getValidationsForVariableType(variableType),
     entity,
   ).map((validation) => ({
-    label: getValidationLabel(validation),
+    label: getValidationLabel(validation, intl),
     value: validation,
   }));
 
@@ -121,44 +141,42 @@ type ValidationGroup = {
 
 const VALIDATION_GROUPS: readonly {
   id: ValidationGroupId;
-  heading: string;
+  heading: MessageDescriptor;
   includes: (validation: string) => boolean;
 }[] = [
   {
     id: 'requirements',
-    heading: 'Requirements',
+    heading: groupMessages.requirements,
     includes: isValidationWithoutValue,
   },
-  { id: 'limits', heading: 'Limits', includes: isValidationWithNumberValue },
+  {
+    id: 'limits',
+    heading: groupMessages.limits,
+    includes: isValidationWithNumberValue,
+  },
   {
     id: 'comparisons',
-    heading: 'Compare to another attribute',
+    heading: groupMessages.comparisons,
     includes: isValidationWithListValue,
   },
 ];
 
-const groupsCache = new Map<string, ValidationGroup[]>();
-
 const getGroupedValidationsForVariableType = (
   variableType: string,
   entity: string,
+  intl: IntlShape = defaultIntl,
 ): ValidationGroup[] => {
-  const cacheKey = `${variableType}:${entity}`;
-  const cached = groupsCache.get(cacheKey);
-
-  if (cached) {
-    return cached;
-  }
-
-  const options = getValidationOptionsForVariableType(variableType, entity);
+  const options = getValidationOptionsForVariableType(
+    variableType,
+    entity,
+    intl,
+  );
 
   const groups = VALIDATION_GROUPS.map(({ id, heading, includes }) => ({
     id,
-    heading,
+    heading: intl.formatMessage(heading),
     rules: options.filter((option) => includes(option.value)),
   })).filter((group) => group.rules.length > 0);
-
-  groupsCache.set(cacheKey, groups);
 
   return groups;
 };
@@ -167,7 +185,6 @@ export type { ValidationGroup, ValidationOption };
 
 export {
   getGroupedValidationsForVariableType,
-  getValidationLabel,
   getValidationOptionsForVariableType,
   isValidationWithListValue,
   isValidationWithNumberValue,

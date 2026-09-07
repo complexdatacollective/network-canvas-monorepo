@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 
 import ProtocolField from '../../../form/ProtocolField.tsx';
+import { enIntl } from '../../../testing/i18n.ts';
 import { ResourceGatewayProvider } from '../../context.tsx';
 import {
   resourceFailure,
@@ -54,8 +55,15 @@ const SECRET = 'pk.eyJ1IjoicmVzZWFyY2hlciIsImEiOiJzZWNyZXQifQ';
 const OVERSIZE_FILE =
   'That file is too large to import. Files can be up to 8.0 MB.';
 
-const UNSUPPORTED_IMAGE_FILE =
-  'That file cannot be imported here. Supported file types are: .jpg, .jpeg, .gif, .png, .svg.';
+/**
+ * The extensions are joined by `Intl.ListFormat` rather than by a comma, so
+ * every language gets its own conjunction. Built with the same formatter the
+ * control uses rather than written out, because re-spelling CLDR's list
+ * punctuation here would be asserting on this file's guess at it.
+ */
+const UNSUPPORTED_IMAGE_FILE = `That file cannot be imported here. Supported file types are: ${enIntl.formatList(
+  ['.jpg', '.jpeg', '.gif', '.png', '.svg'],
+)}.`;
 
 /** What a host that throws rather than reporting is told to the researcher as. */
 const UNREACHABLE = 'The resource could not be reached. Try again in a moment.';

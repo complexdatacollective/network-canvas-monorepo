@@ -141,11 +141,15 @@ describe('ValidationSection with a target-only contradiction', () => {
     expect(
       screen.queryByRole('group', { name: 'Requirements' }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/different resolutions/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/cannot be satisfied within their allowed ranges/),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    const message = await screen.findByText(/different resolutions/);
+    const message = await screen.findByText(
+      /cannot be satisfied within their allowed ranges/,
+    );
     expect(message).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked();
     expect(screen.getByTestId('validation-field-error')).toContainElement(
@@ -155,7 +159,9 @@ describe('ValidationSection with a target-only contradiction', () => {
     expect(
       screen.getByRole('group', { name: 'Requirements' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: 'Required' })).toHaveFocus();
+    expect(
+      screen.getByRole('switch', { name: 'Required answer' }),
+    ).toHaveFocus();
   });
 });
 

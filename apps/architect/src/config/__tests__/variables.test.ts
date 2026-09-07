@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import { VARIABLE_TYPE_COMPONENTS } from '@codaco/protocol-validation';
+import { formatConfig } from '~/i18n/formatConfig';
 
 import {
   formattedInputOptions,
@@ -69,7 +71,12 @@ describe('Variable input-control config', () => {
     // standing in as headings. Those rows were seven duplicate React keys (all
     // the empty string) and seven more things a screen reader offered to pick.
     it('names each group without heading decoration', () => {
-      expect(formattedInputOptions.map((group) => group.label)).toEqual([
+      expect(
+        formatConfig(
+          formattedInputOptions,
+          createAppIntl({ locale: 'en' }),
+        ).map((group) => group.label),
+      ).toEqual([
         'Number Types',
         'Scalar Types',
         'Date Types',

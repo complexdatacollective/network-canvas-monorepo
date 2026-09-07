@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -17,6 +19,33 @@ import {
 } from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/store';
 import { getStageList } from '~/selectors/protocol';
+const messages = defineMessages({
+  pedigreeSource: {
+    id: 'architect.sections.narrativePedigree.sourceStage.pedigreeSource',
+    defaultMessage: 'Pedigree source',
+    description:
+      'The title text in components / sections / NarrativePedigree / SourceStage.',
+  },
+  sourceStage: {
+    id: 'architect.sections.narrativePedigree.sourceStage.sourceStage',
+    defaultMessage: 'Source stage',
+    description:
+      'The label text in components / sections / NarrativePedigree / SourceStage.',
+  },
+  selectTheFamilyPedigreeStageWhose: {
+    id: 'architect.sections.narrativePedigree.sourceStage.selectTheFamilyPedigreeStageWhose',
+    defaultMessage:
+      'Select the Family Pedigree stage whose network data this Narrative Pedigree will visualize. Only Family Pedigree stages are listed here.',
+    description:
+      'Visible text in components / sections / NarrativePedigree / SourceStage.',
+  },
+  selectAFamilyPedigreeStage: {
+    id: 'architect.sections.narrativePedigree.sourceStage.selectAFamilyPedigreeStage',
+    defaultMessage: 'Select a Family Pedigree stage...',
+    description:
+      'The placeholder text in components / sections / NarrativePedigree / SourceStage.',
+  },
+});
 
 /**
  * Resets `diseases` to an empty array. The container-safe clear runs first so
@@ -32,6 +61,7 @@ const clearDiseasesValue = (storeApi: StageFormStoreApi) => {
 };
 
 const SourceStage = (_props: StageEditorSectionProps) => {
+  const intl = useAppIntl();
   const { storeApi, draft } = useStageFormContext();
   const sourceStageId = useStageFormValue<string>('sourceStageId');
   const sourceStageIdInitial = useStageInitialValue<string>('sourceStageId');
@@ -79,21 +109,19 @@ const SourceStage = (_props: StageEditorSectionProps) => {
   }, [draft, restoreVersion, sourceStageId, storeApi]);
 
   return (
-    <Section title="Pedigree source">
+    <Section title={intl.formatMessage(messages.pedigreeSource)}>
       <ArchitectField
         name="sourceStageId"
         component={StyledSelectField}
-        label="Source stage"
+        label={intl.formatMessage(messages.sourceStage)}
         hint={
           <Paragraph>
-            Select the Family Pedigree stage whose network data this Narrative
-            Pedigree will visualize. Only Family Pedigree stages are listed
-            here.
+            {intl.formatMessage(messages.selectTheFamilyPedigreeStageWhose)}
           </Paragraph>
         }
         initialValue={sourceStageIdInitial}
         validation={{ required: true }}
-        placeholder="Select a Family Pedigree stage..."
+        placeholder={intl.formatMessage(messages.selectAFamilyPedigreeStage)}
         options={options}
         disabled={options.length === 0}
       />

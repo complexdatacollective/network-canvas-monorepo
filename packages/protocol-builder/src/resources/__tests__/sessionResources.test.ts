@@ -19,6 +19,7 @@ import {
   type ProtocolBuilderPresence,
   type StageFormDraft,
 } from '../../session.ts';
+import { readMessage } from '../../testing/i18n.ts';
 import {
   resourceFailure,
   type ProtocolBuilderResourceGateway,
@@ -611,7 +612,9 @@ describe('a session that stages resources', () => {
     expect(refusal.issues).toMatchObject([
       { path: ['stages', 0, 'dataSource'], sectionId: stageSection },
     ]);
-    expect(refusal.issues[0]?.message).toContain(
+    // Read through the same decode the form's error region does: the issue
+    // carries the descriptor and its values rather than the sentence.
+    expect(readMessage(refusal.issues[0]?.message ?? '')).toContain(
       'the selected file is not a readable network',
     );
     // Nothing was committed, and the researcher's import is still there to be
@@ -1756,7 +1759,7 @@ describe('a discard racing a field that would name the same resource', () => {
     expect(refused.reason).toBe('not-found');
     expect(refused.retryable).toBe(false);
     expect(refused.resourceId).toBe(roster.id);
-    expect(refused.message).toMatch(/no longer available/);
+    expect(readMessage(refused.message)).toMatch(/no longer available/);
     // Only the one that went: everything else the session staged is still a
     // perfectly good thing for a field to choose.
     expectOk(resources.referenceStaged(other.id));
