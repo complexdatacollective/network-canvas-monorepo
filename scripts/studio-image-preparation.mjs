@@ -11,7 +11,10 @@ import {
   buildMultiPlatformCycloneDx,
   validateCycloneDx,
 } from './studio-image-evidence.mjs';
-import { acquireImageEvidence } from './studio-image-registry.mjs';
+import {
+  acquireImageEvidence,
+  probeImageTag,
+} from './studio-image-registry.mjs';
 
 const PLATFORMS = 'linux/amd64,linux/arm64';
 const SOURCE = /^[a-f0-9]{40}$/;
@@ -42,28 +45,6 @@ function execution(run, executable, args, { cwd, timeoutMs, maxBuffer }) {
     });
   } catch {
     throw new Error('Studio image preparation command failed.');
-  }
-}
-
-function existingDigest(run, crane, target, context) {
-  try {
-    const digest = run(crane, ['digest', target], {
-      timeout: context.timeoutMs,
-      killSignal: 'SIGKILL',
-      cwd: context.cwd,
-    }).trim();
-    if (!DIGEST.test(digest))
-      throw new Error(
-        'Studio image preparation received an invalid image digest.',
-      );
-    return digest;
-  } catch (error) {
-    if (
-      error?.message ===
-      'Studio image preparation received an invalid image digest.'
-    )
-      throw error;
-    return null;
   }
 }
 
@@ -116,6 +97,7 @@ export async function prepareStudioImages(
     syft = 'syft',
     run = command,
     acquire = acquireImageEvidence,
+    probe = probeImageTag,
     timeoutMs = 300_000,
   } = {},
 ) {
@@ -167,8 +149,17 @@ export async function prepareStudioImages(
     const retained = new Map();
     for (const name of Object.keys(IMAGE_REPOSITORIES)) {
       if (reuse.has(name)) continue;
-      const digest = existingDigest(run, crane, targets[name], context);
-      if (digest) retained.set(name, digest);
+      const digest = await probe({
+        name,
+        reference: targets[name],
+        crane,
+        timeoutMs,
+      });
+      if (digest !== null && !DIGEST.test(digest))
+        throw new Error(
+          'Studio image preparation received invalid retained tag evidence.',
+        );
+      if (digest !== null) retained.set(name, digest);
     }
 
     for (const name of ['studio', 'registry', 'minio']) {
