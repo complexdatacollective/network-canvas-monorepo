@@ -2,8 +2,8 @@ import {
   act,
   render,
   type RenderResult,
-  screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { isEqual } from 'es-toolkit/compat';
@@ -87,8 +87,26 @@ const defaultSubmitLabel = (locale: string | undefined): string => {
   return label;
 };
 
-/** DOM id of the stage form the harness mounts. See `HarnessEditor`. */
-const STAGE_FORM_ID = 'stage-form';
+/**
+ * A DOM id for the stage form of one mounted harness.
+ *
+ * One id per harness rather than one for the package, because a test may mount
+ * two — comparing two interfaces, or an editor against the sections it is
+ * built from — and the id is not decoration. It is the whole contract for a
+ * submit control the host renders OUTSIDE the form (`<button form={formId}>`,
+ * which is where the shell puts the action slot), so two forms answering to
+ * `stage-form` left the second harness's save button submitting the FIRST
+ * harness's form. Duplicated ids are also why `document.getElementById` could
+ * be read as "this harness's form" for as long as only one was ever mounted.
+ *
+ * The counter is not reset between tests, and nothing may depend on the
+ * number: a test that needs the id reads `formId` off the harness.
+ */
+let harnessesMounted = 0;
+const nextStageFormId = (): string => {
+  harnessesMounted += 1;
+  return `stage-form-${harnessesMounted}`;
+};
 
 /**
  * A change to the codebook made somewhere other than this editor.
@@ -110,6 +128,15 @@ export type StageEditorHarness = RenderResult &
     host: InMemoryCompoundHost;
     gateway: InMemoryResourceGateway;
     user: ReturnType<typeof userEvent.setup>;
+    /**
+     * The DOM id of THIS harness's stage form, which is what a host's own
+     * action chrome is given as `formId`.
+     *
+     * One per mounted harness — see `nextStageFormId` — so a test that asserts
+     * on the contract a host is handed reads it here rather than writing the
+     * id down.
+     */
+    formId: string;
     /** The stage the editor opened on, exactly as it was seeded. */
     seeded: Readonly<{ id: string; type: StageType; fields: SectionDoc }>;
     /**
@@ -559,6 +586,7 @@ export function renderStageEditor<T extends StageType = StageType>(
   });
 
   const submitLabel = options.submitLabel ?? defaultSubmitLabel(options.locale);
+  const formId = nextStageFormId();
   const view = render(
     <LocaleFrame
       {...(options.locale === undefined ? {} : { locale: options.locale })}
@@ -566,6 +594,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       <DialogProvider>
         <HarnessEditor
           session={session}
+          formId={formId}
           submitLabel={submitLabel}
           {...(options.actions === undefined
             ? {}
@@ -607,9 +636,30 @@ export function renderStageEditor<T extends StageType = StageType>(
   // the number the host gives it.
   let fabrications = 0n;
 
+  /**
+   * THIS harness's stage form, or `null` when what is mounted has none.
+   *
+   * Found inside this harness's own container and by this harness's own id.
+   * `document.getElementById('stage-form')` answered with whichever form the
+   * document held first, which is the first harness a test mounted — so a
+   * second harness reported the first one's fields as its own, and every
+   * question asked of it was answered about something else.
+   *
+   * `null` rather than a throw, because a call may legitimately mount
+   * something that is not the shared shell — a stand-in editor rendering a
+   * paragraph, a section list under test — and "no form" is the honest answer
+   * for those. The callers say what they make of it.
+   */
+  const stageForm = (): HTMLFormElement | null =>
+    [...view.container.querySelectorAll('form')].find(
+      (form) => form.id === formId,
+    ) ?? null;
+
   const submit = async (): Promise<FinishRequest | null> => {
     const before = finishRequests.length;
-    const button = screen.getByRole('button', { name: submitLabel });
+    const button = within(view.container).getByRole('button', {
+      name: submitLabel,
+    });
     await user.click(button);
     await waitFor(() => {
       if (finishRequests.length > before) return;
@@ -618,7 +668,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       // `focusFirstError` to reach. Asserting both is what stops a submit
       // still in flight from being read as a refusal.
       expect(button).toHaveAttribute('aria-busy', 'false');
-      expect(refusalOnScreen(view.baseElement)).toBe(true);
+      expect(refusalOnScreen(view.container)).toBe(true);
     });
     // Answered against the count taken before the click, never `at(-1)`: after
     // one save has succeeded, the last request is a request — and a refused
@@ -635,6 +685,7 @@ export function renderStageEditor<T extends StageType = StageType>(
     host,
     gateway,
     user,
+    formId,
     seeded,
     submit,
     cancel: async () => {
@@ -702,11 +753,11 @@ export function renderStageEditor<T extends StageType = StageType>(
       }
       return [...liveCommands];
     },
-    ownedKeys: () => readOwnedKeys(),
+    ownedKeys: () => readOwnedKeys(stageForm()),
     roundTrip: async ({ unowned = [] } = {}) => {
       // Before the save, because it is a question about what is on screen and
       // the save's own failure would otherwise hide it.
-      const owned = new Set(readOwnedKeys());
+      const owned = new Set(readOwnedKeys(stageForm()));
       const orphaned = Object.keys(seeded.fields).filter(
         (key) => !owned.has(key) && !unowned.includes(key),
       );
@@ -718,7 +769,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       const request = await submit();
       if (request === null) {
         throw new Error(
-          `The stage did not save, so nothing round-tripped. The editor is showing: ${visibleProblems(view.baseElement)}`,
+          `The stage did not save, so nothing round-tripped. The editor is showing: ${visibleProblems(view.container)}`,
         );
       }
       // `id` and `type` are the session's, never the editor's: `seeded.fields`
@@ -739,7 +790,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       }
       return request;
     },
-    outline: () => readOutline(),
+    outline: () => readOutline(view.container),
     setReadOnly: (readOnly = true) => {
       act(() => {
         session.setAccess(
@@ -879,6 +930,7 @@ function withSafeTypingIntoRichText(keyboard: HarnessUser): HarnessUser {
 
 function HarnessEditor<T extends StageType>({
   session,
+  formId,
   submitLabel,
   actions,
   editor: Editor,
@@ -886,13 +938,15 @@ function HarnessEditor<T extends StageType>({
   registry,
 }: Readonly<{
   session: ProtocolBuilderSessionStore;
+  /** This harness's own form id. See `nextStageFormId`. */
+  formId: string;
   submitLabel: string;
   actions?: StageEditorActions;
   editor?: StageEditorComponent<T>;
   sections?: ReactNode;
   registry?: Partial<StageEditorRegistry>;
 }>) {
-  const controller = useStageEditorController(session, STAGE_FORM_ID);
+  const controller = useStageEditorController(session, formId);
 
   if (Editor !== undefined) {
     // The stage the session opened, as the editor's own stage type. They are
@@ -923,10 +977,11 @@ function HarnessEditor<T extends StageType>({
     <StageEditorShell
       controller={controller}
       actions={
+        // This harness's own id, which is what the shell hands the slot
+        // anyway: read from the prop rather than out of the context so the
+        // name means one thing in this component.
         actions ??
-        (({ formId }) => (
-          <SubmitButton form={formId}>{submitLabel}</SubmitButton>
-        ))
+        (() => <SubmitButton form={formId}>{submitLabel}</SubmitButton>)
       }
     >
       {sections}
@@ -1103,8 +1158,7 @@ function collectDifferences(
  * own in a portal outside it, and its fields are named after the row's
  * properties — `text`, `content` — which are not stage keys at all.
  */
-function readOwnedKeys(): string[] {
-  const form = document.getElementById(STAGE_FORM_ID);
+function readOwnedKeys(form: HTMLFormElement | null): string[] {
   if (form === null) return [];
   const keys = new Set<string>();
   for (const field of form.querySelectorAll('[data-field-path]')) {
@@ -1123,12 +1177,19 @@ function readOwnedKeys(): string[] {
   return [...keys].toSorted();
 }
 
-function readOutline(): { title: string; state: string }[] {
-  // By role alone, not by the landmark's own name: the harness mounts exactly
+function readOutline(container: HTMLElement): {
+  title: string;
+  state: string;
+}[] {
+  // By role alone, not by the landmark's own name: THIS harness mounts exactly
   // one navigation, and the name is copy — read under a locale that translates
   // it, a name-matched query would find nothing and report an editor with no
   // sections at all, which is a passing assertion about the wrong thing.
-  const [nav] = screen.queryAllByRole('navigation');
+  //
+  // Scoped to this harness's own container rather than read off `screen`,
+  // which is the whole document: a test mounting two harnesses got the first
+  // one's outline from both of them.
+  const [nav] = within(container).queryAllByRole('navigation');
   if (nav === undefined) return [];
   return [...nav.querySelectorAll('button')].map((button) => {
     const [title, state] = [...button.querySelectorAll('span')];
