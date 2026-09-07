@@ -166,6 +166,196 @@ test('reserves an immutable distribution ref and verifies exact retries', async 
   );
 });
 
+test('retains private preparation across fresh store instances without a final release tag', async () => {
+  const f = fixture();
+  const distribution = store(f);
+  await distribution.reserve(source);
+  const input = { source, artifactSha256: manifestSha256 };
+  const preparation = await distribution.ensurePreparation(input);
+  const bytes = Buffer.from(
+    'non-deterministic signature bundle from first attempt',
+  );
+  await preparation.write('release.sigstore.json', bytes);
+  const resumed = await store(f).ensurePreparation(input);
+  assert.deepEqual(await resumed.read('release.sigstore.json'), bytes);
+  await resumed.write('release.sigstore.json', bytes);
+  assert.equal(await resumed.read('installer.tar'), null);
+  assert.equal(f.refs.has(tag), false);
+  assert.equal(f.tags.size, 0);
+  assert.equal(f.releases.has(tag), false);
+  assert.equal(f.releases.size, 1);
+  assert.equal([...f.releases.values()][0].draft, true);
+  assert.equal(
+    f.calls.filter((call) =>
+      call.path.startsWith('https://uploads.github.com/'),
+    ).length,
+    1,
+  );
+  assert.ok(
+    !f.calls.some(
+      (call) => call.method === 'PATCH' || call.method === 'DELETE',
+    ),
+  );
+  await assert.rejects(
+    resumed.write('release.sigstore.json', Buffer.from('regenerated bundle')),
+    /different immutable bytes/,
+  );
+  assert.deepEqual(await resumed.read('release.sigstore.json'), bytes);
+});
+
+test(
+  'concurrent preparation uploads reconcile only identical retained bytes',
+  { timeout: 5000 },
+  async (t) => {
+    for (const identical of [true, false]) {
+      await t.test(
+        identical ? 'identical bytes' : 'conflicting bytes',
+        async () => {
+          const f = fixture();
+          const request = f.request;
+          let uploads = 0;
+          let releaseUploads;
+          const bothUploading = new Promise((resolve) => {
+            releaseUploads = resolve;
+          });
+          f.request = async (options) => {
+            if (options.path.startsWith('https://uploads.github.com/')) {
+              uploads += 1;
+              if (uploads === 2) releaseUploads();
+              // Both callers have observed an absent asset before either upload
+              // reaches GitHub's atomic name uniqueness check.
+              await bothUploading;
+            }
+            return request(options);
+          };
+          const distribution = store(f);
+          await distribution.reserve(source);
+          const input = { source, artifactSha256: manifestSha256 };
+          const first = await distribution.ensurePreparation(input);
+          const second = await store(f).ensurePreparation(input);
+          const bytes = Buffer.from('retained signature');
+          const outcomes = await Promise.allSettled([
+            first.write('release.sigstore.json', bytes),
+            second.write(
+              'release.sigstore.json',
+              identical ? bytes : Buffer.from('different signature'),
+            ),
+          ]);
+          assert.equal(uploads, 2);
+          assert.deepEqual(
+            outcomes.map((outcome) => outcome.status),
+            identical ? ['fulfilled', 'fulfilled'] : ['fulfilled', 'rejected'],
+          );
+          if (!identical)
+            assert.match(outcomes[1].reason.message, /failed exact readback/);
+          assert.deepEqual(await first.read('release.sigstore.json'), bytes);
+          assert.equal([...f.assets.values()][0].length, 1);
+          assert.ok([...f.releases.values()].every((release) => release.draft));
+        },
+      );
+    }
+  },
+);
+
+test('preparation requires the exact prior reservation and source/artifact identity', async () => {
+  const f = fixture();
+  const distribution = store(f);
+  const input = { source, artifactSha256: manifestSha256 };
+  await assert.rejects(distribution.ensurePreparation(input), /HTTP 404/);
+  assert.equal(f.releases.size, 0);
+  await distribution.reserve(source);
+  await distribution.ensurePreparation(input);
+  await assert.rejects(
+    distribution.ensurePreparation({
+      ...input,
+      artifactSha256: 'd'.repeat(64),
+    }),
+    /different immutable evidence/,
+  );
+  f.refs.set(`studio-distribution-${source}`, { type: 'commit', sha: other });
+  await assert.rejects(
+    distribution.ensurePreparation(input),
+    /belongs to another source/,
+  );
+});
+
+test('preparation rereads its private identity before every operation', async () => {
+  const f = fixture();
+  const distribution = store(f);
+  await distribution.reserve(source);
+  const preparation = await distribution.ensurePreparation({
+    source,
+    artifactSha256: manifestSha256,
+  });
+  const retained = f.releases.get(`studio-distribution-${source}`);
+  retained.draft = false;
+  retained.published_at = '2026-09-07T00:00:00Z';
+  const writes = f.calls.filter((call) => call.method === 'POST').length;
+  await assert.rejects(
+    preparation.read('image.json'),
+    /different immutable evidence/,
+  );
+  await assert.rejects(
+    preparation.write('image.json', Buffer.from('{}')),
+    /different immutable evidence/,
+  );
+  assert.equal(f.calls.filter((call) => call.method === 'POST').length, writes);
+});
+
+test('preparation reads back exact bytes and refuses a corrupt retained upload', async () => {
+  const f = fixture();
+  const request = f.request;
+  f.request = async (options) => {
+    const result = await request(options);
+    if (options.path.includes('/releases/assets/'))
+      result.bytes = Buffer.from('bad!');
+    return result;
+  };
+  const distribution = store(f);
+  await distribution.reserve(source);
+  const preparation = await distribution.ensurePreparation({
+    source,
+    artifactSha256: manifestSha256,
+  });
+  await assert.rejects(
+    preparation.write('image.json', Buffer.from('good')),
+    /failed exact readback/,
+  );
+  assert.ok([...f.releases.values()].every((release) => release.draft));
+});
+
+test('a fresh runner reconciles an upload whose response was lost without rewriting it', async () => {
+  const f = fixture();
+  const request = f.request;
+  let interrupted = true;
+  f.request = async (options) => {
+    const result = await request(options);
+    if (options.path.startsWith('https://uploads.github.com/') && interrupted) {
+      interrupted = false;
+      throw new GitHubRequestError(503, 'response lost');
+    }
+    return result;
+  };
+  const distribution = store(f);
+  await distribution.reserve(source);
+  const input = { source, artifactSha256: manifestSha256 };
+  const bytes = Buffer.from('retained bytes');
+  const preparation = await distribution.ensurePreparation(input);
+  await assert.rejects(
+    preparation.write('release.sigstore.json', bytes),
+    /response lost/,
+  );
+  const resumed = await store(f).ensurePreparation(input);
+  await resumed.write('release.sigstore.json', bytes);
+  assert.deepEqual(await resumed.read('release.sigstore.json'), bytes);
+  assert.equal(
+    f.calls.filter((call) =>
+      call.path.startsWith('https://uploads.github.com/'),
+    ).length,
+    1,
+  );
+});
+
 test('creates and reconciles an annotated final tag and draft release', async () => {
   const f = fixture();
   const distribution = store(f);

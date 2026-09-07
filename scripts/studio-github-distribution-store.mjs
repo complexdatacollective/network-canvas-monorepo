@@ -15,6 +15,12 @@ export class GitHubRequestError extends Error {
   }
 }
 
+class ImmutableAssetConflictError extends Error {
+  constructor(cause) {
+    super('Refusing to replace an immutable release asset.', { cause });
+  }
+}
+
 function source(value) {
   if (typeof value !== 'string' || !/^[a-f0-9]{40}$/.test(value))
     throw new Error('A full source commit is required.');
@@ -379,6 +385,52 @@ export function createGitHubDistributionStore({
     );
   }
 
+  async function readAssetFromRelease(release, name) {
+    assetName(name);
+    if (!release) return null;
+    const matching = (await listAssets(release)).filter(
+      (asset) => asset.name === name,
+    );
+    if (matching.length > 1)
+      throw new Error('GitHub release has duplicate asset names.');
+    if (!matching.length) return null;
+    const response = await request({
+      path: `${API}/releases/assets/${matching[0].id}`,
+      headers: { Accept: 'application/octet-stream' },
+    });
+    if (
+      !Buffer.isBuffer(response.bytes) ||
+      response.bytes.length !== matching[0].size ||
+      response.bytes.length > ASSET_LIMIT
+    )
+      throw new Error('Invalid GitHub release asset.');
+    return response.bytes;
+  }
+
+  async function uploadAssetToRelease(release, name, bytes) {
+    assetName(name);
+    if (!Buffer.isBuffer(bytes) || !bytes.length || bytes.length > ASSET_LIMIT)
+      throw new Error('Invalid release asset bytes.');
+    if (!release) throw new Error('GitHub release does not exist.');
+    if (!release.draft)
+      throw new Error('Refusing to upload assets to a published release.');
+    if ((await listAssets(release)).some((asset) => asset.name === name))
+      throw new ImmutableAssetConflictError();
+    try {
+      await request({
+        method: 'POST',
+        path: `https://uploads.github.com/repos/${REPOSITORY}/releases/${release.id}/assets`,
+        query: { name },
+        bytes,
+        headers: { 'Content-Type': 'application/octet-stream' },
+      });
+    } catch (error) {
+      if (error instanceof GitHubRequestError && error.status === 422)
+        throw new ImmutableAssetConflictError(error);
+      throw error;
+    }
+  }
+
   return {
     async reserve(commit) {
       source(commit);
@@ -472,60 +524,97 @@ export function createGitHubDistributionStore({
       return release;
     },
 
+    /** Private build checkpoints use the already-reserved source ref. They do
+     * not create a final release tag and have no publication method. Retaining
+     * exact signature/SBOM bytes makes a failed workflow resumable on a fresh
+     * runner without regenerating non-deterministic evidence. */
+    async ensurePreparation({ source: commit, artifactSha256 }) {
+      source(commit);
+      manifest(artifactSha256);
+      const preparationTag = `studio-distribution-${commit}`;
+      const description = `studio-preparation: 1\nstudio-source: ${commit}\nstudio-artifact-sha256: ${artifactSha256}`;
+      async function retained(create = false) {
+        const ref = await requestJson(
+          { path: `${API}/git/ref/tags/${preparationTag}` },
+          'Invalid preparation reservation.',
+        );
+        if (ref.object?.type !== 'commit' || ref.object.sha !== commit)
+          throw new Error('Preparation reservation belongs to another source.');
+        let release = await findRelease(preparationTag);
+        if (!release && create) {
+          try {
+            await requestJson(
+              {
+                method: 'POST',
+                path: `${API}/releases`,
+                body: {
+                  tag_name: preparationTag,
+                  target_commitish: commit,
+                  draft: true,
+                  prerelease: false,
+                  name: `Studio preparation ${commit}`,
+                  body: description,
+                },
+              },
+              'Invalid preparation checkpoint.',
+            );
+          } catch (error) {
+            // Another same-source retry can only create the exact same draft.
+            if (error.status !== 422) throw error;
+          }
+          release = await findRelease(preparationTag);
+        }
+        if (
+          !release ||
+          release.tag_name !== preparationTag ||
+          release.target_commitish !== commit ||
+          release.body !== description ||
+          release.draft !== true ||
+          release.prerelease !== false
+        )
+          throw new Error(
+            'Preparation checkpoint has different immutable evidence.',
+          );
+        releaseId(release);
+        return release;
+      }
+      await retained(true);
+      return {
+        async read(name) {
+          return readAssetFromRelease(await retained(), name);
+        },
+        async write(name, bytes) {
+          const release = await retained();
+          const previous = await readAssetFromRelease(release, name);
+          if (previous !== null) {
+            if (!Buffer.isBuffer(bytes) || !previous.equals(bytes))
+              throw new Error(
+                'Preparation checkpoint has different immutable bytes.',
+              );
+          } else {
+            try {
+              await uploadAssetToRelease(release, name, bytes);
+            } catch (error) {
+              // Reconcile only GitHub's immutable-name collision. A concurrent
+              // preparation retry succeeds only if its exact bytes won.
+              if (!(error instanceof ImmutableAssetConflictError)) throw error;
+            }
+          }
+          const saved = await readAssetFromRelease(await retained(), name);
+          if (!Buffer.isBuffer(saved) || !saved.equals(bytes))
+            throw new Error('Preparation checkpoint failed exact readback.');
+        },
+      };
+    },
+
     async readAsset(releaseTag, name) {
       tag(releaseTag);
-      assetName(name);
-      const release = await findRelease(releaseTag);
-      if (!release) return null;
-      const matching = (await listAssets(release)).filter(
-        (asset) => asset.name === name,
-      );
-      if (matching.length > 1)
-        throw new Error('GitHub release has duplicate asset names.');
-      if (!matching.length) return null;
-      const response = await request({
-        path: `${API}/releases/assets/${matching[0].id}`,
-        headers: { Accept: 'application/octet-stream' },
-      });
-      if (
-        !Buffer.isBuffer(response.bytes) ||
-        response.bytes.length !== matching[0].size ||
-        response.bytes.length > ASSET_LIMIT
-      )
-        throw new Error('Invalid GitHub release asset.');
-      return response.bytes;
+      return readAssetFromRelease(await findRelease(releaseTag), name);
     },
 
     async uploadAsset(releaseTag, name, bytes) {
       tag(releaseTag);
-      assetName(name);
-      if (
-        !Buffer.isBuffer(bytes) ||
-        !bytes.length ||
-        bytes.length > ASSET_LIMIT
-      )
-        throw new Error('Invalid release asset bytes.');
-      const release = await findRelease(releaseTag);
-      if (!release) throw new Error('GitHub release does not exist.');
-      if (!release.draft)
-        throw new Error('Refusing to upload assets to a published release.');
-      if ((await listAssets(release)).some((asset) => asset.name === name))
-        throw new Error('Refusing to replace an immutable release asset.');
-      try {
-        await request({
-          method: 'POST',
-          path: `https://uploads.github.com/repos/${REPOSITORY}/releases/${release.id}/assets`,
-          query: { name },
-          bytes,
-          headers: { 'Content-Type': 'application/octet-stream' },
-        });
-      } catch (error) {
-        if (error.status === 422)
-          throw new Error('Refusing to replace an immutable release asset.', {
-            cause: error,
-          });
-        throw error;
-      }
+      return uploadAssetToRelease(await findRelease(releaseTag), name, bytes);
     },
 
     async publish({ tag: releaseTag, source: commit, manifestSha256 }) {
