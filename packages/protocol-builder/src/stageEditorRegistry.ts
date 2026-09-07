@@ -66,19 +66,28 @@ export function composeStageEditorRegistry(
   ...parts: readonly StageEditorRegistryPart[]
 ): StageEditorRegistryPart {
   const claimed = new Set<string>();
+  const composed: StageEditorRegistryPart = {};
   for (const part of parts) {
     for (const [stageType, editor] of Object.entries(part)) {
       // A key present but holding nothing claims nothing — the same reading
       // `missingStageEditors` takes of the composed registry.
+      //
+      // Which is why the entries are copied one at a time rather than by
+      // assigning whole parts: `Object.assign` copies an explicit `undefined`
+      // too, so a later part with an empty entry took the interface away from
+      // the family that had already claimed it — and the scan above, which
+      // reads an empty entry as no claim at all, reported no duplicate. The
+      // registry came out with the key present and nothing under it, which is
+      // the one state that renders as `UnregisteredStageTypeError` while every
+      // list of "who claims what" says the family owns it.
       if (editor === undefined) continue;
       if (claimed.has(stageType))
         throw new DuplicateStageEditorError(stageType);
       claimed.add(stageType);
+      Object.assign(composed, { [stageType]: editor });
     }
   }
 
-  const composed: StageEditorRegistryPart = {};
-  for (const part of parts) Object.assign(composed, part);
   return Object.freeze(composed);
 }
 
