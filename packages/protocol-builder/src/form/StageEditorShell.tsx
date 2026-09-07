@@ -14,6 +14,7 @@ import {
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import FormErrorsList from '@codaco/fresco-ui/form/FormErrors';
 import { useForm } from '@codaco/fresco-ui/form/hooks/useForm';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
@@ -348,6 +349,20 @@ function StageEditorFormBody({
     ],
   );
 
+  /**
+   * Whether a save is in flight, worn by the FORM.
+   *
+   * The package's own `SubmitButton` already says this about itself, but a
+   * host need not use it: `formId` is the whole contract for a submit control
+   * rendered outside the form, and a plain `<button form={formId}>` is a
+   * conforming host. So the fact that the form is busy has to be readable from
+   * the form — by assistive technology, which is being told that this region
+   * is updating rather than merely that one button is; and by anything else
+   * that has to know a submit has settled without knowing what the host put in
+   * the action slot.
+   */
+  const isSubmitting = useFormStore((state) => state.isSubmitting);
+
   const { formProps, formErrors } = useForm({
     onSubmit: handleSubmit,
     onSubmitInvalid: (errors) => {
@@ -471,6 +486,7 @@ function StageEditorFormBody({
               id={formId}
               ref={formRef}
               noValidate // The form reports its own problems; the browser's differ.
+              aria-busy={isSubmitting}
               onSubmit={formProps.onSubmit}
               className="flex min-w-0 flex-col"
             >

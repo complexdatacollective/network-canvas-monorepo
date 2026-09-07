@@ -18,6 +18,95 @@ import { isStageType } from '../stage-types.ts';
  */
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
+/**
+ * Which interface each of the fixture's stages configures, written down.
+ *
+ * The protocol is JSON, so a `type` read out of it is a `string` as far as the
+ * compiler is concerned, and the harness could not tell an `Information`
+ * editor mounted over `ego-form-1` from one mounted over `information-1`: the
+ * stage type reached the editor as a runtime string that the call's own type
+ * parameter relabelled. Written down here, "which interface is
+ * `ego-form-1`?" becomes a question the compiler can answer — see
+ * `FixtureStageId`, and `RenderStageEditorOptions.stageId`, which is typed
+ * from it.
+ *
+ * Hand-written, and therefore capable of lying: `assertDeclaredStageType`
+ * refuses a stage whose protocol document says something else, so the lie is
+ * caught the first time the stage is opened rather than becoming a false claim
+ * the type system enforces. `protocolFixture.test.ts` asks the same question
+ * of every stage at once.
+ *
+ * One entry per line, in the order the protocol holds them.
+ */
+const FIXTURE_STAGE_TYPES = {
+  'anonymisation-1': 'Anonymisation',
+  'ego-form-1': 'EgoForm',
+  'information-1': 'Information',
+  'name-generator-1': 'NameGenerator',
+  'name-generator-quick-add-1': 'NameGeneratorQuickAdd',
+  'name-generator-roster-1': 'NameGeneratorRoster',
+  'sociogram-1': 'Sociogram',
+  'dyad-census-1': 'DyadCensus',
+  'one-to-many-dyad-census-1': 'OneToManyDyadCensus',
+  'tie-strength-census-1': 'TieStrengthCensus',
+  'ordinal-bin-1': 'OrdinalBin',
+  'categorical-bin-1': 'CategoricalBin',
+  'alter-form-1': 'AlterForm',
+  'alter-edge-form-1': 'AlterEdgeForm',
+  'narrative-1': 'Narrative',
+  'family-pedigree-1': 'FamilyPedigree',
+  'narrative-pedigree-1': 'NarrativePedigree',
+  'network-composer-1': 'NetworkComposer',
+  'geospatial-1': 'Geospatial',
+} as const satisfies Readonly<Record<string, StageType>>;
+
+type FixtureStageTypes = typeof FIXTURE_STAGE_TYPES;
+
+/**
+ * The fixture stages that configure `T`.
+ *
+ * `FixtureStageId<StageType>` is every id the fixture holds, which is what a
+ * call that has not named an interface may pass. Narrow `T` — by naming the
+ * editor under test, or by building the stage — and it narrows to the stages
+ * that interface actually has.
+ */
+export type FixtureStageId<T extends StageType = StageType> = {
+  [Id in keyof FixtureStageTypes]: FixtureStageTypes[Id] extends T ? Id : never;
+}[keyof FixtureStageTypes];
+
+/** The same map, for the runtime half, which is asked about arbitrary ids. */
+const DECLARED_STAGE_TYPES: ReadonlyMap<string, StageType> = new Map(
+  Object.entries(FIXTURE_STAGE_TYPES),
+);
+
+/**
+ * The interface a fixture stage is written down as, refusing anything else.
+ *
+ * The runtime half of `FIXTURE_STAGE_TYPES`. What is written down decides how
+ * a call naming this id is typed, so a map that has drifted from the protocol
+ * is a claim the compiler enforces and nothing checks — an editor written for
+ * one interface would be accepted over a stage that is now another, which is
+ * the very thing the map exists to refuse. Both types are in the message,
+ * because which of the two is wrong is not this function's to decide.
+ */
+export function assertDeclaredStageType(
+  stageId: string,
+  type: StageType,
+): StageType {
+  const declared = DECLARED_STAGE_TYPES.get(stageId);
+  if (declared === undefined) {
+    throw new Error(
+      `The all-interfaces protocol has a stage "${stageId}" that \`FIXTURE_STAGE_TYPES\` does not name, so nothing says which interface it configures. Add it.`,
+    );
+  }
+  if (declared !== type) {
+    throw new Error(
+      `\`FIXTURE_STAGE_TYPES\` says the all-interfaces stage "${stageId}" is a "${declared}", and the protocol says it is a "${type}". A call naming this stage is typed from the first, so an editor written for "${declared}" would be mounted over a "${type}".`,
+    );
+  }
+  return declared;
+}
+
 /** The stage's identity, and the document without it. */
 export type FixtureStage = Readonly<{
   id: string;
@@ -37,11 +126,11 @@ function fixtureStages(): Record<string, unknown>[] {
 /**
  * Every stage the fixture holds, in the order it holds them.
  *
- * Not exported yet: the only readers so far are this module's own error
- * message and the stage order it builds. It becomes part of the harness's
- * surface when the section tests that enumerate the fixture arrive.
+ * Part of the harness's surface, for a test that asks something of all of them
+ * at once rather than of one it names — which is how the interface each of
+ * them configures is held level with `FIXTURE_STAGE_TYPES`.
  */
-function fixtureStageIds(): string[] {
+export function fixtureStageIds(): string[] {
   return fixtureStages().flatMap((stage) =>
     typeof stage.id === 'string' ? [stage.id] : [],
   );
@@ -66,6 +155,10 @@ export function loadFixtureStage(stageId: string): FixtureStage {
   if (!isStageType(type)) {
     throw new Error(`Fixture stage "${stageId}" has no known interface type.`);
   }
+  // Checked here rather than trusted, because this is where a stage is opened:
+  // what `FIXTURE_STAGE_TYPES` says about this id is what typed the call that
+  // asked for it.
+  assertDeclaredStageType(stageId, type);
   return { id: stageId, type, fields };
 }
 
