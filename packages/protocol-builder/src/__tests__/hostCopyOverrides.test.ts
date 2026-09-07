@@ -265,27 +265,34 @@ describe('the not-yet-converted exclusions', () => {
   });
 
   /**
-   * The five interface families are inside the scan, not merely un-excluded.
+   * The interface families that ARE here are inside the scan, not merely
+   * un-excluded.
    *
    * Deleting a name from `NOT_CONVERTED_YET` is not by itself proof the rules
    * reach that directory: `sourceFiles` also drops fixtures and test-support
    * paths, so a family whose sections were all `__tests__`-adjacent would read
-   * as converted while nothing looked at it. Naming the five and requiring real
-   * files under each is what makes the merge's widened coverage a fact.
+   * as converted while nothing looked at it. Asked of the families present
+   * rather than of all five, because they arrive one branch at a time — the
+   * ones that have landed are covered, and the ones that have not cannot be
+   * claimed either way.
    */
-  it('reaches every interface family the merge brought in', () => {
-    const scanned = sourceFiles().map(sourcePath);
-
-    const covered = [
+  it('reaches every interface family that is here', () => {
+    const families = [
       'sections/network',
       'sections/pedigree',
       'sections/narrativePedigree',
       'sections/geospatial',
       'sections/anonymisation',
-    ].filter((directory) =>
+    ];
+    const present = families.filter((directory) =>
+      existsSync(join(packageSource, directory)),
+    );
+    const scanned = sourceFiles().map(sourcePath);
+
+    const covered = present.filter((directory) =>
       scanned.some((path) => path.startsWith(`${directory}/`)),
     );
 
-    expect(covered).toHaveLength(5);
+    expect(covered).toEqual(present);
   });
 });

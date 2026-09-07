@@ -71,7 +71,6 @@ const FIXTURE_ROW_EDITOR_WORDS = [
  * `src/__tests__/copyInJsxAttributes.test.ts` is the structural half that
  * catches those, and the two are meant to be read together.
  */
-
 describe('the stage sections under es, at rest', () => {
   it('sweeps a sociogram', async () => {
     const harness = renderStageEditor({
@@ -393,11 +392,34 @@ describe('the sweep itself', () => {
    * Protocol content is not chrome. A researcher's own words are stored in the
    * protocol and rendered verbatim to the participant, so the sweep must not
    * report one that happens to read like a message this package owns.
+   *
+   * "Sociogram" is exactly that collision, and not a hypothetical one: it is
+   * the English of `protocolBuilder.interface.sociogram`, the name this
+   * package gives that interface — and it is also what a researcher calls the
+   * stage, because the package suggested it. So it is passed as content, which
+   * is how every real sweep gets it: read out of the protocol the harness is
+   * mounted over rather than listed here. The other two need no help; the
+   * four-letter floor keeps "Age" and "No" out on their own, and "Who are the
+   * people you know?" stands behind no descriptor at all.
    */
   it('says nothing about a researcher’s own English', () => {
     document.body.innerHTML =
-      '<p>Who are the people you know?</p><p>Age</p><p>No</p>';
+      '<p>Who are the people you know?</p><p>Sociogram</p><p>Age</p><p>No</p>';
 
-    expect(localeLeaks()).toEqual([]);
+    expect(localeLeaks(new Set(['Sociogram']))).toEqual([]);
+  });
+
+  /**
+   * The other half of the same rule, which is what makes the exclusion above
+   * mean something: the word is reported when the protocol does NOT hold it,
+   * because then a Spanish reader is looking at this package's English rather
+   * than at their own writing.
+   */
+  it('names that same word when it is the package’s own', () => {
+    document.body.innerHTML = '<p>Sociogram</p>';
+
+    expect(localeLeaks()).toEqual([
+      'protocolBuilder.interface.sociogram rendered in English: Sociogram',
+    ]);
   });
 });

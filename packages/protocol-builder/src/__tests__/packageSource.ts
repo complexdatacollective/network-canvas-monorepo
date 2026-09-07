@@ -32,10 +32,13 @@ const FIXTURE_DIRECTORIES = ['testing'];
  * The five interface families under `sections/` — `network`, `pedigree`,
  * `narrativePedigree`, `geospatial`, `anonymisation` — were listed here while
  * they lived on family F's branch and still carried a `copy?: Partial<…Copy>`
- * each. They have landed converted: every word each family says is a
+ * each. They are not listed any more, and that holds whether or not the branch
+ * that owns them has been merged in yet: an exclusion naming a directory this
+ * package does not have excuses nothing and cannot be seen to rot, and the
+ * families arrive converted — every word each of them says is a
  * `MessageDescriptor` declared in that family's own `*Messages.ts` (the areas
- * are in `src/locales/ID_MAP.md`), so their exclusions are gone and the rules
- * built on this list cover them like anything else.
+ * are in `src/locales/ID_MAP.md`), so the rules built on this list cover them
+ * like anything else.
  *
  * Excluded by directory rather than by file, and deliberately narrow: these are
  * the only places in the package the rules built on this list do not yet hold.
