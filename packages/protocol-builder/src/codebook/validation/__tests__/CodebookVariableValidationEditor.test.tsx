@@ -2,14 +2,19 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import { createMessageError } from '@codaco/app-i18n/messages';
+import { AppI18nProvider } from '@codaco/app-i18n/react';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { protocolBuilderCatalogs } from '../../../locales/catalogs.ts';
 import type {
   CompoundEditRequest,
   CompoundEditResult,
 } from '../../../session.ts';
 import type { AuxiliaryCodebookSubmitResult } from '../../editing.ts';
+import { draftValidatedElsewhereMessage } from '../../variableValidation.ts';
 import CodebookVariableValidationEditor, {
   type CodebookVariableValidationEditorProps,
 } from '../CodebookVariableValidationEditor.tsx';
@@ -387,6 +392,68 @@ describe('CodebookVariableValidationEditor', () => {
     expect(
       screen.getByRole('button', { name: 'Save validation' }),
     ).toBeEnabled();
+  });
+
+  it('reads a refusal this package wrote in the reader’s language', async () => {
+    // A contradiction is the one refusal shown in the words it arrived in, and
+    // those words are a plain string because a HOST writes its own into the
+    // same field — so the ones this package produces travel encoded and have
+    // to be decoded here. Without the decode this alert shows the raw
+    // `@codaco/app-i18n/error/v1:` payload, which is neither English nor
+    // Spanish. That payload carries the English `defaultMessage` inside it, so
+    // reading the English sentence out of the alert is not on its own evidence
+    // of anything — each language is paired with the assertion that the
+    // envelope is gone. Both languages, so a decode wired to a fixed formatter
+    // would fail too.
+    //
+    // Every OTHER refusal reaches the reader as `compoundFailureCopy`'s own
+    // sentence for that reason rather than as the message it arrived with, so
+    // this is the only channel through which an undecoded payload could ever
+    // be rendered by this editor.
+    const refusal = {
+      status: 'contradiction' as const,
+      message: draftValidatedElsewhereMessage('Height'),
+    };
+    const props: CodebookVariableValidationEditorProps = {
+      openId: 'open-1',
+      subject: SUBJECT,
+      variableId: 'age',
+      authoritativeEntityDocument: entityDocument(),
+      allSubjectVariables: variablesFrom(entityDocument()),
+      requestMetadata: {
+        createId: () => 'request-1',
+        description: 'Update Age validation',
+      },
+      onSubmitRequest: vi.fn(() => refusal),
+    };
+    const view = (locale: string) => (
+      <AppI18nProvider
+        locale={locale}
+        locales={ecosystemLocales}
+        messages={protocolBuilderCatalogs[locale]}
+      >
+        <CodebookVariableValidationEditor {...props} />
+      </AppI18nProvider>
+    );
+
+    const { rerender } = render(view('en'));
+    const user = await replaceMinimumValue('5');
+    await user.click(screen.getByRole('button', { name: 'Save validation' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '"Height" is collected by this stage\'s form, so it cannot be assigned by this prompt',
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent(
+      '@codaco/app-i18n/error/v1',
+    );
+
+    rerender(view('es'));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'El formulario de esta etapa recoge «Height», por lo que esta pregunta no puede asignarlo',
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent(
+      '@codaco/app-i18n/error/v1',
+    );
   });
 
   it('uses a new intent id after editing a blocked validation draft', async () => {

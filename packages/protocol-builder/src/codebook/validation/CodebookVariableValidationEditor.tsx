@@ -7,6 +7,8 @@ import {
   type FormEvent,
 } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -24,6 +26,10 @@ import type { CodebookSubject } from '../../protocol-context.ts';
 import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
 import { compoundFailureMessage } from '../compoundFailureCopy.ts';
 import {
+  codebookEditingMessages,
+  missingComparisonTargetMessage,
+} from '../codebookMessages.ts';
+import {
   AuxiliaryCodebookDraftSession,
   buildUpdateVariableRequest,
   type AuxiliaryCodebookSubmitResult,
@@ -35,6 +41,85 @@ import {
   type ValidationValue,
 } from '../variableValidation.ts';
 import VariableValidationEditor from './VariableValidationEditor.tsx';
+
+const messages = defineMessages({
+  title: {
+    id: 'protocolBuilder.variableValidation.title',
+    defaultMessage: 'Edit validation for {name}',
+    description:
+      'Heading of the surface where a researcher sets the rules an answer to one attribute must satisfy. name is the researcher’s own name for that attribute.',
+  },
+  description: {
+    id: 'protocolBuilder.variableValidation.description',
+    defaultMessage:
+      'Configure requirements, limits, and comparisons for this attribute.',
+    description:
+      'Sentence under the heading naming the three groups of validation rules the surface offers. "Attribute" is a codebook variable.',
+  },
+  staleAuthoritativeDescription: {
+    id: 'protocolBuilder.variableValidation.staleAuthoritativeDescription',
+    defaultMessage:
+      'Your validation draft has been kept. Saving will apply it to the latest authoritative entity data.',
+    description:
+      'What happens next after the protocol’s codebook changed elsewhere while this validation surface was open.',
+  },
+  typeChangedTitle: {
+    id: 'protocolBuilder.variableValidation.typeChangedTitle',
+    defaultMessage: 'Attribute type changed',
+    description:
+      'Heading of the warning shown when someone else changed what kind of answer this attribute records while its validation was being edited.',
+  },
+  typeChangedIssue: {
+    id: 'protocolBuilder.variableValidation.typeChangedIssue',
+    defaultMessage:
+      'The attribute type changed while this validation draft was open.',
+    description:
+      'Why the validation rules in front of the researcher cannot be saved: the kind of answer the attribute records was changed elsewhere, and these rules were written for the old one.',
+  },
+  typeChangedDescription: {
+    id: 'protocolBuilder.variableValidation.typeChangedDescription',
+    defaultMessage:
+      'The attribute type changed while this validation draft was open. Your draft is still visible, but it cannot be saved. Close and reopen this editor to configure validation for the new attribute type.',
+    description:
+      'The same refusal as typeChangedIssue, said at length in the warning above the rules, with what to do about it.',
+  },
+  failureTitle: {
+    id: 'protocolBuilder.variableValidation.failureTitle',
+    defaultMessage: 'Could not save validation',
+    description:
+      'Heading of the alert shown when saving an attribute’s validation rules was refused. The reason follows underneath.',
+  },
+  attributeMissingIssue: {
+    id: 'protocolBuilder.variableValidation.attributeMissingIssue',
+    defaultMessage: 'The attribute no longer exists in this entity.',
+    description:
+      'Why the validation rules in front of the researcher cannot be saved: the attribute they belong to has been deleted from the codebook.',
+  },
+  attributeUnavailableTitle: {
+    id: 'protocolBuilder.variableValidation.attributeUnavailableTitle',
+    defaultMessage: 'Attribute unavailable',
+    description:
+      'Heading of the alert shown in place of the rules when the attribute they belong to has been deleted from the codebook.',
+  },
+  attributeUnavailableDescription: {
+    id: 'protocolBuilder.variableValidation.attributeUnavailableDescription',
+    defaultMessage: 'The latest entity data no longer contains this attribute.',
+    description:
+      'Shown in place of the validation rules when the attribute they belong to has been deleted from the codebook.',
+  },
+  awaitingAuthoritative: {
+    id: 'protocolBuilder.variableValidation.awaitingAuthoritative',
+    defaultMessage: 'Waiting for latest data…',
+    description:
+      'The submit button after the validation rules have been accepted, while the application finishes writing them back into the protocol.',
+  },
+  submit: {
+    id: 'protocolBuilder.variableValidation.submit',
+    defaultMessage: 'Save validation',
+    description:
+      'Button that saves the rules an answer to this attribute must satisfy.',
+  },
+});
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -90,6 +175,7 @@ const withVariableValidation = (
 const missingTargetIssue = (
   validation: Readonly<ValidationMap>,
   allVariables: Readonly<UnknownRecord>,
+  intl: IntlShape,
 ): string | undefined =>
   Object.entries(validation).some(
     ([ruleKey, target]) =>
@@ -97,7 +183,7 @@ const missingTargetIssue = (
       typeof target === 'string' &&
       !Object.hasOwn(allVariables, target),
   )
-    ? 'The selected comparison attribute no longer exists.'
+    ? intl.formatMessage(missingComparisonTargetMessage)
     : undefined;
 
 export type CodebookVariableValidationRequestMetadata = Readonly<{
@@ -210,10 +296,10 @@ export default function CodebookVariableValidationEditor({
   }, [allSubjectVariables, attributeUnavailable, draftVariable, variableId]);
   const issue =
     attributeUnavailable || draftVariable === undefined
-      ? 'The attribute no longer exists in this entity.'
+      ? intl.formatMessage(messages.attributeMissingIssue)
       : attributeTypeChanged
-        ? 'The attribute type changed while this validation draft was open.'
-        : (missingTargetIssue(validation, variablesForValidation) ??
+        ? intl.formatMessage(messages.typeChangedIssue)
+        : (missingTargetIssue(validation, variablesForValidation, intl) ??
           ruleMapIssue(validation, {
             allVariables: Object.fromEntries(
               Object.entries(variablesForValidation),
@@ -285,12 +371,13 @@ export default function CodebookVariableValidationEditor({
       ? 'h2'
       : headingTagBelow(enclosingHeadingLevel);
 
-  const saveLabel =
+  const saveLabel = intl.formatMessage(
     snapshot.status === 'submitting'
-      ? 'Saving…'
+      ? codebookEditingMessages.saving
       : snapshot.status === 'awaiting-authoritative'
-        ? 'Waiting for latest data…'
-        : 'Save validation';
+        ? messages.awaitingAuthoritative
+        : messages.submit,
+  );
 
   return (
     <Surface spacing="md" shadow="md" noContainer>
@@ -305,11 +392,10 @@ export default function CodebookVariableValidationEditor({
                 ? {}
                 : { render: createElement(headingTag) })}
             >
-              Edit validation for {variableName}
+              {intl.formatMessage(messages.title, { name: variableName })}
             </Heading>
             <Paragraph emphasis="muted" margin="none">
-              Configure requirements, limits, and comparisons for this
-              attribute.
+              {intl.formatMessage(messages.description)}
             </Paragraph>
           </div>
 
@@ -318,22 +404,24 @@ export default function CodebookVariableValidationEditor({
               !attributeUnavailable &&
               !attributeTypeChanged && (
                 <Alert variant="warning" appearance="soft" density="compact">
-                  <AlertTitle>Newer codebook data is available</AlertTitle>
+                  <AlertTitle>
+                    {intl.formatMessage(
+                      codebookEditingMessages.staleAuthoritativeTitle,
+                    )}
+                  </AlertTitle>
                   <AlertDescription>
-                    Your validation draft has been kept. Saving will apply it to
-                    the latest authoritative entity data.
+                    {intl.formatMessage(messages.staleAuthoritativeDescription)}
                   </AlertDescription>
                 </Alert>
               )}
 
             {attributeTypeChanged && (
               <Alert variant="warning" appearance="soft" density="compact">
-                <AlertTitle>Attribute type changed</AlertTitle>
+                <AlertTitle>
+                  {intl.formatMessage(messages.typeChangedTitle)}
+                </AlertTitle>
                 <AlertDescription>
-                  The attribute type changed while this validation draft was
-                  open. Your draft is still visible, but it cannot be saved.
-                  Close and reopen this editor to configure validation for the
-                  new attribute type.
+                  {intl.formatMessage(messages.typeChangedDescription)}
                 </AlertDescription>
               </Alert>
             )}
@@ -346,7 +434,9 @@ export default function CodebookVariableValidationEditor({
                 density="compact"
                 tabIndex={-1}
               >
-                <AlertTitle>Could not save validation</AlertTitle>
+                <AlertTitle>
+                  {intl.formatMessage(messages.failureTitle)}
+                </AlertTitle>
                 <AlertDescription>
                   {compoundFailureMessage(snapshot.lastFailure, intl)}
                 </AlertDescription>
@@ -355,9 +445,11 @@ export default function CodebookVariableValidationEditor({
 
             {attributeUnavailable || draftVariable === undefined ? (
               <Alert variant="destructive" appearance="soft" density="compact">
-                <AlertTitle>Attribute unavailable</AlertTitle>
+                <AlertTitle>
+                  {intl.formatMessage(messages.attributeUnavailableTitle)}
+                </AlertTitle>
                 <AlertDescription>
-                  The latest entity data no longer contains this attribute.
+                  {intl.formatMessage(messages.attributeUnavailableDescription)}
                 </AlertDescription>
               </Alert>
             ) : (

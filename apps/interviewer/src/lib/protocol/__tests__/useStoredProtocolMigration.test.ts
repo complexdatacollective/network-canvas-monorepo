@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { StoredProtocolMigrationResult } from '~/lib/db/migrateStoredProtocols';
+import { renderedMessage } from '~/testUtils/renderedMessage';
 
 import { useStoredProtocolMigration } from '../useStoredProtocolMigration';
 
@@ -86,8 +87,10 @@ describe('useStoredProtocolMigration', () => {
 
     await waitFor(() => expect(result.current).toBe('settled'));
     expect(toastAdd).toHaveBeenCalledWith({
-      title: 'Protocol updated',
-      description: 'Alpha Study was migrated to the current schema.',
+      title: renderedMessage('Protocol updated'),
+      description: renderedMessage(
+        'Alpha Study was migrated to the current schema.',
+      ),
       variant: 'success',
     });
   });
@@ -98,8 +101,10 @@ describe('useStoredProtocolMigration', () => {
 
     await waitFor(() => expect(result.current).toBe('settled'));
     expect(toastAdd).toHaveBeenCalledWith({
-      title: 'Protocols updated',
-      description: '2 protocols were migrated to the current schema.',
+      title: renderedMessage('Protocols updated'),
+      description: renderedMessage(
+        '2 protocols were migrated to the current schema.',
+      ),
       variant: 'success',
     });
   });
@@ -110,9 +115,10 @@ describe('useStoredProtocolMigration', () => {
 
     await waitFor(() => expect(result.current).toBe('settled'));
     expect(toastAdd).toHaveBeenCalledWith({
-      title: 'Protocol could not be updated',
-      description:
+      title: renderedMessage('Protocol could not be updated'),
+      description: renderedMessage(
         'Broken Study could not be migrated to the current schema. Its interviews cannot be continued, though their responses remain on the data screen. Repair it in Architect and import it again to start new interviews.',
+      ),
       variant: 'destructive',
     });
   });
@@ -131,9 +137,10 @@ describe('useStoredProtocolMigration', () => {
     );
     expect(toastAdd).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: 'Protocols could not be updated',
-        description:
+        title: renderedMessage('Protocols could not be updated'),
+        description: renderedMessage(
           '2 protocols could not be migrated to the current schema. Their interviews cannot be continued, though their responses remain on the data screen. Repair them in Architect and import them again to start new interviews.',
+        ),
         variant: 'destructive',
       }),
     );

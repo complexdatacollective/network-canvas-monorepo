@@ -10,6 +10,9 @@ import {
 import { hash as objectHash } from 'ohash';
 import { useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import {
   DropdownMenu,
@@ -23,9 +26,36 @@ import { DeleteInterviewsDialog } from '~/app/dashboard/interviews/_components/D
 import { ExportInterviewsDialog } from '~/app/dashboard/interviews/_components/ExportInterviewsDialog';
 import type { GetInterviewsQuery } from '~/queries/interviews';
 
+const messages = defineMessages({
+  openMenu: {
+    id: 'fresco.InterviewsTable.ActionsDropdown.openMenu',
+    defaultMessage: 'Open menu',
+    description:
+      'Researcher-facing InterviewsTable / ActionsDropdown: Open menu',
+  },
+  actions: {
+    id: 'fresco.InterviewsTable.ActionsDropdown.actions',
+    defaultMessage: 'Actions',
+    description: 'Researcher-facing InterviewsTable / ActionsDropdown: Actions',
+  },
+  export: {
+    id: 'fresco.InterviewsTable.ActionsDropdown.export',
+    defaultMessage: 'Export',
+    description: 'Researcher-facing InterviewsTable / ActionsDropdown: Export',
+  },
+  enterInterview: {
+    id: 'fresco.InterviewsTable.ActionsDropdown.enterInterview',
+    defaultMessage: 'Enter Interview',
+    description:
+      'Researcher-facing InterviewsTable / ActionsDropdown: Enter Interview',
+  },
+});
+
 type InterviewRow = GetInterviewsQuery[number];
 
 export const ActionsDropdown = ({ row }: { row: Row<InterviewRow> }) => {
+  const intl = useAppIntl();
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedInterviews, setSelectedInterviews] =
@@ -66,7 +96,7 @@ export const ActionsDropdown = ({ row }: { row: Row<InterviewRow> }) => {
           render={
             <IconButton
               variant="text"
-              aria-label="Open menu"
+              aria-label={intl.formatMessage(messages.openMenu)}
               icon={<MoreHorizontal />}
               size="sm"
             />
@@ -75,18 +105,20 @@ export const ActionsDropdown = ({ row }: { row: Row<InterviewRow> }) => {
         />
         <DropdownMenuContent align="end">
           <DropdownMenuGroup>
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              {intl.formatMessage(messages.actions)}
+            </DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() => handleDelete(row.original)}
               icon={<DeleteIcon />}
             >
-              Delete
+              {intl.formatMessage(commonMessages.delete)}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleExport(row.original)}
               icon={<FileIcon />}
             >
-              Export
+              {intl.formatMessage(messages.export)}
             </DropdownMenuItem>
           </DropdownMenuGroup>
           {/* Deliberately a full page load rather than a client-side <Link>.
@@ -98,7 +130,7 @@ export const ActionsDropdown = ({ row }: { row: Row<InterviewRow> }) => {
               replay disabled before anything is captured. */}
           <a href={`/interview/${row.original.id}`}>
             <DropdownMenuItem icon={<DoorOpenIcon />}>
-              Enter Interview
+              {intl.formatMessage(messages.enterInterview)}
             </DropdownMenuItem>
           </a>
         </DropdownMenuContent>

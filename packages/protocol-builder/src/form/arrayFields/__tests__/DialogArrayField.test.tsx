@@ -23,7 +23,6 @@ import {
   ProtocolBuilderSessionStore,
   SessionReadOnlyError,
 } from '../../../session.ts';
-import { fixtureMessage } from '../../../testing/i18n.ts';
 import { DialogFormField } from '../../DialogForm.tsx';
 import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import StageEditorShell from '../../StageEditorShell.tsx';
@@ -34,6 +33,7 @@ import {
   ArrayFieldBindingContext,
   useArrayFieldCommands,
 } from '../useArrayFieldCommands.ts';
+import { promptItemLabel } from './itemLabel.ts';
 
 /**
  * `layoutId` is a Motion prop, so it leaves no trace in the DOM: what the row
@@ -240,7 +240,7 @@ function renderPromptList(
             addButtonLabel="Create new prompt"
             editorTitle="Edit prompt"
             addTitle="Add prompt"
-            itemLabel={fixtureMessage('prompt')}
+            itemLabel={promptItemLabel}
             disabled={disabled}
             previewComponent={PromptPreview}
             editorFieldsComponent={extra?.editorFieldsComponent ?? PromptFields}
@@ -1373,7 +1373,7 @@ describe('a list nested inside a row dialog', () => {
               addButtonLabel="Create new prompt"
               editorTitle="Edit prompt"
               addTitle="Add prompt"
-              itemLabel={fixtureMessage('prompt')}
+              itemLabel={promptItemLabel}
               previewComponent={PromptPreview}
               editorFieldsComponent={NestingPromptFields}
             />

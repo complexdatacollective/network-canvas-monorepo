@@ -1,9 +1,9 @@
 import JSZip from 'jszip';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   type CurrentProtocol,
-  describeProtocolFileError,
   detectSchemaVersion,
   type ExtractedAsset,
   extractProtocolFromZip,
@@ -14,8 +14,46 @@ import {
   validateProtocol,
   VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
+import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
+import { messageFailure, type LocalizedMessage } from '~/i18n/messageResult';
 
 import { saveProtocol } from '../db/api';
+
+const messages = defineMessages({
+  unsupportedVersion: {
+    id: 'interviewer.protocolImport.unsupportedVersion',
+    defaultMessage:
+      'Protocol schema version {version} cannot be migrated to {targetVersion}.',
+    description:
+      'Import refusal when the embedded interview engine cannot run or migrate the protocol schema version. Version values are technical schema identifiers.',
+  },
+  cannotUpgrade: {
+    id: 'interviewer.protocolImport.cannotUpgrade',
+    defaultMessage:
+      'This protocol could not be upgraded to the current version.',
+    description:
+      'Fallback guidance when an unrecognized protocol migration error prevents import.',
+  },
+  invalidProtocol: {
+    id: 'interviewer.protocolImport.invalidProtocol',
+    defaultMessage: 'Protocol failed schema validation.',
+    description:
+      'Summary above copyable technical details when an imported protocol fails validation.',
+  },
+  cannotSave: {
+    id: 'interviewer.protocolImport.cannotSave',
+    defaultMessage:
+      'This protocol could not be saved. This device may be out of space.',
+    description:
+      'Import failure after validation when device storage rejects the save; suggests the likely remedy.',
+  },
+  cannotOpen: {
+    id: 'interviewer.protocolImport.cannotOpen',
+    defaultMessage: 'This protocol could not be opened.',
+    description:
+      'Fallback guidance when an unrecognized file extraction error prevents import.',
+  },
+});
 
 // What this app can run is what the interview engine it embeds can run, so the
 // import pipeline's target version is read from `@codaco/interview` rather than
@@ -46,6 +84,7 @@ export type ImportProtocolFailure = {
     | 'validation-failed'
     | 'save-failed';
   message: string;
+  localizedMessage: LocalizedMessage;
   issues?: { path: string; message: string }[];
 };
 
@@ -96,18 +135,24 @@ async function extractZip(
   return extractProtocolFromZip(zip);
 }
 
-/**
- * What the "Import failed" toast says.
- *
- * `@codaco/protocol-validation` describes the failures it recognises — an
- * unreadable archive, a missing protocol, a failed migration — in words written
- * for the person holding the device. Anything else gets a plain sentence rather
- * than the thrower's own message: a JSZip rejection naming a zip's central
- * directory and linking to its own documentation is not something to put in
- * front of a researcher mid-fieldwork.
- */
-function describeImportFailure(cause: unknown, fallback: string): string {
-  return describeProtocolFileError(cause) ?? fallback;
+// Retain message identity for the host to choose a language at render time.
+// The English message remains compatible with diagnostic and test consumers.
+function importFailure(
+  error: ImportProtocolFailure['error'],
+  localizedMessage: LocalizedMessage,
+  issues?: ImportProtocolFailure['issues'],
+): ImportProtocolFailure {
+  const failure = messageFailure(
+    localizedMessage.descriptor,
+    localizedMessage.values,
+  );
+  return {
+    success: false,
+    error,
+    message: failure.message,
+    localizedMessage,
+    issues,
+  };
 }
 
 async function importParsedProtocol(
@@ -124,11 +169,10 @@ async function importParsedProtocol(
   if (version !== APP_SCHEMA_VERSION) {
     const info = getMigrationInfo(version, APP_SCHEMA_VERSION);
     if (!info.canMigrate) {
-      return {
-        success: false,
-        error: 'unsupported-version',
-        message: `Protocol schema version ${version} cannot be migrated to ${APP_SCHEMA_VERSION}.`,
-      };
+      return importFailure('unsupported-version', {
+        descriptor: messages.unsupportedVersion,
+        values: { version, targetVersion: APP_SCHEMA_VERSION },
+      });
     }
     try {
       migratedDocument = migrateProtocol(document, APP_SCHEMA_VERSION, {
@@ -136,35 +180,31 @@ async function importParsedProtocol(
       });
       didMigrate = true;
     } catch (cause) {
-      return {
-        success: false,
-        error: 'validation-failed',
-        message: describeImportFailure(
-          cause,
-          'This protocol could not be upgraded to the current version.',
-        ),
-      };
+      return importFailure(
+        'validation-failed',
+        describeProtocolFileErrorMessage(cause) ?? {
+          descriptor: messages.cannotUpgrade,
+        },
+      );
     }
   }
 
   const versionedProtocol = VersionedProtocolSchema.safeParse(migratedDocument);
   if (!versionedProtocol.success) {
-    return {
-      success: false,
-      error: 'validation-failed',
-      message: 'Protocol failed schema validation.',
-      issues: formatValidationIssues(versionedProtocol.error.issues),
-    };
+    return importFailure(
+      'validation-failed',
+      { descriptor: messages.invalidProtocol },
+      formatValidationIssues(versionedProtocol.error.issues),
+    );
   }
 
   const validation = await validateProtocol(versionedProtocol.data);
   if (!validation.success) {
-    return {
-      success: false,
-      error: 'validation-failed',
-      message: 'Protocol failed schema validation.',
-      issues: formatValidationIssues(validation.error.issues),
-    };
+    return importFailure(
+      'validation-failed',
+      { descriptor: messages.invalidProtocol },
+      formatValidationIssues(validation.error.issues),
+    );
   }
 
   // `VersionedProtocol` is a schemaVersion-discriminated union spanning every
@@ -172,11 +212,9 @@ async function importParsedProtocol(
   // `APP_SCHEMA_VERSION`, so this comparison is what narrows a validated
   // document to the one shape the embedded interview engine can execute.
   if (validation.data.schemaVersion !== APP_SCHEMA_VERSION) {
-    return {
-      success: false,
-      error: 'validation-failed',
-      message: 'Protocol failed schema validation.',
-    };
+    return importFailure('validation-failed', {
+      descriptor: messages.invalidProtocol,
+    });
   }
 
   const validated: CurrentProtocol = validation.data;
@@ -190,12 +228,7 @@ async function importParsedProtocol(
     // An IndexedDB or quota rejection reads as machine output. What the
     // researcher needs is that the protocol is fine and the device is not.
     console.error('Protocol import failed while saving', cause);
-    return {
-      success: false,
-      error: 'save-failed',
-      message:
-        'This protocol could not be saved. This device may be out of space.',
-    };
+    return importFailure('save-failed', { descriptor: messages.cannotSave });
   }
 
   return { success: true, protocol: validated, hash, migrated: didMigrate };
@@ -214,14 +247,12 @@ async function importFromBuffer(
     extracted = await extractZip(buffer);
   } catch (cause) {
     console.error('Protocol import failed while extracting', cause);
-    return {
-      success: false,
-      error: 'extract-failed',
-      message: describeImportFailure(
-        cause,
-        'This protocol could not be opened.',
-      ),
-    };
+    return importFailure(
+      'extract-failed',
+      describeProtocolFileErrorMessage(cause) ?? {
+        descriptor: messages.cannotOpen,
+      },
+    );
   }
 
   return importParsedProtocol(

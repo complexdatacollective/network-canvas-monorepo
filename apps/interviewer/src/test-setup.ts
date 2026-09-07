@@ -136,3 +136,7 @@ class WorkerStub extends EventTarget implements Worker {
 globalThis.ResizeObserver ??= ResizeObserverStub;
 globalThis.IntersectionObserver ??= IntersectionObserverStub;
 globalThis.Worker ??= WorkerStub;
+
+// jsdom cannot scroll elements. Keep real form focus handling available when
+// invalid submissions scroll the containing element before focusing a field.
+Element.prototype.scrollTo ??= vi.fn();

@@ -1,5 +1,6 @@
 import { omit } from 'es-toolkit/compat';
 import {
+  createElement,
   useCallback,
   useEffect,
   useId,
@@ -10,6 +11,13 @@ import {
 import { useSelector, useStore } from 'react-redux';
 import { useLocation } from 'wouter';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
@@ -45,21 +53,124 @@ import {
 } from '~/hooks/useProtocolNavGuard';
 import { useSingleFlight } from '~/hooks/useSingleFlight';
 import { useStageEditorKeyboard } from '~/hooks/useStageEditorKeyboard';
+import { toSubmissionError } from '~/i18n/submissionErrors';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
 import {
   getLiveStageDraftDirty,
   getLiveStageValues,
 } from '~/selectors/stageEditorDraft';
-import { refusedCommitMessage } from '~/utils/protocolLockMessages';
+import { refusedCommitError } from '~/utils/protocolLockMessages';
 import { reportError } from '~/utils/reportError';
 
 import { buildProtocolWithStage } from './buildProtocolWithStage';
-import type { SectionComponent } from './Interfaces';
-import { getInterface, interfaceHasSkipLogicSection } from './Interfaces';
+import {
+  type SectionComponent,
+  getInterface,
+  interfaceHasSkipLogicSection,
+} from './Interfaces';
 import StageDraftConflictDialog from './StageDraftConflictDialog';
 import StageForm from './StageForm';
 import { flushStageLiveValues } from './StageFormBridge';
 import StageHeading from './StageHeading';
+const chromeMessages = defineMessages({
+  openingPreview: {
+    id: 'architect.chrome.stageEditor.stageEditor.openingPreview',
+    defaultMessage: 'Opening preview…',
+    description:
+      'Researcher-facing explanatory text in components / StageEditor / StageEditor.',
+  },
+  preview: {
+    id: 'architect.chrome.stageEditor.stageEditor.preview',
+    defaultMessage: 'Preview',
+    description:
+      'Researcher-facing explanatory text in components / StageEditor / StageEditor.',
+  },
+});
+const messages = defineMessages({
+  stageNotFound: {
+    id: 'architect.stageEditor.stageEditor.stageNotFound',
+    defaultMessage: 'Stage not found',
+    description: 'The title text in components / StageEditor / StageEditor.',
+  },
+  thatStageNoLongerExistsIt: {
+    id: 'architect.stageEditor.stageEditor.thatStageNoLongerExistsIt',
+    defaultMessage:
+      'That stage no longer exists. It may have been deleted. Returning you to the protocol overview.',
+    description:
+      'The description text in components / StageEditor / StageEditor.',
+  },
+  oK: {
+    id: 'architect.stageEditor.stageEditor.oK',
+    defaultMessage: 'OK',
+    description: 'The label text in components / StageEditor / StageEditor.',
+  },
+  discardUnsavedStageChanges: {
+    id: 'architect.stageEditor.stageEditor.discardUnsavedStageChanges',
+    defaultMessage: 'Discard unsaved stage changes?',
+    description: 'The title text in components / StageEditor / StageEditor.',
+  },
+  discardChangesAndLeave: {
+    id: 'architect.stageEditor.stageEditor.discardChangesAndLeave',
+    defaultMessage: 'Discard Changes and Leave',
+    description: 'The label text in components / StageEditor / StageEditor.',
+  },
+  previewError: {
+    id: 'architect.stageEditor.stageEditor.previewError',
+    defaultMessage: 'Preview Error',
+    description: 'The title text in components / StageEditor / StageEditor.',
+  },
+  noProtocolLoaded: {
+    id: 'architect.stageEditor.stageEditor.noProtocolLoaded',
+    defaultMessage: 'No protocol loaded',
+    description:
+      'The description text in components / StageEditor / StageEditor.',
+  },
+  cannotPreview: {
+    id: 'architect.stageEditor.stageEditor.cannotPreview',
+    defaultMessage: 'Cannot Preview',
+    description: 'The title text in components / StageEditor / StageEditor.',
+  },
+  previewPopupBlocked: {
+    id: 'architect.stageEditor.stageEditor.previewPopupBlocked',
+    defaultMessage: 'Preview popup blocked',
+    description: 'The title text in components / StageEditor / StageEditor.',
+  },
+  yourBrowserBlockedThePreviewPopup: {
+    id: 'architect.stageEditor.stageEditor.yourBrowserBlockedThePreviewPopup',
+    defaultMessage:
+      'Your browser blocked the preview popup. Allow popups for this site, then click Preview again.',
+    description:
+      'The description text in components / StageEditor / StageEditor.',
+  },
+  previewFailed: {
+    id: 'architect.stageEditor.stageEditor.previewFailed',
+    defaultMessage: 'Preview Failed',
+    description: 'The title text in components / StageEditor / StageEditor.',
+  },
+  failedToOpenPreview: {
+    id: 'architect.stageEditor.stageEditor.failedToOpenPreview',
+    defaultMessage: 'Failed to open preview',
+    description:
+      'The description text in components / StageEditor / StageEditor.',
+  },
+  startPreviewWithExampleData: {
+    id: 'architect.stageEditor.stageEditor.startPreviewWithExampleData',
+    defaultMessage: 'Start preview with example data',
+    description: 'Visible text in components / StageEditor / StageEditor.',
+  },
+  respectSkipLogic: {
+    id: 'architect.stageEditor.stageEditor.respectSkipLogic',
+    defaultMessage: 'Respect skip logic',
+    description: 'Visible text in components / StageEditor / StageEditor.',
+  },
+});
+const finalMessages = defineMessages({
+  newStage: {
+    id: 'architect.final.components.StageEditor.StageEditor.newStage',
+    defaultMessage: 'New stage',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 type StageEditorProps = {
   id?: string | null;
@@ -77,6 +188,7 @@ const StageEditorKeyboardShortcuts = () => {
 };
 
 const StageEditor = (props: StageEditorProps) => {
+  const intl = useAppIntl();
   const { id = null, type, insertAtIndex } = props;
 
   const dispatch = useAppDispatch();
@@ -108,10 +220,16 @@ const StageEditor = (props: StageEditorProps) => {
     void openDialog({
       type: 'acknowledge',
       intent: 'info',
-      title: 'Stage not found',
-      description:
-        'That stage no longer exists. It may have been deleted. Returning you to the protocol overview.',
-      actions: { primary: { label: 'OK', value: true } },
+      title: createElement(AppMessage, { message: messages.stageNotFound }),
+      description: createElement(AppMessage, {
+        message: messages.thatStageNoLongerExistsIt,
+      }),
+      actions: {
+        primary: {
+          label: createElement(AppMessage, { message: messages.oK }),
+          value: true,
+        },
+      },
     });
     // Abandons the draft along with the stage. Without this the editor's
     // codebook transaction would stay open after the redirect, and codebook
@@ -257,7 +375,7 @@ const StageEditor = (props: StageEditorProps) => {
       // and the banner above names the ways forward. (The commit button is
       // disabled too; this covers a submit raised from the keyboard, and says
       // why rather than failing silently.)
-      const refusal = refusedCommitMessage(
+      const refusal = refusedCommitError(
         getProtocolLockState(reduxStore.getState()),
         'stage',
       );
@@ -311,14 +429,28 @@ const StageEditor = (props: StageEditorProps) => {
         type: 'choice',
         intent: 'warning',
         size: 'readable',
-        title: 'Discard unsaved stage changes?',
-        description:
-          stageDiscardDescriptions[
-            persistence === 'no-protocol' ? 'saved' : persistence
-          ],
+        title: createElement(AppMessage, {
+          message: messages.discardUnsavedStageChanges,
+        }),
+        description: createElement(AppMessage, {
+          message:
+            stageDiscardDescriptions[
+              persistence === 'no-protocol' ? 'saved' : persistence
+            ],
+        }),
         actions: {
-          primary: { label: 'Discard Changes and Leave', value: true },
-          cancel: { label: 'Cancel', value: false },
+          primary: {
+            label: createElement(AppMessage, {
+              message: messages.discardChangesAndLeave,
+            }),
+            value: true,
+          },
+          cancel: {
+            label: createElement(AppMessage, {
+              message: commonMessages.cancel,
+            }),
+            value: false,
+          },
         },
       });
 
@@ -378,9 +510,16 @@ const StageEditor = (props: StageEditorProps) => {
       void openDialog({
         type: 'acknowledge',
         intent: 'destructive',
-        title: 'Preview Error',
-        description: 'No protocol loaded',
-        actions: { primary: { label: 'OK', value: true } },
+        title: createElement(AppMessage, { message: messages.previewError }),
+        description: createElement(AppMessage, {
+          message: messages.noProtocolLoaded,
+        }),
+        actions: {
+          primary: {
+            label: createElement(AppMessage, { message: messages.oK }),
+            value: true,
+          },
+        },
       });
       return;
     }
@@ -397,9 +536,14 @@ const StageEditor = (props: StageEditorProps) => {
       void openDialog({
         type: 'acknowledge',
         intent: 'destructive',
-        title: 'Cannot Preview',
+        title: createElement(AppMessage, { message: messages.cannotPreview }),
         description: ensureError(validationResult.error).message,
-        actions: { primary: { label: 'OK', value: true } },
+        actions: {
+          primary: {
+            label: createElement(AppMessage, { message: messages.oK }),
+            value: true,
+          },
+        },
       });
       return;
     }
@@ -427,10 +571,18 @@ const StageEditor = (props: StageEditorProps) => {
         void openDialog({
           type: 'acknowledge',
           intent: 'info',
-          title: 'Preview popup blocked',
-          description:
-            'Your browser blocked the preview popup. Allow popups for this site, then click Preview again.',
-          actions: { primary: { label: 'OK', value: true } },
+          title: createElement(AppMessage, {
+            message: messages.previewPopupBlocked,
+          }),
+          description: createElement(AppMessage, {
+            message: messages.yourBrowserBlockedThePreviewPopup,
+          }),
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
         });
       }
     } catch (error) {
@@ -438,10 +590,16 @@ const StageEditor = (props: StageEditorProps) => {
       void openDialog({
         type: 'acknowledge',
         intent: 'destructive',
-        title: 'Preview Failed',
-        description:
-          error instanceof Error ? error.message : 'Failed to open preview',
-        actions: { primary: { label: 'OK', value: true } },
+        title: createElement(AppMessage, { message: messages.previewFailed }),
+        description: createElement(AppErrorMessage, {
+          error: toSubmissionError(error, messages.failedToOpenPreview),
+        }),
+        actions: {
+          primary: {
+            label: createElement(AppMessage, { message: messages.oK }),
+            value: true,
+          },
+        },
       });
     } finally {
       setIsOpeningPreview(false);
@@ -486,10 +644,14 @@ const StageEditor = (props: StageEditorProps) => {
     );
 
   const stageName =
-    (formValues?.label as string | undefined) ?? stage?.label ?? 'New stage';
+    (formValues?.label as string | undefined) ??
+    stage?.label ??
+    intl.formatMessage(finalMessages.newStage);
   const stageNumber = stagePosition + 1;
   const totalStages = protocolStageCount + (isExistingStage ? 0 : 1);
-  const previewLabel = isOpeningPreview ? 'Opening preview…' : 'Preview';
+  const previewLabel = isOpeningPreview
+    ? intl.formatMessage(chromeMessages.openingPreview)
+    : intl.formatMessage(chromeMessages.preview);
 
   const syntheticDataLabelId = useId();
   const respectSkipLogicLabelId = useId();
@@ -508,7 +670,7 @@ const StageEditor = (props: StageEditorProps) => {
           }
         />
         <span id={syntheticDataLabelId} className="text-sm">
-          Start preview with example data
+          {intl.formatMessage(messages.startPreviewWithExampleData)}
         </span>
       </div>
       <div className="flex items-center gap-3">
@@ -520,7 +682,7 @@ const StageEditor = (props: StageEditorProps) => {
           }
         />
         <span id={respectSkipLogicLabelId} className="text-sm">
-          Respect skip logic
+          {intl.formatMessage(messages.respectSkipLogic)}
         </span>
       </div>
     </div>

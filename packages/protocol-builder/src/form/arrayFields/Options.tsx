@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import ArrayField, {
   type ArrayFieldProps,
@@ -15,12 +15,48 @@ import {
   isOptionValueEmpty,
 } from './optionCompleteness.ts';
 import { arrayScopedValues } from './RowField.tsx';
-import { allowedVariableNameRow } from './rowValidators.ts';
+import {
+  allowedVariableNameRow,
+  variableNameSubjects,
+} from './rowValidators.ts';
 import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
 
 export type { OptionValue } from './Option.tsx';
 
+/**
+ * What the array-level rules say when they refuse a save, plus the list's own
+ * empty state.
+ *
+ * The rules cross a string-only contract — Fresco reads a validation message
+ * off the field's own props and hands it back as a field error — so each is
+ * encoded here and decoded by `FieldErrors` where the list shows it.
+ */
 const messages = defineMessages({
+  minimumOptions: {
+    id: 'protocolBuilder.option.minimumOptions',
+    defaultMessage:
+      'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.',
+    description:
+      'Shown under a list of options when the researcher tries to save an ordinal or categorical attribute with fewer than two of them. A boolean attribute is the codebook variable type that records a yes/no answer.',
+  },
+  incompleteOptions: {
+    id: 'protocolBuilder.option.incompleteOptions',
+    defaultMessage: 'Every option needs both a label and a value.',
+    description:
+      'Shown under a list of options when one of them is half-finished. The label is what a participant reads; the value is what the answer is stored and exported as.',
+  },
+  duplicateValues: {
+    id: 'protocolBuilder.option.duplicateValues',
+    defaultMessage: 'Every option needs a unique value.',
+    description:
+      'Shown under a list of options when two of them would be stored and exported as the same answer.',
+  },
+  duplicateLabels: {
+    id: 'protocolBuilder.option.duplicateLabels',
+    defaultMessage: 'Every option needs a unique label.',
+    description:
+      'Shown under a list of options when two of them would read identically to a participant.',
+  },
   emptyState: {
     id: 'protocolBuilder.option.emptyState',
     defaultMessage: 'No options have been added yet.',
@@ -34,8 +70,7 @@ const messages = defineMessages({
  * (spread as `{...optionsValidation}`), which hands the whole array to each
  * rule — rows are not registered fields and cannot carry them.
  */
-const MINIMUM_OPTIONS_MESSAGE =
-  'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.';
+const MINIMUM_OPTIONS_MESSAGE = createMessageError(messages.minimumOptions);
 
 const minTwoOptions = (value: unknown) =>
   !value || (Array.isArray(value) && value.length < 2)
@@ -48,7 +83,7 @@ const minTwoPopulatedOptions = (value: unknown) =>
 
 const completeOptions = (value: unknown) =>
   Array.isArray(value) && !value.every(isOptionComplete)
-    ? 'Every option needs both a label and a value.'
+    ? createMessageError(messages.incompleteOptions)
     : undefined;
 
 /**
@@ -89,7 +124,7 @@ const uniqueOptionValues = (value: unknown) =>
       .map((option) => option.value)
       .filter((optionValue) => !isOptionValueEmpty(optionValue)),
   )
-    ? 'Every option needs a unique value.'
+    ? createMessageError(messages.duplicateValues)
     : undefined;
 
 /** The label counterpart of `uniqueOptionValues`. */
@@ -99,12 +134,14 @@ const uniqueOptionLabels = (value: unknown) =>
       .map((option) => option.label)
       .filter((label) => !isOptionLabelEmpty(label)),
   )
-    ? 'Every option needs a unique label.'
+    ? createMessageError(messages.duplicateLabels)
     : undefined;
 
 // Runs the rows' own rule so the array and its rows can never disagree about
 // which characters — or which wording — apply.
-const validateOptionValue = allowedVariableNameRow('option value');
+const validateOptionValue = allowedVariableNameRow(
+  variableNameSubjects.optionValue,
+);
 
 /**
  * The array counterpart of the rows' `allowedVariableNameRow`. An option value

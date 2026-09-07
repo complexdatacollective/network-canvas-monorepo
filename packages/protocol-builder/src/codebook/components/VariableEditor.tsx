@@ -11,7 +11,12 @@ import {
   useSyncExternalStore,
 } from 'react';
 
-import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  defineMessages,
+  formatMessageError,
+} from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
@@ -74,10 +79,143 @@ import VariableBooleanAnswerFields from './VariableBooleanAnswerFields.tsx';
 import VariableParameterFields from './VariableParameterFields.tsx';
 
 /**
- * The attribute editor's own field chrome, under `codebookVariable` — the area
- * that owns everything said about one codebook attribute.
+ * What each kind of attribute is offered as.
+ *
+ * Keyed by the schema's own name for the type, and read through the option
+ * list below, so what the editor OFFERS and what a stored variable IS are the
+ * same list read twice. "Date" names the `datetime` type, which is what a
+ * researcher calls it.
  */
-const fieldMessages = defineMessages({
+const VARIABLE_TYPE_LABELS = defineMessages({
+  text: {
+    id: 'protocolBuilder.codebookVariable.typeText',
+    defaultMessage: 'Text',
+    description:
+      'Choice offered for what an attribute records: free text typed by a participant.',
+  },
+  number: {
+    id: 'protocolBuilder.codebookVariable.typeNumber',
+    defaultMessage: 'Number',
+    description:
+      'Choice offered for what an attribute records: a number entered by a participant.',
+  },
+  boolean: {
+    id: 'protocolBuilder.codebookVariable.typeBoolean',
+    defaultMessage: 'Boolean',
+    description:
+      'Choice offered for what an attribute records: a true or false answer.',
+  },
+  ordinal: {
+    id: 'protocolBuilder.codebookVariable.typeOrdinal',
+    defaultMessage: 'Ordinal',
+    description:
+      'Choice offered for what an attribute records: one option from a list whose order is meaningful, such as a rating.',
+  },
+  categorical: {
+    id: 'protocolBuilder.codebookVariable.typeCategorical',
+    defaultMessage: 'Categorical',
+    description:
+      'Choice offered for what an attribute records: one or more options from an unordered list.',
+  },
+  scalar: {
+    id: 'protocolBuilder.codebookVariable.typeScalar',
+    defaultMessage: 'Scalar',
+    description:
+      'Choice offered for what an attribute records: a position on a continuous scale, such as a slider.',
+  },
+  datetime: {
+    id: 'protocolBuilder.codebookVariable.typeDatetime',
+    defaultMessage: 'Date',
+    description:
+      'Choice offered for what an attribute records: a date. The schema calls this type datetime; researchers call it a date.',
+  },
+  layout: {
+    id: 'protocolBuilder.codebookVariable.typeLayout',
+    defaultMessage: 'Layout',
+    description:
+      'Choice offered for what an attribute records: where a network member sits on a canvas the participant arranges.',
+  },
+  location: {
+    id: 'protocolBuilder.codebookVariable.typeLocation',
+    defaultMessage: 'Location',
+    description:
+      'Choice offered for what an attribute records: a place on a map.',
+  },
+});
+
+const VARIABLE_TYPE_OPTIONS = [
+  { label: VARIABLE_TYPE_LABELS.text, value: VariableTypes.text },
+  { label: VARIABLE_TYPE_LABELS.number, value: VariableTypes.number },
+  { label: VARIABLE_TYPE_LABELS.boolean, value: VariableTypes.boolean },
+  { label: VARIABLE_TYPE_LABELS.ordinal, value: VariableTypes.ordinal },
+  { label: VARIABLE_TYPE_LABELS.categorical, value: VariableTypes.categorical },
+  { label: VARIABLE_TYPE_LABELS.scalar, value: VariableTypes.scalar },
+  { label: VARIABLE_TYPE_LABELS.datetime, value: VariableTypes.datetime },
+  { label: VARIABLE_TYPE_LABELS.layout, value: VariableTypes.layout },
+  { label: VARIABLE_TYPE_LABELS.location, value: VariableTypes.location },
+] as const satisfies readonly Readonly<{
+  label: MessageDescriptor;
+  value: VariableType;
+}>[];
+
+const messages = defineMessages({
+  createTitle: {
+    id: 'protocolBuilder.codebookVariable.createTitle',
+    defaultMessage: 'Create attribute',
+    description:
+      'Heading of the editor while a new attribute (a codebook variable) is being added to an entity.',
+  },
+  editTitle: {
+    id: 'protocolBuilder.codebookVariable.editTitle',
+    defaultMessage: 'Edit attribute',
+    description:
+      'Heading of the editor while an existing attribute (a codebook variable) is being changed.',
+  },
+  description: {
+    id: 'protocolBuilder.codebookVariable.description',
+    defaultMessage:
+      'Define the attribute name, data type, and any available values.',
+    description:
+      'Sentence under the editor heading saying what the researcher decides here. Available values are the options a participant may choose from.',
+  },
+  failureTitle: {
+    id: 'protocolBuilder.codebookVariable.failureTitle',
+    defaultMessage: 'Attribute not saved',
+    description:
+      'Heading of the alert shown when saving an attribute (a codebook variable) was refused. The reason follows underneath.',
+  },
+  staleTitle: {
+    id: 'protocolBuilder.codebookVariable.staleTitle',
+    defaultMessage: 'The codebook changed',
+    description:
+      'Heading of the warning shown when the protocol’s codebook changed elsewhere while this attribute editor was open.',
+  },
+  staleDescription: {
+    id: 'protocolBuilder.codebookVariable.staleDescription',
+    defaultMessage:
+      'A newer version arrived while you were editing. Your draft has been preserved; review it before trying again.',
+    description:
+      'What to do after the protocol’s codebook changed elsewhere while this attribute editor was open.',
+  },
+  savedTitle: {
+    id: 'protocolBuilder.codebookVariable.savedTitle',
+    defaultMessage: 'Attribute saved',
+    description:
+      'Heading of the confirmation shown once the attribute has been accepted and the editor is waiting for the saved version to arrive back.',
+  },
+  savedDescription: {
+    id: 'protocolBuilder.codebookVariable.savedDescription',
+    defaultMessage:
+      'Waiting for the host to publish the authoritative codebook update.',
+    description:
+      'Shown after an attribute is accepted, while the application it is being edited in finishes writing the change back into the protocol.',
+  },
+  submittingStatus: {
+    id: 'protocolBuilder.codebookVariable.submittingStatus',
+    defaultMessage: 'Saving attribute.',
+    description:
+      'Announced to screen reader users while the attribute is being saved. Not shown on screen.',
+  },
   nameLabel: {
     id: 'protocolBuilder.codebookVariable.nameLabel',
     defaultMessage: 'Attribute name',
@@ -103,6 +241,26 @@ const fieldMessages = defineMessages({
     description:
       'Placeholder shown in the attribute type field before a choice is made.',
   },
+  typeChangedElsewhere: {
+    id: 'protocolBuilder.codebookVariable.typeChangedElsewhere',
+    defaultMessage:
+      'The attribute type changed elsewhere. Close and reopen this editor before saving.',
+    description:
+      'Refusal shown under the attribute type field when someone else changed the type while this editor was open, which the draft in front of the researcher no longer matches.',
+  },
+  optionsLegend: {
+    id: 'protocolBuilder.codebookVariable.optionsLegend',
+    defaultMessage: 'Allowed values',
+    description:
+      'Heading over the list of answers a participant may choose from for this attribute. A required marker follows it.',
+  },
+  optionsHint: {
+    id: 'protocolBuilder.codebookVariable.optionsHint',
+    defaultMessage:
+      'Add at least two participant-facing labels and their stored values.',
+    description:
+      'Guidance under the allowed values heading. A label is what a participant reads; its stored value is what the export records.',
+  },
   optionLabelField: {
     id: 'protocolBuilder.codebookVariable.optionLabelField',
     defaultMessage: 'Option {index} label',
@@ -121,24 +279,51 @@ const fieldMessages = defineMessages({
     description:
       'Accessible name of the button that deletes one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
   },
+  addOption: {
+    id: 'protocolBuilder.codebookVariable.addOption',
+    defaultMessage: 'Add option',
+    description:
+      'Button that adds an empty row to the list of answers a participant may choose from.',
+  },
+  createSubmit: {
+    id: 'protocolBuilder.codebookVariable.createSubmit',
+    defaultMessage: 'Create attribute',
+    description:
+      'Button that saves a newly added attribute (a codebook variable).',
+  },
+  saveSubmit: {
+    id: 'protocolBuilder.codebookVariable.saveSubmit',
+    defaultMessage: 'Save attribute',
+    description:
+      'Button that saves the changes to an existing attribute (a codebook variable).',
+  },
+  lockedOptionsCaption: {
+    id: 'protocolBuilder.codebookVariable.lockedOptionsCaption',
+    defaultMessage:
+      'These values are managed by the interface and cannot be changed.',
+    description:
+      'Caption over the read-only list of allowed answers for an attribute whose answers one kind of interview step owns. An interface is one kind of interview step.',
+  },
+  lockedOptionLabelHeader: {
+    id: 'protocolBuilder.codebookVariable.lockedOptionLabelHeader',
+    defaultMessage: 'Label',
+    description:
+      'Column heading over what a participant reads for each allowed answer, in the read-only list of answers an interview step owns.',
+  },
+  lockedOptionValueHeader: {
+    id: 'protocolBuilder.codebookVariable.lockedOptionValueHeader',
+    defaultMessage: 'Value',
+    description:
+      'Column heading over what the export records for each allowed answer, in the read-only list of answers an interview step owns.',
+  },
 });
 
-const VARIABLE_TYPE_OPTIONS = [
-  { label: 'Text', value: VariableTypes.text },
-  { label: 'Number', value: VariableTypes.number },
-  { label: 'Boolean', value: VariableTypes.boolean },
-  { label: 'Ordinal', value: VariableTypes.ordinal },
-  { label: 'Categorical', value: VariableTypes.categorical },
-  { label: 'Scalar', value: VariableTypes.scalar },
-  { label: 'Date', value: VariableTypes.datetime },
-  { label: 'Layout', value: VariableTypes.layout },
-  { label: 'Location', value: VariableTypes.location },
-] as const satisfies readonly Readonly<{
-  label: string;
-  value: VariableType;
-}>[];
-
 const VARIABLE_EDITOR_PROPERTIES = ['name', 'type'] as const;
+
+const OPTION_TYPES = new Set<VariableType>([
+  VariableTypes.ordinal,
+  VariableTypes.categorical,
+]);
 
 /**
  * What the answers surface REPLACES, which is `options` whatever it renders.
@@ -264,7 +449,6 @@ export default function VariableEditor(props: VariableEditorProps) {
 }
 
 function VariableEditorInstance(props: VariableEditorInstanceProps) {
-  const intl = useAppIntl();
   const {
     subject,
     authoritativeDocument,
@@ -278,8 +462,13 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     allowedVariableTypes,
     lockedOptions = null,
     readOnly = false,
-    title = props.mode === 'create' ? 'Create attribute' : 'Edit attribute',
   } = props;
+  const intl = useAppIntl();
+  const title =
+    props.title ??
+    intl.formatMessage(
+      props.mode === 'create' ? messages.createTitle : messages.editTitle,
+    );
   // This component is remounted by openId. Changing seeds within one open
   // must not overwrite edits already in progress.
   const [seededDraft] = useState(() =>
@@ -439,9 +628,9 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     );
     if (selectedType !== null) allowed.add(selectedType);
     return VARIABLE_TYPE_OPTIONS.filter(({ value }) => allowed.has(value)).map(
-      ({ label, value }) => ({ label, value }),
+      ({ label, value }) => ({ label: intl.formatMessage(label), value }),
     );
-  }, [allowedVariableTypes, selectedType]);
+  }, [allowedVariableTypes, intl, selectedType]);
 
   const replaceDraft = useCallback(
     (nextDraft: CodebookVariableDraft) => {
@@ -504,11 +693,13 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     if (interactionDisabled) return;
     if (authoritativeTypeConflict) {
       activeRequestId.current = null;
+      // Encoded rather than formatted, like every other issue held here: it
+      // stands until the next submission, and `FieldErrors` decodes it where
+      // it renders it, so it follows a change of language while it waits.
       setIssues([
         {
           path: ['type'],
-          message:
-            'The attribute type changed elsewhere. Close and reopen this editor before saving.',
+          message: createMessageError(messages.typeChangedElsewhere),
         },
       ]);
       return;
@@ -640,7 +831,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
         {title}
       </Heading>
       <Paragraph emphasis="muted" className="mt-2">
-        Define the attribute name and the kind of answer it holds.
+        {intl.formatMessage(messages.description)}
       </Paragraph>
 
       <EnclosingHeadingLevel level={headingTag}>
@@ -651,7 +842,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
             variant={failurePresentation.variant}
             className="focusable"
           >
-            <AlertTitle>Attribute not saved</AlertTitle>
+            <AlertTitle>{intl.formatMessage(messages.failureTitle)}</AlertTitle>
             <AlertDescription>
               {failurePresentation.messages.length === 1 ? (
                 failurePresentation.messages[0]
@@ -667,32 +858,31 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
         )}
         {snapshot.authoritativeChanged && (
           <Alert variant="warning">
-            <AlertTitle>The codebook changed</AlertTitle>
+            <AlertTitle>{intl.formatMessage(messages.staleTitle)}</AlertTitle>
             <AlertDescription>
-              A newer version arrived while you were editing. Your draft has
-              been preserved; review it before trying again.
+              {intl.formatMessage(messages.staleDescription)}
             </AlertDescription>
           </Alert>
         )}
         {snapshot.status === 'awaiting-authoritative' && (
           <Alert variant="success">
-            <AlertTitle>Attribute saved</AlertTitle>
+            <AlertTitle>{intl.formatMessage(messages.savedTitle)}</AlertTitle>
             <AlertDescription>
-              Waiting for the host to publish the authoritative codebook update.
+              {intl.formatMessage(messages.savedDescription)}
             </AlertDescription>
           </Alert>
         )}
         {snapshot.status === 'submitting' && (
           <p role="status" className="sr-only">
-            Saving attribute.
+            {intl.formatMessage(messages.submittingStatus)}
           </p>
         )}
 
         <form className="mt-8" onSubmit={(event) => void handleSubmit(event)}>
           <UnconnectedField
             name="variable-name"
-            label={intl.formatMessage(fieldMessages.nameLabel)}
-            hint={intl.formatMessage(fieldMessages.nameHint)}
+            label={intl.formatMessage(messages.nameLabel)}
+            hint={intl.formatMessage(messages.nameHint)}
             component={InputField}
             value={
               typeof snapshot.draft.name === 'string' ? snapshot.draft.name : ''
@@ -706,9 +896,9 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           />
           <UnconnectedField
             name="variable-type"
-            label={intl.formatMessage(fieldMessages.typeLabel)}
+            label={intl.formatMessage(messages.typeLabel)}
             component={NativeSelectField}
-            placeholder={intl.formatMessage(fieldMessages.typePlaceholder)}
+            placeholder={intl.formatMessage(messages.typePlaceholder)}
             options={typeOptions}
             value={selectedType ?? ''}
             onChange={handleTypeChange}
@@ -723,17 +913,15 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               className="mb-8 min-w-0"
               aria-invalid={optionErrors.length > 0 || undefined}
               aria-describedby={
-                optionErrors.length > 0
-                  ? `${statusId}-option-errors`
-                  : undefined
+                optionErrors.length > 0 ? `${statusId}-option-errors` : undefined
               }
             >
               <legend className="font-heading mb-2 font-bold">
-                Allowed values <span className="text-destructive">*</span>
+                {intl.formatMessage(messages.optionsLegend)}{' '}
+                <span className="text-destructive">*</span>
               </legend>
               <p className="text-muted mb-4 text-sm">
-                Add at least two participant-facing labels and their stored
-                values.
+                {intl.formatMessage(messages.optionsHint)}
               </p>
               {optionsLocked ? (
                 <LockedOptions options={options} />
@@ -753,11 +941,11 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                           <UnconnectedField
                             name={`option-${index + 1}-label`}
                             label={intl.formatMessage(
-                              fieldMessages.optionLabelField,
-                              // The one-based position is passed as text, not
-                              // as a number: the researcher reads it as this
-                              // row's name, and a grouped thousands separator
-                              // would make it a different name.
+                              messages.optionLabelField,
+                              // The one-based position is passed as text, not as
+                              // a number: the researcher reads it as this row's
+                              // name, and a grouped thousands separator would
+                              // make it a different name.
                               { index: String(index + 1) },
                             )}
                             component={InputField}
@@ -772,10 +960,9 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                           />
                           <UnconnectedField
                             name={`option-${index + 1}-value`}
-                            label={intl.formatMessage(
-                              fieldMessages.optionValueField,
-                              { index: String(index + 1) },
-                            )}
+                            label={intl.formatMessage(messages.optionValueField, {
+                              index: String(index + 1),
+                            })}
                             component={InputField}
                             value={String(option.value)}
                             onChange={(value) => {
@@ -792,17 +979,14 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                         </div>
                         <IconButton
                           icon={<Trash2 aria-hidden="true" />}
-                          aria-label={intl.formatMessage(
-                            fieldMessages.removeOption,
-                            { index: String(index + 1) },
-                          )}
+                          aria-label={intl.formatMessage(messages.removeOption, {
+                            index: String(index + 1),
+                          })}
                           color="destructive"
                           disabled={interactionDisabled}
                           onClick={() => {
                             setOptionKeys((current) =>
-                              current.filter(
-                                (_, keyIndex) => keyIndex !== index,
-                              ),
+                              current.filter((_, keyIndex) => keyIndex !== index),
                             );
                             replaceOptions(
                               options.filter(
@@ -828,7 +1012,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                       replaceOptions([...options, { label: '', value: '' }]);
                     }}
                   >
-                    Add option
+                    {intl.formatMessage(messages.addOption)}
                   </Button>
                 </div>
               )}
@@ -837,14 +1021,20 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                   id={`${statusId}-option-errors`}
                   className="text-destructive mt-3 list-disc pl-5"
                 >
+                  {/* An option issue's message is a plain string carrying either
+                      this package's own encoded descriptor or a wording the
+                      schema wrote, and this list is our own markup rather than a
+                      field's error region, so it is decoded here and passed
+                      through untouched when it is not one of ours. */}
                   {optionErrors.map((message) => (
-                    <li key={message}>{message}</li>
+                    <li key={message}>
+                      {formatMessageError(message, intl) ?? message}
+                    </li>
                   ))}
                 </ul>
               )}
             </fieldset>
           )}
-
           {optionsShape === 'boolean' && (
             <fieldset className="mb-8 min-w-0">
               <legend className="font-heading mb-2 font-bold">
@@ -906,7 +1096,11 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               disabled={interactionDisabled || unchangedUpdate}
               aria-busy={snapshot.status === 'submitting'}
             >
-              {props.mode === 'create' ? 'Create attribute' : 'Save attribute'}
+              {intl.formatMessage(
+                props.mode === 'create'
+                  ? messages.createSubmit
+                  : messages.saveSubmit,
+              )}
             </Button>
           </div>
         </form>
@@ -1253,17 +1447,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function LockedOptions({ options }: { options: readonly EditableOption[] }) {
+  const intl = useAppIntl();
   return (
     <div className="bg-surface-2 text-surface-2-contrast relative rounded p-4">
       <Lock aria-hidden="true" className="absolute top-4 right-4 size-4" />
       <table className="w-full text-sm">
         <caption className="pr-8 pb-2 text-left">
-          These values are managed by the interface and cannot be changed.
+          {intl.formatMessage(messages.lockedOptionsCaption)}
         </caption>
         <thead>
           <tr className="text-left">
-            <th className="pb-2 font-bold">Label</th>
-            <th className="pb-2 font-bold">Value</th>
+            <th className="pb-2 font-bold">
+              {intl.formatMessage(messages.lockedOptionLabelHeader)}
+            </th>
+            <th className="pb-2 font-bold">
+              {intl.formatMessage(messages.lockedOptionValueHeader)}
+            </th>
           </tr>
         </thead>
         <tbody>

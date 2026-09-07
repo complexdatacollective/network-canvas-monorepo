@@ -16,8 +16,15 @@ import PromptsSection from '../sections/PromptsSection.tsx';
 import SkipLogicSection from '../sections/SkipLogicSection.tsx';
 import StageNameSection from '../sections/StageNameSection.tsx';
 import SubjectSection from '../sections/SubjectSection.tsx';
-import { expectNoLocaleLeaks, localeLeaks } from '../testing/localeSweep.ts';
-import { renderStageEditor } from '../testing/renderStageEditor.tsx';
+import {
+  expectNoLocaleLeaks,
+  localeLeaks,
+  protocolStrings,
+} from '../testing/localeSweep.ts';
+import {
+  renderStageEditor,
+  type StageEditorHarness,
+} from '../testing/renderStageEditor.tsx';
 
 /**
  * The labels the row-editor stand-ins put on screen.
@@ -32,6 +39,31 @@ const FIXTURE_ROW_EDITOR_WORDS = [
   'Block type',
   'Block text',
 ] as const;
+
+/**
+ * Everything on screen that belongs to the researcher rather than to this
+ * package: the WHOLE protocol the harness is mounted over, the stage's own
+ * seeded fields, and the codebook the sections read type and attribute names
+ * out of.
+ *
+ * The whole protocol, not this stage and the codebook: a section can show a
+ * researcher's words from anywhere in it. A narrative pedigree lists the
+ * pedigree stages it may read BY THEIR OWN LABELS, and the fixture protocol
+ * names one of them "Family Pedigree" — which is also what
+ * `protocolBuilder.interface.familyPedigree` says in English, so a sweep
+ * reading only this stage reports a researcher's own stage name as a
+ * translation defect.
+ *
+ * Read out of the documents the harness mounts rather than listed by hand, so
+ * a fixture that gains a stage or an attribute cannot quietly widen the
+ * sweep's blind spot — or start failing it.
+ */
+const researcherWords = (harness: StageEditorHarness) =>
+  protocolStrings(
+    harness.session.getSnapshot().protocolSections,
+    harness.seeded.fields,
+    harness.hostCodebook(),
+  );
 
 /**
  * What a Spanish researcher actually reads.
@@ -71,7 +103,7 @@ describe('the stage sections under es, at rest', () => {
     });
     await screen.findAllByRole('textbox');
 
-    expectNoLocaleLeaks('sociogram at rest', harness);
+    expectNoLocaleLeaks('sociogram at rest', researcherWords(harness));
   });
 
   it('sweeps an alter form', async () => {
@@ -87,7 +119,7 @@ describe('the stage sections under es, at rest', () => {
     });
     await screen.findAllByRole('textbox');
 
-    expectNoLocaleLeaks('alter form at rest', harness);
+    expectNoLocaleLeaks('alter form at rest', researcherWords(harness));
   });
 
   it('sweeps an information page', async () => {
@@ -106,7 +138,7 @@ describe('the stage sections under es, at rest', () => {
     });
     await screen.findAllByRole('textbox');
 
-    expectNoLocaleLeaks('information page at rest', harness);
+    expectNoLocaleLeaks('information page at rest', researcherWords(harness));
   });
 });
 
@@ -124,13 +156,13 @@ describe('the row dialogs under es', () => {
       ),
     });
     await screen.findAllByRole('button');
-    expectNoLocaleLeaks('prompt list at rest', harness);
+    expectNoLocaleLeaks('prompt list at rest', researcherWords(harness));
 
     await harness.user.click(
       await screen.findByRole('button', { name: 'Crear nueva pregunta' }),
     );
     await screen.findByRole('dialog');
-    expectNoLocaleLeaks('the add-a-prompt dialog', harness, {
+    expectNoLocaleLeaks('the add-a-prompt dialog', researcherWords(harness), {
       fixtureWords: FIXTURE_ROW_EDITOR_WORDS,
     });
 
@@ -141,7 +173,7 @@ describe('the row dialogs under es', () => {
       await screen.findByRole('button', { name: /^Editar pregunta$/ }),
     );
     await screen.findByRole('dialog');
-    expectNoLocaleLeaks('the edit-a-prompt dialog', harness, {
+    expectNoLocaleLeaks('the edit-a-prompt dialog', researcherWords(harness), {
       fixtureWords: FIXTURE_ROW_EDITOR_WORDS,
     });
 
@@ -152,7 +184,7 @@ describe('the row dialogs under es', () => {
       await screen.findByRole('button', { name: /^Eliminar pregunta$/ }),
     );
     await screen.findByRole('dialog');
-    expectNoLocaleLeaks('the remove-a-prompt confirmation', harness, {
+    expectNoLocaleLeaks('the remove-a-prompt confirmation', researcherWords(harness), {
       fixtureWords: FIXTURE_ROW_EDITOR_WORDS,
     });
   });
@@ -175,7 +207,7 @@ describe('the row dialogs under es', () => {
       expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0),
     );
 
-    expectNoLocaleLeaks('the add-a-form-field dialog', harness);
+    expectNoLocaleLeaks('the add-a-form-field dialog', researcherWords(harness));
   });
 
   it('sweeps the page-content dialog', async () => {
@@ -198,7 +230,7 @@ describe('the row dialogs under es', () => {
     );
     await screen.findByRole('dialog');
 
-    expectNoLocaleLeaks('the add-a-content-block dialog', harness);
+    expectNoLocaleLeaks('the add-a-content-block dialog', researcherWords(harness));
   });
 });
 

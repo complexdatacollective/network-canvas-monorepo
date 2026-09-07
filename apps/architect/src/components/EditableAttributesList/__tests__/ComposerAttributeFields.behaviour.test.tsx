@@ -132,7 +132,7 @@ vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
 }));
 vi.mock('~/components/Form/arrayFields/Options', () => ({
   default: () => <div data-testid="options" />,
-  optionsValidation: {},
+  optionsValidation: () => ({}),
 }));
 vi.mock('~/components/BooleanChoice', () => ({
   default: () => <div data-testid="boolean-choice" />,
@@ -299,7 +299,11 @@ describe('the composer attribute editor’s contradiction gate', () => {
 
     save();
 
-    expect(await screen.findByText(/minSelected/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /^The minimum selection for colors exceeds the available options\. Add options or reduce the minimum\.$/,
+      ),
+    ).toBeInTheDocument();
     expect(submitted).toHaveLength(0);
   });
 
@@ -316,7 +320,11 @@ describe('the composer attribute editor’s contradiction gate', () => {
     save();
 
     await waitFor(() => expect(submitted).toHaveLength(1));
-    expect(screen.queryByText(/minSelected/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /^The minimum selection for colors exceeds the available options\. Add options or reduce the minimum\.$/,
+      ),
+    ).not.toBeInTheDocument();
     // The gate's own field is error-only: it must never contribute a value to
     // the item the dialog writes back.
     expect(submitted[0]).toMatchObject({
@@ -364,7 +372,11 @@ describe('absent composer parameters mean inheritance', () => {
     save();
 
     await waitFor(() => expect(submitted).toHaveLength(1));
-    expect(screen.queryByText(/different resolutions/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /^The comparisons for .+ cannot be satisfied within their allowed ranges\. Adjust the ranges, comparisons, or input controls\.$/,
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it('inherits the codebook parameters for a sibling field whose parameters were reset', async () => {
@@ -382,7 +394,11 @@ describe('absent composer parameters mean inheritance', () => {
     save();
 
     await waitFor(() => expect(submitted).toHaveLength(1));
-    expect(screen.queryByText(/different resolutions/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /^The comparisons for .+ cannot be satisfied within their allowed ranges\. Adjust the ranges, comparisons, or input controls\.$/,
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it('still lets a sibling field’s real parameters override the codebook', async () => {
@@ -404,7 +420,9 @@ describe('absent composer parameters mean inheritance', () => {
     save();
 
     expect(
-      await screen.findByText(/different resolutions/),
+      await screen.findByText(
+        'The comparisons for startDate and endDate cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+      ),
     ).toBeInTheDocument();
     expect(submitted).toHaveLength(0);
   });
@@ -428,7 +446,11 @@ describe('stage-effective boolean domains', () => {
 
     save();
 
-    expect(await screen.findByText(/must differ/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /^The rules require different answers for boolA and boolB, but their allowed ranges force the same value\. Widen a range or change the comparison\.$/,
+      ),
+    ).toBeInTheDocument();
     expect(submitted).toHaveLength(0);
   });
 
@@ -441,7 +463,11 @@ describe('stage-effective boolean domains', () => {
     save();
 
     await waitFor(() => expect(submitted).toHaveLength(1));
-    expect(screen.queryByText(/must differ/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /^The rules require different answers for boolA and boolB, but their allowed ranges force the same value\. Widen a range or change the comparison\.$/,
+      ),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -483,7 +509,11 @@ describe('variables another composer stage renders', () => {
     save();
 
     await waitFor(() => expect(submitted).toHaveLength(1));
-    expect(screen.queryByText(/different resolutions/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /^The comparisons for .+ cannot be satisfied within their allowed ranges\. Adjust the ranges, comparisons, or input controls\.$/,
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it('ignores the edited stage’s own committed copy when deciding what renders elsewhere', async () => {
@@ -500,7 +530,9 @@ describe('variables another composer stage renders', () => {
     save();
 
     expect(
-      await screen.findByText(/different resolutions/),
+      await screen.findByText(
+        'The comparisons for beginFull and finishFull cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+      ),
     ).toBeInTheDocument();
     expect(submitted).toHaveLength(0);
   });
@@ -521,7 +553,9 @@ describe('variables another composer stage renders', () => {
     save();
 
     expect(
-      await screen.findByText(/different resolutions/),
+      await screen.findByText(
+        'The comparisons for beginFull and finishFull cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+      ),
     ).toBeInTheDocument();
     expect(submitted).toHaveLength(0);
   });

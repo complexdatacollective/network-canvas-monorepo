@@ -688,13 +688,17 @@ describe('AuthenticationDialog', () => {
     await user.click(
       screen.getByRole('button', { name: 'Permanently delete' }),
     );
-    expect(await screen.findByText('Reset failed.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('The app data could not be reset.'),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     await user.click(
       screen.getByRole('button', { name: 'Recover by resetting' }),
     );
 
-    expect(screen.queryByText('Reset failed.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('The app data could not be reset.'),
+    ).not.toBeInTheDocument();
   });
 });

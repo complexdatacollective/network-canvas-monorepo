@@ -32,7 +32,29 @@ const config: NextConfig = {
   reactCompiler: true,
   cacheComponents: true,
   typedRoutes: true,
-  turbopack: {},
+  turbopack: {
+    rules: {
+      '*.{js,jsx,ts,tsx}': {
+        condition: { not: 'foreign' },
+        loaders: ['@codaco/app-i18n/next-loader'],
+      },
+      '**/src/locales/*.json': {
+        condition: { not: 'foreign' },
+        loaders: ['@codaco/app-i18n/next-loader'],
+        as: '*.js',
+      },
+    },
+    resolveAlias:
+      // Source descriptors and all workspace catalogs use the shared compiler.
+      // Published packages already contain compiled ICU ASTs.
+      // eslint-disable-next-line no-process-env
+      process.env.NODE_ENV === 'production'
+        ? {
+            '@formatjs/icu-messageformat-parser':
+              '@formatjs/icu-messageformat-parser/no-parser.js',
+          }
+        : {},
+  },
   transpilePackages: ['@codaco/shared-consts'],
   experimental: {
     optimizePackageImports: ['lucide-react', 'es-toolkit'],

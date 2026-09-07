@@ -1,8 +1,11 @@
+import { createMessageError } from '@codaco/app-i18n/messages';
+
 import {
   resourceFailure,
   type ProtocolBuilderResourceGateway,
   type ResourceResult,
 } from './gateway.ts';
+import { resourceFailureMessages } from './resourceMessages.ts';
 
 /**
  * What an adapter that throws rather than reporting is turned into.
@@ -12,8 +15,9 @@ import {
  * in their own terms, rather than being shown a host's exception or nothing at
  * all.
  */
-const UNREACHABLE_MESSAGE =
-  'The resource could not be reached. Try again in a moment.';
+const UNREACHABLE_MESSAGE = createMessageError(
+  resourceFailureMessages.unreachable,
+);
 
 /**
  * Runs one gateway call so that its answer is always a result.

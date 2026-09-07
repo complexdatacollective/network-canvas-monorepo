@@ -5,6 +5,7 @@ import { expect, userEvent, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
+import { enIntl } from '../../testing/i18n.ts';
 import { ResourceGatewayProvider } from '../context.tsx';
 import { InMemoryResourceGateway } from '../InMemoryResourceGateway.ts';
 import type { ResourcePickerKind } from './resourceKinds.ts';
@@ -128,8 +129,14 @@ export const AFileOfTheWrongKind: Story = {
         fieldNotesFile(),
       );
 
+    // The extension list is joined by `Intl.ListFormat`, so each language gets
+    // its own conjunction. Built with the same formatter rather than written
+    // out, because re-spelling CLDR's list punctuation here would be asserting
+    // on this file's guess at it.
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
-      'That file cannot be imported here. Supported file types are: .jpg, .jpeg, .gif, .png, .svg.',
+      `That file cannot be imported here. Supported file types are: ${enIntl.formatList(
+        ['.jpg', '.jpeg', '.gif', '.png', '.svg'],
+      )}.`,
     );
   },
 };

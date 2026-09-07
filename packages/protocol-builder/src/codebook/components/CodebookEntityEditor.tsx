@@ -9,7 +9,9 @@ import {
   type FormEvent,
 } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { commonMessages } from '@codaco/app-i18n/common';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -28,6 +30,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   EdgeColorSequence,
   NodeColorSequence,
+  type NodeShape,
   NodeShapes,
 } from '@codaco/protocol-validation';
 import {
@@ -36,9 +39,9 @@ import {
 } from '@codaco/shared-consts';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { allowedNameMessage } from '../../form/arrayFields/rowValidators.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
+import { codebookEditingMessages } from '../codebookMessages.ts';
 import { compoundFailureMessage } from '../compoundFailureCopy.ts';
 import {
   AuxiliaryCodebookDraftSession,
@@ -47,102 +50,99 @@ import {
   type CodebookEntityDraft,
 } from '../editing.ts';
 
-const NODE_COLOR_OPTIONS = NodeColorSequence.map((value, index) => ({
-  value,
-  label: `Node color ${index + 1}`,
-}));
-
-const EDGE_COLOR_OPTIONS = EdgeColorSequence.map((value, index) => ({
-  value,
-  label: `Edge color ${index + 1}`,
-}));
-
-const NODE_SHAPE_OPTIONS = NodeShapes.map((value) => ({
-  value,
-  label: value[0]?.toUpperCase() + value.slice(1),
-}));
-
-type EntityFieldErrors = Readonly<
-  Partial<Record<'name' | 'color' | 'shape' | 'icon', string>>
->;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
-
-const stringValue = (value: unknown): string =>
-  typeof value === 'string' ? value : '';
-
-const replaceDraftProperty = (
-  draft: CodebookEntityDraft,
-  key: string,
-  value: unknown,
-): CodebookEntityDraft => {
-  const next: SectionDoc = structuredClone(draft);
-  if (value === undefined) delete next[key];
-  else next[key] = value;
-  return next;
-};
-
-const replaceDefaultShape = (
-  draft: CodebookEntityDraft,
-  value: string,
-): CodebookEntityDraft => {
-  const currentShape = isRecord(draft.shape) ? draft.shape : {};
-  return replaceDraftProperty(draft, 'shape', {
-    ...structuredClone(currentShape),
-    default: value,
-  });
-};
-
-const entityLabel = (subject: CodebookSubject): string => {
-  if (subject.entity === 'node') return 'node type';
-  if (subject.entity === 'edge') return 'edge type';
-  return 'ego definition';
-};
-
-const validateFields = (
-  subject: CodebookSubject,
-  draft: CodebookEntityDraft,
-  existingEntityNames: readonly string[],
-): EntityFieldErrors => {
-  if (subject.entity === 'ego') return {};
-  const errors: Partial<Record<keyof EntityFieldErrors, string>> = {};
-  const name = stringValue(draft.name);
-  if (name.trim() === '') errors.name = 'Enter a type name.';
-  else if (!VariableNameSchema.safeParse(name).success) {
-    errors.name = allowedNameMessage(`${entityLabel(subject)} name`);
-  } else if (
-    existingEntityNames.some(
-      (existingName) =>
-        normalizeForComparison(existingName) === normalizeForComparison(name),
-    )
-  ) {
-    errors.name = `A type named "${name}" already exists.`;
-  }
-  if (stringValue(draft.color) === '') errors.color = 'Choose a color.';
-  if (subject.entity === 'node') {
-    const shape = isRecord(draft.shape) ? stringValue(draft.shape.default) : '';
-    if (shape === '') errors.shape = 'Choose a default shape.';
-    const icon = stringValue(draft.icon);
-    if (icon === '') errors.icon = 'Enter an icon name.';
-    else if (!isInterviewerIconName(icon)) {
-      errors.icon = 'Choose an icon supported by Network Canvas.';
-    }
-  }
-  return errors;
-};
-
 /**
- * The entity editor's own field chrome.
+ * The names of the shapes a node type can be drawn as.
  *
- * Filed under `codebookEntity` beside `CodebookSurface`'s, which is the same
- * area: the surface names the card, this names what is inside it, and a
- * translator reads both under one heading. The entity kind is a `select`
- * argument rather than a phrase spliced into a template — "node type" is a
- * noun phrase whose position and agreement differ by language, and a sentence
- * built by concatenation gives a translator nowhere to move it.
+ * One descriptor per shape rather than start-casing the schema's own token:
+ * `circle` is a stored value, not copy, and upper-casing its first letter is
+ * an English rule that produces an English word. The record stays exhaustive
+ * over the schema union, so a shape added there fails to compile until it is
+ * named here.
  */
+const NODE_SHAPE_LABELS = defineMessages({
+  circle: {
+    id: 'protocolBuilder.codebookEntity.nodeShapeCircle',
+    defaultMessage: 'Circle',
+    description:
+      'Choice offered for the shape a node type is drawn as in the interview. A node is a member of the interview network.',
+  },
+  square: {
+    id: 'protocolBuilder.codebookEntity.nodeShapeSquare',
+    defaultMessage: 'Square',
+    description:
+      'Choice offered for the shape a node type is drawn as in the interview. A node is a member of the interview network.',
+  },
+  diamond: {
+    id: 'protocolBuilder.codebookEntity.nodeShapeDiamond',
+    defaultMessage: 'Diamond',
+    description:
+      'Choice offered for the shape a node type is drawn as in the interview. A node is a member of the interview network.',
+  },
+}) satisfies Record<NodeShape, MessageDescriptor>;
+
 const messages = defineMessages({
+  nodeColorOption: {
+    id: 'protocolBuilder.codebookEntity.nodeColorOption',
+    defaultMessage: 'Node color {index, number}',
+    description:
+      'Choice offered for a node type’s colour, naming its position in the protocol’s node palette rather than the colour itself, because a protocol’s theme decides what each position looks like. index is that position, counting from one.',
+  },
+  edgeColorOption: {
+    id: 'protocolBuilder.codebookEntity.edgeColorOption',
+    defaultMessage: 'Edge color {index, number}',
+    description:
+      'Choice offered for an edge type’s colour, naming its position in the protocol’s edge palette rather than the colour itself, because a protocol’s theme decides what each position looks like. index is that position, counting from one.',
+  },
+  nameRequired: {
+    id: 'protocolBuilder.codebookEntity.nameRequired',
+    defaultMessage: 'Enter a type name.',
+    description:
+      'Refusal shown under the name field of the entity editor when the researcher has left it empty.',
+  },
+  nameInvalid: {
+    id: 'protocolBuilder.codebookEntity.nameInvalid',
+    defaultMessage:
+      '{entity, select, node {Not a valid node type name. Only letters, numbers and the symbols ._-: are supported} edge {Not a valid edge type name. Only letters, numbers and the symbols ._-: are supported} other {Not a valid ego definition name. Only letters, numbers and the symbols ._-: are supported}}',
+    description:
+      'Refusal shown under the name field when the name holds characters the export formats cannot carry. entity is node, edge or ego. The listed symbols are literal characters and must not be translated.',
+  },
+  nameTaken: {
+    id: 'protocolBuilder.codebookEntity.nameTaken',
+    defaultMessage: 'A type named "{name}" already exists.',
+    description:
+      'Refusal shown under the name field when another entity type in this protocol already has that name. name is what the researcher typed.',
+  },
+  colorRequired: {
+    id: 'protocolBuilder.codebookEntity.colorRequired',
+    defaultMessage: 'Choose a color.',
+    description:
+      'Refusal shown under the colour field of the entity editor when the researcher has chosen none.',
+  },
+  shapeRequired: {
+    id: 'protocolBuilder.codebookEntity.shapeRequired',
+    defaultMessage: 'Choose a default shape.',
+    description:
+      'Refusal shown under the shape field of the node type editor when the researcher has chosen none.',
+  },
+  iconRequired: {
+    id: 'protocolBuilder.codebookEntity.iconRequired',
+    defaultMessage: 'Enter an icon name.',
+    description:
+      'Refusal shown under the icon field of the node type editor when the researcher has left it empty.',
+  },
+  iconUnsupported: {
+    id: 'protocolBuilder.codebookEntity.iconUnsupported',
+    defaultMessage: 'Choose an icon supported by Network Canvas.',
+    description:
+      'Refusal shown under the icon field when the name typed is not one of the icons the interview can draw. "Network Canvas" is the product name and stays as it is.',
+  },
+  egoHasNoProperties: {
+    id: 'protocolBuilder.codebookEntity.egoHasNoProperties',
+    defaultMessage:
+      'Ego attributes are edited from the attribute list. There are no entity-level properties to configure.',
+    description:
+      'Shown in place of the property fields when the entity being edited is the ego — the interview participant themselves, who has attributes but no name, colour or shape of their own.',
+  },
   nameLabel: {
     id: 'protocolBuilder.codebookEntity.nameLabel',
     defaultMessage:
@@ -208,7 +208,156 @@ const messages = defineMessages({
     description:
       'Guidance under the icon field. "Lucide" is an icon library and "Network Canvas" the product; both are names and stay as they are. An interface is one kind of interview step.',
   },
+  createTitle: {
+    id: 'protocolBuilder.codebookEntity.createTitle',
+    defaultMessage:
+      '{entity, select, node {Create node type} edge {Create edge type} other {Create ego definition}}',
+    description:
+      'Heading of the editor while a new codebook entity is being added. entity is node, edge or ego.',
+  },
+  editTitle: {
+    id: 'protocolBuilder.codebookEntity.editTitle',
+    defaultMessage:
+      '{entity, select, node {Edit node type} edge {Edit edge type} other {Edit ego definition}}',
+    description:
+      'Heading of the editor while an existing codebook entity is being changed. entity is node, edge or ego.',
+  },
+  draftNotice: {
+    id: 'protocolBuilder.codebookEntity.draftNotice',
+    defaultMessage:
+      'Changes remain in this editor until every required section can be updated together.',
+    description:
+      'Sentence under the editor heading explaining that nothing is saved until every part of the protocol the change touches can be written at once.',
+  },
+  staleAuthoritativeDescription: {
+    id: 'protocolBuilder.codebookEntity.staleAuthoritativeDescription',
+    defaultMessage:
+      'Your draft has been kept. Close and reopen this editor to load the latest entity before saving.',
+    description:
+      'What to do after the protocol’s codebook changed elsewhere while this entity editor was open.',
+  },
+  failureTitle: {
+    id: 'protocolBuilder.codebookEntity.failureTitle',
+    defaultMessage: 'Could not save this entity',
+    description:
+      'Heading of the alert shown when the entity editor’s save was refused. The reason follows underneath.',
+  },
+  submit: {
+    id: 'protocolBuilder.codebookEntity.submit',
+    defaultMessage: 'Save entity',
+    description:
+      'Button that saves the codebook entity being edited. Named for the entity because the editor is commonly mounted inside another form that has a save of its own.',
+  },
 });
+
+const NODE_COLOR_OPTIONS = NodeColorSequence.map((value, index) => ({
+  value,
+  index: index + 1,
+}));
+
+const EDGE_COLOR_OPTIONS = EdgeColorSequence.map((value, index) => ({
+  value,
+  index: index + 1,
+}));
+
+const colorOptions = (
+  sequence: readonly Readonly<{ value: string; index: number }>[],
+  label: MessageDescriptor,
+  intl: IntlShape,
+) =>
+  sequence.map(({ value, index }) => ({
+    value,
+    label: intl.formatMessage(label, { index }),
+  }));
+
+const shapeOptions = (intl: IntlShape) =>
+  NodeShapes.map((value) => ({
+    value,
+    label: intl.formatMessage(NODE_SHAPE_LABELS[value]),
+  }));
+
+/**
+ * What is wrong with each field, encoded rather than formatted.
+ *
+ * A refusal here stands from one submission until the next, which is longer
+ * than the language it was written in is guaranteed to last: an application
+ * that changes language re-renders this editor without remounting it, and a
+ * sentence formatted when the researcher pressed save would sit under a field
+ * whose label had moved on without it. `FieldErrors` decodes these where it
+ * renders them, so they follow the formatter while they wait.
+ */
+type EntityFieldErrors = Readonly<
+  Partial<Record<'name' | 'color' | 'shape' | 'icon', string>>
+>;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const stringValue = (value: unknown): string =>
+  typeof value === 'string' ? value : '';
+
+const replaceDraftProperty = (
+  draft: CodebookEntityDraft,
+  key: string,
+  value: unknown,
+): CodebookEntityDraft => {
+  const next: SectionDoc = structuredClone(draft);
+  if (value === undefined) delete next[key];
+  else next[key] = value;
+  return next;
+};
+
+const replaceDefaultShape = (
+  draft: CodebookEntityDraft,
+  value: string,
+): CodebookEntityDraft => {
+  const currentShape = isRecord(draft.shape) ? draft.shape : {};
+  return replaceDraftProperty(draft, 'shape', {
+    ...structuredClone(currentShape),
+    default: value,
+  });
+};
+
+/**
+ * Takes no formatter: every refusal it produces is encoded, so which words it
+ * is read in is decided where it is rendered rather than where it is decided.
+ */
+const validateFields = (
+  subject: CodebookSubject,
+  draft: CodebookEntityDraft,
+  existingEntityNames: readonly string[],
+): EntityFieldErrors => {
+  if (subject.entity === 'ego') return {};
+  const errors: Partial<Record<keyof EntityFieldErrors, string>> = {};
+  const name = stringValue(draft.name);
+  if (name.trim() === '') {
+    errors.name = createMessageError(messages.nameRequired);
+  } else if (!VariableNameSchema.safeParse(name).success) {
+    errors.name = createMessageError(messages.nameInvalid, {
+      entity: subject.entity,
+    });
+  } else if (
+    existingEntityNames.some(
+      (existingName) =>
+        normalizeForComparison(existingName) === normalizeForComparison(name),
+    )
+  ) {
+    errors.name = createMessageError(messages.nameTaken, { name });
+  }
+  if (stringValue(draft.color) === '') {
+    errors.color = createMessageError(messages.colorRequired);
+  }
+  if (subject.entity === 'node') {
+    const shape = isRecord(draft.shape) ? stringValue(draft.shape.default) : '';
+    if (shape === '') errors.shape = createMessageError(messages.shapeRequired);
+    const icon = stringValue(draft.icon);
+    if (icon === '') errors.icon = createMessageError(messages.iconRequired);
+    else if (!isInterviewerIconName(icon)) {
+      errors.icon = createMessageError(messages.iconUnsupported);
+    }
+  }
+  return errors;
+};
 
 export type CodebookEntityFieldsProps = Readonly<{
   subject: CodebookSubject;
@@ -227,19 +376,21 @@ export function CodebookEntityFields({
   disabled = false,
 }: CodebookEntityFieldsProps) {
   const intl = useAppIntl();
+
   if (subject.entity === 'ego') {
     return (
       <Alert variant="info" appearance="soft" density="compact">
         <AlertDescription>
-          Ego attributes are edited from the attribute list. There are no
-          entity-level properties to configure.
+          {intl.formatMessage(messages.egoHasNoProperties)}
         </AlertDescription>
       </Alert>
     );
   }
 
-  const colorOptions =
-    subject.entity === 'node' ? NODE_COLOR_OPTIONS : EDGE_COLOR_OPTIONS;
+  const colors =
+    subject.entity === 'node'
+      ? colorOptions(NODE_COLOR_OPTIONS, messages.nodeColorOption, intl)
+      : colorOptions(EDGE_COLOR_OPTIONS, messages.edgeColorOption, intl);
 
   return (
     <div className="flex flex-col gap-6">
@@ -273,7 +424,7 @@ export function CodebookEntityFields({
         onChange={(value) =>
           onChange(replaceDraftProperty(draft, 'color', value))
         }
-        options={colorOptions}
+        options={colors}
         placeholder={intl.formatMessage(messages.colorPlaceholder)}
         required
         disabled={disabled}
@@ -294,7 +445,7 @@ export function CodebookEntityFields({
             onChange={(value) =>
               onChange(replaceDefaultShape(draft, String(value)))
             }
-            options={NODE_SHAPE_OPTIONS}
+            options={shapeOptions(intl)}
             placeholder={intl.formatMessage(messages.shapePlaceholder)}
             required
             disabled={disabled}
@@ -518,22 +669,28 @@ export default function CodebookEntityEditor({
                 ? {}
                 : { render: createElement(headingTag) })}
             >
-              {modeProps.mode === 'create' ? 'Create' : 'Edit'}{' '}
-              {entityLabel(subject)}
+              {intl.formatMessage(
+                modeProps.mode === 'create'
+                  ? messages.createTitle
+                  : messages.editTitle,
+                { entity: subject.entity },
+              )}
             </Heading>
             <Paragraph emphasis="muted" margin="none">
-              Changes remain in this editor until every required section can be
-              updated together.
+              {intl.formatMessage(messages.draftNotice)}
             </Paragraph>
           </div>
 
           <EnclosingHeadingLevel level={headingTag}>
             {snapshot.authoritativeChanged && (
               <Alert variant="warning" appearance="soft" density="compact">
-                <AlertTitle>Newer codebook data is available</AlertTitle>
+                <AlertTitle>
+                  {intl.formatMessage(
+                    codebookEditingMessages.staleAuthoritativeTitle,
+                  )}
+                </AlertTitle>
                 <AlertDescription>
-                  Your draft has been kept. Close and reopen this editor to load
-                  the latest entity before saving.
+                  {intl.formatMessage(messages.staleAuthoritativeDescription)}
                 </AlertDescription>
               </Alert>
             )}
@@ -546,7 +703,9 @@ export default function CodebookEntityEditor({
                 density="compact"
                 tabIndex={-1}
               >
-                <AlertTitle>Could not save this entity</AlertTitle>
+                <AlertTitle>
+                  {intl.formatMessage(messages.failureTitle)}
+                </AlertTitle>
                 <AlertDescription>
                   {compoundFailureMessage(snapshot.lastFailure, intl)}
                 </AlertDescription>
@@ -572,7 +731,7 @@ export default function CodebookEntityEditor({
                   onClick={onCancel}
                   disabled={busy}
                 >
-                  Cancel
+                  {intl.formatMessage(commonMessages.cancel)}
                 </Button>
               )}
               {canSubmit && (
@@ -585,7 +744,11 @@ export default function CodebookEntityEditor({
                     (modeProps.mode === 'update' && !session.isDirty())
                   }
                 >
-                  {snapshot.status === 'submitting' ? 'Saving…' : 'Save entity'}
+                  {intl.formatMessage(
+                    snapshot.status === 'submitting'
+                      ? codebookEditingMessages.saving
+                      : messages.submit,
+                  )}
                 </Button>
               )}
             </div>

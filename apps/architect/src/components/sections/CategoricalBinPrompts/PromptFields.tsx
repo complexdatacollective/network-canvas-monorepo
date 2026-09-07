@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { shallowEqual } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
@@ -35,6 +37,140 @@ import BucketSortOrderSection from '../BucketSortOrderSection';
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import { useLockedOptions } from '../useLockedOptions';
 import { getSortOrderOptionGetter } from './optionGetters';
+const remainingMessages = defineMessages({
+  enableValidationOfTheOtherAttribute: {
+    id: 'architect.remaining.sections.categoricalBinPrompts.promptFields.enableValidationOfTheOtherAttribute',
+    defaultMessage: 'Enable validation of the other attribute.',
+    description:
+      'The sectionSummary text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+});
+const additionalMessages = defineMessages({
+  createNewOption: {
+    id: 'architect.additional.sections.categoricalBinPrompts.promptFields.createNewOption',
+    defaultMessage: 'Create new option',
+    description:
+      'The addButtonLabel text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+});
+const messages = defineMessages({
+  categoricalResponse: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.categoricalResponse',
+    defaultMessage: 'Categorical response',
+    description:
+      'The title text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  chooseTheCategoricalAttributeAndConfigure: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.chooseTheCategoricalAttributeAndConfigure',
+    defaultMessage:
+      'Choose the categorical attribute and configure the option values shown as bins.',
+    description:
+      'The description text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  attribute: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.attribute',
+    defaultMessage: 'Attribute',
+    description:
+      'The label text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  selectACategoricalAttribute: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.selectACategoricalAttribute',
+    defaultMessage: 'Select a categorical attribute.',
+    description:
+      'The hint text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  tooManyOptionValues: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.tooManyOptionValues',
+    defaultMessage: 'Too many option values',
+    description:
+      'Visible text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  theCategoricalBinInterfaceIsDesigned: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.theCategoricalBinInterfaceIsDesigned',
+    defaultMessage:
+      'The categorical bin interface is designed to use <strong>up to 8 option values</strong> (including an "other" attribute). Using more will create a sub-optimal experience for participants, and might reduce data quality. Consider grouping your attribute options and capturing further detail with follow-up questions.',
+    description:
+      'Visible text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  optionValues: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.optionValues',
+    defaultMessage: 'Option values',
+    description:
+      'The label text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  aCategoricalAttributeContainsPreDefinedCategories: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.aCategoricalAttributeContainsPreDefinedCategories',
+    defaultMessage:
+      'A categorical attribute contains pre-defined categories made up of a label (shown to the participant) and a value. Create <strong>up to 8</strong> option values for this attribute.',
+    description:
+      'The hint text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  followUpOtherOption: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.followUpOtherOption',
+    defaultMessage: 'Follow-up other option',
+    description:
+      'The title text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  collectAParticipantEnteredValueWhenA: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.collectAParticipantEnteredValueWhenA',
+    defaultMessage:
+      'Collect a participant-entered value when a node is placed in an other bin.',
+    description:
+      'The description text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  otherAttribute: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.otherAttribute',
+    defaultMessage: 'Other attribute',
+    description:
+      'The label text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  selectATextAttributeToStore: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.selectATextAttributeToStore',
+    defaultMessage:
+      "Select a text attribute to store the value entered by the participant when they drop a node in the 'other' option.",
+    description:
+      'The hint text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  otherBinLabel: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.otherBinLabel',
+    defaultMessage: 'Other bin label',
+    description:
+      'The label text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  enterALabelForTheOther: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.enterALabelForTheOther',
+    defaultMessage:
+      "Enter a label for the 'other' bin that will be shown to participants. This label should indicate that the participant can drop a node in this bin to provide a value not listed above.",
+    description:
+      'The hint text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  enterALabelSuchAsOther: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.enterALabelSuchAsOther',
+    defaultMessage: 'Enter a label (such as "other") for this bin...',
+    description:
+      'The placeholder text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  followUpQuestion: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.followUpQuestion',
+    defaultMessage: 'Follow-up question',
+    description:
+      'The label text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  enterAQuestionPromptToShow: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.enterAQuestionPromptToShow',
+    defaultMessage:
+      'Enter a question prompt to show when the other option is triggered.',
+    description:
+      'The hint text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+  enterAQuestionPromptToShow56295: {
+    id: 'architect.sections.categoricalBinPrompts.promptFields.enterAQuestionPromptToShow56295',
+    defaultMessage:
+      'Enter a question prompt to show when the other option is triggered...',
+    description:
+      'The placeholder text in components / sections / CategoricalBinPrompts / PromptFields.',
+  },
+});
 
 type VariableOption = {
   label: string;
@@ -67,6 +203,7 @@ const PromptFields = ({
   binSortOrder,
   bucketSortOrder,
 }: PromptFieldsProps) => {
+  const intl = useAppIntl();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const { variable: liveVariable, variableOptions: liveVariableOptions } =
     useFormValue(['variable', 'variableOptions'] as const);
@@ -153,7 +290,7 @@ const PromptFields = ({
       ),
     shallowEqual,
   );
-  const getOptions = getSortOrderOptionGetter(rawVariableOptions);
+  const getOptions = getSortOrderOptionGetter(rawVariableOptions, intl);
   const sortMaxItems = getOptions('property', undefined, []).length;
   const totalOptionsLength =
     currentVariableOptions.length + (currentOtherVariable ? 1 : 0);
@@ -187,13 +324,15 @@ const PromptFields = ({
     <>
       <PromptText initialValue={text} />
       <Section
-        title="Categorical response"
-        description="Choose the categorical attribute and configure the option values shown as bins."
+        title={intl.formatMessage(messages.categoricalResponse)}
+        description={intl.formatMessage(
+          messages.chooseTheCategoricalAttributeAndConfigure,
+        )}
       >
         <ArchitectField
           name="variable"
-          label="Attribute"
-          hint="Select a categorical attribute."
+          label={intl.formatMessage(messages.attribute)}
+          hint={intl.formatMessage(messages.selectACategoricalAttribute)}
           component={VariablePicker}
           validation={{ required: true }}
           initialValue={variable}
@@ -207,40 +346,46 @@ const PromptFields = ({
         )}
         {currentVariable && !lockedOptions && showVariableOptionsTip && (
           <Alert variant="destructive" className="my-7">
-            <AlertTitle>Too many option values</AlertTitle>
+            <AlertTitle>
+              {intl.formatMessage(messages.tooManyOptionValues)}
+            </AlertTitle>
             <AlertDescription>
-              The categorical bin interface is designed to use{' '}
-              <strong>up to 8 option values</strong> (including an
-              &quot;other&quot; attribute). Using more will create a sub-optimal
-              experience for participants, and might reduce data quality.
-              Consider grouping your attribute options and capturing further
-              detail with follow-up questions.
+              {intl.formatMessage(
+                messages.theCategoricalBinInterfaceIsDesigned,
+                { strong: (chunks) => <strong>{chunks}</strong> },
+              )}
             </AlertDescription>
           </Alert>
         )}
         {currentVariable && !lockedOptions && (
           <ArchitectArrayField
             name="variableOptions"
-            label="Option values"
-            hint="A categorical attribute contains pre-defined categories made up of a label (shown to the participant) and a value. Create <strong>up to 8</strong> option values for this attribute."
+            label={intl.formatMessage(messages.optionValues)}
+            hint={intl.formatMessage(
+              messages.aCategoricalAttributeContainsPreDefinedCategories,
+            )}
             component={Options}
-            addButtonLabel="Create new option"
-            validation={optionsValidation}
+            addButtonLabel={intl.formatMessage(
+              additionalMessages.createNewOption,
+            )}
+            validation={optionsValidation(intl)}
             initialValue={variableOptions}
           />
         )}
       </Section>
       <Section
         disabled={!currentVariable}
-        title="Follow-up other option"
-        description="Collect a participant-entered value when a node is placed in an other bin."
+        title={intl.formatMessage(messages.followUpOtherOption)}
+        description={intl.formatMessage(
+          messages.collectAParticipantEnteredValueWhenA,
+        )}
         toggleable
         defaultOpen={!!currentOtherVariable}
       >
         <ArchitectField
           name="otherVariable"
-          label="Other attribute"
-          hint="Select a text attribute to store the value entered by the participant when they drop a node in the 'other' option."
+          label={intl.formatMessage(messages.otherAttribute)}
+          hint={intl.formatMessage(messages.selectATextAttributeToStore)}
           component={VariablePicker}
           validation={{ required: true }}
           initialValue={otherVariable}
@@ -252,7 +397,9 @@ const PromptFields = ({
         {currentOtherVariable && (
           <div className="mb-8">
             <CodebookVariableValidationSection
-              sectionSummary="Enable validation of the other attribute."
+              sectionSummary={intl.formatMessage(
+                remainingMessages.enableValidationOfTheOtherAttribute,
+              )}
               fieldName="otherVariable"
               entity={entity}
               type={type}
@@ -262,23 +409,25 @@ const PromptFields = ({
         )}
         <ArchitectField
           name="otherOptionLabel"
-          label="Other bin label"
-          hint="Enter a label for the 'other' bin that will be shown to participants. This label should indicate that the participant can drop a node in this bin to provide a value not listed above."
+          label={intl.formatMessage(messages.otherBinLabel)}
+          hint={intl.formatMessage(messages.enterALabelForTheOther)}
           component={RichTextField}
           validation={{ required: true }}
           initialValue={otherOptionLabel}
           singleLine
-          placeholder='Enter a label (such as "other") for this bin...'
+          placeholder={intl.formatMessage(messages.enterALabelSuchAsOther)}
         />
         <ArchitectField
           name="otherVariablePrompt"
-          label="Follow-up question"
-          hint="Enter a question prompt to show when the other option is triggered."
+          label={intl.formatMessage(messages.followUpQuestion)}
+          hint={intl.formatMessage(messages.enterAQuestionPromptToShow)}
           component={RichTextField}
           validation={{ required: true }}
           initialValue={otherVariablePrompt}
           singleLine
-          placeholder="Enter a question prompt to show when the other option is triggered..."
+          placeholder={intl.formatMessage(
+            messages.enterAQuestionPromptToShow56295,
+          )}
         />
       </Section>
       <BucketSortOrderSection

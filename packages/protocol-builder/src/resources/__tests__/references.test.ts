@@ -125,6 +125,9 @@ describe('findDanglingResourceReferences', () => {
     expect(problems).toHaveLength(1);
     expect(problems[0]?.resourceId).toBe('map-layers');
     expect(problems[0]?.path).toEqual(['mapOptions', 'dataSourceAssetId']);
+    // Read back through the same decode the form's error region does: the
+    // issue carries the descriptor and its values, not the sentence, so an
+    // assertion on the raw string would pass on the id alone.
     expect(readMessage(problems[0]?.message ?? '')).toBe(
       'This stage uses a resource ("map-layers") that is not in the protocol.',
     );

@@ -13,7 +13,6 @@ import {
   createStageIdentity,
   ProtocolBuilderSessionStore,
 } from '../../../session.ts';
-import { fixtureMessage } from '../../../testing/i18n.ts';
 import { DialogFormField } from '../../DialogForm.tsx';
 import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import StageEditorShell from '../../StageEditorShell.tsx';
@@ -23,6 +22,7 @@ import MultiSelect, {
   type PropertyField,
 } from '../MultiSelect.tsx';
 import Options, { optionsValidation } from '../Options.tsx';
+import { promptItemLabel } from './itemLabel.ts';
 
 /**
  * Where a row's removal confirm sends focus, asked of the confirm itself.
@@ -120,8 +120,8 @@ function renderInShell(
 }
 
 const SORT_PROPERTIES: PropertyField[] = [
-  { fieldName: 'property', control: 'input' },
-  { fieldName: 'direction', control: 'input' },
+  { fieldName: 'property', control: 'input', label: 'Property' },
+  { fieldName: 'direction', control: 'input', label: 'Direction' },
 ];
 
 const SORT_VALIDATION = makeMultiSelectValidation(SORT_PROPERTIES);
@@ -296,7 +296,7 @@ describe('a row removal confirm', () => {
         component={DialogArrayField}
         addButtonLabel="Create new prompt"
         editorTitle="Edit prompt"
-        itemLabel={fixtureMessage('prompt')}
+        itemLabel={promptItemLabel}
         previewComponent={PromptPreview}
         editorFieldsComponent={PromptFields}
       />,
