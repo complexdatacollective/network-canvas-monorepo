@@ -15,6 +15,7 @@ import * as variableEditorStories from '../codebook/components/VariableEditor.st
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import * as validationEditorStories from '../codebook/validation/CodebookVariableValidationEditor.stories.tsx';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
+import * as sociogramEditorStories from '../editors/network/SociogramStageEditor.stories.tsx';
 import * as familyPedigreeEditorStories from '../editors/pedigree/FamilyPedigreeStageEditor.stories.tsx';
 import * as narrativePedigreeEditorStories from '../editors/pedigree/NarrativePedigreeStageEditor.stories.tsx';
 import * as shellStories from '../form/StageEditorShell.stories.tsx';
@@ -345,6 +346,7 @@ describe('every story of a surface that writes its own heading', () => {
     // another one: a heading written at a fixed level is right at the depth
     // its author happened to be looking at and wrong one rung down, and only
     // a whole editor puts both depths on screen at once.
+    ...from('SociogramStageEditor', composeStories(sociogramEditorStories)),
     ...from(
       'FamilyPedigreeStageEditor',
       composeStories(familyPedigreeEditorStories),
