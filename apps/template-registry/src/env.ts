@@ -61,6 +61,20 @@ const migrationSchema = z.strictObject({
   databaseUrl,
   ...enrollmentSchema.shape,
 });
+const recoverySchema = z.strictObject({
+  databaseUrl,
+  backupDatabaseUrl: databaseUrl,
+  reconciliationPath: z.string().min(1),
+  reconciliationSha256: z.string().regex(/^[0-9a-f]{64}$/),
+  s3: z.strictObject({
+    endpoint: serviceOrigin,
+    region: nonblank,
+    bucket: nonblank,
+    accessKeyId: nonblank,
+    secretAccessKey: nonblank,
+  }),
+  ...enrollmentSchema.shape,
+});
 const readDatabaseAdmission = (raw: RawEnv) => {
   const parsed = enrollmentSchema.parse({
     allowedLogins: JSON.parse(raw.REGISTRY_DATABASE_ALLOWED_LOGINS ?? ''),
@@ -221,5 +235,28 @@ export function readRegistryBackupEnv(raw: RawEnv = process.env) {
     };
   } catch {
     throw new Error('REGISTRY_BACKUP_CONFIGURATION_INVALID');
+  }
+}
+
+/** Recovery receives only offline owner, backup, object, and operator evidence. */
+// oxlint-disable-next-line node/no-process-env
+export function readRegistryRecoveryEnv(raw: RawEnv = process.env) {
+  try {
+    return recoverySchema.parse({
+      databaseUrl: raw.REGISTRY_RECOVERY_DATABASE_URL,
+      backupDatabaseUrl: raw.REGISTRY_BACKUP_DATABASE_URL,
+      reconciliationPath: raw.REGISTRY_RECOVERY_RECONCILIATION_PATH,
+      reconciliationSha256: raw.REGISTRY_RECOVERY_RECONCILIATION_SHA256,
+      ...readDatabaseAdmission(raw),
+      s3: {
+        endpoint: raw.REGISTRY_S3_ENDPOINT,
+        region: raw.REGISTRY_S3_REGION,
+        bucket: raw.REGISTRY_S3_BUCKET,
+        accessKeyId: raw.REGISTRY_S3_ACCESS_KEY_ID,
+        secretAccessKey: raw.REGISTRY_S3_SECRET_ACCESS_KEY,
+      },
+    });
+  } catch {
+    throw new Error('REGISTRY_RECOVERY_CONFIGURATION_INVALID');
   }
 }
