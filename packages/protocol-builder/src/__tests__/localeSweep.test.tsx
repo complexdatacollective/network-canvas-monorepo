@@ -306,22 +306,28 @@ describe('the sweep itself', () => {
    * "Sociogram" is exactly that collision, and not a hypothetical one: it is
    * the English of `protocolBuilder.interface.sociogram`, the name this
    * package gives that interface — and it is also what a researcher calls the
-   * stage, because the package suggested it. So it is passed as content, which
-   * is how every real sweep gets it: read out of the protocol the harness is
-   * mounted over rather than listed here. The other two need no help; the
-   * four-letter floor keeps "Age" and "No" out on their own, and "Who are the
-   * people you know?" stands behind no descriptor at all.
+   * stage, because the package suggested it. "Who are the people you know?" is
+   * the same collision one layer down: it is the English of
+   * `protocolBuilder.nameGeneratorPrompts.textPlaceholder`, the placeholder
+   * the name generator's own prompt field shows, and it is a sentence this
+   * package suggests BECAUSE it is the sentence a researcher writes. So both
+   * are passed as content, which is how every real sweep gets them: read out
+   * of the protocol the harness is mounted over rather than listed here. The
+   * other two need no help; the four-letter floor keeps "Age" and "No" out on
+   * their own.
    */
   it('says nothing about a researcher’s own English', () => {
     document.body.innerHTML =
       '<p>Who are the people you know?</p><p>Sociogram</p><p>Age</p><p>No</p>';
 
-    expect(localeLeaks(new Set(['Sociogram']))).toEqual([]);
+    expect(
+      localeLeaks(new Set(['Sociogram', 'Who are the people you know?'])),
+    ).toEqual([]);
   });
 
   /**
-   * The other half of the same rule, which is what makes the exclusion above
-   * mean something: the word is reported when the protocol does NOT hold it,
+   * The other half of the same rule, which is what makes the exclusions above
+   * mean something: each is reported when the protocol does NOT hold it,
    * because then a Spanish reader is looking at this package's English rather
    * than at their own writing.
    */
@@ -330,6 +336,14 @@ describe('the sweep itself', () => {
 
     expect(localeLeaks()).toEqual([
       'protocolBuilder.interface.sociogram rendered in English: Sociogram',
+    ]);
+  });
+
+  it('names that same sentence when it is the package’s own', () => {
+    document.body.innerHTML = '<p>Who are the people you know?</p>';
+
+    expect(localeLeaks()).toEqual([
+      'protocolBuilder.nameGeneratorPrompts.textPlaceholder rendered in English: Who are the people you know?',
     ]);
   });
 });

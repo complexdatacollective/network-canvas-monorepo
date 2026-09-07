@@ -118,6 +118,28 @@ name not here adds it here first, in the same pull request.
 | `pageContent`               | `sections/PageContentSection.tsx`                                                                                                                                                | sections  |
 | `contentBlock`              | `sections/contentBlocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                               | sections  |
 | `promptsSection`            | `sections/PromptsSection.tsx`                                                                                                                                                    | sections  |
+| `integerField`              | `fields/IntegerField.tsx`                                                                                                                                                        | family D  |
+| `rosterColumns`             | `sections/useRosterColumns.ts`                                                                                                                                                   | family D  |
+| `alterLimits`               | `sections/AlterLimitsSection.tsx`                                                                                                                                                | family D  |
+| `cardDisplay`               | `sections/CardDisplaySection.tsx`                                                                                                                                                | family D  |
+| `externalDataSource`        | `sections/ExternalDataSourceSection.tsx`                                                                                                                                         | family D  |
+| `nameGeneratorPrompts`      | `sections/NameGeneratorPromptsSection.tsx`                                                                                                                                       | family D  |
+| `nodePanels`                | `sections/NodePanelsSection.tsx`                                                                                                                                                 | family D  |
+| `quickAdd`                  | `sections/QuickAddSection.tsx`                                                                                                                                                   | family D  |
+| `searchOptions`             | `sections/SearchOptionsSection.tsx`                                                                                                                                              | family D  |
+| `sortOptions`               | `sections/SortOptionsSection.tsx`                                                                                                                                                | family D  |
+
+Family D added two second-level segments the reserved list did not hold. One
+line each, because a closed list is only closed if adding to it is argued:
+
+- **`integerField`** — `fields/IntegerField.tsx` exports the whole-number rule
+  every section that counts people owes its boxes, so the refusal belongs to
+  the control rather than to whichever section happens to mount it, exactly as
+  `entitySelect` and `variablePicker` own the words of the controls they are.
+- **`rosterColumns`** — `sections/useRosterColumns.ts` says what a row or a
+  checkbox naming a column the data file has not got is told, and card details,
+  roster order and roster search all ask it; none of the three owns the answer,
+  and a translator should read it once.
 
 `shell` covers `editors/saveStageAction.tsx` as well as the shell itself,
 rather than that control taking an area of its own: the fallback save button is
@@ -146,6 +168,13 @@ has to have exactly one:
   be the single home of each id.
 - `form/arrayFields/arrayMessages.ts` — the generic row noun every array-field
   sentence is built around.
+  `sections/sectionMessages.ts` was a sixth. It held the few words family D's
+  sections had to say as descriptors before the rest of their copy was converted
+  — each capability's `confirmClear`, and the side-panel list's row noun, because
+  those two seams take a `MessageDescriptor` and nothing else. Family D's
+  conversion moved every one of those ids beside the section that owns it, so the
+  file is gone; the ids are unchanged, because a renamed id is a translation
+  silently orphaned.
 
 `controller.ts` renders no copy of its own, so the `session` area covers
 `session.ts` alone until it does.
@@ -204,7 +233,6 @@ Named here so a later split takes the name rather than inventing a synonym.
 
 | `<area>`                   | Will own the copy in                         | Expected in |
 | -------------------------- | -------------------------------------------- | ----------- |
-| `<area>`                   | Will own the copy in                         | Expected in |
 | `nodePanels`               | `sections/NodePanelsSection`                 | family D    |
 | `searchOptions`            | `sections/SearchOptionsSection`              | family D    |
 | `alterLimits`              | `sections/AlterLimitsSection`                | family D    |
@@ -375,6 +403,10 @@ through that family's registry. A section sweep cannot see what only
 composition produces — a shell control no section test mounts, or one section
 rendering English between two that do not.
 
+`src/editors/__tests__/localeSweep.test.tsx` is family D's: the roster,
+form-based and quick-add name generators, which between them mount every
+section that family added plus the frame all three share.
+
 Three rules those sweeps put on everything else in the package. Each was a real
 defect, and each is the sweep reading something that is not a section's copy as
 though it were:
@@ -406,9 +438,11 @@ though it were:
 
 An English sentence this package suggests is only protocol content when the
 protocol holds it. `interface.sociogram` is "Sociogram", which is also what a
-researcher calls the stage — because the package suggested it. Rendered where
-the protocol does NOT hold it, it is a leak, and the sweep's own tests state
-both halves.
+researcher calls the stage — because the package suggested it;
+`nameGeneratorPrompts.textPlaceholder` is "Who are the people you know?", a
+placeholder that is deliberately the sentence a researcher writes. Rendered
+where the protocol does NOT hold it, either is a leak, and the sweep's own
+tests state both halves of each.
 
 One allowance, declared at the call site and an exact list rather than a filter,
 because a sweep that quietly forgave anything would be a green tick over the
