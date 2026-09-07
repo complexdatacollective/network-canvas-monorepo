@@ -1,0 +1,123 @@
+import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import test from 'node:test';
+
+import { evaluateStudioPublication } from './studio-release-admission.mjs';
+import { fixture } from './test-support/studio-release-policy.mjs';
+
+function originMain(f, t) {
+  const remote = mkdtempSync(join(tmpdir(), 'studio-admission-origin-'));
+  t.after(() => rmSync(remote, { force: true, recursive: true }));
+  execFileSync('git', ['init', '--bare', '-q', remote]);
+  f.git('remote', 'add', 'origin', remote);
+  f.git('push', '-q', '-u', 'origin', 'main');
+}
+
+function source(f) {
+  return f.git('rev-parse', 'HEAD');
+}
+
+async function admission(f, t) {
+  originMain(f, t);
+  return evaluateStudioPublication(f.cwd, source(f));
+}
+
+test('a clean origin/main source with a pending changeset is deferred before npm', async (t) => {
+  const f = fixture(t);
+  f.change('@codaco/studio-client');
+  f.commit();
+  const result = await admission(f, t);
+  assert.equal(result.eligibility.status, 'deferred');
+  assert.equal(
+    result.eligibility.blockers.some(
+      ({ code }) => code === 'pending_changeset',
+    ),
+    true,
+  );
+  assert.equal(result.minioSource.commit, 'c'.repeat(40));
+  assert.equal(result.minioSource.sha256, 'b'.repeat(64));
+  assert.equal(result.ancestry.source, source(f));
+});
+
+test('refuses wrong HEAD and tracked or untracked checkout changes before policy evaluation', async (t) => {
+  const f = fixture(t);
+  originMain(f, t);
+  const reviewed = source(f);
+  f.write('notes.txt', 'new commit\n');
+  f.commit();
+  await assert.rejects(
+    () => evaluateStudioPublication(f.cwd, reviewed),
+    /clean reviewed checkout/,
+  );
+  f.git('reset', '--hard', reviewed);
+  f.write('apps/studio/Dockerfile', 'tracked dirty\n');
+  await assert.rejects(
+    () => evaluateStudioPublication(f.cwd, reviewed),
+    /clean reviewed checkout/,
+  );
+  f.git('checkout', '--', 'apps/studio/Dockerfile');
+  writeFileSync(join(f.cwd, 'untracked.txt'), 'untracked\n');
+  await assert.rejects(
+    () => evaluateStudioPublication(f.cwd, reviewed),
+    /clean reviewed checkout/,
+  );
+});
+
+test('refuses a clean source outside origin/main', async (t) => {
+  const f = fixture(t);
+  originMain(f, t);
+  f.git('checkout', '-qb', 'side');
+  f.write('side.txt', 'side\n');
+  const side = f.commit();
+  await assert.rejects(() => evaluateStudioPublication(f.cwd, side));
+});
+
+test('reads MinIO evidence from the committed Dockerfile, not a dirty replacement', async (t) => {
+  const f = fixture(t);
+  originMain(f, t);
+  const reviewed = source(f);
+  f.write('apps/studio/deployment/minio.Dockerfile', 'invalid dirty content\n');
+  await assert.rejects(
+    () => evaluateStudioPublication(f.cwd, reviewed),
+    /clean reviewed checkout/,
+  );
+  f.git('checkout', '--', 'apps/studio/deployment/minio.Dockerfile');
+  const result = await evaluateStudioPublication(f.cwd, reviewed);
+  assert.equal(result.minioSource.repository, 'https://github.com/minio/minio');
+  assert.equal(result.minioSource.commit, 'c'.repeat(40));
+});
+
+test('reports a reserved distribution source that is not an ancestor as superseded', async (t) => {
+  const f = fixture(t);
+  originMain(f, t);
+  const main = source(f);
+  f.git('checkout', '-qb', 'reserved');
+  f.write('reserved.txt', 'reserved\n');
+  const reserved = f.commit();
+  f.git('tag', `studio-distribution-${reserved}`, reserved);
+  f.git('checkout', '-q', 'main');
+  const result = await evaluateStudioPublication(f.cwd, main);
+  assert.equal(result.ancestry.status, 'superseded');
+  assert.equal(result.ancestry.conflictingRelease, reserved);
+});
+
+test('the admission CLI fails generically within its bounded command path', () => {
+  const started = Date.now();
+  const result = spawnSync(
+    process.execPath,
+    ['scripts/studio-release-admission.mjs', 'not-a-source'],
+    {
+      encoding: 'utf8',
+      timeout: 5_000,
+    },
+  );
+  assert.equal(result.status, 1);
+  assert.equal(
+    result.stderr,
+    'Studio publication admission could not be verified.\n',
+  );
+  assert.ok(Date.now() - started < 5_000);
+});
