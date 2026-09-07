@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import {
+  createGhRequest,
   createGitHubDistributionStore,
   GitHubRequestError,
 } from './studio-github-distribution-store.mjs';
@@ -100,7 +104,12 @@ function fixture() {
       const list = assets.get(id);
       if (list.some((item) => item.name === options.query.name))
         throw new GitHubRequestError(422, 'HTTP 422 exists');
-      list.push({ id: next++, name: options.query.name, bytes: options.bytes });
+      list.push({
+        id: next++,
+        name: options.query.name,
+        bytes: options.bytes,
+        size: options.bytes.length,
+      });
       return response({});
     }
     if (method === 'PATCH' && path.match(/\/releases\/\d+$/)) {
@@ -115,7 +124,10 @@ function fixture() {
 }
 
 function store(f) {
-  return createGitHubDistributionStore({ request: f.request });
+  return createGitHubDistributionStore({
+    request: f.request,
+    tagger: { name: 'Joshua Melville', email: 'joshua@northwestern.edu' },
+  });
 }
 
 test('reserves an immutable distribution ref and verifies exact retries', async () => {
@@ -165,6 +177,7 @@ test('returns null only for a conclusive missing release or asset and propagates
   const distribution = store(f);
   assert.equal(await distribution.readAsset(tag, 'release.json'), null);
   const denied = createGitHubDistributionStore({
+    tagger: { name: 'Joshua Melville', email: 'joshua@northwestern.edu' },
     request: async () => {
       throw new GitHubRequestError(403, 'HTTP 403');
     },
@@ -205,8 +218,8 @@ test('rejects duplicate asset records and bounds paginated asset enumeration', a
   f.assets
     .get(release.id)
     .push(
-      { id: 1, name: 'release.json', bytes: Buffer.from('a') },
-      { id: 2, name: 'release.json', bytes: Buffer.from('b') },
+      { id: 1, name: 'release.json', bytes: Buffer.from('a'), size: 1 },
+      { id: 2, name: 'release.json', bytes: Buffer.from('b'), size: 1 },
     );
   await assert.rejects(
     () => distribution.readAsset(tag, 'release.json'),
@@ -215,9 +228,10 @@ test('rejects duplicate asset records and bounds paginated asset enumeration', a
   f.assets.set(
     release.id,
     Array.from({ length: 1000 }, (_, id) => ({
-      id,
+      id: id + 1,
       name: `a${id}`,
       bytes: Buffer.from('x'),
+      size: 1,
     })),
   );
   await assert.rejects(
@@ -237,4 +251,95 @@ test('publishes only matching evidence and permits matching published retries', 
     () => distribution.publish({ tag, source, manifestSha256: 'd'.repeat(64) }),
     /different immutable evidence/,
   );
+});
+
+test('writes request bytes to the CLI stdin and bounds a stalled CLI', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'studio-gh-fixture-'));
+  try {
+    const executable = join(directory, 'gh-fixture');
+    writeFileSync(
+      executable,
+      String.raw`#!/usr/bin/env node
+const chunks = [];
+process.stdin.on('data', (chunk) => chunks.push(chunk));
+process.stdin.on('end', () => process.stdout.write('HTTP/1.1 201 Created\r\nContent-Type: application/json\r\n\r\n' + Buffer.concat(chunks)));
+`,
+    );
+    chmodSync(executable, 0o755);
+    const request = createGhRequest({ executable, timeoutMs: 2_000 });
+    const cliResponse = await request({
+      method: 'POST',
+      path: 'repos/fixed',
+      body: { exact: 'stdin' },
+    });
+    assert.equal(cliResponse.status, 201);
+    assert.deepEqual(JSON.parse(cliResponse.bytes), { exact: 'stdin' });
+
+    const stalled = join(directory, 'gh-stalled');
+    writeFileSync(
+      stalled,
+      '#!/usr/bin/env node\nsetTimeout(() => {}, 1000);\n',
+    );
+    chmodSync(stalled, 0o755);
+    await assert.rejects(
+      () =>
+        createGhRequest({ executable: stalled, timeoutMs: 20 })({
+          path: 'repos/fixed',
+        }),
+      /timed out/,
+    );
+  } finally {
+    rmSync(directory, { force: true, recursive: true });
+  }
+});
+
+test('refuses missing annotated objects, wrong tag/source pairs, malformed IDs, and public uploads', async () => {
+  const f = fixture();
+  const distribution = store(f);
+  f.refs.set(tag, { sha: 'missing-tag-object', type: 'tag' });
+  await assert.rejects(
+    () => distribution.ensureDraft({ tag, source, manifestSha256 }),
+    /HTTP 404 Not Found/,
+  );
+  await assert.rejects(
+    () =>
+      distribution.ensureDraft({
+        tag: `studio/${other}`,
+        source,
+        manifestSha256,
+      }),
+    /does not match its source/,
+  );
+  f.refs.delete(tag);
+  const release = await distribution.ensureDraft({
+    tag,
+    source,
+    manifestSha256,
+  });
+  f.releases.get(tag).id = 0;
+  await assert.rejects(
+    () => distribution.readAsset(tag, 'release.json'),
+    /Invalid GitHub release response/,
+  );
+  f.releases.get(tag).id = release.id;
+  await distribution.publish({ tag, source, manifestSha256 });
+  await assert.rejects(
+    () => distribution.uploadAsset(tag, 'release.json', Buffer.from('bytes')),
+    /published release/,
+  );
+});
+
+test('never converts 403 or 500 failures into a conclusive absence', async () => {
+  for (const status of [403, 500]) {
+    const denied = createGitHubDistributionStore({
+      tagger: { name: 'Joshua Melville', email: 'joshua@northwestern.edu' },
+      request: async () => {
+        throw new GitHubRequestError(status, `HTTP ${status}`);
+      },
+    });
+    await assert.rejects(
+      () => denied.readAsset(tag, 'release.json'),
+      new RegExp(`HTTP ${status}`),
+    );
+  }
 });

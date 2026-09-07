@@ -1,11 +1,10 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { spawn } from 'node:child_process';
 
-const execFileAsync = promisify(execFile);
 const REPOSITORY = 'complexdatacollective/network-canvas-monorepo';
 const API = `repos/${REPOSITORY}`;
 const ASSET_LIMIT = 64 * 1024 * 1024;
 const PAGE_LIMIT = 10;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export class GitHubRequestError extends Error {
   constructor(status, message) {
@@ -41,6 +40,19 @@ function assetName(value) {
   return value;
 }
 
+function tagger(value) {
+  if (
+    !value ||
+    typeof value.name !== 'string' ||
+    !value.name ||
+    typeof value.email !== 'string' ||
+    !/^[^@\s]+@[^@\s]+$/.test(value.email)
+  ) {
+    throw new Error('A valid explicit GitHub tagger is required.');
+  }
+  return { name: value.name, email: value.email };
+}
+
 function annotation({ source: commit, manifestSha256 }) {
   return `studio-source: ${commit}\nstudio-manifest-sha256: ${manifestSha256}`;
 }
@@ -49,46 +61,119 @@ function isNotFound(error) {
   return error instanceof GitHubRequestError && error.status === 404;
 }
 
-async function ghRequest({
-  method = 'GET',
-  path,
-  query,
-  body,
-  bytes,
-  headers = {},
-}) {
-  const endpoint = path.startsWith('https://') ? path : `/${path}`;
-  const params = query ? new URLSearchParams(query).toString() : '';
-  const args = [
-    'api',
-    '--method',
-    method,
-    params ? `${endpoint}?${params}` : endpoint,
-  ];
-  for (const [name, value] of Object.entries(headers))
-    args.push('-H', `${name}: ${value}`);
-  const input =
-    bytes ??
-    (body === undefined ? undefined : Buffer.from(JSON.stringify(body)));
-  if (input) args.push('--input', '-');
-  try {
-    const { stdout } = await execFileAsync('gh', args, {
-      encoding: 'buffer',
-      input,
-      maxBuffer: ASSET_LIMIT + 1024 * 1024,
-    });
-    return { bytes: Buffer.from(stdout), status: 200 };
-  } catch (error) {
-    const text = Buffer.concat([
-      Buffer.from(error.stdout ?? ''),
-      Buffer.from(error.stderr ?? ''),
-    ]).toString();
-    const match = /HTTP (\d{3})/.exec(text);
+function splitHttpResponse(bytes) {
+  const divider = bytes.indexOf('\r\n\r\n');
+  const end = divider === -1 ? bytes.indexOf('\n\n') : divider;
+  if (end === -1)
     throw new GitHubRequestError(
-      match ? Number(match[1]) : undefined,
-      text || 'GitHub CLI request failed.',
+      undefined,
+      'GitHub CLI returned no HTTP response.',
     );
-  }
+  const header = bytes.subarray(0, end).toString('utf8');
+  const status = /^HTTP\/\S+\s+(\d{3})/m.exec(header)?.[1];
+  if (!status)
+    throw new GitHubRequestError(
+      undefined,
+      'GitHub CLI returned an invalid HTTP response.',
+    );
+  return {
+    status: Number(status),
+    bytes: bytes.subarray(end + (divider === -1 ? 2 : 4)),
+  };
+}
+
+export function createGhRequest({
+  executable = 'gh',
+  timeoutMs = REQUEST_TIMEOUT_MS,
+} = {}) {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0)
+    throw new Error('Invalid GitHub CLI timeout.');
+  return async function ghRequest({
+    method = 'GET',
+    path,
+    query,
+    body,
+    bytes,
+    headers = {},
+  }) {
+    const endpoint = path.startsWith('https://') ? path : `/${path}`;
+    const params = query ? new URLSearchParams(query).toString() : '';
+    const args = [
+      'api',
+      '--include',
+      '--method',
+      method,
+      params ? `${endpoint}?${params}` : endpoint,
+    ];
+    for (const [name, value] of Object.entries(headers))
+      args.push('-H', `${name}: ${value}`);
+    const input =
+      bytes ??
+      (body === undefined ? undefined : Buffer.from(JSON.stringify(body)));
+    if (input) args.push('--input', '-');
+    const output = await new Promise((resolve, reject) => {
+      const child = spawn(executable, args, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      const chunks = [];
+      const errors = [];
+      let size = 0;
+      let timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        child.kill('SIGTERM');
+      }, timeoutMs);
+      child.stdout.on('data', (chunk) => {
+        size += chunk.length;
+        if (size > ASSET_LIMIT + 1024 * 1024) child.kill('SIGTERM');
+        else chunks.push(chunk);
+      });
+      child.stderr.on('data', (chunk) => errors.push(chunk));
+      child.on('error', (error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+      child.on('close', () => {
+        clearTimeout(timer);
+        if (timedOut) {
+          reject(
+            new GitHubRequestError(undefined, 'GitHub CLI request timed out.'),
+          );
+          return;
+        }
+        if (size > ASSET_LIMIT + 1024 * 1024) {
+          reject(
+            new GitHubRequestError(
+              undefined,
+              'GitHub CLI response exceeded its bound.',
+            ),
+          );
+          return;
+        }
+        const combined = Buffer.concat(chunks);
+        let response;
+        try {
+          response = splitHttpResponse(combined);
+        } catch (error) {
+          reject(error);
+          return;
+        }
+        if (response.status < 200 || response.status >= 300) {
+          reject(
+            new GitHubRequestError(
+              response.status,
+              Buffer.concat(errors).toString() || response.bytes.toString(),
+            ),
+          );
+          return;
+        }
+        resolve(response);
+      });
+      if (input) child.stdin.end(input);
+      else child.stdin.end();
+    });
+    return output;
+  };
 }
 
 function json(response, message) {
@@ -99,9 +184,30 @@ function json(response, message) {
   }
 }
 
+function releaseId(release) {
+  if (
+    !Number.isSafeInteger(release?.id) ||
+    release.id <= 0 ||
+    typeof release.draft !== 'boolean'
+  ) {
+    throw new Error('Invalid GitHub release response.');
+  }
+  if (
+    (release.draft && release.published_at !== null) ||
+    (!release.draft && typeof release.published_at !== 'string')
+  ) {
+    throw new Error('GitHub release has invalid publication state.');
+  }
+  return release.id;
+}
+
 /** A fixed-repository GitHub Release store. The request boundary is injectable
  * for deterministic tests; the default executes structured `gh api` arguments. */
-export function createGitHubDistributionStore({ request = ghRequest } = {}) {
+export function createGitHubDistributionStore({
+  request = createGhRequest(),
+  tagger: explicitTagger,
+} = {}) {
+  const taggerIdentity = tagger(explicitTagger);
   async function requestJson(options, message) {
     return json(await request(options), message);
   }
@@ -119,21 +225,29 @@ export function createGitHubDistributionStore({ request = ghRequest } = {}) {
   }
 
   async function readTag(releaseTag) {
+    let ref;
     try {
-      const ref = await requestJson(
+      ref = await requestJson(
         { path: `${API}/git/ref/tags/${encodeURIComponent(releaseTag)}` },
         'Invalid GitHub tag ref.',
-      );
-      if (ref.object?.type !== 'tag' || typeof ref.object.sha !== 'string')
-        throw new Error('Studio release tag is not annotated.');
-      return await requestJson(
-        { path: `${API}/git/tags/${ref.object.sha}` },
-        'Invalid annotated Studio tag.',
       );
     } catch (error) {
       if (isNotFound(error)) return null;
       throw error;
     }
+    if (ref.object?.type !== 'tag' || typeof ref.object.sha !== 'string')
+      throw new Error('Studio release tag is not annotated.');
+    return requestJson(
+      { path: `${API}/git/tags/${ref.object.sha}` },
+      'Invalid annotated Studio tag.',
+    );
+  }
+
+  function exactTag(releaseTag, commit) {
+    tag(releaseTag);
+    source(commit);
+    if (releaseTag !== `studio/${commit}`)
+      throw new Error('Studio release tag does not match its source.');
   }
 
   async function verifyTag({
@@ -141,6 +255,7 @@ export function createGitHubDistributionStore({ request = ghRequest } = {}) {
     source: commit,
     manifestSha256,
   }) {
+    exactTag(releaseTag, commit);
     const existing = await readTag(releaseTag);
     if (!existing) return false;
     if (
@@ -154,16 +269,29 @@ export function createGitHubDistributionStore({ request = ghRequest } = {}) {
   }
 
   async function listAssets(release) {
+    const id = releaseId(release);
     const assets = [];
     for (let page = 1; page <= PAGE_LIMIT; page += 1) {
       const batch = await requestJson(
         {
-          path: `${API}/releases/${release.id}/assets`,
+          path: `${API}/releases/${id}/assets`,
           query: { page, per_page: 100 },
         },
         'Invalid GitHub release asset list.',
       );
-      if (!Array.isArray(batch) || batch.length > 100)
+      if (
+        !Array.isArray(batch) ||
+        batch.length > 100 ||
+        batch.some(
+          (asset) =>
+            !Number.isSafeInteger(asset?.id) ||
+            asset.id <= 0 ||
+            typeof asset.name !== 'string' ||
+            !Number.isSafeInteger(asset.size) ||
+            asset.size < 0 ||
+            asset.size > ASSET_LIMIT,
+        )
+      )
         throw new Error('Invalid GitHub release asset list.');
       assets.push(...batch);
       if (batch.length < 100) return assets;
@@ -177,6 +305,7 @@ export function createGitHubDistributionStore({ request = ghRequest } = {}) {
     manifestSha256,
     create,
   }) {
+    exactTag(releaseTag, commit);
     const existing = await findRelease(releaseTag);
     if (existing) {
       if (
@@ -248,18 +377,11 @@ export function createGitHubDistributionStore({ request = ghRequest } = {}) {
     },
 
     async ensureDraft({ tag: releaseTag, source: commit, manifestSha256 }) {
-      tag(releaseTag);
-      source(commit);
+      exactTag(releaseTag, commit);
       manifest(manifestSha256);
       if (
         !(await verifyTag({ tag: releaseTag, source: commit, manifestSha256 }))
       ) {
-        const profile = await requestJson(
-          { path: 'user' },
-          'Invalid GitHub user response.',
-        );
-        if (typeof profile.login !== 'string')
-          throw new Error('GitHub user cannot create an annotated tag.');
         const tagObject = await requestJson(
           {
             method: 'POST',
@@ -269,11 +391,7 @@ export function createGitHubDistributionStore({ request = ghRequest } = {}) {
               message: annotation({ source: commit, manifestSha256 }),
               object: commit,
               type: 'commit',
-              tagger: {
-                name: profile.login,
-                email: `${profile.login}@users.noreply.github.com`,
-                date: new Date().toISOString(),
-              },
+              tagger: { ...taggerIdentity, date: new Date().toISOString() },
             },
           },
           'Invalid created Studio tag.',
@@ -298,8 +416,7 @@ export function createGitHubDistributionStore({ request = ghRequest } = {}) {
         manifestSha256,
         create: true,
       });
-      if (!release.draft && release.published_at === null)
-        throw new Error('GitHub release has invalid publication state.');
+      releaseId(release);
       return release;
     },
 
@@ -320,6 +437,7 @@ export function createGitHubDistributionStore({ request = ghRequest } = {}) {
       });
       if (
         !Buffer.isBuffer(response.bytes) ||
+        response.bytes.length !== matching[0].size ||
         response.bytes.length > ASSET_LIMIT
       )
         throw new Error('Invalid GitHub release asset.');
@@ -337,6 +455,8 @@ export function createGitHubDistributionStore({ request = ghRequest } = {}) {
         throw new Error('Invalid release asset bytes.');
       const release = await findRelease(releaseTag);
       if (!release) throw new Error('GitHub release does not exist.');
+      if (!release.draft)
+        throw new Error('Refusing to upload assets to a published release.');
       if ((await listAssets(release)).some((asset) => asset.name === name))
         throw new Error('Refusing to replace an immutable release asset.');
       try {
@@ -357,18 +477,21 @@ export function createGitHubDistributionStore({ request = ghRequest } = {}) {
     },
 
     async publish({ tag: releaseTag, source: commit, manifestSha256 }) {
-      tag(releaseTag);
-      source(commit);
+      exactTag(releaseTag, commit);
       manifest(manifestSha256);
-      await verifyTag({ tag: releaseTag, source: commit, manifestSha256 });
+      if (
+        !(await verifyTag({ tag: releaseTag, source: commit, manifestSha256 }))
+      )
+        throw new Error('Studio release tag does not exist.');
       const release = await exactRelease({
         tag: releaseTag,
         source: commit,
         manifestSha256,
         create: false,
       });
+      releaseId(release);
       if (!release.draft) return release;
-      return requestJson(
+      const published = await requestJson(
         {
           method: 'PATCH',
           path: `${API}/releases/${release.id}`,
@@ -376,6 +499,9 @@ export function createGitHubDistributionStore({ request = ghRequest } = {}) {
         },
         'Invalid published GitHub release.',
       );
+      if (published.draft) throw new Error('GitHub release remained a draft.');
+      releaseId(published);
+      return published;
     },
   };
 }
