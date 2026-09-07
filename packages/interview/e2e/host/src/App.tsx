@@ -19,6 +19,7 @@ import { mockFinish, mockSync } from './mockCallbacks';
 import {
   createInterview as createInterviewHook,
   getAllowStageNavigation,
+  getRequestedLocale,
   getTestState,
   installProtocol as installProtocolHook,
   installTestHooks,
@@ -69,7 +70,9 @@ function useTestState() {
       // and passes it to Shell). Without it useSyncExternalStore would bail out.
       `${Array.from(getTestState().interviews.entries())
         .map(([id]) => id)
-        .join(',')}|${getAllowStageNavigation()}`,
+        .join(
+          ',',
+        )}|${getAllowStageNavigation()}|${JSON.stringify(getRequestedLocale())}`,
     () => '',
   );
 }
@@ -152,6 +155,7 @@ export default function App() {
     <AnimationProvider disableAnimations reducedMotion="always">
       <Shell
         payload={payload}
+        requestedLocale={getRequestedLocale()}
         onSync={mockSync}
         onFinish={mockFinish}
         onRequestAsset={mockAssetReq}

@@ -1,6 +1,8 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
+import { escapeIdentifier, escapeLiteral } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
@@ -142,29 +144,47 @@ describe('actual server encryption startup and operator entrypoints', () => {
         (await pool.query('SELECT * FROM encryption_key_verifications'))
           .rowCount,
       ).toBe(8);
-      expect(await runServer(env)).toMatchObject({ status: 0, started: true });
-      for (const root of [
-        'synthetic-secret-invalid-root',
-        Buffer.alloc(32, 44).toString('base64'),
-        '',
-      ]) {
-        const result = await runServer({
-          ...env,
-          STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: root,
+      const login = `pii_runtime_${randomUUID().replaceAll('-', '')}`;
+      const password = 'pii-runtime-synthetic-only';
+      const url = new URL(db.url);
+      const databaseName = escapeIdentifier(url.pathname.slice(1));
+      await pool.query(`CREATE ROLE ${escapeIdentifier(login)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD ${escapeLiteral(password)};
+        GRANT studio_app, studio_maintenance TO ${escapeIdentifier(login)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+        GRANT CONNECT ON DATABASE ${databaseName} TO ${escapeIdentifier(login)}`);
+      url.username = login;
+      url.password = password;
+      const runtimeEnv = { ...env, DATABASE_URL: url.href };
+      try {
+        expect(await runServer(runtimeEnv)).toMatchObject({
+          status: 0,
+          started: true,
         });
-        expect(result.status).toBe(1);
-        expect(result.started).toBe(false);
-        expect(result.records).toEqual([
-          {
-            level: 50,
-            time: expect.any(String),
-            event: 'operational',
-            code: 'STUDIO_ENCRYPTION_INVALID',
-          },
-        ]);
-        expect(JSON.stringify(result.records)).not.toContain(
-          root || 'STUDIO_SERVER_STARTED',
-        );
+        for (const root of [
+          'synthetic-secret-invalid-root',
+          Buffer.alloc(32, 44).toString('base64'),
+          '',
+        ]) {
+          const result = await runServer({
+            ...runtimeEnv,
+            STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: root,
+          });
+          expect(result.status).toBe(1);
+          expect(result.started).toBe(false);
+          expect(result.records).toEqual([
+            {
+              level: 50,
+              time: expect.any(String),
+              event: 'operational',
+              code: 'STUDIO_ENCRYPTION_INVALID',
+            },
+          ]);
+          expect(JSON.stringify(result.records)).not.toContain(
+            root || 'STUDIO_SERVER_STARTED',
+          );
+        }
+      } finally {
+        await pool.query(`REVOKE CONNECT ON DATABASE ${databaseName} FROM ${escapeIdentifier(login)};
+          DROP ROLE ${escapeIdentifier(login)}`);
       }
     });
   });

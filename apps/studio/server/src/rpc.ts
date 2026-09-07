@@ -317,6 +317,7 @@ export function createRpcRouter(
   deps: {
     auth: AuthService;
     deployment: DeploymentStatus;
+    telemetry: boolean;
     invitationDeliveryAvailable: boolean;
     bootstrapToken?: string;
     pool?: pg.Pool;
@@ -437,7 +438,9 @@ export function createRpcRouter(
   );
 
   return {
-    status: os.status.handler(() => getInstanceStatus(caps, deployment)),
+    status: os.status.handler(() =>
+      getInstanceStatus(caps, deployment, deps.telemetry),
+    ),
     setup: {
       status: os.setup.status.handler(() => {
         if (deployment.mode !== 'self-hosted') throw new ORPCError('NOT_FOUND');

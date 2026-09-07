@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-import { escapeIdentifier, Pool } from 'pg';
+import { escapeIdentifier, escapeLiteral, Pool, type PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import { BACKUP_ROLE } from '@codaco/studio-sync/rls';
@@ -126,6 +126,15 @@ function nextMigration(
     sidecarsHash: sha256(sidecars),
   };
   return { manifest, snapshot, sql, sidecars, checksum: jsonHash(manifest) };
+}
+
+async function rollbackPrepared(pool: Pool, gid: string): Promise<void> {
+  const prepared = await pool.query<{ present: boolean }>(
+    'SELECT EXISTS (SELECT 1 FROM pg_prepared_xacts WHERE gid = $1 AND database = current_database()) AS present',
+    [gid],
+  );
+  if (prepared.rows[0]?.present)
+    await pool.query(`ROLLBACK PREPARED ${escapeLiteral(gid)}`);
 }
 
 describe.skipIf(!database)('migration security invariants', () => {
@@ -664,6 +673,86 @@ describe.skipIf(!database)('migration security invariants', () => {
     },
   );
 
+  it.each([
+    [
+      'check constraint',
+      'value integer CHECK (value = stored_owner_value())',
+      '(value) VALUES (7)',
+    ],
+    [
+      'column default',
+      'value integer DEFAULT stored_owner_value()',
+      'DEFAULT VALUES',
+    ],
+    [
+      'generated column',
+      'input integer, value integer GENERATED ALWAYS AS (stored_owner_value()) STORED',
+      '(input) VALUES (1)',
+    ],
+  ])(
+    'enforces PostgreSQL function EXECUTE for a definer in a %s',
+    async (_label, columns, insertion) => {
+      await withDeployment(async ({ owner, url, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await owner.query(`CREATE FUNCTION stored_owner_value() RETURNS integer LANGUAGE plpgsql IMMUTABLE SECURITY DEFINER AS 'BEGIN RETURN 7; END';
+        REVOKE ALL ON FUNCTION stored_owner_value() FROM PUBLIC, studio_app, studio_maintenance;
+        CREATE TABLE stored_expression_probe (${columns});
+        GRANT INSERT, SELECT ON stored_expression_probe TO studio_app`);
+        await connectAs(
+          url,
+          logins[1],
+          '-c role=studio_app',
+          async (runtime) => {
+            await expect(
+              runtime.query('SELECT stored_owner_value()'),
+            ).rejects.toMatchObject({ code: '42501' });
+            await expect(
+              runtime.query(
+                `INSERT INTO stored_expression_probe ${insertion} RETURNING value`,
+              ),
+            ).rejects.toMatchObject({ code: '42501' });
+            expect(
+              (
+                await runtime.query(
+                  'SELECT count(*)::integer AS count FROM stored_expression_probe',
+                )
+              ).rows,
+            ).toEqual([{ count: 0 }]);
+          },
+        );
+        // The database expression executor checks the current caller's EXECUTE
+        // ACL. Granting that same privilege enables the identical insertion and
+        // is already refused by migration admission's executable-definer check.
+        await owner.query(
+          'GRANT EXECUTE ON FUNCTION stored_owner_value() TO studio_app',
+        );
+        await connectAs(
+          url,
+          logins[1],
+          '-c role=studio_app',
+          async (runtime) => {
+            expect(
+              (
+                await runtime.query(
+                  `INSERT INTO stored_expression_probe ${insertion} RETURNING value`,
+                )
+              ).rows,
+            ).toEqual([{ value: 7 }]);
+          },
+        );
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).rejects.toThrow('executable SECURITY DEFINER');
+        await owner.query(
+          'REVOKE EXECUTE ON FUNCTION stored_owner_value() FROM studio_app',
+        );
+        expect(
+          await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).toEqual([]);
+      });
+    },
+  );
+
   it('allows invoker triggers and standalone non-executable definer routines', async () => {
     await withDeployment(async ({ owner, url, logins }) => {
       await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
@@ -989,6 +1078,230 @@ describe.skipIf(!database)('migration security invariants', () => {
       });
     },
   );
+
+  it.each([
+    ['studio_migrations.history', 'parent'],
+    ['studio_migrations.history', 'child'],
+    ['public."schemaFingerprint"', 'parent'],
+    ['public."schemaFingerprint"', 'child'],
+  ] as const)(
+    'rejects migration evidence used as an ordinary inheritance %s: %s',
+    async (table, direction) => {
+      await withDeployment(async ({ administrator, owner, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        if (direction === 'parent') {
+          await administrator.query(
+            `CREATE TABLE inherited_evidence () INHERITS (${table})`,
+          );
+        } else {
+          await administrator.query(
+            `CREATE TABLE evidence_parent (LIKE ${table} INCLUDING ALL);
+             ALTER TABLE ${table} INHERIT evidence_parent`,
+          );
+        }
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).rejects.toThrow(
+          'migration evidence must be standalone ordinary tables',
+        );
+      });
+    },
+  );
+
+  it('rejects a partition edge that lets a runtime role forge fingerprint evidence through its parent', async () => {
+    await withDeployment(async ({ administrator, owner, url, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      await administrator.query(`CREATE TABLE evidence_partition_parent
+          (LIKE public."schemaFingerprint" INCLUDING ALL) PARTITION BY LIST (id);
+        ALTER TABLE evidence_partition_parent
+          ATTACH PARTITION public."schemaFingerprint" DEFAULT;
+        GRANT SELECT, UPDATE ON evidence_partition_parent TO studio_app`);
+      await connectAs(url, logins[1], '-c role=studio_app', async (runtime) => {
+        expect(
+          (
+            await runtime.query(
+              `UPDATE evidence_partition_parent SET fingerprint = 'forged-through-parent'
+               RETURNING fingerprint`,
+            )
+          ).rows,
+        ).toEqual([{ fingerprint: 'forged-through-parent' }]);
+      });
+      expect(
+        (
+          await administrator.query(
+            'SELECT fingerprint FROM public."schemaFingerprint"',
+          )
+        ).rows,
+      ).toEqual([{ fingerprint: 'forged-through-parent' }]);
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow(
+        'migration evidence must be standalone ordinary tables',
+      );
+    });
+  });
+
+  it.each(['studio_migrations.history', 'public."schemaFingerprint"'])(
+    'rejects unsupported relation kind for %s before reading evidence',
+    async (table) => {
+      await withDeployment(async ({ administrator, owner, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await administrator.query(`CREATE FUNCTION evidence_kind_read_trap()
+            RETURNS text LANGUAGE plpgsql AS
+            'BEGIN RAISE EXCEPTION ''unsupported evidence was read''; END';
+          ALTER TABLE ${table} RENAME TO evidence_storage`);
+        if (table === 'studio_migrations.history') {
+          await administrator.query(`CREATE VIEW studio_migrations.history AS
+            SELECT position, id, checksum,
+              evidence_kind_read_trap() AS fingerprint, applied_at
+            FROM studio_migrations.evidence_storage`);
+        } else {
+          await administrator.query(`CREATE VIEW public."schemaFingerprint" AS
+            SELECT id, evidence_kind_read_trap() AS fingerprint, "appliedAt"
+            FROM public.evidence_storage`);
+        }
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).rejects.toThrow(
+          'migration evidence must be standalone ordinary tables',
+        );
+      });
+    },
+  );
+
+  it('rejects a partitioned migration evidence relation', async () => {
+    await withDeployment(async ({ administrator, owner, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      await administrator.query(`ALTER TABLE public."schemaFingerprint"
+          RENAME TO partitioned_evidence_storage;
+        CREATE TABLE public."schemaFingerprint"
+          (LIKE public.partitioned_evidence_storage INCLUDING DEFAULTS INCLUDING CONSTRAINTS)
+          PARTITION BY LIST (id)`);
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow(
+        'migration evidence must be standalone ordinary tables',
+      );
+    });
+  });
+
+  it('rejects a direct delete cascade into migration history before reading evidence', async () => {
+    await withDeployment(async ({ administrator, owner, url, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      const before = Number(
+        (
+          await administrator.query<{ count: string }>(
+            'SELECT count(*) FROM studio_migrations.history',
+          )
+        ).rows[0]?.count,
+      );
+      await administrator.query(`CREATE TABLE public.history_action_parent
+          (checksum text PRIMARY KEY);
+        INSERT INTO public.history_action_parent
+          SELECT checksum FROM studio_migrations.history;
+        ALTER TABLE studio_migrations.history
+          ADD CONSTRAINT history_action_path
+          FOREIGN KEY (checksum) REFERENCES public.history_action_parent(checksum)
+          ON DELETE CASCADE;
+        GRANT SELECT, DELETE ON public.history_action_parent TO studio_app`);
+      await owner.query(`CREATE FUNCTION history_action_read_trap()
+          RETURNS boolean LANGUAGE plpgsql AS
+          'BEGIN RAISE EXCEPTION ''history evidence read before action-path preflight''; END';
+        ALTER TABLE studio_migrations.history ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE studio_migrations.history FORCE ROW LEVEL SECURITY;
+        CREATE POLICY history_action_read_trap ON studio_migrations.history
+          FOR SELECT USING (history_action_read_trap())`);
+      await expect(
+        owner.query('SELECT * FROM studio_migrations.history'),
+      ).rejects.toThrow('history evidence read before action-path preflight');
+      await connectAs(url, logins[1], '-c role=studio_app', async (runtime) => {
+        expect(
+          (
+            await runtime.query(`DELETE FROM public.history_action_parent
+              WHERE checksum = (SELECT checksum FROM public.history_action_parent ORDER BY checksum LIMIT 1)`)
+          ).rowCount,
+        ).toBe(1);
+      });
+      expect(
+        Number(
+          (
+            await administrator.query<{ count: string }>(
+              'SELECT count(*) FROM studio_migrations.history',
+            )
+          ).rows[0]?.count,
+        ),
+      ).toBe(before - 1);
+      expect(
+        (
+          await administrator.query(
+            "SELECT has_table_privilege('studio_app', 'studio_migrations.history', 'DELETE') AS direct",
+          )
+        ).rows,
+      ).toEqual([{ direct: false }]);
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow('cascading foreign-key action paths');
+    });
+  });
+
+  it('rejects an indirect update cascade into the schema fingerprint before reading evidence', async () => {
+    await withDeployment(async ({ administrator, owner, url, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      const forged = 'f'.repeat(64);
+      await administrator.query(`CREATE TABLE public.fingerprint_action_root
+          (fingerprint text PRIMARY KEY);
+        CREATE TABLE public.fingerprint_action_middle
+          (fingerprint text PRIMARY KEY REFERENCES public.fingerprint_action_root(fingerprint) ON UPDATE CASCADE);
+        INSERT INTO public.fingerprint_action_root
+          SELECT fingerprint FROM public."schemaFingerprint";
+        INSERT INTO public.fingerprint_action_middle
+          SELECT fingerprint FROM public."schemaFingerprint";
+        ALTER TABLE public."schemaFingerprint"
+          ADD CONSTRAINT fingerprint_action_path
+          FOREIGN KEY (fingerprint) REFERENCES public.fingerprint_action_middle(fingerprint)
+          ON UPDATE CASCADE;
+        GRANT SELECT, UPDATE ON public.fingerprint_action_root TO studio_app`);
+      await connectAs(url, logins[1], '-c role=studio_app', async (runtime) => {
+        expect(
+          (
+            await runtime.query(
+              `UPDATE public.fingerprint_action_root SET fingerprint = $1`,
+              [forged],
+            )
+          ).rowCount,
+        ).toBe(1);
+      });
+      expect(
+        (
+          await administrator.query(
+            'SELECT fingerprint FROM public."schemaFingerprint"',
+          )
+        ).rows,
+      ).toEqual([{ fingerprint: forged }]);
+      expect(
+        (
+          await administrator.query(
+            "SELECT has_table_privilege('studio_app', 'public.\"schemaFingerprint\"', 'UPDATE') AS direct",
+          )
+        ).rows,
+      ).toEqual([{ direct: false }]);
+      await owner.query(`CREATE FUNCTION fingerprint_action_read_trap()
+          RETURNS boolean LANGUAGE plpgsql AS
+          'BEGIN RAISE EXCEPTION ''fingerprint evidence read before action-path preflight''; END';
+        ALTER TABLE public."schemaFingerprint" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE public."schemaFingerprint" FORCE ROW LEVEL SECURITY;
+        CREATE POLICY fingerprint_action_read_trap ON public."schemaFingerprint"
+          FOR SELECT USING (fingerprint_action_read_trap())`);
+      await expect(
+        owner.query('SELECT * FROM public."schemaFingerprint"'),
+      ).rejects.toThrow(
+        'fingerprint evidence read before action-path preflight',
+      );
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow('cascading foreign-key action paths');
+    });
+  });
 
   it('contains historical evidence grants before the next migration SQL executes', async () => {
     await withDeployment(async ({ administrator, owner, logins }) => {
@@ -1337,6 +1650,380 @@ describe.skipIf(!database)('migration security invariants', () => {
       });
     },
   );
+
+  it.each(['studio_app', 'studio_maintenance'])(
+    'refuses runtime sequence UPDATE for %s while preserving USAGE and SELECT',
+    async (role) => {
+      await withDeployment(async ({ owner, url, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await owner.query(`CREATE SEQUENCE runtime_sequence MAXVALUE 9;
+          GRANT USAGE, SELECT ON SEQUENCE runtime_sequence TO ${escapeIdentifier(role)}`);
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).resolves.toEqual([]);
+        await connectAs(url, logins[1], `-c role=${role}`, async (runtime) => {
+          expect(
+            (await runtime.query("SELECT nextval('runtime_sequence') AS value"))
+              .rows,
+          ).toEqual([{ value: '1' }]);
+          await expect(
+            runtime.query("SELECT setval('runtime_sequence', 9, true)"),
+          ).rejects.toMatchObject({ code: '42501' });
+          await owner.query(
+            `GRANT UPDATE ON SEQUENCE runtime_sequence TO ${escapeIdentifier(role)}`,
+          );
+          expect(
+            (
+              await runtime.query(
+                "SELECT setval('runtime_sequence', 9, true) AS value",
+              )
+            ).rows,
+          ).toEqual([{ value: '9' }]);
+          await expect(
+            runtime.query("SELECT nextval('runtime_sequence')"),
+          ).rejects.toMatchObject({ code: '2200H' });
+          await expect(
+            migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).rejects.toThrow('sequence');
+        });
+      });
+    },
+  );
+
+  it.each([undefined, 'studio_app', 'studio_maintenance'])(
+    'refuses pending migrations with an enrolled runtime session using role %s',
+    async (role) => {
+      await withDeployment(async ({ owner, url, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await owner.query('CREATE SEQUENCE public.runtime_execution_probe');
+        const next = nextMigration(
+          shipped.at(-1)!,
+          "SELECT nextval('public.runtime_execution_probe'); CREATE TABLE public.pending_runtime_guard (id integer)",
+        );
+        await connectAs(
+          url,
+          logins[1],
+          role ? `-c role=${role}` : undefined,
+          async (runtime) => {
+            await runtime.query('SELECT 1');
+            // A no-op security verification remains available with live services.
+            await expect(
+              migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+            ).resolves.toEqual([]);
+            await expect(
+              migrateDatabase(
+                owner,
+                [...shipped, next],
+                next.manifest.fingerprint,
+                logins,
+              ),
+            ).rejects.toThrow('runtime connections');
+            expect(
+              (
+                await owner.query(
+                  "SELECT to_regclass('pending_runtime_guard') AS table",
+                )
+              ).rows,
+            ).toEqual([{ table: null }]);
+            expect(
+              (
+                await owner.query(
+                  'SELECT fingerprint FROM public."schemaFingerprint"',
+                )
+              ).rows,
+            ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
+            // Sequence allocation survives rollback: a final-only refusal must
+            // not masquerade as refusing to begin pending SQL.
+            expect(
+              (
+                await owner.query(
+                  'SELECT is_called FROM public.runtime_execution_probe',
+                )
+              ).rows,
+            ).toEqual([{ is_called: false }]);
+          },
+        );
+        await expect(
+          migrateDatabase(
+            owner,
+            [...shipped, next],
+            next.manifest.fingerprint,
+            logins,
+          ),
+        ).resolves.toEqual([next.manifest.id]);
+        expect(
+          (
+            await owner.query(
+              'SELECT is_called FROM public.runtime_execution_probe',
+            )
+          ).rows,
+        ).toEqual([{ is_called: true }]);
+      });
+    },
+  );
+
+  it('refuses disconnected prepared work before pending SQL while preserving no-op checks', async () => {
+    await withDeployment(
+      async ({ administrator, owner, url, logins, databaseName }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        expect(
+          Number(
+            (
+              await administrator.query<{
+                max_prepared_transactions: string;
+              }>('SHOW max_prepared_transactions')
+            ).rows[0]?.max_prepared_transactions,
+          ),
+        ).toBeGreaterThan(0);
+        await owner.query(`CREATE TABLE public.prepared_runtime_probe (id integer PRIMARY KEY, value text NOT NULL);
+          INSERT INTO public.prepared_runtime_probe (id, value) VALUES (1, 'before');
+          GRANT SELECT, UPDATE ON public.prepared_runtime_probe TO studio_app;
+          CREATE SEQUENCE public.prepared_runtime_execution_probe`);
+        const next = nextMigration(
+          shipped.at(-1)!,
+          "SELECT nextval('public.prepared_runtime_execution_probe'); CREATE TABLE public.pending_prepared_guard (id integer)",
+        );
+        const gid = `studio-before-${randomUUID()}`;
+        try {
+          await connectAs(url, logins[1], undefined, async (runtime) => {
+            await runtime.query(`BEGIN;
+              SET ROLE studio_app;
+              UPDATE public.prepared_runtime_probe SET value = 'prepared' WHERE id = 1;
+              PREPARE TRANSACTION ${escapeLiteral(gid)}`);
+          });
+          expect(
+            (
+              await administrator.query(
+                `SELECT prepared.owner, prepared.database,
+                  EXISTS (SELECT 1 FROM pg_stat_activity activity
+                    WHERE activity.datname = current_database() AND activity.usename = $2) AS connected
+                 FROM pg_prepared_xacts prepared
+                 WHERE prepared.gid = $1 AND prepared.database = current_database()`,
+                [gid, logins[1]],
+              )
+            ).rows,
+          ).toEqual([
+            {
+              owner: 'studio_app',
+              database: databaseName,
+              connected: false,
+            },
+          ]);
+          await expect(
+            migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).resolves.toEqual([]);
+          await expect(
+            migrateDatabase(
+              owner,
+              [...shipped, next],
+              next.manifest.fingerprint,
+              logins,
+            ),
+          ).rejects.toThrow(
+            'Studio has existing runtime connections or prepared transactions',
+          );
+          expect(
+            (
+              await owner.query(
+                "SELECT to_regclass('public.pending_prepared_guard') AS relation",
+              )
+            ).rows,
+          ).toEqual([{ relation: null }]);
+          expect(
+            (
+              await owner.query(
+                'SELECT fingerprint FROM public."schemaFingerprint"',
+              )
+            ).rows,
+          ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
+          expect(
+            (
+              await owner.query(
+                'SELECT is_called FROM public.prepared_runtime_execution_probe',
+              )
+            ).rows,
+          ).toEqual([{ is_called: false }]);
+        } finally {
+          await rollbackPrepared(administrator, gid);
+        }
+        await expect(
+          migrateDatabase(
+            owner,
+            [...shipped, next],
+            next.manifest.fingerprint,
+            logins,
+          ),
+        ).resolves.toEqual([next.manifest.id]);
+        expect(
+          (
+            await owner.query(
+              'SELECT is_called FROM public.prepared_runtime_execution_probe',
+            )
+          ).rows,
+        ).toEqual([{ is_called: true }]);
+      },
+    );
+  });
+
+  it('rolls back pending SQL when an enrolled runtime session arrives during migration', async () => {
+    await withDeployment(async ({ administrator, owner, url, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      const gate = Number.parseInt(randomUUID().slice(0, 7), 16);
+      const blocker = await administrator.connect();
+      let pending: Promise<unknown> | undefined;
+      try {
+        await blocker.query('SELECT pg_advisory_lock($1)', [gate]);
+        const next = nextMigration(
+          shipped.at(-1)!,
+          `CREATE TABLE racing_runtime_guard (id integer); SELECT pg_advisory_xact_lock(${gate})`,
+        );
+        pending = migrateDatabase(
+          owner,
+          [...shipped, next],
+          next.manifest.fingerprint,
+          logins,
+        ).catch((error: unknown) => error);
+        await expect
+          .poll(
+            async () =>
+              (
+                await administrator.query<{ waiting: boolean }>(
+                  "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND classid = 0 AND objid = $1 AND NOT granted) AS waiting",
+                  [gate],
+                )
+              ).rows[0]?.waiting,
+          )
+          .toBe(true);
+        await connectAs(
+          url,
+          logins[1],
+          '-c role=studio_app',
+          async (runtime) => {
+            await runtime.query('SELECT 1');
+            await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
+            const outcome = await pending;
+            expect(outcome).toBeInstanceOf(Error);
+            expect(String(outcome)).toContain('runtime connections');
+            expect(
+              (
+                await owner.query(
+                  "SELECT to_regclass('racing_runtime_guard') AS table",
+                )
+              ).rows,
+            ).toEqual([{ table: null }]);
+            expect(
+              (
+                await owner.query(
+                  'SELECT fingerprint FROM public."schemaFingerprint"',
+                )
+              ).rows,
+            ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
+          },
+        );
+      } finally {
+        await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
+        blocker.release();
+        await pending;
+      }
+    });
+  });
+
+  it('rolls back pending SQL when disconnected prepared work arrives after the initial drain check', async () => {
+    await withDeployment(async ({ administrator, owner, url, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      expect(
+        Number(
+          (
+            await administrator.query<{
+              max_prepared_transactions: string;
+            }>('SHOW max_prepared_transactions')
+          ).rows[0]?.max_prepared_transactions,
+        ),
+      ).toBeGreaterThan(0);
+      await owner.query(`CREATE TABLE public.final_prepared_runtime_probe (id integer PRIMARY KEY, value text NOT NULL);
+        INSERT INTO public.final_prepared_runtime_probe (id, value) VALUES (1, 'before');
+        GRANT SELECT, UPDATE ON public.final_prepared_runtime_probe TO studio_app;
+        CREATE SEQUENCE public.final_prepared_execution_probe`);
+      const gate = Number.parseInt(randomUUID().slice(0, 7), 16);
+      const gid = `studio-final-${randomUUID()}`;
+      const blocker = await administrator.connect();
+      let pending: Promise<unknown> | undefined;
+      try {
+        await blocker.query('SELECT pg_advisory_lock($1)', [gate]);
+        const next = nextMigration(
+          shipped.at(-1)!,
+          `SELECT nextval('public.final_prepared_execution_probe'); CREATE TABLE public.final_prepared_guard (id integer); SELECT pg_advisory_xact_lock(${gate})`,
+        );
+        pending = migrateDatabase(
+          owner,
+          [...shipped, next],
+          next.manifest.fingerprint,
+          logins,
+        ).catch((error: unknown) => error);
+        await expect
+          .poll(
+            async () =>
+              (
+                await administrator.query<{ waiting: boolean }>(
+                  "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND classid = 0 AND objid = $1 AND NOT granted) AS waiting",
+                  [gate],
+                )
+              ).rows[0]?.waiting,
+          )
+          .toBe(true);
+        await connectAs(url, logins[1], undefined, async (runtime) => {
+          await runtime.query(`BEGIN;
+            SET ROLE studio_app;
+            UPDATE public.final_prepared_runtime_probe SET value = 'prepared' WHERE id = 1;
+            PREPARE TRANSACTION ${escapeLiteral(gid)}`);
+        });
+        expect(
+          (
+            await administrator.query(
+              `SELECT prepared.owner,
+                EXISTS (SELECT 1 FROM pg_stat_activity activity
+                  WHERE activity.datname = current_database() AND activity.usename = $2) AS connected
+               FROM pg_prepared_xacts prepared
+               WHERE prepared.gid = $1 AND prepared.database = current_database()`,
+              [gid, logins[1]],
+            )
+          ).rows,
+        ).toEqual([{ owner: 'studio_app', connected: false }]);
+        await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
+        const outcome = await pending;
+        expect(outcome).toBeInstanceOf(Error);
+        expect(String(outcome)).toContain(
+          'Studio has existing runtime connections or prepared transactions',
+        );
+        expect(
+          (
+            await owner.query(
+              "SELECT to_regclass('public.final_prepared_guard') AS relation",
+            )
+          ).rows,
+        ).toEqual([{ relation: null }]);
+        expect(
+          (
+            await owner.query(
+              'SELECT fingerprint FROM public."schemaFingerprint"',
+            )
+          ).rows,
+        ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
+        expect(
+          (
+            await owner.query(
+              'SELECT is_called FROM public.final_prepared_execution_probe',
+            )
+          ).rows,
+        ).toEqual([{ is_called: true }]);
+      } finally {
+        await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
+        blocker.release();
+        await pending;
+        await rollbackPrepared(administrator, gid);
+      }
+    });
+  });
 
   it('refreshes connection evidence between checks in the same transaction', async () => {
     await withDeployment(async (first) => {
@@ -2565,4 +3252,272 @@ describe.skipIf(!database)('migration security invariants', () => {
       }
     });
   });
+});
+
+/** Observe the real restricted session identity, without retaining its grants or
+ * objects; the original administrator is used only to roll back the probe. */
+async function asRestrictedIdentity<T>(
+  pool: Pool,
+  identity: string,
+  action: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `SET LOCAL SESSION AUTHORIZATION ${escapeIdentifier(identity)}`,
+    );
+    return await action(client);
+  } finally {
+    await client.query('ROLLBACK');
+    client.release();
+  }
+}
+
+const catalogCases = [
+  {
+    name: 'catalog function',
+    privilege:
+      'EXECUTE ON FUNCTION pg_catalog.pg_read_file(text,bigint,bigint)',
+    probe:
+      "SELECT length(pg_catalog.pg_read_file('PG_VERSION',0,10)) > 0 AS observed",
+  },
+  {
+    name: 'catalog table',
+    privilege: 'SELECT ON TABLE pg_catalog.pg_authid',
+    probe:
+      'SELECT bool_or(rolpassword IS NOT NULL) AS observed FROM pg_catalog.pg_authid',
+  },
+  {
+    name: 'catalog ordinary column',
+    privilege: 'SELECT (rolpassword) ON TABLE pg_catalog.pg_authid',
+    probe:
+      'SELECT bool_or(rolpassword IS NOT NULL) AS observed FROM pg_catalog.pg_authid',
+  },
+  {
+    name: 'catalog system column',
+    privilege: 'SELECT (ctid) ON TABLE pg_catalog.pg_authid',
+    probe: 'SELECT count(ctid) > 0 AS observed FROM pg_catalog.pg_authid',
+  },
+] as const;
+const catalogIdentities = [
+  'studio_app',
+  'studio_maintenance',
+  BACKUP_ROLE,
+  'enrolled login',
+] as const;
+
+describe.skipIf(!database)('migration catalog admission boundary', () => {
+  it.each(
+    catalogIdentities.flatMap((identity) =>
+      catalogCases.map((testCase) => ({ identity, ...testCase })),
+    ),
+  )(
+    'refuses $identity $name before pending SQL and revalidates a no-op',
+    async ({ identity, privilege, probe }) => {
+      await withDeployment(async ({ administrator, owner, logins }) => {
+        await administrator.query(runtimeRolesSql([BACKUP_ROLE]));
+        // Optional backup identity is compatible with both fresh and no-op runs.
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await owner.query('CREATE SEQUENCE public.catalog_execution_probe');
+        const next = nextMigration(
+          shipped.at(-1)!,
+          "SELECT nextval('public.catalog_execution_probe'); CREATE TABLE public.catalog_guard_applied (id integer PRIMARY KEY)",
+        );
+        const role = identity === 'enrolled login' ? logins[1] : identity;
+        await administrator.query(
+          `GRANT ${privilege} TO ${escapeIdentifier(role)}`,
+        );
+        try {
+          // These probes expose only a boolean about this disposable fixture:
+          // never file contents, password hashes, or cluster identity names.
+          expect(
+            await asRestrictedIdentity(
+              administrator,
+              role,
+              async (client) => (await client.query(probe)).rows,
+            ),
+          ).toEqual([{ observed: true }]);
+          await expect(
+            migrateDatabase(
+              owner,
+              [...shipped, next],
+              next.manifest.fingerprint,
+              logins,
+            ),
+          ).rejects.toThrow('PostgreSQL catalog');
+          // Sequence allocation survives rollback: the final security check alone
+          // cannot make this assertion pass after unsafe pending SQL has begun.
+          expect(
+            (
+              await owner.query(
+                'SELECT is_called FROM public.catalog_execution_probe',
+              )
+            ).rows,
+          ).toEqual([{ is_called: false }]);
+          await expect(
+            migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).rejects.toThrow('PostgreSQL catalog');
+        } finally {
+          await administrator.query(
+            `REVOKE ${privilege} FROM ${escapeIdentifier(role)}`,
+          );
+        }
+        expect(
+          await migrateDatabase(
+            owner,
+            [...shipped, next],
+            next.manifest.fingerprint,
+            logins,
+          ),
+        ).toEqual([next.manifest.id]);
+        expect(
+          (
+            await owner.query(
+              'SELECT is_called FROM public.catalog_execution_probe',
+            )
+          ).rows,
+        ).toEqual([{ is_called: true }]);
+      });
+    },
+  );
+
+  it('refuses catalog capability before trusting corrupt recorded evidence', async () => {
+    await withDeployment(async ({ administrator, owner, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      await owner.query(
+        "UPDATE studio_migrations.history SET checksum = 'untrusted-catalog-evidence'",
+      );
+      await administrator.query(
+        'GRANT SELECT (ctid) ON pg_catalog.pg_authid TO studio_app',
+      );
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow('PostgreSQL catalog');
+      await administrator.query(
+        'REVOKE SELECT (ctid) ON pg_catalog.pg_authid FROM studio_app',
+      );
+      // Positive control: after the capability is removed, the actual recorded
+      // evidence is examined and still refused, without adopting or repairing it.
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow('Applied migration history differs');
+    });
+  });
+
+  it.each(
+    ['pg_catalog', 'information_schema'].flatMap((namespace) =>
+      ['CREATE', 'USAGE WITH GRANT OPTION'].map((privilege) => ({
+        namespace,
+        privilege,
+      })),
+    ),
+  )(
+    'refuses reserved $namespace $privilege before it can add an unsafe object',
+    async ({ namespace, privilege }) => {
+      await withDeployment(async ({ administrator, owner, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await administrator.query(
+          `GRANT ${privilege === 'CREATE' ? 'CREATE' : 'USAGE'} ON SCHEMA ${namespace} TO studio_app${privilege === 'CREATE' ? '' : ' WITH GRANT OPTION'}`,
+        );
+        try {
+          await asRestrictedIdentity(
+            administrator,
+            'studio_app',
+            async (client) => {
+              if (privilege === 'CREATE') {
+                await client.query(
+                  `CREATE FUNCTION ${namespace}.studio_catalog_probe() RETURNS integer LANGUAGE sql AS 'SELECT 1'`,
+                );
+                expect(
+                  (
+                    await client.query(
+                      `SELECT ${namespace}.studio_catalog_probe() AS observed`,
+                    )
+                  ).rows,
+                ).toEqual([{ observed: 1 }]);
+              } else {
+                await client.query(
+                  `GRANT USAGE ON SCHEMA ${namespace} TO ${escapeIdentifier(logins[1])} WITH GRANT OPTION`,
+                );
+                expect(
+                  (
+                    await client.query(
+                      'SELECT has_schema_privilege($1, $2, $3) AS observed',
+                      [logins[1], namespace, 'USAGE WITH GRANT OPTION'],
+                    )
+                  ).rows,
+                ).toEqual([{ observed: true }]);
+              }
+            },
+          );
+          // The function or delegated grant has already rolled back. Refusal must
+          // cover the retained capability, before an unsafe object is installed.
+          await expect(
+            migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).rejects.toThrow('PostgreSQL catalog');
+        } finally {
+          const revoked =
+            privilege === 'CREATE' ? 'CREATE' : 'GRANT OPTION FOR USAGE';
+          await administrator.query(
+            `REVOKE ${revoked} ON SCHEMA ${namespace} FROM studio_app`,
+          );
+        }
+        expect(
+          await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).toEqual([]);
+      });
+    },
+  );
+
+  it.each([...catalogIdentities, 'PUBLIC'])(
+    'refuses ordinary TEMP from %s before a temporary namespace exists',
+    async (identity) => {
+      await withDeployment(
+        async ({ administrator, owner, logins, databaseName }) => {
+          await administrator.query(runtimeRolesSql([BACKUP_ROLE]));
+          const role = identity === 'enrolled login' ? logins[1] : identity;
+          const grantee = role === 'PUBLIC' ? 'PUBLIC' : escapeIdentifier(role);
+          const probeRole = role === 'PUBLIC' ? logins[1] : role;
+          // Fresh migrations must reject the implicit future namespace capability,
+          // without relying on there already being an object to scan.
+          await administrator.query(
+            `GRANT TEMPORARY ON DATABASE ${escapeIdentifier(databaseName)} TO ${grantee}`,
+          );
+          try {
+            await expect(
+              migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+            ).rejects.toThrow('TEMPORARY');
+            await asRestrictedIdentity(
+              administrator,
+              probeRole,
+              async (client) => {
+                await client.query(
+                  'CREATE TEMP TABLE catalog_temp_probe (id integer); INSERT INTO catalog_temp_probe VALUES (1)',
+                );
+                expect(
+                  (await client.query('SELECT id FROM catalog_temp_probe'))
+                    .rows,
+                ).toEqual([{ id: 1 }]);
+              },
+            );
+          } finally {
+            await administrator.query(
+              `REVOKE TEMPORARY ON DATABASE ${escapeIdentifier(databaseName)} FROM ${grantee}`,
+            );
+          }
+          await expect(
+            asRestrictedIdentity(administrator, probeRole, (client) =>
+              client.query(
+                'CREATE TEMP TABLE catalog_temp_refused (id integer)',
+              ),
+            ),
+          ).rejects.toMatchObject({ code: '42501' });
+          expect(
+            await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).toEqual(shipped.map(({ manifest }) => manifest.id));
+        },
+      );
+    },
+  );
 });

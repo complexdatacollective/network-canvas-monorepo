@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { OrdinalColorReferenceSchema } from '../color-reference.ts';
+import { asExclusiveVariants } from '../declared-variants.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { SortOrderSchema } from '../filters/index.ts';
@@ -99,6 +100,12 @@ const sociogramHighlightSchema = z
       ]),
     ),
   );
+
+// Highlighting is on and names the attribute a tap writes, or it is off. A
+// value carrying the members of both is one this schema refuses, so an editor
+// writing part of one has to write the whole of it — see `asExclusiveVariants`,
+// which is how a walk of the schemas learns what the transform above hides.
+asExclusiveVariants(sociogramHighlightSchema);
 
 export const sociogramPromptSchema = promptSchema
   .extend({
@@ -246,6 +253,11 @@ export const categoricalBinPromptSchema = promptSchema
       ]),
     ),
   );
+
+// The ROW is the variant here: a bin prompt that offers an 'other' option
+// carries all three of the fields that describe it, and one that does not
+// carries none of them. Half of each is a prompt the schema refuses.
+asExclusiveVariants(categoricalBinPromptSchema);
 
 export const oneToManyDyadCensusPromptSchema = promptSchema.extend({
   createEdge: entityTypeReference({ entity: 'edge' }),

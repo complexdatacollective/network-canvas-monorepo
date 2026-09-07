@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { readMessage } from '../../testing/i18n.ts';
 import {
   resourceFailure,
   stagedSecretHandle,
@@ -37,9 +38,13 @@ describe('validateManifestEntry', () => {
       status: 'failed',
       failure: { reason: 'invalid-content', resourceId: 'staged-image' },
     });
-    expect(result.status === 'failed' && result.failure.message).toContain(
-      'staged-image',
-    );
+    // Read through the same decode the editor's failure notice does: the raw
+    // `message` carries the descriptor and its values, so asserting on it
+    // would pass on the id being present in JSON rather than on the sentence
+    // naming the resource.
+    expect(
+      result.status === 'failed' && readMessage(result.failure.message),
+    ).toContain('asset staged-image:');
     expect(result.status === 'failed' && result.failure.retryable).toBe(false);
   });
 

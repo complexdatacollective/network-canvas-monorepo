@@ -50,6 +50,7 @@ GRANT studio_app, studio_maintenance TO studio_migrator, studio_runtime
 CREATE DATABASE studio OWNER studio_migrator ALLOW_CONNECTIONS false;
 BEGIN;
 REVOKE CONNECT ON DATABASE studio FROM PUBLIC, studio_app, studio_maintenance;
+REVOKE TEMPORARY ON DATABASE studio FROM PUBLIC, studio_app, studio_maintenance, studio_runtime;
 GRANT CONNECT ON DATABASE studio TO studio_migrator, studio_runtime;
 COMMIT;
 ALTER DATABASE studio ALLOW_CONNECTIONS true;
@@ -80,11 +81,28 @@ Runtime and backup logins must hold no direct or PUBLIC data privileges in
 application schemas, including table/column, view, materialized-view, foreign-table,
 and sequence grants. Access belongs to their reviewed NOLOGIN roles. Both the
 logins and those roles must own no database objects, have no database/schema
-CREATE or CONNECT grant options, and be unable to execute user-defined SECURITY
-DEFINER routines. This prevents SET ROLE NONE, object ownership, or a view/function
-from bypassing the intended privileges. PostgreSQL catalog access and ordinary
-invoker functions remain available. Correct unexpected grants explicitly before
-migrating; the migration does not silently enroll those extra capabilities.
+CREATE, database TEMPORARY, or CONNECT grant options, and be unable to execute
+user-defined SECURITY DEFINER routines. This prevents SET ROLE NONE, object
+ownership, or a view/function from bypassing the intended privileges.
+
+Ordinary TEMPORARY permission implicitly grants CREATE in the connection's
+current temporary namespace, even without a namespace ACL. Revoke it from PUBLIC
+and every restricted role/login, including any provisioned backup identity,
+before initial migration and after restoring a database. Direct grants survive
+PUBLIC revocation. The migrator checks this capability even before a temporary
+namespace exists; it does not repair database ACLs. The separately enrolled
+administrator/owner may retain TEMPORARY for migration and restore work.
+
+PostgreSQL 18's reviewed stock PUBLIC catalog reads and ordinary functions remain
+available. Before trusting any migration evidence, and again after sidecars,
+Studio refuses additional effective catalog function/table/column capabilities,
+including system columns such as `ctid`; reserved namespace ownership, CREATE,
+and USAGE grant options; and unreviewed SECURITY DEFINER routines in `pg_*` or
+`information_schema`. Unknown or extension-provided grants are not treated as
+stock permissions. Stock `pg_settings` UPDATE remains the session SET interface
+and obeys the forbidden-parameter checks below. Correct unexpected grants
+explicitly before migrating; the migration does not silently enroll those extra
+capabilities. Catalog definition integrity remains an administrator responsibility.
 
 Large-object creation is an additional administrator provisioning step in
 **each dedicated database**. PostgreSQL normally grants PUBLIC permission to
@@ -127,7 +145,9 @@ and the [large-object functions](https://www.postgresql.org/docs/18/lo-funcs.htm
 
 Runtime roles may not hold TRUNCATE, REFERENCES (including column grants),
 TRIGGER, or MAINTAIN on ordinary or partitioned application tables. In
-particular, TRUNCATE bypasses row-level security. Studio supports invoker
+particular, TRUNCATE bypasses row-level security. Runtime sequence grants may
+include USAGE and SELECT but never UPDATE: setval can rewind or exhaust a
+sequence independently of table access. Studio supports invoker
 triggers, but refuses SECURITY DEFINER triggers and non-SELECT rewrite rules,
 including disabled definitions: [rewrite actions use the relation owner's
 privileges](https://www.postgresql.org/docs/18/rules-privileges.html) and can forge
@@ -142,6 +162,15 @@ CONNECT, missing explicit CONNECT, unsafe runtime or backup login attributes, an
 existing sessions from unenrolled non-superuser logins. Cluster superusers are
 trusted administrators and bypass database ACLs; never use their credentials
 for a deployed runtime.
+
+When schema work is pending, migration also refuses every existing runtime or
+backup session, even if its login is enrolled or has switched to a permitted
+role. It checks before pending SQL and refreshes the check immediately before
+commit, rolling back if a runtime reconnects during the transaction. A no-op
+verification can run with live services. These checks supplement the deployment
+admission drain: keep all runtime and backup processes stopped, and prevent new
+connections for the whole migration window. The migrator does not terminate
+sessions or change administrator-owned connection admission.
 
 For an existing database that previously allowed PUBLIC CONNECT, first stop
 its services and quarantine new admission with `ALLOW_CONNECTIONS false` from

@@ -1,6 +1,15 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import architectIcon from '~/images/architect-icon.png';
 import { cx } from '~/utils/cva';
+const messages = defineMessages({
+  returnToStartScreen: {
+    id: 'architect.brand.returnToStartScreen',
+    defaultMessage: 'Return to start screen',
+    description: 'The aria-label text in components / Brand.',
+  },
+});
 
 type BrandProps = {
   onClick?: () => void;
@@ -15,11 +24,14 @@ const INTERACTIVE =
   'cursor-pointer border-none hover:opacity-90 transition-opacity';
 
 const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
+  const intl = useAppIntl();
   const isPill = variant === 'pill';
   const isIcon = variant === 'icon';
 
   const iconClassName = 'h-11 w-11';
   const iconImg = (
+    // Product name is an invariant brand.
+    // oxlint-disable-next-line formatjs/no-literal-string-in-jsx
     <img src={architectIcon} alt="Architect" className={iconClassName} />
   );
 
@@ -29,7 +41,7 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
         <button
           type="button"
           onClick={onClick}
-          aria-label="Return to start screen"
+          aria-label={intl.formatMessage(messages.returnToStartScreen)}
           className={cx(
             'flex shrink-0 bg-transparent p-0',
             INTERACTIVE,
@@ -56,6 +68,8 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
           className: 'text-xl font-black',
         })}
       >
+        {/* Product name is an invariant brand. */}
+        {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
         Architect
       </span>
     </>
@@ -66,7 +80,7 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
       <button
         type="button"
         onClick={onClick}
-        aria-label="Return to start screen"
+        aria-label={intl.formatMessage(messages.returnToStartScreen)}
         className={cx(
           baseClasses,
           INTERACTIVE,

@@ -5,6 +5,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { type RefObject, useCallback, useMemo, useState } from 'react';
 
+import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import {
   Accordion,
   AccordionHeader,
@@ -31,6 +32,7 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { getNetworkNodes, getSubjectType } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
+import { interfaceMessages } from '../messages';
 
 type NarrativeStage = Extract<Stage, { type: 'Narrative' }>;
 type Preset = NarrativeStage['presets'][number];
@@ -104,6 +106,7 @@ export default function PresetSwitcher({
   onToggleHighlighting,
   dragConstraints,
 }: PresetSwitcherProps) {
+  const intl = useAppIntl();
   const currentPreset = presets[activePreset];
 
   const selector = useMemo(
@@ -204,16 +207,18 @@ export default function PresetSwitcher({
 
   return (
     <SegmentedToolbar
-      aria-label="Presets"
+      aria-label={intl.formatMessage(interfaceMessages.presets)}
       size="lg"
       draggable
       dragConstraints={dragConstraints}
-      dragHandleLabel="Drag to reposition"
+      dragHandleLabel={intl.formatMessage(interfaceMessages.dragToReposition)}
       className="absolute right-10 bottom-10 z-10"
     >
-      <ToolbarGroup aria-label="Preset navigation">
+      <ToolbarGroup
+        aria-label={intl.formatMessage(interfaceMessages.presetNavigation)}
+      >
         <ToolbarIconButton
-          aria-label="Previous preset"
+          aria-label={intl.formatMessage(interfaceMessages.previousPreset)}
           icon={<ChevronLeft />}
           disabled={activePreset === 0}
           onClick={() => onChangePreset(activePreset - 1)}
@@ -262,7 +267,9 @@ export default function PresetSwitcher({
             {hasHighlights && (
               <AccordionItem value={SECTION_ATTRIBUTES}>
                 <AccordionHeader>
-                  <AccordionTrigger>Attributes</AccordionTrigger>
+                  <AccordionTrigger>
+                    <AppMessage message={interfaceMessages.attributes} />
+                  </AccordionTrigger>
                 </AccordionHeader>
                 <AccordionPanel>
                   <RadioGroup
@@ -289,7 +296,9 @@ export default function PresetSwitcher({
             {hasEdges && (
               <AccordionItem value={SECTION_LINKS}>
                 <AccordionHeader>
-                  <AccordionTrigger>Links</AccordionTrigger>
+                  <AccordionTrigger>
+                    <AppMessage message={interfaceMessages.links} />
+                  </AccordionTrigger>
                 </AccordionHeader>
                 <AccordionPanel>
                   <div className="flex flex-col gap-2">
@@ -310,7 +319,9 @@ export default function PresetSwitcher({
             {hasGroups && (
               <AccordionItem value={SECTION_GROUPS}>
                 <AccordionHeader>
-                  <AccordionTrigger>Groups</AccordionTrigger>
+                  <AccordionTrigger>
+                    <AppMessage message={interfaceMessages.groups} />
+                  </AccordionTrigger>
                 </AccordionHeader>
                 <AccordionPanel>
                   <div className="flex flex-col gap-2">
@@ -335,7 +346,7 @@ export default function PresetSwitcher({
           </Accordion>
         </ToolbarPopover>
         <ToolbarIconButton
-          aria-label="Next preset"
+          aria-label={intl.formatMessage(interfaceMessages.nextPreset)}
           icon={<ChevronRight />}
           disabled={activePreset + 1 === presets.length}
           onClick={() => onChangePreset(activePreset + 1)}

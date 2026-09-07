@@ -1,9 +1,10 @@
 'use client';
-
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
@@ -32,11 +33,13 @@ import { formValuesToAttributePatch } from '../../../forms/formValuesToAttribute
 import useProtocolForm from '../../../forms/useProtocolForm';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
+import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import { getNodeIconName } from '../../../selectors/name-generator';
 import { getPromptAdditionalAttributes } from '../../../selectors/session';
 import type { AttributePatch } from '../../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
+import { interfaceMessages } from '../../messages';
 
 type NodeFormProps = {
   selectedNode: NcNode | null;
@@ -49,6 +52,7 @@ type NodeFormProps = {
 };
 
 const NodeForm = (props: NodeFormProps) => {
+  const intl = useAppIntl();
   const { selectedNode, form, disabled, onClose, addNode } = props;
 
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
@@ -136,7 +140,7 @@ const NodeForm = (props: NodeFormProps) => {
       if (!patchResult.success) {
         return {
           success: false,
-          formErrors: ['An error occurred while submitting the form.'],
+          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
         };
       }
 
@@ -186,7 +190,7 @@ const NodeForm = (props: NodeFormProps) => {
             type="button"
             onClick={() => setShow(true)}
             disabled={disabled}
-            aria-label="Add a person"
+            aria-label={intl.formatMessage(runtimeMessages.addPerson)}
             className="focusable relative aspect-square size-28 rounded-full"
           >
             <motion.div
@@ -221,10 +225,10 @@ const NodeForm = (props: NodeFormProps) => {
             key="submit"
             type="submit"
             form="node-form"
-            aria-label="Finished"
+            aria-label={intl.formatMessage(interfaceMessages.finished)}
             color="primary"
           >
-            Finished
+            {intl.formatMessage(interfaceMessages.finished)}
           </Button>
         }
       >

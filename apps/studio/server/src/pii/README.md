@@ -20,7 +20,7 @@ and password hashes retain the authentication system's existing contract.
 
 `loadEncryptionKeys(configuration, loadRootKey)` validates the complete keyset.
 The injected loader returns a 32-byte root for an opaque reference;
-`createBase64RootKeyLoader` requires canonical padded base64. A KMS loader can
+`createBase64RootKeyLoader` requires canonical padded base64. The `aws-kms` loader can
 replace it without changing stored data. A configuration may reference one root
 in all three independently versioned namespaces:
 
@@ -70,6 +70,62 @@ reindex it. Switching the current index is therefore a distinct operation;
 old index keys and suppression entries must remain available. A holder of an
 index key can test guessed addresses throughout the deployment.
 
+## AWS KMS root custody
+
+Set `STUDIO_ENCRYPTION_KEY_PROVIDER=aws-kms` to load the same keyset in either
+managed or self-hosted Studio. `STUDIO_ENCRYPTION_KMS_KEY_ARN` must identify an
+exact symmetric key in an AWS commercial region; mutable aliases are refused.
+`STUDIO_ENCRYPTION_KMS_DEPLOYMENT` is a stable public environment identifier,
+for example `studio-staging`. Each referenced `STUDIO_ENCRYPTION_ROOT_*` value
+then contains canonical base64 **KMS ciphertext**, not the plaintext root.
+
+Wrap each independently generated 32-byte root with `kms:Encrypt` or
+`kms:GenerateDataKey` using `SYMMETRIC_DEFAULT` and this exact, case-sensitive
+encryption context (use the real deployment and reference values):
+
+```json
+{
+  "studio-deployment": "studio-staging",
+  "studio-root-reference": "STUDIO_ENCRYPTION_ROOT_2026",
+  "studio-purpose": "root-key.v1"
+}
+```
+
+Supply a dedicated decrypt-only principal through
+`STUDIO_ENCRYPTION_KMS_ACCESS_KEY_ID` and
+`STUDIO_ENCRYPTION_KMS_SECRET_ACCESS_KEY`, with
+`STUDIO_ENCRYPTION_KMS_SESSION_TOKEN` for temporary credentials. The key policy
+and principal policy must restrict `kms:Decrypt` to the exact key ARN, the
+expected deployment and purpose context, and the configured root references.
+The runtime principal needs no key administration, encryption, grant-creation
+or deletion permissions. Keep wrapping and recovery operations with the
+operator. Never put participant data in the context; AWS records it as public
+metadata. Ambient AWS profiles, metadata endpoints and R2/S3 credentials are
+not used. SDK defaults and retries are pinned; user-agent metadata is finite,
+and platform trace context is not forwarded to KMS. Refresh temporary
+credentials before expiry.
+
+The loader pins the regional HTTPS endpoint, explicitly names the key and
+algorithm, authenticates the context, and accepts only a matching response
+containing exactly 32 plaintext bytes. Each load has a five-second absolute
+limit, one attempt and its own closed transport. Errors contain no provider
+message, key material or credentials. The existing startup gate still verifies
+historical key proofs before accepting traffic; a provider outage refuses
+startup rather than choosing another root.
+
+Enable annual KMS backing-key rotation in infrastructure. Application root
+rotation remains the separately audited, resumable operation below; rotating a
+KMS backing key does not change application key IDs or blind indexes. Retain
+all historical application roots in independent operator custody before using
+them. KMS ciphertext alone is not independent recovery custody: loss of the
+primary AWS account must not make backups undecryptable. Recovery can use the
+environment loader with the same roots, or rewrap those same roots under a new
+KMS key and update configuration, retaining every application key ID.
+
+SDK contract tests replace only HTTP transport and do not claim live IAM,
+KMS rotation or account-loss recovery qualification. Those checks belong to
+the deployment acceptance run.
+
 ## Startup and backup verification
 
 `initializeEncryption({maintenancePool, configuration, loadRootKey})` is a fatal
@@ -106,8 +162,8 @@ Set `STUDIO_ENCRYPTION_KEYSET` to JSON such as:
 }
 ```
 
-The named `STUDIO_ENCRYPTION_ROOT_2026` secret must contain a newly generated
-32-byte root encoded as canonical base64. Store it in the deployment's secret
+With the default environment loader, the named `STUDIO_ENCRYPTION_ROOT_2026`
+secret contains a newly generated 32-byte root encoded as canonical base64. Store it in the deployment's secret
 facility and independent operator backup custody. Neither the JSON above nor
 the repository supplies a production root. Only explicitly referenced
 `STUDIO_ENCRYPTION_ROOT_*` variables are read; unrelated environment values are

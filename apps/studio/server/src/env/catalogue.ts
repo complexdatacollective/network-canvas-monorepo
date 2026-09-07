@@ -25,7 +25,7 @@ export const DEV = {
   // The Vite dev server, which proxies every server path — the single-origin
   // invariant (#1245).
   baseUrl: 'http://localhost:5173',
-  emailFrom: 'studio-dev@localhost',
+  emailFrom: 'studio-dev@localhost.test',
 } as const;
 
 export const DEV_DATABASE_URL = `postgres://${DEV.pgUser}:${DEV.pgPassword}@${DEV.pgHost}:${DEV.pgPort}/${DEV.pgDatabase}`;
@@ -68,8 +68,51 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'Versioned encryption keyset JSON; contains key IDs and namespaced environment references, never root material.',
     deployment:
-      'Required when a database is configured. Every roots[].reference must name a STUDIO_ENCRYPTION_ROOT_* environment value holding a canonical base64 32-byte root. Studio verifies stored key proofs before auth, workers or traffic. Operator commands never choose public defaults; explicit local development may use the public fixture keyset. See server/src/pii/README.md for configuration and backup custody.',
+      'Required when a database is configured. Every roots[].reference must name a STUDIO_ENCRYPTION_ROOT_* environment value holding a canonical base64 32-byte root, or KMS ciphertext when STUDIO_ENCRYPTION_KEY_PROVIDER=aws-kms. Studio verifies stored key proofs before auth, workers or traffic. Operator commands never choose public defaults; explicit local development may use the public fixture keyset. See server/src/pii/README.md for configuration and backup custody.',
     example: 'REPLACE_WITH_KEYSET_JSON',
+  },
+  STUDIO_ENCRYPTION_KEY_PROVIDER: {
+    group: 'Database',
+    summary: 'Root key loader: environment (default) or aws-kms.',
+    deployment:
+      'Available with either deployment mode. KMS uses only explicit provider credentials and a fixed regional AWS endpoint; it never falls back to environment plaintext or development roots.',
+    example: 'environment',
+  },
+  STUDIO_ENCRYPTION_KMS_KEY_ARN: {
+    group: 'Database',
+    summary: 'Exact symmetric AWS KMS key ARN; mutable aliases are refused.',
+    deployment:
+      'Required for aws-kms. The ARN fixes the AWS commercial region, account and key. Grant only kms:Decrypt on this key with the documented encryption-context conditions.',
+    example: 'REPLACE_WITH_KMS_KEY_ARN',
+  },
+  STUDIO_ENCRYPTION_KMS_DEPLOYMENT: {
+    group: 'Database',
+    summary:
+      'Public deployment identifier authenticated in the KMS encryption context.',
+    deployment:
+      'Required for aws-kms. Use a stable lower-case identifier (up to 63 letters, digits or hyphens, starting with a letter), unique to the environment. It must match root wrapping and IAM conditions. Never use participant data.',
+    example: 'studio-staging',
+  },
+  STUDIO_ENCRYPTION_KMS_ACCESS_KEY_ID: {
+    group: 'Database',
+    summary: 'Dedicated KMS principal access key ID.',
+    deployment:
+      'Required for aws-kms. This identity is separate from R2/S3 and backup credentials. Supply through the deployment secret facility; ambient AWS profiles or metadata are never used.',
+    example: 'REPLACE_WITH_KMS_ACCESS_KEY_ID',
+  },
+  STUDIO_ENCRYPTION_KMS_SECRET_ACCESS_KEY: {
+    group: 'Database',
+    summary: 'Dedicated KMS principal secret access key.',
+    deployment:
+      'Required for aws-kms. Store in the deployment secret facility and rotate the credential independently of wrapped application roots. Never pass it as a command-line argument.',
+    example: 'REPLACE_WITH_KMS_SECRET_ACCESS_KEY',
+  },
+  STUDIO_ENCRYPTION_KMS_SESSION_TOKEN: {
+    group: 'Database',
+    summary: 'Session token when the KMS principal uses temporary credentials.',
+    deployment:
+      'Set with the matching temporary access key and secret. Refresh the complete credential set before expiry; unavailable credentials cause a startup refusal.',
+    example: 'REPLACE_WITH_KMS_SESSION_TOKEN',
   },
   NODE_ENV: {
     group: 'Process',
@@ -86,6 +129,14 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     deployment:
       'Never set. It is refused at boot unless `NODE_ENV` is `development` or `test`.',
     devDefault: '1',
+  },
+  STUDIO_TELEMETRY: {
+    group: 'Process',
+    summary:
+      'Enable Studio analytics and sanitized exception reporting through the Network Canvas PostHog relay.',
+    deployment:
+      'Unset ⇒ true in BOTH managed and self-hosted deployments. Set false to prevent server and browser SDK initialization, telemetry hooks, timers and relay requests. The browser reads this runtime decision from status before loading its SDK; restart processes and reload open tabs after changing it. No separate browser consent setting or build-time switch exists.',
+    example: 'false',
   },
   PORT: {
     group: 'Process',
@@ -195,13 +246,28 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'SMTP transport sign-in and team-invitation email is sent through.',
     deployment:
-      'Unset ⇒ magic-link sends refuse and team invitations cannot be created. A sign-in or invitation link is never written to the log outside development.',
+      'Selects SMTP; cannot be combined with `POSTMARK_SERVER_TOKEN`. With neither transport configured, magic-link sends refuse and team invitations cannot be created. Accepts smtp:// or smtps:// credentials and host/port only; query options, fragments, and paths are refused. TLS is required except for localhost, 127.0.0.1, and ::1 development relays. Connection and greeting waits are bounded to 10 seconds, socket inactivity to 20 seconds, and the full send to 40 seconds. A sign-in or invitation link is never written to the log outside development.',
     example: 'smtp://user:password@smtp.example.org:587',
+  },
+  POSTMARK_SERVER_TOKEN: {
+    group: 'Authentication',
+    summary: 'Server API token selecting the Postmark email transport.',
+    deployment:
+      'Managed delivery uses Postmark; self-hosters may select it explicitly or keep SMTP. Requires `EMAIL_FROM` and cannot be combined with `SMTP_URL`. Store this server-scoped secret only in the backend. Requests use the fixed HTTPS Postmark email endpoint, with open/link tracking disabled, no redirects or automatic retries, a 10-second connection deadline and a 30-second total deadline. No provider response or token is logged.',
+    example: 'replace-with-postmark-server-token',
+  },
+  POSTMARK_MESSAGE_STREAM: {
+    group: 'Authentication',
+    summary: 'Postmark transactional message stream ID.',
+    deployment:
+      'Optional with `POSTMARK_SERVER_TOKEN`; defaults to `outbound`. Provision a transactional stream. IDs start with an ASCII letter and contain at most 30 letters, digits, underscores or hyphens. A stream without a server token is refused.',
+    example: 'outbound',
   },
   EMAIL_FROM: {
     group: 'Authentication',
     summary: 'From address on sign-in and team-invitation email.',
-    deployment: 'Required alongside `SMTP_URL`, and refused without it.',
+    deployment:
+      'Required alongside `SMTP_URL` or `POSTMARK_SERVER_TOKEN`, and refused without either outside development. Postmark requires the sender address or domain to be verified in the selected server account.',
     devDefault: DEV.emailFrom,
     example: 'studio@studio.example.org',
   },

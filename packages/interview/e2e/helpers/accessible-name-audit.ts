@@ -100,29 +100,16 @@ export function findUnnamedControls(snapshot: string): string[] {
  *   - a newly unnamed control fails, even in a snapshot that already has one;
  *   - fixing one also fails, until its entry is deleted here.
  *
- * All three live entries reproduce only under `chromium-matrix`: the other two
- * engines run `@smoke` scenarios only, and none of these are smoke.
- *
  * This list is not a place to record a NEW violation to make a run green. It
  * exists so the audit can be switched on over an imperfect corpus without
  * hiding what is still wrong.
  */
 const KNOWN_UNNAMED_CONTROLS: Readonly<Record<string, readonly string[]>> = {
-  // FamilyPedigree puts an unlabelled control on the pedigree canvas ahead of
-  // the named "Egg Parent"/"Sperm Parent" buttons.
-  'matrix-family-pedigree-familypedigree-checklist-resting-state-final': [
-    'button',
-  ],
-  'matrix-family-pedigree-familypedigree-boundaries-grandparents-required-blocked-final':
-    ['button'],
-  'matrix-family-pedigree-familypedigree-boundaries-children-contributors-required-final':
-    ['button'],
-  // EgoForm's relative date picker used to expose an unnamed textbox in
-  // `egoform-relative-date-range-validation` and `egoform-field-mega-all-
-  // components`; the committed chromium baselines still record the bare node.
-  // It now carries a name, so there is no entry here — and because a stored
-  // `- textbox` with no name matches ANY name, only this audit would notice if
-  // it regressed.
+  // FamilyPedigree's unnamed focal-person control now uses the localized
+  // "You" fallback. All three former checklist/boundary exceptions are gone.
+  // EgoForm's relative date pickers also carry names. The regenerated corpus
+  // records them, and this audit rejects any newly unnamed control before a
+  // snapshot update can absorb it.
 };
 
 function describeFailure(

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { BootstrapTokenSchema } from '@codaco/studio-rpc';
 import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
+import { postmarkConfiguration } from '@codaco/studio-sync/postmark-email-sender';
 
 import { isProxyAddress } from '../observability/proxy.ts';
 
@@ -24,6 +25,7 @@ export const serverSchemas = {
   STUDIO_DEV_DEFAULTS: z.stringbool().optional(),
 
   STUDIO_ROLE: z.enum(['web', 'worker', 'both']).optional(),
+  STUDIO_TELEMETRY: z.stringbool().optional(),
 
   PORT: z.coerce.number().int().min(0).max(65535).optional(),
   HOST: z.string().min(1).optional(),
@@ -56,6 +58,14 @@ export const serverSchemas = {
 
   DATABASE_URL: z.string().min(1).optional(),
   STUDIO_ENCRYPTION_KEYSET: z.string().min(1).max(32_768).optional(),
+  STUDIO_ENCRYPTION_KEY_PROVIDER: z.enum(['environment', 'aws-kms']).optional(),
+  // The encryption boundary validates these only when KMS is selected. The
+  // static Netlify entrypoint withholds all encryption/provider configuration.
+  STUDIO_ENCRYPTION_KMS_KEY_ARN: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_DEPLOYMENT: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_ACCESS_KEY_ID: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_SECRET_ACCESS_KEY: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_SESSION_TOKEN: z.string().optional(),
   // Parsed and required only by the explicit migration entrypoint.
   STUDIO_DATABASE_ALLOWED_LOGINS: z.string().optional(),
 
@@ -76,6 +86,8 @@ export const serverSchemas = {
   PUBLIC_URL: z.url({ protocol: /^https?$/ }).optional(),
 
   SMTP_URL: z.string().min(1).optional(),
+  POSTMARK_SERVER_TOKEN: postmarkConfiguration.shape.serverToken.optional(),
+  POSTMARK_MESSAGE_STREAM: postmarkConfiguration.shape.messageStream,
   EMAIL_FROM: z.string().min(1).optional(),
 
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),

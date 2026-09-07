@@ -2,9 +2,12 @@ import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
 import { createSelector } from '@reduxjs/toolkit';
 import { Plus } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { createElement, useCallback, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
@@ -15,6 +18,54 @@ import { getEdgeTypes, getNodeTypes } from '../../../../selectors/codebook';
 import { asOptions } from '../../../../selectors/utils';
 import PreviewEdge from './PreviewEdge';
 import PreviewNode from './PreviewNode';
+const messages = defineMessages({
+  cannotChangeType: {
+    id: 'architect.sections.fields.entitySelectField.entitySelectField.cannotChangeType',
+    defaultMessage:
+      'Cannot change {entityType, select, node {node} other {edge}} type',
+    description:
+      'The title text in components / sections / fields / EntitySelectField / EntitySelectField.',
+  },
+  oK: {
+    id: 'architect.sections.fields.entitySelectField.entitySelectField.oK',
+    defaultMessage: 'OK',
+    description:
+      'The label text in components / sections / fields / EntitySelectField / EntitySelectField.',
+  },
+  changeType: {
+    id: 'architect.sections.fields.entitySelectField.entitySelectField.changeType',
+    defaultMessage:
+      'Change {entityType, select, node {node} other {edge}} type?',
+    description:
+      'The title text in components / sections / fields / EntitySelectField / EntitySelectField.',
+  },
+  typeField: {
+    id: 'architect.sections.fields.entitySelectField.entitySelectField.typeField',
+    defaultMessage: '{value1, select, true {Node} other {Edge}} type field',
+    description:
+      'The aria-label text in components / sections / fields / EntitySelectField / EntitySelectField.',
+  },
+  typeOptions: {
+    id: 'architect.sections.fields.entitySelectField.entitySelectField.typeOptions',
+    defaultMessage: '{value1, select, true {Node} other {Edge}} type options',
+    description:
+      'The aria-label text in components / sections / fields / EntitySelectField / EntitySelectField.',
+  },
+  noTypesCurrentlyDefined: {
+    id: 'architect.sections.fields.entitySelectField.entitySelectField.noTypesCurrentlyDefined',
+    defaultMessage:
+      'No {entityType, select, node {node} other {edge}} types currently defined',
+    description:
+      'Visible text in components / sections / fields / EntitySelectField / EntitySelectField.',
+  },
+  createNewType: {
+    id: 'architect.sections.fields.entitySelectField.entitySelectField.createNewType',
+    defaultMessage:
+      'Create new {entityType, select, node {node} other {edge}} type',
+    description:
+      'Visible text in components / sections / fields / EntitySelectField / EntitySelectField.',
+  },
+});
 
 const getEdgeOptions = createSelector([getEdgeTypes], (edgeTypes) =>
   asOptions(edgeTypes),
@@ -65,6 +116,7 @@ export const EntitySelectControl = ({
   'aria-required': ariaRequired,
   allowCreation = true,
 }: EntitySelectFieldProps) => {
+  const intl = useAppIntl();
   const { confirm, openDialog } = useDialog();
   const edgeOptions = useSelector(getEdgeOptions);
   const nodeOptions = useSelector(getNodeOptions);
@@ -81,9 +133,19 @@ export const EntitySelectControl = ({
     void openDialog({
       type: 'acknowledge',
       intent: 'warning',
-      title: `Cannot change ${entityType} type`,
+      title: createElement(AppMessage, {
+        message: messages.cannotChangeType,
+        values: {
+          entityType: entityType,
+        },
+      }),
       description: blockChangeReason,
-      actions: { primary: { label: 'OK', value: true } },
+      actions: {
+        primary: {
+          label: createElement(AppMessage, { message: messages.oK }),
+          value: true,
+        },
+      },
     });
     return true;
   }, [value, blockChangeReason, openDialog, entityType]);
@@ -100,10 +162,19 @@ export const EntitySelectControl = ({
       }
 
       void confirm({
-        title: `Change ${entityType} type?`,
+        title: createElement(AppMessage, {
+          message: messages.changeType,
+          values: {
+            entityType: entityType,
+          },
+        }),
         description: promptBeforeChange,
-        confirmLabel: 'Continue',
-        cancelLabel: 'Cancel',
+        confirmLabel: createElement(AppMessage, {
+          message: commonMessages.continue,
+        }),
+        cancelLabel: createElement(AppMessage, {
+          message: commonMessages.cancel,
+        }),
         intent: 'warning',
         onConfirm: () => onChange?.(selectedItem),
       });
@@ -143,7 +214,9 @@ export const EntitySelectControl = ({
           aria-label={
             ariaLabelledBy
               ? undefined
-              : `${entityType === 'node' ? 'Node' : 'Edge'} type field`
+              : intl.formatMessage(messages.typeField, {
+                  value1: String(entityType === 'node'),
+                })
           }
           aria-describedby={ariaDescribedBy}
           aria-disabled={readOnly || undefined}
@@ -168,7 +241,9 @@ export const EntitySelectControl = ({
               aria-label={
                 ariaLabelledBy
                   ? undefined
-                  : `${entityType === 'node' ? 'Node' : 'Edge'} type options`
+                  : intl.formatMessage(messages.typeOptions, {
+                      value1: String(entityType === 'node'),
+                    })
               }
               aria-labelledby={ariaLabelledBy}
               aria-describedby={ariaDescribedBy}
@@ -212,7 +287,9 @@ export const EntitySelectControl = ({
             </RadioGroup>
           ) : (
             <p className="w-full py-6 text-center text-sm text-current/70 italic">
-              No {entityType} types currently defined
+              {intl.formatMessage(messages.noTypesCurrentlyDefined, {
+                entityType: entityType,
+              })}
             </p>
           )}
         </fieldset>
@@ -228,7 +305,9 @@ export const EntitySelectControl = ({
               color="primary"
               disabled={disabled || readOnly}
             >
-              Create new {entityType} type
+              {intl.formatMessage(messages.createNewType, {
+                entityType: entityType,
+              })}
             </Button>
             <NewTypeDialog
               show={showNewTypeDialog}

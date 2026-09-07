@@ -1,6 +1,14 @@
-import nodemailer from 'nodemailer';
-
 import type { TeamRole } from '@codaco/studio-rpc';
+import {
+  createSmtpEmailSender,
+  type EmailSender,
+  type EmailAddress,
+  validateEmailAddress,
+} from '@codaco/studio-sync/email-sender';
+import {
+  createPostmarkEmailSender,
+  validatePostmarkFrom,
+} from '@codaco/studio-sync/postmark-email-sender';
 
 import type { MailerEnv } from '../env.ts';
 
@@ -20,10 +28,13 @@ export type InvitationMailer = {
   }): Promise<void>;
 };
 
-export type StudioMailer = MagicLinkMailer & InvitationMailer;
+export type StudioMailer = MagicLinkMailer &
+  InvitationMailer &
+  Pick<EmailSender, 'close'>;
 
 export function createConsoleMailer(): StudioMailer {
   return {
+    close() {},
     sendMagicLink: ({ email, url }) => {
       // oxlint-disable-next-line no-console -- the development sign-in loop
       console.log(`Magic link for ${email}: ${url}`);
@@ -37,21 +48,15 @@ export function createConsoleMailer(): StudioMailer {
   };
 }
 
-function createSmtpMailer(smtpUrl: string, from: string): StudioMailer {
-  // Magic-link sends happen inside the sign-in request, and nodemailer's
-  // defaults (2 minutes to connect, 10 minutes of socket inactivity) would
-  // hold that request open long past the point the person gave up. These
-  // bounds also keep an invitation attempt within its worker's 60-second
-  // lease under ordinary transport failures.
-  const transport = nodemailer.createTransport({
-    url: smtpUrl,
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 20_000,
-  });
+function createTransportMailer(
+  sender: EmailSender,
+  configuredFrom: string | EmailAddress,
+): StudioMailer {
+  const from = validateEmailAddress(configuredFrom);
   return {
+    close: () => sender.close(),
     sendMagicLink: async ({ email, url }) => {
-      await transport.sendMail({
+      await sender.send({
         from,
         to: email,
         subject: 'Sign in to Network Canvas Studio',
@@ -74,11 +79,13 @@ function createSmtpMailer(smtpUrl: string, from: string): StudioMailer {
       role,
       teamLabel,
     }) => {
-      await transport.sendMail({
+      await sender.send({
         from,
         to: email,
         messageId,
-        subject: `Invitation to join ${teamLabel} in Network Canvas Studio`,
+        // Existing snapshots can contain line breaks. Keep the plain-text
+        // body intact while composing a single valid header line.
+        subject: `Invitation to join ${teamLabel.replace(/[\r\n]+/g, ' ').trim() || 'your team'} in Network Canvas Studio`,
         text: [
           `${inviterLabel} invited you to join ${teamLabel} in Network Canvas Studio.`,
           '',
@@ -97,13 +104,16 @@ function createSmtpMailer(smtpUrl: string, from: string): StudioMailer {
 
 function createRefusingMailer(): StudioMailer {
   return {
+    close() {},
     sendMagicLink: () =>
       Promise.reject(
-        new Error('No SMTP transport is configured; cannot send sign-in email'),
+        new Error(
+          'No email transport is configured; cannot send sign-in email',
+        ),
       ),
     sendTeamInvitation: () =>
       Promise.reject(
-        new Error('No SMTP transport is configured; cannot send invitation'),
+        new Error('No email transport is configured; cannot send invitation'),
       ),
   };
 }
@@ -111,7 +121,18 @@ function createRefusingMailer(): StudioMailer {
 export function createMailer(mailer: MailerEnv): StudioMailer {
   switch (mailer.kind) {
     case 'smtp':
-      return createSmtpMailer(mailer.url, mailer.from);
+      return createTransportMailer(
+        createSmtpEmailSender({ url: mailer.url }),
+        mailer.from,
+      );
+    case 'postmark':
+      return createTransportMailer(
+        createPostmarkEmailSender({
+          serverToken: mailer.serverToken,
+          messageStream: mailer.messageStream,
+        }),
+        validatePostmarkFrom(mailer.from),
+      );
     case 'console':
       return createConsoleMailer();
     case 'refuse':

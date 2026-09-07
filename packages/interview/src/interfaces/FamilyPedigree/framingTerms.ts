@@ -1,4 +1,11 @@
+import {
+  type IntlShape,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import type { FramingId } from '@codaco/protocol-validation';
+
+import { resolveInterviewIntl } from '../../i18n/resolveIntl';
+import { messages } from './messages';
 
 /**
  * Participant-facing terminology for each pedigree framing.
@@ -44,47 +51,75 @@ export type FramingTerms = {
   unknownSpermParent: string;
 };
 
-export const FRAMING_TERMS: FramingLookup<FramingTerms> = {
+const framingMessages: FramingLookup<
+  Record<keyof FramingTerms, MessageDescriptor>
+> = {
   gamete: {
-    eggParent: 'Egg Parent',
-    spermParent: 'Sperm Parent',
-    gestationalCarrier: 'Gestational Carrier',
-    eggDonor: 'Egg Donor',
-    spermDonor: 'Sperm Donor',
-    eggProviderQuestion: 'Who provided the egg?',
-    eggProviderHint:
-      'Select the person who provided the egg. If they were an egg donor, you can indicate that below.',
-    spermProviderQuestion: 'Who provided the sperm?',
-    spermProviderHint:
-      'Select the person who provided the sperm. If they were a sperm donor, you can indicate that below.',
-    eggDonorQuestion: 'Was this person an egg donor?',
-    spermDonorQuestion: 'Was this person a sperm donor?',
-    yourEggParent: 'your egg parent',
-    yourSpermParent: 'your sperm parent',
-    newEggParent: 'New egg parent',
-    newSpermParent: 'New sperm parent',
-    unknownEggParent: 'Unknown egg parent',
-    unknownSpermParent: 'Unknown sperm parent',
+    eggParent: messages.eggParent,
+    spermParent: messages.spermParent,
+    gestationalCarrier: messages.gestationalCarrier,
+    eggDonor: messages.eggDonor,
+    spermDonor: messages.spermDonor,
+    eggProviderQuestion: messages.eggProviderQuestion,
+    eggProviderHint: messages.eggProviderHint,
+    spermProviderQuestion: messages.spermProviderQuestion,
+    spermProviderHint: messages.spermProviderHint,
+    eggDonorQuestion: messages.eggDonorQuestion,
+    spermDonorQuestion: messages.spermDonorQuestion,
+    yourEggParent: messages.yourEggParent,
+    yourSpermParent: messages.yourSpermParent,
+    newEggParent: messages.newEggParent,
+    newSpermParent: messages.newSpermParent,
+    unknownEggParent: messages.unknownEggParent,
+    unknownSpermParent: messages.unknownSpermParent,
   },
   gendered: {
-    eggParent: 'Mother',
-    spermParent: 'Father',
-    gestationalCarrier: 'Gestational Carrier',
-    eggDonor: 'Egg Donor',
-    spermDonor: 'Sperm Donor',
-    eggProviderQuestion: 'Who is the biological mother?',
-    eggProviderHint:
-      'Select the biological mother. If she was an egg donor, you can indicate that below.',
-    spermProviderQuestion: 'Who is the biological father?',
-    spermProviderHint:
-      'Select the biological father. If he was a sperm donor, you can indicate that below.',
-    eggDonorQuestion: 'Was this person an egg donor?',
-    spermDonorQuestion: 'Was this person a sperm donor?',
-    yourEggParent: 'your mother',
-    yourSpermParent: 'your father',
-    newEggParent: 'New mother',
-    newSpermParent: 'New father',
-    unknownEggParent: 'Unknown mother',
-    unknownSpermParent: 'Unknown father',
+    eggParent: messages.mother,
+    spermParent: messages.father,
+    gestationalCarrier: messages.gestationalCarrier,
+    eggDonor: messages.eggDonor,
+    spermDonor: messages.spermDonor,
+    eggProviderQuestion: messages.motherQuestion,
+    eggProviderHint: messages.motherHint,
+    spermProviderQuestion: messages.fatherQuestion,
+    spermProviderHint: messages.fatherHint,
+    eggDonorQuestion: messages.eggDonorQuestion,
+    spermDonorQuestion: messages.spermDonorQuestion,
+    yourEggParent: messages.yourMother,
+    yourSpermParent: messages.yourFather,
+    newEggParent: messages.newMother,
+    newSpermParent: messages.newFather,
+    unknownEggParent: messages.unknownMother,
+    unknownSpermParent: messages.unknownFather,
   },
 };
+
+/** Display-only terms; the selected framing ID remains the stored contract. */
+export function getFramingTerms(
+  framing: FramingId,
+  intl?: IntlShape,
+): FramingTerms {
+  const formatter = resolveInterviewIntl(intl);
+  const source = framingMessages[framing];
+  return {
+    eggParent: formatter.formatMessage(source.eggParent),
+    spermParent: formatter.formatMessage(source.spermParent),
+    gestationalCarrier: formatter.formatMessage(source.gestationalCarrier),
+    eggDonor: formatter.formatMessage(source.eggDonor),
+    spermDonor: formatter.formatMessage(source.spermDonor),
+    eggProviderQuestion: formatter.formatMessage(source.eggProviderQuestion),
+    eggProviderHint: formatter.formatMessage(source.eggProviderHint),
+    spermProviderQuestion: formatter.formatMessage(
+      source.spermProviderQuestion,
+    ),
+    spermProviderHint: formatter.formatMessage(source.spermProviderHint),
+    eggDonorQuestion: formatter.formatMessage(source.eggDonorQuestion),
+    spermDonorQuestion: formatter.formatMessage(source.spermDonorQuestion),
+    yourEggParent: formatter.formatMessage(source.yourEggParent),
+    yourSpermParent: formatter.formatMessage(source.yourSpermParent),
+    newEggParent: formatter.formatMessage(source.newEggParent),
+    newSpermParent: formatter.formatMessage(source.newSpermParent),
+    unknownEggParent: formatter.formatMessage(source.unknownEggParent),
+    unknownSpermParent: formatter.formatMessage(source.unknownSpermParent),
+  };
+}

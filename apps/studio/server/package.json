@@ -32,6 +32,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@aws-sdk/client-kms": "3.1102.0",
     "@aws-sdk/client-s3": "^3.1101.0",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
@@ -52,9 +53,9 @@
     "drizzle-orm": "catalog:",
     "hono": "^4.13.0",
     "ipaddr.js": "^2.5.0",
-    "nodemailer": "9.0.5",
     "pg": "^8.22.0",
     "pino": "^10.3.1",
+    "posthog-node": "^5.51.5",
     "ws": "^8.21.2",
     "zod": "catalog:"
   },
@@ -63,7 +64,6 @@
     "@dbml/core": "10.1.1",
     "@orpc/client": "2.0.0-beta.26",
     "@softwaretechnik/dbml-renderer": "1.0.31",
-    "@types/nodemailer": "8.0.1",
     "@types/pg": "^8.20.4",
     "@types/ws": "^8.18.1",
     "concurrently": "^10.0.5",
