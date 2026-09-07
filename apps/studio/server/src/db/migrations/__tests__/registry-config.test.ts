@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { escapeIdentifier, Pool } from 'pg';
+import { escapeIdentifier, escapeLiteral, Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -101,6 +101,15 @@ function nextArtifact(previous: Migration, sql: string): Migration {
     manifest,
     checksum: jsonHash(manifest),
   };
+}
+
+async function rollbackPrepared(pool: Pool, gid: string): Promise<void> {
+  const prepared = await pool.query<{ present: boolean }>(
+    'SELECT EXISTS (SELECT 1 FROM pg_prepared_xacts WHERE gid = $1 AND database = current_database()) AS present',
+    [gid],
+  );
+  if (prepared.rows[0]?.present)
+    await pool.query(`ROLLBACK PREPARED ${escapeLiteral(gid)}`);
 }
 
 async function createDeployment(db: DbEnv, roles: RegistryRoles) {
@@ -482,6 +491,124 @@ describe.skipIf(!database)(
       },
     );
 
+    it('refuses disconnected Registry prepared work before pending SQL while preserving no-op checks', async () => {
+      await withRegistryCluster(async (create, roles) => {
+        const deployment = await create();
+        const migrator = createPostgresMigrator(deployment.config);
+        const initial = artifact(roles);
+        await migrator.migrate(
+          deployment.owner,
+          [initial],
+          fingerprint,
+          deployment.allowedLogins,
+        );
+        expect(
+          Number(
+            (
+              await deployment.administrator.query<{
+                max_prepared_transactions: string;
+              }>('SHOW max_prepared_transactions')
+            ).rows[0]?.max_prepared_transactions,
+          ),
+        ).toBeGreaterThan(0);
+        await deployment.owner
+          .query(`INSERT INTO public.registry_items (id, value) VALUES (1, 'before');
+          CREATE SEQUENCE public.registry_prepared_execution_probe`);
+        const next = nextArtifact(
+          initial,
+          "SELECT nextval('public.registry_prepared_execution_probe'); CREATE TABLE public.registry_prepared_guard (id integer)",
+        );
+        const gid = `registry-before-${randomUUID()}`;
+        try {
+          const runtime = deployment.connect(deployment.logins.operator);
+          const client = await runtime.connect();
+          try {
+            await client.query(`BEGIN;
+              SET ROLE ${escapeIdentifier(roles.operator)};
+              UPDATE registry_items SET value = 'prepared' WHERE id = 1;
+              PREPARE TRANSACTION ${escapeLiteral(gid)}`);
+          } finally {
+            client.release();
+            await runtime.end();
+          }
+          expect(
+            (
+              await deployment.administrator.query(
+                `SELECT prepared.owner, prepared.database,
+                  EXISTS (SELECT 1 FROM pg_stat_activity activity
+                    WHERE activity.datname = current_database() AND activity.usename = $2) AS connected
+                 FROM pg_prepared_xacts prepared
+                 WHERE prepared.gid = $1 AND prepared.database = current_database()`,
+                [gid, deployment.logins.operator],
+              )
+            ).rows,
+          ).toEqual([
+            {
+              owner: roles.operator,
+              database: deployment.databaseName,
+              connected: false,
+            },
+          ]);
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).resolves.toEqual([]);
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [initial, next],
+              next.manifest.fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).rejects.toThrow(
+            'Registry has existing runtime connections or prepared transactions',
+          );
+          expect(
+            (
+              await deployment.owner.query(
+                "SELECT to_regclass('public.registry_prepared_guard') AS relation",
+              )
+            ).rows,
+          ).toEqual([{ relation: null }]);
+          expect(
+            (
+              await deployment.owner.query(
+                'SELECT fingerprint FROM public.registry_schema_fingerprint',
+              )
+            ).rows,
+          ).toEqual([{ fingerprint }]);
+          expect(
+            (
+              await deployment.owner.query(
+                'SELECT is_called FROM public.registry_prepared_execution_probe',
+              )
+            ).rows,
+          ).toEqual([{ is_called: false }]);
+        } finally {
+          await rollbackPrepared(deployment.administrator, gid);
+        }
+        await expect(
+          migrator.migrate(
+            deployment.owner,
+            [initial, next],
+            next.manifest.fingerprint,
+            deployment.allowedLogins,
+          ),
+        ).resolves.toEqual([next.manifest.id]);
+        expect(
+          (
+            await deployment.owner.query(
+              'SELECT is_called FROM public.registry_prepared_execution_probe',
+            )
+          ).rows,
+        ).toEqual([{ is_called: true }]);
+      });
+    });
+
     it('rolls Registry pending SQL back when a configured operator connects after its initial drain check', async () => {
       await withRegistryCluster(async (create, roles) => {
         const deployment = await create();
@@ -564,6 +691,117 @@ describe.skipIf(!database)(
           await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
           blocker.release();
           await pending;
+        }
+      });
+    });
+
+    it('rolls Registry pending SQL back when disconnected prepared work arrives after its initial drain check', async () => {
+      await withRegistryCluster(async (create, roles) => {
+        const deployment = await create();
+        const migrator = createPostgresMigrator(deployment.config);
+        const initial = artifact(roles);
+        await migrator.migrate(
+          deployment.owner,
+          [initial],
+          fingerprint,
+          deployment.allowedLogins,
+        );
+        expect(
+          Number(
+            (
+              await deployment.administrator.query<{
+                max_prepared_transactions: string;
+              }>('SHOW max_prepared_transactions')
+            ).rows[0]?.max_prepared_transactions,
+          ),
+        ).toBeGreaterThan(0);
+        await deployment.owner
+          .query(`INSERT INTO public.registry_items (id, value) VALUES (1, 'before');
+          CREATE SEQUENCE public.registry_final_prepared_execution_probe`);
+        const gate = Number.parseInt(randomUUID().slice(0, 7), 16);
+        const gid = `registry-final-${randomUUID()}`;
+        const blocker = await deployment.administrator.connect();
+        let pending: Promise<unknown> | undefined;
+        try {
+          await blocker.query('SELECT pg_advisory_lock($1)', [gate]);
+          const next = nextArtifact(
+            initial,
+            `SELECT nextval('public.registry_final_prepared_execution_probe'); CREATE TABLE public.registry_final_prepared_guard (id integer); SELECT pg_advisory_xact_lock(${gate})`,
+          );
+          pending = migrator
+            .migrate(
+              deployment.owner,
+              [initial, next],
+              next.manifest.fingerprint,
+              deployment.allowedLogins,
+            )
+            .catch((error: unknown) => error);
+          await expect
+            .poll(
+              async () =>
+                (
+                  await deployment.administrator.query<{ waiting: boolean }>(
+                    "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND classid = 0 AND objid = $1 AND NOT granted) AS waiting",
+                    [gate],
+                  )
+                ).rows[0]?.waiting,
+            )
+            .toBe(true);
+          const runtime = deployment.connect(deployment.logins.operator);
+          const client = await runtime.connect();
+          try {
+            await client.query(`BEGIN;
+              SET ROLE ${escapeIdentifier(roles.operator)};
+              UPDATE registry_items SET value = 'prepared' WHERE id = 1;
+              PREPARE TRANSACTION ${escapeLiteral(gid)}`);
+          } finally {
+            client.release();
+            await runtime.end();
+          }
+          expect(
+            (
+              await deployment.administrator.query(
+                `SELECT prepared.owner,
+                  EXISTS (SELECT 1 FROM pg_stat_activity activity
+                    WHERE activity.datname = current_database() AND activity.usename = $2) AS connected
+                 FROM pg_prepared_xacts prepared
+                 WHERE prepared.gid = $1 AND prepared.database = current_database()`,
+                [gid, deployment.logins.operator],
+              )
+            ).rows,
+          ).toEqual([{ owner: roles.operator, connected: false }]);
+          await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
+          const outcome = await pending;
+          expect(outcome).toBeInstanceOf(Error);
+          expect(String(outcome)).toContain(
+            'Registry has existing runtime connections or prepared transactions',
+          );
+          expect(
+            (
+              await deployment.owner.query(
+                "SELECT to_regclass('public.registry_final_prepared_guard') AS relation",
+              )
+            ).rows,
+          ).toEqual([{ relation: null }]);
+          expect(
+            (
+              await deployment.owner.query(
+                'SELECT fingerprint FROM public.registry_schema_fingerprint',
+              )
+            ).rows,
+          ).toEqual([{ fingerprint }]);
+          expect(
+            (
+              await deployment.owner.query(
+                'SELECT is_called FROM public.registry_final_prepared_execution_probe',
+              )
+            ).rows,
+          ).toEqual([{ is_called: true }]);
+        } finally {
+          await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
+          blocker.release();
+          await pending;
+          await rollbackPrepared(deployment.administrator, gid);
         }
       });
     });
@@ -1629,6 +1867,175 @@ describe.skipIf(!database)(
             )
           ).rows,
         ).toEqual([]);
+      });
+    });
+
+    it.each([
+      ['registry_migrations.history', 'parent'],
+      ['registry_migrations.history', 'child'],
+      ['public.registry_schema_fingerprint', 'parent'],
+      ['public.registry_schema_fingerprint', 'child'],
+    ] as const)(
+      'rejects configured Registry evidence used as an ordinary inheritance %s: %s',
+      async (table, direction) => {
+        await withRegistryCluster(async (create, roles) => {
+          const deployment = await create();
+          const migrator = createPostgresMigrator(deployment.config);
+          const initial = artifact(roles);
+          await migrator.migrate(
+            deployment.owner,
+            [initial],
+            fingerprint,
+            deployment.allowedLogins,
+          );
+          if (direction === 'parent') {
+            await deployment.administrator.query(
+              `CREATE TABLE inherited_registry_evidence () INHERITS (${table})`,
+            );
+          } else {
+            await deployment.administrator.query(
+              `CREATE TABLE registry_evidence_parent (LIKE ${table} INCLUDING ALL);
+               ALTER TABLE ${table} INHERIT registry_evidence_parent`,
+            );
+          }
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).rejects.toThrow(
+            'Registry migration evidence must be standalone ordinary tables',
+          );
+        });
+      },
+    );
+
+    it('rejects the configured Registry partition edge after proving its parent can forge the fingerprint', async () => {
+      await withRegistryCluster(async (create, roles) => {
+        const deployment = await create();
+        const migrator = createPostgresMigrator(deployment.config);
+        const initial = artifact(roles);
+        await migrator.migrate(
+          deployment.owner,
+          [initial],
+          fingerprint,
+          deployment.allowedLogins,
+        );
+        await deployment.administrator
+          .query(`CREATE TABLE registry_evidence_partition_parent
+            (LIKE public.registry_schema_fingerprint INCLUDING ALL) PARTITION BY LIST (id);
+          ALTER TABLE registry_evidence_partition_parent
+            ATTACH PARTITION public.registry_schema_fingerprint DEFAULT;
+          GRANT SELECT, UPDATE ON registry_evidence_partition_parent TO ${escapeIdentifier(roles.app)}`);
+        const runtime = deployment.connect(
+          deployment.logins.app,
+          `-c role=${roles.app}`,
+        );
+        expect(
+          (
+            await runtime.query(
+              `UPDATE registry_evidence_partition_parent SET fingerprint = 'forged-through-parent'
+               RETURNING fingerprint`,
+            )
+          ).rows,
+        ).toEqual([{ fingerprint: 'forged-through-parent' }]);
+        expect(
+          (
+            await deployment.administrator.query(
+              'SELECT fingerprint FROM public.registry_schema_fingerprint',
+            )
+          ).rows,
+        ).toEqual([{ fingerprint: 'forged-through-parent' }]);
+        await expect(
+          migrator.migrate(
+            deployment.owner,
+            [initial],
+            fingerprint,
+            deployment.allowedLogins,
+          ),
+        ).rejects.toThrow(
+          'Registry migration evidence must be standalone ordinary tables',
+        );
+      });
+    });
+
+    it.each([
+      'registry_migrations.history',
+      'public.registry_schema_fingerprint',
+    ])(
+      'rejects unsupported relation kind for configured Registry evidence %s before reading it',
+      async (table) => {
+        await withRegistryCluster(async (create, roles) => {
+          const deployment = await create();
+          const migrator = createPostgresMigrator(deployment.config);
+          const initial = artifact(roles);
+          await migrator.migrate(
+            deployment.owner,
+            [initial],
+            fingerprint,
+            deployment.allowedLogins,
+          );
+          await deployment.administrator
+            .query(`CREATE FUNCTION registry_evidence_read_trap()
+              RETURNS text LANGUAGE plpgsql AS
+              'BEGIN RAISE EXCEPTION ''unsupported evidence was read''; END';
+            ALTER TABLE ${table} RENAME TO registry_evidence_storage`);
+          if (table === 'registry_migrations.history') {
+            await deployment.administrator
+              .query(`CREATE VIEW registry_migrations.history AS
+              SELECT position, id, checksum,
+                registry_evidence_read_trap() AS fingerprint, applied_at
+              FROM registry_migrations.registry_evidence_storage`);
+          } else {
+            await deployment.administrator
+              .query(`CREATE VIEW public.registry_schema_fingerprint AS
+              SELECT id, registry_evidence_read_trap() AS fingerprint, applied_at
+              FROM public.registry_evidence_storage`);
+          }
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).rejects.toThrow(
+            'Registry migration evidence must be standalone ordinary tables',
+          );
+        });
+      },
+    );
+
+    it('rejects a configured Registry evidence relation with partitioned-table kind', async () => {
+      await withRegistryCluster(async (create, roles) => {
+        const deployment = await create();
+        const migrator = createPostgresMigrator(deployment.config);
+        const initial = artifact(roles);
+        await migrator.migrate(
+          deployment.owner,
+          [initial],
+          fingerprint,
+          deployment.allowedLogins,
+        );
+        await deployment.administrator.query(
+          `ALTER TABLE public.registry_schema_fingerprint
+             RENAME TO partitioned_registry_evidence_storage;
+           CREATE TABLE public.registry_schema_fingerprint
+             (LIKE public.partitioned_registry_evidence_storage INCLUDING DEFAULTS INCLUDING CONSTRAINTS)
+             PARTITION BY LIST (id)`,
+        );
+        await expect(
+          migrator.migrate(
+            deployment.owner,
+            [initial],
+            fingerprint,
+            deployment.allowedLogins,
+          ),
+        ).rejects.toThrow(
+          'Registry migration evidence must be standalone ordinary tables',
+        );
       });
     });
 
