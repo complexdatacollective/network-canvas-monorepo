@@ -26,6 +26,11 @@ export type PostgresBackupConfiguration = {
   readonly failureCode: string;
 };
 
+/** A deployment-specific check that must use the same bounded backup session. */
+export type PostgresBackupConnectionGuard = (
+  client: pg.PoolClient,
+) => Promise<void>;
+
 /** pg_dump can succeed with missing rows. Verify complete reads and a strictly
  * read-only role/login immediately before capture, using one shared scanner. */
 export function createPostgresBackupVerifier(
@@ -226,6 +231,7 @@ export function createPostgresBackupVerifier(
 
   return async function assertBackupAccess(
     connection: pg.Pool | pg.PoolClient,
+    connectionGuard?: PostgresBackupConnectionGuard,
   ): Promise<void> {
     // A checked-out client belongs to its caller, including transaction state.
     // Structural discrimination also supports clients from another pg copy.
@@ -234,6 +240,7 @@ export function createPostgresBackupVerifier(
         if (typeof connection.release !== 'function')
           throw new Error(failureCode);
         await assertConnection(connection);
+        await connectionGuard?.(connection);
       } catch {
         throw new Error(failureCode);
       }
@@ -275,6 +282,9 @@ export function createPostgresBackupVerifier(
         if (expired) throw new Error(failureCode);
         await client.query('BEGIN READ ONLY');
         await assertConnection(client);
+        if (expired) throw new Error(failureCode);
+        await connectionGuard?.(client);
+        if (expired) throw new Error(failureCode);
         await client.query('COMMIT');
         succeeded = true;
       } catch {
