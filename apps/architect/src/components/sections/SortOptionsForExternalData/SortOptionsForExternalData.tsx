@@ -1,5 +1,7 @@
 import { compose } from 'react-recompose';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
@@ -13,48 +15,125 @@ import {
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
 import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
+import { type MessageConfig, formatConfig } from '~/i18n/formatConfig';
 
 import withDisabledAssetRequired from '../../enhancers/withDisabledAssetRequired';
 import getSortOrderOptionGetter from './getSortOrderOptionGetter';
 import getVariableOptionsGetter from './getVariableOptionsGetter';
+const additionalMessages = defineMessages({
+  addNewSortRule: {
+    id: 'architect.additional.sections.sortOptionsForExternalData.sortOptionsForExternalData.addNewSortRule',
+    defaultMessage: 'Add new sort rule',
+    description:
+      'The addButtonLabel text in components / sections / SortOptionsForExternalData / SortOptionsForExternalData.',
+  },
+  addNewSortableProperty: {
+    id: 'architect.additional.sections.sortOptionsForExternalData.sortOptionsForExternalData.addNewSortableProperty',
+    defaultMessage: 'Add new sortable property',
+    description:
+      'The addButtonLabel text in components / sections / SortOptionsForExternalData / SortOptionsForExternalData.',
+  },
+});
+const configMessages = defineMessages({
+  attribute: {
+    id: 'architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.config.attribute',
+    defaultMessage: 'Attribute',
+    description:
+      'Presentation label or description in components/sections/SortOptionsForExternalData/SortOptionsForExternalData.tsx. Identifiers are not translated.',
+  },
+  label: {
+    id: 'architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.config.label',
+    defaultMessage: 'Label',
+    description:
+      'Presentation label or description in components/sections/SortOptionsForExternalData/SortOptionsForExternalData.tsx. Identifiers are not translated.',
+  },
+});
+const messages = defineMessages({
+  rosterSorting: {
+    id: 'architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.rosterSorting',
+    defaultMessage: 'Roster sorting',
+    description:
+      'The title text in components / sections / SortOptionsForExternalData / SortOptionsForExternalData.',
+  },
+  selectARosterDataSourceBefore: {
+    id: 'architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.selectARosterDataSourceBefore',
+    defaultMessage: 'Select a roster data source before configuring sorting.',
+    description:
+      'The description text in components / sections / SortOptionsForExternalData / SortOptionsForExternalData.',
+  },
+  configureTheInitialCardOrderAnd: {
+    id: 'architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.configureTheInitialCardOrderAnd',
+    defaultMessage:
+      'Configure the initial card order and the attributes participants can sort by.',
+    description:
+      'The description text in components / sections / SortOptionsForExternalData / SortOptionsForExternalData.',
+  },
+  sortRule: {
+    id: 'architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.sortRule',
+    defaultMessage: 'Sort rule',
+    description:
+      'The label text in components / sections / SortOptionsForExternalData / SortOptionsForExternalData.',
+  },
+  setTheRosterSInitialSortOrder: {
+    id: 'architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.setTheRosterSInitialSortOrder',
+    defaultMessage:
+      "Set the roster's initial sort order. Without a rule, nodes keep their order from the data file.",
+    description:
+      'The hint text in components / sections / SortOptionsForExternalData / SortOptionsForExternalData.',
+  },
+  sortableProperties: {
+    id: 'architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.sortableProperties',
+    defaultMessage: 'Sortable properties',
+    description:
+      'The label text in components / sections / SortOptionsForExternalData / SortOptionsForExternalData.',
+  },
+  selectAttributesThatHelpParticipantsLocate: {
+    id: 'architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.selectAttributesThatHelpParticipantsLocate',
+    defaultMessage:
+      'Select attributes that help participants locate a specific roster member.',
+    description:
+      'The hint text in components / sections / SortOptionsForExternalData / SortOptionsForExternalData.',
+  },
+});
 
 const SORT_ORDER_PROPERTIES: PropertyField[] = [
   { fieldName: 'property' },
   { fieldName: 'direction' },
 ];
 
-const SORTABLE_PROPERTIES: PropertyField[] = [
-  { fieldName: 'variable', label: 'Attribute' },
+const SORTABLE_PROPERTIES: MessageConfig<PropertyField>[] = [
+  { fieldName: 'variable', label: configMessages.attribute },
   {
     fieldName: 'label',
     control: 'input',
-    label: 'Label',
-    placeholder: 'Label',
+    label: configMessages.label,
+    placeholder: configMessages.label,
   },
 ];
 
 // A row's own cells cannot block the save (see RowField), and a half-filled
 // row survives `prune` to fail the roster stage's schema — which requires both
 // members of a sort rule and of a sortable property.
-const SORT_ORDER_VALIDATION = {
-  completeRows: completeRows(SORT_ORDER_PROPERTIES),
-};
-const SORTABLE_PROPERTIES_VALIDATION = {
-  completeRows: completeRows(SORTABLE_PROPERTIES),
-};
 
 type SortOptionsProps = StageEditorSectionProps & {
   dataSource?: string;
   disabled: boolean;
 };
 const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
+  const intl = useAppIntl();
+  const SORT_ORDER_VALIDATION = {
+    completeRows: completeRows(SORT_ORDER_PROPERTIES, intl),
+  };
+  const SORTABLE_PROPERTIES_VALIDATION = {
+    completeRows: completeRows(formatConfig(SORTABLE_PROPERTIES, intl), intl),
+  };
   const { variables: variableOptions } = useVariablesFromExternalData(
     dataSource,
     true,
   );
   const variableOptionsGetter = getVariableOptionsGetter(variableOptions);
   const maxVariableOptions = variableOptions.length;
-  const sortOrderOptionGetter = getSortOrderOptionGetter(variableOptions);
+  const sortOrderOptionGetter = getSortOrderOptionGetter(variableOptions, intl);
   const hasSortOrder = useStageFormValue('sortOptions.sortOrder') != null;
   const hasSortableProperties =
     useStageFormValue('sortOptions.sortableProperties') != null;
@@ -66,11 +145,11 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
   );
   return (
     <Section
-      title="Roster sorting"
+      title={intl.formatMessage(messages.rosterSorting)}
       description={
         disabled
-          ? 'Select a roster data source before configuring sorting.'
-          : 'Configure the initial card order and the attributes participants can sort by.'
+          ? intl.formatMessage(messages.selectARosterDataSourceBefore)
+          : intl.formatMessage(messages.configureTheInitialCardOrderAnd)
       }
       toggleable
       defaultOpen={hasSortOrder || hasSortableProperties}
@@ -78,10 +157,10 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
     >
       <ArchitectArrayField
         name="sortOptions.sortOrder"
-        label="Sort rule"
-        hint="Set the roster's initial sort order. Without a rule, nodes keep their order from the data file."
+        label={intl.formatMessage(messages.sortRule)}
+        hint={intl.formatMessage(messages.setTheRosterSInitialSortOrder)}
         component={MultiSelect}
-        addButtonLabel="Add new sort rule"
+        addButtonLabel={intl.formatMessage(additionalMessages.addNewSortRule)}
         initialValue={initialSortOrder}
         maxItems={1}
         properties={SORT_ORDER_PROPERTIES}
@@ -90,13 +169,17 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
       />
       <ArchitectArrayField
         name="sortOptions.sortableProperties"
-        label="Sortable properties"
-        hint="Select attributes that help participants locate a specific roster member."
+        label={intl.formatMessage(messages.sortableProperties)}
+        hint={intl.formatMessage(
+          messages.selectAttributesThatHelpParticipantsLocate,
+        )}
         component={MultiSelect}
-        addButtonLabel="Add new sortable property"
+        addButtonLabel={intl.formatMessage(
+          additionalMessages.addNewSortableProperty,
+        )}
         initialValue={initialSortableProperties}
         maxItems={maxVariableOptions}
-        properties={SORTABLE_PROPERTIES}
+        properties={formatConfig(SORTABLE_PROPERTIES, intl)}
         validation={SORTABLE_PROPERTIES_VALIDATION}
         options={(fieldName: string, rowValues: unknown, allValues: unknown) =>
           variableOptionsGetter(

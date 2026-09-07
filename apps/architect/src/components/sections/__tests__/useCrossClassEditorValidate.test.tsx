@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
 import type { CrossClassPick } from '~/components/Validations/crossClassPicks';
+import { messageFields } from '~/test/messageText';
 
 import {
   useCrossClassEditorValidate,
@@ -125,7 +126,7 @@ describe('useCrossClassEditorValidate', () => {
       picks: BIN_PICKS,
       subjectForRow: () => NODE_SUBJECT,
     });
-    expect(validate({ variable: 'cat' })).toEqual({
+    expect(messageFields(validate({ variable: 'cat' }))).toEqual({
       variable: VALIDATED_MESSAGE,
     });
   });
@@ -139,7 +140,9 @@ describe('useCrossClassEditorValidate', () => {
       subjectForRow: () => NODE_SUBJECT,
     });
     expect(
-      validate({ variable: 'cat' }, { initialValues: { variable: 'cat' } }),
+      messageFields(
+        validate({ variable: 'cat' }, { initialValues: { variable: 'cat' } }),
+      ),
     ).toBeUndefined();
   });
 
@@ -149,7 +152,9 @@ describe('useCrossClassEditorValidate', () => {
       subjectForRow: () => NODE_SUBJECT,
     });
     expect(
-      validate({ variable: 'cat' }, { initialValues: { variable: 'other' } }),
+      messageFields(
+        validate({ variable: 'cat' }, { initialValues: { variable: 'other' } }),
+      ),
     ).toEqual({ variable: VALIDATED_MESSAGE });
   });
 
@@ -161,7 +166,9 @@ describe('useCrossClassEditorValidate', () => {
       picks: BIN_PICKS,
       subjectForRow: () => NODE_SUBJECT,
     });
-    expect(validate({ variable: 'group', otherVariable: 'other' })).toEqual({
+    expect(
+      messageFields(validate({ variable: 'group', otherVariable: 'other' })),
+    ).toEqual({
       otherVariable: UNVALIDATED_MESSAGE,
     });
   });
@@ -174,7 +181,9 @@ describe('useCrossClassEditorValidate', () => {
     // `other` in the UNVALIDATED slot has no VALIDATED use; `cat` in the
     // VALIDATED slot has an UNVALIDATED one — so swapping the classes would
     // report the opposite pair of errors.
-    expect(validate({ variable: 'other', otherVariable: 'cat' })).toEqual({
+    expect(
+      messageFields(validate({ variable: 'other', otherVariable: 'cat' })),
+    ).toEqual({
       otherVariable:
         '"Cat" is written without validation by another stage, so it cannot be used as a form field',
     });
@@ -185,7 +194,9 @@ describe('useCrossClassEditorValidate', () => {
       picks: BIN_PICKS,
       subjectForRow: () => NODE_SUBJECT,
     });
-    expect(validate({ variable: 'cat', otherVariable: 'other' })).toEqual({
+    expect(
+      messageFields(validate({ variable: 'cat', otherVariable: 'other' })),
+    ).toEqual({
       variable: VALIDATED_MESSAGE,
       otherVariable: UNVALIDATED_MESSAGE,
     });
@@ -196,7 +207,7 @@ describe('useCrossClassEditorValidate', () => {
       picks: [{ path: 'variable', writerClass: 'unvalidated' }],
       subjectForRow: () => ({ entity: 'node', type: 'place' }),
     });
-    expect(validate({ variable: 'cat' })).toBeUndefined();
+    expect(messageFields(validate({ variable: 'cat' }))).toBeUndefined();
   });
 
   it('reads the subject from the ROW, not from mount, for an editor that picks its own type', () => {
@@ -208,14 +219,18 @@ describe('useCrossClassEditorValidate', () => {
       }),
     });
     expect(
-      validate({ createEdge: 'friend', edgeVariable: 'strength' }),
+      messageFields(
+        validate({ createEdge: 'friend', edgeVariable: 'strength' }),
+      ),
     ).toEqual({
       edgeVariable:
         '"Strength" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
     });
     // Same variable id, different edge type: no form collects it there.
     expect(
-      validate({ createEdge: 'rival', edgeVariable: 'strength' }),
+      messageFields(
+        validate({ createEdge: 'rival', edgeVariable: 'strength' }),
+      ),
     ).toBeUndefined();
   });
 
@@ -224,13 +239,17 @@ describe('useCrossClassEditorValidate', () => {
       picks: [{ path: 'highlight.variable', writerClass: 'unvalidated' }],
       subjectForRow: () => NODE_SUBJECT,
     });
-    expect(validate({ highlight: { variable: 'cat' } })).toEqual({
-      'highlight.variable': VALIDATED_MESSAGE,
-    });
+    expect(messageFields(validate({ highlight: { variable: 'cat' } }))).toEqual(
+      {
+        'highlight.variable': VALIDATED_MESSAGE,
+      },
+    );
     expect(
-      validate(
-        { highlight: { variable: 'cat' } },
-        { initialValues: { highlight: { variable: 'cat' } } },
+      messageFields(
+        validate(
+          { highlight: { variable: 'cat' } },
+          { initialValues: { highlight: { variable: 'cat' } } },
+        ),
       ),
     ).toBeUndefined();
   });
@@ -240,7 +259,7 @@ describe('useCrossClassEditorValidate', () => {
       picks: BIN_PICKS,
       subjectForRow: () => null,
     });
-    expect(validate({ variable: 'cat' })).toBeUndefined();
+    expect(messageFields(validate({ variable: 'cat' }))).toBeUndefined();
   });
 
   it('passes an absent pick, which the merged row either keeps unchanged or deletes', () => {
@@ -248,7 +267,7 @@ describe('useCrossClassEditorValidate', () => {
       picks: BIN_PICKS,
       subjectForRow: () => NODE_SUBJECT,
     });
-    expect(validate({})).toBeUndefined();
+    expect(messageFields(validate({}))).toBeUndefined();
   });
 
   it('reads the store at validate time, not at mount', () => {
@@ -275,9 +294,9 @@ describe('useCrossClassEditorValidate', () => {
       { wrapper },
     );
     // Nothing in the store yet: no conflict is knowable.
-    expect(result.current({ variable: 'cat' })).toBeUndefined();
+    expect(messageFields(result.current({ variable: 'cat' }))).toBeUndefined();
     store.dispatch({ type: 'set', payload: PROTOCOL });
-    expect(result.current({ variable: 'cat' })).toEqual({
+    expect(messageFields(result.current({ variable: 'cat' }))).toEqual({
       variable: VALIDATED_MESSAGE,
     });
   });

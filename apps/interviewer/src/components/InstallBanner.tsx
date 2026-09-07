@@ -1,5 +1,8 @@
 import { useState, useSyncExternalStore } from 'react';
 
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   type BrowserStorageProfile,
   getBrowserStorageProfile,
@@ -10,6 +13,38 @@ import {
   promptInstall,
   subscribeInstallPrompt,
 } from '~/lib/pwa/installPrompt';
+
+const messages = defineMessages({
+  installInterviewer: {
+    id: 'interviewer.installBanner.installInterviewer',
+    defaultMessage: 'Install Interviewer',
+    description: 'The aria-label label in Interviewer Install Banner.',
+  },
+  chromiumPrompt: {
+    id: 'interviewer.installBanner.chromiumPrompt',
+    defaultMessage:
+      '{browserName} rarely removes Network Canvas data automatically, but interview data stored in a browser tab is not guaranteed. Install Interviewer now, before collecting data, to protect your interview data from being deleted.',
+    description: 'Administration text in Interviewer InstallBanner.',
+  },
+  chromiumManual: {
+    id: 'interviewer.installBanner.chromiumManual',
+    defaultMessage:
+      "{browserName} rarely removes Network Canvas data automatically, but interview data stored in a browser tab is not guaranteed. Before collecting data, use the install icon in the browser's address bar to install Interviewer and protect your interview data from being deleted.",
+    description: 'Administration text in Interviewer InstallBanner.',
+  },
+  storagePressure: {
+    id: 'interviewer.installBanner.storagePressure',
+    defaultMessage:
+      '{browserName} may remove Network Canvas data when this device runs low on storage. Before collecting data, allow persistent storage when {browserName} asks and install Interviewer if your device supports it to protect your interview data from being deleted.',
+    description: 'Administration text in Interviewer InstallBanner.',
+  },
+  webKit: {
+    id: 'interviewer.installBanner.webKit',
+    defaultMessage:
+      '{usesWebKit, select, true {{browserName} uses WebKit, which is known to remove Network Canvas data after 7 days of inactivity.} other {{browserName} is known to remove Network Canvas data after 7 days of inactivity.}} Install Interviewer now, before collecting data, to protect your interview data from being deleted: {target, select, dock {choose Share → Add to Dock.} other {choose Share → Add to Home Screen.}}',
+    description: 'Administration text in Interviewer InstallBanner.',
+  },
+});
 
 const SESSION_DISMISS_KEY = 'interviewer:install-banner-dismissed';
 
@@ -37,33 +72,27 @@ const readSessionDismissed = () => {
 
 // Risk selects both intent and copy. The Interviewer wording deliberately
 // foregrounds unexported research data, whose loss is irreversible.
-const bannerMessage = (
+function bannerMessage(
   profile: BrowserStorageProfile,
   canPromptInstall: boolean,
-): string => {
+  intl: IntlShape,
+): string {
   const { browserName, engine, risk } = profile;
-  if (risk === 3) {
-    return canPromptInstall
-      ? `${browserName} rarely removes Network Canvas data automatically, but interview data stored in a browser tab is not guaranteed. Install Interviewer now, before collecting data, to protect your interview data from being deleted.`
-      : `${browserName} rarely removes Network Canvas data automatically, but interview data stored in a browser tab is not guaranteed. Before collecting data, use the install icon in the browser's address bar to install Interviewer and protect your interview data from being deleted.`;
-  }
-  if (risk === 2) {
-    return `${browserName} may remove Network Canvas data when this device runs low on storage. Before collecting data, allow persistent storage when ${browserName} asks and install Interviewer if your device supports it to protect your interview data from being deleted.`;
-  }
-  // WebKit: the 7-day eviction is its documented behaviour, and the install
-  // path depends on the device. This also covers Chrome/Firefox on iOS, where
-  // Apple requires WebKit. iPadOS reports 'MacIntel' in desktop mode; real Macs
-  // have no touchscreen.
+  if (risk === 3)
+    return intl.formatMessage(
+      canPromptInstall ? messages.chromiumPrompt : messages.chromiumManual,
+      { browserName },
+    );
+  if (risk === 2)
+    return intl.formatMessage(messages.storagePressure, { browserName });
   const isMac =
     navigator.platform.startsWith('Mac') && navigator.maxTouchPoints === 0;
-  const storagePolicyDescription =
-    engine === 'webkit' && browserName !== 'Safari'
-      ? `${browserName} uses WebKit, which is known to remove Network Canvas data`
-      : `${browserName} is known to remove Network Canvas data`;
-  return isMac
-    ? `${storagePolicyDescription} after 7 days of inactivity. Install Interviewer now, before collecting data, to protect your interview data from being deleted: choose Share → Add to Dock.`
-    : `${storagePolicyDescription} after 7 days of inactivity. Install Interviewer now, before collecting data, to protect your interview data from being deleted: choose Share → Add to Home Screen.`;
-};
+  return intl.formatMessage(messages.webKit, {
+    browserName,
+    usesWebKit: String(engine === 'webkit' && browserName !== 'Safari'),
+    target: isMac ? 'dock' : 'home',
+  });
+}
 
 // Pure presentation: a quiet full-width strip urging install, with an
 // optional one-tap Install action when the browser offered a deferred
@@ -80,14 +109,15 @@ export function InstallBannerView({
   onInstall: () => void;
   onDismiss: () => void;
 }) {
+  const intl = useAppIntl();
   return (
     <StorageRiskBanner
-      aria-label="Install Interviewer"
+      aria-label={intl.formatMessage(messages.installInterviewer)}
       risk={profile.risk}
       installAction={canPromptInstall ? onInstall : undefined}
       onDismiss={onDismiss}
     >
-      {bannerMessage(profile, canPromptInstall)}
+      {bannerMessage(profile, canPromptInstall, intl)}
     </StorageRiskBanner>
   );
 }

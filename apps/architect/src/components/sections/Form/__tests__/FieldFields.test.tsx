@@ -31,7 +31,7 @@ vi.mock('~/components/Form/ArchitectArrayField', () => ({
 }));
 vi.mock('~/components/Form/arrayFields/Options', () => ({
   default: () => <div data-testid="options" />,
-  optionsValidation: {},
+  optionsValidation: () => ({}),
 }));
 vi.mock('~/components/Parameters', () => ({
   default: () => <div data-testid="parameters" />,

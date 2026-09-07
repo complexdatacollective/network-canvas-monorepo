@@ -1,3 +1,4 @@
+import { getArchitectIntl } from '~/i18n/imperative';
 import { disarmInMemoryUnloadGuard } from '~/utils/beforeUnloadGuard';
 import { getStoredProtocol as readStoredProtocol } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
@@ -135,7 +136,7 @@ export const restoreActiveProtocolFromLibrary = async (
   try {
     admission = await (
       dependencies.admitStoredProtocol ?? admitCanonicalProtocol
-    )(row);
+    )(row, undefined, getArchitectIntl());
   } catch (error: unknown) {
     if (getActiveProtocolId(store.getState()) !== protocolId) return 'stale';
     clearRestoredSession(store);

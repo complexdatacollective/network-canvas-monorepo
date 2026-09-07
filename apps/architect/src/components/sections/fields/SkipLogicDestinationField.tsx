@@ -1,7 +1,58 @@
+import {
+  type IntlShape,
+  createAppIntl,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+
+const defaultIntl = createAppIntl({ locale: 'en' });
+
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import type { SkipLogicDestination } from '@codaco/protocol-validation';
 import ArchitectField from '~/components/Form/ArchitectField';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
+const utilityMessages = defineMessages({
+  nextAvailableStage: {
+    id: 'architect.utility.sections.fields.skipLogicDestinationField.nextAvailableStage',
+    defaultMessage: 'Next available stage',
+    description:
+      'The label text in components / sections / fields / SkipLogicDestinationField.',
+  },
+  stage: {
+    id: 'architect.utility.sections.fields.skipLogicDestinationField.stage',
+    defaultMessage: 'Stage {prospectiveStageNumber, number} — {value2}',
+    description:
+      'The label text in components / sections / fields / SkipLogicDestinationField.',
+  },
+  endTheInterview: {
+    id: 'architect.utility.sections.fields.skipLogicDestinationField.endTheInterview',
+    defaultMessage: 'End the interview',
+    description:
+      'The label text in components / sections / fields / SkipLogicDestinationField.',
+  },
+});
+const messages = defineMessages({
+  whenThisStageIsSkipped: {
+    id: 'architect.sections.fields.skipLogicDestinationField.whenThisStageIsSkipped',
+    defaultMessage: 'When this stage is skipped',
+    description:
+      'The label text in components / sections / fields / SkipLogicDestinationField.',
+  },
+  chooseWhereTheInterviewShouldContinue: {
+    id: 'architect.sections.fields.skipLogicDestinationField.chooseWhereTheInterviewShouldContinue',
+    defaultMessage:
+      'Choose where the interview should continue. Only later stages can be selected.',
+    description:
+      'The hint text in components / sections / fields / SkipLogicDestinationField.',
+  },
+});
+const finalMessages = defineMessages({
+  untitledStage: {
+    id: 'architect.final.components.sections.fields.SkipLogicDestinationField.untitledStage',
+    defaultMessage: 'Untitled stage',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 const NEXT_AVAILABLE_ROUTE = 'route:next';
 const FINISH_ROUTE = 'route:finish';
@@ -62,9 +113,13 @@ export const buildSkipLogicDestinationOptions = (
   stages: StageOptionSource[],
   stagePosition: number,
   isNewStage: boolean,
+  intl: IntlShape = defaultIntl,
 ) => {
   const options: Array<{ value: string; label: string }> = [
-    { value: NEXT_AVAILABLE_ROUTE, label: 'Next available stage' },
+    {
+      value: NEXT_AVAILABLE_ROUTE,
+      label: intl.formatMessage(utilityMessages.nextAvailableStage),
+    },
   ];
 
   stages.forEach((stage, index) => {
@@ -79,11 +134,17 @@ export const buildSkipLogicDestinationOptions = (
     const prospectiveStageNumber = index + 1 + (isNewStage ? 1 : 0);
     options.push({
       value: `${STAGE_ROUTE_PREFIX}${stage.id}`,
-      label: `Stage ${prospectiveStageNumber} — ${stage.label || 'Untitled stage'}`,
+      label: intl.formatMessage(utilityMessages.stage, {
+        prospectiveStageNumber: prospectiveStageNumber,
+        value2: stage.label || intl.formatMessage(finalMessages.untitledStage),
+      }),
     });
   });
 
-  options.push({ value: FINISH_ROUTE, label: 'End the interview' });
+  options.push({
+    value: FINISH_ROUTE,
+    label: intl.formatMessage(utilityMessages.endTheInterview),
+  });
 
   return options;
 };
@@ -117,17 +178,19 @@ const SkipLogicDestinationField = ({
   isNewStage,
   initialValue,
 }: SkipLogicDestinationFieldProps) => {
+  const intl = useAppIntl();
   return (
     <ArchitectField
       name="skipLogic.destination"
-      label="When this stage is skipped"
-      hint="Choose where the interview should continue. Only later stages can be selected."
+      label={intl.formatMessage(messages.whenThisStageIsSkipped)}
+      hint={intl.formatMessage(messages.chooseWhereTheInterviewShouldContinue)}
       component={DestinationSelect}
       initialValue={initialValue}
       options={buildSkipLogicDestinationOptions(
         stages,
         stagePosition,
         isNewStage,
+        intl,
       )}
     />
   );

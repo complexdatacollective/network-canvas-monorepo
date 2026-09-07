@@ -1,3 +1,4 @@
+import { AppErrorMessage } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 
 const ActionError = ({
@@ -9,8 +10,12 @@ const ActionError = ({
 }) => {
   return (
     <Alert variant="destructive">
-      <AlertTitle>{errorTitle} </AlertTitle>
-      <AlertDescription>{errorDescription}</AlertDescription>
+      <AlertTitle>
+        <AppErrorMessage error={errorTitle} />
+      </AlertTitle>
+      <AlertDescription>
+        <AppErrorMessage error={errorDescription} />
+      </AlertDescription>
     </Alert>
   );
 };

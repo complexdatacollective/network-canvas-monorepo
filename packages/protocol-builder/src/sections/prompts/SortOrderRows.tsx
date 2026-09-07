@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 
@@ -16,11 +17,28 @@ import {
 import OptionalList from '../../form/arrayFields/OptionalList.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 
-/** A sort rule is one property and one direction, in that order. */
-const SORT_RULE_PROPERTIES: PropertyField[] = [
-  { fieldName: 'property' },
-  { fieldName: 'direction' },
-];
+/**
+ * What the two columns of a sort rule are called.
+ *
+ * Filed under `sortOrder` beside the words the options themselves take. The
+ * column heading is REQUIRED by `PropertyField` rather than derived from the
+ * field name, so that a researcher never reads a code identifier that has been
+ * capitalised into looking like a word no translator was handed.
+ */
+const columnMessages = defineMessages({
+  propertyLabel: {
+    id: 'protocolBuilder.sortOrder.propertyLabel',
+    defaultMessage: 'Property',
+    description:
+      'Visible text and accessible name of the column of a sort rule that chooses what the rule sorts by — an attribute of the node, or one of the orders the interview itself can supply.',
+  },
+  directionLabel: {
+    id: 'protocolBuilder.sortOrder.directionLabel',
+    defaultMessage: 'Direction',
+    description:
+      'Visible text and accessible name of the column of a sort rule that chooses whether it sorts ascending or descending.',
+  },
+});
 
 export type SortOrderRowsProps = Readonly<{
   /**
@@ -97,6 +115,20 @@ export default function SortOrderRows({
    * order inherits the same dangling reference and the same two ways out.
    */
   const intl = useAppIntl();
+  /** A sort rule is one property and one direction, in that order. */
+  const sortRuleColumns = useMemo<PropertyField[]>(
+    () => [
+      {
+        fieldName: 'property',
+        label: intl.formatMessage(columnMessages.propertyLabel),
+      },
+      {
+        fieldName: 'direction',
+        label: intl.formatMessage(columnMessages.directionLabel),
+      },
+    ],
+    [intl],
+  );
   const orphans = useMemo(
     () => orphanedSortProperties(committedRules, properties, intl),
     [committedRules, intl, properties],
@@ -120,7 +152,7 @@ export default function SortOrderRows({
   const validation = useMemo(
     () =>
       makeMultiSelectValidation(
-        SORT_RULE_PROPERTIES,
+        sortRuleColumns,
         orphans.length === 0
           ? undefined
           : [
@@ -131,7 +163,7 @@ export default function SortOrderRows({
               },
             ],
       ),
-    [orphans],
+    [orphans, sortRuleColumns],
   );
   // One rule per property at most: every rule after that could only repeat a
   // property the getter has already disabled. An orphan counts, because the
@@ -161,7 +193,7 @@ export default function SortOrderRows({
         component={OptionalList}
         addButtonLabel={addButtonLabel}
         emptyStateMessage={emptyStateMessage}
-        properties={SORT_RULE_PROPERTIES}
+        properties={sortRuleColumns}
         options={options}
         maxItems={maxItems}
         {...validation}
