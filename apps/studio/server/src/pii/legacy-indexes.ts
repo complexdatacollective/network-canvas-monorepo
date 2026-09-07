@@ -7,6 +7,15 @@ import { normalizeContact, type Contact } from './contacts.ts';
 export const RAW_LEGACY_CONTACT_INDEX_ID = 'legacy-hex-v1';
 export const RAW_LEGACY_PARTICIPANT_INDEX_ID = 'legacy-unverified-v1';
 export const CLASSIFIED_LEGACY_CONTACT_INDEX_ID = 'legacy-public-hmac-v1';
+export const RESERVED_LEGACY_INDEX_IDS = [
+  RAW_LEGACY_CONTACT_INDEX_ID,
+  RAW_LEGACY_PARTICIPANT_INDEX_ID,
+  CLASSIFIED_LEGACY_CONTACT_INDEX_ID,
+] as const;
+
+export function isReservedLegacyIndexId(id: string): boolean {
+  return RESERVED_LEGACY_INDEX_IDS.some((reserved) => reserved === id);
+}
 
 /**
  * Add this sidecar definition in the first composed migration after frozen

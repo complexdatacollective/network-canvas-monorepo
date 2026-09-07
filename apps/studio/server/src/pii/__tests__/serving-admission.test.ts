@@ -14,6 +14,10 @@ import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createMaintenancePool, createPool } from '../../db/pool.ts';
 import { createReadiness } from '../../observability/readiness.ts';
 import { initializeEncryption } from '../initialize.ts';
+import {
+  CLASSIFIED_LEGACY_CONTACT_INDEX_ID,
+  RAW_LEGACY_CONTACT_INDEX_ID,
+} from '../legacy-indexes.ts';
 import { initializeServingEncryption } from '../serving-admission.ts';
 import { configuration, rootOne } from './fixtures.ts';
 
@@ -215,6 +219,49 @@ describe.skipIf(!database)('serving encryption database admission', () => {
       ).toEqual([{ count: 0 }]);
     } finally {
       await disposeProvisionedDatabase(unproven);
+    }
+  });
+
+  it('accepts only classified legacy suppression in a read-only readiness transaction', async () => {
+    first = await createProvisionedDatabase();
+    const keys = await initializeProofs(first.maintenance);
+    await first.pool.query(
+      `INSERT INTO participant_contact_optouts
+        (channel, blind_index_key_id, recipient_blind_index, source)
+       VALUES ('email', $1, $2, 'researcher')`,
+      [CLASSIFIED_LEGACY_CONTACT_INDEX_ID, Buffer.alloc(32, 41)],
+    );
+    const proofCount = async () =>
+      (
+        await first!.pool.query<{ count: number }>(
+          'SELECT count(*)::integer AS count FROM encryption_key_verifications',
+        )
+      ).rows[0]?.count;
+    const before = await proofCount();
+    const readiness = createReadiness({
+      pool: first.app,
+      maintenancePool: first.maintenance,
+      encryptionKeys: keys,
+      allowUnversionedSchema: true,
+      assetStore,
+      cacheMs: 0,
+    });
+    try {
+      expect(await readiness.check()).toMatchObject({ status: 'ready' });
+      expect(await proofCount()).toBe(before);
+      await first.pool.query(
+        `INSERT INTO participant_contact_optouts
+          (channel, blind_index_key_id, recipient_blind_index, source)
+         VALUES ('email', $1, $2, 'researcher')`,
+        [RAW_LEGACY_CONTACT_INDEX_ID, Buffer.alloc(32, 42)],
+      );
+      expect(await readiness.check()).toMatchObject({
+        status: 'not_ready',
+        checks: { database: 'failed' },
+      });
+      expect(await proofCount()).toBe(before);
+    } finally {
+      readiness.stop();
     }
   });
 });

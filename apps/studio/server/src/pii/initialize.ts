@@ -79,6 +79,7 @@ export async function verifyEncryptionReadiness(
   client: pg.PoolClient,
   keys: EncryptionKeys,
 ): Promise<void> {
+  await verifyLegacyIndexRemediationTransaction(client);
   const proofs = await verifyExistingProofs(client, keys);
   for (const purpose of PURPOSES) {
     for (const keyId of keys.ids(purpose)) {
@@ -90,6 +91,8 @@ export async function verifyEncryptionReadiness(
     STORED_KEY_REFERENCES_SQL,
   );
   for (const { purpose, keyId } of references.rows) {
+    if (purpose === 'pii-index' && keyId === CLASSIFIED_LEGACY_CONTACT_INDEX_ID)
+      continue;
     if (
       !keys.has(purpose, keyId) ||
       !proofs.has(JSON.stringify([purpose, keyId]))
