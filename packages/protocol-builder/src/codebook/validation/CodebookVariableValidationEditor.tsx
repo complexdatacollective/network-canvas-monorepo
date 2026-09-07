@@ -24,11 +24,11 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { CodebookSubject } from '../../protocol-context.ts';
 import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
-import { compoundFailureMessage } from '../compoundFailureCopy.ts';
 import {
   codebookEditingMessages,
   missingComparisonTargetMessage,
 } from '../codebookMessages.ts';
+import { compoundFailureMessage } from '../compoundFailureCopy.ts';
 import {
   AuxiliaryCodebookDraftSession,
   buildUpdateVariableRequest,

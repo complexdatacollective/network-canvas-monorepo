@@ -320,11 +320,6 @@ const messages = defineMessages({
 
 const VARIABLE_EDITOR_PROPERTIES = ['name', 'type'] as const;
 
-const OPTION_TYPES = new Set<VariableType>([
-  VariableTypes.ordinal,
-  VariableTypes.categorical,
-]);
-
 /**
  * What the answers surface REPLACES, which is `options` whatever it renders.
  *
@@ -713,8 +708,8 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       if (hasBooleanAnswerIssues(answerIssues)) {
         activeRequestId.current = null;
         setIssues(
-          Object.entries(answerIssues).flatMap(([index, messages]) =>
-            messages.map((message) => ({
+          Object.entries(answerIssues).flatMap(([index, refusals]) =>
+            refusals.map((message) => ({
               path: ['options', Number(index)],
               message,
             })),
@@ -736,8 +731,8 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       if (hasParameterIssues(parameterIssues)) {
         activeRequestId.current = null;
         setIssues(
-          Object.entries(parameterIssues).flatMap(([key, messages]) =>
-            messages.map((message) => ({
+          Object.entries(parameterIssues).flatMap(([key, refusals]) =>
+            refusals.map((message) => ({
               path:
                 key === PARAMETERS_BLOCK ? ['parameters'] : ['parameters', key],
               message,
@@ -913,7 +908,9 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               className="mb-8 min-w-0"
               aria-invalid={optionErrors.length > 0 || undefined}
               aria-describedby={
-                optionErrors.length > 0 ? `${statusId}-option-errors` : undefined
+                optionErrors.length > 0
+                  ? `${statusId}-option-errors`
+                  : undefined
               }
             >
               <legend className="font-heading mb-2 font-bold">
@@ -960,9 +957,12 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                           />
                           <UnconnectedField
                             name={`option-${index + 1}-value`}
-                            label={intl.formatMessage(messages.optionValueField, {
-                              index: String(index + 1),
-                            })}
+                            label={intl.formatMessage(
+                              messages.optionValueField,
+                              {
+                                index: String(index + 1),
+                              },
+                            )}
                             component={InputField}
                             value={String(option.value)}
                             onChange={(value) => {
@@ -979,14 +979,19 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                         </div>
                         <IconButton
                           icon={<Trash2 aria-hidden="true" />}
-                          aria-label={intl.formatMessage(messages.removeOption, {
-                            index: String(index + 1),
-                          })}
+                          aria-label={intl.formatMessage(
+                            messages.removeOption,
+                            {
+                              index: String(index + 1),
+                            },
+                          )}
                           color="destructive"
                           disabled={interactionDisabled}
                           onClick={() => {
                             setOptionKeys((current) =>
-                              current.filter((_, keyIndex) => keyIndex !== index),
+                              current.filter(
+                                (_, keyIndex) => keyIndex !== index,
+                              ),
                             );
                             replaceOptions(
                               options.filter(
@@ -1345,14 +1350,14 @@ function messagesAt(
 function booleanAnswerMessages(
   issues: readonly CodebookDraftIssue[],
 ): BooleanAnswerIssues {
-  const messages: Record<number, string[]> = {};
+  const byAnswer: Record<number, string[]> = {};
   for (const issue of issues) {
     if (issue.path[0] !== 'options') continue;
     const index = issue.path[1];
     if (typeof index !== 'number') continue;
-    (messages[index] ??= []).push(issue.message);
+    (byAnswer[index] ??= []).push(issue.message);
   }
-  return messages;
+  return byAnswer;
 }
 
 /**
@@ -1365,14 +1370,14 @@ function booleanAnswerMessages(
 function parameterMessages(
   issues: readonly CodebookDraftIssue[],
 ): Record<string, string[]> {
-  const messages: Record<string, string[]> = {};
+  const byControl: Record<string, string[]> = {};
   for (const issue of issues) {
     if (issue.path[0] !== 'parameters') continue;
     const key = issue.path[1];
     const bucket = typeof key === 'string' ? key : PARAMETERS_BLOCK;
-    (messages[bucket] ??= []).push(issue.message);
+    (byControl[bucket] ??= []).push(issue.message);
   }
-  return messages;
+  return byControl;
 }
 
 /**

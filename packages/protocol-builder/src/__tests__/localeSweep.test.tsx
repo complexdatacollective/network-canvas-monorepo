@@ -184,9 +184,13 @@ describe('the row dialogs under es', () => {
       await screen.findByRole('button', { name: /^Eliminar pregunta$/ }),
     );
     await screen.findByRole('dialog');
-    expectNoLocaleLeaks('the remove-a-prompt confirmation', researcherWords(harness), {
-      fixtureWords: FIXTURE_ROW_EDITOR_WORDS,
-    });
+    expectNoLocaleLeaks(
+      'the remove-a-prompt confirmation',
+      researcherWords(harness),
+      {
+        fixtureWords: FIXTURE_ROW_EDITOR_WORDS,
+      },
+    );
   });
 
   it('sweeps the form-fields dialog, where the attribute picker lives', async () => {
@@ -207,7 +211,10 @@ describe('the row dialogs under es', () => {
       expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0),
     );
 
-    expectNoLocaleLeaks('the add-a-form-field dialog', researcherWords(harness));
+    expectNoLocaleLeaks(
+      'the add-a-form-field dialog',
+      researcherWords(harness),
+    );
   });
 
   it('sweeps the page-content dialog', async () => {
@@ -230,7 +237,10 @@ describe('the row dialogs under es', () => {
     );
     await screen.findByRole('dialog');
 
-    expectNoLocaleLeaks('the add-a-content-block dialog', researcherWords(harness));
+    expectNoLocaleLeaks(
+      'the add-a-content-block dialog',
+      researcherWords(harness),
+    );
   });
 });
 
