@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 import { getTableName } from 'drizzle-orm';
@@ -54,6 +55,7 @@ async function backupFixture(
     backupLogin: string;
     backupPassword: string;
     teams: string[];
+    allowedLogins: string[];
   }) => Promise<void>,
 ) {
   const db = requireDatabase();
@@ -158,7 +160,15 @@ async function backupFixture(
       "CREATE SEQUENCE public.backup_sequence START 11; SELECT nextval('public.backup_sequence')",
     );
     await source.pool.query(BACKUP_ACCESS_SIDECAR_SQL);
-    await work({ source, backup, runtime, backupLogin, backupPassword, teams });
+    await work({
+      source,
+      backup,
+      runtime,
+      backupLogin,
+      backupPassword,
+      teams,
+      allowedLogins,
+    });
   } finally {
     await Promise.all([backup?.end(), runtime?.end(), maintenance.end()]);
     await source.dispose();
@@ -346,39 +356,64 @@ it('refuses drift that can omit rows or let the backup credentials write', async
 });
 
 it('verifies the operator command without runtime credentials or secret output', async () => {
-  await backupFixture(async ({ source, backupLogin, backupPassword }) => {
-    const url = new URL(source.db.url);
-    url.username = backupLogin;
-    url.password = backupPassword;
-    const run = (databaseUrl: string, args: string[] = []) =>
-      spawnSync(process.execPath, ['src/backup.ts', ...args], {
+  await backupFixture(
+    async ({ source, backupLogin, backupPassword, allowedLogins }) => {
+      const url = new URL(source.db.url);
+      url.username = backupLogin;
+      url.password = backupPassword;
+      const run = (
+        databaseUrl: string,
+        args: string[] = [],
+        enrollment: readonly string[] | null = allowedLogins,
+      ) => {
         // oxlint-disable-next-line node/no-process-env -- isolated child gets the synthetic backup identity only
-        env: { ...process.env, DATABASE_URL: databaseUrl },
-        encoding: 'utf8',
-        timeout: 15_000,
-        maxBuffer: 1024 * 1024,
-      });
-    const good = run(url.toString());
-    expect(good.error).toBeUndefined();
-    expect(good.status).toBe(0);
-    expect(good.stdout).toBe('Studio backup access verified.\n');
-    for (const rejected of [
-      run(source.db.url),
-      run(url.toString(), ['SECRET_ARGUMENT_CANARY']),
-    ]) {
-      expect(rejected.error).toBeUndefined();
-      expect(rejected.status).toBe(1);
-      const output = rejected.stdout + rejected.stderr;
-      expect(output).toContain('STUDIO_BACKUP_ACCESS_UNSAFE');
-      for (const secret of [
-        backupPassword,
-        'SECRET_ARGUMENT_CANARY',
-        source.db.url,
-        url.toString(),
-      ])
-        expect(output).not.toContain(secret);
-    }
-  });
+        const env: NodeJS.ProcessEnv = {
+          ...process.env,
+          DATABASE_URL: databaseUrl,
+        };
+        if (enrollment)
+          env.STUDIO_DATABASE_ALLOWED_LOGINS = JSON.stringify(enrollment);
+        else delete env.STUDIO_DATABASE_ALLOWED_LOGINS;
+        return spawnSync(process.execPath, ['src/backup.ts', ...args], {
+          env,
+          encoding: 'utf8',
+          timeout: 15_000,
+          maxBuffer: 1024 * 1024,
+        });
+      };
+      const good = run(url.toString());
+      expect(good.error).toBeUndefined();
+      expect(good.status).toBe(0);
+      expect(good.stdout).toBe('Studio backup access verified.\n');
+      for (const rejected of [
+        run(source.db.url),
+        run(url.toString(), ['SECRET_ARGUMENT_CANARY']),
+        run(url.toString(), [], null),
+      ]) {
+        expect(rejected.error).toBeUndefined();
+        expect(rejected.status).toBe(1);
+        const output = rejected.stdout + rejected.stderr;
+        expect(output).toContain('STUDIO_BACKUP_ACCESS_UNSAFE');
+        for (const secret of [
+          backupPassword,
+          'SECRET_ARGUMENT_CANARY',
+          source.db.url,
+          url.toString(),
+        ])
+          expect(output).not.toContain(secret);
+      }
+    },
+  );
+});
+
+it('passes the complete configured Studio enrollment to backup verification', async () => {
+  const compose = await readFile(
+    fileURLToPath(new URL('../../../../docker-compose.yml', import.meta.url)),
+    'utf8',
+  );
+  expect(compose).toContain(
+    'STUDIO_DATABASE_ALLOWED_LOGINS: \'["studio_migrator","studio_runtime","studio_backup_login"]\'',
+  );
 });
 
 it('refuses owner-backed writes through views or callable definer routines', async () => {

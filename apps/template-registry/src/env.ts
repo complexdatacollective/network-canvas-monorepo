@@ -193,7 +193,10 @@ export function readRegistryMigrationEnv(raw: RawEnv = process.env) {
 // oxlint-disable-next-line node/no-process-env
 export function readRegistryBackupEnv(raw: RawEnv = process.env) {
   try {
-    return { databaseUrl: databaseUrl.parse(raw.REGISTRY_BACKUP_DATABASE_URL) };
+    return migrationSchema.parse({
+      databaseUrl: raw.REGISTRY_BACKUP_DATABASE_URL,
+      allowedLogins: JSON.parse(raw.REGISTRY_DATABASE_ALLOWED_LOGINS ?? ''),
+    });
   } catch {
     throw new Error('REGISTRY_BACKUP_CONFIGURATION_INVALID');
   }

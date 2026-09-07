@@ -8,6 +8,7 @@ import {
   createPostgresBackupVerifier,
   type PostgresBackupConfiguration,
 } from '../postgres-backup.ts';
+import { assertSafePostgresDatabaseEnrollment } from '../postgres-database-enrollment.ts';
 import { createPostgresPool } from '../postgres-pool.ts';
 import {
   RESTRICTED_LARGE_OBJECT_FUNCTIONS,
@@ -108,6 +109,7 @@ async function fixture() {
     ],
   };
   const verify = createPostgresBackupVerifier(config);
+  const allowedLogins = ['postgres', login];
   const dispose = async () => {
     await Promise.all([backup.end(), owner.end()]);
     try {
@@ -140,7 +142,8 @@ async function fixture() {
       GRANT ${escapeIdentifier(role)} TO ${escapeIdentifier(login)} WITH INHERIT FALSE, SET TRUE`);
     await admin.query(`CREATE DATABASE ${escapeIdentifier(databaseName)}`);
     await owner.query(
-      `REVOKE TEMPORARY ON DATABASE ${escapeIdentifier(databaseName)} FROM PUBLIC, ${escapeIdentifier(role)}, ${escapeIdentifier(login)}`,
+      `REVOKE CONNECT, TEMPORARY ON DATABASE ${escapeIdentifier(databaseName)} FROM PUBLIC, ${escapeIdentifier(role)}, ${escapeIdentifier(login)};
+      GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO postgres, ${escapeIdentifier(login)}`,
     );
     await owner.query(revokeLargeObjectPrivilegesSql([role, login]));
     await owner.query(`REVOKE CREATE ON SCHEMA public FROM PUBLIC;
@@ -160,6 +163,7 @@ async function fixture() {
     owner,
     backup,
     login,
+    allowedLogins,
     role,
     dataSchema,
     historySchema,
@@ -172,6 +176,38 @@ async function fixture() {
     dispose,
   };
 }
+
+it('requires exact explicit database enrollment before capture', async () => {
+  const f = await fixture();
+  const guard = (client: pg.PoolClient) =>
+    assertSafePostgresDatabaseEnrollment(client, f.allowedLogins);
+  try {
+    await expect(f.verify(f.backup, guard)).resolves.toBeUndefined();
+    await expect(
+      f.verify(f.backup, (client) =>
+        assertSafePostgresDatabaseEnrollment(client, ['postgres']),
+      ),
+    ).rejects.toThrow(configuration.failureCode);
+    const outsider = `registry_outsider_${randomUUID().replaceAll('-', '')}`;
+    try {
+      await f.owner.query(
+        `CREATE ROLE ${escapeIdentifier(outsider)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION;
+        GRANT CONNECT ON DATABASE ${escapeIdentifier(f.databaseName)} TO ${escapeIdentifier(outsider)}`,
+      );
+      await expect(f.verify(f.backup, guard)).rejects.toThrow(
+        configuration.failureCode,
+      );
+    } finally {
+      await f.owner.query(
+        `REVOKE CONNECT ON DATABASE ${escapeIdentifier(f.databaseName)} FROM ${escapeIdentifier(outsider)};
+        DROP ROLE IF EXISTS ${escapeIdentifier(outsider)}`,
+      );
+    }
+    await expect(f.verify(f.backup, guard)).resolves.toBeUndefined();
+  } finally {
+    await f.dispose();
+  }
+});
 
 /** GLOBAL parameter grants are visible only inside this administrator-owned
  * transaction. The queries still run with a real nonadministrative identity. */
