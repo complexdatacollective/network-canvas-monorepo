@@ -156,6 +156,9 @@ catalogs:
     '@vitest/coverage-v8':
       specifier: ^4.1.11
       version: 4.1.11
+    axe-core:
+      specifier: ^4.11.4
+      version: 4.11.4
     better-auth:
       specifier: 1.7.1
       version: 1.7.1
@@ -2790,6 +2793,9 @@ importers:
       '@codaco/protocols':
         specifier: workspace:^
         version: link:../protocols
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/tailwind-config':
         specifier: workspace:^
         version: link:../../tooling/tailwind
@@ -2832,6 +2838,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.0.5(babel-plugin-react-compiler@1.0.0)(vite@8.1.4(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.102.0)(terser@5.48.0)(tsx@4.23.5)(yaml@2.9.0))
+      axe-core:
+        specifier: 'catalog:'
+        version: 4.11.4
       jsdom:
         specifier: 'catalog:'
         version: 30.0.0(@noble/hashes@2.3.0)
