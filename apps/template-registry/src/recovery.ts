@@ -2,7 +2,11 @@ import { deepStrictEqual } from 'node:assert';
 
 import type pg from 'pg';
 
-import { readTemplateArtifact } from '@codaco/studio-sync/template-exchange';
+import { assertSamePostgresDatabase } from '@codaco/studio-sync/postgres-database-identity';
+import {
+  readTemplateArtifact,
+  templateBytesHash,
+} from '@codaco/studio-sync/template-exchange';
 
 import type { RegistryBlobStore } from './blob-store.ts';
 import {
@@ -12,7 +16,11 @@ import {
 } from './db/admission.ts';
 import { assertRegistryBackupAccess } from './db/backup.ts';
 import { readRegistrySchemaIdentity } from './db/schema-state.ts';
-import type { RegistryRecoveryReconciliation } from './recovery-reconciliation.ts';
+import { REGISTRY_ROLES } from './db/schema.ts';
+import {
+  copyRegistryRecoveryReconciliation,
+  type RegistryRecoveryReconciliation,
+} from './recovery-reconciliation.ts';
 
 type Artifact = {
   root: string;
@@ -54,7 +62,11 @@ async function verifyArtifacts(
     if (row.template === null || row.metadata === null || row.license === null)
       throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
     const bytes = await blobs.get(row.raw_hash);
-    if (!bytes || bytes.byteLength !== row.byte_size)
+    if (
+      !bytes ||
+      bytes.byteLength !== row.byte_size ||
+      templateBytesHash(bytes) !== row.raw_hash
+    )
       throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
     const artifact = await readTemplateArtifact(bytes).catch(() => {
       throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
@@ -69,6 +81,58 @@ async function verifyArtifacts(
       throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
     }
   }
+}
+
+async function assertRegistryRecoveryQuarantine(
+  client: pg.PoolClient,
+  policy: ReturnType<typeof copyRegistryDatabasePolicy>,
+  backupPid: number,
+) {
+  await client.query('SELECT pg_catalog.pg_stat_clear_snapshot()');
+  const result = await client.query<{ safe: boolean }>(
+    `WITH database AS MATERIALIZED (
+       SELECT datdba FROM pg_catalog.pg_database
+       WHERE datname = pg_catalog.current_database()
+     ), runtime_logins AS MATERIALIZED (
+       SELECT login.oid, login.rolcanlogin
+       FROM pg_catalog.pg_roles login, database
+       WHERE login.rolname = ANY($1::pg_catalog.text[])
+         AND login.oid <> database.datdba
+         AND NOT login.rolname = ANY($2::pg_catalog.text[])
+         AND EXISTS (
+           SELECT 1 FROM pg_catalog.pg_auth_members membership
+           JOIN pg_catalog.pg_roles role ON role.oid = membership.roleid
+           WHERE membership.member = login.oid
+             AND role.rolname = ANY($3::pg_catalog.text[])
+         )
+     ) SELECT
+       (SELECT count(*) FROM runtime_logins) = $4::pg_catalog.int4
+       AND NOT EXISTS (SELECT 1 FROM runtime_logins WHERE rolcanlogin)
+       AND NOT EXISTS (
+         SELECT 1 FROM pg_catalog.pg_stat_activity activity
+         WHERE activity.datname = pg_catalog.current_database()
+           AND activity.usesysid IN (SELECT oid FROM runtime_logins)
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM pg_catalog.pg_stat_activity activity
+         WHERE activity.datname = pg_catalog.current_database()
+           AND activity.backend_type = 'client backend'
+           AND activity.pid NOT IN (pg_catalog.pg_backend_pid(), $5::pg_catalog.int4)
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM pg_catalog.pg_prepared_xacts prepared
+         WHERE prepared.database = pg_catalog.current_database()
+       ) AS safe`,
+    [
+      policy.allowedLogins,
+      policy.administrativeLogins,
+      Object.values(REGISTRY_ROLES),
+      Object.values(REGISTRY_ROLES).length,
+      backupPid,
+    ],
+  );
+  if (result.rows[0]?.safe !== true)
+    throw new Error('REGISTRY_RECOVERY_QUARANTINE_REQUIRED');
 }
 
 /**
@@ -89,19 +153,41 @@ export async function reconcileRegistryRecovery({
   reconciliation: RegistryRecoveryReconciliation;
 }): Promise<void> {
   const policy = copyRegistryDatabasePolicy(admission);
-  await assertRegistryMigrationOperator(pool, policy);
-  await readRegistrySchemaIdentity(pool, policy, {
-    allowClosedEnrolledLogins: true,
-  });
-  await assertRegistryBackupAccess(backupPool, async (client) => {
-    await readRegistrySchemaIdentity(client, policy, {
+  const evidence = copyRegistryRecoveryReconciliation(reconciliation);
+  const client = await pool.connect();
+  let backupClient: pg.PoolClient | undefined;
+  let discard = false;
+  let backupDiscard = false;
+  let committed = false;
+  let backupCompleted = false;
+  try {
+    backupClient = await backupPool.connect();
+    await client.query('BEGIN');
+    await backupClient.query('BEGIN READ ONLY');
+    const backupPid = (
+      await backupClient.query<{ pid: number }>(
+        'SELECT pg_catalog.pg_backend_pid() AS pid',
+      )
+    ).rows[0]?.pid;
+    if (!backupPid) throw new Error('REGISTRY_RECOVERY_DATABASE_MISMATCH');
+    await assertRegistryMigrationOperator(client, policy);
+    const ownerIdentity = await readRegistrySchemaIdentity(client, policy, {
       allowClosedEnrolledLogins: true,
     });
-  });
-  const client = await pool.connect();
-  let discard = false;
-  try {
-    await client.query('BEGIN');
+    let backupIdentity = '';
+    await assertRegistryBackupAccess(backupClient, async (checkedBackup) => {
+      backupIdentity = await readRegistrySchemaIdentity(checkedBackup, policy, {
+        allowClosedEnrolledLogins: true,
+      });
+    });
+    if (ownerIdentity !== backupIdentity)
+      throw new Error('REGISTRY_RECOVERY_DATABASE_MISMATCH');
+    try {
+      await assertSamePostgresDatabase(client, backupClient);
+    } catch {
+      throw new Error('REGISTRY_RECOVERY_DATABASE_MISMATCH');
+    }
+    await assertRegistryRecoveryQuarantine(client, policy, backupPid);
     await client.query(`LOCK TABLE registry_auth_user, registry_auth_session,
       registry_auth_verification, registry_publishers, registry_operators,
       registry_credentials, registry_artifacts, registry_artifact_content
@@ -111,10 +197,9 @@ export async function reconcileRegistryRecovery({
     );
     assertReconciliationUsers(
       users.rows.map((user) => user.id),
-      reconciliation,
+      evidence,
     );
-    await verifyArtifacts(client, blobs);
-    const publisherIds = reconciliation.users
+    const publisherIds = evidence.users
       .filter((user) => user.publisher !== 'none')
       .map((user) => user.id);
     const actualPublishers = await client.query<{ user_id: string }>(
@@ -140,13 +225,13 @@ export async function reconcileRegistryRecovery({
        WHERE publisher.user_id = evidence.user_id`,
       [
         publisherIds,
-        reconciliation.users
+        evidence.users
           .filter((user) => user.publisher !== 'none')
           .map((user) => user.publisher === 'suspended'),
       ],
     );
     await client.query('UPDATE registry_operators SET enabled = false');
-    const enabledOperators = reconciliation.users
+    const enabledOperators = evidence.users
       .filter((user) => user.operator)
       .map((user) => user.id);
     if (enabledOperators.length)
@@ -170,16 +255,31 @@ export async function reconcileRegistryRecovery({
       remaining.rows[0]?.credentials !== 0
     )
       throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+    await verifyArtifacts(client, blobs);
+    await assertRegistryRecoveryQuarantine(client, policy, backupPid);
+    await backupClient.query('ROLLBACK');
+    backupCompleted = true;
     await client.query('COMMIT');
+    committed = true;
   } catch (error) {
     discard = true;
-    try {
-      await client.query('ROLLBACK');
-    } catch {
-      discard = true;
-    }
     throw error;
   } finally {
+    if (!committed) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        discard = true;
+      }
+    }
+    if (!backupCompleted) {
+      try {
+        await backupClient?.query('ROLLBACK');
+      } catch {
+        backupDiscard = true;
+      }
+    }
     client.release(discard);
+    backupClient?.release(backupDiscard);
   }
 }

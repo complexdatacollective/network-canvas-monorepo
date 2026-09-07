@@ -40,6 +40,17 @@ export type RegistryRecoveryReconciliation = z.infer<
   typeof reconciliationSchema
 >;
 
+/** Validate and snapshot caller-owned evidence before recovery performs I/O. */
+export function copyRegistryRecoveryReconciliation(
+  value: unknown,
+): RegistryRecoveryReconciliation {
+  try {
+    return reconciliationSchema.parse(structuredClone(value));
+  } catch {
+    throw new Error('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
+  }
+}
+
 /** Read independently obtained current permission evidence, never the restore. */
 export async function readRegistryRecoveryReconciliation(
   path: string,
@@ -52,7 +63,9 @@ export async function readRegistryRecoveryReconciliation(
       throw new Error();
     const bytes = await readFile(path);
     if (templateBytesHash(bytes) !== expectedSha256) throw new Error();
-    return reconciliationSchema.parse(JSON.parse(bytes.toString('utf8')));
+    return copyRegistryRecoveryReconciliation(
+      JSON.parse(bytes.toString('utf8')),
+    );
   } catch {
     throw new Error('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
   }

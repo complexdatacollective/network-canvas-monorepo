@@ -62,7 +62,6 @@ services:
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
     environment:
-      REGISTRY_DATABASE_ALLOWED_LOGINS: '["registry_migrator","registry_runtime","registry_operations","registry_backup_login"]'
       REGISTRY_BACKUP_DATABASE_URL: postgresql://registry_backup_login:${REGISTRY_BACKUP_PASSWORD:?Missing registry backup password}@registry-postgres:5432/registry
       REGISTRY_DATABASE_ALLOWED_LOGINS: '["registry_migrator","registry_runtime","registry_operations","registry_backup_login"]'
     networks: [registry-data]
