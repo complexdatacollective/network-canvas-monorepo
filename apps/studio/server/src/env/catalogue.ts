@@ -164,7 +164,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     group: 'Database',
     summary: 'JSON array of this deployment’s database login names.',
     deployment:
-      'Required by `migrate` only. Enroll the database owner, migration login, runtime login, and any separately provisioned backup login. Provision explicit CONNECT before admitting database connections. Migration refuses PUBLIC, shared-role, missing, or unexpected access.',
+      'Required by `migrate` and by every persistent server outside explicit local development. Enroll the database owner, migration login, runtime login, and any separately provisioned backup login. Provision explicit CONNECT before admitting database connections. Migration, startup, and readiness refuse PUBLIC, shared-role, missing, or unexpected access.',
     example: '["studio_migrator","studio_runtime"]',
   },
 

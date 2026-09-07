@@ -1,5 +1,6 @@
 import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
+import { parseDatabaseAllowedLogins } from './database-enrollment.ts';
 import type { RawEnv } from './variables.ts';
 
 export type S3Env = {
@@ -50,6 +51,7 @@ export type StudioEnv = {
   clientDist: string | undefined;
   s3: S3Env | undefined;
   db: DbEnv | undefined;
+  databaseAllowedLogins: readonly string[] | undefined;
   auth: AuthEnv | undefined;
   devDefaults: boolean;
   deploymentMode: DeploymentMode;
@@ -283,6 +285,10 @@ export function resolve(raw: RawEnv): StudioEnv {
     s3: resolveS3(raw),
     db,
     auth: resolveAuth(raw, db, devDefaults),
+    databaseAllowedLogins:
+      db && !devDefaults
+        ? parseDatabaseAllowedLogins(raw.STUDIO_DATABASE_ALLOWED_LOGINS)
+        : undefined,
     devDefaults,
     deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,
     seedAdminPassword: raw.STUDIO_SEED_ADMIN_PASSWORD,

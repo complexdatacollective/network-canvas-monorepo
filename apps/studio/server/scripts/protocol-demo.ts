@@ -146,6 +146,7 @@ const pool = createPool(env.db);
 
 try {
   const schema = await checkSchema(owner, {
+    allowedLogins: env.databaseAllowedLogins,
     allowUnversioned: env.devDefaults,
   });
   if (schema.kind === 'stale') {

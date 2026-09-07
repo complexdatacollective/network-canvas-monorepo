@@ -1,8 +1,14 @@
-import { escapeIdentifier } from 'pg';
 import type pg from 'pg';
 
 import { assertSafePostgresCatalogPrivileges } from './postgres-catalog-privileges.ts';
-import { assertSafePostgresMigrationEvidence } from './postgres-migration-evidence.ts';
+import {
+  assertSafePostgresDatabaseEnrollment,
+  UnsafePostgresDatabaseEnrollmentError,
+} from './postgres-database-enrollment.ts';
+import {
+  assertSafePostgresMigrationEvidence,
+  UnsafePostgresMigrationEvidenceError,
+} from './postgres-migration-evidence.ts';
 import type { PostgresMigrationConfig } from './postgres-migrations.ts';
 import {
   runtimeRolesSql,
@@ -212,61 +218,44 @@ export async function enforceMigrationSecurity(
       `${applicationName} runtime and backup identities must not execute large-object creation or server-file import/export functions. Have the database administrator revoke their PUBLIC and restricted-role EXECUTE grants before migration.`,
     );
   }
-  // This application supports invoker triggers only. A definer trigger can run without
-  // EXECUTE and can be reached through a foreign-key cascade even when the
-  // runtime has no direct access to its table. Disabled triggers are included:
-  // their presence cannot establish that the existing evidence was protected.
-  const definerTriggers = await client.query<{ present: boolean }>(
-    `SELECT EXISTS (
-      SELECT 1 FROM pg_trigger trigger
-      JOIN pg_proc routine ON routine.oid = trigger.tgfoid
-      JOIN pg_class relation ON relation.oid = trigger.tgrelid
-      JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
-      WHERE routine.prosecdef AND namespace.nspname !~ '^pg_'
-        AND namespace.nspname <> 'information_schema'
-    ) AS present`,
-  );
-  if (definerTriggers.rows[0]?.present !== false) {
-    throw new Error(
-      `${applicationName} does not support SECURITY DEFINER triggers on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.`,
-    );
-  }
-  // Non-SELECT rewrite actions run with the relation owner's privileges,
-  // including when the caller has no direct grant on the affected evidence.
-  // Disabled rules are included for the same provenance reason as triggers.
-  const rewriteRules = await client.query<{ present: boolean }>(
-    `SELECT EXISTS (
-      SELECT 1 FROM pg_rewrite rule JOIN pg_class relation ON relation.oid = rule.ev_class
-      JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
-      WHERE rule.ev_type <> '1' AND namespace.nspname !~ '^pg_'
-        AND namespace.nspname <> 'information_schema'
-    ) AS present`,
-  );
-  if (rewriteRules.rows[0]?.present !== false) {
-    throw new Error(
-      `${applicationName} does not support owner-backed rewrite rules on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.`,
-    );
-  }
-  const evidenceRelations = [
-    `${escapeIdentifier(config.historySchema)}.history`,
-    `${escapeIdentifier(config.schemaName)}.${escapeIdentifier(config.fingerprintTable)}`,
-  ];
+  // Check the shared evidence policy before the runner trusts recorded history.
+  // Protected roles remain restricted even if the evidence owner has drifted.
   try {
-    await assertSafePostgresMigrationEvidence(client, {
-      history: { schema: config.historySchema, name: 'history' },
-      fingerprint: {
-        schema: config.schemaName,
-        name: config.fingerprintTable,
+    await assertSafePostgresMigrationEvidence(
+      client,
+      {
+        history: { schema: config.historySchema, name: 'history' },
+        fingerprint: {
+          schema: config.schemaName,
+          name: config.fingerprintTable,
+        },
       },
-    });
-  } catch {
+      [...runtimeRoles, ...optionalRoles, ...restrictedLogins],
+    );
+  } catch (error) {
+    if (
+      error instanceof UnsafePostgresMigrationEvidenceError &&
+      error.reason === 'trigger'
+    )
+      throw new Error(
+        `${applicationName} does not support SECURITY DEFINER triggers on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.`,
+        { cause: error },
+      );
+    if (
+      error instanceof UnsafePostgresMigrationEvidenceError &&
+      error.reason === 'rewrite'
+    )
+      throw new Error(
+        `${applicationName} does not support owner-backed rewrite rules on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.`,
+        { cause: error },
+      );
     throw new Error(
-      `${applicationName} migration evidence must be standalone ordinary tables without inheritance, partitions, or cascading foreign-key action paths. Existing evidence is untrusted; restore a verified backup before migrating.`,
+      `${applicationName} migration evidence must be standalone ordinary tables without inheritance, partitions, or cascading foreign-key action paths. Runtime and backup identities must hold no access outside their reviewed ${applicationName} roles; if migration evidence is writable or structurally unsafe, existing evidence is untrusted; restore a verified backup before migrating.`,
+      { cause: error },
     );
   }
   const loginAccess = await client.query<{
     safe: boolean;
-    evidence_safe: boolean;
   }>(
     `WITH logins AS (
       SELECT oid FROM pg_roles WHERE rolname = ANY($1::text[])
@@ -342,27 +331,10 @@ export async function enforceMigrationSecurity(
               THEN has_sequence_privilege(login.oid, object.oid, 'SELECT,USAGE,UPDATE')
               ELSE false END
         )
-    ) AS safe, NOT EXISTS (
-      SELECT 1 FROM identities login CROSS JOIN pg_class object
-      WHERE object.oid IN (to_regclass($4), to_regclass($5))
-        AND CASE WHEN object.relkind IN ('r', 'p', 'v', 'm', 'f') THEN (
-          has_table_privilege(login.oid, object.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
-          OR has_any_column_privilege(login.oid, object.oid, 'INSERT,UPDATE,REFERENCES')
-        ) ELSE false END
-    ) AS evidence_safe`,
-    [
-      restrictedLogins,
-      [...runtimeRoles, ...optionalRoles],
-      backupRole ?? null,
-      ...evidenceRelations,
-    ],
+    ) AS safe`,
+    [restrictedLogins, [...runtimeRoles, ...optionalRoles], backupRole ?? null],
   );
-  if (loginAccess.rows[0]?.evidence_safe !== true) {
-    throw new Error(
-      `Runtime and backup identities have access outside their reviewed ${applicationName} roles: existing migration evidence is writable and cannot be trusted. Restore a verified backup before migrating.`,
-    );
-  }
-  if (!loginAccess.rows[0].safe) {
+  if (loginAccess.rows[0]?.safe !== true) {
     throw new Error(
       `Runtime and backup identities must own no database objects and hold no access outside their reviewed ${applicationName} roles: remove direct or PUBLIC login data grants, CREATE, TEMPORARY, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, foreign table, or large object access beyond read-only backup grants, backup table writes, or sequence UPDATE privileges.`,
     );
@@ -378,56 +350,23 @@ export async function enforceMigrationSecurity(
       `${applicationName} runtime and backup identities have unsafe PostgreSQL catalog privileges.`,
     );
   }
-  // CONNECT is checked only at connection admission. Enrollment must already
-  // be committed while database admission is quarantined; changing it inside
-  // this transaction would leave old or racing outside sessions connected.
-  const enrollment = await client.query<{ valid: boolean }>(
-    `WITH access AS (
-      SELECT acl.grantee, acl.privilege_type FROM pg_database database,
-        aclexplode(COALESCE(database.datacl, acldefault('d', database.datdba))) acl
-      WHERE database.datname = current_database() AND acl.privilege_type = 'CONNECT'
-    ) SELECT
-      NOT EXISTS (
-        SELECT 1 FROM access LEFT JOIN pg_roles grantee ON grantee.oid = access.grantee
-        WHERE access.grantee = 0 OR (NOT grantee.rolsuper AND NOT grantee.rolname = ANY($1::text[]))
-      ) AND NOT EXISTS (
-        SELECT 1 FROM pg_roles enrolled WHERE enrolled.rolname = ANY($1::text[])
-          AND NOT EXISTS (SELECT 1 FROM access WHERE grantee = enrolled.oid)
-      ) AS valid`,
-    [allowedLogins],
-  );
-  if (!enrollment.rows[0]?.valid) {
+  try {
+    await assertSafePostgresDatabaseEnrollment(client, allowedLogins);
+  } catch (error) {
+    if (!(error instanceof UnsafePostgresDatabaseEnrollmentError)) throw error;
+    if (error.reason === 'outsider')
+      throw new Error(
+        `${applicationName} database CONNECT is available to an unenrolled login. Ask the administrator to remove its direct or inherited grant before migrating.`,
+        { cause: error },
+      );
+    if (error.reason === 'sessions')
+      throw new Error(
+        `${applicationName} has existing connections from unenrolled logins. Quarantine database admission and have the administrator remove those sessions before migrating.`,
+        { cause: error },
+      );
     throw new Error(
       `${applicationName} database CONNECT must match the precommitted enrollment. Quarantine database admission, remove unenrolled grants, and explicitly grant CONNECT to every ${allowedLoginsSetting} entry before migrating.`,
-    );
-  }
-  const outsiders = await client.query<{ present: boolean }>(
-    `SELECT EXISTS (
-    SELECT 1 FROM pg_roles WHERE rolcanlogin AND NOT rolsuper
-      AND NOT rolname = ANY($1::text[])
-      AND has_database_privilege(oid, current_database(), 'CONNECT')
-  ) AS present`,
-    [allowedLogins],
-  );
-  if (outsiders.rows[0]?.present) {
-    throw new Error(
-      `${applicationName} database CONNECT is available to an unenrolled login. Ask the administrator to remove its direct or inherited grant before migrating.`,
-    );
-  }
-  // PostgreSQL caches activity snapshots for a transaction. The final check
-  // must see connections admitted after the initial check.
-  await client.query('SELECT pg_stat_clear_snapshot()');
-  const sessions = await client.query<{ present: boolean }>(
-    `SELECT EXISTS (
-    SELECT 1 FROM pg_stat_activity activity JOIN pg_roles login ON login.oid = activity.usesysid
-    WHERE activity.datname = current_database() AND NOT login.rolsuper
-      AND NOT login.rolname = ANY($1::text[])
-  ) AS present`,
-    [allowedLogins],
-  );
-  if (sessions.rows[0]?.present) {
-    throw new Error(
-      `${applicationName} has existing connections from unenrolled logins. Quarantine database admission and have the administrator remove those sessions before migrating.`,
+      { cause: error },
     );
   }
 }

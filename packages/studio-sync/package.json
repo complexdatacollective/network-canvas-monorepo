@@ -32,7 +32,8 @@
     "./postgres-migration-artifacts": "./src/postgres-migration-artifacts.ts",
     "./postgres-migration-authoring": "./src/postgres-migration-authoring.ts",
     "./postmark-email-sender": "./src/postmark-email-sender.ts",
-    "./postgres-backup": "./src/postgres-backup.ts"
+    "./postgres-backup": "./src/postgres-backup.ts",
+    "./postgres-database-enrollment": "./src/postgres-database-enrollment.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
