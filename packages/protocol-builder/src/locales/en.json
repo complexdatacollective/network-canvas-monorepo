@@ -135,14 +135,6 @@
     "defaultMessage": "Create or select an attribute",
     "description": "Label of the control that picks (or adds) the codebook attribute this row stamps onto every node the prompt creates."
   },
-  "protocolBuilder.codebookEditing.blockedByHolder": {
-    "defaultMessage": "{name} is currently editing a section needed for this change.",
-    "description": "Why a researcher’s codebook change could not be saved: another person has the part of the protocol it needs open. name is that person’s display name, as the host reports it."
-  },
-  "protocolBuilder.codebookEditing.blockedUnknownHolder": {
-    "defaultMessage": "A section needed for this change is currently being edited.",
-    "description": "Why a researcher’s codebook change could not be saved: the part of the protocol it needs is held by someone the host did not name."
-  },
   "protocolBuilder.codebookEditing.duplicateVariableName": {
     "defaultMessage": "Attribute with name \"{name}\" already exists",
     "description": "Refusal shown when a researcher names an attribute (a codebook variable) something another attribute of the same entity is already called. name is what they typed."
@@ -395,9 +387,17 @@
     "defaultMessage": "Add option",
     "description": "Button that adds an empty row to the list of answers a participant may choose from."
   },
-  "protocolBuilder.codebookVariable.blockedFailure": {
-    "defaultMessage": "The edit is blocked by {blockers}. Your draft has been preserved.",
-    "description": "Why saving an attribute could not go ahead: other people hold parts of the protocol the change needs. blockers is that list, already joined for the reader’s language; each entry names a person and the part they hold."
+  "protocolBuilder.codebookVariable.booleanAnswerLabel": {
+    "defaultMessage": "{records, select, true {Label for “true”} other {Label for “false”}}",
+    "description": "Label of the field holding the words on one of the two answers a yes/no attribute offers. records says which of the two stored values this answer records; “true” and “false” are the literal values the protocol stores and an export records, so they stay as they are."
+  },
+  "protocolBuilder.codebookVariable.booleanAnswerPlaceholder": {
+    "defaultMessage": "{records, select, true {Yes} other {No}}",
+    "description": "Placeholder in the field holding the words on one of the two answers a yes/no attribute offers, shown while the researcher has written none. It has to read exactly as the interview’s own yes/no control does for an attribute that names no answers — frescoUi.booleanField.yes and frescoUi.booleanField.no — because that is literally what the participant will see. records says which of the two stored values this answer records."
+  },
+  "protocolBuilder.codebookVariable.booleanNegativeLabel": {
+    "defaultMessage": "{records, select, true {Style “true” as negative} other {Style “false” as negative}}",
+    "description": "Label of the switch that draws one of the two answers of a yes/no attribute in red when a participant selects it. records says which of the two stored values this answer records; “true” and “false” are the literal values the protocol stores and stay as they are."
   },
   "protocolBuilder.codebookVariable.createSubmit": {
     "defaultMessage": "Create attribute",
@@ -418,10 +418,6 @@
   "protocolBuilder.codebookVariable.failureTitle": {
     "defaultMessage": "Attribute not saved",
     "description": "Heading of the alert shown when saving an attribute (a codebook variable) was refused. The reason follows underneath."
-  },
-  "protocolBuilder.codebookVariable.failureWithReason": {
-    "defaultMessage": "{reason} Your draft has been preserved.",
-    "description": "Wraps the reason a save was refused with the reassurance that nothing typed has been lost. reason is a complete sentence written elsewhere — by this package or by the application the editor is running in — and already ends in its own punctuation."
   },
   "protocolBuilder.codebookVariable.interfaceOwnedOptions": {
     "defaultMessage": "These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.",
@@ -470,6 +466,10 @@
   "protocolBuilder.codebookVariable.removeOption": {
     "defaultMessage": "Remove option {index}",
     "description": "Accessible name of the button that deletes one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name."
+  },
+  "protocolBuilder.codebookVariable.repeatedBooleanAnswer": {
+    "defaultMessage": "Give this answer different words: two buttons saying the same thing cannot be told apart.",
+    "description": "Refusal shown under the second of the two answers of a yes/no attribute when both have been given the same words, which leaves the participant two buttons they cannot tell apart."
   },
   "protocolBuilder.codebookVariable.saveSubmit": {
     "defaultMessage": "Save attribute",
@@ -542,6 +542,10 @@
   "protocolBuilder.codebookVariable.typeText": {
     "defaultMessage": "Text",
     "description": "Choice offered for what an attribute records: free text typed by a participant."
+  },
+  "protocolBuilder.codebookVariable.unnamedBooleanAnswer": {
+    "defaultMessage": "Write what this answer says, or clear both to offer Yes and No.",
+    "description": "Refusal shown under one of the two answers of a yes/no attribute when it has been left blank while the other is written. Clearing both is a real answer: an attribute that names neither is offered to the participant as Yes and No."
   },
   "protocolBuilder.compoundEdit.assemblyFailed": {
     "defaultMessage": "protocol assembly failed",
@@ -686,6 +690,58 @@
   "protocolBuilder.compoundEdit.updateNeedsHash": {
     "defaultMessage": "a compound section update requires an expected content hash",
     "description": "Why a change touching the codebook alongside the interview step being edited was refused: it did not say which version of that part of the protocol it was built from."
+  },
+  "protocolBuilder.compoundFailure.compoundInFlight": {
+    "defaultMessage": "Another change to the codebook is still being saved. Wait for it to finish, then save this one.",
+    "description": "Refusal shown in a codebook editor when a previous change to the codebook — the protocol’s definition of what an interview records — has not finished saving."
+  },
+  "protocolBuilder.compoundFailure.heldBy": {
+    "defaultMessage": "{holder} is currently editing a section needed for this change.",
+    "description": "Refusal shown in a codebook editor when a named collaborator is editing part of the protocol the change needs. holder is that person’s display name, which the host supplies."
+  },
+  "protocolBuilder.compoundFailure.heldBySomeoneUnnamed": {
+    "defaultMessage": "A section needed for this change is currently being edited.",
+    "description": "Refusal shown in a codebook editor when part of the protocol the change needs is being edited by somebody the host would not name."
+  },
+  "protocolBuilder.compoundFailure.hostError": {
+    "defaultMessage": "The protocol would not be valid with this change, so nothing was saved. Adjust this type and try again, or close this and come back once the rest of the stage is filled in.",
+    "description": "Refusal shown in a codebook editor when the change would leave the whole protocol invalid — usually because the stage being configured is not finished yet. A stage is one step of an interview."
+  },
+  "protocolBuilder.compoundFailure.invalidRequest": {
+    "defaultMessage": "This change could not be sent, and nothing was saved. Close this editor and try again.",
+    "description": "Refusal shown in a codebook editor when the change could not be sent for saving at all."
+  },
+  "protocolBuilder.compoundFailure.invalidResponse": {
+    "defaultMessage": "The protocol came back in a state this editor cannot read, so nothing here has been kept. Reload the protocol before making this change.",
+    "description": "Refusal shown in a codebook editor when what came back after saving was not something the editor could read."
+  },
+  "protocolBuilder.compoundFailure.leaseLost": {
+    "defaultMessage": "You are no longer the editor of this stage, so nothing was saved. Take over editing and try again.",
+    "description": "Refusal shown in a codebook editor when the researcher no longer holds the right to edit this stage. Taking over editing is an action offered elsewhere in the host application."
+  },
+  "protocolBuilder.compoundFailure.pendingCommands": {
+    "defaultMessage": "A file you added is still waiting to be saved with this stage. Save the stage first, then make this change.",
+    "description": "Refusal shown in a codebook editor when the stage still holds an imported file that has not been saved, which has to land before the codebook can change."
+  },
+  "protocolBuilder.compoundFailure.staleBase": {
+    "defaultMessage": "Someone else changed this while you were editing it, so nothing was saved. Close and reopen this editor to load their version, then make your change again.",
+    "description": "Refusal shown in a codebook editor when a collaborator changed the same thing while this editor was open."
+  },
+  "protocolBuilder.compoundFailure.staleEpoch": {
+    "defaultMessage": "Editing access changed while this was being saved, so nothing was saved. Try again.",
+    "description": "Refusal shown in a codebook editor when who holds the right to edit changed midway through saving."
+  },
+  "protocolBuilder.compoundFailure.staleResult": {
+    "defaultMessage": "A newer version of the protocol is already open, so this change was not applied. Try again.",
+    "description": "Refusal shown in a codebook editor when a newer version of the protocol had already been loaded by the time the change came back."
+  },
+  "protocolBuilder.compoundFailure.unavailable": {
+    "defaultMessage": "This editor cannot change the codebook right now. Reload the protocol and try again.",
+    "description": "Refusal shown in a codebook editor when the host cannot accept codebook changes at all just now."
+  },
+  "protocolBuilder.compoundFailure.unexplained": {
+    "defaultMessage": "This change could not be saved, and nothing was altered. Wait a moment and try again.",
+    "description": "Refusal shown in a codebook editor when saving threw with no explanation a researcher could act on. The last resort."
   },
   "protocolBuilder.dialogForm.discardConfirm": {
     "defaultMessage": "Discard changes",
@@ -2598,6 +2654,102 @@
   "protocolBuilder.stageTypeImage.preview": {
     "defaultMessage": "Preview of {interfaceName}",
     "description": "Alternative text for a screenshot of an interview interface. interfaceName is the localized interface name, or an unchanged identifier for an unknown future interface."
+  },
+  "protocolBuilder.variableParameters.afterHint": {
+    "defaultMessage": "How far forward from the anchor the participant can choose. Left empty, {days, number} days.",
+    "description": "Guidance under the days-after field. days is the number of days the interview assumes when the researcher writes none."
+  },
+  "protocolBuilder.variableParameters.afterLabel": {
+    "defaultMessage": "Days after",
+    "description": "Label of the field holding how many days after the anchor date a participant may choose."
+  },
+  "protocolBuilder.variableParameters.anchorHint": {
+    "defaultMessage": "The date the window is measured from. Leave it empty to measure from the date of the interview.",
+    "description": "Guidance under the anchor-date field, saying what leaving it empty means."
+  },
+  "protocolBuilder.variableParameters.anchorLabel": {
+    "defaultMessage": "Anchor date",
+    "description": "Label of the field holding the date a relative date picker measures its window from."
+  },
+  "protocolBuilder.variableParameters.beforeHint": {
+    "defaultMessage": "How far back from the anchor the participant can choose. Left empty, {days, number} days.",
+    "description": "Guidance under the days-before field. days is the number of days the interview assumes when the researcher writes none."
+  },
+  "protocolBuilder.variableParameters.beforeLabel": {
+    "defaultMessage": "Days before",
+    "description": "Label of the field holding how many days before the anchor date a participant may choose."
+  },
+  "protocolBuilder.variableParameters.boundsCleared": {
+    "defaultMessage": "The earliest and latest dates were cleared, because they were set at the previous resolution. Set them again if you still need them.",
+    "description": "Announcement made after the researcher changes how precise a date this field collects, which throws away the earliest and latest dates because they were stored at the old precision."
+  },
+  "protocolBuilder.variableParameters.maxHint": {
+    "defaultMessage": "The latest date the participant can choose. Left empty, the picker ends on the date of the interview.",
+    "description": "Guidance under the latest-date field, saying what leaving it empty means."
+  },
+  "protocolBuilder.variableParameters.maxLabel": {
+    "defaultMessage": "Latest date",
+    "description": "Label of the field holding the latest date a participant may choose."
+  },
+  "protocolBuilder.variableParameters.maxLabelHint": {
+    "defaultMessage": "Shown at the high end of the scale.",
+    "description": "Guidance under the field naming the high end of a sliding scale."
+  },
+  "protocolBuilder.variableParameters.maxLabelLabel": {
+    "defaultMessage": "Maximum label",
+    "description": "Label of the field naming the high end of a sliding scale the participant answers on."
+  },
+  "protocolBuilder.variableParameters.maxLabelPlaceholder": {
+    "defaultMessage": "Extremely close",
+    "description": "Example wording shown in the empty field naming the high end of a sliding scale. An example a researcher might write about closeness between people, not a value that is stored."
+  },
+  "protocolBuilder.variableParameters.maxLabelRequired": {
+    "defaultMessage": "Write what the high end of the scale means.",
+    "description": "Refusal shown under the field naming the high end of a sliding scale when the researcher has left it empty."
+  },
+  "protocolBuilder.variableParameters.minHint": {
+    "defaultMessage": "The earliest date the participant can choose. Left empty, the picker starts in 1920.",
+    "description": "Guidance under the earliest-date field, saying what leaving it empty means. 1920 is the year the date picker falls back to and is not a translated word."
+  },
+  "protocolBuilder.variableParameters.minLabel": {
+    "defaultMessage": "Earliest date",
+    "description": "Label of the field holding the earliest date a participant may choose."
+  },
+  "protocolBuilder.variableParameters.minLabelHint": {
+    "defaultMessage": "Shown at the low end of the scale, so the participant knows what the two ends mean.",
+    "description": "Guidance under the field naming the low end of a sliding scale."
+  },
+  "protocolBuilder.variableParameters.minLabelLabel": {
+    "defaultMessage": "Minimum label",
+    "description": "Label of the field naming the low end of a sliding scale the participant answers on."
+  },
+  "protocolBuilder.variableParameters.minLabelPlaceholder": {
+    "defaultMessage": "Not at all close",
+    "description": "Example wording shown in the empty field naming the low end of a sliding scale. An example a researcher might write about closeness between people, not a value that is stored."
+  },
+  "protocolBuilder.variableParameters.minLabelRequired": {
+    "defaultMessage": "Write what the low end of the scale means.",
+    "description": "Refusal shown under the field naming the low end of a sliding scale when the researcher has left it empty. The participant sees this wording at one end of the scale, so a scale with no such words is a line with nothing at either end of it."
+  },
+  "protocolBuilder.variableParameters.resolutionFull": {
+    "defaultMessage": "Year, month and day (YYYY-MM-DD)",
+    "description": "Choice offered for how precise a date a field collects: a whole calendar date. The bracketed pattern is the literal format the protocol stores and is not translated."
+  },
+  "protocolBuilder.variableParameters.resolutionHint": {
+    "defaultMessage": "How precise a date this field collects. Changing it clears the earliest and latest dates, because those are stored at the resolution chosen here.",
+    "description": "Guidance under the date-resolution control, warning that changing it throws the two bounds away."
+  },
+  "protocolBuilder.variableParameters.resolutionLabel": {
+    "defaultMessage": "Date resolution",
+    "description": "Label of the control choosing how precise a date this field collects."
+  },
+  "protocolBuilder.variableParameters.resolutionMonth": {
+    "defaultMessage": "Year and month (YYYY-MM)",
+    "description": "Choice offered for how precise a date a field collects: a month within a year. The bracketed pattern is the literal format the protocol stores and is not translated."
+  },
+  "protocolBuilder.variableParameters.resolutionYear": {
+    "defaultMessage": "Year only (YYYY)",
+    "description": "Choice offered for how precise a date a field collects: a year on its own. The bracketed pattern is the literal format the protocol stores and is not translated."
   },
   "protocolBuilder.variablePicker.attributeTypeLabel": {
     "defaultMessage": "Attribute type: {attributeType}",

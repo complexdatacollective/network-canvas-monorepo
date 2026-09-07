@@ -90,7 +90,7 @@ name not here adds it here first, in the same pull request.
 | `protocolContext`      | `protocol-context.ts`                                                                                                                                                            | i18n-1b   |
 | `compoundEdit`         | `compound-edit/InMemoryCompoundHost.ts`, `compound-edit/compoundRequestMessages.ts`                                                                                              | i18n-1b   |
 | `codebookEntity`       | `codebook/components/CodebookSurface.tsx`, `codebook/components/CodebookEntityEditor.tsx`                                                                                        | i18n-2a   |
-| `codebookVariable`     | `codebook/components/VariableEditor.tsx`, `codebook/variableRoles.ts`                                                                                                            | i18n-2a   |
+| `codebookVariable`     | `codebook/components/VariableEditor.tsx`, `codebook/variableRoles.ts`, `codebook/variableOptions.ts`, `codebook/components/VariableBooleanAnswerFields.tsx`                      | i18n-2a   |
 | `variableValidation`   | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/codebookMessages.ts` | i18n-2a   |
 | `codebookEditing`      | `codebook/editing.ts`, `codebook/codebookMessages.ts`                                                                                                                            | i18n-2a   |
 | `shell`                | `form/StageEditorShell.tsx`, `editors/saveStageAction.tsx`                                                                                                                       | i18n-2b   |
@@ -108,6 +108,8 @@ name not here adds it here first, in the same pull request.
 | `skipLogic`            | `sections/SkipLogicSection.tsx`                                                                                                                                                  | i18n-2b   |
 | `interviewerGuidance`  | `sections/InterviewerGuidanceSection.tsx`                                                                                                                                        | i18n-2b   |
 | `schemaProblem`        | `form/schemaProblems.ts`                                                                                                                                                         | sections  |
+| `variableParameters`   | `codebook/variableParameters.ts`, `codebook/components/VariableParameterFields.tsx`                                                                                              | sections  |
+| `compoundFailure`      | `codebook/compoundFailureCopy.ts`                                                                                                                                                | sections  |
 
 `shell` covers `editors/saveStageAction.tsx` as well as the shell itself,
 rather than that control taking an area of its own: the fallback save button is
@@ -129,11 +131,12 @@ has to have exactly one:
 - `compound-edit/compoundRequestMessages.ts` — the refusals the session writes
   before sending a compound edit and a host writes again on receiving one,
   which is why `compoundEdit.request*` lives in neither module.
-- `codebook/codebookMessages.ts` — the blocked-section and saving copy the
-  entity editor and the validation editor both show, and the missing-comparison
-  refusal both validation editors produce. It declares ids in two areas, which
-  is allowed: an area names the copy's subject, and a file is only obliged to
-  be the single home of each id.
+- `codebook/codebookMessages.ts` — the saving copy the entity editor and the
+  validation editor both show, and the missing-comparison refusal both
+  validation editors produce. It declares ids in two areas, which is allowed:
+  an area names the copy's subject, and a file is only obliged to be the single
+  home of each id. A blocked save is NOT here: every refused codebook change,
+  blocked included, is read once by `codebook/compoundFailureCopy.ts`.
 - `form/arrayFields/arrayMessages.ts` — the generic row noun every array-field
   sentence is built around.
 
@@ -182,8 +185,6 @@ Named here so a later split takes the name rather than inventing a synonym.
 
 | `<area>`                    | Will own the copy in                         | Expected in |
 | --------------------------- | -------------------------------------------- | ----------- |
-| `variableParameters`        | `codebook/components/` parameter editors     | splits 3–6  |
-| `compoundFailure`           | `codebook/compoundFailureCopy.ts`            | splits 3–6  |
 | `subjectSelect`             | `fields/SubjectSelectField.tsx`              | splits 3–6  |
 | `sortOrder`                 | `fields/sortOrderOptions`                    | splits 3–6  |
 | `formFields`                | `sections/FormFieldsSection`                 | splits 3–6  |
