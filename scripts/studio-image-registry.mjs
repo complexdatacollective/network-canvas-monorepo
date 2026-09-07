@@ -10,6 +10,7 @@ const OUTPUT_LIMIT = 1024 * 1024;
 const DIAGNOSTIC_LIMIT = 64 * 1024;
 const TIMEOUT_MS = 30_000;
 const PLATFORMS = new Set(['linux/amd64', 'linux/arm64']);
+const TAG = /^sha-[a-f0-9]{40}$/;
 
 function imageReference(name, reference) {
   const repository = IMAGE_REPOSITORIES[name];
@@ -25,6 +26,19 @@ function imageReference(name, reference) {
     throw new Error('Image reference is outside the controlled repositories.');
   }
   return { repository, digest };
+}
+
+function imageTag(name, reference) {
+  const repository = IMAGE_REPOSITORIES[name];
+  const separator = reference?.lastIndexOf(':');
+  if (
+    !repository ||
+    separator !== repository.length ||
+    reference.slice(0, separator) !== repository ||
+    !TAG.test(reference.slice(separator + 1))
+  )
+    throw new Error('Image tag is outside the controlled repositories.');
+  return { repository, tag: reference.slice(separator + 1) };
 }
 
 function parse(bytes, message) {
@@ -104,6 +118,67 @@ function craneRead(executable, args, timeoutMs) {
       settle(resolve, Buffer.concat(chunks));
     });
   });
+}
+
+async function registryHead({ url, authorization, timeoutMs }) {
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'HEAD',
+      redirect: 'error',
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: {
+        Accept:
+          'application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json',
+        Authorization: authorization,
+      },
+    });
+  } catch {
+    throw new Error('Registry tag probe failed.');
+  }
+  return {
+    status: response.status,
+    digest: response.headers.get('docker-content-digest'),
+    registry: response.headers.get('docker-distribution-api-version'),
+  };
+}
+
+/** Resolve a controlled immutable tag without treating transport or access
+ * failures as absence. Only an authenticated registry 404 permits creation. */
+export async function probeImageTag({
+  name,
+  reference,
+  crane = 'crane',
+  timeoutMs = TIMEOUT_MS,
+  request = registryHead,
+}) {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0)
+    throw new Error('Invalid registry evidence timeout.');
+  const { repository, tag } = imageTag(name, reference);
+  const header = (
+    await craneRead(crane, ['auth', 'token', '-H', repository], timeoutMs)
+  )
+    .toString('utf8')
+    .trim();
+  if (!/^Authorization: (?:Bearer|Basic) [A-Za-z0-9._~+/=-]+$/.test(header))
+    throw new Error('Registry authentication response is invalid.');
+  const response = await request({
+    url: `https://ghcr.io/v2/${repository.slice('ghcr.io/'.length)}/manifests/${tag}`,
+    authorization: header.slice('Authorization: '.length),
+    timeoutMs,
+  });
+  if (response?.status === 404 && response.registry === 'registry/2.0')
+    return null;
+  if (
+    response?.status !== 200 ||
+    response.registry !== 'registry/2.0' ||
+    typeof response.digest !== 'string' ||
+    !/^sha256:[a-f0-9]{64}$/.test(response.digest)
+  )
+    throw new Error(
+      'Registry tag probe did not return authenticated evidence.',
+    );
+  return response.digest;
 }
 
 /** Read immutable manifest and config bytes with crane without reserializing them. */

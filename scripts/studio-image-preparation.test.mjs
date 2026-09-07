@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -97,6 +98,10 @@ function fixture(t) {
         'linux/arm64': 'sha256:' + sha256(name + 'arm64'),
       },
     }),
+    probe: async ({ reference }) => {
+      if (!existsSync(tags)) return null;
+      return JSON.parse(readFileSync(tags, 'utf8'))[reference] ?? null;
+    },
     run: command,
   };
 }
@@ -150,6 +155,7 @@ test('builds/copies immutable six-image inputs, then acquires digest evidence an
       crane: f.tool,
       syft: f.tool,
       acquire: f.acquire,
+      probe: f.probe,
       run: f.run,
       timeoutMs: 2_000,
     },
@@ -200,7 +206,7 @@ test('builds/copies immutable six-image inputs, then acquires digest evidence an
         /postgres:18\.6-alpine@sha256:/.test(record[2]),
     ),
   );
-  assert.equal(commands.filter((record) => record[0] === 'digest').length, 12);
+  assert.equal(commands.filter((record) => record[0] === 'digest').length, 6);
   assert.equal(
     commands.filter((record) => record.includes('--output')).length,
     12,
@@ -238,6 +244,7 @@ test('reuses authenticated component images and their bound SBOMs while preparin
       crane: f.tool,
       syft: f.tool,
       acquire: f.acquire,
+      probe: f.probe,
       run: f.run,
       timeoutMs: 2_000,
     },
@@ -257,7 +264,7 @@ test('reuses authenticated component images and their bound SBOMs while preparin
       .map((record) => record[record.indexOf('--file') + 1]),
     ['apps/studio/deployment/minio.Dockerfile'],
   );
-  assert.equal(commands.filter((record) => record[0] === 'digest').length, 8);
+  assert.equal(commands.filter((record) => record[0] === 'digest').length, 4);
   assert.equal(
     commands.filter((record) => record.includes('--output')).length,
     8,
@@ -271,6 +278,7 @@ test('same-source retry reads retained immutable tags without overwriting them',
     crane: f.tool,
     syft: f.tool,
     acquire: f.acquire,
+    probe: f.probe,
     run: f.run,
     timeoutMs: 2_000,
   };
@@ -299,9 +307,55 @@ test('same-source retry reads retained immutable tags without overwriting them',
   );
   assert.equal(
     retryCommands.filter((record) => record[0] === 'digest').length,
-    6,
+    0,
   );
 });
+
+for (const { label, failure, pattern } of [
+  {
+    label: 'forbidden registry response',
+    failure: new Error('registry status 403'),
+    pattern: /403/,
+  },
+  {
+    label: 'registry timeout',
+    failure: new Error('registry timeout'),
+    pattern: /timeout/,
+  },
+  {
+    label: 'malformed retained digest',
+    failure: 'not-a-digest',
+    pattern: /retained tag/,
+  },
+])
+  test(`${label} cannot authorize an image write after earlier conclusive probes`, async (t) => {
+    const f = fixture(t);
+    let probes = 0;
+    const probe = async () => {
+      probes += 1;
+      if (probes === 1) return 'sha256:' + 'a'.repeat(64);
+      if (probes === 2) return null;
+      if (failure instanceof Error) throw failure;
+      return failure;
+    };
+    await assert.rejects(
+      () =>
+        prepareStudioImages(
+          { candidate: f.candidate, gate: f.gate },
+          {
+            docker: f.tool,
+            crane: f.tool,
+            syft: f.tool,
+            acquire: f.acquire,
+            probe,
+            run: f.run,
+          },
+        ),
+      pattern,
+    );
+    assert.equal(probes, 3);
+    assert.equal(existsSync(f.log), false);
+  });
 
 test('refuses invalid retained tag evidence without overwriting the tag', async (t) => {
   const f = fixture(t);
@@ -310,6 +364,7 @@ test('refuses invalid retained tag evidence without overwriting the tag', async 
     crane: f.tool,
     syft: f.tool,
     acquire: f.acquire,
+    probe: f.probe,
     run: f.run,
     timeoutMs: 2_000,
   };
@@ -397,6 +452,7 @@ test('build context contains only committed candidate bytes, excluding ignored a
       crane: f.tool,
       syft: f.tool,
       acquire: f.acquire,
+      probe: f.probe,
       run,
       timeoutMs: 2_000,
     },
@@ -431,6 +487,7 @@ test('bounds a stalled local build command with a fixed error', async (t) => {
           crane: f.tool,
           syft: f.tool,
           acquire: f.acquire,
+          probe: f.probe,
           run: f.run,
           timeoutMs: 100,
         },
@@ -456,6 +513,7 @@ test('redacts a nonzero local image command failure', async (t) => {
           crane: f.tool,
           syft: f.tool,
           acquire: f.acquire,
+          probe: f.probe,
           run: f.run,
         },
       ),
