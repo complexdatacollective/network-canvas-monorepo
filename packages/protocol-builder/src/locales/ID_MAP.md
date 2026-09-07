@@ -65,57 +65,59 @@ name not here adds it here first, in the same pull request.
 
 ### Converted
 
-| `<area>`               | Owns the copy in                                                                                                                                                                 | Landed by |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `interface`            | `interfaces/interfaceNames.ts`                                                                                                                                                   | #1702     |
-| `stageTypeImage`       | `interfaces/StageTypeImage.tsx`                                                                                                                                                  | #1702     |
-| `stageName`            | `sections/StageNameSection.tsx`                                                                                                                                                  | #1702     |
-| `operators`            | `rules/operators.ts`                                                                                                                                                             | i18n-1a   |
-| `ruleEditor`           | `rules/RuleEditorDialog.tsx`, `rules/ruleMessages.ts`                                                                                                                            | i18n-1a   |
-| `ruleSet`              | `rules/ruleSet.ts`, `rules/RuleSetField.tsx`                                                                                                                                     | i18n-1a   |
-| `ruleValue`            | `rules/RuleValueField.tsx`                                                                                                                                                       | i18n-1a   |
-| `ruleList`             | `rules/RuleList.tsx`                                                                                                                                                             | i18n-1a   |
-| `rulePreview`          | `rules/RulePreview.tsx`                                                                                                                                                          | i18n-1a   |
-| `ruleDescription`      | `rules/ruleDescription.ts`, `rules/ruleMessages.ts`                                                                                                                              | i18n-1a   |
-| `ruleCodebook`         | `rules/ruleCodebook.ts`                                                                                                                                                          | i18n-1a   |
-| `resourceKinds`        | `resources/components/resourceKinds.ts`                                                                                                                                          | i18n-1b   |
-| `resourcePicker`       | `resources/components/ResourcePickerControl.tsx`                                                                                                                                 | i18n-1b   |
-| `resourceBrowser`      | `resources/components/ResourceBrowserDialog.tsx`                                                                                                                                 | i18n-1b   |
-| `resourceUpload`       | `resources/components/ResourceUploadControl.tsx`                                                                                                                                 | i18n-1b   |
-| `resourceSecret`       | `resources/components/ResourceSecretControl.tsx`                                                                                                                                 | i18n-1b   |
-| `resourcePreview`      | `resources/components/ResourcePreview.tsx`                                                                                                                                       | i18n-1b   |
-| `resourceSummary`      | `resources/components/ResourceSummary.tsx`                                                                                                                                       | i18n-1b   |
-| `resourceFailure`      | `resources/resourceMessages.ts`, produced across `resources/`                                                                                                                    | i18n-1b   |
-| `session`              | `session.ts`                                                                                                                                                                     | i18n-1b   |
-| `protocolContext`      | `protocol-context.ts`                                                                                                                                                            | i18n-1b   |
-| `compoundEdit`         | `compound-edit/InMemoryCompoundHost.ts`, `compound-edit/compoundRequestMessages.ts`                                                                                              | i18n-1b   |
-| `codebookEntity`       | `codebook/components/CodebookSurface.tsx`, `codebook/components/CodebookEntityEditor.tsx`                                                                                        | i18n-2a   |
-| `codebookVariable`     | `codebook/components/VariableEditor.tsx`, `codebook/variableRoles.ts`, `codebook/variableOptions.ts`, `codebook/components/VariableBooleanAnswerFields.tsx`                      | i18n-2a   |
-| `variableValidation`   | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/codebookMessages.ts` | i18n-2a   |
-| `codebookEditing`      | `codebook/editing.ts`, `codebook/codebookMessages.ts`                                                                                                                            | i18n-2a   |
-| `shell`                | `form/StageEditorShell.tsx`, `editors/saveStageAction.tsx`                                                                                                                       | i18n-2b   |
-| `outline`              | `form/SectionOutline.tsx`                                                                                                                                                        | i18n-2b   |
-| `dialogForm`           | `form/DialogForm.tsx`, `form/discardDraftGuard.ts`                                                                                                                               | i18n-2b   |
-| `protocolField`        | `form/ProtocolField.tsx`                                                                                                                                                         | i18n-2b   |
-| `arrayField`           | `form/arrayFields/DialogArrayField.tsx`, `rowValidators.ts`, `arrayWriteRefusal.ts`, `useConfirmRowRemoval.ts`, `arrayFields/arrayMessages.ts`, `RowEditorBoundary.tsx`          | i18n-2b   |
-| `assignAttributes`     | `form/arrayFields/AssignAttributes.tsx`, `form/arrayFields/Attribute.tsx`                                                                                                        | i18n-2b   |
-| `multiSelect`          | `form/arrayFields/MultiSelect.tsx`                                                                                                                                               | i18n-2b   |
-| `option`               | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`                                                                                                                    | i18n-2b   |
-| `entitySelect`         | `fields/EntitySelectField.tsx`                                                                                                                                                   | i18n-2b   |
-| `variablePicker`       | `fields/VariablePicker.tsx`                                                                                                                                                      | i18n-2b   |
-| `skipLogicDestination` | `fields/skipLogicDestination.ts`                                                                                                                                                 | i18n-2b   |
-| `networkFilter`        | `sections/NetworkFilterSection.tsx`                                                                                                                                              | i18n-2b   |
-| `skipLogic`            | `sections/SkipLogicSection.tsx`                                                                                                                                                  | i18n-2b   |
-| `interviewerGuidance`  | `sections/InterviewerGuidanceSection.tsx`                                                                                                                                        | i18n-2b   |
-| `schemaProblem`        | `form/schemaProblems.ts`                                                                                                                                                         | sections  |
-| `variableParameters`   | `codebook/variableParameters.ts`, `codebook/components/VariableParameterFields.tsx`                                                                                              | sections  |
-| `compoundFailure`      | `codebook/compoundFailureCopy.ts`                                                                                                                                                | sections  |
-| `sortOrder`            | `fields/sortOrderOptions.ts`, `sections/prompts/SortOrderRows.tsx`                                                                                                               | sections  |
-| `subjectSection`       | `sections/SubjectSection.tsx`                                                                                                                                                    | sections  |
-| `introduction`         | `sections/IntroductionSection.tsx`                                                                                                                                               | sections  |
-| `pageContent`          | `sections/PageContentSection.tsx`                                                                                                                                                | sections  |
-| `contentBlock`         | `sections/contentBlocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                               | sections  |
-| `promptsSection`       | `sections/PromptsSection.tsx`                                                                                                                                                    | sections  |
+| `<area>`                    | Owns the copy in                                                                                                                                                                 | Landed by |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `interface`                 | `interfaces/interfaceNames.ts`                                                                                                                                                   | #1702     |
+| `stageTypeImage`            | `interfaces/StageTypeImage.tsx`                                                                                                                                                  | #1702     |
+| `stageName`                 | `sections/StageNameSection.tsx`                                                                                                                                                  | #1702     |
+| `operators`                 | `rules/operators.ts`                                                                                                                                                             | i18n-1a   |
+| `ruleEditor`                | `rules/RuleEditorDialog.tsx`, `rules/ruleMessages.ts`                                                                                                                            | i18n-1a   |
+| `ruleSet`                   | `rules/ruleSet.ts`, `rules/RuleSetField.tsx`                                                                                                                                     | i18n-1a   |
+| `ruleValue`                 | `rules/RuleValueField.tsx`                                                                                                                                                       | i18n-1a   |
+| `ruleList`                  | `rules/RuleList.tsx`                                                                                                                                                             | i18n-1a   |
+| `rulePreview`               | `rules/RulePreview.tsx`                                                                                                                                                          | i18n-1a   |
+| `ruleDescription`           | `rules/ruleDescription.ts`, `rules/ruleMessages.ts`                                                                                                                              | i18n-1a   |
+| `ruleCodebook`              | `rules/ruleCodebook.ts`                                                                                                                                                          | i18n-1a   |
+| `resourceKinds`             | `resources/components/resourceKinds.ts`                                                                                                                                          | i18n-1b   |
+| `resourcePicker`            | `resources/components/ResourcePickerControl.tsx`                                                                                                                                 | i18n-1b   |
+| `resourceBrowser`           | `resources/components/ResourceBrowserDialog.tsx`                                                                                                                                 | i18n-1b   |
+| `resourceUpload`            | `resources/components/ResourceUploadControl.tsx`                                                                                                                                 | i18n-1b   |
+| `resourceSecret`            | `resources/components/ResourceSecretControl.tsx`                                                                                                                                 | i18n-1b   |
+| `resourcePreview`           | `resources/components/ResourcePreview.tsx`                                                                                                                                       | i18n-1b   |
+| `resourceSummary`           | `resources/components/ResourceSummary.tsx`                                                                                                                                       | i18n-1b   |
+| `resourceFailure`           | `resources/resourceMessages.ts` (declared), produced by `resources/gateway*.ts`, `lifecycle.ts`, `references.ts`, `InMemoryResourceGateway.ts`                                   | i18n-1b   |
+| `session`                   | `session.ts`                                                                                                                                                                     | i18n-1b   |
+| `protocolContext`           | `protocol-context.ts`                                                                                                                                                            | i18n-1b   |
+| `compoundEdit`              | `compound-edit/InMemoryCompoundHost.ts`, `compound-edit/compoundRequestMessages.ts`                                                                                              | i18n-1b   |
+| `codebookEntity`            | `codebook/components/CodebookSurface.tsx`, `codebook/components/CodebookEntityEditor.tsx`                                                                                        | i18n-2a   |
+| `codebookVariable`          | `codebook/components/VariableEditor.tsx`, `codebook/variableRoles.ts`, `codebook/variableOptions.ts`, `codebook/components/VariableBooleanAnswerFields.tsx`                      | i18n-2a   |
+| `variableValidation`        | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/codebookMessages.ts` | i18n-2a   |
+| `codebookEditing`           | `codebook/editing.ts`, `codebook/codebookMessages.ts`, `codebook/useCodebookVariableEdits.ts`                                                                                    | i18n-2a   |
+| `shell`                     | `form/StageEditorShell.tsx`, `editors/saveStageAction.tsx`                                                                                                                       | i18n-2b   |
+| `outline`                   | `form/SectionOutline.tsx`                                                                                                                                                        | i18n-2b   |
+| `dialogForm`                | `form/DialogForm.tsx`, `form/discardDraftGuard.ts`                                                                                                                               | i18n-2b   |
+| `protocolField`             | `form/ProtocolField.tsx`                                                                                                                                                         | i18n-2b   |
+| `arrayField`                | `form/arrayFields/DialogArrayField.tsx`, `rowValidators.ts`, `arrayWriteRefusal.ts`, `useConfirmRowRemoval.ts`, `arrayFields/arrayMessages.ts`, `RowEditorBoundary.tsx`          | i18n-2b   |
+| `assignAttributes`          | `form/arrayFields/AssignAttributes.tsx`, `form/arrayFields/Attribute.tsx`                                                                                                        | i18n-2b   |
+| `multiSelect`               | `form/arrayFields/MultiSelect.tsx`                                                                                                                                               | i18n-2b   |
+| `option`                    | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`                                                                                                                    | i18n-2b   |
+| `entitySelect`              | `fields/EntitySelectField.tsx`                                                                                                                                                   | i18n-2b   |
+| `variablePicker`            | `fields/VariablePicker.tsx`, `sections/CreatableVariablePicker.tsx`                                                                                                              | i18n-2b   |
+| `skipLogicDestination`      | `fields/skipLogicDestination.ts`                                                                                                                                                 | i18n-2b   |
+| `networkFilter`             | `sections/NetworkFilterSection.tsx`                                                                                                                                              | i18n-2b   |
+| `skipLogic`                 | `sections/SkipLogicSection.tsx`                                                                                                                                                  | i18n-2b   |
+| `interviewerGuidance`       | `sections/InterviewerGuidanceSection.tsx`                                                                                                                                        | i18n-2b   |
+| `schemaProblem`             | `form/schemaProblems.ts`                                                                                                                                                         | sections  |
+| `variableParameters`        | `codebook/variableParameters.ts`, `codebook/components/VariableParameterFields.tsx`                                                                                              | sections  |
+| `compoundFailure`           | `codebook/compoundFailureCopy.ts`                                                                                                                                                | sections  |
+| `sortOrder`                 | `fields/sortOrderOptions.ts`, `sections/prompts/SortOrderRows.tsx`                                                                                                               | sections  |
+| `formFields`                | `sections/FormFieldsSection.tsx`                                                                                                                                                 | sections  |
+| `attributeCodebookControls` | `sections/AttributeCodebookControls.tsx`                                                                                                                                         | sections  |
+| `subjectSection`            | `sections/SubjectSection.tsx`                                                                                                                                                    | sections  |
+| `introduction`              | `sections/IntroductionSection.tsx`                                                                                                                                               | sections  |
+| `pageContent`               | `sections/PageContentSection.tsx`                                                                                                                                                | sections  |
+| `contentBlock`              | `sections/contentBlocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                               | sections  |
+| `promptsSection`            | `sections/PromptsSection.tsx`                                                                                                                                                    | sections  |
 
 `shell` covers `editors/saveStageAction.tsx` as well as the shell itself,
 rather than that control taking an area of its own: the fallback save button is
@@ -155,7 +157,7 @@ from `codebook/variableValidation.ts` rather than declaring
 `arrayField.*ElsewhereRefusal` twins of them. The array field and the codebook
 editor report the same conflict, so a translator answers once.
 
-### Two rules the guards hold
+### Three rules the guards hold
 
 **No component takes its words from a host.** A `copy?: Partial<…Copy>` prop of
 plain strings is a hole a host drops English into: nothing extracts it, so it
@@ -185,31 +187,49 @@ Both scans read the whole package rather than a list of converted directories,
 and `src/__tests__/packageSource.ts` holds the one exclusion list they share. It
 is empty: every directory this package has is inside the guards.
 
+**A named descriptor prop is formatted with no values.** The sentences a family
+hands `PromptsSection`, `FormFieldsSection`, `PageContentSection`,
+`SubjectSection` and `SectionCapability.confirmClear` are `MessageDescriptor`s
+the section formats with no arguments, so one carrying a placeholder renders
+`{like this}` on screen. It cannot be said in the type system: `extractMessages`
+only sees `defineMessages`, `defineMessages` widens `defaultMessage` to
+`string`, and declaring these through a `const`-generic helper that kept the
+literal would put every section sentence beyond extraction — a worse defect
+than the one it guards. `sections/__tests__/namedDescriptorProps.test.tsx`
+records it, and the locale sweep below fails on an unformatted placeholder
+wherever one reaches the screen.
+
 ### Reserved — not yet converted
 
 Named here so a later split takes the name rather than inventing a synonym.
 
-| `<area>`                    | Will own the copy in                         | Expected in |
-| --------------------------- | -------------------------------------------- | ----------- |
-| `subjectSelect`             | `fields/SubjectSelectField.tsx`              | splits 3–6  |
-| `formFields`                | `sections/FormFieldsSection`                 | splits 3–6  |
-| `attributeCodebookControls` | `sections/AttributeCodebookControls`         | splits 3–6  |
-| `nodePanels`                | `sections/NodePanelsSection`                 | family D    |
-| `searchOptions`             | `sections/SearchOptionsSection`              | family D    |
-| `alterLimits`               | `sections/AlterLimitsSection`                | family D    |
-| `quickAdd`                  | `sections/QuickAddSection`                   | family D    |
-| `sortOptions`               | `sections/SortOptionsSection`                | family D    |
-| `nameGeneratorPrompts`      | `sections/NameGeneratorPromptsSection`       | family D    |
-| `cardDisplay`               | `sections/CardDisplaySection`                | family D    |
-| `externalDataSource`        | `sections/ExternalDataSourceSection`         | family D    |
-| `censusPrompts`             | `sections/prompts/`                          | family E    |
-| `removeAfterConsideration`  | `sections/RemoveAfterConsiderationSection`   | family E    |
-| `ordinalColor`              | `fields/OrdinalColorField`                   | family E    |
-| `networkCanvas`             | `sections/network/`                          | family F    |
-| `pedigree`                  | `sections/pedigree/`                         | family F    |
-| `narrativePedigree`         | `sections/narrativePedigree/`                | family F    |
-| `geospatial`                | `sections/geospatial/`, geospatial `fields/` | family F    |
-| `anonymisation`             | `sections/anonymisation/`                    | family F    |
+| `<area>`                   | Will own the copy in                         | Expected in |
+| -------------------------- | -------------------------------------------- | ----------- |
+| `nodePanels`               | `sections/NodePanelsSection`                 | family D    |
+| `searchOptions`            | `sections/SearchOptionsSection`              | family D    |
+| `alterLimits`              | `sections/AlterLimitsSection`                | family D    |
+| `quickAdd`                 | `sections/QuickAddSection`                   | family D    |
+| `sortOptions`              | `sections/SortOptionsSection`                | family D    |
+| `nameGeneratorPrompts`     | `sections/NameGeneratorPromptsSection`       | family D    |
+| `cardDisplay`              | `sections/CardDisplaySection`                | family D    |
+| `externalDataSource`       | `sections/ExternalDataSourceSection`         | family D    |
+| `censusPrompts`            | `sections/prompts/`                          | family E    |
+| `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection`   | family E    |
+| `ordinalColor`             | `fields/OrdinalColorField`                   | family E    |
+| `networkCanvas`            | `sections/network/`                          | family F    |
+| `pedigree`                 | `sections/pedigree/`                         | family F    |
+| `narrativePedigree`        | `sections/narrativePedigree/`                | family F    |
+| `geospatial`               | `sections/geospatial/`, geospatial `fields/` | family F    |
+| `anonymisation`            | `sections/anonymisation/`                    | family F    |
+
+Family F's five areas each declare their ids in one `*Messages.ts` beside the
+sections — `sections/network/networkCanvasMessages.ts` and its four siblings —
+rather than beside each section's markup, which is the rule for a converted
+module. The reason is the seam: every id there is rendered somewhere ELSE, in
+`BuilderSection`'s confirmation, in `DialogArrayField`'s refusals, and in the
+shared prompt and form sections — so a translator reading one of those files
+sees the whole of what a family says through other people's components, and
+the family's own copy joins it there when the rest is converted.
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name
@@ -234,9 +254,15 @@ for something else or reopens a decision that has been made:
   the hint, the empty state — belongs to the section that mounts it
   (`subjectSection`) or to the control it wraps (`entitySelect`). The name
   stays reserved rather than being reused for something else.
+- **`attributeCodebookControls`** owns only the words on its own buttons. What
+  each dialog it opens says is the codebook editor's
+  (`codebookVariable`, `variableValidation`), because the researcher is looking
+  at that editor by then.
 
-`sections/StageHeading.tsx` holds no copy either: it composes `StageNameSection`
-from the protocol's own stage order, so every word on it is that section's.
+`sections/StageHeading.tsx` and `sections/collectableTypes.ts` hold no copy
+either: the first composes `StageNameSection` from the protocol's own stage
+order, and the second is a list of schema tokens that the controls offering
+them label.
 
 The RESOURCE half of `schemaProblem` — what a researcher is told about a stored
 resource entry the asset schema refuses — is declared in `form/schemaProblems.ts`
@@ -302,3 +328,123 @@ protocol stage labels, is the existing case, and it is English deliberately.
   prompt = _pregunta_, attribute = _atributo_, node = _nodo_, edge = _vínculo_,
   ego = _ego_, alter = _álter_, network = _red_, rule = _regla_, roster =
   _lista_, resource = _recurso_, interview = _entrevista_.
+
+## Negative tests: what a Spanish reader actually gets
+
+Every locale test in this package used to be POSITIVE — name a Spanish sentence
+and find it. A positive test says nothing about the words beside it, which is
+how `'Cancel'` and `'Select an attribute…'` sat inside otherwise translated
+dialogs: each was somebody else's file, and nobody's test named it.
+
+`src/__tests__/localeSweep.test.tsx` asks the opposite question of a whole
+rendered surface — three stages at rest, and the add, edit and remove dialogs.
+`src/testing/localeSweep.ts` walks the document under `es` and reports four
+things: an English `defaultMessage` whose Spanish differs, a run of fixed
+English from INSIDE a message that also carries an ICU argument (the pattern is
+never what a reader sees, so `Node color {index, number}` rebuilt by hand as
+`` `Node color ${index + 1}` `` matches no whole message and was reported by
+nothing), the raw `@codaco/app-i18n/error/v1:` prefix of an encoded message
+nobody decoded, and an ICU argument nothing filled in.
+
+One module, several callers. The same sweep is what
+`src/form/__tests__/formLocale.test.tsx`,
+`src/fields/__tests__/fieldsLocale.test.tsx`,
+`src/codebook/__tests__/codebookLocale.test.tsx` and
+`src/sections/__tests__/sectionsLocale.test.tsx` assert with, so every surface
+in the package is read by one reading rather than four. What the researcher
+wrote is built with `protocolStrings(…)`, which takes the documents the test
+mounted — a harness's protocol snapshot, seeded fields and host codebook, or a
+codebook editor's section document — rather than a harness, so a caller that
+mounts no harness feeds it the same way.
+
+Two things it deliberately does not report. **Protocol content**: a researcher's
+own words are stored in the protocol and rendered to the participant verbatim,
+and some of them read exactly like copy this package owns (a stage called
+"Sociogram"), so the sweep reads the protocol document the harness is mounted
+over and never reports a string it holds. **A string no descriptor has ever
+stood behind**: the catalog is what it compares against, so a hardcoded literal
+with no id is invisible to it — the JSX-attribute scan is the structural half,
+and the two are meant to be read together.
+
+The codebook editors are swept by `codebook/__tests__/codebookLocale.test.tsx`
+rather than from the stage sweep: opening them from a section would report
+whichever editor was open against whichever section opened it.
+
+Each interface family adds its own sweep of whole EDITORS beside these, reached
+through that family's registry. A section sweep cannot see what only
+composition produces — a shell control no section test mounts, or one section
+rendering English between two that do not.
+
+Three rules those sweeps put on everything else in the package. Each was a real
+defect, and each is the sweep reading something that is not a section's copy as
+though it were:
+
+- **A fixture's own words are declared, not renamed.**
+  `sections/__tests__/rowFixtures.tsx` labels its stand-in prompt field
+  `Prompt text`, and an interface family may well choose those same words for a
+  real label — the sweep indexes by the English SENTENCE rather than by where it
+  was rendered, so the fixture's stand-in gets reported under whichever id is
+  spelled the same. The dialog sweeps name those labels in `fixtureWords`, which
+  says "a fixture put this here" — the same claim `packageSource.ts` makes about
+  a fixture FILE. Renaming the fixture's labels was tried on two branches and
+  rejected: it moves the collision rather than removing it, the next family to
+  pick those words is back where it started, and every test that reads a label
+  back has to move with it.
+- **The harness's stand-in controls say what the real ones say.**
+  `testing/renderStageEditor.tsx` wrote its fallback submit button's label as
+  the literal `'Save stage'`, which is `shell.saveStage`; it now reads that
+  descriptor out of the same catalog the provider was given, so the button is
+  Spanish on a Spanish surface and unchanged everywhere else.
+- **Every section of the protocol is content, not just the stage on screen.** A
+  section can show a researcher's words from anywhere in the protocol: a skip
+  logic destination is named by the researcher's label for the stage it
+  continues at, and a narrative pedigree lists its source stages by theirs. Both
+  of those labels are also what this package calls the interface, so a sweep
+  reading only the stage the harness seeded reported a researcher's own stage
+  name as a translation defect. `protocolStrings` is handed the whole
+  `protocolSections` snapshot for that reason.
+
+An English sentence this package suggests is only protocol content when the
+protocol holds it. `interface.sociogram` is "Sociogram", which is also what a
+researcher calls the stage — because the package suggested it. Rendered where
+the protocol does NOT hold it, it is a leak, and the sweep's own tests state
+both halves.
+
+One allowance, declared at the call site and an exact list rather than a filter,
+because a sweep that quietly forgave anything would be a green tick over the
+defect it exists to find:
+
+- **`fixtureWords`** subtracts a fixture's own labels, as above. It is not a
+  route around a real leak: a word listed there is one nothing in this package
+  declares as copy, and the sweep still reports every id that does.
+
+There was a second, `stillEnglish` — an unconverted area's leaks in full,
+asserted as an EQUALITY so that landing the conversion broke the test and made
+whoever converted it delete the entry. `src/resources` was what it was for, and
+i18n-1b converted it, so the allowance went with it. Its discipline survives
+where it is still needed, in the empty `NOT_CONVERTED_YET` of
+`src/__tests__/packageSource.ts` and the expected-failure guard over it.
+
+## Reading a story in another language
+
+This package's Storybook carries the shared **Language** and **Direction**
+toolbar controls from `@codaco/storybook-config` — the same ones
+`@codaco/fresco-ui`'s Storybook mounts, wired here in
+`.storybook/i18n.ts` and mounted as the preview's only decorator. Language
+offers every `ecosystemLocales` entry plus the `en-XA` pseudo-locale, and the
+decorator mounts an `AppI18nProvider` over `common.*`, `frescoUi.*` and
+`protocolBuilder.*` merged in that host order, so a section renders the words
+an app will actually show it. **It opens on `en` and stays there until somebody
+changes it**: `en` has no catalog in any of the three, so every descriptor
+renders its `defaultMessage` and the stories, their play functions and the
+Chromatic captures are byte-for-byte what they were before the control existed
+(the choice is remembered per browser, but never under Chromatic, Playwright or
+any other automated host). Switching to Español is the cheapest way to see
+whether a section is converted at all: a string that stays English there has no
+descriptor behind it — the provider-less English fallback in `useAppIntl()`
+makes an unconverted string and an untranslated one look identical until you
+switch. A story's own hardcoded host copy stays English too, which is expected;
+so is a play function that asserts an English literal failing when the language
+is forced, since plays are written against the source locale. The URL form is
+`?id=<story>&globals=appLocale:es`, and
+`src/__tests__/storybookLocaleSwitcher.test.tsx` holds the wiring in place.
