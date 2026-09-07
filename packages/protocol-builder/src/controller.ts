@@ -1,6 +1,6 @@
 import { useId, useMemo, useSyncExternalStore } from 'react';
 
-import type { Command } from '@codaco/studio-sync/apply';
+import type { Command, CommandTarget } from '@codaco/studio-sync/apply';
 
 import type { ResourceResult } from './resources/gateway.ts';
 import type {
@@ -38,11 +38,11 @@ export type StageEditorController = Readonly<{
    */
   resourceGateway: SessionResourceGateway | undefined;
   changeFields(next: StageFormDraftChange): void;
-  setField(key: string, value: unknown): void;
-  unsetField(key: string): void;
-  insertItem(key: string, index: number, item: unknown): void;
-  removeItem(key: string, index: number): void;
-  moveItem(key: string, from: number, to: number): void;
+  setField(key: CommandTarget, value: unknown): void;
+  unsetField(key: CommandTarget): void;
+  insertItem(key: CommandTarget, index: number, item: unknown): void;
+  removeItem(key: CommandTarget, index: number): void;
+  moveItem(key: CommandTarget, from: number, to: number): void;
   /**
    * Issues commands a list editor has already decided on, and answers with the
    * draft they produced.
@@ -95,23 +95,23 @@ export function useStageEditorController(
         const current = session.getSnapshot().editedSection.fields;
         session.dispatch(commandsFromDraftChange(current, update(current)));
       },
-      setField(key: string, value: unknown) {
+      setField(key: CommandTarget, value: unknown) {
         const command: Command =
           value === undefined
             ? { op: 'unset', key }
             : { op: 'set', key, value };
         session.dispatch([command]);
       },
-      unsetField(key: string) {
+      unsetField(key: CommandTarget) {
         session.dispatch([{ op: 'unset', key }]);
       },
-      insertItem(key: string, index: number, item: unknown) {
+      insertItem(key: CommandTarget, index: number, item: unknown) {
         session.dispatch([{ op: 'insertItem', key, index, item }]);
       },
-      removeItem(key: string, index: number) {
+      removeItem(key: CommandTarget, index: number) {
         session.dispatch([{ op: 'removeItem', key, index }]);
       },
-      moveItem(key: string, from: number, to: number) {
+      moveItem(key: CommandTarget, from: number, to: number) {
         session.dispatch([{ op: 'moveItem', key, from, to }]);
       },
       applyCommands(commands: readonly Command[]) {

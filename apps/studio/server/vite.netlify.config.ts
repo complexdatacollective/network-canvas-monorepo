@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig, type Plugin } from 'vite';
 
+import { studioSourceMaps } from '../scripts/telemetry-plugins.ts';
+
 // Netlify Functions bundle. Unlike the Docker bundle (vite.config.ts), which
 // leaves npm dependencies external because `pnpm deploy` installs them into
 // the image, a function is uploaded on its own — so everything is inlined.
@@ -41,8 +43,11 @@ function inlineVersion(): Plugin {
   };
 }
 
-export default defineConfig({
-  plugins: [inlineVersion()],
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    inlineVersion(),
+    ...studioSourceMaps(mode, import.meta.dirname, version),
+  ],
   build: {
     ssr: 'src/netlify.ts',
     outDir: '../netlify/functions',
@@ -61,4 +66,4 @@ export default defineConfig({
   ssr: {
     noExternal: true,
   },
-});
+}));

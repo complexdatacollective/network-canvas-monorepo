@@ -1,6 +1,9 @@
 import type pg from 'pg';
 
-import { EmailDeliveryError } from '@codaco/studio-sync/email-sender';
+import {
+  EmailDeliveryError,
+  type EmailSender,
+} from '@codaco/studio-sync/email-sender';
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { InvitationMailer } from '../auth/email.ts';
@@ -66,8 +69,8 @@ class InvitationDeliveryAdapter implements OutboxAdapter<ClaimedInvitationDelive
   readonly queue = INVITATION_DELIVERY_QUEUE;
 
   failureDisposition(error: unknown): 'retryable' | 'permanent' | 'uncertain' {
-    // Existing custom mailer failures retain their retry semantics. The SMTP
-    // adapter supplies proof of rejection or of potentially accepted delivery.
+    // Existing custom mailer failures retain their retry semantics. Shared
+    // email adapters distinguish rejection from potentially accepted delivery.
     return error instanceof EmailDeliveryError
       ? error.disposition
       : 'retryable';
@@ -377,6 +380,8 @@ export class InvitationDeliveryDispatcher {
 
 export type InvitationDeliveryWorkerOptions =
   InvitationDeliveryDispatcherOptions & {
+    reportError?: (error: unknown) => void;
+    mailer: InvitationMailer & Pick<EmailSender, 'close'>;
     pollIntervalMs?: number;
     drainLimit?: number;
   };
@@ -387,10 +392,22 @@ export function startInvitationDeliveryWorker(
   options: InvitationDeliveryWorkerOptions,
 ): InvitationDeliveryWorker {
   const dispatcher = new InvitationDeliveryDispatcher(options);
-  return startOutboxWorker({
+  const worker = startOutboxWorker({
     ...options,
     queue: INVITATION_DELIVERY_QUEUE,
     runOnce: () => dispatcher.runOnce(),
-    onError: () => logOperational('STUDIO_INVITATION_WORKER_ERROR'),
+    onError: (error) => {
+      logOperational('STUDIO_INVITATION_WORKER_ERROR');
+      options.reportError?.(error);
+    },
   });
+  return {
+    stop() {
+      // Stop new claims first, then interrupt the active provider wait so its
+      // owner-checked uncertain outcome can commit before process shutdown.
+      const stopped = worker.stop();
+      options.mailer.close();
+      return stopped;
+    },
+  };
 }

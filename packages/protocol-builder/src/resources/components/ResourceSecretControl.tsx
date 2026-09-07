@@ -1,6 +1,12 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import {
+  createMessageError,
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -21,17 +27,83 @@ import { discardAbandonedStaging } from './abandonedStaging.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import { useResourceAttempt } from './useResourceAttempt.ts';
 
-const NAME_REQUIRED_MESSAGE = 'Enter a name for this key.';
-const VALUE_REQUIRED_MESSAGE = 'Enter the value of the key.';
-const DUPLICATE_NAME_MESSAGE =
-  'You already have a key called that. Choose a different name.';
-/**
- * Why a key cannot be added yet. One whole sentence, and about the researcher
- * rather than about the request: what they are waiting for, and what it is
- * for — a disabled button with no reason beside it reads as a broken one.
- */
-const WAITING_FOR_NAMES_MESSAGE =
-  'Waiting for the keys this protocol already has, so this one can be checked against them.';
+const messages = defineMessages({
+  nameRequired: {
+    id: 'protocolBuilder.resourceSecret.nameRequired',
+    defaultMessage: 'Enter a name for this key.',
+    description:
+      'Field error shown when a researcher submits an API key without naming it.',
+  },
+  valueRequired: {
+    id: 'protocolBuilder.resourceSecret.valueRequired',
+    defaultMessage: 'Enter the value of the key.',
+    description:
+      'Field error shown when a researcher submits an API key without pasting the key itself.',
+  },
+  duplicateName: {
+    id: 'protocolBuilder.resourceSecret.duplicateName',
+    defaultMessage:
+      'You already have a key called that. Choose a different name.',
+    description:
+      'Field error shown when a researcher names an API key the same as one the protocol already holds. Names are how keys are told apart, so two alike cannot be allowed.',
+  },
+  waitingForNames: {
+    id: 'protocolBuilder.resourceSecret.waitingForNames',
+    defaultMessage:
+      'Waiting for the keys this protocol already has, so this one can be checked against them.',
+    description:
+      'Why the button that adds an API key is not usable yet. One whole sentence about what the researcher is waiting for: a disabled button with no reason beside it reads as a broken one.',
+  },
+  nameLabel: {
+    id: 'protocolBuilder.resourceSecret.nameLabel',
+    defaultMessage: 'Name',
+    description: 'Label of the input naming the API key being added.',
+  },
+  nameHint: {
+    id: 'protocolBuilder.resourceSecret.nameHint',
+    defaultMessage: 'How this key is listed in your protocol.',
+    description:
+      'Hint under the input naming the API key being added, saying what the name is for.',
+  },
+  valueLabel: {
+    id: 'protocolBuilder.resourceSecret.valueLabel',
+    defaultMessage: 'Key',
+    description:
+      'Label of the password input holding the API key value itself.',
+  },
+  plaintextHint: {
+    id: 'protocolBuilder.resourceSecret.plaintextHint',
+    defaultMessage:
+      'Pasted from your map provider. It is saved inside your protocol as plain text, so anyone you give the protocol file to can read it. It is not shown again here.',
+    description:
+      'Hint under the API key input for a host that writes the key into the protocol file itself. The researcher is deciding whether to put a credential into a file they will share, so the consequence is stated plainly.',
+  },
+  vaultHint: {
+    id: 'protocolBuilder.resourceSecret.vaultHint',
+    defaultMessage:
+      'Pasted from your map provider. It is kept by the host rather than saved inside your protocol, and is not shown again here.',
+    description:
+      'Hint under the API key input for a host that keeps the key itself rather than writing it into the protocol file.',
+  },
+  retry: {
+    id: 'protocolBuilder.resourceSecret.retry',
+    defaultMessage: 'Try adding the key again',
+    description:
+      'Button beside a failure notice, which repeats the identical request to add the same API key. Named rather than generic because several parts of the dialog can be failing at once.',
+  },
+  submit: {
+    id: 'protocolBuilder.resourceSecret.submit',
+    defaultMessage: 'Add API key',
+    description:
+      'Button that submits the name and value of a new API key to the host.',
+  },
+  addedAnnouncement: {
+    id: 'protocolBuilder.resourceSecret.addedAnnouncement',
+    defaultMessage: '{name} was added.',
+    description:
+      'Announced to assistive technology once an API key has been added. name is the name the researcher gave it.',
+  },
+});
 
 /**
  * What the researcher is told about the key before they paste it, chosen by
@@ -46,11 +118,9 @@ const WAITING_FOR_NAMES_MESSAGE =
  * says which it is and each answer is written out whole, ready to translate as
  * the statement it is rather than as a warning glued onto a hint.
  */
-const KEY_HINT: Readonly<Record<ResourceSecretStorage, string>> = {
-  plaintext:
-    'Pasted from your map provider. It is saved inside your protocol as plain text, so anyone you give the protocol file to can read it. It is not shown again here.',
-  vault:
-    'Pasted from your map provider. It is kept by the host rather than saved inside your protocol, and is not shown again here.',
+const KEY_HINT: Readonly<Record<ResourceSecretStorage, MessageDescriptor>> = {
+  plaintext: messages.plaintextHint,
+  vault: messages.vaultHint,
 };
 
 export type ResourceSecretControlProps = Readonly<{
@@ -132,9 +202,15 @@ export default function ResourceSecretControl({
   disabled = false,
 }: ResourceSecretControlProps) {
   const gateway = useResourceGateway();
+  const intl = useAppIntl();
   const { busy, clear, failure, retry, run } = useResourceAttempt();
   const [name, setName] = useState('');
   const [secret, setSecret] = useState('');
+  /**
+   * What is wrong with each input, encoded rather than formatted: an error
+   * sits here until the researcher corrects the field, and `FieldErrors`
+   * decodes it, so it follows a change of language while it waits.
+   */
   const [errors, setErrors] = useState<
     Readonly<{ name?: string; value?: string }>
   >({});
@@ -263,7 +339,11 @@ export default function ResourceSecretControl({
         // holding the value it carried.
         unsettled.current = undefined;
         requestId.current = uuid();
-        setStatus(`${staged.descriptor.name} was added.`);
+        setStatus(
+          intl.formatMessage(messages.addedAnnouncement, {
+            name: staged.descriptor.name,
+          }),
+        );
         onStaged(staged.descriptor);
       },
       // The key was staged for a form nobody is watching any more — the
@@ -288,8 +368,12 @@ export default function ResourceSecretControl({
     const trimmedName = name.trim();
     const trimmedSecret = secret.trim();
     const nextErrors: { name?: string; value?: string } = {};
-    if (trimmedName === '') nextErrors.name = NAME_REQUIRED_MESSAGE;
-    if (trimmedSecret === '') nextErrors.value = VALUE_REQUIRED_MESSAGE;
+    if (trimmedName === '') {
+      nextErrors.name = createMessageError(messages.nameRequired);
+    }
+    if (trimmedSecret === '') {
+      nextErrors.value = createMessageError(messages.valueRequired);
+    }
     setErrors(nextErrors);
     // Reported on the fields rather than as a failure of the call, and before
     // any call is made: nothing is staged, so there is nothing to retry, and
@@ -307,7 +391,7 @@ export default function ResourceSecretControl({
       // since this browser read its list.
       if (namesAnExistingKey(names, trimmedName)) {
         submitted.current = false;
-        setErrors({ name: DUPLICATE_NAME_MESSAGE });
+        setErrors({ name: createMessageError(messages.duplicateName) });
         return;
       }
       stageKey(trimmedName, trimmedSecret);
@@ -318,8 +402,8 @@ export default function ResourceSecretControl({
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
       <UnconnectedField
         name="staged-secret-name"
-        label="Name"
-        hint="How this key is listed in your protocol."
+        label={intl.formatMessage(messages.nameLabel)}
+        hint={intl.formatMessage(messages.nameHint)}
         component={InputField}
         value={name}
         onChange={(value: unknown) => {
@@ -332,8 +416,8 @@ export default function ResourceSecretControl({
       />
       <UnconnectedField
         name="staged-secret-value"
-        label="Key"
-        hint={KEY_HINT[gateway.secretStorage]}
+        label={intl.formatMessage(messages.valueLabel)}
+        hint={intl.formatMessage(KEY_HINT[gateway.secretStorage])}
         component={InputField}
         type="password"
         autoComplete="off"
@@ -351,14 +435,14 @@ export default function ResourceSecretControl({
         <ResourceFailureNotice
           failure={failure}
           onRetry={retry}
-          retryLabel="Try adding the key again"
+          retryLabel={intl.formatMessage(messages.retry)}
           busy={busy}
         />
       )}
 
       {existingNamesBusy && (
         <Paragraph id={waitingId} intent="smallText" emphasis="muted">
-          {WAITING_FOR_NAMES_MESSAGE}
+          {intl.formatMessage(messages.waitingForNames)}
         </Paragraph>
       )}
 
@@ -369,7 +453,7 @@ export default function ResourceSecretControl({
         disabled={disabled || busy || existingNamesBusy}
         {...(existingNamesBusy ? { 'aria-describedby': waitingId } : {})}
       >
-        Add API key
+        {intl.formatMessage(messages.submit)}
       </Button>
 
       <span className="sr-only" aria-live="polite" aria-atomic="true">

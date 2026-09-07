@@ -1,5 +1,6 @@
 'use client';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { useDragSource } from '@codaco/fresco-ui/dnd/dnd';
 import {
   entityAttributesProperty,
@@ -8,6 +9,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { ConnectedMotionNode } from '../../components/ConnectedNode';
+import { interfaceMessages } from '../messages';
 
 type DrawerNodeProps = {
   node: NcNode;
@@ -20,9 +22,13 @@ export default function DrawerNode({
   itemType = 'UNPOSITIONED_NODE',
   onLayoutAnimationComplete,
 }: DrawerNodeProps) {
+  const intl = useAppIntl();
   const nodeId = node[entityPrimaryKeyProperty];
   const rawName = node[entityAttributesProperty].name;
-  const name = typeof rawName === 'string' ? rawName : 'Node';
+  const name =
+    typeof rawName === 'string'
+      ? rawName
+      : intl.formatMessage(interfaceMessages.node);
 
   const { dragProps } = useDragSource({
     type: itemType,

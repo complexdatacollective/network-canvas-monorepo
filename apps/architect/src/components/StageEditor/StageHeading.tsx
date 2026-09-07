@@ -1,7 +1,10 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import HeadingInput from '@codaco/protocol-builder/fields/StageNameInput';
+import { interfaceDisplayName } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import type { StageType } from '@codaco/protocol-validation';
 import ExternalLink from '~/components/ExternalLink';
@@ -11,6 +14,35 @@ import IssueAnchor from '../IssueAnchor';
 import { useAutoStageName } from './autoStageName/useAutoStageName';
 import { getInterface } from './Interfaces';
 import { useStageInitialValue } from './stageFormHooks';
+const messages = defineMessages({
+  interface: {
+    id: 'architect.stageEditor.stageHeading.interface',
+    defaultMessage: '{typeLabel} interface',
+    description: 'The alt text in components / StageEditor / StageHeading.',
+  },
+  stageOf: {
+    id: 'architect.stageEditor.stageHeading.stageOf',
+    defaultMessage: 'Stage {stageNumber, number} of {totalStages, number}',
+    description: 'Visible text in components / StageEditor / StageHeading.',
+  },
+  stageName: {
+    id: 'architect.stageEditor.stageHeading.stageName',
+    defaultMessage: 'Stage name',
+    description:
+      'The description text in components / StageEditor / StageHeading.',
+  },
+  enterStageName: {
+    id: 'architect.stageEditor.stageHeading.enterStageName',
+    defaultMessage: 'Enter stage name...',
+    description:
+      'The placeholder text in components / StageEditor / StageHeading.',
+  },
+  documentation: {
+    id: 'architect.stageEditor.stageHeading.documentation',
+    defaultMessage: 'Documentation',
+    description: 'Visible text in components / StageEditor / StageHeading.',
+  },
+});
 
 type StageHeadingProps = {
   stageNumber: number;
@@ -23,6 +55,7 @@ const StageHeading = ({
   totalStages,
   isNewStage,
 }: StageHeadingProps) => {
+  const intl = useAppIntl();
   const type = useStageInitialValue<string>('type');
   const initialLabel = useStageInitialValue<string>('label');
   const { onLabelBlur } = useAutoStageName(isNewStage);
@@ -32,7 +65,7 @@ const StageHeading = ({
   }
 
   const interfaceMeta = getInterface(type as StageType);
-  const typeLabel = interfaceMeta.name;
+  const typeLabel = interfaceDisplayName(type, intl);
   const documentationLink = interfaceMeta.documentation;
 
   return (
@@ -49,7 +82,9 @@ const StageHeading = ({
             type={type}
             ratio="4:3"
             sizes="10rem"
-            alt={`${typeLabel} interface`}
+            alt={intl.formatMessage(messages.interface, {
+              typeLabel: typeLabel,
+            })}
             className="border-navy-taupe relative h-28 w-auto rounded-sm border-2"
           />
         </div>
@@ -64,19 +99,25 @@ const StageHeading = ({
             className: 'text-current/70',
           })}
         >
-          Stage {stageNumber} of {totalStages}
+          {intl.formatMessage(messages.stageOf, {
+            stageNumber: stageNumber,
+            totalStages: totalStages,
+          })}
         </Paragraph>
-        <IssueAnchor fieldName="label" description="Stage name" />
+        <IssueAnchor
+          fieldName="label"
+          description={intl.formatMessage(messages.stageName)}
+        />
         <ArchitectField<typeof HeadingInput>
           name="label"
           component={HeadingInput}
           // The hero input is the visible heading; the label exists for
           // assistive technology, and its exact text is an e2e contract.
-          label="Stage name"
+          label={intl.formatMessage(messages.stageName)}
           labelHidden
           initialValue={initialLabel}
           onFieldBlur={onLabelBlur}
-          placeholder="Enter stage name..."
+          placeholder={intl.formatMessage(messages.enterStageName)}
           characterLimit={50}
           validation={{ required: true }}
           autoFocus={isNewStage}
@@ -84,7 +125,9 @@ const StageHeading = ({
         <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
           <Badge color="neon-coral">{typeLabel}</Badge>
           {documentationLink && (
-            <ExternalLink href={documentationLink}>Documentation</ExternalLink>
+            <ExternalLink href={documentationLink}>
+              {intl.formatMessage(messages.documentation)}
+            </ExternalLink>
           )}
         </div>
       </div>

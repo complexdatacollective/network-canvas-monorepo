@@ -332,15 +332,12 @@ describe('shared outbox execution', () => {
   });
 
   it.each([
-    { renewal: 'lost', provider: 'accepts' },
-    { renewal: 'error', provider: 'accepts' },
-    { renewal: 'throws', provider: 'accepts' },
     { renewal: 'lost', provider: 'rejects' },
     { renewal: 'error', provider: 'rejects' },
     { renewal: 'throws', provider: 'rejects' },
   ] as const)(
     'does not finalize after renewal $renewal when the provider $provider',
-    async ({ renewal, provider }) => {
+    async ({ renewal }) => {
       const work = adapter();
       const sending = deferred<void>();
       const observer = vi.fn<OutboxObserver>();
@@ -365,8 +362,7 @@ describe('shared outbox execution', () => {
         kind: 'heartbeat',
         outcome: renewal === 'throws' ? 'error' : renewal,
       });
-      if (provider === 'accepts') sending.resolve();
-      else sending.reject(new Error('provider rejected'));
+      sending.reject(new Error('provider rejected'));
 
       await expect(running).resolves.toMatchObject({
         completed: 0,
@@ -381,6 +377,51 @@ describe('shared outbox execution', () => {
       expect(work.recordUncertain).not.toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(90);
       expect(work.renewLease).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each([
+    { renewal: 'lost', retained: true },
+    { renewal: 'error', retained: true },
+    { renewal: 'throws', retained: true },
+    { renewal: 'lost', retained: false },
+    { renewal: 'error', retained: false },
+    { renewal: 'throws', retained: false },
+  ] as const)(
+    'records acceptance after heartbeat $renewal only if ownership is retained: $retained',
+    async ({ renewal, retained }) => {
+      const work = adapter();
+      const sending = deferred<void>();
+      work.deliver.mockReturnValue(sending.promise);
+      work.recordComplete.mockResolvedValue(retained);
+      work.recordUncertain.mockResolvedValue(false);
+      if (renewal === 'lost') work.renewLease.mockResolvedValue(false);
+      else if (renewal === 'throws') {
+        work.renewLease.mockImplementation(() => {
+          throw new Error('database failure');
+        });
+      } else work.renewLease.mockRejectedValue(new Error('database failure'));
+      const running = new OutboxDispatcher({
+        pool,
+        adapter: work,
+        leaseMs: 90,
+      }).runOnce();
+      await vi.advanceTimersByTimeAsync(30);
+      expect(work.renewLease).toHaveBeenCalledOnce();
+      sending.resolve();
+      await expect(running).resolves.toMatchObject({
+        completed: retained ? 1 : 0,
+        retried: 0,
+        failed: 0,
+        uncertain: 0,
+        leaseLost: retained ? 0 : 1,
+      });
+      expect(work.recordComplete).toHaveBeenCalledExactlyOnceWith(
+        claim,
+        expect.any(Object),
+      );
+      expect(work.recordUncertain).toHaveBeenCalledTimes(retained ? 0 : 1);
+      expect(work.recordFailure).not.toHaveBeenCalled();
     },
   );
 

@@ -1,5 +1,14 @@
 import type { TeamRole } from '@codaco/studio-rpc';
-import { createSmtpEmailSender } from '@codaco/studio-sync/email-sender';
+import {
+  createSmtpEmailSender,
+  type EmailSender,
+  type EmailAddress,
+  validateEmailAddress,
+} from '@codaco/studio-sync/email-sender';
+import {
+  createPostmarkEmailSender,
+  validatePostmarkFrom,
+} from '@codaco/studio-sync/postmark-email-sender';
 
 import type { MailerEnv } from '../env.ts';
 
@@ -19,10 +28,13 @@ export type InvitationMailer = {
   }): Promise<void>;
 };
 
-export type StudioMailer = MagicLinkMailer & InvitationMailer;
+export type StudioMailer = MagicLinkMailer &
+  InvitationMailer &
+  Pick<EmailSender, 'close'>;
 
 export function createConsoleMailer(): StudioMailer {
   return {
+    close() {},
     sendMagicLink: ({ email, url }) => {
       // oxlint-disable-next-line no-console -- the development sign-in loop
       console.log(`Magic link for ${email}: ${url}`);
@@ -36,9 +48,13 @@ export function createConsoleMailer(): StudioMailer {
   };
 }
 
-function createSmtpMailer(smtpUrl: string, from: string): StudioMailer {
-  const sender = createSmtpEmailSender({ url: smtpUrl });
+function createTransportMailer(
+  sender: EmailSender,
+  configuredFrom: string | EmailAddress,
+): StudioMailer {
+  const from = validateEmailAddress(configuredFrom);
   return {
+    close: () => sender.close(),
     sendMagicLink: async ({ email, url }) => {
       await sender.send({
         from,
@@ -67,7 +83,9 @@ function createSmtpMailer(smtpUrl: string, from: string): StudioMailer {
         from,
         to: email,
         messageId,
-        subject: `Invitation to join ${teamLabel} in Network Canvas Studio`,
+        // Existing snapshots can contain line breaks. Keep the plain-text
+        // body intact while composing a single valid header line.
+        subject: `Invitation to join ${teamLabel.replace(/[\r\n]+/g, ' ').trim() || 'your team'} in Network Canvas Studio`,
         text: [
           `${inviterLabel} invited you to join ${teamLabel} in Network Canvas Studio.`,
           '',
@@ -86,13 +104,16 @@ function createSmtpMailer(smtpUrl: string, from: string): StudioMailer {
 
 function createRefusingMailer(): StudioMailer {
   return {
+    close() {},
     sendMagicLink: () =>
       Promise.reject(
-        new Error('No SMTP transport is configured; cannot send sign-in email'),
+        new Error(
+          'No email transport is configured; cannot send sign-in email',
+        ),
       ),
     sendTeamInvitation: () =>
       Promise.reject(
-        new Error('No SMTP transport is configured; cannot send invitation'),
+        new Error('No email transport is configured; cannot send invitation'),
       ),
   };
 }
@@ -100,7 +121,18 @@ function createRefusingMailer(): StudioMailer {
 export function createMailer(mailer: MailerEnv): StudioMailer {
   switch (mailer.kind) {
     case 'smtp':
-      return createSmtpMailer(mailer.url, mailer.from);
+      return createTransportMailer(
+        createSmtpEmailSender({ url: mailer.url }),
+        mailer.from,
+      );
+    case 'postmark':
+      return createTransportMailer(
+        createPostmarkEmailSender({
+          serverToken: mailer.serverToken,
+          messageStream: mailer.messageStream,
+        }),
+        validatePostmarkFrom(mailer.from),
+      );
     case 'console':
       return createConsoleMailer();
     case 'refuse':

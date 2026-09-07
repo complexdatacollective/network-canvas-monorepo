@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import { useNestedEditorOpen } from '~/components/DialogForm/nestedDraftRegistry';
@@ -11,6 +13,60 @@ import {
 } from '~/ducks/modules/app';
 import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
+const chromeMessages = defineMessages({
+  theOtherTabHasBeenClosed: {
+    id: 'architect.chrome.protocolLockBanner.theOtherTabHasBeenClosed',
+    defaultMessage:
+      'The other tab has been closed, but an editor is still open here. Nothing can be saved or loaded in this tab until you finish or cancel that editor.',
+    description:
+      'Researcher-facing explanatory text in components / ProtocolLockBanner.',
+  },
+  theOtherTabHasBeenClosed6c9ac: {
+    id: 'architect.chrome.protocolLockBanner.theOtherTabHasBeenClosed6c9ac',
+    defaultMessage:
+      'The other tab has been closed, but your unsaved changes to this stage cannot be combined with the version it saved. Nothing can be saved here until you decide which to keep.',
+    description:
+      'Researcher-facing explanatory text in components / ProtocolLockBanner.',
+  },
+  thisProtocolIsOpenInAnother: {
+    id: 'architect.chrome.protocolLockBanner.thisProtocolIsOpenInAnother',
+    defaultMessage:
+      'This protocol is open in another tab, which holds the saved copy. You are viewing it here in read-only mode. Close the other tab to continue editing in this one.',
+    description:
+      'Researcher-facing explanatory text in components / ProtocolLockBanner.',
+  },
+  thisProtocolHasBeenOpenedIn: {
+    id: 'architect.chrome.protocolLockBanner.thisProtocolHasBeenOpenedIn',
+    defaultMessage:
+      'This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes in the editor you have open. Close the other tab to carry on editing here, or close that editor to switch to a read-only view.',
+    description:
+      'Researcher-facing explanatory text in components / ProtocolLockBanner.',
+  },
+  thisProtocolHasBeenOpenedIn6aa3d: {
+    id: 'architect.chrome.protocolLockBanner.thisProtocolHasBeenOpenedIn6aa3d',
+    defaultMessage:
+      'This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes to this stage. Close the other tab to carry on editing here, or discard your changes to switch to a read-only view.',
+    description:
+      'Researcher-facing explanatory text in components / ProtocolLockBanner.',
+  },
+});
+const messages = defineMessages({
+  showMeWhatToDo: {
+    id: 'architect.protocolLockBanner.showMeWhatToDo',
+    defaultMessage: 'Show Me What to Do',
+    description: 'The label text in components / ProtocolLockBanner.',
+  },
+  chooseWhatToKeep: {
+    id: 'architect.protocolLockBanner.chooseWhatToKeep',
+    defaultMessage: 'Choose What to Keep',
+    description: 'The label text in components / ProtocolLockBanner.',
+  },
+  discardChanges: {
+    id: 'architect.protocolLockBanner.discardChanges',
+    defaultMessage: 'Discard Changes',
+    description: 'The label text in components / ProtocolLockBanner.',
+  },
+});
 
 // Shown across the protocol editor whenever this tab does not own the saved
 // copy of the open protocol. Both tabs share one library row, so only the tab
@@ -32,6 +88,7 @@ import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 // carries one, and two controls with the same accessible name on one page is a
 // worse experience for anyone navigating by name.
 const ProtocolLockBanner = () => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const [, setLocation] = useLocation();
   const mode = useProtocolAccessMode();
@@ -69,14 +126,14 @@ const ProtocolLockBanner = () => {
   // closed, telling the researcher to close it would send them looking for a
   // tab that no longer exists.
   const message = nestedBlocking
-    ? 'The other tab has been closed, but an editor is still open here. Nothing can be saved or loaded in this tab until you finish or cancel that editor.'
+    ? intl.formatMessage(chromeMessages.theOtherTabHasBeenClosed)
     : conflictPending
-      ? 'The other tab has been closed, but your unsaved changes to this stage cannot be combined with the version it saved. Nothing can be saved here until you decide which to keep.'
+      ? intl.formatMessage(chromeMessages.theOtherTabHasBeenClosed6c9ac)
       : readOnly
-        ? 'This protocol is open in another tab, which holds the saved copy. You are viewing it here in read-only mode. Close the other tab to continue editing in this one.'
+        ? intl.formatMessage(chromeMessages.thisProtocolIsOpenInAnother)
         : mode === 'held-nested-editor'
-          ? 'This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes in the editor you have open. Close the other tab to carry on editing here, or close that editor to switch to a read-only view.'
-          : 'This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes to this stage. Close the other tab to carry on editing here, or discard your changes to switch to a read-only view.';
+          ? intl.formatMessage(chromeMessages.thisProtocolHasBeenOpenedIn)
+          : intl.formatMessage(chromeMessages.thisProtocolHasBeenOpenedIn6aa3d);
 
   // What, if anything, belongs beside the message.
   //
@@ -95,18 +152,18 @@ const ProtocolLockBanner = () => {
     ? null
     : nestedBlocking
       ? {
-          label: 'Show Me What to Do',
+          label: intl.formatMessage(messages.showMeWhatToDo),
           onClick: () => dispatch(requestProtocolReclaimChoice()),
         }
       : conflictPending
         ? {
-            label: 'Choose What to Keep',
+            label: intl.formatMessage(messages.chooseWhatToKeep),
             onClick: () => dispatch(requestProtocolReclaimChoice()),
           }
         : mode === 'held-nested-editor'
           ? null
           : {
-              label: 'Discard Changes',
+              label: intl.formatMessage(messages.discardChanges),
               onClick: () => {
                 // Discarding leaves the stage editor as well as clearing the
                 // draft: staying would leave an editor whose every control is

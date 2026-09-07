@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useId, useState, type DragEvent } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import {
+  createMessageError,
+  defineMessages,
+  formatMessageError,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useResourceGateway } from '../context.tsx';
@@ -24,8 +30,45 @@ import {
 } from './resourceKinds.ts';
 import { useResourceAttempt } from './useResourceAttempt.ts';
 
-const UNREADABLE_MESSAGE =
-  'That file could not be read. Choose it again, or try a different file.';
+const messages = defineMessages({
+  unreadable: {
+    id: 'protocolBuilder.resourceUpload.unreadable',
+    defaultMessage:
+      'That file could not be read. Choose it again, or try a different file.',
+    description:
+      'Refusal shown when the browser could not read the bytes of the file a researcher chose — it was moved, renamed, or is unreadable.',
+  },
+  dropHint: {
+    id: 'protocolBuilder.resourceUpload.dropHint',
+    defaultMessage: 'Drag and drop a file here to import it.',
+    description:
+      'Instruction inside the drop target of the file-import area. The keyboard-operable file input sits below it.',
+  },
+  chooseFile: {
+    id: 'protocolBuilder.resourceUpload.chooseFile',
+    defaultMessage: 'Choose a file from your computer',
+    description:
+      'Label of the file input a researcher uses to import a file into their protocol.',
+  },
+  retry: {
+    id: 'protocolBuilder.resourceUpload.retry',
+    defaultMessage: 'Try importing the file again',
+    description:
+      'Button beside a failure notice, which repeats the import of the same file. Named rather than generic because several parts of the dialog can be failing at once.',
+  },
+  importingAnnouncement: {
+    id: 'protocolBuilder.resourceUpload.importingAnnouncement',
+    defaultMessage: 'Importing the file…',
+    description:
+      'Announced to assistive technology while a chosen file is being imported.',
+  },
+  importedAnnouncement: {
+    id: 'protocolBuilder.resourceUpload.importedAnnouncement',
+    defaultMessage: '{name} was imported.',
+    description:
+      'Announced to assistive technology once a file has been imported. name is the filename the researcher chose.',
+  },
+});
 
 /**
  * Imports one file: stages the bytes, then asks the host to read back what it
@@ -96,8 +139,15 @@ export default function ResourceUploadControl({
   disabled = false,
 }: ResourceUploadControlProps) {
   const gateway = useResourceGateway();
+  const intl = useAppIntl();
   const { begin, busy, failure, retry } = useResourceAttempt();
   const inputId = useId();
+  /**
+   * Why the file the researcher chose was refused, encoded rather than
+   * formatted: a refusal sits here until another file replaces it, so it is
+   * decoded where it is rendered and follows a change of language while it
+   * waits.
+   */
   const [rejected, setRejected] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -168,7 +218,7 @@ export default function ResourceUploadControl({
         // saying there is nothing to lose would be saying it about the choice
         // that superseded this one.
         if (!claim.current()) return;
-        setRejected(UNREADABLE_MESSAGE);
+        setRejected(createMessageError(messages.unreadable));
         setReading(false);
         return;
       }
@@ -190,7 +240,11 @@ export default function ResourceUploadControl({
             bytes,
           }),
         (descriptor) => {
-          setStatus(`${descriptor.name} was imported.`);
+          setStatus(
+            intl.formatMessage(messages.importedAnnouncement, {
+              name: descriptor.name,
+            }),
+          );
           onStaged(descriptor);
         },
         // The import landed with nothing left to hand it to: another file was
@@ -202,7 +256,7 @@ export default function ResourceUploadControl({
       // `busy` without ever being reported as nothing in between.
       setReading(false);
     },
-    [begin, gateway, kind, onStaged],
+    [begin, gateway, intl, kind, onStaged],
   );
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -226,10 +280,12 @@ export default function ResourceUploadControl({
         className="border-input-contrast/30 data-dragging:border-primary data-dragging:bg-primary/10 flex flex-col items-center gap-3 rounded border-2 border-dashed p-6 text-center"
       >
         <Paragraph margin="none">
-          Drag and drop a file here to import it.
+          {intl.formatMessage(messages.dropHint)}
         </Paragraph>
         <div className="flex flex-col items-center gap-1">
-          <label htmlFor={inputId}>Choose a file from your computer</label>
+          <label htmlFor={inputId}>
+            {intl.formatMessage(messages.chooseFile)}
+          </label>
           <input
             id={inputId}
             type="file"
@@ -248,7 +304,7 @@ export default function ResourceUploadControl({
 
       {rejected !== undefined && (
         <div role="alert" className="text-destructive text-sm">
-          {rejected}
+          {formatMessageError(rejected, intl) ?? rejected}
         </div>
       )}
 
@@ -256,13 +312,13 @@ export default function ResourceUploadControl({
         <ResourceFailureNotice
           failure={failure}
           onRetry={retry}
-          retryLabel="Try importing the file again"
+          retryLabel={intl.formatMessage(messages.retry)}
           busy={busy}
         />
       )}
 
       <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {busy ? 'Importing the file…' : status}
+        {busy ? intl.formatMessage(messages.importingAnnouncement) : status}
       </span>
     </div>
   );

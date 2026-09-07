@@ -1,3 +1,10 @@
+import {
+  createMessageError,
+  defineMessages,
+  type IntlShape,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+
 import type { ResourceContentKind, ResourceKind } from '../gateway.ts';
 
 /**
@@ -149,32 +156,81 @@ export function sourceFilename(filename: string): string {
   return filename.split(/[/\\]/).at(-1) ?? filename;
 }
 
-const RESOURCE_KIND_LABELS: Readonly<Record<ResourceKind, string>> =
-  Object.freeze({
-    apikey: 'API key',
-    audio: 'Audio',
-    geojson: 'Map layer',
-    image: 'Image',
-    network: 'Network data',
-    video: 'Video',
-  });
+/**
+ * Researcher-facing names for the manifest asset types, keyed by the type
+ * itself so the record stays exhaustive over the union.
+ */
+const kindMessages = defineMessages({
+  apikey: {
+    id: 'protocolBuilder.resourceKinds.apikeyLabel',
+    defaultMessage: 'API key',
+    description:
+      'Name of the resource type that holds a map provider’s API key. Shown as a badge beside a resource in a protocol’s resource list.',
+  },
+  audio: {
+    id: 'protocolBuilder.resourceKinds.audioLabel',
+    defaultMessage: 'Audio',
+    description:
+      'Name of the resource type that holds an audio recording. Shown as a badge beside a resource in a protocol’s resource list.',
+  },
+  geojson: {
+    id: 'protocolBuilder.resourceKinds.geojsonLabel',
+    defaultMessage: 'Map layer',
+    description:
+      'Name of the resource type that holds a GeoJSON map layer. Shown as a badge beside a resource in a protocol’s resource list.',
+  },
+  image: {
+    id: 'protocolBuilder.resourceKinds.imageLabel',
+    defaultMessage: 'Image',
+    description:
+      'Name of the resource type that holds a picture. Shown as a badge beside a resource in a protocol’s resource list.',
+  },
+  network: {
+    id: 'protocolBuilder.resourceKinds.networkLabel',
+    defaultMessage: 'Network data',
+    description:
+      'Name of the resource type that holds imported participant data — a roster of people and the ties between them, in the network-research sense. Shown as a badge beside a resource in a protocol’s resource list.',
+  },
+  video: {
+    id: 'protocolBuilder.resourceKinds.videoLabel',
+    defaultMessage: 'Video',
+    description:
+      'Name of the resource type that holds a video. Shown as a badge beside a resource in a protocol’s resource list.',
+  },
+});
 
-export function resourceKindLabel(kind: ResourceKind): string {
-  return RESOURCE_KIND_LABELS[kind];
+const statusMessages = defineMessages({
+  staged: {
+    id: 'protocolBuilder.resourceKinds.stagedStatus',
+    defaultMessage: 'Imported, not yet saved',
+    description:
+      'Badge on a resource the researcher imported during this editing session, which the protocol will only hold once the stage (one step of an interview) is saved.',
+  },
+  committed: {
+    id: 'protocolBuilder.resourceKinds.committedStatus',
+    defaultMessage: 'Saved in this protocol',
+    description:
+      'Badge on a resource the protocol already contains, as opposed to one imported but not yet saved.',
+  },
+});
+
+export function resourceKindLabel(kind: ResourceKind, intl: IntlShape): string {
+  return intl.formatMessage(kindMessages[kind]);
 }
 
-export function resourceStatusLabel(status: 'committed' | 'staged'): string {
-  return status === 'staged'
-    ? 'Imported, not yet saved'
-    : 'Saved in this protocol';
+export function resourceStatusLabel(
+  status: 'committed' | 'staged',
+  intl: IntlShape,
+): string {
+  return intl.formatMessage(statusMessages[status]);
 }
 
 export type ResourcePickerCopy = Readonly<{
-  selectAction: string;
-  changeAction: string;
-  browserTitle: string;
-  browserDescription: string;
-  importTitle: string;
+  selectAction: MessageDescriptor;
+  changeAction: MessageDescriptor;
+  browserTitle: MessageDescriptor;
+  browserDescription: MessageDescriptor;
+  importTitle: MessageDescriptor;
 }>;
 
 /**
@@ -182,71 +238,334 @@ export type ResourcePickerCopy = Readonly<{
  * translated action is not the English one with a word swapped, and a picker's
  * buttons are the only place a researcher is told what this field holds.
  */
+const pickerMessages = defineMessages({
+  apikeySelectAction: {
+    id: 'protocolBuilder.resourceKinds.apikeySelectAction',
+    defaultMessage: 'Select an API key',
+    description:
+      'Button that opens the picker for a stage field that holds a map provider’s API key, when the field holds none yet.',
+  },
+  apikeyChangeAction: {
+    id: 'protocolBuilder.resourceKinds.apikeyChangeAction',
+    defaultMessage: 'Change the API key',
+    description:
+      'Button that opens the picker for a stage field that already holds an API key.',
+  },
+  apikeyBrowserTitle: {
+    id: 'protocolBuilder.resourceKinds.apikeyBrowserTitle',
+    defaultMessage: 'Choose an API key',
+    description:
+      'Title of the dialog where a researcher picks or adds an API key.',
+  },
+  apikeyBrowserDescription: {
+    id: 'protocolBuilder.resourceKinds.apikeyBrowserDescription',
+    defaultMessage:
+      'Add an API key, or choose one already stored in this protocol.',
+    description:
+      'Description under the title of the dialog where a researcher picks or adds an API key.',
+  },
+  apikeyImportTitle: {
+    id: 'protocolBuilder.resourceKinds.apikeyImportTitle',
+    defaultMessage: 'Add an API key',
+    description:
+      'Heading over the form for adding a new API key inside the resource dialog.',
+  },
+  audioSelectAction: {
+    id: 'protocolBuilder.resourceKinds.audioSelectAction',
+    defaultMessage: 'Select an audio file',
+    description:
+      'Button that opens the picker for a stage field that holds an audio file, when the field holds none yet.',
+  },
+  audioChangeAction: {
+    id: 'protocolBuilder.resourceKinds.audioChangeAction',
+    defaultMessage: 'Change the audio file',
+    description:
+      'Button that opens the picker for a stage field that already holds an audio file.',
+  },
+  audioBrowserTitle: {
+    id: 'protocolBuilder.resourceKinds.audioBrowserTitle',
+    defaultMessage: 'Choose an audio file',
+    description:
+      'Title of the dialog where a researcher picks or imports an audio file.',
+  },
+  audioBrowserDescription: {
+    id: 'protocolBuilder.resourceKinds.audioBrowserDescription',
+    defaultMessage:
+      'Import an audio file, or choose one already stored in this protocol.',
+    description:
+      'Description under the title of the dialog where a researcher picks or imports an audio file.',
+  },
+  audioImportTitle: {
+    id: 'protocolBuilder.resourceKinds.audioImportTitle',
+    defaultMessage: 'Import an audio file',
+    description:
+      'Heading over the file-import area for audio inside the resource dialog.',
+  },
+  fileSelectAction: {
+    id: 'protocolBuilder.resourceKinds.fileSelectAction',
+    defaultMessage: 'Select a resource',
+    description:
+      'Button that opens the picker for a stage field that accepts any kind of resource, when the field holds none yet.',
+  },
+  fileChangeAction: {
+    id: 'protocolBuilder.resourceKinds.fileChangeAction',
+    defaultMessage: 'Change the resource',
+    description:
+      'Button that opens the picker for a stage field that accepts any kind of resource and already holds one.',
+  },
+  fileBrowserTitle: {
+    id: 'protocolBuilder.resourceKinds.fileBrowserTitle',
+    defaultMessage: 'Choose a resource',
+    description:
+      'Title of the dialog where a researcher picks or imports a resource of any kind.',
+  },
+  fileBrowserDescription: {
+    id: 'protocolBuilder.resourceKinds.fileBrowserDescription',
+    defaultMessage:
+      'Import a file, or choose a resource already stored in this protocol.',
+    description:
+      'Description under the title of the dialog where a researcher picks or imports a resource of any kind.',
+  },
+  fileImportTitle: {
+    id: 'protocolBuilder.resourceKinds.fileImportTitle',
+    defaultMessage: 'Import a file',
+    description:
+      'Heading over the file-import area for any kind of file inside the resource dialog.',
+  },
+  geojsonSelectAction: {
+    id: 'protocolBuilder.resourceKinds.geojsonSelectAction',
+    defaultMessage: 'Select a map layer',
+    description:
+      'Button that opens the picker for a stage field that holds a GeoJSON map layer, when the field holds none yet.',
+  },
+  geojsonChangeAction: {
+    id: 'protocolBuilder.resourceKinds.geojsonChangeAction',
+    defaultMessage: 'Change the map layer',
+    description:
+      'Button that opens the picker for a stage field that already holds a GeoJSON map layer.',
+  },
+  geojsonBrowserTitle: {
+    id: 'protocolBuilder.resourceKinds.geojsonBrowserTitle',
+    defaultMessage: 'Choose a map layer',
+    description:
+      'Title of the dialog where a researcher picks or imports a GeoJSON map layer.',
+  },
+  geojsonBrowserDescription: {
+    id: 'protocolBuilder.resourceKinds.geojsonBrowserDescription',
+    defaultMessage:
+      'Import a GeoJSON map layer, or choose one already stored in this protocol.',
+    description:
+      'Description under the title of the dialog where a researcher picks or imports a GeoJSON map layer.',
+  },
+  geojsonImportTitle: {
+    id: 'protocolBuilder.resourceKinds.geojsonImportTitle',
+    defaultMessage: 'Import a map layer',
+    description:
+      'Heading over the file-import area for map layers inside the resource dialog.',
+  },
+  imageSelectAction: {
+    id: 'protocolBuilder.resourceKinds.imageSelectAction',
+    defaultMessage: 'Select an image',
+    description:
+      'Button that opens the picker for a stage field that holds an image, when the field holds none yet.',
+  },
+  imageChangeAction: {
+    id: 'protocolBuilder.resourceKinds.imageChangeAction',
+    defaultMessage: 'Change the image',
+    description:
+      'Button that opens the picker for a stage field that already holds an image.',
+  },
+  imageBrowserTitle: {
+    id: 'protocolBuilder.resourceKinds.imageBrowserTitle',
+    defaultMessage: 'Choose an image',
+    description:
+      'Title of the dialog where a researcher picks or imports an image.',
+  },
+  imageBrowserDescription: {
+    id: 'protocolBuilder.resourceKinds.imageBrowserDescription',
+    defaultMessage:
+      'Import an image, or choose one already stored in this protocol.',
+    description:
+      'Description under the title of the dialog where a researcher picks or imports an image.',
+  },
+  imageImportTitle: {
+    id: 'protocolBuilder.resourceKinds.imageImportTitle',
+    defaultMessage: 'Import an image',
+    description:
+      'Heading over the file-import area for images inside the resource dialog.',
+  },
+  networkSelectAction: {
+    id: 'protocolBuilder.resourceKinds.networkSelectAction',
+    defaultMessage: 'Select a data file',
+    description:
+      'Button that opens the picker for a stage field that holds imported participant data, when the field holds none yet.',
+  },
+  networkChangeAction: {
+    id: 'protocolBuilder.resourceKinds.networkChangeAction',
+    defaultMessage: 'Change the data file',
+    description:
+      'Button that opens the picker for a stage field that already holds imported participant data.',
+  },
+  networkBrowserTitle: {
+    id: 'protocolBuilder.resourceKinds.networkBrowserTitle',
+    defaultMessage: 'Choose a data file',
+    description:
+      'Title of the dialog where a researcher picks or imports participant data (a roster).',
+  },
+  networkBrowserDescription: {
+    id: 'protocolBuilder.resourceKinds.networkBrowserDescription',
+    defaultMessage:
+      'Import a CSV or JSON data file, or choose one already stored in this protocol.',
+    description:
+      'Description under the title of the dialog where a researcher picks or imports participant data (a roster). CSV and JSON are file formats and stay untranslated.',
+  },
+  networkImportTitle: {
+    id: 'protocolBuilder.resourceKinds.networkImportTitle',
+    defaultMessage: 'Import a data file',
+    description:
+      'Heading over the file-import area for participant data inside the resource dialog.',
+  },
+  videoSelectAction: {
+    id: 'protocolBuilder.resourceKinds.videoSelectAction',
+    defaultMessage: 'Select a video',
+    description:
+      'Button that opens the picker for a stage field that holds a video, when the field holds none yet.',
+  },
+  videoChangeAction: {
+    id: 'protocolBuilder.resourceKinds.videoChangeAction',
+    defaultMessage: 'Change the video',
+    description:
+      'Button that opens the picker for a stage field that already holds a video.',
+  },
+  videoBrowserTitle: {
+    id: 'protocolBuilder.resourceKinds.videoBrowserTitle',
+    defaultMessage: 'Choose a video',
+    description:
+      'Title of the dialog where a researcher picks or imports a video.',
+  },
+  videoBrowserDescription: {
+    id: 'protocolBuilder.resourceKinds.videoBrowserDescription',
+    defaultMessage:
+      'Import a video, or choose one already stored in this protocol.',
+    description:
+      'Description under the title of the dialog where a researcher picks or imports a video.',
+  },
+  videoImportTitle: {
+    id: 'protocolBuilder.resourceKinds.videoImportTitle',
+    defaultMessage: 'Import a video',
+    description:
+      'Heading over the file-import area for videos inside the resource dialog.',
+  },
+});
+
+/** The picker copy for each kind, exhaustive over the picker-kind union. */
 export const RESOURCE_PICKER_COPY: Readonly<
   Record<ResourcePickerKind, ResourcePickerCopy>
 > = Object.freeze({
   apikey: Object.freeze({
-    selectAction: 'Select an API key',
-    changeAction: 'Change the API key',
-    browserTitle: 'Choose an API key',
-    browserDescription:
-      'Add an API key, or choose one already stored in this protocol.',
-    importTitle: 'Add an API key',
+    selectAction: pickerMessages.apikeySelectAction,
+    changeAction: pickerMessages.apikeyChangeAction,
+    browserTitle: pickerMessages.apikeyBrowserTitle,
+    browserDescription: pickerMessages.apikeyBrowserDescription,
+    importTitle: pickerMessages.apikeyImportTitle,
   }),
   audio: Object.freeze({
-    selectAction: 'Select an audio file',
-    changeAction: 'Change the audio file',
-    browserTitle: 'Choose an audio file',
-    browserDescription:
-      'Import an audio file, or choose one already stored in this protocol.',
-    importTitle: 'Import an audio file',
+    selectAction: pickerMessages.audioSelectAction,
+    changeAction: pickerMessages.audioChangeAction,
+    browserTitle: pickerMessages.audioBrowserTitle,
+    browserDescription: pickerMessages.audioBrowserDescription,
+    importTitle: pickerMessages.audioImportTitle,
   }),
   file: Object.freeze({
-    selectAction: 'Select a resource',
-    changeAction: 'Change the resource',
-    browserTitle: 'Choose a resource',
-    browserDescription:
-      'Import a file, or choose a resource already stored in this protocol.',
-    importTitle: 'Import a file',
+    selectAction: pickerMessages.fileSelectAction,
+    changeAction: pickerMessages.fileChangeAction,
+    browserTitle: pickerMessages.fileBrowserTitle,
+    browserDescription: pickerMessages.fileBrowserDescription,
+    importTitle: pickerMessages.fileImportTitle,
   }),
   geojson: Object.freeze({
-    selectAction: 'Select a map layer',
-    changeAction: 'Change the map layer',
-    browserTitle: 'Choose a map layer',
-    browserDescription:
-      'Import a GeoJSON map layer, or choose one already stored in this protocol.',
-    importTitle: 'Import a map layer',
+    selectAction: pickerMessages.geojsonSelectAction,
+    changeAction: pickerMessages.geojsonChangeAction,
+    browserTitle: pickerMessages.geojsonBrowserTitle,
+    browserDescription: pickerMessages.geojsonBrowserDescription,
+    importTitle: pickerMessages.geojsonImportTitle,
   }),
   image: Object.freeze({
-    selectAction: 'Select an image',
-    changeAction: 'Change the image',
-    browserTitle: 'Choose an image',
-    browserDescription:
-      'Import an image, or choose one already stored in this protocol.',
-    importTitle: 'Import an image',
+    selectAction: pickerMessages.imageSelectAction,
+    changeAction: pickerMessages.imageChangeAction,
+    browserTitle: pickerMessages.imageBrowserTitle,
+    browserDescription: pickerMessages.imageBrowserDescription,
+    importTitle: pickerMessages.imageImportTitle,
   }),
   network: Object.freeze({
-    selectAction: 'Select a data file',
-    changeAction: 'Change the data file',
-    browserTitle: 'Choose a data file',
-    browserDescription:
-      'Import a CSV or JSON data file, or choose one already stored in this protocol.',
-    importTitle: 'Import a data file',
+    selectAction: pickerMessages.networkSelectAction,
+    changeAction: pickerMessages.networkChangeAction,
+    browserTitle: pickerMessages.networkBrowserTitle,
+    browserDescription: pickerMessages.networkBrowserDescription,
+    importTitle: pickerMessages.networkImportTitle,
   }),
   video: Object.freeze({
-    selectAction: 'Select a video',
-    changeAction: 'Change the video',
-    browserTitle: 'Choose a video',
-    browserDescription:
-      'Import a video, or choose one already stored in this protocol.',
-    importTitle: 'Import a video',
+    selectAction: pickerMessages.videoSelectAction,
+    changeAction: pickerMessages.videoChangeAction,
+    browserTitle: pickerMessages.videoBrowserTitle,
+    browserDescription: pickerMessages.videoBrowserDescription,
+    importTitle: pickerMessages.videoImportTitle,
   }),
 });
 
-/** What a researcher is told when the file they chose cannot be imported. */
+const refusalMessages = defineMessages({
+  unsupportedFile: {
+    id: 'protocolBuilder.resourceKinds.unsupportedFile',
+    defaultMessage:
+      'That file cannot be imported here. Supported file types are: {types}.',
+    description:
+      'Refusal shown when a researcher chooses a file this stage field cannot hold. types is the list of accepted filename extensions, already joined for the reader’s language.',
+  },
+  unsupportedKind: {
+    id: 'protocolBuilder.resourceKinds.unsupportedKind',
+    defaultMessage:
+      'That resource cannot be used in this field. It accepts: {kinds}.',
+    description:
+      'Refusal shown when a researcher picks a stored resource of a type this stage field cannot hold. kinds is the list of resource-type names it does accept, already joined for the reader’s language.',
+  },
+  oversizeFile: {
+    id: 'protocolBuilder.resourceKinds.oversizeFile',
+    defaultMessage:
+      'That file is too large to import. Files can be up to {size}.',
+    description:
+      'Refusal shown when a researcher chooses a file bigger than the editor will read. size is a rounded human-readable size such as "8.0 MB", already localized.',
+  },
+  byteLengthBytes: {
+    id: 'protocolBuilder.resourceKinds.byteLengthBytes',
+    defaultMessage: '{size, number} bytes',
+    description:
+      'A resource’s stored size when it is under one kilobyte. size is the exact byte count.',
+  },
+  byteLengthKilobytes: {
+    id: 'protocolBuilder.resourceKinds.byteLengthKilobytes',
+    defaultMessage: '{size, number, ::.0} KB',
+    description:
+      'A resource’s stored size in kilobytes, always to one decimal place. size is that already-rounded number; KB is the unit symbol.',
+  },
+  byteLengthMegabytes: {
+    id: 'protocolBuilder.resourceKinds.byteLengthMegabytes',
+    defaultMessage: '{size, number, ::.0} MB',
+    description:
+      'A resource’s stored size in megabytes, always to one decimal place. size is that already-rounded number; MB is the unit symbol.',
+  },
+});
+
+/**
+ * What a researcher is told when the file they chose cannot be imported.
+ *
+ * Encoded rather than formatted: the refusal is held in a control's state
+ * until something replaces it, so it is decoded where it is rendered and
+ * follows a change of language while it sits there.
+ */
 export function unsupportedFileMessage(kind: ResourcePickerKind): string {
-  const accepted = acceptedExtensions(kind);
-  return `That file cannot be imported here. Supported file types are: ${accepted.join(', ')}.`;
+  return createMessageError(refusalMessages.unsupportedFile, {
+    types: { list: acceptedExtensions(kind) },
+  });
 }
 
 /**
@@ -257,8 +576,13 @@ export function unsupportedFileMessage(kind: ResourcePickerKind): string {
 export function unsupportedResourceKindMessage(
   kind: ResourcePickerKind,
 ): string {
-  const accepted = browsableKinds(kind).map(resourceKindLabel);
-  return `That resource cannot be used in this field. It accepts: ${accepted.join(', ')}.`;
+  return createMessageError(refusalMessages.unsupportedKind, {
+    kinds: {
+      list: browsableKinds(kind).map((accepted) => ({
+        messageError: createMessageError(kindMessages[accepted]),
+      })),
+    },
+  });
 }
 
 /**
@@ -266,12 +590,43 @@ export function unsupportedResourceKindMessage(
  * One sentence with the limit in it, so it can be translated whole.
  */
 export function oversizeFileMessage(maxByteLength: number): string {
-  return `That file is too large to import. Files can be up to ${formatByteLength(maxByteLength)}.`;
+  const size = byteLengthMessage(maxByteLength);
+  return createMessageError(refusalMessages.oversizeFile, {
+    size: { messageError: createMessageError(size.message, size.values) },
+  });
+}
+
+/**
+ * The descriptor and value that say how big a resource's content is.
+ *
+ * The rounding stays here rather than moving into ICU: `toFixed(1)` is what
+ * decides `2.0 KB` rather than `1.953 KB`, and the `::.0` skeleton on each
+ * message is only what keeps the trailing zero once it has.
+ */
+function byteLengthMessage(byteLength: number): Readonly<{
+  message: MessageDescriptor;
+  values: Readonly<{ size: number }>;
+}> {
+  if (byteLength < 1024) {
+    return {
+      message: refusalMessages.byteLengthBytes,
+      values: { size: byteLength },
+    };
+  }
+  if (byteLength < 1024 * 1024) {
+    return {
+      message: refusalMessages.byteLengthKilobytes,
+      values: { size: Number((byteLength / 1024).toFixed(1)) },
+    };
+  }
+  return {
+    message: refusalMessages.byteLengthMegabytes,
+    values: { size: Number((byteLength / (1024 * 1024)).toFixed(1)) },
+  };
 }
 
 /** Human-readable size for a resource's stored content. */
-export function formatByteLength(byteLength: number): string {
-  if (byteLength < 1024) return `${byteLength} bytes`;
-  if (byteLength < 1024 * 1024) return `${(byteLength / 1024).toFixed(1)} KB`;
-  return `${(byteLength / (1024 * 1024)).toFixed(1)} MB`;
+export function formatByteLength(byteLength: number, intl: IntlShape): string {
+  const { message, values } = byteLengthMessage(byteLength);
+  return intl.formatMessage(message, values);
 }

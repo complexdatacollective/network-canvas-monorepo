@@ -65,14 +65,14 @@ async function placeNodeOnCanvas(
   for (let i = 0; i < maxSteps; i++) {
     await page.keyboard.press('ArrowRight');
     const announcement = await getDndAnnouncement(page);
-    if (announcement.includes('Sociogram Canvas')) {
+    if (announcement.includes('Placement area')) {
       found = true;
       break;
     }
   }
   if (!found) {
     throw new Error(
-      `Could not find the "Sociogram Canvas" drop target for "${label}" after ${maxSteps} steps`,
+      `Could not find the "Placement area" drop target for "${label}" after ${maxSteps} steps`,
     );
   }
   await page.keyboard.press('Enter');
@@ -310,7 +310,7 @@ test.describe('conducting an interview', () => {
     await interviewNav.next(); // NameGeneratorQuickAdd -> Sociogram
 
     const canvas = page.getByRole('application', {
-      name: 'Sociogram Canvas',
+      name: 'Placement area',
     });
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Sociogram canvas has no bounding box');

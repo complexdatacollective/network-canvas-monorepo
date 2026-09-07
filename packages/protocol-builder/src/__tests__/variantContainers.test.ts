@@ -1,0 +1,456 @@
+/**
+ * The containers a stage document may only hold ONE shape of.
+ *
+ * A sociogram's background is an image or a number of concentric circles, and
+ * a document holding both is one `imageOrCirclesBackgroundSchema` refuses —
+ * so it is a document the researcher cannot save, and one neither of the two
+ * people editing the stage asked for. The draft diff addresses a change at the
+ * deepest place the difference actually is, which for every other container is
+ * exactly right: a sibling nobody touched is left alone, and two researchers
+ * configuring different parts of one capability both keep their work. For a
+ * container whose members are mutually exclusive it is what MAKES the hybrid:
+ * a `set` of `background.image`, replayed after a collaborator switched the
+ * stage to concentric circles, leaves both members set.
+ *
+ * So the variant travels whole, and a collaborator's switch conflicts with it
+ * at the container: the later write wins, entire. Which containers those are
+ * is read off the protocol schemas themselves — see
+ * `exclusive-variant-containers.ts` in `@codaco/protocol-validation`.
+ */
+import { describe, expect, it, vi } from 'vitest';
+
+import {
+  imageOrCirclesBackgroundSchema,
+  sociogramPromptSchema,
+} from '@codaco/protocol-validation';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
+
+import {
+  commandsFromDraftChange,
+  createStageIdentity,
+  ProtocolBuilderSessionStore,
+} from '../session.ts';
+
+const revision = (sequence: bigint) => ({
+  sequence,
+  hash: `revision-${String(sequence)}`,
+});
+
+function openSession(fields: SectionDoc) {
+  return new ProtocolBuilderSessionStore({
+    identity: createStageIdentity('Sociogram', () => 'stage-1'),
+    fields,
+    protocolSections: {},
+    manifestRevision: revision(1n),
+    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
+    buildCandidate: ({ stageDocument }) => ({
+      name: 'p',
+      schemaVersion: 8,
+      codebook: {},
+      stages: [stageDocument],
+    }),
+    onCommands: vi.fn(),
+  });
+}
+
+/** One form submit: the diff between the draft and what the researcher left. */
+function edit(session: ProtocolBuilderSessionStore, next: SectionDoc) {
+  session.dispatch(
+    commandsFromDraftChange(session.getSnapshot().editedSection.fields, next),
+  );
+}
+
+const arrives = (session: ProtocolBuilderSessionStore, fields: SectionDoc) => {
+  session.acknowledge({
+    fields,
+    throughBatchId: 0,
+    manifestRevision: revision(2n),
+  });
+};
+
+const backgroundOf = (session: ProtocolBuilderSessionStore): unknown =>
+  session.getSnapshot().editedSection.fields.background;
+
+/** What the schema itself says about the background a merge produced. */
+const backgroundIsValid = (session: ProtocolBuilderSessionStore): boolean =>
+  imageOrCirclesBackgroundSchema.safeParse(backgroundOf(session)).success;
+
+const commandsOf = (session: ProtocolBuilderSessionStore) =>
+  session.getSnapshot().pendingCommands.flatMap((batch) => batch.commands);
+
+describe('an edit inside a container the schema allows one variant of', () => {
+  it('writes the whole background, so a collaborator’s switch cannot leave a hybrid', () => {
+    const session = openSession({
+      label: 'Where they live',
+      background: { image: 'streets.png' },
+    });
+
+    // The researcher points the background at a different image. The variant
+    // is what they decided, so the variant is what the command carries.
+    edit(session, {
+      label: 'Where they live',
+      background: { image: 'streets-2026.png' },
+    });
+    expect(commandsOf(session)).toEqual([
+      { op: 'set', key: 'background', value: { image: 'streets-2026.png' } },
+    ]);
+
+    // Meanwhile a collaborator switched the stage to concentric circles.
+    arrives(session, {
+      label: 'Where they live',
+      background: { concentricCircles: 4 },
+    });
+
+    expect(backgroundOf(session)).toEqual({ image: 'streets-2026.png' });
+    expect(backgroundIsValid(session)).toBe(true);
+  });
+
+  it('carries a switch of its own whole, over a collaborator’s edit to the variant it replaces', () => {
+    const session = openSession({
+      label: 'Where they live',
+      background: { image: 'streets.png' },
+    });
+
+    // The mirror of the case above: this session is the one switching.
+    edit(session, {
+      label: 'Where they live',
+      background: { concentricCircles: 4 },
+    });
+    expect(commandsOf(session)).toEqual([
+      { op: 'set', key: 'background', value: { concentricCircles: 4 } },
+    ]);
+
+    // And the collaborator is the one who edited a leaf of the old variant.
+    arrives(session, {
+      label: 'Where they live',
+      background: { image: 'aerial.png' },
+    });
+
+    expect(backgroundOf(session)).toEqual({ concentricCircles: 4 });
+    expect(backgroundIsValid(session)).toBe(true);
+  });
+
+  it('keeps a background one variant when both sides switch the capability on at once', () => {
+    const session = openSession({ label: 'Where they live' });
+
+    // A container the draft is CREATING is diffed against an empty one, so
+    // that a sibling a collaborator wrote under the same container survives —
+    // which is right for every container but this one, where the two sides
+    // are not writing siblings but rival answers to the same question.
+    edit(session, {
+      label: 'Where they live',
+      background: { image: 'streets.png' },
+    });
+    expect(commandsOf(session)).toEqual([
+      { op: 'set', key: 'background', value: { image: 'streets.png' } },
+    ]);
+
+    arrives(session, {
+      label: 'Where they live',
+      background: { concentricCircles: 3 },
+    });
+
+    expect(backgroundOf(session)).toEqual({ image: 'streets.png' });
+    expect(backgroundIsValid(session)).toBe(true);
+  });
+
+  /**
+   * The rule reaches the variant and stops there.
+   *
+   * `skipLogic` is an ordinary container — an action, a filter, and a
+   * destination — and only the destination is a choice between shapes. An edit
+   * to the destination writes the destination whole; an edit beside it is
+   * addressed where it always was, so a collaborator's work on another member
+   * of the same container still stands.
+   */
+  it('leaves the container above the variant addressed leaf by leaf', () => {
+    const session = openSession({
+      label: 'Where they live',
+      skipLogic: {
+        action: 'SKIP',
+        filter: { join: 'AND', rules: [] },
+        destination: { type: 'stage', stageId: 'stage-4' },
+      },
+    });
+
+    edit(session, {
+      label: 'Where they live',
+      skipLogic: {
+        action: 'SHOW',
+        filter: { join: 'AND', rules: [] },
+        destination: { type: 'finish' },
+      },
+    });
+    expect(commandsOf(session)).toEqual([
+      { op: 'set', key: ['skipLogic', 'action'], value: 'SHOW' },
+      {
+        op: 'set',
+        key: ['skipLogic', 'destination'],
+        value: { type: 'finish' },
+      },
+    ]);
+
+    // The collaborator narrowed the same rule's filter, which is a member of
+    // the container this session did not touch.
+    arrives(session, {
+      label: 'Where they live',
+      skipLogic: {
+        action: 'SKIP',
+        filter: { join: 'OR', rules: [] },
+        destination: { type: 'stage', stageId: 'stage-4' },
+      },
+    });
+
+    expect(session.getSnapshot().editedSection.fields.skipLogic).toEqual({
+      action: 'SHOW',
+      filter: { join: 'OR', rules: [] },
+      destination: { type: 'finish' },
+    });
+  });
+});
+
+/**
+ * The same rule, one level further in: a variant container inside a list ROW.
+ *
+ * A sociogram prompt's `highlight` is one — highlighting is on and names the
+ * attribute tapping a node writes, or it is off — and a prompt is a row of a
+ * list. The command vocabulary cannot reach inside a row, so a rewritten row
+ * travels as a whole-list `set` and the merge re-seats it on the row the
+ * session holds LEAF by leaf, which is what keeps a collaborator's edit to
+ * another property of the same row. For a variant container that granularity
+ * makes the same hybrid it makes at the top of the document: the researcher
+ * turns highlighting on while a collaborator clears the attribute it names,
+ * and the merge answers with highlighting on and nothing to write — a prompt
+ * the schema refuses.
+ *
+ * So a variant inside a row travels whole too, and the researcher's whole
+ * variant is what stands.
+ */
+describe('a variant container inside a list row', () => {
+  const prompt = (highlight: SectionDoc): SectionDoc => ({
+    id: 'p1',
+    text: 'Who do you spend time with?',
+    layout: { layoutVariable: 'position' },
+    highlight,
+  });
+
+  const promptsOf = (session: ProtocolBuilderSessionStore): unknown =>
+    session.getSnapshot().editedSection.fields.prompts;
+
+  it('travels whole rather than being merged leaf by leaf', () => {
+    const session = openSession({
+      label: 'Who',
+      prompts: [prompt({ allowHighlighting: false, variable: 'isClose' })],
+    });
+
+    // The researcher turns highlighting on. Rewriting one row is a whole-list
+    // `set`: the vocabulary cannot say "this property of this row".
+    edit(session, {
+      label: 'Who',
+      prompts: [prompt({ allowHighlighting: true, variable: 'isClose' })],
+    });
+
+    // A collaborator clears the attribute the highlight names, leaving the
+    // other variant of the same container.
+    arrives(session, {
+      label: 'Who',
+      prompts: [prompt({ allowHighlighting: false })],
+    });
+
+    const merged = promptsOf(session);
+    expect(merged).toEqual([
+      prompt({ allowHighlighting: true, variable: 'isClose' }),
+    ]);
+    // Said by the schema rather than by the shape above: highlighting on with
+    // no attribute to write is a prompt it refuses.
+    expect(
+      sociogramPromptSchema.safeParse(
+        Array.isArray(merged) ? merged[0] : merged,
+      ).success,
+    ).toBe(true);
+  });
+
+  /**
+   * The other half, which is what makes this a rule about the container rather
+   * than about the researcher always winning: a row property OUTSIDE the
+   * variant is still merged leaf by leaf, so both of them keep their work.
+   */
+  it('leaves the rest of the row addressed property by property', () => {
+    const session = openSession({
+      label: 'Who',
+      prompts: [prompt({ allowHighlighting: false, variable: 'isClose' })],
+    });
+
+    edit(session, {
+      label: 'Who',
+      prompts: [
+        { ...prompt({ allowHighlighting: true, variable: 'isClose' }) },
+      ],
+    });
+
+    // The collaborator rewrote the question, and said nothing about the
+    // highlight.
+    arrives(session, {
+      label: 'Who',
+      prompts: [
+        {
+          ...prompt({ allowHighlighting: false, variable: 'isClose' }),
+          text: 'Who do you see most often?',
+        },
+      ],
+    });
+
+    expect(promptsOf(session)).toEqual([
+      {
+        ...prompt({ allowHighlighting: true, variable: 'isClose' }),
+        text: 'Who do you see most often?',
+      },
+    ]);
+  });
+});
+
+/**
+ * The other kind of container, and the rule that is NOT the one above.
+ *
+ * A sociogram prompt's `edges` says which edges to draw and which the
+ * participant may create. Its two members constrain each other — an `edges`
+ * setting neither has no effect, so the schema refuses it — but they are not
+ * rivals: two researchers configuring the two of them are doing different
+ * work, and keeping both is the reason a row is merged leaf by leaf at all.
+ * Writing `edges` whole the way a variant travels would throw away exactly
+ * that.
+ *
+ * So the leaf merge runs as it always did, and the container it produced is
+ * put to the schema. A container the schema refuses, assembled out of two
+ * edits each side was entitled to make, is one NEITHER of them held — and the
+ * researcher's own container is what stands, the way a contested leaf already
+ * does. See `reseatRecord` in `arrayFieldCommands.ts`.
+ */
+describe('a container whose members constrain one another', () => {
+  const prompt = (edges: SectionDoc): SectionDoc => ({
+    id: 'p1',
+    text: 'Who do you spend time with?',
+    layout: { layoutVariable: 'position' },
+    edges,
+  });
+
+  const promptsOf = (session: ProtocolBuilderSessionStore): unknown =>
+    session.getSnapshot().editedSection.fields.prompts;
+
+  /** What the schema says about the prompt the merge produced. */
+  const mergedPromptIsValid = (session: ProtocolBuilderSessionStore) => {
+    const prompts = promptsOf(session);
+    return sociogramPromptSchema.safeParse(
+      Array.isArray(prompts) ? prompts[0] : prompts,
+    ).success;
+  };
+
+  const openWithBothEdges = () =>
+    openSession({
+      label: 'Who',
+      prompts: [prompt({ display: ['knows'], create: 'knows' })],
+    });
+
+  it('keeps the researcher’s whole container when the leaf merge refuses', () => {
+    const session = openWithBothEdges();
+
+    // The researcher stops offering edge creation. Every other leaf of the
+    // row is left exactly as they found it.
+    edit(session, {
+      label: 'Who',
+      prompts: [prompt({ display: ['knows'] })],
+    });
+
+    // Meanwhile a collaborator stops drawing the edges. Neither edit is wrong
+    // on its own; leaf by leaf they make `{ display: [] }`, which is a prompt
+    // neither of them held and the schema refuses.
+    arrives(session, {
+      label: 'Who',
+      prompts: [prompt({ display: [], create: 'knows' })],
+    });
+
+    expect(promptsOf(session)).toEqual([prompt({ display: ['knows'] })]);
+    expect(mergedPromptIsValid(session)).toBe(true);
+  });
+
+  it('does the same when the two edits are the other way round', () => {
+    const session = openWithBothEdges();
+
+    // The mirror: this session is the one that stops drawing the edges.
+    edit(session, {
+      label: 'Who',
+      prompts: [prompt({ display: [], create: 'knows' })],
+    });
+
+    arrives(session, {
+      label: 'Who',
+      prompts: [prompt({ display: ['knows'] })],
+    });
+
+    expect(promptsOf(session)).toEqual([
+      prompt({ display: [], create: 'knows' }),
+    ]);
+    expect(mergedPromptIsValid(session)).toBe(true);
+  });
+
+  /**
+   * The half that keeps this a rule about a REFUSED container rather than the
+   * researcher winning the row: two edits inside the same container that
+   * assemble into something the schema accepts are both kept, which is the
+   * whole point of merging a row leaf by leaf.
+   */
+  it('leaves a container the schema accepts merged leaf by leaf', () => {
+    const session = openWithBothEdges();
+
+    // The researcher points edge creation at another edge type.
+    edit(session, {
+      label: 'Who',
+      prompts: [prompt({ display: ['knows'], create: 'friends' })],
+    });
+
+    // The collaborator adds an edge type to draw — the sibling member, which
+    // the researcher said nothing about.
+    arrives(session, {
+      label: 'Who',
+      prompts: [prompt({ display: ['knows', 'friends'], create: 'knows' })],
+    });
+
+    expect(promptsOf(session)).toEqual([
+      prompt({ display: ['knows', 'friends'], create: 'friends' }),
+    ]);
+    expect(mergedPromptIsValid(session)).toBe(true);
+  });
+
+  /**
+   * And the case the rule refuses to answer: a container the researcher's own
+   * side does not validate either. Its refusal is not something the merge
+   * invented, so writing it over the collaborator's work would throw that work
+   * away to keep a draft that is refused regardless — the draft's own
+   * validation is what puts it in front of them.
+   */
+  it('keeps the leaf merge when the researcher’s own container is refused', () => {
+    const session = openSession({
+      label: 'Who',
+      prompts: [prompt({ display: ['knows'], create: 'knows' })],
+    });
+
+    // The researcher empties the container outright, which is already a
+    // prompt the schema refuses before anything is merged with it.
+    edit(session, {
+      label: 'Who',
+      prompts: [prompt({})],
+    });
+    expect(sociogramPromptSchema.safeParse(prompt({})).success).toBe(false);
+
+    // The collaborator edited another property of the same row, which the leaf
+    // merge keeps.
+    arrives(session, {
+      label: 'Who',
+      prompts: [
+        { ...prompt({ display: ['knows'], create: 'knows' }), text: 'Who?' },
+      ],
+    });
+
+    expect(promptsOf(session)).toEqual([{ ...prompt({}), text: 'Who?' }]);
+  });
+});

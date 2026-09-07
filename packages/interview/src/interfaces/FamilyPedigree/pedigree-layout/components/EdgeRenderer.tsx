@@ -765,6 +765,7 @@ export function PedigreeEdgeSvg({
             fontSize={14}
             {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
           >
+            {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Nonlinguistic pedigree uncertainty glyph; its meaning is translated in the notation key. */}
             ?
           </text>,
         );

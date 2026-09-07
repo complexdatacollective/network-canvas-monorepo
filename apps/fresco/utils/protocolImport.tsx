@@ -1,9 +1,15 @@
 import type Zip from 'jszip';
 
 import {
+  defineMessages,
+  createAppIntl,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+import {
   type CurrentProtocol,
   type VersionedProtocol,
 } from '@codaco/protocol-validation';
+import { protocolFileErrorMessages } from '@codaco/protocol-validation/messages';
 import { type AssetInsertType } from '~/schemas/protocol';
 
 /**
@@ -31,18 +37,25 @@ function extractApikeyAssetsFromManifest(
 }
 
 // Fetch protocol.json as a parsed object from the protocol zip.
-export const getProtocolJson = async (protocolZip: Zip) => {
-  const protocolString = await protocolZip
-    ?.file('protocol.json')
-    ?.async('string');
-
-  if (!protocolString) {
-    throw new Error('protocol.json not found in zip');
+export const getProtocolJson = async (
+  protocolZip: Zip,
+  formatMessage: (
+    message: MessageDescriptor,
+    values?: Record<string, string | number>,
+  ) => string = createAppIntl({ locale: 'en' }).formatMessage,
+) => {
+  const protocolFile = protocolZip.file('protocol.json');
+  if (!protocolFile) {
+    throw new Error(formatMessage(protocolFileErrorMessages.missingProtocol));
   }
-
-  const protocolJson = (await JSON.parse(protocolString)) as VersionedProtocol;
-
-  return protocolJson;
+  try {
+    const protocolString = await protocolFile.async('string');
+    return JSON.parse(protocolString) as VersionedProtocol;
+  } catch (cause) {
+    throw new Error(formatMessage(protocolFileErrorMessages.damagedJson), {
+      cause,
+    });
+  }
 };
 
 /**
@@ -64,6 +77,10 @@ type ProtocolAssetsResult = {
 export const getProtocolAssets = async (
   protocolJson: CurrentProtocol,
   protocolZip: Zip,
+  formatMessage: (
+    message: MessageDescriptor,
+    values?: Record<string, string | number>,
+  ) => string = createAppIntl({ locale: 'en' }).formatMessage,
 ): Promise<ProtocolAssetsResult> => {
   const assetManifest = protocolJson?.assetManifest;
 
@@ -93,15 +110,20 @@ export const getProtocolAssets = async (
       .map(async ([key, asset]) => {
         if (!('source' in asset)) return;
 
-        const file = await protocolZip
-          ?.file(`assets/${asset.source}`)
-          ?.async('blob');
-
-        if (!file) {
+        const assetFile = protocolZip.file(`assets/${asset.source}`);
+        if (!assetFile) {
           throw new Error(
-            `Asset "${asset.source}" was not found in asset folder!`,
+            formatMessage(protocolFileErrorMessages.missingNamedAsset, {
+              assetName: asset.source,
+            }),
           );
         }
+        const file = await assetFile.async('blob').catch((cause: unknown) => {
+          throw new Error(
+            formatMessage(protocolFileErrorMessages.damagedJson),
+            { cause },
+          );
+        });
 
         fileAssets.push({
           assetId: key,
@@ -117,17 +139,23 @@ export const getProtocolAssets = async (
 
 // Helper method for reading a file as an ArrayBuffer. Useful for preparing a
 // File to be read by JSZip.
-export function fileAsArrayBuffer(file: Blob | File): Promise<ArrayBuffer> {
+export function fileAsArrayBuffer(
+  file: Blob | File,
+  formatMessage: (
+    message: MessageDescriptor,
+    values?: Record<string, string | number>,
+  ) => string = createAppIntl({ locale: 'en' }).formatMessage,
+): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.addEventListener('error', () => {
       reader.abort();
-      reject(new Error('The file could not be read.'));
+      reject(new Error(formatMessage(messages.unreadable)));
     });
 
     reader.addEventListener('load', () => {
       if (!reader.result || typeof reader.result === 'string') {
-        reject(new Error('The file could not be read.'));
+        reject(new Error(formatMessage(messages.unreadable)));
         return;
       }
 
@@ -137,3 +165,12 @@ export function fileAsArrayBuffer(file: Blob | File): Promise<ArrayBuffer> {
     reader.readAsArrayBuffer(file);
   });
 }
+
+const messages = defineMessages({
+  unreadable: {
+    id: 'fresco.protocolImport.files.unreadable',
+    defaultMessage: 'The file could not be read.',
+    description:
+      'Researcher-facing protocolImport.files: The file could not be read.',
+  },
+});

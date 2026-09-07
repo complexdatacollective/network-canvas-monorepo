@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { getValidations, getValidator, validations } from '../validations';
+import {
+  getValidations,
+  getValidator,
+  createValidations,
+} from '../validations';
 
 const {
   greaterThan,
@@ -19,7 +23,7 @@ const {
   requiredAcceptsZero,
   uniqueArrayAttribute,
   uniqueByList,
-} = validations;
+} = createValidations();
 
 describe('Validations', () => {
   describe('required()', () => {
@@ -304,7 +308,7 @@ describe('Validations', () => {
       };
 
       expect(subject('alpha', values, undefined, 'options[1].value')).toBe(
-        'Values must be unique',
+        'This value is already in use. Enter a different value.',
       );
     });
 
@@ -319,7 +323,7 @@ describe('Validations', () => {
 
       expect(precomposed).not.toBe(decomposed);
       expect(subject(decomposed, values, undefined, 'options[1].value')).toBe(
-        'Values must be unique',
+        'This value is already in use. Enter a different value.',
       );
     });
 

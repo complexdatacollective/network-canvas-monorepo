@@ -1,6 +1,8 @@
 import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -12,6 +14,115 @@ import type { RootState } from '~/ducks/modules/root';
 
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { getEdgesForSubject, getNarrativeVariables } from './selectors';
+const messages = defineMessages({
+  presetIdentity: {
+    id: 'architect.sections.narrativePresets.presetFields.presetIdentity',
+    defaultMessage: 'Preset identity',
+    description:
+      'The title text in components / sections / NarrativePresets / PresetFields.',
+  },
+  presetLabel: {
+    id: 'architect.sections.narrativePresets.presetFields.presetLabel',
+    defaultMessage: 'Preset label',
+    description:
+      'The label text in components / sections / NarrativePresets / PresetFields.',
+  },
+  thePresetLabelWillUsedTo: {
+    id: 'architect.sections.narrativePresets.presetFields.thePresetLabelWillUsedTo',
+    defaultMessage:
+      'The preset label will used to quickly identify the preset from within the narrative interface. It will be visible to the participant.',
+    description:
+      'Visible text in components / sections / NarrativePresets / PresetFields.',
+  },
+  enterALabelForThePreset: {
+    id: 'architect.sections.narrativePresets.presetFields.enterALabelForThePreset',
+    defaultMessage: 'Enter a label for the preset...',
+    description:
+      'The placeholder text in components / sections / NarrativePresets / PresetFields.',
+  },
+  nodeLayout: {
+    id: 'architect.sections.narrativePresets.presetFields.nodeLayout',
+    defaultMessage: 'Node layout',
+    description:
+      'The title text in components / sections / NarrativePresets / PresetFields.',
+  },
+  layoutAttribute: {
+    id: 'architect.sections.narrativePresets.presetFields.layoutAttribute',
+    defaultMessage: 'Layout attribute',
+    description:
+      'The label text in components / sections / NarrativePresets / PresetFields.',
+  },
+  selectAnAttributeToUseTo: {
+    id: 'architect.sections.narrativePresets.presetFields.selectAnAttributeToUseTo',
+    defaultMessage:
+      'Select an attribute to use to position the nodes for this preset.',
+    description:
+      'Visible text in components / sections / NarrativePresets / PresetFields.',
+  },
+  nodeGrouping: {
+    id: 'architect.sections.narrativePresets.presetFields.nodeGrouping',
+    defaultMessage: 'Node grouping',
+    description:
+      'The title text in components / sections / NarrativePresets / PresetFields.',
+  },
+  drawConvexHullsAroundNodesThat: {
+    id: 'architect.sections.narrativePresets.presetFields.drawConvexHullsAroundNodesThat',
+    defaultMessage:
+      'Draw convex hulls around nodes that share a categorical attribute.',
+    description:
+      'The description text in components / sections / NarrativePresets / PresetFields.',
+  },
+  groupingAttribute: {
+    id: 'architect.sections.narrativePresets.presetFields.groupingAttribute',
+    defaultMessage: 'Grouping attribute',
+    description:
+      'The label text in components / sections / NarrativePresets / PresetFields.',
+  },
+  theSelectedValuesDrawSemiTransparentConvex: {
+    id: 'architect.sections.narrativePresets.presetFields.theSelectedValuesDrawSemiTransparentConvex',
+    defaultMessage:
+      'The selected values draw semi-transparent convex hulls around matching nodes; nodes with multiple values appear in overlapping hulls.',
+    description:
+      'Visible text in components / sections / NarrativePresets / PresetFields.',
+  },
+  displayedEdges: {
+    id: 'architect.sections.narrativePresets.presetFields.displayedEdges',
+    defaultMessage: 'Displayed edges',
+    description:
+      'The title text in components / sections / NarrativePresets / PresetFields.',
+  },
+  selectTheEdgeTypesShownIn: {
+    id: 'architect.sections.narrativePresets.presetFields.selectTheEdgeTypesShownIn',
+    defaultMessage: 'Select the edge types shown in this visualization preset.',
+    description:
+      'The description text in components / sections / NarrativePresets / PresetFields.',
+  },
+  edgeTypes: {
+    id: 'architect.sections.narrativePresets.presetFields.edgeTypes',
+    defaultMessage: 'Edge types',
+    description:
+      'The label text in components / sections / NarrativePresets / PresetFields.',
+  },
+  nodeHighlighting: {
+    id: 'architect.sections.narrativePresets.presetFields.nodeHighlighting',
+    defaultMessage: 'Node highlighting',
+    description:
+      'The title text in components / sections / NarrativePresets / PresetFields.',
+  },
+  highlightNodesWhoseSelectedBooleanAttributes: {
+    id: 'architect.sections.narrativePresets.presetFields.highlightNodesWhoseSelectedBooleanAttributes',
+    defaultMessage:
+      'Highlight nodes whose selected boolean attributes are true.',
+    description:
+      'The description text in components / sections / NarrativePresets / PresetFields.',
+  },
+  highlightAttributes: {
+    id: 'architect.sections.narrativePresets.presetFields.highlightAttributes',
+    defaultMessage: 'Highlight attributes',
+    description:
+      'The label text in components / sections / NarrativePresets / PresetFields.',
+  },
+});
 
 type PresetFieldsProps = {
   entity: 'node' | 'edge' | 'ego';
@@ -33,6 +144,7 @@ const PresetFields = ({
   edges,
   highlight,
 }: PresetFieldsProps) => {
+  const intl = useAppIntl();
   const subject = useMemo(() => ({ entity, type }), [entity, type]);
   const {
     layoutVariablesForSubject,
@@ -64,30 +176,28 @@ const PresetFields = ({
 
   return (
     <>
-      <Section title="Preset identity">
+      <Section title={intl.formatMessage(messages.presetIdentity)}>
         <ArchitectField
           name="label"
-          label="Preset label"
+          label={intl.formatMessage(messages.presetLabel)}
           hint={
             <Paragraph>
-              The preset label will used to quickly identify the preset from
-              within the narrative interface. It will be visible to the
-              participant.
+              {intl.formatMessage(messages.thePresetLabelWillUsedTo)}
             </Paragraph>
           }
           component={InputField}
           validation={{ required: true }}
           initialValue={label ?? ''}
-          placeholder="Enter a label for the preset..."
+          placeholder={intl.formatMessage(messages.enterALabelForThePreset)}
         />
       </Section>
-      <Section title="Node layout">
+      <Section title={intl.formatMessage(messages.nodeLayout)}>
         <ArchitectField
           name="layoutVariable"
-          label="Layout attribute"
+          label={intl.formatMessage(messages.layoutAttribute)}
           hint={
             <Paragraph>
-              Select an attribute to use to position the nodes for this preset.
+              {intl.formatMessage(messages.selectAnAttributeToUseTo)}
             </Paragraph>
           }
           component={VariablePicker}
@@ -100,20 +210,22 @@ const PresetFields = ({
         />
       </Section>
       <Section
-        title="Node grouping"
-        description="Draw convex hulls around nodes that share a categorical attribute."
+        title={intl.formatMessage(messages.nodeGrouping)}
+        description={intl.formatMessage(
+          messages.drawConvexHullsAroundNodesThat,
+        )}
         toggleable
         disabled={groupVariablesForSubject.length === 0}
         defaultOpen={hasGroupVariable && groupVariablesForSubject.length > 0}
       >
         <ArchitectField
           name="groupVariable"
-          label="Grouping attribute"
+          label={intl.formatMessage(messages.groupingAttribute)}
           hint={
             <Paragraph>
-              The selected values draw semi-transparent convex hulls around
-              matching nodes; nodes with multiple values appear in overlapping
-              hulls.
+              {intl.formatMessage(
+                messages.theSelectedValuesDrawSemiTransparentConvex,
+              )}
             </Paragraph>
           }
           component={VariablePicker}
@@ -125,8 +237,8 @@ const PresetFields = ({
         />
       </Section>
       <Section
-        title="Displayed edges"
-        description="Select the edge types shown in this visualization preset."
+        title={intl.formatMessage(messages.displayedEdges)}
+        description={intl.formatMessage(messages.selectTheEdgeTypesShownIn)}
         toggleable
         defaultOpen={hasDisplayEdges && edgesForSubject.length > 0}
         disabled={edgesForSubject.length === 0}
@@ -134,14 +246,16 @@ const PresetFields = ({
         <ArchitectField
           name="edges.display"
           component={CheckboxGroupField}
-          label="Edge types"
+          label={intl.formatMessage(messages.edgeTypes)}
           initialValue={edges?.display ?? []}
           options={edgesForSubject}
         />
       </Section>
       <Section
-        title="Node highlighting"
-        description="Highlight nodes whose selected boolean attributes are true."
+        title={intl.formatMessage(messages.nodeHighlighting)}
+        description={intl.formatMessage(
+          messages.highlightNodesWhoseSelectedBooleanAttributes,
+        )}
         toggleable
         defaultOpen={
           hasHighlightVariables && highlightVariablesForSubject.length > 0
@@ -151,7 +265,7 @@ const PresetFields = ({
         <ArchitectField
           name="highlight"
           component={CheckboxGroupField}
-          label="Highlight attributes"
+          label={intl.formatMessage(messages.highlightAttributes)}
           initialValue={highlight ?? []}
           options={highlightVariablesForSubject}
         />

@@ -2,10 +2,12 @@
 
 import { motion } from 'motion/react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { NcNode } from '@codaco/shared-consts';
 
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import nodeBinUrl from './node-bin.svg';
 
 type NodeBinProps = {
@@ -14,10 +16,11 @@ type NodeBinProps = {
 };
 
 const NodeBin = ({ accepts, dropHandler }: NodeBinProps) => {
+  const intl = useAppIntl();
   const { dropProps, isOver, willAccept } = useDropTarget({
     id: 'node-bin',
     accepts: ['EXISTING_NODE', 'FAMILY_TREE_NODE'],
-    announcedName: 'Delete bin',
+    announcedName: intl.formatMessage(messages.deleteBin),
     onDrop: (metadata) => {
       const node = metadata as NcNode;
       if (accepts(node)) {

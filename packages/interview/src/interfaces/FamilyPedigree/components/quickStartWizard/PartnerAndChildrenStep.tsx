@@ -1,17 +1,20 @@
 'use client';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
+import { messages } from '../../messages';
 import PersonFields from './PersonFields';
 
 export default function PartnerAndChildrenStep() {
+  const intl = useAppIntl();
   return (
     <>
       <Field
-        label="Do you have a current partner?"
+        label={intl.formatMessage(messages.currentPartnerQuestion)}
         name="hasPartner"
         component={BooleanField}
         required
@@ -22,7 +25,7 @@ export default function PartnerAndChildrenStep() {
       >
         <PersonFields namespace="partner" />
         <Field
-          label="How many children do you have with this partner?"
+          label={intl.formatMessage(messages.childrenWithPartnerCount)}
           name="childrenWithPartnerCount"
           component={InputField}
           type="number"

@@ -12,13 +12,7 @@ import {
 
 import { setRegistryPoolBounds } from '../db/pool.ts';
 import { REGISTRY_BACKUP_ROLE, REGISTRY_ROLES } from '../db/schema.ts';
-
-// Only a disposable local PostgreSQL fixture; no deployment credentials load.
-// oxlint-disable-next-line node/no-process-env
-const port = Number(process.env.PGPORT ?? 54318);
-// oxlint-disable-next-line node/no-process-env -- isolated test database boundary
-const administratorPassword = process.env.PGPASSWORD ?? 'spike';
-const adminUrl = `postgres://postgres:${encodeURIComponent(administratorPassword)}@127.0.0.1:${port}/postgres`;
+import { REGISTRY_TEST_DATABASE_URL as adminUrl } from './test-env.ts';
 
 /** The real immutable artifact names its roles. Validate those shared NOLOGIN
  * roles, never alter/drop them, and isolate every LOGIN and database per suite. */

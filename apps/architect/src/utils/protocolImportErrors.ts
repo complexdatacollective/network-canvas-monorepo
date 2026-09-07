@@ -1,7 +1,37 @@
-import { describeProtocolFileError } from '@codaco/protocol-validation';
+import {
+  createAppIntl,
+  defineMessages,
+  type IntlShape,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
+const defaultIntl = createAppIntl({ locale: 'en' });
+export type LocalizedText = {
+  message: MessageDescriptor;
+  values?: Record<string, string | number>;
+};
 import { ensureError } from '@codaco/shared-consts';
 
+import { NetcanvasTooLargeError } from './netcanvasSizeGuard';
 import { isStorageUnavailableError } from './storageErrors';
+const importMessages = defineMessages({
+  storage: {
+    id: 'architect.importFailure.storage',
+    defaultMessage:
+      'Architect could not save this protocol on this device. Your device may be out of space, or your browser may be blocking storage \u2014 which is common in a private window.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  protocol: {
+    id: 'architect.importFailure.protocol',
+    defaultMessage: 'Architect could not open this protocol.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  template: {
+    id: 'architect.importFailure.template',
+    defaultMessage: 'Architect could not open this template.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 /**
  * What a researcher is told when a protocol will not open, and the raw text
@@ -17,6 +47,7 @@ import { isStorageUnavailableError } from './storageErrors';
 export type ImportFailureDescription = {
   message: string;
   detail: string;
+  localizedMessage?: LocalizedText;
 };
 
 /**
@@ -84,17 +115,48 @@ const formatTechnicalDetail = (error: unknown): string => {
 export const describeImportFailure = (
   error: unknown,
   fallbackMessage: string,
+  intl: IntlShape = defaultIntl,
 ): ImportFailureDescription => {
   const detail = formatTechnicalDetail(error);
 
-  const described = describeProtocolFileError(error);
+  if (error instanceof NetcanvasTooLargeError) {
+    return {
+      message: intl.formatMessage(
+        error.localizedMessage.message,
+        error.localizedMessage.values,
+      ),
+      detail,
+      localizedMessage: error.localizedMessage,
+    };
+  }
+
+  const described = describeProtocolFileErrorMessage(error);
   if (described !== null) {
-    return { message: described, detail };
+    return {
+      message: intl.formatMessage(described.descriptor, described.values),
+      detail,
+      localizedMessage: {
+        message: described.descriptor,
+        values: described.values,
+      },
+    };
   }
 
   if (isStorageUnavailableError(error)) {
-    return { message: STORAGE_FAILURE_MESSAGE, detail };
+    return {
+      message: intl.formatMessage(importMessages.storage),
+      detail,
+      localizedMessage: { message: importMessages.storage },
+    };
   }
 
-  return { message: fallbackMessage, detail };
+  const message =
+    fallbackMessage === TEMPLATE_OPEN_FAILURE_MESSAGE
+      ? importMessages.template
+      : importMessages.protocol;
+  return {
+    message: intl.formatMessage(message),
+    detail,
+    localizedMessage: { message },
+  };
 };

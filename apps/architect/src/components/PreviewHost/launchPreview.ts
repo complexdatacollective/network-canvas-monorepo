@@ -1,3 +1,18 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+const errors = defineMessages({
+  missing: {
+    id: 'architect.preview.launch.missing',
+    defaultMessage:
+      'No active protocol to preview. Open or save a protocol first.',
+    description: 'Preview launch refusal before opening a window.',
+  },
+  timeout: {
+    id: 'architect.preview.launch.timeout',
+    defaultMessage:
+      'Preview window did not load in time. Close it and try again.',
+    description: 'Actionable preview handoff timeout.',
+  },
+});
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { posthog } from '~/analytics';
 import { getActiveProtocolScope } from '~/utils/activeProtocolScope';
@@ -37,11 +52,7 @@ export function launchPreview({
 }: LaunchOptions): Promise<LaunchPreviewResult> {
   const protocolId = getActiveProtocolScope();
   if (!protocolId) {
-    return Promise.reject(
-      new Error(
-        'No active protocol to preview. Open or save a protocol first.',
-      ),
-    );
+    return Promise.reject(new Error(createMessageError(errors.missing)));
   }
 
   // Trailing slash is required: a bare '/preview' hits Vite's SPA html fallback
@@ -115,11 +126,7 @@ export function launchPreview({
     const initialTimeoutId = setTimeout(() => {
       if (initialDelivered) return;
       cleanup();
-      reject(
-        new Error(
-          "Preview window didn't load in time. Close it and try again.",
-        ),
-      );
+      reject(new Error(createMessageError(errors.timeout)));
     }, HANDSHAKE_TIMEOUT_MS);
 
     const closedPollId = setInterval(() => {
