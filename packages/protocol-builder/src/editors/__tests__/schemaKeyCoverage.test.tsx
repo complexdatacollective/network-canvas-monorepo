@@ -6,6 +6,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import type { StageEditorComponent } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { harnessEditor } from '../network/__tests__/editorFixtures.tsx';
+import { NarrativeStageEditor } from '../network/NarrativeStageEditor.tsx';
 import { NetworkComposerStageEditor } from '../network/NetworkComposerStageEditor.tsx';
 import { SociogramStageEditor } from '../network/SociogramStageEditor.tsx';
 import {
@@ -108,6 +109,26 @@ const SOCIOGRAM_FIELDS: SectionDoc = {
       highlight: { allowHighlighting: false },
     },
   ],
+};
+
+const NARRATIVE_FIELDS: SectionDoc = {
+  label: 'Narrative',
+  interviewScript: INTERVIEW_SCRIPT,
+  skipLogic: SKIP_LOGIC,
+  subject: PERSON,
+  filter: NODE_FILTER,
+  presets: [
+    {
+      id: 'narrative-preset-1',
+      label: 'Default layout',
+      layoutVariable: 'layout',
+      groupVariable: 'contactType',
+      edges: { display: ['knows'] },
+      highlight: ['flagged'],
+    },
+  ],
+  background: { concentricCircles: 4, skewedTowardCenter: true },
+  behaviours: EVERY_CANVAS_BEHAVIOUR,
 };
 
 const NETWORK_COMPOSER_FIELDS: SectionDoc = {
@@ -233,6 +254,11 @@ const MAXIMAL: readonly MaximalStage[] = [
     fields: SOCIOGRAM_FIELDS,
   },
   {
+    stageType: 'Narrative',
+    editor: harnessEditor(NarrativeStageEditor, 'Narrative'),
+    fields: NARRATIVE_FIELDS,
+  },
+  {
     stageType: 'NetworkComposer',
     editor: harnessEditor(NetworkComposerStageEditor, 'NetworkComposer'),
     fields: NETWORK_COMPOSER_FIELDS,
@@ -289,6 +315,10 @@ const FIXTURE_STAGES: readonly Readonly<{
   {
     stageId: 'sociogram-1',
     editor: harnessEditor(SociogramStageEditor, 'Sociogram'),
+  },
+  {
+    stageId: 'narrative-1',
+    editor: harnessEditor(NarrativeStageEditor, 'Narrative'),
   },
   {
     stageId: 'network-composer-1',

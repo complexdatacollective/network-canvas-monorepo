@@ -8,6 +8,7 @@ import {
   loadFixtureStage,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { NarrativeStageEditor } from '../network/NarrativeStageEditor.tsx';
 import { NetworkComposerStageEditor } from '../network/NetworkComposerStageEditor.tsx';
 import { SociogramStageEditor } from '../network/SociogramStageEditor.tsx';
 import { shimMarkdownEditorMeasurement } from '../pedigree/__tests__/editorFixtures.tsx';
@@ -21,10 +22,9 @@ shimMarkdownEditorMeasurement();
  * outline sections only that editor composes.
  *
  * The section names are the discriminator because they are what a researcher
- * would see: opening a sociogram in the network composer editor is not a type
- * error, it is a page with the wrong things on it. Sociogram is named by two,
- * because the rest of its own family shares almost everything with it; the
- * check below
+ * would see: opening a sociogram in the narrative editor is not a type error,
+ * it is a page with the wrong things on it. Sociogram is named by two, because
+ * it shares almost everything with the narrative editor; the check below
  * refuses a discriminator that does not in fact discriminate, so a lazy one
  * here fails rather than passing vacuously.
  */
@@ -33,6 +33,11 @@ const CLAIMED = [
     stageType: 'FamilyPedigree',
     editor: FamilyPedigreeStageEditor,
     sections: ['Pedigree framing'],
+  },
+  {
+    stageType: 'Narrative',
+    editor: NarrativeStageEditor,
+    sections: ['Visualization presets'],
   },
   {
     stageType: 'NarrativePedigree',
