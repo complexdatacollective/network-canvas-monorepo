@@ -5,5 +5,13 @@
   "protocolBuilder.codebookEntity.colorRequired": "Choose a colour.",
   "protocolBuilder.codebookEntity.edgeColorOption": "Edge colour {index, number}",
   "protocolBuilder.codebookEntity.nodeColorOption": "Node colour {index, number}",
+  "protocolBuilder.narrativePedigree.diseaseColorHint": "The colour this disease is drawn in on the pedigree.",
+  "protocolBuilder.narrativePedigree.diseaseColorLabel": "Colour",
+  "protocolBuilder.narrativePedigree.diseaseColorOption": "Colour {position}",
+  "protocolBuilder.narrativePedigree.diseaseColorPlaceholder": "Select a colour...",
+  "protocolBuilder.narrativePedigree.diseaseColorRequired": "Choose a colour for this disease.",
+  "protocolBuilder.narrativePedigree.diseaseNameHint": "Shown to the participant in the pedigree's key, so it should be a name they recognise.",
+  "protocolBuilder.narrativePedigree.sourceDescription": "Choose the Family Pedigree stage whose family this stage visualises.",
+  "protocolBuilder.narrativePedigree.sourceNotAPedigree": "The stage this one reads is no longer a Family Pedigree, so there is no family for it to visualise. Choose a Family Pedigree stage instead.",
   "protocolBuilder.pedigree.dependentStagesDescription": "These stages visualise this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have."
 }
