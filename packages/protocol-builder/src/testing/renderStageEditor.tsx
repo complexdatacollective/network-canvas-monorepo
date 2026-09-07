@@ -243,6 +243,65 @@ export type StageEditorHarness = RenderResult &
     setReadOnly(readOnly?: boolean): void;
   }>;
 
+/**
+ * How the harness mounts what is under test: one of three ways, and they are
+ * alternatives rather than settings that combine.
+ *
+ * `editor` mounts a NAMED editor, which brings its own shell. `sections` puts
+ * sections in the shared shell, which is how a section is tested without an
+ * editor to put it in. `registry` — and giving none of the three — mounts the
+ * package's own dispatcher, which is how a registry is tested. What is on
+ * screen is a different thing in each case, so a call means exactly one.
+ *
+ * Written as a union so the compiler says that. They were three independent
+ * optionals, and `HarnessEditor` simply preferred `editor`, then `sections`: a
+ * call giving two mounted one and dropped the other in silence, so a test
+ * could name the editor it meant to exercise and be running the dispatcher's
+ * instead — passing, and about something else.
+ *
+ * `assertOneMountingMode` refuses the same combination at runtime, because the
+ * compiler only sees the calls it can type: options built up as a wider object
+ * and options a family's own helper assembles reach here as a value, and the
+ * silent preference is not a thing to leave underneath them.
+ */
+type StageEditorMounting<T extends StageType> =
+  | Readonly<{
+      /**
+       * The named editor under test, which brings its own shell.
+       *
+       * Typed for the stage this call opens rather than for every stage type,
+       * so a narrowly typed family editor — `StageEditorComponent<'Information'>`
+       * — is accepted directly. A component's props are contravariant, so the
+       * wide slot this used to be refused exactly the editors the harness
+       * exists to mount, and families had to go through `registry` to get
+       * around it.
+       *
+       * `stage` and `create` name the interface in the same call, so pairing
+       * one of them with an editor written for a different interface does not
+       * compile.
+       */
+      editor: StageEditorComponent<T>;
+      sections?: never;
+      registry?: never;
+    }>
+  | Readonly<{
+      editor?: never;
+      /** The sections under test, which the harness puts in the shared shell. */
+      sections: ReactNode;
+      registry?: never;
+    }>
+  | Readonly<{
+      editor?: never;
+      sections?: never;
+      /**
+       * The editors the package's dispatcher chooses from, merged over the
+       * ones it composes itself — see `StageEditor`. Left out along with the
+       * other two, the dispatcher is mounted over the package's registry
+       * alone.
+       */
+      registry?: Partial<StageEditorRegistry>;
+    }>;
+
 export type RenderStageEditorOptions<T extends StageType = StageType> =
   Readonly<{
     /** Open this stage of the shared all-interfaces protocol. */
@@ -264,27 +323,6 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
       /** Fields on top of the interface's template. */
       fields?: SectionDoc;
     }>;
-    /**
-     * The named editor under test, which brings its own shell.
-     *
-     * Typed for the stage this call opens rather than for every stage type, so
-     * a narrowly typed family editor — `StageEditorComponent<'Information'>` —
-     * is accepted directly. A component's props are contravariant, so the wide
-     * slot this used to be refused exactly the editors the harness exists to
-     * mount, and families had to go through `registry` to get around it.
-     *
-     * `stage` and `create` name the interface in the same call, so pairing one
-     * of them with an editor written for a different interface does not
-     * compile.
-     *
-     * Exactly one of `editor` and `sections` is given. Neither means the
-     * package's own dispatcher chooses, which is how a registry is tested.
-     */
-    editor?: StageEditorComponent<T>;
-    /** Or the sections under test, which the harness puts in the shared shell. */
-    sections?: ReactNode;
-    /** The editors the dispatcher chooses from, when neither of the above is given. */
-    registry?: Partial<StageEditorRegistry>;
     /**
      * Extra manifest entries this stage may reference, keyed by asset id.
      *
@@ -357,7 +395,35 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      * for what only a live host can be asked — see `liveCommands`.
      */
     applyLive?: boolean;
-  }>;
+  }> &
+    StageEditorMounting<T>;
+
+/** The three, in the order a refusal names them. */
+const MOUNTING_OPTIONS = ['editor', 'sections', 'registry'] as const;
+
+/**
+ * Refuses a call that gave two ways of mounting the same thing.
+ *
+ * Named rather than resolved: there is no answer to which of them a test meant,
+ * and the harness preferring one is how a test came to be about something
+ * other than what it names. Both options are in the message, because the call
+ * that has to change is the one that gave two.
+ */
+function assertOneMountingMode(
+  options: Readonly<{
+    editor?: unknown;
+    sections?: unknown;
+    registry?: unknown;
+  }>,
+): void {
+  const given = MOUNTING_OPTIONS.filter(
+    (option) => options[option] !== undefined,
+  );
+  if (given.length < 2) return;
+  throw new Error(
+    `renderStageEditor was given both \`${given[0]}\` and \`${given[1]}\`, which are alternative ways to mount what is under test: \`editor\` mounts a named editor, \`sections\` puts sections in the shared shell, and \`registry\` (or none of the three) mounts the package's dispatcher. Pass exactly one.`,
+  );
+}
 
 /**
  * Mounts a stage editor over a real editing session.
@@ -402,6 +468,7 @@ function LocaleFrame({
 export function renderStageEditor<T extends StageType = StageType>(
   options: RenderStageEditorOptions<T> = {},
 ): StageEditorHarness {
+  assertOneMountingMode(options);
   const seeded = seedFrom(options);
   const stageSectionId = sectionId({ kind: 'stage', stageId: seeded.id });
   const finishRequests: FinishRequest[] = [];
