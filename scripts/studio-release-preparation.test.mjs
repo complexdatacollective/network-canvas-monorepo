@@ -19,32 +19,14 @@ import { command } from '../apps/studio/deployment/installer/verify.mjs';
 import { verifyStudioPublication } from './studio-publication-verification.mjs';
 import { readStudioCandidate } from './studio-release-policy.mjs';
 import { createStudioReleasePreparation } from './studio-release-preparation.mjs';
-import { releasedDistribution } from './test-support/studio-release.mjs';
+import {
+  releasedDistribution,
+  studioSbom,
+} from './test-support/studio-release.mjs';
 
 const candidate = readStudioCandidate(new URL('..', import.meta.url).pathname);
 const IMAGE_NAMES = Object.keys(IMAGE_REPOSITORIES);
 const compare = (left, right) => (left < right ? -1 : left > right ? 1 : 0);
-
-function sbom(image) {
-  return Buffer.from(
-    JSON.stringify({
-      bomFormat: 'CycloneDX',
-      specVersion: '1.6',
-      metadata: {
-        component: {
-          'type': 'container',
-          'bom-ref': image,
-          'hashes': [
-            {
-              alg: 'SHA-256',
-              content: image.split('@sha256:')[1],
-            },
-          ],
-        },
-      },
-    }),
-  );
-}
 
 function fixture() {
   const value = releasedDistribution().value;
@@ -55,7 +37,7 @@ function fixture() {
   value.upgrade.from = [];
   const sboms = new Map();
   for (const name of IMAGE_NAMES) {
-    const bytes = sbom(value.images[name].reference);
+    const bytes = studioSbom(value.images[name]);
     value.evidence.sboms[name].sha256 = sha256(bytes);
     sboms.set(name, bytes);
   }

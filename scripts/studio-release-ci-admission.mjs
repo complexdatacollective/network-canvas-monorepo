@@ -39,35 +39,38 @@ export async function assertSuccessfulStudioSourceCI(
 ) {
   if (typeof source !== 'string' || !/^[a-f0-9]{40}$/.test(source))
     throw new Error('A full reviewed CI source is required.');
-  const listed = json(
-    await request({
-      path: `${API}/workflows/ci-and-release.yml/runs`,
-      query: {
-        head_sha: source,
-        event: 'push',
-        branch: 'main',
-        per_page: 100,
-        page: 1,
-      },
-    }),
-  );
-  if (
-    !Number.isSafeInteger(listed?.total_count) ||
-    listed.total_count < 1 ||
-    listed.total_count > 100 ||
-    !Array.isArray(listed.workflow_runs) ||
-    listed.workflow_runs.length !== listed.total_count
-  )
-    throw new Error('Complete main-source CI history is unavailable.');
-  for (const run of listed.workflow_runs) validateRun(run, source);
-  if (
-    new Set(listed.workflow_runs.map(({ id }) => id)).size !==
-    listed.workflow_runs.length
-  )
-    throw new Error('Main-source CI history contains duplicate runs.');
-  const latest = listed.workflow_runs.toSorted(
-    (a, b) => b.run_number - a.run_number || b.id - a.id,
-  )[0];
+  async function latestRun() {
+    const listed = json(
+      await request({
+        path: `${API}/workflows/ci-and-release.yml/runs`,
+        query: {
+          head_sha: source,
+          event: 'push',
+          branch: 'main',
+          per_page: 100,
+          page: 1,
+        },
+      }),
+    );
+    if (
+      !Number.isSafeInteger(listed?.total_count) ||
+      listed.total_count < 1 ||
+      listed.total_count > 100 ||
+      !Array.isArray(listed.workflow_runs) ||
+      listed.workflow_runs.length !== listed.total_count
+    )
+      throw new Error('Complete main-source CI history is unavailable.');
+    for (const run of listed.workflow_runs) validateRun(run, source);
+    if (
+      new Set(listed.workflow_runs.map(({ id }) => id)).size !==
+      listed.workflow_runs.length
+    )
+      throw new Error('Main-source CI history contains duplicate runs.');
+    return listed.workflow_runs.toSorted(
+      (a, b) => b.run_number - a.run_number || b.id - a.id,
+    )[0];
+  }
+  const latest = await latestRun();
   const current = json(await request({ path: `${API}/runs/${latest.id}` }));
   validateRun(current, source);
   if (
@@ -78,5 +81,26 @@ export async function assertSuccessfulStudioSourceCI(
     current.conclusion !== 'success'
   )
     throw new Error('The latest main-source CI attempt has not succeeded.');
+  const confirmed = await latestRun();
+  if (
+    confirmed.id !== current.id ||
+    confirmed.run_number !== current.run_number ||
+    confirmed.run_attempt !== current.run_attempt ||
+    confirmed.status !== 'completed' ||
+    confirmed.conclusion !== 'success'
+  )
+    throw new Error('Main-source CI changed during release admission.');
+  // The list endpoint can lag a rerun. Finish with the observed run's current
+  // detail; later publication gates repeat this bounded freshness check.
+  const final = json(await request({ path: `${API}/runs/${confirmed.id}` }));
+  validateRun(final, source);
+  if (
+    final.id !== confirmed.id ||
+    final.run_number !== confirmed.run_number ||
+    final.run_attempt !== confirmed.run_attempt ||
+    final.status !== 'completed' ||
+    final.conclusion !== 'success'
+  )
+    throw new Error('Main-source CI changed during release admission.');
   return { source, runId: current.id, attempt: current.run_attempt };
 }

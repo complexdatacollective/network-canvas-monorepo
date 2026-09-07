@@ -17,6 +17,7 @@ import {
   sha256,
 } from '../apps/studio/deployment/installer/release.mjs';
 import { command } from '../apps/studio/deployment/installer/verify.mjs';
+import { buildMultiPlatformCycloneDx } from './studio-image-evidence.mjs';
 import { prepareStudioImages } from './studio-image-preparation.mjs';
 import { releasedDistribution } from './test-support/studio-release.mjs';
 
@@ -27,6 +28,7 @@ function fixture(t) {
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const log = join(directory, 'commands.jsonl');
   const tool = join(directory, 'tool');
+  const tags = join(directory, 'tags.json');
   const repository = join(directory, 'repository');
   mkdirSync(join(repository, 'apps/studio'), { recursive: true });
   writeFileSync(
@@ -56,10 +58,14 @@ function fixture(t) {
       "fs.appendFileSync('" +
       log +
       "', JSON.stringify(args) + '\\n');\n" +
-      "if (args[0] === 'digest') process.stdout.write('sha256:' + 'a'.repeat(64) + '\\n');\n" +
+      `const tagsFile = ${JSON.stringify(tags)};\n` +
+      'const tags = fs.existsSync(tagsFile) ? JSON.parse(fs.readFileSync(tagsFile)) : {};\n' +
+      "if (args[0] === 'digest') { if (!tags[args[1]]) process.exit(1); process.stdout.write(tags[args[1]] + '\\n'); }\n" +
+      "if (args[0] === 'buildx' || (args[0] === 'index' && args[1] === 'filter')) { const tag = args[args.indexOf('--tag') + 1]; tags[tag] = 'sha256:' + 'a'.repeat(64); fs.writeFileSync(tagsFile, JSON.stringify(tags)); }\n" +
       "if (args.includes('--output')) {\n" +
-      '  const image = args[0];\n' +
-      "  process.stdout.write(JSON.stringify({bomFormat:'CycloneDX',specVersion:'1.6',metadata:{component:{type:'container','bom-ref':image,hashes:[{alg:'SHA-256',content:image.split('@sha256:')[1]}]}}}));\n" +
+      "  const name = args[args.indexOf('--source-name') + 1];\n" +
+      "  const version = args[args.indexOf('--source-version') + 1];\n" +
+      "  process.stdout.write(JSON.stringify({bomFormat:'CycloneDX',specVersion:'1.6',metadata:{component:{type:'container','bom-ref':'opaque-syft-id',name,version}},components:[{type:'library',name:args[args.indexOf('--platform') + 1]}]}));\n" +
       '}\n',
   );
   chmodSync(tool, 0o755);
@@ -95,31 +101,40 @@ function fixture(t) {
   };
 }
 
+function sbom(image) {
+  const reports = new Map(
+    Object.entries(image.configurations).map(([platform, configuration]) => [
+      platform,
+      Buffer.from(
+        JSON.stringify({
+          bomFormat: 'CycloneDX',
+          specVersion: '1.6',
+          metadata: {
+            component: {
+              'type': 'container',
+              'bom-ref': 'opaque-syft-id',
+              'name': `${image.reference}#${platform}`,
+              'version': configuration,
+            },
+          },
+        }),
+      ),
+    ]),
+  );
+  return buildMultiPlatformCycloneDx({
+    image: image.reference,
+    configurations: image.configurations,
+    reports,
+  });
+}
+
 function authenticatedPriorRelease(gate) {
   const prior = releasedDistribution().value;
   prior.components.studio = gate.eligibility.components.studio.source;
   prior.components.registry = gate.eligibility.components.registry.source;
   const sboms = new Map();
   for (const name of Object.keys(IMAGE_REPOSITORIES)) {
-    const image = prior.images[name].reference;
-    const bytes = Buffer.from(
-      JSON.stringify({
-        bomFormat: 'CycloneDX',
-        specVersion: '1.6',
-        metadata: {
-          component: {
-            'type': 'container',
-            'bom-ref': image,
-            'hashes': [
-              {
-                alg: 'SHA-256',
-                content: image.split('@sha256:')[1],
-              },
-            ],
-          },
-        },
-      }),
-    );
+    const bytes = sbom(prior.images[name]);
     prior.evidence.sboms[name].sha256 = sha256(bytes);
     sboms.set(name, bytes);
   }
@@ -145,28 +160,67 @@ test('builds/copies immutable six-image inputs, then acquires digest evidence an
     Object.keys(IMAGE_REPOSITORIES).toSorted(),
   );
   assert.equal(result.sboms.size, 6);
+  for (const bytes of result.sboms.values()) {
+    const aggregate = JSON.parse(bytes);
+    assert.deepEqual(
+      new Set(
+        aggregate.components.map((component) => {
+          const encoded = component.properties.find((property) =>
+            property.name.endsWith('syft-report-base64'),
+          ).value;
+          return JSON.parse(Buffer.from(encoded, 'base64')).components[0].name;
+        }),
+      ),
+      new Set(['linux/amd64', 'linux/arm64']),
+    );
+  }
   const commands = readFileSync(f.log, 'utf8')
     .trim()
     .split('\n')
     .map(JSON.parse);
   assert.equal(commands.filter((record) => record[0] === 'buildx').length, 3);
-  assert.equal(commands.filter((record) => record[0] === 'copy').length, 3);
+  assert.equal(
+    commands.filter((record) => record[0] === 'index' && record[1] === 'filter')
+      .length,
+    3,
+  );
   for (const record of commands.filter(
     (candidate) => candidate[0] === 'buildx',
   ))
     assert.ok(
-      record.includes('linux/amd64,linux/arm64') && record.includes('--push'),
+      record.includes('linux/amd64,linux/arm64') &&
+        record.includes('--provenance=false') &&
+        record.includes('--push'),
     );
   assert.ok(
     commands.some(
       (record) =>
-        record[0] === 'copy' && /postgres:18\.6-alpine@sha256:/.test(record[1]),
+        record[0] === 'index' &&
+        record[1] === 'filter' &&
+        /postgres:18\.6-alpine@sha256:/.test(record[2]),
     ),
   );
-  assert.equal(commands.filter((record) => record[0] === 'digest').length, 6);
+  assert.equal(commands.filter((record) => record[0] === 'digest').length, 12);
   assert.equal(
     commands.filter((record) => record.includes('--output')).length,
-    6,
+    12,
+  );
+  assert.deepEqual(
+    new Set(
+      commands
+        .filter((record) => record.includes('--output'))
+        .map((record) => record[record.indexOf('--platform') + 1]),
+    ),
+    new Set(['linux/amd64', 'linux/arm64']),
+  );
+  assert.ok(
+    commands
+      .filter((record) => record.includes('--tag'))
+      .every((record) =>
+        record[record.indexOf('--tag') + 1].endsWith(
+          `:sha-${f.candidate.commit}`,
+        ),
+      ),
   );
 });
 
@@ -203,10 +257,89 @@ test('reuses authenticated component images and their bound SBOMs while preparin
       .map((record) => record[record.indexOf('--file') + 1]),
     ['apps/studio/deployment/minio.Dockerfile'],
   );
-  assert.equal(commands.filter((record) => record[0] === 'digest').length, 4);
+  assert.equal(commands.filter((record) => record[0] === 'digest').length, 8);
   assert.equal(
     commands.filter((record) => record.includes('--output')).length,
-    4,
+    8,
+  );
+});
+
+test('same-source retry reads retained immutable tags without overwriting them', async (t) => {
+  const f = fixture(t);
+  const options = {
+    docker: f.tool,
+    crane: f.tool,
+    syft: f.tool,
+    acquire: f.acquire,
+    run: f.run,
+    timeoutMs: 2_000,
+  };
+  const first = await prepareStudioImages(
+    { candidate: f.candidate, gate: f.gate },
+    options,
+  );
+  const firstCommands = readFileSync(f.log, 'utf8').trim().split('\n').length;
+  const second = await prepareStudioImages(
+    { candidate: f.candidate, gate: f.gate },
+    options,
+  );
+  assert.deepEqual(second.images, first.images);
+  const retryCommands = readFileSync(f.log, 'utf8')
+    .trim()
+    .split('\n')
+    .slice(firstCommands)
+    .map(JSON.parse);
+  assert.equal(
+    retryCommands.filter((record) => record[0] === 'buildx').length,
+    0,
+  );
+  assert.equal(
+    retryCommands.filter((record) => record[0] === 'index').length,
+    0,
+  );
+  assert.equal(
+    retryCommands.filter((record) => record[0] === 'digest').length,
+    6,
+  );
+});
+
+test('refuses invalid retained tag evidence without overwriting the tag', async (t) => {
+  const f = fixture(t);
+  const options = {
+    docker: f.tool,
+    crane: f.tool,
+    syft: f.tool,
+    acquire: f.acquire,
+    run: f.run,
+    timeoutMs: 2_000,
+  };
+  await prepareStudioImages({ candidate: f.candidate, gate: f.gate }, options);
+  const firstCommands = readFileSync(f.log, 'utf8').trim().split('\n').length;
+  await assert.rejects(
+    () =>
+      prepareStudioImages(
+        { candidate: f.candidate, gate: f.gate },
+        {
+          ...options,
+          acquire: async () => {
+            throw new Error('substituted registry evidence');
+          },
+        },
+      ),
+    /substituted registry evidence/,
+  );
+  const retryCommands = readFileSync(f.log, 'utf8')
+    .trim()
+    .split('\n')
+    .slice(firstCommands)
+    .map(JSON.parse);
+  assert.equal(
+    retryCommands.filter((record) => record[0] === 'buildx').length,
+    0,
+  );
+  assert.equal(
+    retryCommands.filter((record) => record[0] === 'index').length,
+    0,
   );
 });
 

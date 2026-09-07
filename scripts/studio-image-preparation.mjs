@@ -7,7 +7,10 @@ import {
   readRelease,
 } from '../apps/studio/deployment/installer/release.mjs';
 import { command } from '../apps/studio/deployment/installer/verify.mjs';
-import { validateCycloneDx } from './studio-image-evidence.mjs';
+import {
+  buildMultiPlatformCycloneDx,
+  validateCycloneDx,
+} from './studio-image-evidence.mjs';
 import { acquireImageEvidence } from './studio-image-registry.mjs';
 
 const PLATFORMS = 'linux/amd64,linux/arm64';
@@ -15,7 +18,7 @@ const SOURCE = /^[a-f0-9]{40}$/;
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
 
 function imageTag(name, source) {
-  return `${IMAGE_REPOSITORIES[name]}:build-${source}`;
+  return `${IMAGE_REPOSITORIES[name]}:sha-${source}`;
 }
 
 function sourceImage(value) {
@@ -29,15 +32,38 @@ function sourceImage(value) {
   return value;
 }
 
-function execution(run, executable, args, { cwd, timeoutMs }) {
+function execution(run, executable, args, { cwd, timeoutMs, maxBuffer }) {
   try {
     return run(executable, args, {
       timeout: timeoutMs,
       killSignal: 'SIGKILL',
       cwd,
+      ...(maxBuffer ? { maxBuffer } : {}),
     });
   } catch {
     throw new Error('Studio image preparation command failed.');
+  }
+}
+
+function existingDigest(run, crane, target, context) {
+  try {
+    const digest = run(crane, ['digest', target], {
+      timeout: context.timeoutMs,
+      killSignal: 'SIGKILL',
+      cwd: context.cwd,
+    }).trim();
+    if (!DIGEST.test(digest))
+      throw new Error(
+        'Studio image preparation received an invalid image digest.',
+      );
+    return digest;
+  } catch (error) {
+    if (
+      error?.message ===
+      'Studio image preparation received an invalid image digest.'
+    )
+      throw error;
+    return null;
   }
 }
 
@@ -72,6 +98,7 @@ function priorRelease(value) {
     }
     validateCycloneDx({
       image: prior.release.images[name].reference,
+      configurations: prior.release.images[name].configurations,
       bytes,
     });
   }
@@ -137,14 +164,21 @@ export async function prepareStudioImages(
         imageTag(name, candidate.commit),
       ]),
     );
+    const retained = new Map();
+    for (const name of Object.keys(IMAGE_REPOSITORIES)) {
+      if (reuse.has(name)) continue;
+      const digest = existingDigest(run, crane, targets[name], context);
+      if (digest) retained.set(name, digest);
+    }
 
     for (const name of ['studio', 'registry', 'minio']) {
-      if (reuse.has(name)) continue;
+      if (reuse.has(name) || retained.has(name)) continue;
       const args = [
         'buildx',
         'build',
         '--platform',
         PLATFORMS,
+        '--provenance=false',
         '--push',
         '--tag',
         targets[name],
@@ -161,7 +195,23 @@ export async function prepareStudioImages(
       execution(run, docker, args, context);
     }
     for (const name of ['postgres', 'traefik', 'minioClient']) {
-      execution(run, crane, ['copy', sources[name], targets[name]], context);
+      if (retained.has(name)) continue;
+      execution(
+        run,
+        crane,
+        [
+          'index',
+          'filter',
+          sources[name],
+          '--platform',
+          'linux/amd64',
+          '--platform',
+          'linux/arm64',
+          '--tag',
+          targets[name],
+        ],
+        context,
+      );
     }
 
     const images = {};
@@ -172,12 +222,9 @@ export async function prepareStudioImages(
         sboms.set(name, Buffer.from(prior.sboms.get(name)));
         continue;
       }
-      const digest = execution(
-        run,
-        crane,
-        ['digest', targets[name]],
-        context,
-      ).trim();
+      const digest =
+        retained.get(name) ??
+        execution(run, crane, ['digest', targets[name]], context).trim();
       if (!DIGEST.test(digest))
         throw new Error(
           'Studio image preparation received an invalid image digest.',
@@ -189,15 +236,41 @@ export async function prepareStudioImages(
         crane,
         timeoutMs,
       });
-      const bytes = Buffer.from(
-        execution(
-          run,
-          syft,
-          [reference, '--output', 'cyclonedx-json'],
-          context,
-        ),
-      );
-      validateCycloneDx({ image: reference, bytes });
+      const reports = new Map();
+      for (const platform of ['linux/amd64', 'linux/arm64']) {
+        const configuration = images[name].configurations[platform];
+        reports.set(
+          platform,
+          Buffer.from(
+            execution(
+              run,
+              syft,
+              [
+                reference,
+                '--platform',
+                platform,
+                '--source-name',
+                `${reference}#${platform}`,
+                '--source-version',
+                configuration,
+                '--output',
+                'cyclonedx-json',
+              ],
+              { ...context, maxBuffer: 8 * 1024 * 1024 },
+            ),
+          ),
+        );
+      }
+      const bytes = buildMultiPlatformCycloneDx({
+        image: reference,
+        configurations: images[name].configurations,
+        reports,
+      });
+      validateCycloneDx({
+        image: reference,
+        configurations: images[name].configurations,
+        bytes,
+      });
       sboms.set(name, bytes);
     }
     return { images, sboms, reused: [...reuse].toSorted() };

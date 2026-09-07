@@ -28,7 +28,7 @@ const HASH = /^[a-f0-9]{64}$/;
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
 const PLATFORMS = ['linux/amd64', 'linux/arm64'];
 const IMAGE_NAMES = Object.keys(IMAGE_REPOSITORIES);
-const EVIDENCE_LIMIT = 16 * 1024 * 1024;
+const EVIDENCE_LIMIT = 336 * 1024 * 1024;
 const BUNDLE_LIMIT = 8 * 1024 * 1024;
 
 function exactObject(value, keys, message) {
@@ -245,7 +245,11 @@ function readImageEvidence(bytes, identity) {
     const sbom = Buffer.from(encoded, 'base64');
     if (!sbom.length || sbom.toString('base64') !== encoded)
       throw new Error('Retained image preparation evidence is invalid.');
-    validateCycloneDx({ image: image.reference, bytes: sbom });
+    validateCycloneDx({
+      image: image.reference,
+      configurations: image.configurations,
+      bytes: sbom,
+    });
     sboms.set(name, sbom);
   }
   return { images: value.images, sboms };

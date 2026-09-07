@@ -3,10 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  IMAGE_REPOSITORIES,
   readRelease,
+  sha256,
   signatureArguments,
 } from '../apps/studio/deployment/installer/release.mjs';
 import { command } from '../apps/studio/deployment/installer/verify.mjs';
+import { validateCycloneDx } from './studio-image-evidence.mjs';
 
 const SOURCE = /^[a-f0-9]{40}$/;
 
@@ -87,7 +90,32 @@ export async function authenticateStudioReleaseHistory(
         Number(git(['rev-list', '--count', commit]))
     )
       throw new Error('Historical manifest differs from its Git identity.');
-    if (commit !== source) history.push(release);
+    if (
+      !(retained.sboms instanceof Map) ||
+      retained.sboms.size !== Object.keys(IMAGE_REPOSITORIES).length
+    )
+      throw new Error('Historical distribution SBOM inventory is incomplete.');
+    const sboms = new Map();
+    for (const name of Object.keys(IMAGE_REPOSITORIES)) {
+      const bytes = retained.sboms.get(name);
+      if (
+        !Buffer.isBuffer(bytes) ||
+        sha256(bytes) !== release.release.evidence.sboms[name].sha256
+      )
+        throw new Error('Historical SBOM does not match its signed digest.');
+      validateCycloneDx({
+        image: release.release.images[name].reference,
+        configurations: release.release.images[name].configurations,
+        bytes,
+      });
+      sboms.set(name, Buffer.from(bytes));
+    }
+    if (commit !== source)
+      history.push({
+        ...release,
+        releaseBytes: Buffer.from(retained.bytes),
+        sboms,
+      });
   }
   history.sort((a, b) => a.current.generation - b.current.generation);
   for (let index = 1; index < history.length; index += 1) {

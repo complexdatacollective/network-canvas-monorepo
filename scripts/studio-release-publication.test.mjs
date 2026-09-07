@@ -9,30 +9,16 @@ import {
 } from '../apps/studio/deployment/installer/release.mjs';
 import { publishStudioDistribution } from './studio-release-publication.mjs';
 import { installerFixture } from './test-support/studio-installer.mjs';
-import { releasedDistribution } from './test-support/studio-release.mjs';
+import {
+  releasedDistribution,
+  studioSbom,
+} from './test-support/studio-release.mjs';
 
 function fixture(t) {
   const release = releasedDistribution();
   const sboms = new Map();
   for (const [name, evidence] of Object.entries(release.value.evidence.sboms)) {
-    const bytes = Buffer.from(
-      JSON.stringify({
-        bomFormat: 'CycloneDX',
-        specVersion: '1.6',
-        metadata: {
-          component: {
-            'type': 'container',
-            'bom-ref': evidence.subject,
-            'hashes': [
-              {
-                alg: 'SHA-256',
-                content: evidence.subject.split('@sha256:')[1],
-              },
-            ],
-          },
-        },
-      }),
-    );
+    const bytes = studioSbom(release.value.images[name]);
     evidence.sha256 = sha256(bytes);
     sboms.set(`${name}.cdx.json`, bytes);
   }

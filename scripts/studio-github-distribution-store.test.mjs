@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { sha256 } from '../apps/studio/deployment/installer/release.mjs';
+import {
+  IMAGE_REPOSITORIES,
+  sha256,
+} from '../apps/studio/deployment/installer/release.mjs';
 import {
   createGhRequest,
   createGitHubDistributionStore,
@@ -140,7 +143,13 @@ async function publishedFixture() {
   await distribution.ensureDraft(input);
   await distribution.uploadAsset(tag, 'release.json', bytes);
   await distribution.uploadAsset(tag, 'release.sigstore.json', bundle);
-  return { f, distribution, bytes, bundle, input };
+  const sboms = new Map();
+  for (const name of Object.keys(IMAGE_REPOSITORIES)) {
+    const contents = Buffer.from(`exact ${name} SBOM bytes`);
+    sboms.set(name, contents);
+    await distribution.uploadAsset(tag, `${name}.cdx.json`, contents);
+  }
+  return { f, distribution, bytes, bundle, input, sboms };
 }
 
 test('reads only published manifests bound to both the annotated tag and release', async () => {
@@ -156,8 +165,79 @@ test('reads only published manifests bound to both the annotated tag and release
       bytes: p.bytes,
       bundle: p.bundle,
       manifestSha256: sha256(p.bytes),
+      sboms: p.sboms,
     },
   );
+});
+
+test('prereleases cannot supply supported distribution history', async () => {
+  const p = await publishedFixture();
+  await p.distribution.publish(p.input);
+  p.f.releases.get(tag).prerelease = true;
+  await assert.rejects(
+    () => p.distribution.readPublishedManifest({ tag, source }),
+    /prerelease cannot supply/,
+  );
+});
+
+test('withdrawal during asset reads cannot return published evidence', async () => {
+  const p = await publishedFixture();
+  await p.distribution.publish(p.input);
+  const original = p.f.request;
+  let releaseReads = 0;
+  p.f.request = async (input) => {
+    if (
+      input.path === `${api}/releases/tags/${encodeURIComponent(tag)}` &&
+      ++releaseReads === 2
+    )
+      Object.assign(p.f.releases.get(tag), { draft: true, published_at: null });
+    return original(input);
+  };
+  await assert.rejects(
+    () => store(p.f).readPublishedManifest({ tag, source }),
+    /publication state changed/,
+  );
+  assert.equal(releaseReads, 2);
+});
+
+test('a published manifest without a complete SBOM inventory is refused', async () => {
+  const p = await publishedFixture();
+  await p.distribution.publish(p.input);
+  const assets = p.f.assets.get(p.f.releases.get(tag).id);
+  assets.splice(
+    assets.findIndex(({ name }) => name === 'registry.cdx.json'),
+    1,
+  );
+  await assert.rejects(
+    () => p.distribution.readPublishedManifest({ tag, source }),
+    /SBOM evidence is missing/,
+  );
+});
+
+test('replacement during asset reads cannot borrow a deleted release inventory', async () => {
+  const p = await publishedFixture();
+  await p.distribution.publish(p.input);
+  const original = p.f.request;
+  const initialId = p.f.releases.get(tag).id;
+  let releaseReads = 0;
+  p.f.request = async (input) => {
+    if (
+      input.path === `${api}/releases/tags/${encodeURIComponent(tag)}` &&
+      ++releaseReads === 2
+    ) {
+      const replacement = { ...p.f.releases.get(tag), id: initialId + 1000 };
+      p.f.releases.set(tag, replacement);
+      p.f.assets.delete(initialId);
+      p.f.assets.set(replacement.id, []);
+    }
+    return original(input);
+  };
+  await assert.rejects(
+    () => store(p.f).readPublishedManifest({ tag, source }),
+    /publication state changed/,
+  );
+  assert.equal(releaseReads, 2);
+  assert.deepEqual(p.f.assets.get(initialId + 1000), []);
 });
 
 for (const defect of [

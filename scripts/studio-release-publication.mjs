@@ -59,7 +59,7 @@ function validateArtifacts(artifacts, gate) {
       throw new Error('Invalid distribution asset.');
     total += bytes.length;
   }
-  if (total > 256 * 1024 * 1024)
+  if (total > 384 * 1024 * 1024)
     throw new Error('Distribution assets are too large.');
   const manifest = readRelease(artifacts.get('release.json'));
   const { release, current } = manifest;
@@ -92,7 +92,11 @@ function validateArtifacts(artifacts, gate) {
     const bytes = artifacts.get(`${name}.cdx.json`);
     if (sha256(bytes) !== release.evidence.sboms[name].sha256)
       throw new Error('Distribution SBOM differs from its signed identity.');
-    validateCycloneDx({ image: release.images[name].reference, bytes });
+    validateCycloneDx({
+      image: release.images[name].reference,
+      configurations: release.images[name].configurations,
+      bytes,
+    });
   }
   const archive = readInstallerArchive(
     artifacts.get('installer.tar'),

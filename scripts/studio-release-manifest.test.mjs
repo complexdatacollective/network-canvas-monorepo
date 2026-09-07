@@ -9,7 +9,10 @@ import {
 } from '../packages/studio-sync/src/postgres-migration-artifacts.ts';
 import { buildStudioReleaseManifest } from './studio-release-manifest.mjs';
 import { readStudioCandidate } from './studio-release-policy.mjs';
-import { releasedDistribution } from './test-support/studio-release.mjs';
+import {
+  releasedDistribution,
+  studioSbom,
+} from './test-support/studio-release.mjs';
 
 function blobOid(text) {
   const bytes = Buffer.from(text);
@@ -60,24 +63,7 @@ function fixture() {
   const sboms = new Map(
     Object.entries(next.value.images).map(([name, image]) => [
       name,
-      Buffer.from(
-        JSON.stringify({
-          bomFormat: 'CycloneDX',
-          specVersion: '1.6',
-          metadata: {
-            component: {
-              'type': 'container',
-              'bom-ref': image.reference,
-              'hashes': [
-                {
-                  alg: 'SHA-256',
-                  content: image.reference.split('@sha256:')[1],
-                },
-              ],
-            },
-          },
-        }),
-      ),
+      studioSbom(image),
     ]),
   );
   const input = {

@@ -42,6 +42,19 @@ test('binds the source to the fixed main push workflow and rereads its latest at
     {
       path: 'repos/complexdatacollective/network-canvas-monorepo/actions/runs/12',
     },
+    {
+      path: 'repos/complexdatacollective/network-canvas-monorepo/actions/workflows/ci-and-release.yml/runs',
+      query: {
+        head_sha: source,
+        event: 'push',
+        branch: 'main',
+        per_page: 100,
+        page: 1,
+      },
+    },
+    {
+      path: 'repos/complexdatacollective/network-canvas-monorepo/actions/runs/12',
+    },
   ]);
 });
 
@@ -110,7 +123,57 @@ test('never memoizes a previous successful admission across calls', async () => 
     f.verify,
     /latest main-source CI attempt has not succeeded/,
   );
-  assert.equal(f.calls.length, 4);
+  assert.equal(f.calls.length, 6);
+});
+
+test('a distinct newer run appearing after detail read blocks publication', async () => {
+  const old = successfulRun(source);
+  const pending = successfulRun(source, {
+    id: 13,
+    run_number: 10,
+    status: 'in_progress',
+    conclusion: null,
+  });
+  let calls = 0;
+  const request = async ({ query }) => {
+    calls += 1;
+    return encode(
+      query
+        ? {
+            total_count: calls === 1 ? 1 : 2,
+            workflow_runs: calls === 1 ? [old] : [pending, old],
+          }
+        : old,
+    );
+  };
+  await assert.rejects(
+    () => assertSuccessfulStudioSourceCI(source, { request }),
+    /CI changed during release admission/,
+  );
+  assert.equal(calls, 3);
+});
+
+test('a stale confirming list cannot conceal a rerun from the final detail read', async () => {
+  const successful = successfulRun(source);
+  let details = 0;
+  const request = async ({ query }) => {
+    if (query) return encode({ total_count: 1, workflow_runs: [successful] });
+    details += 1;
+    return encode(
+      details === 1
+        ? successful
+        : successfulRun(source, {
+            run_attempt: 2,
+            status: 'in_progress',
+            conclusion: null,
+          }),
+    );
+  };
+  await assert.rejects(
+    () => assertSuccessfulStudioSourceCI(source, { request }),
+    /CI changed during release admission/,
+  );
+  assert.equal(details, 2);
 });
 
 for (const [label, inputs] of [

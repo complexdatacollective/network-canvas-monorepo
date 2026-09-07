@@ -19,7 +19,10 @@ import {
 } from '../apps/studio/deployment/installer/release.mjs';
 import { command } from '../apps/studio/deployment/installer/verify.mjs';
 import { authenticateStudioReleaseHistory } from './studio-release-history.mjs';
-import { releasedDistribution } from './test-support/studio-release.mjs';
+import {
+  releasedDistribution,
+  studioSbom,
+} from './test-support/studio-release.mjs';
 
 function fixture(t, count = 3) {
   const cwd = mkdtempSync(join(tmpdir(), 'studio-history-test-'));
@@ -50,13 +53,22 @@ function fixture(t, count = 3) {
   for (let index = 0; index < count; index += 1) {
     const source = commit();
     const value = { ...releasedDistribution(index + 1, history).value, source };
+    const sboms = new Map(
+      Object.entries(value.images).map(([name, image]) => [
+        name,
+        studioSbom(image),
+      ]),
+    );
+    for (const [name, bytes] of sboms)
+      value.evidence.sboms[name].sha256 = sha256(bytes);
     const bytes = Buffer.from(JSON.stringify(value));
     const release = readRelease(bytes);
-    history.push(release);
+    history.push({ ...release, releaseBytes: bytes, sboms });
     manifests.set(source, {
       bytes,
       bundle: Buffer.from(sha256(bytes)),
       manifestSha256: sha256(bytes),
+      sboms,
     });
     git('tag', '-a', `studio/${source}`, '-m', `Fixture release ${source}`);
   }
@@ -122,6 +134,20 @@ test('authenticates every prior release and selects oldest and previous upgrade 
   for (const paths of f.signatures)
     for (const path of paths) assert.equal(existsSync(path), false);
 });
+
+for (const defect of ['missing', 'substituted'])
+  test(`rejects ${defect} retained SBOMs before image reuse`, async (t) => {
+    const f = fixture(t);
+    const retained = f.manifests.get(f.history.at(-1).current.source);
+    if (defect === 'missing') retained.sboms.delete('registry');
+    else retained.sboms.set('registry', Buffer.from('substituted report'));
+    await assert.rejects(
+      f.authenticate,
+      defect === 'missing'
+        ? /SBOM inventory is incomplete/
+        : /does not match its signed digest/,
+    );
+  });
 
 test('accepts an explicitly empty first-release history without inferring API failures as absence', async (t) => {
   const f = fixture(t, 0);

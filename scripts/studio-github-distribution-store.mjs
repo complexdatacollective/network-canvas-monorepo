@@ -1,6 +1,9 @@
 import { spawn } from 'node:child_process';
 
-import { sha256 } from '../apps/studio/deployment/installer/release.mjs';
+import {
+  IMAGE_REPOSITORIES,
+  sha256,
+} from '../apps/studio/deployment/installer/release.mjs';
 
 const REPOSITORY = 'complexdatacollective/network-canvas-monorepo';
 const API = `repos/${REPOSITORY}`;
@@ -624,6 +627,10 @@ export function createGitHubDistributionStore({
         throw new Error('A tagged distribution release is missing.');
       releaseId(release);
       if (release.draft) return null;
+      if (release.prerelease !== false)
+        throw new Error(
+          'A prerelease cannot supply supported distribution history.',
+        );
       const bytes = await readAssetFromRelease(release, 'release.json');
       const bundle = await readAssetFromRelease(
         release,
@@ -634,17 +641,36 @@ export function createGitHubDistributionStore({
           'Published release authentication evidence is missing.',
         );
       const manifestSha256 = sha256(bytes);
-      await exactRelease({
+      const sboms = new Map();
+      for (const name of Object.keys(IMAGE_REPOSITORIES)) {
+        const sbom = await readAssetFromRelease(release, `${name}.cdx.json`);
+        if (!sbom?.length || sbom.length > 40 * 1024 * 1024)
+          throw new Error(
+            'Published distribution SBOM evidence is missing or invalid.',
+          );
+        sboms.set(name, sbom);
+      }
+      if (
+        !(await verifyTag({ tag: releaseTag, source: commit, manifestSha256 }))
+      )
+        throw new Error('A published distribution tag is missing.');
+      const confirmed = await exactRelease({
         tag: releaseTag,
         source: commit,
         manifestSha256,
         create: false,
       });
+      releaseId(confirmed);
       if (
-        !(await verifyTag({ tag: releaseTag, source: commit, manifestSha256 }))
+        confirmed.id !== release.id ||
+        confirmed.draft !== false ||
+        confirmed.prerelease !== false ||
+        !Number.isFinite(Date.parse(confirmed.published_at))
       )
-        throw new Error('A published distribution tag is missing.');
-      return { bytes, bundle, manifestSha256 };
+        throw new Error(
+          'Distribution publication state changed during history authentication.',
+        );
+      return { bytes, bundle, manifestSha256, sboms };
     },
 
     async uploadAsset(releaseTag, name, bytes) {
