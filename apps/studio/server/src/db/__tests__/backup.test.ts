@@ -52,8 +52,11 @@ async function backupFixture(
     backup: pg.Pool;
     runtime: pg.Pool;
     backupLogin: string;
+    runtimeLogin: string;
+    maintenanceLogin: string;
     backupPassword: string;
     teams: string[];
+    allowedLogins: string[];
   }) => Promise<void>,
 ) {
   const db = requireDatabase();
@@ -61,26 +64,31 @@ async function backupFixture(
   const suffix = randomUUID().replaceAll('-', '');
   const backupLogin = `backup_reader_${suffix}`;
   const runtimeLogin = `backup_runtime_${suffix}`;
+  const maintenanceLogin = `backup_maintenance_${suffix}`;
   const backupPassword = randomBytes(24).toString('hex');
   const runtimePassword = randomBytes(24).toString('hex');
+  const maintenancePassword = randomBytes(24).toString('hex');
   const loginOptions =
     'LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION';
   let backup: pg.Pool | undefined;
   let runtime: pg.Pool | undefined;
-  const maintenance = createMaintenancePool(source.db);
+  let maintenance: pg.Pool | undefined;
   try {
     // Precreate the operator-only role before enrollment; a restricted
     // migrator must be able to validate it without CREATEROLE privileges.
     await source.pool.query(runtimeRolesSql([BACKUP_ROLE]));
     await source.pool
       .query(`CREATE ROLE ${pg.escapeIdentifier(backupLogin)} ${loginOptions} PASSWORD ${pg.escapeLiteral(backupPassword)};
-      CREATE ROLE ${pg.escapeIdentifier(runtimeLogin)} ${loginOptions} PASSWORD ${pg.escapeLiteral(runtimePassword)}`);
+      CREATE ROLE ${pg.escapeIdentifier(runtimeLogin)} ${loginOptions} PASSWORD ${pg.escapeLiteral(runtimePassword)};
+      CREATE ROLE ${pg.escapeIdentifier(maintenanceLogin)} ${loginOptions} PASSWORD ${pg.escapeLiteral(maintenancePassword)}`);
     await source.pool
       .query(`GRANT ${BACKUP_ROLE} TO ${pg.escapeIdentifier(backupLogin)} WITH INHERIT FALSE, SET TRUE;
-      GRANT ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance} TO ${pg.escapeIdentifier(runtimeLogin)} WITH INHERIT FALSE, SET TRUE`);
+      GRANT ${TENANT_ROLES.app} TO ${pg.escapeIdentifier(runtimeLogin)} WITH INHERIT FALSE, SET TRUE;
+      GRANT ${TENANT_ROLES.maintenance} TO ${pg.escapeIdentifier(maintenanceLogin)} WITH INHERIT FALSE, SET TRUE`);
     const allowedLogins = await enrollMigrationTestDatabase(source.pool, db, [
       backupLogin,
       runtimeLogin,
+      maintenanceLogin,
     ]);
     await migrateDatabase(
       source.pool,
@@ -96,6 +104,9 @@ async function backupFixture(
     };
     backup = createBackupPool(loginUrl(backupLogin, backupPassword));
     runtime = createPool(loginUrl(runtimeLogin, runtimePassword));
+    maintenance = createMaintenancePool(
+      loginUrl(maintenanceLogin, maintenancePassword),
+    );
     const keys = await initializeEncryption({
       maintenancePool: maintenance,
       configuration: configuration(),
@@ -158,14 +169,24 @@ async function backupFixture(
       "CREATE SEQUENCE public.backup_sequence START 11; SELECT nextval('public.backup_sequence')",
     );
     await source.pool.query(BACKUP_ACCESS_SIDECAR_SQL);
-    await work({ source, backup, runtime, backupLogin, backupPassword, teams });
+    await work({
+      source,
+      backup,
+      runtime,
+      backupLogin,
+      runtimeLogin,
+      maintenanceLogin,
+      backupPassword,
+      teams,
+      allowedLogins,
+    });
   } finally {
-    await Promise.all([backup?.end(), runtime?.end(), maintenance.end()]);
+    await Promise.all([backup?.end(), runtime?.end(), maintenance?.end()]);
     await source.dispose();
     const cleanup = new pg.Pool({ connectionString: db.url });
     try {
       await cleanup.query(
-        `DROP ROLE IF EXISTS ${pg.escapeIdentifier(backupLogin)}, ${pg.escapeIdentifier(runtimeLogin)}`,
+        `DROP ROLE IF EXISTS ${pg.escapeIdentifier(backupLogin)}, ${pg.escapeIdentifier(runtimeLogin)}, ${pg.escapeIdentifier(maintenanceLogin)}`,
       );
     } finally {
       await cleanup.end();
@@ -346,39 +367,56 @@ it('refuses drift that can omit rows or let the backup credentials write', async
 });
 
 it('verifies the operator command without runtime credentials or secret output', async () => {
-  await backupFixture(async ({ source, backupLogin, backupPassword }) => {
-    const url = new URL(source.db.url);
-    url.username = backupLogin;
-    url.password = backupPassword;
-    const run = (databaseUrl: string, args: string[] = []) =>
-      spawnSync(process.execPath, ['src/backup.ts', ...args], {
-        // oxlint-disable-next-line node/no-process-env -- isolated child gets the synthetic backup identity only
-        env: { ...process.env, DATABASE_URL: databaseUrl },
-        encoding: 'utf8',
-        timeout: 15_000,
-        maxBuffer: 1024 * 1024,
-      });
-    const good = run(url.toString());
-    expect(good.error).toBeUndefined();
-    expect(good.status).toBe(0);
-    expect(good.stdout).toBe('Studio backup access verified.\n');
-    for (const rejected of [
-      run(source.db.url),
-      run(url.toString(), ['SECRET_ARGUMENT_CANARY']),
-    ]) {
-      expect(rejected.error).toBeUndefined();
-      expect(rejected.status).toBe(1);
-      const output = rejected.stdout + rejected.stderr;
-      expect(output).toContain('STUDIO_BACKUP_ACCESS_UNSAFE');
-      for (const secret of [
-        backupPassword,
-        'SECRET_ARGUMENT_CANARY',
-        source.db.url,
-        url.toString(),
-      ])
-        expect(output).not.toContain(secret);
-    }
-  });
+  await backupFixture(
+    async ({
+      source,
+      backupLogin,
+      runtimeLogin,
+      maintenanceLogin,
+      backupPassword,
+      allowedLogins,
+    }) => {
+      const url = new URL(source.db.url);
+      url.username = backupLogin;
+      url.password = backupPassword;
+      const run = (databaseUrl: string, args: string[] = []) =>
+        spawnSync(process.execPath, ['src/backup.ts', ...args], {
+          // oxlint-disable-next-line node/no-process-env -- isolated child gets the synthetic backup identity only
+          env: {
+            ...process.env,
+            DATABASE_URL: databaseUrl,
+            STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(allowedLogins),
+          },
+          encoding: 'utf8',
+          timeout: 15_000,
+          maxBuffer: 1024 * 1024,
+        });
+      await source.pool.query(
+        `ALTER ROLE ${pg.escapeIdentifier(runtimeLogin)} NOLOGIN;
+       ALTER ROLE ${pg.escapeIdentifier(maintenanceLogin)} NOLOGIN`,
+      );
+      const good = run(url.toString());
+      expect(good.error).toBeUndefined();
+      expect(good.status, good.stdout + good.stderr).toBe(0);
+      expect(good.stdout).toBe('Studio backup access verified.\n');
+      for (const rejected of [
+        run(source.db.url),
+        run(url.toString(), ['SECRET_ARGUMENT_CANARY']),
+      ]) {
+        expect(rejected.error).toBeUndefined();
+        expect(rejected.status).toBe(1);
+        const output = rejected.stdout + rejected.stderr;
+        expect(output).toContain('STUDIO_BACKUP_ACCESS_UNSAFE');
+        for (const secret of [
+          backupPassword,
+          'SECRET_ARGUMENT_CANARY',
+          source.db.url,
+          url.toString(),
+        ])
+          expect(output).not.toContain(secret);
+      }
+    },
+  );
 });
 
 it('refuses owner-backed writes through views or callable definer routines', async () => {

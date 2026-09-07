@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
+import { escapeIdentifier } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import { contract } from '@codaco/studio-rpc';
@@ -17,6 +18,7 @@ import {
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import { createMailer, type AuditAlertMailer } from '../../auth/email.ts';
+import { createOwnerPool } from '../../db/pool.ts';
 import { createObservability } from '../../observability/runtime.ts';
 import type { OutboxLifecycleEvent } from '../../outbox/instrumentation.ts';
 import {
@@ -932,12 +934,31 @@ describe.skipIf(!db)('audit-alert policy and researcher delivery', () => {
       let child: ReturnType<typeof fork> | undefined;
       let exited: Promise<unknown[]> | undefined;
       let runtime: ReturnType<typeof createObservability> | undefined;
+      const workerLogin = `audit_alert_worker_${randomUUID().replaceAll('-', '')}`;
+      const workerPassword = 'audit-alert-worker-synthetic-only';
+      let workerLoginCreated = false;
+      let workerDatabase: string | undefined;
       try {
         await scratch.configure([{ memberId, inApp: false, email: true }]);
         await scratch.append();
-        const databaseUrl = scratch.pool.options.connectionString;
-        if (typeof databaseUrl !== 'string')
+        const ownerUrl = scratch.pool.options.connectionString;
+        if (typeof ownerUrl !== 'string')
           throw new Error('Missing synthetic fixture URL');
+        const identity = (
+          await scratch.pool.query<{ database: string }>(
+            'SELECT current_database() AS database',
+          )
+        ).rows[0]!;
+        workerDatabase = identity.database;
+        await scratch.pool.query(
+          `CREATE ROLE ${escapeIdentifier(workerLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${workerPassword}';
+           GRANT studio_maintenance TO ${escapeIdentifier(workerLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+           GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(workerLogin)}`,
+        );
+        workerLoginCreated = true;
+        const workerUrl = new URL(ownerUrl);
+        workerUrl.username = workerLogin;
+        workerUrl.password = workerPassword;
         child = fork(
           fileURLToPath(
             new URL('./fixtures/alert-worker-process.ts', import.meta.url),
@@ -947,7 +968,7 @@ describe.skipIf(!db)('audit-alert policy and researcher delivery', () => {
             execArgv: [],
             env: {
               NODE_ENV: 'test',
-              STUDIO_ALERT_TEST_DATABASE_URL: databaseUrl,
+              STUDIO_ALERT_TEST_DATABASE_URL: workerUrl.href,
               STUDIO_ALERT_TEST_SMTP_URL: peer.url,
             },
             stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
@@ -1067,6 +1088,20 @@ describe.skipIf(!db)('audit-alert policy and researcher delivery', () => {
         mailer.close();
         await Promise.all([peer.close(), recoveryPeer.close()]);
         await scratch.dispose();
+        if (workerLoginCreated && db) {
+          const cleanup = createOwnerPool(db);
+          try {
+            if (workerDatabase)
+              await cleanup.query(
+                `REVOKE CONNECT ON DATABASE ${escapeIdentifier(workerDatabase)} FROM ${escapeIdentifier(workerLogin)}`,
+              );
+            await cleanup.query(
+              `DROP ROLE IF EXISTS ${escapeIdentifier(workerLogin)}`,
+            );
+          } finally {
+            await cleanup.end();
+          }
+        }
       }
     },
     20_000,

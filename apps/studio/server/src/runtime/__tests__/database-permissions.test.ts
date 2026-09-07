@@ -24,21 +24,23 @@ describe.skipIf(!database)('restricted deployment database login', () => {
   it('can read readiness as both runtime roles but cannot change the schema or its evidence', async () => {
     if (!database) throw new Error('The database is required.');
     const scratch = await createScratchDatabase(database);
-    const login = `studio_runtime_test_${randomUUID().replaceAll('-', '')}`;
-    const identifier = pg.escapeIdentifier(login);
+    const suffix = randomUUID().replaceAll('-', '');
+    const appLogin = `studio_runtime_app_${suffix}`;
+    const maintenanceLogin = `studio_runtime_maintenance_${suffix}`;
+    const identifiers = [appLogin, maintenanceLogin].map(pg.escapeIdentifier);
     const administrator = new pg.Pool({ connectionString: database.url });
     const pools: pg.Pool[] = [];
     try {
       await administrator.query(
-        `CREATE ROLE ${identifier} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD 'runtime-test-only'`,
-      );
-      await administrator.query(
-        `GRANT studio_app, studio_maintenance TO ${identifier} WITH SET TRUE, INHERIT FALSE`,
+        `CREATE ROLE ${identifiers[0]} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD 'runtime-test-only';
+         CREATE ROLE ${identifiers[1]} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD 'runtime-test-only';
+         GRANT studio_app TO ${identifiers[0]} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+         GRANT studio_maintenance TO ${identifiers[1]} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE`,
       );
       const allowedLogins = await enrollMigrationTestDatabase(
         scratch.pool,
         database,
-        [login],
+        [appLogin, maintenanceLogin],
       );
       await migrateDatabase(
         scratch.pool,
@@ -46,32 +48,22 @@ describe.skipIf(!database)('restricted deployment database login', () => {
         SCHEMA_FINGERPRINT,
         allowedLogins,
       );
-      const url = new URL(scratch.db.url);
-      url.username = login;
-      url.password = 'runtime-test-only';
-      const runtimeDb = { url: url.href };
-      for (const [create, expectedRole] of [
-        [createPool, 'studio_app'],
-        [createMaintenancePool, 'studio_maintenance'],
+      const runtimeDb = (login: string) => {
+        const url = new URL(scratch.db.url);
+        url.username = login;
+        url.password = 'runtime-test-only';
+        return { url: url.href };
+      };
+      const app = createPool(runtimeDb(appLogin));
+      const maintenance = createMaintenancePool(runtimeDb(maintenanceLogin));
+      pools.push(app, maintenance);
+      for (const [pool, expectedRole] of [
+        [app, 'studio_app'],
+        [maintenance, 'studio_maintenance'],
       ] as const) {
-        const pool = create(runtimeDb);
-        pools.push(pool);
         expect((await pool.query('SELECT current_user AS role')).rows).toEqual([
           { role: expectedRole },
         ]);
-        const readiness = createReadiness({ pool, cacheMs: 0 });
-        try {
-          expect(await readiness.check()).toEqual({
-            status: 'not_ready',
-            checks: {
-              database: 'ok',
-              schema: 'current',
-              object_store: 'unconfigured',
-            },
-          });
-        } finally {
-          readiness.stop();
-        }
         for (const sql of [
           'UPDATE "schemaFingerprint" SET fingerprint = fingerprint',
           'DELETE FROM "schemaFingerprint" WHERE FALSE',
@@ -87,9 +79,37 @@ describe.skipIf(!database)('restricted deployment database login', () => {
           });
         }
       }
+      for (const readiness of [
+        createReadiness({
+          pool: app,
+          maintenancePool: maintenance,
+          allowedLogins,
+          cacheMs: 0,
+        }),
+        createReadiness({
+          maintenancePool: maintenance,
+          allowedLogins,
+          cacheMs: 0,
+        }),
+      ]) {
+        try {
+          expect(await readiness.check()).toEqual({
+            status: 'not_ready',
+            checks: {
+              database: 'ok',
+              schema: 'current',
+              object_store: 'unconfigured',
+            },
+          });
+        } finally {
+          readiness.stop();
+        }
+      }
       // The connecting identity has no owner/DDL privilege to regain, even
       // outside the production constructors that pin the NOLOGIN roles.
-      const unpinned = new pg.Pool({ connectionString: url.href });
+      const unpinned = new pg.Pool({
+        connectionString: runtimeDb(appLogin).url,
+      });
       pools.push(unpinned);
       await expect(
         unpinned.query('CREATE TABLE public.unauthorized_table (id integer)'),
@@ -97,7 +117,9 @@ describe.skipIf(!database)('restricted deployment database login', () => {
     } finally {
       await Promise.all(pools.map((pool) => pool.end()));
       await scratch.dispose();
-      await administrator.query(`DROP ROLE IF EXISTS ${identifier}`);
+      await administrator.query(
+        `DROP ROLE IF EXISTS ${identifiers.join(', ')}`,
+      );
       await administrator.end();
     }
   });

@@ -3,8 +3,9 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
+import { assertSamePostgresDatabase } from '@codaco/studio-sync/postgres-database-identity';
 import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
-import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import { createApp } from './app.ts';
 import { createAssetStore } from './assets.ts';
@@ -24,6 +25,7 @@ import { checkSchema, type SchemaState } from './db/schema.ts';
 import { readEncryptionEnv, readEnv } from './env.ts';
 import { installFatalErrorHandlers } from './fatal-errors.ts';
 import { getSetupStatus } from './instance/bootstrap.ts';
+import { withProbeClient } from './observability/bounded-probe.ts';
 import { logOperational } from './observability/logger.ts';
 import { createOperationalApp } from './observability/operational-app.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
@@ -56,6 +58,13 @@ installFatalErrorHandlers({
 const { env, mailer } = (() => {
   try {
     const resolvedEnv = readEnv();
+    if (
+      resolvedEnv.db &&
+      !resolvedEnv.devDefaults &&
+      !resolvedEnv.maintenanceDb
+    ) {
+      throw new Error('Missing maintenance database configuration.');
+    }
     // One owned transport serves authentication and the invitation worker.
     // Validate it before database work or request admission.
     return {
@@ -82,7 +91,9 @@ if (env.telemetry) {
   }
 }
 const pool = env.db && servesWeb ? createPool(env.db) : undefined;
-const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
+const maintenancePool = env.maintenanceDb
+  ? createMaintenancePool(env.maintenanceDb)
+  : undefined;
 const schemaPool = pool ?? maintenancePool;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
@@ -110,23 +121,58 @@ function startDatabaseWorkers(): void {
 }
 
 async function admitDatabaseRuntime(): Promise<boolean> {
-  if (!pool || !maintenancePool || env.devDefaults) return true;
-  const roles = Object.values(TENANT_ROLES);
+  if (!schemaPool || env.devDefaults) return true;
+  const runtimeRoleSets = [
+    [TENANT_ROLES.app],
+    [TENANT_ROLES.maintenance],
+  ] as const;
   try {
-    for (const [runtimePool, intendedRole] of [
-      [pool, TENANT_ROLES.app],
-      [maintenancePool, TENANT_ROLES.maintenance],
-    ] as const) {
-      const client = await runtimePool.connect();
-      try {
-        await assertSafePostgresRuntimeIdentity(client, {
-          intendedRole,
-          allowedRoles: roles,
-        });
-      } finally {
-        client.release();
-      }
+    const signal = AbortSignal.timeout(10_000);
+    if (!pool) {
+      await withProbeClient(schemaPool, signal, async (maintenance) => {
+        try {
+          await maintenance.query('BEGIN READ ONLY');
+          await assertSafePostgresRuntimeIdentity(maintenance, {
+            intendedRole: TENANT_ROLES.maintenance,
+            allowedRoles: [TENANT_ROLES.maintenance],
+            runtimeRoleSets,
+            backupRole: BACKUP_ROLE,
+            allowedLogins: env.databaseAllowedLogins ?? [],
+            administrativeLogins: env.databaseAdministrativeLogins,
+          });
+        } finally {
+          await maintenance.query('ROLLBACK');
+        }
+      });
+      return true;
     }
+    if (!maintenancePool) throw new Error('Missing maintenance pool.');
+    await withProbeClient(pool, signal, (app) =>
+      withProbeClient(maintenancePool, signal, async (maintenance) => {
+        try {
+          await app.query('BEGIN READ ONLY');
+          await maintenance.query('BEGIN READ ONLY');
+          for (const [client, intendedRole] of [
+            [app, TENANT_ROLES.app],
+            [maintenance, TENANT_ROLES.maintenance],
+          ] as const)
+            await assertSafePostgresRuntimeIdentity(client, {
+              intendedRole,
+              allowedRoles: [intendedRole],
+              runtimeRoleSets,
+              backupRole: BACKUP_ROLE,
+              allowedLogins: env.databaseAllowedLogins ?? [],
+              administrativeLogins: env.databaseAdministrativeLogins,
+            });
+          await assertSamePostgresDatabase(app, maintenance);
+        } finally {
+          await Promise.all([
+            app.query('ROLLBACK'),
+            maintenance.query('ROLLBACK'),
+          ]);
+        }
+      }),
+    );
     return true;
   } catch {
     logOperational('STUDIO_DATABASE_IDENTITY_UNSAFE');
@@ -158,6 +204,8 @@ if (schemaPool) {
     try {
       const state = await checkSchema(schemaPool, {
         allowUnversioned: env.devDefaults,
+        allowedLogins: env.databaseAllowedLogins,
+        administrativeLogins: env.databaseAdministrativeLogins,
       });
       if (state.kind === 'current') break;
       exitIfFatal(state);
@@ -211,6 +259,8 @@ const observability = createObservability({
   assetStore,
   monitorProcess: true,
   allowUnversionedSchema: env.devDefaults,
+  allowedLogins: env.databaseAllowedLogins,
+  administrativeLogins: env.databaseAdministrativeLogins,
 });
 startDatabaseWorkers();
 

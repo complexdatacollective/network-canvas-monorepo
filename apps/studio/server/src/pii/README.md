@@ -86,6 +86,14 @@ missing or mismatched keys are fatal in every mode. The operator command uses
 the same gate with the maintenance pool. The static Netlify function has no
 database, authentication or decrypting worker and reads no encryption settings.
 
+Persistent servers use separate `DATABASE_URL` and
+`STUDIO_MAINTENANCE_DATABASE_URL` credentials. Their logins can assume only
+`studio_app` and `studio_maintenance`, respectively. Startup and readiness check
+that both URLs reach the same live database, the complete
+`STUDIO_DATABASE_ALLOWED_LOGINS` enrollment and each runtime login's capabilities.
+Startup completes these checks before encryption initialization. Administrative
+credentials belong only in the isolated offline command environment.
+
 Set `STUDIO_ENCRYPTION_KEYSET` to JSON such as:
 
 ```json
@@ -200,8 +208,14 @@ superuser authority also qualifies, although ordinary non-superuser operators
 are supported and preferred. The operator must also have the existing account
 update and mandatory credential-audit insert privileges. Keep these credentials
 in the migration command's isolated environment, never the web/worker runtime.
-Verification and rotation continue to use only the pinned maintenance pool;
-the unpinned pool is lazy and is never queried by those operations.
+Verification and rotation access encrypted data through the pinned maintenance
+pool; they never use the retained-credential conversion path. Schema admission first
+checks the actual connecting identity. A database owner or login explicitly
+declared in `STUDIO_DATABASE_ADMINISTRATIVE_LOGINS` inspects migration evidence
+through its unpinned administrative pool; a restricted maintenance login keeps
+the ordinary scoped schema checks. A separately provisioned non-owner migration
+or conversion login must be in that administrative list and in the complete
+`STUDIO_DATABASE_ALLOWED_LOGINS` enrollment.
 
 The adapter uses an explicit model projection for every read and RETURNING path. Triggers
 forbid changing retained legacy plaintext and append one immutable deletion audit
@@ -226,8 +240,10 @@ evidence are removed.
 The built image exposes `encryption verify`, `encryption rotate --limit 100`
 and `encryption migrate-legacy --limit 100`. Locally the equivalent is
 `pnpm --filter @codaco/studio-server encryption <operation>`; the script loads
-only the deployment `.env`, and requires just `DATABASE_URL` and the encryption
-settings. It does not require mail, OAuth provider or session-signing settings.
+only the deployment `.env`, and requires its own `DATABASE_URL`, complete login
+enrollment and encryption settings, plus the administrative declaration when
+using a non-owner operator. It does not require
+`STUDIO_MAINTENANCE_DATABASE_URL`, mail, OAuth provider or session-signing settings.
 
 Each operation returns one JSON result. Save a rotation result's `cursor` and
 pass its JSON unchanged as `--cursor` on the next invocation. For legacy

@@ -51,6 +51,13 @@ async function migrateTestDatabase(
   ]);
 }
 
+async function checkTestSchema(pool: pg.Pool | pg.PoolClient) {
+  const identity = (
+    await pool.query<{ login: string }>('SELECT session_user AS login')
+  ).rows[0]!;
+  return checkSchema(pool, { allowedLogins: [identity.login] });
+}
+
 type Snapshot = Awaited<ReturnType<typeof generateDrizzleJson>>;
 
 function artifact(
@@ -271,7 +278,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
               { rolsuper: false, rolcreaterole: createRole },
             ]);
             await migrateTestDatabase(owner, shipped, SCHEMA_FINGERPRINT);
-            expect(await checkSchema(owner)).toEqual({ kind: 'current' });
+            expect(await checkTestSchema(owner)).toEqual({ kind: 'current' });
             await expectSecurityContract(pool);
           } finally {
             await owner.end();
@@ -291,7 +298,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
       expect(
         await migrateTestDatabase(pool, shipped, SCHEMA_FINGERPRINT),
       ).toEqual(shipped.map(({ manifest }) => manifest.id));
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkTestSchema(pool)).toEqual({ kind: 'current' });
       await expectSecurityContract(pool);
       const constraints = await pool.query<{ conname: string }>(
         `SELECT conname FROM pg_constraint WHERE conrelid = 'public."user"'::regclass AND conname = 'user_locale_length_check'`,
@@ -386,7 +393,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
           deliveries: 'audit_alert_deliveries',
         },
       ]);
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkTestSchema(pool)).toEqual({ kind: 'current' });
     });
   });
 
@@ -406,7 +413,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
         )
       ).rows;
       expect(before).toHaveLength(1);
-      expect(await checkSchema(pool)).toMatchObject({
+      expect(await checkTestSchema(pool)).toMatchObject({
         kind: 'stale',
         reason: 'mismatch',
       });
@@ -427,7 +434,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
       expect(
         (await pool.query('SELECT locale FROM public."user"')).rows,
       ).toEqual([{ locale: null }]);
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkTestSchema(pool)).toEqual({ kind: 'current' });
       await expectSecurityContract(pool);
     });
   });
@@ -537,7 +544,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
       await expect(
         migrateTestDatabase(pool, [predecessor, upgrade], SCHEMA_FINGERPRINT),
       ).rejects.toThrow('Applied migration history differs');
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkTestSchema(pool)).toEqual({ kind: 'current' });
     });
   });
 
@@ -627,7 +634,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
           )
         ).rows,
       ).toEqual([]);
-      expect(await checkSchema(pool)).toMatchObject({
+      expect(await checkTestSchema(pool)).toMatchObject({
         kind: 'stale',
         found: predecessor.manifest.fingerprint,
       });
@@ -738,7 +745,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
             )
           ).rows,
         ).toEqual([]);
-        expect(await checkSchema(pool)).toMatchObject({
+        expect(await checkTestSchema(pool)).toMatchObject({
           kind: 'stale',
           found: predecessor.manifest.fingerprint,
         });

@@ -10,23 +10,31 @@ export async function collectDiagnostics(
   env: StudioEnv,
   encryption: () => EncryptionEnv,
 ) {
-  const url = env.db ? new URL(env.db.url) : undefined;
-  if (url) {
+  const readOnly = (db: StudioEnv['db']) => {
+    if (!db) return undefined;
+    const url = new URL(db.url);
     const options = url.searchParams.get('options');
     url.searchParams.set(
       'options',
       `${options ? `${options} ` : ''}-c default_transaction_read_only=on`,
     );
-  }
-  const pool = url
-    ? (env.role === 'worker' ? createMaintenancePool : createPool)({
-        url: url.href,
-      })
+    return { url: url.href };
+  };
+  const appDb = env.role === 'worker' ? undefined : readOnly(env.db);
+  const maintenanceDb = readOnly(env.maintenanceDb);
+  const pool = appDb ? createPool(appDb) : undefined;
+  const maintenancePool = maintenanceDb
+    ? createMaintenancePool(maintenanceDb)
     : undefined;
+  const databasePool = pool ?? maintenancePool;
   const readiness = createReadiness({
     pool,
+    maintenancePool,
     assetStore: env.s3 ? createAssetStore(env.s3) : undefined,
     cacheMs: 0,
+    allowUnversionedSchema: env.devDefaults,
+    allowedLogins: env.databaseAllowedLogins,
+    administrativeLogins: env.databaseAdministrativeLogins,
   });
   try {
     let rootsLoadable = false;
@@ -45,8 +53,8 @@ export async function collectDiagnostics(
       readOnly: boolean;
     };
     let databaseProfile: DatabaseProfile | null = null;
-    if (pool && readinessResult.checks.database === 'ok') {
-      const result = await pool.query<DatabaseProfile>(`
+    if (databasePool && readinessResult.checks.database === 'ok') {
+      const result = await databasePool.query<DatabaseProfile>(`
         SELECT pg_size_bytes(current_setting('shared_buffers'))::float8 AS "sharedBuffersBytes",
           pg_size_bytes(current_setting('work_mem'))::float8 AS "workMemBytes",
           current_setting('max_connections')::integer AS "maxConnections",
@@ -75,6 +83,6 @@ export async function collectDiagnostics(
     };
   } finally {
     readiness.stop();
-    await pool?.end();
+    await Promise.all([pool?.end(), maintenancePool?.end()]);
   }
 }

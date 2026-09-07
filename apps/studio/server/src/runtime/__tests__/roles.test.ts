@@ -55,7 +55,11 @@ async function unusedPort() {
 }
 
 function launch(
-  db: DbEnv,
+  db: {
+    app: DbEnv;
+    maintenance: DbEnv;
+    allowedLogins: readonly string[];
+  },
   port: number,
   role: string,
   smtp?: string,
@@ -68,7 +72,9 @@ function launch(
       HOST: '127.0.0.1',
       PORT: String(port),
       STUDIO_ROLE: role,
-      DATABASE_URL: db.url,
+      DATABASE_URL: db.app.url,
+      STUDIO_MAINTENANCE_DATABASE_URL: db.maintenance.url,
+      STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(db.allowedLogins),
       PUBLIC_URL: origin,
       BETTER_AUTH_SECRET: 'synthetic-runtime-signing-secret-value',
       STUDIO_BOOTSTRAP_TOKEN: token,
@@ -122,15 +128,17 @@ function launch(
 async function fixture() {
   if (!database) throw new Error('A local PostgreSQL instance is required.');
   const scratch = await createScratchDatabase(database);
-  const login = `studio_runtime_test_${randomUUID().replaceAll('-', '')}`;
-  const identifier = pg.escapeIdentifier(login);
+  const suffix = randomUUID().replaceAll('-', '');
+  const appLogin = `studio_runtime_app_${suffix}`;
+  const maintenanceLogin = `studio_runtime_maintenance_${suffix}`;
+  const identifiers = [appLogin, maintenanceLogin].map(pg.escapeIdentifier);
   const administrator = new pg.Pool({ connectionString: database.url });
   try {
     await administrator.query(
-      `CREATE ROLE ${identifier} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD '${runtimePassword}'`,
-    );
-    await administrator.query(
-      `GRANT studio_app, studio_maintenance TO ${identifier} WITH SET TRUE, INHERIT FALSE`,
+      `CREATE ROLE ${identifiers[0]} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+       CREATE ROLE ${identifiers[1]} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+       GRANT studio_app TO ${identifiers[0]} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+       GRANT studio_maintenance TO ${identifiers[1]} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE`,
     );
   } finally {
     await administrator.end();
@@ -138,7 +146,7 @@ async function fixture() {
   const allowedLogins = await enrollMigrationTestDatabase(
     scratch.pool,
     database,
-    [login],
+    [appLogin, maintenanceLogin],
   );
   await migrateDatabase(
     scratch.pool,
@@ -146,11 +154,18 @@ async function fixture() {
     SCHEMA_FINGERPRINT,
     allowedLogins,
   );
-  const runtimeUrl = new URL(scratch.db.url);
-  runtimeUrl.username = login;
-  runtimeUrl.password = runtimePassword;
-  const runtimeDb = { url: runtimeUrl.href };
-  const app = createPool(runtimeDb);
+  const runtimeUrl = (login: string) => {
+    const url = new URL(scratch.db.url);
+    url.username = login;
+    url.password = runtimePassword;
+    return { url: url.href };
+  };
+  const runtimeDb = {
+    app: runtimeUrl(appLogin),
+    maintenance: runtimeUrl(maintenanceLogin),
+    allowedLogins,
+  };
+  const app = createPool(runtimeDb.app);
   const clientDist = await mkdtemp(join(tmpdir(), 'studio-runtime-client-'));
   await writeFile(
     join(clientDist, 'index.html'),
@@ -205,7 +220,7 @@ async function fixture() {
       await rm(clientDist, { recursive: true });
       const cleanup = new pg.Pool({ connectionString: database.url });
       try {
-        await cleanup.query(`DROP ROLE IF EXISTS ${identifier}`);
+        await cleanup.query(`DROP ROLE IF EXISTS ${identifiers.join(', ')}`);
       } finally {
         await cleanup.end();
       }

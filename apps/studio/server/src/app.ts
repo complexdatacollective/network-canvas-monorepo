@@ -81,6 +81,8 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       pool,
       assetStore,
       allowUnversionedSchema: env.devDefaults,
+      allowedLogins: env.databaseAllowedLogins,
+      administrativeLogins: env.databaseAdministrativeLogins,
     });
   const app = createOperationalApp(env, observability, deps.logger, (error) =>
     deps.telemetry?.capture('server_request', error),

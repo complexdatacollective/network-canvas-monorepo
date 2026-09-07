@@ -14,9 +14,11 @@ extension objects. Install optional database extensions in their own schema.
 The migration login normally owns the database and Studio's objects. A separate
 enrolled database owner is also supported when it grants the operator the
 ownership privileges needed to administer the schema. These are administrative
-identities; use separate, unprivileged runtime and backup logins. The migration
-operator and runtime login need permission to assume the existing `studio_app`
-and `studio_maintenance` roles. The backup login may assume only `studio_backup`. An administrator can
+identities; use separate, unprivileged application, maintenance, and backup
+logins. The migration operator may assume both existing runtime roles. The
+application and maintenance logins may assume only `studio_app` and
+`studio_maintenance`, respectively. The backup login may assume only
+`studio_backup`. An administrator can
 pre-create these roles; `CREATEROLE` is needed only when the migration operator
 creates them. On a shared cluster, have the administrator provision the roles
 and memberships for each deployment before migrating.
@@ -45,30 +47,34 @@ replication attributes, and not be shared with another Studio deployment.
 ```sql
 CREATE ROLE studio_app NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION;
 CREATE ROLE studio_maintenance NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION;
-GRANT studio_app, studio_maintenance TO studio_migrator, studio_runtime
-  WITH SET TRUE, INHERIT FALSE;
+GRANT studio_app, studio_maintenance TO studio_migrator WITH SET TRUE, INHERIT FALSE;
+GRANT studio_app TO studio_app_runtime WITH SET TRUE, INHERIT FALSE;
+GRANT studio_maintenance TO studio_maintenance_runtime WITH SET TRUE, INHERIT FALSE;
 CREATE DATABASE studio OWNER studio_migrator ALLOW_CONNECTIONS false;
 BEGIN;
 REVOKE CONNECT ON DATABASE studio FROM PUBLIC, studio_app, studio_maintenance;
-REVOKE TEMPORARY ON DATABASE studio FROM PUBLIC, studio_app, studio_maintenance, studio_runtime;
-GRANT CONNECT ON DATABASE studio TO studio_migrator, studio_runtime;
+REVOKE TEMPORARY ON DATABASE studio FROM PUBLIC, studio_app, studio_maintenance,
+  studio_app_runtime, studio_maintenance_runtime;
+GRANT CONNECT ON DATABASE studio TO studio_migrator, studio_app_runtime,
+  studio_maintenance_runtime;
 COMMIT;
 ALTER DATABASE studio ALLOW_CONNECTIONS true;
 ```
 
 Do not recreate runtime roles already present on the cluster; validate their
 attributes and memberships instead. Every enrolled identity must be a LOGIN
-role. Enroll the database owner, migration operator, runtime login, and any
-separately provisioned backup login by granting each CONNECT directly and
+role. Enroll the database owner, migration operator, both runtime logins, and
+any separately provisioned backup login by granting each CONNECT directly and
 listing exactly those names in the migration environment:
 
 ```dotenv
-STUDIO_DATABASE_ALLOWED_LOGINS=["studio_migrator","studio_runtime"]
+STUDIO_DATABASE_ALLOWED_LOGINS=["studio_migrator","studio_app_runtime","studio_maintenance_runtime"]
 ```
 
-Runtime logins must hold both SET TRUE, INHERIT FALSE, ADMIN FALSE memberships
-in `studio_app` and `studio_maintenance`; missing either role is refused before
-any schema work. A separately provisioned backup login
+Each runtime login must hold exactly one SET TRUE, INHERIT FALSE, ADMIN FALSE
+membership: `studio_app` for the `DATABASE_URL` login and `studio_maintenance`
+for the `STUDIO_MAINTENANCE_DATABASE_URL` login. Reusing a login or granting it
+the sibling runtime role is refused before serving. A separately provisioned backup login
 may instead hold only that membership in `studio_backup`; backup and runtime
 memberships cannot be combined. The backup role is validated when present;
 its provisioning and SELECT policies belong to the backup schema migration.
@@ -115,7 +121,8 @@ REVOKE EXECUTE ON FUNCTION
   pg_catalog.lo_create(oid), pg_catalog.lo_creat(integer),
   pg_catalog.lo_from_bytea(oid, bytea), pg_catalog.lo_import(text),
   pg_catalog.lo_import(text, oid), pg_catalog.lo_export(oid, text)
-FROM PUBLIC, studio_app, studio_maintenance, studio_runtime;
+FROM PUBLIC, studio_app, studio_maintenance, studio_app_runtime,
+  studio_maintenance_runtime;
 ```
 
 Installer authors use `revokeLargeObjectPrivilegesSql` from
@@ -206,9 +213,10 @@ For an existing deployment:
      --env-file /secure/path/studio.env YOUR_STUDIO_IMAGE migrate
    ```
 
-   The command reads only `DATABASE_URL` and `STUDIO_DATABASE_ALLOWED_LOGINS`;
-   authentication, mail, object storage, and client assets are not needed for
-   schema administration. Keep credentials
+   The command reads its administrative `DATABASE_URL` plus the database login
+   enrollment variables; it does not read
+   `STUDIO_MAINTENANCE_DATABASE_URL`. Authentication, mail, object storage, and
+   client assets are not needed for schema administration. Keep credentials
    in the restricted environment file instead of putting them in shell history.
 
 4. Keep all application containers stopped. Run the new image's bounded legacy
@@ -366,3 +374,35 @@ Development keeps its separate `db:reset` workflow and destructive synthetic
 seeding. It recreates `public` and discards migration history, then applies the
 current definitions directly. The test fixtures and protocol demo retain this
 developer-only schema helper; production has no `apply-schema` command.
+
+The persistent server also requires `STUDIO_MAINTENANCE_DATABASE_URL` and
+`STUDIO_DATABASE_ALLOWED_LOGINS` outside explicit local development. Supply
+the same complete, committed enrollment to migration, startup, and readiness:
+database owner, application and maintenance runtime logins, and separately
+provisioned backup login. Shared cluster-wide runtime roles do not enroll a
+login in another deployment. Revoking CONNECT does not disconnect an existing session;
+administrator admission quarantine and session removal remain necessary.
+Runtime admission verifies login capabilities separately from this enrollment.
+Fingerprint/history ACL or owner-backed-action drift makes existing evidence
+untrusted and requires investigation and verified-backup recovery, not an
+in-process grant repair.
+
+When a separately provisioned migration or conversion login is not the database
+owner, declare it in `STUDIO_DATABASE_ADMINISTRATIVE_LOGINS` as well as the full
+`STUDIO_DATABASE_ALLOWED_LOGINS` enrollment. The optional administrative array
+defaults to empty. Its names must be unique and enrolled; evidence-table ownership
+never supplies this exception. The migration CLI refuses an undeclared non-owner
+operator before applying SQL. Serving app and maintenance connections refuse
+configured administrative logins even if their other capabilities appear safe.
+Offline conversion uses a separately owned, unpinned administrative connection
+for schema inspection while its row operations retain their scoped connection.
+
+Migration, production schema inspection, startup and readiness share the complete
+restricted-identity capability check. Every enrolled non-administrative login
+must belong to exactly one configured SET-only role class and hold no direct data
+privileges. Checking the current connection alone does not establish that another
+enrolled login is safe. The current serving connection must also match its own
+intended role; the complete inventory does not authorize switching role classes.
+Runtime access to owner-backed views, materialized views and foreign tables is
+refused before fingerprint rows are read. The separate backup class may retain
+reviewed read access, without writes or grant options.
