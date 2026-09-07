@@ -9,7 +9,11 @@ import {
 } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  defineMessages,
+  formatMessageError,
+} from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
@@ -270,6 +274,16 @@ const shapeOptions = (intl: IntlShape) =>
     label: intl.formatMessage(NODE_SHAPE_LABELS[value]),
   }));
 
+/**
+ * What is wrong with each field, encoded rather than formatted.
+ *
+ * A refusal here stands from one submission until the next, which is longer
+ * than the language it was written in is guaranteed to last: an application
+ * that changes language re-renders this editor without remounting it, and a
+ * sentence formatted when the researcher pressed save would sit under a field
+ * whose label had moved on without it. `FieldErrors` decodes these where it
+ * renders them, so they follow the formatter while they wait.
+ */
 type EntityFieldErrors = Readonly<
   Partial<Record<'name' | 'color' | 'shape' | 'icon', string>>
 >;
@@ -302,19 +316,22 @@ const replaceDefaultShape = (
   });
 };
 
+/**
+ * Takes no formatter: every refusal it produces is encoded, so which words it
+ * is read in is decided where it is rendered rather than where it is decided.
+ */
 const validateFields = (
   subject: CodebookSubject,
   draft: CodebookEntityDraft,
   existingEntityNames: readonly string[],
-  intl: IntlShape,
 ): EntityFieldErrors => {
   if (subject.entity === 'ego') return {};
   const errors: Partial<Record<keyof EntityFieldErrors, string>> = {};
   const name = stringValue(draft.name);
   if (name.trim() === '') {
-    errors.name = intl.formatMessage(messages.nameRequired);
+    errors.name = createMessageError(messages.nameRequired);
   } else if (!VariableNameSchema.safeParse(name).success) {
-    errors.name = intl.formatMessage(messages.nameInvalid, {
+    errors.name = createMessageError(messages.nameInvalid, {
       entity: subject.entity,
     });
   } else if (
@@ -323,18 +340,18 @@ const validateFields = (
         normalizeForComparison(existingName) === normalizeForComparison(name),
     )
   ) {
-    errors.name = intl.formatMessage(messages.nameTaken, { name });
+    errors.name = createMessageError(messages.nameTaken, { name });
   }
   if (stringValue(draft.color) === '') {
-    errors.color = intl.formatMessage(messages.colorRequired);
+    errors.color = createMessageError(messages.colorRequired);
   }
   if (subject.entity === 'node') {
     const shape = isRecord(draft.shape) ? stringValue(draft.shape.default) : '';
-    if (shape === '') errors.shape = intl.formatMessage(messages.shapeRequired);
+    if (shape === '') errors.shape = createMessageError(messages.shapeRequired);
     const icon = stringValue(draft.icon);
-    if (icon === '') errors.icon = intl.formatMessage(messages.iconRequired);
+    if (icon === '') errors.icon = createMessageError(messages.iconRequired);
     else if (!isInterviewerIconName(icon)) {
-      errors.icon = intl.formatMessage(messages.iconUnsupported);
+      errors.icon = createMessageError(messages.iconUnsupported);
     }
   }
   return errors;
@@ -590,7 +607,6 @@ export default function CodebookEntityEditor({
       subject,
       snapshot.draft,
       existingEntityNames,
-      intl,
     );
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);

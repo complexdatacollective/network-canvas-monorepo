@@ -264,6 +264,60 @@ describe('the codebook editors swept for English', () => {
     );
   });
 
+  /**
+   * The refusals under the fields are held between submissions, so they are
+   * the copy most likely to be left in the language the editor was opened in.
+   *
+   * The rest of the editor is formatted where it is rendered and follows a
+   * change of language for free; a refusal that was formatted when the
+   * researcher pressed save does not, and it stands until they submit again —
+   * which is exactly the state this drives the editor into. The tree is
+   * re-rendered rather than remounted, and `sessionKey` is unchanged, because
+   * a remount would clear the errors and prove nothing.
+   */
+  it('re-reads the refusals it is holding when the language changes', async () => {
+    const user = userEvent.setup();
+    const editor = (
+      <CodebookEntityEditor
+        mode="create"
+        sessionKey="locale-switch-entity"
+        createRequestId={() => 'request-locale-switch'}
+        description="create node type"
+        subject={{ entity: 'node', type: 'person' }}
+        initialDraft={{}}
+        existingEntityNames={[]}
+        onSubmit={blocked}
+        onApplied={() => undefined}
+      />
+    );
+    const { rerender } = render(
+      <AppI18nProvider locale="en" locales={ecosystemLocales}>
+        {editor}
+      </AppI18nProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+    expect(await screen.findByText('Enter a type name.')).toBeVisible();
+    expect(screen.getByText('Choose a color.')).toBeVisible();
+
+    rerender(
+      <AppI18nProvider
+        locale="es"
+        locales={ecosystemLocales}
+        messages={SPANISH}
+      >
+        {editor}
+      </AppI18nProvider>,
+    );
+
+    expect(
+      await screen.findByText('Introduce un nombre para el tipo.'),
+    ).toBeVisible();
+    expect(screen.getByText('Elige un color.')).toBeVisible();
+    expect(screen.queryByText('Enter a type name.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Choose a color.')).not.toBeInTheDocument();
+  });
+
   it('leaves no English in the attribute editor, its option rows or its failure alert', async () => {
     const user = userEvent.setup();
     const draft = {
@@ -307,6 +361,78 @@ describe('the codebook editors swept for English', () => {
       'the attribute editor after a refused save',
       protocolStrings(PERSON_DOCUMENT, draft),
     );
+  });
+
+  /**
+   * The attribute editor holds its refusals the same way and for as long, so
+   * it is held to the same thing.
+   *
+   * This one is raised without a save ever leaving the editor — a collaborator
+   * changed the attribute's type underneath the draft — so it is not attached
+   * to a result that could be asked again in another language. It stands in
+   * the editor's own state until the researcher submits.
+   */
+  it('re-reads the attribute editor’s held refusal when the language changes', async () => {
+    const user = userEvent.setup();
+    const localVariable = { name: 'comment', type: 'text', component: 'Text' };
+    const remoteVariable = {
+      name: 'comment',
+      type: 'number',
+      component: 'NumberInput',
+    };
+    const editorFor = (variable: Record<string, unknown>) => (
+      <VariableEditor
+        openId="locale-switch-variable"
+        mode="update"
+        subject={{ entity: 'node', type: 'person' }}
+        authoritativeDocument={{
+          ...PERSON_DOCUMENT,
+          variables: { comment: variable },
+        }}
+        variableId="comment"
+        initialDraft={localVariable}
+        description="update comment"
+        createRequestId={() => 'request-locale-switch-variable'}
+        onSubmitRequest={blocked}
+        onComplete={() => undefined}
+      />
+    );
+    const { rerender } = render(
+      <AppI18nProvider locale="en" locales={ecosystemLocales}>
+        {editorFor(localVariable)}
+      </AppI18nProvider>,
+    );
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'localComment');
+    rerender(
+      <AppI18nProvider locale="en" locales={ecosystemLocales}>
+        {editorFor(remoteVariable)}
+      </AppI18nProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+    expect(
+      await screen.findByText(
+        'The attribute type changed elsewhere. Close and reopen this editor before saving.',
+      ),
+    ).toBeVisible();
+
+    rerender(
+      <AppI18nProvider
+        locale="es"
+        locales={ecosystemLocales}
+        messages={SPANISH}
+      >
+        {editorFor(remoteVariable)}
+      </AppI18nProvider>,
+    );
+
+    expect(
+      await screen.findByText(
+        'El tipo de atributo ha cambiado en otro sitio. Cierra y vuelve a abrir este editor antes de guardar.',
+      ),
+    ).toBeVisible();
   });
 
   it('leaves no English in the validation editor or its rule list', async () => {

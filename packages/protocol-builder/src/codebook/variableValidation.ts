@@ -319,18 +319,36 @@ const VALIDATION_GROUPS = [
   },
 ] as const;
 
-const groupsCache = new Map<string, ValidationGroup[]>();
+/**
+ * The groups each formatter has already been given, held against the formatter
+ * itself.
+ *
+ * The headings and rule names in a cached group are already formatted, so what
+ * a cached group is true of is the formatter that produced it — not its
+ * language tag. Two formatters can share a tag and disagree about the words:
+ * `AppI18nProvider` builds a new one whenever its catalog changes, and a
+ * catalog arriving after boot, a module replacement in development, or a
+ * nested provider over the same language all change the catalog without
+ * changing the tag. Keyed by the tag, the second formatter is served the
+ * first one's words.
+ *
+ * A `WeakMap` because a formatter that has been replaced is exactly what this
+ * must not go on holding groups for.
+ */
+const groupsCache = new WeakMap<IntlShape, Map<string, ValidationGroup[]>>();
 
 export const getGroupedValidationsForVariableType = (
   variableType: string,
   entity: string,
   intl: IntlShape,
 ): ValidationGroup[] => {
-  // The reader's language is part of the cache key: the headings and rule
-  // names in a cached group are already formatted, so a cache keyed only by
-  // the variable type would serve whichever language asked first.
-  const key = JSON.stringify([variableType, entity, intl.locale]);
-  const cached = groupsCache.get(key);
+  let byVariableType = groupsCache.get(intl);
+  if (byVariableType === undefined) {
+    byVariableType = new Map();
+    groupsCache.set(intl, byVariableType);
+  }
+  const key = JSON.stringify([variableType, entity]);
+  const cached = byVariableType.get(key);
   if (cached !== undefined) return cached;
   const options = getValidationOptionsForVariableType(
     variableType,
@@ -342,7 +360,7 @@ export const getGroupedValidationsForVariableType = (
     heading: intl.formatMessage(heading),
     rules: options.filter(({ value }) => includes(value)),
   })).filter(({ rules }) => rules.length > 0);
-  groupsCache.set(key, groups);
+  byVariableType.set(key, groups);
   return groups;
 };
 

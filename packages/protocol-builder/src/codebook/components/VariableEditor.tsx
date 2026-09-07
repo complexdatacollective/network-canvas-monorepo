@@ -10,7 +10,11 @@ import {
   useSyncExternalStore,
 } from 'react';
 
-import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  defineMessages,
+  formatMessageError,
+} from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
@@ -560,10 +564,13 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     if (interactionDisabled) return;
     if (authoritativeTypeConflict) {
       activeRequestId.current = null;
+      // Encoded rather than formatted, like every other issue held here: it
+      // stands until the next submission, and `FieldErrors` decodes it where
+      // it renders it, so it follows a change of language while it waits.
       setIssues([
         {
           path: ['type'],
-          message: intl.formatMessage(messages.typeChangedElsewhere),
+          message: createMessageError(messages.typeChangedElsewhere),
         },
       ]);
       return;
