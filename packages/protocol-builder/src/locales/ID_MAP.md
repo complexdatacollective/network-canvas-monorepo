@@ -97,7 +97,7 @@ name not here adds it here first, in the same pull request.
 | `outline`              | `form/SectionOutline.tsx`                                                                                                                                                        | i18n-2b   |
 | `dialogForm`           | `form/DialogForm.tsx`, `form/discardDraftGuard.ts`                                                                                                                               | i18n-2b   |
 | `protocolField`        | `form/ProtocolField.tsx`                                                                                                                                                         | i18n-2b   |
-| `arrayField`           | `form/arrayFields/DialogArrayField.tsx`, `rowValidators.ts`, `arrayWriteRefusal.ts`, `useConfirmRowRemoval.ts`, `arrayFields/arrayMessages.ts`                                   | i18n-2b   |
+| `arrayField`           | `form/arrayFields/DialogArrayField.tsx`, `rowValidators.ts`, `arrayWriteRefusal.ts`, `useConfirmRowRemoval.ts`, `arrayFields/arrayMessages.ts`, `RowEditorBoundary.tsx`          | i18n-2b   |
 | `assignAttributes`     | `form/arrayFields/AssignAttributes.tsx`, `form/arrayFields/Attribute.tsx`                                                                                                        | i18n-2b   |
 | `multiSelect`          | `form/arrayFields/MultiSelect.tsx`                                                                                                                                               | i18n-2b   |
 | `option`               | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`                                                                                                                    | i18n-2b   |
@@ -107,6 +107,7 @@ name not here adds it here first, in the same pull request.
 | `networkFilter`        | `sections/NetworkFilterSection.tsx`                                                                                                                                              | i18n-2b   |
 | `skipLogic`            | `sections/SkipLogicSection.tsx`                                                                                                                                                  | i18n-2b   |
 | `interviewerGuidance`  | `sections/InterviewerGuidanceSection.tsx`                                                                                                                                        | i18n-2b   |
+| `schemaProblem`        | `form/schemaProblems.ts`                                                                                                                                                         | sections  |
 
 `shell` covers `editors/saveStageAction.tsx` as well as the shell itself,
 rather than that control taking an area of its own: the fallback save button is
@@ -183,7 +184,6 @@ Named here so a later split takes the name rather than inventing a synonym.
 | --------------------------- | -------------------------------------------- | ----------- |
 | `variableParameters`        | `codebook/components/` parameter editors     | splits 3–6  |
 | `compoundFailure`           | `codebook/compoundFailureCopy.ts`            | splits 3–6  |
-| `schemaProblem`             | `form/schemaProblems.ts`                     | split 4     |
 | `subjectSelect`             | `fields/SubjectSelectField.tsx`              | splits 3–6  |
 | `sortOrder`                 | `fields/sortOrderOptions`                    | splits 3–6  |
 | `formFields`                | `sections/FormFieldsSection`                 | splits 3–6  |
@@ -230,6 +230,13 @@ for something else or reopens a decision that has been made:
 - **`subjectSelect`, `sortOrder`** — `fields/SubjectSelectField.tsx` and
   `fields/sortOrderOptions` do not exist yet; the rows above keep the names
   for the split that adds them.
+
+The RESOURCE half of `schemaProblem` — what a researcher is told about a stored
+resource entry the asset schema refuses — is declared in `form/schemaProblems.ts`
+beside the stage half rather than in `resources/resourceMessages.ts`, which owns
+the gateway's own refusals. They are the same vocabulary asked about two
+different documents, and a translator answering "holds the wrong kind of value"
+twice should see both askings side by side.
 
 ## Copy that leaves React
 

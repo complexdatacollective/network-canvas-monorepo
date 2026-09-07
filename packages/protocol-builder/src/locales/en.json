@@ -59,6 +59,10 @@
     "defaultMessage": "Reorder {itemLabel} {position} of {count, number}",
     "description": "Accessible name of the handle that drags one row of a list into a different position. itemLabel is the list’s own noun for one of its rows, already in the reader’s language; position is the row’s own place in the list, counting from one; count is how many rows the list holds."
   },
+  "protocolBuilder.arrayField.rowEditorFailed": {
+    "defaultMessage": "This editor could not be shown, so there is nothing to fill in here. Close it and try again. If it keeps happening, the problem is in this interface’s editor rather than in your protocol.",
+    "description": "Shown in place of the fields of a row-editing dialog when the interface’s own editor code threw while rendering. Says the fault is in the software rather than in anything the researcher wrote, so they do not go looking for a mistake in their protocol."
+  },
   "protocolBuilder.arrayField.rowRemovedRefusal": {
     "defaultMessage": "This {itemLabel} was removed while your changes were being saved, so there is nothing left to save them to. Copy anything you want to keep, then cancel and add a new {itemLabel}.",
     "description": "Shown to a researcher whose edit to one row of a list was saved after that row had already been deleted. itemLabel is the list’s own noun for one of its rows — \"prompt\", \"option\", \"item\" — already in the reader’s language."
@@ -1054,6 +1058,10 @@
   "protocolBuilder.outline.landmarkLabel": {
     "defaultMessage": "Stage sections",
     "description": "Accessible name of the navigation landmark listing the sections of the stage being edited. A stage is one step of an interview."
+  },
+  "protocolBuilder.outline.statusWithProblems": {
+    "defaultMessage": "{status}. {problems}",
+    "description": "Read out for a section of a stage editor whose only account of what is wrong is here. status is the section’s spoken state (\"Has a problem\"); problems is one or more whole sentences describing what the protocol refused, already in the reader’s language. Both are complete sentences, so this is only the punctuation that separates them."
   },
   "protocolBuilder.outline.switchedOffStatus": {
     "defaultMessage": "Switched off",
@@ -2298,6 +2306,106 @@
   "protocolBuilder.ruleValue.valuePlaceholder": {
     "defaultMessage": "Enter a value...",
     "description": "Placeholder inside the empty control where a researcher enters the value a rule compares an attribute against."
+  },
+  "protocolBuilder.schemaProblem.invalidElement": {
+    "defaultMessage": "{fieldLabel} holds an entry this stage cannot use.",
+    "description": "Shown beside one section of a stage editor when one entry of a collection is not something the stage accepts. fieldLabel is the control’s own name and starts the sentence."
+  },
+  "protocolBuilder.schemaProblem.invalidFormat": {
+    "defaultMessage": "{fieldLabel} is not written the way this stage needs it.",
+    "description": "Shown beside one section of a stage editor when a control holds text of the right kind in the wrong shape — a date, an identifier, a pattern. fieldLabel is the control’s own name and starts the sentence."
+  },
+  "protocolBuilder.schemaProblem.invalidKey": {
+    "defaultMessage": "{fieldLabel} holds an entry named something this stage cannot use.",
+    "description": "Shown beside one section of a stage editor when one entry of a keyed collection is named in a way the stage refuses. fieldLabel is the control’s own name and starts the sentence."
+  },
+  "protocolBuilder.schemaProblem.invalidType": {
+    "defaultMessage": "{fieldLabel} holds the wrong kind of value.",
+    "description": "Shown beside one section of a stage editor (a stage is one step of an interview) when the protocol refuses what a control holds. fieldLabel is the control’s own name, already in the reader’s language, and starts the sentence."
+  },
+  "protocolBuilder.schemaProblem.invalidUnion": {
+    "defaultMessage": "{fieldLabel} holds a value that fits none of the forms this stage accepts.",
+    "description": "Shown beside one section of a stage editor when a control holds something matching none of the several shapes the stage allows there. fieldLabel is the control’s own name and starts the sentence."
+  },
+  "protocolBuilder.schemaProblem.invalidValue": {
+    "defaultMessage": "{fieldLabel} holds a value this stage does not offer.",
+    "description": "Shown beside one section of a stage editor when a control holds something that is not one of the choices this kind of stage allows. fieldLabel is the control’s own name and starts the sentence."
+  },
+  "protocolBuilder.schemaProblem.notMultipleOf": {
+    "defaultMessage": "{fieldLabel} holds a number that is not one of the steps this stage allows.",
+    "description": "Shown beside one section of a stage editor when a number has to be a multiple of some step and is not. fieldLabel is the control’s own name and starts the sentence."
+  },
+  "protocolBuilder.schemaProblem.nothingThere": {
+    "defaultMessage": "{fieldLabel} has no value, and this stage needs one.",
+    "description": "Shown beside one section of a stage editor when a value the stage requires is simply not there. Said for every refusal about an empty value, whatever code the validator reached for. fieldLabel is the control’s own name and starts the sentence."
+  },
+  "protocolBuilder.schemaProblem.resourceCustom": {
+    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: its entry breaks one of the rules a resource is stored under.",
+    "description": "Shown when a stage uses a resource whose stored entry breaks one of the protocol’s own rules about how resources are written. resourceId is the resource’s stored identifier."
+  },
+  "protocolBuilder.schemaProblem.resourceInvalidElement": {
+    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: its entry holds a part a resource cannot use.",
+    "description": "Shown when a stage uses a resource whose stored entry holds a part the protocol refuses. resourceId is the resource’s stored identifier."
+  },
+  "protocolBuilder.schemaProblem.resourceInvalidFormat": {
+    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry is not written the way a resource needs it.",
+    "description": "Shown when a stage uses a resource whose stored entry the protocol refuses because part of it is the right kind of text in the wrong shape. resourceId is the resource’s stored identifier."
+  },
+  "protocolBuilder.schemaProblem.resourceInvalidKey": {
+    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: its entry holds a part named something a resource cannot use.",
+    "description": "Shown when a stage uses a resource whose stored entry names one of its parts in a way the protocol refuses. resourceId is the resource’s stored identifier."
+  },
+  "protocolBuilder.schemaProblem.resourceInvalidType": {
+    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry holds the wrong kind of value.",
+    "description": "Shown when a stage (one step of an interview) uses a file, roster, map layer or key whose stored entry the protocol refuses. resourceId is the stored identifier of that resource, which the researcher did not choose. This wording is used when one part of the entry holds the wrong kind of value."
+  },
+  "protocolBuilder.schemaProblem.resourceInvalidUnion": {
+    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: its entry is not any of the kinds of resource there are.",
+    "description": "Shown when a stage uses a resource whose stored entry matches none of the resource kinds the protocol knows. resourceId is the resource’s stored identifier."
+  },
+  "protocolBuilder.schemaProblem.resourceInvalidValue": {
+    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry holds a value no resource can take.",
+    "description": "Shown when a stage uses a resource whose stored entry the protocol refuses because part of it is not one of the values a resource is allowed to hold. resourceId is the resource’s stored identifier."
+  },
+  "protocolBuilder.schemaProblem.resourceNotMultipleOf": {
+    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry holds a number that is not one of the steps a resource allows.",
+    "description": "Shown when a stage uses a resource whose stored entry holds a number that has to be a multiple of some step and is not. resourceId is the resource’s stored identifier."
+  },
+  "protocolBuilder.schemaProblem.resourceNothingThere": {
+    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry is missing.",
+    "description": "Shown when a stage uses a resource whose stored entry has nothing where the protocol needs something. resourceId is the resource’s stored identifier."
+  },
+  "protocolBuilder.schemaProblem.resourceTooBig": {
+    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry holds more than a resource allows.",
+    "description": "Shown when a stage uses a resource whose stored entry the protocol refuses because part of it is over a limit. resourceId is the resource’s stored identifier."
+  },
+  "protocolBuilder.schemaProblem.resourceTooSmall": {
+    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry holds less than a resource needs.",
+    "description": "Shown when a stage uses a resource whose stored entry the protocol refuses because part of it is under a limit. resourceId is the resource’s stored identifier."
+  },
+  "protocolBuilder.schemaProblem.resourceUnrecognised": {
+    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: its entry holds something the protocol cannot use.",
+    "description": "Last resort, shown when a resource entry is refused by a validator this editor has no words for. resourceId is the resource’s stored identifier."
+  },
+  "protocolBuilder.schemaProblem.resourceUnrecognizedKeys": {
+    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: its entry holds settings a resource does not have.",
+    "description": "Shown when a stage uses a resource whose stored entry carries settings no resource has. resourceId is the resource’s stored identifier."
+  },
+  "protocolBuilder.schemaProblem.tooBig": {
+    "defaultMessage": "{fieldLabel} holds more than this stage allows.",
+    "description": "Shown beside one section of a stage editor when a control holds too many items, too much text, or a number above the limit. fieldLabel is the control’s own name and starts the sentence."
+  },
+  "protocolBuilder.schemaProblem.tooSmall": {
+    "defaultMessage": "{fieldLabel} holds less than this stage needs.",
+    "description": "Shown beside one section of a stage editor when a control holds too few items, too little text, or a number below the limit. fieldLabel is the control’s own name and starts the sentence."
+  },
+  "protocolBuilder.schemaProblem.unrecognised": {
+    "defaultMessage": "{fieldLabel} holds something this stage cannot use.",
+    "description": "Last resort, shown beside one section of a stage editor when a refusal arrives from a validator this editor has no words for. fieldLabel is the control’s own name and starts the sentence."
+  },
+  "protocolBuilder.schemaProblem.unrecognizedKeys": {
+    "defaultMessage": "{fieldLabel} holds settings this stage does not have.",
+    "description": "Shown beside one section of a stage editor when the saved stage carries settings this kind of stage knows nothing about — usually a stage imported from an older or newer protocol. fieldLabel is the control’s own name and starts the sentence."
   },
   "protocolBuilder.session.compoundConflictingRevision": {
     "defaultMessage": "the compound result conflicts with the loaded authoritative revision",
