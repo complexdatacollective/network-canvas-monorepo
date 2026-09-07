@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, within } from 'storybook/test';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { useStageEditorController } from '../controller.ts';
@@ -134,4 +136,35 @@ export const AlreadyConfigured: Story = {
 /** Someone else holds the lease: every control is inert and saving is refused. */
 export const Spectating: Story = {
   args: { access: SPECTATOR, fields: CONFIGURED },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    // The interviewer script is the one field here with a toolbar, and its
+    // buttons used to be the only controls on the page that still looked and
+    // read as available while the lease was held elsewhere.
+    //
+    // Each button's own state is read and compared rather than asserted with
+    // `toBeDisabled`, which reports a pass here on a button that is not
+    // disabled. Naming the offenders is also the more useful failure: it says
+    // which control is still on offer.
+    const toolbar = canvas.getByRole('toolbar');
+    const buttons = within(toolbar).getAllByRole<HTMLButtonElement>('button');
+    await expect(buttons.length).toBeGreaterThan(1);
+    const stillAvailable = buttons
+      .filter(
+        (button) =>
+          !button.disabled || button.getAttribute('aria-disabled') !== 'true',
+      )
+      .map((button) => button.getAttribute('aria-label'));
+    await expect(stillAvailable).toEqual([]);
+
+    // Unavailable to edit, not unavailable to read.
+    const script = canvas.getByRole('textbox', {
+      name: 'Interviewer script text',
+    });
+    await expect(script.textContent).toBe(
+      'Read the welcome text aloud before continuing.',
+    );
+  },
 };
