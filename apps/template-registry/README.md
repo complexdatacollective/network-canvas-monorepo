@@ -88,7 +88,8 @@ their existing sandbox policy. Run `build` once before using the source `dev`
 command in a new checkout.
 
 The HTTP process requires `REGISTRY_PUBLIC_URL`, `REGISTRY_DATABASE_URL`,
-`REGISTRY_OPERATOR_DATABASE_URL`, `REGISTRY_AUTH_SECRET`,
+`REGISTRY_OPERATOR_DATABASE_URL`, `REGISTRY_DATABASE_ALLOWED_LOGINS`,
+`REGISTRY_AUTH_SECRET`,
 `REGISTRY_S3_ENDPOINT`, `REGISTRY_S3_REGION`, `REGISTRY_S3_BUCKET`,
 `REGISTRY_S3_ACCESS_KEY_ID`, `REGISTRY_S3_SECRET_ACCESS_KEY`, and
 `REGISTRY_MAIL_FROM`. Configure exactly one of `REGISTRY_SMTP_URL` or
@@ -98,10 +99,26 @@ validate the sender at startup, preserve uncertain delivery outcomes and close
 on shutdown. External object stores require HTTPS. The explicit
 `REGISTRY_S3_INSECURE_PRIVATE_NETWORK` option is for an isolated private network.
 
-Migrations and operator grants use only `REGISTRY_MIGRATION_DATABASE_URL` and
-`REGISTRY_DATABASE_ALLOWED_LOGINS`, an explicit JSON array of the permitted
-login identities. Backup verification uses only
-`REGISTRY_BACKUP_DATABASE_URL`; it never falls back to an owner/runtime URL.
+Every runtime and offline command requires `REGISTRY_DATABASE_ALLOWED_LOGINS`,
+an explicit JSON array of the complete database login inventory, including the
+database owner, app, operator and backup identities. Runtime startup and
+readiness verify database CONNECT enrollment and each nonadministrative login’s
+complete capability class, including evidence privileges and owner-backed views.
+The app and operator logins must remain separate, each with SET-only membership
+in its one designated role.
+
+Migrations and operator grants use `REGISTRY_MIGRATION_DATABASE_URL`; backup
+verification uses `REGISTRY_BACKUP_DATABASE_URL`. Neither falls back to a runtime
+URL. A separately provisioned non-owner migrator must also be explicitly listed
+in `REGISTRY_DATABASE_ADMINISTRATIVE_LOGINS`, an optional JSON array (default
+empty) whose names must occur in the complete login inventory. Runtime URLs
+cannot use the database owner or a configured administrator. This exception is
+never inferred from the current owner of a table.
+Backup verification checks the same inventory on its verified read-only
+connection. Its explicit backup-only mode permits enrolled identities to remain
+NOLOGIN during quarantine while continuing to reject unsafe grants, attributes
+or membership. Normal startup and migrations require those identities to be
+open; no environment setting can enable the backup exception in the service.
 The service has no built-in development database, authentication or mail secrets.
 
 The optional self-hosted files in `deployment/` are inputs to the single signed

@@ -89,6 +89,8 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       pool,
       assetStore,
       allowUnversionedSchema: env.devDefaults,
+      allowedLogins: env.databaseAllowedLogins,
+      administrativeLogins: env.databaseAdministrativeLogins,
     });
   app.use(
     '*',

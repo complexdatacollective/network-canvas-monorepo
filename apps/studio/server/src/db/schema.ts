@@ -1,11 +1,21 @@
 import { getTableName, sql } from 'drizzle-orm';
 import { boolean, check, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
-import type pg from 'pg';
+import { Pool, type PoolClient } from 'pg';
 
+import {
+  assertSafePostgresDatabaseEnrollment,
+  copyPostgresAdministrativeLogins,
+  UnsafePostgresDatabaseEnrollmentError,
+} from '@codaco/studio-sync/postgres-database-enrollment';
 import {
   assertSafePostgresMigrationEvidence,
   UnsafePostgresMigrationEvidenceError,
 } from '@codaco/studio-sync/postgres-migration-evidence';
+import {
+  assertSafePostgresRestrictedIdentities,
+  UnsafePostgresRestrictedIdentitiesError,
+} from '@codaco/studio-sync/postgres-restricted-identities';
+import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
 import { ASSET_SIDECAR_SQL, ASSET_TABLES } from '../asset/schema.ts';
@@ -133,10 +143,61 @@ export type SchemaProblem = Exclude<SchemaState, { kind: 'current' }>;
  * answer.
  */
 export async function checkSchema(
-  pool: pg.Pool | pg.PoolClient,
-  options: { allowUnversioned?: boolean } = {},
+  pool: Pool | PoolClient,
+  options: {
+    allowUnversioned?: boolean;
+    allowedLogins?: readonly string[];
+    administrativeLogins?: readonly string[];
+  } = {},
 ): Promise<SchemaState> {
+  const allowUnversioned = options.allowUnversioned === true;
+  const unsafe: SchemaState = {
+    kind: 'stale',
+    reason: 'unsafe-evidence',
+    found: null,
+    appliedAt: null,
+  };
+  let allowedLogins: string[] | undefined;
+  let administrativeLogins: string[];
+  try {
+    allowedLogins = options.allowedLogins
+      ? [...options.allowedLogins]
+      : undefined;
+    administrativeLogins = allowUnversioned
+      ? []
+      : copyPostgresAdministrativeLogins(
+          allowedLogins ?? [],
+          options.administrativeLogins,
+        );
+  } catch {
+    return unsafe;
+  }
+  if (pool instanceof Pool) {
+    const client = await pool.connect();
+    try {
+      return await checkSchema(client, {
+        allowUnversioned,
+        allowedLogins,
+        administrativeLogins,
+      });
+    } finally {
+      client.release();
+    }
+  }
+  if (!allowUnversioned) {
+    if (!allowedLogins) return unsafe;
+    try {
+      await assertSafePostgresDatabaseEnrollment(pool, allowedLogins);
+    } catch (error) {
+      if (!(error instanceof UnsafePostgresDatabaseEnrollmentError))
+        throw error;
+      return unsafe;
+    }
+  }
   const probe = await pool.query<{
+    databaseOwner: string;
+    sessionLogin: string;
+    currentRole: string;
     fingerprintSchema: string;
     stamped: boolean;
     tables: boolean;
@@ -144,6 +205,8 @@ export async function checkSchema(
   }>(
     `select coalesce(fingerprint_namespace.nspname, current_schema(), 'public')
               as "fingerprintSchema",
+            pg_catalog.pg_get_userbyid((SELECT datdba FROM pg_catalog.pg_database WHERE datname = pg_catalog.current_database())) AS "databaseOwner",
+            session_user AS "sessionLogin", current_user AS "currentRole",
             fingerprint.oid is not null as stamped,
             ${SCHEMA_TABLES.map(
               (table) => `to_regclass('"${table}"') is not null`,
@@ -160,18 +223,52 @@ export async function checkSchema(
        left join pg_namespace fingerprint_namespace
          on fingerprint_namespace.oid = fingerprint_relation.relnamespace`,
   );
-  const { fingerprintSchema, stamped, tables, versioned } = probe.rows[0] ?? {
+  const {
+    fingerprintSchema,
+    stamped,
+    tables,
+    versioned,
+    databaseOwner,
+    sessionLogin,
+    currentRole,
+  } = probe.rows[0] ?? {
     fingerprintSchema: 'public',
+    databaseOwner: '',
+    sessionLogin: '',
+    currentRole: '',
     stamped: false,
     tables: false,
     versioned: false,
   };
 
+  const protectedRoles = allowUnversioned
+    ? []
+    : [
+        ...new Set([
+          ...Object.values(TENANT_ROLES),
+          BACKUP_ROLE,
+          ...(allowedLogins ?? []).filter(
+            (login) =>
+              login !== databaseOwner && !administrativeLogins.includes(login),
+          ),
+          // A scoped connection remains a runtime identity even if ownership drifts
+          // to its session LOGIN. Only the database owner or an explicitly configured
+          // offline administrator is exempt; evidence ownership never establishes trust.
+          ...(sessionLogin !== currentRole ||
+          Object.values(TENANT_ROLES).some((role) => role === currentRole)
+            ? [sessionLogin, currentRole]
+            : []),
+        ]),
+      ];
   try {
-    await assertSafePostgresMigrationEvidence(pool, {
-      history: { schema: 'studio_migrations', name: 'history' },
-      fingerprint: { schema: fingerprintSchema, name: 'schemaFingerprint' },
-    });
+    await assertSafePostgresMigrationEvidence(
+      pool,
+      {
+        history: { schema: 'studio_migrations', name: 'history' },
+        fingerprint: { schema: fingerprintSchema, name: 'schemaFingerprint' },
+      },
+      protectedRoles,
+    );
   } catch (error) {
     if (!(error instanceof UnsafePostgresMigrationEvidenceError)) throw error;
     return {
@@ -180,6 +277,21 @@ export async function checkSchema(
       found: null,
       appliedAt: null,
     };
+  }
+
+  if (!allowUnversioned && (stamped || tables)) {
+    try {
+      await assertSafePostgresRestrictedIdentities(pool, {
+        allowedLogins: allowedLogins ?? [],
+        administrativeLogins,
+        runtimeRoleSets: [Object.values(TENANT_ROLES)],
+        backupRole: BACKUP_ROLE,
+      });
+    } catch (error) {
+      if (!(error instanceof UnsafePostgresRestrictedIdentitiesError))
+        throw error;
+      return unsafe;
+    }
   }
 
   if (stamped) {
@@ -200,7 +312,7 @@ export async function checkSchema(
       // Runtime roles may inspect catalogs but have no USAGE or SELECT on
       // migration history. A development stamp alone is not deployment
       // provenance; only the explicitly resolved development lane accepts it.
-      if (!options.allowUnversioned && !versioned) {
+      if (!allowUnversioned && !versioned) {
         return {
           kind: 'stale',
           reason: 'unversioned',
@@ -222,7 +334,7 @@ export async function checkSchema(
 }
 
 export async function stampFingerprint(
-  db: pg.Pool | pg.PoolClient,
+  db: Pool | PoolClient,
   fingerprint: string,
 ): Promise<void> {
   await db.query(
@@ -244,7 +356,7 @@ export function schemaProblemMessage(state: SchemaProblem): string {
 
   if (state.reason === 'unsafe-evidence') {
     return [
-      'The database migration evidence has an unsupported relation shape.',
+      'The database migration evidence has unsafe privileges or an unsupported relation shape.',
       'Preserve the original database and its encryption keys. Restore a verified backup before starting Studio or applying migrations.',
       'See apps/studio/MIGRATIONS.md for recovery and replacement procedures.',
     ].join('\n');

@@ -61,6 +61,7 @@ it('verifies a populated registry using only its distinct backup LOGIN, includin
     const env = {
       NODE_ENV: 'production',
       REGISTRY_BACKUP_DATABASE_URL: f.backupDatabaseUrl,
+      REGISTRY_DATABASE_ALLOWED_LOGINS: JSON.stringify(f.allowedLogins),
     };
     const result = await execute(process.execPath, [backupMain], {
       env,
@@ -98,8 +99,14 @@ it('accepts only the explicit backup environment and never falls back to a runti
     readRegistryBackupEnv({
       REGISTRY_BACKUP_DATABASE_URL:
         'postgres://backup:synthetic@localhost/registry',
+      REGISTRY_DATABASE_ALLOWED_LOGINS:
+        '["owner","runtime","operator","backup"]',
     }),
-  ).toEqual({ databaseUrl: 'postgres://backup:synthetic@localhost/registry' });
+  ).toEqual({
+    databaseUrl: 'postgres://backup:synthetic@localhost/registry',
+    allowedLogins: ['owner', 'runtime', 'operator', 'backup'],
+    administrativeLogins: [],
+  });
   for (const key of [
     'REGISTRY_DATABASE_URL',
     'REGISTRY_OPERATOR_DATABASE_URL',
@@ -108,6 +115,8 @@ it('accepts only the explicit backup environment and never falls back to a runti
     expect(() =>
       readRegistryBackupEnv({
         [key]: 'postgres://private-canary@localhost/registry',
+        REGISTRY_DATABASE_ALLOWED_LOGINS:
+          '["owner","runtime","operator","backup"]',
       }),
     ).toThrow(new Error('REGISTRY_BACKUP_CONFIGURATION_INVALID'));
 });

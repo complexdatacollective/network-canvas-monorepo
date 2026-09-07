@@ -13,6 +13,7 @@ import type { RegistryBlobStore } from './blob-store.ts';
 import { REGISTRY_SCHEMA_FINGERPRINT } from './db/fingerprint.generated.ts';
 import { registryMigrator } from './db/migrate.ts';
 import { setRegistryPoolBounds } from './db/pool.ts';
+import { readRegistrySchemaIdentity } from './db/schema-state.ts';
 import { readRegistryEnv } from './env.ts';
 import { initializeRegistry, type RegistryRuntime } from './runtime.ts';
 import { listenRegistry } from './server.ts';
@@ -67,6 +68,7 @@ async function fixture(stamped = true, ownerConnection?: 'app' | 'operator') {
     REGISTRY_PUBLIC_URL: 'https://registry.example.test',
     REGISTRY_DATABASE_URL: database.runtimeDatabaseUrl,
     REGISTRY_OPERATOR_DATABASE_URL: database.operatorDatabaseUrl,
+    REGISTRY_DATABASE_ALLOWED_LOGINS: JSON.stringify(database.allowedLogins),
     REGISTRY_AUTH_SECRET: randomBytes(32).toString('hex'),
     REGISTRY_SMTP_URL: 'smtp://127.0.0.1:2525',
     REGISTRY_MAIL_FROM: 'registry@example.test',
@@ -254,6 +256,230 @@ it('serves live health and public reads, refuses stale readiness, drains admissi
     );
   } finally {
     await listener.close();
+    await inputs.dispose();
+  }
+});
+
+it.each([
+  'operator-login-data',
+  'backup-login-data',
+  'app-evidence-column',
+  'operator-evidence-view',
+] as const)(
+  'refuses %s privilege drift in schema reads, live readiness and fresh startup',
+  async (drift) => {
+    const inputs = await fixture();
+    const runtime = await initializeRegistry(inputs);
+    const listener = await listenRegistry(runtime, 0, '127.0.0.1');
+    let unexpectedRuntime: RegistryRuntime | undefined;
+    try {
+      const address = listener.server.address();
+      if (!address || typeof address === 'string')
+        throw new Error('REGISTRY_TEST_HTTP_ADDRESS_MISSING');
+      const origin = `http://127.0.0.1:${address.port}`;
+      expect((await fetch(`${origin}/readyz`)).status).toBe(200);
+      if (drift.endsWith('-login-data')) {
+        const login =
+          drift === 'operator-login-data'
+            ? inputs.database.logins.operator
+            : inputs.database.logins.backup;
+        const sourcePool =
+          drift === 'operator-login-data'
+            ? inputs.database.operatorPool
+            : inputs.database.backupPool;
+        await inputs.database.owner
+          .query(`CREATE TABLE registry_direct_data_canary (changed boolean);
+          INSERT INTO registry_direct_data_canary VALUES (false);
+          GRANT USAGE ON SCHEMA public TO ${escapeIdentifier(login)};
+          GRANT UPDATE(changed) ON registry_direct_data_canary TO ${escapeIdentifier(login)}`);
+        const unsafe = await sourcePool.connect();
+        try {
+          await unsafe.query('SET ROLE NONE');
+          expect(
+            (
+              await unsafe.query(
+                'UPDATE registry_direct_data_canary SET changed = true',
+              )
+            ).rowCount,
+          ).toBe(1);
+        } finally {
+          await unsafe.query('RESET ROLE');
+          unsafe.release();
+        }
+        expect(
+          (
+            await inputs.database.owner.query(
+              'SELECT changed FROM registry_direct_data_canary',
+            )
+          ).rows,
+        ).toEqual([{ changed: true }]);
+      } else {
+        const view = drift === 'operator-evidence-view';
+        const role = view
+          ? inputs.database.roles.operator
+          : inputs.database.roles.app;
+        const relation = view
+          ? 'registry_writable_evidence_view'
+          : 'registry_schema_fingerprint';
+        if (view)
+          await inputs.database.owner.query(
+            'CREATE VIEW registry_writable_evidence_view AS SELECT fingerprint FROM registry_schema_fingerprint',
+          );
+        await inputs.database.owner
+          .query(`GRANT UPDATE(fingerprint) ON ${relation} TO ${role};
+          UPDATE registry_schema_fingerprint SET fingerprint = repeat('0',64)`);
+        const sourcePool = view
+          ? inputs.database.operatorPool
+          : inputs.database.pool;
+        expect(
+          (
+            await sourcePool.query(`UPDATE ${relation} SET fingerprint = $1`, [
+              REGISTRY_SCHEMA_FINGERPRINT,
+            ])
+          ).rowCount,
+        ).toBe(1);
+        expect(
+          (
+            await inputs.database.owner.query(
+              'SELECT fingerprint FROM registry_schema_fingerprint',
+            )
+          ).rows,
+        ).toEqual([{ fingerprint: REGISTRY_SCHEMA_FINGERPRINT }]);
+      }
+      await expect(
+        readRegistrySchemaIdentity(inputs.database.pool, inputs.configuration),
+      ).rejects.toThrow('REGISTRY_SCHEMA_NOT_CURRENT');
+      expect((await fetch(`${origin}/readyz`)).status).toBe(503);
+      expect((await fetch(`${origin}/healthz`)).status).toBe(200);
+      await listener.close();
+      const pool = createPostgresPool({
+        connectionString: inputs.database.runtimeDatabaseUrl,
+        role: inputs.database.roles.app,
+        onIdleError: () => undefined,
+      });
+      const operatorPool = createPostgresPool({
+        connectionString: inputs.database.operatorDatabaseUrl,
+        role: inputs.database.roles.operator,
+        onIdleError: () => undefined,
+      });
+      setRegistryPoolBounds(pool);
+      setRegistryPoolBounds(operatorPool);
+      inputs.blobs.ready.mockClear();
+      await expect(
+        initializeRegistry({ ...inputs, pool, operatorPool }).then((value) => {
+          unexpectedRuntime = value;
+          return value;
+        }),
+      ).rejects.toThrow('REGISTRY_STARTUP_FAILED');
+      expect(inputs.blobs.ready).not.toHaveBeenCalled();
+      expect(pool.ending).toBe(true);
+      expect(operatorPool.ending).toBe(true);
+    } finally {
+      await unexpectedRuntime?.close();
+      await listener.close();
+      await inputs.dispose();
+    }
+  },
+);
+
+it('refuses an outside LOGIN with effective CONNECT, including its surviving session after revocation', async () => {
+  const inputs = await fixture();
+  const other = await createRegistryInstallation();
+  const runtime = await initializeRegistry(inputs);
+  const listener = await listenRegistry(runtime, 0, '127.0.0.1');
+  const url = new URL(other.runtimeDatabaseUrl);
+  url.pathname = `/${inputs.database.databaseName}`;
+  const outside = createPostgresPool({
+    connectionString: url.toString(),
+    role: inputs.database.roles.app,
+    max: 1,
+    onIdleError: () => undefined,
+  });
+  const revoke = () =>
+    inputs.database.owner.query(
+      `REVOKE CONNECT ON DATABASE ${escapeIdentifier(inputs.database.databaseName)} FROM ${escapeIdentifier(other.logins.app)}`,
+    );
+  try {
+    const address = listener.server.address();
+    if (!address || typeof address === 'string')
+      throw new Error('REGISTRY_TEST_HTTP_ADDRESS_MISSING');
+    const origin = `http://127.0.0.1:${address.port}`;
+    expect((await fetch(`${origin}/readyz`)).status).toBe(200);
+    await inputs.database.owner.query(
+      `GRANT CONNECT ON DATABASE ${escapeIdentifier(inputs.database.databaseName)} TO ${escapeIdentifier(other.logins.app)}`,
+    );
+    expect(
+      (
+        await outside.query(
+          'SELECT fingerprint FROM registry_schema_fingerprint',
+        )
+      ).rows,
+    ).toEqual([{ fingerprint: REGISTRY_SCHEMA_FINGERPRINT }]);
+    await expect(
+      readRegistrySchemaIdentity(inputs.database.pool, inputs.configuration),
+    ).rejects.toThrow('REGISTRY_SCHEMA_NOT_CURRENT');
+    expect((await fetch(`${origin}/readyz`)).status).toBe(503);
+    await revoke();
+    expect((await outside.query('SELECT current_user AS role')).rows).toEqual([
+      { role: inputs.database.roles.app },
+    ]);
+    expect((await fetch(`${origin}/readyz`)).status).toBe(503);
+    await outside.end();
+    await expect
+      .poll(async () => (await fetch(`${origin}/readyz`)).status)
+      .toBe(200);
+  } finally {
+    if (!outside.ending) await outside.end();
+    await revoke();
+    await listener.close();
+    await inputs.dispose();
+    await other.dispose();
+  }
+});
+
+it('never turns a configured administrator into a runtime identity', async () => {
+  const inputs = await fixture();
+  inputs.configuration.administrativeLogins = [inputs.database.logins.app];
+  let unexpectedRuntime: RegistryRuntime | undefined;
+  try {
+    await expect(
+      initializeRegistry(inputs).then((runtime) => {
+        unexpectedRuntime = runtime;
+        return runtime;
+      }),
+    ).rejects.toThrow('REGISTRY_STARTUP_FAILED');
+    expect(inputs.blobs.ready).not.toHaveBeenCalled();
+  } finally {
+    await unexpectedRuntime?.close();
+    await inputs.dispose();
+  }
+});
+
+it('keeps the copied enrollment when caller-owned configuration changes during startup', async () => {
+  const inputs = await fixture();
+  const storage = Promise.withResolvers<undefined>();
+  inputs.blobs.ready.mockImplementationOnce(() => storage.promise);
+  const starting = initializeRegistry(inputs);
+  let runtime: RegistryRuntime | undefined;
+  let listener: Awaited<ReturnType<typeof listenRegistry>> | undefined;
+  try {
+    await expect.poll(() => inputs.blobs.ready.mock.calls.length).toBe(1);
+    inputs.configuration.allowedLogins.length = 0;
+    inputs.configuration.administrativeLogins.push(inputs.database.logins.app);
+    storage.resolve(undefined);
+    runtime = await starting;
+    listener = await listenRegistry(runtime, 0, '127.0.0.1');
+    const address = listener.server.address();
+    if (!address || typeof address === 'string')
+      throw new Error('REGISTRY_TEST_HTTP_ADDRESS_MISSING');
+    expect(
+      (await fetch(`http://127.0.0.1:${address.port}/readyz`)).status,
+    ).toBe(200);
+  } finally {
+    storage.resolve(undefined);
+    runtime ??= await starting;
+    await listener?.close();
+    await runtime.close();
     await inputs.dispose();
   }
 });

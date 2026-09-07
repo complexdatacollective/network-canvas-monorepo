@@ -54,6 +54,8 @@ export function createPostgresMigrator(input: PostgresMigrationConfig) {
     }
   }
   if (
+    new Set(input.runtimeLoginRoleSets.flat()).size !==
+      input.runtimeLoginRoleSets.flat().length ||
     input.runtimeRoles.some(
       (role) =>
         !input.runtimeLoginRoleSets.some((roles) => roles.includes(role)),

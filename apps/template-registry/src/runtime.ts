@@ -5,6 +5,7 @@ import { createRegistryApp } from './app.ts';
 import { createRegistryAuth } from './auth/service.ts';
 import type { RegistryBlobStore } from './blob-store.ts';
 import { startRegistryCleanup } from './cleanup-worker.ts';
+import { copyRegistryDatabasePolicy } from './db/admission.ts';
 import { verifyRegistryDatabases } from './db/schema-state.ts';
 import type { RegistryDiagnostic } from './diagnostics.ts';
 import type { RegistryEnv } from './env.ts';
@@ -47,7 +48,12 @@ export async function initializeRegistry({
     return closing;
   };
   try {
-    const identity = await verifyRegistryDatabases(pool, operatorPool);
+    const admission = copyRegistryDatabasePolicy(configuration);
+    const identity = await verifyRegistryDatabases(
+      pool,
+      operatorPool,
+      admission,
+    );
     await blobs.ready();
     const accountAssets = await loadRegistryAccountAssets(
       accountAssetDirectory,
@@ -82,7 +88,7 @@ export async function initializeRegistry({
       ready: async () => {
         if (!accepting) return false;
         const [currentIdentity] = await Promise.all([
-          verifyRegistryDatabases(pool, operatorPool),
+          verifyRegistryDatabases(pool, operatorPool, admission),
           blobs.ready(),
         ]);
         return accepting && currentIdentity === identity;

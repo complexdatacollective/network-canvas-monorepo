@@ -46,6 +46,12 @@ describe('PostgreSQL migration configuration', () => {
     { runtimeLoginRoleSets: [[]] },
     { runtimeLoginRoleSets: [['registry_app', 'registry_app']] },
     { runtimeLoginRoleSets: [['registry_app']] },
+    {
+      runtimeLoginRoleSets: [
+        ['registry_app'],
+        ['registry_app', 'registry_operator'],
+      ],
+    },
     { runtimeLoginRoleSets: [['registry_app', 'registry_operator', 'other']] },
     {
       runtimeLoginRoleSets: [

@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { createPostgresPool } from '@codaco/studio-sync/postgres-pool';
 
+import { assertRegistryMigrationOperator } from './db/admission.ts';
 import { REGISTRY_SCHEMA_FINGERPRINT } from './db/fingerprint.generated.ts';
 import { registryMigrator } from './db/migrate.ts';
 import { logRegistryDiagnostic } from './diagnostics.ts';
@@ -23,6 +24,7 @@ if (import.meta.main) {
       onIdleError: () => logRegistryDiagnostic('REGISTRY_DATABASE_IDLE_ERROR'),
     });
     try {
+      await assertRegistryMigrationOperator(pool, configuration);
       await registryMigrator.migrate(
         pool,
         migrations,

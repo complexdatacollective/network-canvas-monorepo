@@ -20,6 +20,7 @@ services:
       REGISTRY_PUBLIC_URL: https://${REGISTRY_DOMAIN:?Select the registry public domain}
       REGISTRY_DATABASE_URL: postgresql://registry_runtime:${REGISTRY_DATABASE_PASSWORD:?Missing registry runtime password}@registry-postgres:5432/registry
       REGISTRY_OPERATOR_DATABASE_URL: postgresql://registry_operations:${REGISTRY_OPERATOR_PASSWORD:?Missing registry operator password}@registry-postgres:5432/registry
+      REGISTRY_DATABASE_ALLOWED_LOGINS: '["registry_migrator","registry_runtime","registry_operations","registry_backup_login"]'
       REGISTRY_AUTH_SECRET: ${REGISTRY_AUTH_SECRET:?Missing registry authentication key}
       REGISTRY_SMTP_URL: ${REGISTRY_SMTP_URL:-}
       REGISTRY_POSTMARK_SERVER_TOKEN: ${REGISTRY_POSTMARK_SERVER_TOKEN:-}
@@ -61,6 +62,7 @@ services:
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
     environment:
+      REGISTRY_DATABASE_ALLOWED_LOGINS: '["registry_migrator","registry_runtime","registry_operations","registry_backup_login"]'
       REGISTRY_BACKUP_DATABASE_URL: postgresql://registry_backup_login:${REGISTRY_BACKUP_PASSWORD:?Missing registry backup password}@registry-postgres:5432/registry
     networks: [registry-data]
     depends_on:
