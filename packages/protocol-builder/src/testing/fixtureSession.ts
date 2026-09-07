@@ -16,6 +16,7 @@ import {
   type FinishRequest,
   type ManifestRevision,
   type PendingCommandBatch,
+  type ProtocolBuilderPresence,
   ProtocolBuilderSessionStore,
   type StageCreation,
 } from '../session.ts';
@@ -58,6 +59,15 @@ export type FixtureSessionOptions = Readonly<{
   assets?: Readonly<Record<string, SectionDoc>>;
   /** Open the stage as a spectator, with editing held elsewhere. */
   readOnly?: boolean;
+  /**
+   * Who else is in this protocol, and what they are doing.
+   *
+   * The host's to supply: presence arrives over the host's own channel, and
+   * the session only passes it on. Left out, the researcher is alone — which
+   * is what every test here wants, and which is why a story that is ABOUT
+   * working alongside somebody has to say so.
+   */
+  presence?: readonly ProtocolBuilderPresence[];
   /**
    * Sections another editor is holding while this session runs, so any change
    * that needs one is blocked rather than applied.
@@ -229,6 +239,7 @@ export function openFixtureStageSession(
             leaseOwner: FIXTURE_SESSION_OWNER,
             leaseEpoch: 1n,
           },
+    ...(options.presence === undefined ? {} : { presence: options.presence }),
     resourceGateway: gateway,
     // A stage being created is validated where it is about to live: the host
     // puts it into the stage order at its insertion position before it judges
