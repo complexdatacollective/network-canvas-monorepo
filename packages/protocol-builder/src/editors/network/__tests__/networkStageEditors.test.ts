@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { networkStageEditors } from '../../networkStageEditors.ts';
+import { GeospatialStageEditor } from '../GeospatialStageEditor.tsx';
 import { NarrativeStageEditor } from '../NarrativeStageEditor.tsx';
 import { NetworkComposerStageEditor } from '../NetworkComposerStageEditor.tsx';
 import { SociogramStageEditor } from '../SociogramStageEditor.tsx';
 
 describe('the network and spatial editor family', () => {
-  it('claims exactly the interfaces it edits', () => {
+  it('claims exactly the four interfaces it edits', () => {
     expect(Object.keys(networkStageEditors).toSorted()).toEqual([
+      'Geospatial',
       'Narrative',
       'NetworkComposer',
       'Sociogram',
@@ -25,5 +27,6 @@ describe('the network and spatial editor family', () => {
     expect(networkStageEditors.NetworkComposer).toBe(
       NetworkComposerStageEditor,
     );
+    expect(networkStageEditors.Geospatial).toBe(GeospatialStageEditor);
   });
 });

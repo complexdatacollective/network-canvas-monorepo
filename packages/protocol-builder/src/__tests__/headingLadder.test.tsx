@@ -16,6 +16,7 @@ import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import * as validationEditorStories from '../codebook/validation/CodebookVariableValidationEditor.stories.tsx';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
 import { harnessEditor } from '../editors/network/__tests__/editorFixtures.tsx';
+import * as geospatialEditorStories from '../editors/network/GeospatialStageEditor.stories.tsx';
 import * as narrativeEditorStories from '../editors/network/NarrativeStageEditor.stories.tsx';
 import * as composerEditorStories from '../editors/network/NetworkComposerStageEditor.stories.tsx';
 import { NetworkComposerStageEditor } from '../editors/network/NetworkComposerStageEditor.tsx';
@@ -399,6 +400,7 @@ describe('every story of a surface that writes its own heading', () => {
       composeStories(composerEditorStories),
     ),
     ...from('NarrativeStageEditor', composeStories(narrativeEditorStories)),
+    ...from('GeospatialStageEditor', composeStories(geospatialEditorStories)),
     ...from(
       'FamilyPedigreeStageEditor',
       composeStories(familyPedigreeEditorStories),

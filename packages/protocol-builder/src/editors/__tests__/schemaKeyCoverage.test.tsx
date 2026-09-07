@@ -6,6 +6,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import type { StageEditorComponent } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { harnessEditor } from '../network/__tests__/editorFixtures.tsx';
+import { GeospatialStageEditor } from '../network/GeospatialStageEditor.tsx';
 import { NarrativeStageEditor } from '../network/NarrativeStageEditor.tsx';
 import { NetworkComposerStageEditor } from '../network/NetworkComposerStageEditor.tsx';
 import { SociogramStageEditor } from '../network/SociogramStageEditor.tsx';
@@ -107,6 +108,33 @@ const SOCIOGRAM_FIELDS: SectionDoc = {
       layout: { layoutVariable: 'layout' },
       edges: { display: ['knows'], create: 'knows' },
       highlight: { allowHighlighting: false },
+    },
+  ],
+};
+
+const GEOSPATIAL_FIELDS: SectionDoc = {
+  label: 'Geospatial',
+  interviewScript: INTERVIEW_SCRIPT,
+  skipLogic: SKIP_LOGIC,
+  subject: PERSON,
+  filter: NODE_FILTER,
+  mapOptions: {
+    tokenAssetId: 'mapbox_token',
+    style: 'mapbox://styles/mapbox/standard',
+    center: [-74, 40.7],
+    initialZoom: 10,
+    dataSourceAssetId: 'geo_data',
+    color: 'ord-color-seq-6',
+    targetFeatureProperty: 'name',
+    // Both optional, and both a decision about what the participant may do.
+    showTransit: true,
+    allowSearch: true,
+  },
+  prompts: [
+    {
+      id: 'geospatial-prompt-1',
+      text: 'Where do you live?',
+      variable: 'location',
     },
   ],
 };
@@ -254,6 +282,11 @@ const MAXIMAL: readonly MaximalStage[] = [
     fields: SOCIOGRAM_FIELDS,
   },
   {
+    stageType: 'Geospatial',
+    editor: harnessEditor(GeospatialStageEditor, 'Geospatial'),
+    fields: GEOSPATIAL_FIELDS,
+  },
+  {
     stageType: 'Narrative',
     editor: harnessEditor(NarrativeStageEditor, 'Narrative'),
     fields: NARRATIVE_FIELDS,
@@ -291,10 +324,10 @@ describe.each(MAXIMAL)(
      * Two claims about one save. Every key is owned by something the editor
      * mounts — `unowned` is empty, so a key no section renders fails rather
      * than surviving untouched — and the save gives back exactly what it was
-     * given, which is where a nested optional key is caught: `sortOrder`
-     * inside a prompt, `form` inside `nodeConfig`, `create` inside a prompt's
-     * `edges`. Those are inside a value a section already owns, so only the
-     * comparison notices when one stops being rendered.
+     * given, which is where a nested optional key is caught: `showTransit`
+     * inside `mapOptions`, `sortOrder` inside a prompt, `form` inside
+     * `nodeConfig`. Those are inside a value a section already owns, so only
+     * the comparison notices when one stops being rendered.
      */
     it('is edited by a section, and saved back exactly as it arrived', async () => {
       const harness = renderStageEditor({
@@ -315,6 +348,10 @@ const FIXTURE_STAGES: readonly Readonly<{
   {
     stageId: 'sociogram-1',
     editor: harnessEditor(SociogramStageEditor, 'Sociogram'),
+  },
+  {
+    stageId: 'geospatial-1',
+    editor: harnessEditor(GeospatialStageEditor, 'Geospatial'),
   },
   {
     stageId: 'narrative-1',
