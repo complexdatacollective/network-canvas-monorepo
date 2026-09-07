@@ -1,31 +1,43 @@
+import { escapeIdentifier } from 'pg';
 import type pg from 'pg';
 
-import { assertSafePostgresCatalogPrivileges } from '@codaco/studio-sync/postgres-catalog-privileges';
-import { assertSafePostgresMigrationEvidence } from '@codaco/studio-sync/postgres-migration-evidence';
-import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
+import { assertSafePostgresCatalogPrivileges } from './postgres-catalog-privileges.ts';
+import { assertSafePostgresMigrationEvidence } from './postgres-migration-evidence.ts';
+import type { PostgresMigrationConfig } from './postgres-migrations.ts';
 import {
   runtimeRolesSql,
   RESTRICTED_LARGE_OBJECT_FUNCTIONS,
   validateRoleNames,
-} from '@codaco/studio-sync/role-bootstrap';
+} from './role-bootstrap.ts';
 
 /** Enforce deployment access before SQL and again after historical grants. */
 export async function enforceMigrationSecurity(
   client: pg.PoolClient,
   allowedLogins: readonly string[],
+  config: Readonly<PostgresMigrationConfig>,
 ): Promise<void> {
+  const {
+    applicationName,
+    allowedLoginsSetting,
+    runtimeRoles,
+    runtimeLoginRoleSets,
+    backupRole,
+  } = config;
   validateRoleNames(allowedLogins);
   // Backup identity provisioning belongs to its own versioned sidecar. Check
   // it when present without creating a future role on an older installation.
-  const optionalRoles = await client.query<{ rolname: string }>(
-    'SELECT rolname FROM pg_roles WHERE rolname = $1',
-    [BACKUP_ROLE],
+  const optionalRoles =
+    backupRole === undefined
+      ? []
+      : (
+          await client.query<{ rolname: string }>(
+            'SELECT rolname FROM pg_roles WHERE rolname = $1',
+            [backupRole],
+          )
+        ).rows.map(({ rolname }) => rolname);
+  await client.query(
+    runtimeRolesSql([...runtimeRoles, ...optionalRoles], applicationName),
   );
-  const scopedRoles = [
-    ...Object.values(TENANT_ROLES),
-    ...optionalRoles.rows.map(({ rolname }) => rolname),
-  ];
-  await client.query(runtimeRolesSql(scopedRoles));
   const identity = await client.query<{
     operator: string;
     current: string;
@@ -41,12 +53,12 @@ export async function enforceMigrationSecurity(
     !allowedLogins.includes(operator.operator)
   ) {
     throw new Error(
-      'The migration operator must connect as itself and be explicitly enrolled in STUDIO_DATABASE_ALLOWED_LOGINS.',
+      `The migration operator must connect as itself and be explicitly enrolled in ${allowedLoginsSetting}.`,
     );
   }
   if (!allowedLogins.includes(operator.owner)) {
     throw new Error(
-      'The Studio database owner must be explicitly enrolled in STUDIO_DATABASE_ALLOWED_LOGINS.',
+      `The ${applicationName} database owner must be explicitly enrolled in ${allowedLoginsSetting}.`,
     );
   }
   // Ownership and the migration connection are administrative capabilities.
@@ -66,7 +78,7 @@ export async function enforceMigrationSecurity(
     logins.rows.some(({ safe }) => !safe)
   ) {
     throw new Error(
-      'Enrolled Studio identities must exist and allow LOGIN; runtime and backup logins must be NOINHERIT and lack database administration or replication attributes.',
+      `Enrolled ${applicationName} identities must exist and allow LOGIN; runtime and backup logins must be NOINHERIT and lack database administration or replication attributes.`,
     );
   }
   // An outside role able to become an enrolled login can restore CONNECT or
@@ -83,7 +95,7 @@ export async function enforceMigrationSecurity(
   );
   if (memberships.rows[0]?.present) {
     throw new Error(
-      'Enrolled Studio logins must not have memberships granted to unenrolled roles.',
+      `Enrolled ${applicationName} logins must not have memberships granted to unenrolled roles.`,
     );
   }
   // SET ROLE NONE restores session_user despite the pool's pinned startup
@@ -105,11 +117,20 @@ export async function enforceMigrationSecurity(
     ) AND NOT EXISTS (
       SELECT 1 FROM pg_roles login WHERE login.rolname = ANY($1::text[])
         AND NOT (
-          NOT EXISTS (
-            SELECT 1 FROM unnest($4::text[]) required_role
+          EXISTS (
+            SELECT 1 FROM jsonb_array_elements($4::jsonb) required_set
             WHERE NOT EXISTS (
+              SELECT 1 FROM jsonb_array_elements_text(required_set) required_role
+              WHERE NOT EXISTS (
+                SELECT 1 FROM pg_auth_members membership JOIN pg_roles parent ON parent.oid = membership.roleid
+                WHERE membership.member = login.oid AND parent.rolname = required_role
+              )
+            ) AND NOT EXISTS (
               SELECT 1 FROM pg_auth_members membership JOIN pg_roles parent ON parent.oid = membership.roleid
-              WHERE membership.member = login.oid AND parent.rolname = required_role
+              WHERE membership.member = login.oid AND NOT EXISTS (
+                SELECT 1 FROM jsonb_array_elements_text(required_set) required_role
+                WHERE parent.rolname = required_role
+              )
             )
           ) OR EXISTS (
             SELECT 1 FROM pg_auth_members membership JOIN pg_roles parent ON parent.oid = membership.roleid
@@ -119,14 +140,18 @@ export async function enforceMigrationSecurity(
     ) AS safe`,
     [
       restrictedLogins,
-      [...Object.values(TENANT_ROLES), BACKUP_ROLE],
-      BACKUP_ROLE,
-      Object.values(TENANT_ROLES),
+      [...runtimeRoles, ...optionalRoles],
+      backupRole ?? null,
+      JSON.stringify(runtimeLoginRoleSets),
     ],
   );
   if (scopedMemberships.rows[0]?.safe !== true) {
+    const runtimeScope =
+      runtimeLoginRoleSets.length === 1 && runtimeRoles.length === 2
+        ? `both ${applicationName} runtime roles`
+        : `one configured ${applicationName} runtime role set`;
     throw new Error(
-      'Runtime and backup login memberships must grant exactly SET access to both Studio runtime roles or to the separate backup role, without inheritance or administration; backup membership must remain separate.',
+      `Runtime and backup login memberships must grant exactly SET access to ${runtimeScope} or to the separate backup role, without inheritance or administration; backup membership must remain separate.`,
     );
   }
   const sessionCapabilities = await client.query<{ safe: boolean }>(
@@ -137,11 +162,11 @@ export async function enforceMigrationSecurity(
       WHERE (identity.rolname = ANY($1::text[]) OR identity.rolname = ANY($2::text[]))
         AND has_parameter_privilege(identity.oid, parameter, 'SET')
     ) AS safe`,
-    [restrictedLogins, [...Object.values(TENANT_ROLES), BACKUP_ROLE]],
+    [restrictedLogins, [...runtimeRoles, ...optionalRoles]],
   );
   if (sessionCapabilities.rows[0]?.safe !== true) {
     throw new Error(
-      'Studio runtime and backup identities must not have SET on lo_compat_privileges or session_replication_role; migration requires lo_compat_privileges off and session_replication_role origin.',
+      `${applicationName} runtime and backup identities must not have SET on lo_compat_privileges or session_replication_role; migration requires lo_compat_privileges off and session_replication_role origin.`,
     );
   }
   // Revoking SET does not remove ALTER ROLE/ALTER DATABASE defaults. New
@@ -160,11 +185,11 @@ export async function enforceMigrationSecurity(
           WHEN 'session_replication_role' THEN split_part(config, '=', 2) <> 'origin'
           ELSE false END
     ) AS present`,
-    [restrictedLogins, [...Object.values(TENANT_ROLES), BACKUP_ROLE]],
+    [restrictedLogins, [...runtimeRoles, ...optionalRoles]],
   );
   if (persistedCapabilities.rows[0]?.present !== false) {
     throw new Error(
-      'Studio refuses persisted lo_compat_privileges or session_replication_role defaults that bypass large-object permissions or domain triggers. Reset the applicable database and role defaults before migration.',
+      `${applicationName} refuses persisted lo_compat_privileges or session_replication_role defaults that bypass large-object permissions or domain triggers. Reset the applicable database and role defaults before migration.`,
     );
   }
   // Creation functions otherwise grant ownership of new persistent objects
@@ -178,16 +203,16 @@ export async function enforceMigrationSecurity(
     ) AS present`,
     [
       restrictedLogins,
-      [...Object.values(TENANT_ROLES), BACKUP_ROLE],
+      [...runtimeRoles, ...optionalRoles],
       RESTRICTED_LARGE_OBJECT_FUNCTIONS,
     ],
   );
   if (largeObjectCreation.rows[0]?.present !== false) {
     throw new Error(
-      'Studio runtime and backup identities must not execute large-object creation or server-file import/export functions. Have the database administrator revoke their PUBLIC and restricted-role EXECUTE grants before migration.',
+      `${applicationName} runtime and backup identities must not execute large-object creation or server-file import/export functions. Have the database administrator revoke their PUBLIC and restricted-role EXECUTE grants before migration.`,
     );
   }
-  // Studio supports invoker triggers only. A definer trigger can run without
+  // This application supports invoker triggers only. A definer trigger can run without
   // EXECUTE and can be reached through a foreign-key cascade even when the
   // runtime has no direct access to its table. Disabled triggers are included:
   // their presence cannot establish that the existing evidence was protected.
@@ -203,7 +228,7 @@ export async function enforceMigrationSecurity(
   );
   if (definerTriggers.rows[0]?.present !== false) {
     throw new Error(
-      'Studio does not support SECURITY DEFINER triggers on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.',
+      `${applicationName} does not support SECURITY DEFINER triggers on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.`,
     );
   }
   // Non-SELECT rewrite actions run with the relation owner's privileges,
@@ -219,21 +244,24 @@ export async function enforceMigrationSecurity(
   );
   if (rewriteRules.rows[0]?.present !== false) {
     throw new Error(
-      'Studio does not support owner-backed rewrite rules on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.',
+      `${applicationName} does not support owner-backed rewrite rules on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.`,
     );
   }
-  // Evidence is authored as standalone ordinary tables. Inheritance and
-  // partition routing authorize against a parent, bypassing these tables' own
-  // ACLs; inherited children also contribute rows to ordinary evidence reads.
-  // Reject either direction before the runner trusts any recorded history.
+  const evidenceRelations = [
+    `${escapeIdentifier(config.historySchema)}.history`,
+    `${escapeIdentifier(config.schemaName)}.${escapeIdentifier(config.fingerprintTable)}`,
+  ];
   try {
     await assertSafePostgresMigrationEvidence(client, {
-      history: { schema: 'studio_migrations', name: 'history' },
-      fingerprint: { schema: 'public', name: 'schemaFingerprint' },
+      history: { schema: config.historySchema, name: 'history' },
+      fingerprint: {
+        schema: config.schemaName,
+        name: config.fingerprintTable,
+      },
     });
   } catch {
     throw new Error(
-      'Studio migration evidence must be standalone ordinary tables without inheritance, partitions, or cascading foreign-key action paths. Existing evidence is untrusted; restore a verified backup before migrating.',
+      `${applicationName} migration evidence must be standalone ordinary tables without inheritance, partitions, or cascading foreign-key action paths. Existing evidence is untrusted; restore a verified backup before migrating.`,
     );
   }
   const loginAccess = await client.query<{
@@ -248,7 +276,7 @@ export async function enforceMigrationSecurity(
       SELECT oid FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'
     ) SELECT NOT EXISTS (
       SELECT 1 FROM identities login WHERE
-        has_database_privilege(login.oid, current_database(), 'CREATE,TEMPORARY,CONNECT WITH GRANT OPTION')
+        has_database_privilege(login.oid, current_database(), 'CREATE,TEMPORARY,CONNECT WITH GRANT OPTION,TEMPORARY WITH GRANT OPTION')
         OR EXISTS (
           SELECT 1 FROM pg_shdepend dependency
           WHERE dependency.refclassid = 'pg_authid'::regclass AND dependency.refobjid = login.oid
@@ -265,14 +293,14 @@ export async function enforceMigrationSecurity(
         OR EXISTS (
           SELECT 1 FROM pg_largeobject_metadata object WHERE
             has_largeobject_privilege(login.oid, object.oid, 'UPDATE')
-            OR (login.rolname <> $3 AND has_largeobject_privilege(login.oid, object.oid, 'SELECT'))
+            OR (login.rolname IS DISTINCT FROM $3 AND has_largeobject_privilege(login.oid, object.oid, 'SELECT'))
         )
         OR EXISTS (
           SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
             AND CASE WHEN object.relkind IN ('v', 'm', 'f') THEN (
               has_table_privilege(login.oid, object.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
               OR has_any_column_privilege(login.oid, object.oid, 'INSERT,UPDATE,REFERENCES')
-              OR (login.rolname <> $3 AND (
+              OR (login.rolname IS DISTINCT FROM $3 AND (
                 has_table_privilege(login.oid, object.oid, 'SELECT')
                 OR has_any_column_privilege(login.oid, object.oid, 'SELECT')
               ))
@@ -324,20 +352,30 @@ export async function enforceMigrationSecurity(
     ) AS evidence_safe`,
     [
       restrictedLogins,
-      [...Object.values(TENANT_ROLES), BACKUP_ROLE],
-      BACKUP_ROLE,
-      'studio_migrations.history',
-      'public."schemaFingerprint"',
+      [...runtimeRoles, ...optionalRoles],
+      backupRole ?? null,
+      ...evidenceRelations,
     ],
   );
   if (loginAccess.rows[0]?.evidence_safe !== true) {
     throw new Error(
-      'Runtime and backup identities have access outside their reviewed Studio roles: existing migration evidence is writable and cannot be trusted. Restore a verified backup before migrating.',
+      `Runtime and backup identities have access outside their reviewed ${applicationName} roles: existing migration evidence is writable and cannot be trusted. Restore a verified backup before migrating.`,
     );
   }
   if (!loginAccess.rows[0].safe) {
     throw new Error(
-      'Runtime and backup identities must own no database objects and hold no access outside their reviewed Studio roles: remove direct or PUBLIC login data grants, CREATE or TEMPORARY, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, foreign table, or large object access beyond read-only backup grants, backup table writes, or sequence UPDATE privileges.',
+      `Runtime and backup identities must own no database objects and hold no access outside their reviewed ${applicationName} roles: remove direct or PUBLIC login data grants, CREATE, TEMPORARY, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, foreign table, or large object access beyond read-only backup grants, backup table writes, or sequence UPDATE privileges.`,
+    );
+  }
+  try {
+    await assertSafePostgresCatalogPrivileges(client, [
+      ...runtimeRoles,
+      ...optionalRoles,
+      ...restrictedLogins,
+    ]);
+  } catch {
+    throw new Error(
+      `${applicationName} runtime and backup identities have unsafe PostgreSQL catalog privileges.`,
     );
   }
   // CONNECT is checked only at connection admission. Enrollment must already
@@ -360,7 +398,7 @@ export async function enforceMigrationSecurity(
   );
   if (!enrollment.rows[0]?.valid) {
     throw new Error(
-      'Studio database CONNECT must match the precommitted enrollment. Quarantine database admission, remove unenrolled grants, and explicitly grant CONNECT to every STUDIO_DATABASE_ALLOWED_LOGINS entry before migrating.',
+      `${applicationName} database CONNECT must match the precommitted enrollment. Quarantine database admission, remove unenrolled grants, and explicitly grant CONNECT to every ${allowedLoginsSetting} entry before migrating.`,
     );
   }
   const outsiders = await client.query<{ present: boolean }>(
@@ -373,7 +411,7 @@ export async function enforceMigrationSecurity(
   );
   if (outsiders.rows[0]?.present) {
     throw new Error(
-      'Studio database CONNECT is available to an unenrolled login. Ask the administrator to remove its direct or inherited grant before migrating.',
+      `${applicationName} database CONNECT is available to an unenrolled login. Ask the administrator to remove its direct or inherited grant before migrating.`,
     );
   }
   // PostgreSQL caches activity snapshots for a transaction. The final check
@@ -389,20 +427,7 @@ export async function enforceMigrationSecurity(
   );
   if (sessions.rows[0]?.present) {
     throw new Error(
-      'Studio has existing connections from unenrolled logins. Quarantine database admission and have the administrator remove those sessions before migrating.',
-    );
-  }
-  // This remains inside the repeatable preflight/finalizer, before the caller
-  // trusts history or fingerprints. Include session identities: SET ROLE NONE
-  // restores their direct privileges independently of the pinned runtime role.
-  try {
-    await assertSafePostgresCatalogPrivileges(client, [
-      ...scopedRoles,
-      ...restrictedLogins,
-    ]);
-  } catch {
-    throw new Error(
-      'Runtime and backup identities have unsupported PostgreSQL catalog capabilities or the catalog could not be verified. Ask the database administrator to investigate reserved namespace and catalog grants before migrating.',
+      `${applicationName} has existing connections from unenrolled logins. Quarantine database admission and have the administrator remove those sessions before migrating.`,
     );
   }
 }
@@ -411,6 +436,7 @@ export async function enforceMigrationSecurity(
  * Deployment admission must remain closed for the entire migration window. */
 export async function enforceMigrationQuiescence(
   client: pg.PoolClient,
+  applicationName: string,
 ): Promise<void> {
   await client.query('SELECT pg_stat_clear_snapshot()');
   const sessions = await client.query<{ present: boolean }>(`
@@ -431,29 +457,7 @@ export async function enforceMigrationQuiescence(
   `);
   if (sessions.rows[0]?.present !== false) {
     throw new Error(
-      'Studio has existing runtime connections or prepared transactions. Keep admission closed and stop all web, worker and backup processes before applying pending migrations.',
+      `${applicationName} has existing runtime connections or prepared transactions. Keep admission closed and stop all web, worker and backup processes before applying pending migrations.`,
     );
-  }
-}
-
-/** Table REVOKE ALL also removes corresponding column grants in PostgreSQL. */
-export async function protectMigrationEvidence(
-  client: pg.PoolClient,
-): Promise<void> {
-  await client.query(`REVOKE ALL ON SCHEMA studio_migrations FROM PUBLIC, studio_app, studio_maintenance;
-    REVOKE ALL ON studio_migrations.history FROM PUBLIC, studio_app, studio_maintenance;
-    REVOKE ALL ON public."schemaFingerprint" FROM PUBLIC, studio_app, studio_maintenance;
-    GRANT SELECT ON public."schemaFingerprint" TO studio_app, studio_maintenance`);
-  const backup = await client.query<{ present: boolean }>(
-    'SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1) AS present',
-    [BACKUP_ROLE],
-  );
-  if (backup.rows[0]?.present) {
-    // Backup provisioning owns read access. Remove writes and delegation,
-    // including column grants, without granting reads before its sidecar runs.
-    await client.query(`REVOKE CREATE ON SCHEMA studio_migrations FROM ${BACKUP_ROLE};
-      REVOKE GRANT OPTION FOR USAGE ON SCHEMA studio_migrations FROM ${BACKUP_ROLE};
-      REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON studio_migrations.history, public."schemaFingerprint" FROM ${BACKUP_ROLE};
-      REVOKE GRANT OPTION FOR SELECT ON studio_migrations.history, public."schemaFingerprint" FROM ${BACKUP_ROLE}`);
   }
 }

@@ -20,7 +20,10 @@ export function validateRoleNames(roles: readonly string[]): void {
 }
 
 /** Repeatable operator security, separate from immutable schema sidecars. */
-export function runtimeRolesSql(roles: readonly string[]): string {
+export function runtimeRolesSql(
+  roles: readonly string[],
+  applicationName = 'Studio',
+): string {
   validateRoleNames(roles);
   const names = roles.map(escapeLiteral).join(', ');
   const body = `DECLARE conflicting_constraint text;
@@ -49,13 +52,13 @@ ${roles
       SELECT 1 FROM pg_roles WHERE rolname IN (${names})
         AND (rolsuper OR rolbypassrls OR rolcanlogin OR rolcreaterole OR rolcreatedb OR rolreplication)
     ) THEN
-    RAISE EXCEPTION 'Studio runtime roles must be NOLOGIN, NOSUPERUSER, NOBYPASSRLS, NOCREATEROLE, NOCREATEDB, and NOREPLICATION.' USING ERRCODE = '42501';
+    RAISE EXCEPTION ${escapeLiteral(`${applicationName} runtime roles must be NOLOGIN, NOSUPERUSER, NOBYPASSRLS, NOCREATEROLE, NOCREATEDB, and NOREPLICATION.`)} USING ERRCODE = '42501';
   END IF;
   IF EXISTS (
     SELECT 1 FROM pg_auth_members membership JOIN pg_roles role ON role.oid = membership.member
     WHERE role.rolname IN (${names})
   ) THEN
-    RAISE EXCEPTION 'Studio runtime roles must have no parent memberships.' USING ERRCODE = '42501';
+    RAISE EXCEPTION ${escapeLiteral(`${applicationName} runtime roles must have no parent memberships.`)} USING ERRCODE = '42501';
   END IF;
 END;`;
   // Quoting the whole body also protects role names containing dollar tags.

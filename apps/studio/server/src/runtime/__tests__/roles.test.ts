@@ -17,6 +17,7 @@ import { describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 
 import type { contract } from '@codaco/studio-rpc';
+import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
@@ -25,7 +26,6 @@ import {
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
-import { readMigrations } from '../../db/migrations/artifact.ts';
 import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createPool } from '../../db/pool.ts';
 import type { DbEnv } from '../../env.ts';

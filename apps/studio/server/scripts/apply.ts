@@ -1,13 +1,12 @@
-import { createHash } from 'node:crypto';
+import { pushSchema } from 'drizzle-kit/api-postgres';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { escapeIdentifier } from 'pg';
+import type pg from 'pg';
 
 import {
-  generateDrizzleJson,
-  generateMigration,
-  pushSchema,
-} from 'drizzle-kit/api-postgres';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import pg from 'pg';
-
+  renderPostgresSchemaStatements,
+  fingerprintPostgresSchema,
+} from '@codaco/studio-sync/postgres-migration-authoring';
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
 
@@ -26,11 +25,7 @@ import { seed, type SeedOptions } from '../src/db/seed.ts';
 let renderedDrizzleSchema: Promise<string[]> | undefined;
 
 export function renderDrizzleSchemaStatements(): Promise<string[]> {
-  renderedDrizzleSchema ??= (async () =>
-    generateMigration(
-      await generateDrizzleJson({}),
-      await generateDrizzleJson(SCHEMA),
-    ))();
+  renderedDrizzleSchema ??= renderPostgresSchemaStatements(SCHEMA);
   return renderedDrizzleSchema;
 }
 
@@ -41,9 +36,10 @@ export async function renderSchemaStatements(): Promise<string[]> {
 }
 
 export async function computeSchemaFingerprint(): Promise<string> {
-  return createHash('sha256')
-    .update((await renderSchemaStatements()).join('\n'))
-    .digest('hex');
+  return fingerprintPostgresSchema(
+    await renderDrizzleSchemaStatements(),
+    SIDECARS,
+  );
 }
 
 export type ApplyOutcome = {
@@ -138,7 +134,7 @@ async function sweepScratch(pool: pg.Pool): Promise<void> {
   );
   for (const { nspname } of leftoverSchemas.rows) {
     await pool.query(
-      `drop schema if exists ${pg.escapeIdentifier(nspname)} cascade`,
+      `drop schema if exists ${escapeIdentifier(nspname)} cascade`,
     );
   }
   if (leftoverSchemas.rowCount) {
@@ -150,7 +146,7 @@ async function sweepScratch(pool: pg.Pool): Promise<void> {
   );
   for (const { datname } of leftoverDatabases.rows) {
     await pool.query(
-      `drop database if exists ${pg.escapeIdentifier(datname)} with (force)`,
+      `drop database if exists ${escapeIdentifier(datname)} with (force)`,
     );
   }
   if (leftoverDatabases.rowCount) {

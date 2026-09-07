@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { escapeIdentifier, type Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import {
@@ -26,7 +27,6 @@ import {
 } from '../../__tests__/support/postgres.ts';
 import { createMailer, type InvitationMailer } from '../../auth/email.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
-import { readMigrations } from '../../db/migrations/artifact.ts';
 import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createPool } from '../../db/pool.ts';
 import { DEV } from '../../env/catalogue.ts';

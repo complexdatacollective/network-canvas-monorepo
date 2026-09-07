@@ -155,6 +155,57 @@ migration evidence without giving the runtime a direct grant on that evidence.
 A database with those definitions needs its provenance investigated and a
 verified restore, rather than deletion of history or hand-stamping a version.
 
+Large-object creation is an additional administrator provisioning step in
+**each dedicated database**. PostgreSQL normally grants PUBLIC permission to
+create these persistent objects even without table write privileges. Before
+migration, while application services remain stopped, connect to the Studio
+database as the built-in function owner or provider administrator and run:
+
+```sql
+REVOKE EXECUTE ON FUNCTION
+  pg_catalog.lo_create(oid), pg_catalog.lo_creat(integer),
+  pg_catalog.lo_from_bytea(oid, bytea), pg_catalog.lo_import(text),
+  pg_catalog.lo_import(text, oid), pg_catalog.lo_export(oid, text)
+FROM PUBLIC, studio_app, studio_maintenance, studio_runtime;
+```
+
+Installer authors use `revokeLargeObjectPrivilegesSql` from
+`@codaco/studio-sync/role-bootstrap`, passing the existing restricted roles and
+logins. The migration verifier uses the same reviewed function inventory.
+The helper grants no administrator privileges and still requires an
+administrator connection to each target database.
+
+Include any pre-provisioned backup role and login in that revocation. Remove
+unexpected direct grants too; revoking PUBLIC does not remove a role-specific
+EXECUTE grant. If an administrator-owned restore needs to create large objects,
+grant only its separate restore identity EXECUTE on the required creation
+functions. A database owner without ownership of these built-in functions
+cannot revoke their grants; have the provider administrator complete this step.
+The migration checks effective privileges and refuses unsafe access even when
+no large objects exist. It never grants a backup identity persistent writes.
+
+Neither runtime nor backup identities may have SET permission on
+`lo_compat_privileges` or `session_replication_role`. Clear unsafe database,
+role, and role-in-database defaults as well: revoking SET does not remove
+stored defaults that new connections apply. Migration requires its own
+connection to use `lo_compat_privileges=off` and
+`session_replication_role=origin`, and refuses every applicable unsafe stored
+default, including one currently shadowed by an override. PostgreSQL documents
+these [stored defaults](https://www.postgresql.org/docs/18/catalog-pg-db-role-setting.html)
+and the [large-object functions](https://www.postgresql.org/docs/18/lo-funcs.html).
+
+Runtime roles may not hold TRUNCATE, REFERENCES (including column grants),
+TRIGGER, or MAINTAIN on ordinary or partitioned application tables. In
+particular, TRUNCATE bypasses row-level security. Runtime sequence grants may
+include USAGE and SELECT but never UPDATE: setval can rewind or exhaust a
+sequence independently of table access. Studio supports invoker
+triggers, but refuses SECURITY DEFINER triggers and non-SELECT rewrite rules,
+including disabled definitions: [rewrite actions use the relation owner's
+privileges](https://www.postgresql.org/docs/18/rules-privileges.html) and can forge
+migration evidence without giving the runtime a direct grant on that evidence.
+A database with those definitions needs its provenance investigated and a
+verified restore, rather than deletion of history or hand-stamping a version.
+
 Enrolled logins must not have memberships granted to an unenrolled role:
 SET-only membership can impersonate an owner even without inherited privileges.
 Studio refuses PUBLIC or shared-role CONNECT, unexpected direct or inherited
