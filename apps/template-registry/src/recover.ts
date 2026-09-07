@@ -19,8 +19,13 @@ if (import.meta.main) {
     );
     const pool = createPostgresPool({
       connectionString: configuration.databaseUrl,
+      // Recovery Compose owns this URL and always uses the database owner.
+      // Parse and pin that identity before applying the shared pool bounds;
+      // an unparsed URL could otherwise restore conflicting startup options.
+      role: 'registry_migrator',
       max: 1,
       onIdleError: () => logRegistryDiagnostic('REGISTRY_DATABASE_IDLE_ERROR'),
+      roleMismatchCode: 'REGISTRY_DATABASE_ROLE_MISMATCH',
     });
     const backupPool = createPostgresPool({
       connectionString: configuration.backupDatabaseUrl,

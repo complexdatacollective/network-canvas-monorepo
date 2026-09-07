@@ -179,6 +179,12 @@ DO $$ BEGIN
     RAISE EXCEPTION 'Restore requires an empty database without other connections';
   END IF;
 END $$;
+-- Recovery never opens the Studio application identities. Quarantine them
+-- before the first restore write and retain only the read-only backup login
+-- needed for the later recovery verification.
+ALTER ROLE studio_runtime NOLOGIN;
+ALTER ROLE studio_maintenance_runtime NOLOGIN;
+ALTER ROLE studio_migrator NOLOGIN;
 SQL
 compose exec -T registry-postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d registry <<'SQL'
 DO $$ BEGIN
@@ -214,10 +220,28 @@ compose run --rm --no-deps -T --entrypoint tar registry-minio -C /data -xf - \
 compose run --rm --no-deps -T --entrypoint tar client-assets -C /retained-assets -xf - \
   < "$backup/client-assets.tar"
 compose run --rm --no-deps -T client-assets verify --directory /retained-assets
+# The init jobs deliberately use --no-deps so recovery cannot start an
+# unreviewed service graph. Start only the two internal object-store daemons
+# after their volumes have been restored, then let the bounded init jobs wait
+# for and reconcile those exact endpoints.
+compose up -d minio registry-minio
 compose run --rm --no-deps -T minio-init
 compose run --rm --no-deps -T registry-minio-init
 # Validate the restored enrollment while every HTTP and cleanup process remains
-# stopped, then close every Registry writer before the recovery transaction.
+# stopped. Recovery alone receives a bounded database-owner login window; the
+# trap closes it after any later failure without reopening runtime identities.
+registry_migrator_open=0
+close_registry_migrator() {
+  if [ "$registry_migrator_open" -eq 1 ]; then
+    compose exec -T registry-postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
+ALTER ROLE registry_migrator NOLOGIN;
+SQL
+    registry_migrator_open=0
+  fi
+}
+trap close_registry_migrator EXIT
+trap 'exit 1' HUP INT TERM
+registry_migrator_open=1
 compose exec -T registry-postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
 ALTER ROLE registry_runtime LOGIN;
 ALTER ROLE registry_operations LOGIN;
@@ -228,7 +252,6 @@ compose run --rm --no-deps -T registry-backup-verify
 compose exec -T registry-postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
 ALTER ROLE registry_runtime NOLOGIN;
 ALTER ROLE registry_operations NOLOGIN;
-ALTER ROLE registry_migrator NOLOGIN;
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = 'registry') THEN
     RAISE EXCEPTION 'Registry recovery requires no surviving database sessions';
@@ -236,4 +259,6 @@ DO $$ BEGIN
 END $$;
 SQL
 compose run --rm --no-deps -T registry-recover-verify
+close_registry_migrator
+trap - EXIT HUP INT TERM
 printf '%s\n' 'Data restored and Registry custody reconciled. Admission, Registry HTTP, and all workers remain closed.'

@@ -34,6 +34,10 @@ COPY --from=pruner /repo/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /repo/out/full/ .
 COPY apps/studio/deployment/installer/configuration-files.json ./apps/studio/deployment/installer/configuration-files.json
+# Turbo does not include Vite configuration helpers in the pruned workspace,
+# but the client configuration imports both modules while building.
+COPY apps/studio/scripts/telemetry-plugins.ts ./apps/studio/scripts/telemetry-plugins.ts
+COPY scripts/posthog-source-maps-plugin.ts ./scripts/posthog-source-maps-plugin.ts
 RUN pnpm --filter @codaco/studio-client build && pnpm --filter @codaco/studio-server build
 # pnpm's legacy deployment re-resolves peer labels even after a frozen build.
 RUN pnpm --filter @codaco/studio-server deploy --prod --legacy /deploy
