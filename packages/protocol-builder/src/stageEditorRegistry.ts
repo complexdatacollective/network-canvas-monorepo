@@ -107,6 +107,42 @@ const REGISTRY_PARTS = [
 export const stageEditorRegistry: StageEditorRegistryPart =
   composeStageEditorRegistry(...REGISTRY_PARTS);
 
+/**
+ * A registry with a host's own editors over the top.
+ *
+ * A host supplies a registry to ADD an interface it owns or to REPLACE one the
+ * package ships. It never supplies one to take the rest away — and dispatching
+ * through what it handed over did exactly that: a host naming only
+ * `Information` would leave every other stage throwing
+ * `UnregisteredStageTypeError`, in the host, from the day the first family
+ * lands. Nothing shows it while the package's own registry is still empty,
+ * which is why it cannot wait for the families to be got right.
+ *
+ * Not `composeStageEditorRegistry`, which refuses a second claim on an
+ * interface: two FAMILIES claiming one is a mistake with no answer, while a
+ * host claiming one the package also ships is what the prop is FOR. So overlap
+ * here means the host wins, and an entry the host left empty claims nothing —
+ * a key holding `undefined` is not a way to delete an editor the package
+ * ships, here or in a family part.
+ *
+ * Takes the base rather than reading `stageEditorRegistry` itself, so it is a
+ * function of what it is given: the only caller passes the package's own, and
+ * a test can hand it a registry that HAS families in it, which is the state
+ * this exists for and the one this branch cannot otherwise produce.
+ */
+export function stageEditorsWithHostOverrides(
+  base: StageEditorRegistryPart,
+  hostRegistry: StageEditorRegistryPart | undefined,
+): StageEditorRegistryPart {
+  if (hostRegistry === undefined) return base;
+  const merged: StageEditorRegistryPart = { ...base };
+  for (const [stageType, editor] of Object.entries(hostRegistry)) {
+    if (editor === undefined) continue;
+    Object.assign(merged, { [stageType]: editor });
+  }
+  return Object.freeze(merged);
+}
+
 /** The intersection of a tuple of family parts. `keyof` it is the coverage. */
 type MergeAll<Parts extends readonly unknown[]> = Parts extends readonly [
   infer Head,
