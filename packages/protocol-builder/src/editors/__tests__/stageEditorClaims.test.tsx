@@ -8,6 +8,7 @@ import { AlterEdgeFormStageEditor } from '../forms/AlterEdgeFormStageEditor.tsx'
 import { AlterFormStageEditor } from '../forms/AlterFormStageEditor.tsx';
 import { EgoFormStageEditor } from '../forms/EgoFormStageEditor.tsx';
 import { InformationStageEditor } from '../forms/InformationStageEditor.tsx';
+import { NameGeneratorStageEditor } from '../nameGenerators/NameGeneratorStageEditor.tsx';
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
 vi.mock('../../fields/RichTextField.tsx', () => ({
@@ -32,7 +33,7 @@ vi.mock('../../fields/RichTextField.tsx', () => ({
 }));
 
 /**
- * Every interface this family claims, the editor that claims it, and the
+ * Every interface these two families claim, the editor that claims it, and the
  * fixture stage a host would open on it.
  *
  * Written out rather than derived from the parts, because the parts are what
@@ -66,10 +67,16 @@ const CLAIMS = [
     label: 'Information',
     editor: InformationStageEditor,
   },
+  {
+    stageType: 'NameGenerator',
+    stageId: 'name-generator-1',
+    label: 'Name Generator',
+    editor: NameGeneratorStageEditor,
+  },
 ] as const;
 
 /**
- * What a host gets for each interface this family owns.
+ * What a host gets for each interface these families own.
  *
  * The editors are tested one at a time elsewhere; this is about the wiring
  * between them and the package. A family that exports a part nobody added to
@@ -77,7 +84,7 @@ const CLAIMS = [
  * interface, has editors that all pass their own tests and a researcher who
  * opens the wrong one — or none at all.
  */
-describe('the interfaces the form family claims', () => {
+describe('the interfaces the form and name-generator families claim', () => {
   it.each(CLAIMS)(
     'resolves $stageType to this family’s editor',
     ({ stageType, editor }) => {
@@ -105,9 +112,10 @@ describe('the interfaces the form family claims', () => {
   /**
    * Orientation is not an interface's own decision.
    *
-   * The position line belongs to the shell every editor composes rather than
-   * to any one family, so a researcher is told where they are in the interview
-   * on the same terms whichever stage they clicked in the timeline. It is read
+   * The position line used to be a name-generator frame's private component,
+   * so one of these five said where the researcher was in the interview and
+   * four did not — the same protocol, opened from the same timeline, orienting
+   * the researcher or not depending on which stage they clicked. It is read
    * from the protocol the editor is already holding, so the expected number is
    * derived from the stage order rather than written out here.
    */
