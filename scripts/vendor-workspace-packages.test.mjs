@@ -558,16 +558,28 @@ test('a lockfile change explained only by a manifest outside the closure is refu
 });
 
 // A pnpm v9 lockfile from importer and snapshot edge lists.
-const lock = ({ importers = {}, snapshots = {} }) => {
+const lock = ({ importers = {}, devImporters = {}, snapshots = {} }) => {
   const out = ["lockfileVersion: '9.0'", '', 'importers:'];
-  for (const [path, deps] of Object.entries(importers)) {
-    out.push(`  ${path}:`, '    dependencies:');
-    for (const [dep, version] of Object.entries(deps)) {
-      out.push(
-        `      ${dep}:`,
-        `        specifier: ^1`,
-        `        version: ${version}`,
-      );
+  const paths = new Set([
+    ...Object.keys(importers),
+    ...Object.keys(devImporters),
+  ]);
+  for (const path of paths) {
+    out.push(`  ${path}:`);
+    for (const [field, source] of Object.entries({
+      dependencies: importers,
+      devDependencies: devImporters,
+    })) {
+      const deps = source[path];
+      if (!deps) continue;
+      out.push(`    ${field}:`);
+      for (const [dep, version] of Object.entries(deps)) {
+        out.push(
+          `      ${dep}:`,
+          `        specifier: ^1`,
+          `        version: ${version}`,
+        );
+      }
     }
   }
   out.push('', 'packages:', '', 'snapshots:');
@@ -833,4 +845,37 @@ test('a re-pin of a catalog entry the mirror itself consumes explains a lockfile
       mirrorCatalogEntries: ['lodash'],
     });
   });
+});
+
+// A packed package's snapshot carries only its published dependencies; a
+// closure package's changed devDependency (a compiler, a build plugin) is
+// already in the rebuilt tarball and must not be reported as missing.
+test('a closure package’s devDependency edge is not compared against its snapshot', () => {
+  const mirrorLock = lock({
+    snapshots: { "'@x/ui@file:vendor/x-ui-1.0.0.tgz'": { foo: '1.0.0' } },
+  });
+  assertBranchResolutionsCarried({
+    ...graphArgs,
+    refLock: lock({
+      importers: { 'packages/ui': { foo: '1.0.0' } },
+      devImporters: { 'packages/ui': { esbuild: '0.20.0' } },
+    }),
+    headLock: lock({
+      importers: { 'packages/ui': { foo: '1.0.0' } },
+      devImporters: { 'packages/ui': { esbuild: '0.21.0' } },
+    }),
+    mirrorLock,
+  });
+  // The app's devDependencies are installed by the image build, so the
+  // root importer comparison still covers them.
+  assert.throws(
+    () =>
+      assertBranchResolutionsCarried({
+        ...graphArgs,
+        refLock: lock({ devImporters: { 'apps/app': { vitest: '3.0.0' } } }),
+        headLock: lock({ devImporters: { 'apps/app': { vitest: '3.0.1' } } }),
+        mirrorLock: lock({ devImporters: { '.': { vitest: '3.0.0' } } }),
+      }),
+    /apps\/app → vitest: the branch resolves 3\.0\.1; the image would keep 3\.0\.0/,
+  );
 });

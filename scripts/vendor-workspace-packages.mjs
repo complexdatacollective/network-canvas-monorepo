@@ -320,6 +320,7 @@ const unquote = (key) => key.replace(/^'(.*)'$/, '$1');
 
 export function lockfileEdges(lockfile) {
   const importers = new Map();
+  const importerDevDeps = new Map();
   const snapshots = new Map();
   let section = null;
   let key = null;
@@ -345,6 +346,10 @@ export function lockfileEdges(lockfile) {
         const match = /^version:\s*(.+)$/.exec(text);
         if (match && /dependencies$/i.test(field ?? '')) {
           importers.get(key).set(dep, unquote(match[1]));
+          if (field === 'devDependencies') {
+            if (!importerDevDeps.has(key)) importerDevDeps.set(key, new Set());
+            importerDevDeps.get(key).add(dep);
+          }
         }
       }
     } else if (section === 'snapshots') {
@@ -365,7 +370,7 @@ export function lockfileEdges(lockfile) {
       }
     }
   }
-  return { importers, snapshots };
+  return { importers, importerDevDeps, snapshots };
 }
 
 // After the mirror has resolved: every dependency edge the branch changed
@@ -377,9 +382,12 @@ export function lockfileEdges(lockfile) {
 // at the released version. The app's importer corresponds to the mirror's
 // root importer; a closure package's importer to every snapshot the mirror
 // has for it (a tarball or a registry version, in each peer context); every
-// other snapshot to the mirror's snapshot with the same full key. An edge the
-// mirror does not have cannot be checked and is not; edges to workspace
-// packages are the vendoring's business.
+// other snapshot to the mirror's snapshot with the same full key. A packed
+// package's snapshot carries only its published dependencies, so a closure
+// package's devDependency edges — build inputs, already in the rebuilt
+// tarball — are not compared against it. An edge the mirror does not have
+// cannot be checked and is not; edges to workspace packages are the
+// vendoring's business.
 export function assertBranchResolutionsCarried({
   refLock,
   headLock,
@@ -392,10 +400,10 @@ export function assertBranchResolutionsCarried({
   const head = lockfileEdges(headLock);
   const mirror = lockfileEdges(mirrorLock);
   const missing = [];
-  const check = (label, refEdges, headEdges, mirrorEdges) => {
+  const check = (label, refEdges, headEdges, mirrorEdges, skip = new Set()) => {
     if (!mirrorEdges) return;
     for (const [dep, version] of headEdges) {
-      if (workspaceNames.has(dep)) continue;
+      if (workspaceNames.has(dep) || skip.has(dep)) continue;
       if (refEdges?.get(dep) === version) continue;
       const inMirror = mirrorEdges.get(dep);
       if (inMirror === version) continue;
@@ -422,6 +430,7 @@ export function assertBranchResolutionsCarried({
         ref.importers.get(importer),
         head.importers.get(importer) ?? new Map(),
         edges,
+        head.importerDevDeps.get(importer),
       );
     }
   }

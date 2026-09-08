@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import {
   assertCommitPinnedActionUses,
   assertFrescoPublisherContract,
+  mirrorCatalogEntries,
   seedMirror,
   withCatalogOverrides,
 } from './mirror-app.mjs';
@@ -486,4 +487,25 @@ test('seeding brings catalog-backed overrides to the current catalog and adds no
 
   const older = "overrides:\n  sharp: '^0.35.3'\n";
   assert.equal(withCatalogOverrides(older), older);
+});
+
+// The catalog entries the mirror consumes on the app's behalf are read off
+// the tree, so a re-pin of any of them is recognised as carried: the two
+// override values, ts-reset, and everything the vendored Vitest config names
+// through the catalog.
+test('the mirror’s own catalog entries include the vendored Vitest config’s', () => {
+  const entries = mirrorCatalogEntries();
+  for (const expected of [
+    'effect',
+    'postcss',
+    '@total-typescript/ts-reset',
+    '@testing-library/dom',
+    'motion',
+    'vitest',
+  ]) {
+    assert.ok(
+      entries.includes(expected),
+      `${expected} missing from ${entries.join(', ')}`,
+    );
+  }
 });

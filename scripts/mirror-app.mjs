@@ -282,14 +282,43 @@ const CATALOG_BACKED_OVERRIDES = [
   ['postcss', 'postcss'],
 ];
 
+// The catalog entries a manifest names with a `catalog:` specifier, in any
+// dependency field.
+function catalogEntriesNamedBy(manifestPath) {
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const names = [];
+  for (const field of [
+    'dependencies',
+    'devDependencies',
+    'optionalDependencies',
+    'peerDependencies',
+  ]) {
+    for (const [name, spec] of Object.entries(manifest[field] ?? {})) {
+      if (typeof spec === 'string' && spec.startsWith('catalog:')) {
+        names.push(name);
+      }
+    }
+  }
+  return names;
+}
+
 // Every catalog entry the mirror reads on the app's behalf: the override
-// values above, and the ts-reset devDependency `vendorSharedTsconfig` adds to
-// the staged manifest. A hotfix that re-pins one of these is carried even
-// though no workspace manifest names it.
-const MIRROR_CATALOG_ENTRIES = [
-  ...CATALOG_BACKED_OVERRIDES.map(([, entry]) => entry),
-  '@total-typescript/ts-reset',
-];
+// values above, the ts-reset devDependency `vendorSharedTsconfig` adds to the
+// staged manifest, and whatever the vendored Vitest config's manifest names
+// through the catalog (`vendorSharedVitestConfig` resolves it whole). A
+// hotfix that re-pins one of these is carried even though no workspace
+// manifest names it. Read from the tree being mirrored, at call time.
+export function mirrorCatalogEntries() {
+  return [
+    ...new Set([
+      ...CATALOG_BACKED_OVERRIDES.map(([, entry]) => entry),
+      '@total-typescript/ts-reset',
+      ...catalogEntriesNamedBy(
+        join(repoRoot, 'tooling', 'vitest', 'package.json'),
+      ),
+    ]),
+  ];
+}
 
 // A seeded (released) policy with its catalog-backed override values brought
 // to THIS tree's catalog. pnpm applies an override over a direct specifier,
@@ -681,7 +710,7 @@ function stage({
     const wsPackages = readWorkspacePackages();
     const closure = collectClosure(wsPackages, app);
     assertSpecifierDrivenChanges(vendorChangedSince, app, closure, wsPackages, {
-      mirrorCatalogEntries: MIRROR_CATALOG_ENTRIES,
+      mirrorCatalogEntries: mirrorCatalogEntries(),
     });
     const changed = packagesChangedSince(
       vendorChangedSince,
