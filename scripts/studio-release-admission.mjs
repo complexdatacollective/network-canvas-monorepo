@@ -27,7 +27,8 @@ export async function evaluateStudioPublication(cwd, source, { request } = {}) {
     git(['status', '--porcelain', '--untracked-files=normal'])
   )
     throw new Error('Studio publication requires the clean reviewed checkout.');
-  git(['merge-base', '--is-ancestor', source, 'refs/remotes/origin/main']);
+  if (git(['rev-parse', 'refs/remotes/origin/main']) !== source)
+    throw new Error('Studio publication requires the current origin/main tip.');
   const ci = await assertSuccessfulStudioSourceCI(source, { request });
   const candidate = readStudioCandidate(cwd, source);
   const eligibility = await studioReleaseEligibility(candidate);

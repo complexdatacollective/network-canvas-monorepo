@@ -97,6 +97,23 @@ test('refuses a clean source outside origin/main', async (t) => {
   await assert.rejects(() => evaluateStudioPublication(f.cwd, side));
 });
 
+test('refuses a clean reviewed ancestor after origin/main advances', async (t) => {
+  const f = fixture(t);
+  originMain(f, t);
+  const reviewed = source(f);
+  f.write('newer-main.txt', 'newer main\n');
+  f.commit();
+  f.git('push', '-q', 'origin', 'main');
+  f.git('reset', '--hard', reviewed);
+  await assert.rejects(
+    () =>
+      evaluateStudioPublication(f.cwd, reviewed, {
+        request: successfulCIRequest(reviewed),
+      }),
+    /current origin\/main tip/,
+  );
+});
+
 test('derives MinIO evidence from a clean committed Dockerfile revision', async (t) => {
   const f = fixture(t);
   f.write(
