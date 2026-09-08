@@ -35,6 +35,12 @@ export const serverSchemas = {
     .max(256)
     .regex(/^[!-~]+$/)
     .optional(),
+  STUDIO_MANAGED_INGRESS_SECRET: z
+    .string()
+    .min(32)
+    .max(256)
+    .regex(/^[!-~]+$/)
+    .optional(),
   CLIENT_DIST: z.string().min(1).optional(),
 
   /**
