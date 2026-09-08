@@ -3219,6 +3219,12 @@ importers:
         specifier: 'catalog:'
         version: 4.95.0(@types/node@24.13.3)
 
+  workers/studio-ingress:
+    devDependencies:
+      wrangler:
+        specifier: 'catalog:'
+        version: 4.95.0(@types/node@24.13.3)
+
 packages:
 
   '@adobe/css-tools@4.4.4':

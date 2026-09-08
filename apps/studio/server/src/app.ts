@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'node:crypto';
+
 import { upgradeWebSocket } from '@hono/node-server';
 import { COMMON_ERROR_STATUS_MAP, onError, ORPCError } from '@orpc/server';
 import { RPCHandler } from '@orpc/server/fetch';
@@ -29,6 +31,7 @@ import {
   logOperational,
   type OperationalLogger,
 } from './observability/logger.ts';
+import { isProxyAddress } from './observability/proxy.ts';
 import { observeRequests } from './observability/requests.ts';
 import {
   authorizeMetrics,
@@ -45,6 +48,7 @@ const WS_PATH = '/ws';
 // Hono matches `/storage/*` against the children of /storage but not the bare
 // prefix, so anything covering the whole surface has to name both.
 const STORAGE_PATHS = ['/storage', '/storage/*'];
+const MANAGED_INGRESS_PROOF_HEADER = 'x-studio-managed-ingress-proof';
 const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
   string,
@@ -68,6 +72,17 @@ type CreateAppDeps = {
 };
 
 export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
+  if (
+    env.deploymentMode === 'managed' &&
+    env.db &&
+    (!env.managedIngressSecret ||
+      env.trustedProxies.length === 0 ||
+      env.trustedProxies.some((proxy) => !isProxyAddress(proxy)))
+  ) {
+    throw new Error(
+      'Managed Studio HTTP with a database requires STUDIO_MANAGED_INGRESS_SECRET and TRUSTED_PROXIES',
+    );
+  }
   const app = new Hono<PrincipalVariables>();
 
   // Unexpected failures on the machine surfaces (e.g. the database down
@@ -100,6 +115,28 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       record: observability.metrics.request,
     }),
   );
+  if (env.managedIngressSecret) {
+    const expectedProof = Buffer.from(env.managedIngressSecret);
+    app.use('*', async (c, next) => {
+      // Fly's liveness probe cannot read a runtime secret into a configured
+      // header. Metrics has an independent constant-time bearer gate. These
+      // exact routes make no user identity decision and remain direct-origin
+      // operator surfaces; variants still require ingress proof.
+      if (c.req.path === '/healthz' || c.req.path === '/metrics') return next();
+      const supplied = c.req.header(MANAGED_INGRESS_PROOF_HEADER);
+      const receivedProof = supplied ? Buffer.from(supplied) : undefined;
+      if (
+        !receivedProof ||
+        receivedProof.length !== expectedProof.length ||
+        !timingSafeEqual(receivedProof, expectedProof)
+      ) {
+        return c.json({ title: 'Not Found', status: 404 }, 404, {
+          'Cache-Control': 'no-store',
+        });
+      }
+      await next();
+    });
+  }
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
     enabled,
@@ -130,9 +167,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     if (!env.metricsToken)
       return c.json({ title: 'Not Found', status: 404 }, 404);
     if (!authorizeMetrics(c.req.header('authorization'), env.metricsToken))
-      return c.json({ title: 'Unauthorized', status: 401 }, 401, {
-        'WWW-Authenticate': 'Bearer',
-      });
+      return c.json({ title: 'Not Found', status: 404 }, 404);
     const metrics = await observability.metrics.scrape();
     return c.body(metrics.body, 200, { 'Content-Type': metrics.contentType });
   });

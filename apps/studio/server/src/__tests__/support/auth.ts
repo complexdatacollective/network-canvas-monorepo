@@ -1,10 +1,10 @@
 import type pg from 'pg';
 import { expect } from 'vitest';
 
-import { createApp } from '../../app.ts';
 import { createBetterAuthService } from '../../auth/better-auth.ts';
 import type { AuthService } from '../../auth/service.ts';
 import type { StudioEnv } from '../../env.ts';
+import { createHttpTestApp as createApp } from './http-app.ts';
 
 /**
  * An AuthService double that answers every method with its null case; tests

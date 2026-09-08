@@ -1,12 +1,12 @@
 import { safe } from '@orpc/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../db/seed.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 import { signInWithMagicLink, stubAuthService } from './support/auth.ts';
+import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,
