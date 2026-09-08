@@ -19,12 +19,8 @@ import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
+import { isOptionType } from '../collectableTypes.ts';
 import { useLockedOptions, usePromptVariablePool } from './promptCodebook.ts';
-
-const OPTION_TYPES: readonly VariableType[] = Object.freeze([
-  'categorical',
-  'ordinal',
-]);
 
 /**
  * Its own area rather than the census families': this control is the general
@@ -227,7 +223,7 @@ export default function PromptAttributeField({
     editLabel !== undefined &&
     picked !== undefined &&
     lockedOptions === undefined &&
-    OPTION_TYPES.includes(createType)
+    isOptionType(createType)
       ? { label: editLabel, variableId: picked }
       : null;
   /** The validation control, for a pick whose participant types their answer. */
@@ -428,9 +424,7 @@ export default function PromptAttributeField({
  * number.
  */
 const newVariableDraft = (type: VariableType): CodebookVariableDraft =>
-  OPTION_TYPES.includes(type)
-    ? { name: '', type, options: [] }
-    : { name: '', type };
+  isOptionType(type) ? { name: '', type, options: [] } : { name: '', type };
 
 /** The attribute as the codebook currently holds it. */
 const existingVariableDraft = (
