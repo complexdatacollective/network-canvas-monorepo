@@ -31,7 +31,13 @@ variable "crunchybridge_team_id" {
 
 variable "crunchybridge_hobby_2_plan_id" {
   type        = string
-  description = "Account-visible Hobby-2 plan id; confirm it from the provider data source before planning."
+  description = "Pinned Hobby-2 plan identity; the provider catalogue must confirm its CPU and memory before provisioning."
+  default     = "hobby-2"
+  validation {
+    condition     = var.crunchybridge_hobby_2_plan_id == jsondecode(file("${path.module}/candidate-sizing.json")).postgres.planId
+    error_message = "The PostgreSQL plan must match candidate-sizing.json; other plans require a reviewed sizing and price change."
+  }
+
 }
 
 variable "postgres_major_version" {
@@ -49,8 +55,8 @@ variable "postgres_storage_gb" {
   default     = 20
   description = "Candidate cluster storage; capacity and growth are live qualification gates."
   validation {
-    condition     = var.postgres_storage_gb >= 20
-    error_message = "The candidate must allocate at least the separately costed 20 GB baseline."
+    condition     = var.postgres_storage_gb == jsondecode(file("${path.module}/candidate-sizing.json")).postgres.storageGb
+    error_message = "PostgreSQL storage must match candidate-sizing.json; growth requires a reviewed capacity and price change."
   }
 }
 
@@ -126,6 +132,15 @@ variable "kms_wrapping_principal_arns" {
     condition     = length(setintersection(toset(flatten([for arns in values(var.kms_wrapping_principal_arns) : tolist(arns)])), toset(flatten([for arns in values(var.kms_runtime_decrypt_principal_arns) : tolist(arns)])))) == 0
     error_message = "Runtime identities must not wrap roots for either environment."
   }
+  validation {
+    condition     = try(length(setintersection(var.kms_wrapping_principal_arns.production, var.kms_wrapping_principal_arns.staging)) == 0, false)
+    error_message = "Production and staging wrapping identities must be disjoint."
+  }
+  validation {
+    condition     = length(setintersection(var.kms_admin_principal_arns, toset(flatten([for arns in values(var.kms_wrapping_principal_arns) : tolist(arns)])))) == 0
+    error_message = "Root wrapping identities must not administer KMS keys."
+  }
+
 }
 
 variable "signed_image_references" {

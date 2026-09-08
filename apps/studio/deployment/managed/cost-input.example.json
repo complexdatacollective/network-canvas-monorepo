@@ -178,5 +178,6 @@
   },
   "flyMonthlyHours": 744,
   "validatorMemoryGb": 2,
-  "validatorDurationSeconds": 30
+  "validatorDurationSeconds": 30,
+  "postgresPlanId": "hobby-2"
 }

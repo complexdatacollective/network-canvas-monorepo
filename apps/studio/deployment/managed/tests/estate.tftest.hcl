@@ -1,7 +1,14 @@
 mock_provider "aws" {}
 mock_provider "b2" {}
 mock_provider "cloudflare" {}
-mock_provider "crunchybridge" {}
+mock_provider "crunchybridge" {
+  mock_data "crunchybridge_cloudprovider" {
+    defaults = {
+      plans   = [{ plan_id = "hobby-2", plan_name = "Hobby-2", plan_cpu = 1, plan_memory = 2 }]
+      regions = [{ region_id = "us-east-1", region_name = "US East", region_location = "N. Virginia" }]
+    }
+  }
+}
 
 variables {
   estate_name                      = "networkcanvas-studio"
@@ -9,7 +16,7 @@ variables {
   cloudflare_api_token             = "fixture"
   crunchybridge_application_secret = "fixture"
   crunchybridge_team_id            = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
-  crunchybridge_hobby_2_plan_id    = "hobby-2-fixture"
+  crunchybridge_hobby_2_plan_id    = "hobby-2"
   b2_application_key_id            = "fixture"
   b2_application_key               = "fixture"
   b2_endpoint                      = "https://api.backblazeb2.com"
@@ -146,4 +153,72 @@ run "reject_unpriced_compute" {
     service_resources = { studio-production = { cpu_kind = "performance", cpus = 2, memory_mb = 8192 }, studio-staging = { cpu_kind = "shared", cpus = 1, memory_mb = 512 }, registry-production = { cpu_kind = "shared", cpus = 1, memory_mb = 512 }, registry-staging = { cpu_kind = "shared", cpus = 1, memory_mb = 512 } }
   }
   expect_failures = [var.service_resources]
+}
+
+run "reject_unpriced_storage" {
+  command = plan
+  variables {
+    postgres_storage_gb = 1000
+  }
+  expect_failures = [var.postgres_storage_gb]
+}
+
+run "reject_unpriced_plan" {
+  command = plan
+  variables {
+    crunchybridge_hobby_2_plan_id = "standard-64"
+  }
+  expect_failures = [var.crunchybridge_hobby_2_plan_id]
+}
+
+run "reject_shared_wrappers" {
+  command = plan
+  variables {
+    kms_wrapping_principal_arns = { production = ["arn:aws:iam::000000000000:role/wrapper"], staging = ["arn:aws:iam::000000000000:role/wrapper"] }
+  }
+  expect_failures = [var.kms_wrapping_principal_arns]
+}
+
+run "reject_wrapper_admin" {
+  command = plan
+  variables {
+    kms_wrapping_principal_arns = { production = ["arn:aws:iam::000000000000:role/kms-admin"], staging = ["arn:aws:iam::000000000000:role/staging-wrapper"] }
+  }
+  expect_failures = [var.kms_wrapping_principal_arns]
+}
+
+run "reject_absent_hobby_catalogue" {
+  command = plan
+  override_data {
+    target = data.crunchybridge_cloudprovider.aws
+    values = {
+      plans   = []
+      regions = [{ region_id = "us-east-1", region_name = "US East", region_location = "Virginia" }]
+    }
+  }
+  expect_failures = [crunchybridge_cluster.postgres]
+}
+
+run "reject_changed_hobby_memory" {
+  command = plan
+  override_data {
+    target = data.crunchybridge_cloudprovider.aws
+    values = {
+      plans   = [{ plan_id = "hobby-2", plan_name = "Hobby-2", plan_cpu = 1, plan_memory = 1 }]
+      regions = [{ region_id = "us-east-1", region_name = "US East", region_location = "Virginia" }]
+    }
+  }
+  expect_failures = [crunchybridge_cluster.postgres]
+}
+
+run "reject_unavailable_aws_region" {
+  command = plan
+  override_data {
+    target = data.crunchybridge_cloudprovider.aws
+    values = {
+      plans   = [{ plan_id = "hobby-2", plan_name = "Hobby-2", plan_cpu = 1, plan_memory = 2 }]
+      regions = []
+    }
+  }
+  expect_failures = [crunchybridge_cluster.postgres]
 }

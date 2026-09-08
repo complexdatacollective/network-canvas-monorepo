@@ -1,6 +1,7 @@
 locals {
-  fly_region = jsondecode(file("${path.module}/candidate-sizing.json")).region
-  aws_region = "us-east-1"
+  fly_region         = jsondecode(file("${path.module}/candidate-sizing.json")).region
+  aws_region         = "us-east-1"
+  postgres_candidate = jsondecode(file("${path.module}/candidate-sizing.json")).postgres
 
   databases = {
     studio-production   = "studio_production"
@@ -60,6 +61,10 @@ resource "cloudflare_r2_bucket" "primary" {
   }
 }
 
+data "crunchybridge_cloudprovider" "aws" {
+  provider_id = "aws"
+}
+
 resource "crunchybridge_cluster" "postgres" {
   team_id       = var.crunchybridge_team_id
   name          = "${var.estate_name}-postgres"
@@ -72,6 +77,17 @@ resource "crunchybridge_cluster" "postgres" {
 
   lifecycle {
     prevent_destroy = true
+    precondition {
+      condition = length([
+        for plan in data.crunchybridge_cloudprovider.aws.plans : plan
+        if plan.plan_id == local.postgres_candidate.planId &&
+        plan.plan_name == local.postgres_candidate.planName &&
+        plan.plan_cpu == local.postgres_candidate.cpu &&
+        plan.plan_memory == local.postgres_candidate.memoryGb
+      ]) == 1 && contains([for region in data.crunchybridge_cloudprovider.aws.regions : region.region_id], local.aws_region)
+      error_message = "The live AWS catalogue must contain exactly the reviewed Hobby-2 CPU/memory profile and us-east-1 region."
+    }
+
   }
 }
 

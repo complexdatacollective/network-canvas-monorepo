@@ -1,6 +1,5 @@
 ---
 '@codaco/studio-server': patch
-'@codaco/template-registry': patch
 ---
 
-Add a pinned, reviewable managed-estate foundation and an explicit monthly cost qualification gate for Studio and the Template Registry.
+Define a pinned managed-hosting candidate with isolated KMS identities and a resource-bound monthly budget estimate. Deployment still requires separate live qualification.
