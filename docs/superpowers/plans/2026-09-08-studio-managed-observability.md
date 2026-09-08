@@ -16,6 +16,8 @@ New Relic Free stops ingestion and platform access after its account limit, but 
 
 Live completion requires current provider prices, collector sizing and retry measurements, delivery to the verified operator mailbox, independent target/collector loss tests, a persistent-budget restart/corruption drill, and dated non-sensitive canaries proving queryability through day 30. No account is provisioned, no email is sent and no retention period is claimed from these implementation decisions.
 
+The local byte counter is not by itself a proof of New Relic account ingestion. New Relic documents decompression and enrichment increasing stored remote-write size, including an illustrative 15-times ratio to compressed input. Its account consumption view is approximate and can lag by about three hours. Qualification must therefore measure stored-byte expansion for the exact bounded metric/log schemas, bound the maximum outstanding traffic during that reporting lag, and reserve that allowance before forwarding. An assumed universal multiplier or a polled usage alert alone cannot establish the pre-limit stop. Missing, stale or inconsistent provider usage evidence must close forwarding; the dedicated Free account remains the independent spending ceiling.
+
 Sources checked on 2026-09-08:
 
 - [Fly log export](https://fly.io/docs/monitoring/exporting-logs/) and [metrics federation](https://fly.io/docs/monitoring/metrics/).
@@ -23,3 +25,4 @@ Sources checked on 2026-09-08:
 - [Raw metric and log retention](https://docs.newrelic.com/docs/data-apis/manage-data/manage-data-retention/) and [Free edition pricing](https://newrelic.com/pricing).
 - [NRQL lost signal](https://docs.newrelic.com/docs/alerts/create-alert/create-alert-condition/create-nrql-alert-conditions/), [email notifications](https://docs.newrelic.com/docs/alerts/get-notified/notification-integrations/) and [usage alerts](https://docs.newrelic.com/docs/accounts/accounts-billing/new-relic-one-pricing-billing/usage-queries-alerts/).
 - [Data Budget prerequisites](https://docs.newrelic.com/docs/data-apis/manage-data/data-ingest-budgets/overview/) and [Pipeline Control costs](https://docs.newrelic.com/docs/new-relic-control/pipeline-control/costs/).
+- [Remote-write sent versus billed bytes](https://docs.newrelic.com/docs/infrastructure/prometheus-integrations/troubleshooting/compare-rw-data-sent-billed-bytes/).
