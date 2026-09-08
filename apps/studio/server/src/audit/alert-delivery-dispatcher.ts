@@ -177,6 +177,7 @@ class AuditAlertDeliveryAdapter implements OutboxAdapter<ClaimedAuditAlert> {
                AND member.user_id = delivery.recipient_user_id
                AND member.role IN ('owner', 'admin')
                AND account."emailVerified"
+               AND NOT account.recovery_disabled
            )
          RETURNING delivery.alert_id`,
       );
@@ -238,6 +239,7 @@ class AuditAlertDeliveryAdapter implements OutboxAdapter<ClaimedAuditAlert> {
            AND (alert.lease_expires_at IS NULL OR alert.lease_expires_at <= clock_timestamp())
            AND member.role IN ('owner', 'admin')
            AND account."emailVerified"
+           AND NOT account.recovery_disabled
          ORDER BY delivery.available_at, delivery.created_at, delivery.id
          FOR UPDATE OF alert, delivery SKIP LOCKED
          LIMIT 1
@@ -289,8 +291,10 @@ class AuditAlertDeliveryAdapter implements OutboxAdapter<ClaimedAuditAlert> {
          AND delivery.suppressed_at IS NULL
          AND delivery.uncertain_at IS NULL
          AND member.role IN ('owner', 'admin')
-         AND account."emailVerified"`,
-      [claim.id, lease.owner],
+         AND account."emailVerified"
+         AND NOT account.recovery_disabled
+         AND account.email = $3`,
+      [claim.id, lease.owner, claim.email],
     );
     return result.rowCount === 1;
   }

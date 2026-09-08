@@ -28,8 +28,9 @@ function policyFor(event: AuditEvent): AlertPolicy | undefined {
 
 /**
  * Materialize the alert and its current privileged recipients inside the same
- * team-locked transaction that appended the immutable event. Team owner/admin
- * membership is the existing researcher-controlled recipient configuration.
+ * team-locked transaction that appended the immutable event. Until a distinct
+ * team alert-preference surface exists, current enabled owner/admin membership
+ * is the delivery policy rather than a stored researcher preference.
  */
 export async function enqueueAuditAlertForEvent(
   client: pg.PoolClient,
@@ -88,7 +89,8 @@ export async function enqueueAuditAlertForEvent(
      CROSS JOIN (VALUES ('email'), ('in_app')) AS channel(name)
      WHERE member.team_id = $1
        AND member.role IN ('owner', 'admin')
-       AND account."emailVerified"`,
+       AND account."emailVerified"
+       AND NOT account.recovery_disabled`,
     [event.teamId, alert.id],
   );
   if ((recipients.rowCount ?? 0) === 0) {
@@ -136,9 +138,16 @@ export async function listInAppAuditAlerts(
      FROM audit_alert_deliveries delivery
      JOIN audit_alert_outbox alert
        ON alert.id = delivery.alert_id AND alert.team_id = delivery.team_id
+     JOIN team_members member
+       ON member.team_id = delivery.team_id
+      AND member.user_id = delivery.recipient_user_id
+     JOIN "user" account ON account.id = member.user_id
      WHERE delivery.team_id = $1
        AND delivery.recipient_user_id = $2
        AND delivery.channel = 'in_app'
+       AND member.role IN ('owner', 'admin')
+       AND account."emailVerified"
+       AND NOT account.recovery_disabled
        AND ($3::bigint IS NULL OR alert.audit_event_sequence < $3::bigint)
      ORDER BY alert.audit_event_sequence DESC
      LIMIT $4`,
@@ -158,7 +167,17 @@ export async function markInAppAuditAlertRead(
        AND team_id = $2
        AND recipient_user_id = $3
        AND channel = 'in_app'
-       AND delivered_at IS NOT NULL`,
+       AND delivered_at IS NOT NULL
+       AND EXISTS (
+         SELECT 1
+         FROM team_members member
+         JOIN "user" account ON account.id = member.user_id
+         WHERE member.team_id = audit_alert_deliveries.team_id
+           AND member.user_id = audit_alert_deliveries.recipient_user_id
+           AND member.role IN ('owner', 'admin')
+           AND account."emailVerified"
+           AND NOT account.recovery_disabled
+       )`,
     [input.id, input.teamId, input.userId],
   );
   return result.rowCount === 1;

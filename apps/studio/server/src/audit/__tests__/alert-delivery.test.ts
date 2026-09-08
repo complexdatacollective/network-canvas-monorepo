@@ -134,6 +134,26 @@ describe.skipIf(!db)('researcher audit-alert delivery', () => {
     ]);
   });
 
+  it('does not address a recovery-disabled privileged account', async () => {
+    await scratch.pool.query(
+      `UPDATE "user" SET recovery_disabled = true WHERE id = $1`,
+      [ADMIN],
+    );
+    const event = await appendAlert(scratch);
+    const rows = await scratch.pool.query<{ recipient_user_id: string }>(
+      `SELECT delivery.recipient_user_id
+       FROM audit_alert_deliveries delivery
+       JOIN audit_alert_outbox alert ON alert.id = delivery.alert_id
+       WHERE alert.audit_event_id = $1
+       ORDER BY delivery.channel`,
+      [event.id],
+    );
+    expect(rows.rows).toEqual([
+      { recipient_user_id: OWNER },
+      { recipient_user_id: OWNER },
+    ]);
+  });
+
   it('rolls back the event, outbox and recipient records together', async () => {
     const tenant = createTenantDb(scratch.app, TEAM);
     const requestId = randomUUID();
@@ -329,11 +349,90 @@ describe.skipIf(!db)('researcher audit-alert delivery', () => {
       [event.id, ADMIN],
     );
     expect(retained.rows).toEqual([{ count: 1 }]);
+    const tenant = createTenantDb(scratch.app, TEAM);
+    await expect(
+      tenant.transaction((client) =>
+        listInAppAuditAlerts(client, { teamId: TEAM, userId: ADMIN }),
+      ),
+    ).resolves.toEqual([]);
+    const retainedId = await scratch.pool.query<{ id: string }>(
+      `SELECT delivery.id
+       FROM audit_alert_deliveries delivery
+       JOIN audit_alert_outbox alert ON alert.id = delivery.alert_id
+       WHERE alert.audit_event_id = $1
+         AND delivery.recipient_user_id = $2
+         AND delivery.channel = 'in_app'`,
+      [event.id, ADMIN],
+    );
+    await expect(
+      tenant.transaction((client) =>
+        markInAppAuditAlertRead(client, {
+          id: retainedId.rows[0]!.id,
+          teamId: TEAM,
+          userId: ADMIN,
+        }),
+      ),
+    ).resolves.toBe(false);
     await scratch.pool.query(
       `UPDATE team_members SET role = 'admin'
        WHERE team_id = $1 AND user_id = $2`,
       [TEAM, ADMIN],
     );
+  });
+
+  it('suppresses email when recovery disables a recipient after enqueue', async () => {
+    await appendAlert(scratch);
+    await scratch.pool.query(
+      `UPDATE "user" SET recovery_disabled = true WHERE id = $1`,
+      [ADMIN],
+    );
+    const sendAuditAlert = vi
+      .fn<AuditAlertMailer['sendAuditAlert']>()
+      .mockResolvedValue(undefined);
+    const delivery = dispatcher(scratch.maintenance, { sendAuditAlert });
+    await delivery.runOnce();
+    await delivery.runOnce();
+    expect(sendAuditAlert.mock.calls.map(([message]) => message.email)).toEqual(
+      ['owner@example.test'],
+    );
+    const tenant = createTenantDb(scratch.app, TEAM);
+    await expect(
+      tenant.transaction((client) =>
+        listInAppAuditAlerts(client, { teamId: TEAM, userId: ADMIN }),
+      ),
+    ).resolves.toEqual([]);
+  });
+
+  it('suppresses a claim when its verified address changes before the send check', async () => {
+    await scratch.pool.query(
+      `UPDATE team_members SET role = 'member'
+       WHERE team_id = $1 AND user_id = $2`,
+      [TEAM, OWNER],
+    );
+    await appendAlert(scratch);
+    let changed = false;
+    const racingPool = {
+      connect: scratch.maintenance.connect.bind(scratch.maintenance),
+      query: async (text: string, values?: unknown[]) => {
+        const result = await scratch.maintenance.query(text, values);
+        if (!changed && text.includes('claimed_delivery AS')) {
+          changed = true;
+          await scratch.pool.query(
+            `UPDATE "user" SET email = 'replacement@example.test' WHERE id = $1`,
+            [ADMIN],
+          );
+        }
+        return result;
+      },
+    } as unknown as Pool;
+    const sendAuditAlert = vi
+      .fn<AuditAlertMailer['sendAuditAlert']>()
+      .mockResolvedValue(undefined);
+    await expect(
+      dispatcher(racingPool, { sendAuditAlert }).runOnce(),
+    ).resolves.toMatchObject({ claimed: 1, suppressed: 1 });
+    expect(changed).toBe(true);
+    expect(sendAuditAlert).not.toHaveBeenCalled();
   });
 
   it('suppresses the parent when no email recipient remains deliverable', async () => {
