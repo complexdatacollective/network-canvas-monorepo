@@ -9,6 +9,20 @@ const exactRoutes = new Set([
   '/api/v1/openapi.json',
 ]);
 
+export const REGISTRY_OPERATIONAL_ROUTES = Object.freeze(
+  [
+    ...exactRoutes,
+    '/account/*',
+    '/api/auth/*',
+    '/api/v1/artifacts/:root',
+    '/api/v1/entries/:id/*',
+    '/api/v1/account/*',
+    '/api/v1/moderation/*',
+    'unmatched',
+    'not_found',
+  ].toSorted(),
+);
+
 /** Finite service-owned labels: no URL, query, template, publisher or token id. */
 export function registryRequestRoute(path: string): string {
   if (exactRoutes.has(path)) return path;

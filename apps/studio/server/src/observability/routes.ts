@@ -26,6 +26,19 @@ const exactRoutes = new Set([
   '/api/v1/status',
   '/api/v1/openapi.json',
 ]);
+
+export const STUDIO_OPERATIONAL_ROUTES = Object.freeze(
+  [
+    ...exactRoutes,
+    ...rpcRoutes,
+    '/api/auth/*',
+    '/storage',
+    '/storage/:hash',
+    'unmatched',
+    '/assets/*',
+    'client',
+  ].toSorted(),
+);
 /** Finite server-owned route labels: never a raw URL, query, hash or SPA id. */
 export function requestRoute(path: string): string {
   if (exactRoutes.has(path) || rpcRoutes.has(path)) return path;
