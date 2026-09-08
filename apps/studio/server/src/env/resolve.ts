@@ -117,7 +117,16 @@ export function isLocalDatabase(url: string): boolean {
   }
 }
 
-function resolveS3(raw: RawEnv): S3Env | undefined {
+export function resolveS3(
+  raw: Pick<
+    RawEnv,
+    | 'S3_ENDPOINT'
+    | 'S3_REGION'
+    | 'S3_BUCKET'
+    | 'S3_ACCESS_KEY_ID'
+    | 'S3_SECRET_ACCESS_KEY'
+  >,
+): S3Env | undefined {
   const values = {
     endpoint: raw.S3_ENDPOINT,
     region: raw.S3_REGION,

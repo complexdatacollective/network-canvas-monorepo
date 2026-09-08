@@ -36,8 +36,11 @@ export type AssetStore = {
   /** Checks bucket accessibility without reading or writing research objects. */
   checkHealth(signal: AbortSignal): Promise<void>;
   put(bytes: Uint8Array, mediaType: string): Promise<StoredAsset>;
-  get(hash: string): Promise<{
-    body: ReadableStream;
+  get(
+    hash: string,
+    signal?: AbortSignal,
+  ): Promise<{
+    body: ReadableStream<Uint8Array>;
     mediaType: string;
     size: number | undefined;
   } | null>;
@@ -92,13 +95,14 @@ export function createAssetStore(env: S3Env): AssetStore {
       return { hash, size: bytes.byteLength, mediaType };
     },
 
-    async get(hash) {
+    async get(hash, signal) {
       try {
         const response = await client.send(
           new GetObjectCommand({
             Bucket: env.bucket,
             Key: `${KEY_PREFIX}${hash}`,
           }),
+          { abortSignal: signal },
         );
         if (response.Body === undefined) return null;
         return {
@@ -240,7 +244,7 @@ export function createAssetRoutes(
     if (!SHA256_HEX.test(hash)) {
       return c.json(problem(404, 'Not Found'), 404, PROBLEM_HEADERS);
     }
-    const asset = await store.get(hash);
+    const asset = await store.get(hash, c.req.raw.signal);
     if (asset === null) {
       return c.json(problem(404, 'Not Found'), 404, PROBLEM_HEADERS);
     }

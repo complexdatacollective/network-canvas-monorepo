@@ -1,7 +1,11 @@
 import { createHash } from 'node:crypto';
 
-import { ListBucketsCommand, S3Client } from '@aws-sdk/client-s3';
-import { describe, expect, it } from 'vitest';
+import {
+  GetObjectCommand,
+  ListBucketsCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createApp } from '../app.ts';
 import {
@@ -47,6 +51,35 @@ async function storeReachable(): Promise<boolean> {
 }
 
 const reachable = await storeReachable();
+
+describe('asset storage cancellation', () => {
+  it('forwards the caller abort signal to the S3 object request', async () => {
+    const body = new Response('asset').body!;
+    const send = vi.spyOn(S3Client.prototype, 'send').mockResolvedValue({
+      Body: { transformToWebStream: () => body },
+      ContentLength: 5,
+      ContentType: 'text/plain',
+    } as never);
+    const signal = new AbortController().signal;
+    const store = createAssetStore({
+      endpoint: 'http://127.0.0.1:1',
+      region: 'test',
+      bucket: 'test',
+      accessKeyId: 'test',
+      secretAccessKey: 'test',
+    });
+    try {
+      await expect(store.get('a'.repeat(64), signal)).resolves.toMatchObject({
+        size: 5,
+      });
+      expect(send).toHaveBeenCalledWith(expect.any(GetObjectCommand), {
+        abortSignal: signal,
+      });
+    } finally {
+      send.mockRestore();
+    }
+  });
+});
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
