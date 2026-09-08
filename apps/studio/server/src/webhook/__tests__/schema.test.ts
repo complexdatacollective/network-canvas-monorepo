@@ -19,6 +19,7 @@ import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
+  seedTestEncryptionKeyVerifications,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
 
@@ -60,6 +61,7 @@ describe.skipIf(!db)('webhook schema', () => {
     event_types: ['interview.completed'],
     secret_ciphertext: randomBytes(48),
     secret_key_id: 'integration-key-1',
+    secret_algorithm: 'aes-256-gcm.v1',
     created_by_user_id: 'user-1',
     ...overrides,
   });
@@ -93,6 +95,9 @@ describe.skipIf(!db)('webhook schema', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     ({ pool, app, maintenance, dispose } = await createScratchSchema(db));
     await provisionScratchSchema(pool);
+    await seedTestEncryptionKeyVerifications(pool, [
+      { purpose: 'integration-enc', keyId: 'integration-key-1' },
+    ]);
     for (const teamId of [TEAM_A, TEAM_B]) {
       await seedTeam(pool, teamId);
       const studyId = randomUUID();
@@ -202,16 +207,6 @@ describe.skipIf(!db)('webhook schema', () => {
         'webhook_subscriptions_lengths_check',
       ],
       [
-        'a key id past 64 characters',
-        { secret_key_id: 'k'.repeat(65) },
-        'webhook_subscriptions_lengths_check',
-      ],
-      [
-        'an empty key id',
-        { secret_key_id: '' },
-        'webhook_subscriptions_lengths_check',
-      ],
-      [
         'an empty description',
         { description: '' },
         'webhook_subscriptions_lengths_check',
@@ -230,6 +225,22 @@ describe.skipIf(!db)('webhook schema', () => {
       await expect(
         insert('webhook_subscriptions', subscriptionRow(overrides)),
       ).rejects.toMatchObject({ constraint });
+    });
+
+    // The verified-reference trigger runs before table CHECK constraints.
+    // Invalid key identifiers therefore fail closed as unverified references;
+    // the other cases above still exercise every branch of the shared length
+    // constraint through values that can reach it.
+    it.each([
+      ['a key id past 64 characters', 'k'.repeat(65)],
+      ['an empty key id', ''],
+    ])('rejects %s', async (_label, secretKeyId) => {
+      await expect(
+        insert(
+          'webhook_subscriptions',
+          subscriptionRow({ secret_key_id: secretKeyId }),
+        ),
+      ).rejects.toThrow('encrypted data may reference only a verified key');
     });
 
     it('accepts the filter bounds the check exists to admit', async () => {
@@ -346,8 +357,8 @@ describe.skipIf(!db)('webhook schema', () => {
       await expect(
         tenantA.query(
           `INSERT INTO webhook_subscriptions
-             (id, team_id, url, event_types, secret_ciphertext, secret_key_id, created_by_user_id)
-           VALUES ($1, $2, 'https://hooks.example.org/x', ARRAY['interview.completed'], $3, 'k', 'u')`,
+             (id, team_id, url, event_types, secret_ciphertext, secret_key_id, secret_algorithm, created_by_user_id)
+           VALUES ($1, $2, 'https://hooks.example.org/x', ARRAY['interview.completed'], $3, 'integration-key-1', 'aes-256-gcm.v1', 'u')`,
           [randomUUID(), TEAM_B, randomBytes(32)],
         ),
       ).rejects.toMatchObject({ code: '42501' });

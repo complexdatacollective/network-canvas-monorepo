@@ -355,8 +355,8 @@ describe('generated schema documentation', () => {
     expect(readManifestScripts()).toHaveProperty('generate:erd');
   });
 
-  it.each(['apply-schema', 'db:reset'])(
-    'regenerates before %s touches the database',
+  it.each(['generate:migration', 'db:reset'])(
+    'regenerates before %s executes',
     (script) => {
       expect(readManifestScripts()[script]).toMatch(
         /^pnpm run sync-fingerprint && /,
@@ -381,11 +381,108 @@ async function withScratch(
 // Each case runs in its own Postgres schema, because half of them corrupt the
 // fingerprint on purpose.
 describe.skipIf(!db)('schema verification', () => {
+  it('requires versioned history by default for a current development fingerprint', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await provisionScratchSchema(pool);
+      await pool.query(
+        'REVOKE INSERT, UPDATE, DELETE ON "schemaFingerprint" FROM studio_app, studio_maintenance',
+      );
+      const enrollment = (
+        await pool.query<{ login: string }>('SELECT session_user AS login')
+      ).rows[0]!;
+      expect(
+        await checkSchema(pool, { allowedLogins: [enrollment.login] }),
+      ).toMatchObject({
+        kind: 'stale',
+        reason: 'unversioned',
+        found: SCHEMA_FINGERPRINT,
+      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
+    });
+  });
+
+  it('does not accept a view as versioned history', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await provisionScratchSchema(pool);
+      await pool.query(
+        'REVOKE INSERT, UPDATE, DELETE ON "schemaFingerprint" FROM studio_app, studio_maintenance',
+      );
+      const identity = (
+        await pool.query<{ login: string }>('SELECT session_user AS login')
+      ).rows[0]!;
+      await pool.query(
+        'CREATE SCHEMA studio_migrations; CREATE VIEW studio_migrations.history AS SELECT 1 AS position',
+      );
+      expect(
+        (
+          await pool.query(
+            "SELECT relkind FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace WHERE namespace.nspname = 'studio_migrations' AND relation.relname = 'history'",
+          )
+        ).rows,
+      ).toEqual([{ relkind: 'v' }]);
+      expect(
+        await checkSchema(pool, { allowedLogins: [identity.login] }),
+      ).toMatchObject({
+        kind: 'stale',
+        reason: 'unsafe-evidence',
+      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
+        {
+          kind: 'stale',
+          reason: 'unsafe-evidence',
+        },
+      );
+    });
+  });
+
+  it('checks the exact resolved fingerprint namespace behind an empty search-path prefix before reading it', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await provisionScratchSchema(pool);
+      await pool.query(`CREATE SCHEMA empty_search_path_prefix;
+        CREATE FUNCTION public.fingerprint_namespace_read_trap()
+          RETURNS text LANGUAGE plpgsql AS
+          'BEGIN RAISE EXCEPTION ''fingerprint view read before shape check''; END';
+        ALTER TABLE public."schemaFingerprint"
+          RENAME TO fingerprint_namespace_storage;
+        CREATE VIEW public."schemaFingerprint" AS
+          SELECT id, fingerprint_namespace_read_trap() AS fingerprint, "appliedAt"
+          FROM public.fingerprint_namespace_storage`);
+      const client = await pool.connect();
+      try {
+        await client.query(
+          'SET search_path = empty_search_path_prefix, public',
+        );
+        expect(
+          (
+            await client.query<{ schema: string }>(
+              `SELECT namespace.nspname AS schema
+                 FROM pg_class relation
+                 JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+                WHERE relation.oid = to_regclass('"schemaFingerprint"')`,
+            )
+          ).rows,
+        ).toEqual([{ schema: 'public' }]);
+        await expect(
+          client.query('SELECT * FROM "schemaFingerprint"'),
+        ).rejects.toThrow('fingerprint view read before shape check');
+        expect(
+          await checkSchema(client, { allowUnversioned: true }),
+        ).toMatchObject({ kind: 'stale', reason: 'unsafe-evidence' });
+      } finally {
+        client.release();
+      }
+    });
+  });
+
   it('reads current on a provisioned schema carrying every table', async () => {
     await withScratch(createScratchSchema, async (pool) => {
       await provisionScratchSchema(pool);
 
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
 
       const tables = await pool.query<{ table_name: string }>(
         `select table_name from information_schema.tables
@@ -396,14 +493,20 @@ describe.skipIf(!db)('schema verification', () => {
         'api_tokens',
         'asset_references',
         'assets',
+        'audit_alert_deliveries',
+        'audit_alert_dispatch_budget',
         'audit_alert_outbox',
+        'audit_alert_recipients',
+        'audit_alert_settings',
         'audit_events',
         'audit_export_jobs',
         'command_log',
         'consent_documents',
         'consent_items',
+        'credential_audit_events',
         'drafts',
         'edges',
+        'encryption_key_verifications',
         'experiment_assignments',
         'experiment_exposures',
         'experiments',
@@ -432,6 +535,7 @@ describe.skipIf(!db)('schema verification', () => {
         'session_snapshots',
         'session_stats',
         'studies',
+        'studio_instance',
         'study_role_grants',
         'study_schedules',
         'study_stage_rollups',
@@ -477,10 +581,18 @@ describe.skipIf(!db)('schema verification', () => {
       for (const [, privileges, table, roles] of revocations) {
         for (const privilege of privileges!.split(',').map((p) => p.trim())) {
           for (const role of roles!.split(',').map((r) => r.trim())) {
-            const held = await pool.query<{ held: boolean }>(
-              `select has_table_privilege($1, $2, $3) as held`,
-              [role, table, privilege],
-            );
+            // PUBLIC is ACL grantee 0, not a pg_roles identity accepted by
+            // has_table_privilege. Check its grant directly rather than skip it.
+            const held =
+              role === 'PUBLIC'
+                ? await pool.query<{ held: boolean }>(
+                    `SELECT EXISTS (SELECT 1 FROM pg_class AS relation CROSS JOIN LATERAL aclexplode(COALESCE(relation.relacl, acldefault('r', relation.relowner))) AS access WHERE relation.oid = $1::regclass AND access.grantee = 0 AND access.privilege_type = $2) AS held`,
+                    [table, privilege],
+                  )
+                : await pool.query<{ held: boolean }>(
+                    `select has_table_privilege($1, $2, $3) as held`,
+                    [role, table, privilege],
+                  );
             expect(
               held.rows[0]?.held,
               `${role} still holds ${privilege} on ${table}`,
@@ -493,7 +605,9 @@ describe.skipIf(!db)('schema verification', () => {
 
   it('reports a never-provisioned database as absent', async () => {
     await withScratch(createScratchSchema, async (pool) => {
-      expect(await checkSchema(pool)).toEqual({ kind: 'absent' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'absent',
+      });
     });
   });
 
@@ -504,7 +618,7 @@ describe.skipIf(!db)('schema verification', () => {
         'deadbeef'.repeat(8),
       ]);
 
-      const state = await checkSchema(pool);
+      const state = await checkSchema(pool, { allowUnversioned: true });
       expect(state.kind).toBe('stale');
       expect(state).toMatchObject({
         reason: 'mismatch',
@@ -518,11 +632,13 @@ describe.skipIf(!db)('schema verification', () => {
       await provisionScratchSchema(pool);
       await pool.query('drop table "schemaFingerprint"');
 
-      expect(await checkSchema(pool)).toMatchObject({
-        kind: 'stale',
-        reason: 'unstamped',
-        found: null,
-      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
+        {
+          kind: 'stale',
+          reason: 'unstamped',
+          found: null,
+        },
+      );
     });
   });
 
@@ -531,10 +647,12 @@ describe.skipIf(!db)('schema verification', () => {
       await provisionScratchSchema(pool);
       await pool.query('delete from "schemaFingerprint"');
 
-      expect(await checkSchema(pool)).toMatchObject({
-        kind: 'stale',
-        reason: 'unstamped',
-      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
+        {
+          kind: 'stale',
+          reason: 'unstamped',
+        },
+      );
     });
   });
 
@@ -546,10 +664,12 @@ describe.skipIf(!db)('schema verification', () => {
       // recognisable by the "user" table alone, but still not ours to stamp.
       await pool.query('drop table "user" cascade');
 
-      expect(await checkSchema(pool)).toMatchObject({
-        kind: 'stale',
-        reason: 'unstamped',
-      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
+        {
+          kind: 'stale',
+          reason: 'unstamped',
+        },
+      );
     });
   });
 });
@@ -624,7 +744,9 @@ describe.skipIf(!db)('schema application', () => {
            VALUES ('dup', 'sub-google', 'google', 'https://accounts.google.com', 'u1', now())`,
         ),
       ).rejects.toMatchObject({ constraint: 'account_issuer_accountId_idx' });
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
     });
   });
 
@@ -632,7 +754,9 @@ describe.skipIf(!db)('schema application', () => {
     await withScratch(createScratchDatabase, async (pool) => {
       const outcome = await applySchema(pool);
       expect(outcome.statements.length).toBeGreaterThan(0);
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
     });
   });
 
@@ -641,7 +765,9 @@ describe.skipIf(!db)('schema application', () => {
       await applySchema(pool);
       const again = await applySchema(pool);
       expect(again.statements).toEqual([]);
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
     });
   });
 
@@ -658,7 +784,9 @@ describe.skipIf(!db)('schema application', () => {
          where table_schema = 'public' and table_name = 'protocols'`,
       );
       expect(columns.rows.map((r) => r.column_name)).toContain('name');
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
     });
   });
 
@@ -666,7 +794,9 @@ describe.skipIf(!db)('schema application', () => {
     await withScratch(createScratchDatabase, async (pool) => {
       await Promise.all([applySchema(pool), applySchema(pool)]);
 
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
       const recorded = await pool.query('select * from "schemaFingerprint"');
       expect(recorded.rowCount).toBe(1);
     });
@@ -684,26 +814,50 @@ describe('schema problem message', () => {
   it('names scripts package.json declares', () => {
     const message = schemaProblemMessage(stale);
     expect(message).toContain('pnpm --filter @codaco/studio-server db:reset');
-    expect(message).toContain(
-      'pnpm --filter @codaco/studio-server apply-schema',
-    );
+    expect(message).toContain('docker compose run --rm studio migrate');
 
     const scripts = readManifestScripts();
     expect(scripts).toHaveProperty('db:reset');
-    expect(scripts).toHaveProperty('apply-schema');
+    expect(scripts).toHaveProperty('migrate');
   });
 
-  it('explains an unstamped database differently', () => {
-    expect(schemaProblemMessage({ ...stale, reason: 'unstamped' })).toContain(
-      'no fingerprint',
+  it('directs an unstamped database to recovery without a migration retry', () => {
+    const message = schemaProblemMessage({ ...stale, reason: 'unstamped' });
+    expect(message).toContain('no fingerprint');
+    expect(message).toContain('Preserve the original database');
+    expect(message).toContain('restore a consistent backup');
+    expect(message).toContain('export using its original Studio build');
+    expect(message).toContain('new empty database');
+    expect(message).toContain(
+      'Only for a disposable local development database',
     );
+    expect(message).not.toContain('docker compose run --rm studio migrate');
+  });
+
+  it('directs an unversioned fingerprint to recovery without treating it as a migration', () => {
+    const message = schemaProblemMessage({ ...stale, reason: 'unversioned' });
+    expect(message).toContain('no versioned migration history');
+    expect(message).toContain('Preserve the original database');
+    expect(message).toContain('new empty database');
+    expect(message).not.toContain('docker compose run --rm studio migrate');
+  });
+
+  it('directs unsafe migration evidence to verified-backup recovery without echoing evidence', () => {
+    const message = schemaProblemMessage({
+      ...stale,
+      reason: 'unsafe-evidence',
+      found: null,
+      appliedAt: null,
+    });
+    expect(message).toContain('unsupported relation shape');
+    expect(message).toContain('Restore a verified backup');
+    expect(message).not.toContain(stale.found!);
+    expect(message).not.toContain('docker compose run --rm studio migrate');
   });
 
   it('explains an absent schema with both remedies', () => {
     const message = schemaProblemMessage({ kind: 'absent' });
     expect(message).toContain('pnpm --filter @codaco/studio-server db:reset');
-    expect(message).toContain(
-      'pnpm --filter @codaco/studio-server apply-schema',
-    );
+    expect(message).toContain('docker compose run --rm studio migrate');
   });
 });

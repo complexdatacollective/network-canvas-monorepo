@@ -392,4 +392,100 @@ describe('attributeValidationIssues', () => {
 
     expect(issue).not.toHaveProperty('attributedChange');
   });
+
+  /**
+   * A stage being created is not in the authoritative order, and the candidate
+   * the schema judged has it at the position the host will insert it. Read
+   * against the authoritative order alone, its problems landed on whichever
+   * existing stage happened to be at that index — or, for one being appended,
+   * on nothing at all, which is how a newly created invalid stage came to have
+   * an outline of finished sections beside a save that refused it.
+   */
+  it('maps a created stage’s issues to the stage being created', () => {
+    const [issue] = attributeValidationIssues(
+      [
+        {
+          code: 'invalid_type',
+          path: ['stages', 1, 'title'],
+          message: 'Invalid input: expected string, received number',
+        },
+      ],
+      { stageOrder: { stages: ['stage-one', 'stage-two'] } },
+      {},
+      revision(2n),
+      { stageId: 'stage-new', position: 1 },
+    );
+
+    expect(issue?.sectionId).toBe(
+      sectionId({ kind: 'stage', stageId: 'stage-new' }),
+    );
+  });
+
+  it('does not blame the stage the created one is being inserted before', () => {
+    const [issue] = attributeValidationIssues(
+      [
+        {
+          code: 'invalid_type',
+          path: ['stages', 2, 'title'],
+          message: 'Invalid input: expected string, received number',
+        },
+      ],
+      { stageOrder: { stages: ['stage-one', 'stage-two'] } },
+      {},
+      revision(2n),
+      { stageId: 'stage-new', position: 1 },
+    );
+
+    // The stage that WAS at the insertion index has moved down one, and the
+    // paths the validator answered with are numbered against the order it
+    // judged rather than the one the protocol still holds.
+    expect(issue?.sectionId).toBe(
+      sectionId({ kind: 'stage', stageId: 'stage-two' }),
+    );
+  });
+
+  it('maps a created stage appended to the end of the interview', () => {
+    const [issue] = attributeValidationIssues(
+      [
+        {
+          code: 'invalid_type',
+          path: ['stages', 2, 'title'],
+          message: 'Invalid input: expected string, received number',
+        },
+      ],
+      { stageOrder: { stages: ['stage-one', 'stage-two'] } },
+      {},
+      revision(2n),
+      { stageId: 'stage-new', position: 2 },
+    );
+
+    // Past the end of the authoritative order, so nothing answered for it at
+    // all and the issue was dropped by every reader that filters on the
+    // section it belongs to.
+    expect(issue?.sectionId).toBe(
+      sectionId({ kind: 'stage', stageId: 'stage-new' }),
+    );
+  });
+
+  it('does not list a created stage twice when the order already holds it', () => {
+    const [issue] = attributeValidationIssues(
+      [
+        {
+          code: 'invalid_type',
+          path: ['stages', 1, 'title'],
+          message: 'Invalid input: expected string, received number',
+        },
+      ],
+      // A host that inserted the stage before the session was told the
+      // creation is over.
+      { stageOrder: { stages: ['stage-one', 'stage-new', 'stage-two'] } },
+      {},
+      revision(2n),
+      { stageId: 'stage-new', position: 1 },
+    );
+
+    expect(issue?.sectionId).toBe(
+      sectionId({ kind: 'stage', stageId: 'stage-new' }),
+    );
+  });
 });

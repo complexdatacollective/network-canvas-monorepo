@@ -99,6 +99,7 @@ async function readShell(clientRoot: string): Promise<string | undefined> {
 export function mountClient(
   app: Hono<PrincipalVariables>,
   env: StudioEnv,
+  setupComplete?: () => Promise<boolean>,
 ): void {
   // Default matches the Docker image layout: dist/index.js next to a client/
   // directory. `pnpm start` overrides via CLIENT_DIST for the local layout.
@@ -136,17 +137,14 @@ export function mountClient(
   // handler and dropping the body, so a probe sees the status the gate set.
   app.on('GET', '*', async (c, next) => {
     const path = normaliseForGate(c.req.path);
-    if (!gatedMatchers.some((matcher) => matcher.test(path))) return next();
+    const gated = gatedMatchers.some((matcher) => matcher.test(path));
+    const completedSetup =
+      !gated && path === '/setup' && setupComplete && (await setupComplete());
+    if (!gated && !completedSetup) return next();
 
     // The body is the shell rather than a page of this module's own, so the
-    // refusal can be rendered in the app's own design. That last step is the
-    // client's, and it is not written yet: no route carries a topology guard
-    // and the client has no not-found state at all, so the SPA boots under
-    // this 404 and renders the gated route's own component. The status line
-    // here is honest; the screen is not yet. It has to be fixed on the client
-    // rather than by serving some other document, because the client is also
-    // the only layer that covers the managed Netlify lane — there the CDN
-    // answers a page path before any of this runs (see netlify.toml).
+    // refusal is rendered in the app's own not-found design. The client
+    // independently checks topology and completion during SPA navigation.
     //
     // no-store because a corrected variable — or the same image deployed in
     // the other topology — turns this into a page.

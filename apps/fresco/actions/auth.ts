@@ -12,6 +12,7 @@ import { addEvent } from '~/lib/activityFeed';
 import { getServerSession } from '~/lib/auth/guards';
 import { createSessionCookie, SESSION_COOKIE_NAME } from '~/lib/auth/session';
 import { createTwoFactorToken, hashRecoveryCode } from '~/lib/auth/totp';
+import { requiresTwoFactorSetup } from '~/lib/auth/twoFactorPolicy';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { checkRateLimit, recordLoginAttempt } from '~/lib/rateLimit';
@@ -79,10 +80,22 @@ type TwoFactorRequired = {
   twoFactorToken: string;
 };
 
+/**
+ * The password was right and a session exists, but the installation requires
+ * two-factor authentication and this account has none yet. The session can
+ * reach nothing but the setup flow until it does (see lib/auth/guards.ts), so
+ * the sign-in form sends the researcher straight there.
+ */
+type TwoFactorSetupRequired = {
+  success: true;
+  requiresTwoFactorSetup: true;
+};
+
 export type LoginResult =
   | FormSubmissionResult
   | RateLimited
-  | TwoFactorRequired;
+  | TwoFactorRequired
+  | TwoFactorSetupRequired;
 
 // Precomputed lazily once per server instance. Used to equalize login response
 // time on the "no such user / passkey-only" path, preventing timing-based
@@ -238,6 +251,10 @@ export const login = async (data: unknown): Promise<LoginResult> => {
     values: { username },
   });
   safeUpdateTag('activityFeed');
+
+  if (await requiresTwoFactorSetup(key.user_id)) {
+    return { success: true, requiresTwoFactorSetup: true };
+  }
 
   return {
     success: true,

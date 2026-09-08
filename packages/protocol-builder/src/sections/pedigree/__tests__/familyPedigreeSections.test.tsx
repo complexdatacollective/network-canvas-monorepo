@@ -25,6 +25,9 @@ import {
   familyPedigreeStageWith,
 } from './pedigreeFixtures.tsx';
 
+/** See `FormFieldsSection`'s own `NEW_VARIABLE` sentinel. */
+const CREATE_NEW_ATTRIBUTE = '#create-new-attribute';
+
 const pedigreeSections = (
   <>
     <FramingConfigSection />
@@ -158,7 +161,7 @@ async function addFormFieldInventing(
   const field = within(await screen.findByRole('dialog'));
   await harness.user.selectOptions(
     field.getByRole('combobox', { name: 'Attribute' }),
-    '__create_new_attribute__',
+    CREATE_NEW_ATTRIBUTE,
   );
   await harness.user.type(
     await field.findByRole('textbox', { name: 'Attribute name' }),
@@ -920,7 +923,7 @@ describe('what a family member form field’s attribute holds', () => {
     const field = within(await screen.findByRole('dialog'));
     await harness.user.selectOptions(
       field.getByRole('combobox', { name: 'Attribute' }),
-      '__create_new_attribute__',
+      CREATE_NEW_ATTRIBUTE,
     );
     // An attribute participants choose from IS its values, so the name box
     // gives way to the editor that authors both.
@@ -993,7 +996,7 @@ describe('what a family member form field’s attribute holds', () => {
     const creating = within(await screen.findByRole('dialog'));
     await harness.user.selectOptions(
       creating.getByRole('combobox', { name: 'Attribute' }),
-      '__create_new_attribute__',
+      CREATE_NEW_ATTRIBUTE,
     );
     await harness.user.selectOptions(
       await creating.findByRole('combobox', { name: 'Kind of answer' }),

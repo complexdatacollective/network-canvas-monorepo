@@ -143,6 +143,26 @@
     "defaultMessage": "Create this attribute and its values",
     "description": "Button that opens the codebook editor for inventing an attribute whose answers are chosen from a list, together with that list. Also the title of the dialog it opens. An attribute is one thing an interview records about a network member."
   },
+  "protocolBuilder.attributeCodebookControls.describeAnswerLabels": {
+    "defaultMessage": "Change the answer labels of \"{name}\"",
+    "description": "The same record for a yes/no attribute, whose two stored values are fixed and whose words are what a researcher writes. name is the attribute’s researcher-facing name."
+  },
+  "protocolBuilder.attributeCodebookControls.describeCreate": {
+    "defaultMessage": "Create an attribute for a form field",
+    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. The attribute has no name yet — the researcher is about to type one — so this is the one edit here that cannot name it."
+  },
+  "protocolBuilder.attributeCodebookControls.describeParameters": {
+    "defaultMessage": "Change what \"{name}\" accepts",
+    "description": "The same record for an attribute whose answer is not chosen from a list — a date between two bounds, a position on a scale. name is the attribute’s researcher-facing name."
+  },
+  "protocolBuilder.attributeCodebookControls.describeRules": {
+    "defaultMessage": "Change the rules for \"{name}\"",
+    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name."
+  },
+  "protocolBuilder.attributeCodebookControls.describeValues": {
+    "defaultMessage": "Change the values of \"{name}\"",
+    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name."
+  },
   "protocolBuilder.attributeCodebookControls.editAnswerLabels": {
     "defaultMessage": "Change this attribute’s answer labels",
     "description": "The same button for a yes/no attribute, whose two stored values are fixed and whose WORDS are what a researcher writes — so this says labels rather than values. Also the title of the dialog it opens."
@@ -158,6 +178,14 @@
   "protocolBuilder.attributeCodebookControls.editValues": {
     "defaultMessage": "Change this attribute’s values",
     "description": "Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.coarseDateBound.monthPart": {
+    "defaultMessage": "Month",
+    "description": "Names the month half of a bounding date that is written as a year and a month. Also the empty state of that dropdown."
+  },
+  "protocolBuilder.coarseDateBound.yearPart": {
+    "defaultMessage": "Year",
+    "description": "Names the year half of a bounding date that is written as a year and a month, for a screen reader that would otherwise hear the two halves as one field said twice."
   },
   "protocolBuilder.codebookEditing.createDescription": {
     "defaultMessage": "Create the attribute \"{name}\"",
@@ -451,6 +479,14 @@
     "defaultMessage": "Add option",
     "description": "Button that adds an empty row to the list of answers a participant may choose from."
   },
+  "protocolBuilder.codebookVariable.answersHint": {
+    "defaultMessage": "Write what the participant chooses between. Left empty, they are offered Yes and No. A negative answer is shown in red when it is selected.",
+    "description": "Guidance under the heading over a yes/no attribute’s two answers. Naming neither is a real answer: the interview offers its own translated Yes and No when the protocol names none."
+  },
+  "protocolBuilder.codebookVariable.answersLegend": {
+    "defaultMessage": "The two answers",
+    "description": "Heading over the words on the two answers a yes/no attribute puts in front of a participant."
+  },
   "protocolBuilder.codebookVariable.booleanAnswerLabel": {
     "defaultMessage": "{records, select, true {Label for “true”} other {Label for “false”}}",
     "description": "Label of the field holding the words on one of the two answers a yes/no attribute offers. records says which of the two stored values this answer records; “true” and “false” are the literal values the protocol stores and an export records, so they stay as they are."
@@ -482,6 +518,18 @@
   "protocolBuilder.codebookVariable.failureTitle": {
     "defaultMessage": "Attribute not saved",
     "description": "Heading of the alert shown when saving an attribute (a codebook variable) was refused. The reason follows underneath."
+  },
+  "protocolBuilder.codebookVariable.heldAnswerValuesCaption": {
+    "defaultMessage": "A yes/no attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.",
+    "description": "Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds two answers that do not record one “true” and one “false” — both recording the same one, for instance. It says that saving the attribute does not alter them. “true” and “false” are the literal values the protocol stores and stay as they are."
+  },
+  "protocolBuilder.codebookVariable.heldAnswersCaption": {
+    "defaultMessage": "A yes/no attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.",
+    "description": "Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds some number of answers other than the two this editor writes. It says that saving the attribute does not alter them."
+  },
+  "protocolBuilder.codebookVariable.heldAnswersLegend": {
+    "defaultMessage": "The answers this attribute offers",
+    "description": "Heading over the read-only list of answers a yes/no attribute puts in front of a participant. Shown in place of the two answer fields when the attribute holds some other number of answers."
   },
   "protocolBuilder.codebookVariable.interfaceOwnedOptions": {
     "defaultMessage": "These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.",
@@ -526,6 +574,14 @@
   "protocolBuilder.codebookVariable.optionsLegend": {
     "defaultMessage": "Allowed values",
     "description": "Heading over the list of answers a participant may choose from for this attribute. A required marker follows it."
+  },
+  "protocolBuilder.codebookVariable.parametersHint": {
+    "defaultMessage": "These settings belong to the input control this attribute is collected with, so they apply wherever it is asked for.",
+    "description": "Guidance under the heading over an input control’s settings, saying that they follow the attribute into every interview step that asks for it."
+  },
+  "protocolBuilder.codebookVariable.parametersLegend": {
+    "defaultMessage": "What this control accepts",
+    "description": "Heading over the settings the input control an attribute is collected with takes — the bounds of a date, the words at each end of a sliding scale."
   },
   "protocolBuilder.codebookVariable.removeOption": {
     "defaultMessage": "Remove option {index}",
@@ -805,7 +861,7 @@
   },
   "protocolBuilder.compoundFailure.unexplained": {
     "defaultMessage": "This change could not be saved, and nothing was altered. Wait a moment and try again.",
-    "description": "Refusal shown in a codebook editor when saving threw with no explanation a researcher could act on. The last resort."
+    "description": "Refusal shown in a codebook editor when saving was refused for a reason there are no words for — it threw with no explanation a researcher could act on, or the application it is running in named a reason this editor does not know. The last resort."
   },
   "protocolBuilder.contentBlock.audioHint": {
     "defaultMessage": "The audio the participant can play when they reach this block.",
@@ -999,10 +1055,6 @@
     "defaultMessage": "Add at least one field. A form with no fields collects nothing.",
     "description": "Refusal shown above a form’s list of fields when a researcher saves a form that asks nothing. A field is one question bound to one attribute of a network member."
   },
-  "protocolBuilder.formFields.attributeEmpty": {
-    "defaultMessage": "Every attribute of this type is already collected or written elsewhere. Create a new one instead.",
-    "description": "Shown in place of the attribute list when every attribute of this node or edge type is either already collected by another field of the same form, or written somewhere the protocol will not let a form field also write."
-  },
   "protocolBuilder.formFields.attributeHint": {
     "defaultMessage": "The codebook attribute this field’s answer is stored in.",
     "description": "Guidance under the attribute control. The codebook is the protocol’s definition of what an interview records."
@@ -1036,8 +1088,56 @@
     "description": "Label of the control choosing what the participant uses to answer — a text box, a slider, a set of buttons."
   },
   "protocolBuilder.formFields.componentRequired": {
-    "defaultMessage": "Choose how the participant answers this field.",
-    "description": "Refusal shown under the input-control field when nothing has been chosen."
+    "defaultMessage": "This field’s attribute gives the participant no way to answer. Choose a different attribute, or remove this field.",
+    "description": "Refusal shown above the fields of a form field’s dialog, and named by its unavailable save control, when the attribute the field collects has no input control to offer — an attribute that records a position rather than an answer, or one that has been deleted from the codebook. There is no control to choose in this dialog, so the way out is a different attribute."
+  },
+  "protocolBuilder.formFields.controlBoolean": {
+    "defaultMessage": "Yes or no buttons",
+    "description": "Choice offered for the control a participant answers with: a pair of buttons for a true or false answer."
+  },
+  "protocolBuilder.formFields.controlCheckboxGroup": {
+    "defaultMessage": "Checkbox group",
+    "description": "Choice offered for the control a participant answers with: a list of options of which they may pick several."
+  },
+  "protocolBuilder.formFields.controlDatePicker": {
+    "defaultMessage": "Date picker",
+    "description": "Choice offered for the control a participant answers with: a calendar they choose a date from."
+  },
+  "protocolBuilder.formFields.controlLikertScale": {
+    "defaultMessage": "Likert scale",
+    "description": "Choice offered for the control a participant answers with: an ordered scale from one extreme to the other."
+  },
+  "protocolBuilder.formFields.controlNumber": {
+    "defaultMessage": "Number input",
+    "description": "Choice offered for the control a participant answers with: a box that takes a number."
+  },
+  "protocolBuilder.formFields.controlRadioGroup": {
+    "defaultMessage": "Radio group",
+    "description": "Choice offered for the control a participant answers with: a list of options of which they pick one."
+  },
+  "protocolBuilder.formFields.controlRelativeDatePicker": {
+    "defaultMessage": "Relative date picker",
+    "description": "Choice offered for the control a participant answers with: a date chosen as a number of days before or after another date."
+  },
+  "protocolBuilder.formFields.controlText": {
+    "defaultMessage": "Text input",
+    "description": "Choice offered for the control a participant answers with: a single-line box they type into."
+  },
+  "protocolBuilder.formFields.controlTextArea": {
+    "defaultMessage": "Text area",
+    "description": "Choice offered for the control a participant answers with: a large box for several lines of text."
+  },
+  "protocolBuilder.formFields.controlToggle": {
+    "defaultMessage": "Toggle",
+    "description": "Choice offered for the control a participant answers with: a single switch they turn on or off."
+  },
+  "protocolBuilder.formFields.controlToggleButtonGroup": {
+    "defaultMessage": "Toggle button group",
+    "description": "Choice offered for the control a participant answers with: a row of buttons of which they may turn on several."
+  },
+  "protocolBuilder.formFields.controlVisualAnalogScale": {
+    "defaultMessage": "Visual analogue scale",
+    "description": "Choice offered for the control a participant answers with: a slider they move along a continuous line."
   },
   "protocolBuilder.formFields.createNewOption": {
     "defaultMessage": "Create a new attribute…",
@@ -1106,6 +1206,10 @@
   "protocolBuilder.formFields.itemNoun": {
     "defaultMessage": "field",
     "description": "What one row of a form’s list of questions is called inside things said ABOUT it — \"Edit field\", \"Remove this field?\" — so it is lower case and singular."
+  },
+  "protocolBuilder.formFields.malformedField": {
+    "defaultMessage": "This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.",
+    "description": "Refusal shown above a form’s list of fields when the list holds an entry that is not a field at all — which an import, a migration or another session can leave behind. The list cannot render such an entry, so there is no row for the researcher to open and finish, which is why this says the protocol itself has to be repaired."
   },
   "protocolBuilder.formFields.newNameHint": {
     "defaultMessage": "How this attribute is named in the codebook and in exported data.",
@@ -2194,18 +2298,6 @@
   "protocolBuilder.pageContent.pageAddTitle": {
     "defaultMessage": "Create content block",
     "description": "Title of the dialog a researcher fills in to add one more piece to a page."
-  },
-  "protocolBuilder.pageContent.pageClearConfirm": {
-    "defaultMessage": "Clear the page",
-    "description": "Action that confirms switching a page off and discarding its blocks."
-  },
-  "protocolBuilder.pageContent.pageClearDescription": {
-    "defaultMessage": "This will remove every block on this page. Do you want to continue?",
-    "description": "Body of the confirmation asked before switching a page off, which throws every block on it away."
-  },
-  "protocolBuilder.pageContent.pageClearTitle": {
-    "defaultMessage": "This will clear the page",
-    "description": "Title of the confirmation asked before switching a page off, which throws every block on it away."
   },
   "protocolBuilder.pageContent.pageDescription": {
     "defaultMessage": "Write the page heading and build the sequence of blocks the participant reads.",
@@ -4263,6 +4355,14 @@
     "defaultMessage": "Property",
     "description": "Visible text and accessible name of the column of a sort rule that chooses what the rule sorts by — an attribute of the node, or one of the orders the interview itself can supply."
   },
+  "protocolBuilder.sortOrder.unsortableProperty": {
+    "defaultMessage": "{property} — this attribute cannot be used to sort",
+    "description": "Label of the only choice left standing for a sort rule that names an attribute nothing can be put in order by — a node’s position on the canvas, say. property is the attribute’s name as the codebook gives it. Rendered inside a plain dropdown option, which can carry no styling, so the explanation is part of the label."
+  },
+  "protocolBuilder.sortOrder.unsortablePropertyRefusal": {
+    "defaultMessage": "This rule points at an attribute that cannot be used to sort. Choose another or delete the rule.",
+    "description": "Shown above a prompt’s sort rules when one of them names an attribute that is still in the codebook but holds nothing one network member can be put ahead of another by. Names both ways out, because the rule looks complete and is not."
+  },
   "protocolBuilder.stageName.documentation": {
     "defaultMessage": "Documentation",
     "description": "Link to the documentation for this type of interview interface."
@@ -4282,6 +4382,18 @@
   "protocolBuilder.stageTypeImage.preview": {
     "defaultMessage": "Preview of {interfaceName}",
     "description": "Alternative text for a screenshot of an interview interface. interfaceName is the localized interface name, or an unchanged identifier for an unknown future interface."
+  },
+  "protocolBuilder.subjectSection.edgeChangeConfirm": {
+    "defaultMessage": "Change the edge type",
+    "description": "Button that goes ahead with changing the kind of relationship a stage works with, throwing away the configuration that described the previous one."
+  },
+  "protocolBuilder.subjectSection.edgeChangeDescription": {
+    "defaultMessage": "Everything else on this stage describes the edge type it works with now, and choosing a different type removes all of it.",
+    "description": "Body of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.edgeChangeTitle": {
+    "defaultMessage": "Change the edge type?",
+    "description": "Title of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured for the one it has."
   },
   "protocolBuilder.subjectSection.edgeCreateDescription": {
     "defaultMessage": "Create an edge type and use it on this stage",
@@ -4303,9 +4415,33 @@
     "defaultMessage": "Edge type",
     "description": "Label of the control choosing which kind of relationship this step of the interview is about. The same words as the section heading, and translated once for each."
   },
+  "protocolBuilder.subjectSection.edgeFirstChoiceConfirm": {
+    "defaultMessage": "Choose the edge type",
+    "description": "Button that goes ahead with choosing the first kind of relationship a stage works with, throwing away the configuration entered before it."
+  },
+  "protocolBuilder.subjectSection.edgeFirstChoiceDescription": {
+    "defaultMessage": "Everything else on this stage was configured without an edge type, and choosing one removes all of it.",
+    "description": "Body of the confirmation raised when a researcher picks the first kind of relationship for a stage that has none yet, but that has already been configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.edgeFirstChoiceTitle": {
+    "defaultMessage": "Choose the edge type?",
+    "description": "Title of the confirmation raised when a researcher picks the first kind of relationship for a stage that has none yet, but that has already been configured. A stage is one step of an interview."
+  },
   "protocolBuilder.subjectSection.edgeTitle": {
     "defaultMessage": "Edge type",
     "description": "Heading of the section where a researcher says which kind of relationship this step of the interview is about. An edge is a connection between two members of the network."
+  },
+  "protocolBuilder.subjectSection.nodeChangeConfirm": {
+    "defaultMessage": "Change the node type",
+    "description": "Button that goes ahead with changing the kind of network member a stage works with, throwing away the configuration that described the previous one."
+  },
+  "protocolBuilder.subjectSection.nodeChangeDescription": {
+    "defaultMessage": "Everything else on this stage describes the node type it works with now, and choosing a different type removes all of it.",
+    "description": "Body of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.nodeChangeTitle": {
+    "defaultMessage": "Change the node type?",
+    "description": "Title of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured for the one it has."
   },
   "protocolBuilder.subjectSection.nodeCreateDescription": {
     "defaultMessage": "Create a node type and use it on this stage",
@@ -4327,6 +4463,18 @@
     "defaultMessage": "Node type",
     "description": "Label of the control choosing which kind of network member this step of the interview is about. The same words as the section heading, and translated once for each: the heading names the part of the stage, and this names the control."
   },
+  "protocolBuilder.subjectSection.nodeFirstChoiceConfirm": {
+    "defaultMessage": "Choose the node type",
+    "description": "Button that goes ahead with choosing the first kind of network member a stage works with, throwing away the configuration entered before it."
+  },
+  "protocolBuilder.subjectSection.nodeFirstChoiceDescription": {
+    "defaultMessage": "Everything else on this stage was configured without a node type, and choosing one removes all of it.",
+    "description": "Body of the confirmation raised when a researcher picks the first kind of network member for a stage that has none yet, but that has already been configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.nodeFirstChoiceTitle": {
+    "defaultMessage": "Choose the node type?",
+    "description": "Title of the confirmation raised when a researcher picks the first kind of network member for a stage that has none yet, but that has already been configured. A stage is one step of an interview."
+  },
   "protocolBuilder.subjectSection.nodeTitle": {
     "defaultMessage": "Node type",
     "description": "Heading of the section where a researcher says which kind of network member this step of the interview is about. A node is one member of the network a participant describes."
@@ -4347,6 +4495,10 @@
     "defaultMessage": "Anchor date",
     "description": "Label of the field holding the date a relative date picker measures its window from."
   },
+  "protocolBuilder.variableParameters.anchorNotADate": {
+    "defaultMessage": "Write the anchor date as YYYY-MM-DD.",
+    "description": "Refusal shown under the anchor-date field when what is written there is not a whole calendar date. YYYY-MM-DD is the literal format the protocol stores and is not translated."
+  },
   "protocolBuilder.variableParameters.beforeHint": {
     "defaultMessage": "How far back from the anchor the participant can choose. Left empty, {days, number} days.",
     "description": "Guidance under the days-before field. days is the number of days the interview assumes when the researcher writes none."
@@ -4358,6 +4510,18 @@
   "protocolBuilder.variableParameters.boundsCleared": {
     "defaultMessage": "The earliest and latest dates were cleared, because they were set at the previous resolution. Set them again if you still need them.",
     "description": "Announcement made after the researcher changes how precise a date this field collects, which throws away the earliest and latest dates because they were stored at the old precision."
+  },
+  "protocolBuilder.variableParameters.dateNotAtResolution": {
+    "defaultMessage": "Write this date as {pattern}, to match the resolution chosen above.",
+    "description": "Refusal shown under one of the two bounding dates of a date field when it is not written at the precision the field collects. pattern is the literal format the protocol stores — YYYY-MM-DD, YYYY-MM or YYYY — and is not translated."
+  },
+  "protocolBuilder.variableParameters.datesOutOfOrder": {
+    "defaultMessage": "The latest date cannot be earlier than the earliest date.",
+    "description": "Refusal shown under the latest-date field when the researcher has set it before the earliest date, which would leave the participant no date to choose."
+  },
+  "protocolBuilder.variableParameters.daysNotWhole": {
+    "defaultMessage": "Write a whole number of days, zero or more.",
+    "description": "Refusal shown under one of the two day-count fields of a relative date field when it holds something other than a whole number of days that is not negative."
   },
   "protocolBuilder.variableParameters.maxHint": {
     "defaultMessage": "The latest date the participant can choose. Left empty, the picker ends on the date of the interview.",
@@ -4426,6 +4590,10 @@
   "protocolBuilder.variableParameters.resolutionYear": {
     "defaultMessage": "Year only (YYYY)",
     "description": "Choice offered for how precise a date a field collects: a year on its own. The bracketed pattern is the literal format the protocol stores and is not translated."
+  },
+  "protocolBuilder.variableParameters.settingsRefused": {
+    "defaultMessage": "These settings cannot be saved as they are written. Check the values below.",
+    "description": "Refusal shown over the whole block of settings an input control takes, when the protocol refuses them for a reason the editor has no wording of its own for. The settings themselves are listed underneath it."
   },
   "protocolBuilder.variablePicker.attributeTypeLabel": {
     "defaultMessage": "Attribute type: {attributeType}",

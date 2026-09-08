@@ -1,6 +1,8 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+
 import SubjectSelectField from '../SubjectSelectField.tsx';
 
 /**
@@ -27,12 +29,24 @@ vi.mock('../EntitySelectField.tsx', () => ({
   },
 }));
 
+/**
+ * A pick made on a stage that has no subject yet, so nothing is asked first.
+ *
+ * The field holds a change back behind a confirmation when the stage already
+ * has a subject to lose — see `SubjectSection`'s own tests, which drive that
+ * whole path — and the provider it raises that question through is mounted
+ * here because the field asks for one unconditionally, as a hook must.
+ */
 const pick = (
   entityType: 'node' | 'edge',
   answer: string | undefined,
 ): unknown => {
   const onChange = vi.fn();
-  render(<SubjectSelectField entityType={entityType} onChange={onChange} />);
+  render(
+    <DialogProvider>
+      <SubjectSelectField entityType={entityType} onChange={onChange} />
+    </DialogProvider>,
+  );
   bridged.onChange?.(answer);
   expect(onChange).toHaveBeenCalledTimes(1);
   return onChange.mock.calls[0]?.[0];

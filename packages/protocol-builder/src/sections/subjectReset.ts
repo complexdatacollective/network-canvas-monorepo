@@ -35,14 +35,21 @@ export type SubjectReset = Readonly<{
 }>;
 
 /**
- * Every key a subject change invalidates, from all three places one can be
+ * Every key a subject change invalidates, from all four places one can be
  * hiding.
  *
  * The form's own values cover what is on screen. The committed draft covers a
  * section the researcher has never opened — a collapsed capability contributes
  * nothing to the form's values while still holding configuration that belongs
- * to the old subject. The template covers a key neither of them has yet, which
- * the interface nevertheless expects a stage of this type to carry.
+ * to the old subject. The form's PARKED values cover a key that is in neither:
+ * a control the researcher answered in this session and that has since
+ * unmounted is not a registered field any more and was never committed, and
+ * the submission replays it on purpose. The template covers a key none of them
+ * has yet, which the interface nevertheless expects a stage of this type to
+ * carry.
+ *
+ * The caller supplies the first three; see `useResetStageOnSubjectChange`,
+ * which is where a parked path is reduced to the stage key it belongs to.
  */
 export function subjectDependentResets(
   presentKeys: Iterable<string>,

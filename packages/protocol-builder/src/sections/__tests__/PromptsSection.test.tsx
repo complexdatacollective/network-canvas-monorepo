@@ -285,6 +285,47 @@ describe('the prompt list a stage owns', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeDisabled();
   });
+
+  /**
+   * The other half of the same rule, and the branch a family reaches for
+   * first: an ego form's prompts ask the participant about themselves, so
+   * there is no type for the stage to wait on and the section is available at
+   * once. Without this case, a `requiresSubject` that had stopped being read
+   * at all would hold every ego stage's prompts behind a subject that is never
+   * coming.
+   */
+  it('does not wait at all when this interface has no subject to wait for', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'EgoForm',
+        fields: {
+          label: 'About you',
+          prompts: [{ id: 'ego-prompt-1', text: 'Tell us about yourself.' }],
+        },
+      },
+      sections: (
+        <PromptsSection
+          PromptEditor={TestPromptEditor}
+          PromptPreview={TestPromptPreview}
+          requiresSubject={false}
+        />
+      ),
+    });
+
+    await waitFor(() => expect(harness.outline()).toHaveLength(1));
+    expect(harness.outline()[0]).toEqual({
+      title: 'Prompts',
+      state: 'Finished',
+    });
+    expect(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    ).toBeEnabled();
+    expect(
+      screen.getByText(
+        'Write the questions this stage asks, and drag them into the order the participant answers them.',
+      ),
+    ).toBeInTheDocument();
+  });
 });
 
 /**
@@ -376,6 +417,47 @@ describe('a stage whose subject names no type yet', () => {
     expect(
       screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeDisabled();
+  });
+
+  /**
+   * The other half of the same rule, and the branch a family reaches for
+   * first: an ego form's prompts ask the participant about themselves, so
+   * there is no type for the stage to wait on and the section is available at
+   * once. Without this case, a `requiresSubject` that had stopped being read
+   * at all would hold every ego stage's prompts behind a subject that is never
+   * coming.
+   */
+  it('does not wait at all when this interface has no subject to wait for', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'EgoForm',
+        fields: {
+          label: 'About you',
+          prompts: [{ id: 'ego-prompt-1', text: 'Tell us about yourself.' }],
+        },
+      },
+      sections: (
+        <PromptsSection
+          PromptEditor={TestPromptEditor}
+          PromptPreview={TestPromptPreview}
+          requiresSubject={false}
+        />
+      ),
+    });
+
+    await waitFor(() => expect(harness.outline()).toHaveLength(1));
+    expect(harness.outline()[0]).toEqual({
+      title: 'Prompts',
+      state: 'Finished',
+    });
+    expect(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    ).toBeEnabled();
+    expect(
+      screen.getByText(
+        'Write the questions this stage asks, and drag them into the order the participant answers them.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 
@@ -543,7 +625,7 @@ describe('what a family says about its own prompt', () => {
         <PromptsSection
           PromptEditor={TestPromptEditor}
           PromptPreview={TestPromptPreview}
-          normalizeRow={dropUnusedAssignments}
+          collapseRow={dropUnusedAssignments}
         />
       ),
     });

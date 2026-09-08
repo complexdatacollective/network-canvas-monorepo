@@ -7,10 +7,7 @@ import StageEditorShell from '../form/StageEditorShell.tsx';
 import { interfaceDocumentationUrl } from '../interfaces/documentation.ts';
 import ContentBlockEditor from '../sections/contentBlocks/ContentBlockEditor.tsx';
 import ContentBlockPreview from '../sections/contentBlocks/ContentBlockPreview.tsx';
-import {
-  collapseContentBlock,
-  expandContentBlock,
-} from '../sections/contentBlocks/contentBlockTypes.ts';
+import { contentBlockSlots } from '../sections/contentBlocks/contentBlockTypes.ts';
 import PageContentSection from '../sections/PageContentSection.tsx';
 import StageHeading from '../sections/StageHeading.tsx';
 import { fixtureStageIds } from './protocolFixture.ts';
@@ -29,8 +26,7 @@ const meta = {
         <PageContentSection
           ItemEditor={ContentBlockEditor}
           ItemPreview={ContentBlockPreview}
-          itemSelector={expandContentBlock}
-          normalizeItem={collapseContentBlock}
+          slots={contentBlockSlots}
         />
       </StageEditorShell>
     ),
