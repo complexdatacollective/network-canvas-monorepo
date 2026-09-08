@@ -8,8 +8,10 @@ const DRILL_MODES = ['pitr', 'independent'];
 const DRILL_UNITS = [
   'compute',
   'requests',
-  'source-requests',
-  'source-transfer',
+  'database-source-requests',
+  'database-source-transfer',
+  'object-source-requests',
+  'object-source-transfer',
   'runner-transfer',
   'database-hours',
   'database-storage',
@@ -31,6 +33,8 @@ const REQUIRED_CATEGORIES = new Set([
   'primary-object-egress',
   'kms-keys',
   'kms-requests',
+  'annual-reencryption-kms-requests',
+  'annual-reencryption-compute',
   'backup-storage',
   'backup-requests',
   'backup-egress',
@@ -40,6 +44,14 @@ const REQUIRED_CATEGORIES = new Set([
   'mail',
   'mail-overage',
   'monitoring',
+  'monitoring-collector-compute',
+  'monitoring-collector-storage',
+  'monitoring-collector-egress',
+  'monitoring-anchor-http-requests',
+  'monitoring-anchor-compute',
+  'monitoring-anchor-database-reads',
+  'monitoring-anchor-database-writes',
+  'monitoring-anchor-storage',
   'dns',
   'primary-ingress',
   'primary-ingress-requests',
@@ -47,6 +59,23 @@ const REQUIRED_CATEGORIES = new Set([
   'primary-ingress-websocket',
   'reserve',
 ]);
+const DRILL_SOURCE_PROVIDERS = Object.freeze({
+  'independent-drill-database': 'backblaze-b2',
+  'independent-drill-object': 'backblaze-b2',
+  'pitr-drill-database': 'crunchybridge',
+  'pitr-drill-object': 'cloudflare-r2',
+});
+const MONITORING_PROVIDERS = Object.freeze({
+  'monitoring': 'new-relic',
+  'monitoring-collector-compute': 'fly',
+  'monitoring-collector-storage': 'fly',
+  'monitoring-collector-egress': 'fly',
+  'monitoring-anchor-http-requests': 'aws',
+  'monitoring-anchor-compute': 'aws',
+  'monitoring-anchor-database-reads': 'aws',
+  'monitoring-anchor-database-writes': 'aws',
+  'monitoring-anchor-storage': 'aws',
+});
 
 function fail(message) {
   throw new Error(`managed estate cost input: ${message}`);
@@ -134,6 +163,37 @@ function verifyPricingDeclaration(item, now, usage) {
     fail(
       'primary-ingress-websocket must use an explicit zero-price inclusion declaration for plain Workers',
     );
+  const drillSource = Object.entries(DRILL_SOURCE_PROVIDERS).find(([prefix]) =>
+    item.category.startsWith(`${prefix}-source-`),
+  );
+  if (drillSource && quote.providerId !== drillSource[1])
+    fail(
+      `category ${item.category} pricing must identify its source provider ${drillSource[1]}`,
+    );
+  const monitoringProvider = MONITORING_PROVIDERS[item.category];
+  if (monitoringProvider && quote.providerId !== monitoringProvider)
+    fail(
+      `category ${item.category} pricing must identify provider ${monitoringProvider}`,
+    );
+  if (
+    item.category.startsWith('monitoring-collector-') &&
+    quote.region !== usage.monitoringCollectorRegion
+  )
+    fail(
+      `category ${item.category} pricing must identify the collector region`,
+    );
+  if (
+    item.category.startsWith('monitoring-anchor-') &&
+    quote.region !== usage.monitoringAnchorRegion
+  )
+    fail(`category ${item.category} pricing must identify the anchor region`);
+  if (
+    item.category === 'monitoring-collector-compute' &&
+    (quote.cpuKind !== usage.monitoringCollectorCpuKind ||
+      quote.cpus !== usage.monitoringCollectorCpus ||
+      quote.memoryMb !== usage.monitoringCollectorMemoryMb)
+  )
+    fail('monitoring collector pricing must identify its candidate sizing');
   let source;
   try {
     source = new URL(quote.sourceUrl);
@@ -240,6 +300,11 @@ export function evaluateManagedEstateCost(
     'postgresStorageGb',
     'kmsBillableKeyVersions',
     'kmsRequestCount',
+    'monitoringCollectorMonthlyHours',
+    'monitoringCollectorStorageGb',
+    'monitoringCollectorEgressGb',
+    'monitoringAnchorComputeGbSeconds',
+    'monitoringAnchorStorageGb',
     'flyApplicationEgressGb',
     'flyRecoveryUploadGb',
     'flyEgressGb',
@@ -285,6 +350,11 @@ export function evaluateManagedEstateCost(
     'postmarkMessageCount',
     'postmarkIncludedMessages',
     'workerMonthlyRequestCount',
+    'monitoringCollectorCpus',
+    'monitoringCollectorMemoryMb',
+    'monitoringAnchorHttpRequestCount',
+    'monitoringAnchorDatabaseReadRequestUnits',
+    'monitoringAnchorDatabaseWriteRequestUnits',
   ])
     nonNegativeSafeInteger(input[field], field);
   const postmarkPlanRef = boundedIdentifier(
@@ -292,11 +362,23 @@ export function evaluateManagedEstateCost(
     'postmarkPlanRef',
   );
   const workerTierId = boundedIdentifier(input.workerTierId, 'workerTierId');
+  const monitoringCollectorRegion = boundedIdentifier(
+    input.monitoringCollectorRegion,
+    'monitoringCollectorRegion',
+  );
+  const monitoringAnchorRegion = boundedIdentifier(
+    input.monitoringAnchorRegion,
+    'monitoringAnchorRegion',
+  );
+  const monitoringCollectorCpuKind = boundedIdentifier(
+    input.monitoringCollectorCpuKind,
+    'monitoringCollectorCpuKind',
+  );
   if (
-    (input.primaryObjectStoredGb > 0 &&
-      input.primaryObjectCurrentCount === 0) ||
-    (input.primaryObjectRetainedVersionGb > 0 &&
-      input.primaryObjectRetainedVersionCount === 0) ||
+    (input.primaryObjectStoredGb === 0) !==
+      (input.primaryObjectCurrentCount === 0) ||
+    (input.primaryObjectRetainedVersionGb === 0) !==
+      (input.primaryObjectRetainedVersionCount === 0) ||
     (input.primaryObjectMonthlyVersionChurnGb === 0) !==
       (input.primaryObjectMonthlyVersionChurnCount === 0)
   )
@@ -310,6 +392,32 @@ export function evaluateManagedEstateCost(
     fail('Worker requests and CPU usage must measure the active ingress');
   if (input.flyApplicationEgressGb === 0)
     fail('Fly application egress must measure the active services');
+  if (
+    input.monitoringCollectorMonthlyHours !== sizing.monthlyHours ||
+    monitoringCollectorRegion !== sizing.region ||
+    monitoringCollectorCpuKind !== 'shared' ||
+    input.monitoringCollectorCpus !== 1 ||
+    input.monitoringCollectorMemoryMb !== 512
+  )
+    fail(
+      'monitoring collector compute must cover the 744-hour IAD 1x shared 512 MB candidate',
+    );
+  if (
+    input.monitoringCollectorStorageGb === 0 ||
+    input.monitoringCollectorEgressGb === 0
+  )
+    fail('monitoring collector must measure checkpoint storage and egress');
+  if (
+    monitoringAnchorRegion !== 'us-east-1' ||
+    input.monitoringAnchorHttpRequestCount === 0 ||
+    input.monitoringAnchorComputeGbSeconds === 0 ||
+    input.monitoringAnchorDatabaseReadRequestUnits === 0 ||
+    input.monitoringAnchorDatabaseWriteRequestUnits === 0 ||
+    input.monitoringAnchorStorageGb === 0
+  )
+    fail(
+      'monitoring anchor must measure US-region HTTP, compute, database read/write, and storage usage',
+    );
 
   if (input.validatorMemoryGb === 0 || input.validatorDurationSeconds === 0)
     fail('validator memory and duration must be positive');
@@ -345,6 +453,7 @@ export function evaluateManagedEstateCost(
     );
 
   const dumpSizes = input.databaseDumpSizesGb;
+  const expandedSizes = input.databaseExpandedSizesGb;
   const databaseNames = Object.keys(sizing.services);
   if (
     !dumpSizes ||
@@ -354,7 +463,16 @@ export function evaluateManagedEstateCost(
     !databaseNames.every((name) => Object.hasOwn(dumpSizes, name))
   )
     fail('databaseDumpSizesGb must measure all four logical databases');
+  if (
+    !expandedSizes ||
+    typeof expandedSizes !== 'object' ||
+    Array.isArray(expandedSizes) ||
+    Object.keys(expandedSizes).length !== databaseNames.length ||
+    !databaseNames.every((name) => Object.hasOwn(expandedSizes, name))
+  )
+    fail('databaseExpandedSizesGb must measure all four logical databases');
   let dumpTotalGb = 0;
+  let expandedTotalGb = 0;
   for (const name of databaseNames) {
     const size = finiteNonNegative(
       dumpSizes[name],
@@ -363,7 +481,18 @@ export function evaluateManagedEstateCost(
     if (size === 0)
       fail('every logical database requires a positive measured dump size');
     dumpTotalGb += size;
+    const expanded = finiteNonNegative(
+      expandedSizes[name],
+      `databaseExpandedSizesGb.${name}`,
+    );
+    if (expanded === 0 || expanded < size)
+      fail(
+        'every logical database requires a positive independently measured expanded size at least as large as its dump',
+      );
+    expandedTotalGb += expanded;
   }
+  if (expandedTotalGb > input.postgresStorageGb)
+    fail('expanded database footprints exceed the selected PostgreSQL storage');
   const monthlyPoints =
     (sizing.monthlyHours * 60) / sizing.recovery.backupIntervalMinutes;
   const requiredValidations = monthlyPoints * databaseNames.length;
@@ -552,6 +681,68 @@ export function evaluateManagedEstateCost(
     fail(
       'kmsBillableKeyVersions must price both keys and two annual rotations',
     );
+  const annualReencryption = input.annualReencryption;
+  const annualEnvironments = ['studio-production', 'studio-staging'];
+  if (
+    !annualReencryption ||
+    typeof annualReencryption !== 'object' ||
+    Array.isArray(annualReencryption) ||
+    Object.keys(annualReencryption).length !== annualEnvironments.length ||
+    !annualEnvironments.every((name) => Object.hasOwn(annualReencryption, name))
+  )
+    fail('annualReencryption must measure both Studio environments');
+  let annualReencryptionKmsRequests = 0;
+  let annualReencryptionComputeGbSeconds = 0;
+  for (const name of annualEnvironments) {
+    const measurement = annualReencryption[name];
+    const recordCount = nonNegativeSafeInteger(
+      measurement?.recordCount,
+      `annualReencryption.${name}.recordCount`,
+    );
+    const batchSize = nonNegativeSafeInteger(
+      measurement?.batchSize,
+      `annualReencryption.${name}.batchSize`,
+    );
+    const batchInvocationCount = nonNegativeSafeInteger(
+      measurement?.batchInvocationCount,
+      `annualReencryption.${name}.batchInvocationCount`,
+    );
+    const verificationInvocationCount = nonNegativeSafeInteger(
+      measurement?.verificationInvocationCount,
+      `annualReencryption.${name}.verificationInvocationCount`,
+    );
+    const configuredRootCount = nonNegativeSafeInteger(
+      measurement?.configuredRootCount,
+      `annualReencryption.${name}.configuredRootCount`,
+    );
+    const computeGbSeconds = finiteNonNegative(
+      measurement?.computeGbSeconds,
+      `annualReencryption.${name}.computeGbSeconds`,
+    );
+    if (
+      batchSize < 1 ||
+      batchSize > 100 ||
+      batchInvocationCount < Math.floor(recordCount / batchSize) + 1 ||
+      verificationInvocationCount < 1 ||
+      configuredRootCount < 1 ||
+      computeGbSeconds === 0
+    )
+      fail(
+        `annualReencryption.${name} must cover bounded traversal, the terminal page, final verification, every configured root, and measured compute`,
+      );
+    annualReencryptionKmsRequests +=
+      (batchInvocationCount + verificationInvocationCount) *
+      configuredRootCount;
+    annualReencryptionComputeGbSeconds += computeGbSeconds;
+  }
+  nonNegativeSafeInteger(
+    annualReencryptionKmsRequests,
+    'annualReencryptionKmsRequests',
+  );
+  finiteNonNegative(
+    annualReencryptionComputeGbSeconds,
+    'annualReencryptionComputeGbSeconds',
+  );
 
   const drillQuantities = {};
   let monthlyDrillReceiptRequests = 0;
@@ -578,8 +769,10 @@ export function evaluateManagedEstateCost(
       'durationHours',
       'computeGbSeconds',
       'requestCount',
-      'sourceRequestCount',
-      'sourceTransferGb',
+      'databaseSourceRequestCount',
+      'databaseSourceTransferGb',
+      'objectSourceRequestCount',
+      'objectSourceTransferGb',
       'runnerTransferGb',
       'scratchStorageGb',
       'receiptSizeBytes',
@@ -608,7 +801,7 @@ export function evaluateManagedEstateCost(
         `${mode} drill ${name} objectRestoreCount`,
       );
       if (
-        databaseGb < dumpSizes[name] ||
+        databaseGb < expandedSizes[name] ||
         count < buckets[name].retainedVersionCount ||
         (count > 0 && restoredGb === 0)
       )
@@ -625,10 +818,14 @@ export function evaluateManagedEstateCost(
     // increase these measured totals; encrypted-envelope bytes must be measured.
     if (
       objectGb < input.primaryObjectRetainedVersionGb ||
-      drill.sourceRequestCount < objectCount + 2 * databaseNames.length ||
-      drill.sourceTransferGb < payloadGb ||
+      drill.databaseSourceRequestCount < 2 * databaseNames.length ||
+      drill.databaseSourceTransferGb < dumpTotalGb ||
+      drill.objectSourceRequestCount < objectCount ||
+      drill.objectSourceTransferGb < objectGb ||
       drill.runnerTransferGb <
-        drill.sourceTransferGb + (2 * drill.receiptSizeBytes) / 1_000_000_000 ||
+        drill.databaseSourceTransferGb +
+          drill.objectSourceTransferGb +
+          (2 * drill.receiptSizeBytes) / 1_000_000_000 ||
       drill.scratchStorageGb < payloadGb
     )
       fail(
@@ -658,8 +855,10 @@ export function evaluateManagedEstateCost(
     const perDrill = {
       'compute': drill.computeGbSeconds,
       'requests': drill.requestCount,
-      'source-requests': drill.sourceRequestCount,
-      'source-transfer': drill.sourceTransferGb,
+      'database-source-requests': drill.databaseSourceRequestCount,
+      'database-source-transfer': drill.databaseSourceTransferGb,
+      'object-source-requests': drill.objectSourceRequestCount,
+      'object-source-transfer': drill.objectSourceTransferGb,
       'runner-transfer': drill.runnerTransferGb,
       'database-hours': databaseNames.length * drill.durationHours,
       'database-storage': databaseStorageGb * drill.durationHours,
@@ -697,6 +896,8 @@ export function evaluateManagedEstateCost(
     'primary-object-egress': input.primaryObjectEgressGb,
     'kms-keys': input.kmsBillableKeyVersions,
     'kms-requests': input.kmsRequestCount,
+    'annual-reencryption-kms-requests': annualReencryptionKmsRequests / 12,
+    'annual-reencryption-compute': annualReencryptionComputeGbSeconds / 12,
     'backup-storage': input.backupStoredGb / 1_000,
     'backup-requests': input.backupRequestCount,
     'backup-egress': input.backupEgressGb,
@@ -721,6 +922,16 @@ export function evaluateManagedEstateCost(
       input.postmarkMessageCount - input.postmarkIncludedMessages,
     ),
     'monitoring': 1,
+    'monitoring-collector-compute': input.monitoringCollectorMonthlyHours,
+    'monitoring-collector-storage': input.monitoringCollectorStorageGb,
+    'monitoring-collector-egress': input.monitoringCollectorEgressGb,
+    'monitoring-anchor-http-requests': input.monitoringAnchorHttpRequestCount,
+    'monitoring-anchor-compute': input.monitoringAnchorComputeGbSeconds,
+    'monitoring-anchor-database-reads':
+      input.monitoringAnchorDatabaseReadRequestUnits,
+    'monitoring-anchor-database-writes':
+      input.monitoringAnchorDatabaseWriteRequestUnits,
+    'monitoring-anchor-storage': input.monitoringAnchorStorageGb,
     'dns': 1,
     'primary-ingress': 1,
     'primary-ingress-requests': input.workerMonthlyRequestCount,
@@ -776,9 +987,13 @@ export function evaluateManagedEstateCost(
     [...subtotals]
       .filter(([category]) => category.includes('-drill-'))
       .reduce((sum, [, amount]) => sum + amount, 0);
+  const monthlyAnnualReencryptionUsd =
+    subtotals.get('annual-reencryption-kms-requests') +
+    subtotals.get('annual-reencryption-compute');
   const peakSubtotalUsd =
     subtotalUsd +
-    monthlyDrillUsd * (sizing.recovery.restoreDrillIntervalMonths - 1);
+    monthlyDrillUsd * (sizing.recovery.restoreDrillIntervalMonths - 1) +
+    monthlyAnnualReencryptionUsd * 11;
   const peakMonthUsd = Math.round(peakSubtotalUsd * 100) / 100;
   const totalUsd = Math.round(subtotalUsd * 100) / 100;
   const headroomUsd =
@@ -809,6 +1024,11 @@ export function evaluateManagedEstateCost(
       postmarkPlanRef,
       postmarkIncludedMessages: input.postmarkIncludedMessages,
       workerTierId,
+      monitoringCollectorRegion,
+      monitoringCollectorCpuKind,
+      monitoringCollectorCpus: input.monitoringCollectorCpus,
+      monitoringCollectorMemoryMb: input.monitoringCollectorMemoryMb,
+      monitoringAnchorRegion,
     };
     for (const item of input.lineItems)
       verifyPricingDeclaration(item, now, usage);
