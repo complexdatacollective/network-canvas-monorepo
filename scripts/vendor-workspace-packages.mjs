@@ -131,8 +131,9 @@ function catalogEntriesChangedSince(ref) {
 
 // The members of `names` whose built artifact would differ from the one
 // `ref` produced: the package's own directory changed, a default catalog
-// entry it consumes (in any field) was re-pinned, or a workspace package it
-// is built with — a devDependency such as a shared tsconfig — changed. A
+// entry it consumes (in any field) was re-pinned, a workspace package it
+// is built with — a devDependency such as a shared tsconfig — changed, or
+// (given both root lockfiles) its importer resolved anything differently. A
 // hotfix that only re-pins a catalog entry used by one closure
 // package must still vendor that package: the verify step builds it against
 // the new pin, and an image installing the published artifact would not
@@ -140,8 +141,28 @@ function catalogEntriesChangedSince(ref) {
 // checked-out branch, never a working tree — so any change under a directory
 // counts, tests and stories included: a needless tarball costs bytes, a
 // missing one ships stale code.
-export function packagesChangedSince(ref, names, wsPackages) {
+export function packagesChangedSince(
+  ref,
+  names,
+  wsPackages,
+  { refLock, headLock } = {},
+) {
   const changedCatalog = catalogEntriesChangedSince(ref);
+  // With both root lockfiles, a package whose importer resolved ANY of its
+  // dependencies differently since the release — a build tool bumped in the
+  // lockfile alone, with no manifest or catalog edit — is rebuilt too: its
+  // published artifact was made with the old resolution.
+  const importerResolutionChanged = (name) => {
+    if (!refLock || !headLock) return false;
+    const dir = wsPackages[name].dir;
+    const before = lockfileEdges(refLock).importers.get(dir) ?? new Map();
+    const after = lockfileEdges(headLock).importers.get(dir) ?? new Map();
+    if (before.size !== after.size) return true;
+    for (const [dep, version] of after) {
+      if (before.get(dep) !== version) return true;
+    }
+    return false;
+  };
   const dirChanged = new Map();
   const directoryChanged = (name) => {
     if (!dirChanged.has(name)) {
@@ -163,6 +184,7 @@ export function packagesChangedSince(ref, names, wsPackages) {
 
   return names.filter((name) => {
     if (directoryChanged(name)) return true;
+    if (importerResolutionChanged(name)) return true;
     const manifest = readManifest(wsPackages[name].dir);
     for (const field of ALL_DEP_FIELDS) {
       for (const [dep, spec] of Object.entries(manifest[field] ?? {})) {

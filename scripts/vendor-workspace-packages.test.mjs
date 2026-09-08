@@ -879,3 +879,32 @@ test('a closure package’s devDependency edge is not compared against its snaps
     /apps\/app → vitest: the branch resolves 3\.0\.1; the image would keep 3\.0\.0/,
   );
 });
+
+// A closure package whose build tool moved only in the root lockfile — no
+// manifest or catalog edit — was built with the old tool when published, so
+// it is rebuilt and vendored like any other changed package.
+test('a package whose importer resolved a build input differently is vendored again', () => {
+  inWorkspace(() => {
+    const closure = collectClosure(wsPackages, 'apps/app');
+    const refLock = lock({
+      devImporters: { 'packages/ui': { esbuild: '0.20.0' } },
+    });
+    const headLock = lock({
+      devImporters: { 'packages/ui': { esbuild: '0.21.0' } },
+    });
+    assert.deepEqual(
+      packagesChangedSince('app@4.0.0', closure, wsPackages, {
+        refLock,
+        headLock,
+      }),
+      ['@x/ui'],
+    );
+    assert.deepEqual(
+      packagesChangedSince('app@4.0.0', closure, wsPackages, {
+        refLock,
+        headLock: refLock,
+      }),
+      [],
+    );
+  });
+});

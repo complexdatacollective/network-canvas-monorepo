@@ -694,6 +694,7 @@ function stage({
   }
 
   let vendorManifest = null;
+  let rootLocks = null;
   if (vendorChangedSince) {
     // Only Fresco builds its image from the mirrored tree; the Electron apps
     // vendor nothing and the Netlify apps never come through here.
@@ -712,10 +713,23 @@ function stage({
     assertSpecifierDrivenChanges(vendorChangedSince, app, closure, wsPackages, {
       mirrorCatalogEntries: mirrorCatalogEntries(),
     });
+    // The root lockfile is several megabytes, past spawnSync's default
+    // buffer. Read once here; the carried-changes check below reuses it.
+    rootLocks = {
+      refLock: capture(
+        'git',
+        ['show', `${vendorChangedSince}:pnpm-lock.yaml`],
+        {
+          maxBuffer: 256 * 1024 * 1024,
+        },
+      ),
+      headLock: readFileSync(join(repoRoot, 'pnpm-lock.yaml'), 'utf8'),
+    };
     const changed = packagesChangedSince(
       vendorChangedSince,
       closure,
       wsPackages,
+      rootLocks,
     );
     // A previous hotfix's vendored packages, still unpublished, that the
     // seeded policy points at tarballs this stage does not have yet.
@@ -762,14 +776,7 @@ function stage({
         const wsPackages = readWorkspacePackages();
         const closure = collectClosure(wsPackages, app);
         assertBranchResolutionsCarried({
-          // The root lockfile is several megabytes, past spawnSync's default
-          // buffer; the seeded mirror lock is read from disk.
-          refLock: capture(
-            'git',
-            ['show', `${vendorChangedSince}:pnpm-lock.yaml`],
-            { maxBuffer: 256 * 1024 * 1024 },
-          ),
-          headLock: readFileSync(join(repoRoot, 'pnpm-lock.yaml'), 'utf8'),
+          ...rootLocks,
           mirrorLock: readFileSync(join(staging, 'pnpm-lock.yaml'), 'utf8'),
           appImporter: app,
           closureImporters: Object.fromEntries(
