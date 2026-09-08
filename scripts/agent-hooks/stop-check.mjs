@@ -26,7 +26,7 @@ import {
   shouldSkip,
   signature,
   truncateLines,
-  writeState,
+  updateState,
 } from './lib.mjs';
 
 const manual = process.argv.includes('--manual');
@@ -149,9 +149,10 @@ function exists(file) {
 const key = input.agent_id ?? input.agentId ?? 'main';
 
 if (problems.length === 0) {
-  delete state[key];
-  if (!manual && checked) state.lastClean = fingerprint;
-  writeState(root, state);
+  updateState(root, (current) => {
+    delete current[key];
+    if (!manual && checked) current.lastClean = fingerprint;
+  });
   if (manual)
     console.log(
       `agent:check: OK (${changed.length} changed files, packages: ${all ? 'all' : seeds.join(', ') || 'none'}).`,
@@ -166,11 +167,14 @@ if (manual) {
 }
 
 const sig = signature(report);
-const previous = state[key];
-const attempts = (previous?.attempts ?? 0) + 1;
-state[key] = { signature: sig, attempts };
-delete state.lastClean;
-writeState(root, state);
+let previous;
+let attempts;
+updateState(root, (current) => {
+  previous = current[key];
+  attempts = (previous?.attempts ?? 0) + 1;
+  current[key] = { signature: sig, attempts };
+  delete current.lastClean;
+});
 
 const madeProgress = previous?.signature !== sig;
 const block = !input.stop_hook_active || (madeProgress && attempts <= 4);

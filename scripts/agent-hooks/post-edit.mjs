@@ -17,13 +17,12 @@ import {
   isUnderRepo,
   modifiedSince,
   readHookInput,
-  readState,
   resolveRepoRoot,
   run,
   shouldSkip,
   takeCommandStart,
   truncateLines,
-  writeState,
+  updateState,
 } from './lib.mjs';
 
 const input = readHookInput();
@@ -38,22 +37,23 @@ const eligible = (file) =>
   isFormattable(file);
 
 let files = extractEditedFiles(input, root).filter(eligible);
-const state = readState(root);
-if (
-  files.length === 0 &&
-  /^(Bash|shell|exec_command|local_shell)$/i.test(toolName)
-) {
+const shellTool = /^(Bash|shell|exec_command|local_shell)$/i.test(toolName);
+let since = null;
+updateState(root, (state) => {
+  if (files.length === 0 && shellTool) {
+    since = takeCommandStart(
+      state,
+      input.tool_use_id ?? input.toolUseId,
+      startedAt,
+    );
+  }
+  state.lastPostEdit = startedAt;
+});
+if (since !== null) {
   // No explicit path: fall back to what changed on disk since the command
   // started (recorded by the pre-command hook).
-  const since = takeCommandStart(
-    state,
-    input.tool_use_id ?? input.toolUseId,
-    startedAt,
-  );
   files = modifiedSince(changedFiles(root).filter(eligible), since);
 }
-state.lastPostEdit = startedAt;
-writeState(root, state);
 if (files.length === 0) process.exit(0);
 
 const oxfmt = binPath(root, 'oxfmt');

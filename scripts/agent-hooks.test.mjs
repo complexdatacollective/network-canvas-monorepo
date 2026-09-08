@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +12,10 @@ import {
   classifyGateCommand,
   extractEditedFiles,
   isKnipRelevant,
+  knipCodegenOutputs,
+  knipTargetForPush,
   modifiedSince,
+  nodeModulesDirs,
   packagesForFiles,
   parseApplyPatchPaths,
   parseApplyPatchResponse,
@@ -19,6 +25,7 @@ import {
   resolveRepoRoot,
   stripEmbeddedText,
   takeCommandStart,
+  updateState,
   workspacePackages,
 } from './agent-hooks/lib.mjs';
 
@@ -561,4 +568,111 @@ test("takeCommandStart prefers the command's own start, then the most recent out
   );
   assert.equal(takeCommandStart({ lastPostEdit: 7_000 }, 'x', 10_000), 7_000);
   assert.equal(takeCommandStart({}, undefined, 100_000), 40_000);
+});
+
+test('rule-level options such as -D and -A take a value that is not a file target', () => {
+  assert.equal(
+    classifyGateCommand('oxlint -D correctness')?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('oxlint -A no-debugger -W correctness')?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('oxlint --deny correctness --allow no-console')?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('oxlint -D correctness apps/architect/src/App.tsx'),
+    null,
+  );
+});
+
+test('knip runs in place only for the clean checked-out HEAD', () => {
+  const head = 'abc123';
+  assert.equal(knipTargetForPush(head, { head, porcelain: '' }), 'in-place');
+  assert.equal(
+    knipTargetForPush(head, { head, porcelain: '?? scratch.ts\n' }),
+    'worktree',
+  );
+  assert.equal(
+    knipTargetForPush('def456', { head, porcelain: '' }),
+    'worktree',
+  );
+});
+
+test('nodeModulesDirs lists the root and every workspace package that has node_modules', () => {
+  const dirs = nodeModulesDirs(repoRoot, [
+    'packages/interview/package.json',
+    'apps/studio/server/package.json',
+    'nowhere/package.json',
+  ]);
+  assert.ok(dirs.includes('.'));
+  assert.ok(dirs.includes('packages/interview'));
+  assert.ok(!dirs.includes('nowhere'));
+});
+
+test('concurrent state updates from separate processes both survive', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-state-'));
+  mkdirSync(path.join(root, 'node_modules'), { recursive: true });
+  const lib = path.join(repoRoot, 'scripts', 'agent-hooks', 'lib.mjs');
+  const script = (key) =>
+    `import('${lib}').then((m) => { for (let i = 0; i < 50; i += 1) m.updateState('${root}', (s) => { s.${key} = (s.${key} ?? 0) + 1; }); })`;
+  const a = spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', script('a')],
+    { encoding: 'utf8' },
+  );
+  const b = spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', script('b')],
+    { encoding: 'utf8' },
+  );
+  assert.equal(a.status, 0, a.stderr);
+  assert.equal(b.status, 0, b.stderr);
+  const state = JSON.parse(
+    readFileSync(
+      path.join(
+        root,
+        'node_modules',
+        '.cache',
+        'agent-hooks',
+        'stop-state.json',
+      ),
+      'utf8',
+    ),
+  );
+  assert.deepEqual(state, { a: 50, b: 50 });
+  updateState(root, (s) => {
+    s.c = 1;
+  });
+  assert.deepEqual(
+    JSON.parse(
+      readFileSync(
+        path.join(
+          root,
+          'node_modules',
+          '.cache',
+          'agent-hooks',
+          'stop-state.json',
+        ),
+        'utf8',
+      ),
+    ),
+    { a: 50, b: 50, c: 1 },
+  );
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('knipCodegenOutputs resolves the generated inputs knip depends on from turbo.json', () => {
+  const outputs = knipCodegenOutputs(repoRoot).map((p) =>
+    path.relative(repoRoot, p),
+  );
+  assert.ok(
+    outputs.includes('apps/fresco/lib/db/generated'),
+    outputs.join(', '),
+  );
+  assert.ok(outputs.includes('apps/fresco/next-env.d.ts'));
+  assert.ok(!outputs.some((p) => p.includes('**')));
 });

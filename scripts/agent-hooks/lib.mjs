@@ -12,6 +12,8 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  renameSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
@@ -521,14 +523,14 @@ function defaultMtime(file) {
 // tool_use_id, pruned after an hour) so the post-command hook can find the
 // files that command wrote, however long it ran.
 export function recordCommandStart(root, toolUseId, now = Date.now()) {
-  const state = readState(root);
-  const starts = state.commandStarts ?? {};
-  for (const [id, at] of Object.entries(starts)) {
-    if (now - at > 60 * 60 * 1000) delete starts[id];
-  }
-  starts[toolUseId ?? `anon-${now}`] = now;
-  state.commandStarts = starts;
-  writeState(root, state);
+  updateState(root, (state) => {
+    const starts = state.commandStarts ?? {};
+    for (const [id, at] of Object.entries(starts)) {
+      if (now - at > 60 * 60 * 1000) delete starts[id];
+    }
+    starts[toolUseId ?? `anon-${now}`] = now;
+    state.commandStarts = starts;
+  });
 }
 
 // When did the command that just finished start? Its own record when the
@@ -571,8 +573,104 @@ export function readState(root) {
   }
 }
 
-export function writeState(root, state) {
-  writeFileSync(stateFile(root), JSON.stringify(state));
+// Hooks from concurrent agents (a subagent's stop check, the main agent's
+// shell command) share this file, so every write is a locked
+// read-modify-write of the current contents rather than a snapshot taken
+// before a long-running check. The lock is an atomically created directory,
+// retried briefly and treated as stale after ten seconds.
+export function updateState(root, mutate) {
+  const file = stateFile(root);
+  const lock = `${file}.lock`;
+  const deadline = Date.now() + 2000;
+  let locked = false;
+  while (!locked) {
+    try {
+      mkdirSync(lock);
+      locked = true;
+    } catch {
+      let stale = false;
+      try {
+        stale = Date.now() - statSync(lock).mtimeMs > 10_000;
+      } catch {
+        continue;
+      }
+      if (stale) {
+        try {
+          rmSync(lock, { recursive: true, force: true });
+        } catch {
+          // Another process cleared it first.
+        }
+        continue;
+      }
+      if (Date.now() > deadline) break;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+    }
+  }
+  try {
+    const state = readState(root);
+    mutate(state);
+    const tmp = `${file}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(state));
+    renameSync(tmp, file);
+    return state;
+  } finally {
+    if (locked) {
+      try {
+        rmSync(lock, { recursive: true, force: true });
+      } catch {
+        // Already gone.
+      }
+    }
+  }
+}
+
+// pre-push: the pushed revision is checked in place only when it is the
+// clean checked-out HEAD; otherwise it is checked out into a temporary
+// worktree so unrelated working-tree changes neither mask nor cause findings.
+export function knipTargetForPush(pushedSha, { head, porcelain }) {
+  return pushedSha === head && porcelain.trim() === ''
+    ? 'in-place'
+    : 'worktree';
+}
+
+// Directories (relative to the repository root) whose node_modules the
+// temporary worktree borrows from the current tree instead of installing.
+export function nodeModulesDirs(root, manifestPaths) {
+  const dirs = new Set(['.']);
+  for (const manifest of manifestPaths) dirs.add(path.dirname(manifest));
+  return [...dirs].filter((dir) =>
+    existsSync(path.join(root, dir, 'node_modules')),
+  );
+}
+
+// Generated, gitignored inputs that knip needs: the outputs of the tasks
+// turbo.json makes `//#knip` depend on (fresco#codegen today). A temporary
+// checkout of a pushed revision lacks them, so pre-push borrows them from the
+// current tree. turbo.json carries full-line // comments only.
+export function knipCodegenOutputs(root) {
+  let config;
+  try {
+    const text = readFileSync(path.join(root, 'turbo.json'), 'utf8')
+      .split('\n')
+      .filter((line) => !/^\s*\/\//.test(line))
+      .join('\n');
+    config = JSON.parse(text);
+  } catch {
+    return [];
+  }
+  const tasks = config.tasks ?? {};
+  const outputs = [];
+  for (const dep of tasks['//#knip']?.dependsOn ?? []) {
+    const [pkg, task] = dep.split('#');
+    if (!pkg || !task) continue;
+    const dir = workspacePackages(root).get(pkg)?.dir;
+    if (!dir) continue;
+    for (const glob of tasks[dep]?.outputs ?? []) {
+      if (glob.startsWith('!')) continue;
+      outputs.push(path.join(dir, glob.replace(/\/\*\*$/, '')));
+    }
+  }
+  return outputs;
 }
 
 export function emit(payload) {
@@ -599,6 +697,14 @@ const VALUE_OPTIONS = new Set([
   '--stdin-filepath',
   '--report-unused-disable-directives-severity',
   '--fix-kind',
+  '--debug',
+  '-A',
+  '--allow',
+  '-W',
+  '--warn',
+  '-D',
+  '--deny',
+  '--migrate',
 ]);
 
 function stripPrefixes(segment) {

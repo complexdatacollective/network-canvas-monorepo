@@ -6,7 +6,7 @@
 # pushed, not on tag-only pushes (e.g. the per-package release tags emitted
 # by changesets/action, which would otherwise fail under hook load).
 pushing_main=0
-pushing_branch=0
+pushed_shas=""
 zero_sha=0000000000000000000000000000000000000000
 while read -r local_ref local_sha remote_ref remote_sha; do
   if [ "$remote_ref" = "refs/heads/main" ]; then
@@ -15,21 +15,20 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   case "$remote_ref" in
     refs/heads/*)
       if [ "$local_sha" != "$zero_sha" ]; then
-        pushing_branch=1
+        pushed_shas="$pushed_shas $local_sha"
       fi
       ;;
   esac
 done
 
-# knip (unused files, exports, dependencies) runs once per branch push: the
-# last local moment before CI, and far rarer than turn ends or commits. This
-# is the knip gate that lets agents skip whole-tree runs; see CLAUDE.md,
-# "Automatic quality gates".
-if [ "$pushing_branch" = "1" ]; then
-  pnpm knip || {
-    echo "knip found unused files, exports, or dependencies. Fix them before pushing (pnpm agent:check shows the report)."
-    exit 1
-  }
+# knip (unused files, exports, dependencies) runs once per pushed branch
+# revision: the last local moment before CI, and far rarer than turn ends or
+# commits. This is the knip gate that lets agents skip whole-tree runs; see
+# CLAUDE.md, "Automatic quality gates". The script checks the pushed
+# revision itself, not whatever happens to be in the working tree.
+if [ -n "$pushed_shas" ]; then
+  # shellcheck disable=SC2086
+  node scripts/agent-hooks/pre-push-knip.mjs $pushed_shas || exit 1
 fi
 
 if [ "$pushing_main" = "1" ]; then

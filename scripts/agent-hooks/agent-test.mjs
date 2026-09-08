@@ -11,6 +11,7 @@
 // minutes) and CI covers them anyway. Other arguments are passed through to
 // vitest.
 import { spawnSync } from 'node:child_process';
+import path from 'node:path';
 
 import {
   binPath,
@@ -23,6 +24,7 @@ import {
 } from './lib.mjs';
 
 const root = resolveRepoRoot({});
+const relative = (file) => path.relative(root, file);
 const includeDependents = process.argv.includes('--dependents');
 // --list prints the plan without running vitest.
 const listOnly = process.argv.includes('--list');
@@ -97,6 +99,12 @@ if (!includeDependents && optional.length > 0) {
       'CI runs them, or pass --dependents to include them here.',
   );
 }
+// Root scripts are covered by `pnpm test:scripts` (scripts/*.test.mjs), not
+// by any workspace package.
+const ROOT_SCRIPTS = 'root scripts (pnpm test:scripts)';
+if (changed.some((file) => relative(file).startsWith('scripts/'))) {
+  targets.push(ROOT_SCRIPTS);
+}
 if (targets.length === 0) {
   console.log('agent:test: no tests reach the changed files.');
   process.exit(0);
@@ -110,6 +118,15 @@ if (listOnly) {
 
 const failed = [];
 for (const name of targets) {
+  if (name === ROOT_SCRIPTS) {
+    console.log(`\n== ${name}`);
+    const result = spawnSync('pnpm', ['test:scripts'], {
+      cwd: root,
+      stdio: 'inherit',
+    });
+    if (result.status !== 0) failed.push(name);
+    continue;
+  }
   console.log(
     `\n== ${name}: vitest --changed ${base ? base.slice(0, 12) : '(working tree)'}`,
   );
