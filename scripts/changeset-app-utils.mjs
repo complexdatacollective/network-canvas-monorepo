@@ -99,6 +99,22 @@ export function readChangesets(changesetDir) {
     }));
 }
 
+// Whether `changeset version` will leave this changeset alone: it names at
+// least one package and every package it names is in the config `ignore`
+// list. Such changesets belong to a separately gated lane and persist in
+// .changeset/ until that lane's release PR consumes them. Everything else —
+// a changeset naming any normal-lane package, or an empty one — is the normal
+// lane's, and its presence sends changesets/action down the "regenerate the
+// release PR" path instead of publishing. prune-ignored-changesets.mjs hides
+// the former from the action; check-version-packages-freshness.mjs refuses a
+// release-PR merge that leaves any of the latter behind.
+export function isIgnoredLaneChangeset(cs, ignored) {
+  return (
+    cs.releases.length > 0 &&
+    cs.releases.every((release) => ignored.has(release.name))
+  );
+}
+
 export function classifyChangeset(
   cs,
   productPackages = GATED_PRODUCT_PACKAGES,
