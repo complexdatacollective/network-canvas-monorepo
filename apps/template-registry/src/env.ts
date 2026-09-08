@@ -278,7 +278,7 @@ export function readRegistryRecoveryEnv(raw: RawEnv = process.env) {
       reconciliationSha256: raw.REGISTRY_RECOVERY_RECONCILIATION_SHA256,
       ...readDatabaseAdmission(raw),
       s3: {
-        provider: raw.REGISTRY_S3_PROVIDER,
+        provider: raw.REGISTRY_RECOVERY_S3_PROVIDER ?? raw.REGISTRY_S3_PROVIDER,
         endpoint: raw.REGISTRY_S3_ENDPOINT,
         region: raw.REGISTRY_S3_REGION,
         bucket: raw.REGISTRY_S3_BUCKET,

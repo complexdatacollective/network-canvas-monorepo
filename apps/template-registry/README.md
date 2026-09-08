@@ -103,6 +103,8 @@ HTTPS account endpoint (`<account-id>.r2.cloudflarestorage.com` or its `eu`,
 `us`, or `fedramp` jurisdiction form) and region `auto`. The endpoint must use
 the 32-hex account ID and default HTTPS port; userinfo, paths, and query data
 are rejected.
+Offline recovery inherits that provider unless `REGISTRY_RECOVERY_S3_PROVIDER`
+is set explicitly, and applies the same endpoint admission.
 Hard deletion enumerates the exact artifact key with S3 `ListObjectVersions`
 and removes every returned version and delete marker before the database job is
 completed. A provider that does not implement that operation (including the

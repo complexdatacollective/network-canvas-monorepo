@@ -4,6 +4,7 @@ import {
   readRegistryBackupEnv,
   readRegistryEnv,
   readRegistryMigrationEnv,
+  readRegistryRecoveryEnv,
 } from './env.ts';
 
 const valid = {
@@ -160,6 +161,27 @@ it('admits only verified HTTPS Cloudflare R2 account endpoints for the R2 provid
         REGISTRY_S3_ENDPOINT: invalid,
       }),
     ).toThrow('REGISTRY_CONFIGURATION_INVALID');
+});
+
+it('lets offline recovery select the same storage provider by default or an explicit R2 provider', () => {
+  const common = {
+    ...valid,
+    REGISTRY_RECOVERY_DATABASE_URL:
+      'postgres://owner:synthetic@127.0.0.1/registry',
+    REGISTRY_BACKUP_DATABASE_URL:
+      'postgres://backup:synthetic@127.0.0.1/registry',
+    REGISTRY_RECOVERY_RECONCILIATION_PATH: '/reconciliation.json',
+    REGISTRY_RECOVERY_RECONCILIATION_SHA256: 'a'.repeat(64),
+  };
+  expect(readRegistryRecoveryEnv(common).s3.provider).toBe('s3');
+  const endpoint = `https://${'b'.repeat(32)}.us.r2.cloudflarestorage.com`;
+  expect(
+    readRegistryRecoveryEnv({
+      ...common,
+      REGISTRY_RECOVERY_S3_PROVIDER: 'r2',
+      REGISTRY_S3_ENDPOINT: endpoint,
+    }).s3,
+  ).toMatchObject({ provider: 'r2', endpoint, region: 'auto' });
 });
 
 it('requires an explicit owner URL and exact allowed-login JSON for migrations', () => {
