@@ -118,6 +118,48 @@ function familyMemberCodebook(
   return { ...definition, variables: next };
 }
 
+const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
+
+/**
+ * The interview re-ordered, as an authoritative update.
+ *
+ * The change goes to the HOST, which issues the revision for it, and the
+ * session is told about the result under that same revision — the route
+ * `receiveCodebookUpdate` takes for the codebook, taken here for the one
+ * section a move touches. Told to the session alone, under a number nobody
+ * issued, every later compound edit is refused against a base the host does
+ * not recognise.
+ */
+function reorderStages(
+  harness: StageEditorHarness,
+  reorder: (stages: string[]) => string[],
+): void {
+  const held = harness.host.getSnapshot().protocolSections;
+  const order = held[STAGE_ORDER_SECTION]?.stages;
+  const stages = Array.isArray(order)
+    ? order.filter((entry): entry is string => typeof entry === 'string')
+    : [];
+  const moved = reorder([...stages]);
+  if (moved.length !== stages.length) {
+    throw new Error('Re-ordering the interview must not add or drop a stage.');
+  }
+  const applied = harness.host.receiveAuthoritativeSections({
+    [STAGE_ORDER_SECTION]: { stages: moved },
+  });
+  act(() => {
+    harness.session.receiveAuthoritativeUpdate({
+      protocolSections: applied.protocolSections,
+      manifestRevision: applied.manifestRevision,
+    });
+  });
+}
+
+/** The fixture's only pedigree, moved to the end of the interview. */
+const movePedigreeLast = (stages: string[]): string[] => [
+  ...stages.filter((id) => id !== 'family-pedigree-1'),
+  'family-pedigree-1',
+];
+
 /** The pedigrees the source control is currently offering, by their labels. */
 async function offeredSources(harness: StageEditorHarness): Promise<string[]> {
   await harness.user.click(
@@ -269,6 +311,64 @@ describe('a narrative pedigree the host is creating', () => {
     expect(
       screen.queryByRole('combobox', { name: 'Source stage' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * A source that has been deleted, re-typed or moved below this stage is not a
+ * notice to read past: the stage cannot run, so the save has to stop.
+ *
+ * The moved case is the one nothing else catches. A pedigree that has been
+ * moved still resolves a node type, so every disease mapping beside it still
+ * validates and the whole stage saved happily with an order the interview
+ * cannot execute — the participant would be shown a family they have not
+ * built yet.
+ */
+describe('saving a narrative pedigree whose source cannot be used', () => {
+  const openFixtureStage = () =>
+    renderStageEditor({
+      stage: narrativePedigreeStageWith({}),
+      sections: narrativePedigreeSections,
+    });
+
+  it('refuses a source that now runs after this stage', async () => {
+    const harness = openFixtureStage();
+
+    reorderStages(harness, movePedigreeLast);
+
+    expect(
+      await screen.findByText(
+        'The Family Pedigree stage this one reads now runs after it, so the family would still be empty. Move it earlier in the interview, or choose a pedigree that runs before this stage.',
+      ),
+    ).toBeInTheDocument();
+    expect(await harness.submit()).toBeNull();
+  });
+
+  it('refuses a source that has left the interview', async () => {
+    const harness = renderStageEditor({
+      stage: narrativePedigreeStageWith({
+        sourceStageId: 'a-pedigree-that-was-deleted',
+      }),
+      sections: narrativePedigreeSections,
+    });
+
+    expect(await harness.submit()).toBeNull();
+  });
+
+  it('saves again once the pedigree is moved back before it', async () => {
+    const harness = openFixtureStage();
+    reorderStages(harness, movePedigreeLast);
+    expect(await harness.submit()).toBeNull();
+
+    reorderStages(harness, (stages) => [
+      'family-pedigree-1',
+      ...stages.filter((id) => id !== 'family-pedigree-1'),
+    ]);
+
+    await waitFor(() =>
+      expect(screen.queryByText(/now runs after it/)).not.toBeInTheDocument(),
+    );
+    expect(await harness.submit()).not.toBeNull();
   });
 });
 
