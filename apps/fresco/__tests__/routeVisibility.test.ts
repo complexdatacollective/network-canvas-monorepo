@@ -119,6 +119,53 @@ function guardsCalled(file: string): string[] {
 
 const routeFiles = collectRouteFiles(APP_DIR, []);
 
+/**
+ * The URLs the application asks for by hand. Each is a literal in code that
+ * must name a route that exists and is public: the participant's browser and
+ * the UploadThing SDK request them from outside, so a route moved without its
+ * caller is a 404 in production that nothing else here would catch.
+ */
+const CALL_SITES = [
+  {
+    what: "the interview shell's finish request",
+    file: path.join(
+      APP_DIR,
+      '(interview)/interview/[interviewId]/InterviewClient.tsx',
+    ),
+    pattern: /fetch\(`(\/[^`$]*)\$\{id\}(\/finish)`/,
+    /** `${id}` stands in for the dynamic segment the route file declares. */
+    url: (m: RegExpExecArray) => `${m[1]}[interviewId]${m[2]}/`,
+  },
+  {
+    what: "the UploadThing uploader's endpoint",
+    file: path.join(APP_DIR, '..', 'lib/uploadthing/client-helpers.ts'),
+    pattern: /url:\s*'([^']+)'/,
+    url: (m: RegExpExecArray) => `${m[1]}/`,
+  },
+  {
+    what: 'the URL the S3 backend stores for an uploaded asset',
+    file: path.join(APP_DIR, '..', 'lib/storage/layers/S3AssetStorage.ts'),
+    pattern: /publicUrl: `(\/[^`$]*)\$\{fileKey\}`/,
+    url: (m: RegExpExecArray) => `${m[1]}[key]/`,
+  },
+] as const;
+
+describe('hand-written URLs', () => {
+  it.each(CALL_SITES)('$what names a public route that exists', (site) => {
+    const source = stripComments(readFileSync(site.file, 'utf8'));
+    const match = site.pattern.exec(source);
+    expect(
+      match,
+      `No URL matched in ${path.basename(site.file)}. If the call site was ` +
+        'rewritten, update the pattern here rather than deleting the check.',
+    ).not.toBeNull();
+
+    const url = site.url(match!);
+    expect(routeFiles.map((route) => route.url)).toContain(url);
+    expect(isPublic(url), `${url} is not under a public prefix`).toBe(true);
+  });
+});
+
 describe('route visibility', () => {
   // Positive controls: a walker that silently found nothing, or derived URLs
   // some other way, would let the classification test pass over an empty list.
