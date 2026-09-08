@@ -886,7 +886,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                       spacing="sm"
                       shadow="xs"
                       series="accent"
-                      className="w-full overflow-visible! [--destructive:var(--color-destructive-strong)]"
+                      className="w-full overflow-visible! [--destructive:var(--destructive-strong)]"
                     >
                       <div className="flex items-start gap-4">
                         <div className="min-w-0 flex-1">

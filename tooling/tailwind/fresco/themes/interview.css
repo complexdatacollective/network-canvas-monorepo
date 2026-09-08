@@ -124,6 +124,14 @@
 
     --destructive: oklch(var(--neon-coral));
     --destructive-contrast: oklch(var(--white));
+    /* Redeclared (not inherited from :root) so the mix is made against the
+       interview's own coral and white ink — see `--color-destructive-strong`
+       in theme.css for why one copy at `:root` cannot serve every theme. */
+    --destructive-strong: color-mix(
+      in oklch,
+      var(--destructive) 78%,
+      var(--text)
+    );
 
     --warning: color-mix(
       in oklch,

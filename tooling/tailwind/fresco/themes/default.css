@@ -154,6 +154,17 @@
 
     --destructive: oklch(var(--tomato));
     --destructive-contrast: oklch(var(--white));
+    /* The destructive ink a tinted surface opts into — see
+       `--color-destructive-strong` in theme.css for what it is for. Written in
+       each theme scope rather than once in the token block because a custom
+       property's `var()`s are substituted on the element the declaration sits
+       on, so one copy at `:root` would cascade the light mixture into every
+       dark region below it. */
+    --destructive-strong: color-mix(
+      in oklch,
+      var(--destructive) 78%,
+      var(--text)
+    );
 
     --warning: oklch(
       from oklch(var(--neon-carrot)) calc(l - 0.17) calc(c + 0.06) h
@@ -295,6 +306,15 @@
     /* State colors are brightened for legibility on dark while keeping hue. */
     --destructive: oklch(from oklch(var(--tomato)) calc(l + 0.08) c h);
     --destructive-contrast: oklch(var(--white));
+    /* Redeclared, like the surface aliases above: the mixture has to be made
+       against THIS scope's `--destructive` and `--text` — mixing toward the
+       light theme's near-black ink darkens the error on a dark surface
+       instead of lifting it off one. */
+    --destructive-strong: color-mix(
+      in oklch,
+      var(--destructive) 78%,
+      var(--text)
+    );
 
     --warning: oklch(from oklch(var(--neon-carrot)) calc(l + 0.04) c h);
     --warning-contrast: oklch(0.2 0.03 var(--base-hue));
