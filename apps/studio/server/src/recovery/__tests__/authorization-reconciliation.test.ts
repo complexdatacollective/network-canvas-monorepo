@@ -1,11 +1,16 @@
+import { execFile } from 'node:child_process';
 import {
   createHash,
   generateKeyPairSync,
   sign as signBytes,
 } from 'node:crypto';
+import { once } from 'node:events';
 import { chmod, mkdtemp, symlink, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 import type pg from 'pg';
 import { describe, expect, it } from 'vitest';
@@ -14,13 +19,16 @@ import { canonicalize } from '@codaco/studio-sync/apply';
 
 import {
   copyStudioRecoveryAuthorizationReconciliation,
+  readExactRecoveryArtifactBytes,
   readStudioRecoveryAuthorizationReconciliation,
+  readStudioRecoveryAuthorizationReconciliationBytes,
   type VerifiedStudioRecoveryAuthorizationEvidence,
   verifyStudioRecoveryAuthorizationEvidence,
 } from '../authorization-reconciliation.ts';
 import { authorizeCurrentStudioRecovery } from '../authorization.ts';
 
 const sha = '1'.repeat(64);
+const runFile = promisify(execFile);
 
 function evidence() {
   return {
@@ -80,30 +88,28 @@ describe('Studio recovery authorization reconciliation evidence', () => {
   it('refuses tampered, noncanonical and over-depth evidence without echoing it', () => {
     const { publicKey, privateKey } = generateKeyPairSync('ed25519');
     const publicKeyBytes = publicKey.export({ format: 'jwk' }).x!;
-    const verify = (bytes: Buffer, signatureBytes = bytes) => () =>
-      verifyStudioRecoveryAuthorizationEvidence({
-        bytes,
-        expectedSha256: createHash('sha256').update(bytes).digest('hex'),
-        signature: signBytes(null, signatureBytes, privateKey).toString(
-          'base64url',
-        ),
-        authorityKeyId: 'offline-recovery-2026',
-        authorityPublicKey: publicKeyBytes,
-      });
+    const verify =
+      (bytes: Buffer, signatureBytes = bytes) =>
+      () =>
+        verifyStudioRecoveryAuthorizationEvidence({
+          bytes,
+          expectedSha256: createHash('sha256').update(bytes).digest('hex'),
+          signature: signBytes(null, signatureBytes, privateKey).toString(
+            'base64url',
+          ),
+          authorityKeyId: 'offline-recovery-2026',
+          authorityPublicKey: publicKeyBytes,
+        });
     const canonical = Buffer.from(canonicalize(evidence()));
     const tampered = Buffer.from(canonical);
-    tampered[tampered.length - 2] ^= 1;
+    tampered[tampered.length - 2] = tampered[tampered.length - 2]! ^ 1;
     expect(verify(tampered, canonical)).toThrow(
       'STUDIO_RECOVERY_RECONCILIATION_INVALID',
     );
     const pretty = Buffer.from(JSON.stringify(evidence(), null, 2));
-    expect(verify(pretty)).toThrow(
-      'STUDIO_RECOVERY_RECONCILIATION_INVALID',
-    );
+    expect(verify(pretty)).toThrow('STUDIO_RECOVERY_RECONCILIATION_INVALID');
     const tooDeep = Buffer.from(`${'['.repeat(65)}0${']'.repeat(65)}`);
-    expect(verify(tooDeep)).toThrow(
-      'STUDIO_RECOVERY_RECONCILIATION_INVALID',
-    );
+    expect(verify(tooDeep)).toThrow('STUDIO_RECOVERY_RECONCILIATION_INVALID');
     expect(() =>
       verifyStudioRecoveryAuthorizationEvidence({
         bytes: { byteLength: 64 * 1024 * 1024 + 1 } as Uint8Array,
@@ -177,6 +183,9 @@ describe('Studio recovery authorization reconciliation evidence', () => {
       readStudioRecoveryAuthorizationReconciliation(path, digest),
     ).resolves.toMatchObject({ sha256: digest });
     await expect(
+      readStudioRecoveryAuthorizationReconciliationBytes(path, digest),
+    ).resolves.toEqual({ sha256: digest, bytes });
+    await expect(
       readStudioRecoveryAuthorizationReconciliation(path, '0'.repeat(64)),
     ).rejects.toThrow('STUDIO_RECOVERY_RECONCILIATION_INVALID');
     await chmod(path, 0o640);
@@ -189,5 +198,79 @@ describe('Studio recovery authorization reconciliation evidence', () => {
     await expect(
       readStudioRecoveryAuthorizationReconciliation(linked, digest),
     ).rejects.toThrow('STUDIO_RECOVERY_RECONCILIATION_INVALID');
+  });
+
+  it('caps a growing artifact read at the observed size plus one byte', async () => {
+    let totalRead = 0;
+    let largestRequest = 0;
+    const reader = {
+      async read(
+        buffer: Buffer,
+        offset: number,
+        length: number,
+        _position: null,
+      ) {
+        largestRequest = Math.max(largestRequest, length);
+        buffer.fill(0x61, offset, offset + length);
+        totalRead += length;
+        return { bytesRead: length };
+      },
+    };
+    await expect(readExactRecoveryArtifactBytes(reader, 4)).rejects.toThrow(
+      'STUDIO_RECOVERY_RECONCILIATION_INVALID',
+    );
+    expect(totalRead).toBe(5);
+    expect(largestRequest).toBe(5);
+  });
+
+  it('refuses an invalid signature in the real CLI before opening a database socket', async () => {
+    const directory = await mkdtemp(
+      join(tmpdir(), 'studio-recovery-authorize-cli-'),
+    );
+    const path = join(directory, 'reconciliation.json');
+    const bytes = Buffer.from(canonicalize(evidence()));
+    const digest = createHash('sha256').update(bytes).digest('hex');
+    await writeFile(path, bytes, { mode: 0o600 });
+    const { publicKey } = generateKeyPairSync('ed25519');
+    const authorityPublicKey = publicKey.export({ format: 'jwk' }).x!;
+    let connections = 0;
+    const server = createServer((socket) => {
+      connections += 1;
+      socket.destroy();
+    });
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error();
+    const databaseUrl = `postgres://owner:test@127.0.0.1:${address.port}/recovered`;
+    const entrypoint = fileURLToPath(
+      new URL('../../recovery-authorize-current.ts', import.meta.url),
+    );
+    try {
+      await expect(
+        runFile(process.execPath, [entrypoint], {
+          timeout: 10_000,
+          env: {
+            PATH: process.env.PATH,
+            STUDIO_RECOVERY_DATABASE_URL: databaseUrl,
+            STUDIO_RECOVERY_BACKUP_DATABASE_URL: databaseUrl,
+            STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(['owner']),
+            STUDIO_RECOVERY_RECONCILIATION_PATH: path,
+            STUDIO_RECOVERY_RECONCILIATION_SHA256: digest,
+            STUDIO_RECOVERY_AUTHORITY_KEY_ID: 'offline-recovery-2026',
+            STUDIO_RECOVERY_AUTHORITY_PUBLIC_KEY: authorityPublicKey,
+            STUDIO_RECOVERY_RECONCILIATION_SIGNATURE: Buffer.alloc(
+              64,
+              1,
+            ).toString('base64url'),
+          },
+        }),
+      ).rejects.toThrow();
+      expect(connections).toBe(0);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
   });
 });

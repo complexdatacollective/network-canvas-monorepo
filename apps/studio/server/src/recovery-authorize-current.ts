@@ -10,7 +10,7 @@ import {
 } from './env.ts';
 import { logOperational } from './observability/logger.ts';
 import {
-  readStudioRecoveryAuthorizationReconciliation,
+  readStudioRecoveryAuthorizationReconciliationBytes,
   verifyStudioRecoveryAuthorizationEvidence,
 } from './recovery/authorization-reconciliation.ts';
 import { authorizeCurrentStudioRecovery } from './recovery/authorization.ts';
@@ -22,7 +22,7 @@ try {
   const configuration = readRecoveryCurrentAuthorizationEnv();
   const allowedLogins = readMigrationAllowedLogins();
   const administrativeLogins = readMigrationAdministrativeLogins(allowedLogins);
-  const artifact = await readStudioRecoveryAuthorizationReconciliation(
+  const artifact = await readStudioRecoveryAuthorizationReconciliationBytes(
     configuration.reconciliationPath,
     configuration.reconciliationSha256,
   );

@@ -252,6 +252,20 @@ export type StudioRecoveryReconciliationEvidence = {
   bytes: Buffer;
 };
 
+export type StudioRecoveryReconciliationBytes = {
+  sha256: string;
+  bytes: Buffer;
+};
+
+type SequentialReader = {
+  read(
+    buffer: Buffer,
+    offset: number,
+    length: number,
+    position: null,
+  ): Promise<{ bytesRead: number }>;
+};
+
 const verifiedEvidence = new WeakSet<object>();
 
 export type VerifiedStudioRecoveryAuthorizationEvidence = Readonly<{
@@ -289,6 +303,35 @@ function assertBoundedJsonDepth(bytes: Uint8Array): void {
     }
   }
   if (quoted || escaped || depth !== 0) throw new Error();
+}
+
+/** @internal Reads at most the previously observed size plus one growth byte. */
+export async function readExactRecoveryArtifactBytes(
+  reader: SequentialReader,
+  expectedSize: number,
+): Promise<Buffer> {
+  if (
+    !Number.isSafeInteger(expectedSize) ||
+    expectedSize <= 0 ||
+    expectedSize > MAX_EVIDENCE_BYTES
+  )
+    throw new Error(FAILURE);
+  const bounded = Buffer.allocUnsafe(expectedSize + 1);
+  let offset = 0;
+  while (offset < bounded.byteLength) {
+    const { bytesRead } = await reader.read(
+      bounded,
+      offset,
+      bounded.byteLength - offset,
+      null,
+    );
+    if (!Number.isSafeInteger(bytesRead) || bytesRead < 0) throw new Error();
+    if (bytesRead === 0) break;
+    if (bytesRead > bounded.byteLength - offset) throw new Error();
+    offset += bytesRead;
+  }
+  if (offset !== expectedSize) throw new Error(FAILURE);
+  return bounded.subarray(0, expectedSize);
 }
 
 function freezeEvidence(value: unknown): void {
@@ -371,11 +414,11 @@ export function copyStudioRecoveryAuthorizationReconciliation(
   }
 }
 
-/** Read a bounded, privately held reconciliation artifact by exact digest. */
-export async function readStudioRecoveryAuthorizationReconciliation(
+/** Read bounded private artifact bytes without interpreting unverified content. */
+export async function readStudioRecoveryAuthorizationReconciliationBytes(
   path: string,
   expectedSha256: string,
-): Promise<StudioRecoveryReconciliationEvidence> {
+): Promise<StudioRecoveryReconciliationBytes> {
   try {
     if (!/^[0-9a-f]{64}$/.test(expectedSha256)) throw new Error();
     const info = await lstat(path);
@@ -399,18 +442,41 @@ export async function readStudioRecoveryAuthorizationReconciliation(
         opened.mode !== info.mode
       )
         throw new Error();
-      bytes = await handle.readFile();
+      bytes = await readExactRecoveryArtifactBytes(handle, info.size);
+      const afterRead = await handle.stat();
+      if (
+        afterRead.dev !== info.dev ||
+        afterRead.ino !== info.ino ||
+        afterRead.size !== info.size ||
+        afterRead.mode !== info.mode
+      )
+        throw new Error();
     } finally {
       await handle.close();
     }
     if (bytes.byteLength !== info.size) throw new Error();
     if (templateBytesHash(bytes) !== expectedSha256) throw new Error();
+    return { sha256: expectedSha256, bytes };
+  } catch {
+    throw new Error(FAILURE);
+  }
+}
+
+/** Read and parse a bounded, privately held reconciliation artifact. */
+export async function readStudioRecoveryAuthorizationReconciliation(
+  path: string,
+  expectedSha256: string,
+): Promise<StudioRecoveryReconciliationEvidence> {
+  try {
+    const artifact = await readStudioRecoveryAuthorizationReconciliationBytes(
+      path,
+      expectedSha256,
+    );
     return {
+      ...artifact,
       reconciliation: copyStudioRecoveryAuthorizationReconciliation(
-        JSON.parse(bytes.toString('utf8')),
+        JSON.parse(artifact.bytes.toString('utf8')),
       ),
-      sha256: expectedSha256,
-      bytes,
     };
   } catch {
     throw new Error(FAILURE);

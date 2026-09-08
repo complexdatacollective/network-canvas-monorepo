@@ -10,8 +10,8 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { canonicalize } from '@codaco/studio-sync/apply';
+import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 import {
   revokeLargeObjectPrivilegesSql,
@@ -106,7 +106,9 @@ async function run(reconciliation: StudioRecoveryAuthorizationReconciliation) {
   }
 }
 
-function signEvidence(reconciliation: StudioRecoveryAuthorizationReconciliation) {
+function signEvidence(
+  reconciliation: StudioRecoveryAuthorizationReconciliation,
+) {
   const bytes = Buffer.from(canonicalize(reconciliation));
   return verifyStudioRecoveryAuthorizationEvidence({
     bytes,
@@ -446,9 +448,11 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
           `SELECT rolname, rolcanlogin FROM pg_roles
            WHERE rolname = ANY($1::text[]) ORDER BY rolname`,
           [
-            requireFixture().ownerLogin,
-            requireFixture().runtimeLogin,
-            requireFixture().maintenanceLogin,
+            [
+              requireFixture().ownerLogin,
+              requireFixture().runtimeLogin,
+              requireFixture().maintenanceLogin,
+            ],
           ],
         ),
       ).resolves.toHaveProperty(
@@ -462,7 +466,9 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
           .map((rolname) => ({ rolname, rolcanlogin: false })),
       );
       await expect(
-        pool.query("SELECT count(*)::int AS count FROM teams WHERE id = 'stale-team'"),
+        pool.query(
+          "SELECT count(*)::int AS count FROM teams WHERE id = 'stale-team'",
+        ),
       ).resolves.toHaveProperty('rows', [{ count: 1 }]);
     });
   });
@@ -538,7 +544,7 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
     ).rejects.toThrow(FAILURE);
     await withTargetAdministrator((pool) =>
       pool.query(
-        "UPDATE \"user\" SET recovery_disabled = false WHERE id = 'stale-user'",
+        'UPDATE "user" SET recovery_disabled = false WHERE id = \'stale-user\'',
       ),
     );
     await expect(authorize(evidence)).rejects.toThrow(FAILURE);
@@ -572,7 +578,7 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         uncertain_webhooks: number;
         uncertain_audit_outbox: number;
         uncertain_audit_deliveries: number;
-        deletion_audits: number;
+        deletion_audit: boolean;
       }>(`SELECT
         (SELECT count(*)::int FROM "user" WHERE NOT recovery_disabled) enabled_users,
         (SELECT count(*)::int FROM session) sessions,
@@ -585,7 +591,7 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         (SELECT count(*)::int FROM webhook_deliveries WHERE uncertain_at IS NOT NULL) uncertain_webhooks,
         (SELECT count(*)::int FROM audit_alert_outbox WHERE uncertain_at IS NOT NULL) uncertain_audit_outbox,
         (SELECT count(*)::int FROM audit_alert_deliveries WHERE uncertain_at IS NOT NULL) uncertain_audit_deliveries,
-        (SELECT count(*)::int FROM credential_audit_events WHERE account_id = 'stale-account') deletion_audits`);
+        EXISTS (SELECT 1 FROM credential_audit_events WHERE account_id = 'stale-account') deletion_audit`);
       expect(state.rows[0]).toEqual({
         enabled_users: 0,
         sessions: 0,
@@ -598,7 +604,7 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         uncertain_webhooks: 1,
         uncertain_audit_outbox: 1,
         uncertain_audit_deliveries: 1,
-        deletion_audits: 1,
+        deletion_audit: true,
       });
     });
     await expect(run(evidence)).resolves.toMatchObject({

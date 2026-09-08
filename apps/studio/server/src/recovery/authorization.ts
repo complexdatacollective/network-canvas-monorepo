@@ -664,7 +664,9 @@ export async function authorizeCurrentStudioRecovery(options: {
          WHERE id = ANY($1::text[]) RETURNING id`,
         [eligibleUserIds],
       )
-    ).rows.map(({ id }) => id).toSorted();
+    ).rows
+      .map(({ id }) => id)
+      .toSorted();
     assertRows(enabled, eligibleUserIds);
     const finalEnabled = (
       await client.query<{ id: string }>(

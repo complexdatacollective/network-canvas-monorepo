@@ -322,6 +322,41 @@ known-good backup/checkpoint identities.
    schema fingerprint. Preserve it with the recovery record. This command leaves
    all users recovery-disabled and cannot reopen the deployment.
 
+   After that receipt exists, prepare a new canonical v1 reconciliation artifact
+   from the independently controlled, current authority source. Its
+   `eligibleUserIds` is the explicit subset of inventoried users allowed to
+   authenticate after recovery; historical users and teams may remain in the
+   restored database, but they stay recovery-disabled and receive no restored
+   account, membership, grant or integration authority unless that exact authority
+   is present in the signed inventory. Sign the artifact's exact bytes with the
+   independently held Ed25519 recovery-authority key, then run
+   `recovery:authorize-current` with the same two database connections and digest,
+   plus `STUDIO_RECOVERY_AUTHORITY_KEY_ID`,
+   `STUDIO_RECOVERY_AUTHORITY_PUBLIC_KEY`, and
+   `STUDIO_RECOVERY_RECONCILIATION_SIGNATURE`.
+
+   This second command verifies the digest and detached signature before opening a
+   database connection. It requires canonical bytes, a validity window no longer
+   than 24 hours, the immutable initial Studio instance tuple, an exact match for
+   every current login account, membership, study grant, active webhook, active
+   schedule and published message template, and the prior credential and delivery
+   invalidation state. Missing required identities or authority must be resolved by
+   selecting a sufficiently current authenticated backup or by a separately
+   reviewed repair while quarantine remains in force; create and sign fresh
+   evidence before retrying. The command never creates missing authority,
+   overwrites a secret, deletes historical users or teams, or enables a user absent
+   from `eligibleUserIds`.
+
+   Preserve the authorization receipt, including the evidence and public-key
+   hashes, key identifier, validity interval, initial instance tuple, eligible
+   users, and actual destination database/schema identity. The separately
+   configured public key prevents stale or modified evidence from being accepted
+   only while the signing key and operator configuration remain trustworthy. It
+   provides no protection if an attacker can replace both the artifact and trust
+   anchor, and it is not a transparency, key-revocation or production-readiness
+   receipt. The command keeps public admission, workers, and all writer-role LOGINs
+   closed; reopening remains a separate operator-controlled step.
+
 6. Hold every restored delivery queue. Compare provider receipts and independent
    records for work after the recovery point. Restored revoked credentials and
    already-sent work are mandatory negative controls. Any ambiguous send remains
@@ -333,9 +368,9 @@ known-good backup/checkpoint identities.
    component time and the single end-to-end RTO. A fingerprint or successful
    decryption alone cannot authorize reopening.
 
-The restore script does not yet invoke step 5, and there is no implemented command
-that re-enables reconciled users or reopens a restored stack. The validated
-self-host boundary therefore ends in quarantine. Managed incident containment,
+The restore script does not yet invoke step 5. The authorization command can
+enable only the explicitly signed eligible users, but it cannot reopen a restored
+stack. The validated self-host boundary therefore ends in quarantine. Managed incident containment,
 provider credential rotation, independent validator, failover, traffic switch, and
 reopening procedures remain pending live qualification.
 
