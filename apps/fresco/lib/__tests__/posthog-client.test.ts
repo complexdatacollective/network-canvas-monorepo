@@ -423,6 +423,97 @@ describe('Fresco PostHog client', () => {
       expect(beforeSend(null)).toBeNull();
     });
 
+    // Autocapture attaches the clicked element's text to each event, and on a
+    // participant's page that text is their answers — a node's name is a
+    // response. Rageclick, heatmap and dead-click capture are built on the
+    // same element data.
+    it('keeps autocapture and element capture off on a participant page', async () => {
+      window.history.pushState({}, '', `/interview/${INTERVIEW_ID}`);
+      const { startPostHog } = await loadModule();
+
+      await startPostHog('install-123');
+
+      expect(initConfig()).toEqual(
+        expect.objectContaining({
+          autocapture: false,
+          rageclick: false,
+          capture_heatmaps: false,
+          capture_dead_clicks: false,
+        }),
+      );
+    });
+
+    it('keeps autocapture on for researcher pages', async () => {
+      window.history.pushState({}, '', '/dashboard/interviews');
+      const { startPostHog } = await loadModule();
+
+      await startPostHog('install-123');
+
+      expect(initConfig().autocapture).toBe(true);
+    });
+
+    // A participant page reached without a page load — a researcher opening
+    // an interview from the dashboard — keeps the init-time settings of the
+    // page it came from, so the send path has to drop element data itself.
+    it('drops element-bearing events sent from a participant page', async () => {
+      window.history.pushState({}, '', '/dashboard/interviews');
+      const { startPostHog } = await loadModule();
+      await startPostHog('install-123');
+
+      const beforeSend = initConfig().before_send;
+      if (typeof beforeSend !== 'function') {
+        throw new TypeError('before_send was not configured');
+      }
+
+      const autocapture = () => ({
+        event: '$autocapture',
+        properties: {
+          $event_type: 'click',
+          $el_text: 'Alice',
+          $elements: [{ tag_name: 'button', $el_text: 'Alice' }],
+        },
+      });
+
+      expect(beforeSend(autocapture())).toEqual(
+        expect.objectContaining({ event: '$autocapture' }),
+      );
+
+      window.history.pushState({}, '', `/interview/${INTERVIEW_ID}`);
+
+      expect(beforeSend(autocapture())).toBeNull();
+      expect(beforeSend({ event: '$rageclick', properties: {} })).toBeNull();
+      expect(beforeSend({ event: '$dead_click', properties: {} })).toBeNull();
+      expect(beforeSend({ event: '$$heatmap', properties: {} })).toBeNull();
+    });
+
+    it('strips element data from other events sent from a participant page', async () => {
+      window.history.pushState({}, '', `/interview/${INTERVIEW_ID}`);
+      const { startPostHog } = await loadModule();
+      await startPostHog('install-123');
+
+      const beforeSend = initConfig().before_send;
+      if (typeof beforeSend !== 'function') {
+        throw new TypeError('before_send was not configured');
+      }
+
+      const sent = beforeSend({
+        event: '$exception',
+        properties: {
+          $exception_list: [{ type: 'Error', value: 'boom' }],
+          $el_text: 'Alice',
+          $elements: [{ tag_name: 'button', $el_text: 'Alice' }],
+          $elements_chain: 'button:text="Alice"',
+        },
+      });
+
+      expect(sent).toEqual(
+        expect.objectContaining({
+          event: '$exception',
+          properties: { $exception_list: [{ type: 'Error', value: 'boom' }] },
+        }),
+      );
+    });
+
     // Replay writes the page's own URL into its payload, where before_send
     // cannot reach it — and a recording of someone answering interview
     // questions is research data, not telemetry.

@@ -134,14 +134,19 @@ describe('AnalyticsProvider', () => {
     expect(first).not.toBe('interview-42');
 
     // Same session, tracker rebuilt by a changed super-property set: the same
-    // pseudonym, or one session's events would split in two.
+    // pseudonym, or one session's events would split in two. The rebuilt
+    // tracker is installed by an async effect, so a click straight after the
+    // rerender still reaches the old one; wait for the new super property to
+    // show up before reading the distinct id it stamps.
     rerender(session('interview-42', '2'));
-    const callsBefore = client.capture.mock.calls.length;
     await waitFor(() => {
       act(() => {
         getByRole('button').click();
       });
-      expect(client.capture.mock.calls.length).toBeGreaterThan(callsBefore);
+      expect(client.capture).toHaveBeenLastCalledWith(
+        'test_event',
+        expect.objectContaining({ host_version: '2' }),
+      );
     });
     expect(distinctIdOfLastCapture()).toBe(first);
 

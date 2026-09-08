@@ -40,6 +40,26 @@ const pendingReports: ((posthog: PostHog) => void)[] = [];
  * made on the server, in `AnalyticsLoader`.
  */
 /**
+ * Events whose payload is the element the person interacted with — see
+ * `redactEvent`. `$dead_click` and `$$heatmap` are listed although neither
+ * feature is switched on for participant pages, so a later change to the
+ * init options cannot quietly start sending element data from an interview.
+ */
+const ELEMENT_EVENTS = new Set([
+  '$autocapture',
+  '$rageclick',
+  '$dead_click',
+  '$$heatmap',
+]);
+
+/** Element-derived properties posthog-js may attach to any event. */
+const ELEMENT_PROPERTIES = [
+  '$elements',
+  '$elements_chain',
+  '$el_text',
+] as const;
+
+/**
  * Strips participant access links out of every event before it is sent.
  *
  * posthog-js attaches the current URL to everything it captures, and on a
@@ -51,6 +71,20 @@ const pendingReports: ((posthog: PostHog) => void)[] = [];
 function redactEvent(event: CaptureResult | null): CaptureResult | null {
   if (!event) {
     return event;
+  }
+
+  // Autocapture-family events carry the clicked element's text, and on a
+  // participant's page that text is their answers — a node's name is a
+  // response. Init already keeps those features off on participant pages;
+  // this covers a participant page reached without a page load, and any
+  // other event that picked up element data on the way.
+  if (isParticipantPath(window.location.pathname)) {
+    if (ELEMENT_EVENTS.has(event.event)) {
+      return null;
+    }
+    for (const key of ELEMENT_PROPERTIES) {
+      delete event.properties[key];
+    }
   }
 
   event.properties = redactProperties(event.properties);
@@ -66,19 +100,33 @@ function redactEvent(event: CaptureResult | null): CaptureResult | null {
 
 async function getClient(): Promise<PostHog> {
   clientPromise ??= import('posthog-js').then(({ default: posthog }) => {
+    // Participants always arrive on their pages through a fresh page load, so
+    // deciding once at init covers them; `redactEvent` backs this up for a
+    // participant page reached any other way.
+    const participantPage = isParticipantPath(window.location.pathname);
+
     posthog.init(POSTHOG_API_KEY, {
       api_host: POSTHOG_PROXY_HOST,
       defaults: '2026-01-30',
       capture_exceptions: true,
-      autocapture: true,
       tracing_headers: [window.location.hostname],
       before_send: redactEvent,
       // Replay records the page's own URL inside its payload, out of reach of
       // `before_send`, and a recording of someone answering interview
-      // questions is research data rather than telemetry. Participants always
-      // arrive on these pages through a fresh page load, so deciding once at
-      // init covers them.
-      disable_session_recording: isParticipantPath(window.location.pathname),
+      // questions is research data rather than telemetry.
+      disable_session_recording: participantPage,
+      // Autocapture attaches the clicked element's text to each event, and
+      // rageclick and heatmap capture are built on the same element data. On a
+      // participant's page that text is their answers, so all three stay off
+      // there; researcher pages keep autocapture as before.
+      ...(participantPage
+        ? {
+            autocapture: false,
+            rageclick: false,
+            capture_heatmaps: false,
+            capture_dead_clicks: false,
+          }
+        : { autocapture: true }),
     });
 
     // Registered here, before startPostHog opts in, because opting in captures
