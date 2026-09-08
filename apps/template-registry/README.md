@@ -98,12 +98,18 @@ selects a Postmark stream and otherwise defaults to `outbound`. Both transports
 validate the sender at startup, preserve uncertain delivery outcomes and close
 on shutdown. External object stores require HTTPS. The explicit
 `REGISTRY_S3_INSECURE_PRIVATE_NETWORK` option is for an isolated private network.
+`REGISTRY_S3_PROVIDER` defaults to `s3`; set it to `r2` only with a Cloudflare
+HTTPS account endpoint (`<account-id>.r2.cloudflarestorage.com` or its `eu`,
+`us`, or `fedramp` jurisdiction form) and region `auto`. The endpoint must use
+the 32-hex account ID and default HTTPS port; userinfo, paths, and query data
+are rejected.
 Hard deletion enumerates the exact artifact key with S3 `ListObjectVersions`
 and removes every returned version and delete marker before the database job is
 completed. A provider that does not implement that operation (including the
-current Cloudflare R2 S3 compatibility surface) fails deletion closed rather
-than reporting a delete marker as permanent removal; qualify such a provider
-only after it exposes an equivalent version-removal operation.
+current Cloudflare R2 S3 compatibility surface) fails deletion closed. The
+explicit R2 provider is admitted because R2 does not expose object versioning;
+it uses ordinary `DeleteObject` for its no-versioning contract. Never select
+R2 for an endpoint that does not match the verified account form.
 
 Every runtime and offline command requires `REGISTRY_DATABASE_ALLOWED_LOGINS`,
 an explicit JSON array of the complete database login inventory, including the

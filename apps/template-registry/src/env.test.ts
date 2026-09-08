@@ -139,6 +139,29 @@ it('permits explicit loopback HTTP development without supplying public defaults
   expect(() => readRegistryEnv({})).toThrow('REGISTRY_CONFIGURATION_INVALID');
 });
 
+it('admits only verified HTTPS Cloudflare R2 account endpoints for the R2 provider', () => {
+  const endpoint = `https://${'a'.repeat(32)}.us.r2.cloudflarestorage.com`;
+  expect(
+    readRegistryEnv({
+      ...valid,
+      REGISTRY_S3_PROVIDER: 'r2',
+      REGISTRY_S3_ENDPOINT: endpoint,
+    }).s3,
+  ).toMatchObject({ provider: 'r2', endpoint, region: 'auto' });
+  for (const invalid of [
+    'https://objects.example.test',
+    `https://${'a'.repeat(32)}.r2.cloudflarestorage.com:8443`,
+    `http://${'a'.repeat(32)}.us.r2.cloudflarestorage.com`,
+  ])
+    expect(() =>
+      readRegistryEnv({
+        ...valid,
+        REGISTRY_S3_PROVIDER: 'r2',
+        REGISTRY_S3_ENDPOINT: invalid,
+      }),
+    ).toThrow('REGISTRY_CONFIGURATION_INVALID');
+});
+
 it('requires an explicit owner URL and exact allowed-login JSON for migrations', () => {
   expect(
     readRegistryMigrationEnv({

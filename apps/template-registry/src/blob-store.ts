@@ -30,12 +30,15 @@ export type RegistryBlobStore = {
 };
 
 export type RegistryStorageConfiguration = {
+  provider?: 's3' | 'r2';
   endpoint: string;
   region: string;
   bucket: string;
   accessKeyId: string;
   secretAccessKey: string;
 };
+const r2Endpoint =
+  /^https:\/\/[a-f0-9]{32}(?:\.(?:eu|us|fedramp))?\.r2\.cloudflarestorage\.com\/$/;
 const objectKey = (hash: string) => {
   if (!/^[0-9a-f]{64}$/.test(hash)) throw new RegistryError('ARTIFACT_INVALID');
   return `template-artifacts/${hash}`;
@@ -113,6 +116,16 @@ async function deleteObjectVersions(
 export function createRegistryBlobStore(
   configuration: RegistryStorageConfiguration,
 ): RegistryBlobStore {
+  const provider = configuration.provider ?? 's3';
+  const endpoint = new URL(configuration.endpoint);
+  if (
+    provider === 'r2' &&
+    (endpoint.protocol !== 'https:' ||
+      endpoint.port !== '' ||
+      !r2Endpoint.test(endpoint.toString()) ||
+      configuration.region !== 'auto')
+  )
+    throw new Error('REGISTRY_R2_ENDPOINT_INVALID');
   const client = new S3Client({
     endpoint: configuration.endpoint,
     region: configuration.region,
@@ -178,12 +191,14 @@ export function createRegistryBlobStore(
     async delete(rawHash) {
       try {
         const signal = AbortSignal.timeout(10_000);
-        await deleteObjectVersions(
-          client,
-          configuration.bucket,
-          objectKey(rawHash),
-          signal,
-        );
+        const key = objectKey(rawHash);
+        if (provider === 'r2')
+          await client.send(
+            new DeleteObjectCommand({ Bucket: configuration.bucket, Key: key }),
+            { abortSignal: signal },
+          );
+        else
+          await deleteObjectVersions(client, configuration.bucket, key, signal);
       } catch {
         throw new RegistryError('SERVICE_UNAVAILABLE');
       }

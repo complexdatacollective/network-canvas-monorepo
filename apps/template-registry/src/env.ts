@@ -48,6 +48,29 @@ const smtpUrl = networkUrl(['smtp:', 'smtps:']).refine((value) => {
 const integer = (value: string | undefined, fallback: number) =>
   value === undefined ? fallback : Number(value);
 const databaseUrl = networkUrl(['postgres:', 'postgresql:']);
+const storageProvider = z.enum(['s3', 'r2']).default('s3');
+const isR2Endpoint = (endpoint: string, region: string) => {
+  const url = new URL(endpoint);
+  return (
+    url.protocol === 'https:' &&
+    url.port === '' &&
+    /^[a-f0-9]{32}(?:\.(?:eu|us|fedramp))?\.r2\.cloudflarestorage\.com$/.test(
+      url.hostname,
+    ) &&
+    region === 'auto'
+  );
+};
+const rejectUnverifiedR2 = (
+  value: { provider: 's3' | 'r2'; endpoint: string; region: string },
+  context: z.RefinementCtx,
+) => {
+  if (value.provider === 'r2' && !isR2Endpoint(value.endpoint, value.region))
+    context.addIssue({
+      code: 'custom',
+      message: 'R2 storage requires its verified HTTPS account endpoint.',
+      path: ['endpoint'],
+    });
+};
 const loginName = z.string().regex(/^[a-z_][a-z0-9_]{0,62}$/);
 const enrollmentSchema = z.strictObject({
   allowedLogins: z
@@ -66,13 +89,16 @@ const recoverySchema = z.strictObject({
   backupDatabaseUrl: databaseUrl,
   reconciliationPath: z.string().min(1),
   reconciliationSha256: z.string().regex(/^[0-9a-f]{64}$/),
-  s3: z.strictObject({
-    endpoint: serviceOrigin,
-    region: nonblank,
-    bucket: nonblank,
-    accessKeyId: nonblank,
-    secretAccessKey: nonblank,
-  }),
+  s3: z
+    .strictObject({
+      provider: storageProvider,
+      endpoint: serviceOrigin,
+      region: nonblank,
+      bucket: nonblank,
+      accessKeyId: nonblank,
+      secretAccessKey: nonblank,
+    })
+    .superRefine(rejectUnverifiedR2),
   ...enrollmentSchema.shape,
 });
 const readDatabaseAdmission = (raw: RawEnv) => {
@@ -114,6 +140,7 @@ const schema = z.strictObject({
   magicLinksPerDay: z.number().int().min(1).max(10_000),
   s3: z
     .strictObject({
+      provider: storageProvider,
       endpoint: serviceOrigin,
       insecurePrivateNetwork: z.boolean(),
       region: nonblank,
@@ -121,6 +148,7 @@ const schema = z.strictObject({
       accessKeyId: nonblank,
       secretAccessKey: nonblank,
     })
+    .superRefine(rejectUnverifiedR2)
     .refine(({ endpoint, insecurePrivateNetwork }) => {
       const url = new URL(endpoint);
       return (
@@ -161,6 +189,7 @@ export function readRegistryEnv(raw: RawEnv = process.env): RegistryEnv {
         : { kind: 'smtp', url: smtp, from: raw.REGISTRY_MAIL_FROM },
       magicLinksPerDay: integer(raw.REGISTRY_MAGIC_LINKS_PER_DAY, 100),
       s3: {
+        provider: raw.REGISTRY_S3_PROVIDER,
         endpoint: raw.REGISTRY_S3_ENDPOINT,
         insecurePrivateNetwork:
           z
@@ -249,6 +278,7 @@ export function readRegistryRecoveryEnv(raw: RawEnv = process.env) {
       reconciliationSha256: raw.REGISTRY_RECOVERY_RECONCILIATION_SHA256,
       ...readDatabaseAdmission(raw),
       s3: {
+        provider: raw.REGISTRY_S3_PROVIDER,
         endpoint: raw.REGISTRY_S3_ENDPOINT,
         region: raw.REGISTRY_S3_REGION,
         bucket: raw.REGISTRY_S3_BUCKET,

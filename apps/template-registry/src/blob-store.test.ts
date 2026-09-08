@@ -5,7 +5,8 @@ import {
   type ServerResponse,
 } from 'node:http';
 
-import { expect, it } from 'vitest';
+import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { expect, it, vi } from 'vitest';
 
 import { templateBytesHash } from '@codaco/studio-sync/template-exchange';
 
@@ -172,6 +173,41 @@ it('permanently removes every version and delete marker for a versioned bucket',
   } finally {
     await fixture.close();
   }
+});
+
+it('uses ordinary deletion only for an explicitly admitted R2 endpoint', async () => {
+  const send = vi
+    .spyOn(S3Client.prototype, 'send')
+    .mockResolvedValue({} as never);
+  const blobs = createRegistryBlobStore({
+    provider: 'r2',
+    endpoint: `https://${'a'.repeat(32)}.us.r2.cloudflarestorage.com/`,
+    region: 'auto',
+    bucket: 'private-registry',
+    accessKeyId: 'synthetic-registry-access',
+    secretAccessKey: 'synthetic-registry-secret',
+  });
+  try {
+    await blobs.delete('e'.repeat(64));
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]?.[0]).toBeInstanceOf(DeleteObjectCommand);
+  } finally {
+    blobs.close();
+    send.mockRestore();
+  }
+});
+
+it('rejects an unverified endpoint when R2 deletion is selected', () => {
+  expect(() =>
+    createRegistryBlobStore({
+      provider: 'r2',
+      endpoint: 'https://objects.example.test/',
+      region: 'auto',
+      bucket: 'private-registry',
+      accessKeyId: 'synthetic-registry-access',
+      secretAccessKey: 'synthetic-registry-secret',
+    }),
+  ).toThrow('REGISTRY_R2_ENDPOINT_INVALID');
 });
 
 it('deduplicates only after reading and verifying the existing immutable bytes', async () => {
