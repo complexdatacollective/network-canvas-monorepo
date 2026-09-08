@@ -1,5 +1,7 @@
 import { betterAuth } from 'better-auth';
+import { APIError } from 'better-auth/api';
 import { magicLink, organization } from 'better-auth/plugins';
+import type { BetterAuthOptions } from 'better-auth/types';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
@@ -29,7 +31,26 @@ export function createBetterAuthInstance(
   options: BetterAuthInstanceOptions = {},
 ) {
   const deploymentMode = options.deploymentMode ?? 'self-hosted';
+  const databaseHooks = {
+    session: {
+      create: {
+        before: async (session: { userId: string }) => {
+          const admitted = await pool.query<{ admitted: boolean }>(
+            `SELECT NOT recovery_disabled AS admitted
+             FROM "user" WHERE id = $1`,
+            [session.userId],
+          );
+          if (admitted.rows[0]?.admitted !== true)
+            throw new APIError('FORBIDDEN', {
+              code: 'ACCOUNT_RECOVERY_DISABLED',
+              message: 'This account is awaiting recovery authorization.',
+            });
+        },
+      },
+    },
+  } satisfies NonNullable<BetterAuthOptions['databaseHooks']>;
   return betterAuth({
+    databaseHooks,
     logger: {
       level: 'warn',
       log(level) {
@@ -236,6 +257,12 @@ export function createBetterAuthService(
     getSession: async (headers) => {
       const result = await auth.api.getSession({ headers });
       if (!result) return null;
+      const admitted = await pool.query<{ admitted: boolean }>(
+        `SELECT NOT recovery_disabled AS admitted
+         FROM "user" WHERE id = $1`,
+        [result.user.id],
+      );
+      if (admitted.rows[0]?.admitted !== true) return null;
       return {
         kind: 'user',
         userId: result.user.id,
