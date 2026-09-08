@@ -31,12 +31,16 @@ import { createMaintenancePool, createPool } from '../src/db/pool.ts';
 import recoveryFixture from './combined-recovery.fixture.json' with { type: 'json' };
 import { owner, populate, rpc } from './data.ts';
 import {
+  assertNoProcessTelemetryEgress,
   assertNoTelemetryEgress,
+  assertProcessTelemetryInstrumentationPositive,
   assertTelemetryDetectorObserved,
   assertTelemetryDetectorPositive,
   TELEMETRY_CANARY_SOURCE,
   TELEMETRY_DETECTOR_SOURCE,
   TELEMETRY_IMPLEMENTATION_CANARY_SOURCE,
+  TELEMETRY_PROCESS_CANARY_SOURCE,
+  TELEMETRY_PROCESS_PRELOAD_SOURCE,
 } from './telemetry-egress.ts';
 
 const DEADLINE = 300_000;
@@ -279,6 +283,8 @@ async function scenario(label: string, cosign: string) {
   const proxyIp = `10.${subnetSecondOctet}.${subnetThirdOctet + 1}.2`;
   const origin = `http://127.0.0.1:${webPort}`;
   const overlay = join(root, 'qualification.yml');
+  const preload = join(root, 'telemetry-egress-preload.cjs');
+  writeFileSync(preload, TELEMETRY_PROCESS_PRELOAD_SOURCE, { mode: 0o600 });
   writeFileSync(
     overlay,
     `services:
@@ -287,15 +293,21 @@ async function scenario(label: string, cosign: string) {
     environment:
       PUBLIC_URL: ${origin}
       STUDIO_TELEMETRY: 'off'
+      NODE_OPTIONS: '--require=/qualification-telemetry-egress-preload.cjs'
       STUDIO_DATABASE_ADMINISTRATIVE_LOGINS: '["studio_migrator"]'
       GOOGLE_CLIENT_ID: synthetic-qualification-client
       GOOGLE_CLIENT_SECRET: synthetic-qualification-secret
+    volumes:
+      - ${preload}:/qualification-telemetry-egress-preload.cjs:ro
     depends_on:
       telemetry-detector:
         condition: service_started
   worker:
     environment:
       STUDIO_TELEMETRY: 'off'
+      NODE_OPTIONS: '--require=/qualification-telemetry-egress-preload.cjs'
+    volumes:
+      - ${preload}:/qualification-telemetry-egress-preload.cjs:ro
     depends_on:
       telemetry-detector:
         condition: service_started
@@ -390,12 +402,38 @@ networks:
   }
   function assertTelemetryQuiet(configuration: string) {
     assertNoTelemetryEgress(telemetryLogs(configuration));
+    assertNoProcessTelemetryEgress(
+      compose(configuration, [
+        'logs',
+        '--no-color',
+        '--no-log-prefix',
+        'studio',
+        'worker',
+      ]),
+    );
+  }
+  function proveTelemetryProcessInstrumentation(configuration: string) {
+    for (const service of ['studio', 'worker']) {
+      const output = compose(configuration, [
+        'run',
+        '--rm',
+        '--no-deps',
+        '-T',
+        service,
+        'node',
+        '-e',
+        TELEMETRY_PROCESS_CANARY_SOURCE,
+      ]);
+      assertProcessTelemetryInstrumentationPositive(output);
+    }
   }
   function proveTelemetryDetector(configuration: string) {
     for (const service of ['studio', 'worker']) {
       compose(configuration, [
         'exec',
         '-T',
+        '-e',
+        'NODE_OPTIONS=',
         service,
         'node',
         '-e',
@@ -521,6 +559,7 @@ networks:
       configurations.add(configuration),
     registerCleanup: (cleanup: () => void) => extraCleanup.push(cleanup),
     assertTelemetryQuiet,
+    proveTelemetryProcessInstrumentation,
     proveTelemetryDetector,
     proveTelemetrySwitch,
     dispose: () => {
@@ -577,6 +616,7 @@ async function exerciseInstall(
     fixture.registerConfiguration(first.configuration);
     await fixture.setup(first);
     fixture.assertTelemetryQuiet(first.configuration);
+    fixture.proveTelemetryProcessInstrumentation(first.configuration);
     fixture.proveTelemetryDetector(first.configuration);
     fixture.proveTelemetrySwitch(first.configuration);
     const response = await fetch(`${fixture.origin}/api/auth/sign-in/email`, {

@@ -7,9 +7,13 @@ import {
   executeDistributionRestore,
 } from './distribution.ts';
 import {
+  assertNoProcessTelemetryEgress,
   assertNoTelemetryEgress,
+  assertProcessTelemetryInstrumentationPositive,
   assertTelemetryDetectorPositive,
   TELEMETRY_EGRESS_MARKER,
+  TELEMETRY_PROCESS_APIS,
+  TELEMETRY_PROCESS_EGRESS_MARKER,
 } from './telemetry-egress.ts';
 
 const registryEvidence = {
@@ -43,6 +47,21 @@ describe('local distribution recovery boundary', () => {
         `${TELEMETRY_EGRESS_MARKER}\n${TELEMETRY_EGRESS_MARKER}\n`,
       ),
     ).toThrow('control failed');
+  });
+  it('requires every native transport in the process-level positive control', () => {
+    const logs = TELEMETRY_PROCESS_APIS.map(
+      (api) =>
+        `${TELEMETRY_PROCESS_EGRESS_MARKER} {"api":"${api}","host":"192.0.2.123"}`,
+    ).join('\n');
+    expect(() =>
+      assertProcessTelemetryInstrumentationPositive(logs),
+    ).not.toThrow();
+    expect(() => assertNoProcessTelemetryEgress(logs)).toThrow('instrumented');
+    expect(() =>
+      assertProcessTelemetryInstrumentationPositive(
+        logs.replace('dgram.send', 'missing'),
+      ),
+    ).toThrow('dgram.send');
   });
   it('requires owner, team, research and object canaries after each historical upgrade', () => {
     const bytes = Buffer.from(

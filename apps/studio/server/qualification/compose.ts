@@ -19,12 +19,16 @@ import { Pool } from 'pg';
 
 import { createMaintenancePool, createPool } from '../src/db/pool.ts';
 import {
+  assertNoProcessTelemetryEgress,
   assertNoTelemetryEgress,
+  assertProcessTelemetryInstrumentationPositive,
   assertTelemetryDetectorObserved,
   assertTelemetryDetectorPositive,
   TELEMETRY_CANARY_SOURCE,
   TELEMETRY_DETECTOR_SOURCE,
   TELEMETRY_IMPLEMENTATION_CANARY_SOURCE,
+  TELEMETRY_PROCESS_CANARY_SOURCE,
+  TELEMETRY_PROCESS_PRELOAD_SOURCE,
 } from './telemetry-egress.ts';
 
 const execFileAsync = promisify(execFile);
@@ -253,19 +257,31 @@ export async function localDeployment(label: string) {
 `,
     );
     await writeFile(
+      join(directory, 'telemetry-egress-preload.cjs'),
+      TELEMETRY_PROCESS_PRELOAD_SOURCE,
+      { mode: 0o600 },
+    );
+    await writeFile(
       join(directory, 'qualification.yml'),
       `services:
   studio:
     environment:
       PUBLIC_URL: ${origin}
       STUDIO_TELEMETRY: 'off'
+      NODE_OPTIONS: '--require=/qualification-telemetry-egress-preload.cjs'
       STUDIO_DATABASE_ADMINISTRATIVE_LOGINS: '["studio_migrator"]'
       GOOGLE_CLIENT_ID: synthetic-qualification-client
       GOOGLE_CLIENT_SECRET: synthetic-qualification-secret
+    volumes:
+      - ./telemetry-egress-preload.cjs:/qualification-telemetry-egress-preload.cjs:ro
     depends_on:
       telemetry-detector:
         condition: service_started
   worker:
+    environment:
+      NODE_OPTIONS: '--require=/qualification-telemetry-egress-preload.cjs'
+    volumes:
+      - ./telemetry-egress-preload.cjs:/qualification-telemetry-egress-preload.cjs:ro
     depends_on:
       telemetry-detector:
         condition: service_started
@@ -358,14 +374,43 @@ networks:
       ])
     ).stdout.toString();
   }
+  async function processTelemetryLogs() {
+    return (
+      await compose([
+        'logs',
+        '--no-color',
+        '--no-log-prefix',
+        'studio',
+        'worker',
+      ])
+    ).stdout.toString();
+  }
   async function assertTelemetryQuiet() {
     assertNoTelemetryEgress(await telemetryLogs());
+    assertNoProcessTelemetryEgress(await processTelemetryLogs());
+  }
+  async function proveTelemetryProcessInstrumentation() {
+    for (const service of ['studio', 'worker']) {
+      const result = await compose([
+        'run',
+        '--rm',
+        '--no-deps',
+        '-T',
+        service,
+        'node',
+        '-e',
+        TELEMETRY_PROCESS_CANARY_SOURCE,
+      ]);
+      assertProcessTelemetryInstrumentationPositive(result.stdout.toString());
+    }
   }
   async function proveTelemetryDetector() {
     for (const service of ['studio', 'worker']) {
       await compose([
         'exec',
         '-T',
+        '-e',
+        'NODE_OPTIONS=',
         service,
         'node',
         '-e',
@@ -426,6 +471,7 @@ networks:
     pools,
     ready,
     assertTelemetryQuiet,
+    proveTelemetryProcessInstrumentation,
     proveTelemetryDetector,
     proveTelemetrySwitch,
     dispose,
