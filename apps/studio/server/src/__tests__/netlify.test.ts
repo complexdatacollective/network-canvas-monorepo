@@ -51,6 +51,9 @@ const SITE_MISCONFIGURATIONS: ReadonlyArray<
     {
       STUDIO_ENCRYPTION_KEYSET: 'invalid'.repeat(5000),
       STUDIO_ENCRYPTION_ROOT_UNUSED: 'synthetic-invalid-root',
+      STUDIO_ENCRYPTION_KEY_PROVIDER: 'untrusted-provider',
+      STUDIO_ENCRYPTION_KMS_KEY_ARN: 'malformed-key',
+      STUDIO_ENCRYPTION_KMS_ACCESS_KEY_ID: 'unrelated-credential',
     },
   ],
 ];

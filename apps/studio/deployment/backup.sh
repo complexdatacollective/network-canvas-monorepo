@@ -12,23 +12,53 @@ case "$2" in /*) custody=$2 ;; *) echo 'Key custody path must be absolute.' >&2;
 cd "$(dirname "$0")/.."
 . ./deployment/checksum.sh
 command -v jq >/dev/null 2>&1 || { echo 'Backup requires jq on the host.' >&2; exit 2; }
+operational=${STUDIO_ENCRYPTION_FILE:-deployment/encryption.env}
+recovery_source=${STUDIO_RECOVERY_ENCRYPTION_FILE:-$operational}
+for path in "$operational" "$recovery_source"; do
+  if [ -L "$path" ] || [ ! -f "$path" ]; then
+    echo 'Backup requires regular, non-symbolic-link operational and recovery encryption inputs.' >&2
+    exit 2
+  fi
+done
+# Keep plaintext copies on the same operator-controlled encrypted storage as
+# the recovery input. A generic TMPDIR may be unencrypted or disk-backed.
+recovery_directory=$(cd "$(dirname "$recovery_source")" && pwd -P)
+input_snapshot=$(mktemp -d "$recovery_directory/.studio-backup-keys.XXXXXX")
+chmod 700 "$input_snapshot"
+cleanup_backup_inputs() {
+  backup_exit_code=$?
+  trap - EXIT HUP INT TERM
+  if ! rm -rf "$input_snapshot"; then backup_exit_code=1; fi
+  exit "$backup_exit_code"
+}
+trap cleanup_backup_inputs EXIT
+trap 'exit 1' HUP INT TERM
+cp "$recovery_source" "$input_snapshot/recovery.env"
+chmod 600 "$input_snapshot/recovery.env"
+if [ -L "$input_snapshot/recovery.env" ] || [ ! -f "$input_snapshot/recovery.env" ]; then
+  echo 'Backup could not create a stable private recovery-key snapshot.' >&2
+  exit 2
+fi
 mkdir "$backup"
 backup=$(cd "$backup" && pwd -P)
 mkdir -p "$(dirname "$custody")"
 custody="$(cd "$(dirname "$custody")" && pwd -P)/$(basename "$custody")"
 case "$custody" in "$backup"/*) echo 'Key custody must be outside the data backup.' >&2; exit 2 ;; esac
+compose() { docker compose --profile worker "$@"; }
+# First prove the live operational provider, including KMS when selected, over
+# the explicitly online service. Then prove a stable direct-root snapshot
+# against the same database through the offline, data-only service. KMS
+# ciphertext by itself cannot satisfy the independent recovery contract.
+export COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}:deployment/encryption.yml"
+STUDIO_ENCRYPTION_FILE="$operational" \
+  compose run --rm --no-deps encryption-verify-online
+STUDIO_ENCRYPTION_FILE="$input_snapshot/recovery.env" \
+  compose run --rm --no-deps encryption-verify
 # An exclusive copy protects a previous backup's keys. The data artifact never
 # contains roots, even transiently. Keep this file in independent custody.
-(set -C; cat deployment/encryption.env > "$custody")
-compose() { docker compose --profile worker "$@"; }
+(set -C; cat "$input_snapshot/recovery.env" > "$custody")
 key_checksum=$(studio_checksum "$custody")
 printf '%s\n' "${key_checksum%% *}" > "$backup/encryption.sha256"
-# Verify the exact retained key snapshot before stopping or capturing writers.
-# Preserve caller-supplied Compose overlays and append only the operator service;
-# replacing COMPOSE_FILE could reconcile a live project's networks or volumes.
-STUDIO_ENCRYPTION_FILE="$custody" \
-  COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}:deployment/encryption.yml" \
-  compose run --rm --no-deps encryption-verify
 
 # Stop admission first, then every replica of either service. One-off operator
 # jobs are deliberately not terminated: the session check below refuses them.
@@ -48,6 +78,14 @@ DO $$ BEGIN
   END IF;
 END $$;
 SQL
+
+# Verification before admission drain is only a preflight: a concurrent key
+# rotation can finish while writers are stopping. Check the exact custody
+# snapshot again after all writers and outside sessions have been excluded.
+# The dedicated verifier has only SELECT privileges. All writer logins stay
+# closed throughout this verification and capture, including maintenance jobs.
+STUDIO_ENCRYPTION_FILE="$input_snapshot/recovery.env" \
+  compose run --rm --no-deps encryption-verify-backup
 
 # A failure intentionally leaves admission/logins closed and no complete
 # marker. Never restart writers from an EXIT trap after a failed capture.

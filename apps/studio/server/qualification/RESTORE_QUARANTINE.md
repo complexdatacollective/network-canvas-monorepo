@@ -92,3 +92,55 @@ isolated PostgreSQL 18 fixture with missing-database skips disabled. Server
 typecheck and repository Knip passed. The restore validation instructions now
 explicitly open only the required restricted identities and, on failure, commit
 NOLOGIN before bounded session termination and container shutdown.
+
+The KMS custody follow-up was independently qualified on 2026-09-08 with local
+Linux/arm64 image
+`sha256:25fcc7c028d40980629423dd1790d1bbc634ac789866a2261b5a444849b7e94f`
+(`studio-kms-restore:master-custody-race`). Both Compose cases passed; the
+populated eight-migration backup/restore took 111.01 seconds. It verified
+separate online operational and data-only offline custody service networks,
+rejected absent, incorrect and ciphertext-only independent custody, retained
+the hash-bound direct roots, restored database/object/image contents into
+fresh volumes, and proved all writer logins closed after restoration. No real
+AWS request was made; regional KMS behavior and plaintext ownership were
+exercised separately through the SDK tests.
+
+The exact custody snapshot is verified both before and after writer drain.
+Six executable backup process controls prove successful artifact capture and
+refusal after a concurrent key change, failed final verification, termination
+failure and `TERM`. The earlier backup script from `411866038` completed under
+the injected key-change race, causing the new negative control to fail. The
+repaired script refuses `COMPLETE` and keeps all writer identities closed;
+failed cleanup stops PostgreSQL. These six controls and the existing fourteen
+restore process controls pass together. The key/KMS unit controls pass all 66
+tests, including clearing owned invalid base64 plaintext and preserving
+borrowed buffers. This evidence does not qualify provider credentials,
+published multi-platform images or production recovery.
+
+The combined KMS server run passed 1,934 tests across 96 files, with one existing
+development-performance case skipped. Server typecheck and repository Knip
+also passed. Removing only the invalid-decoding zeroization caused the new
+buffer-ownership assertion to fail, and the original implementation was
+restored before committing.
+
+The retained-image precedence correction was qualified on 2026-09-08 with
+Linux/arm64 image
+`sha256:3162859ba3e5cb6cc967273afaf28a4e1fdde225feda5039ba66f4b88f65a316`
+(`studio-kms-restore:retained-image-order`). Both Compose cases passed; the
+populated restore took 102.90 seconds. The restore environment deliberately
+used a unique, absent registry image name, verified absent before invocation,
+while only the retained content IDs could supply the offline verifier. The
+previous Compose-file order failed this same fixture with `No such image` at
+`encryption-verify`. Recovery image overrides now follow the encryption service
+definition in both the restore command and the documented private validation
+command. All 20 shell process controls also passed. This remains local
+quarantine evidence and does not establish authenticated reopening.
+
+After integrating the bounded legacy cursor and invitation admission fixes from
+the PII parent, the final combined server suite passed 1,937 tests with one
+existing development-performance skip. An intermittent real-command resume
+failure was traced to randomly leading `-` in the opaque cursor transport;
+fixed `v1_` framing preserves the authenticated payload and CLI argument
+semantics. The focused 22-test run, prior-implementation negative control,
+independent framing review, server types, configured repository Knip, lint and
+formatting all passed. No numbered migration bytes changed in this correction.

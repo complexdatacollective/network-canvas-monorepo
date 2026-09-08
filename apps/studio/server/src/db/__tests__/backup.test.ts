@@ -17,7 +17,11 @@ import {
   reachableDb,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
-import { configuration, rootOne } from '../../pii/__tests__/fixtures.ts';
+import {
+  configuration,
+  encryptionEnvironment,
+  rootOne,
+} from '../../pii/__tests__/fixtures.ts';
 import { initializeEncryption } from '../../pii/initialize.ts';
 import {
   createDataProtection,
@@ -384,11 +388,13 @@ it('verifies the operator command without runtime credentials or secret output',
         databaseUrl: string,
         args: string[] = [],
         enrollment: readonly string[] | null = allowedLogins,
+        extraEnv: NodeJS.ProcessEnv = {},
       ) => {
         // oxlint-disable-next-line node/no-process-env -- isolated child gets the synthetic backup identity only
         const env: NodeJS.ProcessEnv = {
           ...process.env,
           DATABASE_URL: databaseUrl,
+          ...extraEnv,
         };
         if (enrollment)
           env.STUDIO_DATABASE_ALLOWED_LOGINS = JSON.stringify(enrollment);
@@ -408,6 +414,62 @@ it('verifies the operator command without runtime credentials or secret output',
       expect(good.error).toBeUndefined();
       expect(good.status).toBe(0);
       expect(good.stdout).toBe('Studio backup access verified.\n');
+      const custodyEnv = encryptionEnvironment();
+      const proofsBefore = await source.pool.query(
+        'SELECT purpose, key_id, proof FROM encryption_key_verifications ORDER BY purpose, key_id',
+      );
+      const custody = run(
+        url.toString(),
+        ['--verify-encryption'],
+        allowedLogins,
+        custodyEnv,
+      );
+      expect(custody.error).toBeUndefined();
+      expect(custody.status).toBe(0);
+      expect(custody.stdout).toBe('Studio backup access verified.\n');
+      const unregistered = configuration();
+      unregistered.roots = unregistered.roots.map((root) => ({
+        ...root,
+        reference: `STUDIO_ENCRYPTION_ROOT_${root.reference}`,
+      }));
+      unregistered.pii.keys.push({
+        id: 'unregistered-custody-key',
+        rootId: 'root-1',
+      });
+      for (const candidate of [
+        {
+          ...custodyEnv,
+          STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: Buffer.alloc(32, 199).toString(
+            'base64',
+          ),
+        },
+        {
+          ...custodyEnv,
+          STUDIO_ENCRYPTION_KEYSET: JSON.stringify(unregistered),
+        },
+      ]) {
+        const refused = run(
+          url.toString(),
+          ['--verify-encryption'],
+          allowedLogins,
+          candidate,
+        );
+        expect(refused.error).toBeUndefined();
+        expect(refused.status).toBe(1);
+        expect(refused.stdout + refused.stderr).toContain(
+          'STUDIO_BACKUP_ACCESS_UNSAFE',
+        );
+        expect(refused.stdout + refused.stderr).not.toContain(
+          candidate.STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE,
+        );
+      }
+      expect(
+        (
+          await source.pool.query(
+            'SELECT purpose, key_id, proof FROM encryption_key_verifications ORDER BY purpose, key_id',
+          )
+        ).rows,
+      ).toEqual(proofsBefore.rows);
       // Closing a writer for capture does not forgive unsafe direct grants.
       // Prove the exact closed identity can write, then exercise the real CLI.
       await source.pool.query(
