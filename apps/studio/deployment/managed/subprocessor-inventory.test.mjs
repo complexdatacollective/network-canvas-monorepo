@@ -52,7 +52,6 @@ test('provider integration removal fails the generated inventory guard', async (
       'main.tf',
       'terraform.tfvars.example',
       'README.md',
-      'observability-new-relic-logs.mjs',
       'cost-input.example.json',
     ].map((file) => cp(join(directory, file), join(temp, file))),
   );
@@ -95,7 +94,6 @@ test('candidate sizing changes fail closed until the reviewed manifest is update
       'main.tf',
       'terraform.tfvars.example',
       'README.md',
-      'observability-new-relic-logs.mjs',
       'cost-input.example.json',
     ].map((file) => cp(join(directory, file), join(temp, file))),
   );
@@ -141,7 +139,6 @@ test('actual Terraform region changes fail instead of retaining a US claim', asy
       'main.tf',
       'terraform.tfvars.example',
       'README.md',
-      'observability-new-relic-logs.mjs',
       'cost-input.example.json',
     ].map((file) => cp(join(directory, file), join(temp, file))),
   );
@@ -180,7 +177,6 @@ test('an untracked Terraform provider fails exact provider coverage', async () =
       'main.tf',
       'terraform.tfvars.example',
       'README.md',
-      'observability-new-relic-logs.mjs',
       'cost-input.example.json',
     ].map((file) => cp(join(directory, file), join(temp, file))),
   );
@@ -219,7 +215,6 @@ test('a provider added in another Terraform file fails exact coverage', async ()
       'main.tf',
       'terraform.tfvars.example',
       'README.md',
-      'observability-new-relic-logs.mjs',
       'cost-input.example.json',
     ].map((file) => cp(join(directory, file), join(temp, file))),
   );
@@ -257,7 +252,6 @@ test('a no-source provider block and unknown JSON resource fail closed', async (
       'main.tf',
       'terraform.tfvars.example',
       'README.md',
-      'observability-new-relic-logs.mjs',
       'cost-input.example.json',
     ].map((file) => cp(join(directory, file), join(temp, file))),
   );
@@ -303,7 +297,6 @@ test('malformed metadata and missing source paths fail closed', async () => {
       'main.tf',
       'terraform.tfvars.example',
       'README.md',
-      'observability-new-relic-logs.mjs',
       'cost-input.example.json',
     ].map((file) => cp(join(directory, file), join(temp, file))),
   );

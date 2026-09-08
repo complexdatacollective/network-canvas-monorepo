@@ -82,7 +82,6 @@
       "status": "cost-candidate",
       "sourcePaths": [
         "README.md",
-        "observability-new-relic-logs.mjs",
         "cost-input.example.json"
       ],
       "estateProvider": null
