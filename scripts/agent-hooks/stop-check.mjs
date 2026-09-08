@@ -14,6 +14,7 @@ import {
   changeFingerprint,
   changedFiles,
   emit,
+  ensureKnipInputs,
   isFormattable,
   isKnipRelevant,
   isLintable,
@@ -28,6 +29,7 @@ import {
   signature,
   truncateLines,
   updateState,
+  workspacePackages,
 } from './lib.mjs';
 
 const manual = process.argv.includes('--manual');
@@ -51,11 +53,13 @@ if (!manual && state.lastClean === fingerprint) process.exit(0);
 // unchecked state is never recorded as clean.
 let checked = false;
 const mapped = packagesForFiles(changed, root);
-const all = mapped.all;
-// A renamed or removed workspace package is still reachable by its old name.
-const seeds = [
-  ...new Set([...mapped.seeds, ...previousPackageNames(root, changed)]),
-].sort((a, b) => a.localeCompare(b));
+// A renamed or removed workspace package cannot be named in a turbo filter
+// (turbo rejects unknown names), so its consumers are covered by checking
+// every package instead.
+const all = mapped.all || previousPackageNames(root, changed).length > 0;
+// Only names turbo knows can be filters; anything else would abort the run.
+const known = workspacePackages(root);
+const seeds = mapped.seeds.filter((name) => known.has(name));
 const turbo = binPath(root, 'turbo');
 if (!all && seeds.length === 0) {
   checked = true;
@@ -97,17 +101,23 @@ if (!all && seeds.length === 0) {
 // knip is pre-push work (see .husky/pre-push); manual mode runs it on demand.
 const knip = binPath(root, 'knip');
 if (manual && knip && changed.some((file) => isKnipRelevant(relative(file)))) {
-  const result = run(knip, ['--no-progress'], {
-    cwd: root,
-    env: { SKIP_ENV_VALIDATION: 'true' },
-    timeoutMs: 120_000,
-  });
-  if (result.error) {
-    problems.push(`knip did not finish: ${result.error.message}`);
-  } else if (result.status !== 0) {
+  if (!ensureKnipInputs(root)) {
     problems.push(
-      `knip found issues:\n${truncateLines(`${result.stdout}\n${result.stderr}`.trim(), 40)}`,
+      'knip could not run: the generated inputs it depends on (turbo.json, //#knip dependsOn) could not be produced.',
     );
+  } else {
+    const result = run(knip, ['--no-progress'], {
+      cwd: root,
+      env: { SKIP_ENV_VALIDATION: 'true' },
+      timeoutMs: 120_000,
+    });
+    if (result.error) {
+      problems.push(`knip did not finish: ${result.error.message}`);
+    } else if (result.status !== 0) {
+      problems.push(
+        `knip found issues:\n${truncateLines(`${result.stdout}\n${result.stderr}`.trim(), 40)}`,
+      );
+    }
   }
 }
 
@@ -177,13 +187,17 @@ let previous;
 let attempts;
 updateState(root, (current) => {
   previous = current[key];
-  attempts = (previous?.attempts ?? 0) + 1;
+  // Consecutive stops with the same failures; a new failure set starts over.
+  attempts = previous?.signature === sig ? previous.attempts + 1 : 1;
   current[key] = { signature: sig, attempts };
   delete current.lastClean;
 });
 
+// The same failure set blocks at most four stops in a row, whether those are
+// continuations or fresh turns, so a problem the agent cannot fix does not
+// hold every turn hostage; a changed failure set starts a new allowance.
 const madeProgress = previous?.signature !== sig;
-const block = !input.stop_hook_active || (madeProgress && attempts <= 4);
+const block = attempts <= 4 && (madeProgress || !input.stop_hook_active);
 
 if (block) {
   emit({

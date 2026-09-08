@@ -38,7 +38,7 @@ const eligible = (file) =>
   isFormattable(file);
 
 let files = extractEditedFiles(input, root).filter(eligible);
-const shellTool = /^(Bash|shell|exec_command|local_shell)$/i.test(toolName);
+const shellTool = /^(Bash|exec|exec_command|local_shell)$/i.test(toolName);
 let since = null;
 updateState(root, (state) => {
   if (files.length === 0 && shellTool) {
@@ -65,12 +65,8 @@ if (!oxfmt || !oxlint) process.exit(0);
 const relative = (file) => path.relative(root, file);
 const before = new Map(files.map((file) => [file, readFileSync(file, 'utf8')]));
 
-const format = run(
-  oxfmt,
-  ['--no-error-on-unmatched-pattern', ...files.map(relative)],
-  { cwd: root, timeoutMs: 30_000 },
-);
-
+// oxlint's fixers can change a line's shape, so it runs first and oxfmt
+// last, as lint-staged does; the final file is then formatted.
 const lintable = files.filter(isLintable);
 let lintReport = '';
 if (lintable.length > 0) {
@@ -81,6 +77,12 @@ if (lintable.length > 0) {
   );
   lintReport = lintReportFrom(lint);
 }
+
+const format = run(
+  oxfmt,
+  ['--no-error-on-unmatched-pattern', ...files.map(relative)],
+  { cwd: root, timeoutMs: 30_000 },
+);
 
 const reformatted = files
   .filter((file) => readFileSync(file, 'utf8') !== before.get(file))

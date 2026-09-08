@@ -19,7 +19,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 
-export const FORMAT_EXTENSIONS = new Set([
+const FORMAT_EXTENSIONS = new Set([
   '.js',
   '.jsx',
   '.mjs',
@@ -46,7 +46,7 @@ export const FORMAT_EXTENSIONS = new Set([
   '.astro',
 ]);
 
-export const LINT_EXTENSIONS = new Set([
+const LINT_EXTENSIONS = new Set([
   '.js',
   '.jsx',
   '.mjs',
@@ -308,9 +308,9 @@ export function changedFiles(root) {
 
 // Files outside any workspace package that every package can depend on:
 // shared configuration, and root TypeScript sources (the Vite plugins under
-// scripts/ are compiled by the apps' node tsconfigs).
+// scripts/ are compiled by the apps' node tsconfigs). tooling/typescript is a
+// workspace package (@codaco/tsconfig), reached as an ordinary seed.
 function isGlobalInput(rel) {
-  if (rel.startsWith(`tooling${path.sep}typescript${path.sep}`)) return true;
   if (
     [
       'package.json',
@@ -474,7 +474,7 @@ export function workspacePackages(
 }
 
 // Is `dir` inside a workspace package (rather than the repository root)?
-export function isPackageDir(dir, root, options) {
+function isPackageDir(dir, root, options) {
   if (!isUnderRepo(dir, root)) return false;
   return packageForFile(path.join(dir, 'x'), root, options) !== null;
 }
@@ -637,6 +637,9 @@ export function updateState(root, mutate) {
       mkdirSync(lock);
       locked = true;
     } catch {
+      // Every failure path honours the deadline: a persistent error (a
+      // read-only or full disk) must fail fast, not spin.
+      if (Date.now() > deadline) break;
       let stale = false;
       try {
         stale = Date.now() - statSync(lock).mtimeMs > 10_000;
@@ -651,7 +654,6 @@ export function updateState(root, mutate) {
         }
         continue;
       }
-      if (Date.now() > deadline) break;
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
     }
   }
@@ -764,6 +766,14 @@ export function emit(payload) {
 // or a `cd` earlier in the command) is package-scoped and allowed.
 const SCOPE_FLAGS = /(^|\s)(--filter(=|\s)|-F\s|--affected(\s|$))/;
 
+function turboVerdict(args, own, trimmed, scoped) {
+  if (SCOPE_FLAGS.test(own) || scoped) return null;
+  if (args.some((t) => /^(typecheck|lint|\/\/#lint|\/\/#knip|knip)$/.test(t))) {
+    return { kind: 'whole-tree-gate', segment: trimmed };
+  }
+  return null;
+}
+
 // Options that take a separate value, so the value is not a file target.
 const VALUE_OPTIONS = new Set([
   '-c',
@@ -790,14 +800,84 @@ const VALUE_OPTIONS = new Set([
 
 function stripPrefixes(segment) {
   let s = segment.trim();
-  s = s.replace(/^(\w+=\S*\s+)+/, '');
-  s = s.replace(/^(time|nohup|command)\s+/, '');
+  // Subshell and brace-group punctuation is not part of the command.
+  s = s.replace(/^[({\s]+/, '').replace(/[)}\s]+$/, '');
+  let previous;
+  do {
+    previous = s;
+    s = s.replace(/^(\w+=\S*\s+)+/, '');
+    s = s.replace(/^(time|nohup|command|env|nice|xargs)\s+/, '');
+    s = s.replace(
+      /^timeout\s+((-k|-s|--kill-after|--signal)\s+\S+\s+|-\S+\s+)*\S+\s+/,
+      '',
+    );
+    s = s.replace(/^stdbuf\s+(-\S+\s+)+/, '');
+  } while (s !== previous);
   s = s.replace(
-    /^(pnpm\s+exec\s+|pnpm\s+dlx\s+|npx\s+(--yes\s+)?|(\S*\/)?node_modules\/\.bin\/)/,
+    /^(pnpm\s+exec\s+(--\s+)?|pnpm\s+dlx\s+|npx\s+(--yes\s+)?(--\s+)?|(\S*\/)?node_modules\/\.bin\/)/,
     '',
   );
   return s;
 }
+
+// Splits a command line into simple commands on `&&`, `||`, `;`, `|` and
+// newlines, ignoring separators inside single or double quotes so that text
+// such as `--body "run pnpm install && pnpm lint"` stays one argument.
+export function splitSegments(command) {
+  const segments = [];
+  let current = '';
+  let quote = null;
+  for (let i = 0; i < command.length; i += 1) {
+    const ch = command[i];
+    if (quote) {
+      current += ch;
+      if (ch === '\\' && quote === '"' && i + 1 < command.length) {
+        current += command[i + 1];
+        i += 1;
+      } else if (ch === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      current += ch;
+      continue;
+    }
+    if (ch === '\n' || ch === ';') {
+      segments.push(current);
+      current = '';
+      continue;
+    }
+    if ((ch === '&' || ch === '|') && command[i + 1] === ch) {
+      segments.push(current);
+      current = '';
+      i += 1;
+      continue;
+    }
+    if (ch === '|') {
+      segments.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  segments.push(current);
+  return segments;
+}
+
+// The script passed to `sh -c '...'`, `bash -lc "..."` and similar, or null.
+function shellScriptArgument(tokens) {
+  const [head, ...rest] = tokens;
+  if (!/^(sh|bash|zsh|dash|ksh)$/.test(head)) return null;
+  const index = rest.findIndex((t) => /^-[a-z]*c[a-z]*$/.test(t));
+  if (index === -1) return null;
+  const script = rest.slice(index + 1).join(' ');
+  const match = /^(['"])([\s\S]*)\1$/.exec(script.trim());
+  return match ? match[2] : script;
+}
+
+const INFO_FLAGS = /^(--version|-V|--help|-h|--rules|--print-config)$/;
 
 function bareTargets(args) {
   const targets = [];
@@ -819,14 +899,27 @@ function bareTargets(args) {
 const GATE_BYPASS_PREFIX = /^(\w+=\S*\s+)*AGENT_GATES=1(\s|$)/;
 const GATE_BYPASS_EXPORT = /^(export\s+)?AGENT_GATES=1\s*$/;
 
+// git global options that take a separate value.
+const GIT_GLOBAL_VALUE_OPTIONS = new Set([
+  '-c',
+  '-C',
+  '--git-dir',
+  '--work-tree',
+  '--namespace',
+  '--exec-path',
+  '--super-prefix',
+  '--config-env',
+]);
+
 export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
   if (!command) return null;
   const inPackage = (dir) =>
     Boolean(dir && root && (packageDir ?? isPackageDir)(dir, root));
+  const resolveDir = (from, target) =>
+    from ? path.resolve(from, target.replace(/^['"]|['"]$/g, '')) : null;
   let currentDir = cwd ?? root ?? null;
   let exported = false;
-  const segments = stripEmbeddedText(command).split(/\n|&&|\|\||;|\|/);
-  for (const raw of segments) {
+  for (const raw of splitSegments(stripEmbeddedText(command))) {
     const trimmed = raw.trim();
     if (GATE_BYPASS_EXPORT.test(trimmed)) {
       exported = true;
@@ -840,21 +933,39 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
 
     if (head === 'cd') {
       const target = rest.find((t) => !t.startsWith('-'));
-      if (target && !/^[~$]/.test(target) && currentDir) {
-        currentDir = path.resolve(
-          currentDir,
-          target.replace(/^['"]|['"]$/g, ''),
-        );
+      if (target && !/^[~$]/.test(target.replace(/^['"]/, ''))) {
+        currentDir = resolveDir(currentDir, target) ?? currentDir;
       }
       continue;
     }
 
-    if (
-      head === 'git' &&
-      rest[0] === 'commit' &&
-      rest.some((t) => t === '--no-verify' || t === '-n')
-    ) {
-      return { kind: 'no-verify', segment: trimmed };
+    // `sh -c '...'`: classify the script itself, from the same directory.
+    const script = shellScriptArgument(tokens);
+    if (script !== null) {
+      const verdict = classifyGateCommand(script, {
+        cwd: currentDir,
+        root,
+        packageDir,
+      });
+      if (verdict) return verdict;
+      continue;
+    }
+
+    if (head === 'git') {
+      // Global options (`git -c k=v commit`, `git -C dir commit`) precede
+      // the subcommand.
+      let i = 0;
+      while (i < rest.length && rest[i].startsWith('-')) {
+        if (GIT_GLOBAL_VALUE_OPTIONS.has(rest[i])) i += 1;
+        i += 1;
+      }
+      if (
+        rest[i] === 'commit' &&
+        rest.slice(i + 1).some((t) => t === '--no-verify' || t === '-n')
+      ) {
+        return { kind: 'no-verify', segment: trimmed };
+      }
+      continue;
     }
 
     // Arguments after `--` are passed to the script, not to pnpm or turbo,
@@ -862,13 +973,42 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
     const own = segment.split(/\s--(\s|$)/)[0];
 
     if (/^(pnpm|npm|yarn|bun)$/.test(head)) {
-      if (SCOPE_FLAGS.test(own) || inPackage(currentDir)) continue;
-      const script = rest
+      // `pnpm -C dir` / `--dir dir` runs the script in that directory.
+      let effectiveDir = currentDir;
+      const args = [];
+      for (let i = 0; i < rest.length; i += 1) {
+        const t = rest[i];
+        if (t === '-C' || t === '--dir') {
+          if (rest[i + 1])
+            effectiveDir = resolveDir(currentDir, rest[i + 1]) ?? effectiveDir;
+          i += 1;
+          continue;
+        }
+        const dirMatch = /^(?:-C|--dir)=(.+)$/.exec(t);
+        if (dirMatch) {
+          effectiveDir = resolveDir(currentDir, dirMatch[1]) ?? effectiveDir;
+          continue;
+        }
+        args.push(t);
+      }
+      const positional = args
         .filter((t) => !t.startsWith('-'))
-        .filter((t) => t !== 'run')[0];
+        .filter((t) => t !== 'run');
+      // `pnpm turbo run typecheck` is a turbo invocation.
+      if (positional[0] === 'turbo') {
+        const verdict = turboVerdict(
+          positional.slice(1),
+          own,
+          trimmed,
+          inPackage(effectiveDir),
+        );
+        if (verdict) return verdict;
+        continue;
+      }
+      if (SCOPE_FLAGS.test(own) || inPackage(effectiveDir)) continue;
       if (
         /^(lint|lint:fix|typecheck|knip|format|format:check)$/.test(
-          script ?? '',
+          positional[0] ?? '',
         )
       ) {
         return { kind: 'whole-tree-gate', segment: trimmed };
@@ -877,23 +1017,22 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
     }
 
     if (head === 'turbo') {
-      if (SCOPE_FLAGS.test(own) || inPackage(currentDir)) continue;
-      if (
-        rest.some((t) => /^(typecheck|lint|\/\/#lint|\/\/#knip|knip)$/.test(t))
-      ) {
-        return { kind: 'whole-tree-gate', segment: trimmed };
-      }
+      const verdict = turboVerdict(rest, own, trimmed, inPackage(currentDir));
+      if (verdict) return verdict;
       continue;
     }
 
     if (head === 'oxlint' || head === 'oxfmt') {
+      if (rest.some((t) => INFO_FLAGS.test(t))) continue;
       if (bareTargets(rest).length === 0 && !inPackage(currentDir)) {
         return { kind: 'whole-tree-gate', segment: trimmed };
       }
       continue;
     }
 
-    if (head === 'knip' && !inPackage(currentDir)) {
+    if (head === 'knip') {
+      if (rest.some((t) => INFO_FLAGS.test(t)) || inPackage(currentDir))
+        continue;
       return { kind: 'whole-tree-gate', segment: trimmed };
     }
   }

@@ -55,7 +55,9 @@ them.
   `pnpm test` to CI.
 
 CI remains the authority. The hooks exist so you get the same feedback locally
-without spending minutes on it.
+without spending minutes on it. In a Claude Code worktree the commit and push
+gates come from the main checkout's `.husky/` scripts, so they apply once
+`main` carries them and the main checkout is updated.
 
 ## Workspace mechanics
 

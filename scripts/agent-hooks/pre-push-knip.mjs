@@ -40,9 +40,31 @@ const root = resolveRepoRoot({});
 const shas = [...new Set(process.argv.slice(2).filter(Boolean))];
 if (shas.length === 0) process.exit(0);
 
-// Entries left by a removal that was still running when a previous hook
-// exited.
+// Reclaim checkouts a previous hook left behind (an interrupted push cannot
+// run its cleanup), then prune entries whose directories are already gone.
+for (const line of (git(['worktree', 'list', '--porcelain'], root) ?? '').split(
+  '\n',
+)) {
+  const dir = line.startsWith('worktree ')
+    ? line.slice('worktree '.length)
+    : null;
+  if (dir && path.basename(dir).startsWith('knip-push-')) {
+    run('git', ['worktree', 'remove', '--force', dir], { cwd: root });
+  }
+}
 git(['worktree', 'prune'], root);
+
+let activeCheckout = null;
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+  process.on(signal, () => {
+    if (activeCheckout) {
+      run('git', ['worktree', 'remove', '--force', activeCheckout], {
+        cwd: root,
+      });
+    }
+    process.exit(130);
+  });
+}
 
 // The generated inputs knip depends on (fresco#codegen outputs) must exist
 // in the real tree: both the in-place check and the temporary checkout,
@@ -63,23 +85,35 @@ const porcelain = run(
 
 function knipIn(cwd, label) {
   console.log(`knip: checking ${label}`);
-  const result = spawnSync(
-    path.join(cwd, 'node_modules', '.bin', 'knip'),
-    ['--no-progress'],
-    {
-      cwd,
-      stdio: 'inherit',
-      env: { ...process.env, SKIP_ENV_VALIDATION: 'true' },
-    },
-  );
+  const binary = path.join(cwd, 'node_modules', '.bin', 'knip');
+  if (!existsSync(binary)) {
+    console.log(
+      'knip: node_modules/.bin/knip is missing (dependencies not installed); cannot check this push.',
+    );
+    return false;
+  }
+  const result = spawnSync(binary, ['--no-progress'], {
+    cwd,
+    stdio: 'inherit',
+    env: { ...process.env, SKIP_ENV_VALIDATION: 'true' },
+  });
+  if (result.error) {
+    console.log(`knip: did not finish: ${result.error.message}`);
+    return false;
+  }
+  if (result.status !== 0) findings = true;
   return result.status === 0;
 }
+
+const BORROW_SKIP = new Set(['.cache', '.vite', '.vite-temp', '.turbo']);
 
 // Copies a node_modules directory into the checkout, keeping every symlink
 // as written; the pnpm store directory itself is linked, not copied.
 function borrowNodeModules(sourceDir, targetDir) {
   mkdirSync(targetDir, { recursive: true });
   for (const entry of readdirSync(sourceDir)) {
+    // Build and dev-server caches are large and knip never reads them.
+    if (BORROW_SKIP.has(entry)) continue;
     const source = path.join(sourceDir, entry);
     const target = path.join(targetDir, entry);
     if (entry === '.pnpm' && lstatSync(source).isDirectory()) {
@@ -97,20 +131,31 @@ function dependencyGraphDiffers(sha) {
   const manifests = (git(['ls-files', '*/package.json'], root) ?? '')
     .split('\n')
     .filter(Boolean);
+  const graphFiles = [
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'package.json',
+    ...manifests,
+  ];
+  // Uncommitted edits to the graph files may already be installed in the
+  // working tree, so a dirty graph file also means "do not borrow".
+  const dirty = porcelain
+    .split('\n')
+    .map((line) => line.slice(3).trim())
+    .filter(Boolean);
+  if (
+    dirty.some(
+      (file) => graphFiles.includes(file) || /(^|\/)package\.json$/.test(file),
+    )
+  ) {
+    return true;
+  }
   const diff = run(
     'git',
-    [
-      'diff',
-      '--quiet',
-      sha,
-      'HEAD',
-      '--',
-      'pnpm-lock.yaml',
-      'pnpm-workspace.yaml',
-      'package.json',
-      ...manifests,
-    ],
-    { cwd: root },
+    ['diff', '--quiet', sha, 'HEAD', '--', ...graphFiles],
+    {
+      cwd: root,
+    },
   );
   return diff.status !== 0;
 }
@@ -173,6 +218,7 @@ function scheduleRemoval(temp) {
 }
 
 let ok = true;
+let findings = false;
 for (const sha of shas) {
   const short = sha.slice(0, 10);
   if (knipTargetForPush(sha, { head, porcelain }) === 'in-place') {
@@ -191,6 +237,7 @@ for (const sha of shas) {
     continue;
   }
   // Every exit path after a successful add removes the checkout.
+  activeCheckout = temp;
   try {
     if (!prepareCheckout(temp, sha)) {
       ok = false;
@@ -203,13 +250,16 @@ for (const sha of shas) {
     if (!knipIn(temp, `${short} in a temporary worktree (${reason})`))
       ok = false;
   } finally {
+    activeCheckout = null;
     scheduleRemoval(temp);
   }
 }
 
 if (!ok) {
   console.log(
-    'knip found unused files, exports, or dependencies in the pushed code. Fix them before pushing (pnpm agent:check shows the report for the working tree).',
+    findings
+      ? 'knip found unused files, exports, or dependencies in the pushed code. Fix them before pushing (pnpm agent:check shows the report for the working tree).'
+      : 'knip could not check this push (see above); the push is refused rather than passed unchecked.',
   );
   process.exit(1);
 }

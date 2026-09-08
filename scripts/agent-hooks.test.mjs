@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
+  chmodSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -32,6 +33,7 @@ import {
   parseTypecheckOutput,
   previousPackageNames,
   resolveRepoRoot,
+  splitSegments,
   stripEmbeddedText,
   takeCommandStart,
   updateState,
@@ -244,7 +246,6 @@ test('the script option selects packages by a different manifest script', () => 
 test('a change to shared TypeScript configuration selects every package', () => {
   const readPackage = () => null;
   for (const file of [
-    '/repo/tooling/typescript/base.json',
     '/repo/pnpm-lock.yaml',
     '/repo/package.json',
     '/repo/turbo.json',
@@ -760,4 +761,142 @@ test('previousPackageNames returns the base revision name of a renamed manifest'
 
 test('ensureKnipInputs reports the generated inputs present in this tree', () => {
   assert.equal(ensureKnipInputs(repoRoot), true);
+});
+
+test('pnpm directory options decide whether a gate run is package-scoped', () => {
+  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
+  const options = { root: '/repo', packageDir };
+  assert.equal(
+    classifyGateCommand('pnpm -C . lint', options)?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('pnpm --dir . typecheck', options)?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('pnpm -C ../.. lint', {
+      ...options,
+      cwd: '/repo/apps/interviewer',
+    })?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('pnpm -C apps/interviewer typecheck', options),
+    null,
+  );
+  assert.equal(
+    classifyGateCommand('pnpm --dir=packages/interview test', options),
+    null,
+  );
+});
+
+test('git global options before commit do not hide --no-verify', () => {
+  assert.equal(
+    classifyGateCommand('git -c user.name=Bot commit --no-verify -m x')?.kind,
+    'no-verify',
+  );
+  assert.equal(
+    classifyGateCommand('git -C /repo --no-pager commit -n -m x')?.kind,
+    'no-verify',
+  );
+  assert.equal(classifyGateCommand('git -c user.name=Bot commit -m x'), null);
+  assert.equal(classifyGateCommand('git -C /repo log -n 3'), null);
+});
+
+test('quoted separators do not start a new command segment', () => {
+  assert.deepEqual(splitSegments('a && b'), ['a ', ' b']);
+  assert.deepEqual(
+    splitSegments('gh pr create --body "run pnpm install && pnpm lint first"'),
+    ['gh pr create --body "run pnpm install && pnpm lint first"'],
+  );
+  assert.deepEqual(splitSegments("echo 'a; b' | cat"), [
+    "echo 'a; b' ",
+    ' cat',
+  ]);
+  assert.equal(
+    classifyGateCommand(
+      'gh pr create --body "run pnpm install && pnpm lint first"',
+    ),
+    null,
+  );
+  assert.equal(
+    classifyGateCommand(
+      'node -e "const x = [\'(cd packages/interview && pnpm typecheck)\']"',
+    ),
+    null,
+  );
+});
+
+test('subshells, brace groups, shell -c scripts and wrappers are classified', () => {
+  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
+  const options = { root: '/repo', packageDir };
+  for (const refused of [
+    '(pnpm lint)',
+    '{ pnpm typecheck; }',
+    'bash -lc "pnpm lint"',
+    "sh -c 'pnpm knip'",
+    'env pnpm lint',
+    'timeout 600 pnpm lint',
+    'timeout -k 5 600 pnpm typecheck',
+    'stdbuf -oL pnpm lint',
+    'pnpm exec -- oxlint',
+    'pnpm turbo run typecheck',
+    'pnpm exec turbo typecheck',
+  ]) {
+    assert.equal(
+      classifyGateCommand(refused, options)?.kind,
+      'whole-tree-gate',
+      refused,
+    );
+  }
+  assert.equal(
+    classifyGateCommand(
+      "sh -c 'cd apps/interviewer && pnpm typecheck'",
+      options,
+    ),
+    null,
+  );
+  assert.equal(
+    classifyGateCommand(
+      'pnpm turbo run typecheck --filter=@codaco/interview',
+      options,
+    ),
+    null,
+  );
+});
+
+test('informational oxlint, oxfmt and knip invocations are allowed', () => {
+  for (const allowed of [
+    'oxlint --version',
+    'oxlint --help',
+    'oxfmt -V',
+    'oxlint --rules',
+    'knip --help',
+    './node_modules/.bin/oxlint --version',
+  ]) {
+    assert.equal(classifyGateCommand(allowed), null, allowed);
+  }
+});
+
+test('updateState fails fast instead of spinning when the lock cannot be created', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-'));
+  const dir = path.join(root, 'node_modules', '.cache', 'agent-hooks');
+  mkdirSync(dir, { recursive: true });
+  chmodSync(dir, 0o500);
+  const lib = path.join(repoRoot, 'scripts', 'agent-hooks', 'lib.mjs');
+  const started = Date.now();
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      `import('${lib}').then((m) => { try { m.updateState('${root}', (s) => { s.x = 1; }); } catch (e) { console.log('threw:', e.code); } })`,
+    ],
+    { encoding: 'utf8', timeout: 15_000 },
+  );
+  chmodSync(dir, 0o700);
+  rmSync(root, { recursive: true, force: true });
+  assert.equal(result.signal, null, 'the process was killed by the timeout');
+  assert.ok(Date.now() - started < 8_000, 'returned within the deadline');
 });

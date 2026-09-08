@@ -49,9 +49,12 @@ CI.
   worktree. Claude Code reads `.claude/settings.json` from the worktree.
 - Claude Code snapshots hooks at session start; a running session picks up
   changes only after a restart.
-- `.husky/pre-commit` is resolved through `core.hooksPath`. Claude Code
-  worktrees point that at the main checkout's `.husky/_`, so they run the main
-  checkout's copy of the hook script; Codex worktrees run their own copy.
+- `.husky/pre-commit` and `.husky/pre-push` are resolved through
+  `core.hooksPath`. Claude Code worktrees point that at the main checkout's
+  `.husky/_`, so they run the main checkout's copies of both scripts: the
+  blocking pre-commit and the knip pre-push apply there only once `main`
+  carries them and the main checkout is updated. Codex worktrees run their
+  own copies.
 
 ## Stop-hook state
 
@@ -59,6 +62,7 @@ CI.
 things. The fingerprint of the last clean run (HEAD plus size and mtime of
 every changed file) lets a turn that changed nothing skip the check. A block
 decision makes the agent continue with the reason as its next instruction;
-the failure signature is recorded so that when the agent stops again with the
-same failures, or after four attempts, it is allowed to stop and report
-instead of looping.
+the failure signature is recorded so that the same failure set blocks at most
+four consecutive stops, continuations and fresh turns alike; after that the
+agent is allowed to stop and report, and a changed failure set starts a new
+allowance.

@@ -16,12 +16,14 @@ import {
 
 const input = readHookInput();
 const toolInput = input.tool_input ?? input.toolInput ?? {};
-const command =
-  typeof toolInput.command === 'string'
-    ? toolInput.command
-    : Array.isArray(toolInput.command)
-      ? toolInput.command.join(' ')
-      : (toolInput.cmd ?? '');
+function commandText(value) {
+  if (typeof value === 'string') return value;
+  if (!Array.isArray(value)) return '';
+  // Codex sends ["bash", "-lc", "<script>"]: classify the script itself.
+  if (value.length === 3 && /^-[a-z]*c[a-z]*$/.test(value[1])) return value[2];
+  return value.join(' ');
+}
+const command = commandText(toolInput.command ?? toolInput.cmd);
 
 const root = resolveRepoRoot(input);
 // The post-edit hook formats files a shell command wrote; it needs to know
