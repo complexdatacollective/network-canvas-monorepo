@@ -496,8 +496,30 @@ describe('Fresco PostHog client', () => {
         expect(beforeSend(autocapture())).toBeNull();
         expect(beforeSend({ event: '$rageclick', properties: {} })).toBeNull();
         expect(beforeSend({ event: '$dead_click', properties: {} })).toBeNull();
-        expect(beforeSend({ event: '$$heatmap', properties: {} })).toBeNull();
       }
+    });
+
+    // $$heatmap carries element selectors rather than text, so — unlike the
+    // always-off events above — it is dropped only where capture_heatmaps is
+    // itself off: participant pages. Dropping it everywhere would silence the
+    // dashboard heatmaps init deliberately leaves on.
+    it('drops $$heatmap flushes only on participant pages', async () => {
+      window.history.pushState({}, '', '/dashboard/interviews');
+      const { startPostHog } = await loadModule();
+      await startPostHog('install-123');
+
+      const beforeSend = initConfig().before_send;
+      if (typeof beforeSend !== 'function') {
+        throw new TypeError('before_send was not configured');
+      }
+
+      window.history.pushState({}, '', '/dashboard/interviews');
+      expect(beforeSend({ event: '$$heatmap', properties: {} })).toEqual(
+        expect.objectContaining({ event: '$$heatmap' }),
+      );
+
+      window.history.pushState({}, '', `/interview/${INTERVIEW_ID}`);
+      expect(beforeSend({ event: '$$heatmap', properties: {} })).toBeNull();
     });
 
     it('strips element data from other events on every page', async () => {

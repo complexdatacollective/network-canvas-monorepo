@@ -46,12 +46,14 @@ const pendingReports: ((posthog: PostHog) => void)[] = [];
  * participant pages. Dropping them here as well means a later change to the
  * init options cannot quietly start sending element data.
  */
-const ELEMENT_EVENTS = new Set([
-  '$autocapture',
-  '$rageclick',
-  '$dead_click',
-  '$$heatmap',
-]);
+// Always-off event types: dropping them here as well means a later change to
+// the init options cannot quietly start sending element data.
+const ELEMENT_EVENTS = new Set(['$autocapture', '$rageclick', '$dead_click']);
+
+// $$heatmap carries element selectors rather than text, so it is only off on
+// participant pages, matching capture_heatmaps at init — dropping it
+// unconditionally here would silence the dashboard heatmaps init deliberately
+// leaves on.
 
 /** Element-derived properties posthog-js may attach to any event. */
 const ELEMENT_PROPERTIES = [
@@ -79,7 +81,10 @@ function redactEvent(event: CaptureResult | null): CaptureResult | null {
   // response — and on the dashboard it is what the tables show: participant
   // identifiers and labels. Init keeps those features off everywhere; this
   // covers any event that picked up element data on the way regardless.
-  if (ELEMENT_EVENTS.has(event.event)) {
+  if (
+    ELEMENT_EVENTS.has(event.event) ||
+    (event.event === '$$heatmap' && isParticipantPath(window.location.pathname))
+  ) {
     return null;
   }
   for (const key of ELEMENT_PROPERTIES) {
