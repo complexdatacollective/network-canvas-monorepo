@@ -1195,6 +1195,10 @@
     "defaultMessage": "field",
     "description": "What one row of a form’s list of questions is called inside things said ABOUT it — \"Edit field\", \"Remove this field?\" — so it is lower case and singular."
   },
+  "protocolBuilder.formFields.malformedField": {
+    "defaultMessage": "This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.",
+    "description": "Refusal shown above a form’s list of fields when the list holds an entry that is not a field at all — which an import, a migration or another session can leave behind. The list cannot render such an entry, so there is no row for the researcher to open and finish, which is why this says the protocol itself has to be repaired."
+  },
   "protocolBuilder.formFields.newNameHint": {
     "defaultMessage": "How this attribute is named in the codebook and in exported data.",
     "description": "Guidance under the new-attribute name field. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyzes afterwards."
