@@ -368,6 +368,15 @@ it('installs an immutable built image, drains a populated backup and restores al
     expect(
       encryptionConfiguration.services['encryption-verify']!.environment,
     ).toMatchObject({ STUDIO_ENCRYPTION_OFFLINE_CUSTODY: 'required' });
+    const custodyService =
+      encryptionConfiguration.services['encryption-verify-backup']!;
+    expect(Object.keys(custodyService.networks!)).toEqual(['data']);
+    expect(custodyService.environment).toMatchObject({
+      STUDIO_ENCRYPTION_OFFLINE_CUSTODY: 'required',
+    });
+    expect(new URL(custodyService.environment!.DATABASE_URL!).username).toBe(
+      'studio_backup_login',
+    );
     expect(
       Object.keys(
         encryptionConfiguration.services['encryption-verify-online']!.networks!,

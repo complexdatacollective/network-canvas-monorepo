@@ -29,7 +29,11 @@ const writerRoles = [
 
 async function makeHarness(
   t,
-  { failAt = '', rotateAfterPreflight = false } = {},
+  {
+    failAt = '',
+    rotateAfterPreflight = false,
+    rotateDuringVerification = false,
+  } = {},
 ) {
   const scratch = await mkdtemp(join(tmpdir(), 'studio-backup-custody-test-'));
   t.after(() => rm(scratch, { recursive: true, force: true }));
@@ -124,6 +128,13 @@ case "$*" in
         *key-a*:*key-a*) ;;
         *) exit 43 ;;
       esac
+      # Model a second operator that connects and registers a proof before the
+      # verifier disconnects. A read-only transaction in the first connection
+      # does not prevent this when the shared maintenance LOGIN is open.
+      if [ "$ROTATE_DURING_VERIFICATION" = 1 ] && \
+        grep -q '^studio_maintenance_runtime=true$' "$FAKE_ROLE_STATE"; then
+        printf 'key-b\\n' > "$FAKE_PROOF_STATE"
+      fi
     fi
     exit 0
     ;;
@@ -163,13 +174,16 @@ exit 0
         TMPDIR: privateTmp,
         FAIL_AT: failAt,
         ROTATE_AFTER_PREFLIGHT: rotateAfterPreflight ? '1' : '0',
+        ROTATE_DURING_VERIFICATION: rotateDuringVerification ? '1' : '0',
         FAKE_DOCKER_LOG: logPath,
         FAKE_PROOF_STATE: proofStatePath,
         FAKE_ROLE_STATE: roleStatePath,
         FAKE_VERIFICATION_COUNT: verificationCountPath,
       },
       encoding: 'utf8',
-      timeout: 10_000,
+      // Complete capture spawns many real shell processes and hashes every
+      // artifact. This bounds execution; no sleep substitutes for an oracle.
+      timeout: 60_000,
     },
   );
 
@@ -183,6 +197,7 @@ exit 0
     backup,
     custody,
     roleState: await readFile(roleStatePath, 'utf8'),
+    proofState: await readFile(proofStatePath, 'utf8'),
     privateTmp,
   };
 }
@@ -207,7 +222,8 @@ test('a key rotation after preflight refuses capture under closed admission', as
   assertEveryWriterClosed(roleState);
   assert.match(log, /stop studio worker/);
   assert.equal(
-    (log.match(/run --rm --no-deps encryption-verify\n/g) ?? []).length,
+    (log.match(/run --rm --no-deps encryption-verify(?:-backup)?\n/g) ?? [])
+      .length,
     2,
   );
 });
@@ -246,13 +262,13 @@ test('second verification failure and signals clean up with every writer closed'
     });
 });
 
-test('termination-proof failure stops PostgreSQL and leaves admission closed', async (t) => {
-  const { result, backup, roleState, log } = await makeHarness(t, {
-    failAt: 'termination',
+test('a second operator cannot rotate keys during the post-drain custody check', async (t) => {
+  const { result, backup, roleState, proofState, log } = await makeHarness(t, {
+    rotateDuringVerification: true,
   });
-  assert.notEqual(result.status, 0);
-  await assertNoComplete(backup);
+  assert.equal(result.status, 0, result.stderr);
+  await access(join(backup, 'COMPLETE'));
   assertEveryWriterClosed(roleState);
-  assert.match(result.stderr, /could not prove verification admission closed/);
-  assert.match(log, /stop postgres/);
+  assert.equal(proofState, 'key-a\n');
+  assert.match(log, /run --rm --no-deps encryption-verify-backup/);
 });
