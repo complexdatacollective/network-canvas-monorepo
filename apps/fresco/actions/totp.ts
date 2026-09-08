@@ -11,6 +11,9 @@ import {
   generateTotpSecret,
   generateTotpUri,
   hashRecoveryCode,
+  isTotpEncryptionConfigured,
+  openTotpSecret,
+  sealTotpSecret,
   verifyTotpCode,
 } from '~/lib/auth/totp';
 import { safeUpdateTag } from '~/lib/cache';
@@ -62,24 +65,43 @@ const messages = defineMessages({
     description:
       'Researcher-facing actions / totp: Cannot reset your own two-factor authentication',
   },
+  copyTwoFactorAuthenticationUnavailable: {
+    id: 'fresco.actions.totp.copyTwoFactorAuthenticationUnavailable',
+    defaultMessage:
+      'Two-factor authentication cannot be enabled on this server because it has no TOTP_ENCRYPTION_KEY configured. Ask whoever deploys Fresco to set one, then try again.',
+    description:
+      'Researcher-facing actions / totp: shown when enabling two-factor authentication is refused because the server has no TOTP_ENCRYPTION_KEY environment variable to encrypt the secret with',
+  },
 });
 
 export async function enableTotp() {
   try {
     const session = await requireApiAuth();
 
+    if (!isTotpEncryptionConfigured()) {
+      return {
+        error: createMessageError(
+          messages.copyTwoFactorAuthenticationUnavailable,
+        ),
+        data: null,
+      };
+    }
+
     const secret = generateTotpSecret();
+    // Only the sealed envelope reaches the database; the plaintext goes to the
+    // user once, in the QR code and the manual-entry secret below.
+    const storedSecret = sealTotpSecret(secret);
 
     await prisma.totpCredential.upsert({
       where: { user_id: session.user.userId },
       update: {
-        secret,
+        secret: storedSecret,
         verified: false,
         createdAt: new Date(),
       },
       create: {
         user_id: session.user.userId,
-        secret,
+        secret: storedSecret,
         verified: false,
       },
     });
@@ -124,7 +146,7 @@ export async function verifyTotpSetup(data: unknown) {
     };
   }
 
-  if (!verifyTotpCode(credential.secret, code)) {
+  if (!verifyTotpCode(openTotpSecret(credential.secret), code)) {
     return {
       error: createMessageError(messages.copyInvalidVerificationCode),
       data: null,
@@ -179,7 +201,7 @@ export async function verifyCurrentUserTotp(
   }
 
   if (TOTP_CODE_PATTERN.test(code)) {
-    if (!verifyTotpCode(credential.secret, code)) {
+    if (!verifyTotpCode(openTotpSecret(credential.secret), code)) {
       return {
         success: false,
         formErrors: [createMessageError(messages.copyInvalidVerificationCode)],
@@ -240,7 +262,7 @@ export async function disableTotp(data: unknown) {
   }
 
   if (TOTP_CODE_PATTERN.test(code)) {
-    if (!verifyTotpCode(credential.secret, code)) {
+    if (!verifyTotpCode(openTotpSecret(credential.secret), code)) {
       return {
         error: createMessageError(messages.copyInvalidVerificationCode),
         data: null,
@@ -313,7 +335,7 @@ export async function regenerateRecoveryCodes(data: unknown) {
     };
   }
 
-  if (!verifyTotpCode(credential.secret, parsed.data.code)) {
+  if (!verifyTotpCode(openTotpSecret(credential.secret), parsed.data.code)) {
     return {
       error: createMessageError(messages.copyInvalidVerificationCode),
       data: null,

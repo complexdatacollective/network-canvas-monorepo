@@ -45,6 +45,10 @@ services:
       # on any that is not this deployment.
       DISABLE_ANALYTICS: 'true'
       COOKIE_SECURE: 'false'
+      # Fresco encrypts TOTP secrets at rest with this key (a real deployment
+      # sets it in .env). Fixed so the pending image's startup migration runs
+      # with a key present, as a deployment that enables two-factor would.
+      TOTP_ENCRYPTION_KEY: fresco-release-test-totp-encryption-key-0001
       # Next standalone binds to $HOSTNAME (default: container id -> NIC IP),
       # which would make the 127.0.0.1 healthcheck below unreachable.
       HOSTNAME: 0.0.0.0

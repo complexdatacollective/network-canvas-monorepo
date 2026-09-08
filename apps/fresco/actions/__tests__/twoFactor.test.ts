@@ -58,6 +58,7 @@ const {
   mockCreateSessionCookie,
   mockVerifyTwoFactorToken,
   mockVerifyTotpCode,
+  mockOpenTotpSecret,
   mockHashRecoveryCode,
   mockGetClientIp,
   mockAddEvent,
@@ -73,6 +74,7 @@ const {
   mockCreateSessionCookie: vi.fn(),
   mockVerifyTwoFactorToken: vi.fn(),
   mockVerifyTotpCode: vi.fn(),
+  mockOpenTotpSecret: vi.fn(),
   mockHashRecoveryCode: vi.fn(),
   mockGetClientIp: vi.fn(),
   mockAddEvent: vi.fn(),
@@ -112,6 +114,7 @@ vi.mock('~/lib/auth/session', () => ({
 vi.mock('~/lib/auth/totp', () => ({
   verifyTwoFactorToken: mockVerifyTwoFactorToken,
   verifyTotpCode: mockVerifyTotpCode,
+  openTotpSecret: mockOpenTotpSecret,
   hashRecoveryCode: mockHashRecoveryCode,
   createTwoFactorToken: vi.fn(),
   generateTotpSecret: vi.fn(),
@@ -165,6 +168,8 @@ const VALID_IP = '192.168.1.1';
 const VALID_TOTP_CODE = '123456';
 const VALID_RECOVERY_CODE = 'a1b2c3d4e5f6a1b2c3d4';
 const TOTP_SECRET = 'BASE32SECRET';
+// What the database holds for TOTP_SECRET: the sealed envelope, never the seed.
+const SEALED_SECRET = 'v1:sealed-nonce:sealed-ciphertext:sealed-tag';
 
 describe('verifyTwoFactor', () => {
   beforeEach(() => {
@@ -175,6 +180,7 @@ describe('verifyTwoFactor', () => {
     mockCreateSessionCookie.mockResolvedValue(undefined);
     mockGetInstallationId.mockResolvedValue('test-installation-id');
     mockPrismaUserFindUnique.mockResolvedValue({ username: VALID_USERNAME });
+    mockOpenTotpSecret.mockReturnValue(TOTP_SECRET);
   });
 
   describe('schema validation', () => {
@@ -284,7 +290,7 @@ describe('verifyTwoFactor', () => {
       });
       mockPrismaTotpCredentialFindFirst.mockResolvedValue({
         user_id: VALID_USER_ID,
-        secret: TOTP_SECRET,
+        secret: SEALED_SECRET,
         verified: true,
       });
       mockVerifyTotpCode.mockReturnValue(true);
@@ -299,6 +305,34 @@ describe('verifyTwoFactor', () => {
       expect(mockSafeUpdateTag).toHaveBeenCalledWith('activityFeed');
     });
 
+    it('verifies the code against the opened secret, not the stored envelope', async () => {
+      mockVerifyTwoFactorSchemaSafeParse.mockReturnValue({
+        success: true,
+        data: { twoFactorToken: 'valid-token', code: VALID_TOTP_CODE },
+      });
+      mockVerifyTwoFactorToken.mockReturnValue({
+        valid: true,
+        userId: VALID_USER_ID,
+      });
+      mockPrismaTotpCredentialFindFirst.mockResolvedValue({
+        user_id: VALID_USER_ID,
+        secret: SEALED_SECRET,
+        verified: true,
+      });
+      mockVerifyTotpCode.mockReturnValue(true);
+
+      await verifyTwoFactor({
+        twoFactorToken: 'valid-token',
+        code: VALID_TOTP_CODE,
+      });
+
+      expect(mockOpenTotpSecret).toHaveBeenCalledWith(SEALED_SECRET);
+      expect(mockVerifyTotpCode).toHaveBeenCalledWith(
+        TOTP_SECRET,
+        VALID_TOTP_CODE,
+      );
+    });
+
     it('returns error for an invalid TOTP code', async () => {
       mockVerifyTwoFactorSchemaSafeParse.mockReturnValue({
         success: true,
@@ -310,7 +344,7 @@ describe('verifyTwoFactor', () => {
       });
       mockPrismaTotpCredentialFindFirst.mockResolvedValue({
         user_id: VALID_USER_ID,
-        secret: TOTP_SECRET,
+        secret: SEALED_SECRET,
         verified: true,
       });
       mockVerifyTotpCode.mockReturnValue(false);
@@ -339,7 +373,7 @@ describe('verifyTwoFactor', () => {
       });
       mockPrismaTotpCredentialFindFirst.mockResolvedValue({
         user_id: VALID_USER_ID,
-        secret: TOTP_SECRET,
+        secret: SEALED_SECRET,
         verified: true,
       });
       mockVerifyTotpCode.mockReturnValue(false);
@@ -371,7 +405,7 @@ describe('verifyTwoFactor', () => {
       });
       mockPrismaTotpCredentialFindFirst.mockResolvedValue({
         user_id: VALID_USER_ID,
-        secret: TOTP_SECRET,
+        secret: SEALED_SECRET,
         verified: true,
       });
       mockHashRecoveryCode.mockReturnValue(codeHash);
@@ -408,7 +442,7 @@ describe('verifyTwoFactor', () => {
       });
       mockPrismaTotpCredentialFindFirst.mockResolvedValue({
         user_id: VALID_USER_ID,
-        secret: TOTP_SECRET,
+        secret: SEALED_SECRET,
         verified: true,
       });
       mockHashRecoveryCode.mockReturnValue(codeHash);
@@ -438,7 +472,7 @@ describe('verifyTwoFactor', () => {
       });
       mockPrismaTotpCredentialFindFirst.mockResolvedValue({
         user_id: VALID_USER_ID,
-        secret: TOTP_SECRET,
+        secret: SEALED_SECRET,
         verified: true,
       });
       mockHashRecoveryCode.mockReturnValue('some-hash');
@@ -471,7 +505,7 @@ describe('verifyTwoFactor', () => {
       });
       mockPrismaTotpCredentialFindFirst.mockResolvedValue({
         user_id: VALID_USER_ID,
-        secret: TOTP_SECRET,
+        secret: SEALED_SECRET,
         verified: true,
       });
 

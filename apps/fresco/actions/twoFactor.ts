@@ -6,6 +6,7 @@ import { addEvent } from '~/lib/activityFeed';
 import { createSessionCookie } from '~/lib/auth/session';
 import {
   hashRecoveryCode,
+  openTotpSecret,
   verifyTotpCode,
   verifyTwoFactorToken,
 } from '~/lib/auth/totp';
@@ -150,7 +151,7 @@ export async function verifyTwoFactor(
   const isRecoveryCode = RECOVERY_CODE_PATTERN.test(code);
 
   if (isTotpCode) {
-    if (!verifyTotpCode(credential.secret, code)) {
+    if (!verifyTotpCode(openTotpSecret(credential.secret), code)) {
       await recordLoginAttempt(user.username, ipAddress, false);
       return {
         success: false,

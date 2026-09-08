@@ -1,6 +1,12 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
+
+const { mockEnv } = vi.hoisted(() => ({
+  mockEnv: {} as Record<string, string | undefined>,
+}));
+
+vi.mock('~/env', () => ({ env: mockEnv }));
 
 import { Secret, TOTP } from 'otpauth';
 
@@ -11,9 +17,23 @@ import {
   generateTotpSecret,
   generateTotpUri,
   hashRecoveryCode,
+  isTotpEncryptionConfigured,
+  openTotpSecret,
+  sealTotpSecret,
+  TotpEncryptionKeyMissingError,
   verifyTotpCode,
   verifyTwoFactorToken,
 } from '~/lib/auth/totp';
+import {
+  decryptTotpSecret,
+  isEncryptedTotpSecret,
+} from '~/utils/totpSecretEncryption';
+
+const ENCRYPTION_KEY = 'unit-test-totp-encryption-key-0123456789';
+
+beforeEach(() => {
+  delete mockEnv.TOTP_ENCRYPTION_KEY;
+});
 
 describe('generateTotpSecret', () => {
   it('returns a non-empty string', () => {
@@ -182,6 +202,71 @@ describe('createTwoFactorToken and verifyTwoFactorToken', () => {
     const token = createTwoFactorToken(userId, 'installation-a');
     const result = verifyTwoFactorToken(token, 'installation-b');
     expect(result.valid).toBe(false);
+  });
+});
+
+describe('sealTotpSecret and openTotpSecret', () => {
+  it('seal keeps the secret out of the stored value and open recovers it', () => {
+    mockEnv.TOTP_ENCRYPTION_KEY = ENCRYPTION_KEY;
+    const secret = generateTotpSecret();
+
+    const stored = sealTotpSecret(secret);
+
+    expect(stored).not.toContain(secret);
+    expect(isEncryptedTotpSecret(stored)).toBe(true);
+    expect(openTotpSecret(stored)).toBe(secret);
+  });
+
+  it('seals with the configured environment key, not some other one', () => {
+    mockEnv.TOTP_ENCRYPTION_KEY = ENCRYPTION_KEY;
+    const secret = generateTotpSecret();
+
+    const stored = sealTotpSecret(secret);
+
+    expect(decryptTotpSecret(stored, ENCRYPTION_KEY)).toBe(secret);
+  });
+
+  it('a code from the enrolment secret still verifies against the opened secret', () => {
+    mockEnv.TOTP_ENCRYPTION_KEY = ENCRYPTION_KEY;
+    const secret = new Secret();
+    const code = new TOTP({ secret }).generate();
+
+    expect(
+      verifyTotpCode(openTotpSecret(sealTotpSecret(secret.base32)), code),
+    ).toBe(true);
+  });
+
+  it('refuses to seal or open when TOTP_ENCRYPTION_KEY is unset', () => {
+    const secret = generateTotpSecret();
+
+    expect(isTotpEncryptionConfigured()).toBe(false);
+    expect(() => sealTotpSecret(secret)).toThrow(TotpEncryptionKeyMissingError);
+    expect(() => openTotpSecret('v1:a:b:c')).toThrow(
+      TotpEncryptionKeyMissingError,
+    );
+  });
+
+  it('treats a blank TOTP_ENCRYPTION_KEY as unset', () => {
+    mockEnv.TOTP_ENCRYPTION_KEY = '';
+
+    expect(isTotpEncryptionConfigured()).toBe(false);
+    expect(() => sealTotpSecret(generateTotpSecret())).toThrow(
+      TotpEncryptionKeyMissingError,
+    );
+  });
+
+  it('refuses to open a row sealed under a different key', () => {
+    mockEnv.TOTP_ENCRYPTION_KEY = ENCRYPTION_KEY;
+    const stored = sealTotpSecret(generateTotpSecret());
+    mockEnv.TOTP_ENCRYPTION_KEY = 'a-rotated-totp-encryption-key-9876543210';
+
+    expect(() => openTotpSecret(stored)).toThrow(/could not be decrypted/);
+  });
+
+  it('refuses to open a legacy plaintext row', () => {
+    mockEnv.TOTP_ENCRYPTION_KEY = ENCRYPTION_KEY;
+
+    expect(() => openTotpSecret(generateTotpSecret())).toThrow(/not encrypted/);
   });
 });
 

@@ -11,6 +11,14 @@
 #   MINIO_ROOT_USER      - MinIO access key (choose a non-default value)
 #   MINIO_ROOT_PASSWORD  - MinIO secret key (use a long random value)
 #
+# Two-factor authentication — REQUIRED before any account enables it:
+#
+#   TOTP_ENCRYPTION_KEY  - a long random string (at least 32 characters, e.g.
+#                          `openssl rand -base64 32`). Fresco encrypts TOTP
+#                          secrets at rest with a key derived from it. Keep it
+#                          stable: once set, changing or losing it locks every
+#                          two-factor account out until it is restored.
+#
 # FRESCO_DOMAIN is the single source of truth for this deployment's domain: the
 # app's PUBLIC_URL is derived from it automatically (see the fresco service's
 # `environment:` block), so you do not set PUBLIC_URL yourself. During Fresco

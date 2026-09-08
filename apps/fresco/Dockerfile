@@ -78,6 +78,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # dev install. The startup scripts' extra deps go in an isolated tree below.
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/lib/db ./lib/db
+# scripts/encrypt-totp-secrets.ts seals TOTP secrets at deploy time with the
+# same envelope the app reads, so the helper (plain node:crypto, no deps) must
+# be present alongside the scripts.
+COPY --from=builder --chown=nextjs:nodejs /app/utils/totpSecretEncryption.ts ./utils/totpSecretEncryption.ts
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
 COPY --from=builder --chown=nextjs:nodejs /app/env.js ./

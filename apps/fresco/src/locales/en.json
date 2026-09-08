@@ -1519,6 +1519,10 @@
     "defaultMessage": "Two-factor authentication is not enabled",
     "description": "Researcher-facing actions / totp: Two-factor authentication is not enabled"
   },
+  "fresco.actions.totp.copyTwoFactorAuthenticationUnavailable": {
+    "defaultMessage": "Two-factor authentication cannot be enabled on this server because it has no TOTP_ENCRYPTION_KEY configured. Ask whoever deploys Fresco to set one, then try again.",
+    "description": "Researcher-facing actions / totp: shown when enabling two-factor authentication is refused because the server has no TOTP_ENCRYPTION_KEY environment variable to encrypt the secret with"
+  },
   "fresco.actions.twoFactor.copyInvalidCodeFormat": {
     "defaultMessage": "Invalid code format",
     "description": "Researcher-facing actions / twoFactor: Invalid code format"

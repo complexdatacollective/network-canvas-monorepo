@@ -379,6 +379,7 @@
   "fresco.actions.totp.copyInvalidVerificationCode": "Código de verificación no válido",
   "fresco.actions.totp.copyNoPendingTOTPSetupFound": "No se encontró ninguna configuración de TOTP pendiente",
   "fresco.actions.totp.copyTwoFactorAuthenticationIsNotEnabled": "La autenticación de dos factores no está habilitada",
+  "fresco.actions.totp.copyTwoFactorAuthenticationUnavailable": "La autenticación de dos factores no se puede habilitar en este servidor porque no tiene configurada una TOTP_ENCRYPTION_KEY. Pide a quien despliega Fresco que la configure y vuelve a intentarlo.",
   "fresco.actions.twoFactor.copyInvalidCodeFormat": "Formato del código no válido",
   "fresco.actions.twoFactor.copyInvalidRecoveryCode": "Código de recuperación no válido",
   "fresco.actions.twoFactor.copyInvalidSubmission": "Los datos enviados no son válidos",

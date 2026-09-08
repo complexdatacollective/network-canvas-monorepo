@@ -9,6 +9,14 @@
 #   FRESCO_DOMAIN  - the public domain for this deployment (e.g. study.example.com)
 #   ACME_EMAIL     - email for Let's Encrypt certificate notifications
 #
+# Two-factor authentication — REQUIRED before any account enables it:
+#
+#   TOTP_ENCRYPTION_KEY  - a long random string (at least 32 characters, e.g.
+#                          `openssl rand -base64 32`). Fresco encrypts TOTP
+#                          secrets at rest with a key derived from it. Keep it
+#                          stable: once set, changing or losing it locks every
+#                          two-factor account out until it is restored.
+#
 # PUBLIC_URL is derived from FRESCO_DOMAIN automatically (see the fresco
 # service's `environment:` block) — you do not set it separately. Note that
 # S3_PUBLIC_URL below is a *different* host (your external S3 service), so it

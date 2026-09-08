@@ -125,6 +125,18 @@ Fresco uses a PostgreSQL database to store data about your study, participants, 
    STACK_SECRET_SERVER_KEY=***********************
    ```
 
+### Add a two-factor authentication key
+
+Fresco encrypts the secrets behind two-factor authentication (TOTP) codes before storing them, using a key that only your deployment holds, so a copy of the database alone cannot reveal them. You need to provide that key as an extra environment variable, `TOTP_ENCRYPTION_KEY`, before any account enables two-factor authentication. Adding it now, alongside the database variables, means it is in place when you [enable two-factor authentication](/en/collect-data/fresco/accounts) later.
+
+Add this line to the text file where you stored your database variables, replacing the value with a long random string of your own — at least 32 characters. A password manager's generator works well, as does running `openssl rand -base64 32` in a terminal:
+
+```bash
+TOTP_ENCRYPTION_KEY="replace-this-with-a-long-random-string-of-at-least-32-characters"
+```
+
+Keep the value stable. Changing or losing it locks every account that has two-factor authentication enabled out until the original key is restored, so store it in a password manager along with your other deployment secrets.
+
 ## Create a project on Vercel
 
 Next, we will deploy your fork to the Vercel platform, using the services we created previously. You can use the "hobby" tier (which is free) or paid plan (for more information about cloud pricing, read our [cloud pricing](/en/collect-data/fresco/cloud-pricing) documentation), but for the purposes of this guide, we will use the free tier.

@@ -28,6 +28,21 @@ export const env = createEnv({
     S3_ACCESS_KEY_ID: z.preprocess(emptyToUndefined, z.string().optional()),
     S3_SECRET_ACCESS_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
     UPLOADTHING_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
+    // Seals TOTP secrets at rest (see utils/totpSecretEncryption.ts). Optional
+    // until an account enables two-factor authentication: the startup
+    // migration refuses to run while TOTP secrets exist without it, and
+    // enabling TOTP is refused while it is unset. Same minimum length as
+    // TOTP_ENCRYPTION_KEY_MIN_LENGTH there.
+    TOTP_ENCRYPTION_KEY: z.preprocess(
+      emptyToUndefined,
+      z
+        .string()
+        .min(
+          32,
+          'TOTP_ENCRYPTION_KEY must be at least 32 characters long; generate one with `openssl rand -base64 32`.',
+        )
+        .optional(),
+    ),
   },
 
   /**
@@ -74,6 +89,7 @@ export const env = createEnv({
     S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
     UPLOADTHING_TOKEN: process.env.UPLOADTHING_TOKEN,
+    TOTP_ENCRYPTION_KEY: process.env.TOTP_ENCRYPTION_KEY,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

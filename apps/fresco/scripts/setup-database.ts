@@ -9,6 +9,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 
 import { PrismaClient } from '~/lib/db/generated/client';
 
+import { encryptStoredTotpSecrets } from './encrypt-totp-secrets';
 import { migrateInterviewCategoricals } from './migrate-interview-categoricals';
 import { migrateProtocolsToCompatibleVersion } from './migrate-protocols';
 
@@ -126,6 +127,14 @@ try {
   // module. All-or-nothing keeps the old version working on the old data.
   await prisma.$transaction(
     async (tx) => {
+      // First, so a missing or wrong TOTP_ENCRYPTION_KEY aborts the deploy
+      // before the slower protocol and network rewrites run. Mirrors env.js:
+      // a blank value behaves as unset.
+      await encryptStoredTotpSecrets(
+        tx,
+        // eslint-disable-next-line no-process-env
+        process.env.TOTP_ENCRYPTION_KEY || undefined,
+      );
       await migrateProtocolsToCompatibleVersion(tx);
       await migrateInterviewCategoricals(tx);
     },

@@ -10,6 +10,12 @@ import {
 import { Secret, TOTP } from 'otpauth';
 import { toDataURL } from 'qrcode';
 
+import { env } from '~/env';
+import {
+  decryptTotpSecret,
+  encryptTotpSecret,
+} from '~/utils/totpSecretEncryption';
+
 const RECOVERY_CODE_COUNT = 10;
 const RECOVERY_CODE_BYTES = 10;
 const TWO_FACTOR_TOKEN_TTL_MS = 5 * 60 * 1000;
@@ -23,6 +29,46 @@ function deriveHmacKey(installationId: string): Buffer {
 export function generateTotpSecret(): string {
   const secret = new Secret();
   return secret.base32;
+}
+
+export class TotpEncryptionKeyMissingError extends Error {
+  constructor() {
+    super(
+      'TOTP_ENCRYPTION_KEY is not set. Fresco encrypts TOTP secrets at rest with this key; set it to a long random string (for example the output of `openssl rand -base64 32`) and restart.',
+    );
+    this.name = 'TotpEncryptionKeyMissingError';
+  }
+}
+
+export function isTotpEncryptionConfigured(): boolean {
+  return Boolean(env.TOTP_ENCRYPTION_KEY);
+}
+
+function requireTotpEncryptionKey(): string {
+  const key = env.TOTP_ENCRYPTION_KEY;
+  if (!key) {
+    throw new TotpEncryptionKeyMissingError();
+  }
+  return key;
+}
+
+/**
+ * Seal a Base32 secret for the `TotpCredential.secret` column. Only the
+ * envelope reaches the database; the plaintext is shown to the user once, in
+ * the enrolment QR code.
+ */
+export function sealTotpSecret(secret: string): string {
+  return encryptTotpSecret(secret, requireTotpEncryptionKey());
+}
+
+/**
+ * Open a value read from the `TotpCredential.secret` column. Throws rather
+ * than returning a wrong secret when the key is missing, differs from the one
+ * that sealed the row, or the row is still a legacy plaintext secret the
+ * startup migration has not sealed.
+ */
+export function openTotpSecret(stored: string): string {
+  return decryptTotpSecret(stored, requireTotpEncryptionKey());
 }
 
 export function generateTotpUri(

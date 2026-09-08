@@ -65,6 +65,9 @@ const {
   mockVerifyTotpCode,
   mockGenerateRecoveryCodes,
   mockHashRecoveryCode,
+  mockIsTotpEncryptionConfigured,
+  mockSealTotpSecret,
+  mockOpenTotpSecret,
   mockAddEvent,
   mockVerifyTotpSetupSchemaSafeParse,
   mockDisableTotpSchemaSafeParse,
@@ -85,6 +88,9 @@ const {
   mockVerifyTotpCode: vi.fn(),
   mockGenerateRecoveryCodes: vi.fn(),
   mockHashRecoveryCode: vi.fn(),
+  mockIsTotpEncryptionConfigured: vi.fn(),
+  mockSealTotpSecret: vi.fn(),
+  mockOpenTotpSecret: vi.fn(),
   mockAddEvent: vi.fn(),
   mockVerifyTotpSetupSchemaSafeParse: vi.fn(),
   mockDisableTotpSchemaSafeParse: vi.fn(),
@@ -132,6 +138,9 @@ vi.mock('~/lib/auth/totp', () => ({
   verifyTotpCode: mockVerifyTotpCode,
   generateRecoveryCodes: mockGenerateRecoveryCodes,
   hashRecoveryCode: mockHashRecoveryCode,
+  isTotpEncryptionConfigured: mockIsTotpEncryptionConfigured,
+  sealTotpSecret: mockSealTotpSecret,
+  openTotpSecret: mockOpenTotpSecret,
   createTwoFactorToken: vi.fn(),
   verifyTwoFactorToken: vi.fn(),
 }));
@@ -184,6 +193,8 @@ import {
 const CURRENT_USER_ID = 'user-current-1';
 const CURRENT_USERNAME = 'currentuser';
 const TOTP_SECRET = 'BASE32SECRET';
+// What the database holds for TOTP_SECRET: the sealed envelope, never the seed.
+const SEALED_SECRET = 'v1:sealed-nonce:sealed-ciphertext:sealed-tag';
 const QR_CODE_DATA_URL = 'data:image/png;base64,abc123';
 const TOTP_URI = 'otpauth://totp/Fresco:currentuser?secret=BASE32SECRET';
 const VALID_TOTP_CODE = '123456';
@@ -213,6 +224,8 @@ describe('enableTotp', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequireApiAuth.mockResolvedValue(mockSession);
+    mockIsTotpEncryptionConfigured.mockReturnValue(true);
+    mockSealTotpSecret.mockReturnValue(SEALED_SECRET);
     mockGenerateTotpSecret.mockReturnValue(TOTP_SECRET);
     mockGenerateTotpUri.mockReturnValue(TOTP_URI);
     mockGenerateQrCodeDataUrl.mockResolvedValue(QR_CODE_DATA_URL);
@@ -237,7 +250,7 @@ describe('enableTotp', () => {
     );
     expect(mockPrismaTotpCredentialUpsert.mock.calls[0]?.[0]).toHaveProperty(
       'create.secret',
-      TOTP_SECRET,
+      SEALED_SECRET,
     );
     expect(mockPrismaTotpCredentialUpsert.mock.calls[0]?.[0]).toHaveProperty(
       'create.verified',
@@ -245,7 +258,7 @@ describe('enableTotp', () => {
     );
     expect(mockPrismaTotpCredentialUpsert.mock.calls[0]?.[0]).toHaveProperty(
       'update.secret',
-      TOTP_SECRET,
+      SEALED_SECRET,
     );
     expect(mockPrismaTotpCredentialUpsert.mock.calls[0]?.[0]).toHaveProperty(
       'update.verified',
@@ -264,6 +277,30 @@ describe('enableTotp', () => {
     expect(mockGenerateQrCodeDataUrl).toHaveBeenCalledWith(TOTP_URI);
   });
 
+  it('seals the generated secret and never stores the plaintext', async () => {
+    await enableTotp();
+
+    expect(mockSealTotpSecret).toHaveBeenCalledWith(TOTP_SECRET);
+    const upsertArgs = JSON.stringify(
+      mockPrismaTotpCredentialUpsert.mock.calls[0]?.[0],
+    );
+    expect(upsertArgs).toContain(SEALED_SECRET);
+    expect(upsertArgs).not.toContain(TOTP_SECRET);
+  });
+
+  it('refuses to enable two-factor authentication when no encryption key is configured', async () => {
+    mockIsTotpEncryptionConfigured.mockReturnValue(false);
+
+    const result = await enableTotp();
+
+    expect(formatActionError(result.error)).toBe(
+      'Two-factor authentication cannot be enabled on this server because it has no TOTP_ENCRYPTION_KEY configured. Ask whoever deploys Fresco to set one, then try again.',
+    );
+    expect(result.data).toBeNull();
+    expect(mockGenerateTotpSecret).not.toHaveBeenCalled();
+    expect(mockPrismaTotpCredentialUpsert).not.toHaveBeenCalled();
+  });
+
   it('requires authentication', async () => {
     mockRequireApiAuth.mockRejectedValue(new Error('Unauthorized'));
 
@@ -275,6 +312,7 @@ describe('verifyTotpSetup', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequireApiAuth.mockResolvedValue(mockSession);
+    mockOpenTotpSecret.mockReturnValue(TOTP_SECRET);
     mockPrismaTransaction.mockResolvedValue([{}, {}]);
   });
 
@@ -310,7 +348,7 @@ describe('verifyTotpSetup', () => {
     });
     mockPrismaTotpCredentialFindUnique.mockResolvedValue({
       user_id: CURRENT_USER_ID,
-      secret: TOTP_SECRET,
+      secret: SEALED_SECRET,
       verified: true,
     });
 
@@ -327,7 +365,7 @@ describe('verifyTotpSetup', () => {
     });
     mockPrismaTotpCredentialFindUnique.mockResolvedValue({
       user_id: CURRENT_USER_ID,
-      secret: TOTP_SECRET,
+      secret: SEALED_SECRET,
       verified: false,
     });
     mockVerifyTotpCode.mockReturnValue(false);
@@ -345,7 +383,7 @@ describe('verifyTotpSetup', () => {
     });
     mockPrismaTotpCredentialFindUnique.mockResolvedValue({
       user_id: CURRENT_USER_ID,
-      secret: TOTP_SECRET,
+      secret: SEALED_SECRET,
       verified: false,
     });
     mockVerifyTotpCode.mockReturnValue(true);
@@ -354,6 +392,11 @@ describe('verifyTotpSetup', () => {
 
     const result = await verifyTotpSetup({ code: VALID_TOTP_CODE });
 
+    expect(mockOpenTotpSecret).toHaveBeenCalledWith(SEALED_SECRET);
+    expect(mockVerifyTotpCode).toHaveBeenCalledWith(
+      TOTP_SECRET,
+      VALID_TOTP_CODE,
+    );
     expect(formatActionError(result.error)).toBeNull();
     expect(result.data).toEqual({ recoveryCodes: RECOVERY_CODES });
     expect(mockPrismaTransaction).toHaveBeenCalled();
@@ -365,6 +408,7 @@ describe('disableTotp', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequireApiAuth.mockResolvedValue(mockSession);
+    mockOpenTotpSecret.mockReturnValue(TOTP_SECRET);
     mockPrismaTransaction.mockResolvedValue([{}, {}]);
   });
 
@@ -402,7 +446,7 @@ describe('disableTotp', () => {
     });
     mockPrismaTotpCredentialFindUnique.mockResolvedValue({
       user_id: CURRENT_USER_ID,
-      secret: TOTP_SECRET,
+      secret: SEALED_SECRET,
       verified: false,
     });
 
@@ -421,7 +465,7 @@ describe('disableTotp', () => {
     });
     mockPrismaTotpCredentialFindUnique.mockResolvedValue({
       user_id: CURRENT_USER_ID,
-      secret: TOTP_SECRET,
+      secret: SEALED_SECRET,
       verified: true,
     });
     mockVerifyTotpCode.mockReturnValue(false);
@@ -440,7 +484,7 @@ describe('disableTotp', () => {
     });
     mockPrismaTotpCredentialFindUnique.mockResolvedValue({
       user_id: CURRENT_USER_ID,
-      secret: TOTP_SECRET,
+      secret: SEALED_SECRET,
       verified: true,
     });
     mockVerifyTotpCode.mockReturnValue(true);
@@ -458,6 +502,7 @@ describe('regenerateRecoveryCodes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequireApiAuth.mockResolvedValue(mockSession);
+    mockOpenTotpSecret.mockReturnValue(TOTP_SECRET);
     mockPrismaTransaction.mockResolvedValue([{}, {}]);
   });
 
@@ -495,7 +540,7 @@ describe('regenerateRecoveryCodes', () => {
     });
     mockPrismaTotpCredentialFindUnique.mockResolvedValue({
       user_id: CURRENT_USER_ID,
-      secret: TOTP_SECRET,
+      secret: SEALED_SECRET,
       verified: true,
     });
     mockVerifyTotpCode.mockReturnValue(false);
@@ -514,7 +559,7 @@ describe('regenerateRecoveryCodes', () => {
     });
     mockPrismaTotpCredentialFindUnique.mockResolvedValue({
       user_id: CURRENT_USER_ID,
-      secret: TOTP_SECRET,
+      secret: SEALED_SECRET,
       verified: true,
     });
     mockVerifyTotpCode.mockReturnValue(true);
