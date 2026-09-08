@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { BootstrapTokenSchema } from '@codaco/studio-rpc';
 import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
 import { postmarkConfiguration } from '@codaco/studio-sync/postmark-email-sender';
 
@@ -23,11 +24,18 @@ export const serverSchemas = {
    */
   STUDIO_DEV_DEFAULTS: z.stringbool().optional(),
 
+  STUDIO_ROLE: z.enum(['web', 'worker', 'both']).optional(),
   STUDIO_TELEMETRY: z.stringbool().optional(),
 
   PORT: z.coerce.number().int().min(0).max(65535).optional(),
   HOST: z.string().min(1).optional(),
   STUDIO_METRICS_TOKEN: z
+    .string()
+    .min(32)
+    .max(256)
+    .regex(/^[!-~]+$/)
+    .optional(),
+  STUDIO_MANAGED_INGRESS_SECRET: z
     .string()
     .min(32)
     .max(256)
@@ -44,6 +52,8 @@ export const serverSchemas = {
    */
   STUDIO_DEPLOYMENT_MODE: z.enum(DEPLOYMENT_MODES).optional(),
 
+  STUDIO_BOOTSTRAP_TOKEN: BootstrapTokenSchema.optional(),
+
   // http(s) only: a bare `host:port` parses as a URL whose scheme is the
   // hostname, which the S3 client would then fail on far from here.
   S3_ENDPOINT: z.url({ protocol: /^https?$/ }).optional(),
@@ -53,6 +63,19 @@ export const serverSchemas = {
   S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
 
   DATABASE_URL: z.string().min(1).optional(),
+  STUDIO_ENCRYPTION_KEYSET: z.string().min(1).max(32_768).optional(),
+  STUDIO_ENCRYPTION_KEY_PROVIDER: z.enum(['environment', 'aws-kms']).optional(),
+  // The encryption boundary validates these only when KMS is selected. The
+  // static Netlify entrypoint withholds all encryption/provider configuration.
+  STUDIO_ENCRYPTION_KMS_KEY_ARN: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_DEPLOYMENT: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_ACCESS_KEY_ID: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_SECRET_ACCESS_KEY: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_SESSION_TOKEN: z.string().optional(),
+  STUDIO_MAINTENANCE_DATABASE_URL: z.string().min(1).optional(),
+  // Parsed by production runtime admission and explicit operator entrypoints.
+  STUDIO_DATABASE_ALLOWED_LOGINS: z.string().optional(),
+  STUDIO_DATABASE_ADMINISTRATIVE_LOGINS: z.string().optional(),
 
   /**
    * 32 bytes of base64 is 44 characters, so the documented

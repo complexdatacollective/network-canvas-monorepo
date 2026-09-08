@@ -3,7 +3,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
 } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -14,6 +16,8 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import FormErrors from '@codaco/fresco-ui/form/FormErrors';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
@@ -40,6 +44,7 @@ import {
 } from '../fields/VariablePicker.tsx';
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
+import { useDialogFormSubmissionBlock } from '../form/DialogForm.tsx';
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
@@ -79,12 +84,21 @@ const TITLE = 'form.title';
  * A sentinel rather than a second control, because "which attribute does this
  * field collect?" is one question however it is answered — and a researcher
  * who has just looked through the list for a name and not found it is already
- * looking at the place to say so. Spelled so that it cannot be mistaken for a
- * record id: those are minted as uuids, and this is never written to the
- * protocol — `useCommitFormField` replaces it with the created attribute's own
- * id before the row is committed.
+ * looking at the place to say so. It is never written to the protocol:
+ * `useCommitFormField` replaces it with the created attribute's own id before
+ * the row is committed.
+ *
+ * Spelled with a `#`, which is the whole of why this value and not another
+ * one. An attribute's record key is the researcher's — `VariableNameSchema` is
+ * `/^[a-zA-Z0-9._:-]+$/`, and the uuids this section mints are only what IT
+ * creates, so an imported or hand-written protocol may key an attribute
+ * anything that regex allows. A sentinel inside that alphabet is a name the
+ * codebook may legally hold: the picker would then offer the real attribute
+ * and this option under one value, choosing the attribute would read as a
+ * request to invent one, and saving would create a second attribute beside it.
+ * `#` is outside the alphabet, so no attribute can ever be called this.
  */
-const NEW_VARIABLE = '__create_new_attribute__';
+const NEW_VARIABLE = '#create-new-attribute';
 
 /**
  * Row keys that describe the CODEBOOK rather than the field.
@@ -113,6 +127,13 @@ const messages = defineMessages({
       'Every field needs both an attribute and a question. Open the incomplete field and finish it.',
     description:
       'Refusal shown above a form’s list of fields when one of them names no attribute, or asks no question.',
+  },
+  malformedField: {
+    id: 'protocolBuilder.formFields.malformedField',
+    defaultMessage:
+      'This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.',
+    description:
+      'Refusal shown above a form’s list of fields when the list holds an entry that is not a field at all — which an import, a migration or another session can leave behind. The list cannot render such an entry, so there is no row for the researcher to open and finish, which is why this says the protocol itself has to be repaired.',
   },
   duplicateField: {
     id: 'protocolBuilder.formFields.duplicateField',
@@ -355,11 +376,12 @@ const messages = defineMessages({
     description:
       'Guidance under the input-control field, warning that the control belongs to the attribute rather than to this one question.',
   },
-  componentRequired: {
+  noInputControl: {
     id: 'protocolBuilder.formFields.componentRequired',
-    defaultMessage: 'Choose how the participant answers this field.',
+    defaultMessage:
+      'This field’s attribute gives the participant no way to answer. Choose a different attribute, or remove this field.',
     description:
-      'Refusal shown under the input-control field when nothing has been chosen.',
+      'Refusal shown above the fields of a form field’s dialog, and named by its unavailable save control, when the attribute the field collects has no input control to offer — an attribute that records a position rather than an answer, or one that has been deleted from the codebook. There is no control to choose in this dialog, so the way out is a different attribute.',
   },
   createNewOption: {
     id: 'protocolBuilder.formFields.createNewOption',
@@ -378,13 +400,6 @@ const messages = defineMessages({
     defaultMessage: 'The codebook attribute this field’s answer is stored in.',
     description:
       'Guidance under the attribute control. The codebook is the protocol’s definition of what an interview records.',
-  },
-  attributeEmpty: {
-    id: 'protocolBuilder.formFields.attributeEmpty',
-    defaultMessage:
-      'Every attribute of this type is already collected or written elsewhere. Create a new one instead.',
-    description:
-      'Shown in place of the attribute list when every attribute of this node or edge type is either already collected by another field of the same form, or written somewhere the protocol will not let a form field also write.',
   },
   attributeRequired: {
     id: 'protocolBuilder.formFields.attributeRequired',
@@ -417,17 +432,18 @@ const AT_LEAST_ONE_FIELD = createMessageError(messages.atLeastOne);
 
 const INCOMPLETE_FIELD = createMessageError(messages.incompleteField);
 
+const MALFORMED_FIELD = createMessageError(messages.malformedField);
+
 const DUPLICATE_FIELD = createMessageError(messages.duplicateField);
 
 const CREATE_WITH_VALUES_FIRST = createMessageError(
   messages.createWithValuesFirst,
 );
 
+const NO_INPUT_CONTROL = createMessageError(messages.noInputControl);
+
 /** Stable identity: `options` is a memo dependency of the picker below. */
 const NO_OPTIONS: VariablePickerOption[] = [];
-
-/** Stable identity, for the same reason: see `draftUnvalidatedVariables`. */
-const NO_DRAFT_UNVALIDATED: readonly string[] = Object.freeze([]);
 
 const VariablePicker = VariablePickerControl as ComponentType<
   Record<string, unknown>
@@ -460,6 +476,33 @@ const rowsOf = (value: unknown): Record<string, unknown>[] =>
 const atLeastOneField = (value: unknown) =>
   Array.isArray(value) && value.length > 0 ? undefined : AT_LEAST_ONE_FIELD;
 
+/**
+ * Said of an entry the list cannot even show.
+ *
+ * Asked of the RAW array rather than of `rowsOf`, which drops what is not a
+ * record: a rule reading the filtered list is a rule about a list the
+ * researcher's protocol does not hold, and it answers that a form holding
+ * `[null]` is complete. The schema refuses that stage
+ * (`FormFieldSchema`), so the save fails either way — the difference is
+ * whether the section the researcher is looking at says why.
+ *
+ * Its own sentence rather than the incomplete one, because there is nothing to
+ * open: an entry of the wrong shape leaves the shared list with a value it
+ * cannot render, so the rows go with it and no row can be finished.
+ *
+ * A value that is not a list at all is the same answer, and only `undefined`
+ * is absence — which is what `FormFieldArraySchema.optional()` accepts and all
+ * it accepts. A string or an object left at an optional form's path would
+ * otherwise pass every rule here while the schema refuses the stage, and with
+ * no entries to draw rows from the researcher would be looking at an empty
+ * form for the reason their save keeps failing.
+ */
+const everyEntryIsAField = (value: unknown) => {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) return MALFORMED_FIELD;
+  return value.every(isRecord) ? undefined : MALFORMED_FIELD;
+};
+
 const everyFieldComplete = (value: unknown) =>
   rowsOf(value).every(
     (row) =>
@@ -489,6 +532,10 @@ const noAttributeTwice = (value: unknown) =>
  */
 const REQUIRED_FIELDS_VALIDATION = Object.freeze({
   custom: messageRuleValidation([
+    // Before the one that counts it. Only the first rule to fail is shown, and
+    // "add at least one field" said of a value that is not a list sends the
+    // researcher to add a row to something that cannot hold one.
+    everyEntryIsAField,
     atLeastOneField,
     everyFieldComplete,
     noAttributeTwice,
@@ -496,7 +543,11 @@ const REQUIRED_FIELDS_VALIDATION = Object.freeze({
 });
 
 const OPTIONAL_FIELDS_VALIDATION = Object.freeze({
-  custom: messageRuleValidation([everyFieldComplete, noAttributeTwice]),
+  custom: messageRuleValidation([
+    everyEntryIsAField,
+    everyFieldComplete,
+    noAttributeTwice,
+  ]),
 });
 
 /**
@@ -519,6 +570,11 @@ type FormFieldsScope = Readonly<{
   subject: CodebookSubject | undefined;
   /** See `draftUnvalidatedVariables`. Carried for the row's own picker. */
   draftUnvalidated: ReadonlySet<string>;
+  /**
+   * The stage `draftUnvalidated` is the whole account of, where there is one.
+   * Carried so the picker and the save-time gate build the same role map.
+   */
+  answeredFor: string | undefined;
 }>;
 
 const FormFieldsScopeContext = createContext<FormFieldsScope | undefined>(
@@ -581,10 +637,21 @@ export type FormFieldsSectionProps = Readonly<{
    * dialog goes on accepting it. The contradiction then surfaces at stage
    * submit, against the slot the researcher was not looking at.
    *
+   * Supplying it at all is what makes it the WHOLE account of this stage's
+   * unvalidated writes, and the saved copy of them is then dropped from the
+   * role map. That is the other half of the same fact: an account that could
+   * only add to the saved one could never say a slot had been UNBOUND, so an
+   * attribute the researcher had just freed went on being hidden from the
+   * picker and refused at save until they saved the stage and opened it again.
+   * A host that supplies nothing has said nothing about its own stage, and the
+   * saved protocol stays the only account there is of it.
+   *
    * The interface that owns those slots supplies this, because only it knows
    * where its own unvalidated writes live: a name generator reads its prompts'
-   * `additionalAttributes`, a Family Pedigree its node configuration. Give a
-   * stable array — a fresh one each render re-registers the list's validator.
+   * `additionalAttributes`, a Family Pedigree its node configuration — so an
+   * interface that supplies this has to name EVERY unvalidated write its stage
+   * makes, not only the ones it has changed. Give a stable array — a fresh one
+   * each render re-registers the list's validator.
    */
   draftUnvalidatedVariables?: readonly string[];
   /**
@@ -641,7 +708,7 @@ export default function FormFieldsSection({
   optional = false,
   capability,
   hasTitle = false,
-  draftUnvalidatedVariables = NO_DRAFT_UNVALIDATED,
+  draftUnvalidatedVariables,
   title = messages.title,
   description = messages.description,
   fieldLabel = messages.fieldLabel,
@@ -657,19 +724,30 @@ export default function FormFieldsSection({
     FormFieldPreview,
   );
   const draftUnvalidated = useMemo(
-    () => new Set(draftUnvalidatedVariables),
+    () => new Set(draftUnvalidatedVariables ?? []),
     [draftUnvalidatedVariables],
   );
+  // The stage whose saved unvalidated writes the draft above replaces, where
+  // there is a draft to replace them with. See `draftUnvalidatedVariables`.
+  const { identity } = useStageEditorForm();
+  const answeredFor =
+    draftUnvalidatedVariables === undefined ? undefined : identity.id;
   const onBeforeSave = useCommitFormField(codebookSubject, intl);
   const editorValidate = useFormFieldValidate(
     codebookSubject,
     fieldsPath,
     draftUnvalidated,
+    answeredFor,
     intl,
   );
   const scope = useMemo(
-    () => ({ fieldsPath, subject: codebookSubject, draftUnvalidated }),
-    [codebookSubject, draftUnvalidated, fieldsPath],
+    () => ({
+      fieldsPath,
+      subject: codebookSubject,
+      draftUnvalidated,
+      answeredFor,
+    }),
+    [answeredFor, codebookSubject, draftUnvalidated, fieldsPath],
   );
 
   return (
@@ -777,14 +855,17 @@ function useCommitFormField(
           fieldErrors: { [NEW_VARIABLE_TYPE]: CREATE_WITH_VALUES_FIRST },
         };
       }
+      // The belt for a row that reaches a commit with no control on it at all.
+      // `InputControlField` is not on screen when there is none to choose, so
+      // this cannot be filed against that field: `focusFirstError` would be
+      // sent to a control that is not in the document and the researcher would
+      // be left with a refused save and nothing on screen. It goes where the
+      // dialog reports everything else about a whole draft — above the fields,
+      // in the same place `NoInputControlOffered` is already standing on the
+      // one route a researcher can take here.
       const component = asString(value[INPUT_CONTROL]) ?? '';
       if (component === '') {
-        return {
-          success: false,
-          fieldErrors: {
-            [INPUT_CONTROL]: intl.formatMessage(messages.componentRequired),
-          },
-        };
+        return { success: false, formErrors: [NO_INPUT_CONTROL] };
       }
 
       if (value.variable !== NEW_VARIABLE) {
@@ -800,15 +881,21 @@ function useCommitFormField(
 
       const name = asString(value[NEW_VARIABLE_NAME])?.trim() ?? '';
       const type = asString(value[NEW_VARIABLE_TYPE]) ?? '';
-      if (name === '' || !isCollectableType(type)) {
+      // The kind of answer is a `required` field of this dialog (see
+      // `FormFieldEditor`), so this is the belt for a row that arrives already
+      // broken rather than a rule of its own — and it is what narrows `type`
+      // for the create below.
+      //
+      // ONE key, carrying the one sentence there is. The name is `required`
+      // too and used to be named here as well, with an empty string for
+      // whichever of the two was actually fine — and an empty string survives
+      // the row's own filter, so the first-error walk could land on a control
+      // whose error region is blank while the sentence sat on the other one.
+      if (!isCollectableType(type)) {
         return {
           success: false,
           fieldErrors: {
-            [NEW_VARIABLE_NAME]:
-              name === '' ? intl.formatMessage(messages.newNameRequired) : '',
-            [NEW_VARIABLE_TYPE]: isCollectableType(type)
-              ? ''
-              : intl.formatMessage(messages.newTypeRequired),
+            [NEW_VARIABLE_TYPE]: intl.formatMessage(messages.newTypeRequired),
           },
         };
       }
@@ -840,6 +927,7 @@ function useFormFieldValidate(
   codebookSubject: CodebookSubject | undefined,
   fieldsPath: string,
   draftUnvalidated: ReadonlySet<string>,
+  answeredFor: string | undefined,
   intl: IntlShape,
 ) {
   const { protocolContext } = useStageEditorForm();
@@ -852,7 +940,7 @@ function useFormFieldValidate(
         : variablesForSubject(protocolContext, codebookSubject),
     [codebookSubject, protocolContext],
   );
-  const roleMap = useUnvalidatedWriterMap();
+  const roleMap = useUnvalidatedWriterMap(answeredFor);
 
   return useMemo(() => {
     const validateVariable = makeFieldEditorValidate(
@@ -928,29 +1016,33 @@ function useFormFieldValidate(
 }
 
 /**
- * Every unvalidated write in the protocol, the stage being edited included.
+ * Every unvalidated write in the protocol that this section is not already
+ * being told about.
  *
- * Unscoped deliberately. A form field is a VALIDATED writer, so a stage's own
- * form contributes nothing this map is read for — but a stage may write the
- * same subject unvalidated somewhere else in itself: a name generator's prompt
- * stamps an attribute onto every node it adds, and a Family Pedigree derives
- * three from the tree the participant draws. Those are exactly the picks the
- * schema's own role-conflict rule refuses, and excluding the open stage would
- * offer every one of them and let the researcher author a stage that cannot be
- * saved.
+ * The open stage is INCLUDED unless a host has taken responsibility for it. A
+ * form field is a VALIDATED writer, so a stage's own form contributes nothing
+ * this map is read for — but a stage may write the same subject unvalidated
+ * somewhere else in itself: a name generator's prompt stamps an attribute onto
+ * every node it adds, and a Family Pedigree derives three from the tree the
+ * participant draws. Those are exactly the picks the schema's own
+ * role-conflict rule refuses, so dropping the open stage from a map nothing
+ * replaces it in would offer every one of them and let the researcher author a
+ * stage that cannot be saved.
+ *
+ * `answeredFor` is the stage a host HAS replaced, by supplying
+ * `draftUnvalidatedVariables` — the live account of what that stage writes
+ * unvalidated, which the saved sections can only contradict: they still hold
+ * the slot the researcher unbound a moment ago, and a live list can add to a
+ * map but never subtract from it.
  *
  * Each field's committed pick escapes throughout (`committed` below), so a
  * protocol that arrives already conflicting stays editable.
- *
- * Built from the AUTHORITATIVE sections, so it describes the open stage as it
- * was last saved. What this session has bound since is the other half of the
- * question, and arrives as `draftUnvalidatedVariables`.
  */
-function useUnvalidatedWriterMap() {
+function useUnvalidatedWriterMap(answeredFor: string | undefined) {
   const { protocolContext } = useStageEditorForm();
   return useMemo(
-    () => buildVariableRoleMap(protocolContext),
-    [protocolContext],
+    () => buildVariableRoleMap(protocolContext, answeredFor),
+    [answeredFor, protocolContext],
   );
 }
 
@@ -988,6 +1080,14 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   const { subject } = useFormFieldsScope();
   const inventing = useInventingAttribute(item);
   const newType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
+  const typeOptions = useMemo(
+    () =>
+      TYPE_OPTIONS.map(({ value, label }) => ({
+        value,
+        label: intl.formatMessage(label),
+      })),
+    [intl],
+  );
   // An attribute that IS a list of answers cannot be invented from a name: the
   // list is part of it, and the codebook refuses one without at least two
   // values. So the name box gives way to the editor that authors both.
@@ -1008,7 +1108,7 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
             component={SelectControl}
             label={intl.formatMessage(messages.newTypeLabel)}
             hint={intl.formatMessage(messages.newTypeHint)}
-            options={TYPE_OPTIONS}
+            options={typeOptions}
             initialValue={asString(item[NEW_VARIABLE_TYPE]) ?? ''}
             required={intl.formatMessage(messages.newTypeRequired)}
           />
@@ -1101,18 +1201,37 @@ function InputControlField({
       : variablesForSubject(protocolContext, subject)[chosen];
   const type = chosen === NEW_VARIABLE ? newType : (variable?.type ?? '');
   const options = useMemo(
-    () => controlsForType(type).map((value) => ({ value, label: value })),
-    [type],
+    () =>
+      controlsForType(type).map(({ value, label }) => ({
+        value,
+        label: intl.formatMessage(label),
+      })),
+    [intl, type],
   );
   const committed =
     variable !== undefined && 'component' in variable
       ? asString(variable.component)
       : undefined;
+  const belongsTo =
+    chosen === NEW_VARIABLE ? `${NEW_VARIABLE}:${type}` : chosen;
+  const seeded = committed ?? options[0]?.value ?? '';
+  useControlThatFollowsTheAttribute(
+    belongsTo,
+    seeded,
+    asString(useRowValue(INPUT_CONTROL)),
+  );
 
-  // Nothing to choose from until the kind of answer is settled. Mounting the
-  // control anyway would register an empty value and refuse the save with a
-  // question the researcher cannot yet answer.
-  if (options.length === 0) return null;
+  // Nothing to choose from — and which of the two reasons it is decides
+  // whether the researcher is mid-answer or stuck.
+  if (options.length === 0) {
+    // Mid-answer: the row names no attribute yet, or is inventing one whose
+    // kind of answer is still unsettled. Mounting the control would register
+    // an empty value and refuse the save with a question they cannot yet
+    // answer, and the field they CAN answer — the attribute, the kind of
+    // answer — already carries its own refusal.
+    if (chosen === '' || chosen === NEW_VARIABLE) return null;
+    return <NoInputControlOffered />;
+  }
 
   return (
     <Field<typeof SelectControl>
@@ -1121,10 +1240,107 @@ function InputControlField({
       label={intl.formatMessage(messages.componentLabel)}
       hint={intl.formatMessage(messages.componentHint)}
       options={options}
-      initialValue={committed ?? options[0]?.value ?? ''}
-      required={intl.formatMessage(messages.componentRequired)}
+      // Always one of `options`, so the field cannot register an empty control
+      // and has no `required` of its own to state: a native select offers no
+      // way back to nothing. What "no control" means here is that this field
+      // is not on screen at all, which is `NoInputControlOffered`'s to say.
+      initialValue={seeded}
     />
   );
+}
+
+/**
+ * Keeps the control saying what the CODEBOOK says, until the researcher
+ * answers it themselves.
+ *
+ * The row saves this control TO the codebook, so a control the row goes on
+ * showing after the codebook's own answer has moved is not a stale label: the
+ * row's next save writes it back, and the change it undoes reaches every form
+ * that collects the attribute. Two ways the codebook's answer moves under a
+ * row, and both used to be missed.
+ *
+ * Rebinding is one. `initialValue` cannot follow it: a field keeps its value
+ * across a change of initial value by design — that is what stops a re-render
+ * from wiping what someone has typed — and the value survives even an unmount,
+ * because `useField` unregisters preserving it and `registerField` prefers
+ * that dormant value over the initial one it is handed. So a row rebound from
+ * an attribute collected in a text AREA to one collected in a text BOX kept
+ * the text area, and the row's save wrote it onto the newly chosen attribute.
+ *
+ * A COLLABORATOR changing how the bound attribute is collected is the other,
+ * and it is the same write from the other end: the binding never changes, so
+ * nothing about the row is different — only the codebook is — and saving
+ * anything else in the row put the collaborator's change back.
+ *
+ * A write through the store rather than a tombstone: the control is not being
+ * discarded, it is being answered again, and the answer is the one the
+ * codebook now holds.
+ *
+ * `binding` is what the control is an answer ABOUT — the chosen attribute, or,
+ * while one is being invented, the kind of answer that decides which controls
+ * exist at all. `seeded` is the codebook's own answer for it, and `live` is
+ * what the row is showing: whatever the row shows that the codebook did not
+ * put there is the researcher's, and from then on it is theirs whatever the
+ * codebook does next. The first render records all three without writing
+ * anything — the field has just registered from the same seed, and a write
+ * there would mark a row dirty that nobody has touched.
+ */
+function useControlThatFollowsTheAttribute(
+  binding: string,
+  seeded: string,
+  live: string | undefined,
+): void {
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const shown = useRef({ binding, seeded, answered: false });
+
+  useEffect(() => {
+    const previous = shown.current;
+    if (binding !== previous.binding) {
+      // A different question, so the answer starts again from the codebook's.
+      shown.current = { binding, seeded, answered: false };
+      // Nothing is on screen to answer: the row names no attribute yet, or
+      // names one no control can collect. The field is unmounted in both
+      // cases, and whatever it left behind is refused by `useCommitFormField`
+      // rather than written.
+      if (seeded === '') return;
+      setFieldValue(INPUT_CONTROL, seeded);
+      return;
+    }
+    // The control has not registered yet, so there is nothing on screen for
+    // anyone to have answered.
+    if (live === undefined) return;
+    const answered = previous.answered || live !== previous.seeded;
+    shown.current = { binding, seeded, answered };
+    if (answered || seeded === '' || seeded === previous.seeded) return;
+    setFieldValue(INPUT_CONTROL, seeded);
+  }, [binding, live, seeded, setFieldValue]);
+}
+
+/**
+ * Said when the attribute this field collects has no input control to offer.
+ *
+ * An attribute that records a position rather than an answer has none at all,
+ * and one deleted from the codebook while the dialog was open has nothing left
+ * to ask. Either way there is no control for this dialog to render, so there
+ * is no field for the refusal to sit under — and a save refused against a
+ * field that is not there reaches the researcher as nothing on screen and a
+ * warning in the console.
+ *
+ * Registered as a submission block instead, which is what this package already
+ * says about a part of a dialog that failed in a way no field can express: the
+ * reason stands above the fields from the moment the dialog opens rather than
+ * after a save that was never going to work, the save control announces that
+ * it is unavailable and says why, and the submission is refused for as long as
+ * this is mounted. Choosing a different attribute unmounts it, which is the
+ * way out the sentence names.
+ *
+ * Rendered here only when there is no dialog to report it — nothing in this
+ * package mounts a field editor outside one, and saying nothing at all would
+ * be worse than saying it twice.
+ */
+function NoInputControlOffered() {
+  const reported = useDialogFormSubmissionBlock(NO_INPUT_CONTROL);
+  return reported ? null : <FormErrors errors={[NO_INPUT_CONTROL]} />;
 }
 /**
  * The attributes this field may collect.
@@ -1142,13 +1358,20 @@ function AttributePicker({
 }: Readonly<{ item: RowEditorProps['item']; editIndex?: number }>) {
   const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
-  const { fieldsPath, subject, draftUnvalidated } = useFormFieldsScope();
+  const { fieldsPath, subject, draftUnvalidated, answeredFor } =
+    useFormFieldsScope();
   const fields = useStageValue(fieldsPath);
   const committed = asString(item.variable) ?? '';
 
-  const roleMap = useUnvalidatedWriterMap();
+  const roleMap = useUnvalidatedWriterMap(answeredFor);
 
   const options = useMemo(() => {
+    // The ONLY way to an empty list: every other path appends the
+    // create-a-new-one sentinel, so a pool with nothing in it still has one
+    // option. That is why the picker is left to say what an empty list means —
+    // a message written here would describe a state that only exists when the
+    // stage has no subject, where the sentence beneath the section
+    // (`scopeMissing`) is the one that is true.
     if (subject === undefined) return NO_OPTIONS;
     const siblings = new Set(
       rowsOf(fields)
@@ -1199,7 +1422,6 @@ function AttributePicker({
       label={intl.formatMessage(messages.attributeLabel)}
       hint={intl.formatMessage(messages.attributeHint)}
       options={options}
-      emptyMessage={intl.formatMessage(messages.attributeEmpty)}
       initialValue={committed}
       required={intl.formatMessage(messages.attributeRequired)}
     />

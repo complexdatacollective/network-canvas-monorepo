@@ -56,6 +56,64 @@ export type VariableDoc = {
 };
 
 export const CATALOGUE: Record<VariableName, VariableDoc> = {
+  STUDIO_ROLE: {
+    group: 'Process',
+    summary: 'Run web requests, durable workers, or both from the same image.',
+    deployment:
+      'Unset ⇒ both. worker exposes only liveness, readiness and protected metrics. Run exactly one web or both process per database; additional worker replicas coordinate through database leases.',
+    example: 'both',
+  },
+  STUDIO_ENCRYPTION_KEYSET: {
+    group: 'Database',
+    summary:
+      'Versioned encryption keyset JSON; contains key IDs and namespaced environment references, never root material.',
+    deployment:
+      'Required when a database is configured. Every roots[].reference must name a STUDIO_ENCRYPTION_ROOT_* environment value holding a canonical base64 32-byte root, or KMS ciphertext when STUDIO_ENCRYPTION_KEY_PROVIDER=aws-kms. Studio verifies stored key proofs before auth, workers or traffic. Operator commands never choose public defaults; explicit local development may use the public fixture keyset. See server/src/pii/README.md for configuration and backup custody.',
+    example: 'REPLACE_WITH_KEYSET_JSON',
+  },
+  STUDIO_ENCRYPTION_KEY_PROVIDER: {
+    group: 'Database',
+    summary: 'Root key loader: environment (default) or aws-kms.',
+    deployment:
+      'Available with either deployment mode. KMS uses only explicit provider credentials and a fixed regional AWS endpoint; it never falls back to environment plaintext or development roots.',
+    example: 'environment',
+  },
+  STUDIO_ENCRYPTION_KMS_KEY_ARN: {
+    group: 'Database',
+    summary: 'Exact symmetric AWS KMS key ARN; mutable aliases are refused.',
+    deployment:
+      'Required for aws-kms. The ARN fixes the AWS commercial region, account and key. Grant only kms:Decrypt on this key with the documented encryption-context conditions.',
+    example: 'REPLACE_WITH_KMS_KEY_ARN',
+  },
+  STUDIO_ENCRYPTION_KMS_DEPLOYMENT: {
+    group: 'Database',
+    summary:
+      'Public deployment identifier authenticated in the KMS encryption context.',
+    deployment:
+      'Required for aws-kms. Use a stable lower-case identifier (up to 63 letters, digits or hyphens, starting with a letter), unique to the environment. It must match root wrapping and IAM conditions. Never use participant data.',
+    example: 'studio-staging',
+  },
+  STUDIO_ENCRYPTION_KMS_ACCESS_KEY_ID: {
+    group: 'Database',
+    summary: 'Dedicated KMS principal access key ID.',
+    deployment:
+      'Required for aws-kms. This identity is separate from R2/S3 and backup credentials. Supply through the deployment secret facility; ambient AWS profiles or metadata are never used.',
+    example: 'REPLACE_WITH_KMS_ACCESS_KEY_ID',
+  },
+  STUDIO_ENCRYPTION_KMS_SECRET_ACCESS_KEY: {
+    group: 'Database',
+    summary: 'Dedicated KMS principal secret access key.',
+    deployment:
+      'Required for aws-kms. Store in the deployment secret facility and rotate the credential independently of wrapped application roots. Never pass it as a command-line argument.',
+    example: 'REPLACE_WITH_KMS_SECRET_ACCESS_KEY',
+  },
+  STUDIO_ENCRYPTION_KMS_SESSION_TOKEN: {
+    group: 'Database',
+    summary: 'Session token when the KMS principal uses temporary credentials.',
+    deployment:
+      'Set with the matching temporary access key and secret. Refresh the complete credential set before expiry; unavailable credentials cause a startup refusal.',
+    example: 'REPLACE_WITH_KMS_SESSION_TOKEN',
+  },
   NODE_ENV: {
     group: 'Process',
     summary:
@@ -116,6 +174,14 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     devDefault: 'managed',
     example: 'self-hosted',
   },
+  STUDIO_MANAGED_INGRESS_SECRET: {
+    group: 'Process',
+    summary:
+      'Shared proof required on requests from the managed Cloudflare ingress.',
+    deployment:
+      'Set only as the same independent random secret in the Cloudflare Worker and Fly runtime. A managed database HTTP process refuses to start unless it and a nonempty `TRUSTED_PROXIES` list are configured. Exact `/healthz` and bearer-protected `/metrics` remain directly reachable for operator probes; all user surfaces require the proof. Never store it in IaC inputs or logs.',
+    devDefault: 'studio-dev-ingress-proof-not-for-production',
+  },
 
   S3_ENDPOINT: {
     group: 'Object storage',
@@ -153,18 +219,46 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
 
   DATABASE_URL: {
     group: 'Database',
-    summary: 'Postgres connection string, `pg.Pool`’s native format.',
+    summary:
+      'Postgres application connection string, `pg.Pool`’s native format.',
     deployment:
-      'Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates.',
+      'Required by web and combined processes; a worker-only process omits it. The persistent web server uses a dedicated LOGIN permitted to SET only `studio_app`. Offline migration, reset, seed, backup and restore commands receive their separate administrative or backup `DATABASE_URL` for that invocation.',
     devDefault: DEV_DATABASE_URL,
     example: 'postgres://user:password@host:5432/studio',
+  },
+
+  STUDIO_MAINTENANCE_DATABASE_URL: {
+    group: 'Database',
+    summary:
+      'Postgres maintenance-worker connection string, `pg.Pool`’s native format.',
+    deployment:
+      "Required by every persistent server with a database and is the worker-only process's sole database connection. Use a distinct dedicated LOGIN permitted to SET only `studio_maintenance`; never reuse the application, migration, restore, or backup LOGIN. Explicit local development alone falls back to `DATABASE_URL`.",
+    example: 'postgres://maintenance:password@host:5432/studio',
+  },
+
+  STUDIO_DATABASE_ALLOWED_LOGINS: {
+    group: 'Database',
+    summary: 'JSON array of this deployment’s database login names.',
+    deployment:
+      'Required by `migrate` and by every persistent server outside explicit local development. Enroll the database owner, migration login, distinct application and maintenance runtime logins, and any separately provisioned backup login. Provision explicit CONNECT before admitting database connections. Migration, startup, and readiness refuse PUBLIC, shared-role, missing, or unexpected access.',
+    example:
+      '["studio_migrator","studio_app_runtime","studio_maintenance_runtime"]',
+  },
+
+  STUDIO_DATABASE_ADMINISTRATIVE_LOGINS: {
+    group: 'Database',
+    summary:
+      'Optional JSON array of explicitly administrative database login names.',
+    deployment:
+      'Defaults to an empty array. Configure a separately provisioned non-owner migration or conversion login here and in STUDIO_DATABASE_ALLOWED_LOGINS. Database ownership is recognized separately. Serving app and maintenance connections must never use a configured administrative login.',
+    example: '["studio_schema_operator"]',
   },
 
   BETTER_AUTH_SECRET: {
     group: 'Authentication',
     summary: 'Signing secret for sessions and magic-link tokens.',
     deployment:
-      'Required whenever `DATABASE_URL` is set. Generate one with `openssl rand -base64 32`.',
+      'Required whenever an application or maintenance database connection is set. Generate one with `openssl rand -base64 32`.',
     devDefault: DEV.authSecret,
   },
   PUBLIC_URL: {
@@ -240,6 +334,14 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
       'Unset ⇒ `common` (any organizational or personal Microsoft account, matching a multitenant registration). Refused without the other two `MICROSOFT_*` variables.',
     example: 'contoso.onmicrosoft.com',
   },
+  STUDIO_BOOTSTRAP_TOKEN: {
+    group: 'Authentication',
+    summary:
+      'Single-use authorization for first-run self-hosted instance and owner creation.',
+    deployment:
+      'Set a cryptographically random 32-byte token encoded as unpadded base64url (43 characters), then enter it at `/setup`. Unset disables first-run setup; completed instances remain completed after token removal or replacement. Managed deployments do not expose setup. See `SETUP.md`.',
+    example: 'replace-with-a-random-32-byte-base64url-token',
+  },
   STUDIO_SEED_ADMIN_PASSWORD: {
     group: 'Authentication',
     summary:
@@ -254,6 +356,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
       'Comma-separated proxy IP addresses or CIDRs. A UUID X-Request-Id is accepted only when the actual transport peer is in this list.',
     deployment:
       'Unset ⇒ request ids are generated locally and forwarded headers are not read for authentication. List only your own proxies, each overwriting client-supplied request-id and forwarded headers. Header values never establish transport trust; fetch-only runtimes without socket information always generate request ids.',
+    devDefault: '127.0.0.1,::1',
     example: '10.0.0.0/8,192.168.0.0/16',
   },
 };

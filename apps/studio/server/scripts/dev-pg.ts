@@ -18,8 +18,9 @@ import process from 'node:process';
 import pg from 'pg';
 
 import { createOwnerPool } from '../src/db/pool.ts';
-import { isLocalDatabase, readEnv } from '../src/env.ts';
+import { isLocalDatabase, readEncryptionEnv, readEnv } from '../src/env.ts';
 import { DEV } from '../src/env/catalogue.ts';
+import { loadEncryptionKeys } from '../src/pii/keys.ts';
 import { resetSchemaAndSeed } from './apply.ts';
 import { loadEnvFiles } from './load-env-files.ts';
 
@@ -196,7 +197,8 @@ function databaseToCreate(): string | undefined {
 // reset touches anything else; a non-local target is left alone.
 async function resetAndSeed(): Promise<void> {
   loadEnvFiles();
-  const { db } = readEnv();
+  const env = readEnv();
+  const { db } = env;
   if (!db) throw new Error('DATABASE_URL is unset; nothing to reset.');
   const url = new URL(db.url);
   const target = `${url.hostname}:${url.port || '5432'}${url.pathname}`;
@@ -208,7 +210,12 @@ async function resetAndSeed(): Promise<void> {
   }
   const pool = createOwnerPool(db);
   try {
-    await resetSchemaAndSeed(pool);
+    const encryption = readEncryptionEnv(env);
+    const encryptionKeys = await loadEncryptionKeys(
+      encryption.configuration,
+      encryption.loadRootKey,
+    );
+    await resetSchemaAndSeed(pool, { encryptionKeys });
     console.log(`Reset and seeded ${target}`);
   } finally {
     await pool.end();

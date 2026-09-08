@@ -7,7 +7,9 @@ import {
   KeyConfigurationError,
   type KeysetConfiguration,
   loadEncryptionKeys,
+  TransferredRootKeyMaterial,
 } from '../keys.ts';
+import { RESERVED_LEGACY_INDEX_IDS } from '../legacy-indexes.ts';
 import { configuration, loadTestKeys, rootOne } from './fixtures.ts';
 
 describe('key configuration and loader boundary', () => {
@@ -97,6 +99,25 @@ describe('key configuration and loader boundary', () => {
     },
   );
 
+  it.each(RESERVED_LEGACY_INDEX_IDS)(
+    'rejects reserved legacy ID %s in every real key namespace',
+    async (reservedId) => {
+      for (const namespace of ['pii', 'integration', 'blindIndex'] as const) {
+        const config = configuration();
+        config[namespace].keys[0] = {
+          ...config[namespace].keys[0]!,
+          id: reservedId,
+        };
+        config[namespace].current = reservedId;
+        const loader = vi.fn(async () => rootOne);
+        await expect(loadEncryptionKeys(config, loader)).rejects.toThrow(
+          KeyConfigurationError,
+        );
+        expect(loader).not.toHaveBeenCalled();
+      }
+    },
+  );
+
   it.each([0, 16, 31, 33, 64])('rejects a %i-byte root', async (length) => {
     await expect(
       loadEncryptionKeys(configuration(), async () => Buffer.alloc(length)),
@@ -129,6 +150,26 @@ describe('key configuration and loader boundary', () => {
     expect(inspect(keys)).not.toContain(rootOne.toString('base64'));
   });
 
+  it('clears loader-transferred plaintext after importing the root', async () => {
+    const material = Buffer.from(rootOne);
+    await loadEncryptionKeys(
+      configuration(),
+      async () => new TransferredRootKeyMaterial(material),
+    );
+    expect(material).toEqual(Buffer.alloc(32));
+  });
+
+  it('clears invalid transferred plaintext when root import refuses', async () => {
+    const material = Buffer.alloc(31, 19);
+    await expect(
+      loadEncryptionKeys(
+        configuration(),
+        async () => new TransferredRootKeyMaterial(material),
+      ),
+    ).rejects.toThrow(KeyConfigurationError);
+    expect(material).toEqual(Buffer.alloc(31));
+  });
+
   it('separates purposes, key ids, team scopes, and tuple boundaries', async () => {
     const keys = await loadTestKeys();
     const derive = (
@@ -156,11 +197,25 @@ describe('key configuration and loader boundary', () => {
 });
 
 describe('canonical base64 root adapter', () => {
+  it('clears allocated plaintext when canonical decoding is rejected', async () => {
+    const fill = vi.spyOn(Buffer.prototype, 'fill');
+    try {
+      await expect(
+        createBase64RootKeyLoader(() => `${'B'.repeat(43)}=`)('ROOT_REFERENCE'),
+      ).rejects.toThrow(KeyConfigurationError);
+      expect(fill).toHaveBeenCalledExactlyOnceWith(0);
+      expect(fill.mock.contexts[0]).toEqual(Buffer.alloc(32));
+    } finally {
+      fill.mockRestore();
+    }
+  });
+
   it('loads a 32-byte root through the injected reference reader', async () => {
     const read = vi.fn(() => rootOne.toString('base64'));
-    expect(await createBase64RootKeyLoader(read)('ROOT_REFERENCE')).toEqual(
-      rootOne,
-    );
+    const material = await createBase64RootKeyLoader(read)('ROOT_REFERENCE');
+    expect(material).toBeInstanceOf(TransferredRootKeyMaterial);
+    if (!(material instanceof TransferredRootKeyMaterial)) throw new Error();
+    expect(material.consume((bytes) => Buffer.from(bytes))).toEqual(rootOne);
     expect(read).toHaveBeenCalledExactlyOnceWith('ROOT_REFERENCE');
   });
 

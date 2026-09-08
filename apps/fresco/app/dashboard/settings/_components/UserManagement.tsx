@@ -54,6 +54,7 @@ import PasskeySettings from '~/app/dashboard/settings/_components/PasskeySetting
 import TwoFactorSettings from '~/app/dashboard/settings/_components/TwoFactorSettings';
 import SettingsField from '~/components/settings/SettingsField';
 import { useClientDataTable } from '~/hooks/useClientDataTable';
+import { describePasskeyCeremonyError } from '~/i18n/passkeyCeremony';
 import { type GetUsersReturnType } from '~/queries/users';
 import {
   getPasswordRules,
@@ -156,12 +157,6 @@ const messages = defineMessages({
     defaultMessage: 'Failed to start registration',
     description:
       'Researcher-facing settings / UserManagement: Failed to start registration',
-  },
-  copyPasskeyCreationCancelled: {
-    id: 'fresco.settings.UserManagement.copyPasskeyCreationCancelled',
-    defaultMessage: 'Passkey creation cancelled.',
-    description:
-      'Researcher-facing settings / UserManagement: Passkey creation cancelled.',
   },
   copyPasskeyCreationFailed: {
     id: 'fresco.settings.UserManagement.copyPasskeyCreationFailed',
@@ -463,6 +458,8 @@ type UserManagementProps = {
   passkeysPromise: Promise<Passkey[]>;
   hasPasswordPromise: Promise<boolean>;
   sandboxMode: boolean;
+  /** Whether the installation requires two-factor authentication (`REQUIRE_TWO_FACTOR`). */
+  twoFactorRequired: boolean;
 };
 
 function makeUserColumns(
@@ -593,6 +590,7 @@ export default function UserManagement({
   passkeysPromise,
   hasPasswordPromise,
   sandboxMode,
+  twoFactorRequired,
 }: UserManagementProps) {
   'use no memo';
 
@@ -879,17 +877,15 @@ export default function UserManagement({
     try {
       credential = await startRegistration({ optionsJSON: data.options });
     } catch (e) {
-      if (e instanceof Error && e.name === 'NotAllowedError') {
-        return {
-          success: false,
-          formErrors: [
-            createMessageError(messages.copyPasskeyCreationCancelled),
-          ],
-        };
-      }
       return {
         success: false,
-        formErrors: [createMessageError(messages.copyPasskeyCreationFailed)],
+        formErrors: [
+          describePasskeyCeremonyError(
+            e,
+            'registration',
+            messages.copyPasskeyCreationFailed,
+          ),
+        ],
       };
     }
 
@@ -935,12 +931,12 @@ export default function UserManagement({
       setSwitchToPasswordReauthed(true);
       setSwitchToPasswordReauthLoading(false);
     } catch (e) {
-      if (e instanceof Error && e.name === 'NotAllowedError') {
-        setSwitchToPasswordReauthLoading(false);
-        return;
-      }
       setSwitchToPasswordReauthError(
-        createMessageError(messages.copyVerificationFailed),
+        describePasskeyCeremonyError(
+          e,
+          'reauth',
+          messages.copyVerificationFailed,
+        ),
       );
       setSwitchToPasswordReauthLoading(false);
     }
@@ -1020,6 +1016,7 @@ export default function UserManagement({
               hasTwoFactor={hasTwoFactor}
               userCount={users.length}
               sandboxMode={sandboxMode}
+              twoFactorRequired={twoFactorRequired}
             />
             {!sandboxMode && (
               <SettingsField

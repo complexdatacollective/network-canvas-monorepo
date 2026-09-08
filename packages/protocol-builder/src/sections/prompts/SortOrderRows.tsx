@@ -2,15 +2,16 @@ import { useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
 
 import {
   getSortOrderOptionGetter,
-  MISSING_SORT_PROPERTY_MESSAGE,
-  orphanedSortProperties,
   type SortableProperty,
+  unusableSortProperties,
 } from '../../fields/sortOrderOptions.ts';
 import {
+  type DanglingCells,
   makeMultiSelectValidation,
   type PropertyField,
 } from '../../form/arrayFields/MultiSelect.tsx';
@@ -72,11 +73,14 @@ export type SortOrderRowsProps = Readonly<{
   properties: readonly SortableProperty[] | undefined;
   disabled?: boolean;
   /**
-   * The rules this prompt already has, which decide whether the group starts
-   * open and which of them point at an attribute that has been deleted. Read
-   * from the row rather than from form state: these rules are rendered inside
-   * a per-row dialog with a form store of its own, which has no whole-form
-   * initial values to consult for a field that has not mounted.
+   * The rules this prompt was OPENED on, which decide whether the group starts
+   * open and which values stay unchoosable once a rule has moved off them.
+   * Read from the row rather than from form state: these rules are rendered
+   * inside a per-row dialog with a form store of its own, which has no
+   * whole-form initial values to consult for a field that has not mounted.
+   *
+   * What the researcher has NOW is read from that dialog's own store instead,
+   * because a rule they change is one a collaborator's deletion can land on.
    */
   committedRules?: unknown;
 }>;
@@ -106,13 +110,14 @@ export default function SortOrderRows({
   committedRules,
 }: SortOrderRowsProps) {
   /**
-   * Attributes these rules name that the codebook has lost.
+   * Values these rules name that they cannot be pointed at — an attribute the
+   * codebook has lost, or one it still holds that nothing can be ordered by.
    *
-   * Handled here rather than by each family, because a rule outliving its
-   * attribute is a property of sort rules and not of any one interface: the
-   * schema keeps such a rule on purpose (deleting an attribute must not make
-   * a collaborator's stage unopenable), so every family that holds a sort
-   * order inherits the same dangling reference and the same two ways out.
+   * Handled here rather than by each family, because a rule outliving what it
+   * names is a property of sort rules and not of any one interface: the schema
+   * keeps such a rule on purpose (deleting an attribute must not make a
+   * collaborator's stage unopenable), so every family that holds a sort order
+   * inherits the same dangling reference and the same two ways out.
    */
   const intl = useAppIntl();
   /** A sort rule is one property and one direction, in that order. */
@@ -129,13 +134,47 @@ export default function SortOrderRows({
     ],
     [intl],
   );
-  const orphans = useMemo(
-    () => orphanedSortProperties(committedRules, properties, intl),
-    [committedRules, intl, properties],
+  /**
+   * The rules as the researcher has them NOW.
+   *
+   * The whole list arrives at `MultiSelect` as one `value`, so the field
+   * registered under `name` holds every row and every cell of them; no row is a
+   * field of its own. `undefined` while the group is closed, which is a group
+   * holding no rules at all.
+   */
+  const liveRules = useFormStore((state) => state.fields.get(name)?.value);
+  /**
+   * Judged against both the rules the prompt was OPENED on and the rules on
+   * screen, because each answers half of it.
+   *
+   * The live rules are what the researcher would save, and a rule they have
+   * just pointed somewhere is exactly the one a collaborator's deletion can
+   * land on: read from the opened-on prompt alone, that reference is reported
+   * by nothing, renders blank, and saves itself back. The opened-on rules are
+   * what keeps a value unchoosable once the rule has moved off it — the getter
+   * only disables the option a rule currently names, so an attribute dropped
+   * from the offer would otherwise become selectable again the moment the
+   * researcher looked elsewhere.
+   */
+  const unusable = useMemo(
+    () =>
+      unusableSortProperties(
+        [
+          ...(Array.isArray(committedRules) ? committedRules : []),
+          ...(Array.isArray(liveRules) ? liveRules : []),
+        ],
+        properties,
+        intl,
+      ),
+    [committedRules, intl, liveRules, properties],
   );
   const options = useMemo(
-    () => getSortOrderOptionGetter([...(properties ?? []), ...orphans], intl),
-    [intl, orphans, properties],
+    () =>
+      getSortOrderOptionGetter(
+        [...(properties ?? []), ...unusable.map(({ option }) => option)],
+        intl,
+      ),
+    [intl, properties, unusable],
   );
   /**
    * The rule that can actually refuse the save. A row's own cells only display
@@ -143,32 +182,78 @@ export default function SortOrderRows({
    * protocol's `SortRuleSchema` against a path rather than against the control
    * the researcher left half-filled.
    *
-   * A row naming an orphan is refused by the same rule, because it is the same
-   * kind of failure: the id is there, so nothing about the row LOOKS
-   * unfinished, and the cell that should display it is blank because no live
-   * option carries it. Left to the schema it would save, since
-   * `SortRuleSchema.property` is `existence: 'unchecked'`.
+   * A row naming a value it cannot be pointed at is refused by the same rule,
+   * because it is the same kind of failure: the id is there, so nothing about
+   * the row LOOKS unfinished, and the cell that should display it is blank
+   * because no offered option carries it. Left to the schema it would save,
+   * since `SortRuleSchema.property` is `existence: 'unchecked'`.
+   *
+   * One entry per SENTENCE rather than one for all of them: a deleted
+   * attribute and an attribute nothing can be ordered by are refused in
+   * different words, and `completeRows` answers with the message of the first
+   * entry a row matches.
    */
+  const dangling = useMemo<DanglingCells[]>(() => {
+    const byMessage = new Map<string, string[]>();
+    for (const { option, message } of unusable) {
+      const values = byMessage.get(message) ?? [];
+      values.push(option.value);
+      byMessage.set(message, values);
+    }
+    return [...byMessage].map(([message, values]) => ({
+      fieldName: 'property',
+      values,
+      message,
+    }));
+  }, [unusable]);
   const validation = useMemo(
     () =>
       makeMultiSelectValidation(
         sortRuleColumns,
-        orphans.length === 0
-          ? undefined
-          : [
-              {
-                fieldName: 'property',
-                values: orphans.map(({ value }) => value),
-                message: MISSING_SORT_PROPERTY_MESSAGE,
-              },
-            ],
+        dangling.length === 0 ? undefined : dangling,
       ),
-    [orphans, sortRuleColumns],
+    [dangling, sortRuleColumns],
   );
-  // One rule per property at most: every rule after that could only repeat a
-  // property the getter has already disabled. An orphan counts, because the
-  // rule naming it is one of the rows this limit is counting.
-  const maxItems = options('property', undefined, []).length;
+  /**
+   * How many rules this prompt can hold.
+   *
+   * One per property a rule may be pointed AT, and a permanently disabled
+   * option is not one of those. Point a dangling rule somewhere else and its
+   * old property stays on offer disabled forever — that is the whole point of
+   * it — so the option list is one longer than the capacity. Counted as
+   * capacity, the add action survives every selectable property being used,
+   * and the row it then adds has no enabled choice in its property column: a
+   * required cell the researcher cannot fill, holding the dialog shut until
+   * they delete the row they were just offered.
+   *
+   * The rows still NAMING an unusable property are added back on top, because
+   * each of them is a row this limit counts and none of them is spending a
+   * selectable option — a prompt opened on one dangling rule can hold it and
+   * every property besides.
+   *
+   * Counted from the rules on screen, which is where a repoint shows up, and
+   * from the rules the prompt was opened on for the render before the field
+   * has registered — the same two sources `unusable` reads, each answering the
+   * half it can.
+   */
+  const rows = Array.isArray(liveRules)
+    ? liveRules
+    : Array.isArray(committedRules)
+      ? committedRules
+      : [];
+  const unusableValues = useMemo(
+    () => new Set(unusable.map(({ option }) => option.value)),
+    [unusable],
+  );
+  const namesUnusableProperty = (rule: unknown): boolean => {
+    if (typeof rule !== 'object' || rule === null) return false;
+    const property = Reflect.get(rule, 'property');
+    return typeof property === 'string' && unusableValues.has(property);
+  };
+  const maxItems =
+    options('property', undefined, []).filter(
+      (option) => option.disabled !== true,
+    ).length + rows.filter(namesUnusableProperty).length;
   const configured = Array.isArray(committedRules) && committedRules.length > 0;
 
   return (
@@ -182,9 +267,9 @@ export default function SortOrderRows({
       {/*
         `OptionalList` rather than `MultiSelect`: deleting the last rule is the
         same decision as closing the group — this prompt sorts by nothing in
-        particular — and `MISSING_SORT_PROPERTY_MESSAGE` offers it as one of the
-        two ways out of a dangling rule, so both routes have to leave the prompt
-        in the state the schema recognises.
+        particular — and both refusals a dangling rule can carry offer it as one
+        of their two ways out, so both routes have to leave the prompt in the
+        state the schema recognises.
       */}
       <DialogFormField<typeof OptionalList>
         name={name}

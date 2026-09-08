@@ -1,5 +1,9 @@
 import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
+import {
+  parseDatabaseAllowedLogins,
+  parseDatabaseAdministrativeLogins,
+} from './database-enrollment.ts';
 import type { RawEnv } from './variables.ts';
 
 export type S3Env = {
@@ -42,17 +46,24 @@ export type AuthEnv = {
 // An undefined s3, db, or auth means that surface is not configured and
 // refuses with 503; the server still boots.
 export type StudioEnv = {
+  role: 'web' | 'worker' | 'both';
   telemetry: boolean;
   port: number;
   metricsToken: string | undefined;
+  managedIngressSecret?: string;
   trustedProxies: string[];
   host: string;
   clientDist: string | undefined;
   s3: S3Env | undefined;
   db: DbEnv | undefined;
+  maintenanceDb: DbEnv | undefined;
+  databaseAllowedLogins: readonly string[] | undefined;
+  databaseAdministrativeLogins: readonly string[];
   auth: AuthEnv | undefined;
   devDefaults: boolean;
   deploymentMode: DeploymentMode;
+  /** Only authorizes the empty instance first-run setup RPC. */
+  bootstrapToken?: string;
   /** Only the seed command reads it; unset means the development password. */
   seedAdminPassword: string | undefined;
 };
@@ -213,17 +224,19 @@ function resolveSocialProviders(raw: RawEnv): SocialProvidersEnv {
 
 function resolveAuth(
   raw: RawEnv,
-  db: DbEnv | undefined,
+  configuredDb: DbEnv | undefined,
   devDefaults: boolean,
 ): AuthEnv | undefined {
   // Validated before the database check so a half-configured provider fails
   // fast even on a deployment where auth is otherwise off.
   const socialProviders = resolveSocialProviders(raw);
 
-  if (!db) return undefined;
+  if (!configuredDb) return undefined;
 
   if (!raw.BETTER_AUTH_SECRET) {
-    throw new Error('BETTER_AUTH_SECRET is required when DATABASE_URL is set');
+    throw new Error(
+      'BETTER_AUTH_SECRET is required when a database connection is set',
+    );
   }
   if (!raw.PUBLIC_URL) {
     throw new Error('PUBLIC_URL is required when auth is enabled');
@@ -242,6 +255,7 @@ function resolveAuth(
 
 export function resolve(raw: RawEnv): StudioEnv {
   const devDefaults = raw.STUDIO_DEV_DEFAULTS === true;
+  const role = raw.STUDIO_ROLE ?? 'both';
 
   // Checked against an explicit development or test NODE_ENV rather than
   // merely "not production", because the two mistakes travel together: an
@@ -258,6 +272,17 @@ export function resolve(raw: RawEnv): StudioEnv {
   }
 
   const db = raw.DATABASE_URL ? { url: raw.DATABASE_URL } : undefined;
+  const maintenanceDb = raw.STUDIO_MAINTENANCE_DATABASE_URL
+    ? { url: raw.STUDIO_MAINTENANCE_DATABASE_URL }
+    : devDefaults
+      ? db
+      : undefined;
+  if (role !== 'worker' && maintenanceDb && !db) {
+    throw new Error(
+      'DATABASE_URL is required for a web-capable process when STUDIO_MAINTENANCE_DATABASE_URL is set',
+    );
+  }
+  const configuredDb = db ?? maintenanceDb;
 
   // The marker travels with a publicly-known signing secret, a console mailer,
   // and a boot that applies the schema to whatever DATABASE_URL names. An
@@ -273,18 +298,45 @@ export function resolve(raw: RawEnv): StudioEnv {
     );
   }
 
+  const databaseAllowedLogins =
+    configuredDb && !devDefaults
+      ? parseDatabaseAllowedLogins(raw.STUDIO_DATABASE_ALLOWED_LOGINS)
+      : undefined;
+  const databaseAdministrativeLogins = databaseAllowedLogins
+    ? parseDatabaseAdministrativeLogins(
+        raw.STUDIO_DATABASE_ADMINISTRATIVE_LOGINS,
+        databaseAllowedLogins,
+      )
+    : [];
+  const deploymentMode = raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE;
+  if (
+    deploymentMode === 'managed' &&
+    db &&
+    Boolean(raw.TRUSTED_PROXIES?.length) !==
+      Boolean(raw.STUDIO_MANAGED_INGRESS_SECRET)
+  ) {
+    throw new Error(
+      'STUDIO_MANAGED_INGRESS_SECRET and managed TRUSTED_PROXIES must be configured together',
+    );
+  }
   return {
+    role,
     telemetry: raw.STUDIO_TELEMETRY ?? true,
     port: raw.PORT ?? DEFAULT_PORT,
     metricsToken: raw.STUDIO_METRICS_TOKEN,
+    managedIngressSecret: raw.STUDIO_MANAGED_INGRESS_SECRET,
     trustedProxies: raw.TRUSTED_PROXIES ?? [],
     host: raw.HOST ?? DEFAULT_HOST,
     clientDist: raw.CLIENT_DIST,
     s3: resolveS3(raw),
     db,
-    auth: resolveAuth(raw, db, devDefaults),
+    maintenanceDb,
+    auth: resolveAuth(raw, configuredDb, devDefaults),
+    databaseAllowedLogins,
+    databaseAdministrativeLogins,
     devDefaults,
-    deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,
+    deploymentMode,
+    bootstrapToken: raw.STUDIO_BOOTSTRAP_TOKEN,
     seedAdminPassword: raw.STUDIO_SEED_ADMIN_PASSWORD,
   };
 }
