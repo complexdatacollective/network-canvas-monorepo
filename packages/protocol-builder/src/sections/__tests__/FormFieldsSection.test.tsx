@@ -2068,3 +2068,139 @@ describe('switching the input control on a configured attribute', () => {
     expect(Object.hasOwn(saved, 'parameters')).toBe(false);
   });
 });
+
+/**
+ * Rebinding a row to a different attribute, and what happens to the control.
+ *
+ * The input control belongs to the ATTRIBUTE, so the answer to "how is this
+ * collected?" changes the moment the row is pointed somewhere else. The row's
+ * save writes that control back to whichever attribute is bound when it runs,
+ * so a control left over from the previous binding is not a stale label: it is
+ * a codebook write against an attribute the researcher never touched, and it
+ * changes how that attribute is collected in every form that asks for it.
+ */
+describe('rebinding a form field to another attribute', () => {
+  /**
+   * A second text attribute, collected with the OTHER text control.
+   *
+   * The fixture collects every one of a person's text attributes with a plain
+   * text box, so nothing in it can tell a control that followed the rebinding
+   * from one that was simply never reset.
+   */
+  const collectNotesInATextArea = (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    harness.receiveCodebookUpdate({
+      node: {
+        person: {
+          ...personDocument(harness),
+          variables: {
+            ...personVariables(harness),
+            notes: { name: 'notes', type: 'text', component: 'TextArea' },
+          },
+        },
+      },
+    });
+  };
+
+  const inputControl = (dialog: ReturnType<typeof within>) =>
+    dialog.getByRole('combobox', { name: 'Input control' });
+
+  it('shows the newly chosen attribute’s own control, in both directions', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    collectNotesInATextArea(harness);
+
+    const dialog = await openField(harness, 'Create new form field');
+    const attribute = dialog.getByRole('combobox', { name: 'Attribute' });
+
+    await harness.user.selectOptions(attribute, 'notes');
+    expect(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+    ).toHaveValue('TextArea');
+
+    // Both attributes are text, so both offer the same two controls and the
+    // field is never unmounted between them: whatever the control says now is
+    // what the row will write to `name`.
+    await harness.user.selectOptions(attribute, 'name');
+    await waitFor(() => expect(inputControl(dialog)).toHaveValue('Text'));
+
+    await harness.user.selectOptions(attribute, 'notes');
+    await waitFor(() => expect(inputControl(dialog)).toHaveValue('TextArea'));
+  });
+
+  it('does not rewrite the newly chosen attribute’s control in the codebook', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    collectNotesInATextArea(harness);
+
+    const dialog = await openField(harness, 'Create new form field');
+    const attribute = dialog.getByRole('combobox', { name: 'Attribute' });
+    await harness.user.selectOptions(attribute, 'notes');
+    await dialog.findByRole('combobox', { name: 'Input control' });
+    await harness.user.selectOptions(attribute, 'name');
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'What are they called?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    // The researcher never touched the control, so nothing about how either
+    // attribute is collected may have changed.
+    expect(asRecord(personVariables(harness).name).component).toBe('Text');
+    expect(asRecord(personVariables(harness).notes).component).toBe('TextArea');
+  });
+
+  /**
+   * The same rule where there is no attribute yet: the kind of answer decides
+   * which controls exist, so changing it is the same rebinding. A control left
+   * over from the previous kind is one the variable schema refuses outright —
+   * a `number` is not collected with a `Text` box — so the invention is turned
+   * away with the codebook's words for a draft the researcher never authored.
+   */
+  it('offers the invented attribute’s own controls when its kind of answer changes', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      '__create_new_attribute__',
+    );
+    const kind = await dialog.findByRole('combobox', {
+      name: 'Kind of answer',
+    });
+    await harness.user.selectOptions(kind, 'text');
+    await waitFor(() => expect(inputControl(dialog)).toHaveValue('Text'));
+
+    await harness.user.selectOptions(kind, 'number');
+    await waitFor(() => expect(inputControl(dialog)).toHaveValue('Number'));
+
+    await harness.user.type(
+      await dialog.findByRole('textbox', { name: 'Attribute name' }),
+      'household_size',
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'How many people live there?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(savedAttribute(harness, 'household_size')?.[1]).toMatchObject({
+      type: 'number',
+      component: 'Number',
+    });
+  });
+});

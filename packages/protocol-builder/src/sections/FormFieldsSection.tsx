@@ -3,7 +3,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
 } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -15,6 +17,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import FormErrors from '@codaco/fresco-ui/form/FormErrors';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
@@ -1127,6 +1130,10 @@ function InputControlField({
     variable !== undefined && 'component' in variable
       ? asString(variable.component)
       : undefined;
+  const belongsTo =
+    chosen === NEW_VARIABLE ? `${NEW_VARIABLE}:${type}` : chosen;
+  const seeded = committed ?? options[0]?.value ?? '';
+  useResetControlOnRebinding(belongsTo, seeded);
 
   // Nothing to choose from — and which of the two reasons it is decides
   // whether the researcher is mid-answer or stuck.
@@ -1151,9 +1158,48 @@ function InputControlField({
       // and has no `required` of its own to state: a native select offers no
       // way back to nothing. What "no control" means here is that this field
       // is not on screen at all, which is `NoInputControlOffered`'s to say.
-      initialValue={committed ?? options[0]?.value ?? ''}
+      initialValue={seeded}
     />
   );
+}
+
+/**
+ * Puts the control back to the ATTRIBUTE's own whenever the row is rebound.
+ *
+ * `initialValue` cannot do this. A field keeps its value across a change of
+ * initial value by design — that is what stops a re-render from wiping what
+ * someone has typed — and the value survives even an unmount: `useField`
+ * unregisters preserving the value, and `registerField` prefers that dormant
+ * value over the initial one it is handed. So a row rebound from an attribute
+ * collected in a text AREA to one collected in a text BOX kept the text area,
+ * and the row's save wrote it onto the newly chosen attribute, changing how
+ * that attribute is collected in every form that asks for it — a codebook
+ * write the researcher never made and never saw.
+ *
+ * A write through the store rather than a tombstone: the control is not being
+ * discarded, it is being answered again for a different attribute, and the
+ * answer is the one the codebook already holds.
+ *
+ * `binding` is what the control is an answer ABOUT — the chosen attribute, or,
+ * while one is being invented, the kind of answer that decides which controls
+ * exist at all. The first render records it without writing anything: the
+ * field has just registered from the same seed, and a write there would mark a
+ * row dirty that nobody has touched.
+ */
+function useResetControlOnRebinding(binding: string, seeded: string): void {
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const boundTo = useRef(binding);
+
+  useEffect(() => {
+    if (boundTo.current === binding) return;
+    boundTo.current = binding;
+    // Nothing is on screen to answer: the row names no attribute yet, or names
+    // one no control can collect. The field is unmounted in both cases, and
+    // whatever it left behind is refused by `useCommitFormField` rather than
+    // written.
+    if (seeded === '') return;
+    setFieldValue(INPUT_CONTROL, seeded);
+  }, [binding, seeded, setFieldValue]);
 }
 
 /**
