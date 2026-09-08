@@ -157,7 +157,7 @@ from `codebook/variableValidation.ts` rather than declaring
 `arrayField.*ElsewhereRefusal` twins of them. The array field and the codebook
 editor report the same conflict, so a translator answers once.
 
-### Three rules the guards hold
+### Four rules the guards hold
 
 **No component takes its words from a host.** A `copy?: Partial<…Copy>` prop of
 plain strings is a hole a host drops English into: nothing extracts it, so it
