@@ -158,8 +158,12 @@ export const missingSortPropertyLabel = (
  * Named by the codebook's own word for it rather than by its record id: unlike
  * a deleted attribute, this one is still there to be named, and telling a
  * researcher that `d4e1…` cannot sort would leave them hunting for it.
+ *
+ * Private, unlike its sibling: an unsortable attribute is only ever named from
+ * inside `unusableSortProperties`, and the words it produces are pinned in
+ * `sortOrderLocale.test.ts` where a researcher would read them.
  */
-export const unsortableSortPropertyLabel = (
+const unsortableSortPropertyLabel = (
   property: string,
   intl: IntlShape,
 ): string => intl.formatMessage(messages.unsortableProperty, { property });
