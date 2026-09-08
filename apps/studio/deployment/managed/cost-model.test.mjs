@@ -242,6 +242,8 @@ test('increasing declared Worker requests and validator execution increases the 
   ingress.unitPriceUsd = 0.000002;
   mutated.validatorMemoryGb *= 2;
   mutated.objectScrubMemoryGb *= 2;
+  mutated.objectCopyValidationMemoryGb *= 2;
+  mutated.objectReconciliationMemoryGb *= 2;
   mutated.lineItems.find(
     ({ category }) => category === 'validator-compute',
   ).quantity *= 2;
@@ -569,7 +571,13 @@ test('requires complete scrub cadence and independently measured positive execut
       input.validatorDurationSeconds +
     input.objectScrubRunCount *
       input.objectScrubMemoryGb *
-      input.objectScrubDurationSeconds;
+      input.objectScrubDurationSeconds +
+    input.primaryObjectMonthlyVersionChurnCount *
+      input.objectCopyValidationMemoryGb *
+      input.objectCopyValidationDurationSeconds +
+    178_560 *
+      input.objectReconciliationMemoryGb *
+      input.objectReconciliationDurationSeconds;
   assert.equal(
     Math.round((evaluateManagedEstateCost(input).totalUsd - before) * 100),
     4,
@@ -579,6 +587,160 @@ test('requires complete scrub cadence and independently measured positive execut
     () => evaluateManagedEstateCost(input),
     /required recovery cadence/,
   );
+});
+
+test('prices every new-copy readback before checkpoint advancement independently of history scrubs', () => {
+  for (const [field, category, omitted] of [
+    ['backupRequestCount', 'backup-requests', 2_500],
+    ['validatorRequestCount', 'validator-requests', 2_500],
+    ['backupEgressGb', 'backup-egress', 5],
+    ['validatorTransferGb', 'validator-transfer', 5],
+  ]) {
+    const input = structuredClone(fixture);
+    input[field] -= omitted;
+    input.lineItems.find((item) => item.category === category).quantity =
+      input[field];
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      new RegExp(`${field} is below`),
+    );
+  }
+  const input = structuredClone(fixture);
+  input.lineItems.find(
+    (item) => item.category === 'validator-compute',
+  ).quantity -=
+    input.primaryObjectMonthlyVersionChurnCount *
+    input.objectCopyValidationMemoryGb *
+    input.objectCopyValidationDurationSeconds;
+  assert.throws(
+    () => evaluateManagedEstateCost(input),
+    /validator-compute quantity does not match/,
+  );
+  for (const field of [
+    'objectCopyValidationMemoryGb',
+    'objectCopyValidationDurationSeconds',
+  ]) {
+    const missing = structuredClone(fixture);
+    missing[field] = 0;
+    assert.throws(
+      () => evaluateManagedEstateCost(missing),
+      /objectCopyValidation memory and duration/,
+    );
+  }
+});
+
+test('prices immutable database checkpoint writes in addition to archive PUT and readback GET', () => {
+  const input = structuredClone(fixture);
+  input.backupRequestCount -= 5_952;
+  input.lineItems.find((item) => item.category === 'backup-requests').quantity =
+    input.backupRequestCount;
+  assert.throws(
+    () => evaluateManagedEstateCost(input),
+    /backupRequestCount is below/,
+  );
+});
+
+test('prices idle-bucket reconciliation, signed checkpoint publication, and locked metadata retention', () => {
+  for (const [field, category, omitted, divisor] of [
+    ['backupRequestCount', 'backup-requests', 178_560, 1],
+    ['validatorRequestCount', 'validator-requests', 178_560, 1],
+    [
+      'backupStoredGb',
+      'backup-storage',
+      ((5_952 + 178_560) * 1_024) / 1_000_000_000,
+      1_000,
+    ],
+  ]) {
+    const input = structuredClone(fixture);
+    input[field] -= omitted;
+    input.lineItems.find((item) => item.category === category).quantity =
+      input[field] / divisor;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      new RegExp(`${field} is below`),
+    );
+  }
+  const input = structuredClone(fixture);
+  input.lineItems.find(
+    (item) => item.category === 'validator-compute',
+  ).quantity -=
+    178_560 *
+    input.objectReconciliationMemoryGb *
+    input.objectReconciliationDurationSeconds;
+  assert.throws(
+    () => evaluateManagedEstateCost(input),
+    /validator-compute quantity does not match/,
+  );
+  for (const field of [
+    'databaseCheckpointSizeBytes',
+    'objectCheckpointSizeBytes',
+    'objectReconciliationMemoryGb',
+    'objectReconciliationDurationSeconds',
+  ]) {
+    const missing = structuredClone(fixture);
+    missing[field] = 0;
+    assert.throws(
+      () => evaluateManagedEstateCost(missing),
+      /checkpoint sizes|objectReconciliation memory and duration/,
+    );
+  }
+});
+
+test('new-copy validation and reconciliation measurements cannot grow without repricing compute', () => {
+  for (const field of [
+    'objectCopyValidationMemoryGb',
+    'objectCopyValidationDurationSeconds',
+    'objectReconciliationMemoryGb',
+    'objectReconciliationDurationSeconds',
+  ]) {
+    const input = structuredClone(fixture);
+    input[field] *= 2;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      /validator-compute quantity does not match/,
+    );
+  }
+});
+
+test('prices independent proof-index discovery and reads for reconciliation and scrub startup', () => {
+  for (const [field, category, omitted] of [
+    ['backupRequestCount', 'backup-requests', 2 * 178_560 + 16],
+    [
+      'backupEgressGb',
+      'backup-egress',
+      ((178_560 + 8) * 1_024) / 1_000_000_000,
+    ],
+    [
+      'validatorTransferGb',
+      'validator-transfer',
+      ((2 * 178_560 + 8) * 1_024 + 5_952 * 1_024) / 1_000_000_000,
+    ],
+  ]) {
+    const input = structuredClone(fixture);
+    input[field] -= omitted;
+    input.lineItems.find((item) => item.category === category).quantity =
+      input[field];
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      new RegExp(`${field} is below`),
+    );
+  }
+  for (const field of [
+    'recoveryObjectRequestsPerReconciliation',
+    'recoveryObjectRequestsPerScrubStart',
+  ]) {
+    const input = structuredClone(fixture);
+    input[field] = 1;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      /recovery object I\/O/,
+    );
+    input[field] = fixture[field] + 1;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      /backupRequestCount is below/,
+    );
+  }
 });
 
 test('requires measured Fly egress and Worker tier, request, CPU, and WebSocket costs', () => {

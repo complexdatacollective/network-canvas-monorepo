@@ -93,8 +93,13 @@ run "candidate_contract" {
   }
 
   assert {
-    condition     = b2_bucket.independent_recovery.bucket_type == "allPrivate" && b2_bucket.independent_recovery.file_lock_configuration[0].default_retention[0].mode == "compliance" && b2_bucket.independent_recovery.file_lock_configuration[0].default_retention[0].period[0].duration == 31
-    error_message = "The independent bucket must be private with 31-day compliance retention."
+    condition     = b2_bucket.independent_recovery.bucket_type == "allPrivate" && b2_bucket.independent_recovery.file_lock_configuration[0].default_retention[0].mode == "compliance" && b2_bucket.independent_recovery.file_lock_configuration[0].default_retention[0].period[0].duration == jsondecode(file("${path.module}/candidate-sizing.json")).recovery.retentionDays && jsondecode(file("${path.module}/candidate-sizing.json")).recovery.retentionDays >= 31
+    error_message = "The independent bucket must be private with the shared compliance retention of at least 31 days."
+  }
+
+  assert {
+    condition     = output.candidate_inventory.independent_recovery.object_lock_days == jsondecode(file("${path.module}/candidate-sizing.json")).recovery.retentionDays
+    error_message = "The recovery handoff must report the exact shared object-lock duration."
   }
 }
 

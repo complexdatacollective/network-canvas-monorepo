@@ -164,13 +164,18 @@ configuration archive, and their account-recovery paths.
    30-minute schedule requires at least 5,952 database validations and 595.2 GB
    of source-provider egress in this illustrative 0.4 GB aggregate-dump case,
    with the corresponding B2 and validator requests and full-dump transfer.
+   Each database generation prices an archive PUT, independent readback GET,
+   and a separate immutable checkpoint PUT after successful validation.
    For objects, current count/bytes, monthly version churn, and the complete
    recovery-retained version inventory are separate measurements. The retained
    inventory must cover current objects plus churn. Its 31-day storage,
-   recovery-copy reads/writes and transfer, every one-minute primary-bucket
+   recovery-copy reads/writes and immediate independent readback transfer, every one-minute primary-bucket
    inventory page, and every retained version's
    30-day B2 readback/validator scrub are lower bounds on the aggregate R2, B2,
-   and validator quantities. Retries, growth, and restore drills remain extra
+   and validator quantities. Every changed version requires a readback GET,
+   a validation invocation, and separately measured validation GB-seconds
+   before its copy can be included in a checkpoint. The periodic history scrub
+   cannot substitute for that validation. Retries, growth, and restore drills remain extra
    measured usage.
 
    `primaryObjectBucketInventories` binds each of the four buckets' retained
@@ -186,7 +191,36 @@ configuration archive, and their account-recovery paths.
    derived as `max(0, postmarkMessageCount - postmarkIncludedMessages)`. A
    current budget declaration must identify the same plan and included-message
    allowance on both mail rows. Validator compute adds database validation
-   GB-seconds to independently measured complete object-scrub GB-seconds.
+   GB-seconds to independently measured new-copy validation, per-bucket
+   reconciliation/checkpoint signing, and complete object-scrub GB-seconds.
+   `objectCopyValidationMemoryGb` and `objectCopyValidationDurationSeconds`
+   measure each changed version's full independent readback and validation;
+   multiply by monthly version churn. `objectReconciliationMemoryGb` and
+   `objectReconciliationDurationSeconds` measure one complete bucket scan,
+   proof comparison, and checkpoint publication, including all listing pages.
+   The one-minute schedule therefore requires 178,560 such executions and
+   checkpoint PUTs across four buckets, even when they are idle. The source
+   capture/upload workers use the four already priced Machines; their CPU and
+   memory demand remains part of those Machines' required capacity test.
+   Any separately hosted capture process requires an additional cost row before
+   it can be selected.
+
+   The independent store is also read during reconciliation.
+   `recoveryObjectRequestsPerReconciliation` measures the complete B2 operation
+   count per bucket, including discovery/listing pages, every GET needed to
+   consume its signed proof index, and the new checkpoint PUT (at least three).
+   `recoveryObjectRequestsPerScrubStart` separately measures discovery and
+   proof-index reads for each bucket at the start of each history scrub (at
+   least two). Multiple index objects, listing pages, and retries raise these
+   measurements. Proof-index read bytes and outgoing signed checkpoint bytes
+   are included in the respective transfer floors; object payload reads alone
+   cannot pay for recovery metadata I/O.
+
+   `databaseCheckpointSizeBytes` and `objectCheckpointSizeBytes` are positive
+   measured upper bounds for complete signed checkpoint records, including
+   their manifests/proof indexes. Price the full immutable retention window's
+   metadata alongside archives and object versions. A longer shared retention
+   setting increases both locked storage and the exported B2 retention handoff.
    `objectScrubRunCount` covers at least two complete scrubs in the 31-day window;
    its memory and duration must measure the full retained inventory, including
    every shard's billed seconds when a scrub uses several jobs. The illustrative
