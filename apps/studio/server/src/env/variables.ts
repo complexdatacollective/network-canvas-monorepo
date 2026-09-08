@@ -46,6 +46,22 @@ export const serverSchemas = {
    */
   STUDIO_DEPLOYMENT_MODE: z.enum(DEPLOYMENT_MODES).optional(),
 
+  STUDIO_TEMPLATE_REGISTRY_ORIGIN: z
+    .url({ protocol: /^https$/ })
+    .max(2048)
+    .refine((value) => {
+      const parsed = new URL(value);
+      return (
+        !parsed.username &&
+        !parsed.password &&
+        parsed.pathname === '/' &&
+        !parsed.search &&
+        !parsed.hash &&
+        value === parsed.origin
+      );
+    })
+    .optional(),
+
   STUDIO_BOOTSTRAP_TOKEN: BootstrapTokenSchema.optional(),
 
   // http(s) only: a bare `host:port` parses as a URL whose scheme is the

@@ -174,6 +174,14 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     devDefault: 'managed',
     example: 'self-hosted',
   },
+  STUDIO_TEMPLATE_REGISTRY_ORIGIN: {
+    group: 'Process',
+    summary:
+      'Trusted HTTPS origin of the template Registry used for account linking, publication and import.',
+    deployment:
+      'Unset disables Registry workflows. Configure one pathless HTTPS origin; researchers cannot override it, so imported entry identifiers never become an arbitrary server-side fetch destination.',
+    example: 'https://registry.networkcanvas.com',
+  },
 
   S3_ENDPOINT: {
     group: 'Object storage',

@@ -61,6 +61,8 @@ export type StudioEnv = {
   auth: AuthEnv | undefined;
   devDefaults: boolean;
   deploymentMode: DeploymentMode;
+  /** Operator-controlled trusted origin for template publication and import. */
+  templateRegistryOrigin?: string;
   /** Only authorizes the empty instance first-run setup RPC. */
   bootstrapToken?: string;
   /** Only the seed command reads it; unset means the development password. */
@@ -323,6 +325,7 @@ export function resolve(raw: RawEnv): StudioEnv {
     databaseAdministrativeLogins,
     devDefaults,
     deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,
+    templateRegistryOrigin: raw.STUDIO_TEMPLATE_REGISTRY_ORIGIN,
     bootstrapToken: raw.STUDIO_BOOTSTRAP_TOKEN,
     seedAdminPassword: raw.STUDIO_SEED_ADMIN_PASSWORD,
   };

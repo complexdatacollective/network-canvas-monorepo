@@ -53,6 +53,20 @@ describe('bootstrap configuration', () => {
 });
 
 describe('operational configuration', () => {
+  it('accepts only an operator-controlled pathless HTTPS Registry origin', () => {
+    vi.stubEnv('STUDIO_TEMPLATE_REGISTRY_ORIGIN', 'https://registry.example');
+    expect(readEnv().templateRegistryOrigin).toBe('https://registry.example');
+    for (const origin of [
+      'http://registry.example',
+      'https://registry.example/path',
+      'https://registry.example/?tenant=other',
+      'https://user:secret@registry.example',
+    ]) {
+      vi.stubEnv('STUDIO_TEMPLATE_REGISTRY_ORIGIN', origin);
+      expect(() => readEnv()).toThrow('Invalid environment variables');
+    }
+  });
+
   it('defaults to one combined process and accepts only explicit runtime roles', () => {
     vi.stubEnv('STUDIO_ROLE', '');
     expect(readEnv().role).toBe('both');
