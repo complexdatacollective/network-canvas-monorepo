@@ -4,6 +4,7 @@ import type pg from 'pg';
 
 import type { AuditActorFilter } from '@codaco/studio-rpc';
 
+import { enqueueAuditAlertForEvent } from './alert-store.ts';
 import { parseAuditEventInput, type AuditEventInput } from './events.ts';
 
 // A stable namespace seed keeps this lock separate from the schema/bootstrap
@@ -214,7 +215,9 @@ export class AuditStore {
     );
     const row = inserted.rows[0];
     if (!row) throw new Error('audit insert returned no row');
-    return storedEvent(row);
+    const stored = storedEvent(row);
+    await enqueueAuditAlertForEvent(client, stored);
+    return stored;
   }
 
   async listForTeam(

@@ -326,12 +326,14 @@ const auditAlertOutbox = pgTable(
     deliveredAt: timestamp('delivered_at', { withTimezone: true }),
     failedAt: timestamp('failed_at', { withTimezone: true }),
     suppressedAt: timestamp('suppressed_at', { withTimezone: true }),
+    uncertainAt: timestamp('uncertain_at', { withTimezone: true }),
     lastError: text('last_error'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => [
+    unique().on(table.id, table.teamId),
     // "Exactly one durable outbox row per alert-eligible committed event."
     uniqueIndex('audit_alert_outbox_audit_event_id_idx').on(table.auditEventId),
     // Every denormalized column is bound to the event it was copied from, not
@@ -361,7 +363,7 @@ const auditAlertOutbox = pgTable(
     index('audit_alert_outbox_dispatch_idx')
       .on(table.availableAt, table.leaseExpiresAt)
       .where(
-        sql`delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL`,
+        sql`delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL`,
       ),
     index('audit_alert_outbox_team_id_event_type_created_at_idx').on(
       table.teamId,
@@ -386,9 +388,9 @@ const auditAlertOutbox = pgTable(
     ),
     check(
       'audit_alert_outbox_terminal_state_check',
-      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}) <= 1
+      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) <= 1
           AND (
-            num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}) = 0
+            num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) = 0
             OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL)
           )`,
     ),
@@ -398,7 +400,102 @@ const auditAlertOutbox = pgTable(
   ],
 );
 
-export const AUDIT_TABLES = { auditEvents, auditExportJobs, auditAlertOutbox };
+// One immutable recipient/channel record per alert. The parent outbox remains
+// exactly one row per audit event; these rows make partial multi-recipient
+// delivery and provider ambiguity independently durable. In-app rows are
+// available as soon as the audited transaction commits, while email rows are
+// advanced only by the maintenance dispatcher.
+const auditAlertDeliveries = pgTable(
+  'audit_alert_deliveries',
+  {
+    id: uuid('id').primaryKey(),
+    teamId: text('team_id').notNull(),
+    alertId: uuid('alert_id').notNull(),
+    recipientUserId: text('recipient_user_id').notNull(),
+    channel: text('channel').notNull(),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    availableAt: timestamp('available_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    leaseOwner: uuid('lease_owner'),
+    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+    deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    suppressedAt: timestamp('suppressed_at', { withTimezone: true }),
+    uncertainAt: timestamp('uncertain_at', { withTimezone: true }),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      name: 'audit_alert_deliveries_alert_team_fk',
+      columns: [table.alertId, table.teamId],
+      foreignColumns: [auditAlertOutbox.id, auditAlertOutbox.teamId],
+    }),
+    uniqueIndex('audit_alert_deliveries_alert_recipient_channel_idx').on(
+      table.alertId,
+      table.recipientUserId,
+      table.channel,
+    ),
+    index('audit_alert_deliveries_dispatch_idx')
+      .on(table.availableAt, table.leaseExpiresAt)
+      .where(
+        sql`channel = 'email' AND delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL`,
+      ),
+    index('audit_alert_deliveries_recipient_created_at_idx').on(
+      table.teamId,
+      table.recipientUserId,
+      table.createdAt.desc(),
+    ),
+    check(
+      'audit_alert_deliveries_channel_check',
+      sql`${table.channel} IN ('email', 'in_app')`,
+    ),
+    check(
+      'audit_alert_deliveries_attempt_count_check',
+      sql`${table.attemptCount} >= 0`,
+    ),
+    check(
+      'audit_alert_deliveries_lengths_check',
+      sql`char_length(${table.teamId}) BETWEEN 1 AND 255
+          AND char_length(${table.recipientUserId}) BETWEEN 1 AND 255
+          AND (${table.lastError} IS NULL OR char_length(${table.lastError}) <= 1000)`,
+    ),
+    check(
+      'audit_alert_deliveries_lease_check',
+      sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
+    ),
+    check(
+      'audit_alert_deliveries_channel_state_check',
+      sql`(${table.channel} <> 'in_app' OR ${table.deliveredAt} IS NOT NULL)
+          AND (${table.channel} = 'in_app' OR ${table.readAt} IS NULL)`,
+    ),
+    check(
+      'audit_alert_deliveries_terminal_state_check',
+      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) = 1
+          OR (
+            num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) = 0
+            AND ${table.channel} = 'email'
+          )`,
+    ),
+    check(
+      'audit_alert_deliveries_terminal_lease_check',
+      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) = 0
+          OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL)`,
+    ),
+    ...teamIsolationPolicies(),
+  ],
+);
+
+export const AUDIT_TABLES = {
+  auditEvents,
+  auditExportJobs,
+  auditAlertOutbox,
+  auditAlertDeliveries,
+};
 
 // This sidecar must run after the general access grant. `audit_events` receives
 // the ordinary tenant grants first, then permanently loses every mutating
@@ -413,10 +510,10 @@ export const AUDIT_TABLES = { auditEvents, auditExportJobs, auditAlertOutbox };
 // and report a clean sweep. Neither table carries event content: the outbox
 // holds ids, a machine event type and counters, and the job holds filters,
 // budgets and byte counts, so the readable history the strict policy protects
-// stays behind it. And the dispatcher still re-reads the event under an
-// explicit per-team tenant scope before rendering an alert, which is the only
-// state in which the maintenance role may read audit_events at all: the escape
-// buys the claim scan, not the history.
+// stays behind it. The dispatcher renders only the foreign-key-bound event
+// type copied onto the outbox row; it never opens the immutable event payload
+// under its cross-team maintenance identity. The escape buys the claim scan,
+// not the history.
 export const AUDIT_SIDECAR_SQL = `
 CREATE OR REPLACE FUNCTION audit_events_are_immutable() RETURNS trigger AS $$
 BEGIN
@@ -497,7 +594,32 @@ CREATE OR REPLACE TRIGGER audit_alert_link_immutable
   )
   EXECUTE FUNCTION audit_alert_link_is_immutable();
 
-${tenantTablesSql(['audit_events', 'audit_export_jobs', 'audit_alert_outbox'])}
+CREATE OR REPLACE FUNCTION audit_alert_delivery_payload_is_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'audit alert delivery payload is immutable';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER audit_alert_delivery_payload_immutable
+  BEFORE UPDATE ON audit_alert_deliveries
+  FOR EACH ROW
+  WHEN (
+    NEW.id IS DISTINCT FROM OLD.id
+    OR NEW.team_id IS DISTINCT FROM OLD.team_id
+    OR NEW.alert_id IS DISTINCT FROM OLD.alert_id
+    OR NEW.recipient_user_id IS DISTINCT FROM OLD.recipient_user_id
+    OR NEW.channel IS DISTINCT FROM OLD.channel
+    OR NEW.created_at IS DISTINCT FROM OLD.created_at
+    OR (OLD.read_at IS NOT NULL AND NEW.read_at IS DISTINCT FROM OLD.read_at)
+  )
+  EXECUTE FUNCTION audit_alert_delivery_payload_is_immutable();
+
+${tenantTablesSql([
+  'audit_events',
+  'audit_export_jobs',
+  'audit_alert_outbox',
+  'audit_alert_deliveries',
+])}
 
 -- Commands enqueue inside their audited transaction; only the maintenance
 -- worker advances generation and delivery state. DELETE stays with
@@ -508,6 +630,8 @@ ${tenantTablesSql(['audit_events', 'audit_export_jobs', 'audit_alert_outbox'])}
 -- table-level UPDATE. One statement per table so both are documented.
 REVOKE UPDATE, DELETE ON audit_export_jobs FROM ${TENANT_ROLES.app};
 REVOKE UPDATE, DELETE ON audit_alert_outbox FROM ${TENANT_ROLES.app};
+REVOKE UPDATE, DELETE ON audit_alert_deliveries FROM ${TENANT_ROLES.app};
+GRANT UPDATE (read_at) ON audit_alert_deliveries TO ${TENANT_ROLES.app};
 GRANT UPDATE (handle_consumed_at) ON audit_export_jobs TO ${TENANT_ROLES.app};
 
 REVOKE UPDATE, DELETE, TRUNCATE ON audit_events

@@ -10,6 +10,10 @@ import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import { createApp } from './app.ts';
 import { createAssetStore } from './assets.ts';
+import {
+  type AuditAlertDeliveryWorker,
+  startAuditAlertDeliveryWorker,
+} from './audit/alert-delivery-dispatcher.ts';
 import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
 import { createMailer } from './auth/email.ts';
 import { mountClient } from './client-assets.ts';
@@ -110,11 +114,12 @@ const maintenancePool = env.maintenanceDb
 const schemaPool = pool ?? maintenancePool;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
+let auditAlertDeliveryWorker: AuditAlertDeliveryWorker | undefined;
 
 function startDatabaseWorkers(): void {
   if (
     env.role === 'web' ||
-    invitationDeliveryWorker ||
+    (invitationDeliveryWorker && auditAlertDeliveryWorker) ||
     !maintenancePool ||
     !env.auth ||
     !mailer ||
@@ -128,6 +133,12 @@ function startDatabaseWorkers(): void {
     reportError: (error) => telemetry?.capture('server_worker', error),
     mailer,
     publicBaseUrl: env.auth.baseUrl,
+  });
+  auditAlertDeliveryWorker = startAuditAlertDeliveryWorker({
+    pool: maintenancePool,
+    observer: observability.metrics.observer,
+    reportError: (error) => telemetry?.capture('server_worker', error),
+    mailer,
   });
 }
 
@@ -307,6 +318,7 @@ stopServing = () => {
   if ('closeAllConnections' in server) server.closeAllConnections();
   for (const socket of wsServer?.clients ?? []) socket.terminate();
   void invitationDeliveryWorker?.stop();
+  void auditAlertDeliveryWorker?.stop();
   mailer?.close();
   observability.stop();
 };
@@ -325,7 +337,10 @@ function shutdown() {
   setTimeout(() => process.exit(1), 10_000).unref();
   // Stop queue claims and accepting HTTP work immediately, before waiting
   // for active WebSocket close handshakes or an in-flight delivery attempt.
-  const workerStopped = invitationDeliveryWorker?.stop();
+  const workersStopped = Promise.all([
+    invitationDeliveryWorker?.stop(),
+    auditAlertDeliveryWorker?.stop(),
+  ]);
   mailer?.close();
   const httpClosed = new Promise<void>((resolve, reject) => {
     server.close((error) => (error ? reject(error) : resolve()));
@@ -341,7 +356,7 @@ function shutdown() {
   void (async () => {
     let exitCode = 0;
     try {
-      await Promise.all([httpClosed, workerStopped, ...closing]);
+      await Promise.all([httpClosed, workersStopped, ...closing]);
       // Requests may append suppression summaries until HTTP has drained.
       // Keep the application pool open until that final bounded flush ends.
       if (!(await flushDeniedAuditSummaries()))

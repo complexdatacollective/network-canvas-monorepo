@@ -8,6 +8,10 @@ import {
   AcquireSectionResultSchema,
   AddInformationStageInputSchema,
   AuditEventDetailSchema,
+  AuditAlertListInputSchema,
+  AuditAlertListOutputSchema,
+  AuditAlertReadInputSchema,
+  AuditAlertReadOutputSchema,
   AuditFilterOptionsSchema,
   AuditGetInputSchema,
   AuditListInputSchema,
@@ -223,5 +227,11 @@ export const contract = {
      * the current filter already matched.
      */
     filterOptions: oc.input(TeamScopedSchema).output(AuditFilterOptionsSchema),
+    alerts: oc
+      .input(AuditAlertListInputSchema)
+      .output(AuditAlertListOutputSchema),
+    markAlertRead: oc
+      .input(AuditAlertReadInputSchema)
+      .output(AuditAlertReadOutputSchema),
   },
 };

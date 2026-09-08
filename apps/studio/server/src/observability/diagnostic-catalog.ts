@@ -26,6 +26,7 @@ export const STUDIO_OPERATIONAL_DIAGNOSTIC_LEVELS = Object.freeze({
   STUDIO_WEBSOCKET_ERROR: 'error',
   STUDIO_RESPONSE_STREAM_FAILED: 'error',
   STUDIO_INVITATION_WORKER_ERROR: 'error',
+  STUDIO_AUDIT_ALERT_WORKER_ERROR: 'error',
 } as const);
 
 export type StudioOperationalDiagnostic =

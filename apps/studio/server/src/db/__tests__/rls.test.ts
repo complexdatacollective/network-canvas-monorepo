@@ -80,6 +80,7 @@ describe.skipIf(!db)('row-level security', () => {
       'api_tokens',
       'asset_references',
       'assets',
+      'audit_alert_deliveries',
       'audit_alert_outbox',
       'audit_events',
       'audit_export_jobs',

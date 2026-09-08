@@ -31,6 +31,16 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     reason:
       'Reading the values the activity filters can take is a permission-checked bounded read over the same rows as audit.list; the audit taxonomy records exports and denied access, not views.',
   },
+  'audit.alerts': {
+    kind: 'none',
+    reason:
+      'Lists only durable in-app alerts already addressed to the signed-in user; reading an alert does not change the immutable activity record.',
+  },
+  'audit.markAlertRead': {
+    kind: 'none',
+    reason:
+      'Sets only the signed-in recipient read marker; the immutable activity event and delivery result remain unchanged.',
+  },
   'protocol.create': {
     kind: 'none',
     reason:
