@@ -17,6 +17,7 @@ import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
+import { sectionIdForCodebookSubject } from '../codebook/editing.ts';
 import { useCodebookSectionDocument } from '../codebook/useCodebookVariableEdits.ts';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
 import { optionsShapeFor } from '../codebook/variableOptions.ts';
@@ -27,6 +28,20 @@ import { isCollectableType } from './collectableTypes.ts';
 
 /** Where every row that binds an attribute keeps the attribute it binds. */
 const VARIABLE_FIELD = 'variable';
+
+/**
+ * What inside a field container can be handed focus, most preferred first.
+ *
+ * Queried one tier at a time rather than as one comma list, because
+ * `querySelector` answers in DOCUMENT order rather than selector order — the
+ * same reason `focusFirstError` splits them.
+ */
+const FOCUS_TARGETS = [
+  '[data-field-focus-target]',
+  'input:not([type="hidden"]), textarea, select',
+  '[tabindex]:not([tabindex="-1"])',
+  'button:not(:disabled)',
+];
 
 const messages = defineMessages({
   createWithValues: {
@@ -58,6 +73,36 @@ const messages = defineMessages({
     defaultMessage: 'Set rules for this answer',
     description:
       'Button that opens the codebook editor for the rules a participant’s answer has to satisfy. Also the title of the dialog it opens.',
+  },
+  describeCreate: {
+    id: 'protocolBuilder.attributeCodebookControls.describeCreate',
+    defaultMessage: 'Create an attribute for a form field',
+    description:
+      'What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. The attribute has no name yet — the researcher is about to type one — so this is the one edit here that cannot name it.',
+  },
+  describeValues: {
+    id: 'protocolBuilder.attributeCodebookControls.describeValues',
+    defaultMessage: 'Change the values of "{name}"',
+    description:
+      'What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name.',
+  },
+  describeAnswerLabels: {
+    id: 'protocolBuilder.attributeCodebookControls.describeAnswerLabels',
+    defaultMessage: 'Change the answer labels of "{name}"',
+    description:
+      'The same record for a yes/no attribute, whose two stored values are fixed and whose words are what a researcher writes. name is the attribute’s researcher-facing name.',
+  },
+  describeParameters: {
+    id: 'protocolBuilder.attributeCodebookControls.describeParameters',
+    defaultMessage: 'Change what "{name}" accepts',
+    description:
+      'The same record for an attribute whose answer is not chosen from a list — a date between two bounds, a position on a scale. name is the attribute’s researcher-facing name.',
+  },
+  describeRules: {
+    id: 'protocolBuilder.attributeCodebookControls.describeRules',
+    defaultMessage: 'Change the rules for "{name}"',
+    description:
+      'What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name.',
   },
   createNeedsValues: {
     id: 'protocolBuilder.attributeCodebookControls.createNeedsValues',
@@ -195,7 +240,23 @@ export default function AttributeCodebookControls({
     /** Fresh for every open, so the editor starts from the draft it is given. */
     openId: string;
     surface: 'create' | 'defines' | 'rules';
-    label: string;
+    /**
+     * The words on the button that opened this, and what the host's record of
+     * the edit is called.
+     *
+     * DESCRIPTORS rather than the sentences they make, formatted where they are
+     * rendered: a formatted string held here would outlive its formatter, and
+     * a language switched under an open editor would leave its title in the
+     * language it was opened in.
+     */
+    label: MessageDescriptor;
+    describe: MessageDescriptor;
+    /**
+     * The attribute's name as it was when the editor opened, for the host's
+     * record. Captured rather than read live, so a rename made INSIDE the
+     * editor does not retitle the edit that is making it.
+     */
+    name: string;
     /**
      * The record id a created attribute is minted with, decided when the
      * editor opens rather than per render — and never shown: a researcher
@@ -203,6 +264,23 @@ export default function AttributeCodebookControls({
      * on the rename.
      */
     variableId: string;
+    /**
+     * Whose codebook that id is in, and where this editor's save goes.
+     *
+     * Captured for the same reason the id is, because the two are one fact: a
+     * record key belongs to exactly one type — the schema refuses a codebook
+     * that reuses one across types, because the interview flattens every
+     * type's attributes into a single map. Read live instead, a stage a
+     * collaborator repoints mid-edit would send this editor looking its
+     * attribute up in a document the attribute was never in.
+     */
+    subject: CodebookSubject;
+    /**
+     * That subject's document as it stood when the editor opened, for the
+     * renders after it has gone. See `editingDocument`, which prefers the
+     * live one.
+     */
+    openedDocument: SectionDoc;
     /**
      * The input control the editor authors settings FOR, taken from the row at
      * the moment it opens rather than from the codebook.
@@ -215,9 +293,54 @@ export default function AttributeCodebookControls({
      */
     component: string;
   }> | null>(null);
+  /**
+   * The row dialog these controls sit in, remembered rather than walked up to.
+   *
+   * `finalFocus` is resolved after the editor has closed, and closing it can
+   * be exactly what takes these controls off the screen: an attribute deleted
+   * under an open rules editor leaves nothing here to launch, so the container
+   * a lookup would walk up FROM is already gone by the time focus is being
+   * returned. The dialog outlives them, so it is what is held.
+   */
+  const rowDialog = useRef<HTMLElement | null>(null);
+  const holdRowDialog = (node: HTMLDivElement | null) => {
+    const dialog = node?.closest<HTMLElement>('[role="dialog"]') ?? null;
+    if (dialog !== null) rowDialog.current = dialog;
+  };
   const createTrigger = useRef<HTMLButtonElement>(null);
   const definesTrigger = useRef<HTMLButtonElement>(null);
   const rulesTrigger = useRef<HTMLButtonElement>(null);
+
+  /**
+   * The section an editor already open reads: the one it was OPENED against.
+   *
+   * Never the one the row is pointing at now. The attribute being edited is
+   * named by a record key that belongs to `editing.subject` alone, so a stage
+   * a collaborator repoints mid-edit — from one type the codebook holds to
+   * another — would otherwise leave this editor looking that key up in a
+   * document it was never in, and telling the researcher their draft has gone
+   * stale when nothing about it has.
+   *
+   * Resolved live FOR THAT SUBJECT rather than frozen with it, so a
+   * collaborator's changes to the section itself still reach the editor and it
+   * still reconciles its draft against them. The copy taken when it opened is
+   * what is left when the section goes: deleting the node or edge type takes
+   * the whole document away under a researcher who is mid-edit, and what was
+   * already open holds a draft made in this session, of exactly the kind the
+   * row dialog around it keeps through the same arrival. So it is kept too,
+   * showing what it had, against the section it was opened for — and its save
+   * is refused for the reason it is actually refused: there is nowhere left to
+   * write it.
+   *
+   * The launch controls below read the LIVE section instead, because starting
+   * an edit is exactly the question about what this row collects now.
+   */
+  const editingDocument = useCodebookSectionDocument(editing?.subject);
+  const openEditor =
+    editing === null
+      ? null
+      : { ...editing, document: editingDocument ?? editing.openedDocument };
+  const sectionIsLive = subject !== undefined && codebookDocument !== null;
 
   const variables = variablesIn(codebookDocument);
   // An id no attribute carries is an attribute there is nothing to edit on —
@@ -263,19 +386,104 @@ export default function AttributeCodebookControls({
     : canEditAnswers
       ? messages.editAnswerLabels
       : messages.editParameters;
+  const definesDescribe = canEditValues
+    ? messages.describeValues
+    : canEditAnswers
+      ? messages.describeAnswerLabels
+      : messages.describeParameters;
 
-  if (readOnly || subject === undefined || codebookDocument === null) {
+  /**
+   * Whether another editor may be STARTED from here.
+   *
+   * A lease taken back by a collaborator makes this false, and a section that
+   * has gone makes it false as well — the second is the stronger fact, because
+   * there is not even a document to open an editor against. Neither makes
+   * anything else false: an editor already open holds a draft the researcher
+   * made in this session, of exactly the kind the row dialog around it
+   * deliberately keeps when the same thing happens. Unmounting it would throw
+   * that draft away to say something the editor can say for itself, with its
+   * own save refused — which is what `readOnly` does to both of them.
+   */
+  const offerLaunch =
+    sectionIsLive &&
+    !readOnly &&
+    (canCreate ||
+      canEditValues ||
+      canEditAnswers ||
+      canEditParameters ||
+      canEditRules);
+  if (!offerLaunch && openEditor === null) {
     return null;
   }
-  if (
-    !canCreate &&
-    !canEditValues &&
-    !canEditAnswers &&
-    !canEditParameters &&
-    !canEditRules
-  ) {
+  // The attributes an open editor is reading about, which are the ones in the
+  // section it was opened against rather than whatever the row points at now.
+  const editorVariables = variablesIn(openEditor?.document ?? null);
+  /**
+   * Whether what is open may be WRITTEN, which is three questions.
+   *
+   * A lease taken back says this researcher may write nothing. A section that
+   * has gone is a section nothing can be written into, which says the same
+   * thing from the other side. And a stage that has been repointed at another
+   * type says it a third way: the row this editor was opened from is a row
+   * about something else now, and rules written for a person are not rules
+   * about their family — so the draft is kept and shown, and refused.
+   */
+  const editorReadOnly =
+    readOnly ||
+    editingDocument === null ||
+    openEditor === null ||
+    subject === undefined ||
+    sectionIdForCodebookSubject(subject) !==
+      sectionIdForCodebookSubject(openEditor.subject);
+
+  /**
+   * The row's own attribute picker, as somewhere focus can always land.
+   *
+   * Scoped to the row dialog, so a picker on another surface cannot answer for
+   * it. Resolved by hand rather than through `focusFirstError`'s
+   * `resolveFieldErrorTarget`, which is the same lookup but refuses a
+   * candidate inside an `[inert]` subtree — correct for an invalid submit, and
+   * wrong here: this runs while the editor being closed is still open, so the
+   * whole dialog behind it is inert and every candidate is rejected.
+   */
+  const rowPicker = (): HTMLElement | null => {
+    const dialog = rowDialog.current;
+    // A row dialog that has itself closed takes its picker with it, and a
+    // detached node is exactly what this exists to avoid handing over.
+    if (dialog === null || !dialog.isConnected) return null;
+    const container = dialog.querySelector<HTMLElement>(
+      `[data-field-path="${VARIABLE_FIELD}"]`,
+    );
+    for (const selector of FOCUS_TARGETS) {
+      const found = container?.querySelector<HTMLElement>(selector);
+      if (found) return found;
+    }
     return null;
-  }
+  };
+
+  /**
+   * Where focus goes when the VALUES or RULES editor closes.
+   *
+   * Its own trigger wherever that trigger is still there, and the row's picker
+   * wherever it is not — because a `finalFocus` naming a detached node leaves
+   * focus on `<body>`, where the next Tab starts at the top of the document
+   * and a screen-reader user is returned to the page rather than to the row
+   * they were in.
+   *
+   * These two are offered by facts about the LIVE codebook and the live lease,
+   * and every one of those can turn false under a researcher who is mid-edit:
+   * a collaborator changing what kind of answer the attribute holds takes the
+   * values button away, deleting it takes both away, and a lease taken back
+   * takes every launch control away while the editor deliberately stays open.
+   * All of that has already happened by the time the editor is closed, which
+   * is what makes "is it still there?" the right question to ask here — and
+   * the wrong one for the create, whose trigger is still on screen at exactly
+   * this moment and gone a render later.
+   */
+  const focusAfterEditor = (
+    trigger: HTMLButtonElement | null,
+  ): HTMLElement | null =>
+    trigger?.isConnected === true ? trigger : rowPicker();
 
   const close = () => {
     setEditing(null);
@@ -283,57 +491,87 @@ export default function AttributeCodebookControls({
   const open = (
     surface: 'create' | 'defines' | 'rules',
     label: MessageDescriptor,
+    describe: MessageDescriptor,
   ) => {
+    // Every control that calls this is offered only while the section is live,
+    // and the check is written out rather than assumed because what it takes
+    // is what the editor goes on reading until it closes.
+    if (subject === undefined || codebookDocument === null) return;
     setEditing({
       openId: uuid(),
       surface,
-      // Resolved as the dialog opens, and kept as the words rather than the
-      // descriptor: the editor takes a title and a description as strings, and
-      // reading the same descriptor twice would say the same thing in a longer
-      // way.
-      label: intl.formatMessage(label),
+      label,
+      describe,
+      name: asString(asRecord(picked).name) ?? chosen,
       variableId: surface === 'create' ? uuid() : chosen,
+      subject,
+      openedDocument: codebookDocument,
       component: pickedComponent,
     });
   };
 
+  /**
+   * The dialog's title, and what the host is told this edit is.
+   *
+   * Two different sentences, which is the point: the title is the words on the
+   * button the researcher pressed, and a host's undo history that repeated
+   * those would read "Change this attribute's values" for every attribute a
+   * researcher has ever changed the values of. The record names the one they
+   * changed.
+   */
+  const editorTitle = editing === null ? '' : intl.formatMessage(editing.label);
+  const editorDescription =
+    editing === null
+      ? ''
+      : intl.formatMessage(editing.describe, { name: editing.name });
+
   return (
     <>
-      {canCreate && (
+      {offerLaunch && canCreate && (
         <p className="mb-3 text-sm text-current/70">
           {intl.formatMessage(messages.createNeedsValues)}
         </p>
       )}
-      <div className="mb-8 flex flex-wrap gap-3">
-        {canCreate && (
+      {/* The container is rendered whether or not it holds anything, because
+          it is what tells `rowPicker` which dialog this row is. */}
+      <div
+        ref={holdRowDialog}
+        className={offerLaunch ? 'mb-8 flex flex-wrap gap-3' : undefined}
+      >
+        {offerLaunch && canCreate && (
           <Button
             ref={createTrigger}
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => open('create', messages.createWithValues)}
+            onClick={() =>
+              open('create', messages.createWithValues, messages.describeCreate)
+            }
           >
             {intl.formatMessage(messages.createWithValues)}
           </Button>
         )}
-        {(canEditValues || canEditAnswers || canEditParameters) && (
-          <Button
-            ref={definesTrigger}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => open('defines', definesLabel)}
-          >
-            {intl.formatMessage(definesLabel)}
-          </Button>
-        )}
-        {canEditRules && (
+        {offerLaunch &&
+          (canEditValues || canEditAnswers || canEditParameters) && (
+            <Button
+              ref={definesTrigger}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => open('defines', definesLabel, definesDescribe)}
+            >
+              {intl.formatMessage(definesLabel)}
+            </Button>
+          )}
+        {offerLaunch && canEditRules && (
           <Button
             ref={rulesTrigger}
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => open('rules', messages.editRules)}
+            onClick={() =>
+              open('rules', messages.editRules, messages.describeRules)
+            }
           >
             {intl.formatMessage(messages.editRules)}
           </Button>
@@ -342,28 +580,50 @@ export default function AttributeCodebookControls({
       {/* Each surface is written out rather than switched inside one dialog:
           which attribute an editor is editing is decided when it OPENS, and a
           shared dialog would hand it whatever the row named by the time it
-          rendered. */}
-      {editing?.surface === 'create' && canCreate && (
+          rendered.
+
+          Only `create` re-checks the guard that offered it, and the asymmetry
+          is deliberate. `canCreate` is a fact about the ROW — it is false the
+          moment the picker names something, which is what the create's own
+          `onComplete` does — so leaving that dialog mounted would leave an
+          editor open over an invention that has already happened. The other
+          two guards are facts about the CODEBOOK, which is live: a
+          collaborator deleting the attribute makes them false under a
+          researcher who is mid-edit, and closing the editor from under them
+          would throw away what they had typed to tell them something the
+          editor beneath already says for itself
+          (`variableValidation.staleAuthoritativeDescription`,
+          `codebookVariable.typeChangedElsewhere`). */}
+      {openEditor?.surface === 'create' && canCreate && (
         <Dialog
           open
-          title={editing.label}
+          title={editorTitle}
           size="readable"
           closeDialog={close}
-          finalFocus={() => createTrigger.current}
+          // The picker outright, rather than the trigger-if-it-is-still-there
+          // rule the other two use. Creating the attribute is what takes this
+          // row out of inventing one, so the button that opened this editor is
+          // gone a render after it closes — and it is still in the document
+          // while focus is being returned, so asking whether it is there gets
+          // the wrong answer and leaves focus on a node about to be detached.
+          // The picker is the control the create just set, and the one thing
+          // on this surface guaranteed to outlive the button.
+          finalFocus={() => rowPicker() ?? createTrigger.current}
         >
           <VariableEditor
             mode="create"
-            openId={editing.openId}
-            subject={subject}
+            openId={openEditor.openId}
+            subject={openEditor.subject}
             protocolContext={protocolContext}
-            authoritativeDocument={codebookDocument}
-            variableId={editing.variableId}
+            authoritativeDocument={openEditor.document}
+            variableId={openEditor.variableId}
             initialDraft={{ name: '', type: inventingType, options: [] }}
             // The kind of answer was chosen in the row behind this, and the
             // whole reason the editor is open is the values that kind needs.
             allowedVariableTypes={[inventingType]}
-            title={editing.label}
-            description={editing.label}
+            readOnly={editorReadOnly}
+            title={editorTitle}
+            description={editorDescription}
             createRequestId={() => uuid()}
             onSubmitRequest={(request) =>
               controller.requestCompoundEdit(request)
@@ -377,20 +637,20 @@ export default function AttributeCodebookControls({
           />
         </Dialog>
       )}
-      {editing?.surface === 'defines' && (
+      {openEditor?.surface === 'defines' && (
         <Dialog
           open
-          title={editing.label}
+          title={editorTitle}
           size="readable"
           closeDialog={close}
-          finalFocus={() => definesTrigger.current}
+          finalFocus={() => focusAfterEditor(definesTrigger.current)}
         >
           <VariableEditor
             mode="update"
-            openId={editing.openId}
-            subject={subject}
-            authoritativeDocument={codebookDocument}
-            variableId={editing.variableId}
+            openId={openEditor.openId}
+            subject={openEditor.subject}
+            authoritativeDocument={openEditor.document}
+            variableId={openEditor.variableId}
             // The control comes from the row rather than from the codebook,
             // because the row is where it was just chosen. The editor writes
             // it alongside the settings that depend on it, so the pair can
@@ -401,19 +661,26 @@ export default function AttributeCodebookControls({
             // false, and reaches this surface for an attribute's VALUES alone,
             // which no control decides.
             initialDraft={{
-              ...asRecord(variables[editing.variableId]),
-              ...(!offerParameters || editing.component === ''
+              ...asRecord(editorVariables[openEditor.variableId]),
+              ...(!offerParameters || openEditor.component === ''
                 ? {}
-                : { component: editing.component }),
+                : { component: openEditor.component }),
             }}
             // The type is what the chosen input control was chosen FOR, so
             // changing it here would leave the field promising a control the
             // interview cannot render for it.
+            //
+            // Read from the ROW, which is where the control was chosen, and so
+            // from the live subject's codebook. The two can only disagree once
+            // the stage has been repointed at another type, and this editor is
+            // read-only from that moment on — so what it offers is always the
+            // type the attribute it is editing actually has.
             allowedVariableTypes={
               isCollectableType(pickedType) ? [pickedType] : undefined
             }
-            title={editing.label}
-            description={editing.label}
+            readOnly={editorReadOnly}
+            title={editorTitle}
+            description={editorDescription}
             createRequestId={() => uuid()}
             onSubmitRequest={(request) =>
               controller.requestCompoundEdit(request)
@@ -422,24 +689,25 @@ export default function AttributeCodebookControls({
           />
         </Dialog>
       )}
-      {editing?.surface === 'rules' && (
+      {openEditor?.surface === 'rules' && (
         <Dialog
           open
-          title={editing.label}
+          title={editorTitle}
           size="readable"
           closeDialog={close}
-          finalFocus={() => rulesTrigger.current}
+          finalFocus={() => focusAfterEditor(rulesTrigger.current)}
         >
           <CodebookVariableValidationEditor
-            openId={editing.openId}
-            subject={subject}
-            variableId={editing.variableId}
-            authoritativeEntityDocument={codebookDocument}
-            allSubjectVariables={variables}
+            openId={openEditor.openId}
+            subject={openEditor.subject}
+            variableId={openEditor.variableId}
+            authoritativeEntityDocument={openEditor.document}
+            allSubjectVariables={editorVariables}
             requestMetadata={{
               createId: () => uuid(),
-              description: editing.label,
+              description: editorDescription,
             }}
+            readOnly={editorReadOnly}
             onSubmitRequest={(request) =>
               controller.requestCompoundEdit(request)
             }

@@ -11,7 +11,9 @@
 # database). Without it, the stack is torn down (volumes included) first, so
 # the run starts from the unconfigured setup wizard.
 #
-# Prints a JSON line with the base URL and health response on success.
+# Prints a JSON line with the base URL, the image id docker reports for the
+# Fresco container, and the health response on success. The image id is what
+# binds a lane to a build: /api/health names no version, on purpose.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -74,5 +76,9 @@ compose up -d --wait --wait-timeout 300 || {
 
 BASE_URL="http://localhost:$FRESCO_PORT"
 HEALTH="$(curl -fsS "$BASE_URL/api/health")"
-printf '{"lane":"%s","project":"%s","baseUrl":"%s","image":"%s","health":%s}\n' \
-  "$LANE" "$PROJECT" "$BASE_URL" "$IMAGE" "$HEALTH"
+# The container's .Image, not what the tag resolves to: the upgrade lane's
+# baseline container is replaced by the swap, so this is the only record of
+# the image the upgrade actually started from.
+IMAGE_ID="$(docker inspect --format '{{.Image}}' "$(compose ps -q fresco)")"
+printf '{"lane":"%s","project":"%s","baseUrl":"%s","image":"%s","imageId":"%s","health":%s}\n' \
+  "$LANE" "$PROJECT" "$BASE_URL" "$IMAGE" "$IMAGE_ID" "$HEALTH"

@@ -60,6 +60,7 @@ import { isStageType } from './stage-types.ts';
 import {
   attributeValidationIssues,
   type AttributedProtocolValidationIssue,
+  type CreatedStagePlacement,
 } from './validationAttribution.ts';
 
 /**
@@ -749,6 +750,22 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * the cancel is about to throw away.
    */
   private settlingResources = false;
+  /**
+   * Whether a release stopped in front of a batch naming a resource that is
+   * neither staged nor in the manifest — bytes the researcher discarded, which
+   * no finish will ever promote and which nothing in the session has yet taken
+   * back.
+   *
+   * The removal is coming: emptying a picker is a researcher change on the
+   * same path, and the section that owns it writes the `unset` into a batch of
+   * its own (`useDiscardStageValues`) — or the researcher's next save flushes
+   * it. Either way it arrives as an ordinary edit, and an ordinary edit is not
+   * something the staged set changes for, so the release has to be asked again
+   * when one is made. Only then: a hold left standing by a finish is waiting
+   * for the NEXT finish to carry it, and re-asking on every edit would hand
+   * that host batches its apply never carried.
+   */
+  private holdAwaitsARemoval = false;
 
   constructor(options: ProtocolBuilderSessionOptions) {
     assertNoIdentityFields(options.fields);
@@ -1238,6 +1255,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         stageIndex: stageIndexForValidation(
           this.snapshot.protocolSections,
           this.snapshot.editedSection.identity.id,
+          this.options.creation,
         ),
         staged: promotion.staged,
         secretHandle: (resourceId) => resources.secretHandle(resourceId),
@@ -1263,6 +1281,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
           this.snapshot.protocolSections,
           this.snapshot.attribution,
           this.snapshot.manifestRevision,
+          this.createdStagePlacement(),
         ),
       );
     }
@@ -1672,8 +1691,14 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       id: this.nextBatchId++,
       commands: Object.freeze([...commands]),
     });
-    const withheld = this.withholdsFromHost(batch, fields);
-    if (withheld) this.withheldFromBatchId ??= batch.id;
+    const hold = this.withholdsFromHost(batch, fields);
+    if (hold !== undefined) {
+      this.withheldFromBatchId ??= batch.id;
+      // Bytes nothing will ever promote: the wait ends on the researcher's
+      // own removal, which arrives as an ordinary edit rather than as a
+      // change to the staged set. See `holdAwaitsARemoval`.
+      if (hold === 'removal') this.holdAwaitsARemoval = true;
+    }
     this.replaceSnapshot({
       fields,
       pendingCommands: [...this.snapshot.pendingCommands, batch],
@@ -1687,7 +1712,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     // draft before this edit. The host's own failure still reaches the caller,
     // because nothing here can resend a batch the host would not take.
     try {
-      if (!withheld) this.options.onCommands?.(batch);
+      // The edit the last release stopped for: see `holdAwaitsARemoval`.
+      if (hold === undefined) this.options.onCommands?.(batch);
+      else if (this.holdAwaitsARemoval) this.reconsiderWithheldCommands();
     } finally {
       void this.runValidation();
     }
@@ -2130,65 +2157,133 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
   }
 
   /**
-   * Whether a batch has to wait for finish: it puts a resource this session
-   * has staged into one of the fields it touches, and that resource's manifest
-   * entry does not exist until the finish promotion writes it.
+   * Why a batch has to wait, if it does.
+   *
+   * Two things make it wait, and they end differently:
+   *
+   * - **`finish`** — it puts a resource this session has staged into one of
+   *   the fields it touches, and that resource's manifest entry does not exist
+   *   until the finish promotion writes it.
+   * - **`removal`** — it would leave the host holding a reference to bytes
+   *   this session DISCARDED. No finish will ever promote those, so waiting
+   *   for one would hold the session's work back for good; what it waits for
+   *   is the researcher taking the reference back, which arrives as an
+   *   ordinary edit (see {@link reconsiderWithheldCommands}).
    *
    * The fields are read for references the way validation reads them — from
    * the schema's own `assetReference` tags — so a stage type that gains a
    * resource field is covered as soon as its schema is tagged, and nothing
    * here has to know which field of which stage holds an asset id.
    *
-   * A batch is judged on what it TOUCHES, which is why the editor's own rule
-   * matters here: an edit made BECAUSE a staged resource was chosen has to
-   * carry that choice, or the session sees only the consequence — a capability
-   * cleared because the data file changed, naming no resource at all — and
-   * lets it go while the file that explains it stays behind
+   * The first question is asked of what the batch TOUCHES, which is why the
+   * editor's own rule matters here: an edit made BECAUSE a staged resource was
+   * chosen has to carry that choice, or the session sees only the consequence
+   * — a capability cleared because the data file changed, naming no resource
+   * at all — and lets it go while the file that explains it stays behind
    * (`useDiscardStageValues`). Everything after such a batch is covered
-   * already, because the hold below is a suffix rather than a judgement of
-   * each batch in turn.
+   * already, because the hold is a suffix rather than a judgement of each
+   * batch in turn.
+   *
+   * The second is asked of the whole draft, because that is what the host
+   * would be left holding — and it is asked of every edit, not only of the one
+   * that chose the file. **The undo history is not a second account of what
+   * this session may send.** An undo entry is a whole draft, and one made
+   * before a discard still names the bytes it chose; restoring it is an
+   * ordinary edit, and so is a row rewritten beside a reference the discard
+   * left standing. Retiring those entries instead would take the researcher's
+   * own work away over a file they threw out — the history is cut only for a
+   * stage carrying something this session did not put there
+   * ({@link isOwnAcknowledgedStage}), and a discard is the researcher's own
+   * act.
    */
   private withholdsFromHost(
     batch: PendingCommandBatch,
     fields: StageFormDraft,
-  ): boolean {
+  ): HostHold | undefined {
     // Once one batch is held, everything after it is held too: releasing them
     // out of order would let an acknowledgement of a later batch drop an
     // earlier one the host never saw.
-    if (this.withheldFromBatchId !== undefined) return true;
+    if (this.withheldFromBatchId !== undefined) return 'held';
+    const stage = stageDocument(this.snapshot.editedSection.identity, fields);
     const staged = this.resources?.staged() ?? NO_STAGED_RESOURCES;
-    if (staged.length === 0) return false;
-    return batchNamesAStagedResource(
-      batch,
-      stageDocument(this.snapshot.editedSection.identity, fields),
-      new Set(staged.map((descriptor) => descriptor.id)),
-    );
+    if (
+      batchNamesAStagedResource(
+        batch,
+        stage,
+        new Set(staged.map((descriptor) => descriptor.id)),
+      )
+    ) {
+      return 'finish';
+    }
+    // Asked only where this session has let bytes go, which is the one thing
+    // it does that can make a reference unresolvable: a picker offers what the
+    // manifest and the staged set hold, and a reference the base already
+    // carries is the host's own. The question walks the protocol schema, and
+    // an ordinary session never reaches it.
+    if ((this.resources?.discarded().size ?? 0) === 0) return undefined;
+    return this.introducesAnUnresolvableReference(stage)
+      ? 'removal'
+      : undefined;
   }
 
   /**
-   * Re-decides the hold against the staged set as it is NOW.
+   * Whether `stage` names bytes a host given it could not resolve and the BASE
+   * does not name already.
+   *
+   * The one question the hold is taken and let go by, so a batch cannot be
+   * held for one reason and released for another. Its carve-out is the reason
+   * it is asked against the base: a stage the protocol already holds can name
+   * a resource the manifest does not — a collaborator deleted it — and the
+   * host is holding that stage already, so refusing to send over it would
+   * starve the session for the rest of its life over something it did not do.
+   */
+  private introducesAnUnresolvableReference(stage: SectionDoc): boolean {
+    const introduced = this.unresolvableReferences(stage);
+    if (introduced.size === 0) return false;
+    const settled = this.unresolvableReferences(
+      stageDocument(this.snapshot.editedSection.identity, this.baseFields),
+    );
+    return [...introduced].some((resourceId) => !settled.has(resourceId));
+  }
+
+  /**
+   * Re-decides the hold against the resources as they are NOW.
    *
    * The hold exists because a batch names bytes only a finish can commit. Once
    * the researcher discards the file, that is no longer true of any batch: the
    * resource is gone from the session, no finish will ever promote it, and
-   * going on holding everything back would leave a live-applying host with
-   * nothing for the rest of the session — and every compound edit refused with
-   * `pending-commands`, because a hold is what that refusal reads.
+   * going on holding everything back for ever would leave a live-applying host
+   * with nothing for the rest of the session — and every compound edit refused
+   * with `pending-commands`, because a hold is what that refusal reads.
    *
    * So the withheld run is walked in the order it was made and each batch is
    * asked the question it was first asked, against the current staged set. A
-   * batch that names none of what is still staged is given to the host; the
-   * first that does takes the hold, and everything behind it keeps waiting —
-   * the hold stays a suffix, so a host still only ever holds a prefix of this
-   * session's batches.
+   * batch that names something still staged takes the hold, and everything
+   * behind it keeps waiting — the hold stays a suffix, so a host still only
+   * ever holds a prefix of this session's batches.
    *
-   * The batch that chose the discarded file is released with the rest, still
-   * naming it. It is superseded rather than corrected: emptying the picker is a
-   * researcher change on the same path, so the reset that follows it writes the
-   * `unset` into the very next batch (`useDiscardStageValues`), and the host is
-   * given the researcher's own two edits in the order they made them. Rewriting
-   * a batch the researcher made is not this session's to do, and holding it for
-   * ever is the defect being fixed.
+   * **What is released has to leave the host holding a stage it can resolve.**
+   * That is the second question, and it is asked of the DRAFT the release ends
+   * at rather than of each batch in turn: the researcher's own two edits — the
+   * file, then the removal that supersedes it — travel together, and the host
+   * is given them in the order they were made, which is what the release
+   * always intended. What it may not do is send the first without the second.
+   * Delivery is not evidence: a batch handed to `onCommands` is the host's, and
+   * there is no taking it back — so releasing a reference to bytes that will
+   * never exist on the strength of a correction nobody has made yet leaves the
+   * host holding a dangling reference for good, or refusing that batch and
+   * every one after it. Emptying the picker is a FORM change, and no batch says
+   * so until the researcher's next save.
+   *
+   * So the longest prefix of the withheld run that ends in a stage naming
+   * nothing unresolvable is released, and the rest keeps waiting — for the
+   * finish, which carries the whole run and the manifest in one apply, and
+   * which is also where the researcher's own removal arrives, because an
+   * ordinary field reaches the session on the save that flushes it. A
+   * reference the BASE already could not resolve is not this session's doing
+   * and does not hold anything back: the host is holding that stage already.
+   *
+   * Rewriting a batch the researcher made is still not this session's to do.
    *
    * The hold is moved before each send and cleared after it, so a host that
    * throws leaves the session holding exactly what it did not receive.
@@ -2204,7 +2299,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
 
     const identity = this.snapshot.editedSection.identity;
     let document = cloneDoc(this.baseFields);
-    const releasing: PendingCommandBatch[] = [];
+    const candidates: PendingCommandBatch[] = [];
+    /** How many of `candidates` end in a stage the host could resolve. */
+    let releasable = 0;
     let heldFrom: number | undefined;
     for (const batch of this.snapshot.pendingCommands) {
       try {
@@ -2216,25 +2313,54 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         return;
       }
       if (batch.id < withheldFrom) continue;
-      if (
-        batchNamesAStagedResource(
-          batch,
-          stageDocument(identity, document),
-          stagedIds,
-        )
-      ) {
+      const stage = stageDocument(identity, document);
+      if (batchNamesAStagedResource(batch, stage, stagedIds)) {
         heldFrom = batch.id;
         break;
       }
-      releasing.push(batch);
+      candidates.push(batch);
+      if (!this.introducesAnUnresolvableReference(stage)) {
+        releasable = candidates.length;
+      }
     }
+    // Whether anything is waiting on a removal, whether or not this run could
+    // release anything else.
+    this.holdAwaitsARemoval = releasable < candidates.length;
+    const releasing = candidates.slice(0, releasable);
     if (releasing.length === 0) return;
 
     for (const batch of releasing) {
       this.withheldFromBatchId = batch.id;
       this.options.onCommands?.(batch);
     }
-    this.withheldFromBatchId = heldFrom;
+    // The first batch NOT released, which is either the one that named
+    // something still staged or the one the release stopped in front of.
+    this.withheldFromBatchId = candidates[releasable]?.id ?? heldFrom;
+  }
+
+  /**
+   * The resources `stage` names that a host given it could not resolve.
+   *
+   * Read the way validation reads them — from the schema's own
+   * `assetReference` tags — against the two things that make a reference
+   * resolvable: the authoritative manifest, and what this session has staged or
+   * has just promoted and not yet seen come back. An id that is neither is one
+   * a finish would have to promote, and after a discard there is no such
+   * finish: the reference can only ever dangle.
+   */
+  private unresolvableReferences(stage: SectionDoc): ReadonlySet<string> {
+    const manifest =
+      this.snapshot.protocolSections[sectionId({ kind: 'assets' })] ?? {};
+    const resolvable = new Set(
+      this.resolvableResources().map((descriptor) => descriptor.id),
+    );
+    const unresolvable = new Set<string>();
+    for (const reference of collectStageResourceReferences(stage)) {
+      if (resolvable.has(reference.resourceId)) continue;
+      if (Object.hasOwn(manifest, reference.resourceId)) continue;
+      unresolvable.add(reference.resourceId);
+    }
+    return unresolvable;
   }
 
   /**
@@ -2294,6 +2420,22 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     }
   }
 
+  /**
+   * Where this session's stage sits in the protocol its draft is judged
+   * against, for a stage that does not exist yet.
+   *
+   * `undefined` for an ordinary edit, which the authoritative stage order
+   * already lists. See {@link CreatedStagePlacement}.
+   */
+  private createdStagePlacement(): CreatedStagePlacement | undefined {
+    const creation = this.options.creation;
+    if (creation === undefined) return undefined;
+    return {
+      stageId: this.snapshot.editedSection.identity.id,
+      position: creation.position,
+    };
+  }
+
   private async runValidation(): Promise<ProtocolBuilderValidation> {
     const version = ++this.validationVersion;
     const draft = stageDocument(
@@ -2308,6 +2450,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       stageIndex: stageIndexForValidation(
         this.snapshot.protocolSections,
         this.snapshot.editedSection.identity.id,
+        this.options.creation,
       ),
     });
     const candidate = this.options.buildCandidate({
@@ -2342,6 +2485,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         this.snapshot.protocolSections,
         this.snapshot.attribution,
         this.snapshot.manifestRevision,
+        this.createdStagePlacement(),
       ),
     });
     this.replaceSnapshot({ validation, validatedProtocol: null });
@@ -2504,6 +2648,13 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
 }
 
 const NO_STAGED_RESOURCES: readonly ResourceDescriptor[] = Object.freeze([]);
+
+/**
+ * What a batch this session cannot hand over yet is waiting for: see
+ * {@link ProtocolBuilderSessionStore.withholdsFromHost}. `held` is a batch
+ * behind one of the other two.
+ */
+type HostHold = 'finish' | 'removal' | 'held';
 
 /**
  * Whether this batch puts a resource from `stagedIds` into the stage.

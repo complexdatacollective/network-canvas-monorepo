@@ -1,12 +1,12 @@
 import { safe } from '@orpc/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../db/seed.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 import { signInWithMagicLink, stubAuthService } from './support/auth.ts';
+import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,
@@ -115,6 +115,7 @@ describe('principal resolution', () => {
 
 describe('unconfigured auth', () => {
   const env: StudioEnv = {
+    role: 'both',
     telemetry: false,
     port: 3000,
     metricsToken: undefined,
@@ -123,10 +124,13 @@ describe('unconfigured auth', () => {
     clientDist: undefined,
     s3: undefined,
     db: undefined,
+    maintenanceDb: undefined,
     auth: undefined,
     devDefaults: false,
     deploymentMode: 'self-hosted',
     seedAdminPassword: undefined,
+    databaseAllowedLogins: undefined,
+    databaseAdministrativeLogins: [],
   };
 
   it('refuses /api/auth with 503 problem JSON', async () => {
