@@ -111,14 +111,49 @@ describe('composing the registry from family parts', () => {
   /**
    * A key present but holding nothing claims nothing, which is the same
    * reading `missingStageEditors` takes of the composed registry.
+   *
+   * Asked in BOTH orders, because they used to disagree. The scan for
+   * duplicates skips an empty entry, so neither order was refused — but the
+   * composition was an `Object.assign` per part, which copies an explicit
+   * `undefined` like any other value. A part carrying an empty entry AFTER the
+   * family that owns the interface therefore erased that family's editor, and
+   * left the key present with nothing under it: the one state that renders as
+   * `UnregisteredStageTypeError` while `AWAITING_STAGE_EDITORS` and every
+   * claim test still say the interface has an editor.
    */
-  it('does not count an entry a part left empty as a claim', () => {
+  it.each([
+    {
+      order: 'before',
+      parts: [{ Information: undefined }, { Information: InformationEditor }],
+    },
+    {
+      order: 'after',
+      parts: [{ Information: InformationEditor }, { Information: undefined }],
+    },
+  ])(
+    'does not count an empty entry $order the family as a claim',
+    ({ parts }) => {
+      const registry = composeStageEditorRegistry(...parts);
+
+      expect(registry.Information).toBe(InformationEditor);
+      expect(missingStageEditors(registry)).not.toContain('Information');
+      expect(Object.hasOwn(registry, 'Information')).toBe(true);
+    },
+  );
+
+  /**
+   * The same reading, for a key NO part filled in: it stays off the composed
+   * registry altogether rather than sitting on it holding nothing, so
+   * `missingStageEditors` and `Object.keys` tell the same story.
+   */
+  it('leaves an entry every part left empty off the registry', () => {
     const registry = composeStageEditorRegistry(
       { Information: undefined },
-      { Information: InformationEditor },
+      { EgoForm: EgoFormEditor },
     );
 
-    expect(registry.Information).toBe(InformationEditor);
+    expect(Object.keys(registry)).toEqual(['EgoForm']);
+    expect(missingStageEditors(registry)).toContain('Information');
   });
 });
 
@@ -278,12 +313,17 @@ describe('dispatching to a named editor', () => {
       .mockImplementation(() => undefined);
 
     try {
+      // `Information` will not do here once a family lands: an explicit `{}`
+      // is merged OVER the package's own registry rather than replacing it,
+      // so an interface a landed family already claims stays claimed no
+      // matter what a host passes. `sociogram-1` is still awaiting its
+      // family, so nothing — package or host — has claimed it.
       expect(() =>
-        renderStageEditor({ stageId: 'information-1', registry: {} }),
+        renderStageEditor({ stageId: 'sociogram-1', registry: {} }),
       ).toThrow(UnregisteredStageTypeError);
       expect(() =>
-        renderStageEditor({ stageId: 'information-1', registry: {} }),
-      ).toThrow(/"Information" interface/);
+        renderStageEditor({ stageId: 'sociogram-1', registry: {} }),
+      ).toThrow(/"Sociogram" interface/);
     } finally {
       consoleError.mockRestore();
     }
@@ -330,8 +370,11 @@ describe('dispatching to a named editor', () => {
       registry: { Information: ChromeEditor },
       actions: ({ formId, readOnly }) => `chrome for ${formId}, ${readOnly}`,
     });
+    // The id is this harness's own — one per mounted harness, so that two
+    // forms never answer to the same one — and it is what the host is handed,
+    // so it is read off the harness rather than written down here.
     expect(
-      withChrome.getByText('chrome for stage-form, false'),
+      withChrome.getByText(`chrome for ${withChrome.formId}, false`),
     ).toBeInTheDocument();
   });
 
@@ -343,7 +386,9 @@ describe('dispatching to a named editor', () => {
       actions: ({ formId }) => `chrome for ${formId}`,
     });
 
-    expect(harness.getByText('chrome for stage-form')).toBeInTheDocument();
+    expect(
+      harness.getByText(`chrome for ${harness.formId}`),
+    ).toBeInTheDocument();
   });
 
   /**
