@@ -1220,13 +1220,20 @@ function draftWithOwnedBlocks(
     if (parameters === undefined) delete next.parameters;
     else next.parameters = parameters;
   }
-  // A choice list is passed through as authored, so an unauthored one still
+  // Asked of every shape, the one that holds no list included — the same rule
+  // `draftOwnedByVariableEditor` follows. A control that shows no answers has
+  // to write the attribute without them: a create draft reaches this editor
+  // from the row that authored it, so a boolean moved from `Boolean` to
+  // `Toggle` arrives still carrying the pair, and the toggle's strict schema
+  // has no `options` key to put it under. Left in, the request is refused
+  // against a list the editor renders no fields for, so there is nothing to
+  // clear it with and the attribute can never be created at all.
+  //
+  // A choice list is still passed through as authored, so an unauthored one
   // reaches the request builder to be refused there — see `optionsForShape`.
-  if (optionsShape === 'boolean') {
-    const options = optionsForShape(optionsShape, draft.options, storedOptions);
-    if (options === undefined) delete next.options;
-    else next.options = options;
-  }
+  const options = optionsForShape(optionsShape, draft.options, storedOptions);
+  if (options === undefined) delete next.options;
+  else next.options = options;
   return next;
 }
 
