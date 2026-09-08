@@ -20,6 +20,7 @@ import {
   EncryptionStartupError,
   initializeCredentialMigration,
   initializeEncryption,
+  resumeEncryptionMaintenance,
 } from '../initialize.ts';
 import {
   CLASSIFIED_LEGACY_CONTACT_INDEX_ID,
@@ -41,6 +42,7 @@ const migrations = await readMigrations(
 async function expectOpaqueCursorFailure(
   work: () => Promise<unknown>,
   forbidden: readonly string[],
+  expected = 'ProtectedDataError: Stored encrypted data could not be read.',
 ) {
   let failure: unknown;
   try {
@@ -50,9 +52,7 @@ async function expectOpaqueCursorFailure(
   }
   expect(failure).toBeInstanceOf(Error);
   const rendered = String(failure);
-  expect(rendered).toBe(
-    'ProtectedDataError: Stored encrypted data could not be read.',
-  );
+  expect(rendered).toBe(expected);
   for (const value of forbidden) expect(rendered).not.toContain(value);
 }
 
@@ -162,6 +162,85 @@ async function createLegacyNoContactUpgrade(
       teamId,
       studyId,
     };
+  } catch (error) {
+    await maintenance.end();
+    await scratch.dispose();
+    throw error;
+  }
+}
+
+async function createLegacyWebhookUpgrade(
+  options: { corruptCiphertext?: boolean } = {},
+) {
+  if (!database) throw new Error('A local database is required.');
+  const scratch = await createScratchDatabase(database);
+  const maintenance = createMaintenancePool(scratch.db);
+  try {
+    const allowedLogins = await enrollMigrationTestDatabase(
+      scratch.pool,
+      database,
+    );
+    const initial = migrations[0];
+    if (!initial) throw new Error('Initial migration missing.');
+    await migrateDatabase(
+      scratch.pool,
+      [initial],
+      initial.manifest.fingerprint,
+      allowedLogins,
+    );
+    const teamId = randomUUID();
+    const userId = randomUUID();
+    const webhookId = randomUUID();
+    const config = configuration();
+    const keys = await loadTestKeys(config);
+    const protection = createDataProtection(keys, {
+      participant: async (_target, read) => {
+        read();
+      },
+      integration: async (_target, read) => {
+        read();
+      },
+    });
+    const plaintext = Buffer.from('legacy-webhook-secret');
+    const envelope = protection.encryptIntegration(
+      {
+        kind: 'webhook',
+        teamId,
+        subscriptionId: webhookId,
+        column: 'secret_ciphertext',
+      },
+      plaintext,
+    ).envelope;
+    config.integration.current = 'v2';
+    await scratch.pool.query(
+      `INSERT INTO "user" (id, name, email, "emailVerified")
+       VALUES ($1, 'Legacy webhook owner', $2, true)`,
+      [userId, `${userId}@example.invalid`],
+    );
+    await scratch.pool.query(
+      "INSERT INTO teams (id, name, slug) VALUES ($1, 'Legacy team', $1)",
+      [teamId],
+    );
+    await scratch.pool.query(
+      `INSERT INTO webhook_subscriptions
+        (id, team_id, url, event_types, secret_ciphertext, secret_key_id,
+         created_by_user_id)
+       VALUES ($1, $2, 'https://hooks.example.invalid/legacy',
+         ARRAY['interview.completed'], $3, 'v1', $4)`,
+      [
+        webhookId,
+        teamId,
+        options.corruptCiphertext ? randomBytes(envelope.length) : envelope,
+        userId,
+      ],
+    );
+    await migrateDatabase(
+      scratch.pool,
+      migrations,
+      SCHEMA_FINGERPRINT,
+      allowedLogins,
+    );
+    return { scratch, maintenance, config, webhookId, plaintext };
   } catch (error) {
     await maintenance.end();
     await scratch.dispose();
@@ -809,6 +888,144 @@ it.each([
   },
 );
 
+it('authenticates and reseals a migration0001 webhook before proving its historical key', async () => {
+  const fixture = await createLegacyWebhookUpgrade();
+  try {
+    const input = {
+      maintenancePool: fixture.maintenance,
+      configuration: fixture.config,
+      loadRootKey: async (reference: string) =>
+        reference === 'TEST_ROOT_ONE' ? rootOne : Buffer.alloc(32, 93),
+    };
+    const keys = await initializeCredentialMigration(input);
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          `SELECT count(*)::int AS count FROM encryption_key_verifications
+           WHERE purpose = 'integration-enc' AND key_id = 'v1'`,
+        )
+      ).rows,
+    ).toEqual([{ count: 0 }]);
+    await expect(
+      migrateLegacyDataBatch(fixture.maintenance, fixture.scratch.pool, keys, {
+        limit: 100,
+      }),
+    ).resolves.toEqual({
+      processed: 1,
+      scanned: 1,
+      afterId: null,
+      passComplete: true,
+    });
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          `SELECT purpose, key_id FROM encryption_key_verifications
+           WHERE purpose = 'integration-enc' AND key_id = 'v1'`,
+        )
+      ).rows,
+    ).toEqual([{ purpose: 'integration-enc', key_id: 'v1' }]);
+    await expect(initializeEncryption(input)).resolves.toBeDefined();
+    const row = await fixture.scratch.pool.query<{
+      secret_ciphertext: Buffer;
+      secret_key_id: string;
+      secret_algorithm: string;
+    }>(
+      `SELECT secret_ciphertext, secret_key_id, secret_algorithm
+       FROM webhook_subscriptions WHERE id = $1`,
+      [fixture.webhookId],
+    );
+    expect(row.rows[0]?.secret_key_id).toBe('v2');
+    const protection = createDataProtection(keys, {
+      participant: async (_target, reveal) => {
+        reveal();
+      },
+      integration: async (_target, reveal) => {
+        reveal();
+      },
+    });
+    await expect(
+      protection.readIntegration(
+        {
+          kind: 'webhook',
+          teamId: (
+            await fixture.scratch.pool.query<{ team_id: string }>(
+              'SELECT team_id FROM webhook_subscriptions WHERE id = $1',
+              [fixture.webhookId],
+            )
+          ).rows[0]!.team_id,
+          subscriptionId: fixture.webhookId,
+          column: 'secret_ciphertext',
+        },
+        {
+          envelope: row.rows[0]!.secret_ciphertext,
+          keyId: row.rows[0]!.secret_key_id,
+          algorithm: row.rows[0]!.secret_algorithm,
+        },
+      ),
+    ).resolves.toEqual(fixture.plaintext);
+  } finally {
+    await fixture.maintenance.end();
+    await fixture.scratch.dispose();
+  }
+});
+
+it.each([
+  ['corrupt ciphertext', true, rootOne],
+  ['wrong historical root', false, Buffer.alloc(32, 18)],
+] as const)(
+  'does not prove or replace a migration0001 webhook with %s',
+  async (_case, corruptCiphertext, historicalRoot) => {
+    const fixture = await createLegacyWebhookUpgrade({ corruptCiphertext });
+    try {
+      const keys = await initializeCredentialMigration({
+        maintenancePool: fixture.maintenance,
+        configuration: fixture.config,
+        loadRootKey: async (reference) =>
+          reference === 'TEST_ROOT_ONE'
+            ? Buffer.from(historicalRoot)
+            : Buffer.alloc(32, 93),
+      });
+      await expect(
+        migrateLegacyDataBatch(
+          fixture.maintenance,
+          fixture.scratch.pool,
+          keys,
+          { limit: 100 },
+        ),
+      ).rejects.toThrow('Stored encrypted data could not be read');
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            `SELECT count(*)::int AS count FROM encryption_key_verifications
+             WHERE purpose = 'integration-enc' AND key_id = 'v1'`,
+          )
+        ).rows,
+      ).toEqual([{ count: 0 }]);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            `SELECT secret_key_id, count(*)::int AS count
+             FROM webhook_subscriptions WHERE id = $1 GROUP BY secret_key_id`,
+            [fixture.webhookId],
+          )
+        ).rows,
+      ).toEqual([{ secret_key_id: 'v1', count: 1 }]);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            `SELECT count(*)::int AS count FROM audit_events
+             WHERE resource_id = $1 AND event_type = 'webhook.secret.rotated'`,
+            [fixture.webhookId],
+          )
+        ).rows,
+      ).toEqual([{ count: 0 }]);
+    } finally {
+      await fixture.maintenance.end();
+      await fixture.scratch.dispose();
+    }
+  },
+);
+
 it('refuses a no-contact participant changed after its authenticated read', async () => {
   const fixture = await createLegacyNoContactUpgrade();
   try {
@@ -854,6 +1071,174 @@ it('refuses a no-contact participant changed after its authenticated read', asyn
         )
       ).rows,
     ).toEqual([{ pii_key_id: 'v1', blind_index_key_id: null }]);
+  } finally {
+    await fixture.maintenance.end();
+    await fixture.scratch.dispose();
+  }
+});
+
+it('resumes a cursor-bound legacy pass while later historical participant keys remain unproved', async () => {
+  const fixture = await createLegacyNoContactUpgrade();
+  try {
+    const laterParticipantId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+    const sourceKeys = await loadTestKeys(fixture.config);
+    const source = createDataProtection(sourceKeys, {
+      participant: async (_target, reveal) => {
+        reveal();
+      },
+      integration: async (_target, reveal) => {
+        reveal();
+      },
+    });
+    const envelope = source.encryptParticipant(
+      {
+        teamId: fixture.teamId,
+        studyId: fixture.studyId,
+        participantId: laterParticipantId,
+        column: 'name_ciphertext',
+      },
+      Buffer.from('later historical key'),
+      'same-root-new-id',
+    ).envelope;
+    await insertRestoredRow(
+      fixture.scratch.pool,
+      `INSERT INTO participants
+        (id, team_id, study_id, participant_code, name_ciphertext,
+         pii_key_id, pii_algorithm)
+       VALUES ($1, $2, $3, 'P-later-key', $4, 'same-root-new-id',
+         'aes-256-gcm.v1')`,
+      [laterParticipantId, fixture.teamId, fixture.studyId, envelope],
+    );
+    const input = {
+      maintenancePool: fixture.maintenance,
+      configuration: fixture.config,
+      loadRootKey: async (reference: string) =>
+        reference === 'TEST_ROOT_ONE' ? rootOne : Buffer.alloc(32, 93),
+    };
+    const keys = await initializeCredentialMigration(input);
+    const first = await migrateLegacyDataBatch(
+      fixture.maintenance,
+      fixture.scratch.pool,
+      keys,
+      { limit: 1 },
+    );
+    expect(first).toMatchObject({
+      processed: 1,
+      scanned: 1,
+      passComplete: false,
+    });
+    if (first.afterId === null) throw new Error('Expected legacy cursor.');
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          `SELECT key_id FROM encryption_key_verifications
+           WHERE purpose = 'pii-enc' ORDER BY key_id`,
+        )
+      ).rows,
+    ).not.toContainEqual({ key_id: 'same-root-new-id' });
+    const resumedKeys = await resumeEncryptionMaintenance(input, first.afterId);
+    const second = await migrateLegacyDataBatch(
+      fixture.maintenance,
+      fixture.scratch.pool,
+      resumedKeys,
+      { limit: 1, afterId: first.afterId },
+    );
+    expect(second).toMatchObject({
+      processed: 1,
+      scanned: 1,
+      passComplete: false,
+    });
+    await expect(
+      resumeEncryptionMaintenance(input, first.afterId),
+    ).resolves.toBeDefined();
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          `SELECT key_id FROM encryption_key_verifications
+           WHERE purpose = 'pii-enc' AND key_id IN ('v1', 'same-root-new-id')
+           ORDER BY key_id`,
+        )
+      ).rows,
+    ).toEqual([{ key_id: 'same-root-new-id' }, { key_id: 'v1' }]);
+  } finally {
+    await fixture.maintenance.end();
+    await fixture.scratch.dispose();
+  }
+});
+
+it('rejects a cursor when a new unproved historical key reference appears after its page', async () => {
+  const fixture = await createLegacyNoContactUpgrade();
+  try {
+    const input = {
+      maintenancePool: fixture.maintenance,
+      configuration: fixture.config,
+      loadRootKey: async (reference: string) =>
+        reference === 'TEST_ROOT_ONE' ? rootOne : Buffer.alloc(32, 93),
+    };
+    const keys = await initializeCredentialMigration(input);
+    const first = await migrateLegacyDataBatch(
+      fixture.maintenance,
+      fixture.scratch.pool,
+      keys,
+      { limit: 1 },
+    );
+    if (first.afterId === null) throw new Error('Expected legacy cursor.');
+
+    const changedConfig = structuredClone(fixture.config);
+    changedConfig.pii.keys.push({ id: 'late-v3', rootId: 'root-1' });
+    const changedKeys = await loadTestKeys(changedConfig);
+    const lateParticipantId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+    const protection = createDataProtection(changedKeys, {
+      participant: async (_target, reveal) => {
+        reveal();
+      },
+      integration: async (_target, reveal) => {
+        reveal();
+      },
+    });
+    const envelope = protection.encryptParticipant(
+      {
+        teamId: fixture.teamId,
+        studyId: fixture.studyId,
+        participantId: lateParticipantId,
+        column: 'name_ciphertext',
+      },
+      Buffer.from('late unproved key'),
+      'late-v3',
+    ).envelope;
+    await insertRestoredRow(
+      fixture.scratch.pool,
+      `INSERT INTO participants
+        (id, team_id, study_id, participant_code, name_ciphertext,
+         pii_key_id, pii_algorithm)
+       VALUES ($1, $2, $3, 'P-late-key', $4, 'late-v3', 'aes-256-gcm.v1')`,
+      [lateParticipantId, fixture.teamId, fixture.studyId, envelope],
+    );
+    await expectOpaqueCursorFailure(
+      () =>
+        resumeEncryptionMaintenance(
+          { ...input, configuration: changedConfig },
+          first.afterId!,
+        ),
+      [first.afterId, 'late-v3'],
+      'EncryptionStartupError: Encryption key verification failed. Restore the matching keyset or complete the offline credential migration before starting Studio.',
+    );
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          `SELECT pii_key_id FROM participants WHERE id = $1`,
+          [lateParticipantId],
+        )
+      ).rows,
+    ).toEqual([{ pii_key_id: 'late-v3' }]);
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          `SELECT count(*)::int AS count FROM encryption_key_verifications
+           WHERE purpose = 'pii-enc' AND key_id = 'late-v3'`,
+        )
+      ).rows,
+    ).toEqual([{ count: 0 }]);
   } finally {
     await fixture.maintenance.end();
     await fixture.scratch.dispose();

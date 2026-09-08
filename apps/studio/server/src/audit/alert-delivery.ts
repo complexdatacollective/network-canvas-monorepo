@@ -242,8 +242,10 @@ export class AuditAlertDeliveryAdapter implements OutboxAdapter<ClaimedAuditAler
   }
 
   async deliver(claim: ClaimedAuditAlert): Promise<void | 'suppressed'> {
-    const client = await this.pool.connect();
+    let client: pg.PoolClient | undefined;
+    let handedOff = false;
     try {
+      client = await this.pool.connect();
       await client.query('BEGIN');
       await client.query(`SELECT set_config($1, $2, true)`, [
         TEAM_GUC,
@@ -260,14 +262,9 @@ export class AuditAlertDeliveryAdapter implements OutboxAdapter<ClaimedAuditAler
       const policy = AuditAlertPolicySchema.safeParse(claim.policy);
       if (!event.rows[0] || !policy.success) return 'suppressed';
       if (claim.channel === 'email') {
-        const handoff = await this.pool.query(
-          `UPDATE audit_alert_deliveries SET send_started_at = clock_timestamp() WHERE id = $1 AND lease_owner = $2 AND ${PENDING} AND send_started_at IS NULL AND lease_expires_at > clock_timestamp()`,
-          [claim.id, claim.leaseOwner],
-        );
-        if (handoff.rowCount !== 1) return 'suppressed';
         const mailer = this.options.mailer;
         if (!mailer) throw new EmailDeliveryError('retryable');
-        await mailer.sendAuditAlert({
+        const message = {
           email,
           policy: policy.data,
           occurredAt: event.rows[0].occurred_at,
@@ -276,12 +273,25 @@ export class AuditAlertDeliveryAdapter implements OutboxAdapter<ClaimedAuditAler
             this.options.publicBaseUrl,
           ).href,
           messageId: `<audit-alert-${claim.id}@studio.networkcanvas.com>`,
-        });
+        };
+        const handoff = await this.pool.query(
+          `UPDATE audit_alert_deliveries SET send_started_at = clock_timestamp() WHERE id = $1 AND lease_owner = $2 AND ${PENDING} AND send_started_at IS NULL AND lease_expires_at > clock_timestamp()`,
+          [claim.id, claim.leaseOwner],
+        );
+        if (handoff.rowCount !== 1) return 'suppressed';
+        handedOff = true;
+        await mailer.sendAuditAlert(message);
       }
       await client.query('COMMIT');
+    } catch (error) {
+      // Before external handoff, even a lost connection or uncertain database
+      // COMMIT cannot have sent an email. In-app delivery only validates here;
+      // its durable completion is an idempotent update of the existing row.
+      if (error instanceof EmailDeliveryError) throw error;
+      throw new EmailDeliveryError(handedOff ? 'uncertain' : 'retryable');
     } finally {
-      await client.query('ROLLBACK').catch(() => undefined);
-      client.release();
+      await client?.query('ROLLBACK').catch(() => undefined);
+      client?.release();
     }
   }
 

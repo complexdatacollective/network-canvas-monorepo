@@ -181,6 +181,15 @@ docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgr
   -c 'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN;'
 docker compose -f docker-compose.yml -f deployment/migrate.yml \
   run --rm --no-deps studio migrate
+# Releases that report legacy protected data must now run the bounded converter
+# with its separate owner/operator environment while all services remain stopped.
+# Copy each non-null afterId exactly; omit --after-id only on the first call.
+docker run --rm --network YOUR_DEPLOYMENT_NETWORK \
+  --env-file /secure/path/studio-encryption-operator.env \
+  "$STUDIO_IMAGE" encryption migrate-legacy --limit 100
+# Repeat the command with: --after-id 'COPIED_AFTER_ID'
+# Stop only after passComplete is true AND afterId is null. processed:0 and a
+# null cursor do not independently prove exhaustion. Then run full verification.
 docker compose -f docker-compose.yml -f deployment/encryption.yml \
   run --rm --no-deps encryption-verify
 docker compose up -d studio

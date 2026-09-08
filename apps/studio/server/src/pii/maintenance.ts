@@ -17,7 +17,11 @@ import {
 } from '../audit/command.ts';
 import type { AuditEventInput } from '../audit/events.ts';
 import { createContactBlindIndex } from './contacts.ts';
-import { registerAuthenticatedLegacyKeyProofTransaction } from './initialize.ts';
+import {
+  readUnverifiedLegacyKeyReferences,
+  registerAuthenticatedLegacyKeyProofTransaction,
+  type UnverifiedLegacyKeyReference,
+} from './initialize.ts';
 import type { EncryptionKeys } from './keys.ts';
 import {
   classifyLegacyContactIndexBatch,
@@ -69,6 +73,7 @@ export function parseLegacyCursor(value: unknown): string | null {
 
 const LEGACY_PHASES = [
   'participants',
+  'webhooks',
   'deliveries',
   'optouts',
   'oauth',
@@ -77,7 +82,11 @@ const LEGACY_PHASES = [
 // being interpreted as another option by the CLI's --after-id parser.
 const legacyOperatorCursorSchema = z
   .string()
-  .regex(/^v1_[A-Za-z0-9_-]{40,4093}$/);
+  .regex(/^v1_[A-Za-z0-9_-]{40,16381}$/);
+const legacyReferenceSchema = z.strictObject({
+  purpose: z.enum(['pii-enc', 'integration-enc']),
+  keyId: z.string().min(1).max(64),
+});
 const legacyProgressSchema = z.strictObject({
   version: z.literal(1),
   phase: z.enum(LEGACY_PHASES),
@@ -93,6 +102,7 @@ const legacyProgressSchema = z.strictObject({
   indexKeyId: z.string().min(1).max(64),
   integrationKeyId: z.string().min(1).max(64),
   instanceId: z.string().regex(/^[0-9a-f]{64}$/),
+  unverifiedLegacyReferences: z.array(legacyReferenceSchema).max(64),
 });
 type LegacyProgress = z.infer<typeof legacyProgressSchema>;
 
@@ -103,28 +113,27 @@ export function parseLegacyOperatorCursor(value: unknown): string | null {
   return parsed.data;
 }
 
-async function legacyInstanceId(pool: pg.Pool): Promise<string> {
-  const result = await readMaintenancePage<{
-    databaseOid: string;
-    databaseName: string;
-    id: boolean | null;
-    name: string | null;
-    owner: string | null;
-    team: string | null;
-    completed: Date | null;
-  }>(
-    pool,
-    `SELECT database.oid::text AS "databaseOid",
+type LegacyInstanceRow = {
+  databaseOid: string;
+  databaseName: string;
+  id: boolean | null;
+  name: string | null;
+  owner: string | null;
+  team: string | null;
+  completed: Date | null;
+};
+
+const LEGACY_INSTANCE_SQL = `SELECT database.oid::text AS "databaseOid",
        database.datname AS "databaseName", instance.id, instance.name,
        instance.initial_owner_user_id AS owner,
        instance.initial_team_id AS team, instance.completed_at AS completed
      FROM pg_catalog.pg_database database
      LEFT JOIN studio_instance instance ON true
-     WHERE database.datname = pg_catalog.current_database() LIMIT 2`,
-    [],
-  );
-  if (result.rows.length !== 1) throw new ProtectedDataError();
-  const row = result.rows[0]!;
+     WHERE database.datname = pg_catalog.current_database() LIMIT 2`;
+
+function digestLegacyInstance(rows: readonly LegacyInstanceRow[]): string {
+  if (rows.length !== 1) throw new ProtectedDataError();
+  const row = rows[0]!;
   if (
     row.completed !== null &&
     (!(row.completed instanceof Date) ||
@@ -146,6 +155,23 @@ async function legacyInstanceId(pool: pg.Pool): Promise<string> {
     .digest('hex');
 }
 
+async function legacyInstanceIdForClient(
+  client: pg.PoolClient,
+): Promise<string> {
+  return digestLegacyInstance(
+    (await client.query<LegacyInstanceRow>(LEGACY_INSTANCE_SQL)).rows,
+  );
+}
+
+async function legacyInstanceId(pool: pg.Pool): Promise<string> {
+  const result = await readMaintenancePage<LegacyInstanceRow>(
+    pool,
+    LEGACY_INSTANCE_SQL,
+    [],
+  );
+  return digestLegacyInstance(result.rows);
+}
+
 function legacyCursorKey(keys: EncryptionKeys, progress: LegacyProgress) {
   return keys.derive('pii-index', progress.indexKeyId, [
     'legacy-migration-cursor.v1',
@@ -165,6 +191,56 @@ function legacyCursorAad(progress: LegacyProgress): Buffer {
       progress.integrationKeyId,
     ]),
   );
+}
+
+function sortedLegacyReferences(
+  references: readonly UnverifiedLegacyKeyReference[],
+): UnverifiedLegacyKeyReference[] {
+  return references
+    .map(({ purpose, keyId }) => ({ purpose, keyId }))
+    .toSorted((left, right) =>
+      left.purpose === right.purpose
+        ? left.keyId.localeCompare(right.keyId)
+        : left.purpose.localeCompare(right.purpose),
+    );
+}
+
+function assertLegacyReferencesRemainAuthorized(
+  references: readonly UnverifiedLegacyKeyReference[],
+  authorized: readonly UnverifiedLegacyKeyReference[],
+): void {
+  const identities = new Set(
+    authorized.map(({ purpose, keyId }) => JSON.stringify([purpose, keyId])),
+  );
+  if (
+    identities.size !== authorized.length ||
+    references.some(
+      ({ purpose, keyId }) => !identities.has(JSON.stringify([purpose, keyId])),
+    )
+  )
+    throw new ProtectedDataError();
+}
+
+export async function authorizeLegacyResume(
+  client: pg.PoolClient,
+  keys: EncryptionKeys,
+  cursor: string,
+): Promise<readonly UnverifiedLegacyKeyReference[]> {
+  const instanceId = await legacyInstanceIdForClient(client);
+  const expected = {
+    piiKeyId: keys.currentId('pii-enc'),
+    indexKeyId: keys.currentId('pii-index'),
+    integrationKeyId: keys.currentId('integration-enc'),
+    instanceId,
+  };
+  const progress = openLegacyProgress(keys, cursor, expected);
+  validateLegacyProgressPosition(progress);
+  const references = await readUnverifiedLegacyKeyReferences(client, keys);
+  assertLegacyReferencesRemainAuthorized(
+    references,
+    progress.unverifiedLegacyReferences,
+  );
+  return references;
 }
 
 function sealLegacyProgress(
@@ -194,7 +270,10 @@ function sealLegacyProgress(
 function openLegacyProgress(
   keys: EncryptionKeys,
   cursor: string,
-  expected: Omit<LegacyProgress, 'phase' | 'after' | 'version'>,
+  expected: Omit<
+    LegacyProgress,
+    'phase' | 'after' | 'version' | 'unverifiedLegacyReferences'
+  >,
 ): LegacyProgress {
   try {
     const encoded = legacyOperatorCursorSchema.parse(cursor).slice(3);
@@ -205,6 +284,7 @@ function openLegacyProgress(
       version: 1,
       phase: 'participants',
       after: null,
+      unverifiedLegacyReferences: [] as UnverifiedLegacyKeyReference[],
       ...expected,
     } as const;
     const decipher = createDecipheriv(
@@ -236,6 +316,42 @@ function openLegacyProgress(
   } catch {
     throw new ProtectedDataError();
   }
+}
+
+async function readLegacyReferences(
+  pool: pg.Pool,
+  keys: EncryptionKeys,
+): Promise<readonly UnverifiedLegacyKeyReference[]> {
+  let client: pg.PoolClient | undefined;
+  try {
+    client = await pool.connect();
+    await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    const role = await client.query<{ role: string }>(
+      'SELECT current_user AS role',
+    );
+    if (role.rows[0]?.role !== 'studio_maintenance')
+      throw new ProtectedDataError();
+    const references = await readUnverifiedLegacyKeyReferences(client, keys);
+    await client.query('COMMIT');
+    return references;
+  } catch {
+    await client?.query('ROLLBACK').catch(() => undefined);
+    throw new ProtectedDataError();
+  } finally {
+    client?.release();
+  }
+}
+
+async function sealCurrentLegacyProgress(
+  pool: pg.Pool,
+  keys: EncryptionKeys,
+  progress: LegacyProgress,
+): Promise<string> {
+  const references = await readLegacyReferences(pool, keys);
+  return sealLegacyProgress(keys, {
+    ...progress,
+    unverifiedLegacyReferences: sortedLegacyReferences(references),
+  });
 }
 
 function validateLegacyProgressPosition(progress: LegacyProgress): void {
@@ -559,6 +675,7 @@ async function migrateLegacyParticipant(
       await registerAuthenticatedLegacyKeyProofTransaction(
         client,
         keys,
+        'pii-enc',
         row.pii_key_id!,
       );
       const updated = await client.query(
@@ -638,6 +755,7 @@ async function rotateWebhook(
   pool: pg.Pool,
   keys: EncryptionKeys,
   row: WebhookCiphertextRow,
+  registerLegacyProof = false,
 ): Promise<void> {
   const plaintext = await readWebhookSecret(keys, row.id, {
     kind: 'rotation',
@@ -682,6 +800,13 @@ async function rotateWebhook(
           !current.secret_ciphertext.equals(row.secret_ciphertext)
         )
           throw new ProtectedDataError();
+        if (registerLegacyProof)
+          await registerAuthenticatedLegacyKeyProofTransaction(
+            client,
+            keys,
+            'integration-enc',
+            row.secret_key_id,
+          );
         await client.query(
           'UPDATE webhook_subscriptions SET secret_ciphertext = $3, secret_key_id = $4, secret_algorithm = $5 WHERE id = $1 AND team_id = $2',
           [
@@ -716,6 +841,40 @@ async function rotateWebhook(
   } finally {
     plaintext.fill(0);
   }
+}
+
+async function migrateLegacyWebhookBatch(
+  pool: pg.Pool,
+  keys: EncryptionKeys,
+  limit: number,
+  afterId: string | null,
+): Promise<{
+  processed: number;
+  scanned: number;
+  afterId: string | null;
+  passComplete: boolean;
+}> {
+  const selected = await readMaintenancePage<WebhookCiphertextRow>(
+    pool,
+    `SELECT id, team_id, secret_ciphertext, secret_key_id, secret_algorithm, state
+       FROM webhook_subscriptions
+       WHERE (secret_key_id <> $2 OR NOT EXISTS (
+         SELECT 1 FROM encryption_key_verifications proof
+         WHERE proof.purpose = 'integration-enc'
+           AND proof.key_id = webhook_subscriptions.secret_key_id
+       )) ${afterId === null ? '' : 'AND id > $3'}
+       ORDER BY id LIMIT $1`,
+    afterId === null
+      ? [limit, keys.currentId('integration-enc')]
+      : [limit, keys.currentId('integration-enc'), afterId],
+  );
+  for (const row of selected.rows) await rotateWebhook(pool, keys, row, true);
+  return {
+    processed: selected.rows.length,
+    scanned: selected.rows.length,
+    afterId: selected.rows.at(-1)?.id ?? null,
+    passComplete: selected.rows.length < limit,
+  };
 }
 
 const OAUTH_SELECT = `id, "userId", ${OAUTH_FIELDS.map((spec) => `${spec.ciphertext} AS "${spec.field}", ${spec.keyColumn} AS "${spec.keyId}", ${spec.algorithmColumn} AS "${spec.algorithm}"`).join(', ')}`;
@@ -1055,10 +1214,22 @@ export async function migrateLegacyDataBatch(
     instanceId,
   };
   const parsedCursor = parseLegacyOperatorCursor(input.afterId ?? null);
+  const initialReferences = await readLegacyReferences(maintenancePool, keys);
   let progress: LegacyProgress = parsedCursor
     ? openLegacyProgress(keys, parsedCursor, expected)
-    : { version: 1, phase: 'participants', after: null, ...expected };
+    : {
+        version: 1,
+        phase: 'participants',
+        after: null,
+        unverifiedLegacyReferences: sortedLegacyReferences(initialReferences),
+        ...expected,
+      };
   validateLegacyProgressPosition(progress);
+  if (parsedCursor)
+    assertLegacyReferencesRemainAuthorized(
+      initialReferences,
+      progress.unverifiedLegacyReferences,
+    );
   let processed = 0;
   let scanned = 0;
   while (scanned < limit) {
@@ -1072,6 +1243,18 @@ export async function migrateLegacyDataBatch(
       );
       processed += page.processed;
       scanned += page.scanned ?? 0;
+      progress = page.passComplete
+        ? { ...progress, phase: 'webhooks', after: null }
+        : { ...progress, after: page.afterId };
+    } else if (progress.phase === 'webhooks') {
+      const page = await migrateLegacyWebhookBatch(
+        maintenancePool,
+        keys,
+        cap,
+        legacyStringPosition(progress),
+      );
+      processed += page.processed;
+      scanned += page.scanned;
       progress = page.passComplete
         ? { ...progress, phase: 'deliveries', after: null }
         : { ...progress, after: page.afterId };
@@ -1130,7 +1313,11 @@ export async function migrateLegacyDataBatch(
       return {
         processed,
         scanned,
-        afterId: sealLegacyProgress(keys, progress),
+        afterId: await sealCurrentLegacyProgress(
+          maintenancePool,
+          keys,
+          progress,
+        ),
         passComplete: false,
       };
   }

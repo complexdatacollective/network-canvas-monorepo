@@ -83,7 +83,10 @@ export async function runEncryptionCommand(
     (operation === 'rotate' && cursor !== undefined) ||
     (operation === 'migrate-legacy' && afterId !== null);
   const keys = await (resumed
-    ? resumeEncryptionMaintenance(input)
+    ? resumeEncryptionMaintenance(
+        input,
+        operation === 'migrate-legacy' ? afterId! : undefined,
+      )
     : operation === 'migrate-legacy'
       ? initializeCredentialMigration(input)
       : initializeEncryption(input));

@@ -884,6 +884,181 @@ describe.skipIf(!db)('audit-alert policy and researcher delivery', () => {
     }
   });
 
+  it('retries a database fault before the email handoff without losing in-app delivery', async () => {
+    const scratch = await fixture();
+    try {
+      await scratch.configure([{ memberId, inApp: true, email: true }]);
+      await scratch.append();
+      const adapter = new AuditAlertDeliveryAdapter({
+        pool: scratch.maintenance,
+        mailer: { sendAuditAlert: async () => undefined },
+        publicBaseUrl: 'https://studio.example.test',
+      });
+      const claim = await adapter.claim(
+        { owner: randomUUID(), durationMs: 60_000 },
+        8,
+      );
+      expect(claim).not.toBeNull();
+
+      await scratch.pool.query(
+        'ALTER TABLE audit_events RENAME TO audit_events_fault',
+      );
+      let failure: unknown;
+      try {
+        await adapter.deliver(claim!);
+      } catch (error) {
+        failure = error;
+      } finally {
+        await scratch.pool.query(
+          'ALTER TABLE audit_events_fault RENAME TO audit_events',
+        );
+      }
+
+      expect(failure).toBeInstanceOf(EmailDeliveryError);
+      expect(adapter.failureDisposition(failure)).toBe('retryable');
+      expect(
+        await adapter.recordFailure(
+          claim!,
+          { owner: claim!.leaseOwner, durationMs: 60_000 },
+          failure,
+          0,
+        ),
+      ).toBe(true);
+      expect((await scratch.rows()).rows[0]).toMatchObject({
+        send_started_at: null,
+        uncertain_at: null,
+        last_error: 'send_retryable',
+      });
+      const inApp = (await scratch.rows()).rows.find(
+        (row: { channel: string }) => row.channel === 'in_app',
+      );
+      expect(inApp).toMatchObject({
+        delivered_at: null,
+        uncertain_at: null,
+      });
+    } finally {
+      await scratch.dispose();
+    }
+  });
+
+  it.each([
+    { phase: 'connect', channel: 'in_app' },
+    { phase: 'BEGIN', channel: 'in_app' },
+    { phase: 'COMMIT', channel: 'in_app' },
+    { phase: 'COMMIT', channel: 'email' },
+  ] as const)(
+    'classifies $channel $phase faults by whether external handoff occurred',
+    async ({ phase, channel }) => {
+      const scratch = await fixture();
+      try {
+        await scratch.configure([
+          { memberId, inApp: channel === 'in_app', email: channel === 'email' },
+        ]);
+        await scratch.append();
+        const eventsBefore = (
+          await scratch.pool.query('SELECT id FROM audit_events ORDER BY id')
+        ).rows;
+        const send = vi.fn<AuditAlertMailer['sendAuditAlert']>();
+        const adapter = new AuditAlertDeliveryAdapter({
+          pool: scratch.maintenance,
+          mailer: { sendAuditAlert: send },
+          publicBaseUrl: 'https://studio.example.test',
+        });
+        const claim = await adapter.claim(
+          { owner: randomUUID(), durationMs: 60_000 },
+          8,
+        );
+        expect(claim).not.toBeNull();
+        expect(claim!.channel).toBe(channel);
+        const client = await scratch.maintenance.connect();
+        const query = client.query.bind(client);
+        const querySpy = vi
+          .spyOn(client, 'query')
+          .mockImplementation((...args) => {
+            if (args[0] === phase) throw new Error(`injected ${phase} failure`);
+            return query(...args);
+          });
+        const connectSpy = vi
+          .spyOn(scratch.maintenance, 'connect')
+          .mockImplementationOnce(async () => {
+            if (phase === 'connect')
+              throw new Error('injected connect failure');
+            return client;
+          });
+        let failure: unknown;
+        try {
+          await adapter.deliver(claim!);
+        } catch (error) {
+          failure = error;
+        } finally {
+          querySpy.mockRestore();
+          connectSpy.mockRestore();
+          if (phase === 'connect') client.release();
+        }
+        expect(failure).toBeInstanceOf(EmailDeliveryError);
+        if (channel === 'email') {
+          expect(send).toHaveBeenCalledTimes(1);
+          expect(adapter.failureDisposition(failure)).toBe('uncertain');
+          expect(
+            await adapter.recordUncertain(
+              claim!,
+              { owner: claim!.leaseOwner, durationMs: 60_000 },
+              failure,
+            ),
+          ).toBe(true);
+          expect(
+            await adapter.claim({ owner: randomUUID(), durationMs: 60_000 }, 8),
+          ).toBeNull();
+          const rows = (await scratch.rows()).rows;
+          expect(rows).toHaveLength(1);
+          expect(rows[0].uncertain_at).toBeInstanceOf(Date);
+          expect(rows[0].delivered_at).toBeNull();
+          expect(
+            (
+              await scratch.pool.query(
+                'SELECT id FROM audit_events ORDER BY id',
+              )
+            ).rows,
+          ).toEqual(eventsBefore);
+          return;
+        }
+        expect(adapter.failureDisposition(failure)).toBe('retryable');
+        expect(send).not.toHaveBeenCalled();
+        expect(
+          await adapter.recordFailure(
+            claim!,
+            { owner: claim!.leaseOwner, durationMs: 60_000 },
+            failure,
+            0,
+          ),
+        ).toBe(true);
+        const retry = await adapter.claim(
+          { owner: randomUUID(), durationMs: 60_000 },
+          8,
+        );
+        expect(retry?.id).toBe(claim!.id);
+        await expect(adapter.deliver(retry!)).resolves.toBeUndefined();
+        expect(
+          await adapter.recordComplete(retry!, {
+            owner: retry!.leaseOwner,
+            durationMs: 60_000,
+          }),
+        ).toBe(true);
+        const rows = (await scratch.rows()).rows;
+        expect(rows).toHaveLength(1);
+        expect(rows[0].delivered_at).toBeInstanceOf(Date);
+        expect(rows[0].uncertain_at).toBeNull();
+        expect(
+          (await scratch.pool.query('SELECT id FROM audit_events ORDER BY id'))
+            .rows,
+        ).toEqual(eventsBefore);
+        expect(send).not.toHaveBeenCalled();
+      } finally {
+        await scratch.dispose();
+      }
+    },
+  );
+
   it('turns an expired started lease into durable uncertainty without handing it to another sender', async () => {
     const scratch = await fixture();
     try {
