@@ -3,6 +3,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   chmodSync,
+  copyFileSync,
+  linkSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -51,10 +53,49 @@ exit 0;
     finalSignalReserveBytes: 100,
     monthlyLimitBytes: 1_000,
   };
+  const anchorPath = join(root, 'independent-anchor.json');
+  const monthAuthorization = 'independently-authorized-next-month';
+  const anchor = {
+    advance(previous, next) {
+      assert.deepEqual(this.read(), previous);
+      writeFileSync(anchorPath, JSON.stringify(next));
+    },
+    advanceMonth(previous, next, authorization) {
+      assert.equal(authorization, monthAuthorization);
+      this.advance(previous, next);
+    },
+    initialize(next) {
+      assert.equal(lstatSync(anchorPath, { throwIfNoEntry: false }), undefined);
+      writeFileSync(anchorPath, JSON.stringify(next));
+    },
+    read() {
+      return JSON.parse(readFileSync(anchorPath, 'utf8'));
+    },
+  };
   const launch = (_program, args, spawnOptions) =>
-    spawnSync(flock, args, spawnOptions);
-  return { bin, directory, launch, options, root };
+    spawnSync(
+      process.platform === 'linux' ? 'flock' : flock,
+      args,
+      spawnOptions,
+    );
+  return {
+    anchor,
+    anchorPath,
+    bin,
+    directory,
+    launch,
+    monthAuthorization,
+    options,
+    root,
+  };
 }
+
+const operationsFor = (budgetFixture, overrides = {}) =>
+  createEgressBudgetOperations({
+    anchor: budgetFixture.anchor,
+    launch: budgetFixture.launch,
+    ...overrides,
+  });
 
 function expectCode(operation, code) {
   assert.throws(operation, (error) => {
@@ -71,8 +112,7 @@ function readPayload(path) {
 
 test('explicit bootstrap creates private bound state and reservations survive restart', (t) => {
   const f = fixture(t);
-  const operations = createEgressBudgetOperations({
-    launch: f.launch,
+  const operations = operationsFor(f, {
     now: () => new Date('2026-09-08T12:00:00.000Z'),
   });
   mkdirSync(f.directory, { mode: 0o700 });
@@ -134,8 +174,7 @@ test('explicit bootstrap creates private bound state and reservations survive re
 
 test('exhaustion is durable and reserves the final signal outside payload capacity', (t) => {
   const f = fixture(t);
-  const operations = createEgressBudgetOperations({
-    launch: f.launch,
+  const operations = operationsFor(f, {
     now: () => new Date('2026-09-08T12:00:00.000Z'),
   });
   operations.bootstrap(f.options);
@@ -159,7 +198,7 @@ test('exhaustion is durable and reserves the final signal outside payload capaci
 
 test('configuration cannot raise the local gate above the measured 50 GB forecast bound', (t) => {
   const f = fixture(t);
-  const operations = createEgressBudgetOperations({ launch: f.launch });
+  const operations = operationsFor(f);
   expectCode(
     () =>
       operations.bootstrap({
@@ -170,17 +209,135 @@ test('configuration cannot raise the local gate above the measured 50 GB forecas
   );
 });
 
-test('month rollover is monotonic and a clock rollback closes admission', (t) => {
+test('an independent anchor is mandatory and detects a valid older-state rollback', (t) => {
+  const f = fixture(t);
+  expectCode(
+    () => createEgressBudgetOperations(),
+    'EGRESS_BUDGET_ANCHOR_REQUIRED',
+  );
+  const operations = operationsFor(f);
+  operations.bootstrap(f.options);
+  const statePath = join(f.directory, 'egress-budget-state.json');
+  const olderState = join(f.root, 'older-state.json');
+  copyFileSync(statePath, olderState);
+  const budget = operations.open(f.options);
+  budget.reserveEstimatedIngest(400);
+  budget.close();
+  copyFileSync(olderState, statePath);
+  expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_ANCHOR_MISMATCH');
+});
+
+test('a missing checkpoint and a mismatched update readback both fail closed', async (t) => {
+  await t.test('checkpoint disappearance refuses open', (context) => {
+    const f = fixture(context);
+    const operations = operationsFor(f);
+    operations.bootstrap(f.options);
+    unlinkSync(f.anchorPath);
+    expectCode(
+      () => operations.open(f.options),
+      'EGRESS_BUDGET_ANCHOR_UPDATE_FAILED',
+    );
+  });
+
+  await t.test('wrong readback poisons a completed local write', (context) => {
+    const f = fixture(context);
+    const operations = operationsFor(f);
+    operations.bootstrap(f.options);
+    const budget = operations.open(f.options);
+    f.anchor.advance = () => {};
+    expectCode(
+      () => budget.reserveEstimatedIngest(100),
+      'EGRESS_BUDGET_ANCHOR_MISMATCH',
+    );
+    expectCode(() => budget.reserveEstimatedIngest(1), 'EGRESS_BUDGET_CLOSED');
+  });
+});
+
+test('an ambiguous anchor advance closes the budget before forwarding', (t) => {
+  const f = fixture(t);
+  const operations = operationsFor(f);
+  operations.bootstrap(f.options);
+  const budget = operations.open(f.options);
+  f.anchor.advance = () => {
+    throw new Error('synthetic timeout after an unknown commit point');
+  };
+  expectCode(
+    () => budget.reserveEstimatedIngest(100),
+    'EGRESS_BUDGET_ANCHOR_UPDATE_FAILED',
+  );
+  expectCode(() => budget.reserveEstimatedIngest(1), 'EGRESS_BUDGET_CLOSED');
+  expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_ANCHOR_MISMATCH');
+});
+
+test('an anchor commit followed by a transport error still refuses that call and retains the debit', (t) => {
+  const f = fixture(t);
+  const operations = operationsFor(f);
+  operations.bootstrap(f.options);
+  const budget = operations.open(f.options);
+  f.anchor.advance = function advanceThenLoseResponse(previous, next) {
+    assert.deepEqual(this.read(), previous);
+    writeFileSync(f.anchorPath, JSON.stringify(next));
+    throw new Error('synthetic lost response after commit');
+  };
+  expectCode(
+    () => budget.reserveEstimatedIngest(100),
+    'EGRESS_BUDGET_ANCHOR_UPDATE_FAILED',
+  );
+  expectCode(() => budget.reserveEstimatedIngest(1), 'EGRESS_BUDGET_CLOSED');
+
+  f.anchor.advance = function advance(previous, next) {
+    assert.deepEqual(this.read(), previous);
+    writeFileSync(f.anchorPath, JSON.stringify(next));
+  };
+  const restarted = operations.open(f.options);
+  const receipt = restarted.reserveEstimatedIngest(1);
+  assert.equal(receipt.reservationSequence, 2);
+  assert.equal(receipt.payloadRemainingBytes, 799);
+  restarted.close();
+});
+
+test('month rollover requires an independently authorized transition', (t) => {
   const f = fixture(t);
   let instant = new Date('2026-09-30T23:59:59.000Z');
-  const operations = createEgressBudgetOperations({
-    launch: f.launch,
+  const operations = operationsFor(f, {
     now: () => instant,
   });
   operations.bootstrap(f.options);
   const budget = operations.open(f.options);
   budget.reserveEstimatedIngest(300);
+  budget.close();
   instant = new Date('2026-10-01T00:00:01.000Z');
+  expectCode(
+    () => operations.open(f.options),
+    'EGRESS_BUDGET_MONTH_TRANSITION_REQUIRED',
+  );
+  expectCode(
+    () =>
+      operations.transitionMonth(f.options, {
+        authorization: 'invented-local-approval',
+        observedAt: instant.toISOString(),
+      }),
+    'EGRESS_BUDGET_ANCHOR_UPDATE_FAILED',
+  );
+  // The failed authorization leaves local state ahead of the independent
+  // checkpoint, so an operator must reconcile the ambiguous attempt.
+  expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_ANCHOR_MISMATCH');
+});
+
+test('an authorized next-month transition resets capacity once', (t) => {
+  const f = fixture(t);
+  let instant = new Date('2026-09-30T23:59:59.000Z');
+  const operations = operationsFor(f, { now: () => instant });
+  operations.bootstrap(f.options);
+  const September = operations.open(f.options);
+  September.reserveEstimatedIngest(300);
+  September.close();
+  instant = new Date('2026-10-01T00:00:01.000Z');
+  operations.transitionMonth(f.options, {
+    authorization: f.monthAuthorization,
+    observedAt: instant.toISOString(),
+  });
+  const budget = operations.open(f.options);
   const October = budget.reserveEstimatedIngest(100);
   assert.equal(October.monthUtc, '2026-10');
   assert.equal(October.monthSequence, 2);
@@ -193,9 +350,20 @@ test('month rollover is monotonic and a clock rollback closes admission', (t) =>
   budget.close();
 });
 
+test('opening advances the anchored clock observation before returning', (t) => {
+  const f = fixture(t);
+  let instant = new Date('2026-09-08T12:00:00.000Z');
+  const operations = operationsFor(f, { now: () => instant });
+  operations.bootstrap(f.options);
+  instant = new Date('2026-09-08T13:00:00.000Z');
+  operations.open(f.options).close();
+  instant = new Date('2026-09-08T12:30:00.000Z');
+  expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_CLOCK_ROLLBACK');
+});
+
 test('a state-write refusal poisons the held view before it can overwrite uncertainty', (t) => {
   const f = fixture(t);
-  const operations = createEgressBudgetOperations({ launch: f.launch });
+  const operations = operationsFor(f);
   operations.bootstrap(f.options);
   const budget = operations.open(f.options);
   const statePath = join(f.directory, 'egress-budget-state.json');
@@ -211,10 +379,104 @@ test('a state-write refusal poisons the held view before it can overwrite uncert
   recovered.close();
 });
 
+test('hard-linked files and replaced held lock or directory inodes are refused', async (t) => {
+  await t.test('state and lock hard links are refused', (context) => {
+    const f = fixture(context);
+    const operations = operationsFor(f);
+    operations.bootstrap(f.options);
+    const state = join(f.directory, 'egress-budget-state.json');
+    linkSync(state, join(f.root, 'state-hard-link.json'));
+    expectCode(
+      () => operations.open(f.options),
+      'EGRESS_BUDGET_PRIVATE_PATH_REQUIRED',
+    );
+    unlinkSync(join(f.root, 'state-hard-link.json'));
+    const lock = join(f.directory, 'egress-budget.lock');
+    linkSync(lock, join(f.root, 'lock-hard-link'));
+    expectCode(
+      () => operations.open(f.options),
+      'EGRESS_BUDGET_PRIVATE_PATH_REQUIRED',
+    );
+  });
+
+  await t.test('a replaced lock inode poisons the held budget', (context) => {
+    const f = fixture(context);
+    const operations = operationsFor(f);
+    operations.bootstrap(f.options);
+    const budget = operations.open(f.options);
+    const lock = join(f.directory, 'egress-budget.lock');
+    unlinkSync(lock);
+    writeFileSync(lock, '', { mode: 0o600 });
+    expectCode(
+      () => budget.reserveEstimatedIngest(1),
+      'EGRESS_BUDGET_PRIVATE_PATH_REQUIRED',
+    );
+    budget.close();
+  });
+
+  await t.test(
+    'a replaced directory inode poisons the held budget',
+    (context) => {
+      const f = fixture(context);
+      const operations = operationsFor(f);
+      operations.bootstrap(f.options);
+      const budget = operations.open(f.options);
+      const moved = join(f.root, 'old-state-directory');
+      renameSync(f.directory, moved);
+      mkdirSync(f.directory, { mode: 0o700 });
+      expectCode(
+        () => budget.reserveEstimatedIngest(1),
+        'EGRESS_BUDGET_PRIVATE_PATH_REQUIRED',
+      );
+      budget.close();
+    },
+  );
+});
+
+test('flock is bounded and only its explicit conflict exit means contention', (t) => {
+  const f = fixture(t);
+  let invocation;
+  const operations = operationsFor(f, {
+    launch(program, args, options) {
+      invocation = { args, options, program };
+      return { error: new Error('ETIMEDOUT'), signal: 'SIGKILL', status: null };
+    },
+  });
+  expectCode(() => operations.bootstrap(f.options), 'EGRESS_BUDGET_IO_FAILED');
+  assert.equal(invocation.program, 'flock');
+  assert.deepEqual(invocation.args, [
+    '--exclusive',
+    '--nonblock',
+    '--conflict-exit-code',
+    '75',
+    '3',
+  ]);
+  assert.equal(invocation.options.timeout, 5_000);
+  assert.equal(invocation.options.killSignal, 'SIGKILL');
+});
+
+test('a real hanging lock helper is killed at the configured deadline', (t) => {
+  const f = fixture(t);
+  const hangingFlock = join(f.root, 'hanging-flock.mjs');
+  writeFileSync(hangingFlock, 'setInterval(() => {}, 30_000);\n', {
+    mode: 0o700,
+  });
+  const operations = operationsFor(f, {
+    launch(_program, args, options) {
+      return spawnSync(process.execPath, [hangingFlock, ...args], options);
+    },
+  });
+  const started = Date.now();
+  expectCode(() => operations.bootstrap(f.options), 'EGRESS_BUDGET_IO_FAILED');
+  const elapsed = Date.now() - started;
+  assert.ok(elapsed >= 4_500, `helper exited too early after ${elapsed}ms`);
+  assert.ok(elapsed < 8_000, `helper was not bounded: ${elapsed}ms`);
+});
+
 test('missing, corrupt, unbound and replaced private state all fail closed', async (t) => {
   await t.test('lost state cannot be bootstrapped back to zero', (context) => {
     const f = fixture(context);
-    const operations = createEgressBudgetOperations({ launch: f.launch });
+    const operations = operationsFor(f);
     operations.bootstrap(f.options);
     unlinkSync(join(f.directory, 'egress-budget-state.json'));
     expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_STATE_CORRUPT');
@@ -228,7 +490,7 @@ test('missing, corrupt, unbound and replaced private state all fail closed', asy
     'truncated, digest-invalid and impossible state is refused',
     (context) => {
       const f = fixture(context);
-      const operations = createEgressBudgetOperations({ launch: f.launch });
+      const operations = operationsFor(f);
       operations.bootstrap(f.options);
       const statePath = join(f.directory, 'egress-budget-state.json');
       const original = JSON.parse(readFileSync(statePath));
@@ -274,7 +536,7 @@ test('missing, corrupt, unbound and replaced private state all fail closed', asy
     'a different account, policy or limit cannot reuse state',
     (context) => {
       const f = fixture(context);
-      const operations = createEgressBudgetOperations({ launch: f.launch });
+      const operations = operationsFor(f);
       operations.bootstrap(f.options);
       for (const changed of [
         { accountIdentity: 'different-free-account' },
@@ -291,7 +553,7 @@ test('missing, corrupt, unbound and replaced private state all fail closed', asy
 
   await t.test('state links and permissive modes are refused', (context) => {
     const f = fixture(context);
-    const operations = createEgressBudgetOperations({ launch: f.launch });
+    const operations = operationsFor(f);
     operations.bootstrap(f.options);
     const state = join(f.directory, 'egress-budget-state.json');
     const moved = join(f.directory, 'moved-state.json');
@@ -316,11 +578,23 @@ function childProgram(f) {
   ).href;
   writeFileSync(
     path,
-    `import { openMonthlyEgressBudget } from ${JSON.stringify(moduleUrl)};
+    `import assert from 'node:assert/strict';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createEgressBudgetOperations } from ${JSON.stringify(moduleUrl)};
 const options = JSON.parse(process.argv[2]);
 const mode = process.argv[3];
+const anchorPath = process.argv[4];
+const anchor = {
+  read() { return JSON.parse(readFileSync(anchorPath, 'utf8')); },
+  initialize() { throw new Error('already initialized'); },
+  advance(previous, next) {
+    assert.deepEqual(this.read(), previous);
+    writeFileSync(anchorPath, JSON.stringify(next));
+  },
+  advanceMonth() { throw new Error('not used'); },
+};
 try {
-  const budget = openMonthlyEgressBudget(options);
+  const budget = createEgressBudgetOperations({ anchor }).open(options);
   if (mode === 'reserve') budget.reserveEstimatedIngest(123);
   process.stdout.write(mode === 'reserve' ? 'RESERVED\\n' : 'LOCKED\\n');
   process.stdin.resume();
@@ -340,33 +614,55 @@ try {
 function waitForLine(child) {
   return new Promise((resolve, reject) => {
     let output = '';
+    const timeout = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error('child readiness timed out'));
+    }, 5_000);
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', (chunk) => {
       output += chunk;
-      if (output.includes('\n')) resolve(output.trim());
+      if (output.includes('\n')) {
+        clearTimeout(timeout);
+        resolve(output.trim());
+      }
     });
-    child.once('error', reject);
+    child.once('error', (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
     child.once('exit', (status) => {
-      if (!output.includes('\n'))
+      if (!output.includes('\n')) {
+        clearTimeout(timeout);
         reject(new Error(`child exited before readiness: ${status}`));
+      }
     });
   });
 }
 
 function waitForExit(child) {
   return new Promise((resolve, reject) => {
-    child.once('error', reject);
-    child.once('exit', (status, signal) => resolve({ signal, status }));
+    const timeout = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error('child exit timed out'));
+    }, 5_000);
+    child.once('error', (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.once('exit', (status, signal) => {
+      clearTimeout(timeout);
+      resolve({ signal, status });
+    });
   });
 }
 
 test('the inherited kernel lock refuses a concurrent process and releases cleanly', async (t) => {
   const f = fixture(t);
-  const operations = createEgressBudgetOperations({ launch: f.launch });
+  const operations = operationsFor(f);
   operations.bootstrap(f.options);
   const child = spawn(
     process.execPath,
-    [childProgram(f), JSON.stringify(f.options), 'hold'],
+    [childProgram(f), JSON.stringify(f.options), 'hold', f.anchorPath],
     {
       env: { PATH: `${f.bin}:${process.env.PATH}` },
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -384,11 +680,11 @@ test('the inherited kernel lock refuses a concurrent process and releases cleanl
 
 test('a crash after reservation cannot refund an ambiguous attempted send', async (t) => {
   const f = fixture(t);
-  const operations = createEgressBudgetOperations({ launch: f.launch });
+  const operations = operationsFor(f);
   operations.bootstrap(f.options);
   const child = spawn(
     process.execPath,
-    [childProgram(f), JSON.stringify(f.options), 'reserve'],
+    [childProgram(f), JSON.stringify(f.options), 'reserve', f.anchorPath],
     {
       env: { PATH: `${f.bin}:${process.env.PATH}` },
       stdio: ['pipe', 'pipe', 'pipe'],

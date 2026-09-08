@@ -19,12 +19,17 @@ import { dirname, join, resolve } from 'node:path';
 const MAXIMUM_FILE_BYTES = 16_384;
 const MAXIMUM_IDENTITY_BYTES = 256;
 const MAXIMUM_MONTHLY_LIMIT_BYTES = 50_000_000_000;
+const FLOCK_TIMEOUT_MILLISECONDS = 5_000;
+const FLOCK_CONFLICT_EXIT_CODE = 75;
 const CONFIGURATION_DIGEST = /^[a-f0-9]{64}$/;
 const ACCOUNT_IDENTITY = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/;
 const MONTH_UTC = /^\d{4}-(?:0[1-9]|1[0-2])$/;
 
 const codes = new Set([
   'EGRESS_BUDGET_ALREADY_BOOTSTRAPPED',
+  'EGRESS_BUDGET_ANCHOR_MISMATCH',
+  'EGRESS_BUDGET_ANCHOR_REQUIRED',
+  'EGRESS_BUDGET_ANCHOR_UPDATE_FAILED',
   'EGRESS_BUDGET_CLOCK_ROLLBACK',
   'EGRESS_BUDGET_CLOSED',
   'EGRESS_BUDGET_EXHAUSTED',
@@ -32,6 +37,7 @@ const codes = new Set([
   'EGRESS_BUDGET_INPUT_INVALID',
   'EGRESS_BUDGET_IO_FAILED',
   'EGRESS_BUDGET_LOCKED',
+  'EGRESS_BUDGET_MONTH_TRANSITION_REQUIRED',
   'EGRESS_BUDGET_PRIVATE_PATH_REQUIRED',
   'EGRESS_BUDGET_STATE_CORRUPT',
   'EGRESS_BUDGET_STATE_MISSING',
@@ -105,22 +111,54 @@ function validatedOptions(options) {
   };
 }
 
-function privateDirectory(path, create) {
-  if (create && !entryExists(path)) mkdirSync(path, { mode: 0o700 });
-  let info;
+function fsyncDirectory(directory) {
+  const handle = openSync(
+    directory,
+    constants.O_RDONLY | (constants.O_DIRECTORY ?? 0),
+  );
   try {
-    info = lstatSync(path);
-  } catch {
-    refuse('EGRESS_BUDGET_PRIVATE_PATH_REQUIRED');
+    fsyncSync(handle);
+  } finally {
+    closeSync(handle);
   }
+}
+
+function validateDirectory(path, handle) {
+  const pathInfo = lstatSync(path);
+  const handleInfo = fstatSync(handle);
   if (
-    !info.isDirectory() ||
-    info.isSymbolicLink() ||
-    info.mode & 0o077 ||
-    info.uid !== process.getuid()
+    !pathInfo.isDirectory() ||
+    pathInfo.isSymbolicLink() ||
+    pathInfo.mode & 0o077 ||
+    pathInfo.uid !== process.getuid() ||
+    !handleInfo.isDirectory() ||
+    pathInfo.dev !== handleInfo.dev ||
+    pathInfo.ino !== handleInfo.ino
   )
     refuse('EGRESS_BUDGET_PRIVATE_PATH_REQUIRED');
-  return realpathSync(path);
+}
+
+function privateDirectory(path, create) {
+  let created = false;
+  if (create && !entryExists(path)) {
+    mkdirSync(path, { mode: 0o700 });
+    created = true;
+  }
+  let handle;
+  try {
+    const canonical = realpathSync(path);
+    handle = openSync(
+      canonical,
+      constants.O_RDONLY | constants.O_NOFOLLOW | (constants.O_DIRECTORY ?? 0),
+    );
+    validateDirectory(canonical, handle);
+    if (created) fsyncDirectory(dirname(canonical));
+    return { handle, path: canonical };
+  } catch (error) {
+    if (handle !== undefined) closeSync(handle);
+    if (error instanceof EgressBudgetError) throw error;
+    return refuse('EGRESS_BUDGET_PRIVATE_PATH_REQUIRED');
+  }
 }
 
 function validateDescriptor(path, handle, maximumBytes = MAXIMUM_FILE_BYTES) {
@@ -131,10 +169,12 @@ function validateDescriptor(path, handle, maximumBytes = MAXIMUM_FILE_BYTES) {
     pathInfo.isSymbolicLink() ||
     pathInfo.mode & 0o077 ||
     pathInfo.uid !== process.getuid() ||
+    pathInfo.nlink !== 1 ||
     pathInfo.size > maximumBytes ||
     pathInfo.dev !== handleInfo.dev ||
     pathInfo.ino !== handleInfo.ino ||
-    !handleInfo.isFile()
+    !handleInfo.isFile() ||
+    handleInfo.nlink !== 1
   )
     refuse('EGRESS_BUDGET_PRIVATE_PATH_REQUIRED');
   return handleInfo;
@@ -150,18 +190,10 @@ function readPrivateFile(path) {
   }
 }
 
-function fsyncDirectory(directory) {
-  const handle = openSync(directory, constants.O_RDONLY);
-  try {
-    fsyncSync(handle);
-  } finally {
-    closeSync(handle);
-  }
-}
-
-function writePrivateFile(path, bytes) {
+function writePrivateFile(path, bytes, assertHeldPaths) {
   if (!Buffer.isBuffer(bytes) || bytes.length > MAXIMUM_FILE_BYTES)
     refuse('EGRESS_BUDGET_STATE_CORRUPT');
+  assertHeldPaths();
   if (entryExists(path)) readPrivateFile(path);
   const directory = dirname(path);
   const temporary = join(directory, `.egress-budget-${randomUUID()}`);
@@ -174,14 +206,17 @@ function writePrivateFile(path, bytes) {
     0o600,
   );
   try {
+    validateDescriptor(temporary, handle);
     writeFileSync(handle, bytes);
     fsyncSync(handle);
   } finally {
     closeSync(handle);
   }
   try {
+    assertHeldPaths();
     renameSync(temporary, path);
     fsyncDirectory(directory);
+    assertHeldPaths();
   } finally {
     if (entryExists(temporary)) unlinkSync(temporary);
   }
@@ -225,6 +260,13 @@ function canonicalInstant(now) {
 
 function monthUtc(instant) {
   return instant.slice(0, 7);
+}
+
+function nextMonth(month) {
+  const [year, number] = month.split('-').map(Number);
+  return number === 12
+    ? `${year + 1}-01`
+    : `${year}-${String(number + 1).padStart(2, '0')}`;
 }
 
 function validateIdentity(identity, expectedBinding) {
@@ -290,8 +332,79 @@ function validateState(state, options) {
   return state;
 }
 
+function checkpoint(state) {
+  return Object.freeze({
+    bindingSha256: state.bindingSha256,
+    format: 1,
+    monthSequence: state.monthSequence,
+    monthUtc: state.monthUtc,
+    reservationSequence: state.reservationSequence,
+    stateSha256: digest(JSON.stringify(state)),
+  });
+}
+
+function validateCheckpoint(value, bindingSha256) {
+  if (
+    !exactKeys(value, [
+      'bindingSha256',
+      'format',
+      'monthSequence',
+      'monthUtc',
+      'reservationSequence',
+      'stateSha256',
+    ]) ||
+    value.format !== 1 ||
+    value.bindingSha256 !== bindingSha256 ||
+    !safeInteger(value.monthSequence, 1) ||
+    !MONTH_UTC.test(value.monthUtc) ||
+    !safeInteger(value.reservationSequence) ||
+    !CONFIGURATION_DIGEST.test(value.stateSha256)
+  )
+    refuse('EGRESS_BUDGET_ANCHOR_MISMATCH');
+  return value;
+}
+
+const sameCheckpoint = (left, right) =>
+  JSON.stringify(left) === JSON.stringify(right);
+
+function requiredAnchor(anchor) {
+  if (
+    anchor === null ||
+    typeof anchor !== 'object' ||
+    typeof anchor.read !== 'function' ||
+    typeof anchor.initialize !== 'function' ||
+    typeof anchor.advance !== 'function' ||
+    typeof anchor.advanceMonth !== 'function'
+  )
+    refuse('EGRESS_BUDGET_ANCHOR_REQUIRED');
+  return anchor;
+}
+
+function readAnchor(anchor, expected) {
+  let observed;
+  try {
+    observed = anchor.read(expected.bindingSha256);
+  } catch {
+    refuse('EGRESS_BUDGET_ANCHOR_UPDATE_FAILED');
+  }
+  validateCheckpoint(observed, expected.bindingSha256);
+  if (!sameCheckpoint(observed, expected))
+    refuse('EGRESS_BUDGET_ANCHOR_MISMATCH');
+}
+
+function updateAnchor(anchor, method, previous, next, authorization) {
+  try {
+    if (method === 'advanceMonth')
+      anchor.advanceMonth(previous, next, authorization);
+    else anchor[method](previous, next);
+  } catch {
+    refuse('EGRESS_BUDGET_ANCHOR_UPDATE_FAILED');
+  }
+  readAnchor(anchor, next);
+}
+
 function acquireLock(directory, launch) {
-  const path = join(directory, 'egress-budget.lock');
+  const path = join(directory.path, 'egress-budget.lock');
   const handle = openSync(
     path,
     constants.O_CREAT |
@@ -300,17 +413,50 @@ function acquireLock(directory, launch) {
       constants.O_CLOEXEC,
     0o600,
   );
-  try {
+  const assertHeldPaths = () => {
+    validateDirectory(directory.path, directory.handle);
     validateDescriptor(path, handle, 0);
-    const result = launch('flock', ['--exclusive', '--nonblock', '3'], {
-      stdio: ['ignore', 'ignore', 'ignore', handle],
-    });
-    if (result.error || result.status !== 0) refuse('EGRESS_BUDGET_LOCKED');
-    return handle;
+  };
+  try {
+    assertHeldPaths();
+    const result = launch(
+      'flock',
+      [
+        '--exclusive',
+        '--nonblock',
+        '--conflict-exit-code',
+        String(FLOCK_CONFLICT_EXIT_CODE),
+        '3',
+      ],
+      {
+        killSignal: 'SIGKILL',
+        stdio: ['ignore', 'ignore', 'ignore', handle],
+        timeout: FLOCK_TIMEOUT_MILLISECONDS,
+      },
+    );
+    if (result?.status === FLOCK_CONFLICT_EXIT_CODE && !result.error)
+      refuse('EGRESS_BUDGET_LOCKED');
+    if (result?.error || result?.signal || result?.status !== 0)
+      refuse('EGRESS_BUDGET_IO_FAILED');
+    assertHeldPaths();
+    return { assertHeldPaths, handle };
   } catch (error) {
     closeSync(handle);
     throw error;
   }
+}
+
+function closeCustody(directory, lock) {
+  let failure;
+  for (const handle of [lock?.handle, directory?.handle]) {
+    if (handle === undefined) continue;
+    try {
+      closeSync(handle);
+    } catch (error) {
+      failure ??= error;
+    }
+  }
+  if (failure) throw failure;
 }
 
 function statePaths(directory) {
@@ -334,21 +480,38 @@ function initialState(bindingSha256, instant) {
   };
 }
 
-function advanceState(state, instant) {
+function observeState(state, instant) {
   const observed = Date.parse(instant);
   const previous = Date.parse(state.lastObservedAt);
   if (observed < previous) refuse('EGRESS_BUDGET_CLOCK_ROLLBACK');
   const currentMonth = monthUtc(instant);
   if (currentMonth < state.monthUtc) refuse('EGRESS_BUDGET_CLOCK_ROLLBACK');
-  if (currentMonth === state.monthUtc)
-    return { ...state, lastObservedAt: instant };
+  if (currentMonth !== state.monthUtc)
+    refuse('EGRESS_BUDGET_MONTH_TRANSITION_REQUIRED');
+  return { ...state, lastObservedAt: instant };
+}
+
+function transitionedState(state, transition) {
+  if (
+    !exactKeys(transition, ['authorization', 'observedAt']) ||
+    typeof transition.authorization !== 'string' ||
+    transition.authorization.length < 1 ||
+    transition.authorization.length > 4_096 ||
+    canonicalStoredInstant(transition.observedAt) === null
+  )
+    refuse('EGRESS_BUDGET_INPUT_INVALID');
+  const targetMonth = monthUtc(transition.observedAt);
+  if (targetMonth !== nextMonth(state.monthUtc))
+    refuse('EGRESS_BUDGET_MONTH_TRANSITION_REQUIRED');
+  if (Date.parse(transition.observedAt) < Date.parse(state.lastObservedAt))
+    refuse('EGRESS_BUDGET_CLOCK_ROLLBACK');
   return {
     ...state,
     exhausted: false,
     finalSignalAttemptedBytes: 0,
-    lastObservedAt: instant,
+    lastObservedAt: transition.observedAt,
     monthSequence: state.monthSequence + 1,
-    monthUtc: currentMonth,
+    monthUtc: targetMonth,
     payloadAttemptedBytes: 0,
     reservationSequence: 0,
   };
@@ -392,39 +555,59 @@ function receipt(state, kind, attemptedEstimatedBytes, payloadLimitBytes) {
 }
 
 class MonthlyEgressBudget {
+  #anchor;
   #closed = false;
-  #handle;
+  #directory;
+  #lock;
   #now;
   #options;
   #paths;
   #state;
 
-  constructor(options, paths, handle, state, now) {
+  constructor(options, paths, directory, lock, state, now, anchor) {
     this.#options = options;
     this.#paths = paths;
-    this.#handle = handle;
+    this.#directory = directory;
+    this.#lock = lock;
     this.#state = state;
     this.#now = now;
+    this.#anchor = anchor;
   }
 
   #requireOpen() {
     if (this.#closed) refuse('EGRESS_BUDGET_CLOSED');
+    try {
+      this.#lock.assertHeldPaths();
+    } catch (error) {
+      this.#poison(error);
+    }
+  }
+
+  #poison(error) {
+    this.#closed = true;
+    try {
+      closeCustody(this.#directory, this.#lock);
+    } catch {
+      // Preserve the original refusal.
+    }
+    throw error;
   }
 
   #persist(state) {
+    const previous = checkpoint(this.#state);
+    const next = checkpoint(state);
     try {
-      writePrivateFile(this.#paths.state, envelope(state));
+      writePrivateFile(
+        this.#paths.state,
+        envelope(state),
+        this.#lock.assertHeldPaths,
+      );
+      updateAnchor(this.#anchor, 'advance', previous, next);
       this.#state = state;
     } catch (error) {
       // The rename may have completed even if the directory fsync failed. Do
       // not let this process write again from its now-uncertain in-memory view.
-      this.#closed = true;
-      try {
-        closeSync(this.#handle);
-      } catch {
-        // Preserve the state-write failure as the fixed public refusal.
-      }
-      throw error;
+      this.#poison(error);
     }
   }
 
@@ -433,7 +616,7 @@ class MonthlyEgressBudget {
       this.#requireOpen();
       if (!safeInteger(estimatedIngestBytes, 1))
         refuse('EGRESS_BUDGET_INPUT_INVALID');
-      let state = advanceState(this.#state, canonicalInstant(this.#now));
+      let state = observeState(this.#state, canonicalInstant(this.#now));
       if (state.exhausted) {
         this.#persist(state);
         refuse('EGRESS_BUDGET_EXHAUSTED');
@@ -468,7 +651,7 @@ class MonthlyEgressBudget {
       this.#requireOpen();
       if (!safeInteger(estimatedIngestBytes, 1))
         refuse('EGRESS_BUDGET_INPUT_INVALID');
-      let state = advanceState(this.#state, canonicalInstant(this.#now));
+      let state = observeState(this.#state, canonicalInstant(this.#now));
       if (
         !state.exhausted ||
         state.finalSignalAttemptedBytes !== 0 ||
@@ -496,26 +679,44 @@ class MonthlyEgressBudget {
     return asPublicOperation(() => {
       if (this.#closed) return;
       this.#closed = true;
-      closeSync(this.#handle);
+      closeCustody(this.#directory, this.#lock);
     });
   }
 }
 
 export function createEgressBudgetOperations({
+  anchor,
   launch = spawnSync,
   now = () => new Date(),
 } = {}) {
+  const durableAnchor = requiredAnchor(anchor);
+
+  function withCustody(options, create, operation) {
+    const validated = validatedOptions(options);
+    const directory = privateDirectory(validated.directory, create);
+    let lock;
+    try {
+      lock = acquireLock(directory, launch);
+      return operation(validated, directory, lock);
+    } catch (error) {
+      try {
+        closeCustody(directory, lock);
+      } catch {
+        // Preserve the operation refusal.
+      }
+      throw error;
+    }
+  }
+
   return Object.freeze({
     bootstrap(options) {
-      return asPublicOperation(() => {
-        const validated = validatedOptions(options);
-        const directory = privateDirectory(validated.directory, true);
-        const paths = statePaths(directory);
-        const handle = acquireLock(directory, launch);
-        try {
+      return asPublicOperation(() =>
+        withCustody(options, true, (validated, directory, lock) => {
+          const paths = statePaths(directory.path);
           if (entryExists(paths.identity) || entryExists(paths.state))
             refuse('EGRESS_BUDGET_ALREADY_BOOTSTRAPPED');
           const instant = canonicalInstant(now);
+          const state = initialState(validated.bindingSha256, instant);
           writePrivateFile(
             paths.identity,
             envelope({
@@ -523,43 +724,102 @@ export function createEgressBudgetOperations({
               createdAt: instant,
               format: 1,
             }),
+            lock.assertHeldPaths,
           );
-          writePrivateFile(
-            paths.state,
-            envelope(initialState(validated.bindingSha256, instant)),
-          );
+          writePrivateFile(paths.state, envelope(state), lock.assertHeldPaths);
+          const next = checkpoint(state);
+          try {
+            durableAnchor.initialize(next);
+          } catch {
+            refuse('EGRESS_BUDGET_ANCHOR_UPDATE_FAILED');
+          }
+          readAnchor(durableAnchor, next);
+          closeCustody(directory, lock);
           return Object.freeze({
             bindingSha256: validated.bindingSha256,
             monthUtc: monthUtc(instant),
             payloadLimitBytes: validated.payloadLimitBytes,
           });
-        } finally {
-          closeSync(handle);
-        }
-      });
+        }),
+      );
     },
 
     open(options) {
-      return asPublicOperation(() => {
-        const validated = validatedOptions(options);
-        const directory = privateDirectory(validated.directory, false);
-        const paths = statePaths(directory);
-        const handle = acquireLock(directory, launch);
-        try {
-          let state = readBoundState(paths, validated);
-          state = advanceState(state, canonicalInstant(now));
-          writePrivateFile(paths.state, envelope(state));
-          return new MonthlyEgressBudget(validated, paths, handle, state, now);
-        } catch (error) {
-          closeSync(handle);
-          throw error;
-        }
-      });
+      return asPublicOperation(() =>
+        withCustody(options, false, (validated, directory, lock) => {
+          const paths = statePaths(directory.path);
+          const state = readBoundState(paths, validated);
+          const previous = checkpoint(state);
+          readAnchor(durableAnchor, previous);
+          const observedState = observeState(state, canonicalInstant(now));
+          if (observedState.lastObservedAt !== state.lastObservedAt) {
+            const next = checkpoint(observedState);
+            writePrivateFile(
+              paths.state,
+              envelope(observedState),
+              lock.assertHeldPaths,
+            );
+            updateAnchor(durableAnchor, 'advance', previous, next);
+          }
+          return new MonthlyEgressBudget(
+            validated,
+            paths,
+            directory,
+            lock,
+            observedState,
+            now,
+            durableAnchor,
+          );
+        }),
+      );
+    },
+
+    transitionMonth(options, transition) {
+      return asPublicOperation(() =>
+        withCustody(options, false, (validated, directory, lock) => {
+          const paths = statePaths(directory.path);
+          const state = readBoundState(paths, validated);
+          const previous = checkpoint(state);
+          readAnchor(durableAnchor, previous);
+          const nextState = transitionedState(state, transition);
+          const next = checkpoint(nextState);
+          writePrivateFile(
+            paths.state,
+            envelope(nextState),
+            lock.assertHeldPaths,
+          );
+          updateAnchor(
+            durableAnchor,
+            'advanceMonth',
+            previous,
+            next,
+            transition.authorization,
+          );
+          closeCustody(directory, lock);
+          return Object.freeze({
+            bindingSha256: validated.bindingSha256,
+            monthSequence: nextState.monthSequence,
+            monthUtc: nextState.monthUtc,
+            payloadLimitBytes: validated.payloadLimitBytes,
+          });
+        }),
+      );
     },
   });
 }
 
-const operations = createEgressBudgetOperations();
+export const bootstrapMonthlyEgressBudget = (options, dependencies) =>
+  createEgressBudgetOperations(dependencies).bootstrap(options);
 
-export const bootstrapMonthlyEgressBudget = operations.bootstrap;
-export const openMonthlyEgressBudget = operations.open;
+export const openMonthlyEgressBudget = (options, dependencies) =>
+  createEgressBudgetOperations(dependencies).open(options);
+
+export const transitionMonthlyEgressBudget = (
+  options,
+  transition,
+  dependencies,
+) =>
+  createEgressBudgetOperations(dependencies).transitionMonth(
+    options,
+    transition,
+  );

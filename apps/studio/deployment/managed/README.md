@@ -263,29 +263,54 @@ must be confirmed before publication.
 
 ## Collector egress budget state
 
-`observability-egress-budget.mjs` is the durable local admission primitive for
-the planned private collector. An operator must call
-`bootstrapMonthlyEgressBudget` once in a private mode-0700 directory. Normal
-collector startup calls `openMonthlyEgressBudget`; it refuses missing, partial,
-corrupt, differently bound, permissive, linked, concurrently locked, or
-clock-regressed state. The immutable bootstrap identity remains after a lost
-monthly counter, so bootstrap cannot silently recreate a zero balance. Changing
-the dedicated New Relic account, the externally reviewed schema/usage policy
-digest, the monthly limit, or the final-signal reserve requires a separately
-reviewed state transition or a new operator-controlled directory. The primitive
-refuses a monthly limit above the plan's measured 50 GB forecast bound.
+`observability-egress-budget.mjs` is the admission primitive for the planned
+private collector. It deliberately has no same-directory rollback marker. Its
+operations require an `anchor` port backed by an independently durable,
+monotonic store. That port must provide atomic compare-and-set `initialize`,
+`advance`, and `advanceMonth` operations plus authoritative `read` access.
+Each checkpoint binds the configuration, UTC month, month and reservation
+sequences, and exact local-state digest. `advanceMonth(previous, next,
+authorization)` receives the target UTC month in `next`, so its authorization
+decision can bind the requested transition rather than accept generic freshness.
+The primitive writes and fsyncs local state first, updates the anchor second,
+and reads the anchor back before returning. A missing, stale, corrupt, failed,
+or ambiguous anchor operation refuses forwarding. A failure after the local
+rename can leave local state ahead; this conservatively requires operator
+reconciliation and never refunds an attempted reservation.
+
+An operator calls `bootstrapMonthlyEgressBudget(options, { anchor })` once in a
+private mode-0700 directory. Normal collector startup calls
+`openMonthlyEgressBudget(options, { anchor })`; it refuses missing, partial,
+corrupt, differently bound, permissive, linked, concurrently locked,
+clock-regressed, or anchor-mismatched state. Changing the dedicated New Relic
+account, the externally reviewed schema/usage policy digest, the monthly limit,
+or the final-signal reserve requires a separately reviewed state transition or
+a new operator-controlled directory. The primitive refuses a monthly limit
+above the plan's measured 50 GB forecast bound.
+
+Crossing a UTC month never resets capacity from the host clock. Open and reserve
+operations return `EGRESS_BUDGET_MONTH_TRANSITION_REQUIRED` until an operator
+calls `transitionMonthlyEgressBudget` with the next month's canonical observed
+instant and an opaque authorization. The anchor's separately qualified
+`advanceMonth` implementation must authenticate that authorization and atomically
+advance its checkpoint. Arbitrary future-month jumps and locally invented
+freshness booleans are not accepted.
 
 The collector must hold the returned budget open for its complete process
 lifetime and close it during orderly shutdown. The inherited-descriptor
 `flock` is a kernel lease: a second process is refused, orderly close releases
-it, and process death releases it without deleting or replacing the protected
-lock inode. Each log or metric request must call `reserveEstimatedIngest` with
+it, and process death releases it. Linux uses the native util-linux `flock`;
+the Perl implementation is only a macOS test fallback. Lock acquisition has a
+five-second subprocess timeout and a dedicated contention exit code. The held
+directory and lock descriptors are revalidated against their paths, and regular
+budget files must have exactly one link. Each log or metric request must call
+`reserveEstimatedIngest` with
 its conservative estimated **provider-billed ingest bytes before forwarding**.
 A returned reservation is never refunded after an ambiguous request. Regular
 traffic cannot consume `finalSignalReserveBytes`; after exhaustion, exactly one
 `reserveFinalExhaustionSignal` call may admit the separately estimated closure
 signal. State replacement and its containing directory are fsynced before a
-reservation returns.
+reservation returns. Creating the private state directory also fsyncs its parent.
 
 This counter deliberately has no `providerUsageFresh` Boolean and does not
 accept raw compressed or uncompressed wire bytes as proof. Before calling it,
@@ -296,6 +321,15 @@ rules into `configurationIdentity`. Missing or stale provider evidence must
 close forwarding outside this primitive. The counter does not establish New
 Relic qualification, retention, queryability, alerts, or the provider's hard
 account limit.
+
+No production anchor adapter or forwarding integration is qualified here. An
+adapter stored on the same filesystem or administered through the same rollback
+boundary does not satisfy the independent monotonic-store requirement. The
+adapter must separately prove atomic compare-and-set behavior, durable readback,
+month-authorization authentication, bounded calls, and its failure semantics
+before this primitive can admit live forwarding. Descriptor revalidation also
+does not defend against a malicious same-UID process racing filesystem paths;
+the private directory remains an operator-owned custody boundary.
 
 ## Offline review
 
