@@ -234,14 +234,6 @@ Named here so a later split takes the name rather than inventing a synonym.
 
 | `<area>`                   | Will own the copy in                         | Expected in |
 | -------------------------- | -------------------------------------------- | ----------- |
-| `nodePanels`               | `sections/NodePanelsSection`                 | family D    |
-| `searchOptions`            | `sections/SearchOptionsSection`              | family D    |
-| `alterLimits`              | `sections/AlterLimitsSection`                | family D    |
-| `quickAdd`                 | `sections/QuickAddSection`                   | family D    |
-| `sortOptions`              | `sections/SortOptionsSection`                | family D    |
-| `nameGeneratorPrompts`     | `sections/NameGeneratorPromptsSection`       | family D    |
-| `cardDisplay`              | `sections/CardDisplaySection`                | family D    |
-| `externalDataSource`       | `sections/ExternalDataSourceSection`         | family D    |
 | `censusPrompts`            | `sections/prompts/`                          | family E    |
 | `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection`   | family E    |
 | `ordinalColor`             | `fields/OrdinalColorField`                   | family E    |
