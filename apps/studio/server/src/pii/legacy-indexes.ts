@@ -174,7 +174,20 @@ function remediationDigest(rows: readonly LegacyContactIndex[]): Buffer {
 export async function classifyLegacyContactIndexBatch(
   operatorPool: pg.Pool,
   limit: number,
-): Promise<{ processed: number; passComplete: boolean }> {
+  cursor?:
+    | { phase: 'deliveries'; afterId: string | null }
+    | {
+        phase: 'optouts';
+        afterChannel: string | null;
+        afterIndex: Buffer | null;
+      },
+): Promise<{
+  processed: number;
+  scanned?: number;
+  passComplete: boolean;
+  afterId?: string | null;
+  afterOptout?: { channel: string; index: Buffer } | null;
+}> {
   if (!Number.isInteger(limit) || limit < 1 || limit > 100)
     throw new Error('Legacy index batch limit must be between 1 and 100.');
   const client = await operatorPool.connect();
@@ -198,20 +211,32 @@ export async function classifyLegacyContactIndexBatch(
     await client.query(
       "SELECT set_config('app.legacy_index_remediation', 'v1', true)",
     );
-    const deliveries = await client.query<{ id: string; index: Buffer }>(
-      `SELECT id, recipient_blind_index AS index FROM message_deliveries
-       WHERE blind_index_key_id = $1 ORDER BY id LIMIT $2 FOR UPDATE`,
-      [RAW_LEGACY_CONTACT_INDEX_ID, limit],
-    );
+    const deliveries =
+      cursor?.phase === 'optouts'
+        ? { rows: [] as { id: string; index: Buffer }[] }
+        : await client.query<{ id: string; index: Buffer }>(
+            `SELECT id, recipient_blind_index AS index FROM message_deliveries
+       WHERE blind_index_key_id = $1 ${cursor?.phase === 'deliveries' && cursor.afterId !== null ? 'AND id > $3' : ''} ORDER BY id LIMIT $2 FOR UPDATE`,
+            cursor?.phase === 'deliveries' && cursor.afterId !== null
+              ? [RAW_LEGACY_CONTACT_INDEX_ID, limit, cursor.afterId]
+              : [RAW_LEGACY_CONTACT_INDEX_ID, limit],
+          );
     const remaining = limit - deliveries.rows.length;
     const optOuts =
-      remaining === 0
+      remaining === 0 || cursor?.phase === 'deliveries'
         ? { rows: [] as { channel: string; index: Buffer }[] }
         : await client.query<{ channel: string; index: Buffer }>(
             `SELECT channel, recipient_blind_index AS index FROM participant_contact_optouts
-             WHERE blind_index_key_id = $1 ORDER BY channel, recipient_blind_index
+             WHERE blind_index_key_id = $1 ${cursor?.phase === 'optouts' && cursor.afterChannel !== null ? 'AND (channel, recipient_blind_index) > ($3, $4)' : ''} ORDER BY channel, recipient_blind_index
              LIMIT $2 FOR UPDATE`,
-            [RAW_LEGACY_CONTACT_INDEX_ID, remaining],
+            cursor?.phase === 'optouts' && cursor.afterChannel !== null
+              ? [
+                  RAW_LEGACY_CONTACT_INDEX_ID,
+                  remaining,
+                  cursor.afterChannel,
+                  cursor.afterIndex,
+                ]
+              : [RAW_LEGACY_CONTACT_INDEX_ID, remaining],
           );
     const rows: LegacyContactIndex[] = [
       ...deliveries.rows.map((row) => ({
@@ -276,7 +301,18 @@ export async function classifyLegacyContactIndexBatch(
       );
     }
     await client.query('COMMIT');
-    return { processed: rows.length, passComplete: rows.length < limit };
+    return {
+      processed: rows.length,
+      passComplete: rows.length < limit,
+      ...(cursor
+        ? {
+            scanned: rows.length,
+            ...(cursor.phase === 'deliveries'
+              ? { afterId: deliveries.rows.at(-1)?.id ?? null }
+              : { afterOptout: optOuts.rows.at(-1) ?? null }),
+          }
+        : {}),
+    };
   } catch (error) {
     await client.query('ROLLBACK').catch(() => undefined);
     throw error;

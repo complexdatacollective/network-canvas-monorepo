@@ -1,4 +1,10 @@
-import { randomUUID } from 'node:crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+  randomUUID,
+} from 'node:crypto';
 
 import type pg from 'pg';
 import { z } from 'zod';
@@ -59,6 +65,217 @@ export function parseRotationCursor(value: unknown): RotationCursor {
 
 export function parseLegacyCursor(value: unknown): string | null {
   return z.string().min(1).max(255).nullable().parse(value);
+}
+
+const LEGACY_PHASES = [
+  'participants',
+  'deliveries',
+  'optouts',
+  'oauth',
+] as const;
+const legacyOperatorCursorSchema = z.string().regex(/^[A-Za-z0-9_-]{40,4096}$/);
+const legacyProgressSchema = z.strictObject({
+  version: z.literal(1),
+  phase: z.enum(LEGACY_PHASES),
+  after: z.union([
+    z.null(),
+    z.string().min(1).max(255),
+    z.strictObject({
+      channel: z.string().min(1).max(32),
+      index: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+    }),
+  ]),
+  piiKeyId: z.string().min(1).max(64),
+  indexKeyId: z.string().min(1).max(64),
+  integrationKeyId: z.string().min(1).max(64),
+  instanceId: z.string().regex(/^[0-9a-f]{64}$/),
+});
+type LegacyProgress = z.infer<typeof legacyProgressSchema>;
+
+export function parseLegacyOperatorCursor(value: unknown): string | null {
+  if (value === null) return null;
+  const parsed = legacyOperatorCursorSchema.safeParse(value);
+  if (!parsed.success) throw new ProtectedDataError();
+  return parsed.data;
+}
+
+async function legacyInstanceId(pool: pg.Pool): Promise<string> {
+  const result = await readMaintenancePage<{
+    databaseOid: string;
+    databaseName: string;
+    id: boolean | null;
+    name: string | null;
+    owner: string | null;
+    team: string | null;
+    completed: Date | null;
+  }>(
+    pool,
+    `SELECT database.oid::text AS "databaseOid",
+       database.datname AS "databaseName", instance.id, instance.name,
+       instance.initial_owner_user_id AS owner,
+       instance.initial_team_id AS team, instance.completed_at AS completed
+     FROM pg_catalog.pg_database database
+     LEFT JOIN studio_instance instance ON true
+     WHERE database.datname = pg_catalog.current_database() LIMIT 2`,
+    [],
+  );
+  if (result.rows.length !== 1) throw new ProtectedDataError();
+  const row = result.rows[0]!;
+  if (
+    row.completed !== null &&
+    (!(row.completed instanceof Date) ||
+      !Number.isFinite(row.completed.valueOf()))
+  )
+    throw new ProtectedDataError();
+  return createHash('sha256')
+    .update(
+      JSON.stringify([
+        row.id,
+        row.databaseOid,
+        row.databaseName,
+        row.name,
+        row.owner,
+        row.team,
+        row.completed?.toISOString() ?? null,
+      ]),
+    )
+    .digest('hex');
+}
+
+function legacyCursorKey(keys: EncryptionKeys, progress: LegacyProgress) {
+  return keys.derive('pii-index', progress.indexKeyId, [
+    'legacy-migration-cursor.v1',
+    progress.instanceId,
+    progress.piiKeyId,
+    progress.integrationKeyId,
+  ]);
+}
+
+function legacyCursorAad(progress: LegacyProgress): Buffer {
+  return Buffer.from(
+    JSON.stringify([
+      'legacy-migration-cursor.v1',
+      progress.instanceId,
+      progress.piiKeyId,
+      progress.indexKeyId,
+      progress.integrationKeyId,
+    ]),
+  );
+}
+
+function sealLegacyProgress(
+  keys: EncryptionKeys,
+  progress: LegacyProgress,
+): string {
+  const parsed = legacyProgressSchema.parse(progress);
+  const nonce = randomBytes(12);
+  const cipher = createCipheriv(
+    'aes-256-gcm',
+    legacyCursorKey(keys, parsed),
+    nonce,
+  );
+  cipher.setAAD(legacyCursorAad(parsed));
+  const plaintext = Buffer.from(JSON.stringify(parsed));
+  try {
+    const ciphertext = Buffer.concat([
+      cipher.update(plaintext),
+      cipher.final(),
+    ]);
+    return Buffer.concat([nonce, ciphertext, cipher.getAuthTag()]).toString(
+      'base64url',
+    );
+  } finally {
+    plaintext.fill(0);
+  }
+}
+
+function openLegacyProgress(
+  keys: EncryptionKeys,
+  cursor: string,
+  expected: Omit<LegacyProgress, 'phase' | 'after' | 'version'>,
+): LegacyProgress {
+  try {
+    const bytes = Buffer.from(
+      legacyOperatorCursorSchema.parse(cursor),
+      'base64url',
+    );
+    if (bytes.length < 29 || bytes.toString('base64url') !== cursor)
+      throw new Error();
+    const template = {
+      version: 1,
+      phase: 'participants',
+      after: null,
+      ...expected,
+    } as const;
+    const decipher = createDecipheriv(
+      'aes-256-gcm',
+      legacyCursorKey(keys, template),
+      bytes.subarray(0, 12),
+    );
+    decipher.setAAD(legacyCursorAad(template));
+    decipher.setAuthTag(bytes.subarray(-16));
+    const pending = decipher.update(bytes.subarray(12, -16));
+    let plaintext: Buffer | undefined;
+    try {
+      plaintext = Buffer.concat([pending, decipher.final()]);
+      const parsed = legacyProgressSchema.parse(
+        JSON.parse(plaintext.toString('utf8')),
+      );
+      if (
+        parsed.instanceId !== expected.instanceId ||
+        parsed.piiKeyId !== expected.piiKeyId ||
+        parsed.indexKeyId !== expected.indexKeyId ||
+        parsed.integrationKeyId !== expected.integrationKeyId
+      )
+        throw new Error();
+      return parsed;
+    } finally {
+      pending.fill(0);
+      plaintext?.fill(0);
+    }
+  } catch {
+    throw new ProtectedDataError();
+  }
+}
+
+function validateLegacyProgressPosition(progress: LegacyProgress): void {
+  try {
+    if (progress.phase === 'optouts') {
+      if (progress.after === null) return;
+      if (typeof progress.after === 'string') throw new Error();
+      const index = Buffer.from(progress.after.index, 'base64url');
+      if (
+        index.byteLength !== 32 ||
+        index.toString('base64url') !== progress.after.index
+      )
+        throw new Error();
+      return;
+    }
+    if (progress.after !== null && typeof progress.after !== 'string')
+      throw new Error();
+    if (
+      typeof progress.after === 'string' &&
+      progress.phase !== 'oauth' &&
+      !z.uuid().safeParse(progress.after).success
+    )
+      throw new Error();
+  } catch {
+    throw new ProtectedDataError();
+  }
+}
+
+function legacyStringPosition(progress: LegacyProgress): string | null {
+  if (progress.after === null || typeof progress.after === 'string')
+    return progress.after;
+  throw new ProtectedDataError();
+}
+
+function legacyOptoutPosition(
+  progress: LegacyProgress,
+): { channel: string; index: string } | null {
+  if (progress.after === null || typeof progress.after !== 'string')
+    return progress.after;
+  throw new ProtectedDataError();
 }
 
 function sameBytes(left: Buffer | null, right: Buffer | null): boolean {
@@ -379,25 +596,40 @@ async function migrateLegacyParticipantBatch(
   pool: pg.Pool,
   keys: EncryptionKeys,
   limit: number,
-): Promise<{ processed: number; passComplete: boolean }> {
+  afterId: string | null,
+): Promise<{
+  processed: number;
+  scanned: number;
+  afterId: string | null;
+  passComplete: boolean;
+}> {
   const selected = await readMaintenancePage<LegacyParticipantRow>(
     pool,
     `SELECT id, team_id, study_id, participant_code, pii_key_id, pii_algorithm,
       email_ciphertext, phone_ciphertext, name_ciphertext, attributes_ciphertext,
       email_index, phone_index, blind_index_key_id
-     FROM participants WHERE blind_index_key_id = $2 OR (
+     FROM participants WHERE (blind_index_key_id = $2 OR (
        blind_index_key_id IS NULL
        AND pii_key_id IS NOT NULL AND pii_key_id <> $3
        AND email_index IS NULL AND phone_index IS NULL
        AND email_ciphertext IS NULL AND phone_ciphertext IS NULL
        AND (name_ciphertext IS NOT NULL OR attributes_ciphertext IS NOT NULL)
-     ) ORDER BY id LIMIT $1`,
-    [limit, RAW_LEGACY_PARTICIPANT_INDEX_ID, keys.currentId('pii-enc')],
+     )) ${afterId === null ? '' : 'AND id > $4'} ORDER BY id LIMIT $1`,
+    afterId === null
+      ? [limit, RAW_LEGACY_PARTICIPANT_INDEX_ID, keys.currentId('pii-enc')]
+      : [
+          limit,
+          RAW_LEGACY_PARTICIPANT_INDEX_ID,
+          keys.currentId('pii-enc'),
+          afterId,
+        ],
   );
   for (const row of selected.rows)
     await migrateLegacyParticipant(pool, keys, row);
   return {
     processed: selected.rows.length,
+    scanned: selected.rows.length,
+    afterId: selected.rows.at(-1)?.id ?? null,
     passComplete: selected.rows.length < limit,
   };
 }
@@ -815,37 +1047,92 @@ export async function migrateLegacyDataBatch(
   passComplete: boolean;
 }> {
   const limit = limitSchema.parse(input.limit);
-  const afterId = parseLegacyCursor(input.afterId ?? null);
-  const participants = await migrateLegacyParticipantBatch(
-    maintenancePool,
-    keys,
-    limit,
-  );
-  if (!participants.passComplete)
-    return {
-      processed: participants.processed,
-      scanned: participants.processed,
-      afterId,
-      passComplete: false,
-    };
-  let scanned = participants.processed;
-  let processed = participants.processed;
-  const classifications = await classifyLegacyContactIndexBatch(
-    legacyOperatorPool,
-    limit - scanned,
-  );
-  scanned += classifications.processed;
-  processed += classifications.processed;
-  if (!classifications.passComplete || scanned === limit)
-    return { processed, scanned, afterId, passComplete: false };
-  const oauth = await migrateLegacyOAuthBatch(legacyOperatorPool, keys, {
-    limit: limit - scanned,
-    afterId,
-  });
-  return {
-    processed: processed + oauth.processed,
-    scanned: scanned + oauth.scanned,
-    afterId: oauth.afterId,
-    passComplete: oauth.passComplete,
+  const instanceId = await legacyInstanceId(maintenancePool);
+  const expected = {
+    piiKeyId: keys.currentId('pii-enc'),
+    indexKeyId: keys.currentId('pii-index'),
+    integrationKeyId: keys.currentId('integration-enc'),
+    instanceId,
   };
+  const parsedCursor = parseLegacyOperatorCursor(input.afterId ?? null);
+  let progress: LegacyProgress = parsedCursor
+    ? openLegacyProgress(keys, parsedCursor, expected)
+    : { version: 1, phase: 'participants', after: null, ...expected };
+  validateLegacyProgressPosition(progress);
+  let processed = 0;
+  let scanned = 0;
+  while (scanned < limit) {
+    const cap = limit - scanned;
+    if (progress.phase === 'participants') {
+      const page = await migrateLegacyParticipantBatch(
+        maintenancePool,
+        keys,
+        cap,
+        legacyStringPosition(progress),
+      );
+      processed += page.processed;
+      scanned += page.scanned ?? 0;
+      progress = page.passComplete
+        ? { ...progress, phase: 'deliveries', after: null }
+        : { ...progress, after: page.afterId };
+    } else if (progress.phase === 'deliveries') {
+      const page = await classifyLegacyContactIndexBatch(
+        legacyOperatorPool,
+        cap,
+        {
+          phase: 'deliveries',
+          afterId: legacyStringPosition(progress),
+        },
+      );
+      processed += page.processed;
+      scanned += page.scanned ?? 0;
+      progress = page.passComplete
+        ? { ...progress, phase: 'optouts', after: null }
+        : { ...progress, after: page.afterId ?? null };
+    } else if (progress.phase === 'optouts') {
+      const after = legacyOptoutPosition(progress);
+      const page = await classifyLegacyContactIndexBatch(
+        legacyOperatorPool,
+        cap,
+        {
+          phase: 'optouts',
+          afterChannel: after?.channel ?? null,
+          afterIndex: after ? Buffer.from(after.index, 'base64url') : null,
+        },
+      );
+      processed += page.processed;
+      scanned += page.scanned ?? 0;
+      if (page.passComplete) {
+        progress = { ...progress, phase: 'oauth', after: null };
+      } else {
+        const nextOptout = page.afterOptout;
+        if (!nextOptout) throw new ProtectedDataError();
+        progress = {
+          ...progress,
+          after: {
+            channel: nextOptout.channel,
+            index: nextOptout.index.toString('base64url'),
+          },
+        };
+      }
+    } else {
+      const page = await migrateLegacyOAuthBatch(legacyOperatorPool, keys, {
+        limit: cap,
+        afterId: legacyStringPosition(progress),
+      });
+      processed += page.processed;
+      scanned += page.scanned;
+      if (page.passComplete)
+        return { processed, scanned, afterId: null, passComplete: true };
+      progress = { ...progress, after: page.afterId };
+    }
+    if (scanned === limit)
+      return {
+        processed,
+        scanned,
+        afterId: sealLegacyProgress(keys, progress),
+        passComplete: false,
+      };
+  }
+  throw new ProtectedDataError();
 }

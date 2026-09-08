@@ -518,11 +518,38 @@ describe('operator-only retained OAuth credentials', () => {
               .rows,
           ).toEqual([]);
         }
-        expect(
-          runCommand(operatorUrl, ['migrate-legacy', '--limit', '1']),
-        ).toMatchObject({
+        const firstMigration = runCommand(operatorUrl, [
+          'migrate-legacy',
+          '--limit',
+          '1',
+        ]);
+        expect(firstMigration).toMatchObject({
           status: 0,
           output: { operation: 'migrate-legacy', processed: 1 },
+        });
+        expect(firstMigration.output).toMatchObject({
+          passComplete: false,
+          afterId: expect.stringMatching(/^[A-Za-z0-9_-]+$/),
+        });
+        if (
+          firstMigration.output === null ||
+          typeof firstMigration.output !== 'object' ||
+          !('afterId' in firstMigration.output) ||
+          typeof firstMigration.output.afterId !== 'string'
+        )
+          throw new Error('Expected an opaque migration cursor.');
+        const migrationCursor = firstMigration.output.afterId;
+        expect(
+          runCommand(operatorUrl, [
+            'migrate-legacy',
+            '--limit',
+            '1',
+            '--after-id',
+            migrationCursor,
+          ]),
+        ).toMatchObject({
+          status: 0,
+          output: { operation: 'migrate-legacy', passComplete: true },
         });
         expect(
           (

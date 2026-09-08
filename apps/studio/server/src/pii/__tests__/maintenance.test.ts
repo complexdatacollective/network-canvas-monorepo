@@ -18,6 +18,7 @@ import {
 } from '../initialize.ts';
 import {
   migrateLegacyOAuthBatch,
+  parseLegacyCursor,
   rotateEncryptionBatch,
   type RotationCursor,
 } from '../maintenance.ts';
@@ -150,6 +151,8 @@ describe('bounded encryption maintenance and retained suppression', () => {
   });
 
   it('advances the legacy cursor through non-legacy rows without a whole-corpus recount', async () => {
+    expect(parseLegacyCursor('already-current')).toBe('already-current');
+    expect(() => parseLegacyCursor('x'.repeat(256))).toThrow();
     await participantFixture(async ({ scratch, keys, context }) => {
       await scratch.pool.query(
         `INSERT INTO account (id, "userId", "accountId", "providerId", issuer, "updatedAt") VALUES ('already-current', $1, 'already-current', 'google', 'https://accounts.google.com', now())`,
