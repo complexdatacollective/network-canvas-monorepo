@@ -132,6 +132,14 @@ const instance = {
     return instance;
   },
   remove: () => {
+    // The handler table goes with the map, as it does in the Storybook mock
+    // and in the SDK: a removed map is torn down, and its callbacks belong to
+    // a component that has unmounted. Left standing, `emitMapEvent` after a
+    // teardown called into that component — which is the very thing a test
+    // asserting a map preview cleans up after itself is trying to rule out —
+    // and the next map built inherited handlers it never registered, so a
+    // component that registers no `move` handler still answered one.
+    state().handlers.clear();
     state().removed += 1;
   },
 };
