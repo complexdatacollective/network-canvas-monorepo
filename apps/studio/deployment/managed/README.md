@@ -540,6 +540,29 @@ rollover between reservation and fetch.
 
 The request contract follows the [official New Relic Log API](https://docs.newrelic.com/docs/logs/log-api/introduction-log-api/).
 
+## Account usage evidence
+
+`observability-new-relic-usage.mjs` provides a separate read-only NerdGraph
+client using an operator-supplied user key. It queries the exact configured US
+account and UTC month, requires a complete month-to-date data-platform report,
+and rejects absent, stale, malformed, regressed or wrong-month evidence. A
+missing report never means zero usage. Epoch seconds are normalized to
+milliseconds only when the value fits the requested interval unambiguously.
+Both report timestamps and ingest values come from rows containing the required
+attributes, so a partial row cannot refresh an old ingest value's freshness.
+
+The reader bounds response size, request duration and concurrency, rejects
+redirects and GraphQL partial errors, and discards provider error text. It does
+not authorize forwarding, reset a durable budget, cover other accounts or
+provide a billing upper bound. New Relic describes these figures as approximate
+and delayed; the separate forwarding policy still needs measured ingest
+expansion, headroom and the independent monotonic reservation service. Local
+injected-response tests prove the refusal paths and timestamp normalization;
+no live account query or production qualification is claimed.
+
+The query follows the [official usage query guidance](https://docs.newrelic.com/docs/accounts/accounts-billing/new-relic-one-pricing-billing/usage-queries-alerts/)
+and [NrMTDConsumption attribute definitions](https://docs.newrelic.com/attribute-dictionary/).
+
 ## Offline review
 
 Run `terraform fmt -check -recursive`, `terraform init -backend=false
