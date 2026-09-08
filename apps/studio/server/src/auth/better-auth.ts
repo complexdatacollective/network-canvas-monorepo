@@ -13,7 +13,6 @@ import { logOperational } from '../observability/logger.ts';
 import type { EncryptionKeys } from '../pii/keys.ts';
 import type { MagicLinkMailer } from './email.ts';
 import { encryptedAuthAdapter } from './encrypted-adapter.ts';
-import { selfHostedEnrollmentHooks } from './enrollment.ts';
 import type { AuthService } from './service.ts';
 
 // The only module that imports 'better-auth' (#1245).
@@ -31,9 +30,6 @@ export function createBetterAuthInstance(
 ) {
   const deploymentMode = options.deploymentMode ?? 'self-hosted';
   return betterAuth({
-    ...(deploymentMode === 'self-hosted'
-      ? { databaseHooks: selfHostedEnrollmentHooks(pool) }
-      : {}),
     logger: {
       level: 'warn',
       log(level) {
@@ -48,7 +44,11 @@ export function createBetterAuthInstance(
     baseURL: env.baseUrl,
     basePath: '/api/auth',
     secret: env.secret,
-    database: encryptedAuthAdapter(pool, options.encryptionKeys),
+    database: encryptedAuthAdapter(
+      pool,
+      options.encryptionKeys,
+      deploymentMode === 'self-hosted',
+    ),
     // better-auth's own CSRF for /api/auth/*; the rest of the cookie plane
     // is covered by src/auth/csrf.ts (#1248).
     trustedOrigins: [env.baseUrl],

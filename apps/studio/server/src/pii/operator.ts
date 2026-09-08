@@ -11,7 +11,7 @@ import {
 } from './initialize.ts';
 import {
   migrateLegacyDataBatch,
-  parseLegacyCursor,
+  parseLegacyOperatorCursor,
   parseRotationCursor,
   rotateEncryptionBatch,
   type RotationCursor,
@@ -60,7 +60,7 @@ export async function runEncryptionCommand(
     const value: unknown = JSON.parse(values.cursor);
     cursor = parseRotationCursor(value);
   }
-  const afterId = parseLegacyCursor(values['after-id'] ?? null);
+  const afterId = parseLegacyOperatorCursor(values['after-id'] ?? null);
   if (
     (
       await checkSchema(

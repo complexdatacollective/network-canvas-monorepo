@@ -332,7 +332,8 @@ using a non-owner operator. It does not require
 
 Each operation returns one JSON result. Save a rotation result's `cursor` and
 pass its JSON unchanged as `--cursor` on the next invocation. For legacy
-conversion, pass a non-null `afterId` as `--after-id`. Each page reports `scanned`
+conversion, pass the returned opaque non-null `afterId` unchanged as
+`--after-id`. Each page reports `scanned`
 (rows visited), `processed` (rows changed), and `passComplete`. Repeat until
 `passComplete` is true and the cursor is null; a completely full final page
 requires one more call to observe exhaustion. These are bounded progress values,
@@ -345,10 +346,14 @@ participant shape: no contact ciphertext or index, but an encrypted name or
 attributes under a configured non-current key. Mixed or empty shapes remain
 refused. It registers ordinary configured keys, but never registers an unverified
 participant key until a row authenticates successfully and never registers a key
-proof for the public legacy contact HMAC. Pre-OAuth phases remove their own raw
-marker or replace their historical key, so an interrupted command safely resumes
-without a separate cursor. Once OAuth returns a non-null
-`afterId`, resumed batches verify every retained root against immutable proofs.
+proof for the public legacy contact HMAC. The authenticated legacy cursor pages
+participants, delivery indexes, opt-out indexes and OAuth accounts in that
+order. It binds the actual database and immutable Studio-instance identity plus
+all three current key IDs. Its opt-out composite key remains inside AES-256-GCM
+ciphertext; cursor output does not expose the blind index. A changed keyset,
+another database, malformed cursor or altered authentication tag fails with the
+fixed protected-data error. Any non-null cursor selects proof-only resume, so
+the exhaustive initialization scan is not repeated between pages.
 Run
 `encryption verify` after the pass for full startup/restore verification. Removing
 historical roots remains unsupported and fails both resume and full verification.

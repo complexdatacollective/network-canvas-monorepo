@@ -371,12 +371,82 @@ describe('actual server encryption startup and operator entrypoints', () => {
     });
   });
 
+  it('resumes legacy conversion from its opaque cursor without repeating corpus verification', async () => {
+    await withDatabase(async ({ db, pool, allowedLogins }) => {
+      await pool.query(
+        `INSERT INTO "user" (id, name, email, "emailVerified") VALUES ('legacy-user', 'Synthetic', 'legacy@example.test', true)`,
+      );
+      await pool.query(
+        `INSERT INTO account (id, "userId", "accountId", "providerId", issuer, "updatedAt", "accessToken")
+         VALUES ('legacy-account', 'legacy-user', 'legacy-account', 'google', 'https://accounts.google.com', now(), 'synthetic-legacy-token')`,
+      );
+      const maintenance = createMaintenancePool(db);
+      const encryption = {
+        configuration: configuration(),
+        loadRootKey: async () => rootOne,
+      };
+      try {
+        const first = await runEncryptionCommand(
+          ['migrate-legacy', '--limit', '1'],
+          maintenance,
+          encryption,
+          { allowedLogins, schemaPool: pool },
+          pool,
+        );
+        expect(first).toMatchObject({
+          operation: 'migrate-legacy',
+          processed: 1,
+          scanned: 1,
+          passComplete: false,
+          afterId: expect.stringMatching(/^[A-Za-z0-9_-]+$/),
+        });
+        if (!('afterId' in first) || first.afterId === null)
+          throw new Error('Expected an opaque legacy migration cursor.');
+        const afterId = first.afterId;
+
+        const client = await maintenance.connect();
+        const queries = vi.spyOn(client, 'query');
+        client.release();
+        await expect(
+          runEncryptionCommand(
+            ['migrate-legacy', '--limit', '1', '--after-id', afterId],
+            maintenance,
+            encryption,
+            { allowedLogins, schemaPool: pool },
+            pool,
+          ),
+        ).resolves.toMatchObject({
+          operation: 'migrate-legacy',
+          processed: 0,
+          passComplete: true,
+          afterId: null,
+        });
+        const resumed = queries.mock.calls.map(([sql]) =>
+          typeof sql === 'string' ? sql : '',
+        );
+        expect(
+          resumed.some((sql) => sql.includes('SELECT purpose, key_id')),
+        ).toBe(true);
+        expect(
+          resumed.some((sql) =>
+            /SELECT DISTINCT|count\(|SELECT EXISTS|INSERT INTO encryption_key_verifications/i.test(
+              sql,
+            ),
+          ),
+        ).toBe(false);
+        queries.mockRestore();
+      } finally {
+        await maintenance.end();
+      }
+    });
+  });
+
   it('rejects malformed legacy cursors before loading roots or registering permanent proofs', async () => {
     await withDatabase(async ({ db, pool, allowedLogins }) => {
       const maintenance = createMaintenancePool(db);
       const loadRootKey = vi.fn(async () => rootOne);
       try {
-        for (const afterId of ['', 'x'.repeat(256)]) {
+        for (const afterId of ['', 'invalid+cursor', 'x'.repeat(4097)]) {
           await expect(
             runEncryptionCommand(
               ['migrate-legacy', '--after-id', afterId],

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { DBAdapter, DBTransactionAdapter } from 'better-auth/adapters';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { APIError } from 'better-auth/api';
 import type { BetterAuthOptions } from 'better-auth/types';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
@@ -62,13 +63,62 @@ function withMetadata(select: string[] | undefined): string[] | undefined {
   return select ? [...new Set([...select, ...SUPPORT_FIELDS])] : undefined;
 }
 
+function invitationRequired(): APIError {
+  return new APIError('FORBIDDEN', {
+    code: 'INVITATION_REQUIRED',
+    message:
+      'A current invitation and a verified email address are required to create an account.',
+  });
+}
+
+async function lockVerifiedInvitation(
+  client: pg.PoolClient,
+  data: Record<string, unknown>,
+): Promise<string> {
+  const email = data.email;
+  // oxlint-disable-next-line typescript/no-unnecessary-boolean-literal-compare -- the provider trust boundary requires literal boolean true
+  if (typeof email !== 'string' || data.emailVerified !== true)
+    throw invitationRequired();
+  const invitation = await client.query<{ id: string }>(
+    `SELECT id
+       FROM team_invitations
+      WHERE lower(email) = lower($1)
+        AND status = 'pending'
+        AND expires_at > clock_timestamp()
+      ORDER BY expires_at, id
+      LIMIT 1
+      FOR UPDATE`,
+    [email.trim()],
+  );
+  const id = invitation.rows[0]?.id;
+  if (!id) throw invitationRequired();
+  return id;
+}
+
+async function requireInvitationStillCurrent(
+  client: pg.PoolClient,
+  invitationId: string,
+): Promise<void> {
+  const invitation = await client.query<{ current: boolean }>(
+    `SELECT status = 'pending' AND expires_at > clock_timestamp() AS current
+       FROM team_invitations
+      WHERE id = $1`,
+    [invitationId],
+  );
+  if (invitation.rows[0]?.current !== true) throw invitationRequired();
+}
+
 /**
  * The single Better Auth persistence boundary. Plaintext never reaches the
  * Drizzle adapter for tokens, and no returned credential escapes before its
  * immutable audit commits. Password hashes and session tokens retain Better
  * Auth's own contract; these are distinct from reversible provider secrets.
  */
-export function encryptedAuthAdapter(pool: pg.Pool, keys?: EncryptionKeys) {
+export function encryptedAuthAdapter(
+  pool: pg.Pool,
+  keys?: EncryptionKeys,
+  requireVerifiedInvitation = false,
+) {
   return (options: BetterAuthOptions): DBAdapter => {
     const baseFor = (client: pg.Pool | pg.PoolClient) =>
       drizzleAdapter(drizzle({ client }), {
@@ -109,6 +159,20 @@ export function encryptedAuthAdapter(pool: pg.Pool, keys?: EncryptionKeys) {
       async create<T extends Record<string, unknown>, R = T>(
         input: CreateInput<T>,
       ): Promise<R> {
+        if (input.model === 'user' && requireVerifiedInvitation) {
+          return credentialTransaction(pool, async (client) => {
+            const invitationId = await lockVerifiedInvitation(
+              client,
+              input.data,
+            );
+            const created = await baseFor(client).create<T, R>(input);
+            // The insert may block behind database work long enough for the
+            // invitation to expire. Recheck inside the same transaction while
+            // the row lock prevents cancellation from overtaking creation.
+            await requireInvitationStillCurrent(client, invitationId);
+            return created;
+          });
+        }
         if (input.model !== 'account') return base.create<T, R>(input);
         forbidStorageOverrides(input.data);
         if (!tokenMutation(input.data)) return base.create<T, R>(input);

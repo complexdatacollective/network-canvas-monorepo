@@ -38,6 +38,24 @@ const migrations = await readMigrations(
   fileURLToPath(new URL('../../../migrations', import.meta.url)),
 );
 
+async function expectOpaqueCursorFailure(
+  work: () => Promise<unknown>,
+  forbidden: readonly string[],
+) {
+  let failure: unknown;
+  try {
+    await work();
+  } catch (error) {
+    failure = error;
+  }
+  expect(failure).toBeInstanceOf(Error);
+  const rendered = String(failure);
+  expect(rendered).toBe(
+    'ProtectedDataError: Stored encrypted data could not be read.',
+  );
+  for (const value of forbidden) expect(rendered).not.toContain(value);
+}
+
 async function insertRestoredRow(
   pool: pg.Pool,
   sql: string,
@@ -1145,6 +1163,55 @@ it('authenticates and resumes every legacy index phase before OAuth and preserve
       { limit: 1, afterId },
     );
     expect(first).toMatchObject({ processed: 1, passComplete: false });
+    afterId = first.afterId;
+    expect(afterId).toMatch(/^[A-Za-z0-9_-]+$/);
+    if (afterId === null) throw new Error('Expected participant cursor.');
+    const cursorCanaries = [afterId, legacyIndex.toString('base64url')];
+    const tampered = `${afterId.slice(0, -1)}${afterId.endsWith('A') ? 'B' : 'A'}`;
+    await expectOpaqueCursorFailure(
+      () =>
+        migrateLegacyDataBatch(maintenance, scratch.pool, keys, {
+          limit: 1,
+          afterId: tampered,
+        }),
+      cursorCanaries,
+    );
+    const changedConfig = structuredClone(config);
+    changedConfig.blindIndex.current = 'index-2';
+    const changedKeys = await loadTestKeys(changedConfig);
+    await expectOpaqueCursorFailure(
+      () =>
+        migrateLegacyDataBatch(maintenance, scratch.pool, changedKeys, {
+          limit: 1,
+          afterId,
+        }),
+      cursorCanaries,
+    );
+    const other = await createScratchDatabase(database);
+    const otherMaintenance = createMaintenancePool(other.db);
+    try {
+      const otherLogins = await enrollMigrationTestDatabase(
+        other.pool,
+        database,
+      );
+      await migrateDatabase(
+        other.pool,
+        migrations,
+        SCHEMA_FINGERPRINT,
+        otherLogins,
+      );
+      await expectOpaqueCursorFailure(
+        () =>
+          migrateLegacyDataBatch(otherMaintenance, scratch.pool, keys, {
+            limit: 1,
+            afterId,
+          }),
+        cursorCanaries,
+      );
+    } finally {
+      await otherMaintenance.end();
+      await other.dispose();
+    }
     expect(
       (
         await scratch.pool.query(
@@ -1163,6 +1230,7 @@ it('authenticates and resumes every legacy index phase before OAuth and preserve
       { limit: 1, afterId },
     );
     expect(second).toMatchObject({ processed: 1, passComplete: false });
+    afterId = second.afterId;
     expect(
       (
         await scratch.pool.query(
@@ -1185,6 +1253,10 @@ it('authenticates and resumes every legacy index phase before OAuth and preserve
       { limit: 1, afterId },
     );
     expect(third).toMatchObject({ processed: 1, passComplete: false });
+    afterId = third.afterId;
+    if (afterId === null) throw new Error('Expected opt-out cursor.');
+    expect(afterId).not.toContain(legacyIndex.toString('hex'));
+    expect(afterId).not.toContain(legacyIndex.toString('base64url'));
     for (const runtime of [app, maintenance]) {
       const mutation = runtime.query(
         `UPDATE participant_contact_optouts SET recipient_blind_index = $1
@@ -1219,7 +1291,8 @@ it('authenticates and resumes every legacy index phase before OAuth and preserve
     );
     expect(fourth).toMatchObject({ processed: 1, passComplete: false });
     afterId = fourth.afterId;
-    expect(afterId).toBe(accountId);
+    if (afterId === null) throw new Error('Expected OAuth cursor.');
+    expect(afterId).not.toContain(accountId);
     const complete = await migrateLegacyDataBatch(
       maintenance,
       scratch.pool,
