@@ -240,6 +240,10 @@ export function evaluateManagedEstateCost(
     'validatorDurationSeconds',
     'objectScrubMemoryGb',
     'objectScrubDurationSeconds',
+    'objectCopyValidationMemoryGb',
+    'objectCopyValidationDurationSeconds',
+    'objectReconciliationMemoryGb',
+    'objectReconciliationDurationSeconds',
     'validatorTransferGb',
     'backupStoredGb',
     'backupRequestCount',
@@ -254,6 +258,10 @@ export function evaluateManagedEstateCost(
     'primaryObjectMonthlyVersionChurnCount',
     'primaryObjectRetainedVersionCount',
     'objectScrubRunCount',
+    'databaseCheckpointSizeBytes',
+    'objectCheckpointSizeBytes',
+    'recoveryObjectRequestsPerReconciliation',
+    'recoveryObjectRequestsPerScrubStart',
     'postmarkMessageCount',
     'postmarkIncludedMessages',
     'workerMonthlyRequestCount',
@@ -287,6 +295,25 @@ export function evaluateManagedEstateCost(
     fail('validator memory and duration must be positive');
   if (input.objectScrubMemoryGb === 0 || input.objectScrubDurationSeconds === 0)
     fail('object scrub memory and duration must be positive');
+  for (const phase of ['objectCopyValidation', 'objectReconciliation']) {
+    if (
+      input[`${phase}MemoryGb`] === 0 ||
+      input[`${phase}DurationSeconds`] === 0
+    )
+      fail(`${phase} memory and duration must be positive`);
+  }
+  if (
+    input.databaseCheckpointSizeBytes === 0 ||
+    input.objectCheckpointSizeBytes === 0
+  )
+    fail('database and object checkpoint sizes must be positive measurements');
+  if (
+    input.recoveryObjectRequestsPerReconciliation < 3 ||
+    input.recoveryObjectRequestsPerScrubStart < 2
+  )
+    fail(
+      'recovery object I/O must include checkpoint discovery, full proof-index reads, and reconciliation checkpoint writes',
+    );
 
   const dumpSizes = input.databaseDumpSizesGb;
   const databaseNames = Object.keys(sizing.services);
@@ -311,6 +338,21 @@ export function evaluateManagedEstateCost(
   const monthlyPoints =
     (sizing.monthlyHours * 60) / sizing.recovery.backupIntervalMinutes;
   const requiredValidations = monthlyPoints * databaseNames.length;
+  // Every bucket, including an idle one, needs a validated authoritative
+  // reconciliation and an immutable checkpoint. This is separate from both
+  // changed-version readback and the slower complete history scrub.
+  const objectReconciliations =
+    ((sizing.monthlyHours * 60) /
+      sizing.recovery.objectReconciliationIntervalMinutes) *
+    databaseNames.length;
+  const retainedDatabasePoints =
+    ((sizing.recovery.retentionDays * 24 * 60) /
+      sizing.recovery.backupIntervalMinutes) *
+    databaseNames.length;
+  const retainedObjectCheckpoints =
+    ((sizing.recovery.retentionDays * 24 * 60) /
+      sizing.recovery.objectReconciliationIntervalMinutes) *
+    databaseNames.length;
   const requiredObjectScrubRuns = Math.ceil(
     sizing.recovery.retentionDays / sizing.recovery.objectScrubIntervalDays,
   );
@@ -331,11 +373,19 @@ export function evaluateManagedEstateCost(
       requiredValidations * sizing.recovery.requestsPerBackup +
       input.primaryObjectMonthlyVersionChurnCount *
         sizing.recovery.backupRequestsPerObjectCopy +
+      objectReconciliations * input.recoveryObjectRequestsPerReconciliation +
+      input.objectScrubRunCount *
+        databaseNames.length *
+        input.recoveryObjectRequestsPerScrubStart +
       input.objectScrubRunCount *
         input.primaryObjectRetainedVersionCount *
         sizing.recovery.backupRequestsPerObjectValidation,
     validatorRequestCount:
       input.validatorRunCount * sizing.recovery.requestsPerValidation +
+      input.primaryObjectMonthlyVersionChurnCount *
+        sizing.recovery.validatorRequestsPerObjectCopy +
+      objectReconciliations *
+        sizing.recovery.validatorRequestsPerObjectReconciliation +
       input.objectScrubRunCount *
         input.primaryObjectRetainedVersionCount *
         sizing.recovery.validatorRequestsPerObjectValidation,
@@ -345,13 +395,27 @@ export function evaluateManagedEstateCost(
       ((sizing.recovery.retentionDays * 24 * 60) /
         sizing.recovery.backupIntervalMinutes) *
         dumpTotalGb +
-      input.primaryObjectRetainedVersionGb,
+      input.primaryObjectRetainedVersionGb +
+      (retainedDatabasePoints * input.databaseCheckpointSizeBytes +
+        retainedObjectCheckpoints * input.objectCheckpointSizeBytes) /
+        1_000_000_000,
     backupEgressGb:
       monthlyPoints * dumpTotalGb +
-      input.objectScrubRunCount * input.primaryObjectRetainedVersionGb,
+      input.primaryObjectMonthlyVersionChurnGb +
+      input.objectScrubRunCount * input.primaryObjectRetainedVersionGb +
+      ((objectReconciliations +
+        input.objectScrubRunCount * databaseNames.length) *
+        input.objectCheckpointSizeBytes) /
+        1_000_000_000,
     validatorTransferGb:
       monthlyPoints * dumpTotalGb +
-      input.objectScrubRunCount * input.primaryObjectRetainedVersionGb,
+      input.primaryObjectMonthlyVersionChurnGb +
+      input.objectScrubRunCount * input.primaryObjectRetainedVersionGb +
+      ((2 * objectReconciliations +
+        input.objectScrubRunCount * databaseNames.length) *
+        input.objectCheckpointSizeBytes +
+        requiredValidations * input.databaseCheckpointSizeBytes) /
+        1_000_000_000,
   };
   for (const [field, minimum] of Object.entries(recoveryMinimums)) {
     finiteNonNegative(minimum, `minimum ${field}`);
@@ -470,7 +534,13 @@ export function evaluateManagedEstateCost(
         input.validatorDurationSeconds +
       input.objectScrubRunCount *
         input.objectScrubMemoryGb *
-        input.objectScrubDurationSeconds,
+        input.objectScrubDurationSeconds +
+      input.primaryObjectMonthlyVersionChurnCount *
+        input.objectCopyValidationMemoryGb *
+        input.objectCopyValidationDurationSeconds +
+      objectReconciliations *
+        input.objectReconciliationMemoryGb *
+        input.objectReconciliationDurationSeconds,
     'validator-requests': input.validatorRequestCount,
     'validator-transfer': input.validatorTransferGb,
     'mail': 1,

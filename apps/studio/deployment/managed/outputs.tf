@@ -26,7 +26,7 @@ output "candidate_inventory" {
       provider                = "Backblaze B2"
       asserted_account_region = var.b2_region
       bucket_id               = b2_bucket.independent_recovery.id
-      object_lock_days        = 31
+      object_lock_days        = jsondecode(file("${path.module}/candidate-sizing.json")).recovery.retentionDays
       server_side_encryption  = "SSE-B2/AES256"
       client_side_encryption  = "required-outside-this-module"
       independent_key_custody = "pending-qualification"

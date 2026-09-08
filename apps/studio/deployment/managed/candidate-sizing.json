@@ -27,12 +27,14 @@
     "backupIntervalMinutes": 30,
     "objectReconciliationIntervalMinutes": 1,
     "retentionDays": 31,
-    "requestsPerBackup": 2,
+    "requestsPerBackup": 3,
     "requestsPerValidation": 2,
     "objectScrubIntervalDays": 30,
-    "backupRequestsPerObjectCopy": 1,
+    "backupRequestsPerObjectCopy": 2,
     "backupRequestsPerObjectValidation": 1,
-    "validatorRequestsPerObjectValidation": 1
+    "validatorRequestsPerObjectValidation": 1,
+    "validatorRequestsPerObjectCopy": 1,
+    "validatorRequestsPerObjectReconciliation": 1
   },
   "postgres": {
     "planId": "hobby-2",

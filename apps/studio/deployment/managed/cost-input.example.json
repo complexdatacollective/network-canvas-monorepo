@@ -54,11 +54,11 @@
   "validatorRunCount": 5952,
   "validatorMemoryGb": 2,
   "validatorDurationSeconds": 30,
-  "validatorRequestCount": 36904,
-  "validatorTransferGb": 645.2,
-  "backupStoredGb": 620.2,
-  "backupRequestCount": 39404,
-  "backupEgressGb": 645.2,
+  "validatorRequestCount": 217964,
+  "validatorTransferGb": 650.57179392,
+  "backupStoredGb": 620.3889402880001,
+  "backupRequestCount": 583552,
+  "backupEgressGb": 650.3828536320001,
   "postmarkPlanRef": "basic-10k-historical-comparison",
   "postmarkMessageCount": 12000,
   "postmarkIncludedMessages": 10000,
@@ -140,37 +140,37 @@
     },
     {
       "category": "backup-storage",
-      "quantity": 0.6202000000000001,
+      "quantity": 0.6203889402880001,
       "unitPriceUsd": 6.95,
       "evidence": "illustrative B2 storage, all 31 days of immutable points plus live assets"
     },
     {
       "category": "backup-requests",
-      "quantity": 39404,
+      "quantity": 583552,
       "unitPriceUsd": 0,
       "evidence": "placeholder requiring request quote"
     },
     {
       "category": "backup-egress",
-      "quantity": 645.2,
+      "quantity": 650.3828536320001,
       "unitPriceUsd": 0,
       "evidence": "explicit estimate; free-egress eligibility must be proven"
     },
     {
       "category": "validator-compute",
-      "quantity": 359520,
+      "quantity": 362377,
       "unitPriceUsd": 1.6666666666666667e-5,
-      "evidence": "illustrative GB-second price; database validations and separately measured complete retained-version scrubs require a current quote"
+      "evidence": "illustrative GB-second price for database validation, new-copy validation, per-bucket reconciliation/checkpoint signing and separate history scrubs; every phase requires measurement and a current quote"
     },
     {
       "category": "validator-requests",
-      "quantity": 36904,
+      "quantity": 217964,
       "unitPriceUsd": 2e-7,
       "evidence": "illustrative Lambda invocation charge; independent execution location still requires qualification"
     },
     {
       "category": "validator-transfer",
-      "quantity": 645.2,
+      "quantity": 650.57179392,
       "unitPriceUsd": 0,
       "evidence": "illustrative full dump validation transfer; current provider quote required"
     },
@@ -249,5 +249,13 @@
   },
   "objectScrubRunCount": 2,
   "objectScrubMemoryGb": 2,
-  "objectScrubDurationSeconds": 600
+  "objectScrubDurationSeconds": 600,
+  "objectCopyValidationMemoryGb": 0.25,
+  "objectCopyValidationDurationSeconds": 1,
+  "objectReconciliationMemoryGb": 0.125,
+  "objectReconciliationDurationSeconds": 0.1,
+  "databaseCheckpointSizeBytes": 1024,
+  "objectCheckpointSizeBytes": 1024,
+  "recoveryObjectRequestsPerReconciliation": 3,
+  "recoveryObjectRequestsPerScrubStart": 2
 }
