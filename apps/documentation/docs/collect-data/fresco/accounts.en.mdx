@@ -109,9 +109,9 @@ it is in force. While it is:
   again the next time it signs in.
 
 Passkey-mode accounts are not affected: a passkey replaces the password entirely, and Fresco
-treats it as satisfying the requirement. Fresco does not currently insist that the passkey's
-device verify the person using it (with a PIN or biometric), so if your policy requires two
-separate factors for every account, keep every account in password mode.
+treats it as satisfying the requirement. Fresco requires every passkey to verify you with a
+PIN or biometric (see [Passkeys](#passkeys) below), so it already combines two distinct
+factors — possession of the authenticator and that check — without a separate TOTP step.
 
 ## Passkeys
 
