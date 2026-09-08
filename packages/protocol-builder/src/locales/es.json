@@ -266,7 +266,7 @@
   "protocolBuilder.formFields.attributeTaken": "Otro campo de este formulario ya recoge este atributo. Elige otro, o edita ese campo.",
   "protocolBuilder.formFields.componentHint": "Lo que usa el participante para responder. Cambiarlo cambia cómo se recoge este atributo en todas partes.",
   "protocolBuilder.formFields.componentLabel": "Control de entrada",
-  "protocolBuilder.formFields.componentRequired": "Elige cómo responde el participante a este campo.",
+  "protocolBuilder.formFields.componentRequired": "El atributo de este campo no ofrece al participante ninguna forma de responder. Elige otro atributo o elimina este campo.",
   "protocolBuilder.formFields.controlBoolean": "Botones de sí o no",
   "protocolBuilder.formFields.controlCheckboxGroup": "Grupo de casillas",
   "protocolBuilder.formFields.controlDatePicker": "Selector de fecha",

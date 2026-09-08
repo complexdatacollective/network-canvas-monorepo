@@ -1068,8 +1068,8 @@
     "description": "Label of the control choosing what the participant uses to answer — a text box, a slider, a set of buttons."
   },
   "protocolBuilder.formFields.componentRequired": {
-    "defaultMessage": "Choose how the participant answers this field.",
-    "description": "Refusal shown under the input-control field when nothing has been chosen."
+    "defaultMessage": "This field’s attribute gives the participant no way to answer. Choose a different attribute, or remove this field.",
+    "description": "Refusal shown above the fields of a form field’s dialog, and named by its unavailable save control, when the attribute the field collects has no input control to offer — an attribute that records a position rather than an answer, or one that has been deleted from the codebook. There is no control to choose in this dialog, so the way out is a different attribute."
   },
   "protocolBuilder.formFields.controlBoolean": {
     "defaultMessage": "Yes or no buttons",
