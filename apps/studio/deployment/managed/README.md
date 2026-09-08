@@ -549,6 +549,32 @@ before this primitive can admit live forwarding. Descriptor revalidation also
 does not defend against a malicious same-UID process racing filesystem paths;
 the private directory remains an operator-owned custody boundary.
 
+## New Relic log transport
+
+`observability-new-relic-logs.mjs` applies the authenticated Fly envelope and
+strict operational sanitizer before constructing the New Relic detailed-array
+request. It posts only to the fixed US Log API endpoint, with a separate API-key
+header, manual redirects, a 262,144-byte body limit and a bounded deadline.
+Provider response text is discarded. A successful HTTP response records only
+acceptance; it does not prove storage, queryability or retention.
+
+Every attempt has a fresh random identifier and a digest binding that identifier,
+the reviewed policy, exact schema identity, payload hash, wire bytes and record
+count. The supplied `reserveAttempt` authorizer must echo that binding after
+awaiting durable budget admission. Receipts cannot be reused across attempts,
+including a collector restart; the transport also rejects backward month or
+reservation sequences. UTC month is checked again immediately before fetch.
+Retries require a new reservation, and uncertain requests are never refunded.
+
+The transport has no subscription, queue or independent account-usage reader.
+Its authorizer must still authenticate fresh provider usage and measured schema
+expansion before admitting production traffic. Local tests use injected fetch
+and native Request construction; they do not send data to New Relic. Positive
+controls and deliberate mutations cover cached receipts, sequence replay and
+rollover between reservation and fetch.
+
+The request contract follows the [official New Relic Log API](https://docs.newrelic.com/docs/logs/log-api/introduction-log-api/).
+
 ## Offline review
 
 Run `terraform fmt -check -recursive`, `terraform init -backend=false
