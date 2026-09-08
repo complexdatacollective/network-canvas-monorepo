@@ -30,6 +30,8 @@ import {
 } from '@codaco/studio-sync/rls';
 import { sections } from '@codaco/studio-sync/schema';
 
+import { AUTH_TABLES } from '../db/auth-schema.ts';
+
 const templates = pgTable(
   'templates',
   {
@@ -102,6 +104,7 @@ const templateVersions = pgTable(
     manifest: jsonb('manifest').notNull(),
     manifestHash: text('manifest_hash').notNull(),
     schemaVersion: integer('schema_version').notNull(),
+    registryOrigin: jsonb('registry_origin'),
     publishedAt: timestamp('published_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -126,6 +129,95 @@ const templateVersions = pgTable(
     check(
       'template_versions_manifest_object_check',
       sql`jsonb_typeof(${table.manifest}) = 'object'`,
+    ),
+    check(
+      'template_versions_registry_origin_check',
+      sql`${table.registryOrigin} IS NULL OR (
+        jsonb_typeof(${table.registryOrigin}) = 'object'
+        AND ${table.registryOrigin} ?& ARRAY['registry_url','entry_id','source_version_hash','fetched_at']
+        AND jsonb_object_length(${table.registryOrigin}) = 4
+        AND (${table.registryOrigin}->>'registry_url') ~ '^https://[^@/?#]+$'
+        AND (${table.registryOrigin}->>'entry_id') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        AND (${table.registryOrigin}->>'source_version_hash') ~ '^[0-9a-f]{64}$'
+        AND (${table.registryOrigin}->>'fetched_at') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$'
+      )`,
+    ),
+    ...teamIsolationPolicies(),
+  ],
+);
+
+const templateRegistryAccounts = pgTable(
+  'template_registry_accounts',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => AUTH_TABLES.user.id, { onDelete: 'cascade' }),
+    registryUrl: text('registry_url').notNull(),
+    publisherId: uuid('publisher_id').notNull(),
+    publisherName: text('publisher_name').notNull(),
+    publisherOrcid: text('publisher_orcid'),
+    linkedAt: timestamp('linked_at', { withTimezone: true })
+      .notNull()
+      .default(sql`clock_timestamp()`),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.registryUrl] }),
+    check(
+      'template_registry_accounts_url_check',
+      sql`${table.registryUrl} ~ '^https://[^@/?#]+$'`,
+    ),
+    check(
+      'template_registry_accounts_name_check',
+      sql`char_length(${table.publisherName}) BETWEEN 1 AND 200 AND ${table.publisherName} ~ '[^[:space:]]'`,
+    ),
+    check(
+      'template_registry_accounts_orcid_check',
+      sql`${table.publisherOrcid} IS NULL OR ${table.publisherOrcid} ~ '^[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X]$'`,
+    ),
+  ],
+);
+
+const templateRegistryPublications = pgTable(
+  'template_registry_publications',
+  {
+    id: uuid('id').primaryKey(),
+    teamId: text('team_id').notNull(),
+    templateVersionId: uuid('template_version_id').notNull(),
+    registryUrl: text('registry_url').notNull(),
+    registryEntryId: uuid('registry_entry_id').notNull(),
+    registryRoot: text('registry_root').notNull(),
+    publisherId: uuid('publisher_id').notNull(),
+    publisherName: text('publisher_name').notNull(),
+    publisherOrcid: text('publisher_orcid'),
+    publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: 'template_registry_publications_version_fk',
+      columns: [table.templateVersionId, table.teamId],
+      foreignColumns: [templateVersions.id, templateVersions.teamId],
+    }),
+    unique().on(table.teamId, table.templateVersionId, table.registryUrl),
+    unique().on(table.registryUrl, table.registryEntryId),
+    index('template_registry_publications_team_version_idx').on(
+      table.teamId,
+      table.templateVersionId,
+    ),
+    check(
+      'template_registry_publications_url_check',
+      sql`${table.registryUrl} ~ '^https://[^@/?#]+$'`,
+    ),
+    check(
+      'template_registry_publications_root_check',
+      sql`${table.registryRoot} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      'template_registry_publications_name_check',
+      sql`char_length(${table.publisherName}) BETWEEN 1 AND 200 AND ${table.publisherName} ~ '[^[:space:]]'`,
+    ),
+    check(
+      'template_registry_publications_orcid_check',
+      sql`${table.publisherOrcid} IS NULL OR ${table.publisherOrcid} ~ '^[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X]$'`,
     ),
     ...teamIsolationPolicies(),
   ],
@@ -165,6 +257,8 @@ export const TEMPLATE_TABLES = {
   templates,
   templateVersions,
   templateVersionSections,
+  templateRegistryAccounts,
+  templateRegistryPublications,
 };
 
 // Hashed into the schema fingerprint — whitespace counts. CREATE OR REPLACE
@@ -184,6 +278,14 @@ CREATE OR REPLACE TRIGGER template_versions_immutable
 CREATE OR REPLACE TRIGGER template_version_sections_immutable
   BEFORE UPDATE OR DELETE ON template_version_sections
   FOR EACH ROW EXECUTE FUNCTION template_versions_are_immutable();
+
+CREATE OR REPLACE TRIGGER template_registry_publications_immutable
+  BEFORE UPDATE OR DELETE ON template_registry_publications
+  FOR EACH ROW EXECUTE FUNCTION template_versions_are_immutable();
+
+CREATE UNIQUE INDEX IF NOT EXISTS template_versions_registry_entry_idx
+  ON template_versions (team_id, (registry_origin->>'registry_url'), (registry_origin->>'entry_id'))
+  WHERE registry_origin IS NOT NULL;
 
 -- Adding a pin after publication would change what the version resolves to
 -- while its frozen manifest and hash stayed unchanged (version_sections).
@@ -206,5 +308,6 @@ ${tenantTablesSql([
   'templates',
   'template_versions',
   'template_version_sections',
+  'template_registry_publications',
 ])}
 `;
