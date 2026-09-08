@@ -529,3 +529,90 @@ describe('a codebook that changes while the editor is open', () => {
     expect(harness.pendingCommands()).toEqual([]);
   });
 });
+
+/**
+ * A collaborator takes the stage while the create dialog is open.
+ *
+ * The draft inside it is work the researcher has done and nowhere else: they
+ * opened the dialog because the type they need does not exist yet, and the
+ * name they were typing is the whole of it. Unmounting the editor with the
+ * trigger that opened it throws that away without a word — and the researcher
+ * who takes editing back has to start again without ever being told why.
+ */
+describe('editing taken away while the create dialog is open', () => {
+  const openTheCreateDialog = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new node type' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+      'Place',
+    );
+  };
+
+  it('keeps the open editor, read-only, and hides only the trigger', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+    await openTheCreateDialog(harness);
+
+    harness.setReadOnly();
+
+    // The editor takes `readOnly` for exactly this: interaction stops, the
+    // draft does not.
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    expect(name).toHaveValue('Place');
+    expect(name).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save entity' })).toBeDisabled();
+    // The trigger goes, because a create nobody may start is not on offer.
+    expect(
+      screen.queryByRole('button', { name: 'Create a new node type' }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * The way out is still there. Keeping the editor mounted would be worse than
+   * unmounting it if the researcher were then stuck inside it — and the
+   * trigger it would return focus to has gone with the lease, which Fresco's
+   * `Dialog` answers by falling back to Base UI's own default.
+   */
+  it('can still be dismissed by the researcher who can no longer use it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+    await openTheCreateDialog(harness);
+
+    harness.setReadOnly();
+    await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+  });
+
+  it('finishes the create the researcher had started once editing comes back', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+    await openTheCreateDialog(harness);
+
+    harness.setReadOnly();
+    harness.setReadOnly(false);
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        codebookNodeNames(harness.host.getSnapshot().protocolSections),
+      ).toContain('Place'),
+    );
+    expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
+  });
+});
