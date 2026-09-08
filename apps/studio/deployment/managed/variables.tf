@@ -97,7 +97,7 @@ variable "b2_region" {
 
 variable "kms_admin_principal_arns" {
   type        = set(string)
-  description = "Independently controlled AWS principals allowed to administer the two KMS keys."
+  description = "Trusted KMS administrators, including the IAM principal used by Terraform. Temporary deployment sessions must resolve to one of these roles."
   validation {
     condition     = length(var.kms_admin_principal_arns) > 0 && alltrue([for arn in var.kms_admin_principal_arns : can(regex("^arn:aws:iam::[0-9]{12}:(role|user)/[A-Za-z0-9+=,.@_-]+(/[A-Za-z0-9+=,.@_-]+)*$", arn))])
     error_message = "At least one complete AWS IAM user or role administrator ARN is required."

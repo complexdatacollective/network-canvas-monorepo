@@ -22,8 +22,8 @@
   "databaseTransferGb": 10,
   "validatorRequestCount": 11904,
   "validatorRunCount": 5952,
-  "validatorTransferGb": 119.04,
-  "backupStoredGb": 143.6,
+  "validatorTransferGb": 595.2,
+  "backupStoredGb": 615.2,
   "backupRequestCount": 11904,
   "backupEgressGb": 1190.4,
   "lineItems": [
@@ -89,9 +89,9 @@
     },
     {
       "category": "backup-storage",
-      "quantity": 0.1436,
+      "quantity": 0.6152000000000001,
       "unitPriceUsd": 6.95,
-      "evidence": "B2 TB-month candidate"
+      "evidence": "illustrative B2 storage, all 31 days of immutable points plus live assets"
     },
     {
       "category": "backup-requests",
@@ -119,9 +119,9 @@
     },
     {
       "category": "validator-transfer",
-      "quantity": 119.04,
+      "quantity": 595.2,
       "unitPriceUsd": 0,
-      "evidence": "0.02 GB per validation; placeholder requiring a current egress quote"
+      "evidence": "illustrative full dump validation transfer; current provider quote required"
     },
     {
       "category": "mail",
@@ -179,5 +179,11 @@
   "flyMonthlyHours": 744,
   "validatorMemoryGb": 2,
   "validatorDurationSeconds": 30,
-  "postgresPlanId": "hobby-2"
+  "postgresPlanId": "hobby-2",
+  "databaseDumpSizesGb": {
+    "studio-production": 0.1,
+    "studio-staging": 0.1,
+    "registry-production": 0.1,
+    "registry-staging": 0.1
+  }
 }
