@@ -8,7 +8,11 @@ import {
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { StageFormDraft } from '../session.ts';
-import { withoutValueAt } from './absentValues.ts';
+import {
+  isAbsentValue,
+  withoutAbsentValues,
+  withoutValueAt,
+} from './absentValues.ts';
 import type { StageFormStoreApi } from './stageEditorContext.ts';
 
 /**
@@ -67,6 +71,21 @@ export type StageDraftSubmission = Readonly<{
  *    value it accepts anywhere, and neither is the `{}` that writing an
  *    absence INTO a container would leave standing where the container ought
  *    not to be at all.
+ *
+ *    "Holding nothing" is read through `withoutAbsentValues`, because a form
+ *    has several ways of spelling it and only one of them is `undefined`: a
+ *    cleared fresco-ui text input hands back `''`, a picker that was never
+ *    used hands back `null`, and a group of cleared controls assembles an
+ *    object holding nothing but those. Judged on `undefined` alone, every
+ *    other spelling was written into the stage — `interviewScript: ''` saved
+ *    as content the researcher did not write, and an emptied capability saved
+ *    as the container of empty strings the schema refuses.
+ *
+ *    An empty ARRAY is not nothing here, and neither is an emptied ROW — see
+ *    `leavesNothing`. Whether a list the researcher emptied means "no list"
+ *    belongs to the field that owns it: `OptionalList` is the field that
+ *    answers, and it answers by handing back `undefined`, which this rule then
+ *    removes.
  */
 export function stageDraftFromSubmission(
   submission: StageDraftSubmission,
@@ -89,7 +108,13 @@ export function stageDraftFromSubmission(
     // strength of a reading that never happened. A field holding `undefined`
     // is the opposite — the researcher emptied it — and that IS carried.
     if (!submitted.present) continue;
-    if (submitted.value === undefined) {
+    // Cleaned before it is judged, and written as cleaned. A control the
+    // researcher emptied reports itself in whichever way its own value type
+    // spells emptiness, and every one of those spellings means the same thing
+    // to the stage: nothing here. Reading only `undefined` left the other
+    // spellings looking like values, and they were saved as values.
+    const value = withoutAbsentValues(submitted.value);
+    if (leavesNothing(value, path)) {
       // Removed rather than written, which is rule 4 arriving one loop early
       // and for the same reason. `setValue` would put the key there holding
       // `undefined`, and every container on the way to it — so a capability
@@ -102,7 +127,7 @@ export function stageDraftFromSubmission(
     }
     // `setValue` copies every container it traverses, so this cannot write
     // through into the session's own frozen snapshot.
-    setValue(draft, path, submitted.value);
+    setValue(draft, path, value);
   }
 
   const { writes, removals } = partitionDormant(submission.dormantFields);
@@ -174,6 +199,27 @@ export function stageDraftFromSubmission(
 }
 
 /**
+ * Whether a reading that says nothing means the stage should hold nothing
+ * THERE.
+ *
+ * Everywhere but a list ROW, yes. A row is a position in a list rather than a
+ * value the stage may simply not have: clearing every setting inside one
+ * leaves an empty row, and taking the row out is a deliberate list operation
+ * the list's own editor makes. `withoutValueAt` already refuses to prune a
+ * container an index addresses, for the same reason and in the same words;
+ * this is that rule about the row itself.
+ *
+ * `undefined` is not covered by the carve-out, because there is nothing to
+ * write: `setValue` would leave the key holding `undefined`, which is the
+ * outcome rule 4 exists to refuse.
+ */
+function leavesNothing(value: unknown, path: ObjectPath): boolean {
+  if (value === undefined) return true;
+  if (!isAbsentValue(value)) return false;
+  return typeof path.at(-1) !== 'number';
+}
+
+/**
  * Where every field the form still has mounted lives.
  *
  * The submitted values are assembled from these, so a hidden container that
@@ -212,7 +258,7 @@ export function dormantFieldsOf(storeApi: StageFormStoreApi): DormantField[] {
 function submittedValueAt(
   values: Readonly<Record<string, FieldValue>>,
   path: ObjectPath,
-): Readonly<{ present: boolean; value: FieldValue }> {
+): Readonly<{ present: boolean; value: unknown }> {
   let cursor: unknown = values;
   for (const segment of path) {
     if (cursor === null || typeof cursor !== 'object') {
@@ -224,13 +270,11 @@ function submittedValueAt(
     }
     cursor = descriptor.value;
   }
-  // Everything the form store holds is a `FieldValue`, and every container it
-  // assembled them into is one too.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return { present: true, value: cursor as FieldValue };
+  return { present: true, value: cursor };
 }
 
-type ResolvedDormant = Readonly<{ path: ObjectPath; value: FieldValue }>;
+/** Cleaned rather than raw — see `partitionDormant`. */
+type ResolvedDormant = Readonly<{ path: ObjectPath; value: unknown }>;
 
 function partitionDormant(
   dormantFields: readonly DormantField[],
@@ -241,10 +285,14 @@ function partitionDormant(
   for (const dormant of dormantFields) {
     const path = dormant.path ?? safeFieldPath(dormant.name);
     if (path === null || path.length === 0) continue;
-    (dormant.value === undefined ? removals : writes).push({
-      path,
-      value: dormant.value,
-    });
+    // Read the same way a mounted field's value is, because it is the same
+    // evidence about the same field: a control emptied and then hidden behind
+    // a collapsed group parks whatever spelling of nothing it held, and
+    // replaying that into the stage is exactly what rule 4 refuses to do on
+    // screen. Which of the two lists it lands in is therefore decided by what
+    // it holds, not by whether the store happened to park `undefined`.
+    const value = withoutAbsentValues(dormant.value);
+    (leavesNothing(value, path) ? removals : writes).push({ path, value });
   }
 
   return { writes, removals };
