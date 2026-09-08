@@ -19,8 +19,9 @@
   - slider "Resize panel and node list areas"
   - listbox "Added Nodes"
   - navigation:
-    - button "Previous Step"
-    - button "🔑"
+    - button "Settings"
+    - button "Previous Step" [disabled]
+    - button "Enter your Passphrase": 🔑
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

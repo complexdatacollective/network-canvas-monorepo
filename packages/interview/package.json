@@ -21,6 +21,7 @@
     ".": "./src/index.ts",
     "./contract": "./src/contract/index.ts",
     "./protocol-schema-version": "./src/protocolSchemaVersion.ts",
+    "./locales": "./src/locales/catalogs.ts",
     "./styles.css": "./src/styles.css"
   },
   "publishConfig": {
@@ -37,11 +38,16 @@
         "types": "./dist/protocol-schema-version.d.ts",
         "default": "./dist/protocol-schema-version.js"
       },
+      "./locales": {
+        "types": "./dist/locales/catalogs.d.ts",
+        "default": "./dist/locales.js"
+      },
       "./styles.css": "./dist/styles.css"
     },
     "access": "public"
   },
   "scripts": {
+    "i18n:extract": "node scripts/extract-i18n.mjs",
     "build": "vite build",
     "typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p e2e/tsconfig.json --noEmit",
     "test": "vitest run --project=units",
@@ -59,6 +65,7 @@
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/network-query": "workspace:^",
     "@faker-js/faker": "catalog:",
     "@mapbox/search-js-react": "^1.6.0",

@@ -19,6 +19,7 @@ import type { ComponentProps } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
 import { DropdownMenuItem } from '../DropdownMenu';
+import { awaitPassiveEffects } from '../storybook-support/awaitPassiveEffects';
 import { withTooltipProvider } from '../storybook-support/withTooltipProvider';
 import {
   SegmentedToolbar,
@@ -192,6 +193,7 @@ export const ToolbarIconButton: Story = {
     const button = within(canvasElement).getByRole('button', {
       name: 'Delete',
     });
+    await awaitPassiveEffects();
     await userEvent.hover(button);
     expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(
       'Delete',

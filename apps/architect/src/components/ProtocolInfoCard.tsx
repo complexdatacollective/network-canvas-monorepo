@@ -1,9 +1,17 @@
+import {
+  type IntlShape,
+  createAppIntl,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+
+const defaultIntl = createAppIntl({ locale: 'en' });
 import { Globe } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Link } from 'wouter';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Pattern } from '@codaco/art';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
@@ -21,6 +29,66 @@ import { useRunOnce } from '~/hooks/useRunOnce';
 import { getProtocol, getProtocolName } from '~/selectors/protocol';
 import countGraphemes from '~/utils/countGraphemes';
 import { cx } from '~/utils/cva';
+const utilityMessages = defineMessages({
+  ofCharactersRemaining: {
+    id: 'architect.utility.protocolInfoCard.ofCharactersRemaining',
+    defaultMessage:
+      '{remaining, number} of {maximum, number} characters remaining',
+    description:
+      'Researcher-facing explanatory text in components / ProtocolInfoCard.',
+  },
+  overTheCharacterLimit: {
+    id: 'architect.utility.protocolInfoCard.overTheCharacterLimit',
+    defaultMessage:
+      '{over, plural, one {# character over the {maximum, number} character limit} other {# characters over the {maximum, number} character limit}}',
+    description:
+      'Researcher-facing explanatory text in components / ProtocolInfoCard.',
+  },
+});
+const messages = defineMessages({
+  stages: {
+    id: 'architect.protocolInfoCard.stages',
+    defaultMessage: '{count, plural, one {# stage} other {# stages}}',
+    description: 'Number of stages in the open protocol.',
+  },
+  requiresInternet: {
+    id: 'architect.protocolInfoCard.requiresInternet',
+    defaultMessage: 'Requires Internet',
+    description: 'Visible text in components / ProtocolInfoCard.',
+  },
+  enterProtocolName: {
+    id: 'architect.protocolInfoCard.enterProtocolName',
+    defaultMessage: 'Enter protocol name...',
+    description: 'The placeholder text in components / ProtocolInfoCard.',
+  },
+  protocolName: {
+    id: 'architect.protocolInfoCard.protocolName',
+    defaultMessage: 'Protocol name',
+    description: 'The aria-label text in components / ProtocolInfoCard.',
+  },
+  protocolDescription: {
+    id: 'architect.protocolInfoCard.protocolDescription',
+    defaultMessage: 'Protocol description',
+    description: 'The aria-label text in components / ProtocolInfoCard.',
+  },
+  enterADescriptionForYourProtocol: {
+    id: 'architect.protocolInfoCard.enterADescriptionForYourProtocol',
+    defaultMessage: 'Enter a description for your protocol...',
+    description: 'The placeholder text in components / ProtocolInfoCard.',
+  },
+  node: {
+    id: 'architect.protocolInfoCard.node',
+    defaultMessage:
+      '{nodeTypeCount, plural, one {# node type} other {# node types}}',
+    description: 'Visible text in components / ProtocolInfoCard.',
+  },
+  edge: {
+    id: 'architect.protocolInfoCard.edge',
+    defaultMessage:
+      '{edgeTypeCount, plural, one {# edge type} other {# edge types}}',
+    description: 'Visible text in components / ProtocolInfoCard.',
+  },
+});
 
 /**
  * Step the heading down as the name gets longer, mirroring interviewer's
@@ -93,18 +161,28 @@ const announceThresholdFor = (remaining: number) =>
  * only speaks at the thresholds — and carries `isRefusal` so the visible copy
  * can read as an error rather than as a statistic.
  */
-type NameNotice = { message: string; isRefusal: boolean };
+type NameNotice = { graphemes: number; isRefusal: boolean };
 
-const describeAllowance = (graphemes: number) => {
+const describeAllowance = (
+  graphemes: number,
+  intl: IntlShape = defaultIntl,
+) => {
   const remaining = PROTOCOL_NAME_MAX_LENGTH - graphemes;
   if (remaining >= 0) {
-    return `${remaining} of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`;
+    return intl.formatMessage(utilityMessages.ofCharactersRemaining, {
+      remaining: remaining,
+      maximum: PROTOCOL_NAME_MAX_LENGTH,
+    });
   }
   const over = -remaining;
-  return `${over} ${over === 1 ? 'character' : 'characters'} over the ${PROTOCOL_NAME_MAX_LENGTH} character limit`;
+  return intl.formatMessage(utilityMessages.overTheCharacterLimit, {
+    over: over,
+    maximum: PROTOCOL_NAME_MAX_LENGTH,
+  });
 };
 
 const ProtocolInfoCard = () => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const name = useSelector(getProtocolName);
   const protocol = useSelector(getProtocol);
@@ -127,6 +205,14 @@ const ProtocolInfoCard = () => {
   const allowanceId = useId();
 
   const [notice, setNotice] = useState<NameNotice | null>(null);
+  const noticeText =
+    notice === null
+      ? null
+      : notice.isRefusal
+        ? intl.formatMessage(PROTOCOL_NAME_TOO_LONG_MESSAGE, {
+            max: PROTOCOL_NAME_MAX_LENGTH,
+          })
+        : describeAllowance(notice.graphemes, intl);
   const lastAnnouncedThreshold = useRef<number | null>(
     announceThresholdFor(PROTOCOL_NAME_MAX_LENGTH - countGraphemes(name ?? '')),
   );
@@ -200,7 +286,10 @@ const ProtocolInfoCard = () => {
       // researcher who pastes a study title and watches nothing happen has been
       // told nothing at all. `isRefusal` is what paints it, so the refusal has
       // a visible channel and not only a screen-reader one.
-      setNotice({ message: PROTOCOL_NAME_TOO_LONG_MESSAGE, isRefusal: true });
+      setNotice({
+        graphemes: nextCount,
+        isRefusal: true,
+      });
       return;
     }
 
@@ -212,9 +301,7 @@ const ProtocolInfoCard = () => {
     if (threshold !== lastAnnouncedThreshold.current) {
       lastAnnouncedThreshold.current = threshold;
       setNotice(
-        threshold === null
-          ? null
-          : { message: describeAllowance(nextCount), isRefusal: false },
+        threshold === null ? null : { graphemes: nextCount, isRefusal: false },
       );
       return;
     }
@@ -308,7 +395,7 @@ const ProtocolInfoCard = () => {
           {requiresInternet && (
             <span className="text-neon-carrot border-neon-carrot bg-rich-black/60 font-monospace flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs uppercase backdrop-blur-sm">
               <Globe className="size-4" />
-              Requires Internet
+              {intl.formatMessage(messages.requiresInternet)}
             </span>
           )}
         </div>
@@ -390,8 +477,8 @@ const ProtocolInfoCard = () => {
                 dispatch(updateProtocolName({ name: trimmed }));
               }
             }}
-            placeholder="Enter protocol name..."
-            aria-label="Protocol name"
+            placeholder={intl.formatMessage(messages.enterProtocolName)}
+            aria-label={intl.formatMessage(messages.protocolName)}
             aria-describedby={allowanceId}
           />
 
@@ -429,18 +516,20 @@ const ProtocolInfoCard = () => {
                 'sr-only',
             )}
           >
-            {notice?.message ?? describeAllowance(nameGraphemes)}
+            {noticeText ?? describeAllowance(nameGraphemes, intl)}
           </p>
 
           <span role="status" className="sr-only">
-            {notice?.message ?? ''}
+            {noticeText ?? ''}
           </span>
         </div>
 
         <TextAreaField
-          aria-label="Protocol description"
+          aria-label={intl.formatMessage(messages.protocolDescription)}
           className="[&>textarea]:field-sizing-content [&>textarea]:max-h-52 [&>textarea]:min-h-24"
-          placeholder="Enter a description for your protocol..."
+          placeholder={intl.formatMessage(
+            messages.enterADescriptionForYourProtocol,
+          )}
           value={localDescription}
           onChange={(value) => setLocalDescription(value ?? '')}
           onBlur={() => {
@@ -456,15 +545,23 @@ const ProtocolInfoCard = () => {
 
         <div className="text-navy-taupe/70 font-monospace flex flex-wrap items-center gap-2 text-xs tracking-wide uppercase">
           <span>
-            {stageCount} {stageCount === 1 ? 'stage' : 'stages'}
+            {intl.formatMessage(messages.stages, { count: stageCount })}
           </span>
+          {/* Decorative statistic separator. */}
+          {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
           <span aria-hidden>/</span>
           <NativeLink render={<Link href="/protocol/codebook" />}>
-            {nodeTypeCount} node {nodeTypeCount === 1 ? 'type' : 'types'}
+            {intl.formatMessage(messages.node, {
+              nodeTypeCount: nodeTypeCount,
+            })}
           </NativeLink>
+          {/* Decorative statistic separator. */}
+          {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
           <span aria-hidden>/</span>
           <NativeLink render={<Link href="/protocol/codebook" />}>
-            {edgeTypeCount} edge {edgeTypeCount === 1 ? 'type' : 'types'}
+            {intl.formatMessage(messages.edge, {
+              edgeTypeCount: edgeTypeCount,
+            })}
           </NativeLink>
         </div>
       </div>

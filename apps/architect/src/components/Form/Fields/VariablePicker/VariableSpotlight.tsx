@@ -11,6 +11,8 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
 import type { ItemProps, Key } from '@codaco/fresco-ui/collection/types';
@@ -24,11 +26,84 @@ import { VariablePill } from '~/components/VariablePill';
 import type { RootState } from '~/ducks/store';
 import { cx } from '~/utils/cva';
 import { documentationLinks } from '~/utils/documentationLinks';
-import { validations } from '~/utils/validations';
+import { createValidations } from '~/utils/validations';
 
 import { getVariablesForSubject } from '../../../../selectors/codebook';
 import { sortByLabel } from '../../../Codebook/helpers';
 import ExternalLink from '../../../ExternalLink';
+const additionalMessages = defineMessages({
+  toCreateYourFirstAttributeOf: {
+    id: 'architect.additional.form.fields.variablePicker.variableSpotlight.toCreateYourFirstAttributeOf',
+    defaultMessage:
+      'To create your first attribute of this type, type a name above and press enter. See our <ExternalLink> {value1} </ExternalLink> for more information.',
+    description:
+      'Visible text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+  },
+});
+const messages = defineMessages({
+  invalidAttribute: {
+    id: 'architect.presentation.invalidAttribute',
+    defaultMessage: '{label}: {reason}.',
+    description:
+      'Complete presentation message. Preserve authored values; the translator controls spacing and punctuation.',
+  },
+  cannotCreateAttributeNamed: {
+    id: 'architect.form.fields.variablePicker.variableSpotlight.cannotCreateAttributeNamed',
+    defaultMessage: 'Cannot create attribute named "{filterTerm}"',
+    description:
+      'The label text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+  },
+  createNewAttributeCalled: {
+    id: 'architect.form.fields.variablePicker.variableSpotlight.createNewAttributeCalled',
+    defaultMessage: 'Create new attribute called "{filterTerm}".',
+    description:
+      'The label text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+  },
+  findAnAttribute: {
+    id: 'architect.form.fields.variablePicker.variableSpotlight.findAnAttribute',
+    defaultMessage: 'Find an attribute...',
+    description:
+      'The placeholder text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+  },
+  createOrFindAnAttribute: {
+    id: 'architect.form.fields.variablePicker.variableSpotlight.createOrFindAnAttribute',
+    defaultMessage: 'Create or find an attribute...',
+    description:
+      'The placeholder text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+  },
+  findOrCreateAnAttribute: {
+    id: 'architect.form.fields.variablePicker.variableSpotlight.findOrCreateAnAttribute',
+    defaultMessage: 'Find or create an attribute',
+    description:
+      'The aria-label text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+  },
+  documentationOnAttributeNaming: {
+    id: 'architect.form.fields.variablePicker.variableSpotlight.documentationOnAttributeNaming',
+    defaultMessage: 'documentation on attribute naming',
+    description:
+      'Visible text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+  },
+  noAttributesExistForYouTo: {
+    id: 'architect.form.fields.variablePicker.variableSpotlight.noAttributesExistForYouTo',
+    defaultMessage:
+      'No attributes exist for you to select, and you cannot create a new attribute from here. Please create one or more attributes elsewhere in your protocol, and return here to select them.',
+    description:
+      'Visible text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+  },
+  youCannotCreateANewAttribute: {
+    id: 'architect.form.fields.variablePicker.variableSpotlight.youCannotCreateANewAttribute',
+    defaultMessage:
+      'You cannot create a new attribute from here. Please create one or more attributes elsewhere in your protocol, and return here to select them.',
+    description:
+      'Visible text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+  },
+  attributeResults: {
+    id: 'architect.form.fields.variablePicker.variableSpotlight.attributeResults',
+    defaultMessage: 'Attribute results',
+    description:
+      'The aria-label text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+  },
+});
 
 const EMPTY_CLASSES =
   'flex grow basis-full items-start rounded px-7 py-5 text-current/80 [&_svg]:mr-3 [&_svg]:mt-1 [&_svg]:shrink-0';
@@ -109,6 +184,7 @@ const VariableSpotlight = ({
   finalFocus,
   shouldPropagateBlur,
 }: VariableSpotlightProps) => {
+  const intl = useAppIntl();
   const [filterTerm, setFilterTerm] = useState('');
 
   const resetState = useCallback(() => {
@@ -134,14 +210,14 @@ const VariableSpotlight = ({
   );
 
   const sortedAndFilteredItems = useMemo(() => {
-    const sortedOptions = [...options].toSorted(sortByLabel);
+    const sortedOptions = options.toSorted((a, b) => sortByLabel(a, b, intl));
     if (!filterTerm) {
       return sortedOptions;
     }
     return sortedOptions.filter((item) =>
       item.label.toLowerCase().includes(filterTerm.toLowerCase()),
     );
-  }, [filterTerm, options]);
+  }, [filterTerm, options, intl]);
 
   // Memoize subject to avoid creating new object on every render, which breaks selector memoization
   const subject = useMemo(
@@ -170,10 +246,12 @@ const VariableSpotlight = ({
   );
 
   const invalidVariableName = useMemo(() => {
-    const unique = validations.uniqueByList(existingVariableNames)(filterTerm);
-    const allowed = validations.allowedVariableName()(filterTerm);
+    const unique = createValidations(intl).uniqueByList(existingVariableNames)(
+      filterTerm,
+    );
+    const allowed = createValidations(intl).allowedVariableName()(filterTerm);
     return unique || allowed || undefined;
-  }, [filterTerm, existingVariableNames]);
+  }, [filterTerm, existingVariableNames, intl]);
 
   const collectionItems = useMemo<VariableSpotlightItem[]>(() => {
     const items: VariableSpotlightItem[] = [];
@@ -184,14 +262,18 @@ const VariableSpotlight = ({
         items.push({
           id: `invalid:${filterTerm}`,
           kind: 'invalid',
-          label: `Cannot create attribute named "${filterTerm}"`,
+          label: intl.formatMessage(messages.cannotCreateAttributeNamed, {
+            filterTerm: filterTerm,
+          }),
           reason: invalidVariableName,
         });
       } else {
         items.push({
           id: `create:${filterTerm}`,
           kind: 'create',
-          label: `Create new attribute called "${filterTerm}".`,
+          label: intl.formatMessage(messages.createNewAttributeCalled, {
+            filterTerm: filterTerm,
+          }),
           value: filterTerm,
         });
       }
@@ -215,6 +297,7 @@ const VariableSpotlight = ({
     hasFilterTerm,
     invalidVariableName,
     sortedAndFilteredItems,
+    intl,
   ]);
 
   const disabledKeys = useMemo(
@@ -344,13 +427,16 @@ const VariableSpotlight = ({
           <div className={CREATE_NEW_CLASSES}>
             <TriangleAlert aria-hidden />
             <span>
-              {item.label}: {item.reason}.
+              {intl.formatMessage(messages.invalidAttribute, {
+                label: item.label,
+                reason: item.reason,
+              })}
             </span>
           </div>
         )}
       </div>
     ),
-    [],
+    [intl],
   );
 
   return (
@@ -379,15 +465,15 @@ const VariableSpotlight = ({
               type="search"
               placeholder={
                 disallowCreation
-                  ? 'Find an attribute...'
-                  : 'Create or find an attribute...'
+                  ? intl.formatMessage(messages.findAnAttribute)
+                  : intl.formatMessage(messages.createOrFindAnAttribute)
               }
               value={filterTerm}
               onChange={handleFilter}
               onKeyDown={handleInputKeyDown}
               prefixComponent={<Search aria-hidden className="size-4" />}
               className="w-full"
-              aria-label="Find or create an attribute"
+              aria-label={intl.formatMessage(messages.findOrCreateAnAttribute)}
             />
           </header>
           <main className="min-h-0 flex-auto pb-1">
@@ -396,12 +482,21 @@ const VariableSpotlight = ({
                 {renderEmptyMessage(
                   <Info aria-hidden />,
                   <Paragraph margin="none">
-                    To create your first attribute of this type, type a name
-                    above and press enter. See our&nbsp;
-                    <ExternalLink href={documentationLinks.variableNaming}>
-                      documentation on attribute naming
-                    </ExternalLink>
-                    &nbsp;for more information.
+                    {intl.formatMessage(
+                      additionalMessages.toCreateYourFirstAttributeOf,
+                      {
+                        value1: intl.formatMessage(
+                          messages.documentationOnAttributeNaming,
+                        ),
+                        ExternalLink: (chunks) => (
+                          <ExternalLink
+                            href={documentationLinks.variableNaming}
+                          >
+                            {chunks}
+                          </ExternalLink>
+                        ),
+                      },
+                    )}
                   </Paragraph>,
                 )}
               </>
@@ -412,9 +507,7 @@ const VariableSpotlight = ({
               renderEmptyMessage(
                 <TriangleAlert aria-hidden />,
                 <Paragraph margin="none">
-                  No attributes exist for you to select, and you cannot create a
-                  new attribute from here. Please create one or more attributes
-                  elsewhere in your protocol, and return here to select them.
+                  {intl.formatMessage(messages.noAttributesExistForYouTo)}
                 </Paragraph>,
               )}
             {disallowCreation &&
@@ -423,15 +516,13 @@ const VariableSpotlight = ({
               renderEmptyMessage(
                 <TriangleAlert aria-hidden />,
                 <Paragraph margin="none">
-                  You cannot create a new attribute from here. Please create one
-                  or more attributes elsewhere in your protocol, and return here
-                  to select them.
+                  {intl.formatMessage(messages.youCannotCreateANewAttribute)}
                 </Paragraph>,
               )}
             {collectionItems.length > 0 && (
               <Collection
                 id={RESULTS_ID}
-                aria-label="Attribute results"
+                aria-label={intl.formatMessage(messages.attributeResults)}
                 items={collectionItems}
                 keyExtractor={(item) => item.id}
                 textValueExtractor={(item) => item.label}

@@ -1,10 +1,26 @@
 import { useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import { Filter, Query } from '~/components/Query';
 import type { RuleSetGroupProps } from '~/components/Query/Rules/Rules';
 import type { Rule } from '~/components/Query/Rules/validateRule';
 import { getCodebook } from '~/selectors/protocol';
+const remainingMessages = defineMessages({
+  addNewFilterRule: {
+    id: 'architect.remaining.sections.fields.ruleSetFields.addNewFilterRule',
+    defaultMessage: 'Add new filter rule',
+    description:
+      'The addRuleLabel text in components / sections / fields / RuleSetFields.',
+  },
+  addNewSkipLogicRule: {
+    id: 'architect.remaining.sections.fields.ruleSetFields.addNewSkipLogicRule',
+    defaultMessage: 'Add new skip logic rule',
+    description:
+      'The addRuleLabel text in components / sections / fields / RuleSetFields.',
+  },
+});
 
 /** The stored shape of a filter/query field: one opaque object value. */
 export type RuleSetValue = {
@@ -35,18 +51,22 @@ const useRuleSetCodebook = () =>
  * adapter used to — left the label pointing at nothing and the rule builder
  * anonymous and unmarked to assistive technology, while the visible "Rules *"
  * and its error message sat right beside it.
+ *
+ * The bag's `aria-required` is the one thing not forwarded. `group` is not a
+ * role that supports it — axe flags it there as a critical `aria-allowed-attr`
+ * failure — so the requirement is announced through the description alone,
+ * which already names the "Required" marker. `aria-invalid` is global and
+ * stays.
  */
 const toRuleSetGroupProps = ({
   id,
   'aria-labelledby': ariaLabelledBy,
   'aria-describedby': ariaDescribedBy,
-  'aria-required': ariaRequired,
   'aria-invalid': ariaInvalid,
 }: RuleSetFieldProps): RuleSetGroupProps => ({
   id,
   'aria-labelledby': ariaLabelledBy,
   'aria-describedby': ariaDescribedBy,
-  'aria-required': ariaRequired,
   'aria-invalid': ariaInvalid,
 });
 
@@ -70,6 +90,7 @@ const toRuleSetGroupProps = ({
  * material that already exists.
  */
 export const FilterField = (props: RuleSetFieldProps) => {
+  const intl = useAppIntl();
   const { value, onChange, allowEdgeRules } = props;
   const codebook = useRuleSetCodebook();
   const groupProps = toRuleSetGroupProps(props);
@@ -82,12 +103,13 @@ export const FilterField = (props: RuleSetFieldProps) => {
       codebook={codebook}
       onChange={(nextValue) => onChange?.(asRuleSetValue(nextValue))}
       allowEdgeRules={allowEdgeRules}
-      addRuleLabel="Add new filter rule"
+      addRuleLabel={intl.formatMessage(remainingMessages.addNewFilterRule)}
     />
   );
 };
 
 export const QueryField = (props: RuleSetFieldProps) => {
+  const intl = useAppIntl();
   const { value, onChange } = props;
   const codebook = useRuleSetCodebook();
   const groupProps = toRuleSetGroupProps(props);
@@ -99,7 +121,7 @@ export const QueryField = (props: RuleSetFieldProps) => {
       join={value?.join}
       codebook={codebook}
       onChange={(nextValue) => onChange?.(asRuleSetValue(nextValue))}
-      addRuleLabel="Add new skip logic rule"
+      addRuleLabel={intl.formatMessage(remainingMessages.addNewSkipLogicRule)}
     />
   );
 };

@@ -1,11 +1,38 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import {
+  createAppIntl,
+  defineMessages,
+  type IntlShape,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import { cx } from '~/utils/cva';
 
 import MapView from './MapView';
+const messages = defineMessages({
+  editMapView: {
+    id: 'architect.form.fields.geospatial.mapSelection.editMapView',
+    defaultMessage: 'Edit map view',
+    description:
+      'Visible text in components / Form / Fields / Geospatial / MapSelection.',
+  },
+  setMapView: {
+    id: 'architect.form.fields.geospatial.mapSelection.setMapView',
+    defaultMessage: 'Set map view',
+    description:
+      'Visible text in components / Form / Fields / Geospatial / MapSelection.',
+  },
+});
+const extraMessages = defineMessages({
+  required: {
+    id: 'architect.mapView.required',
+    defaultMessage: 'Required',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 export type MapValue = {
   center?: number[];
@@ -22,11 +49,15 @@ export type MapValue = {
  * cannot inspect. Absence is deliberately left to that native rule so the
  * field also carries the visible and semantic required cues.
  */
-export const completeMapView = (value: unknown) => {
+const defaultIntl = createAppIntl({ locale: 'en' });
+export const completeMapView = (
+  value: unknown,
+  intl: IntlShape = defaultIntl,
+) => {
   if (value === null || value === undefined) return undefined;
 
   if (!value || typeof value !== 'object' || !('center' in value)) {
-    return 'Required';
+    return intl.formatMessage(extraMessages.required);
   }
 
   const center = value.center;
@@ -37,7 +68,7 @@ export const completeMapView = (value: unknown) => {
         typeof coordinate === 'number' && Number.isFinite(coordinate),
     )
     ? undefined
-    : 'Required';
+    : intl.formatMessage(extraMessages.required);
 };
 
 type MapSelectionProps = CreateFormFieldProps<MapValue, 'fieldset'> & {
@@ -70,6 +101,7 @@ const MapSelection = ({
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
 }: MapSelectionProps) => {
+  const intl = useAppIntl();
   const [showMap, setShowMap] = useState(false);
 
   return (
@@ -95,7 +127,9 @@ const MapSelection = ({
           color="primary"
           disabled={disabled || readOnly}
         >
-          {value.center ? 'Edit map view' : 'Set map view'}
+          {value.center
+            ? intl.formatMessage(messages.editMapView)
+            : intl.formatMessage(messages.setMapView)}
         </Button>
       </fieldset>
 

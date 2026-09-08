@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import { VARIABLE_TYPE_VALIDATIONS } from '@codaco/protocol-validation';
 
+import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { enIntl, readMessage } from '../../testing/i18n.ts';
 import { variableRoleKey } from '../variableRoles.ts';
 import {
   buildProspectiveVariables,
@@ -44,7 +48,7 @@ describe('variable validation options', () => {
     'offers exactly the canonical %s rules',
     (variableType, rules) => {
       expect(
-        getValidationOptionsForVariableType(variableType, 'node').map(
+        getValidationOptionsForVariableType(variableType, 'node', enIntl).map(
           ({ value }) => value,
         ),
       ).toEqual(Object.keys(rules));
@@ -53,16 +57,54 @@ describe('variable validation options', () => {
 
   it('keeps host-only passphrases narrow and removes unique for ego', () => {
     expect(
-      getGroupedValidationsForVariableType('passphrase', 'node').flatMap(
-        ({ rules }) => rules.map(({ value }) => value),
-      ),
+      getGroupedValidationsForVariableType(
+        'passphrase',
+        'node',
+        enIntl,
+      ).flatMap(({ rules }) => rules.map(({ value }) => value)),
     ).toEqual(['minLength', 'maxLength']);
     expect(
-      getValidationOptionsForVariableType('text', 'ego').map(
+      getValidationOptionsForVariableType('text', 'ego', enIntl).map(
         ({ value }) => value,
       ),
     ).not.toContain('unique');
-    expect(getValidationOptionsForVariableType('unknown', 'node')).toEqual([]);
+    expect(
+      getValidationOptionsForVariableType('unknown', 'node', enIntl),
+    ).toEqual([]);
+  });
+
+  /**
+   * Two formatters for one language are not one formatter.
+   *
+   * `AppI18nProvider` builds a new `IntlShape` whenever its `messages` change,
+   * and the locale tag does not have to change with them: a host swapping in a
+   * catalog it has just loaded, a module replacement in development, or a
+   * nested provider mounted over the same language all produce a second
+   * formatter reading a different catalog under the same tag. The groups
+   * carry already-formatted headings and rule names, so a cache that files
+   * them under the tag hands the second formatter the first one's words.
+   */
+  it('gives each formatter its own words, however the catalog behind it changed', () => {
+    const catalog = protocolBuilderCatalogs.es ?? {};
+    const headingsFor = (intl: IntlShape) =>
+      getGroupedValidationsForVariableType('number', 'node', intl).map(
+        ({ heading }) => heading,
+      );
+
+    const shipped = createAppIntl({ locale: 'es', messages: catalog });
+    const revised = createAppIntl({
+      locale: 'es',
+      messages: {
+        ...catalog,
+        'protocolBuilder.variableValidation.limitsHeading': 'Límites revisados',
+      },
+    });
+
+    expect(headingsFor(shipped)).toContain('Límites');
+    expect(headingsFor(revised)).toContain('Límites revisados');
+    // Asked for again, so a cache that filed the revision under the language
+    // cannot pass by answering the first reader correctly once.
+    expect(headingsFor(shipped)).toContain('Límites');
   });
 });
 
@@ -72,10 +114,13 @@ describe('rule draft values', () => {
     expect(parseForRule('sameAs', '')).toBeNull();
     expect(isRuleValueComplete('minValue', null)).toBe(false);
     expect(isRuleValueComplete('required', null)).toBe(false);
-    expect(ruleMapPrecheck({ minValue: null, maxValue: 2 })).toEqual({
-      issue: 'Enter a value for "Minimum value", or switch the rule off.',
-      complete: {},
-    });
+    // The issue crossed a string-only contract, so it is read back the way the
+    // editor renders it rather than compared as an opaque encoded string.
+    const precheck = ruleMapPrecheck({ minValue: null, maxValue: 2 });
+    expect(precheck.complete).toEqual({});
+    expect(readMessage(precheck.issue ?? '')).toBe(
+      'Enter a value for "Minimum value", or switch the rule off.',
+    );
   });
 
   it('keeps zero and false while dropping only incomplete values', () => {
@@ -85,10 +130,10 @@ describe('rule draft values', () => {
   });
 
   it('rejects fractional integer rules before contradiction analysis', () => {
-    expect(ruleMapPrecheck({ minValue: 1.5 }).issue).toBe(
+    expect(readMessage(ruleMapPrecheck({ minValue: 1.5 }).issue ?? '')).toBe(
       'minValue must be a whole number',
     );
-    expect(ruleMapPrecheck({ maxSelected: -1 }).issue).toBe(
+    expect(readMessage(ruleMapPrecheck({ maxSelected: -1 }).issue ?? '')).toBe(
       'maxSelected must be at least 0',
     );
   });

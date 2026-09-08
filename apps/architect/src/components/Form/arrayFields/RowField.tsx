@@ -1,6 +1,7 @@
 import { isEqual, set } from 'es-toolkit/compat';
 import { useState, type ComponentType, type ReactNode } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import { getValidations } from '~/utils/validations';
 
@@ -78,9 +79,10 @@ const RowField = ({
   forceShowErrors = false,
   ...fieldProps
 }: RowFieldProps) => {
+  const intl = useAppIntl();
   const [edited, setEdited] = useState(false);
 
-  const errors = getValidations(validation ?? {}).reduce<string[]>(
+  const errors = getValidations(validation ?? {}, intl).reduce<string[]>(
     (memo, rule) => {
       const message = rule(value, allValues, undefined, name);
       if (message) memo.push(message);

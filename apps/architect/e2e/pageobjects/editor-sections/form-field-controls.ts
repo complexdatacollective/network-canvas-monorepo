@@ -172,7 +172,9 @@ export async function addConfiguredFormField(
 
   if (spec.required) {
     await openValidationSection(dialog);
-    await dialog.getByRole('switch', { name: 'Required', exact: true }).click();
+    await dialog
+      .getByRole('switch', { name: 'Required answer', exact: true })
+      .click();
   }
 
   await page.getByRole('button', { name: 'Add', exact: true }).click();

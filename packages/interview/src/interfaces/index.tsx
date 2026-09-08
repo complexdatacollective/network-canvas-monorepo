@@ -1,3 +1,5 @@
+import { AppMessage } from '@codaco/app-i18n/react';
+import Icon from '@codaco/fresco-ui/Icon';
 // Interfaces are imported eagerly (not via React.lazy) so they render
 // synchronously in the same React commit as the stage's motion.div wrapper.
 // Lazy loading caused variant propagation to fail on first load: the parent's
@@ -5,8 +7,6 @@
 // was still being fetched, so descendants like Prompts never received the
 // "initial" variant and skipped their enter animation entirely.
 /* eslint-disable react/display-name */
-
-import Icon from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { StageType } from '@codaco/protocol-validation';
@@ -21,6 +21,7 @@ import FamilyPedigree from './FamilyPedigree/FamilyPedigree';
 import FinishSession from './FinishSession';
 import Geospatial from './Geospatial/Geospatial';
 import Information from './Information/Information';
+import { interfaceMessages } from './messages';
 import NameGenerator from './NameGenerator/NameGenerator';
 import NameGeneratorQuickAdd from './NameGenerator/NameGeneratorQuickAdd';
 import NameGeneratorRoster from './NameGeneratorRoster';
@@ -36,9 +37,10 @@ const NotFoundInterface = ({ interfaceType }: { interfaceType: string }) => (
   <Surface>
     <Icon name="warning" />
     <Heading level="h2" className="mt-4">
-      No &quot;
-      {interfaceType}
-      &quot; interface found.
+      <AppMessage
+        message={interfaceMessages.missingInterface}
+        values={{ interfaceType }}
+      />
     </Heading>
   </Surface>
 );

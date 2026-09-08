@@ -22,7 +22,13 @@ function git(cwd, ...args) {
 
 // A throwaway repo carrying `tags`, so the guard's tag lookups see them.
 // Returns the parsed $GITHUB_OUTPUT the script wrote.
-function guard({ version, tags = [], strandedTags = [] }) {
+function guard({
+  version,
+  tags = [],
+  strandedTags = [],
+  descendantTags = [],
+  pkgName = PKG_NAME,
+}) {
   const cwd = mkdtempSync(join(tmpdir(), 'arg-'));
   git(cwd, 'init', '-q');
   git(cwd, 'config', 'user.email', 'ci@example.com');
@@ -47,6 +53,20 @@ function guard({ version, tags = [], strandedTags = [] }) {
     git(cwd, 'checkout', '-q', head);
   }
 
+  // Tags on a commit that descends from this tree — main's shape for the run
+  // of an older commit once a newer commit's run has released.
+  if (descendantTags.length) {
+    const head = execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd,
+      encoding: 'utf8',
+    }).trim();
+    writeFileSync(join(cwd, 'NEWER.md'), 'released by the newer run\n');
+    git(cwd, 'add', '.');
+    git(cwd, 'commit', '-qm', 'newer');
+    for (const tag of descendantTags) git(cwd, 'tag', tag);
+    git(cwd, 'checkout', '-q', head);
+  }
+
   const outputPath = join(cwd, 'github-output');
   writeFileSync(outputPath, '');
   execFileSync('bash', [SCRIPT], {
@@ -54,7 +74,7 @@ function guard({ version, tags = [], strandedTags = [] }) {
     stdio: 'pipe',
     env: {
       ...process.env,
-      PKG_NAME,
+      PKG_NAME: pkgName,
       VERSION: version,
       GITHUB_OUTPUT: outputPath,
     },
@@ -140,4 +160,51 @@ test('releases once the hotfix commit is in this tree', () => {
   });
   assert.equal(out.skip, 'false');
   assert.equal(out.newest, '8.1.3');
+});
+
+// Fresco tags are unscoped (`fresco@4.1.2`), and the guard has to split the
+// version off them just as it does for `@codaco/interviewer@8.1.2`.
+test('handles an unscoped package name', () => {
+  const out = guard({
+    pkgName: 'fresco',
+    version: '4.1.3',
+    tags: ['fresco@4.1.1', 'fresco@4.1.2'],
+  });
+  assert.equal(out.skip, 'false');
+  assert.equal(out.newest, '4.1.2');
+});
+
+// The 2026-09-02 Fresco race. The run for cd9040bcf (4.1.3 in package.json,
+// never released) reached this guard after the run for its descendant
+// 751296a13 had released 4.1.4. Its version is older than the newest tag and
+// its tree does not contain the tagged commit; either rule refuses it, where
+// the previous tag-only check let it mirror 4.1.3 over the 4.1.4 push.
+test('skips a superseded main commit whose version a descendant has already passed', () => {
+  const out = guard({
+    pkgName: 'fresco',
+    version: '4.1.3',
+    tags: ['fresco@4.1.2'],
+    descendantTags: ['fresco@4.1.4'],
+  });
+  assert.equal(out.skip, 'true');
+});
+
+// The same two commits in the order that keeps 4.1.3 releasable: the older
+// run reaches the guard first, so 4.1.3 goes out, and the newer run then
+// finds its own tree contains the 4.1.3 commit and releases 4.1.4 on top.
+test('releases when the older run wins the race, then the newer one follows', () => {
+  const older = guard({
+    pkgName: 'fresco',
+    version: '4.1.3',
+    tags: ['fresco@4.1.2'],
+  });
+  assert.equal(older.skip, 'false');
+
+  const newer = guard({
+    pkgName: 'fresco',
+    version: '4.1.4',
+    tags: ['fresco@4.1.2', 'fresco@4.1.3'],
+  });
+  assert.equal(newer.skip, 'false');
+  assert.equal(newer.newest, '4.1.3');
 });

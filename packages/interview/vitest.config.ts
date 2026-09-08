@@ -70,12 +70,20 @@ export default defineConfig({
         // `pnpm test:storybook`, and add every specifier the
         // "dependencies optimized:" / "dependency optimized:" lines report.
         // Deps owned by a workspace package are not resolvable from this
-        // root, so they need Vite's `<owner> > <dep>` form.
+        // root, so they need Vite's `<owner> > <dep>` form — and the owner
+        // has to be named the whole way down. This package now directly owns
+        // app-i18n for its built-in messages and locale negotiation.
         optimizeDeps: {
           include: [
             '@base-ui/react/accordion',
             '@base-ui/react/checkbox',
+            // Reached through `Dialog`, which reads the enclosing heading level
+            // a `Section` inside it counts down from — so every dialog these
+            // stories open now pulls in fresco-ui's `Section` and the
+            // Collapsible it is built on.
+            '@base-ui/react/collapsible',
             '@base-ui/react/dialog',
+            '@base-ui/react/direction-provider',
             '@base-ui/react/menu',
             '@base-ui/react/popover',
             '@base-ui/react/progress',
@@ -83,6 +91,10 @@ export default defineConfig({
             '@base-ui/react/slider',
             '@base-ui/react/switch',
             '@base-ui/react/toolbar',
+            '@codaco/app-i18n > @formatjs/icu-messageformat-parser',
+            '@codaco/app-i18n > @formatjs/intl-localematcher',
+            '@codaco/app-i18n > react-intl',
+            '@codaco/app-i18n > react-intl/server',
             '@codaco/fresco-ui > @radix-ui/react-slot',
             '@codaco/fresco-ui > comlink',
             '@codaco/fresco-ui > cva',

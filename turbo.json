@@ -131,13 +131,36 @@
     "@codaco/studio-client#build": {
       "dependsOn": ["^topo"],
       "inputs": [
+        "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/apps/studio/scripts/telemetry-plugins.ts",
+        ".env*",
         "index.html",
         "src/**",
         "vite.config.*",
         "tsconfig*.json",
         "package.json"
       ],
-      "env": ["NODE_ENV"],
+      "env": [
+        "NODE_ENV",
+        "POSTHOG_PERSONAL_API_KEY",
+        "POSTHOG_PROJECT_ID",
+        "POSTHOG_CLI_BINARY_PATH"
+      ],
+      "outputs": ["dist/**"]
+    },
+    "@codaco/studio-server#build": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/apps/studio/scripts/telemetry-plugins.ts"
+      ],
+      "env": [
+        "NODE_ENV",
+        "POSTHOG_PERSONAL_API_KEY",
+        "POSTHOG_PROJECT_ID",
+        "POSTHOG_CLI_BINARY_PATH"
+      ],
       "outputs": ["dist/**"]
     },
     "@codaco/interviewer#build": {

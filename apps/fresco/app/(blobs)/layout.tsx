@@ -25,7 +25,7 @@ export default function Layout({ children }: PropsWithChildren) {
               width={545.52}
               height={131.61}
               priority
-              alt="Network Canvas"
+              alt={brandName}
               className="h-auto w-xs"
             />
           </Link>
@@ -36,3 +36,6 @@ export default function Layout({ children }: PropsWithChildren) {
     </>
   );
 }
+
+// Stable brand/data display; not translated application copy.
+const brandName = 'Network Canvas';

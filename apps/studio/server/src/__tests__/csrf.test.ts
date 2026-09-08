@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
+import { createHttpTestApp as createApp } from './support/http-app.ts';
 
 function appWithFakeAuth() {
   return createApp(readEnv(), { auth: stubAuthService() });

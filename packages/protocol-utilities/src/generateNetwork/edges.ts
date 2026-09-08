@@ -7,8 +7,8 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { generateAttributesForEntity } from './attributes';
-import type { GenerationContext } from './context';
+import { generateAttributesForEntity } from './attributes.ts';
+import type { GenerationContext } from './context.ts';
 
 export function getNodesOfType(nodes: NcNode[], nodeType: string): NcNode[] {
   return nodes.filter((n) => n.type === nodeType);

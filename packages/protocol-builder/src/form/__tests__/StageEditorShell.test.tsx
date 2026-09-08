@@ -24,6 +24,7 @@ import {
   ProtocolBuilderSessionStore,
   SessionReadOnlyError,
 } from '../../session.ts';
+import { fixtureMessage } from '../../testing/i18n.ts';
 import ProtocolField from '../ProtocolField.tsx';
 import StageEditorShell from '../StageEditorShell.tsx';
 
@@ -91,9 +92,11 @@ function Editor({
         capability={{
           fields: ['interviewScript'],
           confirmClear: {
-            title: 'This will clear your interview script',
-            description: 'The text you entered will be deleted.',
-            confirmLabel: 'Clear script',
+            title: fixtureMessage('This will clear your interview script'),
+            description: fixtureMessage(
+              'The text you entered will be deleted.',
+            ),
+            confirmLabel: fixtureMessage('Clear script'),
           },
         }}
       >
@@ -165,9 +168,11 @@ function CapabilityEditor({
         capability={{
           fields: ['interviewScript', 'interviewScriptStyle'],
           confirmClear: {
-            title: 'This will clear your interview script',
-            description: 'The text you entered will be deleted.',
-            confirmLabel: 'Clear script',
+            title: fixtureMessage('This will clear your interview script'),
+            description: fixtureMessage(
+              'The text you entered will be deleted.',
+            ),
+            confirmLabel: fixtureMessage('Clear script'),
           },
         }}
       >
@@ -306,6 +311,129 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('reports a capability an arrival emptied as switched off', async () => {
+    const session = createSession({
+      fields: { ...initialFields, interviewScript: 'Read this aloud' },
+    });
+    renderEditor(session);
+    await waitFor(() =>
+      expect([...outlineItems()][2]?.textContent).toBe(
+        'Interviewer guidanceFinished',
+      ),
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: initialFields,
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    // Nothing the capability owns holds anything any more, and the panel it
+    // was configured in has closed itself over that. Saying "available" beside
+    // a closed, empty capability describes a stage nobody is looking at.
+    await waitFor(() =>
+      expect([...outlineItems()][2]?.textContent).toBe(
+        'Interviewer guidanceSwitched off',
+      ),
+    );
+  });
+
+  it('reads a null a stored protocol holds as nothing rather than throwing', async () => {
+    const session = createSession({
+      fields: { ...initialFields, title: 'Welcome to the study' },
+    });
+    renderEditor(session);
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Welcome to the study',
+      ),
+    );
+
+    // `null` is not in `FieldValue`'s union, but stored protocol data holds it
+    // — fresco-ui's own `fieldValueContract` names it as a shape every control
+    // must render — so the re-seed cannot be the one place that throws on it.
+    // A throw here is not cosmetic: the render never commits, and the editor
+    // goes down over an arrival the researcher did not cause.
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { ...initialFields, title: null },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    // Nothing is there, which this package spells `undefined` and shows as an
+    // empty control — never as the word "null".
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        '',
+      ),
+    );
+  });
+
+  it('reports a capability an arrival filled as available', async () => {
+    const session = createSession();
+    renderEditor(session);
+    await waitFor(() =>
+      expect([...outlineItems()][2]?.textContent).toBe(
+        'Interviewer guidanceSwitched off',
+      ),
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { ...initialFields, interviewScript: 'Read this aloud' },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    await waitFor(() =>
+      expect([...outlineItems()][2]?.textContent).toBe(
+        'Interviewer guidanceFinished',
+      ),
+    );
+  });
+
+  it('keeps a capability the researcher switched on when an arrival leaves it alone', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    renderEditor(session);
+    await waitFor(() => expect(outlineItems()).toHaveLength(3));
+
+    // Switched on and not yet filled in: nothing the capability owns holds a
+    // value, so only the researcher's own decision says it is on.
+    await user.click(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    );
+    await screen.findByRole('textbox', { name: 'Interviewer script text' });
+    expect([...outlineItems()][2]?.textContent).toBe(
+      'Interviewer guidanceFinished',
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { ...initialFields, title: 'Renamed elsewhere' },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Renamed elsewhere',
+      ),
+    );
+
+    // The arrival says nothing about this capability, so it says nothing about
+    // the decision the researcher just made about it either — and the panel
+    // that decision opened is still open, holding the field they were about to
+    // fill in.
+    expect({
+      outline: [...outlineItems()][2]?.textContent,
+      script:
+        screen.queryByRole('textbox', { name: 'Interviewer script text' }) !==
+        null,
+    }).toEqual({ outline: 'Interviewer guidanceFinished', script: true });
+  });
+
   it('keeps a section\u2019s fields when only its title changes', async () => {
     const session = createSession({ fields: { label: 'Welcome', items: [] } });
     const { rerender } = renderEditor(session);
@@ -370,6 +498,8 @@ describe('StageEditorShell', () => {
       validate: () => session.validate(),
       requestCompoundEdit: (request) => session.requestCompoundEdit(request),
       finish: () => session.finish(),
+      cancel: () => session.cancel(),
+      getResourceGateway: () => session.getResourceGateway(),
     };
 
     render(
@@ -458,12 +588,147 @@ describe('StageEditorShell', () => {
     });
 
     // A field that merely re-registers keeps the value it was holding, so
-    // without a fresh form the promoted editor would show — and then save —
-    // what it had typed over a screen that had moved on.
+    // without writing the new draft into the controls the promoted editor
+    // would show — and then save — what it had typed over a screen that had
+    // moved on.
     await waitFor(() =>
       expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
         'Refreshed elsewhere',
       ),
+    );
+  });
+
+  it('keeps a field the researcher is editing when an arrival moves another', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      fields: { ...initialFields, interviewScript: 'Read this aloud' },
+    });
+    renderEditor(session);
+
+    const script = await screen.findByRole('textbox', {
+      name: 'Interviewer script text',
+    });
+    await user.clear(script);
+    await user.type(script, 'Half-written note');
+
+    // An arrival that moves the heading and says nothing about the script.
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: {
+          ...initialFields,
+          title: 'Renamed elsewhere',
+          interviewScript: 'Read this aloud',
+        },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Renamed elsewhere',
+      ),
+    );
+    // The script is exactly where the arrival left it, so there is nothing
+    // about it for the controls to take. Writing the agreed value back over
+    // the researcher's half-finished note would discard work nothing in the
+    // stage disagreed with.
+    expect(
+      screen.getByRole('textbox', { name: 'Interviewer script text' }),
+    ).toHaveValue('Half-written note');
+  });
+
+  it('keeps what was typed after a save when an arrival moves another field', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ onFinish: () => undefined });
+    renderEditor(session);
+
+    const heading = screen.getByRole('textbox', { name: 'Page heading' });
+    await user.clear(heading);
+    await user.type(heading, 'Saved heading');
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.title).toBe(
+        'Saved heading',
+      ),
+    );
+
+    // Still editing after the save, with the extra keystrokes in the form and
+    // nowhere else.
+    await user.type(heading, ' edited');
+
+    // A finish retires the batch it carried, so the save leaves nothing
+    // pending to acknowledge; the host already holds it. Someone else then
+    // renames the stage.
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: {
+          label: 'Renamed by someone else',
+          title: 'Saved heading',
+          items: [],
+        },
+        manifestRevision: { sequence: 3n, hash: 'revision-3' },
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+        'Renamed by someone else',
+      ),
+    );
+    // The heading the arrival carries is the one this form saved, so the
+    // arrival decided nothing about it — the draft it must be compared with is
+    // the one the save left agreed, not the one the stage was opened with.
+    expect(heading).toHaveValue('Saved heading edited');
+  });
+
+  it('reopens a capability an authoritative replacement has refilled', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      fields: { ...initialFields, interviewScript: 'Read this aloud' },
+    });
+    renderEditor(session);
+
+    await user.click(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Clear script' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Interviewer script text' }),
+      ).toBeNull(),
+    );
+
+    // Switching a capability off is an edit, so it leaves a batch — and a
+    // wholesale replacement is refused while any batch is still in flight,
+    // which is exactly what stops one from swallowing unsaved work. Applied
+    // here as the host that received it would, so the replacement below is the
+    // one this test is about rather than a conflict.
+    act(() => {
+      session.acknowledge({
+        fields: initialFields,
+        throughBatchId: session.getSnapshot().pendingCommands.at(-1)?.id ?? 0,
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { ...initialFields, interviewScript: 'Read this instead' },
+        manifestRevision: { sequence: 3n, hash: 'revision-3' },
+      });
+    });
+
+    // The stage the form now holds has interviewer guidance again, and a
+    // section that stays closed over content it is holding tells the
+    // researcher the opposite of what the next save will write. Writing the
+    // new draft into the controls is only half of taking it: the sections
+    // decide whether they are on from what those controls hold, and something
+    // has to tell them to ask again.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Interviewer script text' }),
+      ).toHaveValue('Read this instead'),
     );
   });
 
@@ -497,9 +762,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['skipLogic'],
               confirmClear: {
-                title: 'This will clear your skip logic',
-                description: 'The rules you created will be deleted.',
-                confirmLabel: 'Clear skip logic',
+                title: fixtureMessage('This will clear your skip logic'),
+                description: fixtureMessage(
+                  'The rules you created will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear skip logic'),
               },
             }}
           >
@@ -558,9 +825,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['skipLogic'],
               confirmClear: {
-                title: 'This will clear your skip logic',
-                description: 'The rules you created will be deleted.',
-                confirmLabel: 'Clear skip logic',
+                title: fixtureMessage('This will clear your skip logic'),
+                description: fixtureMessage(
+                  'The rules you created will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear skip logic'),
               },
             }}
           >
@@ -630,9 +899,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['skipLogic'],
               confirmClear: {
-                title: 'This will clear your skip logic',
-                description: 'The rules you created will be deleted.',
-                confirmLabel: 'Clear skip logic',
+                title: fixtureMessage('This will clear your skip logic'),
+                description: fixtureMessage(
+                  'The rules you created will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear skip logic'),
               },
             }}
           >
@@ -759,9 +1030,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['skipLogic'],
               confirmClear: {
-                title: 'This will clear your skip logic',
-                description: 'The rules you created will be deleted.',
-                confirmLabel: 'Clear skip logic',
+                title: fixtureMessage('This will clear your skip logic'),
+                description: fixtureMessage(
+                  'The rules you created will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear skip logic'),
               },
             }}
           >
@@ -834,9 +1107,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['settings.enabled'],
               confirmClear: {
-                title: 'This will clear your advanced settings',
-                description: 'The settings you chose will be deleted.',
-                confirmLabel: 'Clear settings',
+                title: fixtureMessage('This will clear your advanced settings'),
+                description: fixtureMessage(
+                  'The settings you chose will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear settings'),
               },
             }}
           >
@@ -901,9 +1176,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['settings.enabled'],
               confirmClear: {
-                title: 'This will clear your advanced settings',
-                description: 'The settings you chose will be deleted.',
-                confirmLabel: 'Clear settings',
+                title: fixtureMessage('This will clear your advanced settings'),
+                description: fixtureMessage(
+                  'The settings you chose will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear settings'),
               },
             }}
           >
@@ -969,9 +1246,11 @@ describe('StageEditorShell', () => {
               // name containing a space, not a route through anything.
               fields: ['["prompt text"]'],
               confirmClear: {
-                title: 'This will clear your prompt override',
-                description: 'The text you entered will be deleted.',
-                confirmLabel: 'Clear override',
+                title: fixtureMessage('This will clear your prompt override'),
+                description: fixtureMessage(
+                  'The text you entered will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear override'),
               },
             }}
           >
@@ -1086,9 +1365,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['settings.enabled'],
               confirmClear: {
-                title: 'This will clear your advanced settings',
-                description: 'The settings you chose will be deleted.',
-                confirmLabel: 'Clear settings',
+                title: fixtureMessage('This will clear your advanced settings'),
+                description: fixtureMessage(
+                  'The settings you chose will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear settings'),
               },
             }}
           >
@@ -1216,9 +1497,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['items[0].optionalSetting'],
               confirmClear: {
-                title: 'This will clear the setting',
-                description: 'The value you entered will be deleted.',
-                confirmLabel: 'Clear setting',
+                title: fixtureMessage('This will clear the setting'),
+                description: fixtureMessage(
+                  'The value you entered will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear setting'),
               },
             }}
           >
@@ -1347,9 +1630,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['settings.enabled'],
               confirmClear: {
-                title: 'This will clear your advanced settings',
-                description: 'The settings you chose will be deleted.',
-                confirmLabel: 'Clear settings',
+                title: fixtureMessage('This will clear your advanced settings'),
+                description: fixtureMessage(
+                  'The settings you chose will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear settings'),
               },
             }}
           >
@@ -1411,9 +1696,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['interviewScript'],
               confirmClear: {
-                title: 'This will clear your interview script',
-                description: 'The text you entered will be deleted.',
-                confirmLabel: 'Clear script',
+                title: fixtureMessage('This will clear your interview script'),
+                description: fixtureMessage(
+                  'The text you entered will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear script'),
               },
             }}
           >
@@ -1532,9 +1819,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['interviewScript'],
               confirmClear: {
-                title: 'This will clear your interview script',
-                description: 'The text you entered will be deleted.',
-                confirmLabel: 'Clear script',
+                title: fixtureMessage('This will clear your interview script'),
+                description: fixtureMessage(
+                  'The text you entered will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear script'),
               },
             }}
           >
@@ -1578,6 +1867,8 @@ describe('StageEditorShell', () => {
       validate: () => session.validate(),
       requestCompoundEdit: (request) => session.requestCompoundEdit(request),
       finish: () => session.finish(),
+      cancel: () => session.cancel(),
+      getResourceGateway: () => session.getResourceGateway(),
     };
 
     render(
@@ -1656,5 +1947,87 @@ describe('StageEditorShell', () => {
       ).toBeInTheDocument(),
     );
     expect(onFinish).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Switching a capability off is a decision the SESSION records, and a session
+ * can refuse it: editing is a lease, and it can be taken away between the
+ * click that opened the confirmation and the click that answered it. The
+ * refusal is the whole answer — nothing was thrown away — so the capability
+ * has to be left exactly as it was, on screen and in the switch.
+ */
+describe('a capability switched off as editing is taken away', () => {
+  const withScript = () =>
+    createSession({
+      fields: { ...initialFields, interviewScript: 'Read this aloud' },
+    });
+
+  const openTheConfirmation = async (
+    user: ReturnType<typeof userEvent.setup>,
+  ) => {
+    await user.click(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    );
+    await screen.findByRole('button', { name: 'Clear script' });
+  };
+
+  it('leaves the capability holding what the session still holds', async () => {
+    const user = userEvent.setup();
+    const session = withScript();
+    renderEditor(session);
+    await openTheConfirmation(user);
+
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+    await user.click(screen.getByRole('button', { name: 'Clear script' }));
+
+    // Emptying the form here would leave the capability looking cleared while
+    // the session still holds every value, with nothing left to re-seed it.
+    expect(
+      await screen.findByRole('textbox', { name: 'Interviewer script text' }),
+    ).toHaveValue('Read this aloud');
+    expect(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    ).toBeChecked();
+    expect(
+      screen.getByText('This stage is read-only', { exact: false }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows them again when editing is handed back', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    const session = createSession({
+      onFinish,
+      fields: { ...initialFields, interviewScript: 'Read this aloud' },
+    });
+    renderEditor(session);
+    await openTheConfirmation(user);
+
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+    await user.click(screen.getByRole('button', { name: 'Clear script' }));
+    act(() => {
+      session.setAccess({
+        mode: 'editable',
+        leaseOwner: 'tab-1',
+        leaseEpoch: 1n,
+      });
+    });
+
+    expect(
+      await screen.findByRole('textbox', { name: 'Interviewer script text' }),
+    ).toHaveValue('Read this aloud');
+
+    // Nothing here re-seeds a form, so a save is what proves the researcher
+    // is looking at the values rather than at a capability the next save
+    // would empty.
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await waitFor(() => expect(onFinish).toHaveBeenCalled());
+    const request = onFinish.mock.calls[0]?.[0] as FinishRequest;
+    expect(request.stageDocument.interviewScript).toBe('Read this aloud');
   });
 });

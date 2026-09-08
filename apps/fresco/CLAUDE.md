@@ -34,6 +34,37 @@ Releases flow one way:
    mirror**, which builds the container image and pushes it to GHCR tagged with
    the version and `latest`.
 
+The lane is tag-driven and self-healing: `apps-release-detect` releases any
+stable `package.json` version that has no `fresco@<version>` tag yet, so a
+failed or dropped mirror is retried by the next push to main. Because pushes to
+main run concurrently, three guards keep that retry from ever moving the mirror
+backwards — the mirror is a linear append whose newest push becomes `latest`:
+
+- `apps-release-fresco` holds one concurrency group for the app (not one per
+  version), so two runs carrying different untagged versions serialise over
+  the whole check → mirror → tag sequence.
+- Under that lock it runs `.github/scripts/app-release-guard.sh`, which skips
+  when the tag already exists, when the version is older than the newest
+  `fresco@` tag, or when the tree does not contain the newest released commit.
+  A run for a superseded main commit therefore skips with a warning and needs
+  no follow-up; the newer release already covers it. (On 2026-09-02 the lane
+  still had only a tag-exists check, and a run for an older main commit
+  mirrored 4.1.3 on top of the 4.1.4 push.)
+- The `release` job that publishes the `@codaco/*` packages stops if its
+  commit is no longer main's tip (`.github/scripts/superseded-push-guard.sh`),
+  runs one at a time, and when it holds the tip with nothing left to version
+  it closes any Version Packages PR a superseded run regenerated.
+
+The Version Packages PR itself must be current when it merges. If main gains a
+normal-lane changeset after the PR head was generated, the merged tree carries
+both the bumped versions and that changeset, and `changesets/action` regenerates
+the PR instead of publishing — which is why 4.1.3 (and fresco-ui 6.3.0,
+interview 9.0.1) never reached npm on 2026-09-01, and why this lane then failed
+on every push until 4.1.4 shipped: the mirror's lockfile could not resolve
+versions that did not exist. The `version-packages-freshness` job now refuses
+such a merge from the queue; wait for the bot to regenerate the PR and queue
+the new head.
+
 Consequences worth remembering:
 
 - `apps/fresco/.github/` contains only the mirror's Docker publish workflow. CI

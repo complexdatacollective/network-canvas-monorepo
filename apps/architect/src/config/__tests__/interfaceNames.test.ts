@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { INTERFACE_NAMES } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import type { StageType } from '@codaco/protocol-validation';
-import { INTERFACE_TYPES } from '~/components/Screens/NewStageScreen/interfaceOptions';
+import { getInterfaceTypes } from '~/components/Screens/NewStageScreen/interfaceOptions';
 import { getInterface } from '~/components/StageEditor/Interfaces';
 
 const stageTypes = Object.keys(INTERFACE_NAMES) as StageType[];
@@ -22,12 +22,14 @@ describe('INTERFACE_NAMES in Architect', () => {
    * title stops matching fails here.
    */
   it('is the only source of the New Stage screen titles', () => {
-    for (const option of INTERFACE_TYPES) {
+    for (const option of getInterfaceTypes()) {
       expect(option.title).toBe(INTERFACE_NAMES[option.type]);
     }
-    expect(INTERFACE_TYPES.map((option) => option.type).toSorted()).toEqual(
-      [...stageTypes].toSorted(),
-    );
+    expect(
+      getInterfaceTypes()
+        .map((option) => option.type)
+        .toSorted(),
+    ).toEqual([...stageTypes].toSorted());
   });
 
   /**
@@ -54,7 +56,7 @@ describe('INTERFACE_NAMES in Architect', () => {
    */
   it('is one name per interface across every surface that shows one', () => {
     const optionTitles = new Map(
-      INTERFACE_TYPES.map((option) => [option.type, option.title]),
+      getInterfaceTypes().map((option) => [option.type, option.title]),
     );
 
     for (const stageType of stageTypes) {

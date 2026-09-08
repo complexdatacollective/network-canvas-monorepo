@@ -1,4 +1,9 @@
+'use client';
+
 import { useCallback, useEffect, useRef } from 'react';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
   controlVariants,
@@ -20,7 +25,7 @@ import { getInputState } from '../utils/getInputState';
 const segmentGroupVariants = compose(
   textSizeVariants,
   cva({
-    base: cx('flex max-w-full items-center'),
+    base: cx('flex max-w-full min-w-0 items-center'),
     variants: {
       size: {
         sm: 'gap-1.5',
@@ -76,6 +81,30 @@ const separatorVariants = cva({
   },
 });
 
+// The masked and unmasked segment names are two whole sentences rather than a
+// shared stem plus an appended ", hidden": where the mask is mentioned, and
+// whether it is a trailing clause at all, is a decision each translation makes.
+const messages = defineMessages({
+  codeInput: {
+    id: 'frescoUi.segmentedCodeField.codeInput',
+    defaultMessage: 'Code input',
+    description:
+      'Accessible name of the group of single-character boxes a code is typed into, when the caller describes it with nothing else.',
+  },
+  segment: {
+    id: 'frescoUi.segmentedCodeField.segment',
+    defaultMessage: 'Digit {position, number} of {total, number}',
+    description:
+      'Accessible name of one box in a segmented code field; {position} is its place in the code and {total} the number of boxes.',
+  },
+  sensitiveSegment: {
+    id: 'frescoUi.segmentedCodeField.sensitiveSegment',
+    defaultMessage: 'Digit {position, number} of {total, number}, hidden',
+    description:
+      'Accessible name of one box in a segmented code field whose characters are masked, as a PIN’s are.',
+  },
+});
+
 type CharacterSet = 'numeric' | 'alphanumeric' | 'hex' | 'alpha';
 
 const CHARACTER_SETS: Record<
@@ -106,6 +135,7 @@ type SegmentedCodeFieldProps = CreateFormFieldProps<
 >;
 
 function SegmentedCodeField(props: SegmentedCodeFieldProps) {
+  const intl = useAppIntl();
   const {
     segments,
     characterSet = 'numeric',
@@ -130,7 +160,19 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   // fieldset's test id.
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const pendingAutoFocus = useRef(Boolean(autoFocus));
   const { pattern, inputMode } = CHARACTER_SETS[characterSet];
+
+  // A retry can mount the fresh control while the form is still submitting.
+  // Native autofocus is ignored on a disabled input; honor that one request
+  // when it becomes enabled, without refocusing later renders or locale changes.
+  useEffect(() => {
+    if (!autoFocus || disabled || !pendingAutoFocus.current) return;
+    const firstInput = inputRefs.current[0];
+    if (!firstInput) return;
+    firstInput.focus();
+    pendingAutoFocus.current = false;
+  }, [autoFocus, disabled]);
 
   // Rendering only: for one render the store can still hold the previous
   // field's value (see the render-tolerance contract on `useField`), and
@@ -275,7 +317,11 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   return (
     <fieldset
       className={cx(segmentGroupVariants({ size }), className)}
-      aria-label={rest['aria-describedby'] ? undefined : 'Code input'}
+      aria-label={
+        rest['aria-describedby']
+          ? undefined
+          : intl.formatMessage(messages.codeInput)
+      }
       data-testid={name ? `segmented-code-${name}` : undefined}
     >
       {Array.from({ length: segments }, (_, i) => (
@@ -297,11 +343,10 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
             placeholder={'\u00B7'}
             disabled={disabled}
             readOnly={readOnly}
-            aria-label={
-              sensitive
-                ? `Digit ${String(i + 1)} of ${String(segments)}, hidden`
-                : `Digit ${String(i + 1)} of ${String(segments)}`
-            }
+            aria-label={intl.formatMessage(
+              sensitive ? messages.sensitiveSegment : messages.segment,
+              { position: i + 1, total: segments },
+            )}
             aria-invalid={rest['aria-invalid']}
             aria-describedby={i === 0 ? rest['aria-describedby'] : undefined}
             aria-required={i === 0 ? rest['aria-required'] : undefined}

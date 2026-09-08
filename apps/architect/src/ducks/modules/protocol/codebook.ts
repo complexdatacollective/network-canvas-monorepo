@@ -1,3 +1,50 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+const errorMessages = defineMessages({
+  missingName: {
+    id: 'architect.codebook.error.missingName',
+    defaultMessage: 'Enter a name for this attribute.',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+  missingType: {
+    id: 'architect.codebook.error.missingType',
+    defaultMessage: 'Choose a type for this attribute.',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+  invalidName: {
+    id: 'architect.codebook.error.invalidName',
+    defaultMessage: 'Attribute name contains no valid characters',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+  duplicateName: {
+    id: 'architect.codebook.error.duplicateName',
+    defaultMessage: 'Attribute with name "{name}" already exists',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+  missingAttribute: {
+    id: 'architect.codebook.error.missingAttribute',
+    defaultMessage: 'Attribute "{id}" does not exist',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+  attributeInUse: {
+    id: 'architect.codebook.error.attributeInUse',
+    defaultMessage:
+      'This attribute is in use and cannot be deleted. Remove it from the stages listed under "Used In" first.',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+  typeInUse: {
+    id: 'architect.codebook.error.typeInUse',
+    defaultMessage:
+      'This type is in use and cannot be deleted. Remove it from the stages listed under "used in" first.',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+});
 import { createSlice, current, type PayloadAction } from '@reduxjs/toolkit';
 import { find, get, has, isEmpty, omit } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
@@ -190,11 +237,11 @@ export const createVariableAsync = createAppAsyncThunk(
     { dispatch, getState },
   ) => {
     if (!configuration.name) {
-      throw new Error('Cannot create a new attribute without a name');
+      throw new Error(createMessageError(errorMessages.missingName));
     }
 
     if (!configuration.type) {
-      throw new Error('Cannot create a new attribute without a type');
+      throw new Error(createMessageError(errorMessages.missingType));
     }
 
     const safeConfiguration = prune({
@@ -203,7 +250,7 @@ export const createVariableAsync = createAppAsyncThunk(
     }) as Variable;
 
     if (isEmpty(safeConfiguration.name)) {
-      throw new Error('Attribute name contains no valid characters');
+      throw new Error(createMessageError(errorMessages.invalidName));
     }
 
     const state = getState();
@@ -215,7 +262,9 @@ export const createVariableAsync = createAppAsyncThunk(
     // We can't use same variable name twice.
     if (variableNameExists) {
       throw new Error(
-        `Attribute with name "${safeConfiguration.name}" already exists`,
+        createMessageError(errorMessages.duplicateName, {
+          name: safeConfiguration.name,
+        }),
       );
     }
 
@@ -253,7 +302,9 @@ export const updateVariableAsync = createAppAsyncThunk(
     { dispatch, getState },
   ) => {
     if (!variable) {
-      throw new Error('No variable provided to updateVariable()!');
+      throw new Error(
+        createMessageError(errorMessages.missingAttribute, { id: variable }),
+      );
     }
 
     const state = getState();
@@ -266,7 +317,9 @@ export const updateVariableAsync = createAppAsyncThunk(
       );
 
       if (!variableExists) {
-        throw new Error(`Variable "${variable}" does not exist`);
+        throw new Error(
+          createMessageError(errorMessages.missingAttribute, { id: variable }),
+        );
       }
     }
 
@@ -302,9 +355,7 @@ export const deleteVariableAsync = createAppAsyncThunk(
     // there (#1392). The message is researcher-facing: it is rendered verbatim
     // in the confirm dialog's error paragraph.
     if (get(isUsed, variable, false)) {
-      throw new Error(
-        'This attribute is in use and cannot be deleted. Remove it from the stages listed under "Used In" first.',
-      );
+      throw new Error(createMessageError(errorMessages.attributeInUse));
     }
 
     const payload: DeleteVariablePayload = { entity, type, variable };
@@ -350,9 +401,7 @@ export const deleteTypeAsync = createAppAsyncThunk(
     // researcher-facing: it is rendered verbatim in the confirm dialog's error
     // paragraph.
     if (getEntityTypeIsUsed(state, entity, type)) {
-      throw new Error(
-        'This type is in use and cannot be deleted. Remove it from the stages listed under "used in" first.',
-      );
+      throw new Error(createMessageError(errorMessages.typeInUse));
     }
 
     const payload: DeleteTypePayload = { entity, type };

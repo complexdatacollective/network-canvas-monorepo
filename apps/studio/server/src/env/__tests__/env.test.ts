@@ -1,6 +1,16 @@
+import { randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { readEnv } from '../../env.ts';
+import {
+  isLocalDatabase,
+  readEnv,
+  readMigrationDatabase,
+  readMigrationAllowedLogins,
+  readMigrationAdministrativeLogins,
+} from '../../env.ts';
 import { DEV, DEV_DATABASE_URL, DEV_S3_ENDPOINT } from '../catalogue.ts';
 
 // The suite runs with the committed .env.development loaded (see
@@ -11,10 +21,124 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+describe('bootstrap configuration', () => {
+  it('keeps setup disabled until a canonical random token is configured', () => {
+    vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', '');
+    expect(readEnv().bootstrapToken).toBeUndefined();
+    const token = randomBytes(32).toString('base64url');
+    vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', token);
+    expect(readEnv().bootstrapToken).toBe(token);
+  });
+
+  it.each([
+    'short',
+    'a'.repeat(43),
+    'A'.repeat(43) + '=',
+    'A'.repeat(42),
+    'A'.repeat(44),
+  ])(
+    'refuses truncated, padded, or noncanonical bootstrap credentials',
+    (token) => {
+      vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', token);
+      expect(() => readEnv()).toThrow('Invalid environment variables');
+    },
+  );
+
+  it('withholds the credential from the lane without auth or a database', () => {
+    vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', 'malformed-and-unused');
+    expect(
+      readEnv({ withoutDatabaseOrAuth: true }).bootstrapToken,
+    ).toBeUndefined();
+  });
+});
+
+describe('operational configuration', () => {
+  it('defaults to one combined process and accepts only explicit runtime roles', () => {
+    vi.stubEnv('STUDIO_ROLE', '');
+    expect(readEnv().role).toBe('both');
+    for (const role of ['web', 'worker', 'both']) {
+      vi.stubEnv('STUDIO_ROLE', role);
+      expect(readEnv().role).toBe(role);
+    }
+    vi.stubEnv('STUDIO_ROLE', 'background');
+    expect(() => readEnv()).toThrow('Invalid environment variables');
+  });
+
+  it('keeps metrics off until a separate credential is configured', () => {
+    vi.stubEnv('STUDIO_METRICS_TOKEN', '');
+    expect(readEnv().metricsToken).toBeUndefined();
+    vi.stubEnv(
+      'STUDIO_METRICS_TOKEN',
+      'operator-token-of-at-least-32-characters',
+    );
+    expect(readEnv().metricsToken).toBe(
+      'operator-token-of-at-least-32-characters',
+    );
+  });
+
+  it.each(['short', ' '.repeat(32), 'a'.repeat(31) + '\n'])(
+    'refuses unusable metrics credentials',
+    (token) => {
+      vi.stubEnv('STUDIO_METRICS_TOKEN', token);
+      expect(() => readEnv()).toThrow('Invalid environment variables');
+    },
+  );
+
+  it.each(['proxy.example.test', '10.0.0.0/33', '::1/129'])(
+    'refuses invalid proxy entries %s',
+    (proxy) => {
+      vi.stubEnv('TRUSTED_PROXIES', proxy);
+      expect(() => readEnv()).toThrow('Invalid environment variables');
+    },
+  );
+
+  it('requires an authenticated ingress boundary before managed proxy trust', () => {
+    vi.stubEnv('STUDIO_DEPLOYMENT_MODE', 'managed');
+    vi.stubEnv('TRUSTED_PROXIES', 'fdaa::/16');
+    vi.stubEnv('STUDIO_MANAGED_INGRESS_SECRET', '');
+    expect(() => readEnv()).toThrow(
+      'STUDIO_MANAGED_INGRESS_SECRET and managed TRUSTED_PROXIES must be configured together',
+    );
+
+    vi.stubEnv(
+      'STUDIO_MANAGED_INGRESS_SECRET',
+      'synthetic-managed-ingress-secret-at-least-32-characters',
+    );
+    expect(readEnv().managedIngressSecret).toBe(
+      'synthetic-managed-ingress-secret-at-least-32-characters',
+    );
+
+    vi.stubEnv('TRUSTED_PROXIES', '');
+    expect(() => readEnv()).toThrow(
+      'STUDIO_MANAGED_INGRESS_SECRET and managed TRUSTED_PROXIES must be configured together',
+    );
+  });
+
+  it.each(['short', ' '.repeat(32), 'a'.repeat(31) + '\n'])(
+    'refuses unusable managed ingress credentials',
+    (secret) => {
+      vi.stubEnv('STUDIO_MANAGED_INGRESS_SECRET', secret);
+      expect(() => readEnv()).toThrow('Invalid environment variables');
+    },
+  );
+});
+
 describe('development defaults', () => {
   it('configures the whole stack from the committed file', () => {
+    // Integration runs can point DATABASE_URL at an isolated local container.
+    // This unit test specifically describes the committed defaults, so load
+    // those values explicitly rather than assuming the caller exported none.
+    const defaults = parseEnv(
+      readFileSync(
+        new URL('../../../.env.development', import.meta.url),
+        'utf8',
+      ),
+    );
+    for (const [name, value] of Object.entries(defaults))
+      vi.stubEnv(name, value);
     const env = readEnv();
     expect(env.db).toEqual({ url: DEV_DATABASE_URL });
+    expect(env.maintenanceDb).toEqual({ url: DEV_DATABASE_URL });
     expect(env.s3?.endpoint).toBe(DEV_S3_ENDPOINT);
     expect(env.s3?.bucket).toBe(DEV.s3Bucket);
     expect(env.auth?.baseUrl).toBe(DEV.baseUrl);
@@ -37,6 +161,126 @@ describe('development defaults', () => {
       kind: 'smtp',
       url: 'smtp://localhost:1025',
       from: DEV.emailFrom,
+    });
+  });
+});
+
+describe('migration environment', () => {
+  it.each([undefined, '', '[]', 'not-json', '["duplicate","duplicate"]'])(
+    'requires explicit production database enrollment despite validation skip (%s)',
+    (value) => {
+      vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+      vi.stubEnv('EMAIL_FROM', '');
+      vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', value);
+      vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
+      expect(() => readEnv()).toThrow('STUDIO_DATABASE_ALLOWED_LOGINS');
+      vi.stubEnv('SKIP_ENV_VALIDATION', 'false');
+      vi.stubEnv('STUDIO_DEV_DEFAULTS', 'true');
+      expect(readEnv().databaseAllowedLogins).toBeUndefined();
+      vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+      expect(
+        readEnv({ withoutDatabaseOrAuth: true }).databaseAllowedLogins,
+      ).toBeUndefined();
+    },
+  );
+  it('defaults administrative enrollment to empty and preserves an explicit non-owner operator', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    const allowed = ['owner', 'operator', 'runtime'];
+    vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', JSON.stringify(allowed));
+    vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', undefined);
+    expect(readEnv().databaseAdministrativeLogins).toEqual([]);
+    expect(readMigrationAdministrativeLogins(allowed)).toEqual([]);
+    vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', '');
+    expect(readMigrationAdministrativeLogins(allowed)).toEqual([]);
+    vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', '["operator"]');
+    expect(readEnv().databaseAdministrativeLogins).toEqual(['operator']);
+    expect(readMigrationAdministrativeLogins(allowed)).toEqual(['operator']);
+  });
+
+  it.each([
+    'null',
+    '{}',
+    '[1]',
+    '["operator","operator"]',
+    '["private-unenrolled-canary"]',
+    'not-json',
+  ])(
+    'refuses malformed or unenrolled administrative configuration privately (%s)',
+    (value) => {
+      const allowed = ['owner', 'operator', 'runtime'];
+      vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+      vi.stubEnv('EMAIL_FROM', '');
+      vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
+      vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', JSON.stringify(allowed));
+      vi.stubEnv('STUDIO_DATABASE_ADMINISTRATIVE_LOGINS', value);
+      for (const read of [
+        () => readEnv(),
+        () => readMigrationAdministrativeLogins(allowed),
+      ]) {
+        let failure: unknown;
+        try {
+          read();
+        } catch (error) {
+          failure = error;
+        }
+        expect(failure).toEqual(
+          new Error(
+            'STUDIO_DATABASE_ADMINISTRATIVE_LOGINS must be a JSON array of unique names enrolled in STUDIO_DATABASE_ALLOWED_LOGINS.',
+          ),
+        );
+        expect(String(failure)).not.toContain('private-unenrolled-canary');
+      }
+    },
+  );
+
+  it('supplies the same validated production enrollment to admission and offline migration', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    vi.stubEnv(
+      'STUDIO_DATABASE_ALLOWED_LOGINS',
+      '["studio_migrator","studio_runtime","studio_backup_login"]',
+    );
+    expect(readEnv().databaseAllowedLogins).toEqual(
+      readMigrationAllowedLogins(),
+    );
+  });
+
+  it.each([
+    undefined,
+    '',
+    'operator,runtime',
+    '[]',
+    '[1]',
+    '["operator","operator"]',
+    '["' + 'x'.repeat(64) + '"]',
+    '["' + 'é'.repeat(32) + '"]',
+    '["\\u0000"]',
+  ])('refuses missing or invalid explicit login enrollment (%s)', (value) => {
+    vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', value);
+    vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
+    expect(() => readMigrationAllowedLogins()).toThrow();
+  });
+
+  it('preserves arbitrary quoted login names from the explicit JSON enrollment', () => {
+    const logins = ['operator-name', 'runtime"$studio_roles$'];
+    vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', JSON.stringify(logins));
+    expect(readMigrationAllowedLogins()).toEqual(logins);
+  });
+
+  it('requires a database even when application validation is disabled', () => {
+    vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
+    vi.stubEnv('DATABASE_URL', '');
+    expect(() => readMigrationDatabase()).toThrow();
+  });
+
+  it('reads only the database for an offline migration command', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://operator@localhost/studio');
+    vi.stubEnv('BETTER_AUTH_SECRET', '');
+    vi.stubEnv('PUBLIC_URL', '');
+    vi.stubEnv('SMTP_URL', '');
+    expect(readMigrationDatabase()).toEqual({
+      url: 'postgres://operator@localhost/studio',
     });
   });
 });
@@ -72,6 +316,10 @@ describe('the development marker', () => {
 
   it('leaves a remote database alone once the marker is gone', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv(
+      'STUDIO_DATABASE_ALLOWED_LOGINS',
+      '["studio_migrator","studio_runtime"]',
+    );
     // Without the marker the file's unpaired EMAIL_FROM is a deployment
     // mistake in its own right, so this is the whole lane being left behind.
     vi.stubEnv('EMAIL_FROM', '');
@@ -86,15 +334,81 @@ describe('the development marker', () => {
     // NODE_ENV is not production. A deployment that forgot NODE_ENV still
     // never logs a sign-in link.
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv(
+      'STUDIO_DATABASE_ALLOWED_LOGINS',
+      '["studio_migrator","studio_runtime"]',
+    );
     vi.stubEnv('EMAIL_FROM', '');
     expect(readEnv().auth?.mailer).toEqual({ kind: 'refuse' });
   });
 
   it('is what tolerates an unpaired EMAIL_FROM, not NODE_ENV', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv(
+      'STUDIO_DATABASE_ALLOWED_LOGINS',
+      '["studio_migrator","studio_runtime"]',
+    );
     vi.stubEnv('EMAIL_FROM', 'signin@studio.example');
     vi.stubEnv('SMTP_URL', '');
-    expect(() => readEnv()).toThrow(/SMTP_URL is required when EMAIL_FROM/);
+    expect(() => readEnv()).toThrow(
+      'SMTP_URL or POSTMARK_SERVER_TOKEN is required when EMAIL_FROM is set',
+    );
+  });
+});
+
+describe('Postmark mail configuration', () => {
+  it.each(['managed', 'self-hosted'])(
+    'selects the configured Postmark sender in %s mode',
+    (mode) => {
+      vi.stubEnv('STUDIO_DEPLOYMENT_MODE', mode);
+      vi.stubEnv('POSTMARK_SERVER_TOKEN', 'synthetic-token');
+      expect(readEnv().auth?.mailer).toEqual({
+        kind: 'postmark',
+        serverToken: 'synthetic-token',
+        messageStream: 'outbound',
+        from: DEV.emailFrom,
+      });
+      vi.stubEnv('POSTMARK_MESSAGE_STREAM', 'studio-transactional');
+      expect(readEnv().auth?.mailer).toMatchObject({
+        messageStream: 'studio-transactional',
+      });
+    },
+  );
+
+  it('refuses ambiguous transport selection even in development', () => {
+    vi.stubEnv('POSTMARK_SERVER_TOKEN', 'synthetic-token');
+    vi.stubEnv('SMTP_URL', 'smtp://localhost:1025');
+    expect(() => readEnv()).toThrow(
+      'Configure only one of SMTP_URL or POSTMARK_SERVER_TOKEN',
+    );
+  });
+
+  it('requires the sender identity and the server token as a complete configuration', () => {
+    vi.stubEnv('POSTMARK_MESSAGE_STREAM', 'outbound');
+    expect(() => readEnv()).toThrow(
+      'POSTMARK_SERVER_TOKEN is required when POSTMARK_MESSAGE_STREAM is set',
+    );
+    vi.stubEnv('POSTMARK_SERVER_TOKEN', 'synthetic-token');
+    vi.stubEnv('EMAIL_FROM', '');
+    expect(() => readEnv()).toThrow(
+      'EMAIL_FROM is required when POSTMARK_SERVER_TOKEN is set',
+    );
+  });
+
+  it.each([
+    ['POSTMARK_SERVER_TOKEN', 'private-token\ncanary'],
+    ['POSTMARK_SERVER_TOKEN', 'private-token'.repeat(100)],
+    ['POSTMARK_MESSAGE_STREAM', 'stream with spaces'],
+    ['POSTMARK_MESSAGE_STREAM', 'x'.repeat(31)],
+  ])('refuses invalid %s without disclosing its value', (name, value) => {
+    vi.stubEnv(name, value);
+    expect(() => readEnv()).toThrow('Invalid environment variables');
+  });
+
+  it('withholds mail configuration entirely from the entrypoint without auth', () => {
+    vi.stubEnv('POSTMARK_SERVER_TOKEN', 'invalid\nsecret-canary');
+    vi.stubEnv('POSTMARK_MESSAGE_STREAM', 'invalid stream');
+    expect(readEnv({ withoutDatabaseOrAuth: true }).auth).toBeUndefined();
   });
 });
 
@@ -106,12 +420,55 @@ describe('database and auth', () => {
     expect(readEnv().db).toEqual({
       url: 'postgres://app@localhost:5433/other',
     });
+    expect(readEnv().maintenanceDb).toEqual({
+      url: 'postgres://app@localhost:5433/other',
+    });
+  });
+
+  it('keeps a separately configured maintenance login distinct from the app login', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/other');
+    vi.stubEnv(
+      'STUDIO_MAINTENANCE_DATABASE_URL',
+      'postgres://maintenance@localhost:5433/other',
+    );
+    expect(readEnv().maintenanceDb).toEqual({
+      url: 'postgres://maintenance@localhost:5433/other',
+    });
+  });
+
+  it('admits a worker with only its maintenance login', () => {
+    vi.stubEnv('STUDIO_ROLE', 'worker');
+    vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv(
+      'STUDIO_MAINTENANCE_DATABASE_URL',
+      'postgres://maintenance@localhost:5433/other',
+    );
+    const env = readEnv();
+    expect(env.db).toBeUndefined();
+    expect(env.maintenanceDb).toEqual({
+      url: 'postgres://maintenance@localhost:5433/other',
+    });
+    expect(env.auth?.baseUrl).toBe('http://localhost:5173');
+  });
+
+  it('refuses a web process with only a maintenance login', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', 'false');
+    vi.stubEnv('STUDIO_ROLE', 'web');
+    vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv(
+      'STUDIO_MAINTENANCE_DATABASE_URL',
+      'postgres://maintenance@localhost:5433/other',
+    );
+    expect(() => readEnv()).toThrow(
+      'DATABASE_URL is required for a web-capable process',
+    );
   });
 
   it('is unconfigured without DATABASE_URL, and auth follows it down', () => {
     vi.stubEnv('DATABASE_URL', '');
     const env = readEnv();
     expect(env.db).toBeUndefined();
+    expect(env.maintenanceDb).toBeUndefined();
     expect(env.auth).toBeUndefined();
   });
 
@@ -132,6 +489,10 @@ describe('database and auth', () => {
 
   it('splits TRUSTED_PROXIES and drops blank entries', () => {
     vi.stubEnv('TRUSTED_PROXIES', ' 10.0.0.0/8 , ,192.168.0.1 ');
+    vi.stubEnv(
+      'STUDIO_MANAGED_INGRESS_SECRET',
+      'synthetic-managed-ingress-secret-at-least-32-characters',
+    );
     expect(readEnv().auth?.trustedProxies).toEqual([
       '10.0.0.0/8',
       '192.168.0.1',
@@ -140,6 +501,7 @@ describe('database and auth', () => {
 
   it('treats an all-blank TRUSTED_PROXIES as unset', () => {
     vi.stubEnv('TRUSTED_PROXIES', ' , ');
+    vi.stubEnv('STUDIO_MANAGED_INGRESS_SECRET', '');
     expect(readEnv().auth?.trustedProxies).toBeUndefined();
   });
 });
@@ -246,5 +608,72 @@ describe('process configuration', () => {
     vi.stubEnv('SKIP_ENV_VALIDATION', 'false');
     vi.stubEnv('PORT', 'http');
     expect(() => readEnv()).toThrow();
+  });
+});
+
+describe('the deployment mode', () => {
+  it('is managed under the development defaults', () => {
+    // So the local lane can develop the managed-only surfaces at all.
+    expect(readEnv().deploymentMode).toBe('managed');
+  });
+
+  it('is self-hosted when the variable is unset', () => {
+    vi.stubEnv('STUDIO_DEPLOYMENT_MODE', '');
+    // The fail-closed direction, and the reason no default is declared in
+    // variables.ts: a managed deployment that forgets the variable 404s its
+    // own pricing page on the first smoke request, where the other default
+    // would have an institution's own instance quietly publishing one.
+    expect(readEnv().deploymentMode).toBe('self-hosted');
+  });
+
+  it('reads an explicit self-hosted value', () => {
+    vi.stubEnv('STUDIO_DEPLOYMENT_MODE', 'self-hosted');
+    expect(readEnv().deploymentMode).toBe('self-hosted');
+  });
+
+  it('refuses a value that is neither topology', () => {
+    // A typo must not resolve to a topology by accident, in either
+    // direction.
+    vi.stubEnv('STUDIO_DEPLOYMENT_MODE', 'hosted');
+    expect(() => readEnv()).toThrow();
+  });
+});
+
+describe('the local-database judgement', () => {
+  it('names this machine by the effective host, not the authority alone', () => {
+    expect(isLocalDatabase('postgres://u:p@localhost:5432/db')).toBe(true);
+    expect(isLocalDatabase('postgres://u:p@127.0.0.1/db')).toBe(true);
+    expect(isLocalDatabase('postgres://u:p@[::1]/db')).toBe(true);
+    expect(isLocalDatabase('postgres://u:p@db.example.org/db')).toBe(false);
+
+    // node-postgres applies a `host` or `hostaddr` query parameter over the
+    // authority and connects there; the automatic dev-boot reset must judge
+    // the host it will actually reach.
+    expect(
+      isLocalDatabase('postgres://u:p@localhost/db?host=remote.example'),
+    ).toBe(false);
+    expect(
+      isLocalDatabase('postgres://u:p@localhost/db?hostaddr=203.0.113.9'),
+    ).toBe(false);
+    expect(
+      isLocalDatabase('postgres://u:p@localhost/db?host=/var/run/postgresql'),
+    ).toBe(true);
+    // Every host the string names must be this machine, whichever one the
+    // parser would let win: a repeated parameter cannot smuggle a remote in
+    // behind a local first value, and a remote authority stays remote.
+    expect(
+      isLocalDatabase(
+        'postgres://u:p@localhost/db?host=localhost&host=remote.example',
+      ),
+    ).toBe(false);
+    expect(
+      isLocalDatabase(
+        'postgres://u:p@localhost/db?host=remote.example&host=localhost',
+      ),
+    ).toBe(false);
+    expect(
+      isLocalDatabase('postgres://u:p@remote.example/db?host=localhost'),
+    ).toBe(false);
+    expect(isLocalDatabase('not a url')).toBe(false);
   });
 });

@@ -10,7 +10,7 @@ describe('stageDraftFromSubmission', () => {
         skipLogic: { action: 'SKIP', filter: { rules: [], join: 'OR' } },
       },
       submittedValues: { label: 'Close friends' },
-      mountedPaths: [],
+      mountedPaths: [['label']],
       dormantFields: [],
     });
 
@@ -49,6 +49,77 @@ describe('stageDraftFromSubmission', () => {
     // The distinction the protocol schema cares about: absent, not empty and
     // not null.
     expect(draft).toEqual({ label: 'Friends' });
+  });
+
+  it('removes a field emptied on screen rather than blanking it', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { label: 'Friends', interviewScript: 'Read this aloud' },
+      // What a cleared fresco-ui text input submits.
+      submittedValues: { label: 'Friends', interviewScript: '' },
+      mountedPaths: [['label'], ['interviewScript']],
+      dormantFields: [],
+    });
+
+    expect(draft).toEqual({ label: 'Friends' });
+  });
+
+  it('removes a field emptied and then hidden rather than replaying the blank', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { label: 'Friends', interviewScript: 'Read this aloud' },
+      submittedValues: { label: 'Friends' },
+      mountedPaths: [['label']],
+      // Emptied on screen and then hidden when its group collapsed. The store
+      // parks what the control held, which is the empty string rather than
+      // the `undefined` a discard leaves.
+      dormantFields: [
+        { name: 'interviewScript', path: ['interviewScript'], value: '' },
+      ],
+    });
+
+    expect(draft).toEqual({ label: 'Friends' });
+  });
+
+  it('drops the parts of a compound value that hold nothing', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { edges: { create: 'knows', display: ['knows'] } },
+      // One control registered at `edges` carries the whole pair, and the
+      // researcher has cleared the half of it that picks what to display.
+      submittedValues: { edges: { create: 'knows', display: null } },
+      mountedPaths: [['edges']],
+      dormantFields: [],
+    });
+
+    expect(draft.edges).toEqual({ create: 'knows' });
+  });
+
+  it('keeps a row whose every setting was cleared', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { items: [{ optionalSetting: 'on' }, { id: 'second' }] },
+      submittedValues: {},
+      mountedPaths: [],
+      // One control registered at the row itself, parked holding the object
+      // the clear emptied.
+      dormantFields: [{ name: 'items[0]', path: ['items', 0], value: {} }],
+    });
+
+    // A row is a position in a list rather than a value the stage may simply
+    // not have: removing the index would punch a hole in the list, and taking
+    // a row out is the list editor's operation to make.
+    expect(draft.items).toEqual([{}, { id: 'second' }]);
+  });
+
+  it('keeps a list the researcher emptied', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { prompts: [{ id: 'a' }] },
+      submittedValues: { prompts: [] },
+      mountedPaths: [['prompts']],
+      dormantFields: [],
+    });
+
+    // Whether an emptied list means "no list" belongs to the field that owns
+    // it, which says so by handing back `undefined`. An empty array reaching
+    // here is a list, and the schema rule about it is the owner's to state.
+    expect(draft.prompts).toEqual([]);
   });
 
   it('removes a container its last discarded member emptied', () => {
@@ -126,15 +197,38 @@ describe('stageDraftFromSubmission', () => {
     expect(Object.hasOwn(draft, 'behaviours')).toBe(true);
   });
 
-  it('replaces a submitted key outright rather than merging into it', () => {
+  it('replaces the value at a mounted path outright rather than merging into it', () => {
     const draft = stageDraftFromSubmission({
       currentFields: { prompts: [{ id: 'a' }, { id: 'b' }] },
       submittedValues: { prompts: [{ id: 'b' }] },
-      mountedPaths: [],
+      mountedPaths: [['prompts']],
       dormantFields: [],
     });
 
+    // The field is registered at `prompts` itself, so what it holds is the
+    // whole list. Merging into the old one would resurrect the deleted row.
     expect(draft.prompts).toEqual([{ id: 'b' }]);
+  });
+
+  it('leaves the rest of a key alone when a section owns one path inside it', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: {
+        nodeConfig: { type: 'family_member', form: [{ variable: 'fm_name' }] },
+      },
+      // What the form assembles when the only section pointed inside
+      // `nodeConfig` is the one owning the form.
+      submittedValues: { nodeConfig: { form: [{ variable: 'fm_age' }] } },
+      mountedPaths: [['nodeConfig', 'form']],
+      dormantFields: [],
+    });
+
+    // `nodeConfig.type` is nobody's field here, and a save that dropped it
+    // would leave the pedigree with no node type — the same loss as deleting a
+    // top-level key no section renders, one level down.
+    expect(draft.nodeConfig).toEqual({
+      type: 'family_member',
+      form: [{ variable: 'fm_age' }],
+    });
   });
 
   it('lets a nested hidden field win over the container it sits in', () => {
@@ -224,8 +318,10 @@ describe('stageDraftFromSubmission', () => {
     });
 
     // Replaying the container the researcher last saw would put the stale
-    // reading of a field they can still see back over what it now holds.
-    expect(draft.parameters).toEqual({ bounds: { min: 9 } });
+    // reading of a field they can still see back over what it now holds. What
+    // nothing on screen edits stays as the draft has it: `style` is not part
+    // of this submit, and the container's stale copy is not evidence about it.
+    expect(draft.parameters).toEqual({ bounds: { min: 9 }, style: 'plain' });
   });
 
   it('leaves an emptied row in place rather than punching a hole in the list', () => {
@@ -246,6 +342,23 @@ describe('stageDraftFromSubmission', () => {
     // the gap, so an emptied row must survive as an empty row. Taking a row
     // out is a deliberate array operation, not a side effect of clearing one
     // of its settings.
+    expect(draft.items).toEqual([{}, { id: 'second' }]);
+  });
+
+  it('leaves a row whose every setting cleaned down to nothing', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { items: [{ label: 'Old', size: 3 }, { id: 'second' }] },
+      // The row's own control, holding every spelling of emptiness a form
+      // produces: text the researcher blanked back to its spaces, and a number
+      // input mid-entry.
+      submittedValues: { items: [{ label: '  ', size: Number.NaN }] },
+      mountedPaths: [['items', 0]],
+      dormantFields: [],
+    });
+
+    // The settings go, because that is what the form says they hold. The ROW
+    // stays: removing an array index punches a hole in the list, and taking a
+    // row out is the list editor's own operation.
     expect(draft.items).toEqual([{}, { id: 'second' }]);
   });
 

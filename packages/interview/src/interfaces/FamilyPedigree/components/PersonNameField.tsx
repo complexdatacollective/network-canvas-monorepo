@@ -1,7 +1,10 @@
+'use client';
+
 import { useContext, useMemo, type ReactNode } from 'react';
 import { useSelector } from 'react-redux';
 import { z } from 'zod/mini';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { WizardContext } from '@codaco/fresco-ui/dialogs/useWizard';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -23,6 +26,7 @@ import {
 } from '../../../selectors/forms';
 import { getCodebook } from '../../../store/modules/protocol';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
+import { messages } from '../messages';
 import {
   getNodeForm,
   getNodeLabelVariable,
@@ -67,6 +71,7 @@ export default function PersonNameField({
   label,
   placeholder,
 }: PersonNameFieldProps) {
+  const intl = useAppIntl();
   const nodeType = useStageSelector(getNodeType);
   const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
   const nodeForm = useStageSelector(getNodeForm);
@@ -87,7 +92,7 @@ export default function PersonNameField({
   const pendingUniqueValidation: CustomFieldValidation | undefined =
     validationProps.unique !== undefined
       ? {
-          hint: 'Must also be unique within this family setup.',
+          hint: intl.formatMessage(messages.pendingUniqueHint),
           schema: () =>
             z.unknown().check(
               z.superRefine((value, ctx) => {
@@ -106,7 +111,7 @@ export default function PersonNameField({
                 ) {
                   ctx.addIssue({
                     code: 'custom',
-                    message: 'This value is used elsewhere. It must be unique.',
+                    message: intl.formatMessage(messages.pendingUniqueError),
                   });
                 }
               }),

@@ -5,11 +5,11 @@ import { describe, expect, it } from 'vitest';
 
 import { applySchema, computeSchemaFingerprint } from '../../scripts/apply.ts';
 import {
-  renderSchemaDocs,
-  spliceSchemaDocs,
+  readSchemaDocsSection,
   STUDIO_ERD_PATH,
   STUDIO_README_PATH,
 } from '../../scripts/schema-docs.ts';
+import { ACCESS_SIDECAR_SQL } from '../db/access.ts';
 import { SCHEMA_FINGERPRINT } from '../db/fingerprint.generated.ts';
 import {
   checkSchema,
@@ -54,39 +54,297 @@ describe('fingerprint constant', () => {
     );
     expect(SIDECARS.at(-1)).toContain('audit_events_are_immutable');
   });
+
+  // The broad ALL TABLES grant re-admits whatever an earlier REVOKE took away,
+  // so every sidecar that revokes must run after it. Position is checked here;
+  // the effect is checked against a provisioned schema below.
+  it('runs the broad access grant before every narrow revocation', () => {
+    const access = SIDECARS.indexOf(ACCESS_SIDECAR_SQL);
+    expect(access).toBeGreaterThan(0);
+    const revoking = SIDECARS.flatMap((sidecar, index) =>
+      /\bREVOKE\b/.test(sidecar) ? [index] : [],
+    );
+    expect(revoking.length).toBeGreaterThan(0);
+    expect(revoking.every((index) => index > access)).toBe(true);
+  });
 });
 
-describe('generated schema documentation', () => {
-  it('matches the committed ERD and README section', async () => {
-    const artifacts = await renderSchemaDocs();
-    const readme = readFileSync(STUDIO_README_PATH, 'utf8');
+// The committed ERD and README section are compared against a fresh render by
+// `pnpm --filter @codaco/studio-server check:schema-docs`, which CI runs as a
+// step of its own. That render is a DBML import plus an SVG layout — seconds
+// of CPU with no database in it — and it has no business competing for a
+// per-test budget with the suites next door that hold Postgres busy for
+// minutes; held to one, it failed the test job for being slow rather than for
+// anything being stale. What is left here reads the artifacts as committed,
+// which costs nothing and is what a reader of the repository actually sees.
+const committedSchemaDocs = {
+  readmeSection: readSchemaDocsSection(
+    readFileSync(STUDIO_README_PATH, 'utf8'),
+  ),
+  svg: readFileSync(STUDIO_ERD_PATH, 'utf8'),
+};
 
+describe('generated schema documentation', () => {
+  // The cheap half of the staleness guard, and the half that catches the
+  // ordinary case: a schema or sidecar change resynced nowhere. The section
+  // quotes the fingerprint, and the `fingerprint constant` suite above ties
+  // that fingerprint to the schema definitions. What this cannot see is a
+  // change to the renderer or to spliceSchemaDocs, which leaves the
+  // fingerprint untouched — that is what check:schema-docs is for.
+  it('quotes the current schema fingerprint', () => {
     expect(
-      readFileSync(STUDIO_ERD_PATH, 'utf8'),
-      'stale schema-erd.svg; run: pnpm --filter @codaco/studio-server sync-fingerprint',
-    ).toBe(artifacts.svg);
-    expect(
-      readme,
+      committedSchemaDocs.readmeSection,
       'stale README schema section; run: pnpm --filter @codaco/studio-server sync-fingerprint',
-    ).toBe(spliceSchemaDocs(readme, artifacts.readmeSection));
+    ).toContain(`Schema fingerprint: \`${SCHEMA_FINGERPRINT}\`.`);
   });
 
-  it('documents the sidecar-only security and trigger behavior', async () => {
-    const { readmeSection, svg } = await renderSchemaDocs();
+  it('is checked against a fresh render by a script package.json declares', () => {
+    expect(readManifestScripts()).toHaveProperty('check:schema-docs');
+  });
+
+  it('documents the sidecar-only security and trigger behavior', () => {
+    const { readmeSection, svg } = committedSchemaDocs;
 
     expect(readmeSection).toContain('FORCE ROW LEVEL SECURITY');
     expect(readmeSection).toContain('studio_maintenance');
     expect(readmeSection).toContain('sections_immutable');
     expect(readmeSection).toContain('version_sections_insert_frozen');
+    expect(readmeSection).toContain('assets_metadata_immutable');
+    expect(readmeSection).toContain('asset_references_published_immutable');
+    expect(readmeSection).toContain('template_versions_immutable');
+    expect(readmeSection).toContain('template_version_sections_immutable');
+    expect(readmeSection).toContain('template_version_sections_insert_frozen');
+    expect(readmeSection).toContain('audit_export_request_immutable');
+    expect(readmeSection).toContain('audit_export_handle_single_use');
+    expect(readmeSection).toContain('audit_alert_link_immutable');
+    expect(readmeSection).toContain('studies_closed_read_only');
+    expect(readmeSection).toContain('studies_delete_purge_only');
+    expect(readmeSection).toContain('study_waves_identity_immutable');
+    expect(readmeSection).toContain('study_waves_parent_open');
+    expect(readmeSection).toContain('participants_writable');
+    expect(readmeSection).toContain('interview_sessions_writable');
+    expect(readmeSection).toContain('interview_sessions_link_own');
+    expect(readmeSection).toContain('studies_go_live_final');
+    expect(readmeSection).toContain('studies_protocol_line_unpinned');
+    expect(readmeSection).toContain('study_waves_version_own_line');
+    expect(readmeSection).toContain('interview_sessions_version_wave_pin');
+    expect(readmeSection).toContain('interview_sessions_completion_snapshot');
+    expect(readmeSection).toContain('interview_links_writable');
+    expect(readmeSection).toContain('api_token_authority_immutable');
+    expect(readmeSection).toContain('consent_documents_publication_immutable');
+    expect(readmeSection).toContain('consent_documents_delete_purge_only');
+    expect(readmeSection).toContain('consent_items_frozen');
+    expect(readmeSection).toContain('participant_consent_grant_immutable');
+    expect(readmeSection).toContain(
+      'participant_consent_item_responses_immutable',
+    );
+    expect(readmeSection).toContain('webhook_delivery_payload_immutable');
+    expect(readmeSection).toContain('experiment_assignments_immutable');
+    expect(readmeSection).toContain('experiment_assignments_variant_known');
+    expect(readmeSection).toContain('experiments_variants_frozen');
+    expect(readmeSection).toContain('experiments_start_final');
+    expect(readmeSection).toContain('experiment_assignments_within_lifetime');
+    expect(readmeSection).toContain('experiment_exposures_within_lifetime');
+    expect(readmeSection).toContain('participants_study_managed');
+    expect(readmeSection).toContain('studies_mode_switch_unpeopled');
+    expect(readmeSection).toContain('experiment_exposures_immutable');
+    expect(readmeSection).toContain('experiment_assignments_deletable');
+    expect(readmeSection).toContain('experiment_exposures_deletable');
+    expect(readmeSection).toContain('experiments_variants_well_formed');
+    expect(readmeSection).toContain('asset_references_insert_frozen');
+    expect(readmeSection).toContain(
+      'webhook_deliveries_subscription_wants_event',
+    );
+    expect(readmeSection).toContain('participant_consents_session_own');
+    expect(readmeSection).toContain('participant_consents_document_published');
+    expect(readmeSection).toContain(
+      'participant_consents_required_items_affirmed',
+    );
+    expect(readmeSection).toContain('participant_consents_delete_audited');
+    expect(readmeSection).toContain(
+      'participant_consent_item_responses_delete_audited',
+    );
+    expect(readmeSection).toContain('message_deliveries_template_applies');
+    expect(readmeSection).toContain('study_schedules_time_zone_known');
+    expect(readmeSection).toContain('schedule_occurrences_time_zone_known');
+    expect(readmeSection).toContain('message_templates_publication_immutable');
+    expect(readmeSection).toContain('message_delivery_payload_immutable');
+    expect(readmeSection).toContain('message_delivery_events_immutable');
+    expect(readmeSection).toContain('schedule_occurrences_identity_immutable');
+    expect(readmeSection).toContain('message_delivery_events_provider_sent_it');
+    expect(readmeSection).toContain('message_deliveries_deletable');
+    expect(readmeSection).toContain('message_delivery_events_deletable');
+    expect(readmeSection).toContain('edges_parent_writable_delete');
+    expect(readmeSection).toContain('edges_parent_writable_insert');
+    expect(readmeSection).toContain('edges_parent_writable_update');
+    expect(readmeSection).toContain('edges_session_immutable');
+    expect(readmeSection).toContain('nodes_parent_writable_delete');
+    expect(readmeSection).toContain('nodes_parent_writable_insert');
+    expect(readmeSection).toContain('nodes_parent_writable_update');
+    expect(readmeSection).toContain('nodes_session_immutable');
+    expect(readmeSection).toContain(
+      'session_degree_hist_parent_writable_delete',
+    );
+    expect(readmeSection).toContain(
+      'session_degree_hist_parent_writable_insert',
+    );
+    expect(readmeSection).toContain(
+      'session_degree_hist_parent_writable_update',
+    );
+    expect(readmeSection).toContain('session_degree_hist_session_immutable');
+    expect(readmeSection).toContain('session_snapshots_immutable');
+    expect(readmeSection).toContain('session_snapshots_insert_frozen');
+    expect(readmeSection).toContain('session_stats_parent_writable_delete');
+    expect(readmeSection).toContain('session_stats_parent_writable_insert');
+    expect(readmeSection).toContain('session_stats_parent_writable_update');
+    expect(readmeSection).toContain('session_stats_session_immutable');
     expect(readmeSection).toContain('invitation_delivery_payload_immutable');
     expect(readmeSection).toContain('audit_events_immutable');
     expect(readmeSection).toContain('audit_team_isolation');
     expect(readmeSection).toContain(
       'Revokes UPDATE, DELETE, TRUNCATE from studio_app, studio_maintenance',
     );
+    // The narrow re-admission after that table's revocation. Without the
+    // matcher for it, the README would read stricter than the database is.
+    expect(readmeSection).toContain(
+      'Grants UPDATE (handle_consumed_at) to studio_app.',
+    );
     expect(svg).toContain('RLS policy team_isolation');
     expect(svg).toContain('RLS policy audit_team_isolation');
     expect(svg).toContain('sidecar trigger sections_immutable');
+    expect(svg).toContain('sidecar trigger assets_metadata_immutable');
+    expect(svg).toContain(
+      'sidecar trigger asset_references_published_immutable',
+    );
+    expect(svg).toContain('sidecar trigger template_versions_immutable');
+    expect(svg).toContain(
+      'sidecar trigger template_version_sections_immutable',
+    );
+    expect(svg).toContain(
+      'sidecar trigger template_version_sections_insert_frozen',
+    );
+    expect(svg).toContain('sidecar trigger audit_export_request_immutable');
+    expect(svg).toContain('sidecar trigger audit_export_handle_single_use');
+    expect(svg).toContain('sidecar trigger audit_alert_link_immutable');
+    expect(svg).toContain('sidecar trigger studies_closed_read_only');
+    expect(svg).toContain('sidecar trigger studies_delete_purge_only');
+    expect(svg).toContain('sidecar trigger study_waves_identity_immutable');
+    expect(svg).toContain('sidecar trigger study_waves_parent_open');
+    expect(svg).toContain('sidecar trigger participants_writable');
+    expect(svg).toContain('sidecar trigger interview_sessions_writable');
+    expect(svg).toContain('sidecar trigger interview_sessions_link_own');
+    expect(svg).toContain('sidecar trigger studies_go_live_final');
+    expect(svg).toContain('sidecar trigger studies_protocol_line_unpinned');
+    expect(svg).toContain('sidecar trigger study_waves_version_own_line');
+    expect(svg).toContain(
+      'sidecar trigger interview_sessions_version_wave_pin',
+    );
+    expect(svg).toContain(
+      'sidecar trigger interview_sessions_completion_snapshot',
+    );
+    expect(svg).toContain('sidecar trigger interview_links_writable');
+    expect(svg).toContain('sidecar trigger api_token_authority_immutable');
+    expect(svg).toContain(
+      'sidecar trigger consent_documents_publication_immutable',
+    );
+    expect(svg).toContain(
+      'sidecar trigger consent_documents_delete_purge_only',
+    );
+    expect(svg).toContain('sidecar trigger consent_items_frozen');
+    expect(svg).toContain(
+      'sidecar trigger participant_consent_grant_immutable',
+    );
+    expect(svg).toContain(
+      'sidecar trigger participant_consent_item_responses_immutable',
+    );
+    expect(svg).toContain('sidecar trigger webhook_delivery_payload_immutable');
+    expect(svg).toContain('sidecar trigger experiment_assignments_immutable');
+    expect(svg).toContain(
+      'sidecar trigger experiment_assignments_variant_known',
+    );
+    expect(svg).toContain('sidecar trigger experiments_variants_frozen');
+    expect(svg).toContain('sidecar trigger experiments_start_final');
+    expect(svg).toContain(
+      'sidecar trigger experiment_assignments_within_lifetime',
+    );
+    expect(svg).toContain(
+      'sidecar trigger experiment_exposures_within_lifetime',
+    );
+    expect(svg).toContain('sidecar trigger participants_study_managed');
+    expect(svg).toContain('sidecar trigger studies_mode_switch_unpeopled');
+    expect(svg).toContain('sidecar trigger experiment_exposures_immutable');
+    expect(svg).toContain('sidecar trigger experiment_assignments_deletable');
+    expect(svg).toContain('sidecar trigger experiment_exposures_deletable');
+    expect(svg).toContain('sidecar trigger experiments_variants_well_formed');
+    expect(svg).toContain('sidecar trigger asset_references_insert_frozen');
+    expect(svg).toContain(
+      'sidecar trigger webhook_deliveries_subscription_wants_event',
+    );
+    expect(svg).toContain('sidecar trigger participant_consents_session_own');
+    expect(svg).toContain(
+      'sidecar trigger participant_consents_document_published',
+    );
+    expect(svg).toContain(
+      'sidecar trigger participant_consents_required_items_affirmed',
+    );
+    expect(svg).toContain(
+      'sidecar trigger participant_consents_delete_audited',
+    );
+    expect(svg).toContain(
+      'sidecar trigger participant_consent_item_responses_delete_audited',
+    );
+    expect(svg).toContain(
+      'sidecar trigger message_deliveries_template_applies',
+    );
+    expect(svg).toContain('sidecar trigger study_schedules_time_zone_known');
+    expect(svg).toContain(
+      'sidecar trigger schedule_occurrences_time_zone_known',
+    );
+    expect(svg).toContain(
+      'sidecar trigger message_templates_publication_immutable',
+    );
+    expect(svg).toContain('sidecar trigger message_delivery_payload_immutable');
+    expect(svg).toContain('sidecar trigger message_delivery_events_immutable');
+    expect(svg).toContain(
+      'sidecar trigger schedule_occurrences_identity_immutable',
+    );
+    expect(svg).toContain(
+      'sidecar trigger message_delivery_events_provider_sent_it',
+    );
+    expect(svg).toContain('sidecar trigger message_deliveries_deletable');
+    expect(svg).toContain('sidecar trigger message_delivery_events_deletable');
+    expect(svg).toContain('sidecar trigger edges_parent_writable_delete');
+    expect(svg).toContain('sidecar trigger edges_parent_writable_insert');
+    expect(svg).toContain('sidecar trigger edges_parent_writable_update');
+    expect(svg).toContain('sidecar trigger edges_session_immutable');
+    expect(svg).toContain('sidecar trigger nodes_parent_writable_delete');
+    expect(svg).toContain('sidecar trigger nodes_parent_writable_insert');
+    expect(svg).toContain('sidecar trigger nodes_parent_writable_update');
+    expect(svg).toContain('sidecar trigger nodes_session_immutable');
+    expect(svg).toContain(
+      'sidecar trigger session_degree_hist_parent_writable_delete',
+    );
+    expect(svg).toContain(
+      'sidecar trigger session_degree_hist_parent_writable_insert',
+    );
+    expect(svg).toContain(
+      'sidecar trigger session_degree_hist_parent_writable_update',
+    );
+    expect(svg).toContain(
+      'sidecar trigger session_degree_hist_session_immutable',
+    );
+    expect(svg).toContain('sidecar trigger session_snapshots_immutable');
+    expect(svg).toContain('sidecar trigger session_snapshots_insert_frozen');
+    expect(svg).toContain(
+      'sidecar trigger session_stats_parent_writable_delete',
+    );
+    expect(svg).toContain(
+      'sidecar trigger session_stats_parent_writable_insert',
+    );
+    expect(svg).toContain(
+      'sidecar trigger session_stats_parent_writable_update',
+    );
+    expect(svg).toContain('sidecar trigger session_stats_session_immutable');
     expect(svg).toContain(
       'sidecar trigger invitation_delivery_payload_immutable',
     );
@@ -97,8 +355,8 @@ describe('generated schema documentation', () => {
     expect(readManifestScripts()).toHaveProperty('generate:erd');
   });
 
-  it.each(['apply-schema', 'db:reset'])(
-    'regenerates before %s touches the database',
+  it.each(['generate:migration', 'db:reset'])(
+    'regenerates before %s executes',
     (script) => {
       expect(readManifestScripts()[script]).toMatch(
         /^pnpm run sync-fingerprint && /,
@@ -123,11 +381,108 @@ async function withScratch(
 // Each case runs in its own Postgres schema, because half of them corrupt the
 // fingerprint on purpose.
 describe.skipIf(!db)('schema verification', () => {
+  it('requires versioned history by default for a current development fingerprint', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await provisionScratchSchema(pool);
+      await pool.query(
+        'REVOKE INSERT, UPDATE, DELETE ON "schemaFingerprint" FROM studio_app, studio_maintenance',
+      );
+      const enrollment = (
+        await pool.query<{ login: string }>('SELECT session_user AS login')
+      ).rows[0]!;
+      expect(
+        await checkSchema(pool, { allowedLogins: [enrollment.login] }),
+      ).toMatchObject({
+        kind: 'stale',
+        reason: 'unversioned',
+        found: SCHEMA_FINGERPRINT,
+      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
+    });
+  });
+
+  it('does not accept a view as versioned history', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await provisionScratchSchema(pool);
+      await pool.query(
+        'REVOKE INSERT, UPDATE, DELETE ON "schemaFingerprint" FROM studio_app, studio_maintenance',
+      );
+      const identity = (
+        await pool.query<{ login: string }>('SELECT session_user AS login')
+      ).rows[0]!;
+      await pool.query(
+        'CREATE SCHEMA studio_migrations; CREATE VIEW studio_migrations.history AS SELECT 1 AS position',
+      );
+      expect(
+        (
+          await pool.query(
+            "SELECT relkind FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace WHERE namespace.nspname = 'studio_migrations' AND relation.relname = 'history'",
+          )
+        ).rows,
+      ).toEqual([{ relkind: 'v' }]);
+      expect(
+        await checkSchema(pool, { allowedLogins: [identity.login] }),
+      ).toMatchObject({
+        kind: 'stale',
+        reason: 'unsafe-evidence',
+      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
+        {
+          kind: 'stale',
+          reason: 'unsafe-evidence',
+        },
+      );
+    });
+  });
+
+  it('checks the exact resolved fingerprint namespace behind an empty search-path prefix before reading it', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await provisionScratchSchema(pool);
+      await pool.query(`CREATE SCHEMA empty_search_path_prefix;
+        CREATE FUNCTION public.fingerprint_namespace_read_trap()
+          RETURNS text LANGUAGE plpgsql AS
+          'BEGIN RAISE EXCEPTION ''fingerprint view read before shape check''; END';
+        ALTER TABLE public."schemaFingerprint"
+          RENAME TO fingerprint_namespace_storage;
+        CREATE VIEW public."schemaFingerprint" AS
+          SELECT id, fingerprint_namespace_read_trap() AS fingerprint, "appliedAt"
+          FROM public.fingerprint_namespace_storage`);
+      const client = await pool.connect();
+      try {
+        await client.query(
+          'SET search_path = empty_search_path_prefix, public',
+        );
+        expect(
+          (
+            await client.query<{ schema: string }>(
+              `SELECT namespace.nspname AS schema
+                 FROM pg_class relation
+                 JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+                WHERE relation.oid = to_regclass('"schemaFingerprint"')`,
+            )
+          ).rows,
+        ).toEqual([{ schema: 'public' }]);
+        await expect(
+          client.query('SELECT * FROM "schemaFingerprint"'),
+        ).rejects.toThrow('fingerprint view read before shape check');
+        expect(
+          await checkSchema(client, { allowUnversioned: true }),
+        ).toMatchObject({ kind: 'stale', reason: 'unsafe-evidence' });
+      } finally {
+        client.release();
+      }
+    });
+  });
+
   it('reads current on a provisioned schema carrying every table', async () => {
     await withScratch(createScratchSchema, async (pool) => {
       await provisionScratchSchema(pool);
 
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
 
       const tables = await pool.query<{ table_name: string }>(
         `select table_name from information_schema.tables
@@ -135,25 +490,69 @@ describe.skipIf(!db)('schema verification', () => {
       );
       expect(tables.rows.map((r) => r.table_name).toSorted()).toEqual([
         'account',
+        'api_tokens',
+        'asset_references',
+        'assets',
+        'audit_alert_deliveries',
+        'audit_alert_dispatch_budget',
+        'audit_alert_outbox',
+        'audit_alert_recipients',
+        'audit_alert_settings',
         'audit_events',
+        'audit_export_jobs',
         'command_log',
+        'consent_documents',
+        'consent_items',
+        'credential_audit_events',
         'drafts',
+        'edges',
+        'encryption_key_verifications',
+        'experiment_assignments',
+        'experiment_exposures',
+        'experiments',
+        'feedback_reports',
+        'interview_links',
+        'interview_sessions',
         'leases',
         'manifests',
+        'message_deliveries',
+        'message_delivery_events',
+        'message_templates',
+        'nodes',
+        'participant_consent_item_responses',
+        'participant_consents',
+        'participant_contact_optouts',
+        'participants',
         'protocol_drafts',
         'protocol_versions',
         'protocols',
         'rateLimit',
+        'schedule_occurrences',
         'schemaFingerprint',
         'sections',
         'session',
+        'session_degree_hist',
+        'session_snapshots',
+        'session_stats',
+        'studies',
+        'studio_instance',
+        'study_role_grants',
+        'study_schedules',
+        'study_stage_rollups',
+        'study_wave_rollups',
+        'study_waves',
         'team_invitation_deliveries',
         'team_invitations',
         'team_members',
         'teams',
+        'template_version_sections',
+        'template_versions',
+        'templates',
         'user',
         'verification',
         'version_sections',
+        'webhook_deliveries',
+        'webhook_subscriptions',
       ]);
       expect([...SCHEMA_TABLES].toSorted()).toEqual(
         tables.rows
@@ -167,9 +566,48 @@ describe.skipIf(!db)('schema verification', () => {
     });
   });
 
+  it('leaves every revoked table privilege revoked once provisioned', async () => {
+    await withScratch(createScratchSchema, async (pool) => {
+      await provisionScratchSchema(pool);
+
+      // Table-level revocations only; a column-level GRANT that re-admits one
+      // column after them does not make the table privilege held again.
+      const revocations = [
+        ...SIDECARS.join('\n').matchAll(
+          /REVOKE\s+([A-Z][A-Z, ]*?)\s+ON\s+(\w+)\s+FROM\s+([^;]+);/g,
+        ),
+      ];
+      expect(revocations.length).toBeGreaterThan(0);
+      for (const [, privileges, table, roles] of revocations) {
+        for (const privilege of privileges!.split(',').map((p) => p.trim())) {
+          for (const role of roles!.split(',').map((r) => r.trim())) {
+            // PUBLIC is ACL grantee 0, not a pg_roles identity accepted by
+            // has_table_privilege. Check its grant directly rather than skip it.
+            const held =
+              role === 'PUBLIC'
+                ? await pool.query<{ held: boolean }>(
+                    `SELECT EXISTS (SELECT 1 FROM pg_class AS relation CROSS JOIN LATERAL aclexplode(COALESCE(relation.relacl, acldefault('r', relation.relowner))) AS access WHERE relation.oid = $1::regclass AND access.grantee = 0 AND access.privilege_type = $2) AS held`,
+                    [table, privilege],
+                  )
+                : await pool.query<{ held: boolean }>(
+                    `select has_table_privilege($1, $2, $3) as held`,
+                    [role, table, privilege],
+                  );
+            expect(
+              held.rows[0]?.held,
+              `${role} still holds ${privilege} on ${table}`,
+            ).toBe(false);
+          }
+        }
+      }
+    });
+  });
+
   it('reports a never-provisioned database as absent', async () => {
     await withScratch(createScratchSchema, async (pool) => {
-      expect(await checkSchema(pool)).toEqual({ kind: 'absent' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'absent',
+      });
     });
   });
 
@@ -180,7 +618,7 @@ describe.skipIf(!db)('schema verification', () => {
         'deadbeef'.repeat(8),
       ]);
 
-      const state = await checkSchema(pool);
+      const state = await checkSchema(pool, { allowUnversioned: true });
       expect(state.kind).toBe('stale');
       expect(state).toMatchObject({
         reason: 'mismatch',
@@ -194,11 +632,13 @@ describe.skipIf(!db)('schema verification', () => {
       await provisionScratchSchema(pool);
       await pool.query('drop table "schemaFingerprint"');
 
-      expect(await checkSchema(pool)).toMatchObject({
-        kind: 'stale',
-        reason: 'unstamped',
-        found: null,
-      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
+        {
+          kind: 'stale',
+          reason: 'unstamped',
+          found: null,
+        },
+      );
     });
   });
 
@@ -207,10 +647,12 @@ describe.skipIf(!db)('schema verification', () => {
       await provisionScratchSchema(pool);
       await pool.query('delete from "schemaFingerprint"');
 
-      expect(await checkSchema(pool)).toMatchObject({
-        kind: 'stale',
-        reason: 'unstamped',
-      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
+        {
+          kind: 'stale',
+          reason: 'unstamped',
+        },
+      );
     });
   });
 
@@ -222,44 +664,89 @@ describe.skipIf(!db)('schema verification', () => {
       // recognisable by the "user" table alone, but still not ours to stamp.
       await pool.query('drop table "user" cascade');
 
-      expect(await checkSchema(pool)).toMatchObject({
-        kind: 'stale',
-        reason: 'unstamped',
+      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
+        {
+          kind: 'stale',
+          reason: 'unstamped',
+        },
+      );
+    });
+  });
+});
+
+// The per-user UI-language preference (2026-09-04 localization design §5.2):
+// nullable — NULL means "no preference; negotiate from the browser" — with
+// the house 2–35 character bound on non-null tags.
+describe.skipIf(!db)('the user locale column', () => {
+  it('accepts NULL and plausible tags, refusing out-of-range lengths', async () => {
+    await withScratch(createScratchSchema, async (pool) => {
+      await provisionScratchSchema(pool);
+      const insert = (id: string, locale: string | null) =>
+        pool.query(
+          `INSERT INTO "user" (id, name, email, "emailVerified", locale)
+           VALUES ($1, $1, $1 || '@example.org', true, $2)`,
+          [id, locale],
+        );
+
+      await insert('locale-null', null);
+      await insert('locale-en', 'en');
+      await insert('locale-en-gb', 'en-GB');
+      // The widest tag the registry-shaped bound admits.
+      await insert('locale-max', 'a'.repeat(35));
+      await expect(insert('locale-short', 'e')).rejects.toMatchObject({
+        constraint: 'user_locale_length_check',
       });
+      await expect(insert('locale-long', 'a'.repeat(36))).rejects.toMatchObject(
+        { constraint: 'user_locale_length_check' },
+      );
+
+      // The accepted values actually landed, distinguishably.
+      const stored = await pool.query<{ id: string; locale: string | null }>(
+        `select id, locale from "user"
+         where id like 'locale-%' order by id`,
+      );
+      expect(stored.rows).toEqual([
+        { id: 'locale-en', locale: 'en' },
+        { id: 'locale-en-gb', locale: 'en-GB' },
+        { id: 'locale-max', locale: 'a'.repeat(35) },
+        { id: 'locale-null', locale: null },
+      ]);
     });
   });
 });
 
 // drizzle-kit push introspects `public`, so these run in scratch databases.
 describe.skipIf(!db)('schema application', () => {
-  it('normalizes legacy blank team names before enforcing the current schema', async () => {
+  it('keys accounts on (issuer, accountId), both required', async () => {
     await withScratch(createScratchDatabase, async (pool) => {
       await applySchema(pool);
       await pool.query(
-        'ALTER TABLE teams DROP CONSTRAINT IF EXISTS teams_name_nonblank_check',
+        `INSERT INTO "user" (id, name, email, "emailVerified")
+         VALUES ('u1', 'Researcher', 'researcher@example.org', true)`,
       );
       await pool.query(
-        `INSERT INTO teams (id, name, slug) VALUES ('legacy-team', E' \t ', 'legacy-team')`,
+        `INSERT INTO account (id, "accountId", "providerId", issuer, "userId", "updatedAt")
+         VALUES ('google', 'sub-google', 'google', 'https://accounts.google.com', 'u1', now())`,
       );
 
-      await applySchema(pool);
-
-      const migrated = await pool.query<{ name: string }>(
-        `SELECT name FROM teams WHERE id = 'legacy-team'`,
-      );
-      expect(migrated.rows[0]?.name).toBe('Team legacy-team');
-
+      // better-auth 1.7 keys every account lookup on (issuer, accountId): an
+      // account without an issuer is unmatchable, and two accounts under one
+      // key would make the lookup ambiguous.
       await expect(
         pool.query(
-          `INSERT INTO teams (id, name, slug) VALUES ('new-team', '   ', 'new-team')`,
+          `INSERT INTO account (id, "accountId", "providerId", "userId", "updatedAt")
+           VALUES ('no-issuer', 'sub-2', 'google', 'u1', now())`,
         ),
-      ).rejects.toMatchObject({ constraint: 'teams_name_nonblank_check' });
-
-      await applySchema(pool);
-      const remigrated = await pool.query<{ name: string }>(
-        `SELECT name FROM teams WHERE id = 'legacy-team'`,
-      );
-      expect(remigrated.rows[0]?.name).toBe('Team legacy-team');
+      ).rejects.toMatchObject({ column: 'issuer' });
+      await expect(
+        pool.query(
+          `INSERT INTO account (id, "accountId", "providerId", issuer, "userId", "updatedAt")
+           VALUES ('dup', 'sub-google', 'google', 'https://accounts.google.com', 'u1', now())`,
+        ),
+      ).rejects.toMatchObject({ constraint: 'account_issuer_accountId_idx' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
     });
   });
 
@@ -267,7 +754,9 @@ describe.skipIf(!db)('schema application', () => {
     await withScratch(createScratchDatabase, async (pool) => {
       const outcome = await applySchema(pool);
       expect(outcome.statements.length).toBeGreaterThan(0);
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
     });
   });
 
@@ -276,7 +765,9 @@ describe.skipIf(!db)('schema application', () => {
       await applySchema(pool);
       const again = await applySchema(pool);
       expect(again.statements).toEqual([]);
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
     });
   });
 
@@ -293,7 +784,9 @@ describe.skipIf(!db)('schema application', () => {
          where table_schema = 'public' and table_name = 'protocols'`,
       );
       expect(columns.rows.map((r) => r.column_name)).toContain('name');
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
     });
   });
 
@@ -301,7 +794,9 @@ describe.skipIf(!db)('schema application', () => {
     await withScratch(createScratchDatabase, async (pool) => {
       await Promise.all([applySchema(pool), applySchema(pool)]);
 
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
       const recorded = await pool.query('select * from "schemaFingerprint"');
       expect(recorded.rowCount).toBe(1);
     });
@@ -319,26 +814,50 @@ describe('schema problem message', () => {
   it('names scripts package.json declares', () => {
     const message = schemaProblemMessage(stale);
     expect(message).toContain('pnpm --filter @codaco/studio-server db:reset');
-    expect(message).toContain(
-      'pnpm --filter @codaco/studio-server apply-schema',
-    );
+    expect(message).toContain('docker compose run --rm studio migrate');
 
     const scripts = readManifestScripts();
     expect(scripts).toHaveProperty('db:reset');
-    expect(scripts).toHaveProperty('apply-schema');
+    expect(scripts).toHaveProperty('migrate');
   });
 
-  it('explains an unstamped database differently', () => {
-    expect(schemaProblemMessage({ ...stale, reason: 'unstamped' })).toContain(
-      'no fingerprint',
+  it('directs an unstamped database to recovery without a migration retry', () => {
+    const message = schemaProblemMessage({ ...stale, reason: 'unstamped' });
+    expect(message).toContain('no fingerprint');
+    expect(message).toContain('Preserve the original database');
+    expect(message).toContain('restore a consistent backup');
+    expect(message).toContain('export using its original Studio build');
+    expect(message).toContain('new empty database');
+    expect(message).toContain(
+      'Only for a disposable local development database',
     );
+    expect(message).not.toContain('docker compose run --rm studio migrate');
+  });
+
+  it('directs an unversioned fingerprint to recovery without treating it as a migration', () => {
+    const message = schemaProblemMessage({ ...stale, reason: 'unversioned' });
+    expect(message).toContain('no versioned migration history');
+    expect(message).toContain('Preserve the original database');
+    expect(message).toContain('new empty database');
+    expect(message).not.toContain('docker compose run --rm studio migrate');
+  });
+
+  it('directs unsafe migration evidence to verified-backup recovery without echoing evidence', () => {
+    const message = schemaProblemMessage({
+      ...stale,
+      reason: 'unsafe-evidence',
+      found: null,
+      appliedAt: null,
+    });
+    expect(message).toContain('unsupported relation shape');
+    expect(message).toContain('Restore a verified backup');
+    expect(message).not.toContain(stale.found!);
+    expect(message).not.toContain('docker compose run --rm studio migrate');
   });
 
   it('explains an absent schema with both remedies', () => {
     const message = schemaProblemMessage({ kind: 'absent' });
     expect(message).toContain('pnpm --filter @codaco/studio-server db:reset');
-    expect(message).toContain(
-      'pnpm --filter @codaco/studio-server apply-schema',
-    );
+    expect(message).toContain('docker compose run --rm studio migrate');
   });
 });

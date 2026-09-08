@@ -15,6 +15,7 @@ import {
   useState,
 } from 'react';
 
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
@@ -27,6 +28,7 @@ import { useStageSelector } from '../../../hooks/useStageSelector';
 import { buildPedigreeDialog } from '../buildPedigreeDialog';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
 import { useFamilyPedigreeDialog } from '../familyPedigreeDialog';
+import { messages } from '../messages';
 import type { VariableConfig } from '../store';
 import {
   getEdgeRelationshipType,
@@ -54,6 +56,7 @@ export default function PedigreeChecklist({
   variableConfig: VariableConfig;
   boundaries: Boundaries;
 }) {
+  const intl = useAppIntl();
   const nodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const edges = useFamilyPedigreeStore((s) => s.network.edges);
   const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
@@ -201,6 +204,7 @@ export default function PedigreeChecklist({
       variableConfig,
       boundaries,
       hasChildren || noChildrenAffirmed,
+      intl,
     );
   }, [
     egoId,
@@ -210,6 +214,7 @@ export default function PedigreeChecklist({
     boundaries,
     hasChildren,
     noChildrenAffirmed,
+    intl,
   ]);
 
   const hasGrandparentsNudge = boundaryNudges.some(
@@ -252,6 +257,7 @@ export default function PedigreeChecklist({
           edges,
           relationshipTypeVariable,
           manuallyChecked,
+          intl,
         ),
       );
     }
@@ -276,27 +282,28 @@ export default function PedigreeChecklist({
           edges,
           relationshipTypeVariable,
           manuallyChecked,
+          intl,
         ),
       );
     }
 
     list.push({
       id: 'parent-siblings',
-      label: "Add parent's siblings",
+      label: intl.formatMessage(messages.addParentSiblings),
       done: hasParentSiblings || manuallyChecked.has('parent-siblings'),
       required: false,
     });
 
     list.push({
       id: 'siblings',
-      label: 'Add siblings',
+      label: intl.formatMessage(messages.addSiblings),
       done: hasSiblings || manuallyChecked.has('siblings'),
       required: false,
     });
 
     list.push({
       id: 'partner',
-      label: 'Add partners',
+      label: intl.formatMessage(messages.addPartners),
       done: hasPartner || manuallyChecked.has('partner'),
       required: false,
     });
@@ -308,10 +315,10 @@ export default function PedigreeChecklist({
     list.push({
       id: 'children',
       label: hasChildren
-        ? 'Add children'
+        ? intl.formatMessage(messages.addChildren)
         : noChildrenAffirmed
-          ? 'No children (confirmed)'
-          : 'Add children (or confirm none)',
+          ? intl.formatMessage(messages.noChildrenConfirmed)
+          : intl.formatMessage(messages.addOrConfirmChildren),
       done:
         hasChildren ||
         noChildrenAffirmed ||
@@ -326,7 +333,7 @@ export default function PedigreeChecklist({
       const gpRequired = boundaries.requireGrandparents === 'required';
       list.push({
         id: 'boundary-grandparents',
-        label: "Record each parent's two parents",
+        label: intl.formatMessage(messages.recordGrandparents),
         done:
           !hasGrandparentsNudge || manuallyChecked.has('boundary-grandparents'),
         required: gpRequired,
@@ -339,7 +346,7 @@ export default function PedigreeChecklist({
       const ccRequired = boundaries.requireChildrenContributors === 'required';
       list.push({
         id: 'boundary-children-contributors',
-        label: "Record children's co-parents and their parents",
+        label: intl.formatMessage(messages.recordCoParents),
         done:
           !hasChildrenContributorsNudge ||
           manuallyChecked.has('boundary-children-contributors'),
@@ -364,6 +371,7 @@ export default function PedigreeChecklist({
     boundaries,
     hasGrandparentsNudge,
     hasChildrenContributorsNudge,
+    intl,
   ]);
 
   const sortedItems = useMemo(
@@ -407,13 +415,12 @@ export default function PedigreeChecklist({
         >
           <div className="flex items-center justify-between">
             <Heading level="h4" margin="none">
-              Pedigree Checklist
+              <AppMessage message={messages.checklistTitle} />
             </Heading>
             <CloseButton size="sm" onClick={() => setDismissed(true)} />
           </div>
           <Paragraph intent="smallText" className="text-current/50">
-            Complete the following tasks before continuing. If a task doesn't
-            apply you can click it to mark it as done.
+            <AppMessage message={messages.checklistInstructions} />
           </Paragraph>
           <motion.div className="mt-4 max-h-64" style={{ overflowY }}>
             <LayoutGroup>
@@ -461,6 +468,7 @@ export default function PedigreeChecklist({
                       {item.label}
                       {item.required && !item.done && (
                         <span className="text-destructive ml-auto">
+                          {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Required-item marker; the containing checklist describes the requirement in the active locale. */}
                           &nbsp;*
                         </span>
                       )}
@@ -480,17 +488,17 @@ export default function PedigreeChecklist({
                 data-testid="pedigree-checklist-finalize"
                 onClick={onFinalize}
               >
-                Finalize family pedigree
+                <AppMessage message={messages.finalizePedigree} />
               </Button>
             )}
             <Button
               color="dynamic"
               variant="text"
-              aria-label="How to build your pedigree"
+              aria-label={intl.formatMessage(messages.helpName)}
               icon={<HelpCircle />}
               onClick={() => void openDialog(buildPedigreeDialog)}
             >
-              Help
+              <AppMessage message={messages.help} />
             </Button>
           </motion.div>
         </MotionSurface>

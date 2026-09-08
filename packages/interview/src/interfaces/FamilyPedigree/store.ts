@@ -386,6 +386,8 @@ export const createFamilyPedigreeStore = (
 
           // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is
           // null only the intro/chooser steps render and no gamete-parent labels exist.
+          // Preserve the established English metadata snapshot; it is research data.
+          // Live Family/Narrative displays derive current-locale labels from this graph.
           const computedLabels = egoId
             ? computeAllDisplayLabels(
                 egoId,

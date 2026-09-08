@@ -1,13 +1,18 @@
 {
   "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
   "plugins": ["nextjs"],
-  "jsPlugins": ["oxlint-tailwindcss"],
+  "jsPlugins": ["oxlint-tailwindcss", "eslint-plugin-formatjs"],
   "settings": {
     "tailwindcss": {
       "entryPoint": "apps/fresco/styles/globals.css"
     }
   },
   "rules": {
+    "formatjs/enforce-description": "error",
+    "formatjs/enforce-default-message": "error",
+    "formatjs/no-invalid-icu": "error",
+    "formatjs/enforce-placeholders": "error",
+    "formatjs/no-multiple-whitespaces": "error",
     "nextjs/no-img-element": "off",
     "tailwindcss/no-unknown-classes": "warn",
     "tailwindcss/no-duplicate-classes": "error",
@@ -28,6 +33,36 @@
     ]
   },
   "overrides": [
+    {
+      "files": [
+        "app/dashboard/**",
+        "app/(blobs)/**",
+        "app/error.tsx",
+        "app/global-error.tsx",
+        "app/not-found.tsx",
+        "components/**",
+        "i18n/**"
+      ],
+      "rules": {
+        "formatjs/no-literal-string-in-jsx": [
+          "error",
+          {
+            "props": {
+              "include": [
+                [
+                  "*",
+                  "{label,placeholder,title,itemLabel,description,alt,required,submittingText,fallback,errorTitle}"
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "files": ["**/*.test.*", "**/*.stories.*", "**/__tests__/**"],
+      "rules": { "formatjs/no-literal-string-in-jsx": "off" }
+    },
     {
       // Ported wholesale from the app's own tailwind classes, which predate the
       // shared theme.

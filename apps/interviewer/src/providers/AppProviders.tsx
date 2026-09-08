@@ -1,4 +1,3 @@
-import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Toast } from '@base-ui/react/toast';
 import type { ReactNode } from 'react';
 
@@ -16,26 +15,24 @@ import { OnlineStatusProvider } from '~/lib/net/OnlineStatusProvider';
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <AnimationProvider>
-      <DirectionProvider direction="ltr">
-        <Toast.Provider limit={7}>
-          <TooltipProvider>
-            <OnlineStatusProvider>
-              <DndStoreProvider>
-                <AuthProvider>
-                  <AnalyticsProvider>
-                    <AppErrorBoundary>
-                      <DialogProvider>
-                        <StepUpAuthProvider>{children}</StepUpAuthProvider>
-                      </DialogProvider>
-                    </AppErrorBoundary>
-                  </AnalyticsProvider>
-                </AuthProvider>
-              </DndStoreProvider>
-            </OnlineStatusProvider>
-          </TooltipProvider>
-          <Toaster />
-        </Toast.Provider>
-      </DirectionProvider>
+      <Toast.Provider limit={7}>
+        <TooltipProvider>
+          <OnlineStatusProvider>
+            <DndStoreProvider>
+              <AuthProvider>
+                <AnalyticsProvider>
+                  <AppErrorBoundary>
+                    <DialogProvider>
+                      <StepUpAuthProvider>{children}</StepUpAuthProvider>
+                    </DialogProvider>
+                  </AppErrorBoundary>
+                </AnalyticsProvider>
+              </AuthProvider>
+            </DndStoreProvider>
+          </OnlineStatusProvider>
+        </TooltipProvider>
+        <Toaster />
+      </Toast.Provider>
     </AnimationProvider>
   );
 }

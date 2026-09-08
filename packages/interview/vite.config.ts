@@ -6,6 +6,8 @@ import { globSync } from 'tinyglobby';
 import { defineConfig, type Plugin } from 'vite';
 import dts from 'vite-plugin-dts';
 
+import { appI18n } from '@codaco/app-i18n/vite';
+
 // Tailwind v4 source CSS (`@source` directives, `@theme`, etc.) is meant to
 // reach the consumer's Tailwind compile untouched — routing it through Vite's
 // PostCSS pipe risks stripping or rewriting the directives. Mirror the
@@ -98,6 +100,58 @@ const interfaceImagesNoInlinePlugin = (): Plugin => ({
   },
 });
 
+// `'use client'` is a module-level directive, so bundling drops it: rolldown
+// concatenates the modules that declare it into a chunk and nothing survives at
+// the top. @codaco/fresco-ui keeps its directives only because it builds with
+// `preserveModules` — the trade-off this package deliberately refuses above.
+// Without this the published `dist/` hands a Next App Router consumer a bundle
+// of React hooks that reads as server code, which is precisely the failure the
+// source directives exist to prevent.
+//
+// Two halves, because neither can do the job alone. The plugin notes which
+// modules declared the directive, reading it off the source at `enforce: 'pre'`
+// — before the React/oxc pipeline can move or drop it. `banner` then writes it
+// back onto every chunk built from at least one of them: rolldown applies a
+// banner while rendering the chunk, so the emitted sourcemap shifts with it,
+// which editing `chunk.code` in `generateBundle` does not (the map is
+// serialized from the render, leaving every mapping a line short).
+//
+// Deciding per chunk from its constituent modules, rather than by naming
+// entries, is what pins the `contract` and `protocol-schema-version` bundles'
+// server safety: they stay unmarked only for as long as no module carrying the
+// directive is reachable from them, and the moment one is, the emitted file
+// says so.
+//
+// Registered for the library build alone, like `dts` below. Storybook and the
+// e2e host bundle this source for a browser, where the directive means nothing;
+// with the plugin unregistered nothing is recorded and the banner is inert.
+export const createClientDirective = () => {
+  const clientModules = new Set<string>();
+
+  const record = (code: string, id: string): void => {
+    if (/^\s*(['"])use client\1/.test(code)) {
+      clientModules.add(id);
+    }
+  };
+
+  const banner = (moduleIds: readonly string[]): string =>
+    moduleIds.some((id) => clientModules.has(id)) ? "'use client';" : '';
+
+  const plugin: Plugin = {
+    name: 'interview-client-directive',
+    apply: 'build',
+    enforce: 'pre',
+    transform(code, id) {
+      record(code, id);
+      return null;
+    },
+  };
+
+  return { banner, plugin, record };
+};
+
+const clientDirective = createClientDirective();
+
 // Skip dts emission for non-library consumers of this config (Storybook builds
 // the preview app; Vitest just runs tests). Storybook's CLI sets STORYBOOK=true;
 // Vitest sets VITEST=true.
@@ -134,8 +188,10 @@ const addJsExtensionsToDeclarationSpecifiers = (content: string) =>
 
 export default defineConfig({
   plugins: [
+    isLibraryBuild && appI18n({ build: 'library' }),
     interfaceImagesNoInlinePlugin(),
     inlineWorkerPlugin(),
+    isLibraryBuild && clientDirective.plugin,
     react(),
     isLibraryBuild &&
       dts({
@@ -178,6 +234,7 @@ export default defineConfig({
       // `protocol-schema-version` entry is its own bundle so a host's Node
       // scripts can import just that constant.
       entry: {
+        'locales': resolve(__dirname, 'src/locales/catalogs.ts'),
         'index': resolve(__dirname, 'src/index.ts'),
         'contract': resolve(__dirname, 'src/contract/index.ts'),
         'protocol-schema-version': resolve(
@@ -227,6 +284,9 @@ export default defineConfig({
         // Emit the interface-images screenshots into `dist/assets/` with a
         // content hash, keeping them namespaced and cache-friendly.
         assetFileNames: 'assets/[name]-[hash][extname]',
+        // Re-declare the client boundary that bundling erased — see
+        // `createClientDirective` above.
+        banner: (chunk) => clientDirective.banner(chunk.moduleIds),
       },
     },
     sourcemap: true,

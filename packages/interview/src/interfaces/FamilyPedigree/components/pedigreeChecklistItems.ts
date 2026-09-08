@@ -1,5 +1,8 @@
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import type { NcEdge } from '@codaco/shared-consts';
 
+import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
+import { messages } from '../messages';
 import { getEdgeRelationshipType } from '../utils/edgeUtils';
 
 export type ChecklistItem = {
@@ -20,7 +23,9 @@ export function buildParentsItem(
   edges: Map<string, NcEdge>,
   relationshipTypeVariable: string,
   manuallyChecked: Set<string>,
+  intl?: IntlShape,
 ): ChecklistItem {
+  const formatter = resolveInterviewIntl(intl);
   let parentCount = 0;
   for (const edge of edges.values()) {
     const rt = getEdgeRelationshipType(edge, relationshipTypeVariable);
@@ -35,8 +40,8 @@ export function buildParentsItem(
     id,
     label:
       !done && remaining === 1
-        ? `Add 1 more parent for ${targetName}`
-        : `Add parents for ${targetName}`,
+        ? formatter.formatMessage(messages.addOneParent, { name: targetName })
+        : formatter.formatMessage(messages.addParentsFor, { name: targetName }),
     done,
     required: false,
   };

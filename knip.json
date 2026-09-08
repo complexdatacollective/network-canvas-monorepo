@@ -93,6 +93,22 @@
       // never by an import — see createSearchWorker.ts.
       "entry": ["src/collection/filtering/createSearchWorker.inline.ts"]
     },
+    // The registry coverage probes in type-tests/ are COMPILED, never
+    // imported: stageEditorRegistry.test.tsx runs `tsc --noEmit -p
+    // type-tests/tsconfig.json` and asserts which of them the compiler
+    // refuses. A probe that anything imported would have to compile, which is
+    // the opposite of what it is for.
+    //
+    // The two Mapbox mocks are reached through a resolver alias rather than an
+    // import — vitest.config.ts and .storybook/main.ts each swap `mapbox-gl`
+    // for one, so no test and no story can build a real map — which is exactly
+    // the shape knip cannot follow. Declared as entries so the mocks and their
+    // own exports count as used; the aliases themselves are held in place by
+    // src/testing/__tests__/mapboxIsAlwaysMocked.test.ts.
+    "packages/protocol-builder": {
+      "entry": [".storybook/mapboxMock.ts", "src/testing/mapboxMock.ts"],
+      "ignore": ["type-tests/**"]
+    },
     "packages/protocol-validation": {},
     "packages/network-exporters": {},
     "packages/interface-images": {},
@@ -125,10 +141,14 @@
       // Framer Motion installation rather than declaring a second copy here.
       // Consumer coverage is enforced by vitest-animation-setup.test.mjs.
       "ignoreDependencies": ["framer-motion"],
-      // Sibling declarations for the untyped setup-path.js entries; TypeScript
-      // resolves them implicitly (required for the mirrored app trees, where
-      // the vendored copy sits under node_modules), so nothing imports them.
-      "ignore": ["legacy/setup-path.d.ts", "modern/setup-path.d.ts"]
+      // Sibling declarations for the untyped .js entries; TypeScript resolves
+      // them implicitly (required for the mirrored app trees, where the
+      // vendored copy sits under node_modules), so nothing imports them.
+      "ignore": [
+        "legacy/setup-path.d.ts",
+        "modern/setup-path.d.ts",
+        "modern/with-animations-enabled.d.ts"
+      ]
     },
     "apps/interviewer-classic": {
       "project": ["src/**/*.{js,jsx}"],
@@ -178,12 +198,12 @@
         "scripts/auth-cli-config.ts!",
         // Resolved by vite.netlify.config.ts as a build input string, never
         // by an import — it is the Netlify Function entry.
-        "src/netlify.ts!"
+        "src/netlify.ts!",
+        // Explicit image commands are bundle input strings, not imports.
+        "src/configure.ts!",
+        "src/diagnostics.ts!"
       ],
-      "project": ["src/**/*.ts", "scripts/**/*.ts"],
-      // Resolved with import.meta.resolve, so the specifier is a runtime string
-      // knip cannot follow.
-      "ignoreDependencies": ["@codaco/protocols"]
+      "project": ["src/**/*.ts", "scripts/**/*.ts", "qualification/**/*.ts"]
     },
     "apps/interviewer": {
       "entry": [
@@ -223,6 +243,10 @@
       "ignoreBinaries": ["Rscript"]
     },
     "workers/development-protocol": {},
-    "workers/posthog-proxy": {}
+    "workers/posthog-proxy": {},
+    "workers/studio-ingress": {
+      "entry": ["src/index.mjs!"],
+      "project": ["src/**/*.mjs"]
+    }
   }
 }

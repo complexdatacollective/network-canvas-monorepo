@@ -1,7 +1,13 @@
 import type { ComponentType } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import {
+  arrayItemMessages,
+  arrayValidationMessages,
+} from '~/components/Form/arrayFields/arrayMessages';
 import type { DialogArrayItemSelector } from '~/components/Form/arrayFields/DialogArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import { useOnBeforeSavePrompt } from '~/components/sections/CategoricalBinPrompts/useOnBeforeSavePrompt';
@@ -16,6 +22,48 @@ import type { CrossClassPick } from '~/components/Validations/crossClassPicks';
 import { getOptionsForVariable } from '~/selectors/codebook';
 
 import PromptFields from './PromptFields';
+const remainingMessages = defineMessages({
+  editPrompt: {
+    id: 'architect.remaining.sections.ordinalBinPrompts.ordinalBinPrompts.editPrompt',
+    defaultMessage: 'Edit Prompt',
+    description:
+      'The addTitle text in components / sections / OrdinalBinPrompts / OrdinalBinPrompts.',
+  },
+});
+const additionalMessages = defineMessages({
+  createNewPrompt: {
+    id: 'architect.additional.sections.ordinalBinPrompts.ordinalBinPrompts.createNewPrompt',
+    defaultMessage: 'Create new prompt',
+    description:
+      'The addButtonLabel text in components / sections / OrdinalBinPrompts / OrdinalBinPrompts.',
+  },
+});
+const messages = defineMessages({
+  promptCollection: {
+    id: 'architect.sections.ordinalBinPrompts.ordinalBinPrompts.promptCollection',
+    defaultMessage: 'Prompt collection',
+    description:
+      'The title text in components / sections / OrdinalBinPrompts / OrdinalBinPrompts.',
+  },
+  createAndReorderThePromptsShown: {
+    id: 'architect.sections.ordinalBinPrompts.ordinalBinPrompts.createAndReorderThePromptsShown',
+    defaultMessage: 'Create and reorder the prompts shown in this stage.',
+    description:
+      'The description text in components / sections / OrdinalBinPrompts / OrdinalBinPrompts.',
+  },
+  prompts: {
+    id: 'architect.sections.ordinalBinPrompts.ordinalBinPrompts.prompts',
+    defaultMessage: 'Prompts',
+    description:
+      'The label text in components / sections / OrdinalBinPrompts / OrdinalBinPrompts.',
+  },
+  addAtLeastOnePromptAnd: {
+    id: 'architect.sections.ordinalBinPrompts.ordinalBinPrompts.addAtLeastOnePromptAnd',
+    defaultMessage: 'Add at least one prompt and drag prompts to reorder them.',
+    description:
+      'The hint text in components / sections / OrdinalBinPrompts / OrdinalBinPrompts.',
+  },
+});
 
 const template = () => ({ color: 'ord-color-seq-1' });
 
@@ -52,6 +100,7 @@ const PROMPT_PICKS = [
 ] as const satisfies readonly CrossClassPick[];
 
 const OrdinalBinPrompts = (_props: StageEditorSectionProps) => {
+  const intl = useAppIntl();
   const { entity, type } = useSubject();
   const initialPrompts = useStageInitialValue<Prompt[]>('prompts');
   // Shared verbatim with CategoricalBin (as the `withPromptChangeHandler` HOC
@@ -65,27 +114,29 @@ const OrdinalBinPrompts = (_props: StageEditorSectionProps) => {
 
   return (
     <Section
-      title="Prompt collection"
-      description="Create and reorder the prompts shown in this stage."
+      title={intl.formatMessage(messages.promptCollection)}
+      description={intl.formatMessage(messages.createAndReorderThePromptsShown)}
       disabled={!type}
     >
       <ArchitectArrayField
         name="prompts"
-        label="Prompts"
-        hint="Add at least one prompt and drag prompts to reorder them."
+        label={intl.formatMessage(messages.prompts)}
+        hint={intl.formatMessage(messages.addAtLeastOnePromptAnd)}
         component={DialogArrayField}
-        addButtonLabel="Create new prompt"
-        validation={{ required: 'You must create at least one item.' }}
+        addButtonLabel={intl.formatMessage(additionalMessages.createNewPrompt)}
+        validation={{
+          required: createMessageError(arrayValidationMessages.required),
+        }}
         initialValue={initialPrompts}
-        addTitle="Edit Prompt"
+        addTitle={intl.formatMessage(remainingMessages.editPrompt)}
         previewComponent={
           PromptPreview as ComponentType<Record<string, unknown>>
         }
         editorFieldsComponent={
           PromptFields as ComponentType<Record<string, unknown>>
         }
-        editorTitle="Edit Prompt"
-        itemLabel="prompt"
+        editorTitle={intl.formatMessage(remainingMessages.editPrompt)}
+        itemLabelMessage={arrayItemMessages.prompt}
         editorDialogSize="editor"
         itemTemplate={template}
         onBeforeSave={onBeforeSave}

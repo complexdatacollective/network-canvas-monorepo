@@ -424,8 +424,10 @@ exist.
 - **A permanent icon rail beside the study sidebar** for team, gallery and
   account. Rejected for now: it produces four vertical strips in the editor, and
   for the typical single-study team the rail is permanent furniture holding two
-  icons. The `AppFrame` contract in §9 is designed so a rail can be added later
-  without rewriting the area layouts, should multi-study teams prove common.
+  icons. Should multi-study teams later prove common, revisiting this does not
+  disturb the area layouts: each sizes itself by container query against the
+  region it is given (§9), so narrowing that region is not a change to any of
+  them.
 - **Team-scoped study URLs** (`/team/$teamId/study/$studyId`). Rejected: the
   team is derivable from the study and the redundancy makes every study URL
   longer and every study link require two identifiers to construct.
@@ -813,7 +815,7 @@ New public subpaths:
 
 | Subpath                 | Responsibility                                                                                                                                                                                                     |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `layout/AppFrame`       | Skip link (first focusable), `<header>` slot, optional leading rail slot, and the area region that renders the router `Outlet`. Owns the responsive grid. Renders **no** `<nav>` and **no** `<main>`.              |
+| `layout/AppFrame`       | Skip link (first focusable), `<header>` slot, and the area region that renders the router `Outlet`. Owns the responsive grid. Renders **no** `<nav>` and **no** `<main>`.                                          |
 | `layout/AppArea`        | One area's frame: the labelled `<nav>` (desktop), the narrow-viewport area bar and `NavDrawer`, and `<main id="main-content">`. Rendered by each area layout; sidebar-less areas render `<main>` directly instead. |
 | `navigation/NavList`    | A navigation region's contents: optional groups, translatable whole-string headings                                                                                                                                |
 | `navigation/NavItem`    | One destination; link supplied by a render prop (router-agnostic)                                                                                                                                                  |
@@ -826,10 +828,6 @@ area transition. `AppArea` is rendered by the area layout, so the sidebar and th
 The `<main id="main-content">` the skip link targets is rendered by a descendant
 of the component that renders the link; §11.2 asserts the pair at runtime rather
 than trusting one component to own both.
-
-`AppFrame` takes an optional leading rail slot it does not currently use. That
-is the seam that lets the rejected icon-rail alternative (§5.6) be adopted later
-without touching any area layout.
 
 What stays Studio-local: the _contents_ of the header and each sidebar, the
 switchers, and the landing-destination logic. Those are Studio's information

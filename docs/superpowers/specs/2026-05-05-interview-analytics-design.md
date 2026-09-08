@@ -261,7 +261,7 @@ The package guarantees, by construction, that the following **never** appear in 
 
 What **is** allowed:
 
-- **Structural identifiers**: `stage_type` (interface kind), `stage_index`, `prompt_index`, `node_id`, `edge_id` (random UUIDs generated at creation time, no derivation from participant input).
+- **Structural identifiers**: `stage_type` (interface kind), `stage_index`, `prompt_index`, `node_id`, `edge_id` — random values, no derivation from participant input. Entity ids are **session pseudonyms, not the interview's `_uid`s** (corrected 2026-09-04, PR #1642): the tracker replaces every `node_id`, `edge_id`, `node_a_id`, `node_b_id` and `entity_id` with a random id minted per session and held in memory (`analytics/entityIds.ts`). Reporting the `_uid` verbatim held only for participant-created nodes; a roster node's `_uid` is a deterministic digest of the roster row's own content, which named the row to anyone holding the roster and named it identically in every interview.
 - **Codebook _internal_ ids**: `node_type`, `edge_type`, `relation_type` — these are stable codes (`person`, `friend`, `parent`), not author-facing labels. Protocol-author-authored _labels_ and _colours_ never flow.
 - **Counts and durations**: `node_count`, `edge_count`, `field_count`, `duration_ms`, `total_slides`.
 - **Discriminators**: `form_kind`, `selection_kind`, `direction`, `census_kind`, `add_path`, etc. — these are package-defined constants.
@@ -275,7 +275,7 @@ What **is** allowed:
 
 Events fall into three tiers: **stage-level chassis** (apply to every interface), **global entity events** (fire from generic Redux actions regardless of which stage dispatched them), and **per-interface events**.
 
-Property `node_id`/`edge_id` (and `node_a_id`/`node_b_id` for paired events) appear on every entity-scoped event, by general rule, to allow per-entity behavioural reconstruction.
+Property `node_id`/`edge_id` (and `node_a_id`/`node_b_id` for paired events) appear on every entity-scoped event, by general rule, to allow per-entity behavioural reconstruction within one interview. They are session pseudonyms (§8), so they join a session's own events to each other and nothing else.
 
 ### 9.1 Stage-level events
 

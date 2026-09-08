@@ -1,6 +1,9 @@
 import JSZip from 'jszip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
+import { interviewerCatalogs } from '~/locales/catalogs';
+
 import { importProtocolFromFile } from '../importProtocol';
 
 const saveProtocolMock = vi.fn();
@@ -109,5 +112,38 @@ describe('importProtocolFromFile error reporting', () => {
     expect(result.error).toBe('save-failed');
     expect(result.message).not.toMatch(/quota|transaction|IDB/i);
     expect(result.message).toContain('device');
+  });
+
+  it('renders actionable Spanish import guidance from the actual archive failure metadata', async () => {
+    const intl = createAppIntl({
+      locale: 'es',
+      messages: interviewerCatalogs.es,
+    });
+    const cases: [Uint8Array, string][] = [
+      [
+        new Uint8Array([1, 2, 3, 4]),
+        'Este archivo no es un protocolo de Network Canvas.',
+      ],
+      [
+        await buildArchive({ 'notes.txt': 'No protocol' }),
+        'Este archivo no contiene el protocolo',
+      ],
+      [
+        await buildArchive({ 'protocol.json': '{broken' }),
+        'Prueba con una copia de seguridad',
+      ],
+    ];
+    for (const [bytes, expectedGuidance] of cases) {
+      const result = await importProtocolFromFile(asFile(bytes));
+      if (result.success)
+        throw new Error('Expected the deliberately invalid archive to fail');
+      expect(
+        intl.formatMessage(
+          result.localizedMessage.descriptor,
+          result.localizedMessage.values,
+        ),
+      ).toContain(expectedGuidance);
+    }
+    expect(saveProtocolMock).not.toHaveBeenCalled();
   });
 });

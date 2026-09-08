@@ -1,6 +1,8 @@
 import { isEqual, map, omit } from 'es-toolkit/compat';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import {
   controlVariants,
@@ -14,6 +16,7 @@ import { cx } from '~/utils/cva';
 
 import ArchitectField from '../Form/ArchitectField';
 import {
+  describeDraftContradiction,
   findDraftContradictions,
   findLegalReferenceTargets,
 } from './contradictions';
@@ -35,6 +38,42 @@ import {
 } from './ruleValue';
 import { ruleMapIssue, type RuleMapContext } from './validateRuleMap';
 import ValidationRule, { type TargetOption } from './ValidationRule';
+const chromeMessages = defineMessages({
+  noOtherAttributeOfThisType: {
+    id: 'architect.chrome.validations.validations.noOtherAttributeOfThisType',
+    defaultMessage:
+      'No other attribute of this type exists to compare against.',
+    description:
+      'Researcher-facing explanatory text in components / Validations / Validations.',
+  },
+  everyComparableAttributeWouldMakeThis: {
+    id: 'architect.chrome.validations.validations.everyComparableAttributeWouldMakeThis',
+    defaultMessage:
+      'Every comparable attribute would make this rule impossible to satisfy.',
+    description:
+      'Researcher-facing explanatory text in components / Validations / Validations.',
+  },
+  thisAttributeHasOnlyPossibleValues: {
+    id: 'architect.chrome.validations.validations.thisAttributeHasOnlyPossibleValues',
+    defaultMessage:
+      '{uniqueValueCount, plural, one {This attribute has only # possible value. Interview preview will refuse to generate synthetic data if more than # entity can hold a value while ‘Must be unique’ is enabled.} other {This attribute has only # possible values. Interview preview will refuse to generate synthetic data if more than # entities can hold a value while ‘Must be unique’ is enabled.}}',
+    description:
+      'Researcher-facing explanatory text in components / Validations / Validations.',
+  },
+});
+const messages = defineMessages({
+  validationRules: {
+    id: 'architect.validations.validations.validationRules',
+    defaultMessage: 'Validation rules',
+    description: 'The label text in components / Validations / Validations.',
+  },
+  enableOneOrMoreValidationRules: {
+    id: 'architect.validations.validations.enableOneOrMoreValidationRules',
+    defaultMessage:
+      'Enable one or more validation rules to apply to this attribute.',
+    description: 'The hint text in components / Validations / Validations.',
+  },
+});
 
 // `initialValue` is a register-effect dependency (`useField`'s registration
 // effect): an absent committed value must fall back to a REFERENTIALLY STABLE
@@ -147,6 +186,7 @@ const RuleList = ({
   fieldErrorToken,
   revealIncompleteOnBlur = false,
 }: RuleListProps) => {
+  const intl = useAppIntl();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   /**
@@ -303,11 +343,18 @@ const RuleList = ({
   const hintFor = (ruleKey: string, isUnavailable: boolean) => {
     if (isUnavailable) {
       return candidateCount === 0
-        ? 'No other attribute of this type exists to compare against.'
-        : 'Every comparable attribute would make this rule impossible to satisfy.';
+        ? intl.formatMessage(chromeMessages.noOtherAttributeOfThisType)
+        : intl.formatMessage(
+            chromeMessages.everyComparableAttributeWouldMakeThis,
+          );
     }
     if (ruleKey === 'unique' && uniqueValueCount !== undefined) {
-      return `This attribute has only ${uniqueValueCount} possible values. Interview preview will refuse to generate synthetic data if more than ${uniqueValueCount} entities can hold a value while ‘Must be unique’ is enabled.`;
+      return intl.formatMessage(
+        chromeMessages.thisAttributeHasOnlyPossibleValues,
+        {
+          uniqueValueCount: uniqueValueCount,
+        },
+      );
     }
     return undefined;
   };
@@ -456,12 +503,17 @@ const ValidationsField = ({
   draftVariableName,
   revealIncompleteOnBlur,
 }: ValidationsFieldProps) => {
+  const intl = useAppIntl();
   const committed = isRecord(value) ? value : EMPTY_VALIDATION;
 
   const validationGroups = useMemo(
     () =>
-      getGroupedValidationsForVariableType(variableType ?? '', entity ?? ''),
-    [variableType, entity],
+      getGroupedValidationsForVariableType(
+        variableType ?? '',
+        entity ?? '',
+        intl,
+      ),
+    [variableType, entity, intl],
   );
 
   const context = useMemo(
@@ -554,7 +606,9 @@ const ValidationsField = ({
         return findDraftContradictions({
           ...context,
           validation: prospective,
-        }).map((contradiction) => contradiction.message);
+        }).map((contradiction) =>
+          describeDraftContradiction(contradiction, context.allVariables),
+        );
       },
     [committed, context],
   );
@@ -689,6 +743,7 @@ const Validations = ({
   draftVariableName,
   commitsImmediately = false,
 }: ValidationsProps): ReactNode => {
+  const intl = useAppIntl();
   const context = ruleMapContextFor({
     variableType,
     allVariables,
@@ -709,8 +764,8 @@ const Validations = ({
     <ArchitectField
       name={name}
       component={ValidationsField}
-      label="Validation rules"
-      hint="Enable one or more validation rules to apply to this attribute."
+      label={intl.formatMessage(messages.validationRules)}
+      hint={intl.formatMessage(messages.enableOneOrMoreValidationRules)}
       initialValue={initialValue ?? EMPTY_VALIDATION}
       validation={commitsImmediately ? undefined : validation}
       revealIncompleteOnBlur={commitsImmediately}

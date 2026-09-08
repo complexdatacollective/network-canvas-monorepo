@@ -16,6 +16,7 @@ import {
   useStageFormContext,
 } from '~/components/StageEditor/stageFormContext';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
+import { messageText } from '~/test/messageText';
 
 // Final-review sweep: FamilyPedigree's four edgeConfig slots are UNVALIDATED
 // writers, each carrying a picker exclusion (excludeValidatedUses with the
@@ -320,18 +321,24 @@ describe('FamilyPedigree EdgeConfiguration slot cross-class gates', () => {
   it('every slot rejects a pick a form elsewhere already collects, with the mirror message', () => {
     renderComponent({ protocol: protocolWith([EDGE_FORM_STAGE]) });
     expect(
-      slotValidatorFor('edgeConfig.relationshipTypeVariable')('usedRel'),
+      messageText(
+        slotValidatorFor('edgeConfig.relationshipTypeVariable')('usedRel'),
+      ),
     ).toBe(
       '"Used Rel" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
     );
     expect(
-      slotValidatorFor('edgeConfig.isActiveVariable')('usedFlag'),
+      messageText(slotValidatorFor('edgeConfig.isActiveVariable')('usedFlag')),
     ).toContain('is collected by a form elsewhere');
     expect(
-      slotValidatorFor('edgeConfig.isGestationalCarrierVariable')('usedFlag'),
+      messageText(
+        slotValidatorFor('edgeConfig.isGestationalCarrierVariable')('usedFlag'),
+      ),
     ).toContain('is collected by a form elsewhere');
     expect(
-      slotValidatorFor('edgeConfig.gameteRoleVariable')('usedGamete'),
+      messageText(
+        slotValidatorFor('edgeConfig.gameteRoleVariable')('usedGamete'),
+      ),
     ).toContain('is collected by a form elsewhere');
   });
 
@@ -341,14 +348,14 @@ describe('FamilyPedigree EdgeConfiguration slot cross-class gates', () => {
       initialEdgeConfig: { isActiveVariable: 'usedFlag' },
     });
     expect(
-      slotValidatorFor('edgeConfig.isActiveVariable')('usedFlag'),
+      messageText(slotValidatorFor('edgeConfig.isActiveVariable')('usedFlag')),
     ).toBeUndefined();
   });
 
   it('allows a pick only an unvalidated writer elsewhere already claims (same class)', () => {
     renderComponent({ protocol: protocolWith([OTHER_PEDIGREE_STAGE]) });
     expect(
-      slotValidatorFor('edgeConfig.isActiveVariable')('freeFlag'),
+      messageText(slotValidatorFor('edgeConfig.isActiveVariable')('freeFlag')),
     ).toBeUndefined();
   });
 });

@@ -4,7 +4,16 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { cx } from '~/utils/cva';
+const messages = defineMessages({
+  toggleSortBy: {
+    id: 'architect.assets.table.toggleSortBy',
+    defaultMessage: 'Toggle SortBy',
+    description: 'The title text in components / Assets / Table.',
+  },
+});
 
 export type TableColumn = {
   Header: string;
@@ -15,9 +24,6 @@ type SortState = {
   id: string;
   desc: boolean;
 };
-
-// Natural sort, so "item2" sorts before "item10".
-const collator = new Intl.Collator(undefined, { numeric: true });
 
 const renderCellValue = (value: unknown): ReactNode => {
   if (typeof value === 'string' || typeof value === 'number') {
@@ -57,6 +63,12 @@ const tableClasses = cx(
 );
 
 const Table = ({ data, columns }: TableProps) => {
+  const intl = useAppIntl();
+  // Natural collation follows the selected app language, including an already sorted table.
+  const collator = useMemo(
+    () => new Intl.Collator(intl.locale, { numeric: true }),
+    [intl.locale],
+  );
   const [sort, setSort] = useState<SortState | null>(null);
 
   // Cycle: unsorted -> asc -> desc -> unsorted.
@@ -85,7 +97,7 @@ const Table = ({ data, columns }: TableProps) => {
           String(rowB[sort.id] ?? ''),
         ),
     );
-  }, [data, sort]);
+  }, [data, sort, collator]);
 
   return (
     <table className={tableClasses}>
@@ -110,7 +122,7 @@ const Table = ({ data, columns }: TableProps) => {
                 }
               }}
               style={{ cursor: 'pointer' }}
-              title="Toggle SortBy"
+              title={intl.formatMessage(messages.toggleSortBy)}
             >
               <span className="inline-flex items-center gap-1">
                 {column.Header}

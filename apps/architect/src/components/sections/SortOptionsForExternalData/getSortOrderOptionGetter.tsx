@@ -1,4 +1,22 @@
+import {
+  createAppIntl,
+  defineMessages,
+  type IntlShape,
+} from '@codaco/app-i18n/messages';
+const defaultIntl = createAppIntl({ locale: 'en' });
 import { map } from 'es-toolkit/compat';
+const sortMessages = defineMessages({
+  descending: {
+    id: 'architect.sortOptions.external.descending',
+    defaultMessage: 'Descending',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  ascending: {
+    id: 'architect.sortOptions.external.ascending',
+    defaultMessage: 'Ascending',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 const NON_SORTABLE_TYPES = ['layout'];
 
@@ -15,7 +33,10 @@ type ExternalDataPropertyOption = {
  * columns.
  */
 const getSortOrderOptionGetter =
-  (externalDataPropertyOptions: ExternalDataPropertyOption[]) =>
+  (
+    externalDataPropertyOptions: ExternalDataPropertyOption[],
+    intl: IntlShape = defaultIntl,
+  ) =>
   (property: string, _rowValues: unknown, allValues: unknown) => {
     switch (property) {
       case 'property': {
@@ -34,8 +55,8 @@ const getSortOrderOptionGetter =
       }
       case 'direction':
         return [
-          { value: 'desc', label: 'Descending' },
-          { value: 'asc', label: 'Ascending' },
+          { value: 'desc', label: intl.formatMessage(sortMessages.descending) },
+          { value: 'asc', label: intl.formatMessage(sortMessages.ascending) },
         ];
       default:
         return [];

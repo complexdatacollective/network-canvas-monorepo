@@ -161,6 +161,17 @@ export function getAllowStageNavigation(): boolean {
   return allowStageNavigation;
 }
 
+let requestedLocale: string | readonly string[] | null = null;
+
+export function getRequestedLocale() {
+  return requestedLocale;
+}
+
+function setRequestedLocale(locale: string | readonly string[] | null) {
+  requestedLocale = locale;
+  notifySubscribers();
+}
+
 function setAllowStageNavigation(enabled: boolean): void {
   allowStageNavigation = enabled;
   notifySubscribers();
@@ -169,6 +180,7 @@ function setAllowStageNavigation(enabled: boolean): void {
 function reset(): void {
   state = createEmptyState();
   allowStageNavigation = false;
+  requestedLocale = null;
   resetFinishInstrumentation();
   sessionStorage.removeItem(STORAGE_KEY);
   notifySubscribers();
@@ -191,5 +203,6 @@ export function installTestHooks(): void {
     rejectManualFinish,
     getFinishCalls,
     setAllowStageNavigation,
+    setRequestedLocale,
   };
 }

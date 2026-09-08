@@ -22,7 +22,10 @@
 import { readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { readChangesets } from './changeset-app-utils.mjs';
+import {
+  isIgnoredLaneChangeset,
+  readChangesets,
+} from './changeset-app-utils.mjs';
 
 const changesetDir = join(process.cwd(), '.changeset');
 const config = JSON.parse(
@@ -32,8 +35,7 @@ const ignored = new Set(config.ignore ?? []);
 
 let pruned = 0;
 for (const cs of readChangesets(changesetDir)) {
-  if (cs.releases.length === 0) continue;
-  if (!cs.releases.every((release) => ignored.has(release.name))) continue;
+  if (!isIgnoredLaneChangeset(cs, ignored)) continue;
   rmSync(join(changesetDir, `${cs.id}.md`));
   pruned += 1;
   console.log(

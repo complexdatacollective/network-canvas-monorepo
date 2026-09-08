@@ -10,10 +10,10 @@ import {
   scopeKey,
   uniqueSlotMembers,
   type EntityScopeRef,
-} from '../constraints/generateEntityAttributes';
-import type { GenerationContext } from '../context';
-import { storedPedigreeOptionValue } from './semanticValues';
-import { PEDIGREE_RELATIONSHIP_TO_EGO_VALUES } from './types';
+} from '../constraints/generateEntityAttributes.ts';
+import type { GenerationContext } from '../context.ts';
+import { storedPedigreeOptionValue } from './semanticValues.ts';
+import { PEDIGREE_RELATIONSHIP_TO_EGO_VALUES } from './types.ts';
 
 function reserveWrittenValue(
   ctx: GenerationContext,

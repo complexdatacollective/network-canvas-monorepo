@@ -1,3 +1,9 @@
+import { formatActionError } from './formatActionError';
+vi.mock('~/i18n/server', async () => {
+  const { createAppIntl } = await import('@codaco/app-i18n/messages');
+  return { getServerIntl: async () => createAppIntl({ locale: 'en' }) };
+});
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
@@ -145,12 +151,14 @@ vi.mock('~/queries/appSettings', () => ({
 }));
 
 vi.mock('~/schemas/auth', () => ({
-  loginSchema: {
-    safeParse: mockLoginSchemaSafeParse,
-  },
-  createUserSchema: {
-    safeParse: mockCreateUserSchemaSafeParse,
-  },
+  createAuthSchemas: () => ({
+    loginSchema: {
+      safeParse: mockLoginSchemaSafeParse,
+    },
+    createUserSchema: {
+      safeParse: mockCreateUserSchemaSafeParse,
+    },
+  }),
 }));
 
 import { login, signup } from '../auth';
@@ -229,7 +237,9 @@ describe('login', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain('Incorrect username or password');
+        expect(result.formErrors?.map(formatActionError)).toContain(
+          'Incorrect username or password',
+        );
       }
     });
 
@@ -251,7 +261,9 @@ describe('login', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain('Incorrect username or password');
+        expect(result.formErrors?.map(formatActionError)).toContain(
+          'Incorrect username or password',
+        );
       }
     });
 
@@ -292,7 +304,9 @@ describe('login', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain('Incorrect username or password');
+        expect(result.formErrors?.map(formatActionError)).toContain(
+          'Incorrect username or password',
+        );
       }
     });
 
@@ -446,6 +460,35 @@ describe('signup', () => {
     vi.clearAllMocks();
   });
 
+  it.each([
+    [undefined, null],
+    [null, null],
+    ['es', 'es'],
+    ['en-GB', 'en-GB'],
+    ['unsupported', null],
+    [42, null],
+  ])(
+    'preserves the explicit setup preference %s when creating the user',
+    async (preference, expected) => {
+      mockIsAppConfigured.mockResolvedValue(false);
+      mockCreateUserSchemaSafeParse.mockReturnValue({
+        success: true,
+        data: { username: 'Researcher', password: 'Sup3rSecret!' },
+      });
+      mockUserCreate.mockResolvedValue({ id: 'new-user' });
+      await signup(
+        { username: 'Researcher', password: 'Sup3rSecret!' },
+        preference,
+      );
+      expect(mockUserCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ locale: expected }),
+        }),
+      );
+      expect(mockCreateSessionCookie).toHaveBeenCalledWith('new-user');
+    },
+  );
+
   it('refuses to create an account once the app is configured', async () => {
     mockIsAppConfigured.mockResolvedValue(true);
 
@@ -454,7 +497,7 @@ describe('signup', () => {
       password: 'Sup3rSecret!',
     });
 
-    expect(result).toEqual({
+    expect({ ...result, error: formatActionError(result.error) }).toEqual({
       success: false,
       error: 'Setup is already complete.',
     });
@@ -467,7 +510,7 @@ describe('signup', () => {
 
     const result = await signup({ username: 'attacker', password: null });
 
-    expect(result).toEqual({
+    expect({ ...result, error: formatActionError(result.error) }).toEqual({
       success: false,
       error: 'Invalid form submission',
     });

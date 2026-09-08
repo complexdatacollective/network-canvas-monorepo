@@ -8,6 +8,8 @@ import { ArrowLeft, KeyRound, LockIcon, User2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { AppErrorMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import { DialogFooter } from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -24,7 +26,172 @@ import {
   generateAuthenticationOptions,
   verifyAuthentication,
 } from '~/actions/webauthn';
-import { loginSchema } from '~/schemas/auth';
+import { createAuthSchemas } from '~/schemas/auth';
+
+const messages = defineMessages({
+  signingIn: {
+    id: 'fresco.SignInForm.signingIn',
+    defaultMessage: 'Signing in...',
+    description: 'Researcher-facing SignInForm: Signing in...',
+  },
+
+  verifying: {
+    id: 'fresco.SignInForm.verifying',
+    defaultMessage: 'Verifying...',
+    description: 'Researcher-facing SignInForm: Verifying...',
+  },
+
+  requiredCode: {
+    id: 'fresco.SignInForm.requiredCode',
+    defaultMessage: 'Code is required',
+    description: 'Researcher-facing SignInForm: Code is required',
+  },
+
+  requiredRecovery: {
+    id: 'fresco.SignInForm.requiredRecovery',
+    defaultMessage: 'Recovery code is required',
+    description: 'Researcher-facing SignInForm: Recovery code is required',
+  },
+
+  requiredUsername: {
+    id: 'fresco.SignInForm.requiredUsername',
+    defaultMessage: 'Username is required',
+    description: 'Researcher-facing SignInForm: Username is required',
+  },
+
+  copyTooManyAttemptsTryAgainInSeconds: {
+    id: 'fresco.SignInForm.copyTooManyAttemptsTryAgainInSeconds',
+    defaultMessage:
+      'Too many attempts. Try again in {value1, plural, one {# second} other {# seconds}}.',
+    description:
+      'Researcher-facing SignInForm: Too many attempts. Try again in value seconds.',
+  },
+  copyCodeIsRequired: {
+    id: 'fresco.SignInForm.copyCodeIsRequired',
+    defaultMessage: 'Code is required',
+    description: 'Researcher-facing SignInForm: Code is required',
+  },
+  copyVerificationFailed: {
+    id: 'fresco.SignInForm.copyVerificationFailed',
+    defaultMessage: 'Verification failed',
+    description: 'Researcher-facing SignInForm: Verification failed',
+  },
+  copyFailedToStartPasskeyAuthentication: {
+    id: 'fresco.SignInForm.copyFailedToStartPasskeyAuthentication',
+    defaultMessage: 'Failed to start passkey authentication',
+    description:
+      'Researcher-facing SignInForm: Failed to start passkey authentication',
+  },
+  copyPasskeyAuthenticationFailed: {
+    id: 'fresco.SignInForm.copyPasskeyAuthenticationFailed',
+    defaultMessage: 'Passkey authentication failed',
+    description: 'Researcher-facing SignInForm: Passkey authentication failed',
+  },
+  copyUsernameAndRecoveryCodeAreRequired: {
+    id: 'fresco.SignInForm.copyUsernameAndRecoveryCodeAreRequired',
+    defaultMessage: 'Username and recovery code are required',
+    description:
+      'Researcher-facing SignInForm: Username and recovery code are required',
+  },
+  copyUseAuthenticatorAppInstead: {
+    id: 'fresco.SignInForm.copyUseAuthenticatorAppInstead',
+    defaultMessage: 'Use authenticator app instead',
+    description: 'Researcher-facing SignInForm: Use authenticator app instead',
+  },
+  copyUseARecoveryCodeInstead: {
+    id: 'fresco.SignInForm.copyUseARecoveryCodeInstead',
+    defaultMessage: 'Use a recovery code instead',
+    description: 'Researcher-facing SignInForm: Use a recovery code instead',
+  },
+  copyTryAgainInS: {
+    id: 'fresco.SignInForm.copyTryAgainInS',
+    defaultMessage:
+      'Try again in {value1, plural, one {# second} other {# seconds}}',
+    description: 'Researcher-facing SignInForm: Try again in values',
+  },
+  copySignIn: {
+    id: 'fresco.SignInForm.copySignIn',
+    defaultMessage: 'Sign in',
+    description: 'Researcher-facing SignInForm: Sign in',
+  },
+  copyWaitingForPasskey: {
+    id: 'fresco.SignInForm.copyWaitingForPasskey',
+    defaultMessage: 'Waiting for passkey...',
+    description: 'Researcher-facing SignInForm: Waiting for passkey...',
+  },
+  copySignInWithAPasskey: {
+    id: 'fresco.SignInForm.copySignInWithAPasskey',
+    defaultMessage: 'Sign in with a passkey',
+    description: 'Researcher-facing SignInForm: Sign in with a passkey',
+  },
+  username: {
+    id: 'fresco.SignInForm.username',
+    defaultMessage: 'Username',
+    description: 'Researcher-facing SignInForm: Username',
+  },
+  enterYourUsername: {
+    id: 'fresco.SignInForm.enterYourUsername',
+    defaultMessage: 'Enter your username',
+    description: 'Researcher-facing SignInForm: Enter your username',
+  },
+  recoveryCode: {
+    id: 'fresco.SignInForm.recoveryCode',
+    defaultMessage: 'Recovery code',
+    description: 'Researcher-facing SignInForm: Recovery code',
+  },
+  example0123456789abcdef0123: {
+    id: 'fresco.SignInForm.0123456789abcdef0123',
+    defaultMessage: '0123456789abcdef0123',
+    description: 'Researcher-facing SignInForm: 0123456789abcdef0123',
+  },
+  backToSignIn: {
+    id: 'fresco.SignInForm.backToSignIn',
+    defaultMessage: 'Back to sign in',
+    description: 'Researcher-facing SignInForm: Back to sign in',
+  },
+  signIn: {
+    id: 'fresco.SignInForm.signIn',
+    defaultMessage: 'Sign in',
+    description: 'Researcher-facing SignInForm: Sign in',
+  },
+  enterOneOfYourRecoveryCodes: {
+    id: 'fresco.SignInForm.enterOneOfYourRecoveryCodes',
+    defaultMessage: 'Enter one of your recovery codes',
+    description:
+      'Researcher-facing SignInForm: Enter one of your recovery codes',
+  },
+  enterYour6DigitCodeFromYour: {
+    id: 'fresco.SignInForm.enterYour6DigitCodeFromYour',
+    defaultMessage: 'Enter your 6-digit code from your authenticator app',
+    description:
+      'Researcher-facing SignInForm: Enter your 6-digit code from your authenticator app',
+  },
+  verify: {
+    id: 'fresco.SignInForm.verify',
+    defaultMessage: 'Verify',
+    description: 'Researcher-facing SignInForm: Verify',
+  },
+  password: {
+    id: 'fresco.SignInForm.password',
+    defaultMessage: 'Password',
+    description: 'Researcher-facing SignInForm: Password',
+  },
+  enterYourPassword: {
+    id: 'fresco.SignInForm.enterYourPassword',
+    defaultMessage: 'Enter your password',
+    description: 'Researcher-facing SignInForm: Enter your password',
+  },
+  or: {
+    id: 'fresco.SignInForm.or',
+    defaultMessage: 'or',
+    description: 'Researcher-facing SignInForm: or',
+  },
+  troubleSigningIn: {
+    id: 'fresco.SignInForm.troubleSigningIn',
+    defaultMessage: 'Trouble signing in?',
+    description: 'Researcher-facing SignInForm: Trouble signing in?',
+  },
+});
 
 function isRateLimited(
   result: LoginResult,
@@ -41,6 +208,9 @@ function isTwoFactorRequired(result: LoginResult): result is {
 }
 
 export const SignInForm = () => {
+  const intl = useAppIntl();
+  const { loginSchema } = createAuthSchemas(createMessageError);
+
   const router = useRouter();
 
   const [twoFactorRequired, setTwoFactorRequired] = useState(false);
@@ -85,7 +255,9 @@ export const SignInForm = () => {
       return {
         success: false,
         formErrors: [
-          `Too many attempts. Try again in ${String(Math.max(secondsRemaining, 1))} seconds.`,
+          createMessageError(messages.copyTooManyAttemptsTryAgainInSeconds, {
+            value1: Math.max(secondsRemaining, 1),
+          }),
         ],
       };
     }
@@ -107,7 +279,12 @@ export const SignInForm = () => {
     const values = data as Record<string, string>;
     const code = values.code;
     if (!code) {
-      return { success: false, fieldErrors: { code: ['Code is required'] } };
+      return {
+        success: false,
+        fieldErrors: {
+          code: [createMessageError(messages.copyCodeIsRequired)],
+        },
+      };
     }
 
     const result = await verifyTwoFactor({ twoFactorToken, code });
@@ -115,8 +292,9 @@ export const SignInForm = () => {
     if (!result.success) {
       const error =
         'formErrors' in result && result.formErrors
-          ? (result.formErrors[0] ?? 'Verification failed')
-          : 'Verification failed';
+          ? (result.formErrors[0] ??
+            createMessageError(messages.copyVerificationFailed))
+          : createMessageError(messages.copyVerificationFailed);
       return { success: false, formErrors: [error] };
     }
 
@@ -131,7 +309,10 @@ export const SignInForm = () => {
     try {
       const { error, data } = await generateAuthenticationOptions();
       if (error || !data) {
-        setPasskeyError(error ?? 'Failed to start passkey authentication');
+        setPasskeyError(
+          error ??
+            createMessageError(messages.copyFailedToStartPasskeyAuthentication),
+        );
         return;
       }
 
@@ -151,7 +332,9 @@ export const SignInForm = () => {
       if (e instanceof Error && e.name === 'NotAllowedError') {
         return;
       }
-      setPasskeyError('Passkey authentication failed');
+      setPasskeyError(
+        createMessageError(messages.copyPasskeyAuthenticationFailed),
+      );
     } finally {
       setPasskeyLoading(false);
     }
@@ -165,7 +348,9 @@ export const SignInForm = () => {
     if (!username || !recoveryCode) {
       return {
         success: false,
-        formErrors: ['Username and recovery code are required'],
+        formErrors: [
+          createMessageError(messages.copyUsernameAndRecoveryCodeAreRequired),
+        ],
       };
     }
 
@@ -195,20 +380,20 @@ export const SignInForm = () => {
       >
         <Field
           name="username"
-          label="Username"
-          placeholder="Enter your username"
+          label={intl.formatMessage(messages.username)}
+          placeholder={intl.formatMessage(messages.enterYourUsername)}
           component={InputField}
-          required="Username is required"
+          required={intl.formatMessage(messages.requiredUsername)}
           autoComplete="username"
           prefixComponent={<User2 />}
         />
         <Field
           name="recoveryCode"
-          label="Recovery code"
+          label={intl.formatMessage(messages.recoveryCode)}
           component={InputField}
-          required="Recovery code is required"
+          required={intl.formatMessage(messages.requiredRecovery)}
           className="font-monospace tracking-widest"
-          placeholder="0123456789abcdef0123"
+          placeholder={intl.formatMessage(messages.example0123456789abcdef0123)}
           autoComplete="off"
         />
         <div className="tablet-landscape:flex-row tablet-landscape:justify-between mt-4 flex flex-col gap-2">
@@ -218,10 +403,13 @@ export const SignInForm = () => {
             onClick={handleBackToSignIn}
             icon={<ArrowLeft />}
           >
-            Back to sign in
+            {intl.formatMessage(messages.backToSignIn)}
           </Button>
-          <SubmitButton form="recovery-login" submittingText="Verifying...">
-            Sign in
+          <SubmitButton
+            form="recovery-login"
+            submittingText={intl.formatMessage(messages.verifying)}
+          >
+            {intl.formatMessage(messages.signIn)}
           </SubmitButton>
         </div>
       </Form>
@@ -238,19 +426,21 @@ export const SignInForm = () => {
         {useRecovery ? (
           <Field
             name="code"
-            label="Enter one of your recovery codes"
+            label={intl.formatMessage(messages.enterOneOfYourRecoveryCodes)}
             component={InputField}
-            required="Recovery code is required"
+            required={intl.formatMessage(messages.requiredRecovery)}
             className="font-monospace tracking-widest"
-            placeholder="0123456789abcdef0123"
+            placeholder={intl.formatMessage(
+              messages.example0123456789abcdef0123,
+            )}
             autoComplete="off"
           />
         ) : (
           <Field
             name="code"
-            label="Enter your 6-digit code from your authenticator app"
+            label={intl.formatMessage(messages.enterYour6DigitCodeFromYour)}
             component={SegmentedCodeField}
-            required="Code is required"
+            required={intl.formatMessage(messages.requiredCode)}
             segments={6}
             characterSet="numeric"
             size="lg"
@@ -262,8 +452,8 @@ export const SignInForm = () => {
           variant="link"
         >
           {useRecovery
-            ? 'Use authenticator app instead'
-            : 'Use a recovery code instead'}
+            ? intl.formatMessage(messages.copyUseAuthenticatorAppInstead)
+            : intl.formatMessage(messages.copyUseARecoveryCodeInstead)}
         </Button>
 
         <DialogFooter>
@@ -272,10 +462,13 @@ export const SignInForm = () => {
             onClick={handleBackToSignIn}
             icon={<ArrowLeft />}
           >
-            Back to sign in
+            {intl.formatMessage(messages.backToSignIn)}
           </Button>
-          <SubmitButton form="sign-in-2fa" submittingText="Verifying...">
-            Verify
+          <SubmitButton
+            form="sign-in-2fa"
+            submittingText={intl.formatMessage(messages.verifying)}
+          >
+            {intl.formatMessage(messages.verify)}
           </SubmitButton>
         </DialogFooter>
       </Form>
@@ -288,11 +481,11 @@ export const SignInForm = () => {
         <Field
           key="username"
           name="username"
-          label="Username"
-          placeholder="Enter your username"
+          label={intl.formatMessage(messages.username)}
+          placeholder={intl.formatMessage(messages.enterYourUsername)}
           custom={{
             schema: loginSchema.shape.username,
-            hint: 'Enter your username',
+            hint: intl.formatMessage(messages.enterYourUsername),
           }}
           component={InputField}
           autoComplete="username"
@@ -301,12 +494,12 @@ export const SignInForm = () => {
         <Field
           key="password"
           name="password"
-          label="Password"
-          placeholder="Enter your password"
+          label={intl.formatMessage(messages.password)}
+          placeholder={intl.formatMessage(messages.enterYourPassword)}
           component={PasswordField}
           custom={{
             schema: loginSchema.shape.password,
-            hint: 'Enter your password',
+            hint: intl.formatMessage(messages.enterYourPassword),
           }}
           autoComplete="current-password"
           prefixComponent={<LockIcon />}
@@ -314,12 +507,14 @@ export const SignInForm = () => {
         <div className="mt-8 flex flex-col">
           <SubmitButton
             key="submit"
-            submittingText="Signing in..."
+            submittingText={intl.formatMessage(messages.signingIn)}
             disabled={retryAfter !== null && retryAfter > 0}
           >
             {retryAfter !== null && retryAfter > 0
-              ? `Try again in ${String(retryAfter)}s`
-              : 'Sign in'}
+              ? intl.formatMessage(messages.copyTryAgainInS, {
+                  value1: retryAfter,
+                })
+              : intl.formatMessage(messages.copySignIn)}
           </SubmitButton>
         </div>
       </Form>
@@ -328,7 +523,9 @@ export const SignInForm = () => {
         <>
           <div className="flex items-center gap-3">
             <div className="bg-outline h-px flex-1" />
-            <span className="my-2 text-sm">or</span>
+            <span className="my-2 text-sm">
+              {intl.formatMessage(messages.or)}
+            </span>
             <div className="bg-outline h-px flex-1" />
           </div>
 
@@ -340,13 +537,13 @@ export const SignInForm = () => {
             icon={<KeyRound />}
           >
             {passkeyLoading
-              ? 'Waiting for passkey...'
-              : 'Sign in with a passkey'}
+              ? intl.formatMessage(messages.copyWaitingForPasskey)
+              : intl.formatMessage(messages.copySignInWithAPasskey)}
           </Button>
 
           {passkeyError && (
             <Paragraph className="text-destructive text-center text-sm">
-              {passkeyError}
+              <AppErrorMessage error={passkeyError} />
             </Paragraph>
           )}
         </>
@@ -358,7 +555,7 @@ export const SignInForm = () => {
         onClick={() => setShowRecovery(true)}
         className="mt-4"
       >
-        Trouble signing in?
+        {intl.formatMessage(messages.troubleSigningIn)}
       </Button>
     </>
   );

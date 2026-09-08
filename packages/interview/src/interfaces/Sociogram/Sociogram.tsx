@@ -1,8 +1,8 @@
 'use client';
-
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { DragMetadata } from '@codaco/fresco-ui/dnd/types';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import Node from '@codaco/fresco-ui/Node';
@@ -22,6 +22,7 @@ import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import useSortedNodeList from '../../hooks/useSortedNodeList';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import {
   getEdges,
   getPlacedNodes,
@@ -41,6 +42,7 @@ import {
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
 import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
+import { interfaceMessages } from '../messages';
 import CollapsablePrompts from './CollapsablePrompts';
 import SimulationPanel from './SimulationPanel';
 
@@ -57,6 +59,7 @@ export function unplaceNodeAttributePatch(
 }
 
 const Sociogram = (stageProps: SociogramProps) => {
+  const intl = useAppIntl();
   const { stage } = stageProps;
   const { prompt } = usePrompts<(typeof stage.prompts)[number]>();
   const dispatch = useAppDispatch();
@@ -294,7 +297,12 @@ const Sociogram = (stageProps: SociogramProps) => {
         }),
       );
       announce(
-        name ? `${name} returned to the drawer.` : 'Returned to the drawer.',
+        intl.formatMessage(
+          name
+            ? interfaceMessages.namedReturnedToDrawer
+            : interfaceMessages.returnedToDrawer,
+          { name },
+        ),
       );
     },
     [
@@ -305,19 +313,20 @@ const Sociogram = (stageProps: SociogramProps) => {
       currentStep,
       track,
       announce,
+      intl,
     ],
   );
 
   const drawerDropTarget = useMemo(
     () => ({
       accepts: [PLACED_NODE_ITEM_TYPE],
-      announcedName: 'Drawer',
+      announcedName: intl.formatMessage(runtimeMessages.drawer),
       onDrop: (metadata?: DragMetadata) => {
         const nodeId = metadata?.nodeId;
         if (typeof nodeId === 'string') handleUnplaceNode(nodeId);
       },
     }),
-    [handleUnplaceNode],
+    [handleUnplaceNode, intl],
   );
 
   const simulationHandlers =

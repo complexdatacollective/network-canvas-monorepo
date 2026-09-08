@@ -71,6 +71,27 @@ vi.mock('../../lib/auth.ts', () => ({
       data: { user: { name: 'Owner Researcher', email: 'owner@example.com' } },
       isPending: false,
     }),
+    useListOrganizations: vi.fn().mockReturnValue({
+      data: [],
+      error: null,
+      isPending: false,
+    }),
+    useActiveOrganization: vi.fn().mockReturnValue({
+      data: { id: 'team-a', name: 'Alpha research team' },
+      error: null,
+      isPending: false,
+      refetch: vi.fn(),
+    }),
+    useActiveMember: vi.fn().mockReturnValue({
+      data: { id: 'member-1', organizationId: 'team-a', role: 'owner' },
+      error: null,
+      isPending: false,
+      refetch: vi.fn(),
+    }),
+    organization: {
+      setActive: vi.fn().mockResolvedValue({ data: null, error: null }),
+      list: vi.fn(),
+    },
     signOut: vi.fn(),
   },
 }));
@@ -82,6 +103,60 @@ type RetryOption =
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    me: {
+      queryOptions: () => ({
+        queryKey: ['me'],
+        queryFn: () => ({
+          userId: 'user-1',
+          email: 'researcher@example.org',
+          emailVerified: true,
+          name: 'Researcher',
+          // `me` carries the account's UI-language preference; null means
+          // "follow the browser" (2026-09-04 localization design §5.2).
+          locale: null,
+          teams: [{ teamId: 'team-a', role: 'owner' }],
+        }),
+      }),
+      key: () => ['me'],
+    },
+    // The header renders on every app route, and its study segment asks for
+    // the team's studies — a real dependency of the shell these tests mount,
+    // not of this screen. It answers nothing here: no study is open, so the
+    // query is disabled and the segment is absent.
+    protocols: {
+      list: {
+        queryOptions: () => ({
+          queryKey: ['protocols', 'list'],
+          queryFn: () => [],
+        }),
+      },
+    },
+    // The team area reads the deployment topology from here to decide whether
+    // this instance has billing at all (§10.4), so every test that renders a
+    // team route needs an answer.
+    status: {
+      queryOptions: () => ({
+        queryKey: ['status'],
+        queryFn: () => ({
+          name: 'Network Canvas Studio',
+          version: '0.1.0',
+          deployment: { mode: 'managed', billing: false },
+        }),
+      }),
+    },
+    // The header's study chip asks for the study on every app route, and
+    // answers nothing on one that names no study.
+    studies: {
+      list: {
+        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
+        key: () => ['studies'],
+      },
+      get: {
+        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
+        key: () => ['study'],
+      },
+      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+    },
     audit: {
       list: {
         infiniteOptions: (options: {
@@ -139,12 +214,15 @@ vi.mock('../../lib/api.ts', () => ({
 // tests pass a retrying default instead, so that a route query which forwards
 // no retry option of its own inherits it and visibly retries.
 function renderActivity(defaultRetry: RetryOption = false) {
-  const router = createAppRouter(
-    createMemoryHistory({ initialEntries: ['/teams/team-a/activity'] }),
-  );
+  // One client behind both the router's guards and the components: the
+  // session guard reads what a component's `queryClient.clear()` removes.
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: defaultRetry, retryDelay: 0 } },
   });
+  const router = createAppRouter(
+    createMemoryHistory({ initialEntries: ['/team/team-a/activity'] }),
+    queryClient,
+  );
   return render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
@@ -482,7 +560,7 @@ describe('Team activity screen', () => {
       await screen.findByText(/only available to team owners and admins/),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: 'Back to your teams' }),
+      screen.getByRole('link', { name: 'Back to this team\u2019s studies' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('Apply filters')).toBeNull();
   });
@@ -522,7 +600,10 @@ describe('Team activity screen', () => {
     renderActivity();
     await screen.findByRole('cell', { name: 'Invitation created' });
 
-    const className = screen.getByRole('main').className;
+    // The `<main>` is the area layout's; the page container this test is
+    // about is the route's own element inside it.
+    const page = screen.getByRole('main').firstElementChild;
+    const className = page?.className ?? '';
     expect(className).toContain('tablet-portrait:p-8');
     expect(className).not.toMatch(/(?:^|\s)(?:sm|md|lg|xl|2xl):/);
   });

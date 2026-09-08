@@ -125,10 +125,14 @@ describe('ArrayField pointer reordering', () => {
     fireEvent.dragEnd(movedItem!);
 
     expect(onOperation).toHaveBeenCalledOnce();
+    // The moved row travels with the operation, because `from` and `to` are
+    // not read off the same list: `from` was taken when the pointer went down,
+    // and the value can change before it comes up.
     expect(onOperation).toHaveBeenCalledWith({
       type: 'move',
       from: 0,
       to: 2,
+      item: { id: 'one', label: 'one' },
     });
     expect(screen.getByRole('status')).toHaveTextContent(
       'Moved item 1 to position 3 of 3.',

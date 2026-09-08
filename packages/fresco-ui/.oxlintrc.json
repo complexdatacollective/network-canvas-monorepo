@@ -1,12 +1,22 @@
 {
   "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
-  "jsPlugins": ["oxlint-tailwindcss"],
+  "jsPlugins": ["eslint-plugin-formatjs", "oxlint-tailwindcss"],
   "settings": {
     "tailwindcss": {
       "entryPoint": "tooling/tailwind/fresco/fresco.css"
     }
   },
   "rules": {
+    // Descriptor hygiene for the ~200 `frescoUi.*` messages this package
+    // owns. These five are the root config's set, repeated here because an
+    // override in the root cannot match into a package that declares its own
+    // config — the root's list names the packages that have none.
+    "formatjs/enforce-description": "error",
+    "formatjs/enforce-default-message": "error",
+    "formatjs/no-invalid-icu": "error",
+    "formatjs/enforce-placeholders": "error",
+    "formatjs/no-multiple-whitespaces": "error",
+
     "tailwindcss/no-unknown-classes": "warn",
     "tailwindcss/no-duplicate-classes": "error",
     "tailwindcss/no-conflicting-classes": "warn",
@@ -16,7 +26,9 @@
   "overrides": [
     {
       "files": ["**/*.stories.ts", "**/*.stories.tsx", ".storybook/**"],
-      "rules": { "no-console": "off" }
+      "rules": {
+        "no-console": "off"
+      }
     }
   ]
 }

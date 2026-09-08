@@ -2,6 +2,12 @@ import { isEqual } from 'es-toolkit/compat';
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import {
+  createMessageError,
+  type IntlShape,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
@@ -42,10 +48,241 @@ import {
   RuleValueField,
 } from './RuleValueField';
 import validateRule, { type Rule, type RuleOptions } from './validateRule';
+const chromeMessages = defineMessages({
+  enterTheValueToCompareAgainst: {
+    id: 'architect.chrome.query.rules.ruleEditor.enterTheValueToCompareAgainst',
+    defaultMessage:
+      'Enter the value to compare against. You can use a regular expression to match multiple values.',
+    description:
+      'The regExpHint text in components / Query / Rules / RuleEditor.',
+  },
+  enterARegularExpressionToCompare: {
+    id: 'architect.chrome.query.rules.ruleEditor.enterARegularExpressionToCompare',
+    defaultMessage: 'Enter a regular expression to compare against.',
+    description:
+      'The regExpHint text in components / Query / Rules / RuleEditor.',
+  },
+});
+const additionalMessages = defineMessages({
+  rulesAreUsedToFilterThe: {
+    id: 'architect.additional.query.rules.ruleEditor.rulesAreUsedToFilterThe',
+    defaultMessage:
+      'Rules are used to filter the data in your study. You can use them to show or hide nodes and edges based on their attributes. For help with constructing rules, see our documentation articles on <ExternalLink> {value1} </ExternalLink> and <ExternalLink2> {value3} </ExternalLink2> .',
+    description: 'Visible text in components / Query / Rules / RuleEditor.',
+  },
+});
+const messages = defineMessages({
+  selectedOptionCount: {
+    id: 'architect.query.rules.ruleEditor.selectedOptionCount',
+    defaultMessage: 'Selected option count',
+    description: 'The label text in components / Query / Rules / RuleEditor.',
+  },
+  enterTheNumberOfOptionsThat: {
+    id: 'architect.query.rules.ruleEditor.enterTheNumberOfOptionsThat',
+    defaultMessage:
+      'Enter the number of options that must be selected for this rule to pass.',
+    description: 'The hint text in components / Query / Rules / RuleEditor.',
+  },
+  enterAValue: {
+    id: 'architect.query.rules.ruleEditor.enterAValue',
+    defaultMessage: 'Enter a value...',
+    description:
+      'The placeholder text in components / Query / Rules / RuleEditor.',
+  },
+  attributeValue: {
+    id: 'architect.query.rules.ruleEditor.attributeValue',
+    defaultMessage: 'Attribute value',
+    description: 'The label text in components / Query / Rules / RuleEditor.',
+  },
+  enterARegularExpression: {
+    id: 'architect.query.rules.ruleEditor.enterARegularExpression',
+    defaultMessage: 'Enter a regular expression...',
+    description:
+      'The placeholder text in components / Query / Rules / RuleEditor.',
+  },
+  enterTheValueToCompareAgainst: {
+    id: 'architect.query.rules.ruleEditor.enterTheValueToCompareAgainst',
+    defaultMessage: 'Enter the value to compare against.',
+    description: 'The hint text in components / Query / Rules / RuleEditor.',
+  },
+  ruleStructure: {
+    id: 'architect.query.rules.ruleEditor.ruleStructure',
+    defaultMessage: 'Rule structure',
+    description: 'The title text in components / Query / Rules / RuleEditor.',
+  },
+  egoAttribute: {
+    id: 'architect.query.rules.ruleEditor.egoAttribute',
+    defaultMessage: 'Ego attribute',
+    description: 'The label text in components / Query / Rules / RuleEditor.',
+  },
+  selectTheEgoAttributeThisRule: {
+    id: 'architect.query.rules.ruleEditor.selectTheEgoAttributeThisRule',
+    defaultMessage: 'Select the ego attribute this rule will be based on.',
+    description: 'The hint text in components / Query / Rules / RuleEditor.',
+  },
+  operator: {
+    id: 'architect.query.rules.ruleEditor.operator',
+    defaultMessage: 'Operator',
+    description: 'The label text in components / Query / Rules / RuleEditor.',
+  },
+  selectTheOperatorThatWillBe: {
+    id: 'architect.query.rules.ruleEditor.selectTheOperatorThatWillBe',
+    defaultMessage:
+      'Select the operator that will be used to compare the ego attribute to the value.',
+    description: 'The hint text in components / Query / Rules / RuleEditor.',
+  },
+  selectAnOperator: {
+    id: 'architect.query.rules.ruleEditor.selectAnOperator',
+    defaultMessage: 'Select an operator…',
+    description:
+      'The placeholder text in components / Query / Rules / RuleEditor.',
+  },
+  ruleBasis: {
+    id: 'architect.query.rules.ruleEditor.ruleBasis',
+    defaultMessage: 'Rule basis',
+    description: 'The title text in components / Query / Rules / RuleEditor.',
+  },
+  ruleType: {
+    id: 'architect.query.rules.ruleEditor.ruleType',
+    defaultMessage: 'Rule type',
+    description: 'The label text in components / Query / Rules / RuleEditor.',
+  },
+  selectWhetherThisRuleWillBe: {
+    id: 'architect.query.rules.ruleEditor.selectWhetherThisRuleWillBe',
+    defaultMessage:
+      'Select whether this rule will be based on the entity type or an attribute.',
+    description: 'The hint text in components / Query / Rules / RuleEditor.',
+  },
+  presenceCondition: {
+    id: 'architect.query.rules.ruleEditor.presenceCondition',
+    defaultMessage: 'Presence condition',
+    description: 'The title text in components / Query / Rules / RuleEditor.',
+  },
+  selectTheOperatorThatWillBeb7725: {
+    id: 'architect.query.rules.ruleEditor.selectTheOperatorThatWillBeb7725',
+    defaultMessage:
+      'Select the operator that will be used to compare the entity type to the value.',
+    description: 'The hint text in components / Query / Rules / RuleEditor.',
+  },
+  nodeAttribute: {
+    id: 'architect.query.rules.ruleEditor.nodeAttribute',
+    defaultMessage: 'Node attribute',
+    description: 'The label text in components / Query / Rules / RuleEditor.',
+  },
+  edgeAttribute: {
+    id: 'architect.query.rules.ruleEditor.edgeAttribute',
+    defaultMessage: 'Edge attribute',
+    description: 'The label text in components / Query / Rules / RuleEditor.',
+  },
+  selectAnAttributeToBaseThis: {
+    id: 'architect.query.rules.ruleEditor.selectAnAttributeToBaseThis',
+    defaultMessage: 'Select an attribute to base this rule on.',
+    description: 'The hint text in components / Query / Rules / RuleEditor.',
+  },
+  selectTheOperatorThatWillBea3104: {
+    id: 'architect.query.rules.ruleEditor.selectTheOperatorThatWillBea3104',
+    defaultMessage:
+      'Select the operator that will be used to compare the attribute to the value.',
+    description: 'The hint text in components / Query / Rules / RuleEditor.',
+  },
+  ruleTarget: {
+    id: 'architect.query.rules.ruleEditor.ruleTarget',
+    defaultMessage: 'Rule target',
+    description: 'The title text in components / Query / Rules / RuleEditor.',
+  },
+  entity: {
+    id: 'architect.query.rules.ruleEditor.entity',
+    defaultMessage: 'Entity',
+    description: 'The label text in components / Query / Rules / RuleEditor.',
+  },
+  selectWhichNetworkEntityYourRule: {
+    id: 'architect.query.rules.ruleEditor.selectWhichNetworkEntityYourRule',
+    defaultMessage: 'Select which network entity your rule should target.',
+    description: 'The hint text in components / Query / Rules / RuleEditor.',
+  },
+  nodeType: {
+    id: 'architect.query.rules.ruleEditor.nodeType',
+    defaultMessage: 'Node type',
+    description: 'The label text in components / Query / Rules / RuleEditor.',
+  },
+  edgeType: {
+    id: 'architect.query.rules.ruleEditor.edgeType',
+    defaultMessage: 'Edge type',
+    description: 'The label text in components / Query / Rules / RuleEditor.',
+  },
+  chooseANodeTypeToBase: {
+    id: 'architect.query.rules.ruleEditor.chooseANodeTypeToBase',
+    defaultMessage:
+      'Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.',
+    description: 'The hint text in components / Query / Rules / RuleEditor.',
+  },
+  chooseAnEdgeTypeToBase: {
+    id: 'architect.query.rules.ruleEditor.chooseAnEdgeTypeToBase',
+    defaultMessage:
+      'Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.',
+    description: 'The hint text in components / Query / Rules / RuleEditor.',
+  },
+  skipLogic: {
+    id: 'architect.query.rules.ruleEditor.skipLogic',
+    defaultMessage: 'skip logic',
+    description: 'Visible text in components / Query / Rules / RuleEditor.',
+  },
+  networkFiltering: {
+    id: 'architect.query.rules.ruleEditor.networkFiltering',
+    defaultMessage: 'network filtering',
+    description: 'Visible text in components / Query / Rules / RuleEditor.',
+  },
+});
+const extraMessages = defineMessages({
+  attribute: {
+    id: 'architect.ruleKind.attribute',
+    defaultMessage: 'Attribute',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  presence: {
+    id: 'architect.ruleKind.presence',
+    defaultMessage: 'Presence',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  attributeDescription: {
+    id: 'architect.ruleKind.attributeDescription',
+    defaultMessage:
+      "Rule based on the value of this {target, select, node {node} edge {edge} other {ego}} type's attributes.",
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  presenceDescription: {
+    id: 'architect.ruleKind.presenceDescription',
+    defaultMessage:
+      'Based on the presence or absence of this {target, select, node {node} edge {edge} other {ego}} type in the interview network.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
+const finalMessages = defineMessages({
+  incomplete: {
+    id: 'architect.final.components.Query.Rules.RuleEditor.incomplete',
+    defaultMessage:
+      'This rule is not complete. Please fill in every field before saving it.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 /** Dialog title and submit label, verbatim — the E2E page object names both. */
-const RULE_EDITOR_TITLE = 'Construct a Rule';
-const RULE_EDITOR_SUBMIT = 'Finish and Close';
+const RULE_EDITOR_TITLE = defineMessages({
+  message: {
+    id: 'architect.constants.components.query.rules.ruleeditor.ruleEditorTitle',
+    defaultMessage: 'Construct a Rule',
+    description:
+      'Researcher-facing status or validation message. Context: components/Query/Rules/RuleEditor.tsx.',
+  },
+}).message;
+const RULE_EDITOR_SUBMIT = defineMessages({
+  message: {
+    id: 'architect.constants.components.query.rules.ruleeditor.ruleEditorSubmit',
+    defaultMessage: 'Finish and Close',
+    description:
+      'Researcher-facing status or validation message. Context: components/Query/Rules/RuleEditor.tsx.',
+  },
+}).message;
 const RULE_EDITOR_FORM_ID = 'construct-a-rule';
 
 const TARGET_FIELD = 'type';
@@ -65,8 +302,15 @@ const OPERATOR_FIELD = 'options.operator';
 const RULE_KIND_FIELD = 'ruleKind';
 const VARIABLE_RULE = 'ALTER/VARIABLE';
 const TYPE_RULE = 'ALTER/TYPE';
-const RULE_STRUCTURE_DESCRIPTION =
-  'Choose an attribute, operator, and comparison value to define this rule.';
+const RULE_STRUCTURE_DESCRIPTION = defineMessages({
+  message: {
+    id: 'architect.constants.components.query.rules.ruleeditor.ruleStructureDescription',
+    defaultMessage:
+      'Choose an attribute, operator, and comparison value to define this rule.',
+    description:
+      'Researcher-facing status or validation message. Context: components/Query/Rules/RuleEditor.tsx.',
+  },
+}).message;
 
 /**
  * The rule's fields in the order each one constrains the next. A change to any
@@ -82,15 +326,19 @@ const RULE_CASCADE = [
   OPERATOR_FIELD,
 ] as const;
 
-const ruleKindOptions = (target: RuleTargetType) => [
+const ruleKindOptions = (target: RuleTargetType, intl: IntlShape) => [
   {
-    label: 'Attribute',
-    description: `Rule based on the value of this ${target} type's attributes.`,
+    label: intl.formatMessage(extraMessages.attribute),
+    description: intl.formatMessage(extraMessages.attributeDescription, {
+      target,
+    }),
     value: VARIABLE_RULE,
   },
   {
-    label: 'Presence',
-    description: `Based on the presence or absence of this ${target} type in the interview network.`,
+    label: intl.formatMessage(extraMessages.presence),
+    description: intl.formatMessage(extraMessages.presenceDescription, {
+      target,
+    }),
     value: TYPE_RULE,
   },
 ];
@@ -202,14 +450,15 @@ const RuleOperandField = ({
   variableOptions,
   regExpHint,
 }: OperandFieldsProps) => {
+  const intl = useAppIntl();
   const seedValue = seed.options?.value;
 
   if (operator && operatorsWithOptionCount.has(operator)) {
     return (
       <RuleCountField
-        label="Selected option count"
-        hint="Enter the number of options that must be selected for this rule to pass."
-        placeholder="Enter a value..."
+        label={intl.formatMessage(messages.selectedOptionCount)}
+        hint={intl.formatMessage(messages.enterTheNumberOfOptionsThat)}
+        placeholder={intl.formatMessage(messages.enterAValue)}
         initialValue={seedValue}
       />
     );
@@ -218,9 +467,9 @@ const RuleOperandField = ({
   if (operator && operatorsWithRegExp.has(operator)) {
     return (
       <RuleValueField
-        label="Attribute value"
+        label={intl.formatMessage(messages.attributeValue)}
         hint={regExpHint}
-        placeholder="Enter a regular expression..."
+        placeholder={intl.formatMessage(messages.enterARegularExpression)}
         variableType={variableType}
         options={variableOptions}
         initialValue={seedValue}
@@ -232,9 +481,9 @@ const RuleOperandField = ({
   if (operator && operatorsWithValue.has(operator)) {
     return (
       <RuleValueField
-        label="Attribute value"
-        hint="Enter the value to compare against."
-        placeholder="Enter a value..."
+        label={intl.formatMessage(messages.attributeValue)}
+        hint={intl.formatMessage(messages.enterTheValueToCompareAgainst)}
+        placeholder={intl.formatMessage(messages.enterAValue)}
         variableType={variableType}
         options={variableOptions}
         initialValue={seedValue}
@@ -264,48 +513,56 @@ const EgoRuleFields = ({
   operatorOptions,
   variableType,
   variableOptions,
-}: BranchProps) => (
-  <Section title="Rule structure" description={RULE_STRUCTURE_DESCRIPTION}>
-    <ArchitectField
-      name={ATTRIBUTE_FIELD}
-      label="Ego attribute"
-      hint="Select the ego attribute this rule will be based on."
-      component={VariablePickerControl}
-      entity="ego"
-      disallowCreation
-      options={variablesAsOptions}
-      initialValue={
-        typeof seed.options?.attribute === 'string'
-          ? seed.options.attribute
-          : undefined
-      }
-      validation={{ required: true }}
-    />
-    {attributeId && (
+}: BranchProps) => {
+  const intl = useAppIntl();
+  return (
+    <Section
+      title={intl.formatMessage(messages.ruleStructure)}
+      description={intl.formatMessage(RULE_STRUCTURE_DESCRIPTION)}
+    >
       <ArchitectField
-        name={OPERATOR_FIELD}
-        label="Operator"
-        hint="Select the operator that will be used to compare the ego attribute to the value."
-        component={NativeSelectField}
-        placeholder="Select an operator…"
-        options={operatorOptions}
+        name={ATTRIBUTE_FIELD}
+        label={intl.formatMessage(messages.egoAttribute)}
+        hint={intl.formatMessage(messages.selectTheEgoAttributeThisRule)}
+        component={VariablePickerControl}
+        entity="ego"
+        disallowCreation
+        options={variablesAsOptions}
         initialValue={
-          typeof seed.options?.operator === 'string'
-            ? seed.options.operator
+          typeof seed.options?.attribute === 'string'
+            ? seed.options.attribute
             : undefined
         }
         validation={{ required: true }}
       />
-    )}
-    <RuleOperandField
-      seed={seed}
-      operator={operator}
-      variableType={variableType}
-      variableOptions={variableOptions}
-      regExpHint="Enter the value to compare against. You can use a regular expression to match multiple values."
-    />
-  </Section>
-);
+      {attributeId && (
+        <ArchitectField
+          name={OPERATOR_FIELD}
+          label={intl.formatMessage(messages.operator)}
+          hint={intl.formatMessage(messages.selectTheOperatorThatWillBe)}
+          component={NativeSelectField}
+          placeholder={intl.formatMessage(messages.selectAnOperator)}
+          options={operatorOptions}
+          initialValue={
+            typeof seed.options?.operator === 'string'
+              ? seed.options.operator
+              : undefined
+          }
+          validation={{ required: true }}
+        />
+      )}
+      <RuleOperandField
+        seed={seed}
+        operator={operator}
+        variableType={variableType}
+        variableOptions={variableOptions}
+        regExpHint={intl.formatMessage(
+          chromeMessages.enterTheValueToCompareAgainst,
+        )}
+      />
+    </Section>
+  );
+};
 
 type EntityBranchProps = BranchProps & {
   target: 'node' | 'edge';
@@ -325,6 +582,7 @@ const EntityRuleFields = ({
   variableType,
   variableOptions,
 }: EntityBranchProps) => {
+  const intl = useAppIntl();
   // `rule.type` is the entity CLASS, so it is an internal token and never
   // display copy. Interpolating it produced "node Type" and "Choose an node
   // type…" (#1400). Each heading and sentence is written out whole rather than
@@ -334,24 +592,27 @@ const EntityRuleFields = ({
 
   return (
     <>
-      <Section title="Rule basis" disabled={!entityTypeId}>
+      <Section
+        title={intl.formatMessage(messages.ruleBasis)}
+        disabled={!entityTypeId}
+      >
         <ArchitectField
           name={RULE_KIND_FIELD}
-          label="Rule type"
-          hint="Select whether this rule will be based on the entity type or an attribute."
+          label={intl.formatMessage(messages.ruleType)}
+          hint={intl.formatMessage(messages.selectWhetherThisRuleWillBe)}
           component={RichSelectGroupField}
-          options={ruleKindOptions(target)}
+          options={ruleKindOptions(target, intl)}
           initialValue={seedRuleKind(seed)}
           validation={{ required: true }}
         />
       </Section>
 
       {ruleKind === TYPE_RULE && entityTypeId && (
-        <Section title="Presence condition">
+        <Section title={intl.formatMessage(messages.presenceCondition)}>
           <ArchitectField
             name={OPERATOR_FIELD}
-            label="Operator"
-            hint="Select the operator that will be used to compare the entity type to the value."
+            label={intl.formatMessage(messages.operator)}
+            hint={intl.formatMessage(messages.selectTheOperatorThatWillBeb7725)}
             component={RadioGroupField}
             options={operatorOptions}
             initialValue={
@@ -366,13 +627,17 @@ const EntityRuleFields = ({
 
       {ruleKind === VARIABLE_RULE && entityTypeId && (
         <Section
-          title="Rule structure"
-          description={RULE_STRUCTURE_DESCRIPTION}
+          title={intl.formatMessage(messages.ruleStructure)}
+          description={intl.formatMessage(RULE_STRUCTURE_DESCRIPTION)}
         >
           <ArchitectField
             name={ATTRIBUTE_FIELD}
-            label={isNode ? 'Node attribute' : 'Edge attribute'}
-            hint="Select an attribute to base this rule on."
+            label={
+              isNode
+                ? intl.formatMessage(messages.nodeAttribute)
+                : intl.formatMessage(messages.edgeAttribute)
+            }
+            hint={intl.formatMessage(messages.selectAnAttributeToBaseThis)}
             component={VariablePickerControl}
             entity={target}
             type={entityTypeId}
@@ -388,10 +653,12 @@ const EntityRuleFields = ({
           {attributeId && (
             <ArchitectField
               name={OPERATOR_FIELD}
-              label="Operator"
-              hint="Select the operator that will be used to compare the attribute to the value."
+              label={intl.formatMessage(messages.operator)}
+              hint={intl.formatMessage(
+                messages.selectTheOperatorThatWillBea3104,
+              )}
               component={NativeSelectField}
-              placeholder="Select an operator…"
+              placeholder={intl.formatMessage(messages.selectAnOperator)}
               options={operatorOptions}
               initialValue={
                 typeof seed.options?.operator === 'string'
@@ -406,7 +673,9 @@ const EntityRuleFields = ({
             operator={operator}
             variableType={variableType}
             variableOptions={variableOptions}
-            regExpHint="Enter a regular expression to compare against."
+            regExpHint={intl.formatMessage(
+              chromeMessages.enterARegularExpressionToCompare,
+            )}
           />
         </Section>
       )}
@@ -427,6 +696,7 @@ const RuleEditorFields = ({
   codebook,
   description,
 }: RuleEditorFieldsProps) => {
+  const intl = useAppIntl();
   const values = useFormValue(RULE_CASCADE);
   const target = isRuleTargetType(values[TARGET_FIELD])
     ? values[TARGET_FIELD]
@@ -446,9 +716,9 @@ const RuleEditorFields = ({
       variablesAsOptions: getVariablesAsOptions(variables),
       variableType,
       variableOptions: getRuleVariableOptions(variables, attributeId),
-      operatorOptions: getOperatorOptions(variableType),
+      operatorOptions: getOperatorOptions(variableType, intl),
     };
-  }, [attributeId, codebook, entityTypeId, target]);
+  }, [attributeId, codebook, entityTypeId, target, intl]);
 
   const emptyValue = useMemo(
     () => getEmptyRuleValue(derived.variableType),
@@ -474,11 +744,14 @@ const RuleEditorFields = ({
         which would flatten these documentation links into an announcement the
         researcher cannot follow. As body copy they are ordinary links.
       */}
-      <Section title="Rule target" description={description}>
+      <Section
+        title={intl.formatMessage(messages.ruleTarget)}
+        description={description}
+      >
         <ArchitectField
           name={TARGET_FIELD}
-          label="Entity"
-          hint="Select which network entity your rule should target."
+          label={intl.formatMessage(messages.entity)}
+          hint={intl.formatMessage(messages.selectWhichNetworkEntityYourRule)}
           component={RadioGroupField}
           options={ruleTypes}
           initialValue={typeof seed.type === 'string' ? seed.type : undefined}
@@ -487,11 +760,15 @@ const RuleEditorFields = ({
         {(target === 'node' || target === 'edge') && (
           <ArchitectField
             name={ENTITY_TYPE_FIELD}
-            label={target === 'node' ? 'Node type' : 'Edge type'}
+            label={
+              target === 'node'
+                ? intl.formatMessage(messages.nodeType)
+                : intl.formatMessage(messages.edgeType)
+            }
             hint={
               target === 'node'
-                ? 'Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
-                : 'Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
+                ? intl.formatMessage(messages.chooseANodeTypeToBase)
+                : intl.formatMessage(messages.chooseAnEdgeTypeToBase)
             }
             component={EntitySelectControl}
             entityType={target}
@@ -555,6 +832,7 @@ const RuleEditor = ({
   finalFocus,
   layoutId,
 }: RuleEditorProps) => {
+  const intl = useAppIntl();
   const handleSubmit = (values: Record<string, FieldValue>) => {
     const rule = toRule(values, seed);
 
@@ -565,9 +843,7 @@ const RuleEditor = ({
     if (!validateRule(rule)) {
       return {
         success: false as const,
-        formErrors: [
-          'This rule is not complete. Please fill in every field before saving it.',
-        ],
+        formErrors: [createMessageError(finalMessages.incomplete)],
       };
     }
 
@@ -579,9 +855,9 @@ const RuleEditor = ({
     <DialogForm
       open={open}
       onClose={onCancel}
-      title={RULE_EDITOR_TITLE}
+      title={intl.formatMessage(RULE_EDITOR_TITLE)}
       formId={RULE_EDITOR_FORM_ID}
-      submitLabel={RULE_EDITOR_SUBMIT}
+      submitLabel={intl.formatMessage(RULE_EDITOR_SUBMIT)}
       onSubmit={handleSubmit}
       size="editor"
       finalFocus={finalFocus}
@@ -593,17 +869,20 @@ const RuleEditor = ({
         codebook={codebook}
         description={
           <>
-            Rules are used to filter the data in your study. You can use them to
-            show or hide nodes and edges based on their attributes. For help
-            with constructing rules, see our documentation articles on{' '}
-            <ExternalLink href={documentationLinks.skipLogic}>
-              skip logic
-            </ExternalLink>{' '}
-            and{' '}
-            <ExternalLink href={documentationLinks.networkFiltering}>
-              network filtering
-            </ExternalLink>
-            .
+            {intl.formatMessage(additionalMessages.rulesAreUsedToFilterThe, {
+              value1: intl.formatMessage(messages.skipLogic),
+              ExternalLink: (chunks) => (
+                <ExternalLink href={documentationLinks.skipLogic}>
+                  {chunks}
+                </ExternalLink>
+              ),
+              value3: intl.formatMessage(messages.networkFiltering),
+              ExternalLink2: (chunks) => (
+                <ExternalLink href={documentationLinks.networkFiltering}>
+                  {chunks}
+                </ExternalLink>
+              ),
+            })}
           </>
         }
       />

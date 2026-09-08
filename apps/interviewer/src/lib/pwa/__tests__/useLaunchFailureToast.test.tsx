@@ -2,6 +2,8 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { renderedMessage } from '~/testUtils/renderedMessage';
+
 const { mockSubscribe, mockGet, mockTake, mockToast } = vi.hoisted(() => ({
   mockSubscribe: vi.fn<(listener: () => void) => () => void>(() => () => {}),
   mockGet: vi.fn<() => number>(() => 0),
@@ -43,9 +45,9 @@ describe('useLaunchFailureToast', () => {
     await waitFor(() => expect(mockToast).toHaveBeenCalledTimes(1));
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: 'Could not open file',
-        description: expect.stringContaining(
-          '1 launched file could not be read',
+        title: renderedMessage('Could not open file'),
+        description: renderedMessage(
+          expect.stringContaining('1 launched file could not be read'),
         ),
         variant: 'destructive',
       }),
@@ -68,8 +70,8 @@ describe('useLaunchFailureToast', () => {
     await waitFor(() => expect(mockToast).toHaveBeenCalledTimes(1));
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
-        description: expect.stringContaining(
-          '2 launched files could not be read',
+        description: renderedMessage(
+          expect.stringContaining('2 launched files could not be read'),
         ),
       }),
     );

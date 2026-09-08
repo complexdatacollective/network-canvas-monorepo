@@ -1,5 +1,6 @@
 import { ArrowLeftToLine, Check, Download, Save } from 'lucide-react';
 import {
+  createElement,
   type ReactNode,
   useCallback,
   useEffect,
@@ -8,6 +9,9 @@ import {
 } from 'react';
 import { useLocation } from 'wouter';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
   ToolbarButton,
@@ -28,8 +32,120 @@ import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 import { getStoredProtocol } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
 
+import { ProtocolFailureDetails } from '../protocolOpenDialogs';
 import { useActionToolbar } from './ActionToolbar';
 import { HistoryToolbarControls } from './historyToolbarItems';
+const chromeMessages = defineMessages({
+  returnToStages: {
+    id: 'architect.chrome.projectNav.projectActions.returnToStages',
+    defaultMessage: 'Return to Stages',
+    description:
+      'Researcher-facing explanatory text in components / ProjectNav / ProjectActions.',
+  },
+  returnToStartScreen: {
+    id: 'architect.chrome.projectNav.projectActions.returnToStartScreen',
+    defaultMessage: 'Return to Start Screen',
+    description:
+      'Researcher-facing explanatory text in components / ProjectNav / ProjectActions.',
+  },
+});
+const messages = defineMessages({
+  saveProtocolSource: {
+    id: 'architect.projectNav.projectActions.saveProtocolSource',
+    defaultMessage: 'Save protocol source?',
+    description: 'The title text in components / ProjectNav / ProjectActions.',
+  },
+  willOverwriteTheCanonical: {
+    id: 'architect.projectNav.projectActions.willOverwriteTheCanonical',
+    defaultMessage:
+      '"{value1}" will overwrite the canonical protocol source files in this repository.',
+    description:
+      'The description text in components / ProjectNav / ProjectActions.',
+  },
+  saveToSource: {
+    id: 'architect.projectNav.projectActions.saveToSource',
+    defaultMessage: 'Save to source',
+    description: 'The label text in components / ProjectNav / ProjectActions.',
+  },
+  sourceSaveFailed: {
+    id: 'architect.projectNav.projectActions.sourceSaveFailed',
+    defaultMessage: 'Source save failed',
+    description: 'The title text in components / ProjectNav / ProjectActions.',
+  },
+  couldNotBeSaved: {
+    id: 'architect.projectNav.projectActions.couldNotBeSaved',
+    defaultMessage:
+      '"{protocolName}" could not be saved to source. Check the source files and your write permissions, then try again.',
+    description:
+      'The description text in components / ProjectNav / ProjectActions.',
+  },
+  oK: {
+    id: 'architect.projectNav.projectActions.oK',
+    defaultMessage: 'OK',
+    description: 'The label text in components / ProjectNav / ProjectActions.',
+  },
+  protocolSourceSaved: {
+    id: 'architect.projectNav.projectActions.protocolSourceSaved',
+    defaultMessage: 'Protocol source saved',
+    description: 'The title text in components / ProjectNav / ProjectActions.',
+  },
+  wasSavedTo: {
+    id: 'architect.projectNav.projectActions.wasSavedTo',
+    defaultMessage:
+      '"{protocolName}" was saved to {path}. {writtenCount, plural, one {# asset was written} other {# assets were written}} and {removedCount, plural, one {# stale asset was removed} other {# stale assets were removed}}.',
+    description:
+      'The description text in components / ProjectNav / ProjectActions.',
+  },
+  navigationActions: {
+    id: 'architect.projectNav.projectActions.navigationActions',
+    defaultMessage: 'Navigation actions',
+    description:
+      'The aria-label text in components / ProjectNav / ProjectActions.',
+  },
+  additionalActions: {
+    id: 'architect.projectNav.projectActions.additionalActions',
+    defaultMessage: 'Additional actions',
+    description:
+      'The aria-label text in components / ProjectNav / ProjectActions.',
+  },
+  downloadActions: {
+    id: 'architect.projectNav.projectActions.downloadActions',
+    defaultMessage: 'Download actions',
+    description:
+      'The aria-label text in components / ProjectNav / ProjectActions.',
+  },
+  downloaded: {
+    id: 'architect.projectNav.projectActions.downloaded',
+    defaultMessage: 'Downloaded',
+    description: 'Visible text in components / ProjectNav / ProjectActions.',
+  },
+  downloading: {
+    id: 'architect.projectNav.projectActions.downloading',
+    defaultMessage: 'Downloading...',
+    description: 'Visible text in components / ProjectNav / ProjectActions.',
+  },
+  download: {
+    id: 'architect.projectNav.projectActions.download',
+    defaultMessage: 'Download',
+    description: 'Visible text in components / ProjectNav / ProjectActions.',
+  },
+  sourceActions: {
+    id: 'architect.projectNav.projectActions.sourceActions',
+    defaultMessage: 'Source actions',
+    description:
+      'The aria-label text in components / ProjectNav / ProjectActions.',
+  },
+  saved: {
+    id: 'architect.projectNav.projectActions.saved',
+    defaultMessage: 'Saved',
+    description: 'Visible text in components / ProjectNav / ProjectActions.',
+  },
+  saving: {
+    id: 'architect.projectNav.projectActions.saving',
+    defaultMessage: 'Saving...',
+    description: 'Visible text in components / ProjectNav / ProjectActions.',
+  },
+});
 
 /**
  * What this page is doing with the protocol, which decides which actions are
@@ -60,6 +176,7 @@ const ProjectActions = ({
   additionalActions,
   mode = 'authoring',
 }: ProjectActionsProps) => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const activeProtocolId = useAppSelector(getActiveProtocolId);
   const protocol = useAppSelector(getCanonicalProtocol);
@@ -78,8 +195,8 @@ const ProjectActions = ({
   ].includes(location);
   const returnDestination = returnsToTimeline ? '/protocol' : '/';
   const returnLabel = returnsToTimeline
-    ? 'Return to Stages'
-    : 'Return to Start Screen';
+    ? intl.formatMessage(chromeMessages.returnToStages)
+    : intl.formatMessage(chromeMessages.returnToStartScreen);
   const handleReturn = useCallback(
     () => setLocation(returnDestination),
     [returnDestination, setLocation],
@@ -123,11 +240,24 @@ const ProjectActions = ({
     const confirmed = await openDialog({
       type: 'choice',
       intent: 'warning',
-      title: 'Save protocol source?',
-      description: `"${protocol.name}" will overwrite the canonical protocol source files in this repository.`,
+      title: createElement(AppMessage, {
+        message: messages.saveProtocolSource,
+      }),
+      description: createElement(AppMessage, {
+        message: messages.willOverwriteTheCanonical,
+        values: {
+          value1: protocol.name,
+        },
+      }),
       actions: {
-        primary: { label: 'Save to source', value: true },
-        cancel: { label: 'Cancel', value: false },
+        primary: {
+          label: createElement(AppMessage, { message: messages.saveToSource }),
+          value: true,
+        },
+        cancel: {
+          label: createElement(AppMessage, { message: commonMessages.cancel }),
+          value: false,
+        },
       },
     });
 
@@ -150,9 +280,22 @@ const ProjectActions = ({
         void openDialog({
           type: 'acknowledge',
           intent: 'destructive',
-          title: 'Source save failed',
-          description: `"${protocol.name}" could not be saved to source. ${detail}`,
-          actions: { primary: { label: 'OK', value: true } },
+          title: createElement(AppMessage, {
+            message: messages.sourceSaveFailed,
+          }),
+          description: (
+            <AppMessage
+              message={messages.couldNotBeSaved}
+              values={{ protocolName: protocol.name }}
+            />
+          ),
+          children: <ProtocolFailureDetails detail={detail} />,
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
         });
         return;
       }
@@ -161,18 +304,46 @@ const ProjectActions = ({
       void openDialog({
         type: 'acknowledge',
         intent: 'success',
-        title: 'Protocol source saved',
-        description: `"${protocol.name}" was saved to ${result.writtenProtocolPath}. ${result.writtenAssets.length} assets were written and ${result.removedAssets.length} stale assets were removed.`,
-        actions: { primary: { label: 'OK', value: true } },
+        title: createElement(AppMessage, {
+          message: messages.protocolSourceSaved,
+        }),
+        description: createElement(AppMessage, {
+          message: messages.wasSavedTo,
+          values: {
+            protocolName: protocol.name,
+            path: result.writtenProtocolPath,
+            writtenCount: result.writtenAssets.length,
+            removedCount: result.removedAssets.length,
+          },
+        }),
+        actions: {
+          primary: {
+            label: createElement(AppMessage, { message: messages.oK }),
+            value: true,
+          },
+        },
       });
     } catch (error) {
       const { message } = reportError(error);
       void openDialog({
         type: 'acknowledge',
         intent: 'destructive',
-        title: 'Source save failed',
-        description: `"${protocol.name}" could not be saved to source. ${message}`,
-        actions: { primary: { label: 'OK', value: true } },
+        title: createElement(AppMessage, {
+          message: messages.sourceSaveFailed,
+        }),
+        description: (
+          <AppMessage
+            message={messages.couldNotBeSaved}
+            values={{ protocolName: protocol.name }}
+          />
+        ),
+        children: <ProtocolFailureDetails detail={message} />,
+        actions: {
+          primary: {
+            label: createElement(AppMessage, { message: messages.oK }),
+            value: true,
+          },
+        },
       });
     } finally {
       setIsSavingSource(false);
@@ -242,21 +413,30 @@ const ProjectActions = ({
         />
       ) : undefined,
       children: [
-        <ToolbarGroup key="project-navigation" aria-label="Navigation actions">
+        <ToolbarGroup
+          key="project-navigation"
+          aria-label={intl.formatMessage(messages.navigationActions)}
+        >
           <ToolbarButton icon={<ArrowLeftToLine />} onClick={handleReturn}>
             {returnLabel}
           </ToolbarButton>
         </ToolbarGroup>,
         <ToolbarSeparator key="project-navigation-separator" />,
         additionalActions ? (
-          <ToolbarGroup key="additional" aria-label="Additional actions">
+          <ToolbarGroup
+            key="additional"
+            aria-label={intl.formatMessage(messages.additionalActions)}
+          >
             {additionalActions}
           </ToolbarGroup>
         ) : null,
         additionalActions ? (
           <ToolbarSeparator key="additional-separator" />
         ) : null,
-        <ToolbarGroup key="download" aria-label="Download actions">
+        <ToolbarGroup
+          key="download"
+          aria-label={intl.formatMessage(messages.downloadActions)}
+        >
           <ToolbarButton
             icon={downloadSuccess ? <Check /> : <Download />}
             variant="default"
@@ -265,25 +445,28 @@ const ProjectActions = ({
             onClick={handleDownload}
           >
             {downloadSuccess
-              ? 'Downloaded'
+              ? intl.formatMessage(messages.downloaded)
               : isExporting
-                ? 'Downloading...'
-                : 'Download'}
+                ? intl.formatMessage(messages.downloading)
+                : intl.formatMessage(messages.download)}
           </ToolbarButton>
         </ToolbarGroup>,
         canSaveToSource ? <ToolbarSeparator key="source-separator" /> : null,
         canSaveToSource ? (
-          <ToolbarGroup key="source" aria-label="Source actions">
+          <ToolbarGroup
+            key="source"
+            aria-label={intl.formatMessage(messages.sourceActions)}
+          >
             <ToolbarButton
               icon={sourceSaveSuccess ? <Check /> : <Save />}
               disabled={isSavingSource}
               onClick={handleSaveSource}
             >
               {sourceSaveSuccess
-                ? 'Saved'
+                ? intl.formatMessage(messages.saved)
                 : isSavingSource
-                  ? 'Saving...'
-                  : 'Save to source'}
+                  ? intl.formatMessage(messages.saving)
+                  : intl.formatMessage(messages.saveToSource)}
             </ToolbarButton>
           </ToolbarGroup>
         ) : null,
@@ -305,6 +488,7 @@ const ProjectActions = ({
       returnLabel,
       showHistoryActions,
       sourceSaveSuccess,
+      intl,
     ],
   );
 

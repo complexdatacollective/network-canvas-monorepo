@@ -1,3 +1,5 @@
+'use client';
+
 import { useCallback, useSyncExternalStore } from 'react';
 
 // navigator.onLine + online/offline events. Mirrors useMediaQuery's

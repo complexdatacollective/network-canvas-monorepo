@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+import { BootstrapTokenSchema } from '@codaco/studio-rpc';
+import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
+import { postmarkConfiguration } from '@codaco/studio-sync/postmark-email-sender';
+
+import { isProxyAddress } from '../observability/proxy.ts';
+
 // Deliberately NO `.default()` calls anywhere in this file. Defaults declared
 // here would be compiled into the production server bundle, which is how the
 // publicly-known development auth secret used to ship inside the built
@@ -18,9 +24,35 @@ export const serverSchemas = {
    */
   STUDIO_DEV_DEFAULTS: z.stringbool().optional(),
 
+  STUDIO_ROLE: z.enum(['web', 'worker', 'both']).optional(),
+  STUDIO_TELEMETRY: z.stringbool().optional(),
+
   PORT: z.coerce.number().int().min(0).max(65535).optional(),
   HOST: z.string().min(1).optional(),
+  STUDIO_METRICS_TOKEN: z
+    .string()
+    .min(32)
+    .max(256)
+    .regex(/^[!-~]+$/)
+    .optional(),
+  STUDIO_MANAGED_INGRESS_SECRET: z
+    .string()
+    .min(32)
+    .max(256)
+    .regex(/^[!-~]+$/)
+    .optional(),
   CLIENT_DIST: z.string().min(1).optional(),
+
+  /**
+   * Which of the two topologies this process is serving. Read at runtime by
+   * both entrypoints, so the managed deployment sets it in the container (or
+   * Netlify site) environment rather than at build time. Unset resolves to
+   * `self-hosted` in `resolve.ts` — the fail-closed direction, and the reason
+   * the default cannot live here.
+   */
+  STUDIO_DEPLOYMENT_MODE: z.enum(DEPLOYMENT_MODES).optional(),
+
+  STUDIO_BOOTSTRAP_TOKEN: BootstrapTokenSchema.optional(),
 
   // http(s) only: a bare `host:port` parses as a URL whose scheme is the
   // hostname, which the S3 client would then fail on far from here.
@@ -31,6 +63,19 @@ export const serverSchemas = {
   S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
 
   DATABASE_URL: z.string().min(1).optional(),
+  STUDIO_ENCRYPTION_KEYSET: z.string().min(1).max(32_768).optional(),
+  STUDIO_ENCRYPTION_KEY_PROVIDER: z.enum(['environment', 'aws-kms']).optional(),
+  // The encryption boundary validates these only when KMS is selected. The
+  // static Netlify entrypoint withholds all encryption/provider configuration.
+  STUDIO_ENCRYPTION_KMS_KEY_ARN: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_DEPLOYMENT: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_ACCESS_KEY_ID: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_SECRET_ACCESS_KEY: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_SESSION_TOKEN: z.string().optional(),
+  STUDIO_MAINTENANCE_DATABASE_URL: z.string().min(1).optional(),
+  // Parsed by production runtime admission and explicit operator entrypoints.
+  STUDIO_DATABASE_ALLOWED_LOGINS: z.string().optional(),
+  STUDIO_DATABASE_ADMINISTRATIVE_LOGINS: z.string().optional(),
 
   /**
    * 32 bytes of base64 is 44 characters, so the documented
@@ -49,6 +94,8 @@ export const serverSchemas = {
   PUBLIC_URL: z.url({ protocol: /^https?$/ }).optional(),
 
   SMTP_URL: z.string().min(1).optional(),
+  POSTMARK_SERVER_TOKEN: postmarkConfiguration.shape.serverToken.optional(),
+  POSTMARK_MESSAGE_STREAM: postmarkConfiguration.shape.messageStream,
   EMAIL_FROM: z.string().min(1).optional(),
 
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
@@ -57,6 +104,12 @@ export const serverSchemas = {
   MICROSOFT_CLIENT_SECRET: z.string().min(1).optional(),
   MICROSOFT_TENANT_ID: z.string().min(1).optional(),
 
+  /**
+   * Read only by the seed command. The floor refuses a placeholder: this is
+   * the one credential that opens every seeded team.
+   */
+  STUDIO_SEED_ADMIN_PASSWORD: z.string().min(12).optional(),
+
   TRUSTED_PROXIES: z
     .string()
     .transform((value) =>
@@ -64,6 +117,10 @@ export const serverSchemas = {
         .split(',')
         .map((entry) => entry.trim())
         .filter(Boolean),
+    )
+    .refine(
+      (entries) => entries.every(isProxyAddress),
+      'TRUSTED_PROXIES must contain only IP addresses or CIDRs',
     )
     .optional(),
 } as const;

@@ -1,13 +1,28 @@
+'use client';
+
 import type { SVGProps } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
+const messages = defineMessages({
+  title: {
+    id: 'frescoUi.icon.addARelationshipSingle',
+    defaultMessage: 'Add a relationship',
+    description:
+      'Accessible name (SVG title) of the add-a-relationship-single icon.',
+  },
+});
+
 export default function Icon(props: SVGProps<SVGSVGElement>) {
+  const intl = useAppIntl();
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 174.3 162.5"
       {...props}
     >
-      <title>Add a relationship</title>
+      <title>{intl.formatMessage(messages.title)}</title>
       <rect
         x="120.8"
         y="32.4"

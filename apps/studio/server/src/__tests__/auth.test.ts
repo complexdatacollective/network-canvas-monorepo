@@ -1,12 +1,12 @@
 import { safe } from '@orpc/client';
-import type pg from 'pg';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
+import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../db/seed.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
-import { stubAuthService } from './support/auth.ts';
+import { signInWithMagicLink, stubAuthService } from './support/auth.ts';
+import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,
@@ -20,6 +20,8 @@ const PRINCIPAL: SessionPrincipal = {
   email: 'researcher@example.com',
   emailVerified: true,
   name: 'Researcher',
+  // Non-null so `me` passing the preference through is observable below.
+  locale: 'en-GB',
   sessionId: 'session-1',
 };
 
@@ -27,6 +29,15 @@ describe('principal resolution', () => {
   it('resolves the cookie session into the RPC context', async () => {
     const auth = stubAuthService({
       getSession: () => Promise.resolve(PRINCIPAL),
+      // Better Auth's own team list drops the caller's role, so `me` is what
+      // carries it — including a legacy membership stored as one
+      // comma-separated value, which the wire schema takes as a plain string
+      // rather than rejecting the whole response over.
+      listMemberships: () =>
+        Promise.resolve([
+          { teamId: 'team-a', role: 'owner' },
+          { teamId: 'team-b', role: 'admin,member' },
+        ]),
     });
     const client = createRpcClient(createApp(readEnv(), { auth }));
     const me = await client.me();
@@ -35,6 +46,11 @@ describe('principal resolution', () => {
       email: 'researcher@example.com',
       emailVerified: true,
       name: 'Researcher',
+      locale: 'en-GB',
+      teams: [
+        { teamId: 'team-a', role: 'owner' },
+        { teamId: 'team-b', role: 'admin,member' },
+      ],
     });
   });
 
@@ -73,6 +89,7 @@ describe('principal resolution', () => {
     expect(status.auth).toEqual({
       enabled: true,
       magicLink: true,
+      emailAndPassword: true,
       socialProviders: [],
     });
   });
@@ -98,13 +115,22 @@ describe('principal resolution', () => {
 
 describe('unconfigured auth', () => {
   const env: StudioEnv = {
+    role: 'both',
+    telemetry: false,
     port: 3000,
+    metricsToken: undefined,
+    trustedProxies: [],
     host: '0.0.0.0',
     clientDist: undefined,
     s3: undefined,
     db: undefined,
+    maintenanceDb: undefined,
     auth: undefined,
     devDefaults: false,
+    deploymentMode: 'self-hosted',
+    seedAdminPassword: undefined,
+    databaseAllowedLogins: undefined,
+    databaseAdministrativeLogins: [],
   };
 
   it('refuses /api/auth with 503 problem JSON', async () => {
@@ -124,6 +150,7 @@ describe('unconfigured auth', () => {
     expect(status.auth).toEqual({
       enabled: false,
       magicLink: false,
+      emailAndPassword: false,
       socialProviders: [],
     });
   });
@@ -143,46 +170,6 @@ describe('unconfigured auth', () => {
 const env = readEnv();
 
 const db = await reachableDb();
-
-/**
- * Signs a fresh user in end to end against a provisioned scratch schema,
- * asserting each step of the flow. The schema must be freshly provisioned:
- * the magic-link limit (5/60s per IP) is durable in Postgres and vitest
- * always resolves to the same localhost key, so counters left by an earlier
- * run in a shared table would 429 the send.
- */
-async function signInWithMagicLink(pool: pg.Pool, prefix: string) {
-  if (!env.auth) throw new Error('dev env must configure auth');
-  const sent: { email: string; url: string }[] = [];
-  const auth = createBetterAuthService(env.auth, pool, {
-    sendMagicLink: (input) => {
-      sent.push(input);
-      return Promise.resolve();
-    },
-  });
-  const app = createApp(env, { auth });
-  const email = `${prefix}-${Date.now()}@example.com`;
-
-  const send = await app.request('/api/auth/sign-in/magic-link', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'origin': 'http://localhost:5173',
-    },
-    body: JSON.stringify({ email, callbackURL: '/' }),
-  });
-  expect(send.status).toBe(200);
-  expect(sent).toHaveLength(1);
-  expect(sent[0]?.email).toBe(email);
-
-  const verify = await app.request(sent[0]!.url);
-  expect([302, 200]).toContain(verify.status);
-  const setCookie = verify.headers.get('set-cookie');
-  expect(setCookie).toBeTruthy();
-  const cookie = (setCookie ?? '').split(';')[0]!;
-
-  return { app, auth, email, cookie };
-}
 
 function callBetterAuthOrganizationRoute(
   auth: AuthService,
@@ -211,6 +198,7 @@ describe.skipIf(!db)('magic-link sign-in', () => {
     try {
       await provisionScratchSchema(scratch.pool);
       const { app, email, cookie } = await signInWithMagicLink(
+        env,
         scratch.app,
         'researcher',
       );
@@ -227,6 +215,74 @@ describe.skipIf(!db)('magic-link sign-in', () => {
   });
 });
 
+describe.skipIf(!db)('email/password sign-in', () => {
+  // Exercises the seed script's credential account (src/db/seed.ts) against
+  // the real better-auth handler end to end — the same path that regressed
+  // silently when the account table was missing better-auth's `issuer`
+  // column (auth-schema.ts), because until this account existed nothing in
+  // this suite ever queried that table by provider.
+  //
+  // Seeded once for every case here; none of them writes anything another can
+  // see. `tiny` because these cases need the admin, a team and that team's
+  // tenant data — not the demo corpus's volume — and a demo seed is most of a
+  // second here and well over a minute on the CI runner, where every affected
+  // package's vitest workers share two vCPUs with the Postgres service
+  // container. The bound stays generous: it is here to fail a seed that has
+  // hung, not one sharing a machine.
+  const SEEDING_TIMEOUT_MS = 180_000;
+
+  let scratch: Awaited<ReturnType<typeof createScratchSchema>> | undefined;
+  let app: ReturnType<typeof createApp>;
+
+  const signIn = (password: string) => {
+    if (!env.auth) throw new Error('dev env must configure auth');
+    return app.request('/api/auth/sign-in/email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'origin': env.auth.baseUrl,
+      },
+      body: JSON.stringify({ email: SEED_ADMIN_EMAIL, password }),
+    });
+  };
+
+  beforeAll(async () => {
+    if (!db) return;
+    if (!env.auth) throw new Error('dev env must configure auth');
+    scratch = await createScratchSchema(db);
+    await provisionScratchSchema(scratch.pool);
+    await seed(scratch.pool, { scale: 'tiny' });
+    const auth = createBetterAuthService(env.auth, scratch.pool, {
+      sendMagicLink: () => Promise.resolve(),
+    });
+    app = createApp(env, { auth });
+  }, SEEDING_TIMEOUT_MS);
+
+  afterAll(async () => {
+    await scratch?.dispose();
+  });
+
+  it('signs the seeded admin in with the published password', async () => {
+    const response = await signIn(SEED_ADMIN_PASSWORD);
+    expect(response.status).toBe(200);
+    const setCookie = response.headers.get('set-cookie');
+    expect(setCookie).toBeTruthy();
+    const cookie = (setCookie ?? '').split(';')[0]!;
+
+    const me = await createRpcClient(app, { cookie }).me();
+    expect(me.email).toBe(SEED_ADMIN_EMAIL);
+  });
+
+  it('refuses a wrong password with a generic error', async () => {
+    const response = await signIn('not-the-password');
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      code: 'INVALID_EMAIL_OR_PASSWORD',
+    });
+    expect(response.headers.get('set-cookie')).toBeNull();
+  });
+});
+
 describe.skipIf(!db)('teams (organization plugin)', () => {
   it('creates a team and resolves the creator membership', async () => {
     if (!db) throw new Error('unreachable');
@@ -234,6 +290,7 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
     try {
       await provisionScratchSchema(scratch.pool);
       const { app, auth, cookie } = await signInWithMagicLink(
+        env,
         scratch.app,
         'owner',
       );
@@ -279,7 +336,11 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
     const scratch = await createScratchSchema(db);
     try {
       await provisionScratchSchema(scratch.pool);
-      const { auth, cookie } = await signInWithMagicLink(scratch.app, 'owner');
+      const { auth, cookie } = await signInWithMagicLink(
+        env,
+        scratch.app,
+        'owner',
+      );
       const create = await callBetterAuthOrganizationRoute(
         auth,
         '/api/auth/organization/create',

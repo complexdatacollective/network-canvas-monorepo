@@ -35,7 +35,9 @@ describe('Dropzone', () => {
     dropFile(dropzone, new File(['text'], 'notes.txt', { type: 'text/plain' }));
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/does not support \.txt/i);
+    expect(alert).toHaveTextContent(
+      /does not support these extensions: \.txt\. Supported extensions: \.json\./i,
+    );
     expect(dropzone).toHaveAttribute('aria-describedby', alert.id);
   });
 
@@ -58,7 +60,9 @@ describe('Dropzone', () => {
     await waitFor(() => expect(onDrop).toHaveBeenCalledOnce());
     expect(dropzone).toHaveAttribute('aria-busy', 'true');
     rejectImport?.(new Error('Import failed'));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Import failed');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Unable to import this file. Check its format and try again.',
+    );
     expect(dropzone).not.toHaveAttribute('aria-busy');
   });
 

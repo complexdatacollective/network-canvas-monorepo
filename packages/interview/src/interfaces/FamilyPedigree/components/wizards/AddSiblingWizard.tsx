@@ -1,7 +1,9 @@
+import { AppMessage } from '@codaco/app-i18n/react';
 import type { FramingId } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import type { OpenPedigreeDialog } from '../../familyPedigreeDialog';
+import { messages } from '../../messages';
 import type { CommitBatch, VariableConfig } from '../../store';
 import PersonFields from '../quickStartWizard/PersonFields';
 import { buildNodeOptions } from './buildNodeOptions';
@@ -70,28 +72,28 @@ export async function openAddSiblingWizard(
 
   const result = await openDialog({
     type: 'wizard',
-    title: 'Add sibling',
+    title: <AppMessage message={messages.addSibling} />,
     progress: null,
     steps: [
       {
-        title: 'Sibling details',
+        title: <AppMessage message={messages.siblingDetails} />,
         content: PersonDetailsStep,
       },
       {
-        title: 'Biological parents',
+        title: <AppMessage message={messages.biologicalParents} />,
         content: BioTriadConfigStep,
       },
       {
-        title: 'Other parents',
+        title: <AppMessage message={messages.otherParents} />,
         content: GenericOtherParentsStep,
       },
       {
-        title: 'Additional parents',
+        title: <AppMessage message={messages.additionalParents} />,
         content: GenericAdditionalParentsStep,
         skip: ({ getFieldValue }) => getFieldValue('hasOtherParents') !== true,
       },
       {
-        title: 'Parent partnerships',
+        title: <AppMessage message={messages.parentPartnerships} />,
         content: PartnershipsStep,
         skip: shouldSkipNewParentPartnerships,
       },

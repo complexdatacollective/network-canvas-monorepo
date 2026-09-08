@@ -11,6 +11,8 @@ import {
   useRef,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import {
@@ -21,9 +23,11 @@ import {
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { interviewToastManager } from './interviewToastManager';
 
 type InterviewToastContextValue = {
+  toastManager: ReturnType<typeof Toast.createToastManager>;
   forwardButtonRef: RefObject<HTMLButtonElement | null>;
   backButtonRef: RefObject<HTMLButtonElement | null>;
   orientation: 'vertical' | 'horizontal';
@@ -85,6 +89,8 @@ function InterviewToastItem({
 }: {
   toast: ToastObject<InterviewToastData>;
 }) {
+  const intl = useAppIntl();
+  const { close } = Toast.useToastManager<InterviewToastData>();
   const variant = (toast.type ?? 'default') as ToastVariant;
 
   const hasFocusedRef = useRef(false);
@@ -102,10 +108,10 @@ function InterviewToastItem({
   const handleBlur = useCallback(
     (e: FocusEvent<HTMLElement>) => {
       if (hasFocusedRef.current && !e.currentTarget.contains(e.relatedTarget)) {
-        interviewToastManager.close(toast.id);
+        close(toast.id);
       }
     },
-    [toast.id],
+    [close, toast.id],
   );
 
   const variantClasses = cx(
@@ -138,7 +144,7 @@ function InterviewToastItem({
           />
           <Toast.Close
             render={<CloseButton size="sm" />}
-            aria-label="Close"
+            aria-label={intl.formatMessage(commonMessages.close)}
             nativeButton
           />
         </Toast.Content>
@@ -151,13 +157,14 @@ function InterviewToastItem({
 }
 
 export function InterviewToastViewport() {
+  const intl = useAppIntl();
   const { toasts } = Toast.useToastManager();
   const portalContainer = usePortalContainer();
 
   return (
     <Toast.Portal container={portalContainer ?? undefined}>
       <Toast.Viewport
-        aria-label="Interview notifications"
+        aria-label={intl.formatMessage(messages.notifications)}
         className="pointer-events-none fixed inset-0 z-50"
       >
         {toasts.map((toast) => (
@@ -170,25 +177,27 @@ export function InterviewToastViewport() {
 
 type InterviewToastProviderProps = {
   children: ReactNode;
+  toastManager?: ReturnType<typeof Toast.createToastManager>;
   forwardButtonRef: RefObject<HTMLButtonElement | null>;
   backButtonRef: RefObject<HTMLButtonElement | null>;
   orientation: 'vertical' | 'horizontal';
 };
 
 /**
- * Provides button refs and orientation context for interview toast positioning.
- * Does NOT wrap in Toast.Provider — that is handled as a sibling provider in
- * the app-level Providers component to avoid nested providers.
+ * Shares the Shell's manager and positioning refs with its stage hooks.
+ * The matching Base UI provider wraps the sibling viewport. The module manager
+ * remains the fallback for standalone controls assembled outside a Shell.
  */
 export function InterviewToastProvider({
   children,
+  toastManager = interviewToastManager,
   forwardButtonRef,
   backButtonRef,
   orientation,
 }: InterviewToastProviderProps) {
   return (
     <InterviewToastContext.Provider
-      value={{ forwardButtonRef, backButtonRef, orientation }}
+      value={{ toastManager, forwardButtonRef, backButtonRef, orientation }}
     >
       {children}
     </InterviewToastContext.Provider>

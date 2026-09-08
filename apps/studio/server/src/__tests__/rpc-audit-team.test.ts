@@ -2,10 +2,10 @@ import { safe } from '@orpc/client';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
+import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,
@@ -22,6 +22,7 @@ const PRINCIPAL: SessionPrincipal = {
   email: 'rpc-audit-owner@example.com',
   emailVerified: true,
   name: 'RPC Audit Owner',
+  locale: null,
   sessionId: 'rpc-audit-owner-session',
 };
 
@@ -204,6 +205,7 @@ describe.skipIf(!db)('audited team RPC', () => {
       email: 'rpc-audit-invitee@example.com',
       emailVerified: true,
       name: 'RPC Audit Invitee',
+      locale: null,
       sessionId: 'rpc-audit-invitee-session',
     };
     await pool.query(
