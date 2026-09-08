@@ -619,6 +619,7 @@
   "fresco.protocols.AnonymousRecruitmentWarning.pleaseNote": "Aviso",
   "fresco.protocols.page.protocols": "Protocolos",
   "fresco.protocols.page.uploadAndManageYourInterviewProtocols": "Sube y administra tus protocolos de entrevista.",
+  "fresco.proxy.copyServerActionRefused": "Esta ruta no acepta solicitudes de Server Action.",
   "fresco.settings.ApiTokensSection.aPITokens": "Tokens de API",
   "fresco.settings.ApiTokensSection.aPITokensAreUsedToAuthenticateRequests": "Los tokens de API se usan para autenticar las solicitudes a la API de datos de entrevistas.",
   "fresco.settings.ApiTokensSection.enableAReadOnlyAPIForAccessing": "Habilita una API de solo lectura para acceder a los datos de entrevistas. Requiere un token de API para la autenticación.",
