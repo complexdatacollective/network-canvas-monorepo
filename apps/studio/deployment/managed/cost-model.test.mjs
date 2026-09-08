@@ -387,11 +387,14 @@ test('prices retained object versions, recovery copies, and 30-day readback', ()
   ).quantity = 0;
   assert.throws(
     () => evaluateManagedEstateCost(omittedPrimaryWritesAndInventory),
-    /8452 scheduled bucket inventories and measured version writes/,
+    /181060 scheduled bucket inventories and measured version writes/,
   );
 
   const exactPrimaryClassAMinimum = structuredClone(fixture);
-  exactPrimaryClassAMinimum.primaryObjectClassARequests = 5_952 + 2_500;
+  // Four primary buckets each need one authoritative reconciliation per minute
+  // for all 31 days. Database dump cadence cannot stand in for the five-minute
+  // object recovery target; the copied versions also require primary writes.
+  exactPrimaryClassAMinimum.primaryObjectClassARequests = 178_560 + 2_500;
   exactPrimaryClassAMinimum.lineItems.find(
     ({ category }) => category === 'primary-object-class-a',
   ).quantity =
@@ -407,7 +410,17 @@ test('prices retained object versions, recovery copies, and 30-day readback', ()
     exactPrimaryClassAMinimum.primaryObjectClassARequests / 1_000_000;
   assert.throws(
     () => evaluateManagedEstateCost(exactPrimaryClassAMinimum),
-    /8452 scheduled bucket inventories and measured version writes/,
+    /181060 scheduled bucket inventories and measured version writes/,
+  );
+
+  const halfHourlyInventory = structuredClone(fixture);
+  halfHourlyInventory.primaryObjectClassARequests = 5_952 + 2_500;
+  halfHourlyInventory.lineItems.find(
+    ({ category }) => category === 'primary-object-class-a',
+  ).quantity = halfHourlyInventory.primaryObjectClassARequests / 1_000_000;
+  assert.throws(
+    () => evaluateManagedEstateCost(halfHourlyInventory),
+    /181060 scheduled bucket inventories and measured version writes/,
   );
 });
 

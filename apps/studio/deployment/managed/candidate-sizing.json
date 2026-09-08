@@ -25,6 +25,7 @@
   },
   "recovery": {
     "backupIntervalMinutes": 30,
+    "objectReconciliationIntervalMinutes": 1,
     "retentionDays": 31,
     "requestsPerBackup": 2,
     "requestsPerValidation": 2,
