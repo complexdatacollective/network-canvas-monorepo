@@ -158,9 +158,9 @@
     },
     {
       "category": "validator-compute",
-      "quantity": 357120,
+      "quantity": 359520,
       "unitPriceUsd": 1.6666666666666667e-5,
-      "evidence": "illustrative GB-second price; independent 2 GB, 30-second execution requires a measured quote"
+      "evidence": "illustrative GB-second price; database validations and separately measured complete retained-version scrubs require a current quote"
     },
     {
       "category": "validator-requests",
@@ -228,5 +228,26 @@
       "unitPriceUsd": 0,
       "evidence": "placeholder requiring measured WebSocket usage and a current account-tier quote"
     }
-  ]
+  ],
+  "primaryObjectBucketInventories": {
+    "studio-production": {
+      "retainedVersionCount": 10000,
+      "requestsPerCompleteScan": 10
+    },
+    "studio-staging": {
+      "retainedVersionCount": 1000,
+      "requestsPerCompleteScan": 1
+    },
+    "registry-production": {
+      "retainedVersionCount": 1000,
+      "requestsPerCompleteScan": 1
+    },
+    "registry-staging": {
+      "retainedVersionCount": 500,
+      "requestsPerCompleteScan": 1
+    }
+  },
+  "objectScrubRunCount": 2,
+  "objectScrubMemoryGb": 2,
+  "objectScrubDurationSeconds": 600
 }

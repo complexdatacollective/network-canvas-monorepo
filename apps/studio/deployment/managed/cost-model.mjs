@@ -238,6 +238,8 @@ export function evaluateManagedEstateCost(
     'validatorRunCount',
     'validatorMemoryGb',
     'validatorDurationSeconds',
+    'objectScrubMemoryGb',
+    'objectScrubDurationSeconds',
     'validatorTransferGb',
     'backupStoredGb',
     'backupRequestCount',
@@ -251,6 +253,7 @@ export function evaluateManagedEstateCost(
     'primaryObjectCurrentCount',
     'primaryObjectMonthlyVersionChurnCount',
     'primaryObjectRetainedVersionCount',
+    'objectScrubRunCount',
     'postmarkMessageCount',
     'postmarkIncludedMessages',
     'workerMonthlyRequestCount',
@@ -282,6 +285,8 @@ export function evaluateManagedEstateCost(
 
   if (input.validatorMemoryGb === 0 || input.validatorDurationSeconds === 0)
     fail('validator memory and duration must be positive');
+  if (input.objectScrubMemoryGb === 0 || input.objectScrubDurationSeconds === 0)
+    fail('object scrub memory and duration must be positive');
 
   const dumpSizes = input.databaseDumpSizesGb;
   const databaseNames = Object.keys(sizing.services);
@@ -306,13 +311,13 @@ export function evaluateManagedEstateCost(
   const monthlyPoints =
     (sizing.monthlyHours * 60) / sizing.recovery.backupIntervalMinutes;
   const requiredValidations = monthlyPoints * databaseNames.length;
-  const requiredPrimaryBucketInventories =
-    ((sizing.monthlyHours * 60) /
-      sizing.recovery.objectReconciliationIntervalMinutes) *
-    Object.keys(sizing.services).length;
   const requiredObjectScrubRuns = Math.ceil(
     sizing.recovery.retentionDays / sizing.recovery.objectScrubIntervalDays,
   );
+  if (input.objectScrubRunCount < requiredObjectScrubRuns)
+    fail(
+      `objectScrubRunCount must cover at least ${requiredObjectScrubRuns} complete retained-version integrity scrubs`,
+    );
   if (
     !Number.isSafeInteger(input.validatorRunCount) ||
     input.validatorRunCount < requiredValidations
@@ -326,12 +331,12 @@ export function evaluateManagedEstateCost(
       requiredValidations * sizing.recovery.requestsPerBackup +
       input.primaryObjectMonthlyVersionChurnCount *
         sizing.recovery.backupRequestsPerObjectCopy +
-      requiredObjectScrubRuns *
+      input.objectScrubRunCount *
         input.primaryObjectRetainedVersionCount *
         sizing.recovery.backupRequestsPerObjectValidation,
     validatorRequestCount:
       input.validatorRunCount * sizing.recovery.requestsPerValidation +
-      requiredObjectScrubRuns *
+      input.objectScrubRunCount *
         input.primaryObjectRetainedVersionCount *
         sizing.recovery.validatorRequestsPerObjectValidation,
     // Every immutable archive remains locked for 31 days, including frequent
@@ -343,10 +348,10 @@ export function evaluateManagedEstateCost(
       input.primaryObjectRetainedVersionGb,
     backupEgressGb:
       monthlyPoints * dumpTotalGb +
-      requiredObjectScrubRuns * input.primaryObjectRetainedVersionGb,
+      input.objectScrubRunCount * input.primaryObjectRetainedVersionGb,
     validatorTransferGb:
       monthlyPoints * dumpTotalGb +
-      requiredObjectScrubRuns * input.primaryObjectRetainedVersionGb,
+      input.objectScrubRunCount * input.primaryObjectRetainedVersionGb,
   };
   for (const [field, minimum] of Object.entries(recoveryMinimums)) {
     finiteNonNegative(minimum, `minimum ${field}`);
@@ -366,6 +371,50 @@ export function evaluateManagedEstateCost(
     fail(
       'retained object version inventory must cover current objects and measured monthly churn',
     );
+  const buckets = input.primaryObjectBucketInventories;
+  if (
+    !buckets ||
+    typeof buckets !== 'object' ||
+    Array.isArray(buckets) ||
+    Object.keys(buckets).length !== databaseNames.length ||
+    !databaseNames.every((name) => Object.hasOwn(buckets, name))
+  )
+    fail(
+      'primaryObjectBucketInventories must measure all four primary buckets',
+    );
+  let retainedVersions = 0;
+  let requestsPerScan = 0;
+  for (const name of databaseNames) {
+    const bucket = buckets[name];
+    const versions = nonNegativeSafeInteger(
+      bucket?.retainedVersionCount,
+      `primaryObjectBucketInventories.${name}.retainedVersionCount`,
+    );
+    const requests = nonNegativeSafeInteger(
+      bucket?.requestsPerCompleteScan,
+      `primaryObjectBucketInventories.${name}.requestsPerCompleteScan`,
+    );
+    // R2/S3 ListObjectsV2 returns at most 1,000 keys. An empty bucket still
+    // needs a request; short pages/retries require a larger measured count.
+    if (requests < Math.max(1, Math.ceil(versions / 1_000)))
+      fail(
+        `primary bucket ${name} scan requests must cover every inventory page`,
+      );
+    retainedVersions += versions;
+    requestsPerScan += requests;
+  }
+  if (retainedVersions !== input.primaryObjectRetainedVersionCount)
+    fail(
+      'primary bucket inventories must cover the complete retained object version inventory',
+    );
+  nonNegativeSafeInteger(
+    requestsPerScan,
+    'complete inventory scan request count',
+  );
+  const requiredPrimaryBucketInventories =
+    ((sizing.monthlyHours * 60) /
+      sizing.recovery.objectReconciliationIntervalMinutes) *
+    requestsPerScan;
   if (
     input.primaryObjectClassBRequests <
     input.primaryObjectMonthlyVersionChurnCount
@@ -376,7 +425,7 @@ export function evaluateManagedEstateCost(
     input.primaryObjectMonthlyVersionChurnCount;
   if (input.primaryObjectClassARequests < requiredPrimaryClassARequests)
     fail(
-      `primary object Class A requests must cover at least ${requiredPrimaryClassARequests} scheduled bucket inventories and measured version writes`,
+      `primary object Class A requests must cover at least ${requiredPrimaryClassARequests} scheduled inventory pages and measured version writes`,
     );
   if (
     input.primaryObjectEgressGb <
@@ -417,8 +466,11 @@ export function evaluateManagedEstateCost(
     'backup-egress': input.backupEgressGb,
     'validator-compute':
       input.validatorRunCount *
-      input.validatorMemoryGb *
-      input.validatorDurationSeconds,
+        input.validatorMemoryGb *
+        input.validatorDurationSeconds +
+      input.objectScrubRunCount *
+        input.objectScrubMemoryGb *
+        input.objectScrubDurationSeconds,
     'validator-requests': input.validatorRequestCount,
     'validator-transfer': input.validatorTransferGb,
     'mail': 1,
