@@ -33,6 +33,8 @@
   "protocolBuilder.assignAttributes.valueHint": "Este valor se asigna a cada nodo creado en esta pregunta.",
   "protocolBuilder.assignAttributes.valueLabel": "Valor que se asignará",
   "protocolBuilder.assignAttributes.variableLabel": "Crear o seleccionar un atributo",
+  "protocolBuilder.coarseDateBound.monthPart": "Mes",
+  "protocolBuilder.coarseDateBound.yearPart": "Año",
   "protocolBuilder.codebookEditing.duplicateVariableName": "Ya existe un atributo con el nombre «{name}»",
   "protocolBuilder.codebookEditing.missingVariable": "No existe ningún atributo con el id de registro «{variableId}»",
   "protocolBuilder.codebookEditing.optionsDuplicateLabel": "Cada opción necesita una etiqueta única.",

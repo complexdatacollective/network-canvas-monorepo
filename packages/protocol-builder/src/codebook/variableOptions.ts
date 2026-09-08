@@ -190,16 +190,60 @@ export const readBooleanAnswers = (options: unknown): BooleanAnswers => {
   return [readBooleanAnswer(held[0], true), readBooleanAnswer(held[1], false)];
 };
 
+/** Whether neither of these two answers has been given any words. */
+const namesNoAnswer = (answers: BooleanAnswers): boolean =>
+  answers.every((answer) => answer.label.trim() === '');
+
+/**
+ * Whether these two answers are, entry for entry, the pair already stored.
+ *
+ * Asked of the protocol as it was found rather than of a reading of it, so
+ * that only a pair of TWO counts: an attribute holding an empty list is read
+ * as two blank fields the same way one holding no list at all is, and writing
+ * the fields back over the empty list would put two answers into a protocol
+ * that stored none.
+ *
+ * Everything the fieldset can change is compared, `negative` included — a
+ * switch flicked beside two blank labels is an answer field the researcher
+ * touched, and whitespace is compared as typed because the label is stored as
+ * typed.
+ */
+const isThePairAlreadyStored = (
+  answers: BooleanAnswers,
+  stored: unknown,
+): boolean => {
+  if (!Array.isArray(stored) || stored.length !== 2) return false;
+  if (!recordsBothBooleans(stored)) return false;
+  const held = readBooleanAnswers(stored);
+  return answers.every((answer, index) => {
+    const other = held[index];
+    return (
+      other !== undefined &&
+      answer.label === other.label &&
+      answer.value === other.value &&
+      answer.negative === other.negative
+    );
+  });
+};
+
 /**
  * The `options` block these two answers would be written as, or `undefined`
- * when neither of them has been named.
+ * when neither of them has been named and the attribute did not already store
+ * a pair saying so.
  *
- * Absent is not the same as empty here, and the difference is the
- * participant's: the boolean control offers Yes and No when the protocol names
- * no options at all, and offers nothing at all when it names an empty list —
- * which the schema refuses for exactly that reason. So an attribute nobody has
- * written words for carries no `options` key, and clearing both labels takes
- * the key away again rather than leaving two blank buttons behind.
+ * Absent is not the same as empty here, and neither is the same as a pair
+ * nobody has written words for — all three are things a participant meets
+ * differently. The boolean control offers Yes and No when the protocol names
+ * no options at all, offers nothing at all when it names an empty list (which
+ * the schema refuses for exactly that reason), and renders whatever entries it
+ * IS given: a stored pair of blank labels is two buttons with nothing on them.
+ *
+ * So an attribute nobody has written words for carries no `options` key, and
+ * clearing both labels takes the key away again rather than leaving two blank
+ * buttons behind — but a blank pair the protocol already stored is written
+ * back untouched. Which of those two a participant meets is the researcher's
+ * to settle by clearing the fields, and a save that only renamed the attribute
+ * never asked them.
  *
  * Whether there is an answer is judged after trimming, the way every other
  * unanswered-or-not question in this package is judged: a label of nothing but
@@ -211,10 +255,11 @@ export const readBooleanAnswers = (options: unknown): BooleanAnswers => {
  */
 const booleanOptionsFrom = (
   options: unknown,
+  storedOptions: unknown,
 ): readonly BooleanAnswer[] | undefined => {
   const answers = readBooleanAnswers(options);
-  if (answers.every((answer) => answer.label.trim() === '')) return undefined;
-  return answers;
+  if (!namesNoAnswer(answers)) return answers;
+  return isThePairAlreadyStored(answers, storedOptions) ? answers : undefined;
 };
 
 /**
@@ -233,15 +278,21 @@ const booleanOptionsFrom = (
  * A boolean's answers are passed through on the same terms wherever they are
  * not the pair the fieldset writes — see `heldBooleanAnswersReason`. Only
  * what the researcher was shown is rewritten.
+ *
+ * `storedOptions` is the list the editor opened on, and it settles the one
+ * question the draft alone cannot answer: two blank fields are what a
+ * researcher who has written nothing sees AND what one who has just cleared
+ * both sees, and those two save differently — see `booleanOptionsFrom`.
  */
 export const optionsForShape = (
   shape: OptionsShape | null,
   options: unknown,
+  storedOptions: unknown,
 ): unknown => {
   if (shape === null) return undefined;
   if (shape === 'choice') return options;
   if (!holdsEditableBooleanAnswers(options)) return options;
-  return booleanOptionsFrom(options);
+  return booleanOptionsFrom(options, storedOptions);
 };
 
 export type BooleanAnswerIssues = Readonly<Record<number, readonly string[]>>;
@@ -269,7 +320,10 @@ export type BooleanAnswerIssues = Readonly<Record<number, readonly string[]>>;
  * one button written twice. A categorical option's label is compared
  * case-insensitively because its VALUE becomes a key.
  *
- * Naming neither is not a refusal — see `booleanOptionsFrom`. Nor is anything
+ * Naming neither is not a refusal: it is the answer that offers Yes and No,
+ * and it is the state an attribute already storing a blank pair opens in —
+ * see `booleanOptionsFrom`, which is what decides between the two. Nor is
+ * anything
  * about a list the fieldset never offered: answers the researcher was not
  * shown are answers they cannot be asked to fix, and they are saved as they
  * were authored either way.
@@ -284,8 +338,8 @@ export const validateBooleanAnswers = (
   options: unknown,
 ): BooleanAnswerIssues => {
   if (!holdsEditableBooleanAnswers(options)) return {};
-  const written = booleanOptionsFrom(options);
-  if (written === undefined) return {};
+  const written = readBooleanAnswers(options);
+  if (namesNoAnswer(written)) return {};
   const issues: Record<number, string[]> = {};
   written.forEach((answer, index) => {
     if (answer.label.trim() === '') {
@@ -293,12 +347,7 @@ export const validateBooleanAnswers = (
     }
   });
   const [first, second] = written;
-  if (
-    first !== undefined &&
-    second !== undefined &&
-    issues[1] === undefined &&
-    first.label.trim() === second.label.trim()
-  ) {
+  if (issues[1] === undefined && first.label.trim() === second.label.trim()) {
     issues[1] = [createMessageError(messages.repeatedAnswer)];
   }
   return issues;

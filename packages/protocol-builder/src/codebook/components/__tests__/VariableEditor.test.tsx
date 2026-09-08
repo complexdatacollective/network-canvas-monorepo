@@ -1327,7 +1327,15 @@ describe('the settings the chosen input control takes', () => {
     });
   });
 
-  it('offers years a date bound can be authored at, past the window the interview offers by default', async () => {
+  /**
+   * A coarse bound is WRITTEN, past whatever years an interview would offer.
+   *
+   * The window a `DatePicker` shows a participant by default is 1920 to today.
+   * Those are answers; these are the edges of the list the answers come from,
+   * and a researcher who can only pick from the default list cannot author an
+   * earliest year of 1900 or a latest of 2030 at all.
+   */
+  it('takes years a date bound can be authored at, past the window the interview offers by default', async () => {
     const user = userEvent.setup();
     const onSubmitRequest = vi.fn(
       (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
@@ -1340,8 +1348,8 @@ describe('the settings the chosen input control takes', () => {
     };
     render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
 
-    await user.selectOptions(screen.getByLabelText('Earliest date'), '1900');
-    await user.selectOptions(screen.getByLabelText('Latest date'), '2030');
+    await user.type(screen.getByLabelText('Earliest date'), '1900');
+    await user.type(screen.getByLabelText('Latest date'), '2030');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
     await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
@@ -1349,6 +1357,113 @@ describe('the settings the chosen input control takes', () => {
       type: 'year',
       min: '1900',
       max: '2030',
+    });
+  });
+
+  /**
+   * A bound the protocol already holds is on screen, whatever year it names.
+   *
+   * `datePickerParametersSchema` takes any four-digit year of 1000 or later at
+   * the coarse resolutions, so a protocol written elsewhere can arrive holding
+   * a latest year of 4500 — a study horizon, or a placeholder somebody used
+   * for "no end". Offered as a closed list of years, that bound could only be
+   * one the list happened to include: a native select shows its placeholder
+   * when its value matches no option, so the field read as empty while the
+   * protocol still carried the year, and every save wrote it back unseen.
+   *
+   * Both halves of that are pinned here — that it is shown, and that a save
+   * touching only the name leaves it exactly as it was.
+   */
+  it('shows a year bound past any list of years, and keeps it through a rename', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'met',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', min: '1900', max: '4500' },
+    };
+    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+
+    expect(screen.getByLabelText('Latest date')).toHaveValue('4500');
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'firstMet');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      name: 'firstMet',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', min: '1900', max: '4500' },
+    });
+  });
+
+  /**
+   * And it can be written over, which is the half a visible-but-frozen field
+   * would still have failed: the year is a field the researcher types into,
+   * so correcting 4500 is the same gesture as writing it in the first place.
+   */
+  it('rewrites a year bound past any list of years', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'met',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', max: '4500' },
+    };
+    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+
+    const latest = screen.getByLabelText('Latest date');
+    await user.clear(latest);
+    await user.type(latest, '9999');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+      type: 'year',
+      max: '9999',
+    });
+  });
+
+  /**
+   * The month half stays a list, because there are twelve of them and they are
+   * named rather than numbered — and the year beside it is still written.
+   */
+  it('writes the year and picks the month of a bound at month resolution', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const variable = {
+      name: 'met',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'month' },
+    };
+    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Earliest date Year' }),
+      '4500',
+    );
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Earliest date Month' }),
+      '06',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+      type: 'month',
+      min: '4500-06',
     });
   });
 
@@ -2447,6 +2562,82 @@ describe('the two answers a boolean offers', () => {
     });
   });
 
+  /**
+   * A stored pair with nothing written on either answer is not the same
+   * protocol as an attribute holding no `options` key at all. `BooleanField`
+   * renders every entry it is given, and falls back to Yes and No only where
+   * the key is absent — so the pair is two blank buttons and the absent key is
+   * Yes and No, and which of the two a participant meets is the researcher's
+   * to settle by clearing the fields. An edit that only renamed the attribute
+   * never asked that question, so the pair is written back as it was found.
+   */
+  it('keeps a stored pair whose two answers are blank, through an edit that only renames it', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: '', value: true },
+        // Whitespace and all: an answer nobody touched is written back as it
+        // was authored, and trimming decides only whether it has been named.
+        { label: ' ', value: false },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'starred');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      ...committed,
+      name: 'starred',
+    });
+  });
+
+  /**
+   * The other side of it: those two blank fields are still the editor for that
+   * pair, and naming both of them writes what was named.
+   */
+  it('writes the answers a researcher names onto a stored pair that was blank', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: '', value: true },
+        { label: '', value: false },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+      'Always',
+    );
+    await user.type(
+      screen.getByRole('textbox', { name: 'Label for “false”' }),
+      'Never',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).options).toEqual([
+      { label: 'Always', value: true },
+      { label: 'Never', value: false },
+    ]);
+  });
+
   it('creates a boolean together with the answers it offers', async () => {
     const user = userEvent.setup();
     const onSubmitRequest = vi.fn(
@@ -2487,5 +2678,139 @@ describe('the two answers a boolean offers', () => {
         { label: 'No', value: false },
       ],
     });
+  });
+});
+
+/**
+ * Where the strong destructive ink is opted into, and where it must not be.
+ *
+ * `--destructive` is an ink AND a fill: a field's error text is drawn with it,
+ * and so is the BACKGROUND of a destructive button, whose icon is drawn with
+ * `--destructive-contrast`. The tinted option and answer rows redeclare
+ * `--destructive` as the stronger mixture so an error on them stays legible —
+ * and a redeclaration is inherited by everything below the element carrying
+ * it. Put on the row's own surface it therefore repaints the remove button's
+ * fill while leaving the icon on top of it where it was: 2.85:1 on the default
+ * dark theme, where the untouched pair reaches 3.85:1 and the WCAG threshold
+ * for a control is 3:1.
+ *
+ * Asserted on class placement rather than on colour because these are custom
+ * properties resolved by a stylesheet jsdom does not load; what the component
+ * decides, and all it decides, is which subtree inherits the override. The
+ * measured ratios live in `Colors.stories.tsx`, which reads them in a browser.
+ */
+describe('the strong destructive ink a tinted row opts into', () => {
+  const STRONG_INK = '[--destructive:var(--destructive-strong)]';
+  /** What `Surface` puts on the element whose background it tints. */
+  const TINTED_SURFACE = 'bg-surface-accent';
+
+  const elementsClassed = (token: string): HTMLElement[] =>
+    Array.from(document.querySelectorAll<HTMLElement>('*')).filter((element) =>
+      element.classList.contains(token),
+    );
+
+  /**
+   * The live region `FieldErrors` mounts for a field, error or no error — the
+   * content the strong ink exists for.
+   */
+  const errorRegionOf = (fieldName: string): HTMLElement => {
+    const region = document.querySelector<HTMLElement>(
+      `[data-field-name="${fieldName}"] [aria-live]`,
+    );
+    if (region === null) {
+      throw new Error(`no error region for the field "${fieldName}"`);
+    }
+    return region;
+  };
+
+  /**
+   * The rule both rows follow: the override sits INSIDE the surface it tints,
+   * on the field content, never on the surface itself.
+   */
+  const expectScopedToFieldContent = (fieldNames: readonly string[]) => {
+    const owners = elementsClassed(STRONG_INK);
+    expect(owners.length).toBeGreaterThan(0);
+    const surfaces = elementsClassed(TINTED_SURFACE);
+    expect(surfaces.length).toBeGreaterThan(0);
+    for (const owner of owners) {
+      expect(owner.classList.contains(TINTED_SURFACE)).toBe(false);
+    }
+    for (const fieldName of fieldNames) {
+      const region = errorRegionOf(fieldName);
+      expect(owners.some((owner) => owner.contains(region))).toBe(true);
+    }
+  };
+
+  it('reaches every option field of a choice, and not the button that removes the option', () => {
+    const existing = {
+      name: 'preference',
+      type: 'categorical',
+      options: [
+        { label: 'Low', value: 'low' },
+        { label: 'High', value: 'high' },
+      ],
+    } as const;
+
+    render(
+      <VariableEditor
+        openId="edit-strong-ink"
+        mode="update"
+        subject={SUBJECT}
+        authoritativeDocument={personDocument({ preference: existing })}
+        variableId="preference"
+        initialDraft={existing}
+        description="Update attribute"
+        createRequestId={() => 'request-strong-ink'}
+        onSubmitRequest={() => APPLIED}
+        onComplete={() => undefined}
+      />,
+    );
+
+    // Asserted before the placement rule below, so this test fails on the
+    // harm itself rather than on the shape the fix happens to take.
+    const removeButtons = screen.getAllByRole('button', {
+      name: /^Remove option \d+$/,
+    });
+    expect(removeButtons).toHaveLength(2);
+    for (const button of removeButtons) {
+      expect(
+        elementsClassed(STRONG_INK).some((owner) => owner.contains(button)),
+      ).toBe(false);
+    }
+
+    expectScopedToFieldContent([
+      'option-1-label',
+      'option-1-value',
+      'option-2-label',
+      'option-2-value',
+    ]);
+  });
+
+  it('reaches the answer fields of a boolean without being put on the row itself', () => {
+    const variable = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+    } as const;
+
+    render(
+      <VariableEditor
+        openId="boolean-strong-ink"
+        mode="update"
+        subject={SUBJECT}
+        authoritativeDocument={personDocument({ flagged: variable })}
+        variableId="flagged"
+        initialDraft={variable}
+        description="Update the attribute"
+        createRequestId={() => 'request-boolean-strong-ink'}
+        onSubmitRequest={() => APPLIED}
+        onComplete={() => undefined}
+      />,
+    );
+
+    expectScopedToFieldContent([
+      'boolean-answer-true-label',
+      'boolean-answer-false-label',
+    ]);
   });
 });

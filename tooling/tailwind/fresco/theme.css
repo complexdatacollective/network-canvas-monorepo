@@ -274,12 +274,20 @@
    * per theme for exactly this reason and says so.
    *
    * Read only where a surface opts in — `[--destructive:var(--destructive-strong)]`
-   * on the element that tints its own background — so the colour every button,
-   * badge and page-level error is drawn with does not move. Opting in reads
-   * the theme variable rather than this token: this mapping is inlined into
-   * the utilities Tailwind generates (`text-destructive-strong`), which
-   * resolve at the use site, but `var(--color-destructive-strong)` written out
-   * by hand reads the `:root` copy and freezes again.
+   * on the destructive TEXT inside a tinted surface — so the colour every
+   * button, badge and page-level error is drawn with does not move. On the
+   * text and not on the surface, because `--destructive` is a fill as well as
+   * an ink: a destructive button paints its background with it and the icon on
+   * top with `--destructive-contrast`, so an override a whole subtree inherits
+   * moves the fill and leaves the foreground where it was. It did: the remove
+   * button on the codebook's option rows landed at 2.85:1 against its own
+   * white icon on the default dark theme, where the untouched pair reaches
+   * 3.85:1 and a control needs 3:1.
+   *
+   * Opting in reads the theme variable rather than this token: this mapping is
+   * inlined into the utilities Tailwind generates (`text-destructive-strong`),
+   * which resolve at the use site, but `var(--color-destructive-strong)`
+   * written out by hand reads the `:root` copy and freezes again.
    */
   --color-destructive-strong: var(--destructive-strong);
 
