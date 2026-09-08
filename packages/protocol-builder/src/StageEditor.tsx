@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { createElement, useMemo } from 'react';
 
 import type { StageType } from '@codaco/protocol-validation';
 
@@ -8,7 +8,10 @@ import type {
   StageEditorComponent,
   StageEditorRegistry,
 } from './stage-editor-contract.ts';
-import { stageEditorRegistry } from './stageEditorRegistry.ts';
+import {
+  stageEditorRegistry,
+  stageEditorsWithHostOverrides,
+} from './stageEditorRegistry.ts';
 
 /**
  * Thrown when the session holds a stage no family has claimed.
@@ -33,9 +36,17 @@ export class UnregisteredStageTypeError extends Error {
 export type StageEditorProps = Readonly<{
   controller: StageEditorController;
   /**
-   * The editors to dispatch through. Defaults to the package's own composed
-   * registry; a host supplies its own only to add or replace an interface it
-   * owns.
+   * Editors of the host's own, merged OVER the package's composed registry:
+   * the entries it names are the host's, and every other interface keeps the
+   * editor the package ships. A host supplies this to add an interface it owns
+   * or to replace one it wants to render differently, never to take the rest
+   * away — see `stageEditorsWithHostOverrides`.
+   *
+   * The dispatcher PR that lands after the families makes the registry TOTAL —
+   * every schema member has an editor, and `StageEditorRegistry` can be
+   * required rather than partial — and will revisit this prop. Whatever it
+   * becomes, the rule it has to keep is this one: a host never loses a
+   * built-in editor by supplying one of its own.
    */
   registry?: StageEditorRegistry | Partial<StageEditorRegistry>;
   /**
@@ -57,12 +68,17 @@ export type StageEditorProps = Readonly<{
  */
 export default function StageEditor({
   controller,
-  registry = stageEditorRegistry,
+  registry,
   actions,
 }: StageEditorProps) {
+  const editors = useMemo(
+    () => stageEditorsWithHostOverrides(stageEditorRegistry, registry),
+    [registry],
+  );
+
   return (
     <NamedStageEditor
-      registry={registry}
+      registry={editors}
       controller={controller}
       stageType={controller.snapshot.editedSection.identity.type}
       {...(actions === undefined ? {} : { actions })}
