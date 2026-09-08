@@ -451,6 +451,14 @@
     "defaultMessage": "Add option",
     "description": "Button that adds an empty row to the list of answers a participant may choose from."
   },
+  "protocolBuilder.codebookVariable.answersHint": {
+    "defaultMessage": "Write what the participant chooses between. Left empty, they are offered Yes and No. A negative answer is shown in red when it is selected.",
+    "description": "Guidance under the heading over a yes/no attribute’s two answers. Naming neither is a real answer: the interview offers its own translated Yes and No when the protocol names none."
+  },
+  "protocolBuilder.codebookVariable.answersLegend": {
+    "defaultMessage": "The two answers",
+    "description": "Heading over the words on the two answers a yes/no attribute puts in front of a participant."
+  },
   "protocolBuilder.codebookVariable.booleanAnswerLabel": {
     "defaultMessage": "{records, select, true {Label for “true”} other {Label for “false”}}",
     "description": "Label of the field holding the words on one of the two answers a yes/no attribute offers. records says which of the two stored values this answer records; “true” and “false” are the literal values the protocol stores and an export records, so they stay as they are."
@@ -526,6 +534,14 @@
   "protocolBuilder.codebookVariable.optionsLegend": {
     "defaultMessage": "Allowed values",
     "description": "Heading over the list of answers a participant may choose from for this attribute. A required marker follows it."
+  },
+  "protocolBuilder.codebookVariable.parametersHint": {
+    "defaultMessage": "These settings belong to the input control this attribute is collected with, so they apply wherever it is asked for.",
+    "description": "Guidance under the heading over an input control’s settings, saying that they follow the attribute into every interview step that asks for it."
+  },
+  "protocolBuilder.codebookVariable.parametersLegend": {
+    "defaultMessage": "What this control accepts",
+    "description": "Heading over the settings the input control an attribute is collected with takes — the bounds of a date, the words at each end of a sliding scale."
   },
   "protocolBuilder.codebookVariable.removeOption": {
     "defaultMessage": "Remove option {index}",
@@ -805,7 +821,7 @@
   },
   "protocolBuilder.compoundFailure.unexplained": {
     "defaultMessage": "This change could not be saved, and nothing was altered. Wait a moment and try again.",
-    "description": "Refusal shown in a codebook editor when saving threw with no explanation a researcher could act on. The last resort."
+    "description": "Refusal shown in a codebook editor when saving was refused for a reason there are no words for — it threw with no explanation a researcher could act on, or the application it is running in named a reason this editor does not know. The last resort."
   },
   "protocolBuilder.contentBlock.audioHint": {
     "defaultMessage": "The audio the participant can play when they reach this block.",
@@ -3335,6 +3351,10 @@
     "defaultMessage": "Anchor date",
     "description": "Label of the field holding the date a relative date picker measures its window from."
   },
+  "protocolBuilder.variableParameters.anchorNotADate": {
+    "defaultMessage": "Write the anchor date as YYYY-MM-DD.",
+    "description": "Refusal shown under the anchor-date field when what is written there is not a whole calendar date. YYYY-MM-DD is the literal format the protocol stores and is not translated."
+  },
   "protocolBuilder.variableParameters.beforeHint": {
     "defaultMessage": "How far back from the anchor the participant can choose. Left empty, {days, number} days.",
     "description": "Guidance under the days-before field. days is the number of days the interview assumes when the researcher writes none."
@@ -3346,6 +3366,18 @@
   "protocolBuilder.variableParameters.boundsCleared": {
     "defaultMessage": "The earliest and latest dates were cleared, because they were set at the previous resolution. Set them again if you still need them.",
     "description": "Announcement made after the researcher changes how precise a date this field collects, which throws away the earliest and latest dates because they were stored at the old precision."
+  },
+  "protocolBuilder.variableParameters.dateNotAtResolution": {
+    "defaultMessage": "Write this date as {pattern}, to match the resolution chosen above.",
+    "description": "Refusal shown under one of the two bounding dates of a date field when it is not written at the precision the field collects. pattern is the literal format the protocol stores — YYYY-MM-DD, YYYY-MM or YYYY — and is not translated."
+  },
+  "protocolBuilder.variableParameters.datesOutOfOrder": {
+    "defaultMessage": "The latest date cannot be earlier than the earliest date.",
+    "description": "Refusal shown under the latest-date field when the researcher has set it before the earliest date, which would leave the participant no date to choose."
+  },
+  "protocolBuilder.variableParameters.daysNotWhole": {
+    "defaultMessage": "Write a whole number of days, zero or more.",
+    "description": "Refusal shown under one of the two day-count fields of a relative date field when it holds something other than a whole number of days that is not negative."
   },
   "protocolBuilder.variableParameters.maxHint": {
     "defaultMessage": "The latest date the participant can choose. Left empty, the picker ends on the date of the interview.",
@@ -3414,6 +3446,10 @@
   "protocolBuilder.variableParameters.resolutionYear": {
     "defaultMessage": "Year only (YYYY)",
     "description": "Choice offered for how precise a date a field collects: a year on its own. The bracketed pattern is the literal format the protocol stores and is not translated."
+  },
+  "protocolBuilder.variableParameters.settingsRefused": {
+    "defaultMessage": "These settings cannot be saved as they are written. Check the values below.",
+    "description": "Refusal shown over the whole block of settings an input control takes, when the protocol refuses them for a reason the editor has no wording of its own for. The settings themselves are listed underneath it."
   },
   "protocolBuilder.variablePicker.attributeTypeLabel": {
     "defaultMessage": "Attribute type: {attributeType}",

@@ -1,5 +1,4 @@
-import { defineMessages } from '@codaco/app-i18n/messages';
-import type { IntlShape } from '@codaco/app-i18n/messages';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { ComponentTypes, VariableTypes } from '@codaco/protocol-validation';
 
 const messages = defineMessages({
@@ -192,17 +191,22 @@ export type BooleanAnswerIssues = Readonly<Record<number, readonly string[]>>;
  * case-insensitively because its VALUE becomes a key.
  *
  * Naming neither is not a refusal — see `booleanOptionsFrom`.
+ *
+ * Encoded rather than formatted, and so taking no formatter: this is asked
+ * while a form is being judged, where there is no reader and no language, and
+ * its answer is held in the editor's state until the next submission.
+ * `FieldErrors` decodes it where it renders it, so a refusal already on screen
+ * follows a change of language while it waits.
  */
 export const validateBooleanAnswers = (
   options: unknown,
-  intl: IntlShape,
 ): BooleanAnswerIssues => {
   const written = booleanOptionsFrom(options);
   if (written === undefined) return {};
   const issues: Record<number, string[]> = {};
   written.forEach((answer, index) => {
     if (answer.label.trim() === '') {
-      issues[index] = [intl.formatMessage(messages.unnamedAnswer)];
+      issues[index] = [createMessageError(messages.unnamedAnswer)];
     }
   });
   const [first, second] = written;
@@ -212,7 +216,7 @@ export const validateBooleanAnswers = (
     issues[1] === undefined &&
     first.label.trim() === second.label.trim()
   ) {
-    issues[1] = [intl.formatMessage(messages.repeatedAnswer)];
+    issues[1] = [createMessageError(messages.repeatedAnswer)];
   }
   return issues;
 };
