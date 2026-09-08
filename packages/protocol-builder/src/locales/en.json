@@ -947,6 +947,10 @@
     "defaultMessage": "This change could not be saved, and nothing was altered. Wait a moment and try again.",
     "description": "Refusal shown in a codebook editor when saving was refused for a reason there are no words for — it threw with no explanation a researcher could act on, or the application it is running in named a reason this editor does not know. The last resort."
   },
+  "protocolBuilder.contentBlock.audioDescriptionHint": {
+    "defaultMessage": "What this recording is, read aloud in place of the file’s name to a participant using a screen reader.",
+    "description": "Guidance under the description control of a block that plays an audio recording."
+  },
   "protocolBuilder.contentBlock.audioHint": {
     "defaultMessage": "The audio the participant can play when they reach this block.",
     "description": "Guidance under the file picker of a block that plays an audio recording."
@@ -958,6 +962,14 @@
   "protocolBuilder.contentBlock.contentLabel": {
     "defaultMessage": "Content",
     "description": "Label of the control holding what one piece of a page actually shows, whichever kind it is."
+  },
+  "protocolBuilder.contentBlock.descriptionLabel": {
+    "defaultMessage": "Description",
+    "description": "Label of the control holding the words that stand in for a picture, an audio recording or a video for a participant who cannot see or hear it."
+  },
+  "protocolBuilder.contentBlock.imageDescriptionHint": {
+    "defaultMessage": "What this image shows, read aloud to a participant who cannot see it. Leave it empty if the image is decorative.",
+    "description": "Guidance under the description control of a block that shows a picture. Decorative means the picture adds nothing a participant would miss."
   },
   "protocolBuilder.contentBlock.imageHint": {
     "defaultMessage": "The image the participant sees when they reach this block.",
@@ -1074,6 +1086,10 @@
   "protocolBuilder.contentBlock.unusableTitle": {
     "defaultMessage": "This block cannot be shown",
     "description": "Warning heading shown when a piece of a page points at a file the page cannot present."
+  },
+  "protocolBuilder.contentBlock.videoDescriptionHint": {
+    "defaultMessage": "What this video shows, read aloud in place of the file’s name to a participant using a screen reader.",
+    "description": "Guidance under the description control of a block that plays a video."
   },
   "protocolBuilder.contentBlock.videoHint": {
     "defaultMessage": "The video the participant can play when they reach this block.",

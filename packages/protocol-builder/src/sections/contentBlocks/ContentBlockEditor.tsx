@@ -4,6 +4,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
@@ -147,6 +148,33 @@ const messages = defineMessages({
     description:
       'Refusal shown under the file picker of a video block when nothing has been chosen.',
   },
+  descriptionLabel: {
+    id: 'protocolBuilder.contentBlock.descriptionLabel',
+    defaultMessage: 'Description',
+    description:
+      'Label of the control holding the words that stand in for a picture, an audio recording or a video for a participant who cannot see or hear it.',
+  },
+  imageDescriptionHint: {
+    id: 'protocolBuilder.contentBlock.imageDescriptionHint',
+    defaultMessage:
+      'What this image shows, read aloud to a participant who cannot see it. Leave it empty if the image is decorative.',
+    description:
+      'Guidance under the description control of a block that shows a picture. Decorative means the picture adds nothing a participant would miss.',
+  },
+  audioDescriptionHint: {
+    id: 'protocolBuilder.contentBlock.audioDescriptionHint',
+    defaultMessage:
+      'What this recording is, read aloud in place of the file’s name to a participant using a screen reader.',
+    description:
+      'Guidance under the description control of a block that plays an audio recording.',
+  },
+  videoDescriptionHint: {
+    id: 'protocolBuilder.contentBlock.videoDescriptionHint',
+    defaultMessage:
+      'What this video shows, read aloud in place of the file’s name to a participant using a screen reader.',
+    description:
+      'Guidance under the description control of a block that plays a video.',
+  },
   sizeLabel: {
     id: 'protocolBuilder.contentBlock.sizeLabel',
     defaultMessage: 'Display size',
@@ -168,24 +196,38 @@ const messages = defineMessages({
  * Whole sentences per kind rather than a noun dropped into a template: the
  * hint is the only place a researcher is told what this control holds, and a
  * translated sentence is not the English one with a word swapped.
+ *
+ * `description` is the words that stand in for the file itself, and the reason
+ * only media kinds have one: the interview runtime reads a block's
+ * `description` as an image's alt text and as the accessible name of an audio
+ * or video player, and a text block already IS its words. It is optional in
+ * the schema and optional here — an image a page shows for decoration is
+ * correctly described by nothing at all, which `alt=""` is how HTML spells.
  */
 const MEDIA_COPY: Readonly<
   Record<
     Exclude<ContentBlockKind, 'text'>,
-    Readonly<{ hint: MessageDescriptor; required: MessageDescriptor }>
+    Readonly<{
+      hint: MessageDescriptor;
+      required: MessageDescriptor;
+      description: MessageDescriptor;
+    }>
   >
 > = Object.freeze({
   image: Object.freeze({
     hint: messages.imageHint,
     required: messages.imageRequired,
+    description: messages.imageDescriptionHint,
   }),
   audio: Object.freeze({
     hint: messages.audioHint,
     required: messages.audioRequired,
+    description: messages.audioDescriptionHint,
   }),
   video: Object.freeze({
     hint: messages.videoHint,
     required: messages.videoRequired,
+    description: messages.videoDescriptionHint,
   }),
 });
 
@@ -274,14 +316,29 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
         />
       )}
       {kind !== undefined && kind !== 'text' && (
-        <DialogFormField<typeof ResourcePicker>
-          name={CONTENT_BLOCK_SLOTS[kind]}
-          component={ResourcePicker}
-          label={intl.formatMessage(messages.contentLabel)}
-          hint={intl.formatMessage(MEDIA_COPY[kind].hint)}
-          kind={kind}
-          required={intl.formatMessage(MEDIA_COPY[kind].required)}
-        />
+        <>
+          <DialogFormField<typeof ResourcePicker>
+            name={CONTENT_BLOCK_SLOTS[kind]}
+            component={ResourcePicker}
+            label={intl.formatMessage(messages.contentLabel)}
+            hint={intl.formatMessage(MEDIA_COPY[kind].hint)}
+            kind={kind}
+            required={intl.formatMessage(MEDIA_COPY[kind].required)}
+          />
+          {/* Beside the file rather than the slots, because it describes the
+              block and not the draft: it is stored as the block's own
+              `description` on both page schemas, so it registers under that
+              name and needs neither a slot nor a place in the collapse. An
+              empty one is spelled by the key being absent, which the section's
+              own normaliser does for every control that holds nothing. */}
+          <DialogFormField<typeof InputField>
+            name="description"
+            component={InputField}
+            label={intl.formatMessage(messages.descriptionLabel)}
+            hint={intl.formatMessage(MEDIA_COPY[kind].description)}
+            initialValue={asString(item.description) ?? ''}
+          />
+        </>
       )}
       {pageBlocksCarrySize(identity.type) &&
         (kind === 'image' || kind === 'video') && (
