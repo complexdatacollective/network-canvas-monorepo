@@ -85,3 +85,46 @@ The shared PostgreSQL pool is merged in [PR #1709](https://github.com/complexdat
 The template exchange format is merged in [PR #1708](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1708), reviewed head `5b5a3a25b1ec30ea40629f9fb5cbedff4788eba7`, merge `862c656c93dd2539fa7ef4d2a086b23ef02f7163`. Final integration passed 92 format, kind, and pool-configuration tests plus four startup privacy tests, both types, and repository quality gates. All 80 CI checks completed without failures before a clean current-head external review. Native archive controls and deliberate mutations qualified integrity, canonicalization, decompression bounds, asset screening, and kind enforcement. Both commits are verified ancestors of `origin/main`. The registry service and Studio publication/import integration remain separate pending work.
 
 Baseline verification: all 54 Studio server test files passed (1,169 tests) against the existing local PostgreSQL and MinIO services. Independent plan review added exact recovery/rotation/runbook criteria and old-client asset retention. Live Netlify inventory confirms the existing `networkcanvas-studio` project already owns `networkcanvas.studio`; preserve its routing until the replacement deployment has passed qualification.
+
+## Continuation audit: 2026-09-08
+
+The remaining work was re-audited against combined implementation
+`a37a1c3eaa315ce912a92ca3c4c41e287d59ee59`, the epic and its open children.
+The following are executable gaps; open PRs and local fixture results do not
+close them.
+
+1. Complete Studio recovery authorization reconciliation, restored session and
+   one-time credential invalidation, delivery reconciliation, guarded reopening,
+   and authenticated Studio/Registry smoke with safely resumed workers. The
+   distribution qualifier currently reaches a validated quarantine and now emits
+   an incomplete receipt so publication cannot mistake it for full recovery.
+2. Prove telemetry-off behavior from the running fresh and upgraded images with
+   an external-connection detector and a positive control, including browser, web
+   and worker traffic.
+3. Implement researcher audit-alert dispatch, durable in-app/read state, email
+   delivery, rate limits and ambiguous-send handling through the existing outbox
+   and mail seams. This is assigned to a separate implementation agent.
+4. Complete the bounded log collector, metrics scraping and target heartbeat,
+   provider transports, persistent cursor, independently anchored budget, and
+   operator alert routing. Sanitizer, Fly envelope, budget and anchor components
+   are under separate implementation and adversarial review.
+5. Complete managed database enrollment, immutable activation/promotion/rollback,
+   independent database/object recovery workers and full drill orchestration.
+6. Generate a configuration-derived subprocessor inventory with explicit unknown
+   contractual fields and a drift check.
+
+PRs #1718, #1723, #1734, #1735 and #1736 remain under review or awaiting their
+parents. Current-head findings, required checks and post-merge ancestry remain
+mandatory delivery gates. The separately rejected migration conflict resolution
+stays pending authorization; unrelated implementation continues in isolated
+trees.
+
+Live Netlify inventory on this date confirms production project
+`networkcanvas-studio` owns `networkcanvas.studio`, and
+`networkcanvas-studio-staging` is assigned `studio.networkcanvas.dev`. The
+staging response did not identify a current ready deploy. No routing or deploy
+was changed by this audit. Persistent backend, database, KMS, independent
+backup, monitoring and mail provider account access and qualification remain
+pending. Actual signed release publication, provider recovery drills, measured
+peak-month hosting cost below $100, retained telemetry and delivered alerts
+remain required; synthetic evidence cannot substitute for those observations.

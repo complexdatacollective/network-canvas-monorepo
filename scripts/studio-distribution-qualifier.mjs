@@ -308,11 +308,15 @@ export async function qualifyStudioDistribution(input) {
       cosign: input.executables.cosign,
     });
     return {
-      verdict: 'passed',
+      // The concrete drill currently stops with all writers quarantined. A
+      // complete recovery verdict requires reconciled authorization, safe queue
+      // resumption and authenticated application/Registry smoke after reopening.
+      verdict: 'incomplete',
       source: prepared.candidate.current.source,
       manifestSha256: prepared.candidate.current.digest,
       freshInstall: true,
-      populatedRecovery: true,
+      populatedRecovery: false,
+      recoveryQuarantine: true,
       upgrades: prepared.sources.map(({ current }) => ({
         source: current.source,
         manifestSha256: current.digest,
