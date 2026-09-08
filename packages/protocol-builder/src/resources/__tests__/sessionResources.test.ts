@@ -704,6 +704,27 @@ describe('a session that stages resources', () => {
     ).toEqual([1]);
   });
 
+  /**
+   * The edit the hold was waiting for. It arrives as an ordinary batch — the
+   * section that owns the picker writes the `unset` as the researcher's own
+   * change (`useDiscardStageValues`), or their next save flushes it — so the
+   * release is asked again when one is made, and only while something is
+   * actually waiting on a removal.
+   */
+  it('lets the run go on the edit that takes the reference back', async () => {
+    const { onCommands, session } = createFixture();
+    const staged = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(staged.id) },
+    ]);
+    expectOk(await sessionGateway(session).discardStaged(staged.id));
+    expect(onCommands).not.toHaveBeenCalled();
+
+    session.dispatch([{ op: 'set', key: 'items', value: [] }]);
+
+    expect(onCommands.mock.calls.map(([batch]) => batch.id)).toEqual([1, 2]);
+  });
+
   it('lets the run go when the draft has already let the resource go', async () => {
     const { onCommands, session } = createFixture();
     const staged = await stageImage(session, 'first');
