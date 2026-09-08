@@ -1,9 +1,13 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import process from 'node:process';
 
 import pg from 'pg';
 
-import { TENANT_ROLES, TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
+import {
+  BACKUP_ROLE,
+  TENANT_ROLES,
+  TENANT_ROLES_SQL,
+} from '@codaco/studio-sync/rls';
 import {
   runtimeRolesSql,
   revokeLargeObjectPrivilegesSql,
@@ -43,7 +47,8 @@ export async function reachableDb(): Promise<DbEnv | null> {
     // The application pools pin roles the schema apply creates; provisioning
     // them here means no suite depends on another having run first.
     const probe = pool.query(
-      runtimeRolesSql(Object.values(TENANT_ROLES)) + TENANT_ROLES_SQL,
+      runtimeRolesSql([...Object.values(TENANT_ROLES), BACKUP_ROLE]) +
+        TENANT_ROLES_SQL,
     );
     // When the timeout wins the race, this query is still in flight and
     // `pool.end()` below rejects it. Promise.race has already settled by then,
@@ -136,6 +141,34 @@ export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
   await pool.query(runtimeRolesSql(Object.values(TENANT_ROLES)));
   await pool.query((await renderSchemaStatements()).join('\n'));
   await stampFingerprint(pool, SCHEMA_FINGERPRINT);
+}
+
+type TestEncryptionKeyPurpose = 'pii-enc' | 'pii-index' | 'integration-enc';
+
+/**
+ * Registers deterministic test-only evidence for schema fixtures that use
+ * synthetic encrypted bytes. Encryption tests exercise the real key proof
+ * derivation; structural schema tests need only satisfy the independent
+ * verified-reference guard before reaching the constraint under test.
+ */
+export async function seedTestEncryptionKeyVerifications(
+  db: pg.Pool,
+  references: ReadonlyArray<{
+    purpose: TestEncryptionKeyPurpose;
+    keyId: string;
+  }>,
+): Promise<void> {
+  for (const { purpose, keyId } of references) {
+    const proof = createHash('sha256')
+      .update(`studio-schema-fixture:${purpose}:${keyId}`)
+      .digest();
+    await db.query(
+      `INSERT INTO encryption_key_verifications (purpose, key_id, proof)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (purpose, key_id) DO NOTHING`,
+      [purpose, keyId, proof],
+    );
+  }
 }
 
 export async function seedTeam(db: pg.Pool, teamId: string): Promise<void> {

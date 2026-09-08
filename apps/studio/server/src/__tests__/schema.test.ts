@@ -493,14 +493,20 @@ describe.skipIf(!db)('schema verification', () => {
         'api_tokens',
         'asset_references',
         'assets',
+        'audit_alert_deliveries',
+        'audit_alert_dispatch_budget',
         'audit_alert_outbox',
+        'audit_alert_recipients',
+        'audit_alert_settings',
         'audit_events',
         'audit_export_jobs',
         'command_log',
         'consent_documents',
         'consent_items',
+        'credential_audit_events',
         'drafts',
         'edges',
+        'encryption_key_verifications',
         'experiment_assignments',
         'experiment_exposures',
         'experiments',
@@ -529,6 +535,7 @@ describe.skipIf(!db)('schema verification', () => {
         'session_snapshots',
         'session_stats',
         'studies',
+        'studio_instance',
         'study_role_grants',
         'study_schedules',
         'study_stage_rollups',
@@ -574,10 +581,18 @@ describe.skipIf(!db)('schema verification', () => {
       for (const [, privileges, table, roles] of revocations) {
         for (const privilege of privileges!.split(',').map((p) => p.trim())) {
           for (const role of roles!.split(',').map((r) => r.trim())) {
-            const held = await pool.query<{ held: boolean }>(
-              `select has_table_privilege($1, $2, $3) as held`,
-              [role, table, privilege],
-            );
+            // PUBLIC is ACL grantee 0, not a pg_roles identity accepted by
+            // has_table_privilege. Check its grant directly rather than skip it.
+            const held =
+              role === 'PUBLIC'
+                ? await pool.query<{ held: boolean }>(
+                    `SELECT EXISTS (SELECT 1 FROM pg_class AS relation CROSS JOIN LATERAL aclexplode(COALESCE(relation.relacl, acldefault('r', relation.relowner))) AS access WHERE relation.oid = $1::regclass AND access.grantee = 0 AND access.privilege_type = $2) AS held`,
+                    [table, privilege],
+                  )
+                : await pool.query<{ held: boolean }>(
+                    `select has_table_privilege($1, $2, $3) as held`,
+                    [role, table, privilege],
+                  );
             expect(
               held.rows[0]?.held,
               `${role} still holds ${privilege} on ${table}`,

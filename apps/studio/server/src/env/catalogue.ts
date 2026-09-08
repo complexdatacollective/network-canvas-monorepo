@@ -56,6 +56,21 @@ export type VariableDoc = {
 };
 
 export const CATALOGUE: Record<VariableName, VariableDoc> = {
+  STUDIO_ROLE: {
+    group: 'Process',
+    summary: 'Run web requests, durable workers, or both from the same image.',
+    deployment:
+      'Unset ⇒ both. worker exposes only liveness, readiness and protected metrics. Run exactly one web or both process per database; additional worker replicas coordinate through database leases.',
+    example: 'both',
+  },
+  STUDIO_ENCRYPTION_KEYSET: {
+    group: 'Database',
+    summary:
+      'Versioned encryption keyset JSON; contains key IDs and namespaced environment references, never root material.',
+    deployment:
+      'Required when a database is configured. Every roots[].reference must name a STUDIO_ENCRYPTION_ROOT_* environment value holding a canonical base64 32-byte root. Studio verifies stored key proofs before auth, workers or traffic. Operator commands never choose public defaults; explicit local development may use the public fixture keyset. See server/src/pii/README.md for configuration and backup custody.',
+    example: 'REPLACE_WITH_KEYSET_JSON',
+  },
   NODE_ENV: {
     group: 'Process',
     summary:
@@ -164,7 +179,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'Postgres application connection string, `pg.Pool`’s native format.',
     deployment:
-      'Unset ⇒ no database; auth and sync refuse while the server still boots. The persistent server uses a dedicated LOGIN permitted to SET only `studio_app`. Offline migration, reset, seed, backup and restore commands receive their separate administrative or backup `DATABASE_URL` for that invocation.',
+      'Required by web and combined processes; a worker-only process omits it. The persistent web server uses a dedicated LOGIN permitted to SET only `studio_app`. Offline migration, reset, seed, backup and restore commands receive their separate administrative or backup `DATABASE_URL` for that invocation.',
     devDefault: DEV_DATABASE_URL,
     example: 'postgres://user:password@host:5432/studio',
   },
@@ -174,7 +189,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'Postgres maintenance-worker connection string, `pg.Pool`’s native format.',
     deployment:
-      'Required by every persistent server with a database. Use a distinct dedicated LOGIN permitted to SET only `studio_maintenance`; never reuse the application, migration, restore, or backup LOGIN. Explicit local development alone falls back to `DATABASE_URL`.',
+      "Required by every persistent server with a database and is the worker-only process's sole database connection. Use a distinct dedicated LOGIN permitted to SET only `studio_maintenance`; never reuse the application, migration, restore, or backup LOGIN. Explicit local development alone falls back to `DATABASE_URL`.",
     example: 'postgres://maintenance:password@host:5432/studio',
   },
 
@@ -200,7 +215,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     group: 'Authentication',
     summary: 'Signing secret for sessions and magic-link tokens.',
     deployment:
-      'Required whenever `DATABASE_URL` is set. Generate one with `openssl rand -base64 32`.',
+      'Required whenever an application or maintenance database connection is set. Generate one with `openssl rand -base64 32`.',
     devDefault: DEV.authSecret,
   },
   PUBLIC_URL: {
@@ -275,6 +290,14 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     deployment:
       'Unset ⇒ `common` (any organizational or personal Microsoft account, matching a multitenant registration). Refused without the other two `MICROSOFT_*` variables.',
     example: 'contoso.onmicrosoft.com',
+  },
+  STUDIO_BOOTSTRAP_TOKEN: {
+    group: 'Authentication',
+    summary:
+      'Single-use authorization for first-run self-hosted instance and owner creation.',
+    deployment:
+      'Set a cryptographically random 32-byte token encoded as unpadded base64url (43 characters), then enter it at `/setup`. Unset disables first-run setup; completed instances remain completed after token removal or replacement. Managed deployments do not expose setup. See `SETUP.md`.',
+    example: 'replace-with-a-random-32-byte-base64url-token',
   },
   STUDIO_SEED_ADMIN_PASSWORD: {
     group: 'Authentication',

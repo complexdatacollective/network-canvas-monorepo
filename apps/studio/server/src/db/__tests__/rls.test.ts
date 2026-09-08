@@ -80,7 +80,10 @@ describe.skipIf(!db)('row-level security', () => {
       'api_tokens',
       'asset_references',
       'assets',
+      'audit_alert_deliveries',
       'audit_alert_outbox',
+      'audit_alert_recipients',
+      'audit_alert_settings',
       'audit_events',
       'audit_export_jobs',
       'command_log',
@@ -102,7 +105,6 @@ describe.skipIf(!db)('row-level security', () => {
       'nodes',
       'participant_consent_item_responses',
       'participant_consents',
-      'participant_contact_optouts',
       'participants',
       'protocol_drafts',
       'protocol_versions',
@@ -153,12 +155,32 @@ describe.skipIf(!db)('row-level security', () => {
         forced: true,
         policies: [
           table === 'audit_events' ? 'audit_team_isolation' : 'team_isolation',
-        ],
+          'backup_read',
+        ].toSorted(),
       })),
     );
-    const others = rows.rows.filter((row) => !expected.includes(row.table));
+    expect(
+      rows.rows.find((row) => row.table === 'audit_alert_dispatch_budget'),
+    ).toEqual({
+      table: 'audit_alert_dispatch_budget',
+      enabled: true,
+      forced: true,
+      policies: ['backup_read', 'maintenance_only'],
+    });
+    const others = rows.rows.filter(
+      (row) =>
+        !expected.includes(row.table) &&
+        row.table !== 'audit_alert_dispatch_budget',
+    );
     expect(others.map((row) => row.table).toSorted()).toEqual(
-      [...authTables, 'schemaFingerprint'].toSorted(),
+      [
+        ...authTables,
+        'schemaFingerprint',
+        'encryption_key_verifications',
+        'credential_audit_events',
+        'participant_contact_optouts',
+        'studio_instance',
+      ].toSorted(),
     );
     for (const row of others) {
       expect(row).toMatchObject({

@@ -4,6 +4,7 @@ import {
   parseDatabaseAllowedLogins,
   parseDatabaseAdministrativeLogins,
 } from './env/database-enrollment.ts';
+import { resolveEncryptionEnv, type EncryptionEnv } from './env/encryption.ts';
 import { resolve, type DbEnv, type StudioEnv } from './env/resolve.ts';
 import { serverSchemas, type VariableName } from './env/variables.ts';
 
@@ -124,6 +125,14 @@ export function readMigrationDatabase(): DbEnv {
   if (!url)
     throw new Error('DATABASE_URL is required to run Studio migrations.');
   return { url };
+}
+
+/** The operator lane omits development; server/dev tools pass their resolved local evidence. */
+export function readEncryptionEnv(
+  development?: Pick<StudioEnv, 'devDefaults' | 'db'>,
+): EncryptionEnv {
+  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
+  return resolveEncryptionEnv(process.env, development);
 }
 
 /** Read the explicit, precommitted deployment enrollment without inferring logins. */
