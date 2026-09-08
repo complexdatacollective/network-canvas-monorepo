@@ -26,6 +26,8 @@
     "./section-validation": "./src/section-validation.ts",
     "./template-metadata": "./src/template-metadata.ts",
     "./template-exchange": "./src/template-exchange.ts",
+    "./template-registry-contract": "./src/template-registry-contract.ts",
+    "./template-registry-client": "./src/template-registry-client.ts",
     "./postgres-catalog-privileges": "./src/postgres-catalog-privileges.ts",
     "./postgres-migration-evidence": "./src/postgres-migration-evidence.ts",
     "./postgres-migrations": "./src/postgres-migrations.ts",

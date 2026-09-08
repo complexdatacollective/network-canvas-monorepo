@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0001_initial",
+  "previous": null,
+  "fingerprint": "27b9c487f0eab8cb3f8b5997f8ff6a39a200dc5f37ccf1ca2e74861f98f9bb4d",
+  "snapshotHash": "92b9c2c39b0824848a88f6782eedb83245bf948788598ccaf9ad00831d0a4d56",
+  "sqlHash": "573cdd309d74a1166b85edbf6b377f4d4072731f307305eb7ba6f9031ea54166",
+  "sidecarsHash": "fbaacd1e1f771b16c3c3a985e292d5430ed52dced13d34621028ebb9c5a00a78"
+}

@@ -1,0 +1,14 @@
+{
+  "extends": "@codaco/tsconfig/web.json",
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-jsx",
+    "types": ["vite/client", "@total-typescript/ts-reset"]
+  },
+  "include": [
+    "src/account/**/*.ts",
+    "src/account/**/*.tsx",
+    "src/account-contract.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}
