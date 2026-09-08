@@ -511,6 +511,14 @@
     "defaultMessage": "Attribute not saved",
     "description": "Heading of the alert shown when saving an attribute (a codebook variable) was refused. The reason follows underneath."
   },
+  "protocolBuilder.codebookVariable.heldAnswersCaption": {
+    "defaultMessage": "A yes/no attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.",
+    "description": "Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds some number of answers other than the two this editor writes. It says that saving the attribute does not alter them."
+  },
+  "protocolBuilder.codebookVariable.heldAnswersLegend": {
+    "defaultMessage": "The answers this attribute offers",
+    "description": "Heading over the read-only list of answers a yes/no attribute puts in front of a participant. Shown in place of the two answer fields when the attribute holds some other number of answers."
+  },
   "protocolBuilder.codebookVariable.interfaceOwnedOptions": {
     "defaultMessage": "These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.",
     "description": "Refusal shown when a researcher edits the allowed values of an attribute (a codebook variable) whose values one kind of interview step owns. An interface is one kind of interview step."
@@ -3319,6 +3327,14 @@
     "defaultMessage": "Property",
     "description": "Visible text and accessible name of the column of a sort rule that chooses what the rule sorts by — an attribute of the node, or one of the orders the interview itself can supply."
   },
+  "protocolBuilder.sortOrder.unsortableProperty": {
+    "defaultMessage": "{property} — this attribute cannot be used to sort",
+    "description": "Label of the only choice left standing for a sort rule that names an attribute nothing can be put in order by — a node’s position on the canvas, say. property is the attribute’s name as the codebook gives it. Rendered inside a plain dropdown option, which can carry no styling, so the explanation is part of the label."
+  },
+  "protocolBuilder.sortOrder.unsortablePropertyRefusal": {
+    "defaultMessage": "This rule points at an attribute that cannot be used to sort. Choose another or delete the rule.",
+    "description": "Shown above a prompt’s sort rules when one of them names an attribute that is still in the codebook but holds nothing one network member can be put ahead of another by. Names both ways out, because the rule looks complete and is not."
+  },
   "protocolBuilder.stageName.documentation": {
     "defaultMessage": "Documentation",
     "description": "Link to the documentation for this type of interview interface."
@@ -3338,6 +3354,18 @@
   "protocolBuilder.stageTypeImage.preview": {
     "defaultMessage": "Preview of {interfaceName}",
     "description": "Alternative text for a screenshot of an interview interface. interfaceName is the localized interface name, or an unchanged identifier for an unknown future interface."
+  },
+  "protocolBuilder.subjectSection.edgeChangeConfirm": {
+    "defaultMessage": "Change the edge type",
+    "description": "Button that goes ahead with changing the kind of relationship a stage works with, throwing away the configuration that described the previous one."
+  },
+  "protocolBuilder.subjectSection.edgeChangeDescription": {
+    "defaultMessage": "Everything else on this stage describes the edge type it works with now, and choosing a different type removes all of it.",
+    "description": "Body of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.edgeChangeTitle": {
+    "defaultMessage": "Change the edge type?",
+    "description": "Title of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured for the one it has."
   },
   "protocolBuilder.subjectSection.edgeCreateDescription": {
     "defaultMessage": "Create an edge type and use it on this stage",
@@ -3362,6 +3390,18 @@
   "protocolBuilder.subjectSection.edgeTitle": {
     "defaultMessage": "Edge type",
     "description": "Heading of the section where a researcher says which kind of relationship this step of the interview is about. An edge is a connection between two members of the network."
+  },
+  "protocolBuilder.subjectSection.nodeChangeConfirm": {
+    "defaultMessage": "Change the node type",
+    "description": "Button that goes ahead with changing the kind of network member a stage works with, throwing away the configuration that described the previous one."
+  },
+  "protocolBuilder.subjectSection.nodeChangeDescription": {
+    "defaultMessage": "Everything else on this stage describes the node type it works with now, and choosing a different type removes all of it.",
+    "description": "Body of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.nodeChangeTitle": {
+    "defaultMessage": "Change the node type?",
+    "description": "Title of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured for the one it has."
   },
   "protocolBuilder.subjectSection.nodeCreateDescription": {
     "defaultMessage": "Create a node type and use it on this stage",

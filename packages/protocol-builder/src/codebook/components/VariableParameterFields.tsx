@@ -13,6 +13,7 @@ import {
 } from '@codaco/shared-consts';
 
 import {
+  dateBoundWindow,
   dateResolutionOf,
   dateResolutionOptions,
   type ParameterIssues,
@@ -278,6 +279,10 @@ export default function VariableParameterFields({
   }
 
   const resolution = dateResolutionOf(held);
+  // The years the two bound controls offer. Spread rather than passed as a
+  // pair of props, so full resolution passes neither and its native input
+  // stays unbounded — see `dateBoundWindow`.
+  const boundWindow = dateBoundWindow(resolution) ?? {};
 
   return (
     <>
@@ -324,6 +329,7 @@ export default function VariableParameterFields({
         hint={intl.formatMessage(messages.minHint)}
         component={DatePickerControl}
         type={resolution}
+        {...boundWindow}
         value={asText(held.min)}
         onChange={(value: unknown) => {
           setClearedBounds(false);
@@ -337,6 +343,7 @@ export default function VariableParameterFields({
         hint={intl.formatMessage(messages.maxHint)}
         component={DatePickerControl}
         type={resolution}
+        {...boundWindow}
         value={asText(held.max)}
         onChange={(value: unknown) => {
           setClearedBounds(false);
