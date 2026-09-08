@@ -7,8 +7,15 @@
 // registry, so a plain lockfile resolution cannot distinguish them — tarballs
 // can.
 //
-// Which packages: the ones the pending release will actually PUBLISH, from
-// Changesets' assembled release plan. The mechanism — packing, overrides,
+// Which packages: the ones the pending release will actually PUBLISH — the
+// packages in Changesets' assembled release plan (including auto-bumped
+// dependents of major bumps) plus every closure package whose current version
+// is not on npm: `changeset publish` publishes any public package whose
+// version the registry lacks, changeset or not — a first publication, or a
+// version an earlier publish run left behind. Closure packages that are
+// neither are left to registry resolution — the released image will install
+// their published versions, so vendoring them would test a dependency
+// combination that never ships. The mechanism — packing, overrides,
 // Dockerfile patches, the manifest — is scripts/vendor-workspace-packages.mjs,
 // shared with the hotfix lane (`scripts/mirror-app.mjs --vendor-changed-since`,
 // which build-image.sh runs directly when certifying a hotfix branch). Only
@@ -25,7 +32,12 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
+import {
+  DEFAULT_REGISTRY_URL,
+  npmVersionUrl,
+} from '../../../../scripts/check-npm-version-collisions.mjs';
 import { readWorkspacePackages } from '../../../../scripts/resolve-manifest.mjs';
 import {
   collectClosure,
@@ -44,14 +56,10 @@ function run(cmd, args, opts = {}) {
   }
 }
 
-// Packages the pending release will actually publish, from Changesets' own
-// assembled release plan (`changeset status`) — NOT from changeset
-// frontmatter, which understates the plan: a major bump invalidates
-// dependents' caret ranges and the planner auto-adds those dependents as
-// patch releases no changeset names. Only planned releases may be vendored —
-// an unplanned workspace package is not republished, so the released image
-// installs its registry version; vendoring it would test a dependency
-// combination that never ships.
+// Packages the pending release will bump, from Changesets' own assembled
+// release plan (`changeset status`) — NOT from changeset frontmatter, which
+// understates the plan: a major bump invalidates dependents' caret ranges and
+// the planner auto-adds those dependents as patch releases no changeset names.
 function collectPendingReleases() {
   const planPath = join(
     mkdtempSync(join(tmpdir(), 'release-plan-')),
@@ -70,6 +78,66 @@ function collectPendingReleases() {
   return releases;
 }
 
+// The closure packages `changeset publish` will publish without a changeset
+// naming them: those whose current version the registry does not have. On
+// 2026-09-08 that was @codaco/app-i18n 0.1.0 — a first publication that no
+// changeset planned, so the bundler left it to the registry and the staged
+// lockfile could not resolve it at all.
+//
+// Nothing short of a definite answer will do: guessing "published" would test
+// the registry's older (or absent) code, guessing "unpublished" would vendor
+// code the release does not ship.
+export async function unpublishedAtCurrentVersion(
+  names,
+  wsPackages,
+  {
+    registryUrl = DEFAULT_REGISTRY_URL,
+    fetchImpl = fetch,
+    timeoutMs = 15_000,
+  } = {},
+) {
+  const unpublished = [];
+  for (const name of names) {
+    const { version } = wsPackages[name];
+    const url = npmVersionUrl(registryUrl, name, version);
+    let response;
+    try {
+      response = await fetchImpl(url, {
+        headers: { accept: 'application/json' },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (error) {
+      throw new Error(
+        `Could not check whether ${name}@${version} is on npm: ${error.message}`,
+        { cause: error },
+      );
+    }
+    if (response.status === 404) {
+      unpublished.push(name);
+      continue;
+    }
+    if (response.status !== 200) {
+      throw new Error(
+        `Could not check whether ${name}@${version} is on npm: registry returned HTTP ${response.status}.`,
+      );
+    }
+  }
+  return unpublished;
+}
+
+// Vendor what the release publishes — the planned bumps and the versions npm
+// lacks — and leave the rest to the registry, in closure order.
+
+// Vendor what the release publishes — the planned bumps and the versions npm
+// lacks — and leave the rest to the registry, in closure order.
+export function partitionClosure({ closure, planned, unpublished }) {
+  const vendored = closure.filter(
+    (name) => planned.has(name) || unpublished.includes(name),
+  );
+  const registry = closure.filter((name) => !vendored.includes(name));
+  return { vendored, registry };
+}
+
 // The staged manifest still carries the RELEASED version (the Version
 // Packages PR bumps it only on merge), but the real mirror is built after
 // that bump — so bake the planned version in, or APP_VERSION and every
@@ -84,7 +152,7 @@ function applyPlannedAppVersion(stageDir, releases) {
   return plannedVersion;
 }
 
-function main() {
+async function main() {
   const stageDir = process.argv[2] && resolve(process.argv[2]);
   if (!stageDir || !existsSync(join(stageDir, 'Dockerfile'))) {
     console.error(
@@ -97,7 +165,21 @@ function main() {
   const wsPackages = readWorkspacePackages();
   const closure = collectClosure(wsPackages, 'apps/fresco');
   const pending = collectPendingReleases();
-  const names = closure.filter((name) => pending.has(name));
+  const unpublished = await unpublishedAtCurrentVersion(
+    closure.filter((name) => !pending.has(name)),
+    wsPackages,
+    {
+      registryUrl:
+        process.env.NPM_REGISTRY_URL ||
+        process.env.npm_config_registry ||
+        DEFAULT_REGISTRY_URL,
+    },
+  );
+  const { vendored: names } = partitionClosure({
+    closure,
+    planned: pending,
+    unpublished,
+  });
   const plannedAppVersion = applyPlannedAppVersion(stageDir, pending);
 
   const manifest = {
@@ -108,10 +190,19 @@ function main() {
       wsPackages,
       note: 'Packages this release publishes, bundled by release-test (local tarballs).',
     }),
+    unpublished,
     plannedAppVersion,
   };
   writeBundleManifest(stageDir, manifest);
   console.log(JSON.stringify(manifest, null, 2));
 }
 
-main();
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exitCode = 1;
+  });
+}

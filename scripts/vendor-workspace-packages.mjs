@@ -687,7 +687,14 @@ export function assertVendoredLockfile(stageDir, manifest) {
     );
   }
   const vendored = Object.keys(manifest.vendored).length;
-  return `${vendored} vendored, ${manifest.registry.length} from registry (${manifest.registry.join(', ') || 'none'})`;
+  const unpublished = manifest.unpublished ?? [];
+  return (
+    `${vendored} vendored` +
+    (unpublished.length
+      ? ` (${unpublished.length} not on npm at their current version, so \`changeset publish\` ships them: ${unpublished.join(', ')})`
+      : '') +
+    `, ${manifest.registry.length} from registry (${manifest.registry.join(', ') || 'none'})`
+  );
 }
 
 function main(argv) {

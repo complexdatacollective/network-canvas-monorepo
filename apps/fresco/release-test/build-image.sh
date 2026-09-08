@@ -53,7 +53,9 @@ else
   (cd "$STAGE_DIR" && pnpm install --lockfile-only --ignore-scripts)
 fi
 
-# Every vendored package must resolve to its tarball and never from the
+# Every vendored package — a planned bump, a version npm does not have yet
+# (which `changeset publish` ships regardless), or on a hotfix branch whatever
+# changed since the release — must resolve to its tarball and never from the
 # registry (registry references appear as '@codaco/<name>@<semver>'); the
 # rest are expected to resolve from the registry, exactly as the image will.
 echo "[release-test] $(node scripts/vendor-workspace-packages.mjs --assert-lockfile "$STAGE_DIR")"

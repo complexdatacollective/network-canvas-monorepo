@@ -86,6 +86,23 @@ Rules that keep this working:
   fresco-ui's 140-entry map pair is generated: after adding/removing a subpath
   in `exports`, run `pnpm --filter @codaco/fresco-ui sync-exports`; a vitest
   guard fails if the maps drift.
+- **First publications are made by hand.** The release job publishes through
+  npm trusted publishing (OIDC), which can only publish to a package npm
+  already knows — a new package's first version never goes out through the
+  lane. `changeset publish` publishes every public package whose current
+  version is absent from npm, changeset or not, so do not add a changeset for
+  a package that has never been published: it moves the version away from the
+  one `.github/npm-first-publications.json` approves, and the Version
+  Packages PR then fails the npm version guard. Instead, from a clean checkout
+  of the merged commit, with an npm token that may create packages in the
+  scope, run
+  `pnpm --filter <pkg> build && node scripts/verify-publish-exports.mjs <pkg> && pnpm --filter <pkg> publish --access public`,
+  push the `<pkg>@<version>` tag the lane would have created, and add the
+  package's trusted publisher on npmjs.com (package Settings → Trusted
+  publishing: repository `complexdatacollective/network-canvas-monorepo`,
+  workflow `ci-and-release.yml`, environment `npm-publish`).
+  `scripts/check-first-publications.mjs` refuses the Version Packages merge
+  and the release job's publish path until npm knows every lane package.
 - **No `~/` path aliases in package source.** Consumers typecheck package
   source inside their own TS program, where the consumer's `paths` win — an
   alias inside a consumed package resolves against the wrong root. Apps may

@@ -1305,3 +1305,37 @@ test('Architect E2E builds disable both animation systems', () => {
     'the Docker build disables Motion and Base UI animations',
   );
 });
+
+test('release job refuses a first publication on the publish path before changesets/action', () => {
+  const releaseJob = job('release');
+  assert.ok(releaseJob, 'release job exists');
+
+  const pruneIndex = releaseJob.indexOf(
+    'run: node scripts/prune-ignored-changesets.mjs',
+  );
+  const checkIndex = releaseJob.indexOf(
+    'run: node scripts/check-first-publications.mjs --publish-path-only',
+  );
+  const actionIndex = releaseJob.indexOf('uses: changesets/action@');
+  assert.ok(checkIndex !== -1, 'release job runs check-first-publications.mjs');
+  // After the prune, so the publish-path decision sees only normal-lane
+  // changesets; before the action, so nothing is published first.
+  assert.ok(
+    pruneIndex !== -1 && pruneIndex < checkIndex,
+    'the first-publication check runs after the ignored-lane prune',
+  );
+  assert.ok(
+    actionIndex !== -1 && checkIndex < actionIndex,
+    'the first-publication check runs before changesets/action publishes',
+  );
+});
+
+test('the Version Packages merge check refuses a publish npm cannot make', () => {
+  const freshnessJob = job('version-packages-freshness');
+  assert.ok(freshnessJob, 'version-packages-freshness job exists');
+  assert.match(
+    freshnessJob,
+    /- name: Refuse a release PR whose publish needs a package npm does not know\n\s+if: steps\.head\.outputs\.release_pr == 'true'\n\s+run: node scripts\/check-first-publications\.mjs\n/,
+    'the merge check runs check-first-publications.mjs on the tree that merges the release PR',
+  );
+});

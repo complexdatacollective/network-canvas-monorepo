@@ -198,10 +198,12 @@ pending state of `main` can be release-tested locally with the
 Codex: run the harness scripts below manually). It builds the pending image the
 way a release would — `scripts/mirror-app.mjs` stages the mirrored tree,
 `release-test/scripts/bundle-pending-packages.mjs` swaps the registry
-resolutions of exactly the `@codaco/*` packages the pending changesets will
-publish for tarballs packed from the pending source (the rest of the closure
-stays on registry versions, as the released image will), and the staged tree's
-own `Dockerfile` builds it — then runs two Docker stacks via
+resolutions of exactly the `@codaco/*` packages the pending release will
+publish — those the changesets bump, plus any whose current version npm does
+not have, which `changeset publish` publishes regardless — for tarballs packed
+from the pending source (the rest of the closure stays on registry versions, as
+the released image will), and the staged tree's own `Dockerfile` builds it —
+then runs two Docker stacks via
 `release-test/docker-compose.yml`:
 
 - **Upgrade lane** (ports 3210/5533/9310): seeds the currently released GHCR
@@ -313,8 +315,10 @@ including the early one taken when the build never completes.
 ```
 
 `expectedVersion` is the version the Version Packages PR bumps Fresco to —
-the one `bundle-pending-packages.mjs` bakes into the staged tree, and the one
-both stacks must report from `/api/health`. Other args:
+the one `bundle-pending-packages.mjs` bakes into the staged tree and the one
+the build stamp records. Each lane is bound to that build by the image id
+docker reports for its Fresco container (`/api/health` names no version, on
+purpose). Other args:
 `skipBuild` (reuse the previous image, revalidated against its stamp),
 `keepStack` (leave both stacks up), `releasedImage` (substitute the upgrade
 baseline; never certifying), `allowDirty` (accept an irreproducible image
