@@ -1,4 +1,11 @@
-mock_provider "aws" {}
+mock_provider "aws" {
+  mock_data "aws_caller_identity" {
+    defaults = { arn = "arn:aws:sts::000000000000:assumed-role/kms-admin/deployment" }
+  }
+  mock_data "aws_iam_session_context" {
+    defaults = { issuer_arn = "arn:aws:iam::000000000000:role/kms-admin" }
+  }
+}
 mock_provider "b2" {}
 mock_provider "cloudflare" {}
 mock_provider "crunchybridge" {
@@ -81,9 +88,23 @@ run "candidate_contract" {
   }
 
   assert {
+    condition     = contains(output.required_runtime_secret_names, "POSTMARK_SERVER_TOKEN") && contains(output.required_runtime_secret_names, "REGISTRY_POSTMARK_SERVER_TOKEN")
+    error_message = "The independent Studio and Registry mail credentials must both be handed off."
+  }
+
+  assert {
     condition     = b2_bucket.independent_recovery.bucket_type == "allPrivate" && b2_bucket.independent_recovery.file_lock_configuration[0].default_retention[0].mode == "compliance" && b2_bucket.independent_recovery.file_lock_configuration[0].default_retention[0].period[0].duration == 31
     error_message = "The independent bucket must be private with 31-day compliance retention."
   }
+}
+
+run "reject_kms_policy_lockout" {
+  command = plan
+  override_data {
+    target = data.aws_iam_session_context.deployment
+    values = { issuer_arn = "arn:aws:iam::000000000000:role/unlisted-deployment" }
+  }
+  expect_failures = [aws_kms_key.studio_root]
 }
 
 run "reject_mutable_image" {

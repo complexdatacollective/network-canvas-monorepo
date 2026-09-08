@@ -8,6 +8,40 @@ const fixture = JSON.parse(
   await readFile(new URL('./cost-input.example.json', import.meta.url), 'utf8'),
 );
 
+// Synthetic declarations exercise the budget schema; these are not provider
+// quotes and must never be used to provision an estate.
+const reviewTime = Date.parse('2026-09-08T12:00:00.000Z');
+function declaredBudget() {
+  const input = structuredClone(fixture);
+  input.minimumHeadroomUsd = 5;
+  input.lineItems.find(({ category }) => category === 'reserve').unitPriceUsd =
+    1;
+  for (const item of input.lineItems) {
+    item.evidence = 'Synthetic regression fixture only';
+    item.pricing = {
+      kind:
+        item.category === 'reserve'
+          ? 'operator-reserve'
+          : item.unitPriceUsd === 0
+            ? 'included'
+            : 'rate',
+      currency: 'USD',
+      quantity: item.quantity,
+      unitPriceUsd: item.unitPriceUsd,
+      reviewedAt: '2026-09-08',
+      sourceUrl: 'https://example.invalid/synthetic-pricing',
+      ...(item.unitPriceUsd === 0
+        ? {
+            coveredQuantity: item.quantity,
+            coverage: 'Synthetic included allowance',
+          }
+        : {}),
+    };
+  }
+  return input;
+}
+const budgetOptions = { requireBudget: true, now: reviewTime };
+
 test('reports the illustrative estimate without qualifying it', () => {
   const result = evaluateManagedEstateCost(fixture);
   assert.equal(result.qualificationComplete, false);
@@ -58,11 +92,7 @@ test('refuses an estimate over the cap when checking the budget', () => {
 });
 
 test('a passing budget check still cannot qualify deployment', () => {
-  const mutated = structuredClone(fixture);
-  mutated.lineItems.find(
-    ({ category }) => category === 'reserve',
-  ).unitPriceUsd = 1;
-  const result = evaluateManagedEstateCost(mutated, { requireBudget: true });
+  const result = evaluateManagedEstateCost(declaredBudget(), budgetOptions);
   assert.equal(result.withinCap, true);
   assert.equal(result.budgetAccepted, true);
   assert.equal(result.qualificationComplete, false);
@@ -202,6 +232,7 @@ test('increasing declared ingress and validator execution increases the estimate
 
 test('does not round away a breach of the minimum budget headroom', () => {
   const mutated = structuredClone(fixture);
+  mutated.minimumHeadroomUsd = 1;
   const subtotal = mutated.lineItems.reduce(
     (sum, item) => sum + item.quantity * item.unitPriceUsd,
     0,
@@ -225,4 +256,142 @@ test('refuses database storage and plan drift from the shared Terraform candidat
   const plan = structuredClone(fixture);
   plan.postgresPlanId = 'standard-64';
   assert.throws(() => evaluateManagedEstateCost(plan), /candidate-sizing/);
+});
+
+test('rejects zero validation cadence even with self-consistent cheaper line items', () => {
+  const input = structuredClone(fixture);
+  input.validatorRunCount = 0;
+  input.validatorRequestCount = 0;
+  input.validatorTransferGb = 0;
+  for (const item of input.lineItems) {
+    if (item.category.startsWith('validator-')) item.quantity = 0;
+  }
+  assert.throws(
+    () => evaluateManagedEstateCost(input),
+    /5952 scheduled database validations/,
+  );
+});
+
+test('prices the complete locked recovery window and scheduled transfer', () => {
+  for (const [field, category, divisor] of [
+    ['backupRequestCount', 'backup-requests', 1],
+    ['backupStoredGb', 'backup-storage', 1000],
+    ['backupEgressGb', 'backup-egress', 1],
+    ['validatorRequestCount', 'validator-requests', 1],
+    ['validatorTransferGb', 'validator-transfer', 1],
+  ]) {
+    const input = structuredClone(fixture);
+    input[field] = 0;
+    input.lineItems.find((item) => item.category === category).quantity =
+      input[field] / divisor;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      /required recovery cadence/,
+      field,
+    );
+  }
+  const shortRetention = structuredClone(fixture);
+  shortRetention.backupStoredGb = 143.6;
+  shortRetention.lineItems.find(
+    ({ category }) => category === 'backup-storage',
+  ).quantity = 143.6 / 1000;
+  assert.throws(
+    () => evaluateManagedEstateCost(shortRetention),
+    /backupStoredGb is below/,
+  );
+});
+
+test('requires measured dump sizes for every database before costing recovery', () => {
+  for (const value of [
+    undefined,
+    {},
+    { ...fixture.databaseDumpSizesGb, 'studio-production': 0 },
+  ]) {
+    const input = structuredClone(fixture);
+    input.databaseDumpSizesGb = value;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      /all four|positive measured/,
+    );
+  }
+});
+
+test('adding a reserve cannot turn placeholder pricing into an accepted budget', () => {
+  const input = structuredClone(fixture);
+  input.minimumHeadroomUsd = 0;
+  input.lineItems.find(({ category }) => category === 'reserve').unitPriceUsd =
+    1;
+  assert.throws(
+    () => evaluateManagedEstateCost(input, budgetOptions),
+    /current pricing declaration/,
+  );
+});
+
+test('budget checks bind current declarations to every category and quantity', () => {
+  for (const edit of [
+    (item) => {
+      delete item.pricing;
+    },
+    (item) => {
+      item.evidence = 'placeholder requiring a current quote';
+    },
+    (item) => {
+      item.pricing.currency = 'EUR';
+    },
+    (item) => {
+      item.pricing.quantity = 0;
+    },
+    (item) => {
+      item.pricing.unitPriceUsd = 0;
+    },
+    (item) => {
+      item.pricing.reviewedAt = '2026-08-01';
+    },
+    (item) => {
+      item.pricing.reviewedAt = '2026-09-09';
+    },
+    (item) => {
+      item.pricing.reviewedAt = '2026-02-30';
+    },
+    (item) => {
+      item.pricing.sourceUrl = 'http://example.invalid/pricing';
+    },
+    (item) => {
+      item.pricing.kind = 'included';
+    },
+  ]) {
+    const input = declaredBudget();
+    edit(input.lineItems[0]);
+    assert.throws(
+      () => evaluateManagedEstateCost(input, budgetOptions),
+      /pricing|quoted recurring rate/,
+    );
+  }
+});
+
+test('zero-price categories need explicit coverage of their whole usage', () => {
+  for (const edit of [
+    (item) => {
+      item.pricing.kind = 'rate';
+    },
+    (item) => {
+      delete item.pricing.coveredQuantity;
+    },
+    (item) => {
+      item.pricing.coveredQuantity = item.quantity - 1;
+    },
+    (item) => {
+      delete item.pricing.coverage;
+    },
+    (item) => {
+      item.pricing.coverage = 'unverified free-egress eligibility';
+    },
+  ]) {
+    const input = declaredBudget();
+    edit(input.lineItems.find(({ category }) => category === 'backup-egress'));
+    assert.throws(
+      () => evaluateManagedEstateCost(input, budgetOptions),
+      /coverage|coveredQuantity/,
+    );
+  }
 });

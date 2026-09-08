@@ -47,6 +47,7 @@ output "required_runtime_secret_names" {
   value = [
     "BETTER_AUTH_SECRET",
     "DATABASE_URL",
+    "POSTMARK_SERVER_TOKEN",
     "REGISTRY_AUTH_SECRET",
     "REGISTRY_DATABASE_URL",
     "REGISTRY_OPERATOR_DATABASE_URL",
