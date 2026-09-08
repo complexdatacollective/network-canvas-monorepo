@@ -261,14 +261,52 @@ Lite handoff. Provider legal names, affiliates, data categories, residency,
 retention/deletion, security reports, breach terms, support, and account recovery
 must be confirmed before publication.
 
+## Collector egress budget state
+
+`observability-egress-budget.mjs` is the durable local admission primitive for
+the planned private collector. An operator must call
+`bootstrapMonthlyEgressBudget` once in a private mode-0700 directory. Normal
+collector startup calls `openMonthlyEgressBudget`; it refuses missing, partial,
+corrupt, differently bound, permissive, linked, concurrently locked, or
+clock-regressed state. The immutable bootstrap identity remains after a lost
+monthly counter, so bootstrap cannot silently recreate a zero balance. Changing
+the dedicated New Relic account, the externally reviewed schema/usage policy
+digest, the monthly limit, or the final-signal reserve requires a separately
+reviewed state transition or a new operator-controlled directory. The primitive
+refuses a monthly limit above the plan's measured 50 GB forecast bound.
+
+The collector must hold the returned budget open for its complete process
+lifetime and close it during orderly shutdown. The inherited-descriptor
+`flock` is a kernel lease: a second process is refused, orderly close releases
+it, and process death releases it without deleting or replacing the protected
+lock inode. Each log or metric request must call `reserveEstimatedIngest` with
+its conservative estimated **provider-billed ingest bytes before forwarding**.
+A returned reservation is never refunded after an ambiguous request. Regular
+traffic cannot consume `finalSignalReserveBytes`; after exhaustion, exactly one
+`reserveFinalExhaustionSignal` call may admit the separately estimated closure
+signal. State replacement and its containing directory are fsynced before a
+reservation returns.
+
+This counter deliberately has no `providerUsageFresh` Boolean and does not
+accept raw compressed or uncompressed wire bytes as proof. Before calling it,
+the forwarding layer still has to authenticate fresh New Relic account-usage
+evidence, measure the stored-byte expansion of the exact bounded schemas,
+reserve the maximum traffic outstanding during reporting lag, and bind those
+rules into `configurationIdentity`. Missing or stale provider evidence must
+close forwarding outside this primitive. The counter does not establish New
+Relic qualification, retention, queryability, alerts, or the provider's hard
+account limit.
+
 ## Offline review
 
 Run `terraform fmt -check -recursive`, `terraform init -backend=false
 -lockfile=readonly`, `terraform validate`, `terraform test`, and `node --test
-cost-model.test.mjs`. The required repository support check runs the estimator
-controls and, when this module or its CI wiring changes, validates and tests
-Terraform with mocked providers and no deployment credentials. Terraform 1.14.5
-and its Linux executable checksum are pinned in that job. Initialization downloads
+cost-model.test.mjs` plus `node --test
+observability-egress-budget.test.mjs`. The required repository support check
+runs the estimator controls and, when this module or its CI wiring changes,
+validates and tests Terraform with mocked providers and no deployment
+credentials. Terraform 1.14.5 and its Linux executable checksum are pinned in
+that job. Initialization downloads
 the four pinned providers and verifies their committed checksums without changing
 the lock file. When deliberately updating provider pins, run `terraform providers
 lock -platform=linux_amd64 -platform=darwin_arm64` to retain the package hashes
