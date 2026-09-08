@@ -50,15 +50,43 @@ Lock retention. The Crunchy provider only provisions the cluster. It does not
 create the four databases or enforce the SQL security contract.
 
 Fly's official Terraform provider was archived in 2024. `candidate_inventory`
-therefore emits service requirements, not Machines API request bodies. This
-module does not provision compute. The four sizes and 744-hour billing month
-come from `candidate-sizing.json`, shared with the cost estimator; changes to
-CPU or memory require a reviewed sizing and price update. A reviewed authenticated Machines API module must create
-each service with one IAD Machine, no auto-stop, the exact digest, private
-database/object connectivity, health checks, secret injection, and the
-single-origin routing contract. R2 credentials/versioning, database enrollment,
-New Relic configuration, and replication/validation workers also remain explicit
-modules rather than unsupported placeholder resources.
+therefore emits service requirements, not Machines API request bodies. The four
+sizes and 744-hour billing month come from `candidate-sizing.json`, shared with
+the cost estimator; changes to CPU or memory require a reviewed sizing and
+price update. Private database/object connectivity, health checks, secret
+injection, and the single-origin routing contract remain later deployment
+steps. R2 credentials/versioning, database enrollment, New Relic configuration,
+and replication/validation workers also remain explicit modules rather than
+unsupported placeholder resources.
+
+`fly-machine-preparation.mjs` implements only the nonrunning-Machine preparation
+part of that handoff. Its caller supplies the four existing app names, expected
+organization slug, Terraform service requirements, and an organization-scoped
+token directly in memory. Before its first write it checks every app's
+organization and complete Machine inventory. It creates missing Machines with
+`skip_launch: true` and `skip_service_registration: true`, or leases and updates
+an exactly marked `created` or `stopped` Machine with optimistic version
+matching. Requests use the public `https://api.machines.dev/v1` API, reject
+redirects and pagination, and bound request time, total time, and response
+bytes. Lifecycle reads continue only through that total operation deadline and
+stop immediately on a changed identity, config, or unsafe state. Update leases
+use Fly's bounded opaque nonce as a header and request enough TTL to cover the
+remaining operation; a shorter returned expiry is refused before update. A
+final fresh inventory must show the same digest-pinned, candidate-sized,
+nonrunning Machine per app.
+
+Preparation does not create Fly apps or accounts, inject secrets, allocate
+addresses, define services, start Machines, or qualify deployment. Activation
+still requires the authenticated deployment workflow, private connectivity,
+health checks, secret delivery, routing, and live capacity evidence described
+below. The request and lifecycle shapes follow Fly's official
+[Apps](https://fly.io/docs/machines/api/apps-resource/) and
+[Machines](https://fly.io/docs/machines/api/machines-resource/) resources. The
+nested lease response and nonce-header behavior are also cross-checked against
+Fly's pinned
+[`fly-go` v0.9.15 client](https://github.com/superfly/fly-go/blob/v0.9.15/flaps/flaps_machines.go#L261-L316)
+and
+[`MachineLease` types](https://github.com/superfly/fly-go/blob/v0.9.15/machine_types.go#L1021-L1032).
 
 The routing-only Cloudflare Worker in `workers/studio-ingress` defines the
 single public origin: fixed server surfaces stream to the persistent Fly
