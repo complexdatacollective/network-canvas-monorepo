@@ -4,6 +4,7 @@ import { z } from 'zod/mini';
 import type { Variable } from '@codaco/protocol-validation';
 
 import type { FieldValue, ValidationContext } from '../store/types';
+import coerceToVariableType from './utils/coerceToVariableType';
 import collectNetworkValues from './utils/collectNetworkValues';
 import compareVariables from './utils/compareVariables';
 import { getComparisonValue } from './utils/getComparisonValue';
@@ -551,7 +552,7 @@ const unique: ValidationFunction<string> = (attribute, context) => () => {
     context,
     'Validation context must be provided when using unique validation',
   );
-  const { stageSubject, network, currentEntityId } = context;
+  const { stageSubject, network, currentEntityId, codebook } = context;
 
   const hint = 'Must be unique.';
 
@@ -574,7 +575,15 @@ const unique: ValidationFunction<string> = (attribute, context) => () => {
 
       // Collect other values of the same type, excluding the entity
       // currently being edited (if any) so its own value isn't treated
-      // as a duplicate.
+      // as a duplicate. Both sides are brought into the variable's declared
+      // domain first: a number field's raw string has to match the number
+      // the other entities store (see `coerceToVariableType`).
+      const variableType = getVariableDefinition(
+        codebook,
+        stageSubject,
+        attribute,
+      )?.type;
+      const submitted = coerceToVariableType(value, variableType);
       const existingValues = collectNetworkValues(
         network,
         stageSubject,
@@ -582,7 +591,14 @@ const unique: ValidationFunction<string> = (attribute, context) => () => {
         currentEntityId,
       );
 
-      if (existingValues.some((v) => isMatchingValue(value, v))) {
+      if (
+        existingValues.some((existing) =>
+          isMatchingValue(
+            submitted,
+            coerceToVariableType(existing, variableType),
+          ),
+        )
+      ) {
         ctx.addIssue({
           code: 'custom',
           message: 'This value is used elsewhere. It must be unique.',
@@ -591,6 +607,30 @@ const unique: ValidationFunction<string> = (attribute, context) => () => {
       }
     }),
     z.meta({ hint }),
+  );
+};
+
+/**
+ * Whether the value under validation matches the comparison target's value,
+ * with both brought into the target variable's declared domain first. The
+ * target may have been answered on an earlier stage and so arrive as the
+ * number the network persisted, while the value being validated is still the
+ * string a number field holds (see `coerceToVariableType`). Without a
+ * context there is no codebook to ask, and the values compare as they are.
+ */
+const matchesComparisonValue = (
+  value: unknown,
+  comparisonValue: FieldValue | null,
+  attribute: string,
+  context: ValidationContext | undefined,
+): boolean => {
+  const variableType = context
+    ? getVariableDefinition(context.codebook, context.stageSubject, attribute)
+        ?.type
+    : undefined;
+  return isMatchingValue(
+    coerceToVariableType(value, variableType),
+    coerceToVariableType(comparisonValue, variableType),
   );
 };
 
@@ -663,7 +703,9 @@ const differentFrom: ValidationFunction<string> =
         if (!comparison.present || isUnanswered(comparison.value)) {
           return;
         }
-        if (isMatchingValue(value, comparison.value)) {
+        if (
+          matchesComparisonValue(value, comparison.value, attribute, context)
+        ) {
           ctx.addIssue({
             code: 'custom',
             message,
@@ -709,7 +751,9 @@ const sameAs: ValidationFunction<string> =
         if (!comparison.present || isUnanswered(comparison.value)) {
           return;
         }
-        if (!isMatchingValue(value, comparison.value)) {
+        if (
+          !matchesComparisonValue(value, comparison.value, attribute, context)
+        ) {
           ctx.addIssue({
             code: 'custom',
             message,
