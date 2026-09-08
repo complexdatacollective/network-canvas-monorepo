@@ -359,8 +359,10 @@ introduced unproved reference refuses the old cursor. The key-reference set and
 opt-out composite key remain inside AES-256-GCM ciphertext, so cursor output
 exposes neither key IDs nor the blind index. A changed current key, another
 database, malformed cursor or altered authentication tag fails with a fixed
-diagnostic. Any non-null cursor selects proof-only resume, so the exhaustive
-initialization scan is not repeated between pages.
+diagnostic. Rotation cursors select proof-only resume. Legacy cursors also
+recheck unproved participant and webhook key references against their sealed
+authorization; that query can scan those tables. These admission checks do not
+repeat full initialization across every stored reference or register proofs.
 Run
 `encryption verify` after the pass for full startup/restore verification. Removing
 historical roots remains unsupported and fails both resume and full verification.

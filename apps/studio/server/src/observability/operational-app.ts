@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type MiddlewareHandler } from 'hono';
 
 import type { PrincipalVariables } from '../auth/principal.ts';
 import type { StudioEnv } from '../env.ts';
@@ -12,6 +12,7 @@ export function createOperationalApp(
   observability: ReturnType<typeof createObservability>,
   logger?: OperationalLogger,
   reportError?: (error: unknown) => void,
+  authorizeRequest?: MiddlewareHandler<PrincipalVariables>,
 ) {
   const app = new Hono<PrincipalVariables>();
   app.onError((error, c) => {
@@ -28,6 +29,7 @@ export function createOperationalApp(
       record: observability.metrics.request,
     }),
   );
+  if (authorizeRequest) app.use('*', authorizeRequest);
   app.get('/healthz', (c) => c.json({ status: 'ok' }));
   app.get('/readyz', async (c) => {
     const readiness = await observability.readiness.check();
@@ -40,9 +42,7 @@ export function createOperationalApp(
     if (!env.metricsToken)
       return c.json({ title: 'Not Found', status: 404 }, 404);
     if (!authorizeMetrics(c.req.header('authorization'), env.metricsToken))
-      return c.json({ title: 'Unauthorized', status: 401 }, 401, {
-        'WWW-Authenticate': 'Bearer',
-      });
+      return c.json({ title: 'Not Found', status: 404 }, 404);
     const metrics = await observability.metrics.scrape();
     return c.body(metrics.body, 200, { 'Content-Type': metrics.contentType });
   });

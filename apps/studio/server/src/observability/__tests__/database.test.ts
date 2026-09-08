@@ -5,6 +5,7 @@ import { escapeIdentifier } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { stubAuthService } from '../../__tests__/support/auth.ts';
+import { createHttpTestApp as createApp } from '../../__tests__/support/http-app.ts';
 import {
   createScratchSchema,
   createScratchDatabase,
@@ -12,7 +13,6 @@ import {
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import { createRpcClient } from '../../__tests__/support/rpc.ts';
-import { createApp } from '../../app.ts';
 import type { AssetStore } from '../../assets.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { readMigrations } from '../../db/migrations/artifact.ts';
