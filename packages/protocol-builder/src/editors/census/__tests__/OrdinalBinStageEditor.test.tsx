@@ -8,6 +8,7 @@ import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
 import type { StageEditorComponent } from '../../../stage-editor-contract.ts';
 import {
   renderStageEditor,
+  type RenderStageEditorOptions,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
 import { OrdinalBinStageEditor } from '../OrdinalBinStageEditor.tsx';
@@ -33,7 +34,10 @@ const editor: StageEditorComponent<'OrdinalBin'> = (props) => (
   />
 );
 
-const openFixture = () => ({ stageId: 'ordinal-bin-1', editor });
+const openFixture = (): RenderStageEditorOptions<'OrdinalBin'> => ({
+  stageId: 'ordinal-bin-1',
+  editor,
+});
 
 const prompts = (stage: SectionDoc): Record<string, unknown>[] =>
   Array.isArray(stage.prompts)

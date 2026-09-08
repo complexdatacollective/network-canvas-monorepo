@@ -8,6 +8,7 @@ import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
 import type { StageEditorComponent } from '../../../stage-editor-contract.ts';
 import {
   renderStageEditor,
+  type RenderStageEditorOptions,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
 import { TieStrengthCensusStageEditor } from '../TieStrengthCensusStageEditor.tsx';
@@ -33,7 +34,10 @@ const editor: StageEditorComponent<'TieStrengthCensus'> = (props) => (
   />
 );
 
-const openFixture = () => ({ stageId: 'tie-strength-census-1', editor });
+const openFixture = (): RenderStageEditorOptions<'TieStrengthCensus'> => ({
+  stageId: 'tie-strength-census-1',
+  editor,
+});
 
 const prompts = (stage: SectionDoc): Record<string, unknown>[] =>
   Array.isArray(stage.prompts)
