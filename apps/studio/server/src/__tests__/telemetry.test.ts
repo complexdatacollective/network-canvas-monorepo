@@ -7,11 +7,11 @@ import {
   TelemetryReportSchema,
 } from '@codaco/studio-rpc/telemetry';
 
-import { createApp } from '../app.ts';
 import { readEnv } from '../env.ts';
 import { installFatalErrorHandlers } from '../fatal-errors.ts';
 import { createServerTelemetry } from '../telemetry.ts';
 import { stubAuthService } from './support/auth.ts';
+import { createHttpTestApp as createApp } from './support/http-app.ts';
 import { createRpcClient } from './support/rpc.ts';
 
 const CANARY =
@@ -159,10 +159,30 @@ describe('Studio diagnostic boundary', () => {
 });
 
 describe('runtime configuration and owned hooks', () => {
+  it.each(['true', '1'])(
+    'normalizes and validates the proxy trust list when validation is skipped with %s',
+    (skip) => {
+      vi.stubEnv('SKIP_ENV_VALIDATION', skip);
+      vi.stubEnv('TRUSTED_PROXIES', '127.0.0.1, fdaa::/16');
+      expect(readEnv({ withoutDatabaseOrAuth: true }).trustedProxies).toEqual([
+        '127.0.0.1',
+        'fdaa::/16',
+      ]);
+      vi.stubEnv('TRUSTED_PROXIES', 'proxy.invalid');
+      expect(() => readEnv({ withoutDatabaseOrAuth: true })).toThrow(
+        'Invalid environment variables',
+      );
+    },
+  );
+
   it.each(['managed', 'self-hosted'])(
     'defaults on and really opts out in %s, including the function and validation-skip lanes',
     async (mode) => {
       vi.stubEnv('EMAIL_FROM', '');
+      vi.stubEnv(
+        'STUDIO_DATABASE_ALLOWED_LOGINS',
+        '["studio_migrator","studio_runtime"]',
+      );
       vi.stubEnv('STUDIO_DEPLOYMENT_MODE', mode);
       vi.stubEnv('STUDIO_TELEMETRY', '');
       expect(readEnv().telemetry).toBe(true);

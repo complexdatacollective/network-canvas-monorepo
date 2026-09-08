@@ -64,6 +64,7 @@ const {
   mockIsAppConfigured,
   mockUserCreate,
   mockCreateUserSchemaSafeParse,
+  mockRequiresTwoFactorSetup,
 } = vi.hoisted(() => ({
   mockPrismaKeyFindUnique: vi.fn(),
   mockPrismaTotpCredentialFindFirst: vi.fn(),
@@ -80,6 +81,7 @@ const {
   mockIsAppConfigured: vi.fn(),
   mockUserCreate: vi.fn(),
   mockCreateUserSchemaSafeParse: vi.fn(),
+  mockRequiresTwoFactorSetup: vi.fn(),
 }));
 
 vi.mock('~/lib/db', () => ({
@@ -132,6 +134,10 @@ vi.mock('~/lib/auth/guards', () => ({
   getServerSession: vi.fn(),
 }));
 
+vi.mock('~/lib/auth/twoFactorPolicy', () => ({
+  requiresTwoFactorSetup: mockRequiresTwoFactorSetup,
+}));
+
 vi.mock('~/utils/getClientIp', () => ({
   getClientIp: mockGetClientIp,
 }));
@@ -171,6 +177,7 @@ describe('login', () => {
     mockRecordLoginAttempt.mockResolvedValue(undefined);
     mockCreateSessionCookie.mockResolvedValue(undefined);
     mockGetInstallationId.mockResolvedValue('test-installation-id');
+    mockRequiresTwoFactorSetup.mockResolvedValue(false);
   });
 
   describe('schema validation', () => {
@@ -451,6 +458,46 @@ describe('login', () => {
       await login({ username: 'testuser', password: 'password123' });
 
       expect(mockCreateSessionCookie).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('mandatory two-factor setup', () => {
+    const signInAsPasswordUser = async (userId: string) => {
+      mockLoginSchemaSafeParse.mockReturnValue({
+        success: true,
+        data: { username: 'newadmin', password: 'correctpassword' },
+      });
+      mockPrismaKeyFindUnique.mockResolvedValue({
+        id: 'username:newadmin',
+        user_id: userId,
+        hashed_password: '$argon2id$hashed',
+      });
+      mockVerifyPassword.mockResolvedValue(true);
+      mockPrismaTotpCredentialFindFirst.mockResolvedValue(null);
+      return login({ username: 'newadmin', password: 'correctpassword' });
+    };
+
+    it('sends a password account without an authenticator to setup when the installation requires two-factor', async () => {
+      mockRequiresTwoFactorSetup.mockResolvedValue(true);
+
+      const result = await signInAsPasswordUser('user-needs-setup');
+
+      expect(result).toEqual({ success: true, requiresTwoFactorSetup: true });
+      expect(mockRequiresTwoFactorSetup).toHaveBeenCalledWith(
+        'user-needs-setup',
+      );
+      // The session exists — the guards, not the absence of a session, keep
+      // it out of the dashboard until setup is complete.
+      expect(mockCreateSessionCookie).toHaveBeenCalledWith('user-needs-setup');
+    });
+
+    it('signs the same account straight in once the installation stops requiring two-factor', async () => {
+      mockRequiresTwoFactorSetup.mockResolvedValue(false);
+
+      const result = await signInAsPasswordUser('user-needs-setup');
+
+      expect(result).toEqual({ success: true });
+      expect(mockCreateSessionCookie).toHaveBeenCalledWith('user-needs-setup');
     });
   });
 });

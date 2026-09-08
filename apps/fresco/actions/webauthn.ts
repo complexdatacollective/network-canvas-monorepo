@@ -137,9 +137,45 @@ const messages = defineMessages({
     description:
       'Researcher-facing actions / webauthn: Account is already in password mode.',
   },
+  passkeyDidNotVerifyUserAtSignIn: {
+    id: 'fresco.actions.webauthn.passkeyDidNotVerifyUserAtSignIn',
+    defaultMessage:
+      'This passkey did not verify your identity. Fresco requires a passkey that confirms who you are with a PIN, fingerprint, or face. Try another passkey, or ask another administrator to reset your authentication.',
+    description:
+      'Researcher-facing actions / webauthn: sign-in refused because the authenticator skipped user verification; names the two ways back in.',
+  },
+  passkeyDidNotVerifyUserAtReauth: {
+    id: 'fresco.actions.webauthn.passkeyDidNotVerifyUserAtReauth',
+    defaultMessage:
+      'This passkey did not verify your identity. Add a passkey that confirms who you are with a PIN, fingerprint, or face, then try again.',
+    description:
+      'Researcher-facing actions / webauthn: an already signed-in researcher re-authenticated with a passkey whose authenticator skipped user verification.',
+  },
+  passkeyCannotVerifyUserAtRegistration: {
+    id: 'fresco.actions.webauthn.passkeyCannotVerifyUserAtRegistration',
+    defaultMessage:
+      'This passkey cannot verify your identity. Choose a passkey that confirms who you are with a PIN, fingerprint, or face.',
+    description:
+      'Researcher-facing actions / webauthn: registration refused because the authenticator skipped user verification.',
+  },
 });
 
 const CHALLENGE_COOKIE_NAME = 'webauthn_challenge';
+
+// @simplewebauthn/server has no structured error codes: a response whose
+// authenticator skipped user verification surfaces only as this thrown message
+// (`verifyRegistrationResponse` says "was required", `verifyAuthenticationResponse`
+// says "required"). `__tests__/user-verification.test.ts` drives the real
+// library, so an upstream wording change fails there instead of silently
+// downgrading the copy to the generic failure.
+const USER_VERIFICATION_FAILURE =
+  /^User verification (?:was )?required, but user could not be verified$/;
+
+function isUserVerificationFailure(error: unknown): boolean {
+  return (
+    error instanceof Error && USER_VERIFICATION_FAILURE.test(error.message)
+  );
+}
 
 function splitTransports(
   transports: string | null,
@@ -223,10 +259,17 @@ export async function verifyRegistration(data: {
       requireUserVerification: config.requireUserVerification,
     });
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('[WebAuthn] Registration verification error:', e);
+    const userVerificationFailed = isUserVerificationFailure(e);
+    if (!userVerificationFailed) {
+      // eslint-disable-next-line no-console
+      console.error('[WebAuthn] Registration verification error:', e);
+    }
     return {
-      error: createMessageError(messages.copyRegistrationVerificationFailed2),
+      error: createMessageError(
+        userVerificationFailed
+          ? messages.passkeyCannotVerifyUserAtRegistration
+          : messages.copyRegistrationVerificationFailed2,
+      ),
       data: null,
     };
   }
@@ -355,9 +398,13 @@ export async function signupWithPasskey(data: {
       expectedRPID: config.rpID,
       requireUserVerification: config.requireUserVerification,
     });
-  } catch {
+  } catch (e) {
     return {
-      error: createMessageError(messages.copyRegistrationVerificationFailed2),
+      error: createMessageError(
+        isUserVerificationFailure(e)
+          ? messages.passkeyCannotVerifyUserAtRegistration
+          : messages.copyRegistrationVerificationFailed2,
+      ),
       data: null,
     };
   }
@@ -470,9 +517,13 @@ export async function verifyPasskeyReauth(data: {
         transports: splitTransports(storedCredential.transports),
       },
     });
-  } catch {
+  } catch (e) {
     return {
-      error: createMessageError(messages.copyVerificationFailed),
+      error: createMessageError(
+        isUserVerificationFailure(e)
+          ? messages.passkeyDidNotVerifyUserAtReauth
+          : messages.copyVerificationFailed,
+      ),
       data: null,
     };
   }
@@ -565,10 +616,14 @@ export async function verifyAuthentication(data: {
         transports: splitTransports(storedCredential.transports),
       },
     });
-  } catch {
+  } catch (e) {
     await recordLoginAttempt(storedCredential.user.username, ipAddress, false);
     return {
-      error: createMessageError(messages.copyAuthenticationFailed),
+      error: createMessageError(
+        isUserVerificationFailure(e)
+          ? messages.passkeyDidNotVerifyUserAtSignIn
+          : messages.copyAuthenticationFailed,
+      ),
       data: null,
     };
   }
@@ -769,10 +824,17 @@ export async function switchToPasskeyMode(data: {
       requireUserVerification: config.requireUserVerification,
     });
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('[WebAuthn] Registration verification error:', e);
+    const userVerificationFailed = isUserVerificationFailure(e);
+    if (!userVerificationFailed) {
+      // eslint-disable-next-line no-console
+      console.error('[WebAuthn] Registration verification error:', e);
+    }
     return {
-      error: createMessageError(messages.copyRegistrationVerificationFailed2),
+      error: createMessageError(
+        userVerificationFailed
+          ? messages.passkeyCannotVerifyUserAtRegistration
+          : messages.copyRegistrationVerificationFailed2,
+      ),
       data: null,
     };
   }

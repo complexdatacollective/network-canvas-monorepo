@@ -246,7 +246,13 @@ export default function BuilderSection({
       // One call for all of them, so the whole capability leaves the draft as a
       // single edit: one entry in the session's history, so an undo brings the
       // capability back whole rather than a path at a time.
-      discardStageValues(capability?.fields ?? NO_FIELDS);
+      //
+      // A session that refuses it — editing taken away while the confirmation
+      // was open — has thrown nothing away, so the panel stays open over the
+      // values it still holds and the switch stays where the researcher left
+      // it. Saying so is `applyOwnCommands`'s job, and it has already done it
+      // in the form's own error region.
+      if (!discardStageValues(capability?.fields ?? NO_FIELDS)) return false;
       setSwitchedOn(false);
       return true;
     },
@@ -272,10 +278,14 @@ export default function BuilderSection({
   const [resetGeneration, setResetGeneration] = useState(0);
   useOnResearcherChange(resetOn, (value) => {
     if (resetOn === undefined) return;
-    discardStageValues(capability?.fields ?? NO_FIELDS, {
+    // Refused the same way, and for the same reason: a reset the session would
+    // not take has thrown nothing away, and closing the capability over values
+    // it still holds would describe a stage nobody agreed to.
+    const discarded = discardStageValues(capability?.fields ?? NO_FIELDS, {
       path: resetOn,
       value,
     });
+    if (!discarded) return;
     setSwitchedOn(false);
     setResetGeneration((generation) => generation + 1);
   });

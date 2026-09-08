@@ -32,15 +32,20 @@ import { stageDraftValue, useStageValue } from '../form/stageFormHooks.ts';
  * happens in the shell's effect, which runs after this one, so the two are a
  * render apart and in an order no caller controls.
  *
- * The first value a path is given is not a change. There was no previous one
- * for anything to have been configured against, so a stage that has just been
- * handed its subject has nothing to reset — and a section resetting there
- * would empty something the researcher has not touched. That is about a path
- * that has never held anything, not about the value being missing right now: a
- * researcher who empties the control and then chooses again has replaced what
- * was there, and the section resetting on it has to hear about it — the choice
- * is the cause its batch carries, and without the batch a data file staged in
- * this session never reaches the draft at all.
+ * The FIRST OBSERVATION is not a change, and nothing else is exempt. There was
+ * no previous value for anything to have been configured against, so a section
+ * mounting over a stage that already carries its subject has nothing to reset,
+ * and resetting there would empty something the researcher has not touched.
+ *
+ * Every reading after that one is a transition, INCLUDING the transition out of
+ * `undefined`. A path that starts absent is exactly the path a researcher is
+ * about to fill in for the first time, and that first selection is a choice
+ * like any other: the stale values beside a prerequisite that was missing are
+ * the ones it invalidates, and the choice is the cause the discard's batch
+ * carries. Treating it as another initial observation swallowed both — the
+ * values survived into the save, and a data file staged in this session
+ * reached no batch at all, so every later edit made against it went to a
+ * live-applying host ahead of the file and outlived this session's cancel.
  *
  * `path` is optional so a caller whose reset is itself optional can still ask
  * unconditionally, which a hook has to be able to do. A path nobody named
@@ -67,19 +72,17 @@ export function useOnResearcherChange(
   const latestOnChange = useRef(onChange);
   latestOnChange.current = onChange;
 
-  const seen = useRef(value);
   /**
-   * Whether anything has ever been at this path while this section has been on
-   * screen.
+   * The last reading, and whether there has been one at all.
    *
-   * What tells the two kinds of `undefined` apart. A path that has never held
-   * anything is one nothing was configured against, and the first value it is
-   * given is not a change — a stage handed its subject for the first time has
-   * nothing to reset. A path the RESEARCHER emptied is a different thing
-   * entirely: they discarded the data file, and what they choose next replaces
-   * it, cause and all.
+   * A box rather than the value itself, because `undefined` is a value this
+   * path really holds: an unobserved path and one the researcher has emptied
+   * are the same reading, and only "has this effect run yet" tells them apart.
+   * Started empty rather than at the first render's value so the two answers
+   * come from one place — the effect that records a reading is the effect that
+   * decides whether there was one before it.
    */
-  const everHeldAValue = useRef(value !== undefined);
+  const seen = useRef<{ value: unknown } | null>(null);
   const seenCommitted = useRef(committed);
   /**
    * The value the form is expected to be re-seeded with, once the agreed draft
@@ -94,9 +97,7 @@ export function useOnResearcherChange(
 
   useEffect(() => {
     const previous = seen.current;
-    seen.current = value;
-    const everHeld = everHeldAValue.current;
-    everHeldAValue.current = everHeld || value !== undefined;
+    seen.current = { value };
     const previousCommitted = seenCommitted.current;
     seenCommitted.current = committed;
 
@@ -104,9 +105,8 @@ export function useOnResearcherChange(
       awaitingReseedTo.current = { value: committed };
     }
 
-    if ((previous === undefined && !everHeld) || isEqual(previous, value)) {
-      return;
-    }
+    // Nothing to compare against, or nothing moved.
+    if (previous === null || isEqual(previous.value, value)) return;
 
     const expected = awaitingReseedTo.current;
     awaitingReseedTo.current = null;

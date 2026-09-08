@@ -8,9 +8,11 @@
   "include": [
     "src/**/*.ts",
     "scripts/**/*.ts",
+    "qualification/**/*.ts",
     "vite.config.ts",
     "vite.netlify.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vitest.qualification.config.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }
