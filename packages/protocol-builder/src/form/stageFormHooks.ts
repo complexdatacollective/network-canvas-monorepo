@@ -590,6 +590,32 @@ export function useStageHasAnyValue(paths: readonly string[]): boolean {
 }
 
 /**
+ * The same question, asked at the moment it matters rather than watched.
+ *
+ * For a caller whose paths are not known until something happens — a subject
+ * change, which invalidates whatever the stage happens to be carrying at the
+ * time. Watching them would mean recomputing the set on every render to hand
+ * it to a hook, for an answer nobody has asked for yet.
+ *
+ * The same `pathHasAnswer` either way, deliberately: a capability's switch-off
+ * and a subject change both decide whether to warn the researcher that
+ * something will be lost, and two judgements of "holds something" would let
+ * one of them warn where the other did not.
+ */
+export function useAskStageHasAnyValue(): (
+  paths: readonly string[],
+) => boolean {
+  const { storeApi, committedFields } = useStageEditorForm();
+  return useCallback(
+    (paths) =>
+      paths.some((path) =>
+        pathHasAnswer(storeApi.getState(), committedFields, path),
+      ),
+    [committedFields, storeApi],
+  );
+}
+
+/**
  * Whether anything has actually been entered at this value.
  *
  * A capability may own a CONTAINER path while its controls register the leaves

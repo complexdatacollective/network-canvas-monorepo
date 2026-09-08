@@ -11,12 +11,16 @@ import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.ts
 import type { CodebookEntityDraft } from '../codebook/editing.ts';
 import SubjectSelectField, {
   type EntitySubject,
+  type SubjectChangeConfirmation,
 } from '../fields/SubjectSelectField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import BuilderSection from './BuilderSection.tsx';
 import NetworkFilterSection from './NetworkFilterSection.tsx';
-import { useResetStageOnSubjectChange } from './useResetStageOnSubjectChange.ts';
+import {
+  useResetStageOnSubjectChange,
+  useSubjectChangeDiscards,
+} from './useResetStageOnSubjectChange.ts';
 
 /** What this stage works on. Ego stages have no type to pick, so no section. */
 export type SubjectEntity = EntitySubject['entity'];
@@ -51,6 +55,25 @@ const messages = defineMessages({
     defaultMessage: 'Create a new node type',
     description:
       'Button that opens an editor for inventing a kind of network member without leaving the stage being configured. Also the title of the dialog it opens.',
+  },
+  nodeChangeTitle: {
+    id: 'protocolBuilder.subjectSection.nodeChangeTitle',
+    defaultMessage: 'Change the node type?',
+    description:
+      'Title of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured for the one it has.',
+  },
+  nodeChangeDescription: {
+    id: 'protocolBuilder.subjectSection.nodeChangeDescription',
+    defaultMessage:
+      'Everything else on this stage describes the node type it works with now, and choosing a different type removes all of it.',
+    description:
+      'Body of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured. A stage is one step of an interview.',
+  },
+  nodeChangeConfirm: {
+    id: 'protocolBuilder.subjectSection.nodeChangeConfirm',
+    defaultMessage: 'Change the node type',
+    description:
+      'Button that goes ahead with changing the kind of network member a stage works with, throwing away the configuration that described the previous one.',
   },
   nodeCreateDescription: {
     id: 'protocolBuilder.subjectSection.nodeCreateDescription',
@@ -88,6 +111,25 @@ const messages = defineMessages({
     description:
       'Button that opens an editor for inventing a kind of relationship without leaving the stage being configured. Also the title of the dialog it opens.',
   },
+  edgeChangeTitle: {
+    id: 'protocolBuilder.subjectSection.edgeChangeTitle',
+    defaultMessage: 'Change the edge type?',
+    description:
+      'Title of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured for the one it has.',
+  },
+  edgeChangeDescription: {
+    id: 'protocolBuilder.subjectSection.edgeChangeDescription',
+    defaultMessage:
+      'Everything else on this stage describes the edge type it works with now, and choosing a different type removes all of it.',
+    description:
+      'Body of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured. A stage is one step of an interview.',
+  },
+  edgeChangeConfirm: {
+    id: 'protocolBuilder.subjectSection.edgeChangeConfirm',
+    defaultMessage: 'Change the edge type',
+    description:
+      'Button that goes ahead with changing the kind of relationship a stage works with, throwing away the configuration that described the previous one.',
+  },
   edgeCreateDescription: {
     id: 'protocolBuilder.subjectSection.edgeCreateDescription',
     defaultMessage: 'Create an edge type and use it on this stage',
@@ -118,6 +160,10 @@ type SubjectWords = Readonly<{
   fieldHint: MessageDescriptor;
   createLabel: MessageDescriptor;
   createDescription: MessageDescriptor;
+  /** What the researcher is asked before a change that costs them the stage. */
+  changeTitle: MessageDescriptor;
+  changeDescription: MessageDescriptor;
+  changeConfirm: MessageDescriptor;
 }>;
 
 const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
@@ -128,6 +174,9 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
     fieldHint: messages.nodeFieldHint,
     createLabel: messages.nodeCreateLabel,
     createDescription: messages.nodeCreateDescription,
+    changeTitle: messages.nodeChangeTitle,
+    changeDescription: messages.nodeChangeDescription,
+    changeConfirm: messages.nodeChangeConfirm,
   }),
   edge: Object.freeze({
     title: messages.edgeTitle,
@@ -136,6 +185,9 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
     fieldHint: messages.edgeFieldHint,
     createLabel: messages.edgeCreateLabel,
     createDescription: messages.edgeCreateDescription,
+    changeTitle: messages.edgeChangeTitle,
+    changeDescription: messages.edgeChangeDescription,
+    changeConfirm: messages.edgeChangeConfirm,
   }),
 });
 
@@ -192,6 +244,28 @@ export default function SubjectSection({
   const words = WORDS[entity];
   useResetStageOnSubjectChange();
 
+  /**
+   * The question the picker asks before it lets the change through, or nothing
+   * at all when there is nothing to lose.
+   *
+   * Asked here rather than by the reset, because the reset watches the value
+   * and runs once it has already moved: a question asked there would be about
+   * a change the researcher can already see, and answering "no" would mean
+   * putting the picker back.
+   */
+  const discardsConfiguration = useSubjectChangeDiscards();
+  const confirmChange = useCallback(
+    (): SubjectChangeConfirmation | undefined =>
+      discardsConfiguration()
+        ? {
+            title: intl.formatMessage(words.changeTitle),
+            description: intl.formatMessage(words.changeDescription),
+            confirmLabel: intl.formatMessage(words.changeConfirm),
+          }
+        : undefined,
+    [discardsConfiguration, intl, words],
+  );
+
   return (
     <>
       <BuilderSection
@@ -202,6 +276,7 @@ export default function SubjectSection({
           name="subject"
           component={SubjectSelectField}
           entityType={entity}
+          confirmChange={confirmChange}
           label={intl.formatMessage(words.fieldLabel)}
           hint={intl.formatMessage(words.fieldHint)}
           required
