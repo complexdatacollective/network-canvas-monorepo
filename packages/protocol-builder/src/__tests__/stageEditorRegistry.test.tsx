@@ -2,8 +2,12 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { StageType } from '@codaco/protocol-validation';
+
+import type { StageEditorController } from '../controller.ts';
 import {
   defineStageEditorPart,
   missingStageEditors,
@@ -13,7 +17,7 @@ import type {
   StageEditorComponent,
   StageEditorProps,
 } from '../stage-editor-contract.ts';
-import { UnregisteredStageTypeError } from '../StageEditor.tsx';
+import StageEditor, { UnregisteredStageTypeError } from '../StageEditor.tsx';
 import {
   AWAITING_STAGE_EDITORS,
   composeStageEditorRegistry,
@@ -349,17 +353,29 @@ describe('dispatching to a named editor', () => {
       .mockImplementation(() => undefined);
 
     try {
-      // `Information` will not do here once a family lands: an explicit `{}`
-      // is merged OVER the package's own registry rather than replacing it,
-      // so an interface a landed family already claims stays claimed no
-      // matter what a host passes. `sociogram-1` is still awaiting its
-      // family, so nothing — package or host — has claimed it.
+      // Every family has landed, so the package's own registry now covers
+      // every member of `StageType` — an explicit `{}` merges OVER that
+      // registry rather than replacing it, so there is no longer an
+      // interface a host can catch unclaimed the way `sociogram-1` once
+      // stood in for one. What the refusal still guards is the case the
+      // type system cannot reach at all: a session document written by a
+      // newer build naming an interface this runtime's schema has no
+      // member for yet. A stage type outside the union stands in for that,
+      // cast the same way a version-skewed document would arrive — a
+      // string with no promise from the compiler behind it — and rendered
+      // through `StageEditor` directly, since the fixture protocol
+      // `renderStageEditor` opens can only hold real `StageType`s.
+      const stageType = 'FutureInterface' as unknown as StageType;
+      const controller = {
+        snapshot: { editedSection: { identity: { type: stageType } } },
+      } as unknown as StageEditorController;
+
       expect(() =>
-        renderStageEditor({ stageId: 'sociogram-1', registry: {} }),
+        render(<StageEditor controller={controller} registry={{}} />),
       ).toThrow(UnregisteredStageTypeError);
       expect(() =>
-        renderStageEditor({ stageId: 'sociogram-1', registry: {} }),
-      ).toThrow(/"Sociogram" interface/);
+        render(<StageEditor controller={controller} registry={{}} />),
+      ).toThrow(/"FutureInterface" interface/);
     } finally {
       consoleError.mockRestore();
     }
