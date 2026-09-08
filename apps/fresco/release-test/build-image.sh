@@ -58,7 +58,12 @@ fi
 # changed since the release — must resolve to its tarball and never from the
 # registry (registry references appear as '@codaco/<name>@<semver>'); the
 # rest are expected to resolve from the registry, exactly as the image will.
-echo "[release-test] $(node scripts/vendor-workspace-packages.mjs --assert-lockfile "$STAGE_DIR")"
+# An assignment of its own, not a substitution inside echo's argument: `set -e`
+# does not see a failure inside a command substitution used as an argument, so
+# the echo form reported success over a stale registry resolution and went on
+# to build — and certify — the image.
+guard=$(node scripts/vendor-workspace-packages.mjs --assert-lockfile "$STAGE_DIR")
+echo "[release-test] $guard"
 
 echo "[release-test] building image $IMAGE_TAG"
 docker build -t "$IMAGE_TAG" "$STAGE_DIR"
