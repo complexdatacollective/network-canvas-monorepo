@@ -1,6 +1,6 @@
 # Authenticate Studio release history
 
-Implemented locally for #1243; workflow integration and live Cosign/upgrade qualification remain open.
+Implemented locally for #1243 and integrated with the manual distribution workflow; live Cosign/upgrade qualification remains open.
 
 The publication caller fetches main and all release tags while holding the non-cancelling distribution lock, then calls `authenticateStudioReleaseHistory`. The reader requires annotated source-matching tags, published GitHub releases whose body and tag bind the manifest digest, and manifest signatures under the installer's fixed GitHub Actions issuer/workflow policy. Missing releases, assets, permission errors and malformed evidence fail; an interrupted draft is excluded from supported history. A newer or unrelated final tag blocks an older candidate even when that tag's release is still a draft.
 
@@ -12,7 +12,7 @@ The reader authenticates historical manifest bytes and all six retained SBOMs, i
 
 Validation uses real temporary Git histories and a deterministic signature-command boundary to check exact bytes, fixed trust arguments, restrictive staging permissions and cleanup. Separate negative controls remove signature verification or Git-generation binding from disposable module copies and require the matching refusal test to fail. These controls do not claim live Sigstore cryptographic qualification.
 
-Adversarial review added a second CI-history listing and a final detail read for the observed latest run. A new run in the confirming list or a rerun concealed by a stale list now causes refusal. This is a bounded freshness check, repeated at each publication gate; it cannot make GitHub observations atomic. A newer unreleased main commit alone does not disqualify a reviewed ancestor: the separate ancestry gate protects newer distribution and component releases/reservations. The final historical release lookup must also retain the original GitHub release ID, so deleting and replacing a release cannot combine old assets with a replacement's published state.
+Adversarial review added a second CI-history listing and a final detail read for the observed latest run. A new run in the confirming list or a rerun concealed by a stale list now causes refusal. This is a bounded freshness check, repeated at each publication gate; it cannot make GitHub observations atomic. The workflow integration additionally requires the candidate to equal the freshly fetched main tip at each gate, while the separate ancestry gate protects newer distribution and component releases/reservations. The final historical release lookup must also retain the original GitHub release ID, so deleting and replacing a release cannot combine old assets with a replacement's published state.
 
 The composed history, store, CI admission, image preparation, signing preparation and publication tests passed 104/104 on 2026-09-07. Pinned Linux Cosign, Syft and Crane binaries were independently downloaded, hash-verified and executed in network-isolated, read-only amd64 containers; all three reported the expected versions/platform. These checks do not qualify a published release or a running upgrade.
 
