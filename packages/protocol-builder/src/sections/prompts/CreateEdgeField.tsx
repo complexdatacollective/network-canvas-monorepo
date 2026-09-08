@@ -62,6 +62,12 @@ export default function CreateEdgeField({
     key: string;
     typeId: string;
   } | null>(null);
+  /**
+   * Whether a create is in flight, which is a fact this host has for itself:
+   * the editor owns the draft and this owns request execution, so the request
+   * passes through here on its way out and its answer on the way back.
+   */
+  const [submitting, setSubmitting] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
 
   const existingEntityNames = useMemo(
@@ -105,7 +111,22 @@ export default function CreateEdgeField({
           open
           title={createLabel}
           size="readable"
-          closeDialog={() => setSession(null)}
+          // A request in flight refuses every way out, because the dialog is
+          // about to show what the host made of it. Escape, a press outside
+          // and the close button all arrive at `closeDialog`, so refusing
+          // there covers all three — and `dismissible` takes the close button
+          // away rather than leaving a control on screen that does nothing.
+          // Dismissed mid-flight, the handler awaiting the request stays alive
+          // and a success arriving afterwards still points the prompt at the
+          // new type: the researcher would watch the connection they had
+          // chosen be replaced by one they never saw arrive, and a refusal
+          // would be shown to nobody. `SubjectSection`'s create dialog holds
+          // itself shut for exactly this, and this is the same act.
+          dismissible={!submitting}
+          closeDialog={() => {
+            if (submitting) return;
+            setSession(null);
+          }}
           finalFocus={() => trigger.current}
         >
           <CodebookEntityEditor
@@ -117,7 +138,14 @@ export default function CreateEdgeField({
             initialDraft={NEW_EDGE_DRAFT}
             existingEntityNames={existingEntityNames}
             readOnly={readOnly}
-            onSubmit={(request) => controller.requestCompoundEdit(request)}
+            onSubmit={async (request) => {
+              setSubmitting(true);
+              try {
+                return await controller.requestCompoundEdit(request);
+              } finally {
+                setSubmitting(false);
+              }
+            }}
             onApplied={() => {
               setFieldValue('createEdge', session.typeId);
               setSession(null);

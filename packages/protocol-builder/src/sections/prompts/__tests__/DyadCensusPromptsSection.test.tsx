@@ -262,3 +262,98 @@ describe('a codebook that changes while a dyad prompt is open', () => {
     expect(screen.getByRole('radio', { name: 'knows' })).toBeChecked();
   });
 });
+
+/**
+ * A dismissal while the connection type is being created.
+ *
+ * The request outlives the dialog: dismissed mid-flight the editor is
+ * unmounted, but the handler awaiting the host is still alive, so a refusal is
+ * shown to nobody and a success still points the prompt at a type the
+ * researcher watched no editor finish. `SubjectSection`'s own create dialog
+ * withholds every way out for exactly this, and this is the same act.
+ */
+describe('dismissing the connection-type dialog while it is submitting', () => {
+  /** Holds the compound edit open, and hands back the release. */
+  const holdTheCompoundEdit = (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    const send = harness.session.requestCompoundEdit.bind(harness.session);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
+      async (request) => {
+        await held;
+        return send(request);
+      },
+    );
+    return () => {
+      release();
+    };
+  };
+
+  const startTheCreate = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create a new connection type',
+      }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Edge type name' }),
+      'worksWith',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+  };
+
+  it('refuses every way out until the request has answered', async () => {
+    const harness = renderStageEditor(openEditor());
+    const release = holdTheCompoundEdit(harness);
+    await startTheCreate(harness);
+
+    // Escape and a press outside are the two routes the researcher has left —
+    // Cancel disables itself — and both reach the dialog through `closeDialog`.
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(document.body);
+    expect(
+      screen.getByRole('textbox', { name: 'Edge type name' }),
+    ).toBeInTheDocument();
+    // …and the one that is a visible control is not offered at all, rather
+    // than offered and inert.
+    expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
+
+    release();
+    expect(
+      await screen.findByRole('radio', { name: 'worksWith' }),
+    ).toBeChecked();
+  });
+
+  /**
+   * And the way out comes back. A refusal that outlived the request would
+   * leave the researcher shut inside a dialog with nothing left to wait for.
+   */
+  it('can be dismissed again once the request has failed', async () => {
+    const harness = renderStageEditor(openEditor());
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockResolvedValue({
+      status: 'failed',
+      reason: 'host-error',
+      message: 'expected object, received undefined',
+    });
+    await startTheCreate(harness);
+    await screen.findByRole('alert');
+
+    await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Edge type name' }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+});

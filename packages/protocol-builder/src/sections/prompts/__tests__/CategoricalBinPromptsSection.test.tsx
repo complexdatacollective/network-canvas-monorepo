@@ -1014,6 +1014,141 @@ function personDocument(harness: {
   return { ...document };
 }
 
+/**
+ * A dismissal while a codebook editor's save is in flight.
+ *
+ * The request outlives the dialog: dismissed mid-flight the editor is
+ * unmounted but the handler awaiting the host is still alive, so a refusal is
+ * shown to nobody and a success still runs `onComplete` — which, for the
+ * create, points the prompt at an attribute the researcher watched no editor
+ * finish. `SubjectSection`'s create dialog already withholds every way out
+ * until the compound edit answers, and these three are the same act.
+ */
+describe('dismissing a codebook editor while its save is in flight', () => {
+  /** Holds the compound edit open, and hands back the release. */
+  const holdTheCompoundEdit = (harness: StageEditorHarness) => {
+    const send = harness.session.requestCompoundEdit.bind(harness.session);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
+      async (request) => {
+        await held;
+        return send(request);
+      },
+    );
+    return () => {
+      release();
+    };
+  };
+
+  it('refuses every way out of the create editor until it answers', async () => {
+    const harness = renderStageEditor(openEditor());
+    const release = holdTheCompoundEdit(harness);
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new attribute' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+      'howKnown',
+    );
+    await addOption(harness, 1, 'Work', 'work');
+    await addOption(harness, 2, 'Home', 'home');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    // Escape and a press outside are the two routes left; the close button is
+    // taken away rather than left on screen doing nothing.
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(document.body);
+    expect(
+      screen.getByRole('textbox', { name: 'Attribute name' }),
+    ).toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
+
+    release();
+    const picker = await screen.findByRole('combobox', { name: 'Attribute' });
+    await waitFor(() =>
+      expect(
+        within(picker).getByRole('option', { selected: true }),
+      ).toHaveTextContent('howKnown'),
+    );
+  });
+
+  it('refuses every way out of the values editor until it answers', async () => {
+    const harness = renderStageEditor(openEditor());
+    const release = holdTheCompoundEdit(harness);
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: "Change this attribute's values",
+      }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove option 3' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(document.body);
+    expect(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    ).toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
+
+    release();
+    await waitFor(() =>
+      expect(
+        (personVariables(harness).contactType as { options: unknown[] })
+          .options,
+      ).toHaveLength(2),
+    );
+  });
+
+  it('refuses every way out of the rules editor until it answers', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+    const release = holdTheCompoundEdit(harness);
+
+    await openFollowUpBin(harness);
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Set rules for what the participant types',
+      }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Required' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save validation' }),
+    );
+
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(document.body);
+    expect(
+      screen.getByRole('checkbox', { name: 'Required' }),
+    ).toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
+
+    release();
+    await waitFor(() =>
+      expect(personVariables(harness).relationship_to_ego).toMatchObject({
+        validation: { required: true },
+      }),
+    );
+  });
+});
+
 function personVariables(harness: {
   session: { getSnapshot(): { protocolSections: Record<string, unknown> } };
 }): Record<string, unknown> {

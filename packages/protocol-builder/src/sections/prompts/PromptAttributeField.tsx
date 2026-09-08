@@ -205,6 +205,12 @@ export default function PromptAttributeField({
     key: string;
     variableId: string;
   } | null>(null);
+  /**
+   * Whether a codebook edit is in flight, which is a fact this host has for
+   * itself: an editor owns its draft and this owns request execution, so every
+   * request passes through here on its way out and its answer on the way back.
+   */
+  const [submitting, setSubmitting] = useState(false);
   const createTrigger = useRef<HTMLButtonElement>(null);
   const editTrigger = useRef<HTMLButtonElement>(null);
   const validationTrigger = useRef<HTMLButtonElement>(null);
@@ -247,6 +253,44 @@ export default function PromptAttributeField({
 
   const closeEditor = () => {
     setEditing(null);
+  };
+
+  /**
+   * The compound edit an open editor submits, with the dialog held shut while
+   * it is in flight.
+   *
+   * The request outlives the dialog: dismissed mid-flight the editor is
+   * unmounted but the handler awaiting the host is still alive, so a refusal
+   * is shown to nobody and a success still runs `onComplete` — which, for the
+   * create, points the prompt at an attribute the researcher watched no editor
+   * finish. `SubjectSection`'s own create dialog withholds every way out for
+   * exactly this, and these three are the same act.
+   */
+  const submitEdit = async (
+    request: Parameters<typeof controller.requestCompoundEdit>[0],
+  ) => {
+    setSubmitting(true);
+    try {
+      return await controller.requestCompoundEdit(request);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /**
+   * Every way out of an open editor, which is one handler.
+   *
+   * Escape, a press outside and the close button all arrive at `closeDialog`,
+   * so refusing there covers all three — and `dismissible` takes the close
+   * button away rather than leaving a control on screen that does nothing.
+   */
+  const requestCloseEditor = () => {
+    if (submitting) return;
+    closeEditor();
+  };
+  const requestCloseValidating = () => {
+    if (submitting) return;
+    setValidating(null);
   };
 
   const body = (
@@ -334,7 +378,8 @@ export default function PromptAttributeField({
           open
           title={editingTitle}
           size="readable"
-          closeDialog={closeEditor}
+          dismissible={!submitting}
+          closeDialog={requestCloseEditor}
           finalFocus={() =>
             editing.mode === 'create'
               ? createTrigger.current
@@ -355,9 +400,7 @@ export default function PromptAttributeField({
               description={createLabel}
               title={createLabel}
               createRequestId={() => uuid()}
-              onSubmitRequest={(request) =>
-                controller.requestCompoundEdit(request)
-              }
+              onSubmitRequest={submitEdit}
               onComplete={(variableId) => {
                 setFieldValue(name, variableId);
                 closeEditor();
@@ -379,9 +422,7 @@ export default function PromptAttributeField({
               description={editingTitle}
               title={editingTitle}
               createRequestId={() => uuid()}
-              onSubmitRequest={(request) =>
-                controller.requestCompoundEdit(request)
-              }
+              onSubmitRequest={submitEdit}
               onComplete={closeEditor}
             />
           )}
@@ -395,7 +436,8 @@ export default function PromptAttributeField({
             open
             title={validationLabel}
             size="readable"
-            closeDialog={() => setValidating(null)}
+            dismissible={!submitting}
+            closeDialog={requestCloseValidating}
             finalFocus={() => validationTrigger.current}
           >
             <CodebookVariableValidationEditor
@@ -409,9 +451,7 @@ export default function PromptAttributeField({
                 description: validationLabel,
               }}
               readOnly={readOnly}
-              onSubmitRequest={(request) =>
-                controller.requestCompoundEdit(request)
-              }
+              onSubmitRequest={submitEdit}
               onComplete={() => setValidating(null)}
             />
           </Dialog>
