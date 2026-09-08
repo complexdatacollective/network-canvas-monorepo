@@ -168,7 +168,13 @@ class FlyFixture {
     if (parts[5] === 'wait' && init.method === 'GET') return json({ ok: true });
     if (parts[5] === 'lease' && init.method === 'POST')
       return json(
-        { status: 'success', data: { nonce: 'lease123', expires_at: 1 } },
+        {
+          status: 'success',
+          data: {
+            nonce: 'lease123',
+            expires_at: Math.ceil(Date.now() / 1_000) + 60,
+          },
+        },
         { status: 201 },
       );
     if (parts[5] === 'lease' && init.method === 'DELETE')
@@ -242,7 +248,7 @@ test('creates four exact digest-pinned nonrunning and unrouted Machines', async 
 test('polls Machine reads through a bounded transition without using the wait API', async () => {
   const fixture = new FlyFixture();
   let firstMachinePolls = 0;
-  fixture.override = (call) => {
+  fixture.override = async (call) => {
     if (
       call.method === 'GET' &&
       call.path === '/v1/apps/nc-registry-production/machines/machine1'
@@ -265,6 +271,42 @@ test('polls Machine reads through a bounded transition without using the wait AP
     fixture.calls.some((call) => call.path.endsWith('/wait')),
     false,
   );
+});
+
+test('polls provider-latent lifecycle transitions beyond the old five-attempt window', async () => {
+  const initial = Object.fromEntries(
+    services.map((service) => [service, machine(service)]),
+  );
+  initial['registry-production'].config.guest.memory_mb = 256;
+  const fixture = new FlyFixture(initial);
+  let updated = false;
+  let transitionPolls = 0;
+  fixture.override = async (call) => {
+    if (call.method === 'POST' && call.path.endsWith('/machines/machine1'))
+      updated = true;
+    if (
+      updated &&
+      call.method === 'GET' &&
+      call.path.endsWith('/machines/machine1') &&
+      transitionPolls < 6
+    ) {
+      transitionPolls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      return json(
+        machine('registry-production', {
+          instance_id: 'version10',
+          state: 'replacing',
+        }),
+      );
+    }
+    return null;
+  };
+
+  const result = await prepareFlyMachines(
+    input(fixture, { operationTimeoutMs: 2_000 }),
+  );
+  assert.equal(result.prepared[0].action, 'updated');
+  assert.equal(transitionPolls, 6);
 });
 
 test('reuses exact created or stopped Machines without a write request', async () => {
@@ -314,6 +356,190 @@ test('leases, rechecks and updates only a marked stopped Machine', async () => {
   assert.equal('name' in writes[1].body, false);
   assert.equal('region' in writes[1].body, false);
   assert.equal(writes[1].headers['fly-machine-lease-nonce'], 'lease123');
+});
+
+test('accepts an uppercase opaque lease nonce and forwards it unchanged', async () => {
+  const initial = Object.fromEntries(
+    services.map((service) => [service, machine(service)]),
+  );
+  initial['registry-production'].config.guest.memory_mb = 256;
+  const fixture = new FlyFixture(initial);
+  fixture.override = (call) =>
+    call.method === 'POST' && call.path.endsWith('/lease')
+      ? json(
+          {
+            status: 'success',
+            data: {
+              nonce: 'LEASE ABC_123',
+              expires_at: Math.ceil(Date.now() / 1_000) + 60,
+            },
+          },
+          { status: 201 },
+        )
+      : null;
+
+  await prepareFlyMachines(input(fixture));
+  const leasedCalls = fixture.calls.filter(
+    (call) => call.headers['fly-machine-lease-nonce'] !== undefined,
+  );
+  assert.ok(leasedCalls.length > 0);
+  assert.ok(
+    leasedCalls.every(
+      (call) => call.headers['fly-machine-lease-nonce'] === 'LEASE ABC_123',
+    ),
+  );
+});
+
+test('requests and verifies a lease covering the operation deadline', async () => {
+  const initial = Object.fromEntries(
+    services.map((service) => [service, machine(service)]),
+  );
+  initial['registry-production'].config.guest.memory_mb = 256;
+  const fixture = new FlyFixture(initial);
+  await prepareFlyMachines(
+    input(fixture, { requestTimeoutMs: 1_000, operationTimeoutMs: 30_000 }),
+  );
+  const acquisition = fixture.calls.find(
+    (call) => call.method === 'POST' && call.path.endsWith('/lease'),
+  );
+  assert.ok(acquisition);
+  assert.ok(
+    acquisition.body.ttl >= 30,
+    'the requested lease must cover the configured operation budget',
+  );
+
+  const shortFixture = new FlyFixture(initial);
+  shortFixture.override = (call) =>
+    call.method === 'POST' && call.path.endsWith('/lease')
+      ? json(
+          {
+            status: 'success',
+            data: {
+              nonce: 'SHORT-LEASE',
+              expires_at: Math.floor(Date.now() / 1_000) + 1,
+            },
+          },
+          { status: 201 },
+        )
+      : null;
+  await assert.rejects(
+    prepareFlyMachines(input(shortFixture, { operationTimeoutMs: 3_000 })),
+    /lease expires before the operation deadline/,
+  );
+  assert.deepEqual(
+    mutationCalls(shortFixture).map(({ method, path }) => [
+      method,
+      path.split('/').at(-1),
+    ]),
+    [
+      ['POST', 'lease'],
+      ['DELETE', 'lease'],
+    ],
+    'a short but header-safe lease is released without updating the Machine',
+  );
+});
+
+test('rejects an unsafe lease nonce before forwarding any lease header', async () => {
+  const initial = Object.fromEntries(
+    services.map((service) => [service, machine(service)]),
+  );
+  initial['registry-production'].config.guest.memory_mb = 256;
+  const fixture = new FlyFixture(initial);
+  fixture.override = (call) =>
+    call.method === 'POST' && call.path.endsWith('/lease')
+      ? json(
+          {
+            status: 'success',
+            data: {
+              nonce: 'unsafe\r\nheader',
+              expires_at: Math.ceil(Date.now() / 1_000) + 60,
+            },
+          },
+          { status: 201 },
+        )
+      : null;
+  await assert.rejects(
+    prepareFlyMachines(input(fixture)),
+    /lease response is malformed/,
+  );
+  assert.equal(
+    fixture.calls.some(
+      (call) => call.headers['fly-machine-lease-nonce'] !== undefined,
+    ),
+    false,
+  );
+  assert.deepEqual(
+    mutationCalls(fixture).map(({ method, path }) => [
+      method,
+      path.split('/').at(-1),
+    ]),
+    [['POST', 'lease']],
+  );
+});
+
+test('stops lifecycle polling immediately on fatal state, identity, config or shape', async () => {
+  const cases = [
+    [
+      'state',
+      () => machine('registry-production', { state: 'started' }),
+      /unsafe lifecycle state/,
+    ],
+    [
+      'identity',
+      () => machine('registry-production', { id: 'substitute' }),
+      /substituted Machine identity/,
+    ],
+    [
+      'config',
+      () => {
+        const changed = machine('registry-production');
+        changed.config.guest.memory_mb = 256;
+        return changed;
+      },
+      /changed config/,
+    ],
+    ['shape', () => ({ state: 'replacing' }), /wrong Machine identity/],
+  ];
+  assert.equal(cases.length, 4);
+  for (const [name, response, diagnostic] of cases) {
+    const label = String(name);
+    if (typeof response !== 'function' || !(diagnostic instanceof RegExp))
+      throw new TypeError('invalid lifecycle test case');
+    const initial = Object.fromEntries(
+      services.map((service) => [service, machine(service)]),
+    );
+    initial['registry-production'].config.guest.memory_mb = 256;
+    const fixture = new FlyFixture(initial);
+    let updated = false;
+    let lifecycleReads = 0;
+    fixture.override = (call) => {
+      if (call.method === 'POST' && call.path.endsWith('/machines/machine1'))
+        updated = true;
+      if (
+        updated &&
+        call.method === 'GET' &&
+        call.path.endsWith('/machines/machine1')
+      ) {
+        lifecycleReads += 1;
+        return json(response());
+      }
+      return null;
+    };
+    await assert.rejects(prepareFlyMachines(input(fixture)), diagnostic, label);
+    assert.equal(lifecycleReads, 1, `${label} received another lifecycle poll`);
+    assert.deepEqual(
+      mutationCalls(fixture).map(({ method, path }) => [
+        method,
+        path.split('/').at(-1),
+      ]),
+      [
+        ['POST', 'lease'],
+        ['POST', 'machine1'],
+        ['DELETE', 'lease'],
+      ],
+      `${label} did not release the lease immediately`,
+    );
+  }
 });
 
 test('candidate drift and mutable images fail before any API request', async () => {
@@ -760,7 +986,12 @@ test('expiry during lifecycle polling does not start an already-aborted request'
     }
     if (call.method === 'GET' && /\/machines\/machine[0-9]+$/.test(call.path)) {
       polled = true;
-      return json({ state: 'creating' });
+      return json(
+        machine('registry-production', {
+          instance_id: 'version10',
+          state: 'creating',
+        }),
+      );
     }
     return null;
   };
@@ -773,5 +1004,54 @@ test('expiry during lifecycle polling does not start an already-aborted request'
     afterExpiry,
     false,
     'no transport request may begin after the operation expires',
+  );
+});
+
+test('leased polling expires without a release request after the operation deadline', async () => {
+  const initial = Object.fromEntries(
+    services.map((service) => [service, machine(service)]),
+  );
+  initial['registry-production'].config.guest.memory_mb = 256;
+  const fixture = new FlyFixture(initial);
+  let updated = false;
+  let transitionPolls = 0;
+  let afterExpiry = false;
+  fixture.override = (call, init) => {
+    if (init.signal.aborted) afterExpiry = true;
+    if (call.method === 'POST' && call.path.endsWith('/machines/machine1'))
+      updated = true;
+    if (
+      updated &&
+      call.method === 'GET' &&
+      call.path.endsWith('/machines/machine1')
+    ) {
+      transitionPolls += 1;
+      return json(
+        machine('registry-production', {
+          instance_id: 'version10',
+          state: 'replacing',
+        }),
+      );
+    }
+    return null;
+  };
+  await assert.rejects(
+    prepareFlyMachines(
+      input(fixture, { requestTimeoutMs: 100, operationTimeoutMs: 250 }),
+    ),
+    /failed or timed out/,
+  );
+  assert.ok(transitionPolls >= 2, 'the leased lifecycle was actually polled');
+  assert.equal(afterExpiry, false);
+  assert.deepEqual(
+    mutationCalls(fixture).map(({ method, path }) => [
+      method,
+      path.split('/').at(-1),
+    ]),
+    [
+      ['POST', 'lease'],
+      ['POST', 'machine1'],
+    ],
+    'the operation deadline must prevent a late release transport request',
   );
 });
