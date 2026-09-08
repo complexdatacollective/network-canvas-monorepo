@@ -1,0 +1,13 @@
+{
+  "name": "studio-managed-ingress-worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test src/index.test.mjs",
+    "check:bundle": "wrangler deploy --dry-run --config wrangler.example.jsonc --env production && wrangler deploy --dry-run --config wrangler.example.jsonc --env staging"
+  },
+  "devDependencies": {
+    "wrangler": "catalog:"
+  }
+}

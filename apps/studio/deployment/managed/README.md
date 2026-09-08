@@ -60,6 +60,13 @@ single-origin routing contract. R2 credentials/versioning, database enrollment,
 New Relic configuration, and replication/validation workers also remain explicit
 modules rather than unsupported placeholder resources.
 
+The routing-only Cloudflare Worker in `workers/studio-ingress` defines the
+single public origin: fixed server surfaces stream to the persistent Fly
+backend, including `/ws`, while all other GET/HEAD traffic reaches the Netlify
+client origin without cookies or authorization headers. Its checked-in
+configuration is fail-closed and dry-run-only; live domain routing remains a
+separate qualified operator action.
+
 ## Required credentials and custody
 
 Terraform provider credentials are `TF_VAR_cloudflare_api_token`,
