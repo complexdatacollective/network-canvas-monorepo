@@ -265,7 +265,6 @@ Named here so a later split takes the name rather than inventing a synonym.
 
 | `<area>`               | Will own the copy in                         | Expected in |
 | ---------------------- | -------------------------------------------- | ----------- |
-| `subjectSelect`        | `fields/SubjectSelectField.tsx`              | splits 3–6  |
 | `nodePanels`           | `sections/NodePanelsSection`                 | family D    |
 | `searchOptions`        | `sections/SearchOptionsSection`              | family D    |
 | `alterLimits`          | `sections/AlterLimitsSection`                | family D    |
@@ -312,17 +311,21 @@ for something else or reopens a decision that has been made:
   the hint, the empty state — belongs to the section that mounts it
   (`subjectSection`) or to the control it wraps (`entitySelect`). The name
   stays reserved rather than being reused for something else.
-- **`variablePicker`'s four `create*` ids are not on any screen yet.**
+- **`variablePicker`'s five `create*` ids are not on any screen yet.**
   `sections/CreatableVariablePicker.tsx` pairs a picker over what exists with a
   name box that creates an attribute under that name and selects it. Nothing in
   the product mounts it: `FormFieldsSection` answers the same question through
   the `#create-new-attribute` sentinel in its own picker, and the control is
   there for the `variablePickerComponent` seam a family PR will fill. Said here
   so the native-Spanish review pass is not asked to check copy nobody can see.
-- **`attributeCodebookControls`** owns only the words on its own buttons. What
-  each dialog it opens says is the codebook editor's
-  (`codebookVariable`, `variableValidation`), because the researcher is looking
-  at that editor by then.
+- **`attributeCodebookControls`** owns the words on its own buttons, and the
+  one sentence its dialogs carry that the editor inside them cannot say.
+  Almost everything a dialog it opens says is the codebook editor's
+  (`codebookVariable`, `variableValidation`), because the researcher is
+  looking at that editor by then. The exception is `attributeDeleted*`:
+  `VariableEditor` reads an attribute deleted under it as one whose TYPE
+  changed, so the only surface that can tell a researcher what actually
+  happened is the one that knows which attribute the editor was opened on.
 
 `sections/StageHeading.tsx` holds no copy either: it composes
 `StageNameSection` from the protocol's own stage order.

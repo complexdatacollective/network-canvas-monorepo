@@ -9,6 +9,8 @@ import {
 } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
@@ -18,12 +20,16 @@ import { useCreateCodebookVariable } from '../../codebook/useCodebookVariableEdi
 import AssignAttributes from '../../form/arrayFields/AssignAttributes.tsx';
 import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import {
   type CodebookSubject,
   variablesForSubject,
 } from '../../protocol-context.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { CreatableVariablePickerControl } from '../CreatableVariablePicker.tsx';
+import {
+  CreatableVariablePickerControl,
+  type CreateOptionOutcome,
+} from '../CreatableVariablePicker.tsx';
 
 const SUBJECT: CodebookSubject = { entity: 'node', type: 'person' };
 
@@ -317,48 +323,70 @@ describe('the creatable attribute picker', () => {
 });
 
 /**
- * The window between the click and the codebook's answer, which no test going
+ * The control, with the answer to its create held in the test's own hand.
+ *
+ * The window between the click and the codebook's answer is one no test going
  * through the harness's host can hold open: the compound edit is applied
  * before the click's own act() has settled, so the busy state is over by the
- * time anything could look at it.
+ * time anything could look at it. Nothing is stubbed that the control depends
+ * on — `onCreateOption` IS the seam, and a caller answering it slowly is
+ * exactly what a real codebook round trip is.
  *
- * The control is mounted directly here for that reason, with the answer held
- * in the test's own hand. Nothing is stubbed that the control depends on —
- * `onCreateOption` IS the seam, and a caller answering it slowly is exactly
- * what a real codebook round trip is.
+ * A locale mounts the same provider a host does, over this package's own
+ * catalog; without one the control renders its descriptors, which is what
+ * makes the English literals below real assertions.
  */
-describe('the create control while the codebook write is in flight', () => {
-  const mountControl = () => {
-    let answer: ((created: boolean) => void) | undefined;
-    let refuse: ((reason: Error) => void) | undefined;
-    const onCreateOption = () =>
-      new Promise<boolean>((resolve, reject) => {
-        answer = resolve;
-        refuse = reject;
-      });
-    render(
-      <CreatableVariablePickerControl
-        name="variable"
-        options={[]}
-        emptyMessage="Nothing to choose from yet."
-        onCreateOption={onCreateOption}
-      />,
-    );
-    return {
-      user: userEvent.setup(),
-      /** Answers the create that is waiting, as the codebook would. */
-      answerWith: (created: boolean) => {
-        if (answer === undefined) throw new Error('Nothing is waiting.');
-        answer(created);
-      },
-      /** Fails it instead, the way a host that throws out of its own commit does. */
-      throwFrom: (reason: Error) => {
-        if (refuse === undefined) throw new Error('Nothing is waiting.');
-        refuse(reason);
-      },
-    };
+const mountControl = (locale?: string) => {
+  let answer: ((outcome: CreateOptionOutcome) => void) | undefined;
+  let refuse: ((reason: Error) => void) | undefined;
+  const onCreateOption = () =>
+    new Promise<CreateOptionOutcome>((resolve, reject) => {
+      answer = resolve;
+      refuse = reject;
+    });
+  const control = (
+    <CreatableVariablePickerControl
+      name="variable"
+      options={[]}
+      emptyMessage="Nothing to choose from yet."
+      onCreateOption={onCreateOption}
+    />
+  );
+  render(
+    locale === undefined ? (
+      control
+    ) : (
+      <AppI18nProvider
+        locale={locale}
+        locales={ecosystemLocales}
+        messages={protocolBuilderCatalogs[locale] ?? {}}
+      >
+        {control}
+      </AppI18nProvider>
+    ),
+  );
+  return {
+    user: userEvent.setup(),
+    /** Answers the create that is waiting, as the codebook would. */
+    answerWith: (outcome: CreateOptionOutcome) => {
+      if (answer === undefined) throw new Error('Nothing is waiting.');
+      answer(outcome);
+    },
+    /** Fails it instead, the way a host that throws out of its own commit does. */
+    throwFrom: (reason: Error) => {
+      if (refuse === undefined) throw new Error('Nothing is waiting.');
+      refuse(reason);
+    },
   };
+};
 
+/**
+ * The region the control keeps mounted for what it has to say about a create
+ * that landed somewhere the caller could not use. Empty the rest of the time.
+ */
+const notice = () => screen.getByRole('status');
+
+describe('the create control while the codebook write is in flight', () => {
   const nameBox = () =>
     screen.getByRole('textbox', { name: 'Create a new attribute' });
   const createButton = () =>
@@ -382,7 +410,7 @@ describe('the create control while the codebook write is in flight', () => {
 
     // Emptied only now — which is also why the button stays disabled after a
     // create that landed: there is no longer a name to create.
-    answerWith(true);
+    answerWith({ status: 'created' });
     await waitFor(() => expect(nameBox()).toHaveValue(''));
   });
 
@@ -424,7 +452,7 @@ describe('the create control while the codebook write is in flight', () => {
     expect(nameBox()).toBeDisabled();
     expect(nameBox()).toHaveValue('nominated_early');
 
-    answerWith(true);
+    answerWith({ status: 'created' });
     await waitFor(() => expect(nameBox()).toHaveValue(''));
     expect(nameBox()).toBeEnabled();
   });
@@ -434,7 +462,7 @@ describe('the create control while the codebook write is in flight', () => {
 
     await user.type(nameBox(), 'nominated early');
     await user.click(createButton());
-    answerWith(false);
+    answerWith({ status: 'refused' });
 
     await waitFor(() => expect(nameBox()).toBeEnabled());
     await user.type(nameBox(), '_enough');
@@ -447,12 +475,82 @@ describe('the create control while the codebook write is in flight', () => {
 
     await user.type(nameBox(), 'nominated early');
     await user.click(createButton());
-    answerWith(false);
+    answerWith({ status: 'refused' });
 
     // Enabled again, because pressing it once more is the whole point of a
     // refusal the researcher can correct.
     await waitFor(() => expect(createButton()).toBeEnabled());
     expect(nameBox()).toHaveValue('nominated early');
+    // Nothing was created, so there is nowhere for it to have gone.
+    expect(notice()).toBeEmptyDOMElement();
+  });
+
+  /**
+   * The third answer, and the reason there is one: a boolean called this a
+   * refusal, and a refusal is the one answer that KEEPS the name. The
+   * attribute exists by now, so keeping it is a create button that asks the
+   * codebook for a name it already stores — and the researcher, who pressed
+   * Create once, reads a duplicate-name complaint about a second attempt they
+   * never made.
+   */
+  it('empties the box when the attribute was created and nothing took it', async () => {
+    const { user, answerWith } = mountControl();
+
+    await user.type(nameBox(), 'nominated_early');
+    await user.click(createButton());
+    answerWith({ status: 'unassigned' });
+
+    await waitFor(() => expect(nameBox()).toHaveValue(''));
+    expect(createButton()).toBeDisabled();
+  });
+
+  /**
+   * And says so, because an emptied box beside an unchanged selection is what
+   * a create that quietly did nothing looks like. The attribute exists — that
+   * write succeeded — so what is left to say is that nothing here was given
+   * it.
+   */
+  it('says the created attribute was not the one it now names', async () => {
+    const { user, answerWith } = mountControl();
+
+    await user.type(nameBox(), 'nominated_early');
+    await user.click(createButton());
+    answerWith({ status: 'unassigned' });
+
+    await waitFor(() =>
+      expect(notice()).toHaveTextContent(
+        '“nominated_early” was added to the codebook, but it has not been selected here.',
+      ),
+    );
+  });
+
+  /** A create that landed where it was meant to has nothing to explain. */
+  it('says nothing when the attribute was created and taken', async () => {
+    const { user, answerWith } = mountControl();
+
+    await user.type(nameBox(), 'nominated_early');
+    await user.click(createButton());
+    answerWith({ status: 'created' });
+
+    await waitFor(() => expect(nameBox()).toHaveValue(''));
+    expect(notice()).toBeEmptyDOMElement();
+  });
+
+  /**
+   * The notice is about the create that has just happened. Naming another
+   * attribute is the start of a different one, and leaving the old sentence
+   * under the box would have it read as being about the name now in it.
+   */
+  it('takes the notice down as soon as another name is typed', async () => {
+    const { user, answerWith } = mountControl();
+
+    await user.type(nameBox(), 'nominated_early');
+    await user.click(createButton());
+    answerWith({ status: 'unassigned' });
+    await waitFor(() => expect(notice()).not.toBeEmptyDOMElement());
+
+    await user.type(nameBox(), 'nominated_late');
+    expect(notice()).toBeEmptyDOMElement();
   });
 });
 
@@ -460,8 +558,8 @@ describe('the create control while the codebook write is in flight', () => {
  * The same control, and the same codebook writes, read in Spanish.
  *
  * This file is the only place `CreatableVariablePickerControl` is mounted —
- * no section renders it yet — so it is also the only place its three
- * remaining strings can be read in any language at all, and the only place the
+ * no section renders it yet — so it is also the only place its own copy can be
+ * read in any language at all, and the only place the
  * refusals `useCreateCodebookVariable` answers with can be provoked one at a
  * time: what the codebook refuses is decided by the pair of answers the HOST
  * gives (`CreateAs`), and a form field's dialog can only ever give it a name,
@@ -520,6 +618,29 @@ describe('the creatable attribute picker, read in Spanish', () => {
     expect(
       screen.getByRole('button', { name: 'Crear el atributo' }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * The one sentence here that no codebook refusal can produce: the write
+   * SUCCEEDED and the caller could not take what it made, which is an answer
+   * only the seam can give. Mounted directly for that reason — the same
+   * provider over the same catalog, with the answer held in the test's hand.
+   */
+  it('says in Spanish that the attribute it created was not selected', async () => {
+    const { user, answerWith } = mountControl('es');
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Crear un atributo nuevo' }),
+      'nominado_pronto',
+    );
+    await user.click(screen.getByRole('button', { name: 'Crear el atributo' }));
+    answerWith({ status: 'unassigned' });
+
+    await waitFor(() =>
+      expect(notice()).toHaveTextContent(
+        'Se ha añadido «nominado_pronto» al libro de códigos, pero no se ha seleccionado aquí.',
+      ),
+    );
   });
 
   /**
