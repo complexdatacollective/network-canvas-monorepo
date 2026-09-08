@@ -77,6 +77,13 @@ export type CreatableVariablePickerProps = VariablePickerProps &
  * emptied it ahead of the answer, so a refusal — which is ABOUT the name they
  * typed — arrived with the name gone and nothing to correct. Mirrors quick
  * add's own create (`QuickAddSection`), which is the same act on the stage.
+ *
+ * The box is held with the button while the write is in flight, for the same
+ * reason and one more. The create submits the name as it was when it was
+ * pressed, so a name typed while the answer was on its way was erased by a
+ * success and contradicted by a refusal — the sentence is about the submitted
+ * name, and it arrived beside a box showing a different one. Held, the box is
+ * always exactly what the answer is about.
  */
 export function CreatableVariablePickerControl({
   onCreateOption,
@@ -129,7 +136,7 @@ export function CreatableVariablePickerControl({
         // refused the moment they type it.
         placeholder={intl.formatMessage(messages.createPlaceholder)}
         value={name}
-        disabled={disabled || readOnly}
+        disabled={disabled || readOnly || busy}
         onChange={(next: unknown) =>
           setName(typeof next === 'string' ? next : '')
         }

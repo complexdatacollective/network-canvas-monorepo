@@ -116,6 +116,17 @@ const said = (
   absent: false,
 });
 
+/**
+ * What a section's problems SAY, without the field each is attributed to.
+ *
+ * Which field claims a problem is asserted where it matters — the outline
+ * reads a sentence out unless the control that owns it is already showing one
+ * — and repeating it in every attribution test below would say the section
+ * name twice and the sentence once.
+ */
+const sentences = (section: OutlineSection): string[] =>
+  section.issues.map((issue) => issue.sentence);
+
 const sectionNamed = (
   store: SectionOutlineStore,
   id: string,
@@ -153,7 +164,7 @@ describe('session issues in the outline', () => {
       said(['searchOptions'], 'the container around it'),
     ]);
 
-    expect(sectionNamed(store, 'search').issues).toEqual([
+    expect(sentences(sectionNamed(store, 'search'))).toEqual([
       'at the field',
       'inside it',
       'the container around it',
@@ -172,7 +183,7 @@ describe('session issues in the outline', () => {
       said(['searchOptions', 'matchProperties', 0], 'a sibling'),
     ]);
 
-    expect(sectionNamed(store, 'search').issues).toEqual([]);
+    expect(sentences(sectionNamed(store, 'search'))).toEqual([]);
     expect(
       sectionOutlineStatus(sectionNamed(store, 'search'), CONTENTED_FORM),
     ).toBe('complete');
@@ -193,9 +204,41 @@ describe('session issues in the outline', () => {
 
     // Both sections reach it — one owns the whole container — and the deeper
     // registration wins, because that is the control the researcher changes.
-    expect(sectionNamed(store, 'card').issues).toEqual([]);
-    expect(sectionNamed(store, 'labels').issues).toEqual([
+    expect(sentences(sectionNamed(store, 'card'))).toEqual([]);
+    expect(sentences(sectionNamed(store, 'labels'))).toEqual([
       'a column that is not there',
+    ]);
+  });
+
+  /**
+   * The outline decides whether to read a sentence out by asking the control
+   * that answers for it whether it is already saying something, so the field
+   * that claimed each problem travels with it. Without the name, the outline
+   * could only ask about the section as a whole — and a section is routinely
+   * wrong in two unrelated ways at once.
+   */
+  it('names the field that answers for each problem', () => {
+    const store = storeWith({
+      card: ['cardOptions'],
+      labels: ['cardOptions.additionalProperties'],
+    });
+
+    store.setValidationIssues([
+      said(['cardOptions', 'sortOrder'], 'a sort nothing can do'),
+      said(
+        ['cardOptions', 'additionalProperties', 0, 'variable'],
+        'a column that is not there',
+      ),
+    ]);
+
+    expect(sectionNamed(store, 'card').issues).toEqual([
+      { fieldName: 'cardOptions', sentence: 'a sort nothing can do' },
+    ]);
+    expect(sectionNamed(store, 'labels').issues).toEqual([
+      {
+        fieldName: 'cardOptions.additionalProperties',
+        sentence: 'a column that is not there',
+      },
     ]);
   });
 
@@ -208,20 +251,20 @@ describe('session issues in the outline', () => {
 
     // Two sections reach the value equally well, so the researcher is sent to
     // the one they meet first rather than to whichever registered last.
-    expect(sectionNamed(store, 'first').issues).toEqual([
+    expect(sentences(sectionNamed(store, 'first'))).toEqual([
       'a limit that cannot hold',
     ]);
-    expect(sectionNamed(store, 'second').issues).toEqual([]);
+    expect(sentences(sectionNamed(store, 'second'))).toEqual([]);
   });
 
   it('stops reporting an issue that is no longer in the set', () => {
     const store = storeWith({ search: ['searchOptions.fuzziness'] });
     store.setValidationIssues([said(['searchOptions'], 'a problem')]);
-    expect(sectionNamed(store, 'search').issues).toEqual(['a problem']);
+    expect(sentences(sectionNamed(store, 'search'))).toEqual(['a problem']);
 
     store.setValidationIssues([]);
 
-    expect(sectionNamed(store, 'search').issues).toEqual([]);
+    expect(sentences(sectionNamed(store, 'search'))).toEqual([]);
     expect(
       sectionOutlineStatus(sectionNamed(store, 'search'), CONTENTED_FORM),
     ).toBe('complete');
@@ -239,7 +282,7 @@ describe('session issues in the outline', () => {
       },
     ]);
 
-    expect(sectionNamed(store, 'zoom').issues.map(read)).toEqual([
+    expect(sentences(sectionNamed(store, 'zoom')).map(read)).toEqual([
       'mapOptions.initialZoom holds more than this stage allows.',
     ]);
     expect(
@@ -263,7 +306,7 @@ describe('session issues in the outline', () => {
       ),
     );
 
-    expect(sectionNamed(store, 'map').issues.map(read)).toEqual([
+    expect(sentences(sectionNamed(store, 'map')).map(read)).toEqual([
       'mapOptions holds the wrong kind of value.',
     ]);
   });
@@ -285,7 +328,7 @@ describe('session issues in the outline', () => {
       },
     ]);
 
-    expect(sectionNamed(store, 'config').issues).toEqual([]);
+    expect(sentences(sectionNamed(store, 'config'))).toEqual([]);
     expect(
       sectionOutlineStatus(sectionNamed(store, 'config'), EMPTY_FORM),
     ).toBe('incomplete');
@@ -316,7 +359,7 @@ describe('session issues in the outline', () => {
       ),
     ]);
 
-    expect(sectionNamed(store, 'sorting').issues).toEqual([
+    expect(sentences(sectionNamed(store, 'sorting'))).toEqual([
       'This stage sorts by an attribute that is no longer in the codebook.',
       'This stage sorts by an attribute that is no longer in the codebook.',
     ]);
@@ -343,7 +386,7 @@ describe('session issues in the outline', () => {
       },
     ]);
 
-    expect(sectionNamed(store, 'skip').issues).toEqual([
+    expect(sentences(sectionNamed(store, 'skip'))).toEqual([
       'An ego rule must reference an attribute; a type-level ego rule (no attribute) is not valid.',
     ]);
     expect(sectionOutlineStatus(sectionNamed(store, 'skip'), EMPTY_FORM)).toBe(
@@ -368,7 +411,7 @@ describe('session issues in the outline', () => {
       },
     ]);
 
-    expect(sectionNamed(store, 'config').issues.map(read)).toEqual([
+    expect(sentences(sectionNamed(store, 'config')).map(read)).toEqual([
       'nodeConfig.egoVariable has no value, and this stage needs one.',
     ]);
     expect(

@@ -11,12 +11,16 @@ import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.ts
 import type { CodebookEntityDraft } from '../codebook/editing.ts';
 import SubjectSelectField, {
   type EntitySubject,
+  type SubjectChangeConfirmation,
 } from '../fields/SubjectSelectField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import BuilderSection from './BuilderSection.tsx';
 import NetworkFilterSection from './NetworkFilterSection.tsx';
-import { useResetStageOnSubjectChange } from './useResetStageOnSubjectChange.ts';
+import {
+  useResetStageOnSubjectChange,
+  useSubjectChangeDiscards,
+} from './useResetStageOnSubjectChange.ts';
 
 /** What this stage works on. Ego stages have no type to pick, so no section. */
 export type SubjectEntity = EntitySubject['entity'];
@@ -51,6 +55,25 @@ const messages = defineMessages({
     defaultMessage: 'Create a new node type',
     description:
       'Button that opens an editor for inventing a kind of network member without leaving the stage being configured. Also the title of the dialog it opens.',
+  },
+  nodeChangeTitle: {
+    id: 'protocolBuilder.subjectSection.nodeChangeTitle',
+    defaultMessage: 'Change the node type?',
+    description:
+      'Title of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured for the one it has.',
+  },
+  nodeChangeDescription: {
+    id: 'protocolBuilder.subjectSection.nodeChangeDescription',
+    defaultMessage:
+      'Everything else on this stage describes the node type it works with now, and choosing a different type removes all of it.',
+    description:
+      'Body of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured. A stage is one step of an interview.',
+  },
+  nodeChangeConfirm: {
+    id: 'protocolBuilder.subjectSection.nodeChangeConfirm',
+    defaultMessage: 'Change the node type',
+    description:
+      'Button that goes ahead with changing the kind of network member a stage works with, throwing away the configuration that described the previous one.',
   },
   nodeCreateDescription: {
     id: 'protocolBuilder.subjectSection.nodeCreateDescription',
@@ -88,6 +111,25 @@ const messages = defineMessages({
     description:
       'Button that opens an editor for inventing a kind of relationship without leaving the stage being configured. Also the title of the dialog it opens.',
   },
+  edgeChangeTitle: {
+    id: 'protocolBuilder.subjectSection.edgeChangeTitle',
+    defaultMessage: 'Change the edge type?',
+    description:
+      'Title of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured for the one it has.',
+  },
+  edgeChangeDescription: {
+    id: 'protocolBuilder.subjectSection.edgeChangeDescription',
+    defaultMessage:
+      'Everything else on this stage describes the edge type it works with now, and choosing a different type removes all of it.',
+    description:
+      'Body of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured. A stage is one step of an interview.',
+  },
+  edgeChangeConfirm: {
+    id: 'protocolBuilder.subjectSection.edgeChangeConfirm',
+    defaultMessage: 'Change the edge type',
+    description:
+      'Button that goes ahead with changing the kind of relationship a stage works with, throwing away the configuration that described the previous one.',
+  },
   edgeCreateDescription: {
     id: 'protocolBuilder.subjectSection.edgeCreateDescription',
     defaultMessage: 'Create an edge type and use it on this stage',
@@ -105,7 +147,11 @@ const messages = defineMessages({
  * Formatted with no values, like every named descriptor a shared section
  * takes: one carrying a placeholder renders the pattern on screen, and nothing
  * in the types can refuse it. See `PromptsSection`'s own note and
- * `sections/__tests__/namedDescriptorProps.test.tsx`.
+ * `sections/__tests__/namedDescriptorProps.test.tsx`, which lands with the
+ * form-fields section — the first surface to take a whole set of them. This
+ * section's own words come from the table below rather than from a prop, so
+ * what would break the rule here is an edit to this package's catalog, which
+ * the locale sweep sees.
  */
 type SubjectWords = Readonly<{
   title: MessageDescriptor;
@@ -114,6 +160,10 @@ type SubjectWords = Readonly<{
   fieldHint: MessageDescriptor;
   createLabel: MessageDescriptor;
   createDescription: MessageDescriptor;
+  /** What the researcher is asked before a change that costs them the stage. */
+  changeTitle: MessageDescriptor;
+  changeDescription: MessageDescriptor;
+  changeConfirm: MessageDescriptor;
 }>;
 
 const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
@@ -124,6 +174,9 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
     fieldHint: messages.nodeFieldHint,
     createLabel: messages.nodeCreateLabel,
     createDescription: messages.nodeCreateDescription,
+    changeTitle: messages.nodeChangeTitle,
+    changeDescription: messages.nodeChangeDescription,
+    changeConfirm: messages.nodeChangeConfirm,
   }),
   edge: Object.freeze({
     title: messages.edgeTitle,
@@ -132,6 +185,9 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
     fieldHint: messages.edgeFieldHint,
     createLabel: messages.edgeCreateLabel,
     createDescription: messages.edgeCreateDescription,
+    changeTitle: messages.edgeChangeTitle,
+    changeDescription: messages.edgeChangeDescription,
+    changeConfirm: messages.edgeChangeConfirm,
   }),
 });
 
@@ -188,6 +244,28 @@ export default function SubjectSection({
   const words = WORDS[entity];
   useResetStageOnSubjectChange();
 
+  /**
+   * The question the picker asks before it lets the change through, or nothing
+   * at all when there is nothing to lose.
+   *
+   * Asked here rather than by the reset, because the reset watches the value
+   * and runs once it has already moved: a question asked there would be about
+   * a change the researcher can already see, and answering "no" would mean
+   * putting the picker back.
+   */
+  const discardsConfiguration = useSubjectChangeDiscards();
+  const confirmChange = useCallback(
+    (): SubjectChangeConfirmation | undefined =>
+      discardsConfiguration()
+        ? {
+            title: intl.formatMessage(words.changeTitle),
+            description: intl.formatMessage(words.changeDescription),
+            confirmLabel: intl.formatMessage(words.changeConfirm),
+          }
+        : undefined,
+    [discardsConfiguration, intl, words],
+  );
+
   return (
     <>
       <BuilderSection
@@ -198,6 +276,7 @@ export default function SubjectSection({
           name="subject"
           component={SubjectSelectField}
           entityType={entity}
+          confirmChange={confirmChange}
           label={intl.formatMessage(words.fieldLabel)}
           hint={intl.formatMessage(words.fieldHint)}
           required
@@ -238,16 +317,38 @@ function CreateSubjectType({
     key: string;
     typeId: string;
   } | null>(null);
+  /**
+   * Whether a create is in flight, which is a fact this host has for itself:
+   * the editor owns the draft and this owns request execution, so the request
+   * passes through here on its way out and its answer on the way back.
+   */
+  const [submitting, setSubmitting] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const existingEntityNames = useMemo(() => {
-    // Read per entity rather than by a computed key: the codebook's two maps
-    // hold different definition types, and one indexed by a union is a union
-    // of maps nothing can be read out of without narrowing it again.
-    const definitions =
-      entity === 'node' ? (codebook.node ?? {}) : (codebook.edge ?? {});
-    return Object.values(definitions).map((definition) => definition.name);
-  }, [codebook, entity]);
+  /**
+   * Every type name the protocol already carries, of BOTH kinds.
+   *
+   * Node and edge types share one namespace — the rule Architect's own type
+   * editor has always applied — because a name is how a researcher tells one
+   * from another everywhere it matters: the codebook lists them by name, an
+   * export names them, and a rule or a form naming one reads as naming the
+   * other. Judged against the kind being created alone, a node could be given
+   * an edge's name, and the editor's deliberate folding of case and Unicode
+   * form would let a pair through that nobody reading the codebook could tell
+   * apart.
+   *
+   * Read map by map rather than by a computed key: the codebook's two maps
+   * hold different definition types, and one indexed by a union is a union of
+   * maps nothing can be read out of without narrowing it again.
+   */
+  const existingEntityNames = useMemo(
+    () =>
+      [
+        ...Object.values(codebook.node ?? {}),
+        ...Object.values(codebook.edge ?? {}),
+      ].map((definition) => definition.name),
+    [codebook],
+  );
 
   const selectCreatedType = useCallback(
     (typeId: string) => {
@@ -267,25 +368,48 @@ function CreateSubjectType({
     [entity, storeApi],
   );
 
-  if (readOnly) return null;
-
   return (
     <>
-      <Button
-        ref={triggerRef}
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setSession({ key: uuid(), typeId: uuid() })}
-      >
-        {intl.formatMessage(words.createLabel)}
-      </Button>
+      {/*
+        The trigger goes when editing does, because a create nobody may start
+        is not on offer. An editor already OPEN stays, because the draft inside
+        it is the researcher's own work and nowhere else: they opened it
+        because the type they need does not exist yet, and unmounting it with
+        the trigger would throw the name they were typing away without a word.
+        `CodebookEntityEditor` takes `readOnly` for exactly this — interaction
+        stops, the draft does not — and it is the rule the row dialogs follow
+        after a lease is lost.
+      */}
+      {!readOnly && (
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setSession({ key: uuid(), typeId: uuid() })}
+        >
+          {intl.formatMessage(words.createLabel)}
+        </Button>
+      )}
       {session !== null && (
         <Dialog
           open
           title={intl.formatMessage(words.createLabel)}
           size="readable"
-          closeDialog={() => setSession(null)}
+          // A request in flight refuses every way out, because the dialog is
+          // about to show what the host made of it. Escape, a press outside
+          // and the close button all arrive at `closeDialog`, so refusing
+          // there covers all three — and `dismissible` takes the close button
+          // away rather than leaving a control on screen that does nothing.
+          // Dismissed mid-flight, the handler awaiting the request stays alive
+          // and a success arriving afterwards still selects the new type on
+          // the stage: the researcher would watch everything describing the
+          // old type disappear, for a type they never saw arrive.
+          dismissible={!submitting}
+          closeDialog={() => {
+            if (submitting) return;
+            setSession(null);
+          }}
           finalFocus={() => triggerRef.current}
         >
           <CodebookEntityEditor
@@ -299,8 +423,16 @@ function CreateSubjectType({
                 : { entity: 'edge', type: session.typeId }
             }
             initialDraft={NEW_ENTITY_DRAFT[entity]}
+            readOnly={readOnly}
             existingEntityNames={existingEntityNames}
-            onSubmit={(request) => controller.requestCompoundEdit(request)}
+            onSubmit={async (request) => {
+              setSubmitting(true);
+              try {
+                return await controller.requestCompoundEdit(request);
+              } finally {
+                setSubmitting(false);
+              }
+            }}
             onApplied={() => selectCreatedType(session.typeId)}
             onCancel={() => setSession(null)}
           />

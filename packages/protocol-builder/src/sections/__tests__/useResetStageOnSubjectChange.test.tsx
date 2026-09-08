@@ -1,13 +1,19 @@
 import { act, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 
 import ProtocolField from '../../form/ProtocolField.tsx';
-import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import {
+  renderStageEditor,
+  type StageEditorHarness,
+} from '../../testing/renderStageEditor.tsx';
 import BuilderSection from '../BuilderSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
+import { changeSubjectTo } from './changeSubject.ts';
 import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
 
 /**
@@ -86,9 +92,7 @@ describe('resetting a stage whose interface has nested defaults', () => {
     });
     expect(toggle).not.toBeChecked();
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
 
     await waitFor(() => expect(toggle).toBeChecked());
   });
@@ -114,9 +118,7 @@ describe('resetting a key the researcher has never looked at', () => {
       'form',
     );
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
 
     await waitFor(() =>
       expect(
@@ -138,9 +140,7 @@ describe('resetting a key the researcher has never looked at', () => {
       sections: nodeSubjectAndPrompts,
     });
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
     await waitFor(() =>
       expect(
         harness.session.getSnapshot().editedSection.fields,
@@ -158,5 +158,229 @@ describe('resetting a key the researcher has never looked at', () => {
       title: 'Add a person',
       fields: [{ variable: 'name', prompt: "What is this person's name?" }],
     });
+  });
+});
+
+/**
+ * A key the form is PARKING is in neither of the two places the reset used to
+ * read.
+ *
+ * `getFormValues()` is built from registered fields, so a control the
+ * researcher answered and then unmounted contributes nothing; and an answer
+ * that has not been saved has never reached the committed draft. The
+ * submission replays parked values on purpose — without that, a value hidden
+ * behind a collapsed group would look identical to one deliberately thrown
+ * away — so a key that escapes the reset is written into the saved stage
+ * alongside the NEW subject: configuration describing a type the stage no
+ * longer collects.
+ */
+describe('resetting a key the form is holding parked', () => {
+  /**
+   * Stands in for any family control whose presence depends on another
+   * control's value — the content block editor's per-kind slots are that
+   * pattern one store down.
+   */
+  function ParkableSection() {
+    const [mounted, setMounted] = useState(true);
+    return (
+      <BuilderSection title="Existing nodes" description="A parkable field.">
+        <button type="button" onClick={() => setMounted((on) => !on)}>
+          Toggle the field
+        </button>
+        {mounted && (
+          <ProtocolField<typeof ToggleField>
+            name="showExistingNodes"
+            component={ToggleField}
+            label="Show existing nodes"
+          />
+        )}
+      </BuilderSection>
+    );
+  }
+
+  it('throws away a value whose control has since unmounted', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: (
+        <>
+          {nodeSubjectAndPrompts}
+          <ParkableSection />
+        </>
+      ),
+      applyLive: true,
+    });
+
+    // 1. The researcher answers the parkable field…
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Show existing nodes' }),
+    );
+    // 2. …and it unmounts, so the store parks what they answered.
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Toggle the field' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('switch', { name: 'Show existing nodes' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // 3. The researcher changes what the stage collects.
+    await changeSubjectTo(harness.user, 'family member');
+    await waitFor(() =>
+      expect(
+        harness.session.getSnapshot().editedSection.fields.subject,
+      ).toEqual({ entity: 'node', type: 'family_member' }),
+    );
+
+    // The reset reached the parked key, in the same batch as the subject.
+    expect(harness.liveCommands()).toContainEqual({
+      op: 'unset',
+      key: 'showExistingNodes',
+    });
+
+    // The reset took the prompts with it, so the stage needs one again to get
+    // as far as being judged against the schema at all.
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'Who in your family?',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    // And end to end: what the save carries no longer mentions it. A name
+    // generator that has lost its `form` to the same reset cannot be saved,
+    // so the save produces a refusal — and the refusal is where the surviving
+    // key showed up, named against a schema that has never heard of it. The
+    // wait is on that refusal, so this cannot pass by never getting there.
+    await harness.submit();
+    await screen.findByText(/expected object, received undefined/u);
+    expect(document.body.textContent).not.toContain('showExistingNodes');
+  });
+});
+
+/**
+ * Editing taken away between the researcher's pick and the effect that acts on
+ * it.
+ *
+ * The window is a render wide by design: the pick writes a form value, and the
+ * reset is an OBSERVER of that value (`useOnResearcherChange`) rather than the
+ * control's own handler, so the two are a commit apart. A lease lost in
+ * between leaves the session refusing the batch — and a form emptied anyway
+ * throws away a configuration the session still holds, with nothing left on
+ * screen to fill it back in.
+ */
+describe('a subject change the session refuses', () => {
+  /**
+   * The pick, made the way the section's own create-a-type path makes it.
+   *
+   * `selectCreatedType` writes the subject straight into the form store — from
+   * a promise continuation, where a lease lost in the same commit is exactly
+   * this window — so this is the product's own write rather than a seam
+   * invented for the test. A radio click cannot express it: `fireEvent` flushes
+   * React's effects before the next line runs, so the reset would have landed,
+   * and the revocation would then be an ordinary rollback of it.
+   */
+  const pickTheOtherType = { current: (): void => undefined };
+
+  function SubjectPickProbe() {
+    const { storeApi } = useStageEditorForm();
+    pickTheOtherType.current = () => {
+      storeApi
+        .getState()
+        .setFieldValue('subject', { entity: 'node', type: 'family_member' });
+    };
+    return null;
+  }
+
+  const sections = (
+    <>
+      <SubjectPickProbe />
+      {nodeSubjectAndPrompts}
+    </>
+  );
+
+  const READ_ONLY_MESSAGE =
+    'This stage is read-only, so your changes were not saved. Take over editing and try again.';
+
+  /** The pick and the revocation in one commit, which is the whole window. */
+  const pickWhileEditingIsTaken = (harness: StageEditorHarness) => {
+    act(() => {
+      pickTheOtherType.current();
+      harness.session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+  };
+
+  it('leaves the configuration where the researcher can still see and save it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections,
+    });
+    await screen.findByText('Who are the people you know?');
+
+    pickWhileEditingIsTaken(harness);
+
+    // The batch reached the session and was refused there, which is said out
+    // loud in the form's own error region.
+    await screen.findByText(READ_ONLY_MESSAGE);
+    const { fields } = harness.session.getSnapshot().editedSection;
+    expect(fields.subject).toEqual({ entity: 'node', type: 'person' });
+    expect(fields.prompts).toHaveLength(1);
+    expect(harness.pendingCommands()).toEqual([]);
+
+    // Nothing was thrown away, so nothing may be emptied either: the session's
+    // copy is the only one there is, and a form cleared here would leave the
+    // stage looking unconfigured with nothing left to fill it back in.
+    //
+    // Editing is handed back and the stage saved before this is read, because
+    // a prompt removed from the list leaves the document a frame later — the
+    // save is a round of work the removal would have finished inside. The save
+    // is refused, and refused for the right reason: the stage now says it
+    // collects family members while its form still asks for a person's name,
+    // which is the researcher's own unfinished change rather than something
+    // this reset threw away.
+    harness.setReadOnly(false);
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText('The attribute "name" does not exist in the codebook'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Who are the people you know?'),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Edit prompt' })).toHaveLength(
+      1,
+    );
+  });
+
+  /**
+   * The refusal is about that one write and nothing else. Editing handed back
+   * has to leave the reset exactly as armed as it was, or the researcher's
+   * next choice of type keeps the previous one's configuration for good.
+   */
+  it('resets again once editing has been handed back', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections,
+    });
+    await screen.findByText('Who are the people you know?');
+
+    pickWhileEditingIsTaken(harness);
+    await screen.findByText(READ_ONLY_MESSAGE);
+
+    harness.setReadOnly(false);
+    await changeSubjectTo(harness.user, 'person');
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Who are the people you know?'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      harness.session.getSnapshot().editedSection.fields,
+    ).not.toHaveProperty('prompts');
   });
 });

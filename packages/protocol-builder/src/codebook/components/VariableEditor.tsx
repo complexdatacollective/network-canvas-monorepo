@@ -16,7 +16,7 @@ import {
   defineMessages,
   formatMessageError,
 } from '@codaco/app-i18n/messages';
-import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
@@ -47,6 +47,7 @@ import {
   AuxiliaryCodebookDraftSession,
   buildCreateVariableRequest,
   buildUpdateVariableRequest,
+  DuplicateVariableNameError,
   InvalidCodebookDraftError,
   type AuxiliaryCodebookDraftFailure,
   type AuxiliaryCodebookSubmitResult,
@@ -58,10 +59,12 @@ import {
   type BooleanAnswer,
   type BooleanAnswerIssues,
   hasBooleanAnswerIssues,
+  heldBooleanAnswersReason,
   optionsForShape,
   optionsShapeFor,
   type OptionsShape,
   readBooleanAnswers,
+  readHeldBooleanAnswers,
   validateBooleanAnswers,
 } from '../variableOptions.ts';
 import {
@@ -75,88 +78,9 @@ import {
   validateParameters,
   type ParameterShape,
 } from '../variableParameters.ts';
+import { VARIABLE_TYPE_OPTIONS } from '../variableTypeLabels.ts';
 import VariableBooleanAnswerFields from './VariableBooleanAnswerFields.tsx';
 import VariableParameterFields from './VariableParameterFields.tsx';
-
-/**
- * What each kind of attribute is offered as.
- *
- * Keyed by the schema's own name for the type, and read through the option
- * list below, so what the editor OFFERS and what a stored variable IS are the
- * same list read twice. "Date" names the `datetime` type, which is what a
- * researcher calls it.
- */
-const VARIABLE_TYPE_LABELS = defineMessages({
-  text: {
-    id: 'protocolBuilder.codebookVariable.typeText',
-    defaultMessage: 'Text',
-    description:
-      'Choice offered for what an attribute records: free text typed by a participant.',
-  },
-  number: {
-    id: 'protocolBuilder.codebookVariable.typeNumber',
-    defaultMessage: 'Number',
-    description:
-      'Choice offered for what an attribute records: a number entered by a participant.',
-  },
-  boolean: {
-    id: 'protocolBuilder.codebookVariable.typeBoolean',
-    defaultMessage: 'Boolean',
-    description:
-      'Choice offered for what an attribute records: a true or false answer.',
-  },
-  ordinal: {
-    id: 'protocolBuilder.codebookVariable.typeOrdinal',
-    defaultMessage: 'Ordinal',
-    description:
-      'Choice offered for what an attribute records: one option from a list whose order is meaningful, such as a rating.',
-  },
-  categorical: {
-    id: 'protocolBuilder.codebookVariable.typeCategorical',
-    defaultMessage: 'Categorical',
-    description:
-      'Choice offered for what an attribute records: one or more options from an unordered list.',
-  },
-  scalar: {
-    id: 'protocolBuilder.codebookVariable.typeScalar',
-    defaultMessage: 'Scalar',
-    description:
-      'Choice offered for what an attribute records: a position on a continuous scale, such as a slider.',
-  },
-  datetime: {
-    id: 'protocolBuilder.codebookVariable.typeDatetime',
-    defaultMessage: 'Date',
-    description:
-      'Choice offered for what an attribute records: a date. The schema calls this type datetime; researchers call it a date.',
-  },
-  layout: {
-    id: 'protocolBuilder.codebookVariable.typeLayout',
-    defaultMessage: 'Layout',
-    description:
-      'Choice offered for what an attribute records: where a network member sits on a canvas the participant arranges.',
-  },
-  location: {
-    id: 'protocolBuilder.codebookVariable.typeLocation',
-    defaultMessage: 'Location',
-    description:
-      'Choice offered for what an attribute records: a place on a map.',
-  },
-});
-
-const VARIABLE_TYPE_OPTIONS = [
-  { label: VARIABLE_TYPE_LABELS.text, value: VariableTypes.text },
-  { label: VARIABLE_TYPE_LABELS.number, value: VariableTypes.number },
-  { label: VARIABLE_TYPE_LABELS.boolean, value: VariableTypes.boolean },
-  { label: VARIABLE_TYPE_LABELS.ordinal, value: VariableTypes.ordinal },
-  { label: VARIABLE_TYPE_LABELS.categorical, value: VariableTypes.categorical },
-  { label: VARIABLE_TYPE_LABELS.scalar, value: VariableTypes.scalar },
-  { label: VARIABLE_TYPE_LABELS.datetime, value: VariableTypes.datetime },
-  { label: VARIABLE_TYPE_LABELS.layout, value: VariableTypes.layout },
-  { label: VARIABLE_TYPE_LABELS.location, value: VariableTypes.location },
-] as const satisfies readonly Readonly<{
-  label: MessageDescriptor;
-  value: VariableType;
-}>[];
 
 const messages = defineMessages({
   createTitle: {
@@ -260,6 +184,52 @@ const messages = defineMessages({
       'Add at least two participant-facing labels and their stored values.',
     description:
       'Guidance under the allowed values heading. A label is what a participant reads; its stored value is what the export records.',
+  },
+  answersLegend: {
+    id: 'protocolBuilder.codebookVariable.answersLegend',
+    defaultMessage: 'The two answers',
+    description:
+      'Heading over the words on the two answers a yes/no attribute puts in front of a participant.',
+  },
+  answersHint: {
+    id: 'protocolBuilder.codebookVariable.answersHint',
+    defaultMessage:
+      'Write what the participant chooses between. Left empty, they are offered Yes and No. A negative answer is shown in red when it is selected.',
+    description:
+      'Guidance under the heading over a yes/no attribute’s two answers. Naming neither is a real answer: the interview offers its own translated Yes and No when the protocol names none.',
+  },
+  heldAnswersLegend: {
+    id: 'protocolBuilder.codebookVariable.heldAnswersLegend',
+    defaultMessage: 'The answers this attribute offers',
+    description:
+      'Heading over the read-only list of answers a yes/no attribute puts in front of a participant. Shown in place of the two answer fields when the attribute holds some other number of answers.',
+  },
+  heldAnswersCaption: {
+    id: 'protocolBuilder.codebookVariable.heldAnswersCaption',
+    defaultMessage:
+      'A yes/no attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.',
+    description:
+      'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds some number of answers other than the two this editor writes. It says that saving the attribute does not alter them.',
+  },
+  heldAnswerValuesCaption: {
+    id: 'protocolBuilder.codebookVariable.heldAnswerValuesCaption',
+    defaultMessage:
+      'A yes/no attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
+    description:
+      'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds two answers that do not record one “true” and one “false” — both recording the same one, for instance. It says that saving the attribute does not alter them. “true” and “false” are the literal values the protocol stores and stay as they are.',
+  },
+  parametersLegend: {
+    id: 'protocolBuilder.codebookVariable.parametersLegend',
+    defaultMessage: 'What this control accepts',
+    description:
+      'Heading over the settings the input control an attribute is collected with takes — the bounds of a date, the words at each end of a sliding scale.',
+  },
+  parametersHint: {
+    id: 'protocolBuilder.codebookVariable.parametersHint',
+    defaultMessage:
+      'These settings belong to the input control this attribute is collected with, so they apply wherever it is asked for.',
+    description:
+      'Guidance under the heading over an input control’s settings, saying that they follow the attribute into every interview step that asks for it.',
   },
   optionLabelField: {
     id: 'protocolBuilder.codebookVariable.optionLabelField',
@@ -537,16 +507,29 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   );
   const submittedDraft =
     props.mode === 'create'
-      ? draftWithOwnedBlocks(snapshot.draft, parameterShape, optionsShape)
+      ? draftWithOwnedBlocks(
+          snapshot.draft,
+          seededDraft.options,
+          parameterShape,
+          optionsShape,
+        )
       : draftOwnedByVariableEditor(
           snapshot.draft,
+          seededDraft.options,
           lockedOptions !== null,
           typeChanged,
           parameterShape,
           optionsShape,
         );
   const hasOptions = optionsShape === 'choice';
+  // Whether the two-answer fieldset is the right editor for what this
+  // attribute holds, or whether its answers are a list to be shown and left
+  // alone — and if so, why, because the researcher is told which it is. See
+  // `heldBooleanAnswersReason`.
+  const heldAnswersReason = heldBooleanAnswersReason(snapshot.draft.options);
+  const booleanAnswersEditable = heldAnswersReason === null;
   const booleanAnswers = readBooleanAnswers(snapshot.draft.options);
+  const heldBooleanAnswers = readHeldBooleanAnswers(snapshot.draft.options);
   const optionsLocked =
     lockedOptions !== null || snapshot.draft.readOnly === true;
   const interactionDisabled = readOnly || snapshot.status !== 'editing';
@@ -704,7 +687,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     // schema takes any string as a label, so nothing downstream refuses an
     // answer with no words on it.
     if (optionsShape === 'boolean') {
-      const answerIssues = validateBooleanAnswers(snapshot.draft.options, intl);
+      const answerIssues = validateBooleanAnswers(snapshot.draft.options);
       if (hasBooleanAnswerIssues(answerIssues)) {
         activeRequestId.current = null;
         setIssues(
@@ -726,7 +709,6 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       const parameterIssues = validateParameters(
         parameterShape,
         snapshot.draft.parameters,
-        intl,
       );
       if (hasParameterIssues(parameterIssues)) {
         activeRequestId.current = null;
@@ -789,6 +771,13 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       if (error instanceof InvalidCodebookDraftError) {
         setIssues(error.issues);
       }
+      // The one refused save the researcher fixes in a FIELD rather than by
+      // reading the alert. The message is already encoded — `editing.ts` writes
+      // it that way so it can be decoded where it is rendered — and the alert
+      // shows it too, at the top of a form they may have scrolled past.
+      if (error instanceof DuplicateVariableNameError) {
+        setIssues([{ path: ['name'], message: error.message }]);
+      }
       // AuxiliaryCodebookDraftSession stores and announces the failure. The
       // form deliberately remains mounted with the exact rejected draft.
     }
@@ -799,6 +788,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const optionErrors = messagesAt(issues, 'options');
   const answerIssues = booleanAnswerMessages(issues);
   const parameterIssues = parameterMessages(issues);
+  const blockParameterErrors = parameterIssues[PARAMETERS_BLOCK] ?? [];
   const contradictions = contradictionMessages(issues);
   const failurePresentation = failureFrom(
     snapshot.lastFailure,
@@ -921,7 +911,10 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                 {intl.formatMessage(messages.optionsHint)}
               </p>
               {optionsLocked ? (
-                <LockedOptions options={options} />
+                <LockedOptions
+                  options={options}
+                  caption={intl.formatMessage(messages.lockedOptionsCaption)}
+                />
               ) : (
                 <div className="flex flex-col gap-4">
                   {options.map((option, index) => (
@@ -934,7 +927,20 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                       className="w-full overflow-visible!"
                     >
                       <div className="flex items-start gap-4">
-                        <div className="min-w-0 flex-1">
+                        {/* The strong destructive ink is opted into HERE, on the
+                            field column, and not on the Surface: it is meant for
+                            destructive TEXT drawn on this tinted background —
+                            the required marker and a field's error — and
+                            `--destructive` is also the fill of the destructive
+                            remove button beside it, whose foreground stays
+                            `--destructive-contrast`. Tinting the whole surface
+                            repaints that fill without repainting the icon on
+                            it, which on the default dark theme lands at 2.85:1
+                            against white where the untouched pair reaches
+                            3.85:1 — under the 3:1 WCAG asks of a control. The
+                            button is outside this element, so it keeps its own
+                            pair. */}
+                        <div className="min-w-0 flex-1 [--destructive:var(--destructive-strong)]">
                           <UnconnectedField
                             name={`option-${index + 1}-label`}
                             label={intl.formatMessage(
@@ -1040,15 +1046,13 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               )}
             </fieldset>
           )}
-          {optionsShape === 'boolean' && (
+          {optionsShape === 'boolean' && booleanAnswersEditable && (
             <fieldset className="mb-8 min-w-0">
               <legend className="font-heading mb-2 font-bold">
-                The two answers
+                {intl.formatMessage(messages.answersLegend)}
               </legend>
               <p className="text-muted mb-4 text-sm">
-                Write what the participant chooses between. Left empty, they are
-                offered Yes and No. A negative answer is shown in red when it is
-                selected.
+                {intl.formatMessage(messages.answersHint)}
               </p>
               <VariableBooleanAnswerFields
                 answers={booleanAnswers}
@@ -1058,29 +1062,52 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               />
             </fieldset>
           )}
+          {optionsShape === 'boolean' && !booleanAnswersEditable && (
+            <fieldset className="mb-8 min-w-0">
+              <legend className="font-heading mb-2 font-bold">
+                {intl.formatMessage(messages.heldAnswersLegend)}
+              </legend>
+              <LockedOptions
+                options={heldBooleanAnswers}
+                caption={intl.formatMessage(
+                  heldAnswersReason === 'values'
+                    ? messages.heldAnswerValuesCaption
+                    : messages.heldAnswersCaption,
+                )}
+              />
+            </fieldset>
+          )}
 
           {parameterShape !== null && (
             <fieldset
               className="mb-8 min-w-0"
-              aria-invalid={
-                (parameterIssues[PARAMETERS_BLOCK]?.length ?? 0) > 0 ||
-                undefined
+              aria-invalid={blockParameterErrors.length > 0 || undefined}
+              aria-describedby={
+                blockParameterErrors.length > 0
+                  ? `${statusId}-parameter-errors`
+                  : undefined
               }
             >
               <legend className="font-heading mb-2 font-bold">
-                What this control accepts
+                {intl.formatMessage(messages.parametersLegend)}
               </legend>
               <p className="text-muted mb-4 text-sm">
-                These settings belong to the input control this attribute is
-                collected with, so they apply wherever it is asked for.
+                {intl.formatMessage(messages.parametersHint)}
               </p>
-              {(parameterIssues[PARAMETERS_BLOCK]?.length ?? 0) > 0 && (
+              {blockParameterErrors.length > 0 && (
                 <ul
                   id={`${statusId}-parameter-errors`}
                   className="text-destructive mb-3 list-disc pl-5"
                 >
-                  {parameterIssues[PARAMETERS_BLOCK]?.map((message) => (
-                    <li key={message}>{message}</li>
+                  {/* Decoded here for the reason the option list above is: a
+                      refusal about the whole block is held as an encoded
+                      descriptor so it follows a change of language, and this
+                      list is our own markup rather than a field's error
+                      region, which decodes its own. */}
+                  {blockParameterErrors.map((message) => (
+                    <li key={message}>
+                      {formatMessageError(message, intl) ?? message}
+                    </li>
                   ))}
                 </ul>
               )}
@@ -1128,6 +1155,7 @@ function draftWithLockedOptions(
 
 function draftOwnedByVariableEditor(
   draft: Readonly<SectionDoc>,
+  storedOptions: unknown,
   persistLockedOptions: boolean,
   includeTypeMetadata: boolean,
   parameterShape: ParameterShape | null,
@@ -1140,14 +1168,25 @@ function draftOwnedByVariableEditor(
   for (const property of properties) {
     if (Object.hasOwn(draft, property)) owned[property] = draft[property];
   }
-  const options = optionsForShape(optionsShape, draft.options);
+  const options = optionsForShape(optionsShape, draft.options, storedOptions);
   if (options === undefined) delete owned.options;
   else owned.options = options;
   // Written with them, for the reason the parameters block writes it: the pair
   // and the control that shows them cannot be committed out of step, and a
   // host opens this editor on the control the researcher has just chosen
   // rather than the one the codebook still records.
-  if (optionsShape === 'boolean' && Object.hasOwn(draft, 'component')) {
+  //
+  // Asked of the TYPE rather than of the answer `optionsShapeFor` gives,
+  // because boolean is the one type whose control decides whether the pair
+  // exists at all — so both directions have to land the control with the
+  // answers that depend on it. Written only in the direction that ADDS the
+  // pair, the other direction deletes the words the researcher wrote and
+  // commits a variable still recording the control that showed them: a
+  // participant then meets the default Yes/No where those words used to be.
+  if (
+    draft.type === VariableTypes.boolean &&
+    Object.hasOwn(draft, 'component')
+  ) {
     owned.component = draft.component;
   }
   if (parameterShape !== null) {
@@ -1171,6 +1210,7 @@ function draftOwnedByVariableEditor(
  */
 function draftWithOwnedBlocks(
   draft: CodebookVariableDraft,
+  storedOptions: unknown,
   parameterShape: ParameterShape | null,
   optionsShape: OptionsShape | null,
 ): CodebookVariableDraft {
@@ -1183,7 +1223,7 @@ function draftWithOwnedBlocks(
   // A choice list is passed through as authored, so an unauthored one still
   // reaches the request builder to be refused there — see `optionsForShape`.
   if (optionsShape === 'boolean') {
-    const options = optionsForShape(optionsShape, draft.options);
+    const options = optionsForShape(optionsShape, draft.options, storedOptions);
     if (options === undefined) delete next.options;
     else next.options = options;
   }
@@ -1451,15 +1491,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function LockedOptions({ options }: { options: readonly EditableOption[] }) {
+/**
+ * A list of answers as they stand, with the reason they cannot be edited here.
+ *
+ * Two things read it: an option list one kind of interview step owns, and the
+ * answers of a boolean this editor's two-answer fieldset cannot show. Both are
+ * the same thing to the researcher — what a participant will be offered, and
+ * an editor saying it is not theirs to change — so the caption is what differs
+ * between them, and it is passed in rather than chosen from a flag.
+ */
+function LockedOptions({
+  options,
+  caption,
+}: {
+  options: readonly Readonly<{
+    label: string;
+    value: string | number | boolean;
+  }>[];
+  caption: string;
+}) {
   const intl = useAppIntl();
   return (
     <div className="bg-surface-2 text-surface-2-contrast relative rounded p-4">
       <Lock aria-hidden="true" className="absolute top-4 right-4 size-4" />
       <table className="w-full text-sm">
-        <caption className="pr-8 pb-2 text-left">
-          {intl.formatMessage(messages.lockedOptionsCaption)}
-        </caption>
+        <caption className="pr-8 pb-2 text-left">{caption}</caption>
         <thead>
           <tr className="text-left">
             <th className="pb-2 font-bold">

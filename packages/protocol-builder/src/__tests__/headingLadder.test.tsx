@@ -20,10 +20,7 @@ import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
 import ContentBlockEditor from '../sections/contentBlocks/ContentBlockEditor.tsx';
 import ContentBlockPreview from '../sections/contentBlocks/ContentBlockPreview.tsx';
-import {
-  collapseContentBlock,
-  expandContentBlock,
-} from '../sections/contentBlocks/contentBlockTypes.ts';
+import { contentBlockSlots } from '../sections/contentBlocks/contentBlockTypes.ts';
 import PageContentSection from '../sections/PageContentSection.tsx';
 import StageNameSection from '../sections/StageNameSection.tsx';
 import type { CompoundEditResult } from '../session.ts';
@@ -220,8 +217,7 @@ describe('the stage editor shell', () => {
           <PageContentSection
             ItemEditor={ContentBlockEditor}
             ItemPreview={ContentBlockPreview}
-            itemSelector={expandContentBlock}
-            normalizeItem={collapseContentBlock}
+            slots={contentBlockSlots}
           />
         </StageEditorShell>
       )}

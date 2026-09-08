@@ -5,6 +5,7 @@ import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import IntroductionSection from '../IntroductionSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import SubjectSection, { NEW_ENTITY_DRAFT } from '../SubjectSection.tsx';
+import { changeSubjectTo } from './changeSubject.ts';
 import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
 
 const nodeSubjectAndPrompts = (
@@ -29,12 +30,15 @@ const draftString = (draft: unknown, ...keys: readonly string[]): string => {
   return typeof current === 'string' ? current : '';
 };
 
-const codebookNodeNames = (
-  sections: Readonly<Record<string, Record<string, unknown>>>,
-): unknown[] =>
-  Object.entries(sections)
-    .filter(([id]) => id.startsWith('codebook:node:'))
-    .map(([, document]) => document.name);
+const codebookNamesOf =
+  (prefix: string) =>
+  (sections: Readonly<Record<string, Record<string, unknown>>>): unknown[] =>
+    Object.entries(sections)
+      .filter(([id]) => id.startsWith(prefix))
+      .map(([, document]) => document.name);
+
+const codebookNodeNames = codebookNamesOf('codebook:node:');
+const codebookEdgeNames = codebookNamesOf('codebook:edge:');
 
 describe('the section that says what a stage is about', () => {
   it('offers the protocol’s own node types, and nothing else', () => {
@@ -92,9 +96,7 @@ describe('the section that says what a stage is about', () => {
       sections: <SubjectSection entity="edge" filter />,
     });
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family_edge' }),
-    );
+    await changeSubjectTo(harness.user, 'family_edge', 'Change the edge type');
 
     await waitFor(() =>
       expect(
@@ -136,9 +138,7 @@ describe('changing what a stage is about', () => {
       screen.getByText('Who are the people you know?'),
     ).toBeInTheDocument();
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
 
     await waitFor(() =>
       expect(
@@ -163,9 +163,7 @@ describe('changing what a stage is about', () => {
       sections: nodeSubjectAndPrompts,
     });
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
     await waitFor(() =>
       expect(
         screen.queryByText('Who are the people you know?'),
@@ -211,9 +209,7 @@ describe('changing what a stage is about', () => {
       sections: nodeSubjectAndPrompts,
     });
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
     await waitFor(() =>
       expect(
         screen.queryByText('Who are the people you know?'),
@@ -396,9 +392,7 @@ describe('creating the type a stage needs without leaving it', () => {
       sections: nodeSubjectAndPrompts,
     });
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
     await waitFor(() =>
       expect(
         screen.queryByText('Who are the people you know?'),
@@ -527,5 +521,373 @@ describe('a codebook that changes while the editor is open', () => {
     );
     expect(dispatch).not.toHaveBeenCalled();
     expect(harness.pendingCommands()).toEqual([]);
+  });
+});
+
+/**
+ * A collaborator takes the stage while the create dialog is open.
+ *
+ * The draft inside it is work the researcher has done and nowhere else: they
+ * opened the dialog because the type they need does not exist yet, and the
+ * name they were typing is the whole of it. Unmounting the editor with the
+ * trigger that opened it throws that away without a word — and the researcher
+ * who takes editing back has to start again without ever being told why.
+ */
+describe('editing taken away while the create dialog is open', () => {
+  const openTheCreateDialog = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new node type' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+      'Place',
+    );
+  };
+
+  it('keeps the open editor, read-only, and hides only the trigger', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+    await openTheCreateDialog(harness);
+
+    harness.setReadOnly();
+
+    // The editor takes `readOnly` for exactly this: interaction stops, the
+    // draft does not.
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    expect(name).toHaveValue('Place');
+    expect(name).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save entity' })).toBeDisabled();
+    // The trigger goes, because a create nobody may start is not on offer.
+    expect(
+      screen.queryByRole('button', { name: 'Create a new node type' }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * The way out is still there. Keeping the editor mounted would be worse than
+   * unmounting it if the researcher were then stuck inside it — and the
+   * trigger it would return focus to has gone with the lease, which Fresco's
+   * `Dialog` answers by falling back to Base UI's own default.
+   */
+  it('can still be dismissed by the researcher who can no longer use it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+    await openTheCreateDialog(harness);
+
+    harness.setReadOnly();
+    await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+  });
+
+  it('finishes the create the researcher had started once editing comes back', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+    await openTheCreateDialog(harness);
+
+    harness.setReadOnly();
+    harness.setReadOnly(false);
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        codebookNodeNames(harness.host.getSnapshot().protocolSections),
+      ).toContain('Place'),
+    );
+    expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
+  });
+});
+
+/**
+ * A dismissal while the create is in flight.
+ *
+ * The request outlives the dialog: the handler awaiting it is still alive, and
+ * a success arriving after the dialog has gone still selects the new type on
+ * the stage — which throws away everything that described the old one. The
+ * researcher sees the configuration of a stage they had closed a dialog on
+ * disappear, for a type they never saw arrive.
+ */
+describe('dismissing the create dialog while it is submitting', () => {
+  /** Holds the compound edit open, and hands back the release. */
+  const holdTheCompoundEdit = (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    const send = harness.session.requestCompoundEdit.bind(harness.session);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
+      async (request) => {
+        await held;
+        return send(request);
+      },
+    );
+    return () => {
+      release();
+    };
+  };
+
+  const startTheCreate = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new node type' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+      'Place',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+  };
+
+  it('refuses every way out until the request has answered', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+    const release = holdTheCompoundEdit(harness);
+    await startTheCreate(harness);
+
+    // Escape, a press outside and the close button are the three routes the
+    // researcher has left — Cancel disables itself — and all of them reach the
+    // dialog through `closeDialog`.
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(document.body);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    // …and the one that is a visible control is not offered at all, rather
+    // than offered and inert.
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+
+    release();
+    await waitFor(() =>
+      expect(
+        codebookNodeNames(harness.host.getSnapshot().protocolSections),
+      ).toContain('Place'),
+    );
+    expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
+  });
+
+  /**
+   * And the way out comes back. A refusal that outlived the request would
+   * leave the researcher shut inside a dialog with nothing left to wait for.
+   */
+  it('can be dismissed again once the request has failed', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockResolvedValue({
+      status: 'failed',
+      reason: 'host-error',
+      message: 'expected object, received undefined',
+    });
+
+    await startTheCreate(harness);
+    await screen.findByText(
+      'The protocol would not be valid with this change, so nothing was saved. Adjust this type and try again, or close this and come back once the rest of the stage is filled in.',
+    );
+
+    await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+  });
+});
+
+/**
+ * Node and edge types share one namespace, which is what Architect has always
+ * enforced (`TypeEditor` validates a new name against both codebook maps).
+ *
+ * A node named like an edge is two different things a researcher cannot tell
+ * apart afterwards: the codebook lists them by name, every export names them,
+ * and a rule or a form naming one of them reads as naming the other. The
+ * confusable pair is the worse half — an exact duplicate at least looks wrong
+ * on sight, while a name differing only in case or in a Unicode form the
+ * comparison folds together looks like the type the researcher meant.
+ */
+describe('naming a new type', () => {
+  const edgeSubjectSection = <SubjectSection entity="edge" filter />;
+
+  it('refuses a node name an edge type already uses', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new node type' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+      'knows',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+
+    expect(
+      await screen.findByText('A type named "knows" already exists.'),
+    ).toBeInTheDocument();
+    expect(
+      codebookNodeNames(harness.host.getSnapshot().protocolSections),
+    ).toEqual(['person', 'family member']);
+  });
+
+  it('refuses an edge name a node type already uses, whatever the case', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-edge-form-1',
+      sections: edgeSubjectSection,
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new edge type' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Edge type name' }),
+      'Person',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+
+    // The editor folds case and Unicode form together on purpose, so this is
+    // the pair that would otherwise have been committed: two types nobody
+    // reading the codebook could tell apart.
+    expect(
+      await screen.findByText('A type named "Person" already exists.'),
+    ).toBeInTheDocument();
+    expect(
+      codebookEdgeNames(harness.host.getSnapshot().protocolSections),
+    ).toEqual(['family_edge', 'knows']);
+  });
+});
+
+/**
+ * The one destructive thing this section does, and the researcher gets to say
+ * so first.
+ *
+ * A radio is a single click, and the click throws away every prompt, form,
+ * panel and filter the stage carried. Architect has always asked before it
+ * (`NodeType`'s `promptBeforeChange`), and this package already asks before
+ * the far smaller loss of switching a capability off, so a stage-wide reset
+ * that happens on a mis-click is out of step with both.
+ */
+describe('changing a subject the stage is configured for', () => {
+  const CHANGE_TITLE = 'Change the node type?';
+  const CHANGE_DESCRIPTION =
+    'Everything else on this stage describes the node type it works with now, and choosing a different type removes all of it.';
+  const CHANGE_CONFIRM = 'Change the node type';
+
+  it('asks first, and changes nothing while the question stands', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family member' }),
+    );
+
+    expect(await screen.findByText(CHANGE_TITLE)).toBeInTheDocument();
+    expect(screen.getByText(CHANGE_DESCRIPTION)).toBeInTheDocument();
+    // The pick has not been made: the stage still holds the type and the
+    // configuration it opened with. The editor behind the question is out of
+    // the accessibility tree while it stands, so this is read from the
+    // session — which is where a reset would have landed first.
+    const { fields } = harness.session.getSnapshot().editedSection;
+    expect(fields.subject).toEqual({ entity: 'node', type: 'person' });
+    expect(fields.prompts).toHaveLength(1);
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  it('leaves the stage as it was when the researcher backs out', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family member' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Cancel' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText(CHANGE_TITLE)).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('radio', { name: 'person' })).toBeChecked();
+    expect(
+      screen.getByText('Who are the people you know?'),
+    ).toBeInTheDocument();
+    expect(harness.pendingCommands()).toEqual([]);
+    // And the stage still saves as the stage it opened as.
+    await harness.roundTrip({ unowned: ['label', 'form'] });
+  });
+
+  it('throws it away once the researcher has said so', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await changeSubjectTo(harness.user, 'family member', CHANGE_CONFIRM);
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Who are the people you know?'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(harness.session.getSnapshot().editedSection.fields.subject).toEqual({
+      entity: 'node',
+      type: 'family_member',
+    });
+  });
+
+  /**
+   * A question about nothing is one a researcher learns to dismiss without
+   * reading — the rule the discard guard already states. A stage that has just
+   * been created carries its name and its type and nothing else, and choosing
+   * the type it is for is the first thing the researcher does with it.
+   */
+  it('does not ask about a stage that has nothing to lose', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'name-generator-1',
+        type: 'NameGenerator' as const,
+        fields: {
+          label: 'Name Generator',
+          subject: { entity: 'node', type: 'person' },
+        },
+      },
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family member' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        harness.session.getSnapshot().editedSection.fields.subject,
+      ).toEqual({ entity: 'node', type: 'family_member' }),
+    );
+    expect(screen.queryByText(CHANGE_TITLE)).not.toBeInTheDocument();
   });
 });
