@@ -19,6 +19,10 @@
     "defaultMessage": "The maximum cannot be less than the minimum.",
     "description": "Refusal shown against the maximum box when it holds fewer people than the minimum beside it, which no stage could satisfy."
   },
+  "protocolBuilder.alterLimits.maxBelowZero": {
+    "defaultMessage": "The smallest a maximum can be is 1.",
+    "description": "Refusal shown against the maximum box when the researcher entered a negative number of people. It names the smallest maximum a stage may have rather than repeating the number entered, and is a separate sentence from the one about a maximum of 0, which is about a cap the researcher really did type."
+  },
   "protocolBuilder.alterLimits.maxHint": {
     "defaultMessage": "Leave empty for no maximum.",
     "description": "Guidance under the box holding the largest number of people this step of the interview may name."
