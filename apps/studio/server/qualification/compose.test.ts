@@ -714,12 +714,12 @@ it('installs an immutable built image, drains a populated backup and restores al
       'migrate',
     ]);
     await source.compose([
+      '-f',
+      'deployment/encryption.yml',
       'run',
       '--rm',
       '--no-deps',
-      'studio',
-      'encryption',
-      'verify',
+      'encryption-verify',
     ]);
     await source.compose(['up', '-d', 'studio', 'probe']);
     await source.ready();
