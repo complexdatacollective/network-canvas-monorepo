@@ -6,8 +6,59 @@ import { readEnv } from '../env.ts';
 
 const INGRESS_SECRET =
   'synthetic-managed-ingress-secret-at-least-32-characters';
+const METRICS_TOKEN = 'synthetic-managed-metrics-token-at-least-32-characters';
+const TRUSTED_PROXIES = ['fdaa::/16'];
 
 describe('managed ingress proof', () => {
+  it('refuses a managed database HTTP app without both ingress proofs', () => {
+    const base = readEnv();
+    for (const ingress of [
+      { managedIngressSecret: undefined, trustedProxies: [] },
+      {
+        managedIngressSecret: INGRESS_SECRET,
+        trustedProxies: [],
+      },
+      {
+        managedIngressSecret: undefined,
+        trustedProxies: TRUSTED_PROXIES,
+      },
+      {
+        managedIngressSecret: INGRESS_SECRET,
+        trustedProxies: ['not-a-proxy'],
+      },
+    ]) {
+      expect(() =>
+        createApp({
+          ...base,
+          deploymentMode: 'managed',
+          db: { url: 'postgresql://synthetic.invalid/studio' },
+          ...ingress,
+        }),
+      ).toThrow(
+        'Managed Studio HTTP with a database requires STUDIO_MANAGED_INGRESS_SECRET and TRUSTED_PROXIES',
+      );
+    }
+  });
+
+  it('admits a managed database HTTP app only with both ingress proofs', async () => {
+    const base = readEnv();
+    const app = createApp({
+      ...base,
+      deploymentMode: 'managed',
+      db: { url: 'postgresql://synthetic.invalid/studio' },
+      maintenanceDb: undefined,
+      auth: undefined,
+      managedIngressSecret: INGRESS_SECRET,
+      trustedProxies: TRUSTED_PROXIES,
+    });
+    const refused = await app.request('/api/v1/status');
+    expect(refused.status).toBe(404);
+    const admitted = await app.request('/api/v1/status', {
+      headers: { 'x-studio-managed-ingress-proof': INGRESS_SECRET },
+    });
+    expect(admitted.status).toBe(200);
+  });
+
   it('refuses missing or mismatched proof before serving a route', async () => {
     const base = readEnv();
     let authCalls = 0;
@@ -19,6 +70,7 @@ describe('managed ingress proof', () => {
         maintenanceDb: undefined,
         auth: undefined,
         managedIngressSecret: INGRESS_SECRET,
+        trustedProxies: TRUSTED_PROXIES,
       },
       {
         auth: {
@@ -58,6 +110,7 @@ describe('managed ingress proof', () => {
       maintenanceDb: undefined,
       auth: undefined,
       managedIngressSecret: INGRESS_SECRET,
+      trustedProxies: TRUSTED_PROXIES,
     });
     const response = await app.request('/api/auth/get-session', {
       headers: { 'x-studio-managed-ingress-proof': INGRESS_SECRET },
@@ -66,5 +119,50 @@ describe('managed ingress proof', () => {
     const health = await app.request('/healthz');
     expect(health.status).toBe(200);
     await expect(health.json()).resolves.toEqual({ status: 'ok' });
+  });
+
+  it('keeps exact metrics behind its bearer gate without ingress proof', async () => {
+    const base = readEnv();
+    const configured = createApp({
+      ...base,
+      db: undefined,
+      maintenanceDb: undefined,
+      auth: undefined,
+      metricsToken: METRICS_TOKEN,
+      managedIngressSecret: INGRESS_SECRET,
+      trustedProxies: TRUSTED_PROXIES,
+    });
+
+    const wrong = await configured.request('/metrics', {
+      headers: { authorization: 'Bearer wrong' },
+    });
+    expect(wrong.status).toBe(404);
+    const valid = await configured.request('/metrics', {
+      headers: { authorization: `Bearer ${METRICS_TOKEN}` },
+    });
+    expect(valid.status).toBe(200);
+    expect(await valid.text()).toContain('studio_http_requests_total');
+
+    const wrongMethod = await configured.request('/metrics', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${METRICS_TOKEN}` },
+    });
+    expect(wrongMethod.status).toBe(404);
+    const variant = await configured.request('/metrics/extra', {
+      headers: { authorization: `Bearer ${METRICS_TOKEN}` },
+    });
+    expect(variant.status).toBe(404);
+
+    const unconfigured = createApp({
+      ...base,
+      db: undefined,
+      maintenanceDb: undefined,
+      auth: undefined,
+      metricsToken: undefined,
+      managedIngressSecret: INGRESS_SECRET,
+      trustedProxies: TRUSTED_PROXIES,
+    });
+    const hidden = await unconfigured.request('/metrics');
+    expect(hidden.status).toBe(404);
   });
 });

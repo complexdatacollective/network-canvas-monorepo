@@ -172,8 +172,7 @@ function staticHeaders(request) {
 }
 
 function canonicalClientIp(headers) {
-  const ipv6 = headers.get('cf-connecting-ipv6');
-  const candidate = ipv6 || headers.get('cf-connecting-ip');
+  const candidate = headers.get('cf-connecting-ip');
   if (
     !candidate ||
     candidate.length > 45 ||
@@ -495,6 +494,7 @@ export function createManagedStudioIngress(configuration) {
         backend &&
         request.method === 'GET' &&
         IMMUTABLE_ASSET_PATH.test(pathname) &&
+        !request.headers.has('if-range') &&
         cache?.match
       ) {
         try {

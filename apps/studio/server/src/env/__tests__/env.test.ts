@@ -441,6 +441,7 @@ describe('database and auth', () => {
 
   it('treats an all-blank TRUSTED_PROXIES as unset', () => {
     vi.stubEnv('TRUSTED_PROXIES', ' , ');
+    vi.stubEnv('STUDIO_MANAGED_INGRESS_SECRET', '');
     expect(readEnv().auth?.trustedProxies).toBeUndefined();
   });
 });

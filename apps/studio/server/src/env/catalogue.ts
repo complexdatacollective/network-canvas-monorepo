@@ -121,7 +121,8 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'Shared proof required on requests from the managed Cloudflare ingress.',
     deployment:
-      'Set only as the same independent random secret in the Cloudflare Worker and Fly runtime. Managed database servers configure it together with TRUSTED_PROXIES; never store it in IaC inputs or logs.',
+      'Set only as the same independent random secret in the Cloudflare Worker and Fly runtime. A managed database HTTP process refuses to start unless it and a nonempty `TRUSTED_PROXIES` list are configured. Exact `/healthz` and bearer-protected `/metrics` remain directly reachable for operator probes; all user surfaces require the proof. Never store it in IaC inputs or logs.',
+    devDefault: 'studio-dev-ingress-proof-not-for-production',
   },
 
   S3_ENDPOINT: {
@@ -289,6 +290,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
       'Comma-separated proxy IP addresses or CIDRs. A UUID X-Request-Id is accepted only when the actual transport peer is in this list.',
     deployment:
       'Unset ⇒ request ids are generated locally and forwarded headers are not read for authentication. List only your own proxies, each overwriting client-supplied request-id and forwarded headers. Header values never establish transport trust; fetch-only runtimes without socket information always generate request ids.',
+    devDefault: '127.0.0.1,::1',
     example: '10.0.0.0/8,192.168.0.0/16',
   },
 };

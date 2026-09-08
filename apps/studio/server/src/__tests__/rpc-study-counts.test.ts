@@ -17,11 +17,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { contract } from '@codaco/studio-rpc';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
-import { createApp } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { seed } from '../db/seed.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
+import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,

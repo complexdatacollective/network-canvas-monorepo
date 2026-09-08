@@ -31,6 +31,7 @@ import {
   logOperational,
   type OperationalLogger,
 } from './observability/logger.ts';
+import { isProxyAddress } from './observability/proxy.ts';
 import { observeRequests } from './observability/requests.ts';
 import {
   authorizeMetrics,
@@ -71,6 +72,17 @@ type CreateAppDeps = {
 };
 
 export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
+  if (
+    env.deploymentMode === 'managed' &&
+    env.db &&
+    (!env.managedIngressSecret ||
+      env.trustedProxies.length === 0 ||
+      env.trustedProxies.some((proxy) => !isProxyAddress(proxy)))
+  ) {
+    throw new Error(
+      'Managed Studio HTTP with a database requires STUDIO_MANAGED_INGRESS_SECRET and TRUSTED_PROXIES',
+    );
+  }
   const app = new Hono<PrincipalVariables>();
 
   // Unexpected failures on the machine surfaces (e.g. the database down
@@ -107,9 +119,10 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     const expectedProof = Buffer.from(env.managedIngressSecret);
     app.use('*', async (c, next) => {
       // Fly's liveness probe cannot read a runtime secret into a configured
-      // header. This route makes no identity or readiness decision and never
-      // reaches Better Auth, so keep that one direct-origin probe available.
-      if (c.req.path === '/healthz') return next();
+      // header. Metrics has an independent constant-time bearer gate. These
+      // exact routes make no user identity decision and remain direct-origin
+      // operator surfaces; variants still require ingress proof.
+      if (c.req.path === '/healthz' || c.req.path === '/metrics') return next();
       const supplied = c.req.header(MANAGED_INGRESS_PROOF_HEADER);
       const receivedProof = supplied ? Buffer.from(supplied) : undefined;
       if (
@@ -154,9 +167,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     if (!env.metricsToken)
       return c.json({ title: 'Not Found', status: 404 }, 404);
     if (!authorizeMetrics(c.req.header('authorization'), env.metricsToken))
-      return c.json({ title: 'Unauthorized', status: 401 }, 401, {
-        'WWW-Authenticate': 'Bearer',
-      });
+      return c.json({ title: 'Not Found', status: 404 }, 404);
     const metrics = await observability.metrics.scrape();
     return c.body(metrics.body, 200, { 'Content-Type': metrics.contentType });
   });

@@ -7,11 +7,11 @@ import {
   TelemetryReportSchema,
 } from '@codaco/studio-rpc/telemetry';
 
-import { createApp } from '../app.ts';
 import { readEnv } from '../env.ts';
 import { installFatalErrorHandlers } from '../fatal-errors.ts';
 import { createServerTelemetry } from '../telemetry.ts';
 import { stubAuthService } from './support/auth.ts';
+import { createHttpTestApp as createApp } from './support/http-app.ts';
 import { createRpcClient } from './support/rpc.ts';
 
 const CANARY =
