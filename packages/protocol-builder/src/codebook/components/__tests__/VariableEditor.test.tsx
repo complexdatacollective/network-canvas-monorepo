@@ -2489,3 +2489,137 @@ describe('the two answers a boolean offers', () => {
     });
   });
 });
+
+/**
+ * Where the strong destructive ink is opted into, and where it must not be.
+ *
+ * `--destructive` is an ink AND a fill: a field's error text is drawn with it,
+ * and so is the BACKGROUND of a destructive button, whose icon is drawn with
+ * `--destructive-contrast`. The tinted option and answer rows redeclare
+ * `--destructive` as the stronger mixture so an error on them stays legible —
+ * and a redeclaration is inherited by everything below the element carrying
+ * it. Put on the row's own surface it therefore repaints the remove button's
+ * fill while leaving the icon on top of it where it was: 2.85:1 on the default
+ * dark theme, where the untouched pair reaches 3.85:1 and the WCAG threshold
+ * for a control is 3:1.
+ *
+ * Asserted on class placement rather than on colour because these are custom
+ * properties resolved by a stylesheet jsdom does not load; what the component
+ * decides, and all it decides, is which subtree inherits the override. The
+ * measured ratios live in `Colors.stories.tsx`, which reads them in a browser.
+ */
+describe('the strong destructive ink a tinted row opts into', () => {
+  const STRONG_INK = '[--destructive:var(--destructive-strong)]';
+  /** What `Surface` puts on the element whose background it tints. */
+  const TINTED_SURFACE = 'bg-surface-accent';
+
+  const elementsClassed = (token: string): HTMLElement[] =>
+    Array.from(document.querySelectorAll<HTMLElement>('*')).filter((element) =>
+      element.classList.contains(token),
+    );
+
+  /**
+   * The live region `FieldErrors` mounts for a field, error or no error — the
+   * content the strong ink exists for.
+   */
+  const errorRegionOf = (fieldName: string): HTMLElement => {
+    const region = document.querySelector<HTMLElement>(
+      `[data-field-name="${fieldName}"] [aria-live]`,
+    );
+    if (region === null) {
+      throw new Error(`no error region for the field "${fieldName}"`);
+    }
+    return region;
+  };
+
+  /**
+   * The rule both rows follow: the override sits INSIDE the surface it tints,
+   * on the field content, never on the surface itself.
+   */
+  const expectScopedToFieldContent = (fieldNames: readonly string[]) => {
+    const owners = elementsClassed(STRONG_INK);
+    expect(owners.length).toBeGreaterThan(0);
+    const surfaces = elementsClassed(TINTED_SURFACE);
+    expect(surfaces.length).toBeGreaterThan(0);
+    for (const owner of owners) {
+      expect(owner.classList.contains(TINTED_SURFACE)).toBe(false);
+    }
+    for (const fieldName of fieldNames) {
+      const region = errorRegionOf(fieldName);
+      expect(owners.some((owner) => owner.contains(region))).toBe(true);
+    }
+  };
+
+  it('reaches every option field of a choice, and not the button that removes the option', () => {
+    const existing = {
+      name: 'preference',
+      type: 'categorical',
+      options: [
+        { label: 'Low', value: 'low' },
+        { label: 'High', value: 'high' },
+      ],
+    } as const;
+
+    render(
+      <VariableEditor
+        openId="edit-strong-ink"
+        mode="update"
+        subject={SUBJECT}
+        authoritativeDocument={personDocument({ preference: existing })}
+        variableId="preference"
+        initialDraft={existing}
+        description="Update attribute"
+        createRequestId={() => 'request-strong-ink'}
+        onSubmitRequest={() => APPLIED}
+        onComplete={() => undefined}
+      />,
+    );
+
+    // Asserted before the placement rule below, so this test fails on the
+    // harm itself rather than on the shape the fix happens to take.
+    const removeButtons = screen.getAllByRole('button', {
+      name: /^Remove option \d+$/,
+    });
+    expect(removeButtons).toHaveLength(2);
+    for (const button of removeButtons) {
+      expect(
+        elementsClassed(STRONG_INK).some((owner) => owner.contains(button)),
+      ).toBe(false);
+    }
+
+    expectScopedToFieldContent([
+      'option-1-label',
+      'option-1-value',
+      'option-2-label',
+      'option-2-value',
+    ]);
+  });
+
+  it('reaches the answer fields of a boolean without being put on the row itself', () => {
+    const variable = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+    } as const;
+
+    render(
+      <VariableEditor
+        openId="boolean-strong-ink"
+        mode="update"
+        subject={SUBJECT}
+        authoritativeDocument={personDocument({ flagged: variable })}
+        variableId="flagged"
+        initialDraft={variable}
+        description="Update the attribute"
+        createRequestId={() => 'request-boolean-strong-ink'}
+        onSubmitRequest={() => APPLIED}
+        onComplete={() => undefined}
+      />,
+    );
+
+    expectScopedToFieldContent([
+      'boolean-answer-true-label',
+      'boolean-answer-false-label',
+    ]);
+  });
+});
