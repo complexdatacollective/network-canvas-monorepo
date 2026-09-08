@@ -95,6 +95,65 @@ client origin without cookies or authorization headers. Its checked-in
 configuration is fail-closed and dry-run-only; live domain routing remains a
 separate qualified operator action.
 
+## Managed operational log boundary
+
+`scripts/studio-managed-log-sanitizer.mjs` is the collector-facing privacy
+boundary for application logs. Its byte-oriented API accepts only the four
+service/environment pairs in this estate, parses at most 4 KiB per record, and
+refuses an input batch above 256 records or 256 KiB before decoding any member.
+It imports the application-owned route and diagnostic catalogs. Unknown fields,
+routes, diagnostics, bindings, malformed UTF-8 and over-limit records do not
+produce a forwarded record.
+
+The output is a flat structured log suitable for a bounded New Relic Log API
+batch. It contains only the pinned schema identity, service, environment,
+normalized timestamp, fixed event kind, and either the bounded request fields
+or one approved diagnostic identifier. Studio's authorized team correlation is
+accepted as a known source field and discarded. Raw source messages, URLs,
+headers, bodies, exceptions, provider replies and arbitrary service labels are
+absent from the output schema. The schema identity is a SHA-256 digest of the
+exact services, routes, diagnostics, methods, fields and amount limits; a catalog
+change fails module loading until the reviewed identity and tests are updated.
+
+This seam does not subscribe to Fly logs, frame stream input, persist the shared
+egress budget, construct an HTTP request, hold a New Relic key, retry delivery,
+or prove destination retention. The future collector must preserve private
+subject provenance when it supplies the binding, call this sanitizer before
+queueing any bytes for egress, and treat an empty result as a dropped batch. No
+provider call or account configuration is exercised by its repository tests.
+
+`scripts/studio-managed-fly-log-envelope.mjs` supplies the preceding portable
+Fly-envelope boundary. Fly's official log stream uses the NATS subject
+`logs.<app_name>.<region>.<instance_id>` and sends a structured JSON envelope;
+Fly's maintained Log Shipper first parses the NATS message as JSON, while the
+maintained Fly Telemetry configuration separately parses the resulting inner
+`.message`. The adapter therefore accepts the authenticated NATS subject only
+as caller-owned transport provenance, matches it to one configured exact app
+and the fixed `iad` region, verifies the redundant Fly envelope metadata, then
+passes only the inner application-message bytes to the sanitizer. Envelope
+fields can refuse a record but can never select its service or environment.
+
+The adapter accepts current Fly application envelopes for both stdout and
+stderr (`log.level` is checked and discarded). It validates and discards Fly's
+nanosecond-capable envelope timestamp; the forwarded timestamp remains the
+application logger's strict timestamp. Unknown or duplicate envelope or inner
+application members, platform/non-application events, malformed UTF-8,
+malformed subjects and unconfigured apps are dropped. Outer input is bounded at
+8 KiB per event, 256
+events and 256 KiB per batch before JSON parsing. The concrete subject is capped
+before splitting or byte encoding, and its bytes count with every outer payload
+toward the batch limit even when that event is later dropped. These choices
+follow the
+[Fly Logs API description](https://fly.io/docs/monitoring/logs-api-options/),
+[official Log Shipper transform](https://github.com/superfly/fly-log-shipper/blob/main/vector-configs/vector.toml),
+and [official Fly Telemetry transform](https://github.com/superfly/fly-telemetry/blob/main/vector.yaml).
+The future network collector must still authenticate the read-only Fly NATS
+connection, take the subject from the subscription callback rather than the
+message, configure the four deployed app names, handle reconnect/backpressure,
+measure and alert on bounded drops or Fly schema drift, and preserve the
+egress-budget and delivery guarantees. Repository tests do not qualify that
+network boundary.
+
 ## Required credentials and custody
 
 Terraform provider credentials are `TF_VAR_cloudflare_api_token`,
