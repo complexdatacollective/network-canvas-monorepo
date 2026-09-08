@@ -210,6 +210,12 @@ describe('creating a One-to-Many Dyad Census stage', () => {
       expect(stageNameInput()).toHaveValue('One to Many Dyad Census #2'),
     );
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    // The template seeds `behaviours` before the researcher has chosen a
+    // subject, so the stage already holds something the first choice would
+    // throw away — the picker asks, same as any other choice that costs it.
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Choose the node type' }),
+    );
     await harness.user.click(
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
