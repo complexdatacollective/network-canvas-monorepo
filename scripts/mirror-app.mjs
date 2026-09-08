@@ -15,7 +15,16 @@
 // point at it, so the standalone repo is self-consistent.
 //
 // Usage:
-//   node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile]
+//   node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile] [--vendor-changed-since <ref>]
+//
+// `--vendor-changed-since <ref>` (Fresco only, requires --with-lockfile) packs
+// every workspace package in Fresco's dependency closure whose source differs
+// from <ref>, plus their dependents, into the mirror as tarballs the image
+// installs instead of the registry versions. The hotfix lane passes the newest
+// release tag: a hotfix branch cut from it must ship its cherry-picked library
+// fixes, and nothing on such a branch is published to npm. See
+// scripts/vendor-workspace-packages.mjs.
+//
 // Env:
 //   LEGACY_RELEASE_GH_TOKEN  cross-repo token with Contents write (classic PAT:
 //                            repo). Fresco workflow changes are pre-applied with
@@ -39,11 +48,31 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 
-import { parseCatalog, resolveManifest } from './resolve-manifest.mjs';
+import {
+  parseCatalog,
+  readWorkspacePackages,
+  resolveManifest,
+} from './resolve-manifest.mjs';
+import {
+  assertVendoredLockfile,
+  collectClosure,
+  packagesChangedSince,
+  vendorPackages,
+  withDependents,
+  writeBundleManifest,
+} from './vendor-workspace-packages.mjs';
 
-const repoRoot = fileURLToPath(new URL('..', import.meta.url));
+// The repository root is the working directory, not this file's location:
+// the hotfix lane runs main's copy of this script (checked out under
+// `.hotfix-lane/`) against a hotfix branch's tree. See resolve-manifest.mjs.
+const repoRoot = process.cwd();
+if (!existsSync(join(repoRoot, 'pnpm-workspace.yaml'))) {
+  throw new Error(
+    `mirror-app: run from the monorepo root (no pnpm-workspace.yaml in ${repoRoot}).`,
+  );
+}
 const workspaceCatalog = parseCatalog(
   readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8'),
 );
@@ -406,10 +435,11 @@ function main() {
     version,
     withLockfile,
     branch = 'master',
+    'vendor-changed-since': vendorChangedSince,
   } = parseArgs(process.argv.slice(2));
   if (!app || !repo || !version) {
     console.error(
-      'Usage: node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile]',
+      'Usage: node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile] [--vendor-changed-since <ref>]',
     );
     process.exit(1);
   }
@@ -507,6 +537,42 @@ function main() {
     writeFileSync(join(staging, 'pnpm-workspace.yaml'), FRESCO_WORKSPACE_YAML);
   }
 
+  let vendorManifest = null;
+  if (vendorChangedSince) {
+    // Only Fresco builds its image from the mirrored tree; the Electron apps
+    // vendor nothing and the Netlify apps never come through here.
+    if (appName !== 'fresco') {
+      throw new Error(
+        `--vendor-changed-since is only supported for the Fresco mirror (got ${appName}).`,
+      );
+    }
+    // The Dockerfile installs with --frozen-lockfile, so overrides that no
+    // lockfile records would never take effect in the image.
+    if (!withLockfile) {
+      throw new Error('--vendor-changed-since requires --with-lockfile.');
+    }
+    const wsPackages = readWorkspacePackages();
+    const closure = collectClosure(wsPackages, app);
+    const names = withDependents(
+      packagesChangedSince(vendorChangedSince, closure, wsPackages),
+      closure,
+      wsPackages,
+    );
+    console.error(
+      `[mirror] vendoring packages changed since ${vendorChangedSince}: ${names.join(', ') || 'none'}`,
+    );
+    vendorManifest = vendorPackages({
+      stageDir: staging,
+      names,
+      closure,
+      wsPackages,
+      note: `Packages changed since ${vendorChangedSince} (and their dependents), bundled by the hotfix lane (local tarballs).`,
+    });
+    // Recorded in the mirror itself, so the external repository says why its
+    // tree carries vendor/ where a normal release's does not.
+    writeBundleManifest(staging, vendorManifest);
+  }
+
   if (withLockfile) {
     if (overrides.lockfile === 'pnpm') {
       // The Dockerfile installs with `--frozen-lockfile`, so the mirror must
@@ -515,6 +581,11 @@ function main() {
       run('pnpm', ['install', '--lockfile-only', '--ignore-scripts'], {
         cwd: staging,
       });
+      if (vendorManifest) {
+        console.error(
+          `[mirror] vendoring guard OK: ${assertVendoredLockfile(staging, vendorManifest)}`,
+        );
+      }
     } else {
       console.error(
         '[mirror] generating package-lock.json (validates npm resolvability)',

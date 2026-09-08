@@ -32,7 +32,11 @@ MIRROR_DRY_RUN=true MIRROR_STAGE_DIR="$STAGE_DIR" node scripts/mirror-app.mjs \
   --version "$VERSION"
 
 echo "[release-test] bundling pending workspace packages"
-node apps/fresco/release-test/scripts/bundle-pending-packages.mjs "$STAGE_DIR"
+# VENDOR_CHANGED_SINCE=<ref> certifies a hotfix branch: vendor what changed since
+# the release tag it was cut from (the hotfix lane's own rule) instead of what
+# the pending changesets would publish.
+node apps/fresco/release-test/scripts/bundle-pending-packages.mjs "$STAGE_DIR" \
+  ${VENDOR_CHANGED_SINCE:+--changed-since "$VENDOR_CHANGED_SINCE"}
 
 echo "[release-test] generating lockfile"
 (cd "$STAGE_DIR" && pnpm install --lockfile-only --ignore-scripts)
@@ -41,32 +45,7 @@ echo "[release-test] generating lockfile"
 # tarball and never from the registry (registry references appear as
 # '@codaco/<name>@<semver>'); packages without a pending changeset are
 # expected to resolve from the registry, exactly as the released image will.
-node - "$STAGE_DIR" <<'EOF'
-const { readFileSync } = require('node:fs');
-const { join } = require('node:path');
-const stageDir = process.argv[2];
-const manifest = JSON.parse(
-  readFileSync(join(stageDir, 'bundle-manifest.json'), 'utf8'),
-);
-const lockfile = readFileSync(join(stageDir, 'pnpm-lock.yaml'), 'utf8');
-const problems = [];
-for (const [name, tarball] of Object.entries(manifest.vendored)) {
-  if (!lockfile.includes(`file:vendor/${tarball}`)) {
-    problems.push(`${name}: no file:vendor/${tarball} resolution in lockfile`);
-  }
-  if (new RegExp(`${name}@\\d`).test(lockfile)) {
-    problems.push(`${name}: vendored but also resolved from the registry`);
-  }
-}
-if (problems.length) {
-  console.error('[release-test] ERROR: bundling guard failed:');
-  for (const p of problems) console.error(`  ${p}`);
-  process.exit(1);
-}
-console.log(
-  `[release-test] bundling guard OK: ${Object.keys(manifest.vendored).length} vendored, ${manifest.registry.length} from registry (${manifest.registry.join(', ') || 'none'})`,
-);
-EOF
+echo "[release-test] $(node scripts/vendor-workspace-packages.mjs --assert-lockfile "$STAGE_DIR")"
 
 echo "[release-test] building image $IMAGE_TAG"
 docker build -t "$IMAGE_TAG" "$STAGE_DIR"

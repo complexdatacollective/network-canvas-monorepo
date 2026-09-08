@@ -1,6 +1,6 @@
 name: Hotfix Release
 
-# Releases Architect or Interviewer from a branch that is NOT main.
+# Releases Architect, Interviewer or Fresco from a branch that is NOT main.
 #
 # The normal lane (`apps-release-detect` + `apps-release-<app>` in
 # ci-and-release.yml) builds whatever is on main, so it can only ship a patch
@@ -8,8 +8,17 @@ name: Hotfix Release
 # carries work that is not ready to go out, the only way to ship a fix alone is
 # a branch cut from the released tag — and nothing on such a branch can trigger
 # the normal lane, which fires exclusively on push-to-main. This workflow is
-# that missing trigger: the same build → deploy → tag → release steps, run
+# that missing trigger: the same verify → build → tag → release steps, run
 # against a ref named at dispatch time.
+#
+# Architect and Interviewer deploy their built tree to Netlify. Fresco releases
+# by mirroring its source into its own repository, whose image build installs
+# the PUBLISHED `@codaco/*` packages rather than workspace source — so a library
+# fix cherry-picked onto a Fresco hotfix branch would never reach the image on
+# its own. The Fresco path therefore mirrors the branch with every workspace
+# package changed since the release tag (and its dependents) vendored as
+# tarballs the image installs instead (scripts/mirror-app.mjs
+# --vendor-changed-since). Nothing is published to npm.
 #
 # The workflow is dispatched FROM main and takes the branch to release as an
 # input, so the job definition — which steps run, which secrets they see, which
@@ -25,7 +34,8 @@ name: Hotfix Release
 # trigger, so this lane widens nothing; what closes it is configuration:
 # `<app>-hotfix-production` needs required reviewers AND its deployment branches
 # restricted to main, with the deploy credentials held as environment secrets
-# rather than repository secrets. See each app's RELEASING.md.
+# rather than repository secrets. See each app's RELEASING.md (Fresco:
+# apps/fresco/CLAUDE.md).
 #
 # Procedure (see each app's RELEASING.md):
 #   1. Cut `hotfix/<app>-<version>` from the released tag, cherry-pick the fix,
@@ -44,6 +54,7 @@ on:
         options:
           - interviewer
           - architect
+          - fresco
       source_ref:
         description: Branch or tag to release (e.g. hotfix/interviewer-8.1.3)
         required: true
@@ -57,7 +68,8 @@ permissions:
 # re-check can read a stale newest-tag and put older code live in the window
 # before the other lane's tag appears. Only mutual exclusion over the whole
 # check → deploy → tag sequence closes that, which means one group per app,
-# without the version.
+# without the version. The normal lane names the Netlify apps by their scoped
+# package and Fresco by its bare one, so the group is spelled the same way.
 #
 # The cost is that a versionless group keeps only one pending run, so a release
 # queued behind two others can be dropped before it ever tags. Its code is not
@@ -65,7 +77,7 @@ permissions:
 # pass `--since <newest released version>` to release-notes.mjs, so a release
 # body carries every CHANGELOG section skipped that way.
 concurrency:
-  group: apps-release-@codaco/${{ inputs.app }}
+  group: apps-release-${{ inputs.app == 'fresco' && 'fresco' || format('@codaco/{0}', inputs.app) }}
   cancel-in-progress: false
 
 jobs:
@@ -102,20 +114,22 @@ jobs:
           ref: ${{ inputs.source_ref }}
           fetch-tags: true
           # Full history: the validator checks that this tree descends from the
-          # newest release tag, which a shallow clone cannot answer.
+          # newest release tag, which a shallow clone cannot answer, and the
+          # Fresco path diffs the tree against that tag.
           fetch-depth: 0
           persist-credentials: false
 
       # The ref being released is a branch cut from a release tag, so its copy of
       # this lane's tooling is whatever existed then — the validator did not
-      # exist at all, and release-notes.mjs predates `--since` and would ignore
-      # it silently. Both come from the dispatching main commit instead, which
-      # is also the only copy anyone has reviewed. Each reads its inputs
-      # (package.json, git tags, the app's CHANGELOG) relative to the working
-      # directory rather than to its own location, so they operate on the ref's
-      # tree while living outside it. One consequence: release-notes.mjs looks
-      # for a dedicated `release-*` changeset under `.hotfix-lane`, which the
-      # sparse checkout omits, so it always takes its CHANGELOG path here.
+      # exist at all, release-notes.mjs predates `--since` and would ignore it
+      # silently, and the mirror predates vendoring. All of it comes from the
+      # dispatching main commit instead, which is also the only copy anyone
+      # has reviewed. Each script reads its inputs (package.json, git tags, the
+      # app's CHANGELOG, the workspace) relative to the working directory rather
+      # than to its own location, so they operate on the ref's tree while
+      # living outside it. One consequence: release-notes.mjs looks for a
+      # dedicated `release-*` changeset under `.hotfix-lane`, which the sparse
+      # checkout omits, so it always takes its CHANGELOG path here.
       - name: Check out the lane's tooling from main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -157,11 +171,18 @@ jobs:
       # A hotfix branch has no required `quality` gate behind it, and workspace
       # packages are consumed as source — a fix cherry-picked into a dependency
       # compiles straight into the app. The filter therefore covers the app's
-      # whole dependency closure (`...`), not just the app.
+      # whole dependency closure (`...`), not just the app. The package name is
+      # the resolver's: scoped for the Netlify apps, bare for Fresco. Fresco's
+      # tasks depend on `fresco#codegen` in turbo.json, which regenerates the
+      # Prisma client and Next types the `--ignore-scripts` install skipped.
       - name: Verify the app and its workspace dependencies
-        run: pnpm exec turbo run typecheck test --filter="@codaco/$APP..."
+        env:
+          PKG: ${{ steps.version.outputs.package }}
+          SKIP_ENV_VALIDATION: 'true'
+        run: pnpm exec turbo run typecheck test --filter="${PKG}..."
 
       - name: Build ${{ inputs.app }}
+        if: inputs.app != 'fresco'
         # Scoped to this step alone, exactly as in the normal lane: only the
         # build needs the PostHog credentials that switch source-map upload on,
         # and keeping them off the job means the deploy step's dynamically
@@ -170,6 +191,17 @@ jobs:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
         run: pnpm exec turbo run build --filter="@codaco/$APP"
+
+      # Fresco's image is built by its own repository from the mirrored tree;
+      # what this job builds is the workspace dependency closure, so the
+      # packages the mirror vendors can be packed (pnpm pack applies
+      # publishConfig, which points at dist/). Same filter as the release
+      # test's build-image.sh.
+      - name: Build Fresco's workspace dependencies
+        if: inputs.app == 'fresco'
+        env:
+          SKIP_ENV_VALIDATION: 'true'
+        run: pnpm exec turbo run build --filter='fresco^...'
 
       # The build takes minutes, during which the normal lane can tag and deploy
       # a newer version. Re-fetch tags and re-run the same validator, so a hotfix
@@ -193,7 +225,7 @@ jobs:
       - name: Claim the release tag
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: '@codaco/${{ inputs.app }}@${{ steps.version.outputs.version }}'
+          TAG: ${{ steps.version.outputs.tag }}
           SHA: ${{ steps.commit.outputs.sha }}
         run: |
           gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" \
@@ -213,6 +245,7 @@ jobs:
         run: node .hotfix-lane/apps/architect/scripts/write-build-info.mjs apps/architect/dist
 
       - name: Deploy ${{ inputs.app }} to production
+        if: inputs.app != 'fresco'
         # Both site ids come in as environment variables and the app picks one in
         # bash. A `inputs.app == 'x' && secrets.A || secrets.B` expression would
         # silently fall through to the *other* app's site whenever the selected
@@ -236,17 +269,47 @@ jobs:
             --dir="apps/$APP/dist" \
             --site="$site"
 
+      # Fresco's production target is its repository's `main`: the push is what
+      # triggers the GHCR image build there, exactly as in the normal lane.
+      # Vendored against the newest release tag — the one this branch was cut
+      # from, which the validator has just confirmed — so every workspace
+      # package the hotfix changed goes into the image from this tree, and
+      # everything it did not touch installs at the registry versions the
+      # released image already used. The mirror script's own lockfile guard
+      # fails the step if a vendored package still resolves from the registry.
+      - name: Mirror source to the Fresco repository
+        id: mirror
+        if: inputs.app == 'fresco'
+        env:
+          LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+          MONOREPO_SHA: ${{ steps.commit.outputs.sha }}
+          VERSION: ${{ steps.version.outputs.version }}
+          NEWEST_TAG: ${{ steps.version.outputs.newest_tag }}
+        run: |
+          if [[ -z "$NEWEST_TAG" ]]; then
+            echo "::error::No released fresco@ tag to vendor against. A hotfix presupposes a release; the first Fresco release goes through the normal lane." >&2
+            exit 1
+          fi
+          node .hotfix-lane/scripts/mirror-app.mjs \
+            --app apps/fresco \
+            --repo complexdatacollective/Fresco \
+            --branch main \
+            --version "$VERSION" \
+            --with-lockfile \
+            --vendor-changed-since "$NEWEST_TAG"
+
       - name: Release notes
         # --since is the newest version released before this one, so the body
         # also carries any CHANGELOG section whose own release run was dropped
         # while pending on the shared lock above.
         env:
+          PKG: ${{ steps.version.outputs.package }}
           VERSION: ${{ steps.version.outputs.version }}
           SINCE: ${{ steps.version.outputs.newest }}
         run: >-
           node .hotfix-lane/scripts/release-notes.mjs
           --app "apps/$APP"
-          --pkg "@codaco/$APP"
+          --pkg "$PKG"
           --version "$VERSION"
           --since "$SINCE"
           --out "${RUNNER_TEMP}/hotfix-notes.md"
@@ -254,11 +317,40 @@ jobs:
       # The tag already exists from the claim step; this only attaches the
       # release notes to it. Always the newest line — resolve-hotfix-release.mjs
       # refuses anything older than the current release.
-      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+      - name: Create the release
+        if: inputs.app != 'fresco'
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
-          tag_name: '@codaco/${{ inputs.app }}@${{ steps.version.outputs.version }}'
+          tag_name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ steps.commit.outputs.sha }}
           name: ${{ steps.version.outputs.label }} ${{ steps.version.outputs.version }}
           body_path: ${{ runner.temp }}/hotfix-notes.md
           prerelease: false
           make_latest: 'true'
+
+      # Fresco's releases live in two places, as in the normal lane: the
+      # user-facing one on the Fresco repository at the mirrored commit, and
+      # the record on this repository's tag (already claimed above) that the
+      # normal lane's guards read.
+      - name: Create the release on the Fresco repository
+        if: inputs.app == 'fresco'
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          repository: complexdatacollective/Fresco
+          token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+          tag_name: v${{ steps.version.outputs.version }}
+          target_commitish: ${{ steps.mirror.outputs.mirror_sha }}
+          name: Fresco v${{ steps.version.outputs.version }}
+          body_path: ${{ runner.temp }}/hotfix-notes.md
+          prerelease: false
+          make_latest: 'true'
+      - name: Record the Fresco release on this repository's tag
+        if: inputs.app == 'fresco'
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ steps.commit.outputs.sha }}
+          name: Fresco ${{ steps.version.outputs.version }}
+          body_path: ${{ runner.temp }}/hotfix-notes.md
+          prerelease: false
+          make_latest: 'false'

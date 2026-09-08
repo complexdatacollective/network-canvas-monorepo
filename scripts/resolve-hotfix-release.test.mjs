@@ -34,9 +34,11 @@ function resolve({
   git(cwd, 'init', '-q');
   git(cwd, 'config', 'user.email', 'ci@example.com');
   git(cwd, 'config', 'user.name', 'ci');
+  // Fresco's package is the bare `fresco`; the Netlify apps are scoped.
+  const name = app === 'fresco' ? 'fresco' : `@codaco/${app}`;
   writeFileSync(
     join(cwd, 'apps', app, 'package.json'),
-    `${JSON.stringify({ name: `@codaco/${app}`, version }, null, 2)}\n`,
+    `${JSON.stringify({ name, version }, null, 2)}\n`,
   );
   git(cwd, 'add', '.');
   git(cwd, 'commit', '-qm', 'first');
@@ -88,7 +90,39 @@ test('clears a hotfix newer than every released tag', () => {
   assert.ok(ok);
   assert.equal(output.version, '8.1.3');
   assert.equal(output.label, 'Interviewer');
+  assert.equal(output.package, '@codaco/interviewer');
+  assert.equal(output.tag, '@codaco/interviewer@8.1.3');
   assert.equal(output.newest, '8.1.2');
+  assert.equal(output.newest_tag, '@codaco/interviewer@8.1.2');
+});
+
+// Fresco tags carry the bare package name (`fresco@4.1.4`), because the app
+// releases by mirroring rather than publishing under the scope. The tag the
+// lane claims, and the one it reports as newest, must use that form — a
+// scoped `@codaco/fresco@…` tag would be one the normal lane never looks for.
+test('clears a Fresco hotfix and names its bare-package tags', () => {
+  const { ok, output } = resolve({
+    app: 'fresco',
+    version: '4.1.5',
+    tags: ['fresco@4.1.3', 'fresco@4.1.4'],
+  });
+  assert.ok(ok);
+  assert.equal(output.label, 'Fresco');
+  assert.equal(output.package, 'fresco');
+  assert.equal(output.tag, 'fresco@4.1.5');
+  assert.equal(output.newest, '4.1.4');
+  assert.equal(output.newest_tag, 'fresco@4.1.4');
+});
+
+test('reads only bare-package tags for Fresco', () => {
+  const { ok, stderr } = resolve({
+    app: 'fresco',
+    version: '4.1.5',
+    tags: ['fresco@4.1.5'],
+    strandedTags: ['@codaco/fresco@9.9.9'],
+  });
+  assert.equal(ok, false);
+  assert.match(stderr, /fresco@4\.1\.5 is already released/);
 });
 
 test('labels architect too', () => {
@@ -125,7 +159,7 @@ test('fails on a prerelease version', () => {
 });
 
 test('fails on an app the lane does not release', () => {
-  const { ok, stderr } = resolve({ app: 'fresco', version: '1.0.0' });
+  const { ok, stderr } = resolve({ app: 'documentation', version: '1.0.0' });
   assert.equal(ok, false);
   assert.match(stderr, /Unsupported app/);
 });

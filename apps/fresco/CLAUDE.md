@@ -82,6 +82,69 @@ Consequences worth remembering:
   mirror. Code that only works under one bundler will pass locally and fail in
   the released image — see "Workers and bundler portability" below.
 
+## Hotfix releases (when main is ahead)
+
+The normal lane always mirrors `main`, so it can only ship a patch together
+with everything else merged since the last release. When main carries work
+that is not ready to go out, release from the previous tag instead. The
+procedure is the one in `apps/interviewer/RELEASING.md`, with one difference
+that follows from how Fresco ships: the image installs the published
+`@codaco/*` packages, not workspace source, so a library fix cherry-picked onto
+the hotfix branch would never reach the image on its own. The lane therefore
+mirrors the branch with every workspace package in Fresco's dependency closure
+whose source differs from the release tag — and every closure package that
+depends on one — packed into `vendor/` as tarballs, with pnpm overrides that
+resolve every range onto them (`scripts/mirror-app.mjs --vendor-changed-since`,
+built on `scripts/vendor-workspace-packages.mjs`, the same mechanism the
+release test uses). Nothing is published to npm; the packages the hotfix did
+not touch install at the registry versions the released image already used.
+
+1. Cut the branch from the released tag and cherry-pick the fix:
+
+   ```bash
+   git switch -c hotfix/fresco-<version> 'fresco@<previous>'
+   git cherry-pick <sha>
+   ```
+
+   Land the same fix on main through the usual pull request as well — the
+   hotfix branch is a delivery vehicle, not the source of truth.
+
+2. Bump `apps/fresco/package.json` to the hotfix version and add the matching
+   `## <version>` section to `apps/fresco/CHANGELOG.md`; `scripts/release-notes.mjs`
+   reads that section for both GitHub releases. Do **not** run
+   `changeset version` on the branch.
+3. Push the branch and open its merge-back pull request into `main` now. Then
+   certify the branch with the release test, built by the hotfix lane's own
+   rule rather than the pending changesets:
+
+   ```bash
+   VENDOR_CHANGED_SINCE='fresco@<previous>' bash apps/fresco/release-test/build-image.sh
+   ```
+
+   and run `/fresco-release-test` with `{ expectedVersion: "<version>", skipBuild: true }`
+   from that checkout. Proceed only on a full-coverage "go" with `releasable: true`.
+
+4. Run the **Hotfix Release** workflow **from main**, with `app: fresco` and
+   `source_ref` set to the hotfix branch. It runs typecheck and tests across
+   Fresco's whole workspace dependency closure, builds the closure so the
+   changed packages can be packed, claims `fresco@<version>`, mirrors the
+   vendored tree to the Fresco repository's `main` — which is what triggers the
+   GHCR image build, exactly as a normal release does — and creates the
+   release on both repositories. It holds the normal lane's `apps-release-fresco`
+   lock, re-checks the newest tag after building, and refuses a version older
+   than the current release, because the mirror's newest push is what
+   `latest` points at.
+5. **Merge the hotfix branch into main** with a merge commit, never a squash,
+   after the tag exists: `.github/scripts/app-release-guard.sh` skips main's
+   Fresco release until main contains the released commit. Then remove only
+   `'fresco'` from the changeset the hotfix consumed, deleting the file only if
+   Fresco was its sole target.
+
+The `fresco-hotfix-production` environment needs the same one-time protection
+the Interviewer lane documents (required reviewers, deployment branches
+restricted to `main`); until that is configured, the dispatch itself is the
+only gate. `LEGACY_RELEASE_GH_TOKEN` is the token the mirror pushes with.
+
 ## Release testing
 
 Before a Fresco release is approved (the Version Packages PR merged), the
