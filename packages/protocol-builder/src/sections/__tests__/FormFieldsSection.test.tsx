@@ -3280,3 +3280,345 @@ describe('a form whose list is not a list', () => {
     expect(screen.queryByText(NOT_A_FIELD)).not.toBeInTheDocument();
   });
 });
+
+/**
+ * An attribute answered on a scale is its two end labels.
+ *
+ * `REQUIRED_PARAMETERS` makes both of them settings the codebook editor
+ * refuses to save without, for the reason a categorical attribute needs two
+ * values: a slider with nothing written at either end asks the participant to
+ * place themselves on a line that means nothing. Invented from a name and a
+ * kind alone, that is exactly what the interview would render — the schema
+ * takes a scalar with no `parameters` at all — so the row sends the researcher
+ * to the editor that authors both, as it already does for a list of values.
+ */
+describe('inventing an attribute answered on a scale', () => {
+  const startInventingAScale = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      CREATE_NEW_ATTRIBUTE,
+    );
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
+      'scalar',
+    );
+    return dialog;
+  };
+
+  it('asks for its end labels instead of offering a name box', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await startInventingAScale(harness);
+
+    expect(
+      await dialog.findByRole('button', {
+        name: 'Create this attribute and what it accepts',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      dialog.queryByRole('textbox', { name: 'Attribute name' }),
+    ).toBeNull();
+    expect(
+      dialog.getByText(
+        'An attribute answered on a scale needs a label at each end, so it is created together with them.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('writes both labels onto the attribute, and binds the field to it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await startInventingAScale(harness);
+    await harness.user.click(
+      await dialog.findByRole('button', {
+        name: 'Create this attribute and what it accepts',
+      }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+      'closeness',
+    );
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Minimum label' }),
+      'Not at all close',
+    );
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Maximum label' }),
+      'As close as can be',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    const created = await waitFor(() => {
+      const entry = savedAttribute(harness, 'closeness');
+      if (entry === undefined) throw new Error('the attribute was not created');
+      return entry;
+    });
+    expect(created[1]).toMatchObject({
+      type: 'scalar',
+      parameters: {
+        minLabel: 'Not at all close',
+        maxLabel: 'As close as can be',
+      },
+    });
+    // A scalar the schema would refuse outright: its own strict object admits
+    // no `options` key, so the empty list a list-of-values invention seeds
+    // must never reach a scale.
+    expect(created[1]).not.toHaveProperty('options');
+
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'VisualAnalogScale',
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'How close are you?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
+      id: expect.any(String) as unknown as string,
+      variable: created[0],
+      prompt: 'How close are you?',
+    });
+  });
+
+  /**
+   * The belt behind the control: a row that reaches the commit still naming a
+   * scale it never created is refused there rather than quick-creating one
+   * with no labels on it.
+   */
+  it('refuses a row that named a scale it never created', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await startInventingAScale(harness);
+    await dialog.findByRole('button', {
+      name: 'Create this attribute and what it accepts',
+    });
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'How close are you?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await dialog.findByText(
+        'Create this attribute and what it accepts before adding the field that collects it.',
+      ),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(savedAttribute(harness, 'closeness')).toBeUndefined();
+  });
+});
+
+/**
+ * A collaborator deleting the attribute an open codebook editor is editing.
+ *
+ * The section is still there and the stage still points at the same type, so
+ * nothing the launch controls read has changed — and the editor beneath cannot
+ * say this for itself: `VariableEditor` reads an absent attribute as one whose
+ * TYPE changed, so the draft stayed writable and the save came back "the
+ * attribute type changed elsewhere. Close and reopen this editor" about an
+ * attribute there is nothing left to reopen.
+ */
+describe('a codebook editor open over a row when its attribute is deleted', () => {
+  const deleteFlagged = (harness: ReturnType<typeof renderStageEditor>) => {
+    const { flagged: _removed, ...variables } = personVariables(harness);
+    harness.receiveCodebookUpdate({
+      node: { person: { ...personDocument(harness), variables } },
+    });
+  };
+
+  it('keeps the attribute editor on screen, with its draft, and says what happened', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field', 1);
+    await harness.user.click(
+      dialog.getByRole('button', { name: EDIT_ANSWER_LABELS }),
+    );
+    await screen.findByRole('button', { name: 'Save attribute' });
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+      'Yes, definitely',
+    );
+
+    deleteFlagged(harness);
+
+    // The draft the researcher made is still in front of them...
+    expect(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+    ).toHaveValue('Yes, definitely');
+    // ...with the reason it cannot be written, in its own words rather than
+    // the type-changed refusal that used to answer a press of Save.
+    expect(
+      await screen.findByText(
+        'This attribute is no longer in the codebook, so these changes cannot be saved.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    ).toBeDisabled();
+    expect(
+      screen.queryByText(
+        'The attribute type changed elsewhere. Close and reopen this editor before saving.',
+      ),
+    ).toBeNull();
+  });
+
+  /**
+   * The rules editor answers this for itself (`attributeUnavailableTitle`), so
+   * the only thing to check there is that it is not told the same thing twice.
+   */
+  it('leaves the rules editor to say it in its own words', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field', 1);
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await screen.findByRole('button', { name: 'Save validation' });
+
+    deleteFlagged(harness);
+
+    expect(
+      await screen.findByText(
+        'The latest entity data no longer contains this attribute.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'This attribute is no longer in the codebook, so these changes cannot be saved.',
+      ),
+    ).toBeNull();
+  });
+});
+
+/**
+ * A dismissal while a nested codebook editor's save is in flight.
+ *
+ * The request outlives the dialog: the handler awaiting it stays alive, so a
+ * refusal is never shown to anybody and a success still runs `onComplete` —
+ * silently binding the row to an attribute the researcher watched no editor
+ * finish. `SubjectSection`'s create dialog already withholds every way out
+ * until the compound edit answers, and these three are the same act.
+ */
+describe('dismissing a codebook editor while its save is in flight', () => {
+  /** Holds the compound edit open, and hands back the release. */
+  const holdTheCompoundEdit = (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    const send = harness.session.requestCompoundEdit.bind(harness.session);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
+      async (request) => {
+        await held;
+        return send(request);
+      },
+    );
+    return () => {
+      release();
+    };
+  };
+
+  it('refuses every way out of the attribute editor until it answers', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    const release = holdTheCompoundEdit(harness);
+
+    const dialog = await openField(harness, 'Edit field', 1);
+    await harness.user.click(
+      await dialog.findByRole('button', { name: EDIT_ANSWER_LABELS }),
+    );
+    await screen.findByRole('button', { name: 'Save attribute' });
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+      'Yes, definitely',
+    );
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Label for “false”' }),
+      'No, not at all',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    // Escape and a press outside are the two routes left; the close button is
+    // taken away rather than left on screen doing nothing.
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(document.body);
+    expect(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+    ).toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
+
+    release();
+    await waitFor(() =>
+      expect(asRecord(personVariables(harness).flagged).options).toHaveLength(
+        2,
+      ),
+    );
+  });
+
+  it('refuses every way out of the rules editor until it answers', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    const release = holdTheCompoundEdit(harness);
+
+    const dialog = await openField(harness, 'Edit field');
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await screen.findByRole('button', { name: 'Save validation' });
+    await harness.user.click(
+      screen.getByRole('checkbox', { name: 'Required' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save validation' }),
+    );
+
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(document.body);
+    expect(
+      screen.getByRole('checkbox', { name: 'Required' }),
+    ).toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
+
+    release();
+    await waitFor(() =>
+      expect(
+        asRecord(
+          asRecord(personVariables(harness).relationship_to_ego).validation,
+        ).required,
+      ).toBe(true),
+    );
+  });
+});
