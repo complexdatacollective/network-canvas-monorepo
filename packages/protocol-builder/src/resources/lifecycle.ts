@@ -105,6 +105,16 @@ export type StagedResourceTracker = Readonly<{
   /** The opaque handle for a staged secret, for promotion. */
   secretHandle(resourceId: string): StagedSecretHandle | undefined;
   /**
+   * Ids this session staged and then told the host to drop.
+   *
+   * Bytes that will never exist: no finish promotes them, so a draft naming
+   * one can only ever be a dangling reference. The session asks this before
+   * handing a batch to a live-applying host — the reference is the
+   * researcher's to take back, not this package's to rewrite, so the batch
+   * waits for them to.
+   */
+  discarded(): ReadonlySet<string>;
+  /**
    * Resources this session promoted whose manifest entry has not reached the
    * session's authoritative sections yet.
    *
@@ -621,6 +631,7 @@ export function createStagedResourceTracker(
 
   return Object.freeze({
     gateway,
+    discarded: (): ReadonlySet<string> => discardedIds,
     cancel: async (): Promise<ResourceResult<StagedResourceCancelReport>> => {
       // A finish that has started is the one deciding these resources, and it
       // decides them to the end: reporting a clean cancel here would be
