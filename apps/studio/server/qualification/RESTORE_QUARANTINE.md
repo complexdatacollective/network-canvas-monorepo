@@ -135,3 +135,12 @@ previous Compose-file order failed this same fixture with `No such image` at
 definition in both the restore command and the documented private validation
 command. All 20 shell process controls also passed. This remains local
 quarantine evidence and does not establish authenticated reopening.
+
+After integrating the bounded legacy cursor and invitation admission fixes from
+the PII parent, the final combined server suite passed 1,937 tests with one
+existing development-performance skip. An intermittent real-command resume
+failure was traced to randomly leading `-` in the opaque cursor transport;
+fixed `v1_` framing preserves the authenticated payload and CLI argument
+semantics. The focused 22-test run, prior-implementation negative control,
+independent framing review, server types, configured repository Knip, lint and
+formatting all passed. No numbered migration bytes changed in this correction.
