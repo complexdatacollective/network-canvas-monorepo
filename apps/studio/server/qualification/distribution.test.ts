@@ -56,7 +56,7 @@ describe('local distribution recovery boundary', () => {
     expect(() =>
       assertProcessTelemetryInstrumentationPositive(logs),
     ).not.toThrow();
-    expect(() => assertNoProcessTelemetryEgress(logs)).toThrow('instrumented');
+    expect(() => assertNoProcessTelemetryEgress(logs)).toThrow('Instrumented');
     expect(() =>
       assertProcessTelemetryInstrumentationPositive(
         logs.replace('dgram.send', 'missing'),
