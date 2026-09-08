@@ -1906,6 +1906,115 @@ describe('the two answers a boolean offers', () => {
     });
   });
 
+  /**
+   * The same rule reached by the other route. A pair recording the SAME
+   * boolean twice is one `booleanOptionsSchema` takes — it constrains neither
+   * value against the other — and one this fieldset cannot show: its two
+   * fields are keyed and labelled by the boolean each answer records, so a
+   * pair recording one of them twice arrives as two answers it cannot tell
+   * apart.
+   *
+   * Read as the pair, `true` and `false` were imposed on it to tell them
+   * apart, and the save that followed wrote that back. An attribute renamed
+   * and nothing else came out recording a boolean it had never recorded, and
+   * every answer a participant had already given to its second button changed
+   * what it meant.
+   */
+  it('keeps both stored booleans of a pair that records one of them twice, through an edit that only renames it', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Agreed', value: true },
+        { label: 'Agreed, with conditions', value: true },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'starred');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      ...committed,
+      name: 'starred',
+    });
+  });
+
+  it('shows a pair that does not record both booleans as answers it holds', () => {
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Agreed', value: true },
+        { label: 'Agreed, with conditions', value: true },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, vi.fn())} />);
+
+    expect(
+      screen.queryByRole('textbox', { name: 'Label for “true”' }),
+    ).toBeNull();
+    // Its own reason: this pair is two answers, so the count is not what puts
+    // it here, and a researcher told it offers "a different number of them"
+    // would be looking for an answer that is not on the screen.
+    expect(
+      screen.getByText(
+        'A yes/no attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
+      ),
+    ).toBeVisible();
+    const answers = within(screen.getByRole('table'));
+    expect(answers.getByRole('cell', { name: 'Agreed' })).toBeVisible();
+    expect(
+      answers.getByRole('cell', { name: 'Agreed, with conditions' }),
+    ).toBeVisible();
+    // What the participant meets, which is the pair's whole problem: two
+    // buttons recording the same thing.
+    expect(answers.getAllByRole('cell', { name: 'true' })).toHaveLength(2);
+  });
+
+  /**
+   * The other side of the same question: a pair that DOES record one of each
+   * is the fieldset's own, and stays editable answer by answer.
+   */
+  it('writes an answer edited on a pair that records both booleans', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    const negative = screen.getByRole('textbox', {
+      name: 'Label for “false”',
+    });
+    await user.clear(negative);
+    await user.type(negative, 'Never');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).options).toEqual([
+      { label: 'Yes', value: true },
+      { label: 'Never', value: false },
+    ]);
+  });
+
   it('offers no answers to name for a boolean collected with a toggle', async () => {
     const user = userEvent.setup();
     const onSubmitRequest = vi.fn(
