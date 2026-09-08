@@ -32,9 +32,11 @@ import recoveryFixture from './combined-recovery.fixture.json' with { type: 'jso
 import { owner, populate, rpc } from './data.ts';
 import {
   assertNoTelemetryEgress,
+  assertTelemetryDetectorObserved,
   assertTelemetryDetectorPositive,
   TELEMETRY_CANARY_SOURCE,
   TELEMETRY_DETECTOR_SOURCE,
+  TELEMETRY_IMPLEMENTATION_CANARY_SOURCE,
 } from './telemetry-egress.ts';
 
 const DEADLINE = 300_000;
@@ -405,6 +407,36 @@ networks:
       assertNoTelemetryEgress(telemetryLogs(configuration));
     }
   }
+  function proveTelemetrySwitch(configuration: string) {
+    for (const telemetry of ['on', 'off']) {
+      compose(configuration, [
+        'run',
+        '--rm',
+        '--no-deps',
+        '-T',
+        '-e',
+        `STUDIO_TELEMETRY=${telemetry}`,
+        '--entrypoint',
+        'node',
+        'studio',
+        '--input-type=module',
+        '-e',
+        TELEMETRY_IMPLEMENTATION_CANARY_SOURCE,
+      ]);
+      if (telemetry === 'on') {
+        assertTelemetryDetectorObserved(telemetryLogs(configuration));
+        compose(configuration, [
+          'rm',
+          '--stop',
+          '--force',
+          'telemetry-detector',
+        ]);
+        compose(configuration, ['up', '-d', 'telemetry-detector']);
+      } else {
+        assertNoTelemetryEgress(telemetryLogs(configuration));
+      }
+    }
+  }
   const operationOptions = (bundleDirectory: string, digest: string) => ({
     directory: installation,
     bundleDirectory,
@@ -490,6 +522,7 @@ networks:
     registerCleanup: (cleanup: () => void) => extraCleanup.push(cleanup),
     assertTelemetryQuiet,
     proveTelemetryDetector,
+    proveTelemetrySwitch,
     dispose: () => {
       for (const cleanup of extraCleanup.toReversed()) {
         try {
@@ -545,6 +578,7 @@ async function exerciseInstall(
     await fixture.setup(first);
     fixture.assertTelemetryQuiet(first.configuration);
     fixture.proveTelemetryDetector(first.configuration);
+    fixture.proveTelemetrySwitch(first.configuration);
     const response = await fetch(`${fixture.origin}/api/auth/sign-in/email`, {
       method: 'POST',
       headers: {

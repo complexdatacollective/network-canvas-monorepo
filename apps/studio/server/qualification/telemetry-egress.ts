@@ -25,6 +25,22 @@ function attempt() {
 attempt();
 `;
 
+// Invoke the implementation shipped in the image itself. The canary uses the
+// runtime switch so the same command is a positive control with `on` and a
+// wrong-off mutant check with `off`; it does not rely on the application
+// startup path or on a mocked fetch implementation.
+export const TELEMETRY_IMPLEMENTATION_CANARY_SOURCE = `
+const { createServerTelemetry } = await import('./dist/telemetry.js');
+const enabled = process.env.STUDIO_TELEMETRY === 'on';
+const telemetry = await createServerTelemetry(enabled, {
+  mode: 'self-hosted',
+  runtime: 'web',
+  version: 'qualification',
+});
+telemetry.capture('server_request', new Error('qualification canary'));
+await telemetry.close();
+`;
+
 export function telemetryEgressCount(logs: string) {
   return logs.split(TELEMETRY_EGRESS_MARKER).length - 1;
 }
@@ -37,4 +53,9 @@ export function assertNoTelemetryEgress(logs: string) {
 export function assertTelemetryDetectorPositive(logs: string) {
   if (telemetryEgressCount(logs) !== 1)
     throw new Error('Running-image telemetry detector control failed.');
+}
+
+export function assertTelemetryDetectorObserved(logs: string) {
+  if (telemetryEgressCount(logs) < 1)
+    throw new Error('Running-image telemetry implementation control failed.');
 }

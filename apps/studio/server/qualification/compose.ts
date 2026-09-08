@@ -20,9 +20,11 @@ import { Pool } from 'pg';
 import { createMaintenancePool, createPool } from '../src/db/pool.ts';
 import {
   assertNoTelemetryEgress,
+  assertTelemetryDetectorObserved,
   assertTelemetryDetectorPositive,
   TELEMETRY_CANARY_SOURCE,
   TELEMETRY_DETECTOR_SOURCE,
+  TELEMETRY_IMPLEMENTATION_CANARY_SOURCE,
 } from './telemetry-egress.ts';
 
 const execFileAsync = promisify(execFile);
@@ -375,6 +377,31 @@ networks:
       assertNoTelemetryEgress(await telemetryLogs());
     }
   }
+  async function proveTelemetrySwitch() {
+    for (const telemetry of ['on', 'off']) {
+      await compose([
+        'run',
+        '--rm',
+        '--no-deps',
+        '-T',
+        '-e',
+        `STUDIO_TELEMETRY=${telemetry}`,
+        '--entrypoint',
+        'node',
+        'studio',
+        '--input-type=module',
+        '-e',
+        TELEMETRY_IMPLEMENTATION_CANARY_SOURCE,
+      ]);
+      if (telemetry === 'on') {
+        assertTelemetryDetectorObserved(await telemetryLogs());
+        await compose(['rm', '--stop', '--force', 'telemetry-detector']);
+        await compose(['up', '-d', 'telemetry-detector']);
+      } else {
+        assertNoTelemetryEgress(await telemetryLogs());
+      }
+    }
+  }
   async function dispose() {
     // This project name is generated above; never select a pre-existing stack.
     await compose(['down', '--volumes', '--remove-orphans'], {
@@ -400,6 +427,7 @@ networks:
     ready,
     assertTelemetryQuiet,
     proveTelemetryDetector,
+    proveTelemetrySwitch,
     dispose,
   };
 }
