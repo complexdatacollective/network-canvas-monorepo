@@ -133,6 +133,10 @@ async function waitUntilBlocked(pool: pg.Pool, pid: number): Promise<void> {
   throw new Error('role update did not block on the publication lock');
 }
 
+function requestUrl(input: string | URL | Request): URL {
+  return new URL(input instanceof Request ? input.url : input);
+}
+
 function registryClient(options: {
   handoffStarted?: () => void;
   releaseHandoff?: Promise<void>;
@@ -142,7 +146,7 @@ function registryClient(options: {
   return new TemplateRegistryClient({
     origin: ORIGIN,
     fetch: async (input, init) => {
-      const url = new URL(String(input));
+      const url = requestUrl(input);
       if (url.pathname === '/publisher') {
         return Response.json({
           id: PUBLISHER_ID,
@@ -412,7 +416,7 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     const registry = new TemplateRegistryClient({
       origin: ORIGIN,
       fetch: async (input) => {
-        const path = new URL(String(input)).pathname;
+        const path = requestUrl(input).pathname;
         if (path === `/api/v1/entries/${entryId}`) return Response.json(entry);
         if (path !== `/api/v1/artifacts/${root}`)
           throw new Error('unexpected Registry request');

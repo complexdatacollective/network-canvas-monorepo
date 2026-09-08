@@ -141,7 +141,7 @@ export const UpdateAccountLocaleResultSchema = z.object({
   locale: z.string().nullable(),
 });
 
-export const RegistryPublisherSchema = z.strictObject({
+const RegistryPublisherSchema = z.strictObject({
   id: z.uuid(),
   name: z.string().min(1).max(200).regex(/\S/),
   orcid: z
@@ -150,7 +150,7 @@ export const RegistryPublisherSchema = z.strictObject({
     .nullable(),
 });
 
-export const RegistryAccountLinkSchema = z.strictObject({
+const RegistryAccountLinkSchema = z.strictObject({
   origin: z.url({ protocol: /^https$/ }),
   publisher: RegistryPublisherSchema,
   linkedAt: z.date(),
