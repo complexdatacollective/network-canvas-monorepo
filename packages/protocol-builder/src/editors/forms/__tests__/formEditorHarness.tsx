@@ -6,7 +6,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId, type SectionRef } from '@codaco/studio-sync/taxonomy';
 
 import type { StageEditorComponent } from '../../../stage-editor-contract.ts';
-import type { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import type {
+  CodebookPatch,
+  renderStageEditor,
+} from '../../../testing/renderStageEditor.tsx';
 
 type Harness = ReturnType<typeof renderStageEditor>;
 
@@ -184,41 +187,78 @@ const addOption = async (
   );
 };
 
+/** The id the seeded categorical attribute below is filed under. */
+const SEEDED_CATEGORICAL = 'seeded-contact-setting';
+
+/** A codebook patch that replaces one subject's definition, whichever it is. */
+const patchReplacing = (
+  subject: SectionRef,
+  definition: SectionDoc,
+): CodebookPatch => {
+  switch (subject.kind) {
+    case 'codebookEgo':
+      return { ego: definition };
+    case 'codebookNode':
+      return { node: { [subject.typeId]: definition } };
+    case 'codebookEdge':
+      return { edge: { [subject.typeId]: definition } };
+    default:
+      throw new Error(`"${subject.kind}" is not a codebook subject.`);
+  }
+};
+
 /**
- * Invents the categorical attribute a field collects, with its first two
- * values, through the control the row dialog offers for it.
+ * Puts a categorical attribute with two values into the codebook a form
+ * editor is about, already there when the editor opens.
  *
- * The fixture's own categorical attributes are written unvalidated by a bin
- * stage, so a form may collect none of them — which is why a journey that
- * needs one starts by making it.
+ * Authoring one through the create dialog instead is a journey of its own —
+ * two pickers, a name, two option rows, four fields of typing, each keystroke
+ * a render of the open dialog. That journey is the SUBJECT of
+ * `FormFieldsSection`'s own create tests, and only setup for a journey about
+ * an attribute that ALREADY offers values: paid for three times over, once per
+ * form editor, these were the three slowest tests in this directory and the
+ * ones at risk of the 20s timeout on a runner tens of times slower than a
+ * developer's machine.
+ *
+ * Seeded through the host rather than written onto the fixture, so the
+ * revision the session holds is one the host issued — see
+ * `receiveCodebookUpdate` — and the compound edit that changes these values is
+ * judged against a base the host recognises rather than refused as stale.
+ *
+ * Filed under an id no stage names, which is what makes it collectable: the
+ * fixture's own categorical and ordinal attributes are written unvalidated by
+ * a bin stage, so the picker offers neither.
  */
-const createCategoricalAttribute = async (
+const seedCategoricalAttribute = (
   harness: Harness,
-  dialog: ReturnType<typeof within>,
-  name: string,
-) => {
-  await harness.user.selectOptions(
-    dialog.getByRole('combobox', { name: 'Attribute' }),
-    '#create-new-attribute',
+  subject: SectionRef,
+): string => {
+  const definition = asRecord(
+    harness.host.getSnapshot().protocolSections[sectionId(subject)],
   );
-  await harness.user.selectOptions(
-    await dialog.findByRole('combobox', { name: 'Kind of answer' }),
-    'categorical',
-  );
-  await harness.user.click(
-    dialog.getByRole('button', {
-      name: 'Create this attribute and its values',
+  harness.receiveCodebookUpdate(
+    patchReplacing(subject, {
+      ...definition,
+      variables: {
+        ...asRecord(definition.variables),
+        [SEEDED_CATEGORICAL]: {
+          name: 'contact_setting',
+          type: 'categorical',
+          // One of the two controls the schema lets a categorical be collected
+          // with. A control belonging to another type — `RadioGroup` is the
+          // ordinal one — makes this variable invalid, and an entity
+          // definition is parsed whole, so the picker would then offer NONE of
+          // this subject's attributes rather than complain about this one.
+          component: 'CheckboxGroup',
+          options: [
+            { label: 'At home', value: 'home' },
+            { label: 'At work', value: 'work' },
+          ],
+        },
+      },
     }),
   );
-  await harness.user.type(
-    await screen.findByRole('textbox', { name: 'Attribute name' }),
-    name,
-  );
-  await addOption(harness, 1, 'At home', 'home');
-  await addOption(harness, 2, 'At work', 'work');
-  await harness.user.click(
-    screen.getByRole('button', { name: 'Create attribute' }),
-  );
+  return SEEDED_CATEGORICAL;
 };
 
 /**
@@ -235,12 +275,12 @@ export const authorsValuesFromField = async (
   harness: Harness,
   subject: SectionRef,
 ) => {
+  const categoricalId = seedCategoricalAttribute(harness, subject);
+
   const creating = await openField(harness, 'Create new form field');
-  await createCategoricalAttribute(harness, creating, 'contact_setting');
-  const [categoricalId] = await savedAttribute(
-    harness,
-    subject,
-    'contact_setting',
+  await harness.user.selectOptions(
+    creating.getByRole('combobox', { name: 'Attribute' }),
+    categoricalId,
   );
 
   await harness.user.click(
