@@ -68,6 +68,18 @@ export type FixtureSessionOptions = Readonly<{
    * rather than one whose save is refused for a dangling reference.
    */
   assets?: Readonly<Record<string, SectionDoc>>;
+  /**
+   * Other stages of the fixture protocol, as a collaborator has left them,
+   * keyed by stage id. Each REPLACES the fixture's own document for that
+   * stage, so a test states the stage it needs rather than a patch to one.
+   *
+   * `seeded` is the stage the editor opens; this is for the stages AROUND it
+   * that a rule reads — the pedigree a narrative pedigree names as its source,
+   * the form whose fields already collect an attribute. A stage the fixture
+   * does not hold is refused rather than added, because the interview's order
+   * is the fixture's and a stage missing from it is a typo, not a scenario.
+   */
+  otherStages?: Readonly<Record<string, SectionDoc>>;
   /** Open the stage as a spectator, with editing held elsewhere. */
   readOnly?: boolean;
   /**
@@ -144,6 +156,15 @@ export function openFixtureStageSession(
   // is being CREATED, which is exactly the case where the protocol does not
   // hold it yet.
   const protocolSections: Record<string, SectionDoc> = { ...baseSections };
+  for (const [stageId, document] of Object.entries(options.otherStages ?? {})) {
+    const key = sectionId({ kind: 'stage', stageId });
+    if (baseSections[key] === undefined) {
+      throw new Error(
+        `The all-interfaces protocol has no stage "${stageId}", so \`otherStages\` cannot replace it.`,
+      );
+    }
+    protocolSections[key] = document;
+  }
   if (seeded.creation === undefined) {
     protocolSections[stageSectionId] = {
       id: seeded.id,
