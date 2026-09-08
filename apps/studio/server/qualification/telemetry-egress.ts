@@ -142,7 +142,7 @@ try { const socket = dgram.createSocket('udp4'); socket.on('error', () => {}); s
 setTimeout(() => process.exit(0), 250);
 `;
 
-export function telemetryEgressCount(logs: string) {
+function telemetryEgressCount(logs: string) {
   return logs.split(TELEMETRY_EGRESS_MARKER).length - 1;
 }
 
@@ -161,7 +161,7 @@ export function assertTelemetryDetectorObserved(logs: string) {
     throw new Error('Running-image telemetry implementation control failed.');
 }
 
-export function processTelemetryEgressCount(logs: string) {
+function processTelemetryEgressCount(logs: string) {
   return logs.split(TELEMETRY_PROCESS_EGRESS_MARKER).length - 1;
 }
 
