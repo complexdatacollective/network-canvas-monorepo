@@ -1377,6 +1377,76 @@ describe('the settings the chosen input control takes', () => {
     });
   });
 
+  /**
+   * A day count that is not a whole number is a refusal, not a clearing.
+   *
+   * `1.5` is what a researcher reaches by pasting, or by writing a duration
+   * the way a duration is written. Dropped on the way into the draft it became
+   * an absent setting — a perfectly valid thing for this control to hold — so
+   * nothing refused it, the save went through, and the window the attribute
+   * HAD went with it: the interview fell back to its own default, and the
+   * researcher was told nothing.
+   */
+  it('refuses a day count that is not whole rather than clearing the window', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'met',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters: { before: 30 },
+    };
+    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+
+    const before = screen.getByLabelText('Days before');
+    // The whole value at once, which is what a paste delivers: a number input
+    // cannot be driven to a fraction a keystroke at a time, because the
+    // half-typed `1.` is not a number and the field reports it as empty.
+    fireEvent.change(before, { target: { value: '1.5' } });
+
+    // Still there to be corrected, rather than emptied by the field itself.
+    expect(before).toHaveValue(1.5);
+    expect(
+      await screen.findByText('Write a whole number of days, zero or more.'),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    // And nothing was submitted, so the window the codebook holds is still
+    // the one the interview will use — which is the whole difference between
+    // a refusal and a silent clearing.
+    expect(onSubmitRequest).not.toHaveBeenCalled();
+  });
+
+  it('saves a day count corrected after that refusal', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'met',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters: { before: 30 },
+    };
+    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+
+    const before = screen.getByLabelText('Days before');
+    fireEvent.change(before, { target: { value: '1.5' } });
+    await screen.findByText('Write a whole number of days, zero or more.');
+
+    await user.clear(before);
+    await user.type(before, '2');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    // A number, not the text the field reported: the draft carries the text
+    // only while it holds something the schema would refuse.
+    expect(savedVariable(onSubmitRequest).parameters).toEqual({ before: 2 });
+  });
+
   it('saves the labels a scale shows at each end', async () => {
     const user = userEvent.setup();
     const onSubmitRequest = vi.fn(

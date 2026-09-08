@@ -382,12 +382,41 @@ const addDatePickerIssues = (
   }
 };
 
+/** The two settings that are a count of days. */
+export const DAY_OFFSET_KEYS = ['before', 'after'] as const;
+
+/**
+ * What is wrong with one day offset, or `null` where nothing is.
+ *
+ * Absent is not wrong, and neither is a field holding nothing: no day count
+ * means the window the interview uses when the protocol declares none.
+ * Everything else has to be a whole number of days that is not negative,
+ * which is what `relativeDatePickerParametersSchema` will take.
+ *
+ * One rule with two readers, because the researcher meets it twice. The field
+ * asks it of what they have just written, so a day count that cannot be saved
+ * says so where it was typed; `validateParameters` asks it of the draft being
+ * submitted, which is what refuses a value that arrived from somewhere else.
+ * Written once so those two can never disagree about what a day count is.
+ */
+export const dayOffsetIssue = (value: unknown): string | null => {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 0) {
+    return null;
+  }
+  return createMessageError(messages.daysNotWhole);
+};
+
 /**
  * What a relative date picker's window is wrong about.
  *
- * A negative day offset is the reachable case: the fields carry `min={0}`,
- * which is a browser hint the researcher can type past, and `asWholeDays`
- * hands `-3` through as a number the schema then refuses.
+ * Both day-count cases reach this because the field carries what the
+ * researcher wrote rather than dropping what it cannot store: a negative
+ * offset arrives as the number `-3`, a fractional one as the text `'1.5'`.
+ * Turned into absent settings on the way in they would read as a researcher
+ * deciding to have no window at all, and the save would carry a decision they
+ * never made.
  */
 const addRelativeDatePickerIssues = (
   written: Readonly<Record<string, unknown>>,
@@ -400,12 +429,9 @@ const addRelativeDatePickerIssues = (
   ) {
     add('anchor', createMessageError(messages.anchorNotADate));
   }
-  for (const key of ['before', 'after'] as const) {
-    const value = written[key];
-    if (value === undefined) continue;
-    if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
-      add(key, createMessageError(messages.daysNotWhole));
-    }
+  for (const key of DAY_OFFSET_KEYS) {
+    const issue = dayOffsetIssue(written[key]);
+    if (issue !== null) add(key, issue);
   }
 };
 
