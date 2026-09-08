@@ -1,10 +1,10 @@
+import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
 import type { ContractRouterClient } from '@orpc/contract';
 import type pg from 'pg';
-import { expect } from 'vitest';
 
 import type { contract } from '@codaco/studio-rpc';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
@@ -53,15 +53,16 @@ export async function signIn(origin: string) {
     headers: { origin, 'content-type': 'application/json' },
     body: JSON.stringify({ email: owner.email, password: owner.password }),
   });
-  expect(
+  assert.equal(
     response.status,
+    200,
     'the built image must authenticate the first owner',
-  ).toBe(200);
+  );
   const cookie = response.headers
     .getSetCookie()
     .map((item) => item.split(';')[0])
     .join('; ');
-  expect(cookie.length).toBeGreaterThan(0);
+  assert.ok(cookie.length > 0);
   return cookie;
 }
 
@@ -100,7 +101,17 @@ export async function recordAsset(
   return hash;
 }
 
-export async function populate(deployment: Deployment, cookie: string) {
+export async function populate(
+  deployment: Pick<Deployment, 'origin' | 'pools' | 'configuration'>,
+  cookie: string,
+  fixture: {
+    protocolId?: string;
+    studyId?: string;
+    participantId?: string;
+    participantCode?: string;
+    asset?: Buffer;
+  } = {},
+) {
   const pools = await deployment.pools();
   const env = await deployment.configuration();
   try {
@@ -109,11 +120,11 @@ export async function populate(deployment: Deployment, cookie: string) {
         'SELECT initial_owner_user_id AS owner, initial_team_id AS team FROM studio_instance',
       )
     ).rows[0]!;
-    expect(singleton.owner).toBeTruthy();
-    expect(singleton.team).toBeTruthy();
-    const protocolId = randomUUID();
-    const studyId = randomUUID();
-    const participantId = randomUUID();
+    assert.ok(singleton.owner);
+    assert.ok(singleton.team);
+    const protocolId = fixture.protocolId ?? randomUUID();
+    const studyId = fixture.studyId ?? randomUUID();
+    const participantId = fixture.participantId ?? randomUUID();
     await pools.admin.query(
       'INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)',
       [protocolId, singleton.team, 'Recovery protocol'],
@@ -124,7 +135,12 @@ export async function populate(deployment: Deployment, cookie: string) {
     );
     await pools.admin.query(
       'INSERT INTO participants (id, team_id, study_id, participant_code) VALUES ($1, $2, $3, $4)',
-      [participantId, singleton.team, studyId, 'RECOVERY-001'],
+      [
+        participantId,
+        singleton.team,
+        studyId,
+        fixture.participantCode ?? 'RECOVERY-001',
+      ],
     );
     await pools.admin.query(
       "INSERT INTO study_role_grants (id, team_id, study_id, user_id, role, pii_access, granted_by_user_id) VALUES ($1, $2, $3, $4, 'manager', true, $4)",
@@ -222,14 +238,14 @@ export async function populate(deployment: Deployment, cookie: string) {
         cookie,
         'content-type': 'application/octet-stream',
       },
-      body: canaries.asset,
+      body: fixture.asset ?? canaries.asset,
     });
-    expect(upload.status).toBe(201);
+    assert.equal(upload.status, 201);
     const assetHash = await recordAsset(
       pools.admin,
       singleton.team,
       singleton.owner,
-      canaries.asset,
+      fixture.asset ?? canaries.asset,
     );
     return {
       ...singleton,

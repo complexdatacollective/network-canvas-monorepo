@@ -2,6 +2,7 @@ import { isAbsolute } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 
 import { command } from '../apps/studio/deployment/installer/verify.mjs';
+import { qualifyStudioDistribution } from './studio-distribution-qualifier.mjs';
 import { createGitHubDistributionStore } from './studio-github-distribution-store.mjs';
 import { prepareStudioImages } from './studio-image-preparation.mjs';
 import { verifyStudioPublication } from './studio-publication-verification.mjs';
@@ -12,9 +13,9 @@ import { createStudioReleasePreparation } from './studio-release-preparation.mjs
 import { publishStudioDistribution } from './studio-release-publication.mjs';
 
 /** Compose concrete publication I/O under the workflow's non-cancelling lock.
- * The caller supplies pinned tool paths and the actual isolated installation,
- * upgrade and recovery qualifier. No shell command or cached success is accepted
- * as a substitute for that qualification boundary. */
+ * The caller supplies pinned tool paths; the concrete local installation,
+ * upgrade and recovery qualifier is the default. Tests may replace boundaries,
+ * but no shell command or cached success substitutes for the distribution drill. */
 export async function publishReviewedStudioDistribution(
   { cwd, source, tagger, executables, oldestSupportedSource, qualify },
   {
@@ -27,6 +28,7 @@ export async function publishReviewedStudioDistribution(
     store: suppliedStore,
   } = {},
 ) {
+  const qualification = qualify ?? qualifyStudioDistribution;
   if (
     typeof cwd !== 'string' ||
     !isAbsolute(cwd) ||
@@ -35,7 +37,7 @@ export async function publishReviewedStudioDistribution(
     (oldestSupportedSource !== undefined &&
       (typeof oldestSupportedSource !== 'string' ||
         !/^[a-f0-9]{40}$/.test(oldestSupportedSource))) ||
-    typeof qualify !== 'function' ||
+    typeof qualification !== 'function' ||
     !executables ||
     !['cosign', 'crane', 'syft'].every(
       (name) =>
@@ -125,7 +127,7 @@ export async function publishReviewedStudioDistribution(
             ),
           }),
         );
-        const receipt = await qualify({
+        const receipt = await qualification({
           manifest,
           artifacts,
           qualificationSources,
