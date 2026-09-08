@@ -15,7 +15,7 @@ Configured candidate: compute `iad`; PostgreSQL `us-east-1` (Hobby-2, 20 GB); pr
 | Backblaze | Independent encrypted recovery archive storage | encrypted database dumps; encrypted object archives | selected-candidate |
 | New Relic | Operational logs, metrics, queries, and alerts | sanitized operational logs; aggregate metrics | cost-candidate |
 | PostHog relay | Existing application telemetry and error reporting | redacted telemetry; sanitized error reports | existing-integration |
-| Netlify | Studio branch-preview client and function hosting; approved production domains networkcanvas.studio and staging studio.networkcanvas.dev | preview traffic; build artifacts | existing-preview-only |
+| Netlify | Managed Studio static-client hosting plus branch-preview client and function hosting; approved production domains networkcanvas.studio and staging studio.networkcanvas.dev | static client request metadata; preview traffic; build artifacts | selected-candidate |
 | Postmark | Transactional application mail provider | recipient addresses; transactional message content | application-integration |
 
 Provider legal entities, affiliates, retention/deletion, security reports, breach terms, support, and account recovery must be confirmed by the #1260 publication process.

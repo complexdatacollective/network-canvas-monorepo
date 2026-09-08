@@ -93,9 +93,13 @@
     },
     {
       "name": "Netlify",
-      "role": "Studio branch-preview client and function hosting; approved production domains networkcanvas.studio and staging studio.networkcanvas.dev",
-      "dataCategories": ["preview traffic", "build artifacts"],
-      "status": "existing-preview-only",
+      "role": "Managed Studio static-client hosting plus branch-preview client and function hosting; approved production domains networkcanvas.studio and staging studio.networkcanvas.dev",
+      "dataCategories": [
+        "static client request metadata",
+        "preview traffic",
+        "build artifacts"
+      ],
+      "status": "selected-candidate",
       "sourcePaths": ["../../netlify.toml", "../../README.md"],
       "estateProvider": null
     },
