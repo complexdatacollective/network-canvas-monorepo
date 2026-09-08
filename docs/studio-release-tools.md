@@ -22,3 +22,12 @@ platform before the bootstrap returns it.
 The workflow must use the returned absolute paths for image preparation and
 signing. It must keep its existing non-cancelling distribution lock; installing
 these tools does not reserve image tags or authenticate a release candidate.
+
+The manually dispatched `Studio distribution release` workflow accepts only
+the workflow file from `main` and always checks out its exact dispatch commit.
+Under its non-cancelling lock, every publication admission fetches `origin/main`
+again and refuses if that commit is no longer the current tip. The optional
+oldest-supported-source input is needed only when the authenticated history has
+grown beyond the default 20-release bound or support is intentionally narrowed;
+it must name an already published, authenticated distribution in the current
+ancestry chain.

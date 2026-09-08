@@ -274,7 +274,10 @@ export async function installPinnedReleaseTools(
   }
 }
 
-async function installStudioReleaseTools(parentDirectory = tmpdir(), options) {
+export async function installStudioReleaseTools(
+  parentDirectory = tmpdir(),
+  options,
+) {
   return installPinnedReleaseTools(
     {
       parentDirectory,
