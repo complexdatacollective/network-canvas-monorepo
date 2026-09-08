@@ -242,11 +242,21 @@ const expandContentBlock: DialogArrayItemSelector = (context, { item }) => {
  * chosen kind, so a draft the researcher typed and then switched away from
  * cannot ride along.
  *
+ * `size` is the same problem arriving from the other direction. It is not
+ * editor state — the Information stage really stores it — but it is a key only
+ * SOME pages have room for, and a block can already be carrying one: written
+ * by an older tool, by hand, or by the same block before it was moved onto an
+ * introduction screen. Restored for every kind that could carry one, it rides
+ * back out of a page whose items are a strict object without it and holds the
+ * stage at the save with a refusal naming a key that is nowhere on the
+ * researcher's screen. So which pages carry a size is asked HERE too, from the
+ * same fact the control is offered from, and the two cannot disagree.
+ *
  * A block that never went through the editor has no slot at all, and its
  * `content` stands: this also runs over rows the list normalises without
  * opening them.
  */
-function collapseContentBlock(value: unknown): unknown {
+function collapseContentBlock(value: unknown, stageType: StageType): unknown {
   if (!isRow(value)) return value;
 
   const { size, ...rest } = value;
@@ -271,7 +281,13 @@ function collapseContentBlock(value: unknown): unknown {
     else delete collapsed.content;
   }
 
-  if (!sizeableKind(value.type) || typeof size !== 'string') return collapsed;
+  if (
+    !pageBlocksCarrySize(stageType) ||
+    !sizeableKind(value.type) ||
+    typeof size !== 'string'
+  ) {
+    return collapsed;
+  }
   return VALID_SIZES.has(size) ? { ...collapsed, size } : collapsed;
 }
 
@@ -283,7 +299,9 @@ function collapseContentBlock(value: unknown): unknown {
  * thing that removes them again, and a page given the first without the second
  * saves a block the protocol schema refuses. A module constant rather than an
  * object written at each call site, so the section's row renderers are not
- * rebuilt on every render.
+ * rebuilt on every render — which is why the stage the page is on reaches
+ * `collapse` as an argument rather than being closed over: the section knows
+ * it and this module must not have to be built per stage to be told.
  */
 export const contentBlockSlots = Object.freeze({
   expand: expandContentBlock,

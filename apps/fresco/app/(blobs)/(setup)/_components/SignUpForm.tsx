@@ -27,6 +27,7 @@ import {
   signupWithPasskey,
 } from '~/actions/webauthn';
 import { useFrescoLocale } from '~/i18n/FrescoI18nProvider';
+import { describePasskeyCeremonyError } from '~/i18n/passkeyCeremony';
 import { createAuthSchemas } from '~/schemas/auth';
 
 const messages = defineMessages({
@@ -217,15 +218,15 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
       router.push('/setup?step=2');
       return { success: true };
     } catch (e) {
-      if (e instanceof Error && e.name === 'NotAllowedError') {
-        setPasskeyLoading(false);
-        return { success: false };
-      }
       setPasskeyLoading(false);
       return {
         success: false,
         formErrors: [
-          createMessageError(messages.copyPasskeyRegistrationFailed),
+          describePasskeyCeremonyError(
+            e,
+            'registration',
+            messages.copyPasskeyRegistrationFailed,
+          ),
         ],
       };
     }

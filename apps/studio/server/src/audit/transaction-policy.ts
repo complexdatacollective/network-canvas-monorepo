@@ -6,6 +6,31 @@ import type { AuditPolicy } from './policy.ts';
 // any other path. Protocol audit producers are delivered by #1521; lease
 // lifecycle writes are permanently excluded from the audit-log design.
 export const NO_AUDIT_TRANSACTION_POLICIES = {
+  'audit.alerts.settings': {
+    kind: 'none',
+    reason:
+      'Permission-checked read of verified researcher recipients and channel preferences.',
+  },
+  'audit.alerts.list': {
+    kind: 'none',
+    reason:
+      "Permission-checked read of the current recipient's bounded alert delivery feed; no event contents are returned.",
+  },
+  'audit.alerts.markRead': {
+    kind: 'none',
+    reason:
+      'Personal notification read state is operational state; it neither changes immutable audit history nor triggers delivery.',
+  },
+  'pii.readCiphertext': {
+    kind: 'none',
+    reason:
+      'Selects encrypted participant bytes only. The PII service re-locks the exact row, authorizes access and commits its required audit before releasing plaintext.',
+  },
+  'integration.readCiphertext': {
+    kind: 'none',
+    reason:
+      'Selects encrypted webhook bytes only. The integration service re-locks the exact row, proves configuration or worker authority and commits its required audit before releasing plaintext.',
+  },
   'audit.list': {
     kind: 'none',
     reason:

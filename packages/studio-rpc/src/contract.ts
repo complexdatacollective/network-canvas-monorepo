@@ -2,6 +2,23 @@ import { oc } from '@orpc/contract';
 import { z } from 'zod';
 
 import {
+  AuditAlertAcknowledgeInputSchema,
+  AuditAlertListInputSchema,
+  AuditAlertListSchema,
+  AuditAlertReadInputSchema,
+  AuditAlertSettingsSchema,
+  UpdateAuditAlertSettingsSchema,
+} from './alerts.ts';
+export {
+  AUDIT_ALERT_MAX_RECIPIENTS,
+  AuditAlertPolicySchema,
+  AuditAlertRecipientsSchema,
+  type AuditAlertItem,
+  type AuditAlertRecipient,
+  type AuditAlertSettings,
+} from './alerts.ts';
+
+import {
   AcceptTeamInvitationInputSchema,
   AcceptTeamInvitationResultSchema,
   AcquireSectionInputSchema,
@@ -15,6 +32,8 @@ import {
   CancelTeamInvitationInputSchema,
   CancelTeamInvitationResultSchema,
   CommitSectionInputSchema,
+  CompleteSetupInputSchema,
+  CompleteSetupResultSchema,
   CreateTeamInvitationInputSchema,
   CreateTeamInvitationResultSchema,
   CreateProtocolInputSchema,
@@ -31,6 +50,7 @@ import {
   RenewSectionInputSchema,
   RenewSectionResultSchema,
   StatusSchema,
+  SetupStatusSchema,
   StudyCountsInputSchema,
   StudyCountsSchema,
   StudyDetailSchema,
@@ -52,6 +72,10 @@ export {
   AUDIT_CATEGORIES,
   AUDIT_FACET_LIMIT,
   AUDIT_OUTCOMES,
+  BootstrapTokenSchema,
+  CompleteSetupInputSchema,
+  type CompleteSetupInput,
+  type SetupStatus,
   AuditActorKindSchema,
   AuditCategorySchema,
   AuditOutcomeSchema,
@@ -100,6 +124,13 @@ export {
 
 export const contract = {
   status: oc.output(StatusSchema),
+  /** Self-host first-run setup; both procedures are absent in managed mode. */
+  setup: {
+    status: oc.output(SetupStatusSchema),
+    complete: oc
+      .input(CompleteSetupInputSchema)
+      .output(CompleteSetupResultSchema),
+  },
   /** The signed-in researcher; refuses UNAUTHORIZED without a session. */
   me: oc.output(MeSchema),
   /**
@@ -198,6 +229,15 @@ export const contract = {
    * per-team sequences, never timestamps.
    */
   audit: {
+    alerts: {
+      settings: oc.input(TeamScopedSchema).output(AuditAlertSettingsSchema),
+      updateSettings: oc
+        .input(UpdateAuditAlertSettingsSchema)
+        .output(z.object({ revision: z.uuid() })),
+      list: oc.input(AuditAlertListInputSchema).output(AuditAlertListSchema),
+      markRead: oc.input(AuditAlertReadInputSchema).output(z.void()),
+      acknowledge: oc.input(AuditAlertAcknowledgeInputSchema).output(z.void()),
+    },
     list: oc.input(AuditListInputSchema).output(AuditListOutputSchema),
     get: oc.input(AuditGetInputSchema).output(AuditEventDetailSchema),
     /**

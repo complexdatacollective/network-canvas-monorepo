@@ -454,8 +454,13 @@ const toSrgb = (color: string): [number, number, number] => {
   // previous colour rather than throwing, and silently measuring black would
   // read as a comfortable pass on a dark surface.
   context.fillStyle = '#010203';
+  // Read the sentinel back immediately, in the engine's own serialisation,
+  // rather than comparing against the literal we assigned: that read is what
+  // makes the sentinel assignment load-bearing rather than a value the next
+  // line simply overwrites.
+  const sentinel = context.fillStyle;
   context.fillStyle = color;
-  if (context.fillStyle === '#010203') {
+  if (context.fillStyle === sentinel) {
     throw new Error(`This engine cannot parse the colour ${color}.`);
   }
   context.fillRect(0, 0, 1, 1);

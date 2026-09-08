@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
@@ -263,6 +263,45 @@ describe('changing what a stage is about', () => {
   });
 });
 
+/**
+ * The researcher creates a node type from inside the stage they are
+ * configuring.
+ *
+ * Stops at the moment the type exists: what happens next is the subject moving
+ * to it, which is the thing the tests below are about.
+ */
+const createNodeTypeNamed = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  name: string,
+): Promise<void> => {
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Create a new node type' }),
+  );
+  await harness.user.type(
+    await screen.findByRole('textbox', { name: 'Node type name' }),
+    name,
+  );
+  await harness.user.click(screen.getByRole('button', { name: 'Save entity' }));
+};
+
+/**
+ * Answers the question a configured stage raises before it moves to the type
+ * the researcher has just created.
+ *
+ * The same question the picker asks, because it is the same loss: every test
+ * that means "the researcher created a type and used it on a configured stage"
+ * goes through both gestures, so none of them can pass by a route the
+ * researcher does not have.
+ */
+const useTheCreatedType = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  confirmLabel = 'Change the node type',
+): Promise<void> => {
+  await harness.user.click(
+    await screen.findByRole('button', { name: confirmLabel }),
+  );
+};
+
 describe('creating the type a stage needs without leaving it', () => {
   /**
    * The point of creating a type from inside a stage is to get back to
@@ -310,16 +349,8 @@ describe('creating the type a stage needs without leaving it', () => {
       sections: nodeSubjectAndPrompts,
     });
 
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create a new node type' }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Node type name' }),
-      'Place',
-    );
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Save entity' }),
-    );
+    await createNodeTypeNamed(harness, 'Place');
+    await useTheCreatedType(harness);
 
     // The codebook change reached the host as one atomic edit, which is what
     // `requestCompoundEdit` exists for.
@@ -335,6 +366,97 @@ describe('creating the type a stage needs without leaving it', () => {
         screen.queryByText('Who are the people you know?'),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  /**
+   * Creating a type and selecting it on a configured stage costs the
+   * researcher exactly what picking a different type in the list costs — the
+   * prompts, the form, the panels and the filter — so it is the same question,
+   * asked at the same moment. The type is created either way: the codebook
+   * edit has already been accepted by the host by the time this is asked, and
+   * nothing about it is undone by an answer about the stage.
+   */
+  it('asks before it moves a configured stage to the new type', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await createNodeTypeNamed(harness, 'Place');
+
+    expect(
+      await screen.findByText('Change the node type?'),
+    ).toBeInTheDocument();
+    // The type exists, and the stage has not moved: read from the session,
+    // which is where a reset would have landed first, because everything
+    // behind the question is out of the accessibility tree while it stands.
+    expect(
+      codebookNodeNames(harness.host.getSnapshot().protocolSections),
+    ).toContain('Place');
+    const { fields } = harness.session.getSnapshot().editedSection;
+    expect(fields.subject).toEqual({ entity: 'node', type: 'person' });
+    expect(fields.prompts).toHaveLength(1);
+    // Including the create dialog, which stays mounted underneath so that
+    // focus has a live control to come back to — and offers the researcher
+    // nothing while the question is the thing to answer.
+    expect(screen.queryByRole('button', { name: 'Save entity' })).toBeNull();
+  });
+
+  it('keeps the stage on its own type when the researcher backs out', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await createNodeTypeNamed(harness, 'Place');
+    // Scoped to the question: the create dialog underneath has a Cancel of its
+    // own, and naming which one this is says what the gesture means — backing
+    // out of the SELECTION, not out of a create that has already happened.
+    const question = await screen.findByRole('dialog', {
+      name: 'Change the node type?',
+    });
+    await harness.user.click(
+      within(question).getByRole('button', { name: 'Cancel' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    // The new type is in the codebook and offered here — declining is about
+    // this stage, not about the type.
+    expect(
+      codebookNodeNames(harness.host.getSnapshot().protocolSections),
+    ).toContain('Place');
+    expect(screen.getByRole('radio', { name: 'Place' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: 'person' })).toBeChecked();
+    expect(
+      screen.getByText('Who are the people you know?'),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * A question about nothing is one a researcher learns to dismiss without
+   * reading — the rule the picker and the discard guard already follow. A
+   * stage whose configuration has just been thrown away is the commonest
+   * reason to create a type at all.
+   */
+  it('does not ask when the stage has nothing to lose', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await changeSubjectTo(harness.user, 'family member');
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Who are the people you know?'),
+      ).not.toBeInTheDocument(),
+    );
+
+    await createNodeTypeNamed(harness, 'Place');
+
+    expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
+    expect(screen.queryByText('Change the node type?')).not.toBeInTheDocument();
   });
 
   /**
@@ -360,16 +482,8 @@ describe('creating the type a stage needs without leaving it', () => {
     await screen.findByText('And who else?');
     expect(harness.pendingCommands()).toHaveLength(1);
 
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create a new node type' }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Node type name' }),
-      'Place',
-    );
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Save entity' }),
-    );
+    await createNodeTypeNamed(harness, 'Place');
+    await useTheCreatedType(harness);
 
     expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
     const sections = harness.host.getSnapshot().protocolSections;
@@ -400,16 +514,7 @@ describe('creating the type a stage needs without leaving it', () => {
     );
     expect(await harness.submit()).toBeNull();
 
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create a new node type' }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Node type name' }),
-      'Place',
-    );
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Save entity' }),
-    );
+    await createNodeTypeNamed(harness, 'Place');
 
     expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
     expect(
@@ -607,6 +712,7 @@ describe('editing taken away while the create dialog is open', () => {
         codebookNodeNames(harness.host.getSnapshot().protocolSections),
       ).toContain('Place'),
     );
+    await useTheCreatedType(harness);
     expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
   });
 });
@@ -680,6 +786,7 @@ describe('dismissing the create dialog while it is submitting', () => {
         codebookNodeNames(harness.host.getSnapshot().protocolSections),
       ).toContain('Place'),
     );
+    await useTheCreatedType(harness);
     expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
   });
 
@@ -889,5 +996,131 @@ describe('changing a subject the stage is configured for', () => {
       ).toEqual({ entity: 'node', type: 'family_member' }),
     );
     expect(screen.queryByText(CHANGE_TITLE)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * A stage does not have to have HAD a type for choosing one to cost the
+ * researcher something.
+ *
+ * The reset throws away everything the stage is carrying whichever way the
+ * subject moved — the same keys, the same batch — so work entered before a
+ * type was picked is lost by the first choice exactly as later work is lost by
+ * a change. The picker used to read "no subject yet" as "nothing to lose" and
+ * let that one through in silence; the loss is judged by what the stage HOLDS,
+ * and the question follows that judgement.
+ *
+ * The words differ, because what is true differs: there is no type the rest of
+ * the stage describes, so the sentence about replacing one would be about a
+ * change that is not happening.
+ */
+describe('choosing a type for a stage that has never had one', () => {
+  const FIRST_CHOICE_TITLE = 'Choose the node type?';
+  const FIRST_CHOICE_DESCRIPTION =
+    'Everything else on this stage was configured without a node type, and choosing one removes all of it.';
+  const FIRST_CHOICE_CONFIRM = 'Choose the node type';
+
+  /**
+   * A filter written before the type was chosen — the one section this package
+   * mounts beside the picker without waiting on a subject, and so the way a
+   * researcher reaches this state without doing anything unusual.
+   */
+  const configuredWithoutASubject = {
+    type: 'AlterForm' as const,
+    fields: {
+      label: 'Details',
+      filter: {
+        rules: [
+          {
+            id: 'rule-a',
+            type: 'node',
+            options: { type: 'person', operator: 'EXISTS' },
+          },
+        ],
+      },
+    },
+  };
+
+  const nodeSubjectAndFilter = <SubjectSection entity="node" filter />;
+
+  it('asks first, and changes nothing while the question stands', async () => {
+    const harness = renderStageEditor({
+      stage: configuredWithoutASubject,
+      sections: nodeSubjectAndFilter,
+    });
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    expect(await screen.findByText(FIRST_CHOICE_TITLE)).toBeInTheDocument();
+    // Its own words, not the ones about replacing a type the stage does not
+    // have: the two questions share a definition, not a sentence.
+    expect(screen.getByText(FIRST_CHOICE_DESCRIPTION)).toBeInTheDocument();
+    expect(screen.queryByText('Change the node type?')).not.toBeInTheDocument();
+    // Read from the session, which is where a reset would have landed first:
+    // everything behind the question is out of the accessibility tree while it
+    // stands.
+    const { fields } = harness.session.getSnapshot().editedSection;
+    expect(fields.subject).toBeUndefined();
+    expect(fields.filter).toBeDefined();
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  it('leaves the stage as it was when the researcher backs out', async () => {
+    const harness = renderStageEditor({
+      stage: configuredWithoutASubject,
+      sections: nodeSubjectAndFilter,
+    });
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Cancel' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText(FIRST_CHOICE_TITLE)).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('radio', { name: 'person' })).not.toBeChecked();
+    const { fields } = harness.session.getSnapshot().editedSection;
+    expect(fields.subject).toBeUndefined();
+    expect(fields.filter).toBeDefined();
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  it('throws it away once the researcher has said so', async () => {
+    const harness = renderStageEditor({
+      stage: configuredWithoutASubject,
+      sections: nodeSubjectAndFilter,
+    });
+
+    await changeSubjectTo(harness.user, 'person', FIRST_CHOICE_CONFIRM);
+
+    await waitFor(() =>
+      expect(
+        harness.session.getSnapshot().editedSection.fields.subject,
+      ).toEqual({ entity: 'node', type: 'person' }),
+    );
+    expect(
+      harness.session.getSnapshot().editedSection.fields.filter,
+    ).toBeUndefined();
+  });
+
+  /**
+   * The guard still turns on what the stage HOLDS: a stage carrying nothing
+   * but its name is the ordinary case, and it is not asked.
+   */
+  it('does not ask when the stage really has nothing to lose', async () => {
+    const harness = renderStageEditor({
+      stage: { type: 'AlterForm' as const, fields: { label: 'Details' } },
+      sections: nodeSubjectAndFilter,
+    });
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    await waitFor(() =>
+      expect(
+        harness.session.getSnapshot().editedSection.fields.subject,
+      ).toEqual({ entity: 'node', type: 'person' }),
+    );
+    expect(screen.queryByText(FIRST_CHOICE_TITLE)).not.toBeInTheDocument();
   });
 });

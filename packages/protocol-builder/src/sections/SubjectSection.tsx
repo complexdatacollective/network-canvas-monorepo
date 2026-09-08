@@ -12,9 +12,11 @@ import type { CodebookEntityDraft } from '../codebook/editing.ts';
 import SubjectSelectField, {
   type EntitySubject,
   type SubjectChangeConfirmation,
+  useConfirmSubjectChange,
 } from '../fields/SubjectSelectField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { useAskStageHasAnyValue } from '../form/stageFormHooks.ts';
 import BuilderSection from './BuilderSection.tsx';
 import NetworkFilterSection from './NetworkFilterSection.tsx';
 import {
@@ -75,6 +77,25 @@ const messages = defineMessages({
     description:
       'Button that goes ahead with changing the kind of network member a stage works with, throwing away the configuration that described the previous one.',
   },
+  nodeFirstChoiceTitle: {
+    id: 'protocolBuilder.subjectSection.nodeFirstChoiceTitle',
+    defaultMessage: 'Choose the node type?',
+    description:
+      'Title of the confirmation raised when a researcher picks the first kind of network member for a stage that has none yet, but that has already been configured. A stage is one step of an interview.',
+  },
+  nodeFirstChoiceDescription: {
+    id: 'protocolBuilder.subjectSection.nodeFirstChoiceDescription',
+    defaultMessage:
+      'Everything else on this stage was configured without a node type, and choosing one removes all of it.',
+    description:
+      'Body of the confirmation raised when a researcher picks the first kind of network member for a stage that has none yet, but that has already been configured. A stage is one step of an interview.',
+  },
+  nodeFirstChoiceConfirm: {
+    id: 'protocolBuilder.subjectSection.nodeFirstChoiceConfirm',
+    defaultMessage: 'Choose the node type',
+    description:
+      'Button that goes ahead with choosing the first kind of network member a stage works with, throwing away the configuration entered before it.',
+  },
   nodeCreateDescription: {
     id: 'protocolBuilder.subjectSection.nodeCreateDescription',
     defaultMessage: 'Create a node type and use it on this stage',
@@ -130,6 +151,25 @@ const messages = defineMessages({
     description:
       'Button that goes ahead with changing the kind of relationship a stage works with, throwing away the configuration that described the previous one.',
   },
+  edgeFirstChoiceTitle: {
+    id: 'protocolBuilder.subjectSection.edgeFirstChoiceTitle',
+    defaultMessage: 'Choose the edge type?',
+    description:
+      'Title of the confirmation raised when a researcher picks the first kind of relationship for a stage that has none yet, but that has already been configured. A stage is one step of an interview.',
+  },
+  edgeFirstChoiceDescription: {
+    id: 'protocolBuilder.subjectSection.edgeFirstChoiceDescription',
+    defaultMessage:
+      'Everything else on this stage was configured without an edge type, and choosing one removes all of it.',
+    description:
+      'Body of the confirmation raised when a researcher picks the first kind of relationship for a stage that has none yet, but that has already been configured. A stage is one step of an interview.',
+  },
+  edgeFirstChoiceConfirm: {
+    id: 'protocolBuilder.subjectSection.edgeFirstChoiceConfirm',
+    defaultMessage: 'Choose the edge type',
+    description:
+      'Button that goes ahead with choosing the first kind of relationship a stage works with, throwing away the configuration entered before it.',
+  },
   edgeCreateDescription: {
     id: 'protocolBuilder.subjectSection.edgeCreateDescription',
     defaultMessage: 'Create an edge type and use it on this stage',
@@ -164,6 +204,16 @@ type SubjectWords = Readonly<{
   changeTitle: MessageDescriptor;
   changeDescription: MessageDescriptor;
   changeConfirm: MessageDescriptor;
+  /**
+   * And what they are asked when the stage has no type yet.
+   *
+   * The same cost, described truthfully: there is no type the rest of the
+   * stage describes, so the sentence about replacing one would be about a
+   * change that is not happening.
+   */
+  firstChoiceTitle: MessageDescriptor;
+  firstChoiceDescription: MessageDescriptor;
+  firstChoiceConfirm: MessageDescriptor;
 }>;
 
 const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
@@ -177,6 +227,9 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
     changeTitle: messages.nodeChangeTitle,
     changeDescription: messages.nodeChangeDescription,
     changeConfirm: messages.nodeChangeConfirm,
+    firstChoiceTitle: messages.nodeFirstChoiceTitle,
+    firstChoiceDescription: messages.nodeFirstChoiceDescription,
+    firstChoiceConfirm: messages.nodeFirstChoiceConfirm,
   }),
   edge: Object.freeze({
     title: messages.edgeTitle,
@@ -188,6 +241,9 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
     changeTitle: messages.edgeChangeTitle,
     changeDescription: messages.edgeChangeDescription,
     changeConfirm: messages.edgeChangeConfirm,
+    firstChoiceTitle: messages.edgeFirstChoiceTitle,
+    firstChoiceDescription: messages.edgeFirstChoiceDescription,
+    firstChoiceConfirm: messages.edgeFirstChoiceConfirm,
   }),
 });
 
@@ -224,6 +280,55 @@ export type SubjectSectionProps = Readonly<{
 }>;
 
 /**
+ * The question the picker asks before it lets a pick through, or nothing at
+ * all when there is nothing to lose.
+ *
+ * Asked here rather than by the reset, because the reset watches the value and
+ * runs once it has already moved: a question asked there would be about a
+ * change the researcher can already see, and answering "no" would mean putting
+ * the picker back.
+ *
+ * Whether the stage HAS a type yet decides only which words are used, never
+ * whether the question is raised. The reset throws away everything the stage is
+ * carrying whichever way the subject moved, so a first choice made over a
+ * filter written before any type was picked costs exactly what a change costs;
+ * a guard keyed on the value rather than on the loss let that one through in
+ * silence. What differs is what is TRUE about the loss, so each case says its
+ * own sentence rather than one of them claiming a type is being replaced.
+ *
+ * A function rather than a value, for the reason `useSubjectChangeDiscards`
+ * gives: it reads what the stage is carrying at the moment of the change.
+ */
+function useSubjectChangeQuestion(
+  words: SubjectWords,
+  intl: IntlShape,
+): () => SubjectChangeConfirmation | undefined {
+  const discardsConfiguration = useSubjectChangeDiscards();
+  const hasAnyValue = useAskStageHasAnyValue();
+  return useCallback(() => {
+    if (!discardsConfiguration()) return undefined;
+    // Asked through the same "holds an answer" the loss itself is judged by,
+    // so the two cannot disagree about what the stage is carrying.
+    const asked = hasAnyValue(['subject'])
+      ? {
+          title: words.changeTitle,
+          description: words.changeDescription,
+          confirmLabel: words.changeConfirm,
+        }
+      : {
+          title: words.firstChoiceTitle,
+          description: words.firstChoiceDescription,
+          confirmLabel: words.firstChoiceConfirm,
+        };
+    return {
+      title: intl.formatMessage(asked.title),
+      description: intl.formatMessage(asked.description),
+      confirmLabel: intl.formatMessage(asked.confirmLabel),
+    };
+  }, [discardsConfiguration, hasAnyValue, intl, words]);
+}
+
+/**
  * Which part of the network this stage is about.
  *
  * The stage's `subject` and nothing else. The types come from the editor's own
@@ -244,27 +349,7 @@ export default function SubjectSection({
   const words = WORDS[entity];
   useResetStageOnSubjectChange();
 
-  /**
-   * The question the picker asks before it lets the change through, or nothing
-   * at all when there is nothing to lose.
-   *
-   * Asked here rather than by the reset, because the reset watches the value
-   * and runs once it has already moved: a question asked there would be about
-   * a change the researcher can already see, and answering "no" would mean
-   * putting the picker back.
-   */
-  const discardsConfiguration = useSubjectChangeDiscards();
-  const confirmChange = useCallback(
-    (): SubjectChangeConfirmation | undefined =>
-      discardsConfiguration()
-        ? {
-            title: intl.formatMessage(words.changeTitle),
-            description: intl.formatMessage(words.changeDescription),
-            confirmLabel: intl.formatMessage(words.changeConfirm),
-          }
-        : undefined,
-    [discardsConfiguration, intl, words],
-  );
+  const confirmChange = useSubjectChangeQuestion(words, intl);
 
   return (
     <>
@@ -281,7 +366,12 @@ export default function SubjectSection({
           hint={intl.formatMessage(words.fieldHint)}
           required
         />
-        <CreateSubjectType entity={entity} words={words} intl={intl} />
+        <CreateSubjectType
+          entity={entity}
+          words={words}
+          intl={intl}
+          confirmChange={confirmChange}
+        />
       </BuilderSection>
       {filter && <NetworkFilterSection subject={entity} />}
     </>
@@ -301,15 +391,25 @@ export default function SubjectSection({
  * any interface whose schema requires the configuration the change throws
  * away, which is all of them. So the type lands in the codebook, the stage
  * points at it locally, and the researcher configures it before saving.
+ *
+ * Which is why the SELECTION is asked about, and separately from the create.
+ * It moves the stage's subject exactly as the picker does, and costs the stage
+ * exactly what the picker costs it, so it asks the picker's own question — a
+ * researcher who created a type to use somewhere else, or who realises what it
+ * would cost while reading the question, keeps the stage they had and the type
+ * they made.
  */
 function CreateSubjectType({
   entity,
   words,
   intl,
+  confirmChange,
 }: Readonly<{
   entity: SubjectEntity;
   words: SubjectWords;
   intl: IntlShape;
+  /** The picker's own question, asked before this selects the new type. */
+  confirmChange: () => SubjectChangeConfirmation | undefined;
 }>) {
   const { controller, readOnly, storeApi } = useStageEditorForm();
   const codebook = controller.snapshot.protocolContext.codebook;
@@ -350,22 +450,44 @@ function CreateSubjectType({
     [codebook],
   );
 
+  const confirmSubjectChange = useConfirmSubjectChange();
+
   const selectCreatedType = useCallback(
     (typeId: string) => {
       // Written into the form rather than dispatched, so it is the researcher's
       // own unsaved change — which is what lets the subject-change reset run
       // over it and clear the configuration that belonged to the old type.
-      storeApi
-        .getState()
-        .setFieldValue(
-          'subject',
-          entity === 'node'
-            ? { entity: 'node', type: typeId }
-            : { entity: 'edge', type: typeId },
-        );
-      setSession(null);
+      const select = () =>
+        storeApi
+          .getState()
+          .setFieldValue(
+            'subject',
+            entity === 'node'
+              ? { entity: 'node', type: typeId }
+              : { entity: 'edge', type: typeId },
+          );
+
+      // Read BEFORE anything moves, like the picker reads it: it is a question
+      // about what the stage is carrying now.
+      const question = confirmChange();
+      if (question === undefined) {
+        select();
+        setSession(null);
+        return;
+      }
+
+      void (async () => {
+        // Asked while the create dialog is still open, and it closes on either
+        // answer: the type has been created and there is nothing left to do in
+        // there, and the dialog outliving the question is what keeps focus on
+        // a live control — the confirm returns focus to the Save it was raised
+        // from, and the dialog then returns it to its own trigger.
+        const confirmed = await confirmSubjectChange(question);
+        if (confirmed) select();
+        setSession(null);
+      })();
     },
-    [entity, storeApi],
+    [confirmChange, confirmSubjectChange, entity, storeApi],
   );
 
   return (
