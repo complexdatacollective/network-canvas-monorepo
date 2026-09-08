@@ -7,7 +7,6 @@ import {
 } from '@aws-sdk/client-s3';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createApp } from '../app.ts';
 import {
   type AssetStore,
   createAssetRoutes,
@@ -17,6 +16,7 @@ import {
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
+import { createHttpTestApp as createApp } from './support/http-app.ts';
 
 // Integration suite against a real S3-compatible endpoint — the dev MinIO
 // from scripts/dev-s3.ts (or whatever S3_* points at). Skips when no object

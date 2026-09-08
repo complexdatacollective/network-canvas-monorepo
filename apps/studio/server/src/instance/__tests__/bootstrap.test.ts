@@ -10,6 +10,7 @@ import type { CompleteSetupInput } from '@codaco/studio-rpc';
 import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 
 import { stubAuthService } from '../../__tests__/support/auth.ts';
+import { createHttpTestApp as createApp } from '../../__tests__/support/http-app.ts';
 import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
@@ -18,7 +19,6 @@ import {
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import { createRpcClient } from '../../__tests__/support/rpc.ts';
-import { createApp } from '../../app.ts';
 import { createBetterAuthService } from '../../auth/better-auth.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { migrateDatabase } from '../../db/migrations/migrate.ts';

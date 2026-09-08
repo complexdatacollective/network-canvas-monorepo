@@ -49,6 +49,7 @@ function fixture(proxies: string[] = []) {
     auth: undefined,
     s3: undefined,
     metricsToken: token,
+    managedIngressSecret: undefined,
     trustedProxies: proxies,
   };
   const observability = createObservability({
@@ -295,7 +296,7 @@ describe('request correlation and transport privacy', () => {
     ]) {
       expect(
         (await app.request('/metrics', { headers: { authorization } })).status,
-      ).toBe(401);
+      ).toBe(404);
     }
     const response = await app.request('/metrics', {
       headers: { authorization: `Bearer ${token}` },

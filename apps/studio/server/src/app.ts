@@ -3,10 +3,11 @@ import { timingSafeEqual } from 'node:crypto';
 import { upgradeWebSocket } from '@hono/node-server';
 import { COMMON_ERROR_STATUS_MAP, onError, ORPCError } from '@orpc/server';
 import { RPCHandler } from '@orpc/server/fetch';
-import type { Context } from 'hono';
+import type { Context, MiddlewareHandler } from 'hono';
 import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
+import { isProxyAddress } from '@codaco/studio-sync/proxy-trust';
 
 import { createApiV1 } from './api.ts';
 import {
@@ -19,6 +20,7 @@ import { createAuthService } from './auth/create.ts';
 import { requireSameOrigin, requireWsOrigin } from './auth/csrf.ts';
 import type { StudioMailer } from './auth/email.ts';
 import {
+  type PrincipalVariables,
   createPrincipalMiddleware,
   requirePrincipal,
 } from './auth/principal.ts';
@@ -69,6 +71,17 @@ type CreateAppDeps = {
 };
 
 export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
+  if (
+    env.deploymentMode === 'managed' &&
+    env.db &&
+    (!env.managedIngressSecret ||
+      env.trustedProxies.length === 0 ||
+      env.trustedProxies.some((proxy) => !isProxyAddress(proxy)))
+  ) {
+    throw new Error(
+      'Managed Studio HTTP with a database requires STUDIO_MANAGED_INGRESS_SECRET and TRUSTED_PROXIES',
+    );
+  }
   const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
   const auth =
     deps.auth ??
@@ -87,19 +100,15 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       allowedLogins: env.databaseAllowedLogins,
       administrativeLogins: env.databaseAdministrativeLogins,
     });
-  const app = createOperationalApp(
-    env,
-    observability,
-    deps.logger,
-    deps.telemetry,
-  );
+  let requestGuard: MiddlewareHandler<PrincipalVariables> | undefined;
   if (env.managedIngressSecret) {
     const expectedProof = Buffer.from(env.managedIngressSecret);
-    app.use('*', async (c, next) => {
+    requestGuard = async (c, next) => {
       // Fly's liveness probe cannot read a runtime secret into a configured
-      // header. This route makes no identity or readiness decision and never
-      // reaches Better Auth, so keep that one direct-origin probe available.
-      if (c.req.path === '/healthz') return next();
+      // header. Metrics has an independent constant-time bearer gate. These
+      // exact routes make no user identity decision and remain direct-origin
+      // operator surfaces; variants still require ingress proof.
+      if (c.req.path === '/healthz' || c.req.path === '/metrics') return next();
       const supplied = c.req.header(MANAGED_INGRESS_PROOF_HEADER);
       const receivedProof = supplied ? Buffer.from(supplied) : undefined;
       if (
@@ -112,8 +121,15 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
         });
       }
       await next();
-    });
+    };
   }
+  const app = createOperationalApp(
+    env,
+    observability,
+    deps.logger,
+    deps.telemetry,
+    requestGuard,
+  );
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
     enabled,

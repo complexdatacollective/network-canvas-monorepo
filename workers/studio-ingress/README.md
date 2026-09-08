@@ -32,7 +32,7 @@ through without handling messages.
 - Server surfaces preserve cookie, authorization, Origin, `Sec-Fetch-Site`, and
   WebSocket handshake headers. Untrusted forwarding headers are replaced with
   the approved public host, HTTPS scheme, and a single validated
-  `CF-Connecting-IP` address, and the ingress replaces incoming request IDs
+  primary `CF-Connecting-IP` address, and the ingress replaces incoming request IDs
   with fresh UUIDs. A shared ingress proof, stored only as a Worker secret and
   Fly runtime secret, makes that client address unusable on direct origin
   requests. The Node server still performs its
@@ -49,7 +49,9 @@ through without handling messages.
   authorization data. Cache hits are rechecked against the path hash and
   immutable headers; conditional and range variants remain Cache API
   operations. HEAD and every unproved response bypass cache admission. Cache
-  failures do not replace or buffer the streamed origin response. Cache API
+  requests carrying `If-Range` bypass cache lookup so the origin decides
+  whether to return a full or partial representation. Cache failures do not
+  replace or buffer the streamed origin response. Cache API
   entries are local to a Cloudflare data center and do not provide tiered
   replication.
 - Ordinary origin connection/header waits are bounded at 10 seconds. The
@@ -79,11 +81,19 @@ Set `STUDIO_MANAGED_INGRESS_SECRET` with `wrangler secret put` and place the
 same independent random value in the Fly runtime environment. It is
 deliberately absent from `wrangler.example.jsonc`; a missing, short, or
 malformed secret makes the Worker refuse every request with 503. The Fly server
-must configure the proof and managed `TRUSTED_PROXIES` together and refuses
-requests without it before authentication. The direct `/healthz` liveness
-probe is the sole exception: it makes no identity or readiness decision and
-does not reach Better Auth. Fly health checks can use that path without storing
-the runtime secret in their configuration.
+must configure the proof and a nonempty managed `TRUSTED_PROXIES` list together;
+a managed database HTTP process refuses to start without both and refuses
+requests without proof before authentication. Direct `/healthz` liveness and
+exact `/metrics` are the only exceptions. Liveness makes no identity or
+readiness decision. Metrics has its own constant-time bearer-token gate;
+variants such as `/metrics/` still require ingress proof. Fly health checks and
+private operator scrapers can therefore reach those exact routes without
+storing the ingress secret in their configuration.
+
+The Worker trusts only Cloudflare's primary `CF-Connecting-IP` header. Prefer
+Pseudo IPv4 Off. Cloudflare documents `CF-Connecting-IPv6` as a supplemental
+header for Pseudo IPv4 overwrite mode, so Studio does not use it as a separate
+trust source when the primary address is a native IPv4 or IPv6 value.
 
 The checked-in template deliberately contains invalid `replace-with-*`
 upstreams and is not Wrangler's default config filename. Copy the relevant

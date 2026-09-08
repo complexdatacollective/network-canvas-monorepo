@@ -101,7 +101,7 @@ test('routes server surfaces to Fly with same-origin auth and CSRF headers intac
   assert.deepEqual(await response.json(), { title: 'Missing', status: 404 });
 });
 
-test('accepts only a validated Cloudflare client address and replaces spoofable forwarding headers', async () => {
+test('accepts only primary Cloudflare client addresses and replaces spoofable forwarding headers', async () => {
   const seen = [];
   const router = ingress(async (request) => {
     seen.push(request);
@@ -118,7 +118,7 @@ test('accepts only a validated Cloudflare client address and replaces spoofable 
       },
     }),
   );
-  assert.equal(seen[0].headers.get('x-forwarded-for'), '2001:db8::7');
+  assert.equal(seen[0].headers.get('x-forwarded-for'), '192.0.2.8');
   assert.equal(seen[0].headers.get('cf-connecting-ip'), null);
   assert.equal(seen[0].headers.get('cf-connecting-ipv6'), null);
   assert.equal(seen[0].headers.get('x-real-ip'), null);
@@ -126,6 +126,16 @@ test('accepts only a validated Cloudflare client address and replaces spoofable 
     seen[0].headers.get('x-studio-managed-ingress-proof'),
     INGRESS_SECRET,
   );
+
+  await router.fetch(
+    new Request(`${PUBLIC_ORIGIN}/api/status`, {
+      headers: {
+        'cf-connecting-ip': '2001:DB8::8',
+        'cf-connecting-ipv6': 'attacker-controlled',
+      },
+    }),
+  );
+  assert.equal(seen[1].headers.get('x-forwarded-for'), '2001:db8::8');
 
   for (const edgeClientIp of [
     false,
@@ -367,6 +377,43 @@ test('uses only safe Cache API variants and never populates a bodyless HEAD entr
   );
   assert.equal(head.status, 200);
   assert.equal(puts, 0);
+});
+
+test('bypasses Cache API for If-Range so the origin decides full or partial semantics', async () => {
+  const hash = '9'.repeat(64);
+  let cacheCalls = 0;
+  let originCalls = 0;
+  const router = ingress(
+    async (request) => {
+      originCalls += 1;
+      assert.equal(request.headers.get('range'), 'bytes=0-3');
+      assert.equal(request.headers.get('if-range'), '"wrong-validator"');
+      return new Response('complete immutable bytes', {
+        status: 200,
+        headers: {
+          'cache-control': 'public, max-age=31536000, immutable',
+          'etag': `"${hash}"`,
+        },
+      });
+    },
+    {
+      cache: {
+        match: async () => {
+          cacheCalls += 1;
+          return new Response('incorrect cached part', { status: 206 });
+        },
+      },
+    },
+  );
+  const response = await router.fetch(
+    new Request(`${PUBLIC_ORIGIN}/storage/${hash}`, {
+      headers: { 'range': 'bytes=0-3', 'if-range': '"wrong-validator"' },
+    }),
+  );
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), 'complete immutable bytes');
+  assert.equal(cacheCalls, 0);
+  assert.equal(originCalls, 1);
 });
 
 test('cache failures and unsafe cache entries preserve the streamed origin response', async () => {

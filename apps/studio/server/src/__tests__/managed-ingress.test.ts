@@ -1,13 +1,66 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createApp } from '../app.ts';
 import { createDisabledAuthService } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
+import { createOperationalApp } from '../observability/operational-app.ts';
+import { createObservability } from '../observability/runtime.ts';
 
 const INGRESS_SECRET =
   'synthetic-managed-ingress-secret-at-least-32-characters';
+const METRICS_TOKEN = 'synthetic-managed-metrics-token-at-least-32-characters';
+const TRUSTED_PROXIES = ['fdaa::/16'];
 
 describe('managed ingress proof', () => {
+  it('refuses a managed database HTTP app without both ingress proofs', () => {
+    const base = readEnv();
+    for (const ingress of [
+      { managedIngressSecret: undefined, trustedProxies: [] },
+      {
+        managedIngressSecret: INGRESS_SECRET,
+        trustedProxies: [],
+      },
+      {
+        managedIngressSecret: undefined,
+        trustedProxies: TRUSTED_PROXIES,
+      },
+      {
+        managedIngressSecret: INGRESS_SECRET,
+        trustedProxies: ['not-a-proxy'],
+      },
+    ]) {
+      expect(() =>
+        createApp({
+          ...base,
+          deploymentMode: 'managed',
+          db: { url: 'postgresql://synthetic.invalid/studio' },
+          ...ingress,
+        }),
+      ).toThrow(
+        'Managed Studio HTTP with a database requires STUDIO_MANAGED_INGRESS_SECRET and TRUSTED_PROXIES',
+      );
+    }
+  });
+
+  it('admits a managed database HTTP app only with both ingress proofs', async () => {
+    const base = readEnv();
+    const app = createApp({
+      ...base,
+      deploymentMode: 'managed',
+      db: { url: 'postgresql://synthetic.invalid/studio' },
+      maintenanceDb: undefined,
+      auth: undefined,
+      managedIngressSecret: INGRESS_SECRET,
+      trustedProxies: TRUSTED_PROXIES,
+    });
+    const refused = await app.request('/api/v1/status');
+    expect(refused.status).toBe(404);
+    const admitted = await app.request('/api/v1/status', {
+      headers: { 'x-studio-managed-ingress-proof': INGRESS_SECRET },
+    });
+    expect(admitted.status).toBe(200);
+  });
+
   it('refuses missing or mismatched proof before serving a route', async () => {
     const base = readEnv();
     let authCalls = 0;
@@ -19,6 +72,7 @@ describe('managed ingress proof', () => {
         maintenanceDb: undefined,
         auth: undefined,
         managedIngressSecret: INGRESS_SECRET,
+        trustedProxies: TRUSTED_PROXIES,
       },
       {
         auth: {
@@ -58,6 +112,7 @@ describe('managed ingress proof', () => {
       maintenanceDb: undefined,
       auth: undefined,
       managedIngressSecret: INGRESS_SECRET,
+      trustedProxies: TRUSTED_PROXIES,
     });
     const response = await app.request('/api/auth/get-session', {
       headers: { 'x-studio-managed-ingress-proof': INGRESS_SECRET },
@@ -66,5 +121,87 @@ describe('managed ingress proof', () => {
     const health = await app.request('/healthz');
     expect(health.status).toBe(200);
     await expect(health.json()).resolves.toEqual({ status: 'ok' });
+  });
+
+  it('guards shared readiness before its handler while preserving worker probes', async () => {
+    const env = {
+      ...readEnv(),
+      db: undefined,
+      maintenanceDb: undefined,
+      auth: undefined,
+      s3: undefined,
+      managedIngressSecret: INGRESS_SECRET,
+      trustedProxies: TRUSTED_PROXIES,
+    };
+    const observability = createObservability({ monitorProcess: false });
+    const check = vi.spyOn(observability.readiness, 'check');
+    try {
+      const app = createApp(env, { observability });
+      const refused = await app.request('/readyz');
+      expect(refused.status).toBe(404);
+      expect(check).not.toHaveBeenCalled();
+      const admitted = await app.request('/readyz', {
+        headers: { 'x-studio-managed-ingress-proof': INGRESS_SECRET },
+      });
+      expect(admitted.status).toBe(503);
+      await expect(admitted.json()).resolves.toMatchObject({
+        status: 'not_ready',
+      });
+      expect(check).toHaveBeenCalledTimes(1);
+      const worker = createOperationalApp(env, observability);
+      const probe = await worker.request('/readyz');
+      expect(probe.status).toBe(503);
+      await expect(probe.json()).resolves.toMatchObject({
+        status: 'not_ready',
+      });
+      expect(check).toHaveBeenCalledTimes(2);
+    } finally {
+      observability.stop();
+    }
+  });
+
+  it('keeps exact metrics behind its bearer gate without ingress proof', async () => {
+    const base = readEnv();
+    const configured = createApp({
+      ...base,
+      db: undefined,
+      maintenanceDb: undefined,
+      auth: undefined,
+      metricsToken: METRICS_TOKEN,
+      managedIngressSecret: INGRESS_SECRET,
+      trustedProxies: TRUSTED_PROXIES,
+    });
+
+    const wrong = await configured.request('/metrics', {
+      headers: { authorization: 'Bearer wrong' },
+    });
+    expect(wrong.status).toBe(404);
+    const valid = await configured.request('/metrics', {
+      headers: { authorization: `Bearer ${METRICS_TOKEN}` },
+    });
+    expect(valid.status).toBe(200);
+    expect(await valid.text()).toContain('studio_http_requests_total');
+
+    const wrongMethod = await configured.request('/metrics', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${METRICS_TOKEN}` },
+    });
+    expect(wrongMethod.status).toBe(404);
+    const variant = await configured.request('/metrics/extra', {
+      headers: { authorization: `Bearer ${METRICS_TOKEN}` },
+    });
+    expect(variant.status).toBe(404);
+
+    const unconfigured = createApp({
+      ...base,
+      db: undefined,
+      maintenanceDb: undefined,
+      auth: undefined,
+      metricsToken: undefined,
+      managedIngressSecret: INGRESS_SECRET,
+      trustedProxies: TRUSTED_PROXIES,
+    });
+    const hidden = await unconfigured.request('/metrics');
+    expect(hidden.status).toBe(404);
   });
 });
