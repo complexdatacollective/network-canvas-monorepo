@@ -51,14 +51,20 @@ export function telemetryKernelEndpoints(
 }
 
 export const TELEMETRY_DETECTOR_SOURCE = `
-const { createServer } = require('node:net');
+const { createServer: createTcpServer } = require('node:net');
+const { createServer: createHttpServer } = require('node:http');
 const { createSocket } = require('node:dgram');
-createServer((socket) => {
+createTcpServer((socket) => {
   process.stdout.write(${JSON.stringify(TELEMETRY_EGRESS_MARKER)} + '\\n');
   socket.destroy();
 }).listen(443, '0.0.0.0');
-createServer((socket) => setTimeout(() => socket.destroy(), 500)).listen(8443, '0.0.0.0');
+createHttpServer((_request, response) => {
+  response.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Length': '2' });
+  response.end('ok');
+}).listen(8443, '0.0.0.0');
 createSocket('udp4').bind(8443, '0.0.0.0');
+createTcpServer((socket) => setTimeout(() => socket.destroy(), 500)).listen(9443, '0.0.0.0');
+createSocket('udp4').bind(9443, '0.0.0.0');
 `;
 
 export type KernelFlow = {
@@ -172,7 +178,7 @@ const main = async () => {
   };
   scan();
   fs.writeFileSync('/tmp/kernel-ready', '', { mode: 0o600 });
-  process.stdout.write(ready + '\\n');
+  process.stdout.write(ready + ' ' + JSON.stringify({ networkNamespace: fs.readlinkSync('/proc/self/ns/net') }) + '\\n');
   setInterval(() => { scan(); }, 25);
   setInterval(() => { process.stdout.write(liveness + ' ' + (++sequence) + '\\n'); }, 500);
   for (const endpoint of input.controls) {
@@ -418,6 +424,16 @@ export function assertKernelTelemetryReady(logs: string) {
 export function assertNoKernelTelemetryEgress(logs: string) {
   if (logs.includes(TELEMETRY_KERNEL_EGRESS_MARKER))
     throw new Error('Kernel egress observer detected egress.');
+}
+
+export function assertKernelTelemetryEgressProtocols(logs: string) {
+  for (const protocol of ['tcp', 'udp'])
+    if (
+      !logs.includes(
+        `${TELEMETRY_KERNEL_EGRESS_MARKER} {"protocol":"${protocol}"`,
+      )
+    )
+      throw new Error(`Kernel egress observer missed ${protocol} egress.`);
 }
 
 export function assertKernelTelemetryControls(logs: string) {

@@ -720,6 +720,14 @@ test('Studio browser telemetry failures fail the actual quality-support gate', (
   const steps = parsedWorkflow.jobs['quality-support'].steps;
   const telemetry = steps.find((step) => step.id === 'studio-telemetry');
   assert.ok(telemetry, 'the built-browser telemetry check exists');
+  assert.equal(
+    telemetry.env.STUDIO_TELEMETRY_KERNEL_IMAGE,
+    'studio-telemetry-qualification:${{ github.sha }}',
+  );
+  assert.match(
+    telemetry.run,
+    /docker build -f apps\/studio\/Dockerfile -t "\$STUDIO_TELEMETRY_KERNEL_IMAGE" \./,
+  );
   assert.match(telemetry.run, /playwright install --with-deps chromium/);
   assert.match(
     telemetry.run,

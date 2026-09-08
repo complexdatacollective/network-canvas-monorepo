@@ -627,7 +627,10 @@ jobs:
         # This uses the built deployables and real browser SDK. External
         # requests are intercepted locally, including the enabled controls.
         # The server subprocess suite runs in the existing Studio test step.
+        env:
+          STUDIO_TELEMETRY_KERNEL_IMAGE: studio-telemetry-qualification:${{ github.sha }}
         run: |
+          docker build -f apps/studio/Dockerfile -t "$STUDIO_TELEMETRY_KERNEL_IMAGE" .
           pnpm --filter @codaco/studio-client exec playwright install --with-deps chromium
           pnpm --filter @codaco/studio-client test:telemetry
       - name: Typecheck workspaces

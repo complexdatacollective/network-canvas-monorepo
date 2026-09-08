@@ -8,6 +8,7 @@ import {
 } from './distribution.ts';
 import {
   assertKernelTelemetryControls,
+  assertKernelTelemetryEgressProtocols,
   assertKernelTelemetryReady,
   assertNativeChildTelemetryControl,
   assertNoKernelTelemetryEgress,
@@ -94,6 +95,16 @@ describe('local distribution recovery boundary', () => {
     expect(() => assertNativeChildTelemetryControl(3, logs)).toThrow(
       'native child',
     );
+  });
+
+  it('requires real TCP and UDP egress controls from the browser namespace', () => {
+    const logs = `${TELEMETRY_KERNEL_EGRESS_MARKER} {"protocol":"tcp"}\n${TELEMETRY_KERNEL_EGRESS_MARKER} {"protocol":"udp"}\n`;
+    expect(() => assertKernelTelemetryEgressProtocols(logs)).not.toThrow();
+    expect(() =>
+      assertKernelTelemetryEgressProtocols(
+        logs.replace('"protocol":"udp"', '"protocol":"missing"'),
+      ),
+    ).toThrow('udp egress');
   });
   it('fails closed for a wrong-off mutant after a singular positive canary', () => {
     expect(() => assertNoTelemetryEgress('detector booted\n')).not.toThrow();

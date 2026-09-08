@@ -494,24 +494,42 @@ networks:
       assertKernelTelemetryControls(
         kernelTelemetryLogs(configuration, service),
       );
+    const namespaceCommand =
+      "process.stdout.write(require('node:fs').readlinkSync('/proc/self/ns/net'))";
+    const targetNamespace = compose(configuration, [
+      'exec',
+      '-T',
+      'studio',
+      'node',
+      '-e',
+      namespaceCommand,
+    ]);
+    const observerNamespace = compose(configuration, [
+      'exec',
+      '-T',
+      'telemetry-kernel-studio',
+      'node',
+      '-e',
+      namespaceCommand,
+    ]);
+    if (targetNamespace !== observerNamespace)
+      throw new Error(
+        'Native child control did not share the Studio network namespace.',
+      );
     const before = kernelTelemetryControlCount(
       kernelTelemetryLogs(configuration, 'studio'),
     );
-    compose(
-      configuration,
-      [
-        'exec',
-        '-T',
-        '-e',
-        'NODE_OPTIONS=',
-        'telemetry-kernel-studio',
-        '/usr/lib/apt/apt-helper',
-        'download-file',
-        'http://telemetry-control-data:8443/native-child-control',
-        '/tmp/native-child-control',
-      ],
-      { allowFailure: true },
-    );
+    compose(configuration, [
+      'exec',
+      '-T',
+      '-e',
+      'NODE_OPTIONS=',
+      'telemetry-kernel-studio',
+      '/usr/lib/apt/apt-helper',
+      'download-file',
+      'http://telemetry-control-data:8443/native-child-control',
+      `/tmp/native-child-control-${Date.now()}`,
+    ]);
     const deadline = Date.now() + 5_000;
     while (Date.now() < deadline) {
       const logs = kernelTelemetryLogs(configuration, 'studio');
