@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
   // UploadThing's ingest protocol is not a plain presigned-PUT; the client
   // must use the UploadThing SDK's uploader directly, which hits
-  // /api/uploadthing. We only generate presigned URLs for S3.
+  // /api/public/uploadthing. We only generate presigned URLs for S3.
   if (provider === 'uploadthing') {
     return Response.json({ provider: 'uploadthing' });
   }
