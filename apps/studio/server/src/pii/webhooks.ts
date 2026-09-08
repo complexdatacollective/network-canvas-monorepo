@@ -168,7 +168,7 @@ export async function readWebhookSecret(
             const current = await recheck(client);
             if (authority.kind === 'delivery') {
               const lease = await client.query(
-                `SELECT id FROM webhook_deliveries WHERE id = $1 AND team_id = $2 AND subscription_id = $3 AND lease_owner = $4 AND lease_expires_at > statement_timestamp() AND delivered_at IS NULL AND failed_at IS NULL FOR UPDATE`,
+                `SELECT id FROM webhook_deliveries WHERE id = $1 AND team_id = $2 AND subscription_id = $3 AND lease_owner = $4 AND lease_expires_at > statement_timestamp() AND delivered_at IS NULL AND failed_at IS NULL AND uncertain_at IS NULL FOR UPDATE`,
                 [
                   authority.deliveryId,
                   teamId,

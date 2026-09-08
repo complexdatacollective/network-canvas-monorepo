@@ -611,3 +611,30 @@ export const AuditEventDetailSchema = AuditEventSummarySchema.extend({
   details: z.record(z.string(), z.unknown()),
 });
 export type AuditEventDetail = z.infer<typeof AuditEventDetailSchema>;
+
+export const AuditAlertListInputSchema = TeamScopedSchema.extend({
+  cursor: DecimalSequenceSchema.optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+});
+
+export const AuditAlertListOutputSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.uuid(),
+      auditEventId: z.uuid(),
+      auditEventSequence: DecimalSequenceSchema,
+      eventType: z.string().min(1).max(128),
+      eventVersion: z.number().int().positive(),
+      alertPolicyKey: z.string().min(1).max(128),
+      createdAt: z.date(),
+      readAt: z.date().nullable(),
+    }),
+  ),
+  nextCursor: DecimalSequenceSchema.nullable(),
+});
+
+export const AuditAlertReadInputSchema = TeamScopedSchema.extend({
+  alertId: z.uuid(),
+});
+
+export const AuditAlertReadOutputSchema = z.object({ read: z.boolean() });

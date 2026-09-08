@@ -12,6 +12,11 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
     reason:
       'A personal presentation preference has no tenant and no research-data significance; the audit log is study/team-scoped by design (2026-09-04 localization design §5.2, decision 7).',
   },
+  'audit.markAlertRead': {
+    kind: 'none',
+    reason:
+      'A personal acknowledgement changes only the addressed in-app delivery read marker; the immutable security event and delivery evidence remain unchanged.',
+  },
   'team.acceptInvitation': { kind: 'required' },
   'team.updateMemberRole': { kind: 'required' },
   'team.createInvitation': { kind: 'required' },

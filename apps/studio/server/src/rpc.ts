@@ -6,6 +6,10 @@ import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { updateUserLocale } from './account/commands.ts';
 import {
+  listInAppAuditAlerts,
+  markInAppAuditAlertRead,
+} from './audit/alert-store.ts';
+import {
   appendAuditedEvent,
   auditActorEventContext,
   AuditCommandTeamNotFoundError,
@@ -833,6 +837,43 @@ export function createRpcRouter(
           );
           return renderAuditFilterOptions(facets);
         }),
+      alerts: os.audit.alerts
+        .use(requireTeam)
+        .handler(async ({ context, input }) => {
+          const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
+          const items = await runNoAuditTenantTransaction(
+            context.tenantDb,
+            'audit.alerts',
+            (client) =>
+              listInAppAuditAlerts(client, {
+                teamId: input.teamId,
+                userId: context.principal.userId,
+                beforeSequence: input.cursor,
+                limit,
+              }),
+          );
+          return {
+            items,
+            nextCursor:
+              items.length === limit
+                ? (items.at(-1)?.auditEventSequence ?? null)
+                : null,
+          };
+        }),
+      markAlertRead: os.audit.markAlertRead
+        .use(requireTeam)
+        .handler(async ({ context, input }) => ({
+          read: await runNoAuditTenantTransaction(
+            context.tenantDb,
+            'audit.markAlertRead',
+            (client) =>
+              markInAppAuditAlertRead(client, {
+                id: input.alertId,
+                teamId: input.teamId,
+                userId: context.principal.userId,
+              }),
+          ),
+        })),
     },
   };
 }

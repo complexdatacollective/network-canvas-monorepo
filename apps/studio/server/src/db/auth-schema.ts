@@ -30,6 +30,10 @@ const user = pgTable(
     // supported registry — ever writes it. NULL means "no preference;
     // negotiate from the browser".
     locale: text('locale'),
+    // Recovery restores identities before current authorization can be
+    // reconciled. Disabled rows cannot create or resolve a session through
+    // any Better Auth sign-in mechanism.
+    recoveryDisabled: boolean('recovery_disabled').notNull().default(false),
     createdAt: timestamp('createdAt', { withTimezone: true })
       .notNull()
       .defaultNow(),

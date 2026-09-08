@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0006_audit_alert_delivery",
+  "previous": "0005_readonly_backups",
+  "fingerprint": "1d00245dd410e1a768f56c9e7632bccf18b660d29b752331c37a7d41ffbafddf",
+  "snapshotHash": "6d11e1ab7b6a3ffac0aed37a709525f93b671d83826edea169eca921590f5efb",
+  "sqlHash": "7da3d1e80d055a2d22c40097856678ae86a17b5add7f976c27577026c3a3c5e8",
+  "sidecarsHash": "e5ac0b028be2a4890bd3fc1ec6584f7174bde4066d2b0414229fe87e2ad1a268"
+}

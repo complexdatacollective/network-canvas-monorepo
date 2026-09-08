@@ -28,8 +28,19 @@ export type InvitationMailer = {
   }): Promise<void>;
 };
 
+export type AuditAlertMailer = {
+  sendAuditAlert(input: {
+    alertId: string;
+    email: string;
+    eventType: string;
+    messageId: string;
+    occurredAt: Date;
+  }): Promise<void>;
+};
+
 export type StudioMailer = MagicLinkMailer &
   InvitationMailer &
+  AuditAlertMailer &
   Pick<EmailSender, 'close'>;
 
 export function createConsoleMailer(): StudioMailer {
@@ -45,6 +56,12 @@ export function createConsoleMailer(): StudioMailer {
       console.log(`Invitation to ${teamLabel} for ${email}: ${invitationUrl}`);
       return Promise.resolve();
     },
+    sendAuditAlert: () => {
+      // Never print a recipient, event identifier, or event contents.
+      // oxlint-disable-next-line no-console -- the development delivery loop
+      console.log('Researcher audit alert accepted by console transport');
+      return Promise.resolve();
+    },
   };
 }
 
@@ -55,6 +72,28 @@ function createTransportMailer(
   const from = validateEmailAddress(configuredFrom);
   return {
     close: () => sender.close(),
+    sendAuditAlert: async ({
+      alertId,
+      email,
+      eventType,
+      messageId,
+      occurredAt,
+    }) => {
+      await sender.send({
+        from,
+        to: email,
+        messageId,
+        subject: 'Security activity in Network Canvas Studio',
+        text: [
+          'A security event requires review in Network Canvas Studio.',
+          '',
+          'Sign in to review your team activity log.',
+          `Event type: ${eventType}`,
+          `Recorded: ${occurredAt.toISOString()}`,
+          `Alert ID: ${alertId}`,
+        ].join('\n'),
+      });
+    },
     sendMagicLink: async ({ email, url }) => {
       await sender.send({
         from,
@@ -105,6 +144,10 @@ function createTransportMailer(
 function createRefusingMailer(): StudioMailer {
   return {
     close() {},
+    sendAuditAlert: () =>
+      Promise.reject(
+        new Error('No email transport is configured; cannot send audit alert'),
+      ),
     sendMagicLink: () =>
       Promise.reject(
         new Error(
