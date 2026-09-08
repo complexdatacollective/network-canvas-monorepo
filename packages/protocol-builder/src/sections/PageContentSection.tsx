@@ -5,12 +5,14 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+import type { StageType } from '@codaco/protocol-validation';
 
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import type { DialogArrayItemSelector } from '../form/arrayFields/DialogArrayField.tsx';
 import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
+import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 import {
   type RowEditorComponent,
@@ -338,7 +340,15 @@ export type PageContentSectionProps = Readonly<{
    */
   slots?: Readonly<{
     expand: DialogArrayItemSelector;
-    collapse: (value: unknown) => unknown;
+    /**
+     * Takes the stage the page is on as well as the row, because what a saved
+     * block may carry is not the same on every page: an Information stage's
+     * items hold a display size and a task's introduction items are a strict
+     * object without one. A family reading that from the row alone would
+     * restore a key the page it is on has no room for, and the researcher
+     * would meet a refusal naming something nowhere on their screen.
+     */
+    collapse: (value: unknown, stageType: StageType) => unknown;
   }>;
 }>;
 
@@ -361,6 +371,7 @@ export default function PageContentSection({
   slots,
 }: PageContentSectionProps) {
   const intl = useAppIntl();
+  const { identity } = useStageEditorForm();
   const words = WORDS[variant];
   const placement = PLACEMENT[variant];
   const { editorFieldsComponent, previewComponent } = useRowRenderers(
@@ -377,12 +388,13 @@ export default function PageContentSection({
   // inline does not hand the list a new normaliser — and so a new row
   // renderer — on every render.
   const collapse = slots?.collapse;
+  const stageType = identity.type;
   const normalize = useMemo(
     () =>
       collapse === undefined
         ? withoutAbsentValues
-        : (value: unknown) => withoutAbsentValues(collapse(value)),
-    [collapse],
+        : (value: unknown) => withoutAbsentValues(collapse(value, stageType)),
+    [collapse, stageType],
   );
 
   const capability = useMemo<SectionCapability | undefined>(
