@@ -89,6 +89,30 @@ invalidates the previous ones.
 
 </TipBox>
 
+### Requiring two-factor authentication for everyone
+
+If your institution requires multi-factor authentication for every administrator, set the
+`REQUIRE_TWO_FACTOR` environment variable to `true` in your deployment's `.env` file (see the
+[environment variables](/en/collect-data/fresco/advanced#environment-variables) reference).
+This is an environment variable rather than a dashboard setting on purpose: every Fresco
+account is an equal administrator, so a requirement that could be switched off from the
+dashboard could be switched off by any of them. The **User Management** card shows whether
+it is in force. While it is:
+
+- An account that signs in with a password but has no two-factor authentication is asked to
+  set it up immediately after signing in, before it can reach the dashboard. Setup works
+  exactly as described above, including the recovery codes. On a new deployment, the first
+  administrator is asked as soon as they finish the setup wizard.
+- Two-factor authentication cannot be turned off on a password-mode account. Another
+  administrator can still **Reset Auth** for a locked-out colleague (see
+  [Recovering access](#recovering-access)); that account sets up two-factor authentication
+  again the next time it signs in.
+
+Passkey-mode accounts are not affected: a passkey replaces the password entirely, and Fresco
+treats it as satisfying the requirement. Fresco does not currently insist that the passkey's
+device verify the person using it (with a PIN or biometric), so if your policy requires two
+separate factors for every account, keep every account in password mode.
+
 ## Passkeys
 
 A passkey lets you sign in using your device's biometrics (Touch ID, Windows Hello) or a

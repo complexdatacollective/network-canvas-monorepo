@@ -1,9 +1,10 @@
-import { useId } from 'react';
+import { createElement, useId } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import { useEnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
@@ -57,16 +58,22 @@ export type StageNameSectionProps = Readonly<{
   /** A stage being created starts with its name focused. */
   autoFocus?: boolean;
   /**
-   * Propose a name for a stage being created, derived from what it is being
-   * configured to do, until the researcher names it themselves.
+   * What a proposed name is derived from, and whether to propose one at all.
    *
-   * Present means propose, so an editor opening an existing stage simply
-   * leaves it out: an existing stage's name is already the researcher's.
-   * `panels` is supplied by the editor rather than read from the draft,
-   * because a name generator's panels are held in the form as per-index
-   * leaves that only the section writing them can assemble.
+   * Whether to propose is the session's answer by default — only a stage being
+   * created is named automatically, and an existing stage's name is already the
+   * researcher's — so an editor that serves both cases leaves `propose` out and
+   * gets the right behaviour in each. `propose` overrides that answer, in
+   * either direction, for an editor that has a reason to.
+   *
+   * `panels` is supplied by the editor rather than read from the draft, because
+   * a name generator's panels are held in the form as per-index leaves that
+   * only the section writing them can assemble.
    */
-  autoName?: Readonly<{ panels?: readonly AutoStageNamePanel[] }>;
+  autoName?: Readonly<{
+    propose?: boolean;
+    panels?: readonly AutoStageNamePanel[];
+  }>;
 }>;
 
 /**
@@ -82,17 +89,22 @@ export default function StageNameSection({
   autoFocus = false,
   autoName,
 }: StageNameSectionProps) {
-  const { identity } = useStageEditorForm();
+  const { identity, creation } = useStageEditorForm();
   const intl = useAppIntl();
   // One descriptor read twice: the section's name in the outline and the
   // field's own label are the same words, and a translator moves them once.
   const stageNameLabel = intl.formatMessage(messages.stageName);
   const { sectionId } = useOutlineSection(stageNameLabel);
   const headingId = useId();
+  // AT the level the shell states rather than one below it: this section wears
+  // the page's heading, so it IS the heading everything else in the editor
+  // counts down from. Absent a shell — a section rendered on its own — an `h2`
+  // is what a page heading is.
+  const headingLevel = useEnclosingHeadingLevel() ?? 'h2';
   const interfaceName =
     interfaceDisplayName(identity.type, intl) ?? identity.type;
   const { onLabelBlur } = useAutoStageName({
-    isNewStage: autoName !== undefined,
+    isNewStage: autoName?.propose ?? creation !== undefined,
     panels: autoName?.panels,
   });
 
@@ -105,9 +117,19 @@ export default function StageNameSection({
       // under the position line, as one block of heading.
       className="flex min-w-0 flex-col justify-center pt-7 outline-none *:data-[field-name=label]:m-0"
     >
-      <span id={headingId} className="sr-only">
-        {stageNameLabel}
-      </span>
+      {/*
+        A real heading rather than a label: the visible one is the name field
+        itself, which is a control and cannot be a heading, so without this the
+        stage editor has no heading at the rung every section below counts
+        from — nothing for a reader navigating by headings to arrive at, and a
+        level the shell states that nothing in the document occupies. Visually
+        hidden, so the hero input is still the only stage title on screen.
+      */}
+      {createElement(
+        headingLevel,
+        { id: headingId, className: 'sr-only' },
+        stageNameLabel,
+      )}
       {position && (
         <Paragraph
           className={headingVariants({

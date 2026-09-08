@@ -885,6 +885,12 @@ jobs:
   # contain the open release PR's head?), never by the ref suffix. A later
   # entry that lands a changeset on top of the release PR fails here, drops
   # out of the queue, and lets the release PR merge alone.
+  #
+  # The same tree is where the publish run's other precondition is decided:
+  # the lane publishes through npm trusted publishing, which cannot create a
+  # package, so a merge whose publish would need one (a package no one has
+  # published by hand yet — @codaco/app-i18n on 2026-09-08) is refused here
+  # rather than failing halfway through `changeset publish` on main.
   version-packages-freshness:
     if: >-
       github.event_name == 'merge_group'
@@ -941,6 +947,9 @@ jobs:
       - name: Refuse a release PR that leaves normal-lane changesets behind
         if: steps.head.outputs.release_pr == 'true'
         run: node scripts/check-version-packages-freshness.mjs
+      - name: Refuse a release PR whose publish needs a package npm does not know
+        if: steps.head.outputs.release_pr == 'true'
+        run: node scripts/check-first-publications.mjs
 
   quality:
     needs:
@@ -2351,6 +2360,18 @@ jobs:
         # the Changesets CLI to version alongside library packages.
         # Working-tree-only deletion; see the script header.
         run: node scripts/prune-ignored-changesets.mjs
+      - name: Refuse to publish a package npm does not know
+        # The lane publishes through npm trusted publishing, which can only
+        # publish to a package npm already knows; every first publication is
+        # made by hand (CLAUDE.md, "First publications are made by hand").
+        # `changeset publish` would try anyway — it publishes every public
+        # package whose current version npm lacks, changeset or not — and stop
+        # at the first failure with the rest of the release unpublished, so the
+        # publish path stops here first. While normal-lane changesets are
+        # pending the action only regenerates the release PR, and the check
+        # skips itself; version-packages-freshness refuses the merge that would
+        # reach the publish path.
+        run: node scripts/check-first-publications.mjs --publish-path-only
       - name: Confirm this run still describes main's tip
         # Push-to-main runs never cancel each other (see the top of the file)
         # and the build above takes minutes, so the run for an older main

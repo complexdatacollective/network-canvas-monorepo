@@ -3,7 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { upgradeWebSocket } from '@hono/node-server';
 import { COMMON_ERROR_STATUS_MAP, onError, ORPCError } from '@orpc/server';
 import { RPCHandler } from '@orpc/server/fetch';
-import { type Context, Hono } from 'hono';
+import type { Context } from 'hono';
 import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
@@ -20,7 +20,6 @@ import { requireSameOrigin, requireWsOrigin } from './auth/csrf.ts';
 import type { StudioMailer } from './auth/email.ts';
 import {
   createPrincipalMiddleware,
-  type PrincipalVariables,
   requirePrincipal,
 } from './auth/principal.ts';
 import type { AuthService } from './auth/service.ts';
@@ -31,12 +30,10 @@ import {
   logOperational,
   type OperationalLogger,
 } from './observability/logger.ts';
+import { createOperationalApp } from './observability/operational-app.ts';
 import { isProxyAddress } from './observability/proxy.ts';
-import { observeRequests } from './observability/requests.ts';
-import {
-  authorizeMetrics,
-  createObservability,
-} from './observability/runtime.ts';
+import { createObservability } from './observability/runtime.ts';
+import type { EncryptionKeys } from './pii/keys.ts';
 import { createRpcRouter } from './rpc.ts';
 import type { ServerTelemetry } from './telemetry.ts';
 
@@ -60,13 +57,14 @@ const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
 );
 
 type CreateAppDeps = {
+  encryptionKeys?: EncryptionKeys;
   telemetry?: ServerTelemetry;
   mailer?: StudioMailer;
   auth?: AuthService;
   assetStore?: AssetStore;
   observability?: ReturnType<typeof createObservability>;
   logger?: OperationalLogger;
-  /** True only for an entrypoint that starts a supported outbox dispatcher. */
+  /** A supported dispatcher is configured, locally or in a separate worker. */
   invitationDeliveryAvailable?: boolean;
   pool?: pg.Pool;
 };
@@ -83,19 +81,13 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       'Managed Studio HTTP with a database requires STUDIO_MANAGED_INGRESS_SECRET and TRUSTED_PROXIES',
     );
   }
-  const app = new Hono<PrincipalVariables>();
-
-  // Unexpected failures on the machine surfaces (e.g. the database down
-  // during a session lookup) must still leave as problem JSON, not Hono's
-  // text/plain default.
-  app.onError((error, c) => {
-    deps.telemetry?.capture('server_request', error);
-    return c.json({ title: 'Internal Server Error', status: 500 }, 500, {
-      'Content-Type': 'application/problem+json',
-    });
-  });
   const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
-  const auth = deps.auth ?? createAuthService(env, pool, deps.mailer);
+  const auth =
+    deps.auth ??
+    createAuthService(env, pool, {
+      encryptionKeys: deps.encryptionKeys,
+      mailer: deps.mailer,
+    });
   const assetStore =
     deps.assetStore ?? (env.s3 ? createAssetStore(env.s3) : undefined);
   const observability =
@@ -107,36 +99,35 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       allowedLogins: env.databaseAllowedLogins,
       administrativeLogins: env.databaseAdministrativeLogins,
     });
-  app.use(
-    '*',
-    observeRequests({
-      trustedProxies: env.trustedProxies,
-      logger: deps.logger,
-      record: observability.metrics.request,
-    }),
+  const expectedProof = env.managedIngressSecret
+    ? Buffer.from(env.managedIngressSecret)
+    : undefined;
+  const app = createOperationalApp(
+    env,
+    observability,
+    deps.logger,
+    (error) => deps.telemetry?.capture('server_request', error),
+    expectedProof
+      ? async (c, next) => {
+          // Only exact liveness and independently authenticated metrics bypass
+          // ingress proof. Install this gate before operational route handlers.
+          if (c.req.path === '/healthz' || c.req.path === '/metrics')
+            return next();
+          const supplied = c.req.header(MANAGED_INGRESS_PROOF_HEADER);
+          const receivedProof = supplied ? Buffer.from(supplied) : undefined;
+          if (
+            !receivedProof ||
+            receivedProof.length !== expectedProof.length ||
+            !timingSafeEqual(receivedProof, expectedProof)
+          ) {
+            return c.json({ title: 'Not Found', status: 404 }, 404, {
+              'Cache-Control': 'no-store',
+            });
+          }
+          await next();
+        }
+      : undefined,
   );
-  if (env.managedIngressSecret) {
-    const expectedProof = Buffer.from(env.managedIngressSecret);
-    app.use('*', async (c, next) => {
-      // Fly's liveness probe cannot read a runtime secret into a configured
-      // header. Metrics has an independent constant-time bearer gate. These
-      // exact routes make no user identity decision and remain direct-origin
-      // operator surfaces; variants still require ingress proof.
-      if (c.req.path === '/healthz' || c.req.path === '/metrics') return next();
-      const supplied = c.req.header(MANAGED_INGRESS_PROOF_HEADER);
-      const receivedProof = supplied ? Buffer.from(supplied) : undefined;
-      if (
-        !receivedProof ||
-        receivedProof.length !== expectedProof.length ||
-        !timingSafeEqual(receivedProof, expectedProof)
-      ) {
-        return c.json({ title: 'Not Found', status: 404 }, 404, {
-          'Cache-Control': 'no-store',
-        });
-      }
-      await next();
-    });
-  }
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
     enabled,
@@ -154,23 +145,6 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   // Which topology this deployment is. The client reads it from `status`;
   // src/client-assets.ts enforces the same classification at the HTTP layer.
   const deployment = getDeploymentStatus(env.deploymentMode);
-
-  app.get('/healthz', (c) => c.json({ status: 'ok' }));
-  app.get('/readyz', async (c) => {
-    const readiness = await observability.readiness.check();
-    return c.json(readiness, readiness.status === 'ready' ? 200 : 503, {
-      'Cache-Control': 'no-store',
-    });
-  });
-  app.get('/metrics', async (c) => {
-    c.header('Cache-Control', 'no-store');
-    if (!env.metricsToken)
-      return c.json({ title: 'Not Found', status: 404 }, 404);
-    if (!authorizeMetrics(c.req.header('authorization'), env.metricsToken))
-      return c.json({ title: 'Not Found', status: 404 }, 404);
-    const metrics = await observability.metrics.scrape();
-    return c.body(metrics.body, 200, { 'Content-Type': metrics.contentType });
-  });
 
   // Registered before the problem-JSON catch-alls below, which would
   // otherwise swallow the /api prefix.
@@ -223,6 +197,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     createRpcRouter(authCaps, {
       auth,
       deployment,
+      bootstrapToken: env.bootstrapToken,
       telemetry: env.telemetry,
       invitationDeliveryAvailable: Boolean(
         deps.invitationDeliveryAvailable && authCaps.magicLink,

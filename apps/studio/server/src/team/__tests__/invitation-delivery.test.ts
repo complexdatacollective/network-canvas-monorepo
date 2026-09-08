@@ -31,6 +31,7 @@ import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createPool } from '../../db/pool.ts';
 import { DEV } from '../../env/catalogue.ts';
 import type { OutboxLifecycleEvent } from '../../outbox/instrumentation.ts';
+import { encryptionEnvironment } from '../../pii/__tests__/fixtures.ts';
 import { cancelTeamInvitation } from '../commands.ts';
 import {
   InvitationDeliveryDispatcher,
@@ -995,6 +996,7 @@ describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
             HOST: '127.0.0.1',
             PORT: '0',
             DATABASE_URL: databaseUrl,
+            ...encryptionEnvironment(),
             STUDIO_MAINTENANCE_DATABASE_URL: maintenanceUrl.href,
             STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify([
               identity.login,

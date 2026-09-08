@@ -11,11 +11,53 @@ inline as parentheticals (e.g. "Claude Code: invoke X").
 
 ## Committing and opening PRs
 
-When a change is complete and verified — types, lint, `knip`, and the relevant
-tests pass — you may commit it and open a pull request **without asking first**.
-Always work on a feature branch; never commit directly to `main`. Still confirm
-before other outward-facing or hard-to-reverse actions (merging, force-pushing,
-deleting branches, publishing releases).
+When a change is complete and verified — the automatic gates below are clean
+and the relevant tests pass — you may commit it and open a pull request
+**without asking first**. Always work on a feature branch; never commit
+directly to `main`. Still confirm before other outward-facing or
+hard-to-reverse actions (merging, force-pushing, deleting branches, publishing
+releases).
+
+### Automatic quality gates — do not run them by hand
+
+Formatting, lint, typecheck, and `knip` run for you through agent hooks
+(`scripts/agent-hooks/`, wired in `.claude/settings.json` for Claude Code and
+`.codex/hooks.json` for Codex) and git hooks. Never run whole-tree
+`pnpm lint`, `pnpm typecheck`, `pnpm knip`, bare `oxlint`/`oxfmt`, or
+`git commit --no-verify`: they take minutes, duplicate CI, and a hook refuses
+them.
+
+- **On every file edit** (including files written through shell commands)
+  the file is formatted (`oxfmt`) and lint-fixed (`oxlint --fix`); remaining
+  lint errors and any reformatting are reported back to you. Re-read a reformatted file before an edit that depends on its
+  exact surrounding text.
+- **When you end a turn** (main agent and subagents alike) the packages you
+  changed and their dependents are typechecked through turbo (cached, so
+  unchanged packages cost nothing; a turn that changed nothing is skipped);
+  failures come back as an instruction to fix them before finishing.
+- **On commit** `lint-staged` formats and lints the staged files and blocks
+  the commit on lint errors.
+- **On push** `knip` runs once and blocks the push on unused files, exports,
+  or dependencies.
+- **On demand** `pnpm agent:check` runs the same scoped typecheck, `knip`,
+  and a lint/format check of the changed files in seconds. Use it instead of
+  the whole-tree scripts when you want a check before you stop or push.
+- **Escape hatch**: prefix a command with `AGENT_GATES=1` when a whole-tree
+  run is genuinely required (for example after changing lint or TypeScript
+  configuration).
+- **Tests are not gated**; running one after a change is the normal loop.
+  Choose the smallest scope that answers the question: a named test file
+  first; then `pnpm agent:test`, which runs only the tests whose import graph
+  touches the files changed on the branch (vitest `--changed`, so a test that
+  reads a fixture through the filesystem rather than importing it is not
+  selected; add `--dependents` to also run the packages that consume the
+  change); then one package's `test` script. Leave the whole-tree
+  `pnpm test` to CI.
+
+CI remains the authority. The hooks exist so you get the same feedback locally
+without spending minutes on it. In a Claude Code worktree the commit and push
+gates come from the main checkout's `.husky/` scripts, so they apply once
+`main` carries them and the main checkout is updated.
 
 ## Workspace mechanics
 
@@ -44,6 +86,23 @@ Rules that keep this working:
   fresco-ui's 140-entry map pair is generated: after adding/removing a subpath
   in `exports`, run `pnpm --filter @codaco/fresco-ui sync-exports`; a vitest
   guard fails if the maps drift.
+- **First publications are made by hand.** The release job publishes through
+  npm trusted publishing (OIDC), which can only publish to a package npm
+  already knows — a new package's first version never goes out through the
+  lane. `changeset publish` publishes every public package whose current
+  version is absent from npm, changeset or not, so do not add a changeset for
+  a package that has never been published: it moves the version away from the
+  one `.github/npm-first-publications.json` approves, and the Version
+  Packages PR then fails the npm version guard. Instead, from a clean checkout
+  of the merged commit, with an npm token that may create packages in the
+  scope, run
+  `pnpm --filter <pkg> build && node scripts/verify-publish-exports.mjs <pkg> && pnpm --filter <pkg> publish --access public`,
+  push the `<pkg>@<version>` tag the lane would have created, and add the
+  package's trusted publisher on npmjs.com (package Settings → Trusted
+  publishing: repository `complexdatacollective/network-canvas-monorepo`,
+  workflow `ci-and-release.yml`, environment `npm-publish`).
+  `scripts/check-first-publications.mjs` refuses the Version Packages merge
+  and the release job's publish path until npm knows every lane package.
 - **No `~/` path aliases in package source.** Consumers typecheck package
   source inside their own TS program, where the consumer's `paths` win — an
   alias inside a consumed package resolves against the wrong root. Apps may

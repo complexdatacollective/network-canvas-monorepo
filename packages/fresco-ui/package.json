@@ -176,6 +176,7 @@
     "./storybook-support/awaitPassiveEffects": "./src/storybook-support/awaitPassiveEffects.ts",
     "./styles.css": "./src/styles.css",
     "./styles/controlVariants": "./src/styles/controlVariants.ts",
+    "./typography/EnclosingHeadingLevel": "./src/typography/EnclosingHeadingLevel.tsx",
     "./typography/Heading": "./src/typography/Heading.tsx",
     "./typography/PageHeader": "./src/typography/PageHeader.tsx",
     "./typography/Paragraph": "./src/typography/Paragraph.tsx",
@@ -824,6 +825,10 @@
       "./styles/controlVariants": {
         "types": "./dist/styles/controlVariants.d.ts",
         "default": "./dist/styles/controlVariants.js"
+      },
+      "./typography/EnclosingHeadingLevel": {
+        "types": "./dist/typography/EnclosingHeadingLevel.d.ts",
+        "default": "./dist/typography/EnclosingHeadingLevel.js"
       },
       "./typography/Heading": {
         "types": "./dist/typography/Heading.d.ts",

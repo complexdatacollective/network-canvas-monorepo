@@ -142,8 +142,15 @@ const makeCrossClassPicks =
  *
  * A factory rather than a constant because the cross-class rule has to close
  * over the caller's committed picks, the stage's draft form roles and the
- * saved role map. Memoize the result on those inputs: the object is a field
- * prop, and a fresh identity per render is churn.
+ * saved role map. Memoize the result on those inputs, so a field prop stops
+ * changing while nothing about the rules has.
+ *
+ * Not because a fresh identity would re-register the rule. `useField` keys the
+ * registered validation on a `JSON.stringify` of the validation props, which
+ * drops this object's function-valued `schema` entirely; the registered
+ * function reads the props when validation RUNS instead, through a ref, so the
+ * rule judges by the picks the field currently holds without the registration
+ * ever moving. See the same note on `makeMultiSelectValidation`.
  */
 export const makeAssignAttributesValidation = (
   context: AssignAttributesCrossClassContext,
