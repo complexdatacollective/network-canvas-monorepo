@@ -20,9 +20,17 @@
     {
       "name": "Fly.io",
       "role": "Managed Studio and template-registry compute",
-      "dataCategories": ["request data", "runtime secrets", "operational logs"],
+      "dataCategories": [
+        "request data",
+        "runtime secrets",
+        "operational logs"
+      ],
       "status": "selected-candidate",
-      "sourcePaths": ["main.tf", "candidate-sizing.json", "README.md"],
+      "sourcePaths": [
+        "main.tf",
+        "candidate-sizing.json",
+        "README.md"
+      ],
       "estateProvider": null
     },
     {
@@ -52,7 +60,11 @@
         "routing metadata"
       ],
       "status": "selected-candidate",
-      "sourcePaths": ["main.tf", "versions.tf", "README.md"],
+      "sourcePaths": [
+        "main.tf",
+        "versions.tf",
+        "README.md"
+      ],
       "estateProvider": "cloudflare"
     },
     {
@@ -90,7 +102,10 @@
     {
       "name": "New Relic",
       "role": "Operational logs, metrics, queries, and alerts",
-      "dataCategories": ["sanitized operational logs", "aggregate metrics"],
+      "dataCategories": [
+        "sanitized operational logs",
+        "aggregate metrics"
+      ],
       "status": "cost-candidate",
       "sourcePaths": [
         "README.md",
@@ -102,17 +117,28 @@
     {
       "name": "PostHog relay",
       "role": "Existing application telemetry and error reporting",
-      "dataCategories": ["redacted telemetry", "sanitized error reports"],
+      "dataCategories": [
+        "redacted telemetry",
+        "sanitized error reports"
+      ],
       "status": "existing-integration",
-      "sourcePaths": ["../../TELEMETRY.md"],
+      "sourcePaths": [
+        "../../TELEMETRY.md"
+      ],
       "estateProvider": null
     },
     {
       "name": "Netlify",
       "role": "Studio branch-preview client and function hosting; approved production domains networkcanvas.studio and staging studio.networkcanvas.dev",
-      "dataCategories": ["preview traffic", "build artifacts"],
+      "dataCategories": [
+        "preview traffic",
+        "build artifacts"
+      ],
       "status": "existing-preview-only",
-      "sourcePaths": ["../../netlify.toml", "../../README.md"],
+      "sourcePaths": [
+        "../../netlify.toml",
+        "../../README.md"
+      ],
       "estateProvider": null
     },
     {
@@ -123,7 +149,10 @@
         "transactional message content"
       ],
       "status": "application-integration",
-      "sourcePaths": ["../../README.md", "../../server/src/auth/email.ts"],
+      "sourcePaths": [
+        "../../README.md",
+        "../../server/src/auth/email.ts"
+      ],
       "estateProvider": null
     }
   ]
