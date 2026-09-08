@@ -626,11 +626,15 @@ export function readState(root) {
 // shell command) share this file, so every write is a locked
 // read-modify-write of the current contents rather than a snapshot taken
 // before a long-running check. The lock is an atomically created directory,
-// retried briefly and treated as stale after ten seconds.
+// treated as stale after ten seconds; a caller waits up to twelve seconds
+// and fails rather than writing unlocked.
 export function updateState(root, mutate) {
   const file = stateFile(root);
   const lock = `${file}.lock`;
-  const deadline = Date.now() + 2000;
+  // Longer than the stale-lock threshold, so a lock left by a dead process
+  // is reclaimed rather than timed out; on timeout the update fails instead
+  // of writing without the lock.
+  const deadline = Date.now() + 12_000;
   let locked = false;
   while (!locked) {
     try {
@@ -656,6 +660,9 @@ export function updateState(root, mutate) {
       }
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
     }
+  }
+  if (!locked) {
+    throw new Error(`agent-hooks: could not lock ${file} within 12 s`);
   }
   try {
     const state = readState(root);
@@ -902,17 +909,20 @@ function shellScriptArgument(tokens) {
 
 const INFO_FLAGS = /^(--version|-V|--help|-h|--rules|--print-config)$/;
 
-// Filter selectors that mean "every package under here" when run from the
-// repository root: `--filter .` there is the whole workspace.
-const ROOT_WIDE_SELECTORS = new Set([
-  '.',
-  './',
-  '{.}',
-  '*',
-  '**',
-  "'*'",
-  '"*"',
-]);
+// Does a pnpm `--filter` selector narrow the run to specific packages? A
+// package name, or a directory selector naming one directory, does; a glob
+// (`./**`, `*`), or `.`/`./`/`{.}` from the repository root (every package
+// under it), does not. Unknown shapes count as not scoping.
+export function filterSelectorScopes(selector, { atRoot }) {
+  const value = selector.replace(/^['"]|['"]$/g, '').replace(/^!/, '');
+  if (/[*?[\]]/.test(value)) return false;
+  const bare = value
+    .replace(/^\.\.\./, '')
+    .replace(/\.\.\.$/, '')
+    .replace(/^\{|\}$/g, '');
+  if (bare === '' || bare === '.' || bare === './') return !atRoot;
+  return /^(@?[\w.-]+(\/[\w.-]+)*|\.\/[\w.-]+(\/[\w.-]+)*\/?)$/.test(bare);
+}
 
 function bareTargets(args) {
   const targets = [];
@@ -1039,8 +1049,9 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
           }
           if (t === '--filter' || t === '-F') {
             if (
-              !ROOT_WIDE_SELECTORS.has(rest[i + 1] ?? '') ||
-              inPackage(effectiveDir)
+              filterSelectorScopes(rest[i + 1] ?? '', {
+                atRoot: !inPackage(effectiveDir),
+              })
             ) {
               scoped = true;
             }
@@ -1048,10 +1059,11 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
             continue;
           }
           if (t.startsWith('--filter=')) {
-            const selector = t
-              .slice('--filter='.length)
-              .replace(/^['"]|['"]$/g, '');
-            if (!ROOT_WIDE_SELECTORS.has(selector) || inPackage(effectiveDir)) {
+            if (
+              filterSelectorScopes(t.slice('--filter='.length), {
+                atRoot: !inPackage(effectiveDir),
+              })
+            ) {
               scoped = true;
             }
             continue;

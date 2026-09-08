@@ -19,6 +19,7 @@ import {
   classifyGateCommand,
   ensureKnipInputs,
   extractEditedFiles,
+  filterSelectorScopes,
   isKnipRelevant,
   knipCodegenInputs,
   knipCodegenOutputs,
@@ -899,7 +900,7 @@ test('updateState fails fast instead of spinning when the lock cannot be created
   chmodSync(dir, 0o700);
   rmSync(root, { recursive: true, force: true });
   assert.equal(result.signal, null, 'the process was killed by the timeout');
-  assert.ok(Date.now() - started < 8_000, 'returned within the deadline');
+  assert.ok(Date.now() - started < 20_000, 'returned within the deadline');
 });
 
 test('pnpm scope flags count only before the script name; -w returns to the root', () => {
@@ -1010,5 +1011,86 @@ test('root-wide filter selectors from the repository root are whole-tree runs', 
       options,
     ),
     null,
+  );
+});
+
+test('only single-package filter selectors scope a run from the repository root', () => {
+  for (const scoping of [
+    '@codaco/interview',
+    'fresco',
+    './packages/interview',
+    '{apps/architect}',
+    '...@codaco/interview',
+    '@codaco/interview...',
+  ]) {
+    assert.equal(
+      filterSelectorScopes(scoping, { atRoot: true }),
+      true,
+      scoping,
+    );
+  }
+  for (const rootWide of [
+    '.',
+    './',
+    '{.}',
+    '*',
+    '**',
+    './**',
+    './*/*',
+    './{apps,packages}/*',
+    "'*'",
+    '"./**"',
+  ]) {
+    assert.equal(
+      filterSelectorScopes(rootWide, { atRoot: true }),
+      false,
+      rootWide,
+    );
+  }
+  assert.equal(
+    filterSelectorScopes('.', { atRoot: false }),
+    true,
+    'inside a package `.` is that package',
+  );
+  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
+  assert.equal(
+    classifyGateCommand('pnpm --filter "./**" typecheck', {
+      root: '/repo',
+      packageDir,
+      cwd: '/repo',
+    })?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('pnpm --filter ./packages/interview typecheck', {
+      root: '/repo',
+      packageDir,
+      cwd: '/repo',
+    }),
+    null,
+  );
+});
+
+test('a held lock is waited out until it turns stale rather than written past', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-held-lock-'));
+  const dir = path.join(root, 'node_modules', '.cache', 'agent-hooks');
+  mkdirSync(path.join(dir, 'stop-state.json.lock'), { recursive: true });
+  const lib = path.join(repoRoot, 'scripts', 'agent-hooks', 'lib.mjs');
+  const started = Date.now();
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      `import('${lib}').then((m) => { try { m.updateState('${root}', (s) => { s.x = 1; }); console.log('wrote'); } catch (e) { console.log('threw'); } })`,
+    ],
+    { encoding: 'utf8', timeout: 30_000 },
+  );
+  const elapsed = Date.now() - started;
+  rmSync(root, { recursive: true, force: true });
+  assert.match(result.stdout, /wrote/);
+  assert.ok(
+    elapsed >= 9_000 && elapsed < 25_000,
+    `waited for the stale lock (${elapsed} ms)`,
   );
 });

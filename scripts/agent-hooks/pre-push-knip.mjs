@@ -22,6 +22,8 @@ import {
   mkdtempSync,
   readdirSync,
   symlinkSync,
+  readFileSync,
+  writeFileSync,
 } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -43,13 +45,27 @@ if (shas.length === 0) process.exit(0);
 
 // Reclaim checkouts a previous hook left behind (an interrupted push cannot
 // run its cleanup), then prune entries whose directories are already gone.
+// Each checkout records its owning process; only a checkout whose owner is
+// gone is reclaimed, so two overlapping pushes leave each other alone.
+function ownerAlive(dir) {
+  try {
+    const pid = Number(
+      readFileSync(path.join(dir, '.knip-push-owner'), 'utf8').trim(),
+    );
+    if (!Number.isInteger(pid) || pid <= 0) return false;
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === 'EPERM';
+  }
+}
 for (const line of (git(['worktree', 'list', '--porcelain'], root) ?? '').split(
   '\n',
 )) {
   const dir = line.startsWith('worktree ')
     ? line.slice('worktree '.length)
     : null;
-  if (dir && path.basename(dir).startsWith('knip-push-')) {
+  if (dir && path.basename(dir).startsWith('knip-push-') && !ownerAlive(dir)) {
     run('git', ['worktree', 'remove', '--force', dir], { cwd: root });
   }
 }
@@ -288,6 +304,7 @@ for (const sha of shas) {
     ok = false;
     continue;
   }
+  writeFileSync(path.join(temp, '.knip-push-owner'), String(process.pid));
   // Every exit path after a successful add removes the checkout.
   activeCheckout = temp;
   try {

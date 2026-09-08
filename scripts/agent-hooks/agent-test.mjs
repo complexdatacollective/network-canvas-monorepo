@@ -18,6 +18,7 @@ import {
   changedFiles,
   git,
   packagesForFiles,
+  previousPackageNames,
   resolveRepoRoot,
   run,
   workspacePackages,
@@ -94,6 +95,19 @@ function fail(message) {
   process.exit(2);
 }
 
+// A renamed or deleted workspace package is still declared by its old name
+// in its consumers' manifests; those consumers' tests are run directly.
+const renamedConsumers = [];
+for (const oldName of previousPackageNames(root, changed)) {
+  for (const [name, entry] of workspace) {
+    const deps = {
+      ...entry.manifest.dependencies,
+      ...entry.manifest.devDependencies,
+      ...entry.manifest.peerDependencies,
+    };
+    if (oldName in deps && hasTests(name)) renamedConsumers.push(name);
+  }
+}
 const testless = seeds.filter((name) => !hasTests(name));
 const required = dependentsOf(testless);
 const optional = dependentsOf(seeds).filter((name) => !required.includes(name));
@@ -101,9 +115,15 @@ const targets = [
   ...new Set([
     ...packages,
     ...required,
+    ...renamedConsumers,
     ...(includeDependents ? optional : []),
   ]),
 ].sort((a, b) => a.localeCompare(b));
+if (renamedConsumers.length > 0) {
+  console.log(
+    `agent:test: a workspace package was renamed or removed; running the tests of the packages that still declare it (${renamedConsumers.join(', ')}).`,
+  );
+}
 
 if (testless.length > 0 && required.length > 0) {
   console.log(

@@ -193,11 +193,10 @@ updateState(root, (current) => {
   delete current.lastClean;
 });
 
-// The same failure set blocks at most four stops in a row, whether those are
-// continuations or fresh turns, so a problem the agent cannot fix does not
-// hold every turn hostage; a changed failure set starts a new allowance.
-const madeProgress = previous?.signature !== sig;
-const block = attempts <= 4 && (madeProgress || !input.stop_hook_active);
+// The same failure set blocks at most four stops in a row, continuations
+// and fresh turns alike, so a problem the agent cannot fix does not hold
+// every turn hostage; a changed failure set starts a new allowance.
+const block = attempts <= 4;
 
 if (block) {
   emit({
