@@ -8,6 +8,7 @@ import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
 import type { StageEditorComponent } from '../../../stage-editor-contract.ts';
 import {
   renderStageEditor,
+  type RenderStageEditorOptions,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
 import { CategoricalBinStageEditor } from '../CategoricalBinStageEditor.tsx';
@@ -39,7 +40,10 @@ const editor: StageEditorComponent<'CategoricalBin'> = (props) => (
   />
 );
 
-const openFixture = () => ({ stageId: 'categorical-bin-1', editor });
+const openFixture = (): RenderStageEditorOptions<'CategoricalBin'> => ({
+  stageId: 'categorical-bin-1',
+  editor,
+});
 
 const prompts = (stage: SectionDoc): Record<string, unknown>[] =>
   Array.isArray(stage.prompts)

@@ -15,6 +15,23 @@ import * as variableEditorStories from '../codebook/components/VariableEditor.st
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import * as validationEditorStories from '../codebook/validation/CodebookVariableValidationEditor.stories.tsx';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
+import * as alterEdgeFormStories from '../editors/forms/AlterEdgeFormStageEditor.stories.tsx';
+import * as alterFormStories from '../editors/forms/AlterFormStageEditor.stories.tsx';
+import * as egoFormStories from '../editors/forms/EgoFormStageEditor.stories.tsx';
+import * as informationStories from '../editors/forms/InformationStageEditor.stories.tsx';
+import * as quickAddStories from '../editors/nameGenerators/NameGeneratorQuickAddStageEditor.stories.tsx';
+import * as rosterStories from '../editors/nameGenerators/NameGeneratorRosterStageEditor.stories.tsx';
+import * as nameGeneratorStories from '../editors/nameGenerators/NameGeneratorStageEditor.stories.tsx';
+import { nameGeneratorStageEditors } from '../editors/nameGeneratorStageEditors.ts';
+import { harnessEditor } from '../editors/network/__tests__/editorFixtures.tsx';
+import * as geospatialEditorStories from '../editors/network/GeospatialStageEditor.stories.tsx';
+import * as narrativeEditorStories from '../editors/network/NarrativeStageEditor.stories.tsx';
+import * as composerEditorStories from '../editors/network/NetworkComposerStageEditor.stories.tsx';
+import { NetworkComposerStageEditor } from '../editors/network/NetworkComposerStageEditor.tsx';
+import * as sociogramEditorStories from '../editors/network/SociogramStageEditor.stories.tsx';
+import * as anonymisationEditorStories from '../editors/pedigree/AnonymisationStageEditor.stories.tsx';
+import * as familyPedigreeEditorStories from '../editors/pedigree/FamilyPedigreeStageEditor.stories.tsx';
+import * as narrativePedigreeEditorStories from '../editors/pedigree/NarrativePedigreeStageEditor.stories.tsx';
 import * as shellStories from '../form/StageEditorShell.stories.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
@@ -27,6 +44,8 @@ import {
 import PageContentSection from '../sections/PageContentSection.tsx';
 import StageNameSection from '../sections/StageNameSection.tsx';
 import type { CompoundEditResult } from '../session.ts';
+import { loadFixtureStage } from '../testing/protocolFixture.ts';
+import { renderStageEditor } from '../testing/renderStageEditor.tsx';
 import * as storyHostStories from '../testing/StageEditorStoryHost.stories.tsx';
 import { StageEditorStoryHost } from '../testing/StageEditorStoryHost.tsx';
 
@@ -61,9 +80,17 @@ const personDocument = (
  * The whole document rather than the render container: a `Dialog` portals its
  * content out, so a ladder read from the container alone would be missing the
  * half of it under test.
+ *
+ * A `root` narrows it to one subtree, for a surface that is only ever met
+ * inside a page with a ladder of its own — a dialog opened over a stage
+ * editor, a section of one. What is asked of those is where their own headings
+ * sit relative to the heading they were opened under, and spelling out the
+ * whole page as well would make the answer change every time a section is
+ * added to an editor that is not what the test is about. A skip anywhere is
+ * still caught: `expectHeadingOrder` reads the whole document either way.
  */
-const headingLadder = (): string[] =>
-  Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).map(
+const headingLadder = (root: ParentNode = document): string[] =>
+  Array.from(root.querySelectorAll('h1, h2, h3, h4, h5, h6')).map(
     (heading) =>
       `${heading.tagName.toLowerCase()}: ${heading.textContent?.trim() ?? ''}`,
   );
@@ -265,6 +292,209 @@ describe('the stage editor shell', () => {
   });
 });
 
+describe('a row of a stage editor list, opened in its dialog', () => {
+  /** The one editor that offers both of the lists asked about here. */
+  const openNameGenerator = () =>
+    renderStageEditor({
+      stageId: 'name-generator-1',
+      registry: nameGeneratorStageEditors,
+    });
+
+  /**
+   * The dialog is a page of its own: its title is the heading above the
+   * sections that configure the row, and those sections are one below it —
+   * however deep the card behind the overlay happens to sit.
+   *
+   * That depth is exactly what a section used to count from. `DialogPopup`
+   * restarts the Surface ladder inside the overlay, so a first-level section
+   * in one of these dialogs was an `h4` under the dialog's `h2` title: a skip
+   * axe reports, and for a reader navigating by headings a subsection of
+   * something that is not there. Both lists are reached only by opening a
+   * row, so no story of the editor renders either of them.
+   */
+  it('puts a panel row’s sections under the dialog title', async () => {
+    const harness = openNameGenerator();
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Side panels' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new panel' }),
+    );
+
+    expect(headingLadder(await screen.findByRole('dialog'))).toEqual([
+      'h2: Create panel',
+      'h3: Panel',
+      'h3: Panel filter',
+    ]);
+    await expectHeadingOrder(3);
+  });
+
+  it('puts a prompt row’s sections under the dialog title', async () => {
+    const harness = openNameGenerator();
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new prompt' }),
+    );
+
+    expect(headingLadder(await screen.findByRole('dialog'))).toEqual([
+      'h2: Create prompt',
+      'h3: Participant prompt',
+      'h3: Additional attributes',
+    ]);
+    await expectHeadingOrder(3);
+  });
+});
+
+describe('a section that speaks once a data file has been read', () => {
+  /**
+   * The roster editor reads the file its stage points at and then says what
+   * the file holds, in an alert raised inside the section that chose it — so
+   * that alert is one below that section's own heading rather than beside it.
+   *
+   * Asserted here rather than left to the story sweep below, which judges each
+   * story as it commits: this alert arrives a beat later, and a sweep that
+   * waited for it by a timer would be judging whatever had happened to render
+   * by then. Waited for by the words it puts on screen instead, so the rung it
+   * lands on is really the one under test.
+   */
+  it('puts what a data file holds one below the section that chose it', async () => {
+    renderStageEditor({
+      stageId: 'name-generator-roster-1',
+      registry: nameGeneratorStageEditors,
+    });
+
+    await screen.findByText(
+      'The people in it carry these attributes: age and name.',
+    );
+
+    expect(
+      headingLadder(screen.getByRole('region', { name: 'Roster source' })),
+    ).toEqual([
+      'h3: Roster source',
+      'h4: Roster',
+      'h4: What this data file holds',
+    ]);
+    await expectHeadingOrder(3);
+  });
+});
+
+describe('a heading a section writes inside itself', () => {
+  /**
+   * A section can hold another section, and the prose and group headings
+   * inside one belong under whichever of them they sit in. Nothing on a story
+   * proves that: at the depth the stories open at, a heading written as a
+   * fixed `h4` happens to land on the rung the ladder wanted, and axe's
+   * `heading-order` only refuses a SKIP — a heading written as a peer of the
+   * section containing it reads to anyone navigating by headings as though
+   * that section had ended, and passes the rule.
+   *
+   * So the levels are read out here, from the two arrangements that move
+   * them: a section nested inside another one, and a host that mounts an
+   * editor under a heading of its own.
+   */
+  it('counts a connection type’s form from the section that lists them', async () => {
+    const { type, fields } = loadFixtureStage('network-composer-1');
+
+    renderStageEditor({
+      stage: {
+        id: 'network-composer-edges',
+        type,
+        // The fixture ticks no connection type, and the forms section only
+        // exists once one is ticked — so the nesting under test is not on
+        // screen at all without this.
+        fields: {
+          ...fields,
+          edges: [
+            {
+              id: 'composer-edge-1',
+              subject: { entity: 'edge', type: 'knows' },
+            },
+          ],
+        },
+      },
+      editor: harnessEditor(NetworkComposerStageEditor, 'NetworkComposer'),
+    });
+
+    expect(headingLadder()).toEqual([
+      'h2: Stage name',
+      'h3: Node type',
+      'h3: Adding and arranging nodes',
+      'h4: Node attributes',
+      'h3: Connections',
+      'h4: Connection attributes',
+      'h5: Attributes for "knows" connections',
+      'h3: Background',
+      'h3: Skip logic',
+      'h3: Interviewer guidance',
+    ]);
+    await expectHeadingOrder(10);
+  });
+
+  /**
+   * The whole ladder moves together, the prose headings written inside a
+   * section included. Fixed at `h4`, the two explanations below became peers
+   * of the section explaining them the moment a host stated a heading of its
+   * own — and a section is exactly what a host of this editor is.
+   */
+  it('moves prose inside a section down with the editor around it', async () => {
+    const { Editing } = composeStories(narrativePedigreeEditorStories);
+
+    render(
+      <div>
+        <h2>Prompt configuration</h2>
+        <EnclosingHeadingLevel level="h2">
+          <Editing />
+        </EnclosingHeadingLevel>
+      </div>,
+    );
+
+    expect(headingLadder()).toEqual([
+      'h2: Prompt configuration',
+      'h3: Stage name',
+      'h4: Pedigree source',
+      'h4: Diseases',
+      'h4: At-risk statuses',
+      'h5: How it is worked out',
+      'h5: Why this is off by default',
+      'h4: Skip logic',
+      'h4: Interviewer guidance',
+    ]);
+    await expectHeadingOrder(9);
+  });
+
+  /**
+   * The same for a heading a section writes once per thing it lists. Read
+   * under a host heading for the same reason: at the stories' own depth an
+   * `h4` written by hand is indistinguishable from one counted.
+   */
+  it('moves a per-entry heading down with the editor around it', async () => {
+    const { Editing } = composeStories(anonymisationEditorStories);
+
+    render(
+      <div>
+        <h2>Prompt configuration</h2>
+        <EnclosingHeadingLevel level="h2">
+          <Editing />
+        </EnclosingHeadingLevel>
+      </div>,
+    );
+
+    expect(headingLadder()).toEqual([
+      'h2: Prompt configuration',
+      'h3: Stage name',
+      'h4: Passphrase explanation',
+      'h4: Passphrase rules',
+      'h4: Encrypted attributes',
+      'h5: family member',
+      'h5: person',
+      'h4: Skip logic',
+      'h4: Interviewer guidance',
+    ]);
+    await expectHeadingOrder(9);
+  });
+});
+
 /**
  * The stories are the surfaces a reviewer looks at and the ones Chromatic and
  * the Storybook a11y addon replay, so the rule is run over them here too —
@@ -295,6 +525,43 @@ describe('every story of a surface that writes its own heading', () => {
     ),
     ...from('StageEditorShell', composeStories(shellStories)),
     ...from('StageEditorStoryHost', composeStories(storyHostStories)),
+    // Every stage editor that has landed. An editor writes no heading of its
+    // own — it composes the shared name heading and shared sections — so what
+    // is asked of each is that the sections IT chose, and the alerts they
+    // raise, land where the composition says they do.
+    ...from('AlterEdgeFormStageEditor', composeStories(alterEdgeFormStories)),
+    ...from('AlterFormStageEditor', composeStories(alterFormStories)),
+    ...from('EgoFormStageEditor', composeStories(egoFormStories)),
+    ...from('InformationStageEditor', composeStories(informationStories)),
+    ...from('NameGeneratorStageEditor', composeStories(nameGeneratorStories)),
+    ...from(
+      'NameGeneratorQuickAddStageEditor',
+      composeStories(quickAddStories),
+    ),
+    ...from('NameGeneratorRosterStageEditor', composeStories(rosterStories)),
+    // The named editors, which are where a section actually sits inside
+    // another one: a heading written at a fixed level is right at the depth
+    // its author happened to be looking at and wrong one rung down, and only
+    // a whole editor puts both depths on screen at once.
+    ...from('SociogramStageEditor', composeStories(sociogramEditorStories)),
+    ...from(
+      'NetworkComposerStageEditor',
+      composeStories(composerEditorStories),
+    ),
+    ...from('NarrativeStageEditor', composeStories(narrativeEditorStories)),
+    ...from('GeospatialStageEditor', composeStories(geospatialEditorStories)),
+    ...from(
+      'FamilyPedigreeStageEditor',
+      composeStories(familyPedigreeEditorStories),
+    ),
+    ...from(
+      'NarrativePedigreeStageEditor',
+      composeStories(narrativePedigreeEditorStories),
+    ),
+    ...from(
+      'AnonymisationStageEditor',
+      composeStories(anonymisationEditorStories),
+    ),
   ];
 
   it.each(stories)('has no heading skip in %s', async (_name, Story) => {
