@@ -2400,3 +2400,133 @@ describe('an attribute id that collides with the create option', () => {
     expect(Object.keys(personVariables(harness))).toHaveLength(before);
   });
 });
+
+/**
+ * A row whose attribute stops being renderable while the researcher is in it.
+ *
+ * `COLLECTS_A_POSITION` above is the same rule met on arrival — a protocol
+ * that already held an uncollectable attribute. These are the two ways a row
+ * can arrive at it from a state that was fine: a collaborator deleting the
+ * attribute, and a collaborator changing what kind of answer it holds. Both
+ * leave the picker naming an id and no control to offer for it, which is where
+ * a refusal used to be filed against `_component` — a field with nothing
+ * mounted, no error region, and a dialog that would not close.
+ */
+describe('an attribute that stops being collectable under an open row', () => {
+  /** The person type as it is now, minus one attribute. */
+  const deleteFromTheCodebook = (
+    harness: ReturnType<typeof renderStageEditor>,
+    variableId: string,
+  ) => {
+    const { [variableId]: _removed, ...variables } = personVariables(harness);
+    harness.receiveCodebookUpdate({
+      node: { person: { ...personDocument(harness), variables } },
+    });
+  };
+
+  const expectTheSaveWithheld = async (dialog: ReturnType<typeof within>) => {
+    expect(await dialog.findByText(NO_WAY_TO_ANSWER)).toBeInTheDocument();
+    const save = dialog.getByRole('button', { name: 'Save' });
+    expect(save).toHaveAttribute('aria-disabled', 'true');
+    expect(save).toHaveAccessibleDescription(
+      /This field’s attribute gives the participant no way to answer\./,
+    );
+  };
+
+  it('says so when a collaborator deletes it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    // Nothing wrong yet: the attribute is a text box, and the row says so.
+    expect(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+    ).toBeInTheDocument();
+
+    deleteFromTheCodebook(harness, 'relationship_to_ego');
+
+    await expectTheSaveWithheld(dialog);
+    // Pressed anyway — `aria-disabled` announces, it does not prevent — and
+    // the draft is still on screen with the reason above it.
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(dialog.getByText(NO_WAY_TO_ANSWER)).toBeInTheDocument();
+  });
+
+  it('says so when a collaborator changes what it records', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    await dialog.findByRole('combobox', { name: 'Input control' });
+
+    // A position rather than an answer, so no control can collect it.
+    harness.receiveCodebookUpdate({
+      node: {
+        person: {
+          ...personDocument(harness),
+          variables: {
+            ...personVariables(harness),
+            relationship_to_ego: {
+              name: 'relationship_to_ego',
+              type: 'layout',
+            },
+          },
+        },
+      },
+    });
+
+    await expectTheSaveWithheld(dialog);
+  });
+
+  /**
+   * And the way out, from the deleted case: the id the row still names is the
+   * only thing keeping the refusal, so choosing another attribute lifts it and
+   * the row commits.
+   *
+   * Bound to an attribute the codebook already collects with a text box, so
+   * the row's save asks the host for nothing — the protocol it is holding
+   * still has the family pedigree pointed at the attribute this test deleted,
+   * and any codebook write would be refused for that rather than for anything
+   * this row did. The stage is read from the draft for the same reason.
+   */
+  it('gives the save back when the row is bound somewhere else', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    await dialog.findByRole('combobox', { name: 'Input control' });
+    deleteFromTheCodebook(harness, 'relationship_to_ego');
+    await dialog.findByText(NO_WAY_TO_ANSWER);
+
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      'name',
+    );
+    await waitFor(() =>
+      expect(dialog.queryByText(NO_WAY_TO_ANSWER)).toBeNull(),
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(
+      asRecord(
+        asRecord(harness.session.getSnapshot().editedSection.fields).form,
+      ).fields,
+    ).toEqual([
+      {
+        variable: 'name',
+        prompt: "What is this person's relationship to you?",
+      },
+      { variable: 'flagged', prompt: 'Does this person have this attribute?' },
+    ]);
+  });
+});
