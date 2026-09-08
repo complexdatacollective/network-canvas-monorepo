@@ -20,7 +20,10 @@ for path in "$operational" "$recovery_source"; do
     exit 2
   fi
 done
-input_snapshot=$(mktemp -d "${TMPDIR:-/tmp}/studio-backup-keys.XXXXXX")
+# Keep plaintext copies on the same operator-controlled encrypted storage as
+# the recovery input. A generic TMPDIR may be unencrypted or disk-backed.
+recovery_directory=$(cd "$(dirname "$recovery_source")" && pwd -P)
+input_snapshot=$(mktemp -d "$recovery_directory/.studio-backup-keys.XXXXXX")
 chmod 700 "$input_snapshot"
 cleanup_backup_inputs() {
   backup_exit_code=$?

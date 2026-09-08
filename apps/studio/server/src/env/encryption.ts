@@ -41,7 +41,12 @@ export function resolveEncryptionEnv(
   const offlineCustody = source.STUDIO_ENCRYPTION_OFFLINE_CUSTODY;
   if (
     (offlineCustody !== undefined && offlineCustody !== 'required') ||
-    (offlineCustody === 'required' && provider !== 'environment')
+    (offlineCustody === 'required' &&
+      (provider !== 'environment' ||
+        Object.entries(source).some(
+          ([name, value]) =>
+            name.startsWith('STUDIO_ENCRYPTION_KMS_') && value !== undefined,
+        )))
   )
     throw new KeyConfigurationError();
   const raw = source.STUDIO_ENCRYPTION_KEYSET;

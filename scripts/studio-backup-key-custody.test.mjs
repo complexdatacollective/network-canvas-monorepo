@@ -8,6 +8,7 @@ import {
   mkdtemp,
   readFile,
   readdir,
+  realpath,
   rm,
   writeFile,
 } from 'node:fs/promises';
@@ -92,6 +93,9 @@ async function makeHarness(
     docker,
     `#!/bin/sh
 payload=$(cat)
+if [ -n "$STUDIO_ENCRYPTION_FILE" ]; then
+  printf 'CUSTODY_INPUT:%s\\n' "$STUDIO_ENCRYPTION_FILE" >> "$FAKE_DOCKER_LOG"
+fi
 printf 'ARGS:%s\\nSTDIN:%s\\n' "$*" "$payload" >> "$FAKE_DOCKER_LOG"
 
 set_role() {
@@ -199,6 +203,7 @@ exit 0
     roleState: await readFile(roleStatePath, 'utf8'),
     proofState: await readFile(proofStatePath, 'utf8'),
     privateTmp,
+    recoveryDirectory: deployment,
   };
 }
 
@@ -246,6 +251,24 @@ test('a stable proof captures the complete backup artifact set', async (t) => {
   ])
     await access(join(backup, name));
   assert.equal(await readFile(custody, 'utf8'), 'FIXTURE_ROOT=key-a\n');
+});
+
+test('plaintext custody snapshots stay beside the encrypted input, outside TMPDIR', async (t) => {
+  const { result, log, recoveryDirectory, privateTmp } = await makeHarness(t);
+  assert.equal(result.status, 0, result.stderr);
+  const snapshots = [
+    ...new Set(
+      [...log.matchAll(/CUSTODY_INPUT:([^\n]+)\/recovery\.env/g)].map(
+        (match) => match[1],
+      ),
+    ),
+  ];
+  assert.equal(snapshots.length, 1);
+  for (const snapshot of snapshots) {
+    assert.equal(dirname(snapshot), await realpath(recoveryDirectory));
+    assert.notEqual(dirname(snapshot), privateTmp);
+    await assert.rejects(access(snapshot));
+  }
 });
 
 test('second verification failure and signals clean up with every writer closed', async (t) => {

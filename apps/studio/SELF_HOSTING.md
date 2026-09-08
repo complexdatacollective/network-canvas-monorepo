@@ -245,13 +245,22 @@ sh deployment/backup.sh "$BACKUP_DIR" "$KEY_CUSTODY"
 ```
 
 For AWS KMS, create a mode 0600 environment-provider file containing the same
-keyset and every direct historical root, then name that existing private input
+keyset and every direct historical root on encrypted operator storage. Remove
+every `STUDIO_ENCRYPTION_KMS_*` field, including empty values; offline custody
+refuses provider settings or credentials. Name that existing private input
 without placing it in `.env`:
 
 ```sh
-STUDIO_RECOVERY_ENCRYPTION_FILE=/operator-custody/all-direct-roots.env \
+STUDIO_RECOVERY_ENCRYPTION_FILE=/independent-encrypted-key-custody/all-direct-roots.env \
   sh deployment/backup.sh "$BACKUP_DIR" "$KEY_CUSTODY"
 ```
+
+Backup and restore create their private snapshots alongside the recovery-key
+input, on the same encrypted storage. That directory must be writable and have
+space for the snapshot (including the data archive during restore). `TMPDIR`
+does not redirect these snapshots. Both commands remove their snapshots on
+normal exit and handled signals; after a host crash, inspect and remove any
+remaining `.studio-backup-keys.*` or `.studio-restore.*` directories there.
 
 The command privately snapshots the recovery input, verifies the operational
 provider through the explicitly online service, and verifies the direct-root
@@ -259,9 +268,12 @@ snapshot against the same database through the data-only offline service. It
 then exclusively copies the verified snapshot to the new independent custody
 path. After every writer and outside session has drained, it verifies that
 same snapshot again so a rotation during the drain cannot leave the capture
-without a required recovery root. Only the maintenance login opens for that
-private verification; it is closed before capture, and failure/signal cleanup
-repeats closure and bounded session termination. Missing or wrong roots and KMS ciphertext-only custody refuse before a
+without a required recovery root. The final verification uses the SELECT-only
+backup login; every writer login stays closed after the drain transaction
+commits. Backup cleanup removes its private snapshot and never changes login
+state or terminates sessions. An interruption before that transaction commits
+can leave writer logins enabled: confirm database admission is closed before
+retrying a failed capture under quarantine. Missing or wrong roots and KMS ciphertext-only custody refuse before a
 complete backup can be published. The command then takes a database
 archive, stops MinIO and captures its volume, copies configuration while
 excluding all roots, records data counts, and verifies its

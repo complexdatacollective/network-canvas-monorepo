@@ -123,6 +123,44 @@ afterEach(() => {
 });
 
 describe('AWS KMS wrapped root loader', () => {
+  it.each([
+    'KEY_ARN',
+    'DEPLOYMENT',
+    'ACCESS_KEY_ID',
+    'SECRET_ACCESS_KEY',
+    'SESSION_TOKEN',
+    'FUTURE_PROVIDER_FIELD',
+  ])(
+    'refuses leftover KMS %s in otherwise valid offline custody',
+    async (field) => {
+      const config = configuration();
+      config.roots = config.roots.map((item) => ({
+        ...item,
+        reference: `STUDIO_ENCRYPTION_ROOT_${item.reference}`,
+      }));
+      const source = {
+        STUDIO_ENCRYPTION_OFFLINE_CUSTODY: 'required',
+        STUDIO_ENCRYPTION_KEY_PROVIDER: 'environment',
+        STUDIO_ENCRYPTION_KEYSET: JSON.stringify(config),
+        STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: root.toString('base64'),
+        STUDIO_ENCRYPTION_ROOT_TEST_ROOT_TWO: root.toString('base64'),
+      };
+      const clean = resolveEncryptionEnv(source);
+      await expect(
+        loadEncryptionKeys(clean.configuration, clean.loadRootKey),
+      ).resolves.toBeDefined();
+      for (const value of ['', 'leftover-provider-setting']) {
+        expect(() =>
+          resolveEncryptionEnv({
+            ...source,
+            [`STUDIO_ENCRYPTION_KMS_${field}`]: value,
+          }),
+        ).toThrow(KeyConfigurationError);
+      }
+      expect(fixture.requests).toHaveLength(0);
+    },
+  );
+
   it.each(['self-hosted', 'managed'])(
     'loads the same adapter through the %s startup and offline environment boundary',
     async (deploymentMode) => {

@@ -28,7 +28,10 @@ if find "$backup" \( -type l -o \( ! -type d ! -type f \) \) -print -quit | grep
   echo 'Restore refused: backup contains a symbolic link or special file.' >&2
   exit 1
 fi
-snapshot=$(mktemp -d "${TMPDIR:-/tmp}/studio-restore.XXXXXX")
+# Restoring also copies plaintext roots: retain that snapshot on the same
+# encrypted operator storage as custody, never the host's generic TMPDIR.
+custody_directory=$(cd "$(dirname "$custody")" && pwd -P)
+snapshot=$(mktemp -d "$custody_directory/.studio-restore.XXXXXX")
 chmod 700 "$snapshot"
 trap 'rm -rf "$snapshot"' EXIT
 trap 'exit 1' HUP INT TERM
