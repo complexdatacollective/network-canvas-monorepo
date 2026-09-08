@@ -6,7 +6,7 @@ import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
 import {
   type Command,
   commandTarget,
-  type CommandTarget,
+  type SectionDoc,
 } from '@codaco/studio-sync/apply';
 
 import { useStageEditorForm } from '../stageEditorContext.ts';
@@ -53,9 +53,62 @@ export const ArrayFieldBindingContext = createContext<ArrayFieldBinding | null>(
  */
 type BoundArray = Readonly<{
   current: unknown[];
-  /** Empty unless the key holds something that is not a list. */
+  /** Empty unless the key, or the way to it, holds something it should not. */
   repair: readonly Command[];
+  /**
+   * Whether the repair is one a command that does NOT address a list needs
+   * too.
+   *
+   * A foreign value at the key itself is replaced by a whole-list `set` on its
+   * own, so putting the repair in front of one would make two history entries
+   * out of a single edit. An ancestor that is not a container is different in
+   * kind: nothing at all can be written through it, so every command the
+   * operation makes needs the way put right first.
+   */
+  repairsAnAncestor: boolean;
 }>;
+
+/**
+ * A value `apply` will write THROUGH on the way to a command's target: a
+ * container, or nothing at all — which it creates, because writing to
+ * `nodeConfig.form` in a document with no `nodeConfig` means what writing to
+ * an absent top-level key means. A string, a number, `null` or a LIST is
+ * refused there, and the command throws.
+ *
+ * Mirrored from `@codaco/studio-sync`'s own rule rather than shared with it,
+ * because what this package needs is the question asked BEFORE a command is
+ * made — an answer, not a throw. The two are held together by the tests
+ * around `readArray`, which apply the repair with the real engine.
+ */
+const isContainer = (value: unknown): value is SectionDoc =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * Where the way to `path` stops being one: the index of the first ancestor
+ * segment holding something no command can be written through, or `undefined`
+ * when every one of them can.
+ */
+const unreachableAncestor = (
+  path: readonly string[],
+  draft: SectionDoc,
+): number | undefined => {
+  let cursor: SectionDoc = draft;
+  for (const [index, segment] of path.slice(0, -1).entries()) {
+    // Own keys only, exactly as the engine reads them: every plain object
+    // answers for `toString` and its siblings with a function it inherited,
+    // and those are ordinary document keys.
+    if (!Object.hasOwn(cursor, segment)) return undefined;
+    const held = cursor[segment];
+    if (held === undefined) return undefined;
+    if (!isContainer(held)) return index;
+    cursor = held;
+  }
+  return undefined;
+};
+
+/** The containers a repair puts in place of an ancestor, ending in no rows. */
+const emptyListUnder = (path: readonly string[]): unknown =>
+  path.reduceRight<unknown>((inner, segment) => ({ [segment]: inner }), []);
 
 /**
  * What a bound list finds at its key, and the rule for a value that is not a
@@ -98,7 +151,17 @@ type BoundArray = Readonly<{
  *   history entry, so undoing the add puts the value back as it was.
  *
  * Nullish is not foreign: an absent key is the empty list to `asList` exactly
- * as it is to every reader here, so it needs no repair.
+ * as it is to every reader here, so it needs no repair — UNLESS what makes it
+ * read as absent is the way to it. A list bound at `nodeConfig.form` under a
+ * `nodeConfig` that an import left as a string is not an absent list: nothing
+ * can be written through that ancestor at all, and `set`, `insertItem`,
+ * `removeItem` and `moveItem` alike throw on the way past it, out of the click
+ * that asked for the row. So the same rule is asked of the whole path, and the
+ * repair replaces the highest ancestor that is not a container with the
+ * containers the write needs — a `set` of that container, the way an
+ * exclusive-variant container is written whole. It throws away only a value no
+ * reader beneath it could render, which is what the rule already does at the
+ * key itself, and it rides with the operation for the same two reasons.
  *
  * Neither is a LIST WITH A HOLE IN IT — `[null, { … }]`, an entry an import or
  * a migration left as something that is not a row. `asList` takes it, so no
@@ -110,10 +173,37 @@ type BoundArray = Readonly<{
  * where that matters, at the index resolver: see `renderedRows` in
  * `arrayFieldCommands`.
  */
-const readArray = (key: CommandTarget, value: unknown): BoundArray => {
-  if (Array.isArray(value)) return { current: [...value], repair: [] };
-  if (value === undefined || value === null) return { current: [], repair: [] };
-  return { current: [], repair: [{ op: 'set', key, value: [] }] };
+const readArray = (path: readonly string[], draft: SectionDoc): BoundArray => {
+  // The way to the list, before what is at the end of it: a list bound at
+  // `nodeConfig.form` under a `nodeConfig` an import left as a string is a
+  // list nothing can address at all, and `getValue` reports it as absent —
+  // the one shape that reads as "nothing here" and is not.
+  const unreachable = unreachableAncestor(path, draft);
+  if (unreachable !== undefined) {
+    return {
+      current: [],
+      repair: [
+        {
+          op: 'set',
+          key: commandTarget(path.slice(0, unreachable + 1)),
+          value: emptyListUnder(path.slice(unreachable + 1)),
+        },
+      ],
+      repairsAnAncestor: true,
+    };
+  }
+  const value = getValue(draft, [...path]);
+  if (Array.isArray(value)) {
+    return { current: [...value], repair: [], repairsAnAncestor: false };
+  }
+  if (value === undefined || value === null) {
+    return { current: [], repair: [], repairsAnAncestor: false };
+  }
+  return {
+    current: [],
+    repair: [{ op: 'set', key: commandTarget(path), value: [] }],
+    repairsAnAncestor: false,
+  };
 };
 
 /**
@@ -256,11 +346,7 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   getIdRef.current = getId;
 
   const readCurrent = useCallback(
-    (path: readonly string[]) =>
-      readArray(
-        commandTarget(path),
-        getValue(applyOwnCommands([]).draft, [...path]),
-      ),
+    (path: readonly string[]) => readArray(path, applyOwnCommands([]).draft),
     [applyOwnCommands],
   );
 
@@ -294,7 +380,8 @@ export function useArrayFieldCommands<T extends ArrayRow>(
     ): ArrayWriteOutcome => {
       if (commands.length === 0) return refused(nothingToWrite);
       const { draft, refused: sessionRefused } = applyOwnCommands(
-        bound.repair.length > 0 && commands.some(addressesAList)
+        bound.repair.length > 0 &&
+          (bound.repairsAnAncestor || commands.some(addressesAList))
           ? [...bound.repair, ...commands]
           : commands,
       );

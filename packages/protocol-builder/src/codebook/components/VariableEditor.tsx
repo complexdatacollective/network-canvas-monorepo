@@ -16,7 +16,7 @@ import {
   defineMessages,
   formatMessageError,
 } from '@codaco/app-i18n/messages';
-import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
@@ -76,88 +76,9 @@ import {
   validateParameters,
   type ParameterShape,
 } from '../variableParameters.ts';
+import { VARIABLE_TYPE_OPTIONS } from '../variableTypeLabels.ts';
 import VariableBooleanAnswerFields from './VariableBooleanAnswerFields.tsx';
 import VariableParameterFields from './VariableParameterFields.tsx';
-
-/**
- * What each kind of attribute is offered as.
- *
- * Keyed by the schema's own name for the type, and read through the option
- * list below, so what the editor OFFERS and what a stored variable IS are the
- * same list read twice. "Date" names the `datetime` type, which is what a
- * researcher calls it.
- */
-const VARIABLE_TYPE_LABELS = defineMessages({
-  text: {
-    id: 'protocolBuilder.codebookVariable.typeText',
-    defaultMessage: 'Text',
-    description:
-      'Choice offered for what an attribute records: free text typed by a participant.',
-  },
-  number: {
-    id: 'protocolBuilder.codebookVariable.typeNumber',
-    defaultMessage: 'Number',
-    description:
-      'Choice offered for what an attribute records: a number entered by a participant.',
-  },
-  boolean: {
-    id: 'protocolBuilder.codebookVariable.typeBoolean',
-    defaultMessage: 'Boolean',
-    description:
-      'Choice offered for what an attribute records: a true or false answer.',
-  },
-  ordinal: {
-    id: 'protocolBuilder.codebookVariable.typeOrdinal',
-    defaultMessage: 'Ordinal',
-    description:
-      'Choice offered for what an attribute records: one option from a list whose order is meaningful, such as a rating.',
-  },
-  categorical: {
-    id: 'protocolBuilder.codebookVariable.typeCategorical',
-    defaultMessage: 'Categorical',
-    description:
-      'Choice offered for what an attribute records: one or more options from an unordered list.',
-  },
-  scalar: {
-    id: 'protocolBuilder.codebookVariable.typeScalar',
-    defaultMessage: 'Scalar',
-    description:
-      'Choice offered for what an attribute records: a position on a continuous scale, such as a slider.',
-  },
-  datetime: {
-    id: 'protocolBuilder.codebookVariable.typeDatetime',
-    defaultMessage: 'Date',
-    description:
-      'Choice offered for what an attribute records: a date. The schema calls this type datetime; researchers call it a date.',
-  },
-  layout: {
-    id: 'protocolBuilder.codebookVariable.typeLayout',
-    defaultMessage: 'Layout',
-    description:
-      'Choice offered for what an attribute records: where a network member sits on a canvas the participant arranges.',
-  },
-  location: {
-    id: 'protocolBuilder.codebookVariable.typeLocation',
-    defaultMessage: 'Location',
-    description:
-      'Choice offered for what an attribute records: a place on a map.',
-  },
-});
-
-const VARIABLE_TYPE_OPTIONS = [
-  { label: VARIABLE_TYPE_LABELS.text, value: VariableTypes.text },
-  { label: VARIABLE_TYPE_LABELS.number, value: VariableTypes.number },
-  { label: VARIABLE_TYPE_LABELS.boolean, value: VariableTypes.boolean },
-  { label: VARIABLE_TYPE_LABELS.ordinal, value: VariableTypes.ordinal },
-  { label: VARIABLE_TYPE_LABELS.categorical, value: VariableTypes.categorical },
-  { label: VARIABLE_TYPE_LABELS.scalar, value: VariableTypes.scalar },
-  { label: VARIABLE_TYPE_LABELS.datetime, value: VariableTypes.datetime },
-  { label: VARIABLE_TYPE_LABELS.layout, value: VariableTypes.layout },
-  { label: VARIABLE_TYPE_LABELS.location, value: VariableTypes.location },
-] as const satisfies readonly Readonly<{
-  label: MessageDescriptor;
-  value: VariableType;
-}>[];
 
 const messages = defineMessages({
   createTitle: {
@@ -965,7 +886,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                       spacing="sm"
                       shadow="xs"
                       series="accent"
-                      className="w-full overflow-visible!"
+                      className="w-full overflow-visible! [--destructive:var(--color-destructive-strong)]"
                     >
                       <div className="flex items-start gap-4">
                         <div className="min-w-0 flex-1">
