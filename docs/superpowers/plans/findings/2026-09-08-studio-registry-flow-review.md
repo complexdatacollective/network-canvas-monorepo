@@ -44,6 +44,6 @@ PostgreSQL 18 ran in the isolated `studio-registry-flow-pg` container on host po
 - Studio client/server builds passed. Studio client/server/RPC/sync typechecks passed.
 - `pnpm knip` and `pnpm check:changesets` passed.
 - Targeted `oxlint` and `oxfmt --check` passed for every changed flow file.
-- Repo-wide lint is rerun after each final recovery-parent synchronization; its current result is recorded in the final checkpoint rather than accepting a stale parent formatting result.
+- Repo-wide `pnpm lint` passed after merging canonical recovery parent `ad6e95c84211f6bdd7d9e1027f1fadddb5e11a3a`.
 
 The authorization mutant removed the locked administrator recheck. The focused revocation oracle failed, receiving `REGISTRY_UNAVAILABLE` after attempting a Registry request instead of `FORBIDDEN` with zero requests. Restoring the guard returned the complete Registry command suite to 4/4.
