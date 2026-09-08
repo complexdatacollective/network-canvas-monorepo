@@ -241,6 +241,7 @@ test('increasing declared Worker requests and validator execution increases the 
   ingress.quantity = 2_000_000;
   ingress.unitPriceUsd = 0.000002;
   mutated.validatorMemoryGb *= 2;
+  mutated.objectScrubMemoryGb *= 2;
   mutated.lineItems.find(
     ({ category }) => category === 'validator-compute',
   ).quantity *= 2;
@@ -387,14 +388,13 @@ test('prices retained object versions, recovery copies, and 30-day readback', ()
   ).quantity = 0;
   assert.throws(
     () => evaluateManagedEstateCost(omittedPrimaryWritesAndInventory),
-    /181060 scheduled bucket inventories and measured version writes/,
+    /582820 scheduled inventory pages and measured version writes/,
   );
 
   const exactPrimaryClassAMinimum = structuredClone(fixture);
-  // Four primary buckets each need one authoritative reconciliation per minute
-  // for all 31 days. Database dump cadence cannot stand in for the five-minute
-  // object recovery target; the copied versions also require primary writes.
-  exactPrimaryClassAMinimum.primaryObjectClassARequests = 178_560 + 2_500;
+  // Thirteen listing pages across four buckets, reconciled once per minute
+  // for all 31 days, plus immutable version writes.
+  exactPrimaryClassAMinimum.primaryObjectClassARequests = 580_320 + 2_500;
   exactPrimaryClassAMinimum.lineItems.find(
     ({ category }) => category === 'primary-object-class-a',
   ).quantity =
@@ -410,7 +410,7 @@ test('prices retained object versions, recovery copies, and 30-day readback', ()
     exactPrimaryClassAMinimum.primaryObjectClassARequests / 1_000_000;
   assert.throws(
     () => evaluateManagedEstateCost(exactPrimaryClassAMinimum),
-    /181060 scheduled bucket inventories and measured version writes/,
+    /582820 scheduled inventory pages and measured version writes/,
   );
 
   const halfHourlyInventory = structuredClone(fixture);
@@ -420,7 +420,7 @@ test('prices retained object versions, recovery copies, and 30-day readback', ()
   ).quantity = halfHourlyInventory.primaryObjectClassARequests / 1_000_000;
   assert.throws(
     () => evaluateManagedEstateCost(halfHourlyInventory),
-    /181060 scheduled bucket inventories and measured version writes/,
+    /582820 scheduled inventory pages and measured version writes/,
   );
 });
 
@@ -441,6 +441,143 @@ test('binds Postmark plan and overage costs to measured message volume', () => {
   assert.throws(
     () => evaluateManagedEstateCost(wrongAllowance, budgetOptions),
     /selected mail plan and included message allowance/,
+  );
+});
+
+test('refuses one-page costing for a paginated retained-version inventory', () => {
+  const input = structuredClone(fixture);
+  input.primaryObjectClassARequests = 181_060;
+  input.lineItems.find(
+    ({ category }) => category === 'primary-object-class-a',
+  ).quantity = 0.18106;
+  assert.throws(
+    () => evaluateManagedEstateCost(input),
+    /582820 scheduled inventory pages/,
+  );
+
+  input.primaryObjectBucketInventories[
+    'studio-production'
+  ].requestsPerCompleteScan = 1;
+  assert.throws(() => evaluateManagedEstateCost(input), /every inventory page/);
+});
+
+test('binds all bucket pages to the retained inventory, including empty buckets and short pages', () => {
+  for (const edit of [
+    (input) => {
+      delete input.primaryObjectBucketInventories['studio-staging'];
+    },
+    (input) => {
+      input.primaryObjectBucketInventories.extra = {
+        retainedVersionCount: 0,
+        requestsPerCompleteScan: 1,
+      };
+    },
+    (input) => {
+      input.primaryObjectBucketInventories[
+        'studio-production'
+      ].retainedVersionCount = 9_999;
+    },
+    (input) => {
+      input.primaryObjectBucketInventories[
+        'studio-production'
+      ].requestsPerCompleteScan = 9.5;
+    },
+  ]) {
+    const input = structuredClone(fixture);
+    edit(input);
+    assert.throws(() => evaluateManagedEstateCost(input), /primary|inventory/);
+  }
+  const input = structuredClone(fixture);
+  input.primaryObjectBucketInventories['studio-production'] = {
+    retainedVersionCount: 12_500,
+    requestsPerCompleteScan: 13,
+  };
+  for (const name of [
+    'studio-staging',
+    'registry-production',
+    'registry-staging',
+  ])
+    input.primaryObjectBucketInventories[name] = {
+      retainedVersionCount: 0,
+      requestsPerCompleteScan: 1,
+    };
+  const line = input.lineItems.find(
+    ({ category }) => category === 'primary-object-class-a',
+  );
+  input.primaryObjectClassARequests = 44_640 * 16 + 2_500;
+  line.quantity = input.primaryObjectClassARequests / 1_000_000;
+  assert.doesNotThrow(() => evaluateManagedEstateCost(input));
+  input.primaryObjectBucketInventories[
+    'studio-staging'
+  ].requestsPerCompleteScan = 0;
+  assert.throws(() => evaluateManagedEstateCost(input), /every inventory page/);
+  input.primaryObjectBucketInventories[
+    'studio-staging'
+  ].requestsPerCompleteScan = 1;
+  input.primaryObjectBucketInventories[
+    'studio-production'
+  ].requestsPerCompleteScan = 20;
+  assert.throws(
+    () => evaluateManagedEstateCost(input),
+    /scheduled inventory pages/,
+  );
+  input.primaryObjectClassARequests = 44_640 * 23 + 2_500;
+  line.quantity = input.primaryObjectClassARequests / 1_000_000;
+  assert.doesNotThrow(() => evaluateManagedEstateCost(input));
+});
+
+test('refuses database-only compute even when object readback requests and transfer are priced', () => {
+  const input = structuredClone(fixture);
+  input.lineItems.find(
+    ({ category }) => category === 'validator-compute',
+  ).quantity =
+    input.validatorRunCount *
+    input.validatorMemoryGb *
+    input.validatorDurationSeconds;
+  assert.throws(
+    () => evaluateManagedEstateCost(input),
+    /validator-compute quantity does not match/,
+  );
+});
+
+test('requires complete scrub cadence and independently measured positive execution', () => {
+  for (const [field, value] of [
+    ['objectScrubRunCount', 0],
+    ['objectScrubRunCount', 1],
+    ['objectScrubRunCount', 2.5],
+    ['objectScrubMemoryGb', 0],
+    ['objectScrubDurationSeconds', 0],
+    ['objectScrubDurationSeconds', undefined],
+  ]) {
+    const input = structuredClone(fixture);
+    input[field] = value;
+    assert.throws(() => evaluateManagedEstateCost(input), /scrub|objectScrub/);
+  }
+  const input = structuredClone(fixture);
+  const before = evaluateManagedEstateCost(input).totalUsd;
+  input.objectScrubDurationSeconds *= 2;
+  const line = input.lineItems.find(
+    ({ category }) => category === 'validator-compute',
+  );
+  assert.throws(
+    () => evaluateManagedEstateCost(input),
+    /quantity does not match/,
+  );
+  line.quantity =
+    input.validatorRunCount *
+      input.validatorMemoryGb *
+      input.validatorDurationSeconds +
+    input.objectScrubRunCount *
+      input.objectScrubMemoryGb *
+      input.objectScrubDurationSeconds;
+  assert.equal(
+    Math.round((evaluateManagedEstateCost(input).totalUsd - before) * 100),
+    4,
+  );
+  input.objectScrubRunCount = 3;
+  assert.throws(
+    () => evaluateManagedEstateCost(input),
+    /required recovery cadence/,
   );
 });
 

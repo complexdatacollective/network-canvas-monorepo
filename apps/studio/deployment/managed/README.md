@@ -168,17 +168,31 @@ configuration archive, and their account-recovery paths.
    recovery-retained version inventory are separate measurements. The retained
    inventory must cover current objects plus churn. Its 31-day storage,
    recovery-copy reads/writes and transfer, every one-minute primary-bucket
-   inventory, and every retained version's
+   inventory page, and every retained version's
    30-day B2 readback/validator scrub are lower bounds on the aggregate R2, B2,
    and validator quantities. Retries, growth, and restore drills remain extra
    measured usage.
 
+   `primaryObjectBucketInventories` binds each of the four buckets' retained
+   version count to its measured requests for one complete authoritative scan.
+   The sum must equal the retained inventory. Every bucket needs at least one
+   request, and [R2 listings return at most 1,000 objects per page](https://developers.cloudflare.com/api/resources/r2/subresources/buckets/subresources/objects/methods/list/).
+   Short pages and retries must be included in the measured scan count. The
+   fixture's 12,500 versions occupy 13 pages across four buckets, requiring
+   580,320 monthly listing requests plus 2,500 version writes; four requests per
+   scan would underprice reconciliation.
+
    Postmark pricing separates one selected plan from the overage message count
    derived as `max(0, postmarkMessageCount - postmarkIncludedMessages)`. A
    current budget declaration must identify the same plan and included-message
-   allowance on both mail rows. Validator compute prices run count times
-   measured memory GB times billed seconds (GB-seconds), with requests and
-   transfer separate. A changed resource size is refused unless the shared
+   allowance on both mail rows. Validator compute adds database validation
+   GB-seconds to independently measured complete object-scrub GB-seconds.
+   `objectScrubRunCount` covers at least two complete scrubs in the 31-day window;
+   its memory and duration must measure the full retained inventory, including
+   every shard's billed seconds when a scrub uses several jobs. The illustrative
+   two 2-GB, 600-second scrubs add 2,400 GB-seconds; this is not a live measurement.
+   Additional scrubs also increase the minimum request and transfer quantities.
+   Requests and transfer are priced separately. A changed resource size is refused unless the shared
    candidate and price review are updated together. PostgreSQL storage and plan
    identity are also bound to that same candidate; an independent tfvars storage
    increase or plan substitution refuses validation. Total recurring cost,
