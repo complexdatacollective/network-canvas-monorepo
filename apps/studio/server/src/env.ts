@@ -141,3 +141,71 @@ export function readMigrationAdministrativeLogins(
   const source = process.env.STUDIO_DATABASE_ADMINISTRATIVE_LOGINS;
   return parseDatabaseAdministrativeLogins(source, allowedLogins);
 }
+
+/** Isolated recovery authorization uses independent owner and backup sockets. */
+export function readRecoveryAuthorizationEnv(): {
+  database: DbEnv;
+  backupDatabase: DbEnv;
+  reconciliationPath: string;
+  reconciliationSha256: string;
+} {
+  /* oxlint-disable node/no-process-env -- the environment boundary */
+  const database = serverSchemas.DATABASE_URL.parse(
+    process.env.STUDIO_RECOVERY_DATABASE_URL,
+  );
+  const backupDatabase = serverSchemas.DATABASE_URL.parse(
+    process.env.STUDIO_RECOVERY_BACKUP_DATABASE_URL,
+  );
+  const reconciliationPath = process.env.STUDIO_RECOVERY_RECONCILIATION_PATH;
+  const reconciliationSha256 =
+    process.env.STUDIO_RECOVERY_RECONCILIATION_SHA256;
+  /* oxlint-enable node/no-process-env */
+  if (
+    !database ||
+    !backupDatabase ||
+    !reconciliationPath ||
+    reconciliationPath.length > 4096 ||
+    !reconciliationSha256 ||
+    !/^[0-9a-f]{64}$/.test(reconciliationSha256)
+  )
+    throw new Error('STUDIO_RECOVERY_AUTHORIZATION_CONFIGURATION_INVALID');
+  return {
+    database: { url: database },
+    backupDatabase: { url: backupDatabase },
+    reconciliationPath,
+    reconciliationSha256,
+  };
+}
+
+/** Current-user recovery authorization adds an independently configured
+ * Ed25519 trust anchor and detached signature to the restore-only sockets. */
+export function readRecoveryCurrentAuthorizationEnv(): ReturnType<
+  typeof readRecoveryAuthorizationEnv
+> & {
+  authorityKeyId: string;
+  authorityPublicKey: string;
+  reconciliationSignature: string;
+} {
+  const base = readRecoveryAuthorizationEnv();
+  /* oxlint-disable node/no-process-env -- the environment boundary */
+  const authorityKeyId = process.env.STUDIO_RECOVERY_AUTHORITY_KEY_ID;
+  const authorityPublicKey = process.env.STUDIO_RECOVERY_AUTHORITY_PUBLIC_KEY;
+  const reconciliationSignature =
+    process.env.STUDIO_RECOVERY_RECONCILIATION_SIGNATURE;
+  /* oxlint-enable node/no-process-env */
+  if (
+    !authorityKeyId ||
+    authorityKeyId.length > 64 ||
+    !authorityPublicKey ||
+    authorityPublicKey.length > 64 ||
+    !reconciliationSignature ||
+    reconciliationSignature.length > 128
+  )
+    throw new Error('STUDIO_RECOVERY_AUTHORIZATION_CONFIGURATION_INVALID');
+  return {
+    ...base,
+    authorityKeyId,
+    authorityPublicKey,
+    reconciliationSignature,
+  };
+}

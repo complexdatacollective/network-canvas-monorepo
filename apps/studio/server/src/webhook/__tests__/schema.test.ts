@@ -371,7 +371,7 @@ describe.skipIf(!db)('webhook schema', () => {
 
       const row = await pool.query<Row>(
         `SELECT attempt_count, lease_owner, lease_expires_at, delivered_at,
-                failed_at, last_status_code, last_error
+                failed_at, uncertain_at, last_status_code, last_error
          FROM webhook_deliveries WHERE id = $1`,
         [id],
       );
@@ -381,6 +381,7 @@ describe.skipIf(!db)('webhook schema', () => {
         lease_expires_at: null,
         delivered_at: null,
         failed_at: null,
+        uncertain_at: null,
         last_status_code: null,
         last_error: null,
       });
@@ -450,6 +451,11 @@ describe.skipIf(!db)('webhook schema', () => {
       [
         'both terminal timestamps at once',
         { delivered_at: new Date(), failed_at: new Date() },
+        'webhook_deliveries_terminal_state_check',
+      ],
+      [
+        'an uncertain row also marked failed',
+        { uncertain_at: new Date(), failed_at: new Date() },
         'webhook_deliveries_terminal_state_check',
       ],
       [

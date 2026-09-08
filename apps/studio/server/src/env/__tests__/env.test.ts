@@ -10,6 +10,8 @@ import {
   readMigrationDatabase,
   readMigrationAllowedLogins,
   readMigrationAdministrativeLogins,
+  readRecoveryAuthorizationEnv,
+  readRecoveryCurrentAuthorizationEnv,
 } from '../../env.ts';
 import { DEV, DEV_DATABASE_URL, DEV_S3_ENDPOINT } from '../catalogue.ts';
 
@@ -252,6 +254,48 @@ describe('migration environment', () => {
     expect(readMigrationDatabase()).toEqual({
       url: 'postgres://operator@localhost/studio',
     });
+  });
+
+  it('requires two explicit recovery databases and an exact evidence pin', () => {
+    vi.stubEnv('STUDIO_RECOVERY_DATABASE_URL', 'postgres://owner@db/studio');
+    vi.stubEnv(
+      'STUDIO_RECOVERY_BACKUP_DATABASE_URL',
+      'postgres://backup@db/studio',
+    );
+    vi.stubEnv('STUDIO_RECOVERY_RECONCILIATION_PATH', '/private/evidence.json');
+    vi.stubEnv('STUDIO_RECOVERY_RECONCILIATION_SHA256', 'a'.repeat(64));
+    expect(readRecoveryAuthorizationEnv()).toEqual({
+      database: { url: 'postgres://owner@db/studio' },
+      backupDatabase: { url: 'postgres://backup@db/studio' },
+      reconciliationPath: '/private/evidence.json',
+      reconciliationSha256: 'a'.repeat(64),
+    });
+    vi.stubEnv('STUDIO_RECOVERY_RECONCILIATION_SHA256', 'short');
+    expect(() => readRecoveryAuthorizationEnv()).toThrow(
+      'STUDIO_RECOVERY_AUTHORIZATION_CONFIGURATION_INVALID',
+    );
+  });
+
+  it('requires a bounded independent recovery authorization trust anchor', () => {
+    vi.stubEnv('STUDIO_RECOVERY_DATABASE_URL', 'postgres://owner@db/studio');
+    vi.stubEnv(
+      'STUDIO_RECOVERY_BACKUP_DATABASE_URL',
+      'postgres://backup@db/studio',
+    );
+    vi.stubEnv('STUDIO_RECOVERY_RECONCILIATION_PATH', '/private/evidence.json');
+    vi.stubEnv('STUDIO_RECOVERY_RECONCILIATION_SHA256', 'a'.repeat(64));
+    vi.stubEnv('STUDIO_RECOVERY_AUTHORITY_KEY_ID', 'offline-recovery-2026');
+    vi.stubEnv('STUDIO_RECOVERY_AUTHORITY_PUBLIC_KEY', 'A'.repeat(43));
+    vi.stubEnv('STUDIO_RECOVERY_RECONCILIATION_SIGNATURE', 'B'.repeat(86));
+    expect(readRecoveryCurrentAuthorizationEnv()).toMatchObject({
+      authorityKeyId: 'offline-recovery-2026',
+      authorityPublicKey: 'A'.repeat(43),
+      reconciliationSignature: 'B'.repeat(86),
+    });
+    vi.stubEnv('STUDIO_RECOVERY_RECONCILIATION_SIGNATURE', '');
+    expect(() => readRecoveryCurrentAuthorizationEnv()).toThrow(
+      'STUDIO_RECOVERY_AUTHORIZATION_CONFIGURATION_INVALID',
+    );
   });
 });
 

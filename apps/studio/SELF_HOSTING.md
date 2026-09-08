@@ -392,6 +392,10 @@ quarantine overlay runs only the web role on the private data network, with mail
 and optional telemetry disabled. The process has no external network route. Do
 not start the production proxy or workers until validation finishes.
 
+Before reopening, complete the two-stage current-authority procedure in
+[RECOVERY_AUTHORIZATION.md](RECOVERY_AUTHORIZATION.md). It leaves database-role,
+HTTP, and worker admission closed for a separate operator decision.
+
 After successful validation, remove only `:deployment/quarantine.yml` from
 `COMPOSE_FILE` before starting the proxy and the selected worker topology. Keep
 the recovery image override until a subsequent verified release explicitly
