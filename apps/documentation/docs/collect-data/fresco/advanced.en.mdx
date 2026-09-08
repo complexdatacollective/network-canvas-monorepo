@@ -208,7 +208,7 @@ Fresco does not enforce this itself; the rule belongs in the proxy in front of i
 
 ### With the bundled Traefik proxy
 
-Replace the `labels:` block of the `fresco` service in your compose file with the following. It defines two routers on the same service: one for the public prefixes, and one for everything else that carries an [`ipAllowList`](https://doc.traefik.io/traefik/middlewares/http/ipallowlist/) middleware. The explicit priorities make the public router win for its prefixes regardless of rule length. Put your institution's address ranges in `sourcerange`.
+Replace the `labels:` block of the `fresco` service in your compose file with the following. It defines two routers on the same service: one for the public prefixes, and one for everything else that carries an [`ipAllowList`](https://doc.traefik.io/traefik/middlewares/http/ipallowlist/) middleware. The explicit priorities make the public router win for its prefixes regardless of rule length, and both routers name the same service because two routers now share one container. Put your institution's address ranges in `sourcerange`.
 
 ```yaml
     labels:
@@ -217,14 +217,16 @@ Replace the `labels:` block of the `fresco` service in your compose file with th
       - 'traefik.http.middlewares.fresco-hsts.headers.stsincludesubdomains=true'
       - 'traefik.http.services.fresco.loadbalancer.server.port=3000'
       # Participant-facing prefixes: reachable from anywhere.
-      - 'traefik.http.routers.fresco-public.rule=Host(`${FRESCO_DOMAIN}`) && (PathPrefix(`/interview/`) || PathPrefix(`/onboard/`) || PathPrefix(`/api/public/`) || PathPrefix(`/_next/`))'
+      - 'traefik.http.routers.fresco-public.rule=Host(`${FRESCO_DOMAIN:?Set FRESCO_DOMAIN in .env (public domain for this deployment)}`) && (PathPrefix(`/interview/`) || PathPrefix(`/onboard/`) || PathPrefix(`/api/public/`) || PathPrefix(`/_next/`))'
       - 'traefik.http.routers.fresco-public.priority=20'
       - 'traefik.http.routers.fresco-public.entrypoints=websecure'
+      - 'traefik.http.routers.fresco-public.service=fresco'
       - 'traefik.http.routers.fresco-public.tls.certresolver=letsencrypt'
       # Everything else is researcher-only: restricted to the institutional network.
       - 'traefik.http.routers.fresco.rule=Host(`${FRESCO_DOMAIN}`)'
       - 'traefik.http.routers.fresco.priority=10'
       - 'traefik.http.routers.fresco.entrypoints=websecure'
+      - 'traefik.http.routers.fresco.service=fresco'
       - 'traefik.http.routers.fresco.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.fresco.middlewares=fresco-institution@docker'
       - 'traefik.http.middlewares.fresco-institution.ipallowlist.sourcerange=10.0.0.0/8,192.0.2.0/24'
