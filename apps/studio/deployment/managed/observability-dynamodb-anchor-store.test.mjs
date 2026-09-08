@@ -16,10 +16,28 @@ test('Dynamo enrollment is create-once and initialization is one transaction', a
   assert.equal(await store.initialize({ format: 2 }), true);
   assert.equal(commands[0].constructor.name, 'PutItemCommand');
   assert.equal(commands[1].constructor.name, 'TransactWriteItemsCommand');
-  assert.equal(commands[1].input.TransactItems.length, 3);
+  assert.equal(commands[1].input.TransactItems.length, 2);
+  assert.equal(
+    commands[1].input.TransactItems[0].Put.ConditionExpression,
+    'attribute_not_exists(account)',
+  );
   assert.match(
-    commands[1].input.TransactItems[0].ConditionCheck.ConditionExpression,
+    commands[1].input.TransactItems[1].Update.ConditionExpression,
+    /attribute_exists\(account\)/,
+  );
+  assert.match(
+    commands[1].input.TransactItems[1].Update.ConditionExpression,
     /initialized = :false/,
+  );
+  assert.match(
+    commands[1].input.TransactItems[1].Update.ConditionExpression,
+    /lineageFormat = :format/,
+  );
+  assert.deepEqual(
+    commands[1].input.TransactItems[1].Update.ExpressionAttributeValues[
+      ':format'
+    ],
+    { N: '1' },
   );
 });
 
@@ -36,6 +54,10 @@ test('Dynamo CAS compares exact previous checkpoint with an enrolled marker', as
   );
   assert.equal(command.constructor.name, 'TransactWriteItemsCommand');
   assert.equal(
+    command.input.TransactItems[0].ConditionCheck.ConditionExpression,
+    'lineageFormat = :format AND initialized = :true',
+  );
+  assert.equal(
     command.input.TransactItems[1].Update.ExpressionAttributeValues[':previous']
       .S,
     '{"sequence":1}',
@@ -46,6 +68,15 @@ test('missing enrollment and initialized-state loss fail closed', async () => {
   for (const Responses of [
     [{}, {}],
     [{ Item: { initialized: { BOOL: true } } }, {}],
+    [
+      {
+        Item: {
+          initialized: { BOOL: false },
+          lineageFormat: { N: '2' },
+        },
+      },
+      {},
+    ],
   ]) {
     const store = createDynamoAnchorStore({
       accountIdentitySha256: account,

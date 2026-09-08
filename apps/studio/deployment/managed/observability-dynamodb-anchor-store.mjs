@@ -79,6 +79,8 @@ export function createDynamoAnchorStore({
         const marker = response.Responses?.[0]?.Item;
         const state = response.Responses?.[1]?.Item;
         if (!marker) return fail('DYNAMO_ANCHOR_ENROLLMENT_MISSING');
+        if (marker.lineageFormat?.N !== '1')
+          return fail('DYNAMO_ANCHOR_STORE_FAILED');
         if (marker.initialized?.BOOL !== true) {
           if (state) return fail('DYNAMO_ANCHOR_STORE_FAILED');
           return null;
@@ -97,15 +99,6 @@ export function createDynamoAnchorStore({
           new TransactWriteItemsCommand({
             TransactItems: [
               {
-                ConditionCheck: {
-                  ConditionExpression:
-                    'attribute_exists(account) AND initialized = :false',
-                  ExpressionAttributeValues: { ':false': { BOOL: false } },
-                  Key: markerKey,
-                  TableName: tableName,
-                },
-              },
-              {
                 Put: {
                   ConditionExpression: 'attribute_not_exists(account)',
                   Item: {
@@ -117,9 +110,11 @@ export function createDynamoAnchorStore({
               },
               {
                 Update: {
-                  ConditionExpression: 'initialized = :false',
+                  ConditionExpression:
+                    'attribute_exists(account) AND lineageFormat = :format AND initialized = :false',
                   ExpressionAttributeValues: {
                     ':false': { BOOL: false },
+                    ':format': { N: '1' },
                     ':true': { BOOL: true },
                   },
                   Key: markerKey,
@@ -144,8 +139,12 @@ export function createDynamoAnchorStore({
             TransactItems: [
               {
                 ConditionCheck: {
-                  ConditionExpression: 'initialized = :true',
-                  ExpressionAttributeValues: { ':true': { BOOL: true } },
+                  ConditionExpression:
+                    'lineageFormat = :format AND initialized = :true',
+                  ExpressionAttributeValues: {
+                    ':format': { N: '1' },
+                    ':true': { BOOL: true },
+                  },
                   Key: markerKey,
                   TableName: tableName,
                 },
