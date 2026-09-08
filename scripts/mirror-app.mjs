@@ -718,10 +718,13 @@ function stage({
       }
       if (vendorChangedSince) {
         assertBranchResolutionsCarried({
-          refLock: capture('git', [
-            'show',
-            `${vendorChangedSince}:pnpm-lock.yaml`,
-          ]),
+          // The root lockfile is several megabytes, past spawnSync's default
+          // buffer; the seeded mirror lock is read from disk.
+          refLock: capture(
+            'git',
+            ['show', `${vendorChangedSince}:pnpm-lock.yaml`],
+            { maxBuffer: 256 * 1024 * 1024 },
+          ),
           headLock: readFileSync(join(repoRoot, 'pnpm-lock.yaml'), 'utf8'),
           mirrorLock: readFileSync(join(staging, 'pnpm-lock.yaml'), 'utf8'),
         });
