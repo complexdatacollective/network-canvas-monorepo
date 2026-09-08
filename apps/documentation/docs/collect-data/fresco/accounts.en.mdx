@@ -23,8 +23,10 @@ Each account uses one of two **mutually exclusive** primary sign-in methods:
   from an authenticator app. This is the _only_ second factor Fresco supports.
 - **Passkey mode** — you sign in with one or more registered passkeys (device biometrics
   such as Touch ID or Windows Hello, or a hardware security key) and have **no password**.
-  Passkey mode does not use two-factor authentication, because the passkey already proves
-  both possession of the device and the user's identity.
+  Passkey mode does not use two-factor authentication: the passkey replaces the password
+  rather than adding to it. Fresco asks the authenticator to verify the user with a biometric
+  or PIN but does not require it, so do not assume a passkey counts as multi-factor
+  authentication where your institution mandates it.
 
 An account is always in exactly one of these modes. A passkey is therefore never a _second_
 factor alongside a password — it is a complete, password-free sign-in method in its own
