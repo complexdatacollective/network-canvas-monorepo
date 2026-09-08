@@ -162,10 +162,11 @@ function reachableResolutions(edges, importer) {
 
 // The members of `names` whose built artifact would differ from the one
 // `ref` produced: the package's own directory changed, a default catalog
-// entry it consumes (in any field) was re-pinned, a workspace package it
-// is built with — a devDependency such as a shared tsconfig — changed, or
-// (given both root lockfiles) anything its resolution reaches resolved
-// differently. A hotfix that only re-pins a catalog entry used by one closure
+// entry it consumes (in any field) was re-pinned, (given both root
+// lockfiles) anything its resolution reaches resolved differently, or a
+// workspace package it is built with — a devDependency such as a shared
+// tsconfig or a sibling's Vite plugin — changed for any of those reasons,
+// transitively. A hotfix that only re-pins a catalog entry used by one closure
 // package must still vendor that package: the verify step builds it against
 // the new pin, and an image installing the published artifact would not
 // carry the change at all. Committed state only — a hotfix lane releases a
@@ -216,26 +217,54 @@ export function packagesChangedSince(
     return dirChanged.get(name);
   };
 
-  return names.filter((name) => {
+  // A package's own reasons to be rebuilt: its directory, a catalog entry it
+  // consumes (in any field), or anything its resolution reaches.
+  const changedItself = (name) => {
     if (directoryChanged(name)) return true;
     if (importerResolutionChanged(name)) return true;
     const manifest = readManifest(wsPackages[name].dir);
     for (const field of ALL_DEP_FIELDS) {
       for (const [dep, spec] of Object.entries(manifest[field] ?? {})) {
-        if (typeof spec !== 'string') continue;
-        if (spec.startsWith('catalog:') && changedCatalog.has(dep)) return true;
         if (
-          field === 'devDependencies' &&
-          spec.startsWith('workspace:') &&
-          wsPackages[dep] &&
-          directoryChanged(dep)
+          typeof spec === 'string' &&
+          spec.startsWith('catalog:') &&
+          changedCatalog.has(dep)
         ) {
           return true;
         }
       }
     }
     return false;
-  });
+  };
+  const workspaceDevDeps = (name) =>
+    Object.entries(readManifest(wsPackages[name].dir).devDependencies ?? {})
+      .filter(
+        ([dep, spec]) =>
+          typeof spec === 'string' &&
+          spec.startsWith('workspace:') &&
+          wsPackages[dep],
+      )
+      .map(([dep]) => dep);
+
+  // Then to a fixed point over workspace devDependencies, across every
+  // workspace package: whatever a package is built with — a shared tsconfig,
+  // a sibling's Vite plugin — that changed for any of those reasons, or was
+  // itself built with something that did, rebuilds it too. Propagating only
+  // a build dependency's directory change left its consumers unrebuilt when
+  // it changed through the catalog or the lockfile instead.
+  const changed = new Set(Object.keys(wsPackages).filter(changedItself));
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const name of Object.keys(wsPackages)) {
+      if (changed.has(name)) continue;
+      if (workspaceDevDeps(name).some((dep) => changed.has(dep))) {
+        changed.add(name);
+        grew = true;
+      }
+    }
+  }
+  return names.filter((name) => changed.has(name));
 }
 
 // The dependency fields of a manifest at `ref` and at HEAD, or `null` where

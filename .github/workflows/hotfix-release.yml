@@ -186,8 +186,27 @@ jobs:
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
+      # What is live for Fresco is the Fresco repository's own tree, and the
+      # normal lane pushes it before it tags here (ci-and-release.yml: the
+      # mirror step and the release on that repository both precede the tag
+      # step). A run that failed between them leaves a release the tags do
+      # not record, and a hotfix cut from the newest tag would append older
+      # code over it. The validator refuses a mirror ahead of the tags; this
+      # reads the version that repository's main carries for it.
+      - name: Read the version the Fresco repository carries
+        if: inputs.app == 'fresco'
+        id: mirror-version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(gh api -H 'Accept: application/vnd.github.raw+json' \
+            'repos/complexdatacollective/Fresco/contents/package.json?ref=main' \
+            | node -e 'let d = ""; process.stdin.on("data", (c) => { d += c; }).on("end", () => { process.stdout.write(JSON.parse(d).version); });')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Resolve and validate the version
         id: version
+        env:
+          MIRROR_VERSION: ${{ steps.mirror-version.outputs.version }}
         run: node .hotfix-lane/.github/scripts/resolve-hotfix-release.mjs
 
       - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
@@ -453,8 +472,26 @@ jobs:
       # Re-fetch tags and run the same validator here, so a hotfix that has
       # been overtaken aborts with nothing claimed instead of putting older
       # code live. The version this job releases is this verdict's.
+      # What is live for Fresco is the Fresco repository's own tree, and the
+      # normal lane pushes it before it tags here (ci-and-release.yml: the
+      # mirror step and the release on that repository both precede the tag
+      # step). A run that failed between them leaves a release the tags do
+      # not record, and a hotfix cut from the newest tag would append older
+      # code over it. The validator refuses a mirror ahead of the tags; this
+      # reads the version that repository's main carries for it.
+      - name: Read the version the Fresco repository carries
+        id: mirror-version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(gh api -H 'Accept: application/vnd.github.raw+json' \
+            'repos/complexdatacollective/Fresco/contents/package.json?ref=main' \
+            | node -e 'let d = ""; process.stdin.on("data", (c) => { d += c; }).on("end", () => { process.stdout.write(JSON.parse(d).version); });')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Re-check the version against the newest release
         id: version
+        env:
+          MIRROR_VERSION: ${{ steps.mirror-version.outputs.version }}
         run: |
           git fetch --tags --force origin
           node .hotfix-lane/.github/scripts/resolve-hotfix-release.mjs

@@ -161,6 +161,39 @@ test('re-pinning a catalog entry a package consumes marks that package', () => {
   });
 });
 
+// A build dependency that changed only through the catalog — nothing in its
+// directory moved — still rebuilds whatever is built with it: the consumer's
+// verified artifact was made with the re-pinned plugin, the published one was
+// not.
+test('a build dependency rebuilt for a catalog re-pin rebuilds the packages built with it', () => {
+  inWorkspace((root) => {
+    writeFileSync(
+      join(root, 'packages/exporters/package.json'),
+      `${JSON.stringify(
+        {
+          name: '@x/exporters',
+          version: '3.0.0',
+          devDependencies: { '@x/runtime': 'workspace:^' },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'build exporters with runtime');
+    git(root, 'tag', '-f', 'app@4.0.0');
+    writeFileSync(
+      join(root, 'pnpm-workspace.yaml'),
+      "packages:\n  - 'packages/*'\ncatalog:\n  redux: 2.1.0\n  lodash: 4.0.0\n",
+    );
+    const closure = collectClosure(wsPackages, 'apps/app');
+    assert.deepEqual(packagesChangedSince('app@4.0.0', closure, wsPackages), [
+      '@x/exporters',
+      '@x/runtime',
+    ]);
+  });
+});
+
 test('re-pinning a catalog entry nothing in the closure consumes marks nothing', () => {
   inWorkspace((root) => {
     writeFileSync(

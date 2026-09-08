@@ -28,6 +28,7 @@ function resolve({
   version,
   tags = [],
   strandedTags = [],
+  mirrorVersion,
 }) {
   const cwd = mkdtempSync(join(tmpdir(), 'rhr-'));
   mkdirSync(join(cwd, 'apps', app), { recursive: true });
@@ -67,7 +68,12 @@ function resolve({
     execFileSync('node', [SCRIPT], {
       cwd,
       stdio: 'pipe',
-      env: { ...process.env, APP: app, GITHUB_OUTPUT: outputPath },
+      env: {
+        ...process.env,
+        APP: app,
+        GITHUB_OUTPUT: outputPath,
+        ...(mirrorVersion ? { MIRROR_VERSION: mirrorVersion } : {}),
+      },
     });
   } catch (error) {
     ok = false;
@@ -150,6 +156,36 @@ test('fails on a version older than the newest release', () => {
   });
   assert.equal(ok, false);
   assert.match(stderr, /older than the released 8\.1\.2/);
+});
+
+// The Fresco repository is what is live, and the normal lane pushes it before
+// it tags here: a mirror ahead of the tags means a release the tags do not
+// record, which a hotfix cut from the newest tag would append older code over.
+test('refuses a Fresco hotfix while the mirror is ahead of the tags', () => {
+  for (const version of ['4.1.5', '4.1.6']) {
+    const { ok, stderr } = resolve({
+      app: 'fresco',
+      version,
+      tags: ['fresco@4.1.4'],
+      mirrorVersion: '4.1.5',
+    });
+    assert.equal(ok, false, version);
+    assert.match(
+      stderr,
+      /carries 4\.1\.5 but the newest fresco@ tag here is 4\.1\.4: a release was pushed without its tag/,
+    );
+  }
+});
+
+test('clears a Fresco hotfix when the mirror matches the newest tag', () => {
+  const { ok, output } = resolve({
+    app: 'fresco',
+    version: '4.1.5',
+    tags: ['fresco@4.1.4'],
+    mirrorVersion: '4.1.4',
+  });
+  assert.equal(ok, true);
+  assert.equal(output.tag, 'fresco@4.1.5');
 });
 
 test('fails on a prerelease version', () => {

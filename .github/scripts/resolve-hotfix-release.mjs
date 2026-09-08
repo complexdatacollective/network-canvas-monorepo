@@ -23,7 +23,13 @@
 //      has never seen the 8.1.3 fix, so deploying it would take that fix off
 //      production while the version number moved forward.
 //
-// Inputs (env): APP (interviewer | architect | fresco), GITHUB_OUTPUT.
+//   5. For a mirrored app, the mirrored repository must not be ahead of the
+//      tags: its version is what is live, and the normal lane pushes it before
+//      it tags (rule 5 is checked only when the workflow supplies it).
+//
+// Inputs (env): APP (interviewer | architect | fresco), GITHUB_OUTPUT,
+// MIRROR_VERSION (optional: the version the mirrored repository's main
+// carries).
 // Requires tags in the checkout (actions/checkout fetch-tags: true).
 import { execFileSync, spawnSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
@@ -86,6 +92,28 @@ if (newest && compare(version, newest) < 0) {
     `${version} is older than the released ${newest}. Deploying it would roll ${label} production back to older code; ` +
       `this lane only ships the newest line.`,
   );
+}
+
+// What is live for Fresco is the Fresco repository's own tree, and the normal
+// lane pushes it (and creates its release there) BEFORE it tags here, so a
+// run that failed between the two leaves a release these tags do not record.
+// A hotfix cut from the newest TAG would then append older code over it and
+// make the older image the next `latest`. The workflow reads the version that
+// repository's main carries and passes it here; a mirror ahead of the tags is
+// refused until the tag is reconciled.
+const mirrorVersion = process.env.MIRROR_VERSION;
+if (mirrorVersion) {
+  if (!STABLE.test(mirrorVersion)) {
+    fail(
+      `MIRROR_VERSION '${mirrorVersion}' is not a stable semver; the version read from the mirrored repository should be.`,
+    );
+  }
+  if (!newest || compare(mirrorVersion, newest) > 0) {
+    fail(
+      `The mirrored repository carries ${mirrorVersion} but the newest ${pkg}@ tag here is ${newest ?? 'none'}: a release was pushed without its tag. ` +
+        `Re-run the normal lane for main so it tags what it mirrored, or tag ${pkg}@${mirrorVersion} on the commit that produced it, before re-dispatching.`,
+    );
+  }
 }
 
 if (newest) {

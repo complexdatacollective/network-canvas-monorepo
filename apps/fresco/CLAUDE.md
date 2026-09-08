@@ -175,7 +175,14 @@ dependency change cannot mask another that only the branch's lockfile carried.
    a lifecycle script left under `.github/workflows` can be pushed.
    The lane holds the normal lane's `apps-release-fresco` lock, re-checks the
    newest tag after building, and refuses a version older than the current
-   release, because the mirror's newest push is what `latest` points at. As
+   release, because the mirror's newest push is what `latest` points at. It
+   also reads the version the Fresco repository's `main` carries and refuses
+   while that is ahead of the tags here: the normal lane pushes the mirror
+   before it tags, so a run that failed between the two left a release the
+   tags do not record, which a hotfix cut from the newest tag would append
+   older code over. Re-run the normal lane for `main` (it re-mirrors and
+   tags) or tag `fresco@<version>` on the commit that produced it, then
+   re-dispatch. As
    in the normal lane, the push is what starts the Fresco repository's image
    build, and neither lane waits for it: if that build fails, re-run it from
    the Fresco repository's Actions tab against the same mirrored commit — the
