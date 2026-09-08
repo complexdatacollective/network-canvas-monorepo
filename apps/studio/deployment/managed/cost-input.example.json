@@ -3,157 +3,6 @@
   "minimumHeadroomUsd": 10,
   "freeCreditsUsd": 0,
   "flySingletonCount": 4,
-  "logicalDatabaseCount": 4,
-  "postgresStorageGb": 20,
-  "kmsBillableKeyVersions": 6,
-  "kmsRequestCount": 100000,
-  "postgresSharedBuffersBytes": 1073741824,
-  "postgresAppRoleWorkMemBytes": 268435456,
-  "monitoringRetentionDays": 30,
-  "newRelicPaidUpgradeAllowed": false,
-  "newRelicHardStopConfigured": true,
-  "newRelicMonthlyIngestGb": 50,
-  "newRelicFreeIngestLimitGb": 100,
-  "primaryIngressGb": 0,
-  "primaryObjectStoredGb": 20,
-  "primaryObjectClassARequests": 1000000,
-  "primaryObjectClassBRequests": 10000000,
-  "primaryObjectEgressGb": 50,
-  "databaseTransferGb": 10,
-  "validatorRequestCount": 11904,
-  "validatorRunCount": 5952,
-  "validatorTransferGb": 595.2,
-  "backupStoredGb": 615.2,
-  "backupRequestCount": 11904,
-  "backupEgressGb": 1190.4,
-  "lineItems": [
-    {
-      "category": "compute",
-      "quantity": 2976,
-      "unitPriceUsd": 0.004428,
-      "evidence": "illustrative per-machine-hour price for the candidate-sizing.json shared CPU and memory, 744 hours"
-    },
-    {
-      "category": "database-plan",
-      "quantity": 1,
-      "unitPriceUsd": 35,
-      "evidence": "Crunchy Hobby-2 public list price"
-    },
-    {
-      "category": "database-storage",
-      "quantity": 20,
-      "unitPriceUsd": 0.1,
-      "evidence": "candidate 20 GB"
-    },
-    {
-      "category": "database-transfer",
-      "quantity": 10,
-      "unitPriceUsd": 0,
-      "evidence": "placeholder requiring a current quote"
-    },
-    {
-      "category": "primary-object-storage",
-      "quantity": 20,
-      "unitPriceUsd": 0.015,
-      "evidence": "R2 Standard candidate"
-    },
-    {
-      "category": "primary-object-class-a",
-      "quantity": 1,
-      "unitPriceUsd": 4.5,
-      "evidence": "one million operations"
-    },
-    {
-      "category": "primary-object-class-b",
-      "quantity": 10,
-      "unitPriceUsd": 0.36,
-      "evidence": "ten million operations"
-    },
-    {
-      "category": "primary-object-egress",
-      "quantity": 50,
-      "unitPriceUsd": 0,
-      "evidence": "explicit candidate, verify limits and destination"
-    },
-    {
-      "category": "kms-keys",
-      "quantity": 6,
-      "unitPriceUsd": 1,
-      "evidence": "two logical keys after two retained annual rotations"
-    },
-    {
-      "category": "kms-requests",
-      "quantity": 100000,
-      "unitPriceUsd": 3e-6,
-      "evidence": "illustrative request volume"
-    },
-    {
-      "category": "backup-storage",
-      "quantity": 0.6152000000000001,
-      "unitPriceUsd": 6.95,
-      "evidence": "illustrative B2 storage, all 31 days of immutable points plus live assets"
-    },
-    {
-      "category": "backup-requests",
-      "quantity": 11904,
-      "unitPriceUsd": 0,
-      "evidence": "placeholder requiring request quote"
-    },
-    {
-      "category": "backup-egress",
-      "quantity": 1190.4,
-      "unitPriceUsd": 0,
-      "evidence": "explicit estimate; free-egress eligibility must be proven"
-    },
-    {
-      "category": "validator-compute",
-      "quantity": 357120,
-      "unitPriceUsd": 1.6666666666666667e-5,
-      "evidence": "illustrative GB-second price; independent 2 GB, 30-second execution requires a measured quote"
-    },
-    {
-      "category": "validator-requests",
-      "quantity": 11904,
-      "unitPriceUsd": 2e-7,
-      "evidence": "illustrative Lambda invocation charge; independent execution location still requires qualification"
-    },
-    {
-      "category": "validator-transfer",
-      "quantity": 595.2,
-      "unitPriceUsd": 0,
-      "evidence": "illustrative full dump validation transfer; current provider quote required"
-    },
-    {
-      "category": "mail",
-      "quantity": 1,
-      "unitPriceUsd": 15,
-      "evidence": "Postmark candidate"
-    },
-    {
-      "category": "monitoring",
-      "quantity": 1,
-      "unitPriceUsd": 0,
-      "evidence": "New Relic Free candidate; hard stop required"
-    },
-    {
-      "category": "dns",
-      "quantity": 1,
-      "unitPriceUsd": 0,
-      "evidence": "placeholder for fixed DNS charges"
-    },
-    {
-      "category": "reserve",
-      "quantity": 1,
-      "unitPriceUsd": 0,
-      "evidence": "must be raised from zero before qualification"
-    },
-    {
-      "category": "primary-ingress",
-      "quantity": 0,
-      "unitPriceUsd": 0,
-      "evidence": "placeholder for primary ingress per GB; account quote and traffic measurement required"
-    }
-  ],
   "flyServiceResources": {
     "studio-production": {
       "cpu_kind": "shared",
@@ -177,13 +26,532 @@
     }
   },
   "flyMonthlyHours": 744,
-  "validatorMemoryGb": 2,
-  "validatorDurationSeconds": 30,
+  "flyApplicationEgressGb": 50,
+  "logicalDatabaseCount": 4,
   "postgresPlanId": "hobby-2",
+  "postgresStorageGb": 20,
+  "postgresSharedBuffersBytes": 1073741824,
+  "postgresAppRoleWorkMemBytes": 268435456,
   "databaseDumpSizesGb": {
     "studio-production": 0.1,
     "studio-staging": 0.1,
     "registry-production": 0.1,
     "registry-staging": 0.1
+  },
+  "databaseTransferGb": 595.2,
+  "kmsBillableKeyVersions": 6,
+  "kmsRequestCount": 100000,
+  "primaryObjectStoredGb": 20,
+  "primaryObjectCurrentCount": 10000,
+  "primaryObjectMonthlyVersionChurnGb": 5,
+  "primaryObjectMonthlyVersionChurnCount": 2500,
+  "primaryObjectRetainedVersionGb": 25,
+  "primaryObjectRetainedVersionCount": 12500,
+  "primaryObjectApplicationEgressGb": 50,
+  "primaryObjectClassARequests": 1000000,
+  "primaryObjectClassBRequests": 10000000,
+  "primaryObjectEgressGb": 55,
+  "validatorRunCount": 5952,
+  "validatorMemoryGb": 2,
+  "validatorDurationSeconds": 30,
+  "validatorRequestCount": 217964,
+  "validatorTransferGb": 650.5782021120001,
+  "backupStoredGb": 620.395357,
+  "backupRequestCount": 608562,
+  "backupEgressGb": 650.382857,
+  "postmarkPlanRef": "basic-10k-historical-comparison",
+  "postmarkMessageCount": 12000,
+  "postmarkIncludedMessages": 10000,
+  "monitoringRetentionDays": 30,
+  "newRelicPaidUpgradeAllowed": false,
+  "newRelicHardStopConfigured": true,
+  "newRelicMonthlyIngestGb": 50,
+  "newRelicFreeIngestLimitGb": 100,
+  "workerTierId": "unselected",
+  "workerMonthlyRequestCount": 1000000,
+  "workerMonthlyCpuMilliseconds": 10000000,
+  "workerMonthlyWebSocketMinutes": 100000,
+  "lineItems": [
+    {
+      "category": "compute",
+      "quantity": 2976,
+      "unitPriceUsd": 0.004428,
+      "evidence": "illustrative per-machine-hour price for the candidate-sizing.json shared CPU and memory, 744 hours"
+    },
+    {
+      "category": "fly-egress",
+      "quantity": 650.2,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring current Fly application and recovery-upload egress quote, including encrypted archive overhead"
+    },
+    {
+      "category": "database-plan",
+      "quantity": 1,
+      "unitPriceUsd": 35,
+      "evidence": "Crunchy Hobby-2 public list price"
+    },
+    {
+      "category": "database-storage",
+      "quantity": 20,
+      "unitPriceUsd": 0.1,
+      "evidence": "candidate 20 GB"
+    },
+    {
+      "category": "database-transfer",
+      "quantity": 595.2,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring a current quote"
+    },
+    {
+      "category": "primary-object-storage",
+      "quantity": 25,
+      "unitPriceUsd": 0.015,
+      "evidence": "illustrative R2 retained current and historical version inventory"
+    },
+    {
+      "category": "primary-object-class-a",
+      "quantity": 1,
+      "unitPriceUsd": 4.5,
+      "evidence": "one million operations"
+    },
+    {
+      "category": "primary-object-class-b",
+      "quantity": 10,
+      "unitPriceUsd": 0.36,
+      "evidence": "ten million operations"
+    },
+    {
+      "category": "primary-object-egress",
+      "quantity": 55,
+      "unitPriceUsd": 0,
+      "evidence": "explicit candidate, verify limits and destination"
+    },
+    {
+      "category": "kms-keys",
+      "quantity": 6,
+      "unitPriceUsd": 1,
+      "evidence": "two logical keys after two retained annual rotations"
+    },
+    {
+      "category": "kms-requests",
+      "quantity": 100000,
+      "unitPriceUsd": 3e-6,
+      "evidence": "illustrative request volume"
+    },
+    {
+      "category": "annual-reencryption-kms-requests",
+      "quantity": 167.33333333333334,
+      "unitPriceUsd": 3e-6,
+      "evidence": "illustrative annual re-encryption KMS calls amortized monthly; replace with measured inventory and current quote"
+    },
+    {
+      "category": "annual-reencryption-compute",
+      "quantity": 8.333333333333334,
+      "unitPriceUsd": 1.6666666666666667e-5,
+      "evidence": "illustrative annual re-encryption compute amortized monthly; replace with measured execution and current quote"
+    },
+    {
+      "category": "backup-storage",
+      "quantity": 0.620395357,
+      "unitPriceUsd": 6.95,
+      "evidence": "illustrative B2 storage, all 31 days of immutable points plus live assets"
+    },
+    {
+      "category": "backup-requests",
+      "quantity": 608562.0,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring request quote"
+    },
+    {
+      "category": "backup-egress",
+      "quantity": 650.382857,
+      "unitPriceUsd": 0,
+      "evidence": "explicit estimate; free-egress eligibility must be proven"
+    },
+    {
+      "category": "validator-compute",
+      "quantity": 362377,
+      "unitPriceUsd": 1.6666666666666667e-5,
+      "evidence": "illustrative GB-second price for database validation, new-copy validation, per-bucket reconciliation/checkpoint signing and separate history scrubs; every phase requires measurement and a current quote"
+    },
+    {
+      "category": "validator-requests",
+      "quantity": 217964,
+      "unitPriceUsd": 2e-7,
+      "evidence": "illustrative Lambda invocation charge; independent execution location still requires qualification"
+    },
+    {
+      "category": "validator-transfer",
+      "quantity": 650.5782021120001,
+      "unitPriceUsd": 0,
+      "evidence": "illustrative full dump validation transfer; current provider quote required"
+    },
+    {
+      "category": "mail",
+      "quantity": 1,
+      "unitPriceUsd": 15,
+      "evidence": "illustrative Postmark Basic subscription; current plan quote required"
+    },
+    {
+      "category": "mail-overage",
+      "quantity": 2000,
+      "unitPriceUsd": 0.001,
+      "evidence": "illustrative arithmetic only; current Postmark overage quote required"
+    },
+    {
+      "category": "monitoring",
+      "quantity": 1,
+      "unitPriceUsd": 0,
+      "evidence": "New Relic Free candidate; hard stop required"
+    },
+    {
+      "category": "monitoring-collector-compute",
+      "quantity": 744,
+      "unitPriceUsd": 0.004428,
+      "evidence": "illustrative persistent collector Machine price; replace with measured candidate and current Fly quote"
+    },
+    {
+      "category": "monitoring-collector-storage",
+      "quantity": 1,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring measured persistent checkpoint storage and current Fly quote"
+    },
+    {
+      "category": "monitoring-collector-egress",
+      "quantity": 1,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring measured collector forwarding and anchor traffic plus current Fly quote"
+    },
+    {
+      "category": "monitoring-anchor-http-requests",
+      "quantity": 100000,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring measured anchor HTTP traffic and current AWS quote"
+    },
+    {
+      "category": "monitoring-anchor-compute",
+      "quantity": 10,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring measured anchor service GB-seconds and current AWS quote"
+    },
+    {
+      "category": "monitoring-anchor-database-reads",
+      "quantity": 200000,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring measured DynamoDB read request units and current AWS quote"
+    },
+    {
+      "category": "monitoring-anchor-database-writes",
+      "quantity": 100000,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring measured DynamoDB write request units and current AWS quote"
+    },
+    {
+      "category": "monitoring-anchor-storage",
+      "quantity": 0.001,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring measured durable lineage storage and current AWS quote"
+    },
+    {
+      "category": "dns",
+      "quantity": 1,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder for fixed DNS charges"
+    },
+    {
+      "category": "reserve",
+      "quantity": 1,
+      "unitPriceUsd": 0,
+      "evidence": "must be raised from zero before qualification"
+    },
+    {
+      "category": "primary-ingress",
+      "quantity": 1,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring a current Cloudflare Workers tier quote"
+    },
+    {
+      "category": "primary-ingress-requests",
+      "quantity": 1000000,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring measured requests and a current account-tier quote"
+    },
+    {
+      "category": "primary-ingress-cpu",
+      "quantity": 10000000,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring measured CPU milliseconds and a current account-tier quote"
+    },
+    {
+      "category": "primary-ingress-websocket",
+      "quantity": 100000,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring measured WebSocket usage and a current account-tier quote"
+    },
+    {
+      "category": "pitr-drill-compute",
+      "quantity": 9600,
+      "unitPriceUsd": 1.6666666666666667e-5,
+      "evidence": "illustrative pitr quarterly restore compute; replace with complete measured execution, receipt publication and current provider quote"
+    },
+    {
+      "category": "pitr-drill-requests",
+      "quantity": 1.3333333333333333,
+      "unitPriceUsd": 2e-7,
+      "evidence": "illustrative pitr quarterly restore requests; replace with complete measured execution, receipt publication and current provider quote"
+    },
+    {
+      "category": "pitr-drill-database-source-requests",
+      "quantity": 2.6666666666666665,
+      "unitPriceUsd": 0,
+      "evidence": "illustrative pitr quarterly database source requests; replace with measured provider-specific execution and quote"
+    },
+    {
+      "category": "pitr-drill-object-source-requests",
+      "quantity": 4168.0,
+      "unitPriceUsd": 0,
+      "evidence": "illustrative pitr quarterly object source requests; replace with measured provider-specific execution and quote"
+    },
+    {
+      "category": "pitr-drill-database-source-transfer",
+      "quantity": 0.16666666666666666,
+      "unitPriceUsd": 0,
+      "evidence": "illustrative pitr quarterly database source transfer; replace with measured provider-specific execution and quote"
+    },
+    {
+      "category": "pitr-drill-object-source-transfer",
+      "quantity": 8.333333333333332,
+      "unitPriceUsd": 0,
+      "evidence": "illustrative pitr quarterly object source transfer; replace with measured provider-specific execution and quote"
+    },
+    {
+      "category": "pitr-drill-runner-transfer",
+      "quantity": 8.533333333333333,
+      "unitPriceUsd": 0,
+      "evidence": "illustrative pitr quarterly restore runner-transfer; replace with complete measured execution, receipt publication and current provider quote"
+    },
+    {
+      "category": "pitr-drill-database-hours",
+      "quantity": 5.333333333333333,
+      "unitPriceUsd": 0.05,
+      "evidence": "illustrative pitr quarterly restore database-hours; replace with complete measured execution, receipt publication and current provider quote"
+    },
+    {
+      "category": "pitr-drill-database-storage",
+      "quantity": 5.333333333333333,
+      "unitPriceUsd": 0.0002,
+      "evidence": "illustrative pitr quarterly restore database-storage; replace with complete measured execution, receipt publication and current provider quote"
+    },
+    {
+      "category": "pitr-drill-scratch-storage",
+      "quantity": 34.666666666666664,
+      "unitPriceUsd": 0.0001,
+      "evidence": "illustrative pitr quarterly restore scratch-storage; replace with complete measured execution, receipt publication and current provider quote"
+    },
+    {
+      "category": "independent-drill-compute",
+      "quantity": 9600,
+      "unitPriceUsd": 1.6666666666666667e-5,
+      "evidence": "illustrative independent quarterly restore compute; replace with complete measured execution, receipt publication and current provider quote"
+    },
+    {
+      "category": "independent-drill-requests",
+      "quantity": 1.3333333333333333,
+      "unitPriceUsd": 2e-7,
+      "evidence": "illustrative independent quarterly restore requests; replace with complete measured execution, receipt publication and current provider quote"
+    },
+    {
+      "category": "independent-drill-database-source-requests",
+      "quantity": 2.6666666666666665,
+      "unitPriceUsd": 0,
+      "evidence": "illustrative independent quarterly database source requests; replace with measured provider-specific execution and quote"
+    },
+    {
+      "category": "independent-drill-object-source-requests",
+      "quantity": 4168.0,
+      "unitPriceUsd": 0,
+      "evidence": "illustrative independent quarterly object source requests; replace with measured provider-specific execution and quote"
+    },
+    {
+      "category": "independent-drill-database-source-transfer",
+      "quantity": 0.16666666666666666,
+      "unitPriceUsd": 0,
+      "evidence": "illustrative independent quarterly database source transfer; replace with measured provider-specific execution and quote"
+    },
+    {
+      "category": "independent-drill-object-source-transfer",
+      "quantity": 8.333333333333332,
+      "unitPriceUsd": 0,
+      "evidence": "illustrative independent quarterly object source transfer; replace with measured provider-specific execution and quote"
+    },
+    {
+      "category": "independent-drill-runner-transfer",
+      "quantity": 8.533333333333333,
+      "unitPriceUsd": 0,
+      "evidence": "illustrative independent quarterly restore runner-transfer; replace with complete measured execution, receipt publication and current provider quote"
+    },
+    {
+      "category": "independent-drill-database-hours",
+      "quantity": 5.333333333333333,
+      "unitPriceUsd": 0.05,
+      "evidence": "illustrative independent quarterly restore database-hours; replace with complete measured execution, receipt publication and current provider quote"
+    },
+    {
+      "category": "independent-drill-database-storage",
+      "quantity": 5.333333333333333,
+      "unitPriceUsd": 0.0002,
+      "evidence": "illustrative independent quarterly restore database-storage; replace with complete measured execution, receipt publication and current provider quote"
+    },
+    {
+      "category": "independent-drill-scratch-storage",
+      "quantity": 34.666666666666664,
+      "unitPriceUsd": 0.0001,
+      "evidence": "illustrative independent quarterly restore scratch-storage; replace with complete measured execution, receipt publication and current provider quote"
+    }
+  ],
+  "primaryObjectBucketInventories": {
+    "studio-production": {
+      "retainedVersionCount": 10000,
+      "requestsPerCompleteScan": 10
+    },
+    "studio-staging": {
+      "retainedVersionCount": 1000,
+      "requestsPerCompleteScan": 1
+    },
+    "registry-production": {
+      "retainedVersionCount": 1000,
+      "requestsPerCompleteScan": 1
+    },
+    "registry-staging": {
+      "retainedVersionCount": 500,
+      "requestsPerCompleteScan": 1
+    }
+  },
+  "objectScrubRunCount": 2,
+  "objectScrubMemoryGb": 2,
+  "objectScrubDurationSeconds": 600,
+  "objectCopyValidationMemoryGb": 0.25,
+  "objectCopyValidationDurationSeconds": 1,
+  "objectReconciliationMemoryGb": 0.125,
+  "objectReconciliationDurationSeconds": 0.1,
+  "databaseCheckpointSizeBytes": 1024,
+  "objectCheckpointSizeBytes": 1024,
+  "recoveryObjectRequestsPerReconciliation": 3,
+  "recoveryObjectRequestsPerScrubStart": 2,
+  "flyRecoveryUploadGb": 600.2,
+  "flyEgressGb": 650.2,
+  "objectScrubResultSizeBytes": 256,
+  "objectScrubResultRequestsPerVersion": 1,
+  "objectScrubPublicationRequestsPerBucket": 1,
+  "restoreDrills": {
+    "pitr": {
+      "runsPerQuarter": 1,
+      "durationHours": 4,
+      "computeGbSeconds": 28800,
+      "requestCount": 4,
+      "runnerTransferGb": 25.6,
+      "scratchStorageGb": 26,
+      "services": {
+        "studio-production": {
+          "databaseStorageGb": 1,
+          "objectRestoreGb": 20,
+          "objectRestoreCount": 10000
+        },
+        "studio-staging": {
+          "databaseStorageGb": 1,
+          "objectRestoreGb": 2,
+          "objectRestoreCount": 1000
+        },
+        "registry-production": {
+          "databaseStorageGb": 1,
+          "objectRestoreGb": 2,
+          "objectRestoreCount": 1000
+        },
+        "registry-staging": {
+          "databaseStorageGb": 1,
+          "objectRestoreGb": 1,
+          "objectRestoreCount": 500
+        }
+      },
+      "receiptSizeBytes": 4096,
+      "receiptRequestCount": 2,
+      "databaseSourceRequestCount": 8,
+      "databaseSourceTransferGb": 0.5,
+      "objectSourceRequestCount": 12504,
+      "objectSourceTransferGb": 25
+    },
+    "independent": {
+      "runsPerQuarter": 1,
+      "durationHours": 4,
+      "computeGbSeconds": 28800,
+      "requestCount": 4,
+      "runnerTransferGb": 25.6,
+      "scratchStorageGb": 26,
+      "services": {
+        "studio-production": {
+          "databaseStorageGb": 1,
+          "objectRestoreGb": 20,
+          "objectRestoreCount": 10000
+        },
+        "studio-staging": {
+          "databaseStorageGb": 1,
+          "objectRestoreGb": 2,
+          "objectRestoreCount": 1000
+        },
+        "registry-production": {
+          "databaseStorageGb": 1,
+          "objectRestoreGb": 2,
+          "objectRestoreCount": 1000
+        },
+        "registry-staging": {
+          "databaseStorageGb": 1,
+          "objectRestoreGb": 1,
+          "objectRestoreCount": 500
+        }
+      },
+      "receiptSizeBytes": 4096,
+      "receiptRequestCount": 2,
+      "databaseSourceRequestCount": 8,
+      "databaseSourceTransferGb": 0.5,
+      "objectSourceRequestCount": 12504,
+      "objectSourceTransferGb": 25
+    }
+  },
+  "databaseExpandedSizesGb": {
+    "studio-production": 1,
+    "studio-staging": 1,
+    "registry-production": 1,
+    "registry-staging": 1
+  },
+  "monitoringCollectorRegion": "iad",
+  "monitoringCollectorCpuKind": "shared",
+  "monitoringCollectorCpus": 1,
+  "monitoringCollectorMemoryMb": 512,
+  "monitoringCollectorMonthlyHours": 744,
+  "monitoringCollectorStorageGb": 1,
+  "monitoringCollectorEgressGb": 1,
+  "monitoringAnchorRegion": "us-east-1",
+  "monitoringAnchorHttpRequestCount": 100000,
+  "monitoringAnchorComputeGbSeconds": 10,
+  "monitoringAnchorDatabaseReadRequestUnits": 200000,
+  "monitoringAnchorDatabaseWriteRequestUnits": 100000,
+  "monitoringAnchorStorageGb": 0.001,
+  "annualReencryption": {
+    "studio-production": {
+      "recordCount": 50000,
+      "batchSize": 100,
+      "batchInvocationCount": 501,
+      "verificationInvocationCount": 1,
+      "configuredRootCount": 2,
+      "computeGbSeconds": 50
+    },
+    "studio-staging": {
+      "recordCount": 50000,
+      "batchSize": 100,
+      "batchInvocationCount": 501,
+      "verificationInvocationCount": 1,
+      "configuredRootCount": 2,
+      "computeGbSeconds": 50
+    }
   }
 }

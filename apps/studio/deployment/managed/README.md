@@ -122,8 +122,9 @@ configuration archive, and their account-recovery paths.
    authenticated by the deployment qualification workflow before it can admit
    deployment. That workflow is not implemented in this foundation.
 
-   The checked-in input is illustrative and incomplete, with unverified prices
-   and zero reserve; it fails `--budget`. `node cost-model.mjs cost-input.json`
+   The checked-in input is illustrative and incomplete, with unverified prices,
+   zero reserve, and no selected Workers tier; it fails `--budget`.
+   `node cost-model.mjs cost-input.json`
    only reports the estimate. Every budget line requires a `pricing` object with
    `currency: "USD"`, the exact `quantity` and `unitPriceUsd`, and a `reviewedAt`
    date (`YYYY-MM-DD`) within the preceding 30 days. Paid categories require
@@ -134,26 +135,190 @@ configuration archive, and their account-recovery paths.
    reserve is added. These are operator declarations, not authenticated quotes;
    the command never grants deployment qualification.
 
-   Quantities must match measured usage: compute
-   prices all four candidate Machines for 744 hours, ingress is priced per GB
-   separately from fixed DNS, and validator compute prices run count times
-   measured memory GB times billed seconds (GB-seconds), with requests and
-   transfer separate. `databaseDumpSizesGb` must measure each of the four
-   databases. The shared 30-minute schedule requires at least 5,952 database
-   validations in a 31-day month, with corresponding requests and full dump
-   transfer. B2's shared 31-day compliance lock means storage must cover every
-   frequent archive for all 31 days, plus at least current primary object data;
-   a seven-day storage estimate would underprice locked archives. These are
-   lower bounds: retained historical object versions, retries, growing dumps,
-   full object readback and restore drills must also be measured and priced.
-   A changed resource size is refused unless the shared
-   candidate and price review are updated together. PostgreSQL storage and
-   plan identity are also bound to that same candidate; an independent tfvars
-   storage increase or plan substitution refuses validation. Measure database transfer,
-   R2 storage/Class A/Class B/egress, KMS requests, B2 storage/requests/egress,
-   mail, and monitoring. Total recurring cost including a non-zero recovery
-   reserve must be at most $100/month and preserve the selected dollar headroom.
-   Measured New Relic ingest must keep at least 2x headroom under its free limit.
+   Its traffic, object-version, mail, and execution quantities are synthetic
+   arithmetic examples rather than measurements from an account or workload.
+   Replace every one with bounded measurement evidence before supplying current
+   pricing declarations.
+
+   Included-price declarations also name an `allowance` with `billingScopeId`,
+   `productId`, `allowanceId`, `unit`, `period: "month"` and `limitQuantity`.
+   The pricing row names `providerId`; `coveredQuantity` equals the shared limit.
+   Every row using that provider/billing-scope/product/allowance consumes the same
+   allowance. Identities and unit labels are compared without case differences;
+   units and limits must agree. The estimator sums the full execution
+   month, including annual maintenance, quarterly drills and their receipt I/O,
+   before checking the shared limit. Distinct rows cannot each spend an entire
+   Lambda or B2 allowance. An overage requires paid pricing rather than another
+   copy of the free declaration; operator quotes must identify the actual billing
+   scope and allowance, not invented subdivisions.
+
+   Quantities must match measured usage. Compute prices all four candidate
+   Machines for 744 hours. `flyApplicationEgressGb` measures their API,
+   WebSocket, Registry, and other outbound delivery; `flyRecoveryUploadGb`
+   separately measures capture/upload traffic, including encrypted-envelope
+   overhead, metadata, and retries. Its floor includes every scheduled dump
+   and changed object uploaded from Fly to B2. `flyEgressGb` prices at least
+   the sum of both measurements (650.2 GB in this synthetic example). The ingress Worker has
+   separate mandatory tier, request, CPU-millisecond, and WebSocket-minute
+   categories. Plain Workers bill a WebSocket upgrade as a request and do not
+   charge for connection duration, so upgrades belong in
+   `workerMonthlyRequestCount`; the WebSocket-minute row must carry an explicit
+   zero-price inclusion declaration for the same selected tier. Durable Objects
+   are unsupported by this model and require a reviewed extension for their
+   request, duration, and storage dimensions. No zero-priced per-GB placeholder
+   represents Worker account charges. `workerTierId` remains unselected until an
+   account-visible product and its current allowances/rates have been reviewed.
+
+   The New Relic subscription row covers only New Relic. The private collector
+   is a fifth persistent workload with separate 744-hour compute, checkpoint
+   storage, and egress rows. Its synthetic candidate is one 512 MB shared CPU
+   Machine in IAD; provider pricing declarations must identify that exact size
+   and region. The independently administered monotonic anchor has separate AWS
+   HTTP-request, compute GB-second, DynamoDB read/write request-unit, and durable
+   storage rows bound to `us-east-1`. These measured dimensions must include
+   retries and reconciliation. Free allowances need explicit complete coverage;
+   they cannot be represented by the unrelated New Relic Free declaration.
+
+   Both monitoring workloads also appear in `candidate_inventory.monitoring`.
+   Their shared sizing contract names the private always-on Fly collector, its
+   at-least-1-GB checkpoint volume, and the independently administered US AWS
+   HTTP/Lambda/DynamoDB anchor. The anchor handoff fixes the `account`/`record`
+   string key schema and permanent `ENROLLMENT` record, disables TTL, requires
+   deletion protection and PITR, and separates collector, service and enrollment
+   authorities. These are requirements for the remaining deployment module;
+   neither workload is provisioned by these outputs. DynamoDB transaction IAM
+   permissions apply to the [underlying item operations](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis-iam.html)
+   and are restricted by the enclosing transaction operation.
+
+   `databaseDumpSizesGb` must measure each of the four compressed archives.
+   `databaseExpandedSizesGb` separately measures each restored database after
+   expansion, must fit within the selected PostgreSQL storage, and sets the
+   minimum scratch-database storage for both drill paths. The shared
+   30-minute schedule requires at least 5,952 database validations and 595.2 GB
+   of source-provider egress in this illustrative 0.4 GB aggregate-dump case,
+   with the corresponding B2 and validator requests and full-dump transfer.
+   Each database generation prices an archive PUT, independent readback GET,
+   and a separate immutable checkpoint PUT after successful validation.
+   For objects, current count/bytes, monthly version churn, and the complete
+   recovery-retained version inventory are separate measurements. Each count
+   and byte total must be zero or nonzero together so a nonempty inventory
+   cannot be priced as zero bytes. The retained
+   inventory must cover current objects plus churn. Its 31-day storage,
+   recovery-copy reads/writes and immediate independent readback transfer, every one-minute primary-bucket
+   inventory page, and every retained version's
+   30-day B2 readback/validator scrub are lower bounds on the aggregate R2, B2,
+   and validator quantities. Every changed version requires a readback GET,
+   a validation invocation, and separately measured validation GB-seconds
+   before its copy can be included in a checkpoint. The periodic history scrub
+   cannot substitute for that validation. Retries and growth must increase the
+   relevant measurements. Quarterly restore drills are separate mandatory costs
+   below; a reserve cannot substitute for their execution.
+
+   `primaryObjectBucketInventories` binds each of the four buckets' retained
+   version count to its measured requests for one complete authoritative scan.
+   The sum must equal the retained inventory. Every bucket needs at least one
+   request, and [R2 listings return at most 1,000 objects per page](https://developers.cloudflare.com/api/resources/r2/subresources/buckets/subresources/objects/methods/list/).
+   Short pages and retries must be included in the measured scan count. The
+   fixture's 12,500 versions occupy 13 pages across four buckets, requiring
+   580,320 monthly listing requests plus 2,500 version writes; four requests per
+   scan would underprice reconciliation.
+
+   Postmark pricing separates one selected plan from the overage message count
+   derived as `max(0, postmarkMessageCount - postmarkIncludedMessages)`. A
+   current budget declaration must identify the same plan and included-message
+   allowance on both mail rows. Validator compute adds database validation
+   GB-seconds to independently measured new-copy validation, per-bucket
+   reconciliation/checkpoint signing, and complete object-scrub GB-seconds.
+   `objectCopyValidationMemoryGb` and `objectCopyValidationDurationSeconds`
+   measure each changed version's full independent readback and validation;
+   multiply by monthly version churn. `objectReconciliationMemoryGb` and
+   `objectReconciliationDurationSeconds` measure one complete bucket scan,
+   proof comparison, and checkpoint publication, including all listing pages.
+   The one-minute schedule therefore requires 178,560 such executions and
+   checkpoint PUTs across four buckets, even when they are idle. The source
+   capture/upload workers use the four already priced Machines; their CPU and
+   memory demand remains part of those Machines' required capacity test.
+   Any separately hosted capture process requires an additional cost row before
+   it can be selected.
+
+   The independent store is also read during reconciliation.
+   `recoveryObjectRequestsPerReconciliation` measures the complete B2 operation
+   count per bucket, including discovery/listing pages, every GET needed to
+   consume its signed proof index, and the new checkpoint PUT (at least three).
+   `recoveryObjectRequestsPerScrubStart` separately measures discovery and
+   proof-index reads for each bucket at the start of each history scrub (at
+   least two). Multiple index objects, listing pages, and retries raise these
+   measurements. Proof-index read bytes and outgoing signed checkpoint bytes
+   are included in the respective transfer floors; object payload reads alone
+   cannot pay for recovery metadata I/O.
+
+   Every history scrub also persists a result for every retained version and
+   publishes each bucket's revised proof index, including invalidation after a
+   corruption finding. `objectScrubResultSizeBytes` measures each complete
+   durable record. `objectScrubResultRequestsPerVersion` and
+   `objectScrubPublicationRequestsPerBucket` each require at least one PUT;
+   additional shards, readback, and retries increase them. The estimator includes
+   all result/index PUTs, outgoing validator bytes, and locked result/index
+   retention. Scrub execution measurements must include this publication work.
+
+   `restoreDrills.pitr` and `restoreDrills.independent` each require at least one
+   complete estate drill per quarter. Both name all four services and measure
+   their restored database storage and retained object counts/bytes. The model
+   prices each mode's compute GB-seconds, runner requests, provider-specific
+   database and object source requests and transfer, runner transfer, four
+   scratch database hours, scratch
+   database GB-hours, and temporary GB-hours separately, amortized over the
+   shared three-month interval. Restore transfer includes archive/envelope and
+   metadata overhead; paged discovery, object fetches, failed attempts, cleanup,
+   and receipt publication must be included in the measured resource totals.
+   Source request floors include every object and at least one proof/checkpoint
+   discovery read per object bucket on the object provider, plus all four database
+   archives and their discovery reads on the database provider. PITR database source usage is declared against Crunchy
+   Bridge while PITR object source usage is declared against Cloudflare R2.
+   Independent database and object source usage remain separate categories even
+   though both are declared against B2. A budget declaration must identify the
+   expected provider on each source-pricing row. The independent B2 store also
+   prices each drill receipt's
+   PUT/readback GET, readback bytes, and full immutable retention. Scratch
+   database storage must measure the expanded restored database, rather than
+   treating a compressed dump as its storage requirement. The fixture's four
+   hours and 28,800 GB-seconds per mode are synthetic inputs, not RTO evidence.
+   Initial qualification drills are additional setup usage. The result reports
+   monthly accrual as `totalUsd` and the conservative month in which both drill
+   paths execute as `peakMonthUsd`. Budget acceptance and dollar headroom use
+   that peak cost, so quarterly amortization cannot hide a breach of the cap.
+
+   Annual maintenance re-encryption is also measured rather than absorbed into
+   the monthly KMS rows or reserve. Production and staging each declare their
+   scanned record inventory, batch size, actual bounded batch invocations,
+   final verification invocations, complete configured historical-root count,
+   and measured compute GB-seconds. A command loads the full configured root
+   set once before its batch or verification work, so the KMS quantity is the
+   sum of `(batch invocations + verification invocations) * configured roots`
+   for each environment. The batch count must cover every record plus the
+   terminal empty/full-page proof, and even an empty environment prices one
+   batch invocation, final verification, root loads, and positive compute.
+   Annual usage accrues monthly in `totalUsd`; `peakMonthUsd` restores the other
+   eleven months to the execution month so rotation cannot pass the cap through
+   averaging.
+
+   `databaseCheckpointSizeBytes` and `objectCheckpointSizeBytes` are positive
+   measured upper bounds for complete signed checkpoint records, including
+   their manifests/proof indexes. Price the full immutable retention window's
+   metadata alongside archives and object versions. A longer shared retention
+   setting increases both locked storage and the exported B2 retention handoff.
+   `objectScrubRunCount` covers at least two complete scrubs in the 31-day window;
+   its memory and duration must measure the full retained inventory, including
+   every shard's billed seconds when a scrub uses several jobs. The illustrative
+   two 2-GB, 600-second scrubs add 2,400 GB-seconds; this is not a live measurement.
+   Additional scrubs also increase the minimum request and transfer quantities.
+   Requests and transfer are priced separately. A changed resource size is refused unless the shared
+   candidate and price review are updated together. PostgreSQL storage and plan
+   identity are also bound to that same candidate; an independent tfvars storage
+   increase or plan substitution refuses validation. Total recurring cost,
+   including a non-zero recovery reserve, must be at most $100/month and preserve
+   the selected dollar headroom. Measured New Relic ingest must keep at least 2x
+   headroom under its free limit.
 
 2. Prove Hobby-2 can actually sustain `shared_buffers >= 1 GB` and app-role
    `work_mem >= 256 MB`, all process pools and four logical databases under
@@ -161,6 +326,14 @@ configuration archive, and their account-recovery paths.
    storage-growth, and latency headroom. The plan has no PgBouncer, no SLA, and
    best-effort health/audit/support, so price and `terraform validate` cannot
    qualify it.
+
+   The earlier `docs/superpowers/plans/2026-09-07-studio-managed-hosting-estimate.md`
+   Standard-4 table is a historical cost comparison showing that candidate's
+   fixed floor exceeded the cap. It is not the active plan selection. The
+   active candidate is Hobby-2, and it remains unqualified until the
+   live catalogue, settings, grants, and representative capacity checks above
+   succeed.
+
 3. Create all four databases closed to public connection, run the real numbered
    migrations, install exhaustive current runtime/operator/backup role grants,
    verify effective settings, and only then admit their matching singleton.
@@ -170,7 +343,10 @@ configuration archive, and their account-recovery paths.
    an alert at four minutes lag, and stopped-WAL detection. A daily-backup time
    or general health signal is insufficient. Initial and quarterly restores must
    meet RPO <= 5 minutes and RTO <= 4 hours.
-5. Every 30 minutes, capture each database and reconcile each primary bucket to
+5. Every 30 minutes, capture each database. Independently reconcile every primary
+   bucket once per minute so new versions can be copied and validated within the
+   five-minute object recovery target; a database dump schedule cannot establish
+   object recovery freshness. Reconcile each primary bucket to
    an authoritative version inventory. The independent validator must run
    outside the primary account, authenticate/decrypt/read back, restore, verify
    schema/migrations/content/row counts/sequences and every referenced object,
@@ -179,7 +355,8 @@ configuration archive, and their account-recovery paths.
    at least 31 days and until no retained database point references them. Test
    corrupt, missing, truncated, wrong-key, stopped-stream, pagination, dropped
    event, orphan-cleanup, and at-least-29-day recovery cases. Meet independent
-   RPO <= 1 hour and end-to-end RTO <= 4 hours in initial and quarterly drills.
+   database RPO <= 1 hour, object RPO <= 5 minutes, and end-to-end RTO <= 4 hours
+   in initial and quarterly drills.
 6. Prove New Relic Free retains queryable logs and raw metrics for 30 days,
    implements the existing alert semantics including lost-signal behavior, and
    delivers independently of Studio mail. Enforce a hard stop before the 100 GB

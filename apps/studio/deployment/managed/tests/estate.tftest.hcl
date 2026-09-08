@@ -93,8 +93,28 @@ run "candidate_contract" {
   }
 
   assert {
-    condition     = b2_bucket.independent_recovery.bucket_type == "allPrivate" && b2_bucket.independent_recovery.file_lock_configuration[0].default_retention[0].mode == "compliance" && b2_bucket.independent_recovery.file_lock_configuration[0].default_retention[0].period[0].duration == 31
-    error_message = "The independent bucket must be private with 31-day compliance retention."
+    condition     = b2_bucket.independent_recovery.bucket_type == "allPrivate" && b2_bucket.independent_recovery.file_lock_configuration[0].default_retention[0].mode == "compliance" && b2_bucket.independent_recovery.file_lock_configuration[0].default_retention[0].period[0].duration == jsondecode(file("${path.module}/candidate-sizing.json")).recovery.retentionDays && jsondecode(file("${path.module}/candidate-sizing.json")).recovery.retentionDays >= 31
+    error_message = "The independent bucket must be private with the shared compliance retention of at least 31 days."
+  }
+
+  assert {
+    condition     = output.candidate_inventory.monitoring.collector.provider == "fly" && output.candidate_inventory.monitoring.collector.region == "iad" && output.candidate_inventory.monitoring.collector.count == 1 && output.candidate_inventory.monitoring.collector.monthlyHours == 744 && output.candidate_inventory.monitoring.collector.resources.memory_mb == 512 && output.candidate_inventory.monitoring.collector.minimumPersistentVolumeGb == 1 && !output.candidate_inventory.monitoring.collector.public_ingress && !output.candidate_inventory.monitoring.collector.provisioning_supported
+    error_message = "The monitoring handoff must contain the priced private collector and its persistent checkpoint volume."
+  }
+
+  assert {
+    condition     = output.candidate_inventory.monitoring.anchor.provider == "aws" && output.candidate_inventory.monitoring.anchor.region == "us-east-1" && output.candidate_inventory.monitoring.anchor.administration == "independent-of-collector" && output.candidate_inventory.monitoring.anchor.database.partitionKey.name == "account" && output.candidate_inventory.monitoring.anchor.database.sortKey.name == "record" && output.candidate_inventory.monitoring.anchor.database.permanentEnrollmentRecord == "ENROLLMENT" && !output.candidate_inventory.monitoring.anchor.database.ttlEnabled && !output.candidate_inventory.monitoring.anchor.collector_direct_database_access && output.candidate_inventory.monitoring.anchor.database.deletionProtectionRequired && !output.candidate_inventory.monitoring.anchor.provisioning_supported
+    error_message = "The independent anchor must retain the actual DynamoDB schema, permanent lineage and access boundary."
+  }
+
+  assert {
+    condition     = contains(output.candidate_inventory.monitoring.anchor.required_application_permissions, "dynamodb:ConditionCheckItem") && contains(output.candidate_inventory.monitoring.anchor.required_enclosing_operations, "TransactWriteItems") && contains(output.candidate_inventory.monitoring.collector.required_secret_names, "NEW_RELIC_USER_KEY")
+    error_message = "The handoff must include transactional IAM operations and the independent usage-query credential."
+  }
+
+  assert {
+    condition     = output.candidate_inventory.independent_recovery.object_lock_days == jsondecode(file("${path.module}/candidate-sizing.json")).recovery.retentionDays
+    error_message = "The recovery handoff must report the exact shared object-lock duration."
   }
 }
 
