@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, within } from 'storybook/test';
 
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
@@ -412,4 +413,192 @@ export const AllColors: Story = {
       </div>
     </div>
   ),
+};
+
+/**
+ * The five scopes a theme variable can be declared in. A region carrying both
+ * studio and dark resolves to studio's dark block, which is why the pair is
+ * listed as one scope rather than two attributes.
+ */
+const THEME_SCOPES = [
+  { name: 'Default', attributes: {} },
+  { name: 'Default dark', attributes: { 'data-theme': 'dark' } },
+  { name: 'Studio', attributes: { 'data-theme-studio': '' } },
+  {
+    name: 'Studio dark',
+    attributes: { 'data-theme-studio': '', 'data-theme': 'dark' },
+  },
+  { name: 'Interview', attributes: { 'data-theme-interview': '' } },
+] as const;
+
+/**
+ * WCAG AA for normal-size text. The token exists to carry field errors, which
+ * are body-size, so the large-text 3:1 allowance never applies to it.
+ */
+const AA_NORMAL_TEXT = 4.5;
+
+/**
+ * Rasterise a CSS colour to the sRGB triple a screen actually shows.
+ *
+ * `getComputedStyle().color` hands back the mixture in whatever space it was
+ * made in, and the engines disagree about how to serialise that, so no single
+ * parse of the string is safe. Painting one pixel and reading it back is the
+ * conversion the compositor itself performs.
+ */
+const toSrgb = (color: string): [number, number, number] => {
+  const context = document.createElement('canvas').getContext('2d');
+  if (!context) {
+    throw new Error('No 2d canvas context: cannot measure colours.');
+  }
+  // Assign a sentinel first: an unparseable value leaves `fillStyle` at its
+  // previous colour rather than throwing, and silently measuring black would
+  // read as a comfortable pass on a dark surface.
+  context.fillStyle = '#010203';
+  context.fillStyle = color;
+  if (context.fillStyle === '#010203') {
+    throw new Error(`This engine cannot parse the colour ${color}.`);
+  }
+  context.fillRect(0, 0, 1, 1);
+  const { data } = context.getImageData(0, 0, 1, 1);
+  const [red, green, blue, alpha] = data;
+  if (
+    red === undefined ||
+    green === undefined ||
+    blue === undefined ||
+    alpha === undefined
+  ) {
+    throw new Error(`Read no pixel back for the colour ${color}.`);
+  }
+  // A ratio computed from a translucent colour is a ratio against whatever is
+  // behind it, which this rasterisation does not know. Refuse rather than
+  // report the colour composited on nothing.
+  if (alpha !== 255) {
+    throw new Error(`${color} is translucent; contrast cannot be measured.`);
+  }
+  return [red, green, blue];
+};
+
+/** WCAG relative luminance of an sRGB triple. */
+const relativeLuminance = ([red, green, blue]: [number, number, number]) => {
+  const linear = (channel: number) => {
+    const ratio = channel / 255;
+    return ratio <= 0.04045 ? ratio / 12.92 : ((ratio + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue);
+};
+
+/** WCAG contrast ratio between two CSS colours, as rendered. */
+const contrastRatio = (foreground: string, background: string) => {
+  const ink = relativeLuminance(toSrgb(foreground));
+  const surface = relativeLuminance(toSrgb(background));
+  return (Math.max(ink, surface) + 0.05) / (Math.min(ink, surface) + 0.05);
+};
+
+/**
+ * The destructive ink a tinted surface opts into, drawn in every theme.
+ *
+ * `--destructive-strong` is `--destructive` mixed toward the reader's own text
+ * colour until it is legible on a tinted surface, and BOTH of those are
+ * per-theme. A derived value like it has to be declared in each theme scope:
+ * written once in the `@theme` block its `var()`s are substituted against
+ * `:root` — the same trap the swatch component above is documented against —
+ * and every dark, studio and interview region inherits the default theme's
+ * one answer. It did: on the dark accent surface the error ink landed at
+ * 2.04:1, below the 3.44:1 of the plain `--destructive` it exists to improve
+ * on, where a mixture made in the dark scope reaches 4.63:1.
+ *
+ * Read as a swatch pair rather than described: the fill and the ink beside it,
+ * on the surface the ink is chosen for.
+ */
+export const DestructiveInkPerTheme: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  render: () => (
+    <div className="space-y-8">
+      <div>
+        <Heading level="h2" margin="none" className="mb-4">
+          Destructive ink per theme
+        </Heading>
+        <Paragraph margin="none" className="text-text/70 mb-6 text-sm">
+          Each row draws one theme’s <code>--destructive</code> fill and the{' '}
+          <code>--destructive-strong</code> ink a tinted surface opts into, both
+          on that theme’s accent surface.
+        </Paragraph>
+        <div className="space-y-4">
+          {THEME_SCOPES.map((scope) => (
+            <div key={scope.name} {...scope.attributes}>
+              <div
+                className="border-outline flex flex-col gap-2 rounded-lg border-2 p-4"
+                data-testid={`surface-${scope.name}`}
+                style={{ background: 'var(--surface-accent)' }}
+              >
+                <span
+                  className="text-xs font-medium"
+                  style={{ color: 'var(--surface-accent-contrast)' }}
+                >
+                  {scope.name}
+                </span>
+                <span
+                  data-testid={`fill-${scope.name}`}
+                  style={{ color: 'var(--destructive)' }}
+                >
+                  --destructive
+                </span>
+                <span
+                  data-testid={`ink-${scope.name}`}
+                  style={{ color: 'var(--destructive-strong)' }}
+                >
+                  --destructive-strong
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const inkOf = (scope: string) =>
+      getComputedStyle(canvas.getByTestId(`ink-${scope}`)).color;
+    const fillOf = (scope: string) =>
+      getComputedStyle(canvas.getByTestId(`fill-${scope}`)).color;
+    const surfaceOf = (scope: string) =>
+      getComputedStyle(canvas.getByTestId(`surface-${scope}`)).backgroundColor;
+
+    const defaultInk = inkOf('Default');
+
+    for (const scope of THEME_SCOPES) {
+      // The ink is a mixture, not the fill: a scope that lost the declaration
+      // altogether would fall back to nothing and paint the inherited colour.
+      await expect(inkOf(scope.name)).not.toBe(fillOf(scope.name));
+    }
+
+    // Every other scope declares a `--destructive`, a `--text`, or both that
+    // the default theme does not, so a mixture made where it is READ can never
+    // equal the default theme's. Equality here means the value was made once
+    // at `:root` and inherited — the whole failure this pins.
+    for (const scope of THEME_SCOPES.slice(1)) {
+      await expect(inkOf(scope.name)).not.toBe(defaultInk);
+    }
+
+    // The point of the token. A mixture that is merely made per scope is not
+    // yet legible: at the one 78% weighting every scope started from, Studio
+    // dark measured 4.32:1 and Interview 2.37:1, both under AA for the
+    // normal-size field errors this exists to carry. The weighting is now
+    // chosen per scope, and this measures the result rather than trusting the
+    // arithmetic behind it.
+    const ratios = THEME_SCOPES.map((scope) => ({
+      scope: scope.name,
+      ratio: contrastRatio(inkOf(scope.name), surfaceOf(scope.name)),
+    }));
+
+    // Asserted as a list rather than one expectation per scope so a failing
+    // run names every scope that is short, and by how much, in one read.
+    await expect(
+      ratios
+        .filter(({ ratio }) => ratio < AA_NORMAL_TEXT)
+        .map(({ scope, ratio }) => `${scope} ${ratio.toFixed(2)}:1`),
+      '--destructive-strong is below AA on its own --surface-accent',
+    ).toEqual([]);
+  },
 };

@@ -3055,8 +3055,71 @@ describe('DatePicker parameters refinement', () => {
 // Eleventh-wave Finding 2: the analyser runs inside protocol parsing AND the
 // v7→v8 migration, so a large (or adversarial) imported protocol must degrade
 // to a slow-but-correct analysis, not crash the import with a RangeError from
-// a recursive graph walk. These sizes overflowed the call stack when the
-// Tarjan SCC walk and the strict-cycle DFS were recursive.
+// a recursive graph walk. The Tarjan SCC walk and the strict-cycle DFS run on
+// explicit frame stacks, so their stack use stays constant however long the
+// chain is — and that constant, not any particular chain length, is the
+// property these tests pin. `withStackHeadroom` pins it directly: the
+// analyser is called from a stack with only `STACK_HEADROOM_FRAMES` frames
+// left, where a walk whose depth grows with the input overflows on a chain a
+// few hundred variables long while the iterative walks do not.
+//
+// Sizing (measured on Node 24 under vitest's fork pool): the iterative
+// analyser succeeds on a 3,000-variable input from ~30 frames of headroom,
+// and a mutant that restores naive recursion in both walks overflows from
+// ~200–320 variables at 500 frames. So `LARGE_GRAPH_SIZE` keeps a ~10×
+// margin in the direction that makes these tests fail and ~17× in the
+// direction that lets them pass, at ~10–20 ms per test. The inputs used to
+// be 10,000 variables on the default stack — the smallest size that could
+// fail at all, because naive recursion only overflows the default stack past
+// ~6,400–7,500 frames (it varies with JIT tiering) — and at ~12 µs per
+// variable across the analyser's passes that cost ~120 ms, enough for a
+// heavily loaded CI runner (observed ~45× slower than a dev machine) to push
+// a test past vitest's 5 s budget.
+const STACK_HEADROOM_FRAMES = 500;
+const LARGE_GRAPH_SIZE = 3_000;
+
+/**
+ * Calls `action` from a stack with only `headroomFrames` frames of room
+ * left, so stack use that grows with the input overflows on a short input
+ * while constant stack use does not — independent of the machine's stack
+ * size.
+ *
+ * `dive` recurses until V8 throws its stack-overflow RangeError, then unwinds
+ * exactly `headroomFrames` of its own frames (throwing a sentinel through
+ * that many `catch` blocks) and runs `action` there. The headroom is
+ * therefore counted in `dive` frames, not bytes. `action` runs exactly
+ * once, and anything it throws — including its own RangeError — propagates
+ * unchanged, because every outer `catch` rethrows once it has run.
+ */
+function withStackHeadroom<T>(headroomFrames: number, action: () => T): T {
+  const sentinel = Symbol('withStackHeadroom.unwind');
+  let phase: 'descending' | 'unwinding' | 'ran' = 'descending';
+  let unwound = 0;
+  const slot: { outcome: { value: T } | null } = { outcome: null };
+  const dive = (): void => {
+    try {
+      dive();
+    } catch (error) {
+      if (phase === 'ran') throw error;
+      if (phase === 'descending') {
+        if (!(error instanceof RangeError)) throw error;
+        phase = 'unwinding';
+      } else if (error !== sentinel) {
+        throw error;
+      }
+      unwound += 1;
+      if (unwound < headroomFrames) throw sentinel;
+      phase = 'ran';
+      slot.outcome = { value: action() };
+    }
+  };
+  dive();
+  if (slot.outcome === null) {
+    throw new Error('withStackHeadroom: the action never ran');
+  }
+  return slot.outcome.value;
+}
+
 describe('findValidationContradictions — large comparator graphs', () => {
   const chainOf = (count: number, rule: string): Record<string, unknown> => {
     const variables: Record<string, unknown> = {};
@@ -3085,8 +3148,9 @@ describe('findValidationContradictions — large comparator graphs', () => {
   it('handles a long non-strict comparator chain without overflowing (Tarjan walk)', () => {
     // A pure chain has no cycle, so nothing is forced equal and nothing is
     // contradictory — but the SCC walk still descends its full length.
-    const result = findValidationContradictions(
-      chainOf(10_000, 'lessThanOrEqualToVariable'),
+    const variables = chainOf(LARGE_GRAPH_SIZE, 'lessThanOrEqualToVariable');
+    const result = withStackHeadroom(STACK_HEADROOM_FRAMES, () =>
+      findValidationContradictions(variables),
     );
     expect(result).toEqual([]);
   });
@@ -3096,16 +3160,18 @@ describe('findValidationContradictions — large comparator graphs', () => {
     // successor's, so the DFS entered at v0 descends the full chain (the
     // lessThanVariable direction happens to be visited in topological order
     // and never recursed deeply).
-    const result = findValidationContradictions(
-      chainOf(10_000, 'greaterThanVariable'),
+    const variables = chainOf(LARGE_GRAPH_SIZE, 'greaterThanVariable');
+    const result = withStackHeadroom(STACK_HEADROOM_FRAMES, () =>
+      findValidationContradictions(variables),
     );
     expect(result).toEqual([]);
   });
 
   it('reports a single impossible cycle for a large strict comparator cycle', () => {
-    const size = 10_000;
-    const result = findValidationContradictions(
-      cycleOf(size, 'lessThanVariable'),
+    const size = LARGE_GRAPH_SIZE;
+    const variables = cycleOf(size, 'lessThanVariable');
+    const result = withStackHeadroom(STACK_HEADROOM_FRAMES, () =>
+      findValidationContradictions(variables),
     );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('strictComparatorCycle');
@@ -3138,13 +3204,15 @@ describe('findValidationContradictions — large boolean differentFrom graphs', 
     return variables;
   };
 
-  // 10,000 matches the size the file's other large-graph regressions use. The
-  // original 30,000/50,000 stars were sized to the leaf counts quoted in the
-  // review, but they exceeded the default 5s timeout on a CI runner even with
-  // the linear queue, and the extra leaves buy no coverage the smaller star
-  // does not already give: both walk the same queue. The explicit timeout is
-  // headroom for a loaded runner, not a performance assertion — see the note
-  // below on why this behaviour is deliberately not wall-clock guarded.
+  // The star guards queue linearity, not stack depth, so the
+  // `withStackHeadroom` treatment of the comparator-graph blocks above does
+  // not apply here. The original 30,000/50,000 stars were sized to the leaf
+  // counts quoted in the review, but they exceeded the default 5s timeout on a
+  // CI runner even with the linear queue, and the extra leaves buy no coverage
+  // the smaller star does not already give: both walk the same queue. The
+  // explicit timeout is headroom for a loaded runner, not a performance
+  // assertion — see the note below on why this behaviour is deliberately not
+  // wall-clock guarded.
   it('handles a large star with no contradiction', { timeout: 30_000 }, () => {
     expect(findValidationContradictions(starOf(10_000))).toEqual([]);
   });
@@ -4368,34 +4436,38 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: large ch
     return variables;
   };
 
+  // Bound propagation walks the whole chain, so these run under the same
+  // stack headroom and at the same size as the "large comparator graphs"
+  // block above — see the sizing note there.
   it('accepts a long chain whose end bounds leave room', () => {
-    // v0 <= v1 <= ... <= v9999, with v0 >= 1 and v9999 <= 100.
-    expect(
-      findValidationContradictions(
-        boundedChainOf(
-          10_000,
-          'lessThanOrEqualToVariable',
-          { minValue: 1 },
-          { maxValue: 100 },
-        ),
-      ),
-    ).toEqual([]);
+    // v0 <= v1 <= ... <= the last variable, with v0 >= 1 and the last <= 100.
+    const variables = boundedChainOf(
+      LARGE_GRAPH_SIZE,
+      'lessThanOrEqualToVariable',
+      { minValue: 1 },
+      { maxValue: 100 },
+    );
+    const result = withStackHeadroom(STACK_HEADROOM_FRAMES, () =>
+      findValidationContradictions(variables),
+    );
+    expect(result).toEqual([]);
   });
 
   it('reports a long strict chain whose end bounds do not, exactly once', () => {
-    // v0 > v1 > ... > v9999, with v0 <= 1 and v9999 >= 1.
-    const result = findValidationContradictions(
-      boundedChainOf(
-        10_000,
-        'greaterThanVariable',
-        { maxValue: 1 },
-        { minValue: 1 },
-      ),
+    // v0 > v1 > ... > the last variable, with v0 <= 1 and the last >= 1.
+    const variables = boundedChainOf(
+      LARGE_GRAPH_SIZE,
+      'greaterThanVariable',
+      { maxValue: 1 },
+      { minValue: 1 },
+    );
+    const result = withStackHeadroom(STACK_HEADROOM_FRAMES, () =>
+      findValidationContradictions(variables),
     );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
-    expect(result[0]?.variableIds).toHaveLength(10_000);
-    expect(result[0]?.strips).toHaveLength(9_999);
+    expect(result[0]?.variableIds).toHaveLength(LARGE_GRAPH_SIZE);
+    expect(result[0]?.strips).toHaveLength(LARGE_GRAPH_SIZE - 1);
   });
 });
 

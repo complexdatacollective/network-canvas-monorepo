@@ -1,7 +1,7 @@
 import { type ComponentType, useEffect, useRef, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
-import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
@@ -19,8 +19,8 @@ import {
   contentBlockSizeOptions,
   type ContentBlockKind,
   type ContentDraftOutcome,
-  contentKindChangedAnnouncement,
-  contentKindChosenAnnouncement,
+  contentKindAnnouncement,
+  type ContentKindAnnouncement,
   isContentBlockKind,
   pageBlocksCarrySize,
 } from './contentBlockTypes.ts';
@@ -224,7 +224,7 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
   const registered = useFormStore((state) => state.fields.get('type')?.value);
   const chosen = registered ?? item.type;
   const kind = isContentBlockKind(chosen) ? chosen : undefined;
-  const announcement = useContentKindAnnouncement(kind, intl);
+  const announced = useContentKindAnnouncement(kind);
 
   // The block points at a resource that names no control: it has content, but
   // the kind it resolved to is not one a page can present. Saying nothing would
@@ -245,7 +245,9 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
           live region that appears at the same moment as its text is not
           announced. */}
       <span role="status" aria-live="polite" className="sr-only">
-        {announcement}
+        {announced === undefined
+          ? ''
+          : contentKindAnnouncement(announced, intl)}
       </span>
       <DialogFormField<typeof RadioGroupField>
         name="type"
@@ -305,13 +307,18 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
  * store IS the record: by the time it runs, the newly mounted slot has taken
  * back whatever dormant value it had, and the outgoing slot's value is parked
  * where `getFieldState` still finds it.
+ *
+ * What is held is the BRANCH, not the sentence — see
+ * `ContentKindAnnouncement`. `intl` is therefore not a dependency of this
+ * effect, which is the point: the effect returns early when the kind has not
+ * changed, so a language switched under an open dialog would never re-run it,
+ * and a sentence held here would stay in the language it was formatted in.
  */
 function useContentKindAnnouncement(
   kind: ContentBlockKind | undefined,
-  intl: IntlShape,
-): string {
+): ContentKindAnnouncement | undefined {
   const getFieldState = useFormStore((state) => state.getFieldState);
-  const [announcement, setAnnouncement] = useState('');
+  const [announced, setAnnounced] = useState<ContentKindAnnouncement>();
   const previous = useRef(kind);
 
   useEffect(() => {
@@ -333,7 +340,7 @@ function useContentKindAnnouncement(
     // the first kind chosen for a new block, or the first for a block whose
     // saved reference could not be resolved.
     if (before === undefined) {
-      setAnnouncement(contentKindChosenAnnouncement(kind, intl));
+      setAnnounced({ kind, outcome: 'chosen' });
       return;
     }
 
@@ -342,8 +349,8 @@ function useContentKindAnnouncement(
       : entered(before)
         ? 'kept'
         : 'empty';
-    setAnnouncement(contentKindChangedAnnouncement(kind, outcome, intl));
-  }, [getFieldState, intl, kind]);
+    setAnnounced({ kind, outcome });
+  }, [getFieldState, kind]);
 
-  return announcement;
+  return announced;
 }

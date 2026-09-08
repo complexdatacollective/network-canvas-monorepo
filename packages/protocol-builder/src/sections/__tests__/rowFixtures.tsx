@@ -1,7 +1,6 @@
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 
-import { withoutAbsentValues } from '../../form/absentValues.ts';
 import type {
   DialogArrayEditorValidate,
   DialogArrayItemSelector,
@@ -186,10 +185,7 @@ export function TestMediaItemPreview({ item }: RowPreviewProps) {
 }
 
 /** Expands a saved block's one `content` key into the slot its type names. */
-export const expandMediaItem: DialogArrayItemSelector = (
-  _context,
-  { item },
-) => {
+const expandMediaItem: DialogArrayItemSelector = (_context, { item }) => {
   const slot = item.type === 'text' ? CONTENT_SLOTS.text : CONTENT_SLOTS.asset;
   return { ...item, [slot]: item.content };
 };
@@ -202,7 +198,7 @@ export const expandMediaItem: DialogArrayItemSelector = (
  * schemas are strict objects, and a surviving slot key does not merely take up
  * space — it makes the protocol invalid.
  */
-export function collapseMediaItem(value: unknown): unknown {
+function collapseMediaItem(value: unknown): unknown {
   if (!isRow(value)) return value;
 
   const collapsed: Record<string, unknown> = { ...value };
@@ -214,6 +210,17 @@ export function collapseMediaItem(value: unknown): unknown {
   if (typeof draft === 'string') collapsed.content = draft;
   return collapsed;
 }
+
+/**
+ * The pair a family hands `PageContentSection`, as one value.
+ *
+ * The section takes them together on purpose — see `PageContentSectionProps` —
+ * so the fixture that stands in for a family declares them the same way.
+ */
+export const mediaItemSlots = Object.freeze({
+  expand: expandMediaItem,
+  collapse: collapseMediaItem,
+});
 
 /** The question the shared fixture protocol's name generator already asks. */
 export const SEEDED_QUESTION = 'Who are the people you know?';
@@ -245,17 +252,16 @@ export const refuseADuplicateQuestion: DialogArrayEditorValidate = (
 /**
  * A family's own collapse of a saved prompt.
  *
- * It replaces the section's default rather than composing with it, so it does
- * that rule's work too. What it adds is the part only the field owning the list
- * can decide: the shared rule keeps an empty array, because it cannot tell
- * "emptied on purpose" from "never used", and a prompt that assigns nothing
- * should carry no key at all rather than an empty one.
+ * Composed with the section's own rule rather than replacing it, so it does
+ * only the part that the field owning the list can decide: the shared rule
+ * keeps an empty array, because it cannot tell "emptied on purpose" from
+ * "never used", and a prompt that assigns nothing should carry no key at all
+ * rather than an empty one.
  */
 export function dropUnusedAssignments(row: unknown): unknown {
-  const collapsed = withoutAbsentValues(row);
-  if (!isRow(collapsed)) return collapsed;
-  const assigned = collapsed.additionalAttributes;
-  if (!Array.isArray(assigned) || assigned.length > 0) return collapsed;
-  const { additionalAttributes: _unused, ...rest } = collapsed;
+  if (!isRow(row)) return row;
+  const assigned = row.additionalAttributes;
+  if (!Array.isArray(assigned) || assigned.length > 0) return row;
+  const { additionalAttributes: _unused, ...rest } = row;
   return rest;
 }
