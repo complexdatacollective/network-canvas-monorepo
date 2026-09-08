@@ -296,11 +296,32 @@ known-good backup/checkpoint identities.
    database backup, object backup and successful count with the recovery
    evidence. Any missing, truncated, corrupt, oversized or stalled object keeps
    the stack quarantined.
-5. Reconcile Studio account, team membership, operator, integration, OAuth and
-   deployment credential authorization against current trusted evidence. Invalidate
-   restored sessions and one-time credentials. Current Studio reconciliation and
-   bulk invalidation are not implemented in this checkpoint; do not reopen until a
-   reviewed procedure supplies and records that evidence.
+5. Reconcile Studio authorization with the offline
+   `recovery:reconcile-authorization` server command. Supply separate owner and
+   backup connections through `STUDIO_RECOVERY_DATABASE_URL` and
+   `STUDIO_RECOVERY_BACKUP_DATABASE_URL`, the private reconciliation artifact
+   through `STUDIO_RECOVERY_RECONCILIATION_PATH`, and its independently recorded
+   SHA-256 through `STUDIO_RECOVERY_RECONCILIATION_SHA256`. The strict v1 artifact
+   carries a bounded 24-hour validity window, binds the initial Studio instance
+   tuple, and exhaustively lists current users,
+   login-account links, teams, memberships, study grants, active webhooks, active
+   schedules, and published message templates. Credential and webhook secrets are
+   represented only by exact SHA-256 fingerprints. The command refuses a symlink,
+   non-private or oversized artifact and refuses current authority absent from the
+   restored snapshot; it never creates a grant or overwrites a secret. Resolve that
+   refusal while quarantine remains in force by selecting a sufficiently current
+   authenticated backup or a separately reviewed repair, then regenerate and
+   re-pin current evidence before retrying.
+
+   The one transaction disables authentication for every restored user, deletes
+   sessions and one-time verifications, cancels pending invitations, revokes PATs
+   and interview links, expires edit leases, removes stale account links and
+   grants, disables stale webhooks, pauses stale schedules, retires stale published
+   message templates, and marks every nonterminal restored delivery uncertain.
+   Its JSON receipt records the evidence hash and actual destination database and
+   schema fingerprint. Preserve it with the recovery record. This command leaves
+   all users recovery-disabled and cannot reopen the deployment.
+
 6. Hold every restored delivery queue. Compare provider receipts and independent
    records for work after the recovery point. Restored revoked credentials and
    already-sent work are mandatory negative controls. Any ambiguous send remains
@@ -312,10 +333,11 @@ known-good backup/checkpoint identities.
    component time and the single end-to-end RTO. A fingerprint or successful
    decryption alone cannot authorize reopening.
 
-There is no implemented command that completes step 5 or reopens a restored stack.
-The validated self-host boundary therefore ends in quarantine. Managed incident
-containment, provider credential rotation, independent validator, failover, traffic
-switch, and reopening procedures remain pending live qualification.
+The restore script does not yet invoke step 5, and there is no implemented command
+that re-enables reconciled users or reopens a restored stack. The validated
+self-host boundary therefore ends in quarantine. Managed incident containment,
+provider credential rotation, independent validator, failover, traffic switch, and
+reopening procedures remain pending live qualification.
 
 ## Subprocessor and HECVAT evidence inventory
 

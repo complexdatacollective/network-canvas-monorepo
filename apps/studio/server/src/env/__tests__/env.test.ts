@@ -10,6 +10,7 @@ import {
   readMigrationDatabase,
   readMigrationAllowedLogins,
   readMigrationAdministrativeLogins,
+  readRecoveryAuthorizationEnv,
 } from '../../env.ts';
 import { DEV, DEV_DATABASE_URL, DEV_S3_ENDPOINT } from '../catalogue.ts';
 
@@ -282,6 +283,26 @@ describe('migration environment', () => {
     expect(readMigrationDatabase()).toEqual({
       url: 'postgres://operator@localhost/studio',
     });
+  });
+
+  it('requires two explicit recovery databases and an exact evidence pin', () => {
+    vi.stubEnv('STUDIO_RECOVERY_DATABASE_URL', 'postgres://owner@db/studio');
+    vi.stubEnv(
+      'STUDIO_RECOVERY_BACKUP_DATABASE_URL',
+      'postgres://backup@db/studio',
+    );
+    vi.stubEnv('STUDIO_RECOVERY_RECONCILIATION_PATH', '/private/evidence.json');
+    vi.stubEnv('STUDIO_RECOVERY_RECONCILIATION_SHA256', 'a'.repeat(64));
+    expect(readRecoveryAuthorizationEnv()).toEqual({
+      database: { url: 'postgres://owner@db/studio' },
+      backupDatabase: { url: 'postgres://backup@db/studio' },
+      reconciliationPath: '/private/evidence.json',
+      reconciliationSha256: 'a'.repeat(64),
+    });
+    vi.stubEnv('STUDIO_RECOVERY_RECONCILIATION_SHA256', 'short');
+    expect(() => readRecoveryAuthorizationEnv()).toThrow(
+      'STUDIO_RECOVERY_AUTHORIZATION_CONFIGURATION_INVALID',
+    );
   });
 });
 

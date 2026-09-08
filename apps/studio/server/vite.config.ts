@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => ({
         'encryption': 'src/encryption.ts',
         'backup': 'src/backup.ts',
         'recovery-assets': 'src/recovery-assets.ts',
+        'recovery-authorization': 'src/recovery-authorization.ts',
         'configure': 'src/configure.ts',
         'diagnostics': 'src/diagnostics.ts',
         'client-cache': 'src/client-cache.ts',
