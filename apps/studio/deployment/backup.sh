@@ -31,7 +31,7 @@ printf '%s\n' "${key_checksum%% *}" > "$backup/encryption.sha256"
 registry_checksum=$(studio_checksum "$registry_custody")
 printf '%s\n' "${registry_checksum%% *}" > "$backup/registry-configuration.sha256"
 # Verify the exact retained key snapshot before stopping or capturing writers.
-STUDIO_ENCRYPTION_FILE="$custody" compose -f docker-compose.yml -f deployment/encryption.yml run --rm --no-deps encryption-verify
+STUDIO_ENCRYPTION_FILE="$custody" compose -f deployment/encryption.yml run --rm --no-deps encryption-verify
 
 # Stop admission first, then every replica of either service. One-off operator
 # jobs are deliberately not terminated: the session check below refuses them.
