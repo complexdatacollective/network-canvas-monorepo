@@ -1,1 +1,4 @@
-pnpm lint-staged || echo "⚠️  Warning: Lint errors detected but commit proceeding"
+# Format and lint the staged files. A failure blocks the commit: this hook is
+# the lint gate that lets agents skip whole-tree lint runs (see CLAUDE.md,
+# "Automatic quality gates").
+pnpm lint-staged

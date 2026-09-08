@@ -934,14 +934,19 @@ describe('what a composer field’s control accepts', () => {
 
     // Against the date that ends the window, which is the control the
     // researcher has to change — not in a "could not be saved" alert that
-    // names neither of them.
+    // names neither of them. In this package's own words, not the protocol
+    // schema's: Zod's sentence names a control and two keys — neither of
+    // which is on screen — and is hard-coded English no catalog translates.
     const complaint = await field.findByText(
-      'DatePicker "min" must not be after "max"',
+      'The latest date cannot be earlier than the earliest date.',
     );
     expect(complaint).toBeVisible();
     expect(
       field.getByLabelText('Latest date').closest('[data-field-name]'),
     ).toContainElement(complaint);
+    expect(
+      field.queryByText('DatePicker "min" must not be after "max"'),
+    ).toBeNull();
     // The row is still on screen, holding the draft, rather than committed.
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });

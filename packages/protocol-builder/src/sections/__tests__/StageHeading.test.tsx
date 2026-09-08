@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
@@ -65,5 +65,52 @@ describe('the stage heading', () => {
       'href',
       DOCUMENTATION_URL,
     );
+  });
+
+  /**
+   * The other thing an interface may tell it: what a proposed name is derived
+   * from. Handed straight through to the name section, and nothing else in
+   * this package passes it yet — so without a case here a family passing
+   * `autoName` would get silence rather than a proposal, and the suite would
+   * stay green.
+   *
+   * `propose` is the half that can be observed from outside a family: the
+   * default answer for an EXISTING stage is "do not propose", so a heading
+   * that dropped the prop would leave the emptied name empty.
+   */
+  it('hands a family’s naming rule to the name section', async () => {
+    renderStageEditor({
+      stage: {
+        id: 'information-unnamed',
+        type: 'Information',
+        fields: { label: '', title: 'Welcome', items: [] },
+      },
+      sections: (
+        <StageHeading
+          documentationUrl={DOCUMENTATION_URL}
+          autoName={{ propose: true }}
+        />
+      ),
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+        'Information #2',
+      ),
+    );
+  });
+
+  it('proposes nothing for the same stage when no rule is given', async () => {
+    renderStageEditor({
+      stage: {
+        id: 'information-unnamed',
+        type: 'Information',
+        fields: { label: '', title: 'Welcome', items: [] },
+      },
+      sections: heading,
+    });
+
+    const name = screen.getByRole('textbox', { name: 'Stage name' });
+    await waitFor(() => expect(name).toHaveValue(''));
   });
 });

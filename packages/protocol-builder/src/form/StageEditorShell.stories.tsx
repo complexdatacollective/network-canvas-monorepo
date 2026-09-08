@@ -151,10 +151,17 @@ export const Spectating: Story = {
     const toolbar = canvas.getByRole('toolbar');
     const buttons = within(toolbar).getAllByRole<HTMLButtonElement>('button');
     await expect(buttons.length).toBeGreaterThan(1);
+    // A control is still on offer only when NEITHER mechanism has taken it
+    // away, because either one alone makes it unavailable. The `||` this was
+    // written with counted a button as available unless it carried BOTH — so
+    // it could not pass wrongly, and would have started failing the day the
+    // toolbar dropped the `aria-disabled` it puts on a natively disabled
+    // button. It also said the opposite of the sentence above it, which is
+    // how a check that agrees with its comment only by accident survives.
     const stillAvailable = buttons
       .filter(
         (button) =>
-          !button.disabled || button.getAttribute('aria-disabled') !== 'true',
+          !button.disabled && button.getAttribute('aria-disabled') !== 'true',
       )
       .map((button) => button.getAttribute('aria-label'));
     await expect(stillAvailable).toEqual([]);
