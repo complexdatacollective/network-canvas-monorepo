@@ -223,13 +223,21 @@ For an existing deployment:
    data converter with a separate restricted environment file containing the
    operator `DATABASE_URL`, `STUDIO_ENCRYPTION_KEYSET`, and every referenced root:
 
+   Before running it, select a new current PII encryption key ID whose ID is
+   distinct from every key referenced by a legacy participant. Keep every
+   historical key ID and root in the keyset. The converter authenticates old
+   ciphertext before replacement; configuring an old referenced key as current
+   would leave that ciphertext in place and cannot establish the required
+   historical-to-current conversion proof.
+
    ```sh
    docker run --rm --network YOUR_DEPLOYMENT_NETWORK \
      --env-file /secure/path/studio-encryption-operator.env \
      YOUR_STUDIO_IMAGE encryption migrate-legacy --limit 100
    ```
 
-   This command first authenticates and re-encrypts legacy participant data,
+   This command first authenticates and re-encrypts legacy participant data and
+   migration-0001 webhook secrets,
    including name-only and attributes-only records that have no contact blind
    index, then classifies retained contact suppression and delivery indexes, and
    finally converts OAuth credentials. Classification preserves the original

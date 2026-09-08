@@ -29,10 +29,7 @@ import {
   RAW_LEGACY_CONTACT_INDEX_ID,
   RAW_LEGACY_PARTICIPANT_INDEX_ID,
 } from '../legacy-indexes.ts';
-import {
-  authorizeLegacyResume,
-  migrateLegacyDataBatch,
-} from '../maintenance.ts';
+import { migrateLegacyDataBatch } from '../maintenance.ts';
 import { createDataProtection } from '../protection.ts';
 import { isContactSuppressed } from '../suppression.ts';
 import { configuration, loadTestKeys, rootOne } from './fixtures.ts';
@@ -45,6 +42,7 @@ const migrations = await readMigrations(
 async function expectOpaqueCursorFailure(
   work: () => Promise<unknown>,
   forbidden: readonly string[],
+  expected = 'ProtectedDataError: Stored encrypted data could not be read.',
 ) {
   let failure: unknown;
   try {
@@ -54,9 +52,7 @@ async function expectOpaqueCursorFailure(
   }
   expect(failure).toBeInstanceOf(Error);
   const rendered = String(failure);
-  expect(rendered).toBe(
-    'ProtectedDataError: Stored encrypted data could not be read.',
-  );
+  expect(rendered).toBe(expected);
   for (const value of forbidden) expect(rendered).not.toContain(value);
 }
 
@@ -920,6 +916,14 @@ it('authenticates and reseals a migration0001 webhook before proving its histori
       afterId: null,
       passComplete: true,
     });
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          `SELECT purpose, key_id FROM encryption_key_verifications
+           WHERE purpose = 'integration-enc' AND key_id = 'v1'`,
+        )
+      ).rows,
+    ).toEqual([{ purpose: 'integration-enc', key_id: 'v1' }]);
     await expect(initializeEncryption(input)).resolves.toBeDefined();
     const row = await fixture.scratch.pool.query<{
       secret_ciphertext: Buffer;
@@ -959,14 +963,6 @@ it('authenticates and reseals a migration0001 webhook before proving its histori
         },
       ),
     ).resolves.toEqual(fixture.plaintext);
-    expect(
-      (
-        await fixture.scratch.pool.query(
-          `SELECT purpose, key_id FROM encryption_key_verifications
-           WHERE purpose = 'integration-enc' AND key_id = 'v1'`,
-        )
-      ).rows,
-    ).toEqual([{ purpose: 'integration-enc', key_id: 'v1' }]);
   } finally {
     await fixture.maintenance.end();
     await fixture.scratch.dispose();
@@ -1140,11 +1136,7 @@ it('resumes a cursor-bound legacy pass while later historical participant keys r
         )
       ).rows,
     ).not.toContainEqual({ key_id: 'same-root-new-id' });
-    const resumedKeys = await resumeEncryptionMaintenance(
-      input,
-      (client, loadedKeys) =>
-        authorizeLegacyResume(client, loadedKeys, first.afterId!),
-    );
+    const resumedKeys = await resumeEncryptionMaintenance(input, first.afterId);
     const second = await migrateLegacyDataBatch(
       fixture.maintenance,
       fixture.scratch.pool,
@@ -1157,9 +1149,7 @@ it('resumes a cursor-bound legacy pass while later historical participant keys r
       passComplete: false,
     });
     await expect(
-      resumeEncryptionMaintenance(input, (client, loadedKeys) =>
-        authorizeLegacyResume(client, loadedKeys, first.afterId!),
-      ),
+      resumeEncryptionMaintenance(input, first.afterId),
     ).resolves.toBeDefined();
     expect(
       (
@@ -1228,10 +1218,10 @@ it('rejects a cursor when a new unproved historical key reference appears after 
       () =>
         resumeEncryptionMaintenance(
           { ...input, configuration: changedConfig },
-          (client, loadedKeys) =>
-            authorizeLegacyResume(client, loadedKeys, first.afterId!),
+          first.afterId!,
         ),
       [first.afterId, 'late-v3'],
+      'EncryptionStartupError: Encryption key verification failed. Restore the matching keyset or complete the offline credential migration before starting Studio.',
     );
     expect(
       (

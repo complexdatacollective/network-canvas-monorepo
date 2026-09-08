@@ -211,10 +211,13 @@ invalid normalized contact, concurrent change, or interrupted batch leaves that
 row on its historical key and normal startup blocked.
 
 `migrateLegacyDataBatch` processes at most 100 rows per call: participant
-ciphertext and indexes first, irreversible delivery and opt-out indexes second,
-and OAuth plaintext last. The OAuth phase locks the row, seals the old values,
-clears plaintext and appends the immutable audit in one transaction; failure
-preserves the original data. Both `studio_app` and
+ciphertext and indexes first, migration-0001 webhook secrets second,
+irreversible delivery and opt-out indexes next, and OAuth plaintext last. A
+historical webhook key receives its proof only after the secret authenticates
+and in the same locked audited transaction that replaces its ciphertext. The
+OAuth phase locks the row, seals the old values, clears plaintext and appends
+the immutable audit in one transaction; failure preserves the original data.
+Both `studio_app` and
 `studio_maintenance` refuse SELECT, INSERT and UPDATE on every retained plaintext
 column, including SELECT *, predicates, explicit NULL/default assignments,
 upserts and COPY. The shared adapter projection grants runtime access only to
@@ -278,19 +281,23 @@ not exact remaining-corpus counts. `passComplete` only declares traversal
 exhaustion, never safe key retirement or absence of concurrent old-key writes.
 
 The first CLI batch verifies every ordinary stored reference. The offline path
-admits the two exact raw legacy index sentinels and the exact no-contact legacy
-participant shape: no contact ciphertext or index, but an encrypted name or
-attributes under a configured non-current key. Mixed or empty shapes remain
-refused. It registers ordinary configured keys, but never registers an unverified
-participant key until a row authenticates successfully and never registers a key
-proof for the public legacy contact HMAC. The authenticated legacy cursor pages
-participants, delivery indexes, opt-out indexes and OAuth accounts in that
-order. It binds the actual database and immutable Studio-instance identity plus
-all three current key IDs. Its opt-out composite key remains inside AES-256-GCM
-ciphertext; cursor output does not expose the blind index. A changed keyset,
-another database, malformed cursor or altered authentication tag fails with the
-fixed protected-data error. Any non-null cursor selects proof-only resume, so
-the exhaustive initialization scan is not repeated between pages.
+admits the two exact raw legacy index sentinels, migration-0001 webhook secrets,
+and the exact no-contact legacy participant shape: no contact ciphertext or
+index, but an encrypted name or attributes under a configured non-current key.
+Mixed or empty participant shapes remain refused. It registers ordinary
+configured keys, but never registers an unverified participant or webhook key
+until a row authenticates successfully and never registers a key proof for the
+public legacy contact HMAC. The authenticated legacy cursor pages participants,
+webhooks, delivery indexes, opt-out indexes and OAuth accounts in that order. It
+binds the actual database and immutable Studio-instance identity, all three
+current key IDs, and the bounded set of unproved historical key references that
+the pass may consume. The set may shrink as authenticated rows commit; a newly
+introduced unproved reference refuses the old cursor. The key-reference set and
+opt-out composite key remain inside AES-256-GCM ciphertext, so cursor output
+exposes neither key IDs nor the blind index. A changed current key, another
+database, malformed cursor or altered authentication tag fails with a fixed
+diagnostic. Any non-null cursor selects proof-only resume, so the exhaustive
+initialization scan is not repeated between pages.
 Run
 `encryption verify` after the pass for full startup/restore verification. Removing
 historical roots remains unsupported and fails both resume and full verification.

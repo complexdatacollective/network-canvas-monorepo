@@ -10,7 +10,6 @@ import {
   resumeEncryptionMaintenance,
 } from './initialize.ts';
 import {
-  authorizeLegacyResume,
   migrateLegacyDataBatch,
   parseLegacyOperatorCursor,
   parseRotationCursor,
@@ -82,10 +81,7 @@ export async function runEncryptionCommand(
   const keys = await (resumed
     ? resumeEncryptionMaintenance(
         input,
-        operation === 'migrate-legacy'
-          ? (client, loadedKeys) =>
-              authorizeLegacyResume(client, loadedKeys, afterId!)
-          : undefined,
+        operation === 'migrate-legacy' ? afterId! : undefined,
       )
     : operation === 'migrate-legacy'
       ? initializeCredentialMigration(input)

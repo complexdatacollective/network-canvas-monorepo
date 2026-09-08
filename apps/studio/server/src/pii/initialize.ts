@@ -309,12 +309,19 @@ export async function initializeCredentialMigration(
  */
 export async function resumeEncryptionMaintenance(
   input: EncryptionInitialization,
-  authorizeResume?: (
-    client: pg.PoolClient,
-    keys: EncryptionKeys,
-  ) => Promise<readonly KeyReference[]>,
+  legacyCursor?: string,
 ): Promise<EncryptionKeys> {
   const keys = await loadEncryptionKeys(input.configuration, input.loadRootKey);
-  await verifyKeys(input.maintenancePool, keys, 'resume', authorizeResume);
+  await verifyKeys(
+    input.maintenancePool,
+    keys,
+    'resume',
+    legacyCursor === undefined
+      ? undefined
+      : async (client, loadedKeys) => {
+          const { authorizeLegacyResume } = await import('./maintenance.ts');
+          return authorizeLegacyResume(client, loadedKeys, legacyCursor);
+        },
+  );
   return keys;
 }
