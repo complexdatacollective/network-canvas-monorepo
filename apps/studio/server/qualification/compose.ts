@@ -18,6 +18,12 @@ import { parseEnv, promisify } from 'node:util';
 import { Pool } from 'pg';
 
 import { createMaintenancePool, createPool } from '../src/db/pool.ts';
+import {
+  assertNoTelemetryEgress,
+  assertTelemetryDetectorPositive,
+  TELEMETRY_CANARY_SOURCE,
+  TELEMETRY_DETECTOR_SOURCE,
+} from './telemetry-egress.ts';
 
 const execFileAsync = promisify(execFile);
 
@@ -356,6 +362,35 @@ networks:
       `Built image never became ready (last status ${lastStatus}); evidence: ${log}`,
     );
   }
+  async function telemetryLogs() {
+    return (
+      await compose([
+        'logs',
+        '--no-color',
+        '--no-log-prefix',
+        'telemetry-detector',
+      ])
+    ).stdout.toString();
+  }
+  async function assertTelemetryQuiet() {
+    assertNoTelemetryEgress(await telemetryLogs());
+  }
+  async function proveTelemetryDetector() {
+    for (const service of ['studio', 'worker']) {
+      await compose([
+        'exec',
+        '-T',
+        service,
+        'node',
+        '-e',
+        TELEMETRY_CANARY_SOURCE,
+      ]);
+      assertTelemetryDetectorPositive(await telemetryLogs());
+      await compose(['rm', '--stop', '--force', 'telemetry-detector']);
+      await compose(['up', '-d', 'telemetry-detector']);
+      assertNoTelemetryEgress(await telemetryLogs());
+    }
+  }
   async function dispose() {
     // This project name is generated above; never select a pre-existing stack.
     await compose(['down', '--volumes', '--remove-orphans'], {
@@ -378,6 +413,8 @@ networks:
     overlay,
     pools,
     ready,
+    assertTelemetryQuiet,
+    proveTelemetryDetector,
     dispose,
   };
 }
