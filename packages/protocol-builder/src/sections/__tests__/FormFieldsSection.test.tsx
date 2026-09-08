@@ -160,6 +160,26 @@ const fieldsOf = (
   return Array.isArray(fields) ? (fields as Record<string, unknown>[]) : [];
 };
 
+/**
+ * A saved form collecting an attribute that holds a position rather than an
+ * answer. Nothing in the editor can author this — the picker filters those
+ * attributes out — so it stands for the protocol that arrives already holding
+ * one.
+ */
+const COLLECTS_A_POSITION = {
+  id: 'collects-a-position',
+  type: 'AlterForm',
+  fields: {
+    ...loadFixtureStage('alter-form-1').fields,
+    label: 'Where everyone sits',
+    form: { fields: [{ variable: 'layout', prompt: 'Where do they sit?' }] },
+  },
+} as const;
+
+/** Written out, so a catalog that lost the sentence cannot pass. */
+const NO_WAY_TO_ANSWER =
+  'This field’s attribute gives the participant no way to answer. Choose a different attribute, or remove this field.';
+
 const asRecord = (value: unknown): Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -518,6 +538,77 @@ describe('the fields a form collects', () => {
       variable: created?.[0],
       prompt: 'What do people call them?',
     });
+  });
+
+  /**
+   * A field bound to an attribute no control can collect — `layout` records
+   * where a node was dropped rather than an answer. The picker never offers
+   * one, so this is the protocol that arrives already holding one: an import,
+   * a hand-edited file, an attribute a collaborator retyped.
+   *
+   * The input-control field is not on screen, because there is nothing for it
+   * to offer. Before this, the save was refused against that absent field and
+   * the researcher was left with a dialog that would not close, nothing said,
+   * and `focusFirstError(): no element found in DOM for
+   * [data-field-name="_component"]` in the console.
+   */
+  it('says why a field bound to an uncollectable attribute cannot be saved', async () => {
+    const harness = renderStageEditor({
+      stage: COLLECTS_A_POSITION,
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+
+    // Said as the dialog opens, rather than after a save that was never going
+    // to work, and the save control says it is unavailable and why.
+    expect(await dialog.findByText(NO_WAY_TO_ANSWER)).toBeInTheDocument();
+    const save = dialog.getByRole('button', { name: 'Save' });
+    expect(save).toHaveAttribute('aria-disabled', 'true');
+    expect(save).toHaveAccessibleDescription(
+      /This field\u2019s attribute gives the participant no way to answer\./,
+    );
+
+    // Pressed anyway — `aria-disabled` announces that a dialog cannot be
+    // submitted, it does not prevent it — and the draft is still on screen
+    // with the reason above it rather than committed.
+    await harness.user.click(save);
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(dialog.getByText(NO_WAY_TO_ANSWER)).toBeInTheDocument();
+  });
+
+  /**
+   * The way out the sentence names, taken. The refusal is held for exactly as
+   * long as the attribute it is about is the one bound, so binding the field
+   * to something a participant can answer gives the save back.
+   */
+  it('gives the save back when the field is bound to something collectable', async () => {
+    const harness = renderStageEditor({
+      stage: COLLECTS_A_POSITION,
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    expect(await dialog.findByText(NO_WAY_TO_ANSWER)).toBeInTheDocument();
+
+    // Already collected with a text box, so the codebook has nothing to write:
+    // this is about the dialog letting go, not about a control being recorded.
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      'relationship_to_ego',
+    );
+
+    expect(dialog.queryByText(NO_WAY_TO_ANSWER)).toBeNull();
+    const save = dialog.getByRole('button', { name: 'Save' });
+    expect(save).not.toHaveAttribute('aria-disabled');
+
+    await harness.user.click(save);
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    expect(fieldsOf(await harness.submit())).toEqual([
+      { variable: 'relationship_to_ego', prompt: 'Where do they sit?' },
+    ]);
   });
 });
 

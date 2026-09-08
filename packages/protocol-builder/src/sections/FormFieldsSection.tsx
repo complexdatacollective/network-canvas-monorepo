@@ -14,6 +14,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import FormErrors from '@codaco/fresco-ui/form/FormErrors';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
@@ -40,6 +41,7 @@ import {
 } from '../fields/VariablePicker.tsx';
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
+import { useDialogFormSubmissionBlock } from '../form/DialogForm.tsx';
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
@@ -355,11 +357,12 @@ const messages = defineMessages({
     description:
       'Guidance under the input-control field, warning that the control belongs to the attribute rather than to this one question.',
   },
-  componentRequired: {
+  noInputControl: {
     id: 'protocolBuilder.formFields.componentRequired',
-    defaultMessage: 'Choose how the participant answers this field.',
+    defaultMessage:
+      'This field’s attribute gives the participant no way to answer. Choose a different attribute, or remove this field.',
     description:
-      'Refusal shown under the input-control field when nothing has been chosen.',
+      'Refusal shown above the fields of a form field’s dialog, and named by its unavailable save control, when the attribute the field collects has no input control to offer — an attribute that records a position rather than an answer, or one that has been deleted from the codebook. There is no control to choose in this dialog, so the way out is a different attribute.',
   },
   createNewOption: {
     id: 'protocolBuilder.formFields.createNewOption',
@@ -415,6 +418,8 @@ const DUPLICATE_FIELD = createMessageError(messages.duplicateField);
 const CREATE_WITH_VALUES_FIRST = createMessageError(
   messages.createWithValuesFirst,
 );
+
+const NO_INPUT_CONTROL = createMessageError(messages.noInputControl);
 
 /** Stable identity: `options` is a memo dependency of the picker below. */
 const NO_OPTIONS: VariablePickerOption[] = [];
@@ -770,14 +775,17 @@ function useCommitFormField(
           fieldErrors: { [NEW_VARIABLE_TYPE]: CREATE_WITH_VALUES_FIRST },
         };
       }
+      // The belt for a row that reaches a commit with no control on it at all.
+      // `InputControlField` is not on screen when there is none to choose, so
+      // this cannot be filed against that field: `focusFirstError` would be
+      // sent to a control that is not in the document and the researcher would
+      // be left with a refused save and nothing on screen. It goes where the
+      // dialog reports everything else about a whole draft — above the fields,
+      // in the same place `NoInputControlOffered` is already standing on the
+      // one route a researcher can take here.
       const component = asString(value[INPUT_CONTROL]) ?? '';
       if (component === '') {
-        return {
-          success: false,
-          fieldErrors: {
-            [INPUT_CONTROL]: intl.formatMessage(messages.componentRequired),
-          },
-        };
+        return { success: false, formErrors: [NO_INPUT_CONTROL] };
       }
 
       if (value.variable !== NEW_VARIABLE) {
@@ -1120,10 +1128,17 @@ function InputControlField({
       ? asString(variable.component)
       : undefined;
 
-  // Nothing to choose from until the kind of answer is settled. Mounting the
-  // control anyway would register an empty value and refuse the save with a
-  // question the researcher cannot yet answer.
-  if (options.length === 0) return null;
+  // Nothing to choose from — and which of the two reasons it is decides
+  // whether the researcher is mid-answer or stuck.
+  if (options.length === 0) {
+    // Mid-answer: the row names no attribute yet, or is inventing one whose
+    // kind of answer is still unsettled. Mounting the control would register
+    // an empty value and refuse the save with a question they cannot yet
+    // answer, and the field they CAN answer — the attribute, the kind of
+    // answer — already carries its own refusal.
+    if (chosen === '' || chosen === NEW_VARIABLE) return null;
+    return <NoInputControlOffered />;
+  }
 
   return (
     <Field<typeof SelectControl>
@@ -1132,10 +1147,40 @@ function InputControlField({
       label={intl.formatMessage(messages.componentLabel)}
       hint={intl.formatMessage(messages.componentHint)}
       options={options}
+      // Always one of `options`, so the field cannot register an empty control
+      // and has no `required` of its own to state: a native select offers no
+      // way back to nothing. What "no control" means here is that this field
+      // is not on screen at all, which is `NoInputControlOffered`'s to say.
       initialValue={committed ?? options[0]?.value ?? ''}
-      required={intl.formatMessage(messages.componentRequired)}
     />
   );
+}
+
+/**
+ * Said when the attribute this field collects has no input control to offer.
+ *
+ * An attribute that records a position rather than an answer has none at all,
+ * and one deleted from the codebook while the dialog was open has nothing left
+ * to ask. Either way there is no control for this dialog to render, so there
+ * is no field for the refusal to sit under — and a save refused against a
+ * field that is not there reaches the researcher as nothing on screen and a
+ * warning in the console.
+ *
+ * Registered as a submission block instead, which is what this package already
+ * says about a part of a dialog that failed in a way no field can express: the
+ * reason stands above the fields from the moment the dialog opens rather than
+ * after a save that was never going to work, the save control announces that
+ * it is unavailable and says why, and the submission is refused for as long as
+ * this is mounted. Choosing a different attribute unmounts it, which is the
+ * way out the sentence names.
+ *
+ * Rendered here only when there is no dialog to report it — nothing in this
+ * package mounts a field editor outside one, and saying nothing at all would
+ * be worse than saying it twice.
+ */
+function NoInputControlOffered() {
+  const reported = useDialogFormSubmissionBlock(NO_INPUT_CONTROL);
+  return reported ? null : <FormErrors errors={[NO_INPUT_CONTROL]} />;
 }
 /**
  * The attributes this field may collect.

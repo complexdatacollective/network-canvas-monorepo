@@ -23,6 +23,7 @@ import {
   expectNoLocaleLeaks,
   protocolStrings,
 } from '../../testing/localeSweep.ts';
+import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -434,21 +435,18 @@ describe('the form-fields section, read in Spanish', () => {
  * descriptor the component read, for the reason given above: a formatted
  * assertion passes over an empty catalog.
  *
- * Three of this section's sentences are deliberately absent, because nothing
- * can put them on screen in any language:
+ * One of this section's sentences is deliberately absent, because nothing can
+ * put it on screen in any language: `formFields.scopeMissing` is shown inside
+ * the row dialog when the stage has no subject — and the section is `disabled`
+ * on exactly that condition, so its whole body sits in a disabled `fieldset`
+ * and the dialog cannot be opened. The last test in this file pins that.
  *
- * - `formFields.componentRequired` is filed against the input-control field by
- *   `useCommitFormField` when the row holds no control — which happens only
- *   when that field is NOT mounted, because it mounts with the first control
- *   its type allows already chosen. The save is refused (`focusFirstError`
- *   says so) and there is no control to say it on. Its other use, the field's
- *   own `required`, can never fire for the same reason.
- * - `formFields.scopeMissing` is shown inside the row dialog when the stage
- *   has no subject — and the section is `disabled` on exactly that condition,
- *   so its whole body sits in a disabled `fieldset` and the dialog cannot be
- *   opened. The last test in this file pins that.
- * - `codebookEditing.unsupportedControl` needs a schema issue anchored at
- *   `component`; see the note in `CreatableVariablePicker.test.tsx`.
+ * Two others used to be listed here as unreachable and are not:
+ * `formFields.componentRequired` is what the dialog says when the attribute a
+ * field collects has no input control to offer — read below — and
+ * `codebookEditing.unsupportedControl` is read in
+ * `CreatableVariablePicker.test.tsx`, where a host asks the codebook for an
+ * attribute its control cannot collect.
  */
 const PERSON_TYPE_SECTION = sectionId({
   kind: 'codebookNode',
@@ -756,6 +754,41 @@ describe('the form-fields row dialog, read in Spanish', () => {
         name: 'Cambiar los valores de este atributo',
       }),
     ).toBeNull();
+  });
+
+  /**
+   * The dialog with no input control to offer. `layout` records where a node
+   * was dropped rather than an answer, so no control collects it — a form
+   * cannot ask for one, and a protocol that already does opens here.
+   */
+  it('says a field whose attribute cannot be answered is unsaveable', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'collects-a-position',
+        type: 'AlterForm',
+        fields: {
+          ...loadFixtureStage('alter-form-1').fields,
+          label: 'Dónde se sitúa cada persona',
+          form: {
+            fields: [{ variable: 'layout', prompt: '¿Dónde se sitúa?' }],
+          },
+        },
+      },
+      locale: 'es',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openFieldDialog(harness, 'Editar campo');
+
+    expect(
+      await dialog.findByText(
+        'El atributo de este campo no ofrece al participante ninguna forma de responder. Elige otro atributo o elimina este campo.',
+      ),
+    ).toBeInTheDocument();
+    expect(dialog.getByRole('button', { name: 'Guardar' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 });
 
