@@ -92,8 +92,10 @@ that follows from how Fresco ships: the image installs the published
 `@codaco/*` packages, not workspace source, so a library fix cherry-picked onto
 the hotfix branch would never reach the image on its own. The lane therefore
 mirrors the branch with every workspace package in Fresco's dependency closure
-whose source differs from the release tag — and every closure package that
-depends on one — packed into `vendor/` as tarballs, with pnpm overrides that
+whose built artifact would differ from the release tag's — its own source
+changed, a catalog entry it consumes was re-pinned, or a shared build input
+such as a tsconfig changed — and every closure package that depends on one,
+packed into `vendor/` as tarballs, with pnpm overrides that
 resolve every range onto them (`scripts/mirror-app.mjs --vendor-changed-since`,
 built on `scripts/vendor-workspace-packages.mjs`, the same mechanism the
 release test uses). Nothing is published to npm. The packages the hotfix did
@@ -150,6 +152,11 @@ after the release cannot slip in.
    scripts), so the job that does it never holds the push token, and the job
    that holds the token never checks out the branch. A protected
    `fresco-hotfix-production` environment therefore asks for approval twice.
+   The GHCR publisher workflow the mirror carries is main's copy, not the
+   branch's (a branch cut from an older tag may predate a publisher change
+   already pre-applied to the Fresco repository), and the staging step checks
+   that the Fresco repository tracks exactly that copy before the tag is
+   claimed.
    The lane holds the normal lane's `apps-release-fresco` lock, re-checks the
    newest tag after building, and refuses a version older than the current
    release, because the mirror's newest push is what `latest` points at.

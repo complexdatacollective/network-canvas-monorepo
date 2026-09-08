@@ -31,13 +31,17 @@ function workspace() {
   };
   writeFileSync(
     join(root, 'pnpm-workspace.yaml'),
-    "packages:\n  - 'packages/*'\n",
+    "packages:\n  - 'packages/*'\ncatalog:\n  redux: 2.0.0\n  lodash: 4.0.0\n",
   );
-  write('packages/ui', { name: '@x/ui', version: '1.0.0' });
+  write('packages/ui', {
+    name: '@x/ui',
+    version: '1.0.0',
+    devDependencies: { '@x/config': 'workspace:^' },
+  });
   write('packages/runtime', {
     name: '@x/runtime',
     version: '2.0.0',
-    dependencies: { '@x/ui': 'workspace:^' },
+    dependencies: { '@x/ui': 'workspace:^', 'redux': 'catalog:' },
   });
   write('packages/exporters', { name: '@x/exporters', version: '3.0.0' });
   write('tooling/config', {
@@ -133,6 +137,54 @@ test('an uncommitted change does not count — the lane releases commits', () =>
       packagesChangedSince('app@4.0.0', closure, wsPackages),
       [],
     );
+  });
+});
+
+test('re-pinning a catalog entry a package consumes marks that package', () => {
+  inWorkspace((root) => {
+    writeFileSync(
+      join(root, 'pnpm-workspace.yaml'),
+      "packages:\n  - 'packages/*'\ncatalog:\n  redux: 2.1.0\n  lodash: 4.0.0\n",
+    );
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'bump redux');
+    const closure = collectClosure(wsPackages, 'apps/app');
+    assert.deepEqual(packagesChangedSince('app@4.0.0', closure, wsPackages), [
+      '@x/runtime',
+    ]);
+  });
+});
+
+test('re-pinning a catalog entry nothing in the closure consumes marks nothing', () => {
+  inWorkspace((root) => {
+    writeFileSync(
+      join(root, 'pnpm-workspace.yaml'),
+      "packages:\n  - 'packages/*'\ncatalog:\n  redux: 2.0.0\n  lodash: 4.1.0\n",
+    );
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'bump lodash');
+    const closure = collectClosure(wsPackages, 'apps/app');
+    assert.deepEqual(
+      packagesChangedSince('app@4.0.0', closure, wsPackages),
+      [],
+    );
+  });
+});
+
+test('a change to a private package a closure package is built with marks that package', () => {
+  inWorkspace((root) => {
+    writeFileSync(
+      join(root, 'tooling/config/base.json'),
+      '{ "strict": true }\n',
+    );
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'tighten the shared tsconfig');
+    const closure = collectClosure(wsPackages, 'apps/app');
+    // ui is built with @x/config; runtime only depends on ui at runtime, so
+    // the dependents rule, not this one, is what pulls runtime in.
+    assert.deepEqual(packagesChangedSince('app@4.0.0', closure, wsPackages), [
+      '@x/ui',
+    ]);
   });
 });
 

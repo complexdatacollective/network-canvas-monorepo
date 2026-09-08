@@ -32,6 +32,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { parseCatalog } from './resolve-manifest.mjs';
+
 // Read at call time rather than import time, so a caller that changes
 // directory after importing (the tests do) is honoured.
 const repoRoot = () => process.cwd();
@@ -44,6 +46,12 @@ const PUBLISHED_DEP_FIELDS = [
   'optionalDependencies',
   'peerDependencies',
 ];
+
+// Every field, for asking what a package is BUILT from: a devDependency (a
+// shared tsconfig, a build tool) shapes the artifact even though it never
+// ships in it. Runtime dependencies on other workspace packages are
+// `withDependents`' business.
+const ALL_DEP_FIELDS = [...PUBLISHED_DEP_FIELDS, 'devDependencies'];
 
 function run(cmd, args, opts = {}) {
   const result = spawnSync(cmd, args, { stdio: 'inherit', ...opts });
@@ -102,24 +110,75 @@ export function collectClosure(wsPackages, appDir = 'apps/fresco') {
   return [...closure].toSorted((a, b) => a.localeCompare(b));
 }
 
-// The members of `names` whose package directory differs between `ref` and
-// HEAD. Committed state only — a hotfix lane releases a checked-out branch,
-// never a working tree — so any change under the directory counts, tests and
-// stories included: a needless tarball costs bytes, a missing one ships stale
-// code.
+// The default catalog entries whose pinned version differs between `ref` and
+// HEAD (added, removed or changed). A catalog that did not exist at `ref`
+// counts as wholly changed.
+function catalogEntriesChangedSince(ref) {
+  const head = parseCatalog(
+    readFileSync(join(repoRoot(), 'pnpm-workspace.yaml'), 'utf8'),
+  );
+  const shown = spawnSync('git', ['show', `${ref}:pnpm-workspace.yaml`], {
+    cwd: repoRoot(),
+    encoding: 'utf8',
+  });
+  const before = shown.status === 0 ? parseCatalog(shown.stdout) : {};
+  const changed = new Set();
+  for (const name of new Set([...Object.keys(before), ...Object.keys(head)])) {
+    if (before[name] !== head[name]) changed.add(name);
+  }
+  return changed;
+}
+
+// The members of `names` whose built artifact would differ from the one
+// `ref` produced: the package's own directory changed, a default catalog
+// entry it consumes (in any field) was re-pinned, or a workspace package it
+// is built with — a devDependency such as a shared tsconfig — changed. A
+// hotfix that only re-pins a catalog entry used by one closure
+// package must still vendor that package: the verify step builds it against
+// the new pin, and an image installing the published artifact would not
+// carry the change at all. Committed state only — a hotfix lane releases a
+// checked-out branch, never a working tree — so any change under a directory
+// counts, tests and stories included: a needless tarball costs bytes, a
+// missing one ships stale code.
 export function packagesChangedSince(ref, names, wsPackages) {
+  const changedCatalog = catalogEntriesChangedSince(ref);
+  const dirChanged = new Map();
+  const directoryChanged = (name) => {
+    if (!dirChanged.has(name)) {
+      const { dir } = wsPackages[name];
+      const result = spawnSync(
+        'git',
+        ['diff', '--quiet', ref, 'HEAD', '--', dir],
+        { cwd: repoRoot(), encoding: 'utf8' },
+      );
+      if (result.status !== 0 && result.status !== 1) {
+        throw new Error(
+          `git diff --quiet ${ref} HEAD -- ${dir} exited with ${result.status}: ${result.stderr}`,
+        );
+      }
+      dirChanged.set(name, result.status === 1);
+    }
+    return dirChanged.get(name);
+  };
+
   return names.filter((name) => {
-    const { dir } = wsPackages[name];
-    const result = spawnSync(
-      'git',
-      ['diff', '--quiet', ref, 'HEAD', '--', dir],
-      { cwd: repoRoot(), encoding: 'utf8' },
-    );
-    if (result.status === 0) return false;
-    if (result.status === 1) return true;
-    throw new Error(
-      `git diff --quiet ${ref} HEAD -- ${dir} exited with ${result.status}: ${result.stderr}`,
-    );
+    if (directoryChanged(name)) return true;
+    const manifest = readManifest(wsPackages[name].dir);
+    for (const field of ALL_DEP_FIELDS) {
+      for (const [dep, spec] of Object.entries(manifest[field] ?? {})) {
+        if (typeof spec !== 'string') continue;
+        if (spec.startsWith('catalog:') && changedCatalog.has(dep)) return true;
+        if (
+          field === 'devDependencies' &&
+          spec.startsWith('workspace:') &&
+          wsPackages[dep] &&
+          directoryChanged(dep)
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
   });
 }
 

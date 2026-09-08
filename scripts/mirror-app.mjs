@@ -15,7 +15,7 @@
 // point at it, so the standalone repo is self-consistent.
 //
 // Usage:
-//   node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile] [--vendor-changed-since <ref>] [--seed-lockfile-from <mirror-ref>] [--stage-only]
+//   node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile] [--vendor-changed-since <ref>] [--seed-lockfile-from <mirror-ref>] [--publisher-workflow <path>] [--stage-only]
 //   node scripts/mirror-app.mjs --publish-from <stage-dir> --repo <owner/name> --version <version> [--branch <name>]
 //
 // The mirror is two phases. `stage` builds the tree the external repository
@@ -31,6 +31,11 @@
 // lockfile from the one the external repository holds at that ref — the
 // release the hotfix was cut from — so everything the hotfix did not change
 // keeps the exact version that release installed.
+//
+// `--publisher-workflow <path>` (Fresco only) stages that copy of the GHCR
+// publisher workflow instead of the app's own, and verifies at once that the
+// external repository already tracks it — the hotfix lane passes main's copy,
+// since the branch's own may predate a change pre-applied over there.
 //
 // `--vendor-changed-since <ref>` (Fresco only, requires --with-lockfile) packs
 // every workspace package in Fresco's dependency closure whose source differs
@@ -489,9 +494,11 @@ export function seedLockfile({ staging, cloneUrl, ref }) {
 function stage({
   app,
   repo,
+  branch,
   withLockfile,
   vendorChangedSince,
   seedLockfileFrom,
+  publisherWorkflow,
 }) {
   const appDir = resolve(app);
   const manifest = JSON.parse(
@@ -523,8 +530,15 @@ function stage({
     // repository's image publisher. Keep that one workflow source-controlled
     // here while the directory-level exclusion above blocks every other local
     // or future workflow from leaking into the release mirror.
+    // `--publisher-workflow` names a trusted copy to stage instead of the
+    // app's own: the hotfix lane passes main's, because a branch cut from an
+    // older tag carries the publisher as it was then, and a publisher change
+    // pre-applied to the external repository since would otherwise make the
+    // push refuse — after the release tag had been claimed.
     const workflow = '.github/workflows/docker-publish.yml';
-    const source = join(appDir, workflow);
+    const source = publisherWorkflow
+      ? resolve(publisherWorkflow)
+      : join(appDir, workflow);
     const destination = join(staging, workflow);
     if (!existsSync(source)) {
       throw new Error(
@@ -534,6 +548,28 @@ function stage({
     assertCommitPinnedActionUses(workflow, readFileSync(source, 'utf8'));
     mkdirSync(dirname(destination), { recursive: true });
     cpSync(source, destination);
+    if (publisherWorkflow) {
+      // A trusted publisher is staged for a push that happens later, from
+      // elsewhere; verify now, anonymously, that the external repository
+      // will accept it, so the lane learns of a mismatch before it has
+      // claimed anything.
+      const checkout = mkdtempSync(join(tmpdir(), 'mirror-publisher-'));
+      run('git', [
+        'clone',
+        '--quiet',
+        '--depth',
+        '1',
+        '--branch',
+        branch,
+        '--single-branch',
+        process.env.MIRROR_REPO_URL ?? `https://github.com/${repo}.git`,
+        checkout,
+      ]);
+      assertStagedPublisherMatches({ staging, checkout });
+      console.error(
+        `[mirror] the external repository's ${workflow} matches the staged copy`,
+      );
+    }
   }
 
   const { manifest: resolved, dropped } = resolveManifest(appDir);
@@ -650,6 +686,29 @@ function stage({
   return { staging, appName };
 }
 
+// The staged publisher workflow — the app's own, or the trusted copy `stage`
+// was given — must already be what the external checkout tracks: the release
+// token intentionally cannot modify workflows. Reading it from the stage
+// keeps the publish phase independent of any source checkout.
+function assertStagedPublisherMatches({ staging, checkout }) {
+  const workflow = '.github/workflows/docker-publish.yml';
+  const target = join(checkout, workflow);
+  const trackedWorkflows = capture('git', [
+    '-C',
+    checkout,
+    'ls-files',
+    '.github/workflows',
+  ])
+    .split('\n')
+    .filter(Boolean);
+  assertFrescoPublisherContract({
+    workflow,
+    trackedWorkflows,
+    sourceContents: readFileSync(join(staging, workflow), 'utf8'),
+    targetContents: existsSync(target) ? readFileSync(target, 'utf8') : '',
+  });
+}
+
 // Where a push goes and what it authenticates with. MIRROR_REPO_URL overrides
 // the GitHub URL (used by tests against a local remote, and for non-github
 // mirrors); when unset, a token is required unless the run is a dry run.
@@ -687,26 +746,7 @@ function publish({ staging, appName, repo, branch, version }) {
   ]);
 
   if (appName === 'fresco') {
-    const workflow = '.github/workflows/docker-publish.yml';
-    // The staged copy is the app's own, placed there by `stage`; reading it
-    // from the stage keeps this phase independent of the source checkout.
-    const source = readFileSync(join(staging, workflow), 'utf8');
-    const target = join(checkout, workflow);
-    const trackedWorkflows = capture('git', [
-      '-C',
-      checkout,
-      'ls-files',
-      '.github/workflows',
-    ])
-      .split('\n')
-      .filter(Boolean);
-
-    assertFrescoPublisherContract({
-      workflow,
-      trackedWorkflows,
-      sourceContents: source,
-      targetContents: existsSync(target) ? readFileSync(target, 'utf8') : '',
-    });
+    assertStagedPublisherMatches({ staging, checkout });
   }
 
   run('git', ['-C', checkout, 'rm', '-r', '--quiet', '.']);
@@ -761,7 +801,7 @@ function publish({ staging, appName, repo, branch, version }) {
 }
 
 const USAGE =
-  'Usage: node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile] [--vendor-changed-since <ref>] [--seed-lockfile-from <mirror-ref>] [--stage-only]\n' +
+  'Usage: node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile] [--vendor-changed-since <ref>] [--seed-lockfile-from <mirror-ref>] [--publisher-workflow <path>] [--stage-only]\n' +
   '       node scripts/mirror-app.mjs --publish-from <stage-dir> --repo <owner/name> --version <version> [--branch <name>]';
 
 function main() {
@@ -774,6 +814,7 @@ function main() {
     branch = 'master',
     'vendor-changed-since': vendorChangedSince,
     'seed-lockfile-from': seedLockfileFrom,
+    'publisher-workflow': publisherWorkflow,
     'publish-from': publishFrom,
   } = parseArgs(process.argv.slice(2));
 
@@ -805,9 +846,11 @@ function main() {
   const { staging, appName } = stage({
     app,
     repo,
+    branch,
     withLockfile,
     vendorChangedSince,
     seedLockfileFrom,
+    publisherWorkflow,
   });
   if (stageOnly) {
     console.error(`[mirror] --stage-only: ${appName} staged at ${staging}`);

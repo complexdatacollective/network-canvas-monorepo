@@ -205,12 +205,19 @@ test('a staged tree can be published later, from a checkout that never staged it
     `${JSON.stringify({ extends: '@codaco/tsconfig/web.json' }, null, 2)}\n`,
   );
   writeFileSync(join(fresco, 'app.ts'), 'export const staged = true;\n');
+  // The branch's own publisher is stale: the external repository already
+  // tracks a newer one, pre-applied there and on main since this branch's
+  // tag. The lane stages main's copy, so the push still matches.
+  const stalePublisher =
+    'name: Publish container\nsteps:\n  - uses: docker/login-action@0000000000000000000000000000000000000000\n';
   const publisherWorkflow =
     'name: Publish container\nsteps:\n  - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f\n';
   writeFileSync(
     join(fresco, '.github', 'workflows', 'docker-publish.yml'),
-    publisherWorkflow,
+    stalePublisher,
   );
+  const trustedPublisher = join(directory, 'main-docker-publish.yml');
+  writeFileSync(trustedPublisher, publisherWorkflow);
 
   mkdirSync(join(seed, '.github', 'workflows'), { recursive: true });
   git(directory, 'init', '--bare', '--initial-branch=main', remote);
@@ -227,32 +234,56 @@ test('a staged tree can be published later, from a checkout that never staged it
   git(seed, 'remote', 'add', 'origin', remote);
   git(seed, 'push', '-u', 'origin', 'main');
 
-  // Phase 1: no remote, no token, no clone.
-  execFileSync(
-    'node',
-    [
-      SCRIPT,
-      '--app',
-      fresco,
-      '--repo',
-      'unused/local-mirror',
-      '--version',
-      '0.0.1-test',
-      '--branch',
-      'main',
-      '--stage-only',
-    ],
-    {
-      cwd: REPO_ROOT,
-      env: { ...process.env, MIRROR_STAGE_DIR: stage },
-      stdio: 'pipe',
-    },
-  );
+  const stageArgs = (publisher) => [
+    SCRIPT,
+    '--app',
+    fresco,
+    '--repo',
+    'unused/local-mirror',
+    '--version',
+    '0.0.1-test',
+    '--branch',
+    'main',
+    '--publisher-workflow',
+    publisher,
+    '--stage-only',
+  ];
+
+  // Phase 1: no token. The trusted publisher is checked against the remote
+  // now, so a mismatch surfaces here rather than at the push.
+  execFileSync('node', stageArgs(trustedPublisher), {
+    cwd: REPO_ROOT,
+    env: { ...process.env, MIRROR_STAGE_DIR: stage, MIRROR_REPO_URL: remote },
+    stdio: 'pipe',
+  });
   assert.ok(existsSync(join(stage, 'app.ts')));
-  assert.ok(
-    existsSync(join(stage, '.github', 'workflows', 'docker-publish.yml')),
+  assert.equal(
+    readFileSync(
+      join(stage, '.github', 'workflows', 'docker-publish.yml'),
+      'utf8',
+    ),
+    publisherWorkflow,
   );
   assert.ok(!existsSync(join(stage, '.git')));
+
+  // Staging the branch's stale publisher is refused up front.
+  assert.throws(
+    () =>
+      execFileSync(
+        'node',
+        stageArgs(join(fresco, '.github', 'workflows', 'docker-publish.yml')),
+        {
+          cwd: REPO_ROOT,
+          env: {
+            ...process.env,
+            MIRROR_STAGE_DIR: join(directory, 'stale-stage'),
+            MIRROR_REPO_URL: remote,
+          },
+          stdio: 'pipe',
+        },
+      ),
+    /must already match the monorepo copy/,
+  );
 
   // Phase 2: only the staged tree and the remote.
   const outputPath = join(directory, 'github-output');
@@ -294,6 +325,15 @@ test('a staged tree can be published later, from a checkout that never staged it
   ).split('\n');
   assert.ok(mirroredPaths.includes('app.ts'));
   assert.ok(!mirroredPaths.includes('README.md'));
+  assert.equal(
+    git(
+      directory,
+      `--git-dir=${remote}`,
+      'show',
+      'main:.github/workflows/docker-publish.yml',
+    ),
+    publisherWorkflow.trim(),
+  );
   assert.equal(
     git(directory, `--git-dir=${remote}`, 'log', '-1', '--format=%s', 'main'),
     'Release v0.0.1-test (mirrored from monorepo hotfix-source-sha)',

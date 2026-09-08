@@ -147,6 +147,7 @@ jobs:
             .github/scripts
             scripts
             apps/architect/scripts
+            apps/fresco/.github/workflows
           persist-credentials: false
 
       - name: Resolve the released commit
@@ -210,6 +211,50 @@ jobs:
         env:
           SKIP_ENV_VALIDATION: 'true'
         run: pnpm exec turbo run build --filter='fresco^...'
+
+      # Fresco's production target is its repository's `main`: the push is what
+      # triggers the GHCR image build there, exactly as in the normal lane.
+      # This job only STAGES that push. Staging runs code from the hotfix
+      # branch — `pnpm pack` runs each vendored package's lifecycle scripts —
+      # so it holds no push credential; the staged tree goes to
+      # `fresco-publish` as an artifact, and that job pushes it without ever
+      # checking out the branch. Vendored against the newest release tag — the
+      # one this branch was cut from, which the validator has just confirmed —
+      # so every workspace package the hotfix changed goes into the image from
+      # this tree, and everything it did not touch installs at the registry
+      # versions the released image already used: the resolution starts from
+      # the lockfile the Fresco repository holds at that release (`v<newest>`
+      # there), so unchanged packages keep their exact released versions
+      # rather than the newest their ranges admit. The mirror script's own
+      # lockfile guard fails the step if a vendored package still resolves
+      # from the registry. The GHCR publisher workflow staged is MAIN's copy,
+      # not the branch's — a branch cut from an older tag carries the
+      # publisher as it was then, and the external repository must already
+      # track exactly what is pushed — and the script verifies that match
+      # here, before the tag below is claimed, so a mismatch cannot leave a
+      # claimed tag with nothing behind it.
+      - name: Stage the Fresco mirror
+        if: inputs.app == 'fresco'
+        env:
+          MIRROR_STAGE_DIR: ${{ runner.temp }}/fresco-mirror/stage
+          VERSION: ${{ steps.version.outputs.version }}
+          NEWEST: ${{ steps.version.outputs.newest }}
+          NEWEST_TAG: ${{ steps.version.outputs.newest_tag }}
+        run: |
+          if [[ -z "$NEWEST_TAG" ]]; then
+            echo "::error::No released fresco@ tag to vendor against. A hotfix presupposes a release; the first Fresco release goes through the normal lane." >&2
+            exit 1
+          fi
+          node .hotfix-lane/scripts/mirror-app.mjs \
+            --app apps/fresco \
+            --repo complexdatacollective/Fresco \
+            --branch main \
+            --version "$VERSION" \
+            --with-lockfile \
+            --vendor-changed-since "$NEWEST_TAG" \
+            --seed-lockfile-from "v$NEWEST" \
+            --publisher-workflow .hotfix-lane/apps/fresco/.github/workflows/docker-publish.yml \
+            --stage-only
 
       # The build takes minutes, during which the normal lane can tag and deploy
       # a newer version. Re-fetch tags and re-run the same validator, so a hotfix
@@ -277,44 +322,6 @@ jobs:
             --filter="@codaco/$APP" \
             --dir="apps/$APP/dist" \
             --site="$site"
-
-      # Fresco's production target is its repository's `main`: the push is what
-      # triggers the GHCR image build there, exactly as in the normal lane.
-      # This job only STAGES that push. Staging runs code from the hotfix
-      # branch — `pnpm pack` runs each vendored package's lifecycle scripts —
-      # so it holds no push credential; the staged tree goes to
-      # `fresco-publish` as an artifact, and that job pushes it without ever
-      # checking out the branch. Vendored against the newest release tag — the
-      # one this branch was cut from, which the validator has just confirmed —
-      # so every workspace package the hotfix changed goes into the image from
-      # this tree, and everything it did not touch installs at the registry
-      # versions the released image already used: the resolution starts from
-      # the lockfile the Fresco repository holds at that release (`v<newest>`
-      # there), so unchanged packages keep their exact released versions
-      # rather than the newest their ranges admit. The mirror script's own
-      # lockfile guard fails the step if a vendored package still resolves
-      # from the registry.
-      - name: Stage the Fresco mirror
-        if: inputs.app == 'fresco'
-        env:
-          MIRROR_STAGE_DIR: ${{ runner.temp }}/fresco-mirror/stage
-          VERSION: ${{ steps.version.outputs.version }}
-          NEWEST: ${{ steps.version.outputs.newest }}
-          NEWEST_TAG: ${{ steps.version.outputs.newest_tag }}
-        run: |
-          if [[ -z "$NEWEST_TAG" ]]; then
-            echo "::error::No released fresco@ tag to vendor against. A hotfix presupposes a release; the first Fresco release goes through the normal lane." >&2
-            exit 1
-          fi
-          node .hotfix-lane/scripts/mirror-app.mjs \
-            --app apps/fresco \
-            --repo complexdatacollective/Fresco \
-            --branch main \
-            --version "$VERSION" \
-            --with-lockfile \
-            --vendor-changed-since "$NEWEST_TAG" \
-            --seed-lockfile-from "v$NEWEST" \
-            --stage-only
 
       - name: Release notes
         # --since is the newest version released before this one, so the body
