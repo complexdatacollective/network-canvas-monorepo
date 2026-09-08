@@ -1680,6 +1680,72 @@ const seedContactSetting = (
   return SEEDED_CONTACT_SETTING;
 };
 
+/** The id the seeded date attribute below is filed under. */
+const SEEDED_MET_ON = 'seeded-met-on';
+
+/**
+ * A date attribute already in the protocol, collected with the plain picker.
+ *
+ * The same bargain `seedContactSetting` makes, for the date family: inventing
+ * one through the row dialog is four interactions and a name before a test
+ * about date SETTINGS can start, and the tests below are about what the
+ * settings editor does with an attribute that exists, not about inventing one
+ * — which `creates a categorical attribute with the values it will offer` and
+ * `creates the attribute a field invents, and binds the field to it` are.
+ *
+ * `parameters` is what a picker's settings were already authored as, for the
+ * tests whose subject is what happens to settings that are already there.
+ * Seeded through the host, so the revision the session holds is one the host
+ * issued and the row's own compound edit is not refused as stale.
+ */
+const seedDateAttribute = (
+  harness: ReturnType<typeof renderStageEditor>,
+  parameters?: Readonly<Record<string, unknown>>,
+): string => {
+  harness.receiveCodebookUpdate({
+    node: {
+      person: {
+        ...personDocument(harness),
+        variables: {
+          ...personVariables(harness),
+          [SEEDED_MET_ON]: {
+            name: 'met_on',
+            type: 'datetime',
+            component: 'DatePicker',
+            ...(parameters === undefined ? {} : { parameters }),
+          },
+        },
+      },
+    },
+  });
+  return SEEDED_MET_ON;
+};
+
+/**
+ * Adds a form field collecting `variableId`, and closes the row it was
+ * authored in.
+ *
+ * The row lands third in the fixture's form, which is why the tests below
+ * reopen it as `openField(harness, 'Edit field', 2)`.
+ */
+const addFieldCollecting = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  variableId: string,
+  prompt: string,
+) => {
+  const creating = await openField(harness, 'Create new form field');
+  await harness.user.selectOptions(
+    creating.getByRole('combobox', { name: 'Attribute' }),
+    variableId,
+  );
+  await harness.user.type(
+    creating.getByRole('textbox', { name: 'Question text' }),
+    prompt,
+  );
+  await harness.user.click(creating.getByRole('button', { name: 'Add' }));
+  await waitFor(() => expect(screen.queryAllByRole('dialog')).toHaveLength(0));
+};
+
 /**
  * Everything about a form field that lives on the codebook attribute rather
  * than on the field.
@@ -1729,11 +1795,45 @@ describe('the codebook an attribute a form field collects lives in', () => {
       dialog.getByRole('combobox', { name: 'Attribute' }),
     );
 
-    // The field is bound to what was just created, and finishing the row
-    // writes the input control onto the same attribute.
+    // The row is left collecting what was just invented for it: the researcher
+    // asked for an attribute they did not have, and the answer to "which one
+    // does this field collect?" is the one they finished authoring.
+    expect(dialog.getByRole('combobox', { name: 'Attribute' })).toHaveValue(
+      created[0],
+    );
+  });
+
+  /**
+   * The row's save, from a row collecting an attribute that already exists.
+   *
+   * Split from the journey above rather than run after it, because the two are
+   * separate subjects and the create journey is not cheap: fifteen simulated
+   * interactions and forty keystrokes, each one a render of the open dialog.
+   * Paying for it again to reach the save put the pair within sight of the 20s
+   * per-test timeout on a CI runner tens of times slower than a developer's
+   * machine — and the attribute this half needs is one the host can simply
+   * hand over.
+   *
+   * The control is the OTHER one a categorical may be collected with, so this
+   * writes something: seeded as `CheckboxGroup`, a row that chose it would
+   * have asserted the value the codebook already held.
+   */
+  it('writes the control the row chose onto what it collects, with the field', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const variableId = seedContactSetting(harness);
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      variableId,
+    );
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Input control' }),
-      'CheckboxGroup',
+      'ToggleButtonGroup',
     );
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Question text' }),
@@ -1744,12 +1844,12 @@ describe('the codebook an attribute a form field collects lives in', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
-    expect(asRecord(personVariables(harness)[created[0]])).toMatchObject({
-      component: 'CheckboxGroup',
+    expect(asRecord(personVariables(harness)[variableId])).toMatchObject({
+      component: 'ToggleButtonGroup',
     });
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
-      variable: created[0],
+      variable: variableId,
       prompt: 'Where do you usually meet?',
     });
   });
@@ -1803,9 +1903,10 @@ describe('the codebook an attribute a form field collects lives in', () => {
    * what it would accept. Architect authors the same settings inline in this
    * same dialog and writes them through the field's save.
    *
-   * Two steps, because the settings belong to an attribute: there is nothing
-   * to configure until the attribute exists, and it is the row's save that
-   * creates it.
+   * The settings belong to an attribute, so there is nothing to configure
+   * until one exists. That the row's save can create it is the subject of the
+   * invention tests above; here the attribute is seeded and the field simply
+   * collects it, so what this test pays for is the settings editor alone.
    */
   it('sets what a date field accepts, on the attribute it collects', async () => {
     const harness = renderStageEditor({
@@ -1813,33 +1914,8 @@ describe('the codebook an attribute a form field collects lives in', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const creating = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      creating.getByRole('combobox', { name: 'Attribute' }),
-      CREATE_NEW_ATTRIBUTE,
-    );
-    await harness.user.selectOptions(
-      await creating.findByRole('combobox', { name: 'Kind of answer' }),
-      'datetime',
-    );
-    await harness.user.type(
-      await creating.findByRole('textbox', { name: 'Attribute name' }),
-      'met_on',
-    );
-    await harness.user.selectOptions(
-      await creating.findByRole('combobox', { name: 'Input control' }),
-      'DatePicker',
-    );
-    await harness.user.type(
-      creating.getByRole('textbox', { name: 'Question text' }),
-      'When did you first meet?',
-    );
-    await harness.user.click(creating.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
-    const created = savedAttribute(harness, 'met_on');
-    if (created === undefined) throw new Error('the attribute was not created');
+    const variableId = seedDateAttribute(harness);
+    await addFieldCollecting(harness, variableId, 'When did you first meet?');
 
     const editing = await openField(harness, 'Edit field', 2);
     await harness.user.click(
@@ -1857,13 +1933,13 @@ describe('the codebook an attribute a form field collects lives in', () => {
     );
 
     await waitFor(() =>
-      expect(asRecord(personVariables(harness)[created[0]]).parameters).toEqual(
+      expect(asRecord(personVariables(harness)[variableId]).parameters).toEqual(
         { type: 'year' },
       ),
     );
     // Written on the attribute, beside the control they were authored for —
     // not on the form field, which holds only its question.
-    expect(asRecord(personVariables(harness)[created[0]])).toMatchObject({
+    expect(asRecord(personVariables(harness)[variableId])).toMatchObject({
       name: 'met_on',
       type: 'datetime',
       component: 'DatePicker',
@@ -1886,30 +1962,14 @@ describe('the codebook an attribute a form field collects lives in', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const creating = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      creating.getByRole('combobox', { name: 'Attribute' }),
-      CREATE_NEW_ATTRIBUTE,
+    const variableId = seedDateAttribute(harness);
+    await addFieldCollecting(harness, variableId, 'When did you first meet?');
+
+    // The picker the codebook holds, and the one the row therefore opens on:
+    // the premise this test switches away from.
+    expect(asRecord(personVariables(harness)[variableId]).component).toBe(
+      'DatePicker',
     );
-    await harness.user.selectOptions(
-      await creating.findByRole('combobox', { name: 'Kind of answer' }),
-      'datetime',
-    );
-    await harness.user.type(
-      await creating.findByRole('textbox', { name: 'Attribute name' }),
-      'met_on',
-    );
-    await harness.user.type(
-      creating.getByRole('textbox', { name: 'Question text' }),
-      'When did you first meet?',
-    );
-    await harness.user.click(creating.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
-    const created = savedAttribute(harness, 'met_on');
-    if (created === undefined) throw new Error('the attribute was not created');
-    expect(asRecord(created[1]).component).toBe('DatePicker');
 
     const editing = await openField(harness, 'Edit field', 2);
     await harness.user.selectOptions(
@@ -1935,7 +1995,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
     // The control is written with the settings that depend on it, so the two
     // can never be committed out of step.
     await waitFor(() =>
-      expect(asRecord(personVariables(harness)[created[0]])).toMatchObject({
+      expect(asRecord(personVariables(harness)[variableId])).toMatchObject({
         component: 'RelativeDatePicker',
         parameters: { before: 30 },
       }),
@@ -2095,63 +2155,34 @@ describe('the codebook an attribute a form field collects lives in', () => {
  * with the control, exactly as the codebook editor's own save does.
  */
 describe('switching the input control on a configured attribute', () => {
-  /** A date field on a fresh attribute, collected with the plain date picker. */
-  const createDateField = async (
+  /**
+   * A form field collecting a date attribute, with `parameters` already
+   * authored for the plain picker when the test needs a settings block.
+   *
+   * Both are premises here, not subjects: what the row's save does when the
+   * researcher CHANGES the control is, and inventing the attribute through the
+   * dialog (four interactions and a name) and authoring the resolution through
+   * the codebook editor (six more) are what
+   * `creates a categorical attribute with the values it will offer` and
+   * `sets what a date field accepts, on the attribute it collects` already
+   * assert. Handed over by the host instead, which halves what the slower of
+   * these two tests costs a CI runner.
+   */
+  const collectADateField = async (
     harness: ReturnType<typeof renderStageEditor>,
+    parameters?: Readonly<Record<string, unknown>>,
   ) => {
-    const creating = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      creating.getByRole('combobox', { name: 'Attribute' }),
-      CREATE_NEW_ATTRIBUTE,
-    );
-    await harness.user.selectOptions(
-      await creating.findByRole('combobox', { name: 'Kind of answer' }),
-      'datetime',
-    );
-    await harness.user.type(
-      await creating.findByRole('textbox', { name: 'Attribute name' }),
-      'met_on',
-    );
-    await harness.user.type(
-      creating.getByRole('textbox', { name: 'Question text' }),
-      'When did you first meet?',
-    );
-    await harness.user.click(creating.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
-    const created = savedAttribute(harness, 'met_on');
-    if (created === undefined) throw new Error('the attribute was not created');
-    return created[0];
-  };
-
-  /** Authors settings for the date picker, so the attribute carries a block. */
-  const giveItAResolution = async (
-    harness: ReturnType<typeof renderStageEditor>,
-  ) => {
-    const editing = await openField(harness, 'Edit field', 2);
-    await harness.user.click(
-      await editing.findByRole('button', {
-        name: 'Set what this field accepts',
-      }),
-    );
-    await screen.findByRole('button', { name: 'Save attribute' });
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Date resolution' }),
-      'year',
-    );
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Save attribute' }),
-    );
-    await waitFor(() =>
-      expect(
-        asRecord(savedAttribute(harness, 'met_on')?.[1]).parameters,
-      ).toEqual({ type: 'year' }),
-    );
-    await harness.user.click(editing.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
+    const variableId = seedDateAttribute(harness, parameters);
+    // The premise, checked: a settings block that never arrived would leave
+    // `takes the old control’s settings with it` asserting that nothing was
+    // carried over from nothing.
+    if (parameters !== undefined) {
+      expect(asRecord(personVariables(harness)[variableId]).parameters).toEqual(
+        parameters,
+      );
+    }
+    await addFieldCollecting(harness, variableId, 'When did you first meet?');
+    return variableId;
   };
 
   const switchToRelative = async (
@@ -2173,7 +2204,7 @@ describe('switching the input control on a configured attribute', () => {
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
     });
-    const variableId = await createDateField(harness);
+    const variableId = await collectADateField(harness);
 
     await switchToRelative(harness);
 
@@ -2187,8 +2218,7 @@ describe('switching the input control on a configured attribute', () => {
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
     });
-    const variableId = await createDateField(harness);
-    await giveItAResolution(harness);
+    const variableId = await collectADateField(harness, { type: 'year' });
 
     await switchToRelative(harness);
 
