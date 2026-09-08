@@ -1,26 +1,20 @@
 #!/usr/bin/env node
-// Bundles workspace `@codaco/*` packages into a mirror-staged Fresco tree
-// (produced by `MIRROR_STAGE_DIR=... scripts/mirror-app.mjs`), so the
-// release-test image approximates the artifact a release would build instead
-// of silently installing the currently published library versions from npm.
+// Bundles the PENDING workspace `@codaco/*` packages into a mirror-staged
+// Fresco tree (produced by `MIRROR_STAGE_DIR=... scripts/mirror-app.mjs`), so
+// the release-test image approximates the FUTURE released artifact instead of
+// silently installing the currently published (stale) library versions from
+// npm. Pre-publish, the pending source carries the same version numbers as the
+// registry, so a plain lockfile resolution cannot distinguish them — tarballs
+// can.
 //
-// Which packages, by which rule:
-//   - Default: the packages the PENDING release will actually publish, from
-//     Changesets' assembled release plan. Pre-publish, the pending source
-//     carries the same version numbers as the registry, so a plain lockfile
-//     resolution cannot distinguish them — tarballs can.
-//   - `--changed-since <ref>`: the packages whose source differs from <ref>,
-//     plus their dependents — the rule the hotfix lane applies
-//     (`scripts/mirror-app.mjs --vendor-changed-since`), so a hotfix branch
-//     cut from a release tag is certified against the image that lane would
-//     ship. The branch's own package.json already carries the hotfix version,
-//     so no planned version is applied.
+// Which packages: the ones the pending release will actually PUBLISH, from
+// Changesets' assembled release plan. The mechanism — packing, overrides,
+// Dockerfile patches, the manifest — is scripts/vendor-workspace-packages.mjs,
+// shared with the hotfix lane (`scripts/mirror-app.mjs --vendor-changed-since`,
+// which build-image.sh runs directly when certifying a hotfix branch). Only
+// the staged tree is touched; the real Dockerfile and mirror pipeline are not.
 //
-// The mechanism — packing, overrides, Dockerfile patches, the manifest — is
-// scripts/vendor-workspace-packages.mjs, shared with that lane. Only the
-// staged tree is touched; the real Dockerfile and mirror pipeline are not.
-//
-// Usage: node apps/fresco/release-test/scripts/bundle-pending-packages.mjs <stage-dir> [--changed-since <ref>]
+// Usage: node apps/fresco/release-test/scripts/bundle-pending-packages.mjs <stage-dir>
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,
@@ -35,9 +29,7 @@ import { join, resolve } from 'node:path';
 import { readWorkspacePackages } from '../../../../scripts/resolve-manifest.mjs';
 import {
   collectClosure,
-  packagesChangedSince,
   vendorPackages,
-  withDependents,
   writeBundleManifest,
 } from '../../../../scripts/vendor-workspace-packages.mjs';
 
@@ -92,25 +84,11 @@ function applyPlannedAppVersion(stageDir, releases) {
   return plannedVersion;
 }
 
-function parseArgs(argv) {
-  /** @type {{ stageDir: string | null, changedSince: string | null }} */
-  const args = { stageDir: null, changedSince: null };
-  for (let i = 0; i < argv.length; i += 1) {
-    if (argv[i] === '--changed-since') {
-      args.changedSince = argv[i + 1] ?? null;
-      i += 1;
-    } else if (!args.stageDir) {
-      args.stageDir = resolve(argv[i]);
-    }
-  }
-  return args;
-}
-
 function main() {
-  const { stageDir, changedSince } = parseArgs(process.argv.slice(2));
+  const stageDir = process.argv[2] && resolve(process.argv[2]);
   if (!stageDir || !existsSync(join(stageDir, 'Dockerfile'))) {
     console.error(
-      'Usage: node apps/fresco/release-test/scripts/bundle-pending-packages.mjs <stage-dir> [--changed-since <ref>]\n' +
+      'Usage: node apps/fresco/release-test/scripts/bundle-pending-packages.mjs <stage-dir>\n' +
         '<stage-dir> must be a mirror-staged Fresco tree (Dockerfile at its root).',
     );
     process.exit(1);
@@ -118,27 +96,18 @@ function main() {
 
   const wsPackages = readWorkspacePackages();
   const closure = collectClosure(wsPackages, 'apps/fresco');
-
-  let names;
-  let note;
-  let plannedAppVersion = null;
-  if (changedSince) {
-    names = withDependents(
-      packagesChangedSince(changedSince, closure, wsPackages),
-      closure,
-      wsPackages,
-    );
-    note = `Packages changed since ${changedSince} (and their dependents), bundled by release-test (local tarballs).`;
-  } else {
-    const pending = collectPendingReleases();
-    names = closure.filter((name) => pending.has(name));
-    note =
-      'Packages this release publishes, bundled by release-test (local tarballs).';
-    plannedAppVersion = applyPlannedAppVersion(stageDir, pending);
-  }
+  const pending = collectPendingReleases();
+  const names = closure.filter((name) => pending.has(name));
+  const plannedAppVersion = applyPlannedAppVersion(stageDir, pending);
 
   const manifest = {
-    ...vendorPackages({ stageDir, names, closure, wsPackages, note }),
+    ...vendorPackages({
+      stageDir,
+      names,
+      closure,
+      wsPackages,
+      note: 'Packages this release publishes, bundled by release-test (local tarballs).',
+    }),
     plannedAppVersion,
   };
   writeBundleManifest(stageDir, manifest);

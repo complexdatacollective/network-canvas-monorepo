@@ -201,7 +201,7 @@ export function vendorPackages({ stageDir, names, closure, wsPackages, note }) {
   const workspaceYaml = readFileSync(workspaceYamlPath, 'utf8');
   if (!/^overrides:$/m.test(workspaceYaml)) {
     throw new Error(
-      `${workspaceYamlPath} has no overrides: block to extend; check FRESCO_WORKSPACE_YAML in scripts/mirror-app.mjs.`,
+      `${workspaceYamlPath} has no overrides: block to extend; check frescoWorkspaceYaml in scripts/mirror-app.mjs.`,
     );
   }
   const overrideLines = names

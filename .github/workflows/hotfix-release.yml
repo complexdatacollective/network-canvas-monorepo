@@ -87,8 +87,16 @@ jobs:
     environment: ${{ inputs.app }}-hotfix-production
     permissions:
       contents: write
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      newest: ${{ steps.version.outputs.newest }}
+    # No credential at job level: every step below that runs code from the
+    # hotfix branch (verify, build, stage) would see it. The deploy step
+    # names the Netlify token itself, and the Fresco push token never enters
+    # this job at all (see fresco-publish).
     env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       APP: ${{ inputs.app }}
       SOURCE_REF: ${{ inputs.source_ref }}
     steps:
@@ -252,6 +260,7 @@ jobs:
         # secret is unset — deploying, say, Interviewer over Architect's
         # production site instead of failing for the missing setup.
         env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           SITE_ID_INTERVIEWER: ${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}
           SITE_ID_ARCHITECT: ${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}
         run: |
@@ -271,19 +280,26 @@ jobs:
 
       # Fresco's production target is its repository's `main`: the push is what
       # triggers the GHCR image build there, exactly as in the normal lane.
-      # Vendored against the newest release tag — the one this branch was cut
-      # from, which the validator has just confirmed — so every workspace
-      # package the hotfix changed goes into the image from this tree, and
-      # everything it did not touch installs at the registry versions the
-      # released image already used. The mirror script's own lockfile guard
-      # fails the step if a vendored package still resolves from the registry.
-      - name: Mirror source to the Fresco repository
-        id: mirror
+      # This job only STAGES that push. Staging runs code from the hotfix
+      # branch — `pnpm pack` runs each vendored package's lifecycle scripts —
+      # so it holds no push credential; the staged tree goes to
+      # `fresco-publish` as an artifact, and that job pushes it without ever
+      # checking out the branch. Vendored against the newest release tag — the
+      # one this branch was cut from, which the validator has just confirmed —
+      # so every workspace package the hotfix changed goes into the image from
+      # this tree, and everything it did not touch installs at the registry
+      # versions the released image already used: the resolution starts from
+      # the lockfile the Fresco repository holds at that release (`v<newest>`
+      # there), so unchanged packages keep their exact released versions
+      # rather than the newest their ranges admit. The mirror script's own
+      # lockfile guard fails the step if a vendored package still resolves
+      # from the registry.
+      - name: Stage the Fresco mirror
         if: inputs.app == 'fresco'
         env:
-          LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
-          MONOREPO_SHA: ${{ steps.commit.outputs.sha }}
+          MIRROR_STAGE_DIR: ${{ runner.temp }}/fresco-mirror/stage
           VERSION: ${{ steps.version.outputs.version }}
+          NEWEST: ${{ steps.version.outputs.newest }}
           NEWEST_TAG: ${{ steps.version.outputs.newest_tag }}
         run: |
           if [[ -z "$NEWEST_TAG" ]]; then
@@ -296,7 +312,9 @@ jobs:
             --branch main \
             --version "$VERSION" \
             --with-lockfile \
-            --vendor-changed-since "$NEWEST_TAG"
+            --vendor-changed-since "$NEWEST_TAG" \
+            --seed-lockfile-from "v$NEWEST" \
+            --stage-only
 
       - name: Release notes
         # --since is the newest version released before this one, so the body
@@ -314,6 +332,24 @@ jobs:
           --since "$SINCE"
           --out "${RUNNER_TEMP}/hotfix-notes.md"
 
+      # A tarball keeps file modes (the mirrored tree carries shell scripts the
+      # image runs) where a plain artifact upload would not, and the notes ride
+      # along so fresco-publish reads nothing from the branch.
+      - name: Package the staged mirror for fresco-publish
+        if: inputs.app == 'fresco'
+        run: |
+          tar -czf "${RUNNER_TEMP}/fresco-mirror/stage.tgz" -C "${RUNNER_TEMP}/fresco-mirror/stage" .
+          cp "${RUNNER_TEMP}/hotfix-notes.md" "${RUNNER_TEMP}/fresco-mirror/notes.md"
+          rm -rf "${RUNNER_TEMP}/fresco-mirror/stage"
+      - name: Upload the staged mirror
+        if: inputs.app == 'fresco'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fresco-mirror
+          path: ${{ runner.temp }}/fresco-mirror
+          if-no-files-found: error
+          retention-days: 3
+
       # The tag already exists from the claim step; this only attaches the
       # release notes to it. Always the newest line — resolve-hotfix-release.mjs
       # refuses anything older than the current release.
@@ -328,29 +364,79 @@ jobs:
           prerelease: false
           make_latest: 'true'
 
+  # The push to the Fresco repository, from a job that has never checked out
+  # the branch being released: it takes the staged tree from the artifact,
+  # main's mirror tooling from the dispatching commit, and executes nothing
+  # from either tree — git treats the stage as content, and a fresh clone has
+  # no hooks. This is the only job that sees LEGACY_RELEASE_GH_TOKEN, which can
+  # push Fresco's `main` and so publish `latest`; a hotfix branch's build
+  # scripts, run in the job above, cannot reach it. The environment gates this
+  # job separately from the one above, so a protected environment asks twice
+  # for a Fresco hotfix.
+  fresco-publish:
+    needs: hotfix-release
+    if: inputs.app == 'fresco'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: fresco-hotfix-production
+    permissions:
+      contents: write
+    steps:
+      # main's tooling only, plus .nvmrc for the Node version. No workspace:
+      # the publish phase reads nothing but the staged tree.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: |
+            scripts
+            .nvmrc
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: '.nvmrc'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: fresco-mirror
+          path: ${{ runner.temp }}/fresco-mirror
+      - name: Unpack the staged mirror
+        run: |
+          mkdir -p "${RUNNER_TEMP}/fresco-mirror/stage"
+          tar -xzf "${RUNNER_TEMP}/fresco-mirror/stage.tgz" -C "${RUNNER_TEMP}/fresco-mirror/stage"
+
+      - name: Push the mirror to the Fresco repository
+        id: mirror
+        env:
+          LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+          MONOREPO_SHA: ${{ needs.hotfix-release.outputs.sha }}
+          VERSION: ${{ needs.hotfix-release.outputs.version }}
+        run: >-
+          node scripts/mirror-app.mjs
+          --publish-from "${RUNNER_TEMP}/fresco-mirror/stage"
+          --repo complexdatacollective/Fresco
+          --branch main
+          --version "$VERSION"
+
       # Fresco's releases live in two places, as in the normal lane: the
       # user-facing one on the Fresco repository at the mirrored commit, and
-      # the record on this repository's tag (already claimed above) that the
-      # normal lane's guards read.
+      # the record on this repository's tag (claimed by the job above) that
+      # the normal lane's guards read.
       - name: Create the release on the Fresco repository
-        if: inputs.app == 'fresco'
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           repository: complexdatacollective/Fresco
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
-          tag_name: v${{ steps.version.outputs.version }}
+          tag_name: v${{ needs.hotfix-release.outputs.version }}
           target_commitish: ${{ steps.mirror.outputs.mirror_sha }}
-          name: Fresco v${{ steps.version.outputs.version }}
-          body_path: ${{ runner.temp }}/hotfix-notes.md
+          name: Fresco v${{ needs.hotfix-release.outputs.version }}
+          body_path: ${{ runner.temp }}/fresco-mirror/notes.md
           prerelease: false
           make_latest: 'true'
       - name: Record the Fresco release on this repository's tag
-        if: inputs.app == 'fresco'
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          target_commitish: ${{ steps.commit.outputs.sha }}
-          name: Fresco ${{ steps.version.outputs.version }}
-          body_path: ${{ runner.temp }}/hotfix-notes.md
+          tag_name: ${{ needs.hotfix-release.outputs.tag }}
+          target_commitish: ${{ needs.hotfix-release.outputs.sha }}
+          name: Fresco ${{ needs.hotfix-release.outputs.version }}
+          body_path: ${{ runner.temp }}/fresco-mirror/notes.md
           prerelease: false
           make_latest: 'false'

@@ -24,10 +24,17 @@ import { pathToFileURL } from 'node:url';
 // the tree the script came from. Every caller — the release jobs, the
 // release-test harness, the script tests — already runs from the root.
 const repoRoot = process.cwd();
-if (!existsSync(join(repoRoot, 'pnpm-workspace.yaml'))) {
-  throw new Error(
-    `resolve-manifest: run from the monorepo root (no pnpm-workspace.yaml in ${repoRoot}).`,
-  );
+
+// Checked when the workspace is read rather than at import: the mirror's
+// publish phase imports this module from a checkout that holds only the
+// tooling, and never touches the workspace.
+function requireWorkspaceRoot() {
+  if (!existsSync(join(repoRoot, 'pnpm-workspace.yaml'))) {
+    throw new Error(
+      `resolve-manifest: run from the monorepo root (no pnpm-workspace.yaml in ${repoRoot}).`,
+    );
+  }
+  return repoRoot;
 }
 
 const DEP_FIELDS = [
@@ -66,9 +73,10 @@ export function parseCatalog(workspaceYaml) {
 // relative to the repository root, for callers that need to read the package's
 // own manifest or ask git what changed under it.
 export function readWorkspacePackages() {
+  const root = requireWorkspaceRoot();
   const map = {};
   for (const group of ['packages', 'apps', 'tooling']) {
-    const base = join(repoRoot, group);
+    const base = join(root, group);
     if (!existsSync(base)) continue;
     for (const entry of readdirSync(base)) {
       const pkgPath = join(base, entry, 'package.json');
@@ -117,7 +125,9 @@ function resolveSpec(name, spec, { catalog, wsPackages, appName }) {
 export function resolveManifest(appDir, { catalog, wsPackages } = {}) {
   const resolvedCatalog =
     catalog ??
-    parseCatalog(readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8'));
+    parseCatalog(
+      readFileSync(join(requireWorkspaceRoot(), 'pnpm-workspace.yaml'), 'utf8'),
+    );
   const resolvedWs = wsPackages ?? readWorkspacePackages();
   const manifest = JSON.parse(
     readFileSync(join(appDir, 'package.json'), 'utf8'),

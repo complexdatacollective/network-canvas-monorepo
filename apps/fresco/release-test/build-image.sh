@@ -26,25 +26,36 @@ DIRTY="false"
 echo "[release-test] building workspace dependency closure"
 SKIP_ENV_VALIDATION=true pnpm exec turbo run build --filter='fresco^...'
 
-echo "[release-test] staging mirror tree -> $STAGE_DIR"
-MIRROR_DRY_RUN=true MIRROR_STAGE_DIR="$STAGE_DIR" node scripts/mirror-app.mjs \
-  --app apps/fresco --repo complexdatacollective/Fresco --branch main \
-  --version "$VERSION"
+if [ -n "${VENDOR_CHANGED_SINCE:-}" ]; then
+  # Certifying a hotfix branch: stage exactly as the hotfix lane does —
+  # vendor what changed since the release tag it was cut from (plus
+  # dependents), seed the lockfile from the released mirror so nothing else
+  # moves, and run the lockfile guard — so the image under test is the one
+  # the lane would ship. Pending changesets play no part here.
+  echo "[release-test] staging hotfix mirror tree (changed since $VENDOR_CHANGED_SINCE) -> $STAGE_DIR"
+  MIRROR_STAGE_DIR="$STAGE_DIR" node scripts/mirror-app.mjs \
+    --app apps/fresco --repo complexdatacollective/Fresco --branch main \
+    --version "$VERSION" \
+    --with-lockfile \
+    --vendor-changed-since "$VENDOR_CHANGED_SINCE" \
+    --seed-lockfile-from "v${VENDOR_CHANGED_SINCE#fresco@}" \
+    --stage-only
+else
+  echo "[release-test] staging mirror tree -> $STAGE_DIR"
+  MIRROR_DRY_RUN=true MIRROR_STAGE_DIR="$STAGE_DIR" node scripts/mirror-app.mjs \
+    --app apps/fresco --repo complexdatacollective/Fresco --branch main \
+    --version "$VERSION"
 
-echo "[release-test] bundling pending workspace packages"
-# VENDOR_CHANGED_SINCE=<ref> certifies a hotfix branch: vendor what changed since
-# the release tag it was cut from (the hotfix lane's own rule) instead of what
-# the pending changesets would publish.
-node apps/fresco/release-test/scripts/bundle-pending-packages.mjs "$STAGE_DIR" \
-  ${VENDOR_CHANGED_SINCE:+--changed-since "$VENDOR_CHANGED_SINCE"}
+  echo "[release-test] bundling pending workspace packages"
+  node apps/fresco/release-test/scripts/bundle-pending-packages.mjs "$STAGE_DIR"
 
-echo "[release-test] generating lockfile"
-(cd "$STAGE_DIR" && pnpm install --lockfile-only --ignore-scripts)
+  echo "[release-test] generating lockfile"
+  (cd "$STAGE_DIR" && pnpm install --lockfile-only --ignore-scripts)
+fi
 
-# Every package the pending release publishes must resolve to its vendored
-# tarball and never from the registry (registry references appear as
-# '@codaco/<name>@<semver>'); packages without a pending changeset are
-# expected to resolve from the registry, exactly as the released image will.
+# Every vendored package must resolve to its tarball and never from the
+# registry (registry references appear as '@codaco/<name>@<semver>'); the
+# rest are expected to resolve from the registry, exactly as the image will.
 echo "[release-test] $(node scripts/vendor-workspace-packages.mjs --assert-lockfile "$STAGE_DIR")"
 
 echo "[release-test] building image $IMAGE_TAG"
