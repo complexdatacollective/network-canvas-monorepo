@@ -1,0 +1,54 @@
+{
+  "description": "Network Canvas agent hooks: format and lint on edit, typecheck and knip on stop, refuse whole-tree gate runs. Logic lives in scripts/agent-hooks/ so this file (whose hash Codex trusts) rarely changes.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/agent-hooks/pre-bash.mjs\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^(apply_patch|Bash)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/agent-hooks/post-edit.mjs\"",
+            "timeout": 90,
+            "statusMessage": "Formatting and linting edited files"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/agent-hooks/stop-check.mjs\"",
+            "timeout": 300,
+            "statusMessage": "Typechecking changed packages and running knip"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/agent-hooks/stop-check.mjs\"",
+            "timeout": 300,
+            "statusMessage": "Typechecking changed packages and running knip"
+          }
+        ]
+      }
+    ]
+  }
+}

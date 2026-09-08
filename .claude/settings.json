@@ -11,6 +11,55 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/agent-hooks/pre-bash.mjs",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/agent-hooks/post-edit.mjs",
+            "timeout": 90,
+            "statusMessage": "Formatting and linting the edited file"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/agent-hooks/stop-check.mjs",
+            "timeout": 300,
+            "statusMessage": "Typechecking changed packages and running knip"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/agent-hooks/stop-check.mjs",
+            "timeout": 300,
+            "statusMessage": "Typechecking changed packages and running knip"
+          }
+        ]
+      }
     ]
   }
 }
