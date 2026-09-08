@@ -423,39 +423,53 @@ describe('Fresco PostHog client', () => {
       expect(beforeSend(null)).toBeNull();
     });
 
-    // Autocapture attaches the clicked element's text to each event, and on a
+    // Autocapture attaches the clicked element's text to each event. On a
     // participant's page that text is their answers — a node's name is a
-    // response. Rageclick, heatmap and dead-click capture are built on the
-    // same element data.
-    it('keeps autocapture and element capture off on a participant page', async () => {
+    // response — and on the dashboard it is what the tables show: participant
+    // identifiers and labels. Rageclick and dead-click capture are built on
+    // the same element data. Interviewer and Architect run with all of it off;
+    // Fresco does too.
+    it('keeps autocapture and element capture off on every page', async () => {
+      for (const path of [
+        `/interview/${INTERVIEW_ID}`,
+        '/dashboard/interviews',
+      ]) {
+        vi.resetModules();
+        init.mockClear();
+        window.history.pushState({}, '', path);
+        const { startPostHog } = await loadModule();
+
+        await startPostHog('install-123');
+
+        expect(initConfig()).toEqual(
+          expect.objectContaining({
+            autocapture: false,
+            rageclick: false,
+            capture_dead_clicks: false,
+          }),
+        );
+      }
+    });
+
+    // Heatmaps carry element selectors, not text, so they stay on for the
+    // dashboard and off where the page is a participant's.
+    it('turns heatmaps off only on participant pages', async () => {
       window.history.pushState({}, '', `/interview/${INTERVIEW_ID}`);
-      const { startPostHog } = await loadModule();
+      let mod = await loadModule();
+      await mod.startPostHog('install-123');
+      expect(initConfig().capture_heatmaps).toBe(false);
 
-      await startPostHog('install-123');
-
-      expect(initConfig()).toEqual(
-        expect.objectContaining({
-          autocapture: false,
-          rageclick: false,
-          capture_heatmaps: false,
-          capture_dead_clicks: false,
-        }),
-      );
-    });
-
-    it('keeps autocapture on for researcher pages', async () => {
+      vi.resetModules();
+      init.mockClear();
       window.history.pushState({}, '', '/dashboard/interviews');
-      const { startPostHog } = await loadModule();
-
-      await startPostHog('install-123');
-
-      expect(initConfig().autocapture).toBe(true);
+      mod = await loadModule();
+      await mod.startPostHog('install-123');
+      expect(initConfig().capture_heatmaps).toBe(true);
     });
 
-    // A participant page reached without a page load — a researcher opening
-    // an interview from the dashboard — keeps the init-time settings of the
-    // page it came from, so the send path has to drop element data itself.
-    it('drops element-bearing events sent from a participant page', async () => {
+    // Init settings are the first line; the send path is the second, so that
+    // element data cannot leave however an event acquired it.
+    it('drops element-bearing events on every page', async () => {
       window.history.pushState({}, '', '/dashboard/interviews');
       const { startPostHog } = await loadModule();
       await startPostHog('install-123');
@@ -474,20 +488,20 @@ describe('Fresco PostHog client', () => {
         },
       });
 
-      expect(beforeSend(autocapture())).toEqual(
-        expect.objectContaining({ event: '$autocapture' }),
-      );
-
-      window.history.pushState({}, '', `/interview/${INTERVIEW_ID}`);
-
-      expect(beforeSend(autocapture())).toBeNull();
-      expect(beforeSend({ event: '$rageclick', properties: {} })).toBeNull();
-      expect(beforeSend({ event: '$dead_click', properties: {} })).toBeNull();
-      expect(beforeSend({ event: '$$heatmap', properties: {} })).toBeNull();
+      for (const path of [
+        '/dashboard/interviews',
+        `/interview/${INTERVIEW_ID}`,
+      ]) {
+        window.history.pushState({}, '', path);
+        expect(beforeSend(autocapture())).toBeNull();
+        expect(beforeSend({ event: '$rageclick', properties: {} })).toBeNull();
+        expect(beforeSend({ event: '$dead_click', properties: {} })).toBeNull();
+        expect(beforeSend({ event: '$$heatmap', properties: {} })).toBeNull();
+      }
     });
 
-    it('strips element data from other events sent from a participant page', async () => {
-      window.history.pushState({}, '', `/interview/${INTERVIEW_ID}`);
+    it('strips element data from other events on every page', async () => {
+      window.history.pushState({}, '', '/dashboard/participants');
       const { startPostHog } = await loadModule();
       await startPostHog('install-123');
 

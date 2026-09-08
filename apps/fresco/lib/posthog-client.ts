@@ -41,9 +41,10 @@ const pendingReports: ((posthog: PostHog) => void)[] = [];
  */
 /**
  * Events whose payload is the element the person interacted with — see
- * `redactEvent`. `$dead_click` and `$$heatmap` are listed although neither
- * feature is switched on for participant pages, so a later change to the
- * init options cannot quietly start sending element data from an interview.
+ * `redactEvent`. Autocapture, rageclick and dead-click capture are switched
+ * off at init; `$$heatmap` is listed too although heatmaps are only off on
+ * participant pages. Dropping them here as well means a later change to the
+ * init options cannot quietly start sending element data.
  */
 const ELEMENT_EVENTS = new Set([
   '$autocapture',
@@ -73,18 +74,16 @@ function redactEvent(event: CaptureResult | null): CaptureResult | null {
     return event;
   }
 
-  // Autocapture-family events carry the clicked element's text, and on a
+  // Autocapture-family events carry the clicked element's text. On a
   // participant's page that text is their answers — a node's name is a
-  // response. Init already keeps those features off on participant pages;
-  // this covers a participant page reached without a page load, and any
-  // other event that picked up element data on the way.
-  if (isParticipantPath(window.location.pathname)) {
-    if (ELEMENT_EVENTS.has(event.event)) {
-      return null;
-    }
-    for (const key of ELEMENT_PROPERTIES) {
-      delete event.properties[key];
-    }
+  // response — and on the dashboard it is what the tables show: participant
+  // identifiers and labels. Init keeps those features off everywhere; this
+  // covers any event that picked up element data on the way regardless.
+  if (ELEMENT_EVENTS.has(event.event)) {
+    return null;
+  }
+  for (const key of ELEMENT_PROPERTIES) {
+    delete event.properties[key];
   }
 
   event.properties = redactProperties(event.properties);
@@ -116,17 +115,17 @@ async function getClient(): Promise<PostHog> {
       // questions is research data rather than telemetry.
       disable_session_recording: participantPage,
       // Autocapture attaches the clicked element's text to each event, and
-      // rageclick and heatmap capture are built on the same element data. On a
-      // participant's page that text is their answers, so all three stay off
-      // there; researcher pages keep autocapture as before.
-      ...(participantPage
-        ? {
-            autocapture: false,
-            rageclick: false,
-            capture_heatmaps: false,
-            capture_dead_clicks: false,
-          }
-        : { autocapture: true }),
+      // rageclick and dead-click capture are built on the same element data.
+      // On a participant's page that text is their answers; on the dashboard
+      // it is what the tables show — participant identifiers and labels. The
+      // usage events Fresco reports are the explicit ones it captures itself,
+      // as in Interviewer and Architect, so all three stay off everywhere.
+      autocapture: false,
+      rageclick: false,
+      capture_dead_clicks: false,
+      // Heatmaps carry element selectors rather than text; off where the
+      // page is a participant's, as the rest of participant telemetry is.
+      capture_heatmaps: !participantPage,
     });
 
     // Registered here, before startPostHog opts in, because opting in captures
