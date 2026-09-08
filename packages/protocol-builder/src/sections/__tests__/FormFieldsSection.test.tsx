@@ -549,7 +549,17 @@ describe('a spectator and the fields a form collects', () => {
     }).toEqual({ add: true, edit: true, remove: true });
   });
 
-  it('does not let a spectator change a row through the dialog', async () => {
+  /**
+   * The other half of the rule above: the affordance is not merely styled as
+   * unavailable, it does nothing.
+   *
+   * Written as a POSITIVE assertion that no dialog opened, rather than as a
+   * branch that drives one if it happens to be there. That branch was the
+   * whole of this test, and the test above proves the button is disabled — so
+   * the branch was never taken, and what was left (`pendingCommands()` is
+   * empty) is true of a harness that has just been rendered, spectator or not.
+   */
+  it('does not open a row dialog when a spectator clicks Edit', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       readOnly: true,
@@ -559,19 +569,49 @@ describe('a spectator and the fields a form collects', () => {
     await harness.user.click(
       screen.getAllByRole('button', { name: 'Edit field' })[0]!,
     );
-    const dialogs = screen.queryAllByRole('dialog');
-    if (dialogs.length > 0) {
-      const dialog = within(dialogs[0]!);
-      const question = dialog.getByRole('textbox', { name: 'Question text' });
-      await harness.user.clear(question);
-      await harness.user.type(question, 'A spectator wrote this');
-      await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
-      await waitFor(() =>
-        expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-      );
-    }
 
+    expect(screen.queryAllByRole('dialog')).toHaveLength(0);
     expect(harness.pendingCommands()).toHaveLength(0);
+  });
+
+  /**
+   * And what a row dialog itself does if one is reached anyway.
+   *
+   * The trigger is disabled, so a browser cannot get here — but a bug could,
+   * and the rule this surface actually depends on is that the dialog's own
+   * save writes nothing. Reached by rendering the same section as an editor
+   * and then losing the lease, which leaves the dialog open on a session that
+   * has become read-only.
+   */
+  it('commits nothing from a row dialog left open when the lease goes', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    const question = dialog.getByRole('textbox', { name: 'Question text' });
+    await harness.user.clear(question);
+    await harness.user.type(question, 'A spectator wrote this');
+
+    act(() => {
+      harness.session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    // The refusal is what proves the save was reached and turned away: without
+    // it the dialog would close on a committed row, and the two assertions
+    // below would be about a dialog that had simply not been driven.
+    expect(
+      await screen.findByText(
+        'This stage is read-only, so this field was not saved. Take over editing and try again.',
+      ),
+    ).toBeInTheDocument();
+    expect(harness.pendingCommands()).toHaveLength(0);
+    expect(
+      JSON.stringify(harness.session.getSnapshot().editedSection.fields.form),
+    ).not.toContain('A spectator wrote this');
   });
 });
 
@@ -1456,6 +1496,20 @@ describe('the codebook an attribute a form field collects lives in', () => {
         { label: 'At work', value: 'work' },
       ],
     });
+
+    // Creating the attribute is what takes this row out of inventing one, so
+    // the button that opened the editor has gone by the time it closes. Focus
+    // has to land on something still mounted: the next Tab from `<body>`
+    // starts at the top of the document, and a screen-reader user is returned
+    // to the page rather than to the control they left.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Create attribute' }),
+      ).toBeNull(),
+    );
+    expect(document.activeElement).toBe(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+    );
 
     // The field is bound to what was just created, and finishing the row
     // writes the input control onto the same attribute.
