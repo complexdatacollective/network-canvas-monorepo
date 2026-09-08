@@ -139,21 +139,51 @@ Document.prototype.elementFromPoint ??= () => null;
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/** The id the seeded boolean below is filed under. */
+const SEEDED_UNWELL = 'seeded-unwell';
+
 /**
- * Adds a family member form field that invents the attribute it collects.
+ * A boolean attribute on the pedigree's node type, put there from outside this
+ * editor and collectable by a form field.
  *
- * The one sequence in this file that goes through the field dialog by hand,
- * because every boolean the node type already has is written unvalidated
- * somewhere and the shared picker refuses all of them — so a test that needs a
- * form field collecting a boolean has to make the attribute here. The prompt
- * text is as short as a question can be: every character is a keystroke
- * through a controlled field, and what these tests are about is which
- * attribute the field took, never what it asks.
+ * Every boolean the node type already carries is written unvalidated somewhere
+ * — this pedigree's own participant marker, and the narrative pedigree's
+ * disease — and the shared form-fields picker refuses all of those, so a test
+ * that needs a form field collecting a boolean needs an attribute of its own.
+ * Filed under an id no stage names, which is what makes it collectable.
+ *
+ * `component` is one of the two the schema lets a boolean be collected with,
+ * because a variable carrying no control at all leaves the dialog asking for
+ * one; an entity definition is parsed whole, so a control belonging to another
+ * type would take EVERY attribute of this node type off the pickers rather
+ * than just this one.
  */
-async function addFormFieldInventing(
+const seedCollectableBoolean = (harness: StageEditorHarness): string => {
+  addFamilyMemberVariable(harness, SEEDED_UNWELL, {
+    name: 'unwell',
+    type: 'boolean',
+    component: 'Boolean',
+  });
+  return SEEDED_UNWELL;
+};
+
+/**
+ * Adds a family member form field that collects the seeded boolean above.
+ *
+ * Inventing the attribute through the dialog instead is a journey of its own —
+ * a second picker, a typed name, and a re-render of the open dialog per
+ * keystroke — and it is the SUBJECT of `creates a categorical field together
+ * with the values it offers` below rather than of either caller here, both of
+ * which are about what happens once a field collects an attribute. Seeded
+ * through the host, so the revision the session holds is one the host issued.
+ *
+ * The prompt text is as short as a question can be: every character is a
+ * keystroke through a controlled field, and what these tests are about is
+ * which attribute the field took, never what it asks.
+ */
+async function addFormFieldCollecting(
   harness: StageEditorHarness,
-  attributeName: string,
-  kindOfAnswer: string,
+  variableId: string,
 ): Promise<void> {
   await harness.user.click(
     await screen.findByRole('button', { name: 'Create new form field' }),
@@ -161,18 +191,10 @@ async function addFormFieldInventing(
   const field = within(await screen.findByRole('dialog'));
   await harness.user.selectOptions(
     field.getByRole('combobox', { name: 'Attribute' }),
-    CREATE_NEW_ATTRIBUTE,
+    variableId,
   );
   await harness.user.type(
-    await field.findByRole('textbox', { name: 'Attribute name' }),
-    attributeName,
-  );
-  await harness.user.selectOptions(
-    field.getByRole('combobox', { name: 'Kind of answer' }),
-    kindOfAnswer,
-  );
-  await harness.user.type(
-    field.getByRole('textbox', { name: 'Question text' }),
+    await field.findByRole('textbox', { name: 'Question text' }),
     'Q?',
   );
   await harness.user.click(field.getByRole('button', { name: 'Add' }));
@@ -356,13 +378,13 @@ describe('the attributes a pedigree may bind', () => {
    * takes its attribute off the structural pickers at once — before the
    * researcher can pick something the save would then refuse.
    *
-   * The field invents its attribute rather than picking one, because every
-   * boolean already on the node type is written unvalidated somewhere — this
-   * pedigree's own participant marker, and the narrative pedigree's disease —
-   * and the shared form-fields picker refuses all of those. The codebook write
-   * lands as the row is committed, so the new attribute reaches the structural
-   * picker while the field that collects it is still unsaved: exactly the
-   * window under test.
+   * The attribute the field collects is seeded rather than invented, because
+   * every boolean already on the node type is written unvalidated somewhere —
+   * this pedigree's own participant marker, and the narrative pedigree's
+   * disease — and the shared form-fields picker refuses all of those. It
+   * reaches the structural picker as a saved attribute nothing has claimed, so
+   * the only thing that can take it off that picker is the unsaved field that
+   * now collects it: exactly the window under test.
    *
    * The whole list is asserted rather than the absence alone: an exclusion
    * written against the wrong list would empty the picker, and an
@@ -370,16 +392,24 @@ describe('the attributes a pedigree may bind', () => {
    */
   it('never offers a structural slot an attribute this stage’s own form collects', async () => {
     const harness = renderStageEditor(openFixture());
+    const unwell = seedCollectableBoolean(harness);
+
+    // On offer while nothing has claimed it, so the exclusion below is a
+    // change rather than a list that was always this short.
+    await waitFor(() =>
+      expect(optionsOf('Participant identifier')).toEqual([
+        'is_ego',
+        'hasConditionX',
+        unwell,
+      ]),
+    );
 
     // The fixture pedigree asks nothing about each family member, so the form
     // is switched off until the researcher turns it on.
     await harness.user.click(
       screen.getByRole('switch', { name: 'Family member form' }),
     );
-    await addFormFieldInventing(harness, 'unwell', 'boolean');
-
-    const unwell = variableIdByName(harness, 'unwell');
-    expect(unwell).toBeDefined();
+    await addFormFieldCollecting(harness, unwell);
 
     // The two booleans this node type had before the field was added, and not
     // the one it now collects.
@@ -560,12 +590,14 @@ describe('the way a family member form reaches the document', () => {
 
     // Added. Every boolean this node type already has is written unvalidated
     // somewhere — this pedigree's own slots, and the narrative pedigree's
-    // disease — so the field invents its attribute rather than picking one.
-    await addFormFieldInventing(harness, 'unwell', 'boolean');
+    // disease — so the attribute the field collects is seeded rather than
+    // picked off the fixture. Inventing it through the dialog would be a
+    // second journey, and what is asserted here is the three commands the
+    // list emits.
+    const unwell = seedCollectableBoolean(harness);
+    await addFormFieldCollecting(harness, unwell);
     await waitFor(() => expect(formRows(harness)).toHaveLength(2));
 
-    const unwell = variableIdByName(harness, 'unwell');
-    if (unwell === undefined) throw new Error('the attribute was not created');
     // The row identity the list stamps on a row it creates, which is a fresh
     // uuid and cannot be written down here.
     const added = {
