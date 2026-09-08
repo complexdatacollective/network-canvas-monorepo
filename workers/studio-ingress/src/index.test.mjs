@@ -138,6 +138,122 @@ test('keeps authentication cookies and redirects while refusing API caching', as
   assert.equal(login.headers.get('cache-control'), 'no-store');
 });
 
+test('preserves caching only for successful immutable content-addressed reads', async () => {
+  const hash = 'a'.repeat(64);
+  const immutable = 'public, max-age=31536000, immutable';
+  const router = ingress(
+    async () =>
+      new Response('asset bytes', {
+        headers: {
+          'cache-control': immutable,
+          'content-type': 'image/png',
+          'etag': `"${hash}"`,
+        },
+      }),
+  );
+
+  for (const method of ['GET', 'HEAD']) {
+    const response = await router.fetch(
+      new Request(`${PUBLIC_ORIGIN}/storage/${hash}`, { method }),
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), immutable);
+    assert.equal(
+      response.headers.get('cloudflare-cdn-cache-control'),
+      immutable,
+    );
+    assert.equal(response.headers.get('cdn-cache-control'), immutable);
+    assert.equal(response.headers.get('etag'), `"${hash}"`);
+  }
+});
+
+test('refuses backend caching when any immutable asset proof is absent', async () => {
+  const hash = 'b'.repeat(64);
+  const immutable = 'public, max-age=31536000, immutable';
+  const cases = [
+    {
+      path: `/storage/${hash}`,
+      status: 404,
+      cache: immutable,
+      etag: `"${hash}"`,
+    },
+    {
+      path: '/storage/not-a-hash',
+      status: 200,
+      cache: immutable,
+      etag: '"not-a-hash"',
+    },
+    {
+      path: `/storage/${hash}/extra`,
+      status: 200,
+      cache: immutable,
+      etag: `"${hash}"`,
+    },
+    {
+      path: `/storage/${hash}`,
+      status: 200,
+      cache: 'public, max-age=60',
+      etag: `"${hash}"`,
+    },
+    {
+      path: `/storage/${hash}`,
+      status: 200,
+      cache: immutable,
+      etag: `"${'c'.repeat(64)}"`,
+    },
+    {
+      path: `/storage/${hash}`,
+      status: 200,
+      cache: immutable,
+      etag: `"${hash}"`,
+      cookie: true,
+    },
+    {
+      method: 'POST',
+      path: `/storage/${hash}`,
+      status: 200,
+      cache: immutable,
+      etag: `"${hash}"`,
+    },
+  ];
+
+  for (const candidate of cases) {
+    const router = ingress(
+      async () =>
+        new Response(candidate.status === 404 ? 'missing' : 'candidate', {
+          status: candidate.status,
+          headers: {
+            'cache-control': candidate.cache,
+            'etag': candidate.etag,
+            ...(candidate.cookie
+              ? { 'set-cookie': 'studio.session=unsafe' }
+              : {}),
+          },
+        }),
+    );
+    const response = await router.fetch(
+      new Request(`${PUBLIC_ORIGIN}${candidate.path}`, {
+        method: candidate.method ?? 'GET',
+      }),
+    );
+    assert.equal(
+      response.headers.get('cache-control'),
+      'no-store',
+      candidate.path,
+    );
+    assert.equal(
+      response.headers.get('cloudflare-cdn-cache-control'),
+      'no-store',
+      candidate.path,
+    );
+    assert.equal(
+      response.headers.get('cdn-cache-control'),
+      'no-store',
+      candidate.path,
+    );
+  }
+});
+
 test('sends only an explicit public header allowlist to the Netlify static origin', async () => {
   let captured;
   const router = ingress(async (request) => {
@@ -454,6 +570,75 @@ test('bounds origin header waits and cancels a late body', async () => {
   );
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(cancelled, true);
+});
+
+test('gives the bounded 100 MiB upload path its upload-appropriate deadline', async () => {
+  const chunk = new Uint8Array(1024 * 1024);
+  let chunks = 0;
+  const body = new ReadableStream({
+    pull(controller) {
+      if (chunks === 100) {
+        controller.close();
+        return;
+      }
+      chunks += 1;
+      controller.enqueue(chunk);
+    },
+  });
+  const router = ingress(
+    async (request) => {
+      const reader = request.body.getReader();
+      let bytes = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bytes += value.byteLength;
+      }
+      assert.equal(bytes, 100 * 1024 * 1024);
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      return new Response(JSON.stringify({ size: bytes }), { status: 201 });
+    },
+    { originTimeoutMs: 20, uploadOriginTimeoutMs: 200 },
+  );
+
+  const response = await router.fetch(
+    new Request(`${PUBLIC_ORIGIN}/storage`, {
+      method: 'POST',
+      body,
+      headers: { 'content-type': 'application/octet-stream' },
+      duplex: 'half',
+    }),
+  );
+  assert.equal(response.status, 201);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await response.json(), { size: 100 * 1024 * 1024 });
+});
+
+test('keeps stalled uploads bounded and does not broaden the upload deadline', async () => {
+  const router = ingress(() => new Promise(() => {}), {
+    originTimeoutMs: 20,
+    uploadOriginTimeoutMs: 60,
+  });
+  const started = Date.now();
+  const upload = await router.fetch(
+    new Request(`${PUBLIC_ORIGIN}/storage`, {
+      method: 'POST',
+      body: 'stalled',
+    }),
+  );
+  const uploadElapsed = Date.now() - started;
+  assert.equal(upload.status, 504);
+  assert.ok(uploadElapsed >= 40 && uploadElapsed < 500);
+
+  const otherStarted = Date.now();
+  const nonUpload = await router.fetch(
+    new Request(`${PUBLIC_ORIGIN}/storage/${'d'.repeat(64)}`, {
+      method: 'POST',
+      body: 'not an upload route',
+    }),
+  );
+  assert.equal(nonUpload.status, 504);
+  assert.ok(Date.now() - otherStarted < 50);
 });
 
 test('does not apply the header timeout to a response body stream', async () => {
