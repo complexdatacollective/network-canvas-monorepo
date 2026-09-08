@@ -26,11 +26,14 @@ function ExistingNodeEditor() {
         initialDraft={PERSON}
         authoritativeDocument={PERSON}
         existingEntityNames={['Place']}
+        // Storybook has no host to save to, so every save is refused — which
+        // is also what puts the refusal alert on screen to look at. The
+        // `message` is the host's own note for a log; the editor writes the
+        // sentence the researcher reads from the `reason`.
         onSubmit={() => ({
           status: 'failed',
           reason: 'unavailable',
-          message:
-            'The Storybook host does not persist changes. The draft remains open so it can be reviewed.',
+          message: 'the storybook host does not persist changes',
         })}
       />
     </main>

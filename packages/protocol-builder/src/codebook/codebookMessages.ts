@@ -8,34 +8,22 @@ import { defineMessage, defineMessages } from '@codaco/app-i18n/messages';
  * here rather than in either of them. All four groups below are genuinely
  * shared, and each is one message read twice rather than two that can drift:
  *
- * - the blocked-section refusals are what the entity editor and the validation
- *   editor each say when another person holds the part of the protocol the
- *   save needs;
- * - "Saving…" is the same submit button mid-flight in both of those editors;
+ * - "Saving…" is the same submit button mid-flight in the entity editor and
+ *   the validation editor;
  * - the stale-authority alert title is the same warning in both;
  * - the missing-comparison refusal is written once by the validation editor
  *   and again by the surface that mounts it, and the two must not disagree
  *   about what is wrong.
  *
- * The blocked-section and submit copy is filed under `codebookEditing`, which
- * owns the vocabulary of applying a codebook change; the comparison refusal
- * stays under `variableValidation`, whose rules it is about.
+ * The submit copy is filed under `codebookEditing`, which owns the vocabulary
+ * of applying a codebook change; the comparison refusal stays under
+ * `variableValidation`, whose rules it is about.
+ *
+ * A blocked save is NOT here: what every auxiliary codebook surface says about
+ * a refused change — blocked included — is `codebook/compoundFailureCopy.ts`,
+ * which is one reading of the refusal rather than one sentence per editor.
  */
 export const codebookEditingMessages = defineMessages({
-  blockedByHolder: {
-    id: 'protocolBuilder.codebookEditing.blockedByHolder',
-    defaultMessage:
-      '{name} is currently editing a section needed for this change.',
-    description:
-      'Why a researcher’s codebook change could not be saved: another person has the part of the protocol it needs open. name is that person’s display name, as the host reports it.',
-  },
-  blockedUnknownHolder: {
-    id: 'protocolBuilder.codebookEditing.blockedUnknownHolder',
-    defaultMessage:
-      'A section needed for this change is currently being edited.',
-    description:
-      'Why a researcher’s codebook change could not be saved: the part of the protocol it needs is held by someone the host did not name.',
-  },
   saving: {
     id: 'protocolBuilder.codebookEditing.saving',
     defaultMessage: 'Saving…',

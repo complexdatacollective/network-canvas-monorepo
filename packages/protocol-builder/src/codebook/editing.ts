@@ -686,8 +686,46 @@ type UnappliedCompoundEditResult = Exclude<
   Readonly<{ status: 'applied'; update: unknown }>
 >;
 
+/**
+ * A refusal by the surface that asked for the edit, in words it wrote itself.
+ *
+ * Some things a researcher can ask for are legal to the schema, legal to the
+ * host, and still wrong: an attribute whose committed rules require three
+ * answers cannot be left with two options to choose from. Nothing downstream
+ * refuses that — the codebook schema accepts it, and a host applying a compound
+ * edit is not asked to reason about validation rules — so the surface that
+ * knows about it has to say so.
+ *
+ * A separate status rather than a `failed` result, because the whole vocabulary
+ * of `CompoundEditFailureReason` is about transport and authority: what went
+ * wrong between the editor and the host. Reported as one of those, this arrives
+ * carrying a sentence the researcher should read and a reason that means
+ * something else, and `compoundFailureMessage` renders the reason — so the
+ * contradiction is described as "This change could not be sent" and the
+ * sentence explaining it is discarded. A status of its own is what lets the
+ * copy module recognise a message that is already written for a researcher and
+ * pass it through.
+ *
+ * NOT part of `CompoundEditResult`: a host answers that, and no host is being
+ * asked to detect this.
+ */
+export type AuxiliaryCodebookContradiction = Readonly<{
+  status: 'contradiction';
+  /**
+   * Researcher-facing, and shown verbatim: it names the rule and the values
+   * that cannot both hold. `findDraftContradictions` writes these.
+   */
+  message: string;
+}>;
+
+/** What a submit hook may answer a nested codebook editor with. */
+export type AuxiliaryCodebookSubmitResult =
+  | CompoundEditResult
+  | AuxiliaryCodebookContradiction;
+
 export type AuxiliaryCodebookDraftFailure =
   | Readonly<{ kind: 'result'; result: UnappliedCompoundEditResult }>
+  | Readonly<{ kind: 'contradiction'; message: string }>
   | Readonly<{ kind: 'error'; message: string }>;
 
 export type AuxiliaryCodebookDraftSnapshot = Readonly<{
@@ -820,8 +858,8 @@ export class AuxiliaryCodebookDraftSession {
     ) => CompoundEditRequest,
     onSubmit: (
       request: CompoundEditRequest,
-    ) => Promise<CompoundEditResult> | CompoundEditResult,
-  ): Promise<CompoundEditResult> {
+    ) => Promise<AuxiliaryCodebookSubmitResult> | AuxiliaryCodebookSubmitResult,
+  ): Promise<AuxiliaryCodebookSubmitResult> {
     if (this.snapshot.status !== 'editing') throw new AuxiliaryDraftBusyError();
     const draft = frozenDocument(this.snapshot.draft);
     const authoritativeDocument = this.snapshot.authoritativeDocument;
@@ -830,10 +868,18 @@ export class AuxiliaryCodebookDraftSession {
 
     try {
       const result = await onSubmit(buildRequest(draft, authoritativeDocument));
+      // A contradiction keeps its own words. Recorded as a `result` failure it
+      // would be read by `reason` and reported as a transport problem, and the
+      // sentence saying which rule cannot hold would never be shown.
       const failure =
         result.status === 'applied'
           ? null
-          : Object.freeze({ kind: 'result' as const, result });
+          : result.status === 'contradiction'
+            ? Object.freeze({
+                kind: 'contradiction' as const,
+                message: result.message,
+              })
+            : Object.freeze({ kind: 'result' as const, result });
       if (
         this.settleWithPendingAuthoritative(
           draft,
