@@ -3339,6 +3339,143 @@ describe('a form whose list is not a list', () => {
 });
 
 /**
+ * A field the list CAN show and the schema still refuses.
+ *
+ * The rule above is about an entry the section cannot turn into a row at all.
+ * This is the other half: a record carrying a key `FormFieldSchema` does not
+ * have, or an `id` that is not a string — the same protocols leave both, and
+ * `isRecord` admits them on purpose. They become rows, they can be read, and
+ * they can be taken out, so the section says nothing of its own about them:
+ * the schema is what a form field means, and its refusal already arrives on
+ * this section through the session's validation, in the editor's own words,
+ * before the researcher has tried to save anything.
+ *
+ * Written down because the alternatives are both worse than they look. A
+ * permitted-key check here would be a second copy of `FormFieldSchema` that
+ * drifts the day an optional key is added to it — the editor would refuse a
+ * field the protocol accepts. And stripping the key in `normalizeFormField`
+ * would throw away stored protocol data on a save the researcher asked for
+ * something else, on exactly the rows they happen to open, while leaving every
+ * row they do not touch refused.
+ */
+describe('a stored field the schema refuses for its own shape', () => {
+  const outlineEntry = () =>
+    [
+      ...screen
+        .getByRole('navigation', { name: 'Stage sections' })
+        .querySelectorAll('button'),
+    ].map((item) => item.textContent);
+
+  const alterFormHolding = (fields: readonly Record<string, unknown>[]) => ({
+    id: 'alter-form-1',
+    type: 'AlterForm' as const,
+    fields: {
+      ...loadFixtureStage('alter-form-1').fields,
+      form: { fields },
+    },
+  });
+
+  /** A field of the fixture's own form, plus a key no form field has. */
+  const CARRIES_AN_UNKNOWN_KEY = {
+    variable: 'flagged',
+    prompt: 'Does this person have this attribute?',
+    notAThing: 'left behind by a half-applied migration',
+  };
+
+  const RELATIONSHIP = {
+    variable: 'relationship_to_ego',
+    prompt: 'What is this person’s relationship to you?',
+  };
+
+  it('names the fault on this section before a save is attempted', async () => {
+    renderStageEditor({
+      stage: alterFormHolding([CARRIES_AN_UNKNOWN_KEY]),
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await waitFor(() =>
+      expect(outlineEntry()).toEqual([
+        'Form fieldsHas a problem. Fields holds settings this stage does not have.',
+      ]),
+    );
+  });
+
+  it('says the same of an id that is not a string', async () => {
+    renderStageEditor({
+      stage: alterFormHolding([{ ...RELATIONSHIP, id: 42 }]),
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await waitFor(() =>
+      expect(outlineEntry()).toEqual([
+        'Form fieldsHas a problem. Fields holds the wrong kind of value.',
+      ]),
+    );
+  });
+
+  it('shows the row, and refuses the save the schema refuses', async () => {
+    const harness = renderStageEditor({
+      stage: alterFormHolding([CARRIES_AN_UNKNOWN_KEY]),
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Edit field' }),
+    ).toBeInTheDocument();
+    expect(await harness.submit()).toBeNull();
+    // Not the sentence for an entry that cannot be shown: there is a row here,
+    // and it is the researcher's to remove.
+    expect(screen.queryByText(NOT_A_FIELD)).not.toBeInTheDocument();
+  });
+
+  it('is repaired by removing the field, which the researcher can do', async () => {
+    const harness = renderStageEditor({
+      stage: alterFormHolding([RELATIONSHIP, CARRIES_AN_UNKNOWN_KEY]),
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: 'Remove field' }),
+      ).toHaveLength(2),
+    );
+    const remove = screen.getAllByRole('button', { name: 'Remove field' })[1];
+    if (remove === undefined) throw new Error('There is no second field.');
+    await harness.user.click(remove);
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove field' }),
+    );
+
+    expect(fieldsOf(await harness.submit())).toEqual([RELATIONSHIP]);
+    await waitFor(() =>
+      expect(outlineEntry()).toEqual(['Form fieldsFinished']),
+    );
+  });
+
+  it('does not silently strip the key when the row itself is saved', async () => {
+    const harness = renderStageEditor({
+      stage: alterFormHolding([CARRIES_AN_UNKNOWN_KEY]),
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    // The protocol still holds what it held: a row editor is not the place a
+    // researcher agrees to lose stored data.
+    expect(await harness.submit()).toBeNull();
+    await waitFor(() =>
+      expect(outlineEntry()).toEqual([
+        'Form fieldsHas a problem. Fields holds settings this stage does not have.',
+      ]),
+    );
+  });
+});
+
+/**
  * An attribute answered on a scale is its two end labels.
  *
  * `REQUIRED_PARAMETERS` makes both of them settings the codebook editor
