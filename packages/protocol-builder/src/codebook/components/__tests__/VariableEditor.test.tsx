@@ -1327,7 +1327,15 @@ describe('the settings the chosen input control takes', () => {
     });
   });
 
-  it('offers years a date bound can be authored at, past the window the interview offers by default', async () => {
+  /**
+   * A coarse bound is WRITTEN, past whatever years an interview would offer.
+   *
+   * The window a `DatePicker` shows a participant by default is 1920 to today.
+   * Those are answers; these are the edges of the list the answers come from,
+   * and a researcher who can only pick from the default list cannot author an
+   * earliest year of 1900 or a latest of 2030 at all.
+   */
+  it('takes years a date bound can be authored at, past the window the interview offers by default', async () => {
     const user = userEvent.setup();
     const onSubmitRequest = vi.fn(
       (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
@@ -1340,8 +1348,8 @@ describe('the settings the chosen input control takes', () => {
     };
     render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
 
-    await user.selectOptions(screen.getByLabelText('Earliest date'), '1900');
-    await user.selectOptions(screen.getByLabelText('Latest date'), '2030');
+    await user.type(screen.getByLabelText('Earliest date'), '1900');
+    await user.type(screen.getByLabelText('Latest date'), '2030');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
     await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
@@ -1349,6 +1357,113 @@ describe('the settings the chosen input control takes', () => {
       type: 'year',
       min: '1900',
       max: '2030',
+    });
+  });
+
+  /**
+   * A bound the protocol already holds is on screen, whatever year it names.
+   *
+   * `datePickerParametersSchema` takes any four-digit year of 1000 or later at
+   * the coarse resolutions, so a protocol written elsewhere can arrive holding
+   * a latest year of 4500 — a study horizon, or a placeholder somebody used
+   * for "no end". Offered as a closed list of years, that bound could only be
+   * one the list happened to include: a native select shows its placeholder
+   * when its value matches no option, so the field read as empty while the
+   * protocol still carried the year, and every save wrote it back unseen.
+   *
+   * Both halves of that are pinned here — that it is shown, and that a save
+   * touching only the name leaves it exactly as it was.
+   */
+  it('shows a year bound past any list of years, and keeps it through a rename', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'met',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', min: '1900', max: '4500' },
+    };
+    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+
+    expect(screen.getByLabelText('Latest date')).toHaveValue('4500');
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'firstMet');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      name: 'firstMet',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', min: '1900', max: '4500' },
+    });
+  });
+
+  /**
+   * And it can be written over, which is the half a visible-but-frozen field
+   * would still have failed: the year is a field the researcher types into,
+   * so correcting 4500 is the same gesture as writing it in the first place.
+   */
+  it('rewrites a year bound past any list of years', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'met',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', max: '4500' },
+    };
+    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+
+    const latest = screen.getByLabelText('Latest date');
+    await user.clear(latest);
+    await user.type(latest, '9999');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+      type: 'year',
+      max: '9999',
+    });
+  });
+
+  /**
+   * The month half stays a list, because there are twelve of them and they are
+   * named rather than numbered — and the year beside it is still written.
+   */
+  it('writes the year and picks the month of a bound at month resolution', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const variable = {
+      name: 'met',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'month' },
+    };
+    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Earliest date Year' }),
+      '4500',
+    );
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Earliest date Month' }),
+      '06',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+      type: 'month',
+      min: '4500-06',
     });
   });
 
