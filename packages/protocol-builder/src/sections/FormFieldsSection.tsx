@@ -489,9 +489,19 @@ const atLeastOneField = (value: unknown) =>
  * Its own sentence rather than the incomplete one, because there is nothing to
  * open: an entry of the wrong shape leaves the shared list with a value it
  * cannot render, so the rows go with it and no row can be finished.
+ *
+ * A value that is not a list at all is the same answer, and only `undefined`
+ * is absence — which is what `FormFieldArraySchema.optional()` accepts and all
+ * it accepts. A string or an object left at an optional form's path would
+ * otherwise pass every rule here while the schema refuses the stage, and with
+ * no entries to draw rows from the researcher would be looking at an empty
+ * form for the reason their save keeps failing.
  */
-const everyEntryIsAField = (value: unknown) =>
-  !Array.isArray(value) || value.every(isRecord) ? undefined : MALFORMED_FIELD;
+const everyEntryIsAField = (value: unknown) => {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) return MALFORMED_FIELD;
+  return value.every(isRecord) ? undefined : MALFORMED_FIELD;
+};
 
 const everyFieldComplete = (value: unknown) =>
   rowsOf(value).every(
@@ -522,8 +532,11 @@ const noAttributeTwice = (value: unknown) =>
  */
 const REQUIRED_FIELDS_VALIDATION = Object.freeze({
   custom: messageRuleValidation([
-    atLeastOneField,
+    // Before the one that counts it. Only the first rule to fail is shown, and
+    // "add at least one field" said of a value that is not a list sends the
+    // researcher to add a row to something that cannot hold one.
     everyEntryIsAField,
+    atLeastOneField,
     everyFieldComplete,
     noAttributeTwice,
   ]),

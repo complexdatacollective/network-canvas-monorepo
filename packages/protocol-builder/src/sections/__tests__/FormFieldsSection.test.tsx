@@ -187,7 +187,6 @@ const COLLECTS_A_POSITION = {
 } as const;
 
 /** Written out, so a catalog that lost the sentence cannot pass. */
-/** Written out, so a catalog that lost the sentence cannot pass. */
 const NOT_A_FIELD =
   'This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.';
 
@@ -1253,7 +1252,13 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
  * `withStageSubjectResolution({ from: 'stagePath', path: ['nodeConfig', 'type'] })`.
  * The same section serves it, pointed at both.
  */
-const pedigreeHoldingForm = (form: readonly unknown[]) => {
+/**
+ * `unknown` rather than a list, because the protocol is not typed by the time
+ * it reaches this section: what an import or a migration left at
+ * `nodeConfig.form` is whatever it is, and a seed that could only be a list
+ * could not ask the section what it says about the rest.
+ */
+const pedigreeHoldingForm = (form: unknown) => {
   const pedigree = loadFixtureStage('family-pedigree-1');
   return {
     id: pedigree.id,
@@ -3194,5 +3199,84 @@ describe('a form whose list holds something that is not a field', () => {
 
     expect(await harness.submit()).toBeNull();
     expect(screen.getByText(NOT_A_FIELD)).toBeInTheDocument();
+  });
+});
+
+/**
+ * A whole list that is not a list.
+ *
+ * Worse than a single unshowable entry, and from the same protocols: the
+ * shared list has no entries at all to turn into rows, so the researcher is
+ * looking at a form that reports itself finished while the schema refuses the
+ * stage. `FormFieldArraySchema.optional()` spells "this pedigree asks nothing
+ * about each family member" as an ABSENT value and only that, so `undefined`
+ * is the one thing here that means absence — a string or an object left at
+ * `nodeConfig.form` is malformed, and gets the sentence a `null` row gets.
+ */
+describe('a form whose list is not a list', () => {
+  it('says so when an optional form holds a string', async () => {
+    const harness = renderStageEditor({
+      stage: pedigreeHoldingForm('fm_name'),
+      sections: familyMemberForm({ optional: true }),
+    });
+
+    expect(await harness.submit()).toBeNull();
+    expect(screen.getByText(NOT_A_FIELD)).toBeInTheDocument();
+  });
+
+  it('says so when an optional form holds an object', async () => {
+    const harness = renderStageEditor({
+      // The `form.fields` shape the three form stages use, written one level
+      // too high — which is what a hand-edit or a half-applied migration
+      // leaves behind here.
+      stage: pedigreeHoldingForm({
+        fields: [{ variable: 'fm_name', prompt: 'What is their name?' }],
+      }),
+      sections: familyMemberForm({ optional: true }),
+    });
+
+    expect(await harness.submit()).toBeNull();
+    expect(screen.getByText(NOT_A_FIELD)).toBeInTheDocument();
+  });
+
+  it('says so of a required form too, rather than asking for a first field', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'alter-form-1',
+        type: 'AlterForm',
+        fields: {
+          ...loadFixtureStage('alter-form-1').fields,
+          form: { fields: 'relationship_to_ego' },
+        },
+      },
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    expect(await harness.submit()).toBeNull();
+    expect(screen.getByText(NOT_A_FIELD)).toBeInTheDocument();
+    // Adding a field would not repair this stage — the value the protocol
+    // holds has to come out first — so the sentence that asks for one would
+    // send the researcher somewhere that cannot help.
+    expect(
+      screen.queryByText(
+        'Add at least one field. A form with no fields collects nothing.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('still accepts an optional form that holds nothing at all', async () => {
+    // The fixture pedigree asks nothing about each family member: its
+    // `nodeConfig` has no `form` key, which is the shape the schema calls
+    // absent.
+    const pedigree = loadFixtureStage('family-pedigree-1');
+    const harness = renderStageEditor({
+      stage: pedigree,
+      sections: familyMemberForm({ optional: true }),
+    });
+
+    const request = await harness.submit();
+    expect(request).not.toBeNull();
+    expect(pedigreeForm(request)).toBeUndefined();
+    expect(screen.queryByText(NOT_A_FIELD)).not.toBeInTheDocument();
   });
 });
