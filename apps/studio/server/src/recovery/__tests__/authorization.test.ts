@@ -534,6 +534,68 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
     });
   });
 
+  it('refuses a runtime LOGIN reopened after the initial quarantine snapshot', async () => {
+    const f = requireFixture();
+    const evidence = await currentEvidence();
+    await run(evidence);
+    const verified = signEvidence(evidence);
+    await f.administrator.query(
+      `ALTER ROLE ${pg.escapeIdentifier(f.ownerLogin)} LOGIN`,
+    );
+    const owner = createOwnerPool(f.target);
+    let reopened = false;
+    const interceptedPool = {
+      connect: async () => {
+        const client = await owner.connect();
+        const query = client.query.bind(client) as (
+          text: string,
+          values?: unknown[],
+        ) => Promise<pg.QueryResult>;
+        return new Proxy(client, {
+          get(target, property) {
+            if (property === 'query')
+              return async (text: string, values?: unknown[]) => {
+                const result = await query(text, values);
+                if (!reopened && text.startsWith('LOCK TABLE')) {
+                  reopened = true;
+                  await f.administrator.query(
+                    `ALTER ROLE ${pg.escapeIdentifier(f.runtimeLogin)} LOGIN`,
+                  );
+                }
+                return result;
+              };
+            const value = Reflect.get(target, property);
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+        });
+      },
+    } as unknown as pg.Pool;
+    try {
+      await expect(
+        authorizeCurrentStudioRecovery({
+          pool: interceptedPool,
+          backupPool: f.backup,
+          policy: {
+            allowedLogins: f.allowedLogins,
+            administrativeLogins: [f.ownerLogin],
+          },
+          evidence: verified,
+        }),
+      ).rejects.toThrow(FAILURE);
+      expect(reopened).toBe(true);
+    } finally {
+      await owner.end();
+      await closeWriters();
+    }
+    await withTargetAdministrator(async (pool) => {
+      await expect(
+        pool.query(
+          'SELECT count(*)::int AS count FROM "user" WHERE NOT recovery_disabled',
+        ),
+      ).resolves.toHaveProperty('rows', [{ count: 0 }]);
+    });
+  });
+
   it('refuses expired, wrong-instance and extra-enabled evidence atomically', async () => {
     const evidence = await currentEvidence();
     await run(evidence);
