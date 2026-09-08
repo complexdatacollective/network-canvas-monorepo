@@ -1,7 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
-import { env } from '~/env.js';
-
 type HealthStatus = 'healthy' | 'degraded' | 'unhealthy';
 
 type HealthCheck = {
@@ -11,34 +9,17 @@ type HealthCheck = {
   error?: string;
 };
 
-// Reported only when the deployer opts in; see getHealthDetails.
-type HealthDetails = {
-  uptime: number;
-  version: string;
-};
-
-type HealthResponse = Partial<HealthDetails> & {
+// This endpoint is unauthenticated so that load balancers and container
+// orchestrators can probe it, and a liveness probe needs nothing beyond the
+// status. It deliberately reports no version, uptime, Node.js version or
+// NODE_ENV: the running version tells an anonymous caller which published
+// vulnerabilities apply to this instance, and the uptime whether a fix has
+// been deployed yet.
+type HealthResponse = {
   status: HealthStatus;
   timestamp: string;
   checks: HealthCheck[];
 };
-
-// This endpoint is unauthenticated so that load balancers and container
-// orchestrators can probe it, and a liveness probe needs nothing beyond the
-// status. The running version tells an anonymous caller which published
-// vulnerabilities apply to this instance, and the process uptime whether a
-// fix has been deployed yet, so neither is reported unless the deployer opts
-// in with EXPOSE_HEALTH_DETAILS=true (the release-test harness does, to bind
-// the stack under test to the build it certifies). The Node.js version and
-// NODE_ENV are never reported.
-function getHealthDetails(): Partial<HealthDetails> {
-  if (!env.EXPOSE_HEALTH_DETAILS) return {};
-
-  return {
-    uptime: Math.round(process.uptime()),
-    version: env.APP_VERSION ?? 'unknown',
-  };
-}
 
 function checkBasicHealth(): HealthCheck {
   const start = performance.now();
@@ -99,7 +80,6 @@ export function GET(_request: NextRequest): NextResponse {
     const response: HealthResponse = {
       status: overallStatus,
       timestamp: new Date().toISOString(),
-      ...getHealthDetails(),
       checks,
     };
 

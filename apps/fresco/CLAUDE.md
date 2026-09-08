@@ -205,10 +205,10 @@ including the early one taken when the build never completes.
 ```
 
 `expectedVersion` is the version the Version Packages PR bumps Fresco to —
-the one `bundle-pending-packages.mjs` bakes into the staged tree, and the one
-both stacks must report from `/api/health` (the harness compose sets
-`EXPOSE_HEALTH_DETAILS=true`; without it the endpoint names no version and no
-lane can be bound to the build). Other args:
+the one `bundle-pending-packages.mjs` bakes into the staged tree and the one
+the build stamp records. Each lane is bound to that build by the image id
+docker reports for its Fresco container (`/api/health` names no version, on
+purpose). Other args:
 `skipBuild` (reuse the previous image, revalidated against its stamp),
 `keepStack` (leave both stacks up), `releasedImage` (substitute the upgrade
 baseline; never certifying), `allowDirty` (accept an irreproducible image

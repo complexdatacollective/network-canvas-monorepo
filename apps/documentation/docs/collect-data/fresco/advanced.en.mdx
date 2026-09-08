@@ -92,7 +92,6 @@ POSTGRES_PASSWORD=CHANGE_ME
 
 # Optional
 #DISABLE_ANALYTICS=true
-#EXPOSE_HEALTH_DETAILS=true
 ```
 
 <TipBox>
@@ -194,7 +193,7 @@ The compose files use the `ghcr.io/complexdatacollective/fresco:latest` image, w
 
 ### Health checks
 
-Fresco serves a liveness endpoint at `/api/health` for load balancers, container orchestrators, and uptime monitors. It requires no authentication. While the service is up it answers with HTTP `200` and a JSON body whose `status` is `healthy` (or `degraded`); when it is not, it answers `503` with `unhealthy`. By default that is all it reports. The running Fresco version and the process uptime are withheld from anonymous callers, because together they tell a scanner which published vulnerabilities apply to an instance and whether a fix has been deployed yet. If your monitoring needs those fields, set `EXPOSE_HEALTH_DETAILS=true` in your `.env` and they are added to the response.
+Fresco serves a liveness endpoint at `/api/health` for load balancers, container orchestrators, and uptime monitors. It requires no authentication. While the service is up it answers with HTTP `200` and a JSON body whose `status` is `healthy` (or `degraded`); when it is not, it answers `503` with `unhealthy`. That is all it reports: it does not name the running Fresco version or the process uptime, because together they would tell a scanner which published vulnerabilities apply to an instance and whether a fix has been deployed yet. The running version is shown on the dashboard to signed-in researchers.
 
 ## Access Fresco
 

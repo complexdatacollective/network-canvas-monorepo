@@ -45,9 +45,6 @@ services:
       # on any that is not this deployment.
       DISABLE_ANALYTICS: 'true'
       COOKIE_SECURE: 'false'
-      # /api/health names the running version only when this is set; the
-      # workflow reads that field to bind each lane to the pending build.
-      EXPOSE_HEALTH_DETAILS: 'true'
       # Next standalone binds to $HOSTNAME (default: container id -> NIC IP),
       # which would make the 127.0.0.1 healthcheck below unreachable.
       HOSTNAME: 0.0.0.0
