@@ -750,6 +750,22 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * the cancel is about to throw away.
    */
   private settlingResources = false;
+  /**
+   * Whether a release stopped in front of a batch naming a resource that is
+   * neither staged nor in the manifest — bytes the researcher discarded, which
+   * no finish will ever promote and which nothing in the session has yet taken
+   * back.
+   *
+   * The removal is coming: emptying a picker is a researcher change on the
+   * same path, and the section that owns it writes the `unset` into a batch of
+   * its own (`useDiscardStageValues`) — or the researcher's next save flushes
+   * it. Either way it arrives as an ordinary edit, and an ordinary edit is not
+   * something the staged set changes for, so the release has to be asked again
+   * when one is made. Only then: a hold left standing by a finish is waiting
+   * for the NEXT finish to carry it, and re-asking on every edit would hand
+   * that host batches its apply never carried.
+   */
+  private holdAwaitsARemoval = false;
 
   constructor(options: ProtocolBuilderSessionOptions) {
     assertNoIdentityFields(options.fields);
@@ -1690,7 +1706,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     // draft before this edit. The host's own failure still reaches the caller,
     // because nothing here can resend a batch the host would not take.
     try {
+      // The edit the last release stopped for: see `holdAwaitsARemoval`.
       if (!withheld) this.options.onCommands?.(batch);
+      else if (this.holdAwaitsARemoval) this.reconsiderWithheldCommands();
     } finally {
       void this.runValidation();
     }
@@ -2257,6 +2275,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       );
       if (!introduced) releasable = candidates.length;
     }
+    // Whether anything is waiting on a removal, whether or not this run could
+    // release anything else.
+    this.holdAwaitsARemoval = releasable < candidates.length;
     const releasing = candidates.slice(0, releasable);
     if (releasing.length === 0) return;
 
