@@ -111,6 +111,33 @@ const SURFACES = {
       ],
     },
   },
+  /**
+   * A yes/no attribute whose two answers both record `true`. Valid too — the
+   * schema relates neither entry's `value` to the other's — and a pair this
+   * editor's two fields, which are told apart by exactly that value, cannot
+   * be. Shown and left alone for the same reason.
+   */
+  heldAnswerValues: {
+    variableId: 'consent',
+    committed: {
+      name: 'consent',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'I agree', value: true },
+        { label: 'I agree, with conditions', value: true },
+      ],
+    },
+    draft: {
+      name: 'consent',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'I agree', value: true },
+        { label: 'I agree, with conditions', value: true },
+      ],
+    },
+  },
   /** A date field's resolution and the two dates it is bounded by, reversed. */
   dateSettings: {
     variableId: 'met',
@@ -362,6 +389,34 @@ export const HeldAnswers: Story = {
     await expect(
       canvas.getByRole('textbox', { name: /attribute name/i }),
     ).toHaveValue('consent');
+  },
+};
+
+/**
+ * A yes/no attribute whose two answers both record `true`.
+ *
+ * Two answers, so the count is not what puts it here: the fieldset labels its
+ * two fields by the boolean each one records, and this pair records one of
+ * them twice. Drawn as the pair it could only be told apart by imposing
+ * `true` and `false` on it, which would change what every answer already
+ * given to the second button says.
+ */
+export const HeldAnswerValues: Story = {
+  args: { mode: 'update', surface: 'heldAnswerValues' },
+  ...inEnglish,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.queryByRole('textbox', { name: 'Label for “true”' }),
+    ).toBeNull();
+    await expect(
+      canvas.getByRole('cell', { name: 'I agree, with conditions' }),
+    ).toBeVisible();
+    // The reason it is held, which is not the one a list of some other length
+    // is given.
+    await expect(
+      canvas.getByText(/one recording “true” and the other “false”/),
+    ).toBeVisible();
   },
 };
 

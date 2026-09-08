@@ -27,9 +27,9 @@ const messages = defineMessages({
  * (`categoricalOptionsSchema`). A boolean is written as two, and their values
  * are the two booleans rather than anything the researcher chooses
  * (`booleanOptionsSchema`) — what is authored is the words on them, and which
- * of the two is shown as the negative answer. Two is the shape this editor
- * writes rather than a length the schema holds it to, and
- * `holdsEditableBooleanAnswers` is where the difference is dealt with.
+ * of the two is shown as the negative answer. A pair recording one of each is
+ * the shape this editor writes rather than one the schema holds it to, and
+ * `heldBooleanAnswersReason` is where the difference is dealt with.
  *
  * So the shape is not a property of the key: it is decided by the attribute,
  * the way a `ParameterShape` is decided by the control — and the two lists are
@@ -91,29 +91,66 @@ const readBooleanAnswer = (
 };
 
 /**
- * Whether the answers this attribute holds are the pair the fieldset writes.
+ * Why the answers this attribute holds are not the pair the fieldset writes.
+ *
+ * `count` is a list of some other length. `values` is two answers that do not
+ * record one `true` and one `false` — both recording the same boolean, or one
+ * recording something that is not a boolean at all.
+ *
+ * Read by the editor, which says which of the two it is: a researcher told a
+ * pair of answers "offers a different number of them" is being sent to look
+ * for an answer that is not on the screen.
+ */
+export type HeldBooleanAnswersReason = 'count' | 'values';
+
+/** Whether these two answers record one `true` and one `false`. */
+const recordsBothBooleans = (options: readonly unknown[]): boolean => {
+  const values = options.map((option) =>
+    isRecord(option) && typeof option.value === 'boolean' ? option.value : null,
+  );
+  return values.includes(true) && values.includes(false);
+};
+
+/**
+ * Why the fieldset is not the editor for the answers this attribute holds, or
+ * `null` where it is.
  *
  * The fieldset is exactly two answers, keyed and labelled by the boolean each
- * one records, and it writes exactly two. `booleanOptionsSchema` is a plain
- * array with no length of its own, though, and `BooleanField` renders every
- * entry it is given — falling back to Yes and No only where the protocol
- * carries no `options` key at all. So a protocol may hold one answer, or four,
- * and each of them is a button a participant meets.
+ * one records, and it writes exactly two. `booleanOptionsSchema` holds a
+ * boolean's answers to neither of those things: it is a plain array with no
+ * length of its own and no rule relating one entry's `value` to the other's,
+ * and `BooleanField` renders every entry it is given — falling back to Yes and
+ * No only where the protocol carries no `options` key at all. So a protocol
+ * may hold one answer, or four, or two that both record `true`, and each of
+ * them is a button a participant meets.
  *
- * Those are lists this editor cannot show: shown as the pair, one answer would
- * gain a second the researcher never wrote, and four would lose two. Neither
- * is the researcher's to be given without asking, so the fieldset is not
- * offered for them and the list is written back exactly as it was authored —
- * an attribute whose answers this editor cannot edit can still be renamed,
- * retyped and given a validation rule.
+ * Those are lists this editor cannot show. Shown as the pair, one answer would
+ * gain a second the researcher never wrote and four would lose two; two
+ * recording the same boolean would arrive at a fieldset that tells its two
+ * fields apart by exactly the thing they share, and could only be drawn by
+ * imposing `true` and `false` on them — which is a rewrite of what every
+ * answer already given to the second button MEANS. None of that is the
+ * researcher's to be given without asking, so the fieldset is not offered and
+ * the list is written back exactly as it was authored — an attribute whose
+ * answers this editor cannot edit can still be renamed, retyped and given a
+ * validation rule.
  *
- * An attribute naming NO answers is the pair too: it is what a boolean starts
- * as, and the two blank fields are how the researcher names them. So is an
- * empty array, which the schema refuses for a `Boolean` control and which
- * clearing both fields takes away.
+ * An attribute naming NO answers is the pair: it is what a boolean starts as,
+ * and the two blank fields are how the researcher names them. So is an empty
+ * array, which the schema refuses for a `Boolean` control and which clearing
+ * both fields takes away.
  */
-export const holdsEditableBooleanAnswers = (options: unknown): boolean =>
-  !Array.isArray(options) || options.length === 0 || options.length === 2;
+export const heldBooleanAnswersReason = (
+  options: unknown,
+): HeldBooleanAnswersReason | null => {
+  if (!Array.isArray(options) || options.length === 0) return null;
+  if (options.length !== 2) return 'count';
+  return recordsBothBooleans(options) ? null : 'values';
+};
+
+/** Whether the fieldset is the editor for them, on the same terms. */
+const holdsEditableBooleanAnswers = (options: unknown): boolean =>
+  heldBooleanAnswersReason(options) === null;
 
 /**
  * Every answer this attribute holds, for an editor that can only show them.
@@ -139,23 +176,18 @@ export const readHeldBooleanAnswers = (
  * said when they were given — so reversing them would quietly rewrite what
  * every stored answer means.
  *
- * The one thing that IS imposed is that the two record different values. A
- * pair recording the same boolean twice offers the participant a choice that
- * changes nothing, and leaves this editor with two answers it cannot tell
- * apart; the words the researcher wrote are kept, and the values are taken
- * positionally.
+ * Nothing is imposed at all, and nothing needs to be: this is read only for a
+ * pair `heldBooleanAnswersReason` has already found to record one `true` and
+ * one `false`. A pair recording anything else is not shown as the fieldset,
+ * because repairing it into one is the same rewrite by another name.
+ *
+ * The positional fallbacks are for the answers that are not THERE — a boolean
+ * that names none carries no entries, and the two blank fields it opens as are
+ * the true one and the false one.
  */
 export const readBooleanAnswers = (options: unknown): BooleanAnswers => {
   const held = Array.isArray(options) ? options : [];
-  const first = readBooleanAnswer(held[0], true);
-  const second = readBooleanAnswer(held[1], false);
-  if (first.value === second.value) {
-    return [
-      { ...first, value: true },
-      { ...second, value: false },
-    ];
-  }
-  return [first, second];
+  return [readBooleanAnswer(held[0], true), readBooleanAnswer(held[1], false)];
 };
 
 /**
@@ -199,7 +231,7 @@ const booleanOptionsFrom = (
  * to.
  *
  * A boolean's answers are passed through on the same terms wherever they are
- * not the pair the fieldset writes — see `holdsEditableBooleanAnswers`. Only
+ * not the pair the fieldset writes — see `heldBooleanAnswersReason`. Only
  * what the researcher was shown is rewritten.
  */
 export const optionsForShape = (

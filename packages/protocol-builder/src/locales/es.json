@@ -106,6 +106,7 @@
   "protocolBuilder.codebookVariable.description": "Define el nombre del atributo, el tipo de dato y los valores disponibles.",
   "protocolBuilder.codebookVariable.editTitle": "Editar atributo",
   "protocolBuilder.codebookVariable.failureTitle": "Atributo no guardado",
+  "protocolBuilder.codebookVariable.heldAnswerValuesCaption": "Un atributo de sí/no se escribe aquí como dos respuestas, una que registra «true» y otra que registra «false». Las respuestas de este registran otra cosa, así que se muestran tal como están, y al guardar no se modifican.",
   "protocolBuilder.codebookVariable.heldAnswersCaption": "Un atributo de sí/no se escribe aquí como dos respuestas, y este ofrece otro número de ellas. Se muestran tal como están, y al guardar no se modifican.",
   "protocolBuilder.codebookVariable.heldAnswersLegend": "Las respuestas que ofrece este atributo",
   "protocolBuilder.codebookVariable.interfaceOwnedOptions": "La interfaz que utiliza este atributo establece estas opciones, que no se pueden cambiar aquí. Cierra este diálogo y vuelve a abrirlo para partir de las opciones actuales.",
