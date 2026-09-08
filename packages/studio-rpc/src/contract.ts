@@ -12,6 +12,8 @@ import {
   AuditAlertListOutputSchema,
   AuditAlertReadInputSchema,
   AuditAlertReadOutputSchema,
+  AuditAlertPreferencesInputSchema,
+  AuditAlertPreferencesOutputSchema,
   AuditFilterOptionsSchema,
   AuditGetInputSchema,
   AuditListInputSchema,
@@ -233,5 +235,11 @@ export const contract = {
     markAlertRead: oc
       .input(AuditAlertReadInputSchema)
       .output(AuditAlertReadOutputSchema),
+    preferences: oc
+      .input(TeamScopedSchema)
+      .output(AuditAlertPreferencesOutputSchema),
+    updatePreferences: oc
+      .input(AuditAlertPreferencesInputSchema)
+      .output(AuditAlertPreferencesOutputSchema),
   },
 };

@@ -90,7 +90,16 @@ export async function enqueueAuditAlertForEvent(
      WHERE member.team_id = $1
        AND member.role IN ('owner', 'admin')
        AND account."emailVerified"
-       AND NOT account.recovery_disabled`,
+       AND NOT account.recovery_disabled
+       AND (
+         NOT EXISTS (SELECT 1 FROM audit_alert_preferences configured
+                    WHERE configured.team_id = $1)
+         OR EXISTS (SELECT 1 FROM audit_alert_preferences preference
+                    WHERE preference.team_id = $1
+                      AND preference.recipient_user_id = member.user_id
+                      AND ((channel.name = 'email' AND preference.email_enabled)
+                        OR (channel.name = 'in_app' AND preference.in_app_enabled)))
+       )`,
     [event.teamId, alert.id],
   );
   if ((recipients.rowCount ?? 0) === 0) {
@@ -148,6 +157,14 @@ export async function listInAppAuditAlerts(
        AND member.role IN ('owner', 'admin')
        AND account."emailVerified"
        AND NOT account.recovery_disabled
+       AND (
+         NOT EXISTS (SELECT 1 FROM audit_alert_preferences configured
+                    WHERE configured.team_id = delivery.team_id)
+         OR EXISTS (SELECT 1 FROM audit_alert_preferences preference
+                    WHERE preference.team_id = delivery.team_id
+                      AND preference.recipient_user_id = delivery.recipient_user_id
+                      AND preference.in_app_enabled)
+       )
        AND ($3::bigint IS NULL OR alert.audit_event_sequence < $3::bigint)
      ORDER BY alert.audit_event_sequence DESC
      LIMIT $4`,
@@ -177,6 +194,14 @@ export async function markInAppAuditAlertRead(
            AND member.role IN ('owner', 'admin')
            AND account."emailVerified"
            AND NOT account.recovery_disabled
+           AND (
+             NOT EXISTS (SELECT 1 FROM audit_alert_preferences configured
+                        WHERE configured.team_id = audit_alert_deliveries.team_id)
+             OR EXISTS (SELECT 1 FROM audit_alert_preferences preference
+                        WHERE preference.team_id = audit_alert_deliveries.team_id
+                          AND preference.recipient_user_id = audit_alert_deliveries.recipient_user_id
+                          AND preference.in_app_enabled)
+           )
        )`,
     [input.id, input.teamId, input.userId],
   );

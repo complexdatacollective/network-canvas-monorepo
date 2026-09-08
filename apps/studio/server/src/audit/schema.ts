@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  boolean,
   check,
   foreignKey,
   index,
@@ -400,6 +401,34 @@ const auditAlertOutbox = pgTable(
   ],
 );
 
+const auditAlertPreferences = pgTable(
+  'audit_alert_preferences',
+  {
+    id: uuid('id').primaryKey(),
+    teamId: text('team_id').notNull(),
+    recipientUserId: text('recipient_user_id').notNull(),
+    emailEnabled: boolean('email_enabled').notNull().default(true),
+    inAppEnabled: boolean('in_app_enabled').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('audit_alert_preferences_team_recipient_idx').on(
+      table.teamId,
+      table.recipientUserId,
+    ),
+    check(
+      'audit_alert_preferences_lengths_check',
+      sql`char_length(${table.teamId}) BETWEEN 1 AND 255 AND char_length(${table.recipientUserId}) BETWEEN 1 AND 255`,
+    ),
+    ...teamIsolationPolicies(),
+  ],
+);
+
 // One immutable recipient/channel record per alert. The parent outbox remains
 // exactly one row per audit event; these rows make partial multi-recipient
 // delivery and provider ambiguity independently durable. In-app rows are
@@ -495,6 +524,7 @@ export const AUDIT_TABLES = {
   auditExportJobs,
   auditAlertOutbox,
   auditAlertDeliveries,
+  auditAlertPreferences,
 };
 
 // This sidecar must run after the general access grant. `audit_events` receives
@@ -619,6 +649,7 @@ ${tenantTablesSql([
   'audit_export_jobs',
   'audit_alert_outbox',
   'audit_alert_deliveries',
+  'audit_alert_preferences',
 ])}
 
 -- Commands enqueue inside their audited transaction; only the maintenance

@@ -220,9 +220,20 @@ vi.mock('../../lib/api.ts', () => ({
           queryFn: () => ({ actors: [] }),
         }),
       },
+      preferences: {
+        queryOptions: () => ({
+          queryKey: ['audit-preferences'],
+          queryFn: () => ({ configured: false, recipients: [] }),
+        }),
+        queryKey: () => ['audit-preferences'],
+      },
     },
   },
-  rpcClient: { protocols: {}, team: {} },
+  rpcClient: {
+    protocols: {},
+    team: {},
+    audit: { updatePreferences: vi.fn() },
+  },
 }));
 
 const INVITATION_ID = '00000000-0000-4000-8000-000000000123';
@@ -322,7 +333,7 @@ const DESTINATIONS: Destination[] = [
   {
     path: '/team/$teamId/settings',
     url: '/team/team-a/settings',
-    heading: 'Team settings',
+    heading: 'Researcher alert recipients',
   },
   {
     path: '/team/$teamId/settings/api',

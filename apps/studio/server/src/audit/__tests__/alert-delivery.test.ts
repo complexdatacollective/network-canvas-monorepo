@@ -20,6 +20,10 @@ import {
   listInAppAuditAlerts,
   markInAppAuditAlertRead,
 } from '../alert-store.ts';
+import {
+  loadAuditAlertPreferences,
+  saveAuditAlertPreferences,
+} from '../alert-preferences.ts';
 import type { AuditEventInput } from '../events.ts';
 import { AuditStore } from '../store.ts';
 
@@ -132,6 +136,50 @@ describe.skipIf(!db)('researcher audit-alert delivery', () => {
       { channel: 'email', recipient_user_id: OWNER, delivered: false },
       { channel: 'in_app', recipient_user_id: OWNER, delivered: true },
     ]);
+  });
+
+  it('rejects a non-privileged or disabled preference recipient and enforces saved channels', async () => {
+    const client = await scratch.pool.connect();
+    try {
+      await expect(
+        saveAuditAlertPreferences(
+          client,
+          { teamId: TEAM, recipients: [{ userId: MEMBER, emailEnabled: true, inAppEnabled: true }] },
+          OWNER,
+        ),
+      ).rejects.toThrow('recipient is not deliverable');
+      await scratch.pool.query('UPDATE "user" SET recovery_disabled = true WHERE id = $1', [ADMIN]);
+      await expect(
+        saveAuditAlertPreferences(
+          client,
+          { teamId: TEAM, recipients: [{ userId: ADMIN, emailEnabled: true, inAppEnabled: true }] },
+          OWNER,
+        ),
+      ).rejects.toThrow('recipient is not deliverable');
+      await scratch.pool.query('UPDATE "user" SET recovery_disabled = false WHERE id = $1', [ADMIN]);
+      await client.query('BEGIN');
+      const preferences = await saveAuditAlertPreferences(
+        client,
+        { teamId: TEAM, recipients: [{ userId: OWNER, emailEnabled: false, inAppEnabled: true }, { userId: ADMIN, emailEnabled: true, inAppEnabled: false }] },
+        OWNER,
+      );
+      await client.query('COMMIT');
+      expect(preferences.configured).toBe(true);
+      const event = await appendAlert(scratch);
+      const rows = await scratch.pool.query(
+        `SELECT recipient_user_id, channel FROM audit_alert_deliveries delivery
+         JOIN audit_alert_outbox alert ON alert.id = delivery.alert_id
+         WHERE alert.audit_event_id = $1 ORDER BY recipient_user_id, channel`,
+        [event.id],
+      );
+      expect(rows.rows).toEqual([
+        { recipient_user_id: ADMIN, channel: 'email' },
+        { recipient_user_id: OWNER, channel: 'in_app' },
+      ]);
+    } finally {
+      await client.query('ROLLBACK').catch(() => undefined);
+      client.release();
+    }
   });
 
   it('does not address a recovery-disabled privileged account', async () => {

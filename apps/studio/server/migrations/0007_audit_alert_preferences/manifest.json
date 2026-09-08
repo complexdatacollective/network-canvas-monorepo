@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0007_audit_alert_preferences",
+  "previous": "0006_audit_alert_delivery",
+  "fingerprint": "fcbf0733de4e5e03f39a6feba1b7a25f84b25e62c41deed876ea80ec8550581e",
+  "snapshotHash": "8feee52b2a402e7a1b7f6418bc356e210c96f7dbc3791548d00a7f9ce936451c",
+  "sqlHash": "ea9788e42470fed163a2a3b679946d5c3d9dc2e9120fc70ab8bf18ac1469653e",
+  "sidecarsHash": "a5515052dd4bccd0df50cd98ee68d5a3384ee805498ba2ad26a57d875594a03b"
+}

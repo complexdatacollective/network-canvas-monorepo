@@ -41,6 +41,14 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     reason:
       'Sets only the signed-in recipient read marker; the immutable activity event and delivery result remain unchanged.',
   },
+  'audit.preferences': {
+    kind: 'none',
+    reason: 'Reads team-scoped audit alert recipient preferences.',
+  },
+  'audit.updatePreferences': {
+    kind: 'none',
+    reason: 'Updates team-scoped audit alert recipient preferences.',
+  },
   'protocol.create': {
     kind: 'none',
     reason:

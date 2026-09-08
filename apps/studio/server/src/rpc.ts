@@ -6,6 +6,11 @@ import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { updateUserLocale } from './account/commands.ts';
 import {
+  AuditAlertPreferencesError,
+  loadAuditAlertPreferences,
+  saveAuditAlertPreferences,
+} from './audit/alert-preferences.ts';
+import {
   listInAppAuditAlerts,
   markInAppAuditAlertRead,
 } from './audit/alert-store.ts';
@@ -874,6 +879,35 @@ export function createRpcRouter(
               }),
           ),
         })),
+      preferences: os.audit.preferences
+        .use(requireTeamAdministration)
+        .handler(({ context, input }) =>
+          runNoAuditTenantTransaction(
+            context.tenantDb,
+            'audit.preferences',
+            (client) => loadAuditAlertPreferences(client, input.teamId),
+          ),
+        ),
+      updatePreferences: os.audit.updatePreferences
+        .use(requireTeamAdministration)
+        .handler(async ({ context, input }) => {
+          try {
+            return await runNoAuditTenantTransaction(
+              context.tenantDb,
+              'audit.updatePreferences',
+              (client) =>
+                saveAuditAlertPreferences(
+                  client,
+                  input,
+                  context.principal.userId,
+                ),
+            );
+          } catch (error) {
+            if (error instanceof AuditAlertPreferencesError)
+              throw new ORPCError('FORBIDDEN');
+            throw error;
+          }
+        }),
     },
   };
 }

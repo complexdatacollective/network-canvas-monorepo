@@ -43,6 +43,7 @@ import Marketing from './routes/Marketing.tsx';
 import Setup, { SetupNotFound } from './routes/Setup.tsx';
 import SignIn from './routes/SignIn.tsx';
 import TeamActivity from './routes/TeamActivity.tsx';
+import { TeamAlertSettings } from './routes/TeamAlertSettings.tsx';
 import TeamMembers from './routes/TeamMembers.tsx';
 import TeamStudies from './routes/TeamStudies.tsx';
 import AccountArea from './shell/AccountArea.tsx';
@@ -1189,11 +1190,7 @@ const teamBillingRoute = createRoute({
 const teamSettingsRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/settings',
-  component: areaPlaceholder({
-    title: screens.teamSettingsTitle,
-    description: screens.teamSettingsDescription,
-    issue: '#1249',
-  }),
+  component: TeamAlertSettings,
 });
 
 const teamSettingsApiRoute = createRoute({

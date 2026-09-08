@@ -638,3 +638,35 @@ export const AuditAlertReadInputSchema = TeamScopedSchema.extend({
 });
 
 export const AuditAlertReadOutputSchema = z.object({ read: z.boolean() });
+
+const AuditAlertPreferenceInputSchema = z.object({
+  userId: z.string().min(1).max(255),
+  emailEnabled: z.boolean(),
+  inAppEnabled: z.boolean(),
+});
+
+export const AuditAlertPreferencesInputSchema = TeamScopedSchema.extend({
+  recipients: z.array(AuditAlertPreferenceInputSchema).max(100),
+});
+
+const AuditAlertRecipientSchema = z.object({
+  userId: z.string().min(1).max(255),
+  name: z.string(),
+  email: z.email(),
+  role: z.string(),
+  emailVerified: z.boolean(),
+  recoveryDisabled: z.boolean(),
+  emailEnabled: z.boolean(),
+  inAppEnabled: z.boolean(),
+});
+
+export const AuditAlertPreferencesOutputSchema = z.object({
+  configured: z.boolean(),
+  recipients: z.array(AuditAlertRecipientSchema),
+});
+export type AuditAlertPreferencesOutput = z.infer<
+  typeof AuditAlertPreferencesOutputSchema
+>;
+export type AuditAlertPreferencesInput = z.infer<
+  typeof AuditAlertPreferencesInputSchema
+>;

@@ -178,6 +178,8 @@ class AuditAlertDeliveryAdapter implements OutboxAdapter<ClaimedAuditAlert> {
                AND member.role IN ('owner', 'admin')
                AND account."emailVerified"
                AND NOT account.recovery_disabled
+               AND (NOT EXISTS (SELECT 1 FROM audit_alert_preferences configured WHERE configured.team_id = delivery.team_id)
+                    OR EXISTS (SELECT 1 FROM audit_alert_preferences preference WHERE preference.team_id = delivery.team_id AND preference.recipient_user_id = delivery.recipient_user_id AND preference.email_enabled))
            )
          RETURNING delivery.alert_id`,
       );
@@ -240,6 +242,8 @@ class AuditAlertDeliveryAdapter implements OutboxAdapter<ClaimedAuditAlert> {
            AND member.role IN ('owner', 'admin')
            AND account."emailVerified"
            AND NOT account.recovery_disabled
+           AND (NOT EXISTS (SELECT 1 FROM audit_alert_preferences configured WHERE configured.team_id = delivery.team_id)
+                OR EXISTS (SELECT 1 FROM audit_alert_preferences preference WHERE preference.team_id = delivery.team_id AND preference.recipient_user_id = delivery.recipient_user_id AND preference.email_enabled))
          ORDER BY delivery.available_at, delivery.created_at, delivery.id
          FOR UPDATE OF alert, delivery SKIP LOCKED
          LIMIT 1
@@ -293,6 +297,8 @@ class AuditAlertDeliveryAdapter implements OutboxAdapter<ClaimedAuditAlert> {
          AND member.role IN ('owner', 'admin')
          AND account."emailVerified"
          AND NOT account.recovery_disabled
+         AND (NOT EXISTS (SELECT 1 FROM audit_alert_preferences configured WHERE configured.team_id = delivery.team_id)
+              OR EXISTS (SELECT 1 FROM audit_alert_preferences preference WHERE preference.team_id = delivery.team_id AND preference.recipient_user_id = delivery.recipient_user_id AND preference.email_enabled))
          AND account.email = $3`,
       [claim.id, lease.owner, claim.email],
     );
