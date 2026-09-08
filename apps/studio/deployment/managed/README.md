@@ -79,6 +79,13 @@ below. The request and lifecycle shapes follow Fly's official
 [Apps](https://fly.io/docs/machines/api/apps-resource/) and
 [Machines](https://fly.io/docs/machines/api/machines-resource/) resources.
 
+The routing-only Cloudflare Worker in `workers/studio-ingress` defines the
+single public origin: fixed server surfaces stream to the persistent Fly
+backend, including `/ws`, while all other GET/HEAD traffic reaches the Netlify
+client origin without cookies or authorization headers. Its checked-in
+configuration is fail-closed and dry-run-only; live domain routing remains a
+separate qualified operator action.
+
 ## Required credentials and custody
 
 Terraform provider credentials are `TF_VAR_cloudflare_api_token`,
