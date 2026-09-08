@@ -161,7 +161,7 @@ At a minimum:
 - **Outbound HTTPS** from the application server to the PostgreSQL host, the configured object-store endpoint, and (optionally) the GitHub API and the analytics endpoint.
 - **Outbound HTTPS from participants' and researchers' browsers to Mapbox**, only for protocols that use the Geospatial interface: map tiles, the search API, and Mapbox GL's telemetry are fetched by the browser, not the server. On an egress-restricted network that blocks Mapbox, Geospatial stages will not load; protocols without one need no Mapbox access.
 
-Fresco can run behind an institutional firewall or reverse proxy.
+Fresco can run behind an institutional firewall or reverse proxy. Its liveness endpoint, `/api/health`, is unauthenticated so that load balancers and container orchestrators can probe it. It reports only whether the service is up, never the running Fresco version or process uptime, so leaving it reachable does not tell an anonymous caller which release an instance runs.
 
 ## Can Fresco be deployed entirely on institutional infrastructure?
 
