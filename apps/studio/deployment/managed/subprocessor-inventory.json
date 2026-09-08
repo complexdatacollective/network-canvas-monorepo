@@ -1,0 +1,130 @@
+{
+  "jurisdiction": "United States",
+  "selfHostingAlternative": "Self-host the identical Studio artifact in an institution-selected region.",
+  "configuredEstate": {
+    "computeRegion": "iad",
+    "postgresRegion": "us-east-1",
+    "primaryObjectJurisdiction": "us",
+    "recoveryRegion": "us-west-004",
+    "kmsRegion": "us-east-1",
+    "serviceNames": [
+      "studio-production",
+      "studio-staging",
+      "registry-production",
+      "registry-staging"
+    ],
+    "postgresPlan": "Hobby-2",
+    "postgresStorageGb": 20
+  },
+  "providers": [
+    {
+      "name": "Fly.io",
+      "role": "Managed Studio and template-registry compute",
+      "dataCategories": ["request data", "runtime secrets", "operational logs"],
+      "status": "selected-candidate",
+      "sourcePaths": ["main.tf", "candidate-sizing.json", "README.md"],
+      "estateProvider": null
+    },
+    {
+      "name": "Crunchy Data / Crunchy Bridge on AWS",
+      "role": "Managed PostgreSQL cluster",
+      "dataCategories": [
+        "research data",
+        "account data",
+        "application metadata"
+      ],
+      "status": "selected-candidate",
+      "sourcePaths": [
+        "main.tf",
+        "candidate-sizing.json",
+        "versions.tf",
+        "README.md"
+      ],
+      "estateProvider": "crunchybridge"
+    },
+    {
+      "name": "Cloudflare",
+      "role": "CDN, DNS, ingress Worker, and primary R2 object storage",
+      "dataCategories": [
+        "research assets",
+        "API request data",
+        "signed object requests",
+        "routing metadata"
+      ],
+      "status": "selected-candidate",
+      "sourcePaths": ["main.tf", "versions.tf", "README.md"],
+      "estateProvider": "cloudflare"
+    },
+    {
+      "name": "Amazon Web Services",
+      "role": "KMS application-root wrapping and observability anchor candidate",
+      "dataCategories": [
+        "KMS-wrapped root-key material",
+        "operational anchor state"
+      ],
+      "status": "encoded-candidate",
+      "sourcePaths": [
+        "main.tf",
+        "candidate-sizing.json",
+        "versions.tf",
+        "README.md"
+      ],
+      "estateProvider": "aws"
+    },
+    {
+      "name": "Backblaze",
+      "role": "Independent encrypted recovery archive storage",
+      "dataCategories": [
+        "encrypted database dumps",
+        "encrypted object archives"
+      ],
+      "status": "selected-candidate",
+      "sourcePaths": [
+        "main.tf",
+        "terraform.tfvars.example",
+        "versions.tf",
+        "README.md"
+      ],
+      "estateProvider": "b2"
+    },
+    {
+      "name": "New Relic",
+      "role": "Operational logs, metrics, queries, and alerts",
+      "dataCategories": ["sanitized operational logs", "aggregate metrics"],
+      "status": "cost-candidate",
+      "sourcePaths": [
+        "README.md",
+        "observability-new-relic-logs.mjs",
+        "cost-input.example.json"
+      ],
+      "estateProvider": null
+    },
+    {
+      "name": "PostHog relay",
+      "role": "Existing application telemetry and error reporting",
+      "dataCategories": ["redacted telemetry", "sanitized error reports"],
+      "status": "existing-integration",
+      "sourcePaths": ["../../TELEMETRY.md"],
+      "estateProvider": null
+    },
+    {
+      "name": "Netlify",
+      "role": "Studio branch-preview client and function hosting; approved production domains networkcanvas.studio and staging studio.networkcanvas.dev",
+      "dataCategories": ["preview traffic", "build artifacts"],
+      "status": "existing-preview-only",
+      "sourcePaths": ["../../netlify.toml", "../../README.md"],
+      "estateProvider": null
+    },
+    {
+      "name": "Postmark",
+      "role": "Transactional application mail provider",
+      "dataCategories": [
+        "recipient addresses",
+        "transactional message content"
+      ],
+      "status": "application-integration",
+      "sourcePaths": ["../../README.md", "../../server/src/auth/email.ts"],
+      "estateProvider": null
+    }
+  ]
+}
