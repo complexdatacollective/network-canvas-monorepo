@@ -144,6 +144,10 @@ const messages = defineMessages({
  * `VariableEditor` does of the same issues, and the same words the row cell,
  * the entity editor and the request builder use for the name rule.
  */
+/** Narrows a value read back out of an unknown document. */
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
 const draftIssueMessage = (
   issue: CodebookDraftIssue,
   intl: IntlShape,
@@ -374,7 +378,13 @@ export function useSetVariableComponent(
         request = buildUpdateVariableRequest({
           requestId: uuid(),
           description: intl.formatMessage(messages.setComponentDescription, {
-            name: Reflect.get(current, 'name') as string,
+            // A variable with no name is one the same function has already
+            // prepared for — it re-reads `current` defensively above — and
+            // asserting a `string` out of `Reflect.get` would write `Set the
+            // input control for "undefined"` into whatever record the host
+            // keeps of protocol edits. The id is the only other thing that
+            // identifies it.
+            name: asString(Reflect.get(current, 'name')) ?? variableId,
           }),
           subject,
           authoritativeDocument: document,

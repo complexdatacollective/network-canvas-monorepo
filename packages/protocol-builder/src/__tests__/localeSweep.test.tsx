@@ -65,6 +65,13 @@ const researcherWords = (harness: StageEditorHarness) =>
     harness.hostCodebook(),
   );
 
+/** The first row's own control, where every row carries the same one. */
+const firstButton = (name: string) => {
+  const [button] = screen.getAllByRole('button', { name });
+  if (button === undefined) throw new Error(`There is no "${name}".`);
+  return button;
+};
+
 /**
  * What a Spanish researcher actually reads.
  *
@@ -193,7 +200,24 @@ describe('the row dialogs under es', () => {
     );
   });
 
-  it('sweeps the form-fields dialog, where the attribute picker lives', async () => {
+  /**
+   * Every state of the form-field row dialog, because they are four different
+   * surfaces rather than one: the dialog that adds a field, the same dialog
+   * once the picker's last option — the attribute that does not exist yet — is
+   * chosen and half a codebook variable is asked for, the dialog that edits a
+   * field, and the confirmation that removes one.
+   *
+   * The three beyond the first were swept by nothing, and each carries copy the
+   * others never render: the kind-of-answer list, the name of an attribute
+   * being invented and the words on the codebook's own doors are drawn only
+   * under the sentinel, and the edit and remove surfaces are titled by
+   * `editTitle` and by the shared row confirmation.
+   *
+   * The dirty state is left until last on purpose: dismissing a dialog the
+   * researcher has changed asks them first, so an Escape after the sentinel
+   * would sweep a confirmation instead of closing.
+   */
+  it('sweeps the form-fields dialog through add, invent, edit and remove', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       locale: 'es',
@@ -213,6 +237,45 @@ describe('the row dialogs under es', () => {
 
     expectNoLocaleLeaks(
       'the add-a-form-field dialog',
+      researcherWords(harness),
+    );
+
+    await harness.user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    await harness.user.click(firstButton('Editar campo'));
+    await screen.findByRole('dialog');
+    expectNoLocaleLeaks(
+      'the edit-a-form-field dialog',
+      researcherWords(harness),
+    );
+
+    await harness.user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    await harness.user.click(firstButton('Eliminar campo'));
+    await screen.findByRole('dialog');
+    expectNoLocaleLeaks(
+      'the remove-a-form-field confirmation',
+      researcherWords(harness),
+    );
+
+    await harness.user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Crear nuevo campo de formulario',
+      }),
+    );
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Atributo' }),
+      '__create_new_attribute__',
+    );
+    await screen.findByRole('combobox', { name: 'Tipo de respuesta' });
+
+    expectNoLocaleLeaks(
+      'the form-field dialog inventing an attribute',
       researcherWords(harness),
     );
   });
@@ -331,5 +394,103 @@ describe('the sweep itself', () => {
     expect(localeLeaks()).toEqual([
       'protocolBuilder.interface.sociogram rendered in English: Sociogram',
     ]);
+  });
+
+  /**
+   * `SweepAllowances.fixtureWords` is the one thing a call site may forgive by
+   * name, and until this case it forgave nothing that could be measured: none
+   * of the four words in `FIXTURE_ROW_EDITOR_WORDS` is declared by an id, so
+   * deleting the argument from every call site changed nothing. Proved here on
+   * a word that IS declared, so the mechanism is shown working rather than
+   * assumed to be waiting.
+   */
+  it('forgives exactly the fixture word it is given, and nothing beside it', () => {
+    document.body.innerHTML = '<p>Sociogram</p><p>Cancel</p>';
+
+    // Both are reported while nothing is forgiven.
+    expect(localeLeaks()).toEqual([
+      'common.cancel rendered in English: Cancel',
+      'protocolBuilder.interface.sociogram rendered in English: Sociogram',
+    ]);
+
+    // `fixtureWords` is what carries the word into the allowance, and it
+    // carries only that one: the assertion still fails, and it fails naming
+    // the OTHER leak.
+    let reported: unknown;
+    try {
+      expectNoLocaleLeaks('a fixture', new Set(), {
+        fixtureWords: ['Sociogram'],
+      });
+    } catch (failure) {
+      reported =
+        failure instanceof Error && 'actual' in failure
+          ? failure.actual
+          : failure;
+    }
+
+    expect(reported).toEqual(['common.cancel rendered in English: Cancel']);
+  });
+});
+
+/**
+ * What the sweep counts as the researcher's own words, which is the same list
+ * as what it will forgive anywhere on that surface.
+ *
+ * Every entry is a message id the sweep can no longer see regress, so the
+ * reading has to be narrow — and it was not. Reading every key at every depth
+ * excused `promptsSection.itemNoun`, the noun spliced into "Editar pregunta"
+ * and the exact string #1720's first round found frozen in English, because a
+ * form-field row has a `prompt` key; counting schema tokens stored as values
+ * excused two whole messages whose English is one of those tokens.
+ */
+describe('what the sweep treats as protocol content', () => {
+  const alterForm = {
+    title: 'Add a person',
+    fields: [{ variable: 'name', prompt: 'What is their name?' }],
+    items: [{ id: 'block-1', type: 'text', content: 'Read this.' }],
+  };
+  const codebook = {
+    node: {
+      person: {
+        name: 'Person',
+        variables: {
+          relationship_to_ego: {
+            name: 'Relationship to ego',
+            type: 'text',
+            component: 'Text',
+          },
+          alive: { name: 'Alive', type: 'boolean', component: 'Boolean' },
+        },
+      },
+    },
+  };
+
+  it('reads the names a researcher gave their types and attributes', () => {
+    const content = protocolStrings(alterForm, codebook);
+
+    expect(content.has('Person')).toBe(true);
+    expect(content.has('Relationship to ego')).toBe(true);
+    // The keys the codebook indexes by are ids the editors show as well.
+    expect(content.has('relationship_to_ego')).toBe(true);
+    expect(content.has('person')).toBe(true);
+    // And the sentences they wrote.
+    expect(content.has('What is their name?')).toBe(true);
+    expect(content.has('Add a person')).toBe(true);
+  });
+
+  it('does not read a row’s own field names as words a researcher chose', () => {
+    const content = protocolStrings(alterForm, codebook);
+
+    for (const key of ['prompt', 'fields', 'items', 'content', 'title']) {
+      expect(content.has(key), `"${key}" is a schema key`).toBe(false);
+    }
+  });
+
+  it('does not read a schema token stored as a value as their words either', () => {
+    const content = protocolStrings(alterForm, codebook);
+
+    for (const token of ['Text', 'Boolean', 'text', 'boolean', 'block-1']) {
+      expect(content.has(token), `"${token}" is a schema token`).toBe(false);
+    }
   });
 });

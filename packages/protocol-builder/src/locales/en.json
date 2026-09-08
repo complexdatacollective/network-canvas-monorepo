@@ -143,6 +143,26 @@
     "defaultMessage": "Create this attribute and its values",
     "description": "Button that opens the codebook editor for inventing an attribute whose answers are chosen from a list, together with that list. Also the title of the dialog it opens. An attribute is one thing an interview records about a network member."
   },
+  "protocolBuilder.attributeCodebookControls.describeAnswerLabels": {
+    "defaultMessage": "Change the answer labels of \"{name}\"",
+    "description": "The same record for a yes/no attribute, whose two stored values are fixed and whose words are what a researcher writes. name is the attribute’s researcher-facing name."
+  },
+  "protocolBuilder.attributeCodebookControls.describeCreate": {
+    "defaultMessage": "Create an attribute for a form field",
+    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. The attribute has no name yet — the researcher is about to type one — so this is the one edit here that cannot name it."
+  },
+  "protocolBuilder.attributeCodebookControls.describeParameters": {
+    "defaultMessage": "Change what \"{name}\" accepts",
+    "description": "The same record for an attribute whose answer is not chosen from a list — a date between two bounds, a position on a scale. name is the attribute’s researcher-facing name."
+  },
+  "protocolBuilder.attributeCodebookControls.describeRules": {
+    "defaultMessage": "Change the rules for \"{name}\"",
+    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name."
+  },
+  "protocolBuilder.attributeCodebookControls.describeValues": {
+    "defaultMessage": "Change the values of \"{name}\"",
+    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name."
+  },
   "protocolBuilder.attributeCodebookControls.editAnswerLabels": {
     "defaultMessage": "Change this attribute’s answer labels",
     "description": "The same button for a yes/no attribute, whose two stored values are fixed and whose WORDS are what a researcher writes — so this says labels rather than values. Also the title of the dialog it opens."
@@ -1015,10 +1035,6 @@
     "defaultMessage": "Add at least one field. A form with no fields collects nothing.",
     "description": "Refusal shown above a form’s list of fields when a researcher saves a form that asks nothing. A field is one question bound to one attribute of a network member."
   },
-  "protocolBuilder.formFields.attributeEmpty": {
-    "defaultMessage": "Every attribute of this type is already collected or written elsewhere. Create a new one instead.",
-    "description": "Shown in place of the attribute list when every attribute of this node or edge type is either already collected by another field of the same form, or written somewhere the protocol will not let a form field also write."
-  },
   "protocolBuilder.formFields.attributeHint": {
     "defaultMessage": "The codebook attribute this field’s answer is stored in.",
     "description": "Guidance under the attribute control. The codebook is the protocol’s definition of what an interview records."
@@ -1054,6 +1070,54 @@
   "protocolBuilder.formFields.componentRequired": {
     "defaultMessage": "Choose how the participant answers this field.",
     "description": "Refusal shown under the input-control field when nothing has been chosen."
+  },
+  "protocolBuilder.formFields.controlBoolean": {
+    "defaultMessage": "Yes or no buttons",
+    "description": "Choice offered for the control a participant answers with: a pair of buttons for a true or false answer."
+  },
+  "protocolBuilder.formFields.controlCheckboxGroup": {
+    "defaultMessage": "Checkbox group",
+    "description": "Choice offered for the control a participant answers with: a list of options of which they may pick several."
+  },
+  "protocolBuilder.formFields.controlDatePicker": {
+    "defaultMessage": "Date picker",
+    "description": "Choice offered for the control a participant answers with: a calendar they choose a date from."
+  },
+  "protocolBuilder.formFields.controlLikertScale": {
+    "defaultMessage": "Likert scale",
+    "description": "Choice offered for the control a participant answers with: an ordered scale from one extreme to the other."
+  },
+  "protocolBuilder.formFields.controlNumber": {
+    "defaultMessage": "Number input",
+    "description": "Choice offered for the control a participant answers with: a box that takes a number."
+  },
+  "protocolBuilder.formFields.controlRadioGroup": {
+    "defaultMessage": "Radio group",
+    "description": "Choice offered for the control a participant answers with: a list of options of which they pick one."
+  },
+  "protocolBuilder.formFields.controlRelativeDatePicker": {
+    "defaultMessage": "Relative date picker",
+    "description": "Choice offered for the control a participant answers with: a date chosen as a number of days before or after another date."
+  },
+  "protocolBuilder.formFields.controlText": {
+    "defaultMessage": "Text input",
+    "description": "Choice offered for the control a participant answers with: a single-line box they type into."
+  },
+  "protocolBuilder.formFields.controlTextArea": {
+    "defaultMessage": "Text area",
+    "description": "Choice offered for the control a participant answers with: a large box for several lines of text."
+  },
+  "protocolBuilder.formFields.controlToggle": {
+    "defaultMessage": "Toggle",
+    "description": "Choice offered for the control a participant answers with: a single switch they turn on or off."
+  },
+  "protocolBuilder.formFields.controlToggleButtonGroup": {
+    "defaultMessage": "Toggle button group",
+    "description": "Choice offered for the control a participant answers with: a row of buttons of which they may turn on several."
+  },
+  "protocolBuilder.formFields.controlVisualAnalogScale": {
+    "defaultMessage": "Visual analogue scale",
+    "description": "Choice offered for the control a participant answers with: a slider they move along a continuous line."
   },
   "protocolBuilder.formFields.createNewOption": {
     "defaultMessage": "Create a new attribute…",
@@ -1646,18 +1710,6 @@
   "protocolBuilder.pageContent.pageAddTitle": {
     "defaultMessage": "Create content block",
     "description": "Title of the dialog a researcher fills in to add one more piece to a page."
-  },
-  "protocolBuilder.pageContent.pageClearConfirm": {
-    "defaultMessage": "Clear the page",
-    "description": "Action that confirms switching a page off and discarding its blocks."
-  },
-  "protocolBuilder.pageContent.pageClearDescription": {
-    "defaultMessage": "This will remove every block on this page. Do you want to continue?",
-    "description": "Body of the confirmation asked before switching a page off, which throws every block on it away."
-  },
-  "protocolBuilder.pageContent.pageClearTitle": {
-    "defaultMessage": "This will clear the page",
-    "description": "Title of the confirmation asked before switching a page off, which throws every block on it away."
   },
   "protocolBuilder.pageContent.pageDescription": {
     "defaultMessage": "Write the page heading and build the sequence of blocks the participant reads.",

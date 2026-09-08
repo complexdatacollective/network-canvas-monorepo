@@ -105,7 +105,11 @@ const messages = defineMessages({
  * Formatted with no values, like every named descriptor a shared section
  * takes: one carrying a placeholder renders the pattern on screen, and nothing
  * in the types can refuse it. See `PromptsSection`'s own note and
- * `sections/__tests__/namedDescriptorProps.test.tsx`.
+ * `sections/__tests__/namedDescriptorProps.test.tsx`, which lands with the
+ * form-fields section — the first surface to take a whole set of them. This
+ * section's own words come from the table below rather than from a prop, so
+ * what would break the rule here is an edit to this package's catalog, which
+ * the locale sweep sees.
  */
 type SubjectWords = Readonly<{
   title: MessageDescriptor;

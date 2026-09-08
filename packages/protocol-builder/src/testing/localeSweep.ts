@@ -152,6 +152,31 @@ const englishOnlyRuns = (): ReadonlyMap<string, string> => {
 
 const ENGLISH_RUNS = englishOnlyRuns();
 
+/** Object keys whose OWN keys are ids a researcher chose and an editor shows. */
+const ID_KEYED_MAPS: ReadonlySet<string> = new Set([
+  'node',
+  'edge',
+  'ego',
+  'variables',
+]);
+
+/**
+ * Keys whose value is a token from the protocol schema rather than anything a
+ * researcher wrote — a stage type, an entity, an input control, an id.
+ *
+ * Skipped entirely rather than merely not-collected-as-a-key, because it is
+ * the VALUE that is the token. Erring here is loud rather than silent: a
+ * researcher's word wrongly left out of this set is reported as a leak, which
+ * fails a sweep, while a token wrongly counted as content is a message the
+ * sweeps stop watching.
+ */
+const SCHEMA_TOKEN_KEYS: ReadonlySet<string> = new Set([
+  'id',
+  'type',
+  'entity',
+  'component',
+  'variable',
+]);
 /**
  * Every string a fixture holds, which is every string on screen that must NOT
  * be translated.
@@ -170,31 +195,47 @@ const ENGLISH_RUNS = englishOnlyRuns();
  * Takes arbitrary values rather than a harness so both the codebook editors
  * (which are handed section documents directly) and the stage editors (whose
  * harness exposes seeded fields and a host codebook) can feed it the same way.
+ *
+ * Read narrowly, because everything named here is a string the sweep will
+ * then FORGIVE wherever it appears — this set is the sweep's blind spot, and
+ * every entry in it is a message id the sweep can no longer see regress. Two
+ * rules keep it to what the paragraph above actually claims:
+ *
+ * - **Keys, only where a key is an id a researcher named.** A codebook indexes
+ *   its types and its attributes that way; a row of a list does not. Reading
+ *   every key at every depth is what made `protocolBuilder.promptsSection.itemNoun`
+ *   — the "pregunta" spliced into "Editar pregunta", and the exact string
+ *   #1720 round 1 found frozen in English — invisible to every sweep in this
+ *   package, because a form-field row happens to have a `prompt` key.
+ * - **No values under a key whose value is a schema token.** `component:
+ *   'Text'` and `type: 'boolean'` are the protocol's words, not the
+ *   researcher's, and counting them excused `protocolBuilder.contentBlock.kindText`
+ *   and `protocolBuilder.codebookVariable.typeBoolean` — two messages whose
+ *   whole English text is one of those tokens.
  */
 export const protocolStrings = (
   ...values: readonly unknown[]
 ): ReadonlySet<string> => {
   const strings = new Set<string>();
-  const collect = (value: unknown) => {
+  const collect = (value: unknown, keysAreIds: boolean) => {
     if (typeof value === 'string') {
       const text = collapse(value);
       if (text !== '') strings.add(text);
       return;
     }
     if (Array.isArray(value)) {
-      for (const entry of value) collect(entry);
+      for (const entry of value) collect(entry, false);
       return;
     }
     if (typeof value === 'object' && value !== null) {
       for (const [key, entry] of Object.entries(value)) {
-        // Keys are content too: a codebook indexes its types and attributes by
-        // ids the editors show, and those are the researcher's as well.
-        strings.add(collapse(key));
-        collect(entry);
+        if (keysAreIds) strings.add(collapse(key));
+        if (SCHEMA_TOKEN_KEYS.has(key)) continue;
+        collect(entry, ID_KEYED_MAPS.has(key));
       }
     }
   };
-  collect(values);
+  collect(values, false);
   return strings;
 };
 

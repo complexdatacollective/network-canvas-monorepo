@@ -1,10 +1,17 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type ComponentType, useCallback, useMemo, useState } from 'react';
+import {
+  type ComponentType,
+  type ReactNode,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Section from '@codaco/fresco-ui/Section';
+import type { VariableType } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { useCreateCodebookVariable } from '../../codebook/useCodebookVariableEdits.ts';
@@ -29,6 +36,27 @@ const VariablePicker = CreatableVariablePickerControl as ComponentType<
 >;
 
 /**
+ * What the HOST decides about an attribute created from a row: which codebook
+ * section it lands in, and what it is created as.
+ *
+ * The researcher is only ever asked for a name — see
+ * `CreatableVariablePickerProps.onCreateOption` — so these two are the host's
+ * to give, and they are the whole of what one host differs from another by.
+ * `undefined` for the subject is a real answer: a stage that has not been told
+ * which node type it is about yet has no codebook section to add anything to.
+ */
+type CreateAs = Readonly<{
+  into: CodebookSubject | undefined;
+  draft: Readonly<{ type: VariableType; component?: string }>;
+}>;
+
+/** What a section that offers stamps asks for: a flag, shown as a switch. */
+const STAMPED: CreateAs = {
+  into: SUBJECT,
+  draft: { type: 'boolean', component: 'Toggle' },
+};
+
+/**
  * The host half of the seam, as a section that offers stamps supplies it.
  *
  * The picker is injected as `variablePickerComponent` and reaches the rows'
@@ -37,10 +65,21 @@ const VariablePicker = CreatableVariablePickerControl as ComponentType<
  * host exactly as a real one would. Nothing here is a stand-in — what this
  * supplies is what a host supplies: which type a created attribute is, and
  * where a refusal is shown.
+ *
+ * The two host answers arrive as one `createAs` prop rather than being written
+ * into the body, because what the codebook refuses is a fact about them: it
+ * refuses an attribute added to a type that is not there, one added to no type
+ * at all, and one whose kind cannot be made from a name. Each is an answer a
+ * host can give, and the Spanish suite at the bottom of this file is where they
+ * are given. One object rather than two props, so `into: undefined` can mean
+ * "this stage is about nothing yet" instead of falling back to a default.
  */
-function StampedAttributes() {
+function StampedAttributes({
+  createAs = STAMPED,
+}: Readonly<{ createAs?: CreateAs }>) {
+  const { into, draft } = createAs;
   const { protocolContext } = useStageEditorForm();
-  const createVariable = useCreateCodebookVariable(SUBJECT);
+  const createVariable = useCreateCodebookVariable(into);
   const [problem, setProblem] = useState<string | undefined>(undefined);
 
   const variableOptions = useMemo(
@@ -60,11 +99,7 @@ function StampedAttributes() {
   // nothing rather than an attribute that does not exist.
   const onCreateVariable = useCallback(
     async (variableName: string) => {
-      const outcome = await createVariable({
-        name: variableName,
-        type: 'boolean',
-        component: 'Toggle',
-      });
+      const outcome = await createVariable({ name: variableName, ...draft });
       if (outcome.status === 'refused') {
         setProblem(outcome.message);
         return undefined;
@@ -72,7 +107,7 @@ function StampedAttributes() {
       setProblem(undefined);
       return outcome.variableId;
     },
-    [createVariable],
+    [createVariable, draft],
   );
 
   return (
@@ -128,7 +163,7 @@ function SelectableAttributes() {
   );
 }
 
-const renderRows = (sections: React.ReactNode) =>
+const renderRows = (sections: ReactNode) =>
   renderStageEditor({ stageId: 'name-generator-1', sections });
 
 const addRow = async (harness: ReturnType<typeof renderRows>) => {
@@ -350,5 +385,144 @@ describe('the create control while the codebook write is in flight', () => {
     // refusal the researcher can correct.
     await waitFor(() => expect(createButton()).toBeEnabled());
     expect(nameBox()).toHaveValue('nominated early');
+  });
+});
+
+/**
+ * The same control, and the same codebook writes, read in Spanish.
+ *
+ * This file is the only place `CreatableVariablePickerControl` is mounted —
+ * no section renders it yet — so it is also the only place its three
+ * remaining strings can be read in any language at all, and the only place the
+ * refusals `useCreateCodebookVariable` answers with can be provoked one at a
+ * time: what the codebook refuses is decided by the pair of answers the HOST
+ * gives (`CreateAs`), and a form field's dialog can only ever give it a name,
+ * a collectable type and a control that type allows.
+ *
+ * Every sentence is asserted as a literal rather than by re-formatting the
+ * descriptor the code read: `intl.formatMessage(messages.x)` would pass
+ * whatever the catalog said, including nothing at all.
+ */
+describe('the creatable attribute picker, read in Spanish', () => {
+  const renderInSpanish = (createAs?: CreateAs) =>
+    renderStageEditor({
+      stageId: 'name-generator-1',
+      locale: 'es',
+      sections:
+        createAs === undefined ? (
+          <StampedAttributes />
+        ) : (
+          <StampedAttributes createAs={createAs} />
+        ),
+    });
+
+  const nameBox = async (harness: ReturnType<typeof renderInSpanish>) => {
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Añadir un nuevo atributo para asignar',
+      }),
+    );
+    return screen.findByRole('textbox', { name: 'Crear un atributo nuevo' });
+  };
+
+  /** Asks the codebook for an attribute, and answers with what it said. */
+  const askFor = async (
+    harness: ReturnType<typeof renderInSpanish>,
+    attributeName: string,
+  ) => {
+    await harness.user.type(await nameBox(harness), attributeName);
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Crear el atributo' }),
+    );
+    return screen.findByRole('alert');
+  };
+
+  it('names the box, its guidance and its button in Spanish', async () => {
+    const harness = renderInSpanish();
+
+    const box = await nameBox(harness);
+    // The example is a name the codebook would actually take, so it is
+    // translated to an equally valid one rather than left in English.
+    expect(box).toHaveAttribute('placeholder', 'nominado_pronto');
+    expect(
+      screen.getByText(
+        'Lo añade al libro de códigos de este tipo y lo selecciona arriba.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Crear el atributo' }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The name is the one thing the researcher supplies here, so its two
+   * refusals are the two they can act on — and both are said in this package's
+   * own words rather than in the schema's or the builder's.
+   */
+  it('says in Spanish that a name the codebook cannot store was refused', async () => {
+    const harness = renderInSpanish();
+
+    expect(await askFor(harness, 'nominado pronto')).toHaveTextContent(
+      'No es un nombre de atributo válido. Solo se admiten letras, números y los símbolos ._-:',
+    );
+  });
+
+  it('says in Spanish that another attribute is already called that', async () => {
+    const harness = renderInSpanish();
+
+    // `name` is what the fixture's person type already calls one of its own.
+    expect(await askFor(harness, 'name')).toHaveTextContent(
+      'Ya existe aquí un atributo con este nombre. Elige otro nombre.',
+    );
+  });
+
+  it('says in Spanish that the stage is about nothing yet', async () => {
+    const harness = renderInSpanish({
+      into: undefined,
+      draft: { type: 'boolean', component: 'Toggle' },
+    });
+
+    expect(await askFor(harness, 'nominado_pronto')).toHaveTextContent(
+      'Elige con qué trabaja esta etapa antes de crear un atributo.',
+    );
+  });
+
+  it('says in Spanish that the type it would be added to has gone', async () => {
+    const harness = renderInSpanish({
+      into: { entity: 'node', type: 'un-tipo-que-no-existe' },
+      draft: { type: 'boolean', component: 'Toggle' },
+    });
+
+    expect(await askFor(harness, 'nominado_pronto')).toHaveTextContent(
+      'Este tipo ya no está en el libro de códigos, así que no se le puede añadir un atributo.',
+    );
+  });
+
+  /**
+   * The refusal with no explanation of its own, which is what a researcher is
+   * left with when the codebook refuses something they were never asked
+   * about: a categorical attribute IS its list of answers, and a name and a
+   * type cannot make one.
+   *
+   * A control the attribute's type cannot take reads the SAME way, which is
+   * why there is no test for `codebookEditing.unsupportedControl` beside this
+   * one. `draftIssueMessage` reaches for that sentence when the schema refused
+   * something at `component`, and `VariableSchema` is a plain union: zod
+   * hoists an issue to its own path only when every branch reports it there,
+   * which happens for `name` (every variable has one) and never for
+   * `component` — a text variable collected with a date picker fails the text
+   * branch at `component` and every other branch at `type`, so what comes back
+   * is one `invalid_union` at the empty path and the fallback below is what
+   * the researcher reads.
+   */
+  it('says in Spanish that nothing was created, when there is nothing else to say', async () => {
+    const harness = renderInSpanish({
+      into: SUBJECT,
+      draft: { type: 'categorical', component: 'CheckboxGroup' },
+    });
+
+    expect(await askFor(harness, 'nominado_pronto')).toHaveTextContent(
+      'No se ha podido crear este atributo, así que no se ha cambiado nada. Inténtalo de nuevo.',
+    );
   });
 });

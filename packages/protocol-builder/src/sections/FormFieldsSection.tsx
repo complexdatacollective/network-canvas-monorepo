@@ -379,13 +379,6 @@ const messages = defineMessages({
     description:
       'Guidance under the attribute control. The codebook is the protocol’s definition of what an interview records.',
   },
-  attributeEmpty: {
-    id: 'protocolBuilder.formFields.attributeEmpty',
-    defaultMessage:
-      'Every attribute of this type is already collected or written elsewhere. Create a new one instead.',
-    description:
-      'Shown in place of the attribute list when every attribute of this node or edge type is either already collected by another field of the same form, or written somewhere the protocol will not let a form field also write.',
-  },
   attributeRequired: {
     id: 'protocolBuilder.formFields.attributeRequired',
     defaultMessage: 'Choose the attribute this field collects.',
@@ -800,15 +793,21 @@ function useCommitFormField(
 
       const name = asString(value[NEW_VARIABLE_NAME])?.trim() ?? '';
       const type = asString(value[NEW_VARIABLE_TYPE]) ?? '';
-      if (name === '' || !isCollectableType(type)) {
+      // The kind of answer is a `required` field of this dialog (see
+      // `FormFieldEditor`), so this is the belt for a row that arrives already
+      // broken rather than a rule of its own — and it is what narrows `type`
+      // for the create below.
+      //
+      // ONE key, carrying the one sentence there is. The name is `required`
+      // too and used to be named here as well, with an empty string for
+      // whichever of the two was actually fine — and an empty string survives
+      // the row's own filter, so the first-error walk could land on a control
+      // whose error region is blank while the sentence sat on the other one.
+      if (!isCollectableType(type)) {
         return {
           success: false,
           fieldErrors: {
-            [NEW_VARIABLE_NAME]:
-              name === '' ? intl.formatMessage(messages.newNameRequired) : '',
-            [NEW_VARIABLE_TYPE]: isCollectableType(type)
-              ? ''
-              : intl.formatMessage(messages.newTypeRequired),
+            [NEW_VARIABLE_TYPE]: intl.formatMessage(messages.newTypeRequired),
           },
         };
       }
@@ -988,6 +987,14 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   const { subject } = useFormFieldsScope();
   const inventing = useInventingAttribute(item);
   const newType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
+  const typeOptions = useMemo(
+    () =>
+      TYPE_OPTIONS.map(({ value, label }) => ({
+        value,
+        label: intl.formatMessage(label),
+      })),
+    [intl],
+  );
   // An attribute that IS a list of answers cannot be invented from a name: the
   // list is part of it, and the codebook refuses one without at least two
   // values. So the name box gives way to the editor that authors both.
@@ -1008,7 +1015,7 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
             component={SelectControl}
             label={intl.formatMessage(messages.newTypeLabel)}
             hint={intl.formatMessage(messages.newTypeHint)}
-            options={TYPE_OPTIONS}
+            options={typeOptions}
             initialValue={asString(item[NEW_VARIABLE_TYPE]) ?? ''}
             required={intl.formatMessage(messages.newTypeRequired)}
           />
@@ -1101,8 +1108,12 @@ function InputControlField({
       : variablesForSubject(protocolContext, subject)[chosen];
   const type = chosen === NEW_VARIABLE ? newType : (variable?.type ?? '');
   const options = useMemo(
-    () => controlsForType(type).map((value) => ({ value, label: value })),
-    [type],
+    () =>
+      controlsForType(type).map(({ value, label }) => ({
+        value,
+        label: intl.formatMessage(label),
+      })),
+    [intl, type],
   );
   const committed =
     variable !== undefined && 'component' in variable
@@ -1149,6 +1160,12 @@ function AttributePicker({
   const roleMap = useUnvalidatedWriterMap();
 
   const options = useMemo(() => {
+    // The ONLY way to an empty list: every other path appends the
+    // create-a-new-one sentinel, so a pool with nothing in it still has one
+    // option. That is why the picker is left to say what an empty list means —
+    // a message written here would describe a state that only exists when the
+    // stage has no subject, where the sentence beneath the section
+    // (`scopeMissing`) is the one that is true.
     if (subject === undefined) return NO_OPTIONS;
     const siblings = new Set(
       rowsOf(fields)
@@ -1199,7 +1216,6 @@ function AttributePicker({
       label={intl.formatMessage(messages.attributeLabel)}
       hint={intl.formatMessage(messages.attributeHint)}
       options={options}
-      emptyMessage={intl.formatMessage(messages.attributeEmpty)}
       initialValue={committed}
       required={intl.formatMessage(messages.attributeRequired)}
     />

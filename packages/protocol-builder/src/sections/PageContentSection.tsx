@@ -116,25 +116,6 @@ const messages = defineMessages({
     description:
       'Shown in place of the list of blocks while a page holds nothing yet.',
   },
-  pageClearTitle: {
-    id: 'protocolBuilder.pageContent.pageClearTitle',
-    defaultMessage: 'This will clear the page',
-    description:
-      'Title of the confirmation asked before switching a page off, which throws every block on it away.',
-  },
-  pageClearDescription: {
-    id: 'protocolBuilder.pageContent.pageClearDescription',
-    defaultMessage:
-      'This will remove every block on this page. Do you want to continue?',
-    description:
-      'Body of the confirmation asked before switching a page off, which throws every block on it away.',
-  },
-  pageClearConfirm: {
-    id: 'protocolBuilder.pageContent.pageClearConfirm',
-    defaultMessage: 'Clear the page',
-    description:
-      'Action that confirms switching a page off and discarding its blocks.',
-  },
   introTitle: {
     id: 'protocolBuilder.pageContent.introTitle',
     defaultMessage: 'Introduction screen',
@@ -232,7 +213,11 @@ const itemsValidation = {
  * Formatted with no values, like every named descriptor a shared section
  * takes: one carrying a placeholder renders the pattern on screen, and nothing
  * in the types can refuse it. See `PromptsSection`'s own note and
- * `sections/__tests__/namedDescriptorProps.test.tsx`.
+ * `sections/__tests__/namedDescriptorProps.test.tsx`, which lands with the
+ * form-fields section — the first surface to take a whole set of them. This
+ * section's own words come from the table below rather than from a prop, so
+ * what would break the rule here is an edit to this package's catalog, which
+ * the locale sweep sees.
  */
 const WORDS: Readonly<
   Record<
@@ -247,9 +232,20 @@ const WORDS: Readonly<
       editTitle: MessageDescriptor;
       itemNoun: MessageDescriptor;
       emptyState: MessageDescriptor;
-      clearTitle: MessageDescriptor;
-      clearDescription: MessageDescriptor;
-      clearConfirm: MessageDescriptor;
+      /**
+       * What the researcher is asked before switching this page off — for the
+       * variant that HAS a switch.
+       *
+       * Absent for a page that must exist. Words nothing can render are words
+       * a translator is asked for and a native review pass is asked to check,
+       * and a page whose `PLACEMENT` names no `capabilityField` has no switch
+       * to confirm: its three sentences were declared, translated, and dead.
+       */
+      clear?: Readonly<{
+        title: MessageDescriptor;
+        description: MessageDescriptor;
+        confirm: MessageDescriptor;
+      }>;
     }>
   >
 > = Object.freeze({
@@ -263,9 +259,6 @@ const WORDS: Readonly<
     editTitle: messages.pageEditTitle,
     itemNoun: messages.pageItemNoun,
     emptyState: messages.pageEmptyState,
-    clearTitle: messages.pageClearTitle,
-    clearDescription: messages.pageClearDescription,
-    clearConfirm: messages.pageClearConfirm,
   }),
   introScreen: Object.freeze({
     title: messages.introTitle,
@@ -277,9 +270,11 @@ const WORDS: Readonly<
     editTitle: messages.introEditTitle,
     itemNoun: messages.introItemNoun,
     emptyState: messages.introEmptyState,
-    clearTitle: messages.introClearTitle,
-    clearDescription: messages.introClearDescription,
-    clearConfirm: messages.introClearConfirm,
+    clear: Object.freeze({
+      title: messages.introClearTitle,
+      description: messages.introClearDescription,
+      confirm: messages.introClearConfirm,
+    }),
   }),
 });
 
@@ -317,30 +312,34 @@ export type PageContentSectionProps = Readonly<{
   ItemPreview: RowPreviewComponent;
   variant?: PageContentVariant;
   /**
-   * Expands a saved block into the richer object its editor works on.
+   * The private shape a family's block editor works on, and how it is removed
+   * again.
    *
    * A block's `content` is one key whose MEANING depends on its `type`: prose
    * for a text block, a resource id for every other kind. Edited through a
    * single control, changing the type has to destroy the value — and until it
    * does, the incoming type's control is showing the outgoing type's value, an
    * image id sitting in a rich text editor one save away from becoming what a
-   * participant reads. So a family gives each type a slot of its own and
-   * expands `content` into the slot its type names here.
-   */
-  itemSelector?: DialogArrayItemSelector;
-  /**
-   * Collapses the edited block back into what the schema stores.
+   * participant reads. So a family gives each type a slot of its own,
+   * `expand`s `content` into the slot its type names, and `collapse`s the
+   * active slot back into `content` on the way out.
    *
-   * The counterpart of `itemSelector`, and the half that matters to the saved
-   * protocol: every per-type slot is editor state, and both saved block
-   * schemas are strict, so a slot left on the row does not merely take up
-   * space — it makes the protocol invalid. A family collapses the active slot
-   * back into `content` and drops the rest here.
+   * ONE prop rather than two, because they are two halves of one contract and
+   * the second half is the one the saved protocol depends on: every per-type
+   * slot is editor state, and both saved block schemas are strict, so a slot
+   * left on the row does not merely take up space — it makes the protocol
+   * invalid. A family that could declare `expand` alone would compile, send
+   * the host an editor-only key, and hold the researcher at the save with an
+   * error naming a key that is nowhere in the schema and nowhere on their
+   * screen. Requiring both is what makes that unwritable.
    *
-   * Composed with, not instead of, this section's own rule that an unanswered
-   * value is spelled by the key not being there.
+   * `collapse` is composed with, not substituted for, this section's own rule
+   * that an unanswered value is spelled by the key not being there.
    */
-  normalizeItem?: (value: unknown) => unknown;
+  slots?: Readonly<{
+    expand: DialogArrayItemSelector;
+    collapse: (value: unknown) => unknown;
+  }>;
 }>;
 
 /**
@@ -359,8 +358,7 @@ export default function PageContentSection({
   ItemEditor,
   ItemPreview,
   variant = 'page',
-  itemSelector,
-  normalizeItem,
+  slots,
 }: PageContentSectionProps) {
   const intl = useAppIntl();
   const words = WORDS[variant];
@@ -374,32 +372,32 @@ export default function PageContentSection({
   // an emptied slot has to be able to clear it. Stripping absent values first
   // would hide the empty slot from the collapse and leave the old content
   // standing.
+  //
+  // Keyed on the function rather than on `slots`, so a family writing the pair
+  // inline does not hand the list a new normaliser — and so a new row
+  // renderer — on every render.
+  const collapse = slots?.collapse;
   const normalize = useMemo(
     () =>
-      normalizeItem === undefined
+      collapse === undefined
         ? withoutAbsentValues
-        : (value: unknown) => withoutAbsentValues(normalizeItem(value)),
-    [normalizeItem],
+        : (value: unknown) => withoutAbsentValues(collapse(value)),
+    [collapse],
   );
 
   const capability = useMemo<SectionCapability | undefined>(
     () =>
-      placement.capabilityField === undefined
+      placement.capabilityField === undefined || words.clear === undefined
         ? undefined
         : {
             fields: [placement.capabilityField],
             confirmClear: {
-              title: words.clearTitle,
-              description: words.clearDescription,
-              confirmLabel: words.clearConfirm,
+              title: words.clear.title,
+              description: words.clear.description,
+              confirmLabel: words.clear.confirm,
             },
           },
-    [
-      placement.capabilityField,
-      words.clearConfirm,
-      words.clearDescription,
-      words.clearTitle,
-    ],
+    [placement.capabilityField, words.clear],
   );
 
   return (
@@ -431,7 +429,7 @@ export default function PageContentSection({
         editorFieldsComponent={editorFieldsComponent}
         previewComponent={previewComponent}
         editorDialogSize="editor"
-        {...(itemSelector === undefined ? {} : { itemSelector })}
+        {...(slots === undefined ? {} : { itemSelector: slots.expand })}
         normalizeItem={normalize}
         sortable
         {...itemsValidation}

@@ -38,12 +38,6 @@ type SurfaceCase = Readonly<{
   variableId: string;
   committed: SectionDoc;
   draft: SectionDoc;
-  /**
-   * A sentence the HOST refuses the save with, already written for a
-   * researcher — see `AuxiliaryCodebookContradiction`. Absent, the save is
-   * accepted.
-   */
-  contradiction?: string;
 }>;
 
 const CLOSENESS: SectionDoc = {
@@ -121,10 +115,14 @@ const SURFACES = {
     },
   },
   /**
-   * A change the codebook schema and the host both accept and the protocol
-   * still cannot hold: a rule requiring three answers, left two to choose
-   * from. The sentence arrives already written for the researcher, so the
-   * editor shows it as it was written rather than replacing it with its own.
+   * A rule requiring three answers, left two to choose from.
+   *
+   * The refusal is written by the codebook schema's own contradiction
+   * analyser, which the editor runs over the whole entity before it asks the
+   * host anything — so the host is never reached, and `contradiction` is not
+   * set here. What that analyser writes already names the rule and the values
+   * that cannot both hold, which is why the editor shows it as written rather
+   * than replacing it with the copy it keeps for a save that did not happen.
    */
   contradiction: {
     variableId: 'preference',
@@ -147,8 +145,6 @@ const SURFACES = {
       ],
       validation: { minSelected: 3 },
     },
-    contradiction:
-      '“Minimum selected” requires 3 answers, but this attribute has only 2 options to choose from.',
   },
 } as const satisfies Record<string, SurfaceCase>;
 
@@ -182,10 +178,13 @@ function VariableEditorDemo({ mode, surface, locked, readOnly }: DemoProps) {
       },
     },
   };
-  const answer = (): AuxiliaryCodebookSubmitResult =>
-    held.contradiction === undefined
-      ? appliedResult
-      : { status: 'contradiction', message: held.contradiction };
+  // Every surface here is accepted by the host. A host that REFUSES with a
+  // sentence of its own (`AuxiliaryCodebookContradiction`) used to be a case
+  // this fixture could set, and no surface set it — the one story named for a
+  // contradiction is refused by the editor's own analyser before the host is
+  // reached, so the branch could not run. `VariableEditor.test.tsx` drives the
+  // host's refusal directly, where it can be seen to.
+  const answer = (): AuxiliaryCodebookSubmitResult => appliedResult;
   const common = {
     openId,
     subject: SUBJECT,
@@ -360,6 +359,14 @@ export const ScaleSettings: Story = {
 /**
  * The one refusal shown in the words it arrived in, because they name the rule
  * and the values that cannot both hold.
+ *
+ * The words are the codebook schema's: the editor parses the whole entity
+ * before it asks the host anything, and a rule its options can no longer
+ * satisfy is refused there — so the sentence names the attribute, the rule and
+ * both numbers. Everything else a refused save can raise is replaced by the
+ * package's own copy for a save that did not happen, which is what the second
+ * assertion is here to hold: "wait a moment and try again" is the wrong thing
+ * to tell someone whose next save cannot succeed until they change something.
  */
 export const RefusedByContradiction: Story = {
   args: { mode: 'update', surface: 'contradiction' },
@@ -372,7 +379,7 @@ export const RefusedByContradiction: Story = {
 
     const alert = await canvas.findByRole('alert');
     await expect(alert).toHaveTextContent(
-      '“Minimum selected” requires 3 answers',
+      'Attribute "preference": minSelected (3) is greater than the number of options (2)',
     );
     await expect(alert).not.toHaveTextContent('Wait a moment and try again');
   },
