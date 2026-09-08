@@ -40,15 +40,11 @@ attempt();
 // wrong-off mutant check with `off`; it does not rely on the application
 // startup path or on a mocked fetch implementation.
 export const TELEMETRY_IMPLEMENTATION_CANARY_SOURCE = `
-const { createServerTelemetry } = await import('./dist/telemetry.js');
-const enabled = process.env.STUDIO_TELEMETRY === 'on';
-const telemetry = await createServerTelemetry(enabled, {
-  mode: 'self-hosted',
-  runtime: 'web',
-  version: 'qualification',
-});
-telemetry.capture('server_request', new Error('qualification canary'));
-await telemetry.close();
+const originalExit = process.exit;
+process.exit = (code) => { process.exitCode = code ?? 1; };
+await import('./dist/index.js');
+setTimeout(() => process.emit('uncaughtException', new Error('qualification canary')), 250);
+setTimeout(() => { process.exit = originalExit; originalExit(0); }, 1_500);
 `;
 
 // Mounted into the real web and worker containers before their processes
@@ -63,41 +59,51 @@ const net = require('node:net');
 const marker = ${JSON.stringify(TELEMETRY_PROCESS_EGRESS_MARKER)};
 const privateHost = (value) => {
   const host = String(value || '').replace(/^\\[|\\]$/g, '').toLowerCase();
-  if (host === 'localhost' || host.endsWith('.local')) return true;
-  if (/^(postgres|registry-postgres|minio|registry-minio|traefik)(?:[-.]|$)/.test(host)) return true;
-  if (net.isIP(host) === 4) {
-    const octets = host.split('.').map(Number);
-    return octets[0] === 0 || octets[0] === 10 || octets[0] === 127 ||
-      (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
-      (octets[0] === 192 && octets[1] === 168) ||
-      (octets[0] === 169 && octets[1] === 254);
-  }
-  if (net.isIP(host) === 6)
-    return host === '::1' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:');
-  return false;
+  if (host === 'localhost' || host === 'postgres' || host === 'registry-postgres' ||
+      host === 'minio' || host === 'registry-minio' || host === 'traefik') return true;
+  if (net.isIP(host) === 4) return host.startsWith('127.') || host.startsWith('0.');
+  return net.isIP(host) === 6 && host === '::1';
 };
-const observe = (api, host, port) => {
-  if (!privateHost(host)) process.stdout.write(marker + ' ' + JSON.stringify({ api, host: String(host), port }) + '\\n');
+const observe = (api, host, port, keys) => {
+  if (!privateHost(host)) process.stdout.write(marker + ' ' + JSON.stringify({ api, host: String(host), port, keys }) + '\\n');
 };
 const target = (input, options) => {
-  if (typeof input === 'string' || input instanceof URL) {
-    const url = new URL(String(input));
-    return { host: url.hostname, port: url.port || undefined };
+  if (input instanceof URL) {
+    return { host: input.hostname, port: input.port || undefined, keys: [] };
   }
-  const value = options || input || {};
-  return { host: value.hostname || value.host || value.address, port: value.port };
+  if (typeof input === 'string') {
+    try {
+      const url = new URL(input);
+      return { host: url.hostname, port: url.port || undefined, keys: [] };
+    } catch {
+      return target(options || {}, undefined);
+    }
+  }
+  const value =
+    options && typeof options === 'object' ? options : input || {};
+  if (value.socketPath || value.fd !== undefined)
+    return { host: 'localhost', port: undefined, keys: [] };
+  return { host: value.hostname || value.host || value.address, port: value.port, keys: Object.keys(value) };
+};
+const netTarget = (input, options) => {
+  if (Array.isArray(input)) return netTarget(...input);
+  if (typeof input === 'number')
+    return { host: typeof options === 'string' ? options : 'localhost', port: input, keys: [] };
+  if (typeof input === 'string' && typeof options === 'number')
+    return { host: input, port: options, keys: [] };
+  return target(input, options);
 };
 const wrap = (object, name, api, getTarget = (...args) => target(...args)) => {
   const original = object[name];
   if (typeof original !== 'function') return;
   object[name] = function (...args) {
     const value = getTarget(...args);
-    if (value) observe(api, value.host, value.port);
+    if (value) observe(api, value.host, value.port, value.keys);
     return original.apply(this, args);
   };
 };
-wrap(net, 'connect', 'net.connect');
-wrap(net.Socket.prototype, 'connect', 'net.connect');
+wrap(net, 'connect', 'net.connect', netTarget);
+wrap(net.Socket.prototype, 'connect', 'net.connect', netTarget);
 wrap(http, 'request', 'http.request');
 wrap(https, 'request', 'https.request');
 wrap(dns, 'lookup', 'dns.lookup', (host) => ({ host }));
@@ -133,10 +139,12 @@ const dgram = require('node:dgram');
 const http = require('node:http');
 const https = require('node:https');
 const testNet = '192.0.2.123';
+const lookalike = 'postgres.example.test';
 try { net.connect({ host: testNet, port: 9 }).on('error', () => {}); } catch {}
 try { http.request({ host: testNet, port: 80 }).on('error', () => {}).end(); } catch {}
 try { https.request({ host: testNet, port: 443 }).on('error', () => {}).end(); } catch {}
 try { fetch('http://' + testNet + '/qualification', { signal: AbortSignal.timeout(100) }).catch(() => {}); } catch {}
+try { fetch('http://' + lookalike + '/qualification', { signal: AbortSignal.timeout(100) }).catch(() => {}); } catch {}
 try { require('node:dns').lookup(testNet, () => {}); } catch {}
 try { const socket = dgram.createSocket('udp4'); socket.on('error', () => {}); socket.send(Buffer.from('qualification'), 9, testNet, () => socket.close()); } catch {}
 setTimeout(() => process.exit(0), 250);
@@ -176,4 +184,12 @@ export function assertProcessTelemetryInstrumentationPositive(logs: string) {
   for (const api of TELEMETRY_PROCESS_APIS)
     if (!logs.includes(`${TELEMETRY_PROCESS_EGRESS_MARKER} {"api":"${api}"`))
       throw new Error(`Process egress instrumentation missed ${api}.`);
+  if (
+    !logs.includes(
+      `${TELEMETRY_PROCESS_EGRESS_MARKER} {"api":"fetch","host":"postgres.example.test"`,
+    )
+  )
+    throw new Error(
+      'Process egress instrumentation accepted an external lookalike host.',
+    );
 }
