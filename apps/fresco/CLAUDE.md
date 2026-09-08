@@ -173,7 +173,12 @@ dependency change cannot mask another that only the branch's lockfile carried.
    a lifecycle script left under `.github/workflows` can be pushed.
    The lane holds the normal lane's `apps-release-fresco` lock, re-checks the
    newest tag after building, and refuses a version older than the current
-   release, because the mirror's newest push is what `latest` points at.
+   release, because the mirror's newest push is what `latest` points at. As
+   in the normal lane, the push is what starts the Fresco repository's image
+   build, and neither lane waits for it: if that build fails, re-run it from
+   the Fresco repository's Actions tab against the same mirrored commit — the
+   tag and releases already describe that commit, so nothing here needs
+   re-dispatching.
 5. **Merge the hotfix branch into main** with a merge commit, never a squash,
    after the tag exists: `.github/scripts/app-release-guard.sh` skips main's
    Fresco release until main contains the released commit. Then remove only
