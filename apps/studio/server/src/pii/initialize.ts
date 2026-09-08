@@ -304,8 +304,10 @@ export async function initializeCredentialMigration(
 
 /**
  * Resume only after the first batch's complete verification. Immutable proofs
- * still require every historical root, but no corpus scan or registration is
- * repeated. This is not the startup/restore/retirement verification gate.
+ * still require every historical root. Rotation resumes inspect only proofs;
+ * legacy resumes also recheck unproved participant/webhook references against
+ * the authenticated cursor. Neither repeats full initialization or registers
+ * proofs here. This is not the startup/restore/retirement verification gate.
  */
 export async function resumeEncryptionMaintenance(
   input: EncryptionInitialization,

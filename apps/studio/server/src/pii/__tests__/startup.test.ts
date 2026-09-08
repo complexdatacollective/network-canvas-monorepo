@@ -371,7 +371,7 @@ describe('actual server encryption startup and operator entrypoints', () => {
     });
   });
 
-  it('resumes legacy conversion from its opaque cursor without repeating corpus verification', async () => {
+  it('rechecks legacy cursor authority without repeating full initialization or registering proofs', async () => {
     await withDatabase(async ({ db, pool, allowedLogins }) => {
       await pool.query(
         `INSERT INTO "user" (id, name, email, "emailVerified") VALUES ('legacy-user', 'Synthetic', 'legacy@example.test', true)`,
@@ -386,6 +386,9 @@ describe('actual server encryption startup and operator entrypoints', () => {
         loadRootKey: async () => rootOne,
       };
       try {
+        const client = await maintenance.connect();
+        const queries = vi.spyOn(client, 'query');
+        client.release();
         const first = await runEncryptionCommand(
           ['migrate-legacy', '--limit', '1'],
           maintenance,
@@ -403,10 +406,15 @@ describe('actual server encryption startup and operator entrypoints', () => {
         if (!('afterId' in first) || first.afterId === null)
           throw new Error('Expected an opaque legacy migration cursor.');
         const afterId = first.afterId;
-
-        const client = await maintenance.connect();
-        const queries = vi.spyOn(client, 'query');
-        client.release();
+        const fullReferenceScans = queries.mock.calls
+          .map(([sql]) => (typeof sql === 'string' ? sql : ''))
+          .filter((sql) =>
+            sql.includes(
+              "UNION SELECT 'pii-index', blind_index_key_id FROM message_deliveries",
+            ),
+          );
+        expect(fullReferenceScans).toHaveLength(1);
+        queries.mockClear();
         await expect(
           runEncryptionCommand(
             ['migrate-legacy', '--limit', '1', '--after-id', afterId],
@@ -427,9 +435,18 @@ describe('actual server encryption startup and operator entrypoints', () => {
         expect(
           resumed.some((sql) => sql.includes('SELECT purpose, key_id')),
         ).toBe(true);
+        // Legacy resumes must re-read unproved references to refuse a newly
+        // introduced key outside the authenticated cursor's authority. That
+        // query uses DISTINCT too, but does not repeat full initialization.
         expect(
           resumed.some((sql) =>
-            /SELECT DISTINCT|count\(|SELECT EXISTS|INSERT INTO encryption_key_verifications/i.test(
+            sql.includes('proof.key_id = webhook.secret_key_id'),
+          ),
+        ).toBe(true);
+        expect(resumed).not.toContain(fullReferenceScans[0]);
+        expect(
+          resumed.some((sql) =>
+            /count\(|SELECT EXISTS|INSERT INTO encryption_key_verifications/i.test(
               sql,
             ),
           ),
