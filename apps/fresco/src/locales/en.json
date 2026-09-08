@@ -1663,6 +1663,18 @@
     "defaultMessage": "Verification failed.",
     "description": "Researcher-facing actions / webauthn: Verification failed."
   },
+  "fresco.actions.webauthn.passkeyCannotVerifyUserAtRegistration": {
+    "defaultMessage": "This passkey cannot verify your identity. Choose a passkey that confirms who you are with a PIN, fingerprint, or face.",
+    "description": "Researcher-facing actions / webauthn: registration refused because the authenticator skipped user verification."
+  },
+  "fresco.actions.webauthn.passkeyDidNotVerifyUserAtReauth": {
+    "defaultMessage": "This passkey did not verify your identity. Add a passkey that confirms who you are with a PIN, fingerprint, or face, then try again.",
+    "description": "Researcher-facing actions / webauthn: an already signed-in researcher re-authenticated with a passkey whose authenticator skipped user verification."
+  },
+  "fresco.actions.webauthn.passkeyDidNotVerifyUserAtSignIn": {
+    "defaultMessage": "This passkey did not verify your identity. Fresco requires a passkey that confirms who you are with a PIN, fingerprint, or face. Try another passkey, or ask another administrator to reset your authentication.",
+    "description": "Researcher-facing actions / webauthn: sign-in refused because the authenticator skipped user verification; names the two ways back in."
+  },
   "fresco.activity.APITokenCreated": {
     "defaultMessage": "API Token Created",
     "description": "Localized display label for the stable API Token Created activity event type. Never persist the translated label."
