@@ -104,6 +104,182 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     ).toEqual([{ role: fixture.roles.operator }]);
   });
 
+  it('accepts case-insensitive Bearer schemes while rejecting malformed credentials', async () => {
+    const account = await fixture.account();
+    for (const scheme of ['bearer', 'BEARER', 'bEaReR', 'Bearer  ']) {
+      const response = await fixture.request(
+        'GET',
+        '/publisher',
+        undefined,
+        new Headers({ authorization: `${scheme} ${account.token}` }),
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ id: account.publisher.id });
+    }
+    for (const header of [
+      `Basic ${account.token}`,
+      `Bearer${account.token}`,
+      'Bearer invalid',
+    ]) {
+      await problem(
+        await fixture.request(
+          'GET',
+          '/publisher',
+          undefined,
+          new Headers({ authorization: header }),
+        ),
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+  });
+
+  it('returns GET artifact headers and no body for HEAD, then releases capacity', async () => {
+    const account = await fixture.account();
+    const created = await fixture.published(account.token);
+    const path = `/artifacts/${created.entry.root}`;
+    const get = await fixture.request('GET', path);
+    expect(get.status).toBe(200);
+    await get.arrayBuffer();
+    for (let retry = 0; retry < 4; retry += 1) {
+      const head = await fixture.request('HEAD', path);
+      expect(head.status).toBe(200);
+      for (const header of [
+        'content-type',
+        'content-disposition',
+        'etag',
+        'x-template-root',
+        'x-registry-yanked',
+        'cache-control',
+      ])
+        expect(head.headers.get(header)).toBe(get.headers.get(header));
+      expect(await head.text()).toBe('');
+    }
+    expect(
+      (await fixture.request('HEAD', `/artifacts/${'f'.repeat(64)}`)).status,
+    ).toBe(404);
+    const operator = await fixture.account('operator-head@example.test', true);
+    expect(
+      (
+        await fixture.request(
+          'POST',
+          `/moderation/entries/${created.entry.id}/takedown`,
+          undefined,
+          operator.bearer,
+        )
+      ).status,
+    ).toBe(200);
+    expect((await fixture.request('HEAD', path)).status).toBe(410);
+  });
+
+  it('keeps repeated moderation transitions and their original timestamps unchanged', async () => {
+    const account = await fixture.account();
+    const operator = await fixture.account('operator-retry@example.test', true);
+    const created = await fixture.published(account.token);
+    const cases = [
+      {
+        method: 'PUT',
+        path: `/moderation/entries/${created.entry.id}/curation`,
+        body: { curated: true },
+        action: 'entry.curated',
+        table: 'registry_entries',
+        column: 'curated_at',
+        idColumn: 'id',
+        id: created.entry.id,
+      },
+      {
+        method: 'POST',
+        path: `/moderation/entries/${created.entry.id}/takedown`,
+        body: undefined,
+        action: 'artifact.taken_down',
+        table: 'registry_artifacts',
+        column: 'blocked_at',
+        idColumn: 'root',
+        id: created.entry.root,
+      },
+      {
+        method: 'PUT',
+        path: `/moderation/publishers/${account.publisher.id}/suspension`,
+        body: { suspended: true },
+        action: 'publisher.suspended',
+        table: 'registry_publishers',
+        column: 'suspended_at',
+        idColumn: 'id',
+        id: account.publisher.id,
+      },
+    ];
+    for (const transition of cases) {
+      const send = () =>
+        fixture.request(
+          transition.method,
+          transition.path,
+          transition.body,
+          operator.bearer,
+        );
+      expect((await send()).status).toBe(200);
+      const readTimestamp = async () =>
+        (
+          await fixture.owner.query(
+            `SELECT ${transition.column}::text AS value FROM ${transition.table} WHERE ${transition.idColumn} = $1`,
+            [transition.id],
+          )
+        ).rows;
+      const first = await readTimestamp();
+      expect(first).toHaveLength(1);
+      expect(first[0]?.value).toBeTruthy();
+      expect((await send()).status).toBe(200);
+      expect(await readTimestamp()).toEqual(first);
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT count(*)::int AS count FROM registry_audit WHERE action = $1 AND subject_id = $2',
+            [transition.action, transition.id],
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+    }
+    for (const transition of [
+      {
+        method: 'PUT',
+        path: `/moderation/publishers/${account.publisher.id}/suspension`,
+        body: { suspended: false },
+        action: 'publisher.reinstated',
+      },
+      {
+        method: 'POST',
+        path: `/moderation/entries/${created.entry.id}/restore`,
+        body: undefined,
+        action: 'artifact.restored',
+      },
+      {
+        method: 'PUT',
+        path: `/moderation/entries/${created.entry.id}/curation`,
+        body: { curated: false },
+        action: 'entry.uncurated',
+      },
+    ]) {
+      for (let retry = 0; retry < 2; retry += 1)
+        expect(
+          (
+            await fixture.request(
+              transition.method,
+              transition.path,
+              transition.body,
+              operator.bearer,
+            )
+          ).status,
+        ).toBe(200);
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT count(*)::int AS count FROM registry_audit WHERE action = $1',
+            [transition.action],
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+    }
+  });
+
   it('keeps person-owned locators separate from content identity across registry accounts', async () => {
     const first = await fixture.account('first@example.test');
     const second = await fixture.account('second@example.test');

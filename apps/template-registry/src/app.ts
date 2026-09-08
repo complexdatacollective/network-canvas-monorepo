@@ -35,9 +35,8 @@ const os = implement(registryContract).$context<{
 }>();
 function bearer(request: Request): string {
   const header = request.headers.get('authorization') ?? '';
-  if (!header.startsWith('Bearer '))
-    throw new RegistryError('AUTHENTICATION_REQUIRED');
-  const parsed = RegistryCredentialSchema.safeParse(header.slice(7));
+  const match = /^Bearer +(.+)$/i.exec(header);
+  const parsed = RegistryCredentialSchema.safeParse(match?.[1]);
   if (!parsed.success) throw new RegistryError('AUTHENTICATION_REQUIRED');
   return parsed.data;
 }
@@ -446,6 +445,15 @@ export function createRegistryApp({
         }
       }
       let request = original;
+      if (download && original.method === 'HEAD') {
+        // The oRPC matcher uses exact methods; HTTP HEAD shares GET semantics.
+        // Retain the original signal and strip the response body below.
+        request = new Request(original.url, {
+          method: 'GET',
+          headers: original.headers,
+          signal: original.signal,
+        });
+      }
       if (!['GET', 'HEAD'].includes(original.method)) {
         const maximum = publish
           ? TEMPLATE_ARTIFACT_LIMITS.archiveBytes + 64 * 1024
