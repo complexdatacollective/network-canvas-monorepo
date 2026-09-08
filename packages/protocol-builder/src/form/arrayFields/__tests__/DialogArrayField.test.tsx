@@ -310,7 +310,54 @@ async function editRow(
   return await screen.findByRole('textbox', { name: 'Prompt text' });
 }
 
+/**
+ * A family's own editor code, throwing where every one of them can: while it
+ * renders. Nothing the researcher typed causes this and nothing they type
+ * fixes it.
+ */
+function ThrowingPromptFields(): never {
+  throw new Error('the row editor is broken');
+}
+
 describe('the row editor', () => {
+  /**
+   * A dialog whose fields never rendered has nothing to save, and what it
+   * would save is worse than nothing: for a new item, the empty row the
+   * template made, committed as though the researcher had written it.
+   */
+  it('will not commit a row whose editor could not be shown', async () => {
+    const user = userEvent.setup();
+    // React reports the render it caught as well; the boundary is what this
+    // is about, and that report is not a failure.
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const session = createSession({ prompts: [] });
+    renderPromptList(session, {
+      editorFieldsComponent: ThrowingPromptFields,
+    });
+
+    try {
+      await user.click(
+        await screen.findByRole('button', { name: 'Create new prompt' }),
+      );
+      await screen.findByText(/could not be shown/);
+
+      const add = screen.getByRole('button', { name: 'Add' });
+      expect(add).toHaveAttribute('aria-disabled', 'true');
+      expect(add).toHaveAccessibleDescription(/could not be shown/);
+
+      await user.click(add);
+
+      // Nothing committed, and the dialog still there to be closed — which is
+      // the only recovery this boundary offers.
+      expect(promptsOf(session)).toEqual([]);
+      expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it('opens holding the values of the row it was opened on', async () => {
     const user = userEvent.setup();
     const session = createSession({
