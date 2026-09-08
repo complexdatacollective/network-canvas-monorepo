@@ -33,7 +33,11 @@ function keyProof(keys: EncryptionKeys, purpose: KeyPurpose, keyId: string) {
     .digest();
 }
 
-type KeyReference = { purpose: KeyPurpose; keyId: string };
+export type KeyReference = { purpose: KeyPurpose; keyId: string };
+export type UnverifiedLegacyKeyReference = {
+  purpose: 'pii-enc' | 'integration-enc';
+  keyId: string;
+};
 
 const STORED_KEY_REFERENCES_SQL = `
   SELECT DISTINCT 'pii-enc' AS purpose, pii_key_id AS "keyId"
@@ -73,6 +77,50 @@ async function verifyExistingProofs(
   return knownProofs;
 }
 
+export async function readUnverifiedLegacyKeyReferences(
+  client: pg.PoolClient,
+  keys: EncryptionKeys,
+): Promise<UnverifiedLegacyKeyReference[]> {
+  const references = await client.query<UnverifiedLegacyKeyReference>(
+    `SELECT 'pii-enc' AS purpose, participant.pii_key_id AS "keyId"
+       FROM participants participant
+       WHERE participant.pii_key_id IS NOT NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM encryption_key_verifications proof
+           WHERE proof.purpose = 'pii-enc'
+             AND proof.key_id = participant.pii_key_id
+         )
+       GROUP BY participant.pii_key_id
+       HAVING bool_and(coalesce(
+         participant.blind_index_key_id = $1 OR (
+           participant.blind_index_key_id IS NULL
+           AND participant.email_index IS NULL
+           AND participant.phone_index IS NULL
+           AND participant.email_ciphertext IS NULL
+           AND participant.phone_ciphertext IS NULL
+           AND (participant.name_ciphertext IS NOT NULL
+             OR participant.attributes_ciphertext IS NOT NULL)
+         ), false
+       ))
+     UNION
+     SELECT DISTINCT 'integration-enc', webhook.secret_key_id
+       FROM webhook_subscriptions webhook
+       WHERE NOT EXISTS (
+         SELECT 1 FROM encryption_key_verifications proof
+         WHERE proof.purpose = 'integration-enc'
+           AND proof.key_id = webhook.secret_key_id
+       )
+     ORDER BY 1, 2`,
+    [RAW_LEGACY_PARTICIPANT_INDEX_ID],
+  );
+  for (const { purpose, keyId } of references.rows) {
+    if (!keys.has(purpose, keyId)) throw new EncryptionStartupError();
+    if (purpose === 'pii-enc' && keyId === keys.currentId('pii-enc'))
+      throw new EncryptionStartupError();
+  }
+  return references.rows;
+}
+
 /** Read-only readiness gate for the keys already loaded by this process. A
  * restored backend cannot acquire new proofs or be blessed by a health probe.
  * Startup performs the exhaustive row scan; database triggers prevent a
@@ -106,28 +154,14 @@ export async function verifyEncryptionKeyTransaction(
   // Migration 0002 could mark only participants with contact indexes. A valid
   // historical name/attributes-only row has no index column on which to retain
   // that marker, so admit exactly that shape to authenticated replacement too.
-  const legacyPii = allowLegacyCredentials
-    ? await client.query<{ keyId: string }>(
-        `SELECT pii_key_id AS "keyId" FROM participants
-         WHERE pii_key_id IS NOT NULL GROUP BY pii_key_id
-         HAVING bool_and(coalesce(
-           blind_index_key_id = $1 OR (
-             blind_index_key_id IS NULL
-             AND email_index IS NULL AND phone_index IS NULL
-             AND email_ciphertext IS NULL AND phone_ciphertext IS NULL
-             AND (name_ciphertext IS NOT NULL OR attributes_ciphertext IS NOT NULL)
-           ), false
-         ))`,
-        [RAW_LEGACY_PARTICIPANT_INDEX_ID],
-      )
-    : { rows: [] as { keyId: string }[] };
-  const unverifiedLegacyPiiIds = new Set(
-    legacyPii.rows
-      .map(({ keyId }) => keyId)
-      .filter((keyId) => !knownProofs.has(JSON.stringify(['pii-enc', keyId]))),
+  const unverifiedLegacyReferences = allowLegacyCredentials
+    ? await readUnverifiedLegacyKeyReferences(client, keys)
+    : [];
+  const permittedUnverified = new Set(
+    unverifiedLegacyReferences.map(({ purpose, keyId }) =>
+      JSON.stringify([purpose, keyId]),
+    ),
   );
-  if (unverifiedLegacyPiiIds.has(keys.currentId('pii-enc')))
-    throw new EncryptionStartupError();
   for (const { purpose, keyId } of references.rows) {
     const permittedLegacyIndex =
       purpose === 'pii-index' &&
@@ -139,7 +173,7 @@ export async function verifyEncryptionKeyTransaction(
       !permittedLegacyIndex &&
       (!keys.has(purpose, keyId) ||
         (!knownProofs.has(JSON.stringify([purpose, keyId])) &&
-          !(purpose === 'pii-enc' && unverifiedLegacyPiiIds.has(keyId))))
+          !permittedUnverified.has(JSON.stringify([purpose, keyId]))))
     )
       throw new EncryptionStartupError();
   }
@@ -152,7 +186,7 @@ export async function verifyEncryptionKeyTransaction(
   for (const purpose of PURPOSES) {
     for (const keyId of keys.ids(purpose)) {
       if (knownProofs.has(JSON.stringify([purpose, keyId]))) continue;
-      if (purpose === 'pii-enc' && unverifiedLegacyPiiIds.has(keyId)) continue;
+      if (permittedUnverified.has(JSON.stringify([purpose, keyId]))) continue;
       await client.query(
         'INSERT INTO encryption_key_verifications (purpose, key_id, proof) VALUES ($1, $2, $3)',
         [purpose, keyId, keyProof(keys, purpose, keyId)],
@@ -168,14 +202,15 @@ export async function verifyEncryptionKeyTransaction(
 export async function registerAuthenticatedLegacyKeyProofTransaction(
   client: pg.PoolClient,
   keys: EncryptionKeys,
+  purpose: 'pii-enc' | 'integration-enc',
   keyId: string,
 ): Promise<void> {
-  if (!keys.has('pii-enc', keyId)) throw new EncryptionStartupError();
-  const proof = keyProof(keys, 'pii-enc', keyId);
+  if (!keys.has(purpose, keyId)) throw new EncryptionStartupError();
+  const proof = keyProof(keys, purpose, keyId);
   const existing = await client.query<{ proof: Buffer }>(
     `SELECT proof FROM encryption_key_verifications
-     WHERE purpose = 'pii-enc' AND key_id = $1`,
-    [keyId],
+     WHERE purpose = $1 AND key_id = $2`,
+    [purpose, keyId],
   );
   const stored = existing.rows[0]?.proof;
   if (stored) {
@@ -185,8 +220,8 @@ export async function registerAuthenticatedLegacyKeyProofTransaction(
   }
   await client.query(
     `INSERT INTO encryption_key_verifications (purpose, key_id, proof)
-     VALUES ('pii-enc', $1, $2)`,
-    [keyId, proof],
+     VALUES ($1, $2, $3)`,
+    [purpose, keyId, proof],
   );
 }
 
@@ -199,6 +234,10 @@ async function verifyKeys(
   pool: pg.Pool,
   keys: EncryptionKeys,
   operation: 'startup' | 'legacy' | 'resume',
+  authorizeResume?: (
+    client: pg.PoolClient,
+    keys: EncryptionKeys,
+  ) => Promise<readonly KeyReference[]>,
 ): Promise<void> {
   let client: pg.PoolClient | undefined;
   try {
@@ -209,9 +248,15 @@ async function verifyKeys(
         KEY_REGISTRY_LOCK,
       ]);
       const proofs = await verifyExistingProofs(client, keys);
+      const authorized = new Set(
+        ((await authorizeResume?.(client, keys)) ?? []).map(
+          ({ purpose, keyId }) => JSON.stringify([purpose, keyId]),
+        ),
+      );
       for (const purpose of PURPOSES) {
         for (const keyId of keys.ids(purpose)) {
-          if (!proofs.has(JSON.stringify([purpose, keyId])))
+          const identity = JSON.stringify([purpose, keyId]);
+          if (!proofs.has(identity) && !authorized.has(identity))
             throw new EncryptionStartupError();
         }
       }
@@ -264,8 +309,12 @@ export async function initializeCredentialMigration(
  */
 export async function resumeEncryptionMaintenance(
   input: EncryptionInitialization,
+  authorizeResume?: (
+    client: pg.PoolClient,
+    keys: EncryptionKeys,
+  ) => Promise<readonly KeyReference[]>,
 ): Promise<EncryptionKeys> {
   const keys = await loadEncryptionKeys(input.configuration, input.loadRootKey);
-  await verifyKeys(input.maintenancePool, keys, 'resume');
+  await verifyKeys(input.maintenancePool, keys, 'resume', authorizeResume);
   return keys;
 }
