@@ -1,9 +1,7 @@
 {
   "dialect": "postgres",
   "id": "3cf01286-4ea1-4c6f-9d59-6bd56a69b87f",
-  "prevIds": [
-    "628b77c2-9d8c-4d5f-87bc-2531dd3da0e2"
-  ],
+  "prevIds": ["628b77c2-9d8c-4d5f-87bc-2531dd3da0e2"],
   "version": "8",
   "ddl": [
     {
@@ -11475,14 +11473,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "userId"
-      ],
+      "columns": ["userId"],
       "schemaTo": "public",
       "tableTo": "user",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "session_userId_user_id_fkey",
@@ -11492,14 +11486,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "userId"
-      ],
+      "columns": ["userId"],
       "schemaTo": "public",
       "tableTo": "user",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "account_userId_user_id_fkey",
@@ -11509,14 +11499,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "team_id"
-      ],
+      "columns": ["team_id"],
       "schemaTo": "public",
       "tableTo": "teams",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "team_members_team_id_teams_id_fkey",
@@ -11526,14 +11512,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "user",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "team_members_user_id_user_id_fkey",
@@ -11543,14 +11525,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "team_id"
-      ],
+      "columns": ["team_id"],
       "schemaTo": "public",
       "tableTo": "teams",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "team_invitations_team_id_teams_id_fkey",
@@ -11560,14 +11538,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "inviter_id"
-      ],
+      "columns": ["inviter_id"],
       "schemaTo": "public",
       "tableTo": "user",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "team_invitations_inviter_id_user_id_fkey",
@@ -11577,16 +11551,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "draft_id",
-        "team_id"
-      ],
+      "columns": ["draft_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "drafts",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "manifests_draft_id_team_id_drafts_id_team_id_fkey",
@@ -11596,16 +11564,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "draft_id",
-        "team_id"
-      ],
+      "columns": ["draft_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "drafts",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "leases_draft_id_team_id_drafts_id_team_id_fkey",
@@ -11615,14 +11577,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "team_id"
-      ],
+      "columns": ["team_id"],
       "schemaTo": "public",
       "tableTo": "teams",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "protocols_team_id_teams_id_fkey",
@@ -11632,16 +11590,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "protocol_id",
-        "team_id"
-      ],
+      "columns": ["protocol_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "protocols",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "protocol_versions_protocol_id_team_id_protocols_id_team_id_fkey",
@@ -11651,16 +11603,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "migrated_from_version_id",
-        "team_id"
-      ],
+      "columns": ["migrated_from_version_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "protocol_versions",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "protocol_versions_XRsnxTZUrzZD_fkey",
@@ -11670,16 +11616,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "version_id",
-        "team_id"
-      ],
+      "columns": ["version_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "protocol_versions",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "version_sections_O2r4ZNMMEfNX_fkey",
@@ -11689,16 +11629,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "team_id",
-        "section_hash"
-      ],
+      "columns": ["team_id", "section_hash"],
       "schemaTo": "public",
       "tableTo": "sections",
-      "columnsTo": [
-        "team_id",
-        "hash"
-      ],
+      "columnsTo": ["team_id", "hash"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "version_sections_RkZ8Hlggk4EY_fkey",
@@ -11708,16 +11642,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "draft_id",
-        "team_id"
-      ],
+      "columns": ["draft_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "drafts",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "protocol_drafts_draft_id_team_id_drafts_id_team_id_fkey",
@@ -11727,16 +11655,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "protocol_id",
-        "team_id"
-      ],
+      "columns": ["protocol_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "protocols",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "protocol_drafts_protocol_id_team_id_protocols_id_team_id_fkey",
@@ -11746,16 +11668,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "based_on_version_id",
-        "team_id"
-      ],
+      "columns": ["based_on_version_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "protocol_versions",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "protocol_drafts_nYt8OrU8gkdJ_fkey",
@@ -11765,16 +11681,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "team_id",
-        "asset_hash"
-      ],
+      "columns": ["team_id", "asset_hash"],
       "schemaTo": "public",
       "tableTo": "assets",
-      "columnsTo": [
-        "team_id",
-        "hash"
-      ],
+      "columnsTo": ["team_id", "hash"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "asset_references_asset_fk",
@@ -11784,14 +11694,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "team_id"
-      ],
+      "columns": ["team_id"],
       "schemaTo": "public",
       "tableTo": "teams",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "studies_team_id_teams_id_fkey",
@@ -11801,16 +11707,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "protocol_id",
-        "team_id"
-      ],
+      "columns": ["protocol_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "protocols",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "studies_protocol_id_team_id_protocols_id_team_id_fkey",
@@ -11820,16 +11720,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "studies",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "study_waves_study_id_team_id_studies_id_team_id_fkey",
@@ -11839,16 +11733,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "protocol_version_id",
-        "team_id"
-      ],
+      "columns": ["protocol_version_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "protocol_versions",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "study_waves_SXFV2TvAvKov_fkey",
@@ -11858,16 +11746,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "studies",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "participants_study_id_team_id_studies_id_team_id_fkey",
@@ -11877,18 +11759,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "wave_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["wave_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "study_waves",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "interview_sessions_ZM4y2xFChBva_fkey",
@@ -11898,18 +11772,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "participant_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["participant_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "participants",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "interview_sessions_psuYz1RBGiRK_fkey",
@@ -11919,16 +11785,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "protocol_version_id",
-        "team_id"
-      ],
+      "columns": ["protocol_version_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "protocol_versions",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "interview_sessions_1LHzis0L1wuQ_fkey",
@@ -11938,16 +11798,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "link_id",
-        "team_id"
-      ],
+      "columns": ["link_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "interview_links",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "interview_sessions_3GoiphtNFYDs_fkey",
@@ -11957,18 +11811,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "wave_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["wave_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "study_waves",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "interview_links_jKVVrfcHhDL8_fkey",
@@ -11978,18 +11824,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "participant_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["participant_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "participants",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "interview_links_tjP2msCHSiVY_fkey",
@@ -11999,18 +11837,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "session_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["session_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "interview_sessions",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "session_snapshots_yRsXorJcyo1j_fkey",
@@ -12020,16 +11850,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "protocol_version_id",
-        "team_id"
-      ],
+      "columns": ["protocol_version_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "protocol_versions",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "session_snapshots_7IsXMqLTceZB_fkey",
@@ -12039,16 +11863,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "session_id",
-        "team_id"
-      ],
+      "columns": ["session_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "interview_sessions",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "nodes_session_id_team_id_interview_sessions_id_team_id_fkey",
@@ -12058,16 +11876,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "session_id",
-        "team_id"
-      ],
+      "columns": ["session_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "interview_sessions",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "edges_session_id_team_id_interview_sessions_id_team_id_fkey",
@@ -12077,16 +11889,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "session_id",
-        "from_node"
-      ],
+      "columns": ["session_id", "from_node"],
       "schemaTo": "public",
       "tableTo": "nodes",
-      "columnsTo": [
-        "session_id",
-        "node_id"
-      ],
+      "columnsTo": ["session_id", "node_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "edges_session_id_from_node_nodes_session_id_node_id_fkey",
@@ -12096,16 +11902,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "session_id",
-        "to_node"
-      ],
+      "columns": ["session_id", "to_node"],
       "schemaTo": "public",
       "tableTo": "nodes",
-      "columnsTo": [
-        "session_id",
-        "node_id"
-      ],
+      "columnsTo": ["session_id", "node_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "edges_session_id_to_node_nodes_session_id_node_id_fkey",
@@ -12115,18 +11915,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "session_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["session_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "interview_sessions",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "session_stats_KR0ANZzRZcL3_fkey",
@@ -12136,18 +11928,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "wave_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["wave_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "study_waves",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "session_stats_BBRbfBk1WGgv_fkey",
@@ -12157,18 +11941,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "participant_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["participant_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "participants",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "session_stats_ge210MYSasZB_fkey",
@@ -12178,16 +11954,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "session_id",
-        "team_id"
-      ],
+      "columns": ["session_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "interview_sessions",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "session_degree_hist_YZEx9b5yigap_fkey",
@@ -12197,16 +11967,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "studies",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "study_role_grants_study_fk",
@@ -12216,16 +11980,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "studies",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "consent_documents_study_fk",
@@ -12235,16 +11993,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "consent_document_id",
-        "team_id"
-      ],
+      "columns": ["consent_document_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "consent_documents",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "consent_items_document_fk",
@@ -12254,18 +12006,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "participant_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["participant_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "participants",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "participant_consents_participant_fk",
@@ -12275,18 +12019,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "consent_document_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["consent_document_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "consent_documents",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "participant_consents_document_fk",
@@ -12296,18 +12032,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "session_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["session_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "interview_sessions",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "participant_consents_session_fk",
@@ -12317,18 +12045,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "participant_consent_id",
-        "consent_document_id",
-        "team_id"
-      ],
+      "columns": ["participant_consent_id", "consent_document_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "participant_consents",
-      "columnsTo": [
-        "id",
-        "consent_document_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "consent_document_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "participant_consent_item_responses_consent_fk",
@@ -12346,12 +12066,7 @@
       ],
       "schemaTo": "public",
       "tableTo": "consent_items",
-      "columnsTo": [
-        "id",
-        "consent_document_id",
-        "key",
-        "team_id"
-      ],
+      "columnsTo": ["id", "consent_document_id", "key", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "participant_consent_item_responses_item_fk",
@@ -12361,16 +12076,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "studies",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "study_schedules_study_fk",
@@ -12380,18 +12089,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "wave_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["wave_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "study_waves",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "study_schedules_wave_fk",
@@ -12401,18 +12102,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "schedule_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["schedule_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "study_schedules",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "schedule_occurrences_schedule_fk",
@@ -12422,18 +12115,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "participant_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["participant_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "participants",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "schedule_occurrences_participant_fk",
@@ -12443,16 +12128,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "studies",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "message_templates_study_fk",
@@ -12462,18 +12141,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "participant_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["participant_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "participants",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "message_deliveries_participant_fk",
@@ -12483,20 +12154,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "occurrence_id",
-        "participant_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["occurrence_id", "participant_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "schedule_occurrences",
-      "columnsTo": [
-        "id",
-        "participant_id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "participant_id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "message_deliveries_occurrence_fk",
@@ -12506,16 +12167,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "template_id",
-        "team_id"
-      ],
+      "columns": ["template_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "message_templates",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "message_deliveries_template_fk",
@@ -12525,16 +12180,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "delivery_id",
-        "team_id"
-      ],
+      "columns": ["delivery_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "message_deliveries",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "message_delivery_events_delivery_fk",
@@ -12544,16 +12193,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "studies",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "api_tokens_study_fk",
@@ -12563,16 +12206,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "template_id",
-        "team_id"
-      ],
+      "columns": ["template_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "templates",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "template_versions_template_fk",
@@ -12582,16 +12219,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "version_id",
-        "team_id"
-      ],
+      "columns": ["version_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "template_versions",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "template_version_sections_version_fk",
@@ -12601,16 +12232,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "team_id",
-        "section_hash"
-      ],
+      "columns": ["team_id", "section_hash"],
       "schemaTo": "public",
       "tableTo": "sections",
-      "columnsTo": [
-        "team_id",
-        "hash"
-      ],
+      "columnsTo": ["team_id", "hash"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "template_version_sections_section_fk",
@@ -12620,16 +12245,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "studies",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "webhook_subscriptions_study_fk",
@@ -12639,16 +12258,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "subscription_id",
-        "team_id"
-      ],
+      "columns": ["subscription_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "webhook_subscriptions",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "webhook_deliveries_subscription_fk",
@@ -12658,16 +12271,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "experiment_id",
-        "team_id"
-      ],
+      "columns": ["experiment_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "experiments",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "experiment_assignments_experiment_fk",
@@ -12677,20 +12284,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "assignment_id",
-        "experiment_id",
-        "variant_key",
-        "team_id"
-      ],
+      "columns": ["assignment_id", "experiment_id", "variant_key", "team_id"],
       "schemaTo": "public",
       "tableTo": "experiment_assignments",
-      "columnsTo": [
-        "id",
-        "experiment_id",
-        "variant_key",
-        "team_id"
-      ],
+      "columnsTo": ["id", "experiment_id", "variant_key", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "experiment_exposures_assignment_fk",
@@ -12700,16 +12297,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "studies",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "feedback_reports_study_fk",
@@ -12719,18 +12310,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "wave_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["wave_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "study_waves",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "study_wave_rollups_wave_fk",
@@ -12740,18 +12323,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "wave_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["wave_id", "study_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "study_waves",
-      "columnsTo": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "study_id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "study_stage_rollups_wave_fk",
@@ -12770,13 +12345,7 @@
       ],
       "schemaTo": "public",
       "tableTo": "audit_events",
-      "columnsTo": [
-        "id",
-        "team_id",
-        "sequence",
-        "event_type",
-        "event_version"
-      ],
+      "columnsTo": ["id", "team_id", "sequence", "event_type", "event_version"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "audit_alert_outbox_audit_event_fk",
@@ -12786,16 +12355,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "outbox_id",
-        "team_id"
-      ],
+      "columns": ["outbox_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "audit_alert_outbox",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "audit_alert_deliveries_outbox_fk",
@@ -12805,16 +12368,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "invitation_id",
-        "team_id"
-      ],
+      "columns": ["invitation_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "team_invitations",
-      "columnsTo": [
-        "id",
-        "team_id"
-      ],
+      "columnsTo": ["id", "team_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "team_invitation_deliveries_invitation_team_fk",
@@ -12824,14 +12381,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "initial_owner_user_id"
-      ],
+      "columns": ["initial_owner_user_id"],
       "schemaTo": "public",
       "tableTo": "user",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "name": "studio_instance_initial_owner_user_id_user_id_fkey",
@@ -12841,14 +12394,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "initial_team_id"
-      ],
+      "columns": ["initial_team_id"],
       "schemaTo": "public",
       "tableTo": "teams",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "name": "studio_instance_initial_team_id_teams_id_fkey",
@@ -12857,10 +12406,7 @@
       "table": "studio_instance"
     },
     {
-      "columns": [
-        "team_id",
-        "hash"
-      ],
+      "columns": ["team_id", "hash"],
       "nameExplicit": false,
       "name": "sections_pkey",
       "entityType": "pks",
@@ -12868,10 +12414,7 @@
       "table": "sections"
     },
     {
-      "columns": [
-        "draft_id",
-        "seq"
-      ],
+      "columns": ["draft_id", "seq"],
       "nameExplicit": false,
       "name": "manifests_pkey",
       "entityType": "pks",
@@ -12879,10 +12422,7 @@
       "table": "manifests"
     },
     {
-      "columns": [
-        "draft_id",
-        "section_id"
-      ],
+      "columns": ["draft_id", "section_id"],
       "nameExplicit": false,
       "name": "leases_pkey",
       "entityType": "pks",
@@ -12890,10 +12430,7 @@
       "table": "leases"
     },
     {
-      "columns": [
-        "version_id",
-        "section_id"
-      ],
+      "columns": ["version_id", "section_id"],
       "nameExplicit": false,
       "name": "version_sections_pkey",
       "entityType": "pks",
@@ -12901,10 +12438,7 @@
       "table": "version_sections"
     },
     {
-      "columns": [
-        "team_id",
-        "hash"
-      ],
+      "columns": ["team_id", "hash"],
       "nameExplicit": false,
       "name": "assets_pkey",
       "entityType": "pks",
@@ -12912,12 +12446,7 @@
       "table": "assets"
     },
     {
-      "columns": [
-        "team_id",
-        "asset_hash",
-        "referrer_kind",
-        "referrer_id"
-      ],
+      "columns": ["team_id", "asset_hash", "referrer_kind", "referrer_id"],
       "nameExplicit": false,
       "name": "asset_references_pkey",
       "entityType": "pks",
@@ -12925,10 +12454,7 @@
       "table": "asset_references"
     },
     {
-      "columns": [
-        "session_id",
-        "node_id"
-      ],
+      "columns": ["session_id", "node_id"],
       "nameExplicit": false,
       "name": "nodes_pkey",
       "entityType": "pks",
@@ -12936,10 +12462,7 @@
       "table": "nodes"
     },
     {
-      "columns": [
-        "session_id",
-        "edge_id"
-      ],
+      "columns": ["session_id", "edge_id"],
       "nameExplicit": false,
       "name": "edges_pkey",
       "entityType": "pks",
@@ -12947,10 +12470,7 @@
       "table": "edges"
     },
     {
-      "columns": [
-        "session_id",
-        "degree"
-      ],
+      "columns": ["session_id", "degree"],
       "nameExplicit": false,
       "name": "session_degree_hist_pkey",
       "entityType": "pks",
@@ -12958,10 +12478,7 @@
       "table": "session_degree_hist"
     },
     {
-      "columns": [
-        "participant_consent_id",
-        "consent_item_id"
-      ],
+      "columns": ["participant_consent_id", "consent_item_id"],
       "nameExplicit": false,
       "name": "participant_consent_item_responses_pkey",
       "entityType": "pks",
@@ -12969,11 +12486,7 @@
       "table": "participant_consent_item_responses"
     },
     {
-      "columns": [
-        "channel",
-        "blind_index_key_id",
-        "recipient_blind_index"
-      ],
+      "columns": ["channel", "blind_index_key_id", "recipient_blind_index"],
       "nameExplicit": false,
       "name": "participant_contact_optouts_pkey",
       "entityType": "pks",
@@ -12981,10 +12494,7 @@
       "table": "participant_contact_optouts"
     },
     {
-      "columns": [
-        "version_id",
-        "section_id"
-      ],
+      "columns": ["version_id", "section_id"],
       "nameExplicit": false,
       "name": "template_version_sections_pkey",
       "entityType": "pks",
@@ -12992,9 +12502,7 @@
       "table": "template_version_sections"
     },
     {
-      "columns": [
-        "wave_id"
-      ],
+      "columns": ["wave_id"],
       "nameExplicit": false,
       "name": "study_wave_rollups_pkey",
       "entityType": "pks",
@@ -13002,10 +12510,7 @@
       "table": "study_wave_rollups"
     },
     {
-      "columns": [
-        "wave_id",
-        "stage_id"
-      ],
+      "columns": ["wave_id", "stage_id"],
       "nameExplicit": false,
       "name": "study_stage_rollups_pkey",
       "entityType": "pks",
@@ -13013,10 +12518,7 @@
       "table": "study_stage_rollups"
     },
     {
-      "columns": [
-        "purpose",
-        "key_id"
-      ],
+      "columns": ["purpose", "key_id"],
       "nameExplicit": false,
       "name": "encryption_key_verifications_pkey",
       "entityType": "pks",
@@ -13024,9 +12526,7 @@
       "table": "encryption_key_verifications"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "user_pkey",
       "schema": "public",
@@ -13034,9 +12534,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "session_pkey",
       "schema": "public",
@@ -13044,9 +12542,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "account_pkey",
       "schema": "public",
@@ -13054,9 +12550,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "verification_pkey",
       "schema": "public",
@@ -13064,9 +12558,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "rateLimit_pkey",
       "schema": "public",
@@ -13074,9 +12566,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "teams_pkey",
       "schema": "public",
@@ -13084,9 +12574,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "team_members_pkey",
       "schema": "public",
@@ -13094,9 +12582,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "team_invitations_pkey",
       "schema": "public",
@@ -13104,9 +12590,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "drafts_pkey",
       "schema": "public",
@@ -13114,9 +12598,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "command_log_pkey",
       "schema": "public",
@@ -13124,9 +12606,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "protocols_pkey",
       "schema": "public",
@@ -13134,9 +12614,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "protocol_versions_pkey",
       "schema": "public",
@@ -13144,9 +12622,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "draft_id"
-      ],
+      "columns": ["draft_id"],
       "nameExplicit": false,
       "name": "protocol_drafts_pkey",
       "schema": "public",
@@ -13154,9 +12630,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "studies_pkey",
       "schema": "public",
@@ -13164,9 +12638,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "study_waves_pkey",
       "schema": "public",
@@ -13174,9 +12646,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "participants_pkey",
       "schema": "public",
@@ -13184,9 +12654,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "interview_sessions_pkey",
       "schema": "public",
@@ -13194,9 +12662,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "interview_links_pkey",
       "schema": "public",
@@ -13204,9 +12670,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "nameExplicit": false,
       "name": "session_snapshots_pkey",
       "schema": "public",
@@ -13214,9 +12678,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "nameExplicit": false,
       "name": "session_stats_pkey",
       "schema": "public",
@@ -13224,9 +12686,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "study_role_grants_pkey",
       "schema": "public",
@@ -13234,9 +12694,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "consent_documents_pkey",
       "schema": "public",
@@ -13244,9 +12702,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "consent_items_pkey",
       "schema": "public",
@@ -13254,9 +12710,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "participant_consents_pkey",
       "schema": "public",
@@ -13264,9 +12718,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "study_schedules_pkey",
       "schema": "public",
@@ -13274,9 +12726,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "schedule_occurrences_pkey",
       "schema": "public",
@@ -13284,9 +12734,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "message_templates_pkey",
       "schema": "public",
@@ -13294,9 +12742,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "message_deliveries_pkey",
       "schema": "public",
@@ -13304,9 +12750,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "message_delivery_events_pkey",
       "schema": "public",
@@ -13314,9 +12758,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "api_tokens_pkey",
       "schema": "public",
@@ -13324,9 +12766,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "templates_pkey",
       "schema": "public",
@@ -13334,9 +12774,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "template_versions_pkey",
       "schema": "public",
@@ -13344,9 +12782,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "webhook_subscriptions_pkey",
       "schema": "public",
@@ -13354,9 +12790,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "webhook_deliveries_pkey",
       "schema": "public",
@@ -13364,9 +12798,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "experiments_pkey",
       "schema": "public",
@@ -13374,9 +12806,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "experiment_assignments_pkey",
       "schema": "public",
@@ -13384,9 +12814,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "experiment_exposures_pkey",
       "schema": "public",
@@ -13394,9 +12822,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "feedback_reports_pkey",
       "schema": "public",
@@ -13404,9 +12830,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "audit_events_pkey",
       "schema": "public",
@@ -13414,9 +12838,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "audit_export_jobs_pkey",
       "schema": "public",
@@ -13424,9 +12846,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "audit_alert_outbox_pkey",
       "schema": "public",
@@ -13434,9 +12854,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "team_id"
-      ],
+      "columns": ["team_id"],
       "nameExplicit": false,
       "name": "audit_alert_settings_pkey",
       "schema": "public",
@@ -13444,9 +12862,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "audit_alert_recipients_pkey",
       "schema": "public",
@@ -13454,9 +12870,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "audit_alert_deliveries_pkey",
       "schema": "public",
@@ -13464,9 +12878,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "scope"
-      ],
+      "columns": ["scope"],
       "nameExplicit": false,
       "name": "audit_alert_dispatch_budget_pkey",
       "schema": "public",
@@ -13474,9 +12886,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "team_invitation_deliveries_pkey",
       "schema": "public",
@@ -13484,9 +12894,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "credential_audit_events_pkey",
       "schema": "public",
@@ -13494,9 +12902,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "studio_instance_pkey",
       "schema": "public",
@@ -13504,9 +12910,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "schemaFingerprint_pkey",
       "schema": "public",
@@ -13515,10 +12919,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "drafts_id_team_id_unique",
       "entityType": "uniques",
@@ -13527,13 +12928,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "draft_id",
-        "section_id",
-        "owner",
-        "epoch",
-        "client_seq"
-      ],
+      "columns": ["draft_id", "section_id", "owner", "epoch", "client_seq"],
       "nullsNotDistinct": false,
       "name": "command_log_draft_id_section_id_owner_epoch_client_seq_unique",
       "entityType": "uniques",
@@ -13542,10 +12937,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "protocols_id_team_id_unique",
       "entityType": "uniques",
@@ -13554,10 +12946,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "protocol_id",
-        "version_number"
-      ],
+      "columns": ["protocol_id", "version_number"],
       "nullsNotDistinct": false,
       "name": "protocol_versions_protocol_id_version_number_unique",
       "entityType": "uniques",
@@ -13566,10 +12955,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "protocol_id",
-        "version_hash"
-      ],
+      "columns": ["protocol_id", "version_hash"],
       "nullsNotDistinct": false,
       "name": "protocol_versions_protocol_id_version_hash_unique",
       "entityType": "uniques",
@@ -13578,10 +12964,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "protocol_versions_id_team_id_unique",
       "entityType": "uniques",
@@ -13590,10 +12973,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "studies_id_team_id_unique",
       "entityType": "uniques",
@@ -13602,10 +12982,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "study_waves_id_team_id_unique",
       "entityType": "uniques",
@@ -13614,11 +12991,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["id", "study_id", "team_id"],
       "nullsNotDistinct": false,
       "name": "study_waves_id_study_id_team_id_unique",
       "entityType": "uniques",
@@ -13627,10 +13000,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "study_id",
-        "wave_number"
-      ],
+      "columns": ["study_id", "wave_number"],
       "nullsNotDistinct": false,
       "name": "study_waves_study_id_wave_number_unique",
       "entityType": "uniques",
@@ -13639,10 +13009,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "participants_id_team_id_unique",
       "entityType": "uniques",
@@ -13651,11 +13018,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["id", "study_id", "team_id"],
       "nullsNotDistinct": false,
       "name": "participants_id_study_id_team_id_unique",
       "entityType": "uniques",
@@ -13664,10 +13027,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "study_id",
-        "participant_code"
-      ],
+      "columns": ["study_id", "participant_code"],
       "nullsNotDistinct": false,
       "name": "participants_study_id_participant_code_unique",
       "entityType": "uniques",
@@ -13676,10 +13036,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "interview_sessions_id_team_id_unique",
       "entityType": "uniques",
@@ -13688,11 +13045,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["id", "study_id", "team_id"],
       "nullsNotDistinct": false,
       "name": "interview_sessions_id_study_id_team_id_unique",
       "entityType": "uniques",
@@ -13701,10 +13054,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "interview_links_id_team_id_unique",
       "entityType": "uniques",
@@ -13713,10 +13063,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "study_role_grants_id_team_id_unique",
       "entityType": "uniques",
@@ -13725,10 +13072,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "study_id",
-        "user_id"
-      ],
+      "columns": ["study_id", "user_id"],
       "nullsNotDistinct": false,
       "name": "study_role_grants_study_id_user_id_unique",
       "entityType": "uniques",
@@ -13737,10 +13081,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "consent_documents_id_team_id_unique",
       "entityType": "uniques",
@@ -13749,11 +13090,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["id", "study_id", "team_id"],
       "nullsNotDistinct": false,
       "name": "consent_documents_id_study_id_team_id_unique",
       "entityType": "uniques",
@@ -13762,10 +13099,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "study_id",
-        "version"
-      ],
+      "columns": ["study_id", "version"],
       "nullsNotDistinct": false,
       "name": "consent_documents_study_id_version_unique",
       "entityType": "uniques",
@@ -13774,10 +13108,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "consent_items_id_team_id_unique",
       "entityType": "uniques",
@@ -13786,12 +13117,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "consent_document_id",
-        "key",
-        "team_id"
-      ],
+      "columns": ["id", "consent_document_id", "key", "team_id"],
       "nullsNotDistinct": false,
       "name": "consent_items_id_consent_document_id_key_team_id_unique",
       "entityType": "uniques",
@@ -13800,10 +13126,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "consent_document_id",
-        "position"
-      ],
+      "columns": ["consent_document_id", "position"],
       "nullsNotDistinct": false,
       "name": "consent_items_consent_document_id_position_unique",
       "entityType": "uniques",
@@ -13812,10 +13135,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "consent_document_id",
-        "key"
-      ],
+      "columns": ["consent_document_id", "key"],
       "nullsNotDistinct": false,
       "name": "consent_items_consent_document_id_key_unique",
       "entityType": "uniques",
@@ -13824,10 +13144,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "participant_consents_id_team_id_unique",
       "entityType": "uniques",
@@ -13836,11 +13153,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["id", "study_id", "team_id"],
       "nullsNotDistinct": false,
       "name": "participant_consents_id_study_id_team_id_unique",
       "entityType": "uniques",
@@ -13849,11 +13162,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "consent_document_id",
-        "team_id"
-      ],
+      "columns": ["id", "consent_document_id", "team_id"],
       "nullsNotDistinct": false,
       "name": "participant_consents_id_consent_document_id_team_id_unique",
       "entityType": "uniques",
@@ -13862,10 +13171,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "participant_id",
-        "consent_document_id"
-      ],
+      "columns": ["participant_id", "consent_document_id"],
       "nullsNotDistinct": false,
       "name": "participant_consents_participant_id_consent_document_id_unique",
       "entityType": "uniques",
@@ -13874,10 +13180,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "study_schedules_id_team_id_unique",
       "entityType": "uniques",
@@ -13886,11 +13189,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["id", "study_id", "team_id"],
       "nullsNotDistinct": false,
       "name": "study_schedules_id_study_id_team_id_unique",
       "entityType": "uniques",
@@ -13899,10 +13198,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "schedule_occurrences_id_team_id_unique",
       "entityType": "uniques",
@@ -13911,12 +13207,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "participant_id",
-        "study_id",
-        "team_id"
-      ],
+      "columns": ["id", "participant_id", "study_id", "team_id"],
       "nullsNotDistinct": false,
       "name": "schedule_occurrences_id_participant_id_study_id_team_id_unique",
       "entityType": "uniques",
@@ -13925,11 +13216,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "schedule_id",
-        "participant_id",
-        "occurrence_index"
-      ],
+      "columns": ["schedule_id", "participant_id", "occurrence_index"],
       "nullsNotDistinct": false,
       "name": "schedule_occurrences_schedule_id_participant_id_occurrence_index_unique",
       "entityType": "uniques",
@@ -13938,10 +13225,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "message_templates_id_team_id_unique",
       "entityType": "uniques",
@@ -13966,10 +13250,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "message_deliveries_id_team_id_unique",
       "entityType": "uniques",
@@ -13978,11 +13259,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "delivery_id",
-        "provider",
-        "provider_event_id"
-      ],
+      "columns": ["delivery_id", "provider", "provider_event_id"],
       "nullsNotDistinct": false,
       "name": "message_delivery_events_delivery_id_provider_provider_event_id_unique",
       "entityType": "uniques",
@@ -13991,10 +13268,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "api_tokens_id_team_id_unique",
       "entityType": "uniques",
@@ -14003,10 +13277,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "templates_id_team_id_unique",
       "entityType": "uniques",
@@ -14015,10 +13286,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "template_versions_id_team_id_unique",
       "entityType": "uniques",
@@ -14027,10 +13295,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "template_id",
-        "version_number"
-      ],
+      "columns": ["template_id", "version_number"],
       "nullsNotDistinct": false,
       "name": "template_versions_template_id_version_number_unique",
       "entityType": "uniques",
@@ -14039,10 +13304,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "template_id",
-        "manifest_hash"
-      ],
+      "columns": ["template_id", "manifest_hash"],
       "nullsNotDistinct": false,
       "name": "template_versions_template_id_manifest_hash_unique",
       "entityType": "uniques",
@@ -14051,10 +13313,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "webhook_subscriptions_id_team_id_unique",
       "entityType": "uniques",
@@ -14063,10 +13322,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "subscription_id",
-        "webhook_id"
-      ],
+      "columns": ["subscription_id", "webhook_id"],
       "nullsNotDistinct": false,
       "name": "webhook_deliveries_subscription_id_webhook_id_unique",
       "entityType": "uniques",
@@ -14075,10 +13331,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "experiments_id_team_id_unique",
       "entityType": "uniques",
@@ -14087,10 +13340,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "team_id",
-        "key"
-      ],
+      "columns": ["team_id", "key"],
       "nullsNotDistinct": false,
       "name": "experiments_team_id_key_unique",
       "entityType": "uniques",
@@ -14099,10 +13349,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "experiment_assignments_id_team_id_unique",
       "entityType": "uniques",
@@ -14111,12 +13358,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "experiment_id",
-        "variant_key",
-        "team_id"
-      ],
+      "columns": ["id", "experiment_id", "variant_key", "team_id"],
       "nullsNotDistinct": false,
       "name": "experiment_assignments_id_experiment_id_variant_key_team_id_unique",
       "entityType": "uniques",
@@ -14125,11 +13367,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "experiment_id",
-        "subject_kind",
-        "subject_id"
-      ],
+      "columns": ["experiment_id", "subject_kind", "subject_id"],
       "nullsNotDistinct": false,
       "name": "experiment_assignments_experiment_id_subject_kind_subject_id_unique",
       "entityType": "uniques",
@@ -14138,10 +13376,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "feedback_reports_id_team_id_unique",
       "entityType": "uniques",
@@ -14150,10 +13385,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "audit_events_id_team_id_unique",
       "entityType": "uniques",
@@ -14162,13 +13394,7 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "id",
-        "team_id",
-        "sequence",
-        "event_type",
-        "event_version"
-      ],
+      "columns": ["id", "team_id", "sequence", "event_type", "event_version"],
       "nullsNotDistinct": false,
       "name": "audit_events_alert_identity_unique",
       "entityType": "uniques",
@@ -14177,10 +13403,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "audit_export_jobs_id_team_id_unique",
       "entityType": "uniques",
@@ -14189,10 +13412,7 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "id",
-        "team_id"
-      ],
+      "columns": ["id", "team_id"],
       "nullsNotDistinct": false,
       "name": "audit_alert_outbox_id_team_unique",
       "entityType": "uniques",
@@ -14201,10 +13421,7 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "team_id",
-        "member_id"
-      ],
+      "columns": ["team_id", "member_id"],
       "nullsNotDistinct": false,
       "name": "audit_alert_recipients_team_member_unique",
       "entityType": "uniques",
@@ -14213,11 +13430,7 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "outbox_id",
-        "member_id",
-        "channel"
-      ],
+      "columns": ["outbox_id", "member_id", "channel"],
       "nullsNotDistinct": false,
       "name": "audit_alert_deliveries_identity_unique",
       "entityType": "uniques",
@@ -14226,9 +13439,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "email"
-      ],
+      "columns": ["email"],
       "nullsNotDistinct": false,
       "name": "user_email_key",
       "schema": "public",
@@ -14237,9 +13448,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "token"
-      ],
+      "columns": ["token"],
       "nullsNotDistinct": false,
       "name": "session_token_key",
       "schema": "public",
@@ -14248,9 +13457,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "key"
-      ],
+      "columns": ["key"],
       "nullsNotDistinct": false,
       "name": "rateLimit_key_key",
       "schema": "public",
@@ -14259,9 +13466,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "slug"
-      ],
+      "columns": ["slug"],
       "nullsNotDistinct": false,
       "name": "teams_slug_key",
       "schema": "public",
@@ -15573,9 +14778,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15586,9 +14789,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15599,9 +14800,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15612,9 +14811,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15625,9 +14822,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15638,9 +14833,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15651,9 +14844,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15664,9 +14855,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15677,9 +14866,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15690,9 +14877,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15703,9 +14888,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15716,9 +14899,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15729,9 +14910,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15742,9 +14921,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15755,9 +14932,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15768,9 +14943,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15781,9 +14954,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15794,9 +14965,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15807,9 +14976,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15820,9 +14987,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15833,9 +14998,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15846,9 +15009,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15859,9 +15020,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15872,9 +15031,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15885,9 +15042,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15898,9 +15053,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15911,9 +15064,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15924,9 +15075,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15937,9 +15086,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15950,9 +15097,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15963,9 +15108,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -15976,9 +15119,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -15989,9 +15130,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16002,9 +15141,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16015,9 +15152,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16028,9 +15163,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16041,9 +15174,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16054,9 +15185,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16067,9 +15196,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16080,9 +15207,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16093,9 +15218,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16106,9 +15229,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16119,9 +15240,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16132,9 +15251,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16145,9 +15262,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16158,9 +15273,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16171,9 +15284,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16184,9 +15295,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16197,9 +15306,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16210,9 +15317,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16223,9 +15328,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16236,9 +15339,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16249,9 +15350,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16262,9 +15361,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16275,9 +15372,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16288,9 +15383,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16301,9 +15394,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16314,9 +15405,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16327,9 +15416,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16340,9 +15427,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16353,9 +15438,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16366,9 +15449,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16379,9 +15460,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16392,9 +15471,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16405,9 +15482,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16418,9 +15493,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16431,9 +15504,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16444,9 +15515,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16457,9 +15526,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16470,9 +15537,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16483,9 +15548,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16496,9 +15559,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16509,9 +15570,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16522,9 +15581,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16535,9 +15592,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16548,9 +15603,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16561,9 +15614,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16574,9 +15625,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16587,9 +15636,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16600,9 +15647,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16613,9 +15658,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16626,9 +15669,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16639,9 +15680,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16652,9 +15691,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16665,9 +15702,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16678,9 +15713,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16691,9 +15724,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '')",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '')",
       "name": "audit_team_isolation",
@@ -16704,9 +15735,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16717,9 +15746,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16730,9 +15757,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16743,9 +15768,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16756,9 +15779,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16769,9 +15790,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16782,9 +15801,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16795,9 +15812,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16808,9 +15823,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16821,9 +15834,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16834,9 +15845,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16847,9 +15856,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_maintenance'",
       "withCheck": "current_user = 'studio_maintenance'",
       "name": "maintenance_only",
@@ -16860,9 +15867,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
@@ -16873,9 +15878,7 @@
     {
       "as": "PERMISSIVE",
       "for": "ALL",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
@@ -16886,9 +15889,7 @@
     {
       "as": "PERMISSIVE",
       "for": "SELECT",
-      "roles": [
-        "public"
-      ],
+      "roles": ["public"],
       "using": "current_user = 'studio_backup'",
       "withCheck": null,
       "name": "backup_read",
