@@ -24,10 +24,12 @@ const messages = defineMessages({
  * Two different lists live under the same `options` key. A categorical or
  * ordinal attribute holds as many answers as the researcher writes, each with a
  * stored value of its own and at least two of them
- * (`categoricalOptionsSchema`). A boolean holds exactly two, and their values
+ * (`categoricalOptionsSchema`). A boolean is written as two, and their values
  * are the two booleans rather than anything the researcher chooses
  * (`booleanOptionsSchema`) — what is authored is the words on them, and which
- * of the two is shown as the negative answer.
+ * of the two is shown as the negative answer. Two is the shape this editor
+ * writes rather than a length the schema holds it to, and
+ * `holdsEditableBooleanAnswers` is where the difference is dealt with.
  *
  * So the shape is not a property of the key: it is decided by the attribute,
  * the way a `ParameterShape` is decided by the control — and the two lists are
@@ -87,6 +89,46 @@ const readBooleanAnswer = (
     ...(typeof held.negative === 'boolean' ? { negative: held.negative } : {}),
   };
 };
+
+/**
+ * Whether the answers this attribute holds are the pair the fieldset writes.
+ *
+ * The fieldset is exactly two answers, keyed and labelled by the boolean each
+ * one records, and it writes exactly two. `booleanOptionsSchema` is a plain
+ * array with no length of its own, though, and `BooleanField` renders every
+ * entry it is given — falling back to Yes and No only where the protocol
+ * carries no `options` key at all. So a protocol may hold one answer, or four,
+ * and each of them is a button a participant meets.
+ *
+ * Those are lists this editor cannot show: shown as the pair, one answer would
+ * gain a second the researcher never wrote, and four would lose two. Neither
+ * is the researcher's to be given without asking, so the fieldset is not
+ * offered for them and the list is written back exactly as it was authored —
+ * an attribute whose answers this editor cannot edit can still be renamed,
+ * retyped and given a validation rule.
+ *
+ * An attribute naming NO answers is the pair too: it is what a boolean starts
+ * as, and the two blank fields are how the researcher names them. So is an
+ * empty array, which the schema refuses for a `Boolean` control and which
+ * clearing both fields takes away.
+ */
+export const holdsEditableBooleanAnswers = (options: unknown): boolean =>
+  !Array.isArray(options) || options.length === 0 || options.length === 2;
+
+/**
+ * Every answer this attribute holds, for an editor that can only show them.
+ *
+ * Read the way the pair is read — a label of nothing where none was written,
+ * the recorded boolean as the protocol holds it — but positionally faithful
+ * and never repaired: this is what the participant meets, not something being
+ * edited.
+ */
+export const readHeldBooleanAnswers = (
+  options: unknown,
+): readonly BooleanAnswer[] =>
+  Array.isArray(options)
+    ? options.map((option) => readBooleanAnswer(option, false))
+    : [];
 
 /**
  * The two answers as the editor holds them, from whatever the draft carries.
@@ -155,6 +197,10 @@ const booleanOptionsFrom = (
  * row at a time by controls that already hold the schema's shape, and anything
  * wrong with it is the request builder's to refuse against the row it belongs
  * to.
+ *
+ * A boolean's answers are passed through on the same terms wherever they are
+ * not the pair the fieldset writes — see `holdsEditableBooleanAnswers`. Only
+ * what the researcher was shown is rewritten.
  */
 export const optionsForShape = (
   shape: OptionsShape | null,
@@ -162,6 +208,7 @@ export const optionsForShape = (
 ): unknown => {
   if (shape === null) return undefined;
   if (shape === 'choice') return options;
+  if (!holdsEditableBooleanAnswers(options)) return options;
   return booleanOptionsFrom(options);
 };
 
@@ -190,7 +237,10 @@ export type BooleanAnswerIssues = Readonly<Record<number, readonly string[]>>;
  * one button written twice. A categorical option's label is compared
  * case-insensitively because its VALUE becomes a key.
  *
- * Naming neither is not a refusal — see `booleanOptionsFrom`.
+ * Naming neither is not a refusal — see `booleanOptionsFrom`. Nor is anything
+ * about a list the fieldset never offered: answers the researcher was not
+ * shown are answers they cannot be asked to fix, and they are saved as they
+ * were authored either way.
  *
  * Encoded rather than formatted, and so taking no formatter: this is asked
  * while a form is being judged, where there is no reader and no language, and
@@ -201,6 +251,7 @@ export type BooleanAnswerIssues = Readonly<Record<number, readonly string[]>>;
 export const validateBooleanAnswers = (
   options: unknown,
 ): BooleanAnswerIssues => {
+  if (!holdsEditableBooleanAnswers(options)) return {};
   const written = booleanOptionsFrom(options);
   if (written === undefined) return {};
   const issues: Record<number, string[]> = {};

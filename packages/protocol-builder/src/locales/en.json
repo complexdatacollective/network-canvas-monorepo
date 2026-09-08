@@ -427,6 +427,14 @@
     "defaultMessage": "Attribute not saved",
     "description": "Heading of the alert shown when saving an attribute (a codebook variable) was refused. The reason follows underneath."
   },
+  "protocolBuilder.codebookVariable.heldAnswersCaption": {
+    "defaultMessage": "A yes/no attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.",
+    "description": "Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds some number of answers other than the two this editor writes. It says that saving the attribute does not alter them."
+  },
+  "protocolBuilder.codebookVariable.heldAnswersLegend": {
+    "defaultMessage": "The answers this attribute offers",
+    "description": "Heading over the read-only list of answers a yes/no attribute puts in front of a participant. Shown in place of the two answer fields when the attribute holds some other number of answers."
+  },
   "protocolBuilder.codebookVariable.interfaceOwnedOptions": {
     "defaultMessage": "These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.",
     "description": "Refusal shown when a researcher edits the allowed values of an attribute (a codebook variable) whose values one kind of interview step owns. An interface is one kind of interview step."

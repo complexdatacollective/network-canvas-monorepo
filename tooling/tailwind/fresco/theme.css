@@ -261,18 +261,27 @@
    *
    * Mixed toward `--text` rather than darkened, because "further from the
    * surface" is downwards on a light theme and upwards on a dark one, and a
-   * mix is directionally right in both without a per-theme value to keep in
-   * step.
+   * mix is directionally right in both.
    *
-   * Read only where a surface opts in — `[--destructive:var(--color-destructive-strong)]`
+   * The mix itself is written in each theme file, beside the `--destructive`
+   * and `--text` it reads — NOT here. A custom property's `var()`s are
+   * substituted on the element the declaration sits on, so the same expression
+   * left in this block resolves once against `:root`'s light pair and cascades
+   * that one answer into every dark, studio and interview region below it. It
+   * did: on a dark accent surface the ink landed at 2.04:1, worse than the
+   * plain `--destructive` it was meant to improve on (3.44:1), where a mix
+   * made in the dark scope reaches 4.63:1. `--surface-accent` is redeclared
+   * per theme for exactly this reason and says so.
+   *
+   * Read only where a surface opts in — `[--destructive:var(--destructive-strong)]`
    * on the element that tints its own background — so the colour every button,
-   * badge and page-level error is drawn with does not move.
+   * badge and page-level error is drawn with does not move. Opting in reads
+   * the theme variable rather than this token: this mapping is inlined into
+   * the utilities Tailwind generates (`text-destructive-strong`), which
+   * resolve at the use site, but `var(--color-destructive-strong)` written out
+   * by hand reads the `:root` copy and freezes again.
    */
-  --color-destructive-strong: color-mix(
-    in oklch,
-    var(--destructive) 78%,
-    var(--text)
-  );
+  --color-destructive-strong: var(--destructive-strong);
 
   --color-warning: var(--warning);
   --color-warning-contrast: var(--warning-contrast);

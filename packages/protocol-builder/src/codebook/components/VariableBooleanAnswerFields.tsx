@@ -81,7 +81,7 @@ export default function VariableBooleanAnswerFields({
             spacing="sm"
             shadow="xs"
             series="accent"
-            className="w-full overflow-visible! [--destructive:var(--color-destructive-strong)]"
+            className="w-full overflow-visible! [--destructive:var(--destructive-strong)]"
           >
             <UnconnectedField
               name={`boolean-answer-${records}-label`}

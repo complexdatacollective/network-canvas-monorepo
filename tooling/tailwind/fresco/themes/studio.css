@@ -270,6 +270,14 @@
 
     --destructive: oklch(var(--tomato));
     --destructive-contrast: oklch(var(--white));
+    /* Redeclared here rather than inherited, like every other expression in
+       this block: made at `:root` it would carry the default theme's ink into
+       a studio region. See `--color-destructive-strong` in theme.css. */
+    --destructive-strong: color-mix(
+      in oklch,
+      var(--destructive) 78%,
+      var(--text)
+    );
 
     --warning: oklch(
       from oklch(var(--neon-carrot)) calc(l - 0.17) calc(c + 0.06) h
@@ -526,6 +534,14 @@
      */
     --destructive: oklch(from oklch(var(--tomato)) calc(l + 0.08) c h);
     --destructive-contrast: oklch(0.16 0.03 var(--base-hue));
+    /* Remade against this block's own pair, for the reason stated at the top
+       of it: the light expression re-resolved here would mix the bright fill
+       toward near-black ink and darken the error into the surface. */
+    --destructive-strong: color-mix(
+      in oklch,
+      var(--destructive) 78%,
+      var(--text)
+    );
 
     --warning: oklch(from oklch(var(--neon-carrot)) calc(l + 0.04) c h);
     --warning-contrast: oklch(0.18 0.03 var(--base-hue));
