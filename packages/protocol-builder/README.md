@@ -61,6 +61,13 @@ codebook change arriving, a section lock lost and regained, a compound edit
 refused, a file imported and saved with the stage, an editor closed without
 saving. Read it before writing a host of your own.
 
+**Studio, the one real host today, discharges four of the six.**
+`apps/studio/client/src/editor/useStudioStageSession.ts` does 1 to 4 and
+supplies neither `onCompoundEdit` nor a `resourceGateway`: neither has a Studio
+transport yet. So 5 and 6 are proved by the proof host and nowhere else, and
+`apps/studio/client/src/editor/__tests__/hostResponsibilities.test.ts` reads
+that adapter and fails when the division changes.
+
 ## Session and controller
 
 ```ts

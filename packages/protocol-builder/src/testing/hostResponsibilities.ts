@@ -16,6 +16,24 @@
  * contract section is generated from it (`__tests__/readme.test.ts`), Studio's
  * adapter test pins which of these it discharges, and the proof host's stories
  * count it. A `.stories.tsx` cannot be any of their sources.
+ *
+ * STUDIO DISCHARGES FOUR OF THE SIX TODAY, not all of them.
+ * `apps/studio/client/src/editor/useStudioStageSession.ts` opens the store
+ * with the draft's sections, the revision they were read at and the access its
+ * lease granted (1); commits each batch through the RPC client and answers
+ * with `receiveAuthoritativeUpdate` and `acknowledge` (2); relays a newer
+ * draft arriving over the subscription, replacing the stage when the stage
+ * itself moved (3); and calls `setAccess` when the lease is lost or regained
+ * (4). It supplies no `onCompoundEdit` — one wired straight to the RPC client
+ * could overtake a commit still in flight, and the server would judge the
+ * compound edit against a stage without it — and no `resourceGateway`.
+ * Neither has a Studio transport yet, and building one is outside this epic.
+ *
+ * So 5 and 6 are proved by the proof host and by nothing else, which is the
+ * reason it opens a session that has both. That division is pinned by
+ * `apps/studio/client/src/editor/__tests__/hostResponsibilities.test.ts`: it
+ * reads the adapter and fails when Studio starts (or stops) discharging one,
+ * so this paragraph cannot go on saying four after the answer changes.
  */
 export const HOST_RESPONSIBILITIES: readonly string[] = Object.freeze([
   'Open the session on the stage the researcher chose, with the protocol’s sections, the revision they were read at, and the access the section lock granted.',
