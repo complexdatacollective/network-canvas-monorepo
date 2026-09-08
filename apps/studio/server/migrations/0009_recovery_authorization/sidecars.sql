@@ -2459,4 +2459,3 @@ GRANT UPDATE (handle_consumed_at) ON audit_export_jobs TO studio_app;
 
 REVOKE UPDATE, DELETE, TRUNCATE ON audit_events
   FROM studio_app, studio_maintenance;
-

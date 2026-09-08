@@ -3,7 +3,7 @@
   "id": "0009_recovery_authorization",
   "previous": "0008_verified_key_references",
   "fingerprint": "01e8b6fce6424a2886c1d184e7bf008da5d971535301e6a1c1afb946f8303df0",
-  "snapshotHash": "35f4d6e1de71db491b50bc74d31c52bea368bbf7f8bca8f2c04a3a7efe042071",
+  "snapshotHash": "8e8e483712a37ba41d43d0c8c174909fe4c24a79bad0fdcc7313d15e1d8476bb",
   "sqlHash": "d2849271edeee8ddaeef40c067eeb4dc7cba1fcffc47886aa649393991190d43",
-  "sidecarsHash": "82d2c2bb54843d1f64385d3249d85314cf3ccc3ae98517f61061d47ad4c768da"
+  "sidecarsHash": "2296d62a7d058f60e3b0eb5cc37d2a6b63248bf107b52ad948cdf8ec1ae2b5cb"
 }
