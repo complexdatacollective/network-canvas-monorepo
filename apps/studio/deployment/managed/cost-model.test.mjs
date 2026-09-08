@@ -13,6 +13,8 @@ const fixture = JSON.parse(
 const reviewTime = Date.parse('2026-09-08T12:00:00.000Z');
 function declaredBudget() {
   const input = structuredClone(fixture);
+  input.postmarkPlanRef = 'synthetic-mail-plan';
+  input.workerTierId = 'synthetic-worker-tier';
   input.minimumHeadroomUsd = 5;
   input.lineItems.find(({ category }) => category === 'reserve').unitPriceUsd =
     1;
@@ -30,6 +32,15 @@ function declaredBudget() {
       unitPriceUsd: item.unitPriceUsd,
       reviewedAt: '2026-09-08',
       sourceUrl: 'https://example.invalid/synthetic-pricing',
+      ...(['mail', 'mail-overage'].includes(item.category)
+        ? {
+            planRef: input.postmarkPlanRef,
+            includedQuantity: input.postmarkIncludedMessages,
+          }
+        : {}),
+      ...(item.category.startsWith('primary-ingress')
+        ? { tierId: input.workerTierId }
+        : {}),
       ...(item.unitPriceUsd === 0
         ? {
             coveredQuantity: item.quantity,
@@ -132,6 +143,7 @@ test('refuses missing or non-numeric capacity and retention evidence', () => {
 test('prices the declared services and traffic instead of independent smaller quantities', () => {
   for (const category of [
     'compute',
+    'fly-egress',
     'database-plan',
     'database-storage',
     'database-transfer',
@@ -147,6 +159,11 @@ test('prices the declared services and traffic instead of independent smaller qu
     'validator-compute',
     'validator-requests',
     'validator-transfer',
+    'mail-overage',
+    'primary-ingress',
+    'primary-ingress-requests',
+    'primary-ingress-cpu',
+    'primary-ingress-websocket',
   ]) {
     const mutated = structuredClone(fixture);
     const item = mutated.lineItems.find((entry) => entry.category === category);
@@ -191,9 +208,9 @@ test('cannot qualify production from Boolean declarations and placeholder quotes
   );
 });
 
-test('refuses unpriced ingress, compute sizing, and validator execution changes', () => {
+test('refuses unpriced Worker usage, compute sizing, and validator execution changes', () => {
   for (const [field, value] of [
-    ['primaryIngressGb', 1000000],
+    ['workerMonthlyRequestCount', 1000001],
     [
       'flyServiceResources',
       {
@@ -214,15 +231,15 @@ test('refuses unpriced ingress, compute sizing, and validator execution changes'
   }
 });
 
-test('increasing declared ingress and validator execution increases the estimate', () => {
+test('increasing declared Worker requests and validator execution increases the estimate', () => {
   const mutated = structuredClone(fixture);
   const before = evaluateManagedEstateCost(mutated).totalUsd;
-  mutated.primaryIngressGb = 100;
+  mutated.workerMonthlyRequestCount = 2_000_000;
   const ingress = mutated.lineItems.find(
-    ({ category }) => category === 'primary-ingress',
+    ({ category }) => category === 'primary-ingress-requests',
   );
-  ingress.quantity = 100;
-  ingress.unitPriceUsd = 0.02;
+  ingress.quantity = 2_000_000;
+  ingress.unitPriceUsd = 0.000002;
   mutated.validatorMemoryGb *= 2;
   mutated.lineItems.find(
     ({ category }) => category === 'validator-compute',
@@ -301,6 +318,154 @@ test('prices the complete locked recovery window and scheduled transfer', () => 
   );
 });
 
+test('binds source database egress to every scheduled dump', () => {
+  const input = structuredClone(fixture);
+  input.databaseTransferGb = 0;
+  input.lineItems.find(
+    ({ category }) => category === 'database-transfer',
+  ).quantity = 0;
+  assert.throws(
+    () => evaluateManagedEstateCost(input),
+    /databaseTransferGb is below the required recovery cadence/,
+  );
+});
+
+test('prices retained object versions, recovery copies, and 30-day readback', () => {
+  const missingVersions = structuredClone(fixture);
+  missingVersions.primaryObjectRetainedVersionGb =
+    missingVersions.primaryObjectStoredGb;
+  missingVersions.primaryObjectRetainedVersionCount =
+    missingVersions.primaryObjectCurrentCount;
+  assert.throws(
+    () => evaluateManagedEstateCost(missingVersions),
+    /retained object version inventory/,
+  );
+
+  const currentOnlyStorage = structuredClone(fixture);
+  currentOnlyStorage.lineItems.find(
+    ({ category }) => category === 'primary-object-storage',
+  ).quantity = currentOnlyStorage.primaryObjectStoredGb;
+  assert.throws(
+    () => evaluateManagedEstateCost(currentOnlyStorage),
+    /quantity does not match/,
+  );
+
+  for (const [field, category, value, divisor] of [
+    ['backupRequestCount', 'backup-requests', 11904, 1],
+    ['validatorRequestCount', 'validator-requests', 11904, 1],
+    ['backupEgressGb', 'backup-egress', 595.2, 1],
+    ['validatorTransferGb', 'validator-transfer', 595.2, 1],
+    ['backupStoredGb', 'backup-storage', 615.2, 1000],
+  ]) {
+    const input = structuredClone(fixture);
+    input[field] = value;
+    input.lineItems.find(({ category: candidate }) => candidate === category)[
+      'quantity'
+    ] = value / divisor;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      /required recovery cadence/,
+      field,
+    );
+  }
+
+  const omittedCopyTransfer = structuredClone(fixture);
+  omittedCopyTransfer.primaryObjectEgressGb =
+    omittedCopyTransfer.primaryObjectApplicationEgressGb;
+  omittedCopyTransfer.lineItems.find(
+    ({ category }) => category === 'primary-object-egress',
+  ).quantity = omittedCopyTransfer.primaryObjectEgressGb;
+  assert.throws(
+    () => evaluateManagedEstateCost(omittedCopyTransfer),
+    /application delivery and recovery copies/,
+  );
+});
+
+test('binds Postmark plan and overage costs to measured message volume', () => {
+  const omittedOverage = structuredClone(fixture);
+  omittedOverage.lineItems.find(
+    ({ category }) => category === 'mail-overage',
+  ).quantity = 0;
+  assert.throws(
+    () => evaluateManagedEstateCost(omittedOverage),
+    /quantity does not match/,
+  );
+
+  const wrongAllowance = declaredBudget();
+  wrongAllowance.lineItems.find(({ category }) => category === 'mail').pricing[
+    'includedQuantity'
+  ] = 1_000_000;
+  assert.throws(
+    () => evaluateManagedEstateCost(wrongAllowance, budgetOptions),
+    /selected mail plan and included message allowance/,
+  );
+});
+
+test('requires measured Fly egress and Worker tier, request, CPU, and WebSocket costs', () => {
+  for (const [category, quantity] of [
+    ['fly-egress', 0],
+    ['primary-ingress', 0],
+    ['primary-ingress-requests', 0],
+    ['primary-ingress-cpu', 0],
+    ['primary-ingress-websocket', 0],
+  ]) {
+    const input = structuredClone(fixture);
+    input.lineItems.find(({ category: candidate }) => candidate === category)[
+      'quantity'
+    ] = quantity;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      /quantity does not match/,
+      category,
+    );
+  }
+
+  for (const field of [
+    'flyApplicationEgressGb',
+    'workerMonthlyRequestCount',
+    'workerMonthlyCpuMilliseconds',
+  ]) {
+    const input = structuredClone(fixture);
+    input[field] = 0;
+    const category =
+      field === 'flyApplicationEgressGb'
+        ? 'fly-egress'
+        : field === 'workerMonthlyRequestCount'
+          ? 'primary-ingress-requests'
+          : 'primary-ingress-cpu';
+    input.lineItems.find(({ category: candidate }) => candidate === category)[
+      'quantity'
+    ] = 0;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      /must measure the active/,
+      field,
+    );
+  }
+
+  const wrongTier = declaredBudget();
+  wrongTier.lineItems.find(
+    ({ category }) => category === 'primary-ingress-cpu',
+  ).pricing['tierId'] = 'different-tier';
+  assert.throws(
+    () => evaluateManagedEstateCost(wrongTier, budgetOptions),
+    /selected Worker tier/,
+  );
+
+  for (const [field, value] of [
+    ['workerTierId', 'unselected'],
+    ['postmarkPlanRef', 'historical-comparison'],
+  ]) {
+    const input = declaredBudget();
+    input[field] = value;
+    assert.throws(
+      () => evaluateManagedEstateCost(input, budgetOptions),
+      /selected provider product/,
+      field,
+    );
+  }
+});
+
 test('requires measured dump sizes for every database before costing recovery', () => {
   for (const value of [
     undefined,
@@ -323,7 +488,7 @@ test('adding a reserve cannot turn placeholder pricing into an accepted budget',
     1;
   assert.throws(
     () => evaluateManagedEstateCost(input, budgetOptions),
-    /current pricing declaration/,
+    /selected provider product|current pricing declaration/,
   );
 });
 

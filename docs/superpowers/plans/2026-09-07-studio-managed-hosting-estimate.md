@@ -2,7 +2,13 @@
 
 Status: Candidate comparison, 2026-09-07. No paid resources provisioned; this is not a deployment or recovery qualification.
 
-The authorized ceiling is **$100 per month for hosting**. Codex and AI usage are outside that ceiling. The current technically plausible candidate already exceeds the ceiling before its required independent recovery and monitoring services are included. Do not provision this candidate under the existing authorization, assume shared free allowances are unused, or reduce the accepted recovery requirements to make the estimate fit.
+This table preserves the historical Standard-4 comparison that established the
+original fixed-cost conflict. The active managed-estate foundation now evaluates
+an unqualified Hobby-2 candidate through
+`apps/studio/deployment/managed/candidate-sizing.json`; this document does not
+select Standard-4 or supersede that current candidate contract.
+
+The authorized ceiling is **$100 per month for hosting**. Codex and AI usage are outside that ceiling. This historical Standard-4 candidate already exceeded the ceiling before its required independent recovery and monitoring services were included. Do not provision it under the existing authorization, assume shared free allowances are unused, or reduce the accepted recovery requirements to make an estimate fit.
 
 ## Candidate and fixed-cost floor
 

@@ -94,8 +94,9 @@ configuration archive, and their account-recovery paths.
    authenticated by the deployment qualification workflow before it can admit
    deployment. That workflow is not implemented in this foundation.
 
-   The checked-in input is illustrative and incomplete, with unverified prices
-   and zero reserve; it fails `--budget`. `node cost-model.mjs cost-input.json`
+   The checked-in input is illustrative and incomplete, with unverified prices,
+   zero reserve, and no selected Workers tier; it fails `--budget`.
+   `node cost-model.mjs cost-input.json`
    only reports the estimate. Every budget line requires a `pricing` object with
    `currency: "USD"`, the exact `quantity` and `unitPriceUsd`, and a `reviewedAt`
    date (`YYYY-MM-DD`) within the preceding 30 days. Paid categories require
@@ -106,26 +107,43 @@ configuration archive, and their account-recovery paths.
    reserve is added. These are operator declarations, not authenticated quotes;
    the command never grants deployment qualification.
 
-   Quantities must match measured usage: compute
-   prices all four candidate Machines for 744 hours, ingress is priced per GB
-   separately from fixed DNS, and validator compute prices run count times
+   Its traffic, object-version, mail, and execution quantities are synthetic
+   arithmetic examples rather than measurements from an account or workload.
+   Replace every one with bounded measurement evidence before supplying current
+   pricing declarations.
+
+   Quantities must match measured usage. Compute prices all four candidate
+   Machines for 744 hours, and `flyApplicationEgressGb` separately prices their
+   API, WebSocket, Registry, and other outbound delivery. The ingress Worker has
+   separate mandatory tier, request, CPU-millisecond, and WebSocket-minute
+   categories; no zero-priced per-GB placeholder represents those account
+   charges. `workerTierId` remains unselected until an account-visible product
+   and its current allowances/rates have been reviewed.
+
+   `databaseDumpSizesGb` must measure each of the four databases. The shared
+   30-minute schedule requires at least 5,952 database validations and 595.2 GB
+   of source-provider egress in this illustrative 0.4 GB aggregate-dump case,
+   with the corresponding B2 and validator requests and full-dump transfer.
+   For objects, current count/bytes, monthly version churn, and the complete
+   recovery-retained version inventory are separate measurements. The retained
+   inventory must cover current objects plus churn. Its 31-day storage,
+   recovery-copy reads/writes and transfer, and every retained version's
+   30-day B2 readback/validator scrub are lower bounds on the aggregate R2, B2,
+   and validator quantities. Retries, growth, and restore drills remain extra
+   measured usage.
+
+   Postmark pricing separates one selected plan from the overage message count
+   derived as `max(0, postmarkMessageCount - postmarkIncludedMessages)`. A
+   current budget declaration must identify the same plan and included-message
+   allowance on both mail rows. Validator compute prices run count times
    measured memory GB times billed seconds (GB-seconds), with requests and
-   transfer separate. `databaseDumpSizesGb` must measure each of the four
-   databases. The shared 30-minute schedule requires at least 5,952 database
-   validations in a 31-day month, with corresponding requests and full dump
-   transfer. B2's shared 31-day compliance lock means storage must cover every
-   frequent archive for all 31 days, plus at least current primary object data;
-   a seven-day storage estimate would underprice locked archives. These are
-   lower bounds: retained historical object versions, retries, growing dumps,
-   full object readback and restore drills must also be measured and priced.
-   A changed resource size is refused unless the shared
-   candidate and price review are updated together. PostgreSQL storage and
-   plan identity are also bound to that same candidate; an independent tfvars
-   storage increase or plan substitution refuses validation. Measure database transfer,
-   R2 storage/Class A/Class B/egress, KMS requests, B2 storage/requests/egress,
-   mail, and monitoring. Total recurring cost including a non-zero recovery
-   reserve must be at most $100/month and preserve the selected dollar headroom.
-   Measured New Relic ingest must keep at least 2x headroom under its free limit.
+   transfer separate. A changed resource size is refused unless the shared
+   candidate and price review are updated together. PostgreSQL storage and plan
+   identity are also bound to that same candidate; an independent tfvars storage
+   increase or plan substitution refuses validation. Total recurring cost,
+   including a non-zero recovery reserve, must be at most $100/month and preserve
+   the selected dollar headroom. Measured New Relic ingest must keep at least 2x
+   headroom under its free limit.
 
 2. Prove Hobby-2 can actually sustain `shared_buffers >= 1 GB` and app-role
    `work_mem >= 256 MB`, all process pools and four logical databases under
@@ -133,6 +151,14 @@ configuration archive, and their account-recovery paths.
    storage-growth, and latency headroom. The plan has no PgBouncer, no SLA, and
    best-effort health/audit/support, so price and `terraform validate` cannot
    qualify it.
+
+   The earlier `docs/superpowers/plans/2026-09-07-studio-managed-hosting-estimate.md`
+   Standard-4 table is a historical cost comparison showing that candidate's
+   fixed floor exceeded the cap. It is not the active plan selection. The
+   active candidate is Hobby-2, and it remains unqualified until the
+   live catalogue, settings, grants, and representative capacity checks above
+   succeed.
+
 3. Create all four databases closed to public connection, run the real numbered
    migrations, install exhaustive current runtime/operator/backup role grants,
    verify effective settings, and only then admit their matching singleton.
