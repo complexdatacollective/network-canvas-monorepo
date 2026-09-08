@@ -1110,9 +1110,26 @@ describe('draft resource validation', () => {
 
   it('places the draft where the canonical protocol will put it', () => {
     expect(stageIndexForValidation(protocolSections, 'stage-1')).toBe(1);
-    // A stage the order does not list yet is assembled at the end.
+    // A stage the order does not list yet, and nothing else explains, is
+    // assembled at the end.
     expect(stageIndexForValidation(protocolSections, 'stage-new')).toBe(2);
     expect(stageIndexForValidation({}, 'stage-1')).toBe(0);
+  });
+
+  it('places a stage being created where the host will insert it', () => {
+    // A resource problem numbered at the end of the interview is a problem on
+    // whichever stage is last there, and the schema's own issues about the
+    // same draft arrive at the insertion index — two accounts of one stage.
+    expect(
+      stageIndexForValidation(protocolSections, 'stage-new', { position: 1 }),
+    ).toBe(1);
+    expect(
+      stageIndexForValidation(protocolSections, 'stage-new', { position: 0 }),
+    ).toBe(0);
+    // Past the end of the interview is the end of it.
+    expect(
+      stageIndexForValidation(protocolSections, 'stage-new', { position: 9 }),
+    ).toBe(2);
   });
 
   it('drops a resource problem the schema already reported for that field', () => {

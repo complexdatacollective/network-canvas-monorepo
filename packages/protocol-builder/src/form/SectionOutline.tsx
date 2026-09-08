@@ -1,7 +1,7 @@
 import { AlertCircle, Check, Circle, Lock, MinusCircle } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -59,6 +59,12 @@ const messages = defineMessages({
     defaultMessage: 'Stage sections',
     description:
       'Accessible name of the navigation landmark listing the sections of the stage being edited. A stage is one step of an interview.',
+  },
+  statusWithProblems: {
+    id: 'protocolBuilder.outline.statusWithProblems',
+    defaultMessage: '{status}. {problems}',
+    description:
+      'Read out for a section of a stage editor whose only account of what is wrong is here. status is the section’s spoken state ("Has a problem"); problems is one or more whole sentences describing what the protocol refused, already in the reader’s language. Both are complete sentences, so this is only the punctuation that separates them.',
   },
 });
 
@@ -143,8 +149,61 @@ function SectionOutlineItem({ section }: { section: OutlineSection }) {
       getFieldErrors: (name) => state.getFieldErrors(name),
     }),
   );
+  /**
+   * Which of this section's session problems the control that owns each one is
+   * already reporting, in the order `section.issues` lists them.
+   *
+   * One character per problem rather than the problems themselves, because a
+   * selector answering with an array or an object hands the store a new value
+   * on every read; and a signature rather than a joined list of names, because
+   * a field name may legally contain whatever separator a join would pick.
+   *
+   * Asked per PROBLEM, not per section. A section can be wrong in two ways at
+   * once — a required control left empty and a reference to a resource the
+   * protocol does not have — and the second is exactly the kind nothing on the
+   * page can explain. Suppressing every sentence because some other field of
+   * the same section is unhappy left a screen-reader user with "Has a problem"
+   * and no way to find out what it was.
+   */
+  const alreadySaid = useFormStore((state) =>
+    section.issues
+      .map((issue) =>
+        (state.getFieldErrors(issue.fieldName)?.length ?? 0) > 0 ? '!' : '.',
+      )
+      .join(''),
+  );
+  const unexplained = section.issues.filter(
+    (_, index) => alreadySaid[index] !== '!',
+  );
   const presentation = STATUS_PRESENTATION[status];
   const StatusIcon = presentation.icon;
+  // The control's own words come first, one problem at a time. A control
+  // showing a message beside itself has already said what is wrong in the
+  // vocabulary of the thing being edited, and repeating the schema's version
+  // of THAT underneath would be two accounts of one fault. Every other
+  // problem is still read out — a reference to a resource the protocol does
+  // not have, a type a collaborator deleted — because for those this is the
+  // only place it is written down.
+  //
+  // The problems are DECODED here rather than read as they were stored: the
+  // outline store has no reader, so each one arrives as an encoded descriptor
+  // (`schemaProblemSentence`) — or as a plain sentence a host or the protocol
+  // schema wrote, which the same call passes through untouched.
+  const statusLabel = intl.formatMessage(presentation.label);
+  const announced =
+    status === 'error' && unexplained.length > 0
+      ? intl.formatMessage(messages.statusWithProblems, {
+          status: statusLabel,
+          // Joined with a space rather than through `formatList`: these are
+          // whole sentences in sequence, not the members of a list, and "a, b
+          // and c" would read them as one thing that is three ways wrong.
+          problems: unexplained
+            .map(
+              ({ sentence }) => formatMessageError(sentence, intl) ?? sentence,
+            )
+            .join(' '),
+        })
+      : statusLabel;
 
   return (
     <button
@@ -157,7 +216,13 @@ function SectionOutlineItem({ section }: { section: OutlineSection }) {
         className={cx('size-4 shrink-0', presentation.className)}
       />
       <span className="truncate">{section.title}</span>
-      <span className="sr-only">{intl.formatMessage(presentation.label)}</span>
+      {/*
+        The status, and — when the problem is one only the session can see —
+        what it is. A dangling resource reference has no field showing a
+        message beside it, so the outline is the only place it is written down,
+        and reading it must not depend on seeing the colour of an icon.
+      */}
+      <span className="sr-only">{announced}</span>
     </button>
   );
 }
