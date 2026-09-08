@@ -285,7 +285,7 @@ export async function localDeployment(label: string) {
     command: [${JSON.stringify(TELEMETRY_DETECTOR_SOURCE)}]
     restart: unless-stopped
     read_only: true
-    tmpfs: [/tmp:size=1m,mode=1777]
+    tmpfs: ["/tmp:size=1m,mode=1777"]
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
     networks:
