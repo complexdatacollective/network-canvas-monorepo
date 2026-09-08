@@ -1,6 +1,6 @@
 import type pg from 'pg';
 
-import { assertBackupAccess } from './db/backup.ts';
+import { assertBackupAccess, assertBackupCustodyAccess } from './db/backup.ts';
 import { createBackupPool } from './db/pool.ts';
 import { checkSchema } from './db/schema.ts';
 import {
@@ -28,7 +28,8 @@ try {
   const allowedLogins = readMigrationAllowedLogins();
   const administrativeLogins = readMigrationAdministrativeLogins(allowedLogins);
   pool = createBackupPool(readMigrationDatabase());
-  await assertBackupAccess(pool, async (client) => {
+  const verifyBackup = keys ? assertBackupCustodyAccess : assertBackupAccess;
+  await verifyBackup(pool, async (client) => {
     // The verifier has established this actual backup identity is read-only.
     // Keep complete enrollment, capabilities and schema checks on its bounded
     // transaction while all writer LOGINs remain quarantined.
