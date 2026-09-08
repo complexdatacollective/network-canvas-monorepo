@@ -46,15 +46,34 @@ Lock retention. The Crunchy provider only provisions the cluster. It does not
 create the four databases or enforce the SQL security contract.
 
 Fly's official Terraform provider was archived in 2024. `candidate_inventory`
-therefore emits service requirements, not Machines API request bodies. This
-module does not provision compute. The four sizes and 744-hour billing month
-come from `candidate-sizing.json`, shared with the cost estimator; changes to
-CPU or memory require a reviewed sizing and price update. A reviewed authenticated Machines API module must create
-each service with one IAD Machine, no auto-stop, the exact digest, private
-database/object connectivity, health checks, secret injection, and the
-single-origin routing contract. R2 credentials/versioning, database enrollment,
-New Relic configuration, and replication/validation workers also remain explicit
-modules rather than unsupported placeholder resources.
+therefore emits service requirements, not Machines API request bodies. The four
+sizes and 744-hour billing month come from `candidate-sizing.json`, shared with
+the cost estimator; changes to CPU or memory require a reviewed sizing and
+price update. Private database/object connectivity, health checks, secret
+injection, and the single-origin routing contract remain later deployment
+steps. R2 credentials/versioning, database enrollment, New Relic configuration,
+and replication/validation workers also remain explicit modules rather than
+unsupported placeholder resources.
+
+`fly-machine-preparation.mjs` implements only the nonrunning-Machine preparation
+part of that handoff. Its caller supplies the four existing app names, expected
+organization slug, Terraform service requirements, and an organization-scoped
+token directly in memory. Before its first write it checks every app's
+organization and complete Machine inventory. It creates missing Machines with
+`skip_launch: true` and `skip_service_registration: true`, or leases and updates
+an exactly marked `created` or `stopped` Machine with optimistic version
+matching. Requests use the public `https://api.machines.dev/v1` API, reject
+redirects and pagination, and bound request time, total time, and response
+bytes. A final fresh inventory must show the same digest-pinned, candidate-sized,
+nonrunning Machine per app.
+
+Preparation does not create Fly apps or accounts, inject secrets, allocate
+addresses, define services, start Machines, or qualify deployment. Activation
+still requires the authenticated deployment workflow, private connectivity,
+health checks, secret delivery, routing, and live capacity evidence described
+below. The request and lifecycle shapes follow Fly's official
+[Apps](https://fly.io/docs/machines/api/apps-resource/) and
+[Machines](https://fly.io/docs/machines/api/machines-resource/) resources.
 
 ## Required credentials and custody
 
