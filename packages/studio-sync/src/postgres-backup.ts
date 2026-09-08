@@ -313,12 +313,7 @@ export function createPostgresBackupVerifier(
     const timer = setTimeout(abort, timeoutMs);
     try {
       // One deadline covers acquisition, every query, and rollback cleanup.
-      const operationPromise = operation();
-      // A timed-out operation may finish later after its borrower was
-      // destroyed. Observe that late rejection so it cannot become an
-      // unhandled process error while the race remains fail-closed.
-      void operationPromise.catch(() => undefined);
-      await Promise.race([operationPromise, interrupted.promise]);
+      await Promise.race([operation(), interrupted.promise]);
     } catch {
       throw new Error(failureCode);
     } finally {
