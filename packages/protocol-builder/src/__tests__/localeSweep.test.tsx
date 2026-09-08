@@ -270,7 +270,7 @@ describe('the row dialogs under es', () => {
     );
     await harness.user.selectOptions(
       await screen.findByRole('combobox', { name: 'Atributo' }),
-      '__create_new_attribute__',
+      '#create-new-attribute',
     );
     await screen.findByRole('combobox', { name: 'Tipo de respuesta' });
 

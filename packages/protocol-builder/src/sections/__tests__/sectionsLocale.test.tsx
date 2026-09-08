@@ -364,7 +364,7 @@ describe('the form-fields section, read in Spanish', () => {
     const dialog = within(await screen.findByRole('dialog'));
     await harness.user.selectOptions(
       dialog.getByRole('combobox', { name: 'Atributo' }),
-      '__create_new_attribute__',
+      '#create-new-attribute',
     );
 
     const kind = await dialog.findByRole('combobox', {
@@ -532,7 +532,7 @@ const inventAttribute = async (
   );
   await harness.user.selectOptions(
     dialog.getByRole('combobox', { name: 'Atributo' }),
-    '__create_new_attribute__',
+    '#create-new-attribute',
   );
   await harness.user.type(
     await dialog.findByRole('textbox', { name: 'Nombre del atributo' }),
@@ -606,7 +606,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
     );
     await harness.user.selectOptions(
       dialog.getByRole('combobox', { name: 'Atributo' }),
-      '__create_new_attribute__',
+      '#create-new-attribute',
     );
 
     // An example of a name, translated as one — not a value that is stored.
@@ -639,7 +639,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
     );
     await harness.user.selectOptions(
       dialog.getByRole('combobox', { name: 'Atributo' }),
-      '__create_new_attribute__',
+      '#create-new-attribute',
     );
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Tipo de respuesta' }),
@@ -673,7 +673,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
     );
     await harness.user.selectOptions(
       dialog.getByRole('combobox', { name: 'Atributo' }),
-      '__create_new_attribute__',
+      '#create-new-attribute',
     );
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Tipo de respuesta' }),

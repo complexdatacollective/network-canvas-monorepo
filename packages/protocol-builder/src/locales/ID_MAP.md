@@ -282,7 +282,7 @@ for something else or reopens a decision that has been made:
   `sections/CreatableVariablePicker.tsx` pairs a picker over what exists with a
   name box that creates an attribute under that name and selects it. Nothing in
   the product mounts it: `FormFieldsSection` answers the same question through
-  the `__create_new_attribute__` sentinel in its own picker, and the control is
+  the `#create-new-attribute` sentinel in its own picker, and the control is
   there for the `variablePickerComponent` seam a family PR will fill. Said here
   so the native-Spanish review pass is not asked to check copy nobody can see.
 - **`attributeCodebookControls`** owns only the words on its own buttons. What
