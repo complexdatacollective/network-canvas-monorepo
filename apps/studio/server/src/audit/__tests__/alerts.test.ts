@@ -884,6 +884,63 @@ describe.skipIf(!db)('audit-alert policy and researcher delivery', () => {
     }
   });
 
+  it('retries a database fault before the email handoff without losing in-app delivery', async () => {
+    const scratch = await fixture();
+    try {
+      await scratch.configure([{ memberId, inApp: true, email: true }]);
+      await scratch.append();
+      const adapter = new AuditAlertDeliveryAdapter({
+        pool: scratch.maintenance,
+        mailer: { sendAuditAlert: async () => undefined },
+        publicBaseUrl: 'https://studio.example.test',
+      });
+      const claim = await adapter.claim(
+        { owner: randomUUID(), durationMs: 60_000 },
+        8,
+      );
+      expect(claim).not.toBeNull();
+
+      await scratch.pool.query(
+        'ALTER TABLE audit_events RENAME TO audit_events_fault',
+      );
+      let failure: unknown;
+      try {
+        await adapter.deliver(claim!);
+      } catch (error) {
+        failure = error;
+      } finally {
+        await scratch.pool.query(
+          'ALTER TABLE audit_events_fault RENAME TO audit_events',
+        );
+      }
+
+      expect(failure).toBeInstanceOf(EmailDeliveryError);
+      expect(adapter.failureDisposition(failure)).toBe('retryable');
+      expect(
+        await adapter.recordFailure(
+          claim!,
+          { owner: claim!.leaseOwner, durationMs: 60_000 },
+          failure,
+          0,
+        ),
+      ).toBe(true);
+      expect((await scratch.rows()).rows[0]).toMatchObject({
+        send_started_at: null,
+        uncertain_at: null,
+        last_error: 'send_retryable',
+      });
+      const inApp = (await scratch.rows()).rows.find(
+        (row: { channel: string }) => row.channel === 'in_app',
+      );
+      expect(inApp).toMatchObject({
+        delivered_at: null,
+        uncertain_at: null,
+      });
+    } finally {
+      await scratch.dispose();
+    }
+  });
+
   it('turns an expired started lease into durable uncertainty without handing it to another sender', async () => {
     const scratch = await fixture();
     try {
