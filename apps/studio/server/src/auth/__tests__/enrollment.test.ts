@@ -114,6 +114,64 @@ async function invitation(
   );
 }
 
+async function installUserInsertBarrier(f: Fixture) {
+  const lockKey = Number.parseInt(randomUUID().slice(0, 7), 16);
+  const blocker = await f.scratch.pool.connect();
+  await blocker.query('SELECT pg_advisory_lock($1)', [lockKey]);
+  await f.scratch.pool.query(`
+    CREATE FUNCTION test_block_user_insert() RETURNS trigger AS $$
+    BEGIN
+      PERFORM pg_advisory_xact_lock(${lockKey});
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    CREATE TRIGGER test_block_user_insert
+      BEFORE INSERT ON "user"
+      FOR EACH ROW EXECUTE FUNCTION test_block_user_insert();
+  `);
+  let released = false;
+  return {
+    waitUntilBlocked: () =>
+      expect
+        .poll(
+          async () =>
+            Number(
+              (
+                await f.scratch.pool.query<{ count: string }>(
+                  `SELECT count(*) AS count
+                     FROM pg_locks
+                    WHERE locktype = 'advisory'
+                      AND classid = 0
+                      AND objid = $1
+                      AND granted = false`,
+                  [lockKey],
+                )
+              ).rows[0]?.count,
+            ),
+          { timeout: 5_000 },
+        )
+        .toBeGreaterThan(0),
+    release: async () => {
+      if (released) return;
+      released = true;
+      await blocker.query('SELECT pg_advisory_unlock($1)', [lockKey]);
+      blocker.release();
+    },
+  };
+}
+
+async function beginMagicLinkVerification(f: Fixture, email: string) {
+  const response = await request(f.auth, '/api/auth/sign-in/magic-link', {
+    email,
+    callbackURL: '/sign-in',
+    errorCallbackURL: '/sign-in',
+  });
+  expect(response.status).toBe(200);
+  const url = f.sent.at(-1)?.url;
+  if (!url) throw new Error('Expected a real sent verification link');
+  return f.auth.handler(new Request(url));
+}
+
 function request(
   auth: Pick<Fixture['auth'], 'handler'>,
   path: string,
@@ -332,6 +390,125 @@ describe.skipIf(!db)(
           ).rows,
         ).toEqual([{ count: 1 }]);
       } finally {
+        await f.scratch.dispose();
+      }
+    });
+
+    it('serializes invitation cancellation after the actual user insert authorization', async () => {
+      const f = await fixture();
+      let barrier: Awaited<ReturnType<typeof installUserInsertBarrier>> | null =
+        null;
+      const cancellation = await f.scratch.pool.connect();
+      try {
+        await invitation(f);
+        barrier = await installUserInsertBarrier(f);
+        const verification = beginMagicLinkVerification(f, newEmail);
+        await barrier.waitUntilBlocked();
+
+        const cancellationPid = (
+          await cancellation.query<{ pid: number }>(
+            'SELECT pg_backend_pid() AS pid',
+          )
+        ).rows[0]?.pid;
+        expect(cancellationPid).toBeTypeOf('number');
+        const cancel = cancellation.query(
+          `UPDATE team_invitations
+              SET status = 'canceled'
+            WHERE lower(email) = lower($1)`,
+          [newEmail],
+        );
+        // This proves the cancellation cannot commit in the old hook/insert
+        // gap: PostgreSQL reports it blocked by the transaction that holds the
+        // invitation row while its user INSERT is paused in the trigger.
+        await expect
+          .poll(
+            async () =>
+              Number(
+                (
+                  await f.scratch.pool.query<{ count: number }>(
+                    'SELECT cardinality(pg_blocking_pids($1)) AS count',
+                    [cancellationPid],
+                  )
+                ).rows[0]?.count,
+              ),
+            { timeout: 5_000 },
+          )
+          .toBeGreaterThan(0);
+
+        await barrier.release();
+        const response = await verification;
+        await cancel;
+        expect(sessionCookie(response)).toBeDefined();
+        expect(await users(f)).toEqual([
+          { email: newEmail },
+          { email: ownerEmail },
+        ]);
+        expect(
+          (
+            await f.scratch.pool.query(
+              `SELECT status FROM team_invitations WHERE lower(email) = lower($1)`,
+              [newEmail],
+            )
+          ).rows,
+        ).toEqual([{ status: 'canceled' }]);
+      } finally {
+        await barrier?.release();
+        cancellation.release();
+        await f.scratch.dispose();
+      }
+    });
+
+    it('rolls back a user insert if its locked invitation expires while the insert is blocked', async () => {
+      const f = await fixture();
+      let barrier: Awaited<ReturnType<typeof installUserInsertBarrier>> | null =
+        null;
+      try {
+        await invitation(f);
+        await f.scratch.pool.query(
+          `UPDATE team_invitations
+              SET expires_at = clock_timestamp() + interval '500 milliseconds'
+            WHERE lower(email) = lower($1)`,
+          [newEmail],
+        );
+        barrier = await installUserInsertBarrier(f);
+        const verification = beginMagicLinkVerification(f, newEmail);
+        await barrier.waitUntilBlocked();
+        await expect
+          .poll(
+            async () =>
+              (
+                await f.scratch.pool.query<{ expired: boolean }>(
+                  `SELECT expires_at <= clock_timestamp() AS expired
+                     FROM team_invitations
+                    WHERE lower(email) = lower($1)`,
+                  [newEmail],
+                )
+              ).rows[0]?.expired,
+            { timeout: 5_000 },
+          )
+          .toBe(true);
+
+        await barrier.release();
+        const response = await verification;
+        expect(
+          new URL(
+            response.headers.get('location')!,
+            env.auth!.baseUrl,
+          ).searchParams.get('error'),
+        ).toBe('INVITATION_REQUIRED');
+        expect(sessionCookie(response)).toBeUndefined();
+        expect(await users(f)).toEqual([{ email: ownerEmail }]);
+        expect(
+          (
+            await f.scratch.pool.query(
+              `SELECT count(*)::int AS count
+                 FROM account
+                WHERE "userId" NOT IN (SELECT id FROM "user")`,
+            )
+          ).rows,
+        ).toEqual([{ count: 0 }]);
+      } finally {
+        await barrier?.release();
         await f.scratch.dispose();
       }
     });
