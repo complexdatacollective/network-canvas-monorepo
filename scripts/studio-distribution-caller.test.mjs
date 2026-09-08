@@ -258,17 +258,29 @@ test('a changed final admission refuses publication after exact draft readback',
   assert.equal(f.observed.published, 0);
 });
 
-test('missing qualification or unpinned executable names fail before I/O', async (t) => {
+test('unpinned executable names fail before I/O', async (t) => {
   const f = fixture(t);
-  for (const inputs of [
-    { ...f.inputs, qualify: undefined },
-    { ...f.inputs, executables: { ...f.inputs.executables, cosign: 'cosign' } },
-  ])
-    await assert.rejects(
-      () => publishReviewedStudioDistribution(inputs, f.options),
-      /explicit qualified caller/,
-    );
+  await assert.rejects(
+    () =>
+      publishReviewedStudioDistribution(
+        {
+          ...f.inputs,
+          executables: { ...f.inputs.executables, cosign: 'cosign' },
+        },
+        f.options,
+      ),
+    /explicit qualified caller/,
+  );
   assert.equal(f.observed.fetches, 0);
+});
+
+test('omitting a callback selects the concrete qualifier and remains fail closed', async (t) => {
+  const f = fixture(t);
+  f.inputs.qualify = undefined;
+  await assert.rejects(f.run, /installer signature failed/);
+  assert.equal(f.observed.drafts, 0);
+  assert.equal(f.assets.size, 0);
+  assert.equal(f.observed.published, 0);
 });
 
 test('consuming qualifier history cannot redefine the required upgrades', async (t) => {

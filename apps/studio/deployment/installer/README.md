@@ -100,16 +100,23 @@ the highest accepted release. The separate explicit recovery caller is not
 implemented in this checkpoint; do not manually rewrite protected state to
 simulate a downgrade.
 
-The source qualification exercises these commands against real local Compose
-services, including a post-migration interruption, quiesced backup, retry and
-authenticated smoke. It uses two manifests of the same retained backend image;
-actual adjacent/oldest-supported image compatibility and GitHub OIDC signature
-qualification remain separate release requirements. Populated recovery also
-requires independently obtained current Registry owner/operator/publisher
-reconciliation evidence and its SHA-256. The restore keeps both HTTP services
-and all workers closed while the Registry recovery executable invalidates
-restored sessions, magic links and active personal access tokens and verifies
-every referenced object.
+The publication caller's default qualifier stages the candidate and exact
+authenticated oldest/latest supported installers in private directories. It
+verifies each complete archive with the pinned Cosign executable before
+extracting it. On local Unix-socket Docker it then exercises a fresh candidate
+installation, every selected historical fresh installation followed by the
+candidate update, and a populated combined Studio/Registry backup and restore
+into a distinct project and volumes. The recovery fixture includes Studio data
+and an object reference plus a Registry publisher, session, magic link, personal
+access token and referenced template archive. Qualification runs Registry
+reconciliation and Studio's recovered-asset verifier while HTTP and workers are
+closed, then checks the canaries, invalidation and writer `NOLOGIN` state. A
+cached receipt or earlier test result is not accepted by this path.
+
+This is a bounded local distribution gate. It does not provision a public
+deployment, exercise external mail, or establish production capacity. Docker
+commands use a credential-free configuration and random loopback ports; failures
+attempt to remove every randomized Compose project and its volumes.
 
 ## Building the authenticated archive
 
