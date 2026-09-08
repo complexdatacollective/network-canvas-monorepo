@@ -54,13 +54,30 @@ export type SectionValidationIssue = SchemaProblem &
     path: readonly (string | number)[];
   }>;
 
+/**
+ * One session problem a section has to answer for, and the field that answers.
+ *
+ * The field is carried rather than dropped because it decides whether the
+ * sentence is worth reading out: a control already showing a message beside
+ * itself has said what is wrong in the vocabulary of the thing being edited,
+ * and the outline saying it again underneath is two accounts of one fault. Any
+ * OTHER field of the section being wrong says nothing about this problem — see
+ * `SectionOutline`.
+ */
+export type OutlineSectionIssue = Readonly<{
+  /** The registered name of the field that claimed this problem. */
+  fieldName: string;
+  /** The whole sentence, as the outline would read it out. */
+  sentence: string;
+}>;
+
 export type OutlineSection = Readonly<{
   id: string;
   title: string;
   availability: SectionAvailability;
   fields: readonly OutlineFieldRegistration[];
   /** Session validation problems this section's fields answer for. */
-  issues: readonly string[];
+  issues: readonly OutlineSectionIssue[];
 }>;
 
 type SectionRecord = {
@@ -329,8 +346,8 @@ export class SectionOutlineStore {
    */
   private attributeIssues(
     ordered: readonly SectionRecord[],
-  ): Map<string, string[]> {
-    const bySection = new Map<string, string[]>();
+  ): Map<string, OutlineSectionIssue[]> {
+    const bySection = new Map<string, OutlineSectionIssue[]>();
     if (this.validationIssues.length === 0) return bySection;
 
     const registered = ordered.flatMap((record) =>
@@ -375,9 +392,13 @@ export class SectionOutlineStore {
       ]);
       if (saidByField.has(said)) continue;
       saidByField.add(said);
+      const problem = Object.freeze({
+        fieldName: owner.field.name,
+        sentence,
+      });
       const claimed = bySection.get(owner.sectionId);
-      if (claimed === undefined) bySection.set(owner.sectionId, [sentence]);
-      else claimed.push(sentence);
+      if (claimed === undefined) bySection.set(owner.sectionId, [problem]);
+      else claimed.push(problem);
     }
     return bySection;
   }

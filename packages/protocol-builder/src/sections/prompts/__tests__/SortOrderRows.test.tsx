@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import type userEvent from '@testing-library/user-event';
 import { useMemo } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -397,6 +398,38 @@ async function removeTheOnlyRule(
 }
 
 /**
+ * Adds one more rule and fills it in.
+ *
+ * The new row is appended, so the cells it is filled in through are the LAST
+ * of each column: named by position rather than by index, because a query by
+ * accessible name answers with every row's cell and the one just added is the
+ * only one this is about.
+ */
+async function addSortRule(
+  harness: Readonly<{ user: ReturnType<typeof userEvent.setup> }>,
+  property: string,
+  direction: string,
+) {
+  const before = screen.queryAllByRole('combobox', { name: 'Property' }).length;
+  await harness.user.click(
+    await screen.findByRole('button', { name: ADD_RULE }),
+  );
+  await waitFor(() =>
+    expect(screen.getAllByRole('combobox', { name: 'Property' })).toHaveLength(
+      before + 1,
+    ),
+  );
+  await harness.user.selectOptions(
+    screen.getAllByRole('combobox', { name: 'Property' }).at(-1)!,
+    property,
+  );
+  await harness.user.selectOptions(
+    screen.getAllByRole('combobox', { name: 'Direction' }).at(-1)!,
+    direction,
+  );
+}
+
+/**
  * A rule whose attribute has been deleted still has to be readable, fixable,
  * and impossible to save as it stands.
  *
@@ -457,6 +490,45 @@ describe('a sort rule pointing at an attribute the codebook has lost', () => {
     // in leaves the researcher nothing to do.
     await screen.findByText(MISSING_ATTRIBUTE_MESSAGE);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * A disabled option is not capacity.
+   *
+   * Once the dangling rule is pointed somewhere else, its old property stays
+   * on offer permanently disabled — that is the whole point of it — so the
+   * option list is one longer than the set of properties a rule may actually
+   * be pointed at. Counted as capacity, the add action survives every
+   * selectable property being used, and the row it then adds has no enabled
+   * choice in its property column: a required cell the researcher cannot fill,
+   * which holds the dialog shut until they delete the row they were just
+   * offered.
+   */
+  it('stops offering rules once every selectable property is used', async () => {
+    const harness = renderStageEditor(seededWithAnOrphanedRule());
+
+    await openPrompt(harness);
+    // The repoint is what leaves the deleted attribute standing as an option
+    // no rule can be pointed at.
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Property' }),
+      'name',
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Direction' }),
+      'asc',
+    );
+
+    // `*`, `name` and `age` are everything a rule may be pointed at here —
+    // `layout` is filtered out, and the deleted attribute is disabled — so
+    // three rules is the whole prompt.
+    await addSortRule(harness, 'age', 'desc');
+    await addSortRule(harness, '*', 'asc');
+
+    expect(screen.getAllByRole('combobox', { name: 'Property' })).toHaveLength(
+      3,
+    );
+    expect(screen.queryByRole('button', { name: ADD_RULE })).toBeNull();
   });
 
   it('saves once the rule has been pointed at an attribute that exists', async () => {
@@ -625,6 +697,49 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
   });
 
   /**
+   * The rule the researcher is holding, rather than the one the prompt was
+   * opened on.
+   *
+   * A dialog's rules are the researcher's to change while it is open, and a
+   * collaborator's deletion lands against what they have now. Judged against
+   * the opened-on prompt alone, a rule pointed at an attribute that is deleted
+   * a moment later is a reference nothing reports: the option list drops it,
+   * the cell goes blank, and the prompt saves the reference the researcher has
+   * just made broken.
+   */
+  it('refuses the rule the researcher pointed at an attribute deleted after', async () => {
+    const harness = renderStageEditor(
+      seededWith(
+        [{ property: 'name', direction: 'desc' }],
+        CodebookPromptEditor,
+      ),
+    );
+
+    await openPrompt(harness);
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Property' }),
+      'age',
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Direction' }),
+      'asc',
+    );
+
+    harness.receiveCodebookUpdate({ node: { person: personWithout(['age']) } });
+    await expectDeletedOption();
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText(MISSING_ATTRIBUTE_MESSAGE);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    // And the cell still says what it points at, which is the other half of
+    // the same rule: a blank required cell the researcher cannot read is what
+    // sends the dangling reference back into the protocol.
+    expect(screen.getByRole('combobox', { name: 'Property' })).toHaveValue(
+      'age',
+    );
+  });
+
+  /**
    * The control: the same deletion applied BEFORE the dialog opens was always
    * refused, which is what pins the two above on the moment the rule was built
    * rather than on the rule.
@@ -637,5 +752,97 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await screen.findByText(MISSING_ATTRIBUTE_MESSAGE);
+  });
+});
+
+/**
+ * A rule naming an attribute the codebook still HAS and nothing can be ordered
+ * by — a node's position on the canvas, or an attribute a collaborator has
+ * since retyped as one.
+ *
+ * The same failure as a deleted attribute, reached from the other side: the
+ * property is filtered out of what the rule may choose, so the cell renders
+ * blank while the value behind it is untouched and saves itself straight back.
+ * It is a different thing to tell the researcher, though — the attribute is
+ * there, it simply cannot put one node ahead of another.
+ */
+describe('a sort rule pointing at an attribute nothing can be ordered by', () => {
+  const UNSORTABLE_OPTION_LABEL =
+    'layout — this attribute cannot be used to sort';
+
+  const UNSORTABLE_ATTRIBUTE_MESSAGE =
+    'This rule points at an attribute that cannot be used to sort. Choose another or delete the rule.';
+
+  const seeded = () => seededWith([{ property: 'layout', direction: 'asc' }]);
+
+  it('shows the rule, naming the attribute it cannot sort by', async () => {
+    const harness = renderStageEditor(seeded());
+
+    await openPrompt(harness);
+
+    const property = await screen.findByRole('combobox', { name: 'Property' });
+    expect(property).toHaveValue('layout');
+    expect(
+      within(property).getByRole('option', { name: UNSORTABLE_OPTION_LABEL }),
+    ).toBeDisabled();
+  });
+
+  it('refuses the save, and says which way out there is', async () => {
+    const harness = renderStageEditor(seeded());
+
+    await openPrompt(harness);
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    // Not the deleted-attribute sentence: the attribute is in the codebook,
+    // and being told to look for something that is there leaves the researcher
+    // nothing to do.
+    await screen.findByText(UNSORTABLE_ATTRIBUTE_MESSAGE);
+    expect(screen.queryByText(MISSING_ATTRIBUTE_MESSAGE)).toBeNull();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('saves once the rule has been pointed at something sortable', async () => {
+    const harness = renderStageEditor(seeded());
+
+    await openPrompt(harness);
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Property' }),
+      'name',
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Direction' }),
+      'asc',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    expect(savedPrompt(await harness.submit()).sortOrder).toEqual([
+      { property: 'name', direction: 'asc' },
+    ]);
+  });
+
+  /**
+   * And it stays unchoosable once the rule points elsewhere, for the reason a
+   * deleted attribute does: the getter only disables the option a rule already
+   * names, so the researcher could otherwise put the unsortable reference back
+   * on purpose.
+   */
+  it('keeps the unsortable attribute unselectable once the rule points elsewhere', async () => {
+    const harness = renderStageEditor(seeded());
+
+    await openPrompt(harness);
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Property' }),
+      'name',
+    );
+
+    expect(
+      within(screen.getByRole('combobox', { name: 'Property' })).getByRole(
+        'option',
+        { name: UNSORTABLE_OPTION_LABEL },
+      ),
+    ).toBeDisabled();
   });
 });

@@ -17,7 +17,6 @@ import {
 } from '../codebook/variableRoles.ts';
 import { draftFormFieldVariableIds } from '../codebook/variableValidation.ts';
 import RichTextField from '../fields/RichTextField.tsx';
-import { withoutAbsentValues } from '../form/absentValues.ts';
 import AssignAttributes, {
   committedAttributeVariableIds,
   makeAssignAttributesValidation,
@@ -383,17 +382,20 @@ function NameGeneratorPromptPreview({ item }: RowPreviewProps) {
  * A prompt that stamps nothing carries no `additionalAttributes` key at all.
  *
  * The list field is mounted for every prompt, so a prompt the researcher never
- * assigned anything on still submits an empty array — and the shared row
- * normaliser keeps empty arrays on purpose. Written through, every prompt in
- * the protocol would grow a key saying "assigns nothing", which is what its
- * absence already says.
+ * assigned anything on still submits an empty array — and the shared section's
+ * own absent-value rule keeps empty arrays on purpose. Written through, every
+ * prompt in the protocol would grow a key saying "assigns nothing", which is
+ * what its absence already says.
+ *
+ * Runs as `PromptsSection`'s `collapseRow`, which applies the shared rule
+ * AFTER this returns — so this reads the raw row rather than one already
+ * stripped of absent values.
  */
-const normalizeNameGeneratorPrompt = (row: unknown): unknown => {
-  const cleaned = withoutAbsentValues(row);
-  if (typeof cleaned !== 'object' || cleaned === null) return cleaned;
-  const attributes = Reflect.get(cleaned, 'additionalAttributes');
-  if (!Array.isArray(attributes) || attributes.length > 0) return cleaned;
-  const { additionalAttributes: _empty, ...rest } = cleaned as Record<
+const collapseNameGeneratorPrompt = (row: unknown): unknown => {
+  if (typeof row !== 'object' || row === null) return row;
+  const attributes = Reflect.get(row, 'additionalAttributes');
+  if (!Array.isArray(attributes) || attributes.length > 0) return row;
+  const { additionalAttributes: _empty, ...rest } = row as Record<
     string,
     unknown
   >;
@@ -415,7 +417,7 @@ export default function NameGeneratorPromptsSection() {
     <PromptsSection
       PromptEditor={NameGeneratorPromptEditor}
       PromptPreview={NameGeneratorPromptPreview}
-      normalizeRow={normalizeNameGeneratorPrompt}
+      collapseRow={collapseNameGeneratorPrompt}
     />
   );
 }

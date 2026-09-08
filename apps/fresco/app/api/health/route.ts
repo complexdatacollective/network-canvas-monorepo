@@ -1,7 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
-import { env } from '~/env.js';
-
 type HealthStatus = 'healthy' | 'degraded' | 'unhealthy';
 
 type HealthCheck = {
@@ -9,14 +7,17 @@ type HealthCheck = {
   status: HealthStatus;
   duration: number;
   error?: string;
-  details?: Record<string, unknown>;
 };
 
+// This endpoint is unauthenticated so that load balancers and container
+// orchestrators can probe it, and a liveness probe needs nothing beyond the
+// status. It deliberately reports no version, uptime, Node.js version or
+// NODE_ENV: the running version tells an anonymous caller which published
+// vulnerabilities apply to this instance, and the uptime whether a fix has
+// been deployed yet.
 type HealthResponse = {
   status: HealthStatus;
   timestamp: string;
-  uptime: number;
-  version?: string;
   checks: HealthCheck[];
 };
 
@@ -24,18 +25,13 @@ function checkBasicHealth(): HealthCheck {
   const start = performance.now();
 
   try {
-    // Basic health check - just verify the service is running. Deliberately
-    // does NOT expose Node.js version or NODE_ENV to unauthenticated callers
-    // (information disclosure that aids CVE targeting).
+    // Basic health check - just verify the service is running.
     const duration = performance.now() - start;
 
     return {
       name: 'basic',
       status: 'healthy',
       duration: Math.round(duration),
-      details: {
-        uptime: Math.round(process.uptime()),
-      },
     };
   } catch (error) {
     const duration = performance.now() - start;
@@ -84,8 +80,6 @@ export function GET(_request: NextRequest): NextResponse {
     const response: HealthResponse = {
       status: overallStatus,
       timestamp: new Date().toISOString(),
-      uptime: Math.round(process.uptime()),
-      version: env.APP_VERSION ?? 'unknown',
       checks,
     };
 
@@ -110,7 +104,6 @@ export function GET(_request: NextRequest): NextResponse {
     const response: HealthResponse = {
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      uptime: Math.round(process.uptime()),
       checks: [
         {
           name: 'health_check',

@@ -2,13 +2,15 @@ import {
   type ObjectPath,
   omitValue,
 } from '@codaco/fresco-ui/form/utils/objectPath';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 
 /**
  * A row as the researcher left it, with everything they did not answer gone.
  *
  * Every "absent" a form can produce is spelled the same way in the protocol
- * schema: the key is not there. A cleared control submits an empty string, a
- * picker that was never used can hand back `null`, and a group of controls
+ * schema: the key is not there. A cleared control submits an empty string or
+ * the spaces around what was deleted, a number input mid-entry reports `NaN`,
+ * a picker that was never used can hand back `null`, and a group of controls
  * whose every part is empty assembles an object of nothing — and none of those
  * are values the schema accepts where it accepts a value at all. Left in, they
  * reach a save as `"negativeLabel": ""` and are refused in the schema's own
@@ -25,22 +27,48 @@ export function withoutAbsentValues(value: unknown): unknown {
   const kept: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(value)) {
     const cleaned = withoutAbsentValues(entry);
-    if (isAbsent(cleaned)) continue;
+    if (isAbsentValue(cleaned)) continue;
     kept[key] = cleaned;
   }
   return kept;
 }
 
 /**
- * `false` and `0` are answers. An empty object is not: it is what a group of
- * unanswered controls assembles into, and it is never a value in its own
- * right.
+ * Whether a value, once cleaned, says nothing at all.
+ *
+ * **A control holds nothing exactly when the form says it does.** That
+ * judgement is fresco-ui's `isUnanswered`, and it is the one the researcher
+ * was shown: an optional control holding only whitespace raised no error, and
+ * neither did a number input halfway through being emptied — which reports the
+ * `NaN` a partial entry produces. Answering differently here saves what the
+ * form told the researcher was not there: `negativeLabel: "  "` written into
+ * the stage as a label, and `NaN` handed to a schema that refuses it against a
+ * path the form said nothing about. One predicate is what stops the two from
+ * drifting; `useStageHasAnyValue` already asks it, so a capability this kept
+ * would also be reported as holding nothing.
+ *
+ * Exported because the reading and the judgement belong together: a caller
+ * that cleans a submitted value has to ask the same question of what comes
+ * back — a control cleared to `''` and a group of controls that cleaned down
+ * to `{}` are both "this field holds nothing", and the caller's answer to that
+ * is to remove the key rather than to write anything at it.
+ *
+ * Two answers are this package's own, and both are about CONTAINERS rather
+ * than about what a control holds. An empty ARRAY is deliberately not
+ * emptiness, so the shared predicate is never asked about one: a list the
+ * researcher emptied is a list they emptied, and whether that is allowed
+ * belongs to the field that owns it. An empty OBJECT is emptiness, which the
+ * shared predicate says nothing about: it is what a group of unanswered
+ * controls assembles into, and never a value in its own right.
+ *
+ * `false` and `0` are answers, there and here.
  */
-function isAbsent(value: unknown): boolean {
-  if (value === undefined || value === null || value === '') return true;
+export function isAbsentValue(value: unknown): boolean {
+  if (Array.isArray(value)) return false;
+  if (isUnanswered(value)) return true;
   return (
     typeof value === 'object' &&
-    !Array.isArray(value) &&
+    value !== null &&
     Object.keys(value).length === 0
   );
 }

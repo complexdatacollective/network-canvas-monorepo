@@ -9,7 +9,6 @@ import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
 
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
-import { esIntl } from '../../testing/i18n.ts';
 import VariableBooleanAnswerFields from '../components/VariableBooleanAnswerFields.tsx';
 import { optionsForShape, validateBooleanAnswers } from '../variableOptions.ts';
 
@@ -53,13 +52,12 @@ describe('the placeholders on an unnamed yes/no answer', () => {
           { label: '', value: false },
         ]}
         onChange={() => undefined}
-        issues={validateBooleanAnswers(
-          [
-            { label: 'Acepto', value: true },
-            { label: '', value: false },
-          ],
-          esIntl,
-        )}
+        // Encoded, not formatted: `FieldErrors` decodes it against the
+        // provider mounted above, which is the same reading the editor gets.
+        issues={validateBooleanAnswers([
+          { label: 'Acepto', value: true },
+          { label: '', value: false },
+        ])}
         readOnly={false}
       />,
     );
@@ -106,11 +104,34 @@ describe('the placeholders on an unnamed yes/no answer', () => {
    */
   it('writes nothing into the protocol when both answers are blank', () => {
     expect(
-      optionsForShape('boolean', [
-        { label: '', value: true },
-        { label: '  ', value: false },
-      ]),
+      optionsForShape(
+        'boolean',
+        [
+          { label: '', value: true },
+          { label: '  ', value: false },
+        ],
+        // What the attribute stored before the editor opened: a boolean that
+        // named no answers at all, which is the case these placeholders are
+        // shown for.
+        undefined,
+      ),
     ).toBeUndefined();
+  });
+
+  /**
+   * The claim's own boundary. A protocol that ALREADY stores two blank labels
+   * is not showing placeholders — `BooleanField` renders the entries it is
+   * given, so the participant meets two buttons with nothing written on them.
+   * That is a protocol this editor found and does not rewrite; only clearing
+   * the fields takes the key away.
+   */
+  it('leaves a blank pair the protocol already stored exactly where it was', () => {
+    const stored = [
+      { label: '', value: true },
+      { label: '  ', value: false },
+    ];
+
+    expect(optionsForShape('boolean', stored, stored)).toEqual(stored);
   });
 
   /**
@@ -120,10 +141,14 @@ describe('the placeholders on an unnamed yes/no answer', () => {
    */
   it('stores the researcher’s own words untouched', () => {
     expect(
-      optionsForShape('boolean', [
-        { label: 'Agree', value: true },
-        { label: 'Disagree', value: false },
-      ]),
+      optionsForShape(
+        'boolean',
+        [
+          { label: 'Agree', value: true },
+          { label: 'Disagree', value: false },
+        ],
+        undefined,
+      ),
     ).toEqual([
       { label: 'Agree', value: true },
       { label: 'Disagree', value: false },

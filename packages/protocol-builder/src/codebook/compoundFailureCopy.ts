@@ -15,7 +15,9 @@ import type { AuxiliaryCodebookDraftFailure } from './editing.ts';
  * the stage they were configuring rather than the type they were creating.
  *
  * Every reason is spelled out, so a new one cannot arrive as a blank alert: the
- * compiler asks for it here.
+ * compiler asks for it here. That is a compile-time promise about the reasons
+ * THIS package knows, though, and a host is external code — see the lookup in
+ * `compoundFailureMessage`, which is total at runtime as well.
  */
 const messages = defineMessages({
   compoundInFlight: {
@@ -93,7 +95,7 @@ const messages = defineMessages({
     defaultMessage:
       'This change could not be saved, and nothing was altered. Wait a moment and try again.',
     description:
-      'Refusal shown in a codebook editor when saving threw with no explanation a researcher could act on. The last resort.',
+      'Refusal shown in a codebook editor when saving was refused for a reason there are no words for — it threw with no explanation a researcher could act on, or the application it is running in named a reason this editor does not know. The last resort.',
   },
   heldBySomeoneUnnamed: {
     id: 'protocolBuilder.compoundFailure.heldBySomeoneUnnamed',
@@ -142,11 +144,19 @@ export function compoundFailureMessage(
   intl: IntlShape,
 ): string {
   switch (failure.kind) {
-    // A thrown failure carries whatever the thing that threw had to say — a
-    // schema sentence, a transport error — so it is reported as the same
-    // "nothing was saved, try again" the reasons above end in.
+    // A thrown failure carries whatever the thing that threw had to say, and
+    // the two are told apart by the same decoder every string-only contract in
+    // this package is read through. `editing.ts` encodes the two refusals a
+    // researcher can actually reach — a duplicate attribute name, an attribute
+    // a collaborator deleted — precisely so they can be decoded here; a
+    // transport error's own words and a schema's sentence about a path are not
+    // encoded, so the decoder answers `undefined` and they are reported as the
+    // same "nothing was saved, try again" the reasons above end in.
     case 'error':
-      return intl.formatMessage(messages.unexplained);
+      return (
+        formatMessageError(failure.message, intl) ??
+        intl.formatMessage(messages.unexplained)
+      );
 
     // The one failure whose own words are shown. Everything else here is
     // rewritten because it arrives written for whoever reads a log; a
@@ -163,7 +173,18 @@ export function compoundFailureMessage(
 
     case 'result': {
       if (failure.result.status === 'failed') {
-        return intl.formatMessage(REFUSAL_MESSAGES[failure.result.reason]);
+        // Read as a lookup that can miss, unlike `kind` below. A reason is
+        // minted by the HOST, which is external code, and crosses the wire as
+        // a plain string however the union types it — so a host one version
+        // ahead names a reason this table has never heard of, and indexing
+        // into it hands `formatMessage` nothing, which throws during render.
+        // The researcher would lose the whole editor and the draft it was
+        // holding rather than being told the save was refused. The table
+        // stays exhaustive, so the compiler still asks for a sentence when a
+        // reason is added here.
+        const descriptor: MessageDescriptor | undefined =
+          REFUSAL_MESSAGES[failure.result.reason];
+        return intl.formatMessage(descriptor ?? messages.unexplained);
       }
       // A section id is an internal address, so a blocked change is reported
       // by who is holding it, or not at all.

@@ -5,7 +5,7 @@ import {
   POSTHOG_APP_PROPERTIES,
   POSTHOG_PROXY_HOST,
 } from '~/fresco.config';
-import { isParticipantPath, redactProperties } from '~/lib/analyticsRedaction';
+import { redactProperties } from '~/lib/analyticsRedaction';
 
 let clientPromise: Promise<PostHog> | undefined;
 // posthog-js cannot be brought back after shutdown, so once this is set the
@@ -40,6 +40,33 @@ const pendingReports: ((posthog: PostHog) => void)[] = [];
  * made on the server, in `AnalyticsLoader`.
  */
 /**
+ * Events whose payload is the element the person interacted with, or —
+ * for `$$heatmap` — the page's full URL (see `redactEvent`). Autocapture,
+ * rageclick, dead-click and heatmap capture are all off at init; dropping
+ * them here as well means a later change to the init options cannot quietly
+ * start sending this data.
+ *
+ * Heatmaps stay off everywhere, not only on participant pages: PostHog keys
+ * `$heatmap_data` by the full page URL, and the dashboard's participant and
+ * interview tables put the researcher's search text in the URL's query
+ * string (`pt_q`, `iv_q`) — a leak `redactProperties` cannot reach, because
+ * it only walks object values, not this key.
+ */
+const ELEMENT_EVENTS = new Set([
+  '$autocapture',
+  '$rageclick',
+  '$dead_click',
+  '$$heatmap',
+]);
+
+/** Element-derived properties posthog-js may attach to any event. */
+const ELEMENT_PROPERTIES = [
+  '$elements',
+  '$elements_chain',
+  '$el_text',
+] as const;
+
+/**
  * Strips participant access links out of every event before it is sent.
  *
  * posthog-js attaches the current URL to everything it captures, and on a
@@ -51,6 +78,18 @@ const pendingReports: ((posthog: PostHog) => void)[] = [];
 function redactEvent(event: CaptureResult | null): CaptureResult | null {
   if (!event) {
     return event;
+  }
+
+  // Autocapture-family events carry the clicked element's text. On a
+  // participant's page that text is their answers — a node's name is a
+  // response — and on the dashboard it is what the tables show: participant
+  // identifiers and labels. Init keeps those features off everywhere; this
+  // covers any event that picked up element data on the way regardless.
+  if (ELEMENT_EVENTS.has(event.event)) {
+    return null;
+  }
+  for (const key of ELEMENT_PROPERTIES) {
+    delete event.properties[key];
   }
 
   event.properties = redactProperties(event.properties);
@@ -70,15 +109,32 @@ async function getClient(): Promise<PostHog> {
       api_host: POSTHOG_PROXY_HOST,
       defaults: '2026-01-30',
       capture_exceptions: true,
-      autocapture: true,
       tracing_headers: [window.location.hostname],
       before_send: redactEvent,
-      // Replay records the page's own URL inside its payload, out of reach of
-      // `before_send`, and a recording of someone answering interview
-      // questions is research data rather than telemetry. Participants always
-      // arrive on these pages through a fresh page load, so deciding once at
-      // init covers them.
-      disable_session_recording: isParticipantPath(window.location.pathname),
+      // Session replay is off everywhere, not only on participant pages.
+      // Replay records the page's own URL and DOM content inside its
+      // payload, out of reach of `before_send`, and outside the participant
+      // interview it can capture whatever a researcher's page renders —
+      // including the TOTP QR code and secret on the two-factor setup page,
+      // and recovery codes and freshly created API tokens on the settings
+      // screen. The recorder's default input masking does not cover that:
+      // masking targets form inputs, not plain text or image data. Until
+      // every secret-bearing surface can be reliably masked or excluded,
+      // recording stays off rather than relying on an enumerable allowlist
+      // that a future page could silently fall outside of.
+      disable_session_recording: true,
+      // Autocapture attaches the clicked element's text to each event, and
+      // rageclick and dead-click capture are built on the same element data.
+      // On a participant's page that text is their answers; on the dashboard
+      // it is what the tables show — participant identifiers and labels. The
+      // usage events Fresco reports are the explicit ones it captures itself,
+      // as in Interviewer and Architect, so all three stay off everywhere.
+      autocapture: false,
+      rageclick: false,
+      capture_dead_clicks: false,
+      // Heatmaps key their payload by the full page URL (see ELEMENT_EVENTS
+      // above), which puts a researcher's dashboard search text in scope.
+      capture_heatmaps: false,
     });
 
     // Registered here, before startPostHog opts in, because opting in captures
