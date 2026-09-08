@@ -321,10 +321,15 @@ export function createManagedStudioIngress(configuration) {
         incoming.hostname === new URL(policy.publicOrigin).hostname &&
         incoming.protocol === 'http:'
       ) {
-        const redirect = new URL(
-          incoming.pathname + incoming.search,
-          policy.publicOrigin,
-        );
+        let redirectPath;
+        try {
+          redirectPath = canonicalPath(incoming);
+        } catch {
+          return problem(400, 'Ambiguous request path');
+        }
+        const redirect = new URL(policy.publicOrigin);
+        redirect.pathname = redirectPath;
+        redirect.search = incoming.search;
         return Response.redirect(redirect, 308);
       }
       if (incoming.origin !== policy.publicOrigin)
@@ -360,10 +365,12 @@ export function createManagedStudioIngress(configuration) {
       const upstreamOrigin = backend
         ? policy.backendOrigin
         : policy.staticOrigin;
-      const upstream = new URL(
-        incoming.pathname + incoming.search,
-        upstreamOrigin,
-      );
+      const upstream = new URL(upstreamOrigin);
+      upstream.pathname = incoming.pathname;
+      // Netlify only supplies immutable build output and the SPA shell. Client
+      // route queries remain in the browser URL, while only server surfaces
+      // receive authentication, invitation, and callback query data.
+      if (backend) upstream.search = incoming.search;
       const headers = backend
         ? backendHeaders(request, policy.publicOrigin)
         : staticHeaders(request);
