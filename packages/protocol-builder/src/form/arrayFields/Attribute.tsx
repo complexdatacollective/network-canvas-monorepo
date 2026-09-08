@@ -28,6 +28,10 @@ import {
 } from '../../codebook/variableRoles.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
+// The contract the picker's `onCreateOption` prop is written in, taken from
+// where that prop is declared. A type, so nothing about which picker a host
+// injects is decided here — see `variablePickerComponent`.
+import type { CreateOptionOutcome } from '../../sections/CreatableVariablePicker.tsx';
 import { useStageEditorForm } from '../stageEditorContext.ts';
 import { readRows } from './arrayFieldCommands.ts';
 import {
@@ -371,8 +375,14 @@ export default function Attribute({
   // Answered rather than fired and forgotten: the picker keeps the name the
   // researcher typed until it hears the attribute exists, because a refusal is
   // about that name.
+  //
+  // Which is why the three things below are `unassigned` and not a refusal.
+  // The codebook write SUCCEEDED in every one of them — only the assignment
+  // did not happen — and a picker told "no" holds on to the name, so the next
+  // press asks the codebook for a name it already stores and comes back
+  // refused for a duplicate the researcher never asked for twice.
   const handleCreateOption = onCreateVariable
-    ? async (variableName: string): Promise<boolean> => {
+    ? async (variableName: string): Promise<CreateOptionOutcome> => {
         // The row this creation was started FROM, as it stands right now.
         // Creating a codebook variable is a round trip through the host, and
         // the list carries on moving while it runs — a collaborator's
@@ -389,11 +399,10 @@ export default function Attribute({
         // researcher cannot tell apart are two rows this control described
         // identically.
         const createdFrom = stripManagedProperties(rowRef.current);
-        // Answered rather than fired and forgotten: the picker keeps the name
-        // the researcher typed until it hears the attribute exists, because a
-        // refusal is about that name.
         const created = await onCreateVariable(variableName);
-        if (created === undefined) return false;
+        // The one answer that is a refusal: nothing was written, so the name
+        // is still the researcher's to correct.
+        if (created === undefined) return { status: 'refused' };
         // Both of these are read when the creation COMPLETES: which row this
         // control now names, and whether the list will still take a write to
         // it. Either can have changed inside the round trip, and neither is
@@ -427,7 +436,7 @@ export default function Attribute({
               { variableName },
             ),
           );
-          return false;
+          return { status: 'unassigned' };
         }
         // The last thing the two guards above cannot see: a row that has
         // left the list while this control was still rendering it, or was
@@ -438,9 +447,9 @@ export default function Attribute({
           await unassigned(
             intl.formatMessage(messages.rowGone, { variableName }),
           );
-          return false;
+          return { status: 'unassigned' };
         }
-        return true;
+        return { status: 'created' };
       }
     : undefined;
 
