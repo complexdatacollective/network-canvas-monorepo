@@ -46,7 +46,10 @@ const OUTPUT_FIELDS = Object.freeze({
     status: 'integer 100..599',
     duration_ms: 'finite number 0..86400000, at most 3 decimal places',
   }),
-  diagnostic: Object.freeze({ diagnostic: 'product diagnostic enum' }),
+  diagnostic: Object.freeze({
+    request_id: 'optional lowercase UUID',
+    diagnostic: 'product diagnostic enum',
+  }),
 });
 
 export const MANAGED_OPERATIONAL_LOG_SCHEMA = Object.freeze({
@@ -95,7 +98,7 @@ function hashSchema(schema) {
 // A schema change is a reviewed collector/destination contract change. Update
 // this literal only with the matching catalog, parser and adversarial tests.
 export const MANAGED_OPERATIONAL_LOG_SCHEMA_IDENTITY =
-  'sha256:588af8e0c01982f595e00715baa0350d1eb813ca2d794e2390477a53677638cb';
+  'sha256:bafeabbe5b6c90ddc908b0ae45a88eeabd8a69f88db6bd77a48029845f8f685e';
 
 if (
   hashSchema(MANAGED_OPERATIONAL_LOG_SCHEMA) !==

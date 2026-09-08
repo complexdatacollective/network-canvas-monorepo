@@ -45,7 +45,7 @@ const registryRequest = (changes = {}) => ({
 test('publishes a pinned exact output schema over the emitter-owned catalogs', () => {
   assert.equal(
     MANAGED_OPERATIONAL_LOG_SCHEMA_IDENTITY,
-    'sha256:588af8e0c01982f595e00715baa0350d1eb813ca2d794e2390477a53677638cb',
+    'sha256:bafeabbe5b6c90ddc908b0ae45a88eeabd8a69f88db6bd77a48029845f8f685e',
   );
   assert.deepEqual(
     MANAGED_OPERATIONAL_LOG_SCHEMA.services.map(({ service }) => service),
@@ -77,6 +77,53 @@ test('publishes a pinned exact output schema over the emitter-owned catalogs', (
     'team_id',
   ])
     assert.equal(outputFields.includes(forbidden), false);
+});
+
+test('declares every field emitted by each event schema', () => {
+  const fixtures = [
+    {
+      eventFields: MANAGED_OPERATIONAL_LOG_SCHEMA.outputFields.request,
+      output: sanitizeManagedLogRecord(
+        line(studioRequest()),
+        binding('studio-production', 'production'),
+      ),
+    },
+    {
+      eventFields: MANAGED_OPERATIONAL_LOG_SCHEMA.outputFields.diagnostic,
+      output: sanitizeManagedLogRecord(
+        line({
+          level: 50,
+          time: observedAt,
+          event: 'operational',
+          code: 'STUDIO_DATABASE_UNREACHABLE',
+          request_id: requestId,
+        }),
+        binding('studio-production', 'production'),
+      ),
+    },
+    {
+      eventFields: MANAGED_OPERATIONAL_LOG_SCHEMA.outputFields.diagnostic,
+      output: sanitizeManagedLogRecord(
+        line({
+          timestamp: observedAt,
+          code: 'REGISTRY_RECOVERY_FAILED',
+          request_id: requestId,
+        }),
+        binding('registry-production', 'production'),
+      ),
+    },
+  ];
+  assert.ok(fixtures.every(({ output }) => output !== undefined));
+  for (const { eventFields, output } of fixtures) {
+    const declared = new Set([
+      ...Object.keys(MANAGED_OPERATIONAL_LOG_SCHEMA.outputFields.common),
+      ...Object.keys(eventFields),
+    ]);
+    assert.deepEqual(
+      Object.keys(output).filter((field) => !declared.has(field)),
+      [],
+    );
+  }
 });
 
 test('accepts only the four service and environment bindings', () => {
