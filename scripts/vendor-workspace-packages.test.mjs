@@ -10,7 +10,7 @@ import {
   assertSpecifierDrivenChanges,
   assertVendoredLockfile,
   collectClosure,
-  lockfilePackageVersions,
+  lockfileEdges,
   packagesChangedSince,
   patchDockerfileForVendor,
   previouslyVendoredPackages,
@@ -557,54 +557,155 @@ test('a lockfile change explained only by a manifest outside the closure is refu
   });
 });
 
-const lock = (entries) =>
-  `lockfileVersion: '9.0'\n\nimporters:\n  .:\n    dependencies: {}\n\npackages:\n${entries.map((e) => `  ${e}:\n    resolution: {}\n`).join('')}\nsnapshots:\n  ${entries[0] ?? 'x@0.0.0'}: {}\n`;
+// A pnpm v9 lockfile from importer and snapshot edge lists.
+const lock = ({ importers = {}, snapshots = {} }) => {
+  const out = ["lockfileVersion: '9.0'", '', 'importers:'];
+  for (const [path, deps] of Object.entries(importers)) {
+    out.push(`  ${path}:`, '    dependencies:');
+    for (const [dep, version] of Object.entries(deps)) {
+      out.push(
+        `      ${dep}:`,
+        `        specifier: ^1`,
+        `        version: ${version}`,
+      );
+    }
+  }
+  out.push('', 'packages:', '', 'snapshots:');
+  for (const [key, deps] of Object.entries(snapshots)) {
+    out.push(`  ${key}:`);
+    if (Object.keys(deps).length) out.push('    dependencies:');
+    for (const [dep, version] of Object.entries(deps)) {
+      out.push(`      ${dep}: ${version}`);
+    }
+  }
+  return `${out.join('\n')}\n`;
+};
 
-test('lockfile package keys parse across scopes, peer suffixes and tarballs', () => {
-  const versions = lockfilePackageVersions(
-    lock([
-      "'@adobe/css-tools@4.5.0'",
-      'left@1.0.0',
-      "'@codaco/fresco-ui@file:vendor/codaco-fresco-ui-6.4.0.tgz(react@19.2.8)'",
-      "'@x/ui@1.0.0(react@19.0.0)'",
-    ]),
+const graphArgs = {
+  appImporter: 'apps/app',
+  closureImporters: { 'packages/ui': '@x/ui' },
+  workspaceNames: new Set(['@x/ui', '@x/runtime', '@x/exporters', '@x/config']),
+};
+
+test('lockfile edges parse importers and snapshots, dropping peer suffixes', () => {
+  const { importers, snapshots } = lockfileEdges(
+    lock({
+      importers: {
+        'apps/app': {
+          'next': '15.5.0(react@19.2.8)',
+          "'@x/ui'": 'link:../../packages/ui',
+        },
+      },
+      snapshots: {
+        "'@adobe/css-tools@4.5.0'": {},
+        'next@15.5.0(react@19.2.8)': {
+          "'@next/env'": '15.5.0',
+          'react': '19.2.8',
+        },
+      },
+    }),
   );
-  assert.deepEqual([...versions.get('@adobe/css-tools')], ['4.5.0']);
-  assert.deepEqual([...versions.get('left')], ['1.0.0']);
-  assert.deepEqual(
-    [...versions.get('@codaco/fresco-ui')],
-    ['file:vendor/codaco-fresco-ui-6.4.0.tgz'],
+  assert.equal(importers.get('apps/app').get('next'), '15.5.0');
+  assert.equal(
+    importers.get('apps/app').get('@x/ui'),
+    'link:../../packages/ui',
   );
-  assert.deepEqual([...versions.get('@x/ui')], ['1.0.0']);
-  // The snapshots section is not read.
-  assert.equal(versions.size, 4);
+  assert.equal(snapshots.get('next@15.5.0').get('@next/env'), '15.5.0');
+  assert.ok(snapshots.has('@adobe/css-tools@4.5.0'));
 });
 
 // A manifest edit for one dependency must not mask a lockfile-only patch to
 // another: the seeded resolution would leave the second at its released
 // version, so the check compares what the branch changed with what arrived.
-test('a resolution the branch changed but the mirror kept is refused', () => {
+test('an app edge the branch changed but the mirror kept is refused', () => {
   assert.throws(
     () =>
       assertBranchResolutionsCarried({
-        refLock: lock(['left@1.0.0', 'right@2.0.0']),
-        headLock: lock(['left@1.0.1', 'right@2.0.0']),
-        mirrorLock: lock(['left@1.0.0', 'right@2.0.0']),
+        ...graphArgs,
+        refLock: lock({ importers: { 'apps/app': { left: '1.0.0' } } }),
+        headLock: lock({ importers: { 'apps/app': { left: '1.0.1' } } }),
+        mirrorLock: lock({ importers: { '.': { left: '1.0.0' } } }),
       }),
-    /left: the branch resolves 1\.0\.1; the image would keep 1\.0\.0/,
+    /apps\/app → left: the branch resolves 1\.0\.1; the image would keep 1\.0\.0/,
   );
 });
 
-test('a resolution the mirror carries, or does not install, passes', () => {
+const fooDependingOnBar = (bar) => ({ 'foo@1.0.0': { bar } });
+
+test('a transitive edge the branch changed under an unchanged parent is refused', () => {
+  const snapshots = fooDependingOnBar;
+  assert.throws(
+    () =>
+      assertBranchResolutionsCarried({
+        ...graphArgs,
+        refLock: lock({ snapshots: snapshots('1.0.0') }),
+        headLock: lock({ snapshots: snapshots('1.0.1') }),
+        mirrorLock: lock({ snapshots: snapshots('1.0.0') }),
+      }),
+    /foo@1\.0\.0 → bar: the branch resolves 1\.0\.1; the image would keep 1\.0\.0/,
+  );
+  // The image does not install foo: nothing to check.
   assertBranchResolutionsCarried({
-    refLock: lock(['left@1.0.0', 'only-here@1.0.0']),
-    headLock: lock(['left@1.0.1', 'only-here@1.0.1']),
-    mirrorLock: lock(['left@1.0.1', 'right@2.0.0']),
+    ...graphArgs,
+    refLock: lock({ snapshots: snapshots('1.0.0') }),
+    headLock: lock({ snapshots: snapshots('1.0.1') }),
+    mirrorLock: lock({ snapshots: { 'other@1.0.0': {} } }),
   });
-  // A version the branch dropped without adding one is not a change to carry.
+});
+
+// The case a flat set of versions misses: ui moves foo@1 → foo@2 while another
+// workspace already used foo@2 at the release, so no version is new globally,
+// but ui's edge is — and the vendored ui in the mirror must carry it.
+test('a closure package edge moving to a version another workspace already had is still checked', () => {
+  const refLock = lock({
+    importers: {
+      'packages/ui': { foo: '1.0.0' },
+      'apps/other': { foo: '2.0.0' },
+    },
+  });
+  const headLock = lock({
+    importers: {
+      'packages/ui': { foo: '2.0.0' },
+      'apps/other': { foo: '2.0.0' },
+    },
+  });
+  assert.throws(
+    () =>
+      assertBranchResolutionsCarried({
+        ...graphArgs,
+        refLock,
+        headLock,
+        mirrorLock: lock({
+          snapshots: { "'@x/ui@file:vendor/x-ui-1.0.0.tgz'": { foo: '1.0.0' } },
+        }),
+      }),
+    /@x\/ui → foo: the branch resolves 2\.0\.0; the image would keep 1\.0\.0/,
+  );
   assertBranchResolutionsCarried({
-    refLock: lock(['left@1.0.0', 'left@1.0.1']),
-    headLock: lock(['left@1.0.1']),
-    mirrorLock: lock(['left@1.0.0']),
+    ...graphArgs,
+    refLock,
+    headLock,
+    mirrorLock: lock({
+      snapshots: { "'@x/ui@file:vendor/x-ui-1.0.0.tgz'": { foo: '2.0.0' } },
+    }),
+  });
+});
+
+test('edges to workspace packages and edges the mirror carries pass', () => {
+  assertBranchResolutionsCarried({
+    ...graphArgs,
+    refLock: lock({
+      importers: {
+        'apps/app': { "'@x/ui'": 'link:../../packages/ui', 'left': '1.0.0' },
+      },
+    }),
+    headLock: lock({
+      importers: { 'apps/app': { "'@x/ui'": 'link:../ui', 'left': '1.0.1' } },
+    }),
+    mirrorLock: lock({
+      importers: {
+        '.': { "'@x/ui'": 'file:vendor/x-ui-1.0.0.tgz', 'left': '1.0.1' },
+      },
+    }),
   });
 });

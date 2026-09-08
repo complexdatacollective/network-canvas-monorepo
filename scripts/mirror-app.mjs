@@ -719,6 +719,8 @@ function stage({
         );
       }
       if (vendorChangedSince) {
+        const wsPackages = readWorkspacePackages();
+        const closure = collectClosure(wsPackages, app);
         assertBranchResolutionsCarried({
           // The root lockfile is several megabytes, past spawnSync's default
           // buffer; the seeded mirror lock is read from disk.
@@ -729,6 +731,11 @@ function stage({
           ),
           headLock: readFileSync(join(repoRoot, 'pnpm-lock.yaml'), 'utf8'),
           mirrorLock: readFileSync(join(staging, 'pnpm-lock.yaml'), 'utf8'),
+          appImporter: app,
+          closureImporters: Object.fromEntries(
+            closure.map((name) => [wsPackages[name].dir, name]),
+          ),
+          workspaceNames: new Set(Object.keys(wsPackages)),
         });
         console.error(
           '[mirror] every resolution the branch changed is carried by the mirror',

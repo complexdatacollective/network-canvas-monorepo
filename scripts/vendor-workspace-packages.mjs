@@ -296,59 +296,130 @@ export function assertSpecifierDrivenChanges(ref, appDir, closure, wsPackages) {
   );
 }
 
-// name → Set(versions) from a pnpm lockfile's `packages:` section. Keys are
-// `name@version`, quoted when scoped, with any peer-dependency suffix in
-// parentheses; a `file:` version is kept verbatim.
-export function lockfilePackageVersions(lockfile) {
-  const versions = new Map();
-  let inPackages = false;
+// A pnpm v9 lockfile's resolution graph as EDGES: for every importer (a
+// workspace package, by its path) and every snapshot (a resolved package, by
+// `name@version`, its peer suffix dropped), the dependency name → resolved
+// version (peer suffix dropped) it was locked to. Edges, not a flat set of
+// versions: a move from `foo@1` to `foo@2` where some other workspace already
+// used `foo@2` changes no version set, but it changes an edge.
+const withoutPeerSuffix = (spec) => {
+  const paren = spec.indexOf('(');
+  return paren === -1 ? spec : spec.slice(0, paren);
+};
+const unquote = (key) => key.replace(/^'(.*)'$/, '$1');
+
+export function lockfileEdges(lockfile) {
+  const importers = new Map();
+  const snapshots = new Map();
+  const base = withoutPeerSuffix;
+  let section = null;
+  let key = null;
+  let field = null;
+  let dep = null;
   for (const line of lockfile.split('\n')) {
     if (/^\S/.test(line)) {
-      inPackages = line.startsWith('packages:');
+      section = line.replace(/:\s*$/, '');
+      key = null;
       continue;
     }
-    if (!inPackages) continue;
-    const match = /^  '?([^'\s][^']*?)'?:\s*$/.exec(line);
-    if (!match) continue;
-    let key = match[1];
-    const paren = key.indexOf('(');
-    if (paren !== -1) key = key.slice(0, paren);
-    const at = key.lastIndexOf('@');
-    if (at <= 0) continue;
-    const name = key.slice(0, at);
-    if (!versions.has(name)) versions.set(name, new Set());
-    versions.get(name).add(key.slice(at + 1));
+    const indent = line.length - line.trimStart().length;
+    const text = line.trim();
+    if (section === 'importers') {
+      if (indent === 2) {
+        key = unquote(text.replace(/:$/, ''));
+        importers.set(key, new Map());
+      } else if (indent === 4) {
+        field = text.replace(/:$/, '');
+      } else if (indent === 6) {
+        dep = unquote(text.replace(/:$/, ''));
+      } else if (indent === 8 && key !== null && dep !== null) {
+        const match = /^version:\s*(.+)$/.exec(text);
+        if (match && /dependencies$/i.test(field ?? '')) {
+          importers.get(key).set(dep, base(unquote(match[1])));
+        }
+      }
+    } else if (section === 'snapshots') {
+      if (indent === 2) {
+        key = base(unquote(text.replace(/:$/, '')));
+        if (!snapshots.has(key)) snapshots.set(key, new Map());
+      } else if (indent === 4) {
+        field = text.replace(/:$/, '');
+      } else if (
+        indent === 6 &&
+        key !== null &&
+        /dependencies$/i.test(field ?? '')
+      ) {
+        const match = /^('?[^']+?'?):\s*(.+)$/.exec(text);
+        if (match) {
+          snapshots.get(key).set(unquote(match[1]), base(unquote(match[2])));
+        }
+      }
+    }
   }
-  return versions;
+  return { importers, snapshots };
 }
 
-// After the mirror has resolved: every package whose resolved versions the
-// branch changed since the release (in the root lockfile) and which the
-// image installs must resolve in the mirror to one of the branch's new
-// versions. The specifier guard above says whether a lockfile change is
-// explained at all; this says whether each change actually arrived — a
-// manifest edit for one dependency must not mask a lockfile-only patch to
-// another, which the seeded resolution would leave at the released version.
-// A package the mirror does not install cannot be checked and is not; the
-// vendored workspace packages resolve to tarballs and are outside this too.
+// After the mirror has resolved: every dependency edge the branch changed
+// since the release (in the root lockfile) that the image also has must
+// resolve in the mirror to the branch's version. The specifier guard above
+// says whether a lockfile change is explained at all; this says whether each
+// change actually arrived — a manifest edit for one dependency must not mask
+// a lockfile-only patch to another, which the seeded resolution would leave
+// at the released version. The app's importer corresponds to the mirror's
+// root importer; a closure package's importer to its snapshot in the mirror
+// (a tarball or a registry version, either way keyed by the package name);
+// every other snapshot to the same `name@version` snapshot. An edge the
+// mirror does not have cannot be checked and is not; edges to workspace
+// packages are the vendoring's business.
 export function assertBranchResolutionsCarried({
   refLock,
   headLock,
   mirrorLock,
+  appImporter,
+  closureImporters,
+  workspaceNames,
 }) {
-  const before = lockfilePackageVersions(refLock);
-  const after = lockfilePackageVersions(headLock);
-  const mirror = lockfilePackageVersions(mirrorLock);
+  const ref = lockfileEdges(refLock);
+  const head = lockfileEdges(headLock);
+  const mirror = lockfileEdges(mirrorLock);
   const missing = [];
-  for (const [name, versions] of after) {
-    const previous = before.get(name) ?? new Set();
-    const added = [...versions].filter((version) => !previous.has(version));
-    if (added.length === 0) continue;
-    const inMirror = mirror.get(name);
-    if (!inMirror) continue;
-    if (added.some((version) => inMirror.has(version))) continue;
-    missing.push(
-      `${name}: the branch resolves ${added.join(', ')}; the image would keep ${[...inMirror].join(', ')}`,
+  const check = (label, refEdges, headEdges, mirrorEdges) => {
+    if (!mirrorEdges) return;
+    for (const [dep, version] of headEdges) {
+      if (workspaceNames.has(dep)) continue;
+      if (refEdges?.get(dep) === version) continue;
+      const inMirror = mirrorEdges.get(dep);
+      if (inMirror === version) continue;
+      missing.push(
+        `${label} → ${dep}: the branch resolves ${version}; the image would keep ${inMirror ?? 'nothing'}`,
+      );
+    }
+  };
+  const mirrorSnapshotFor = (name) =>
+    [...mirror.snapshots.entries()].find(([key]) =>
+      key.startsWith(`${name}@`),
+    )?.[1];
+
+  check(
+    appImporter,
+    ref.importers.get(appImporter),
+    head.importers.get(appImporter) ?? new Map(),
+    mirror.importers.get('.'),
+  );
+  for (const [importer, name] of Object.entries(closureImporters)) {
+    check(
+      name,
+      ref.importers.get(importer),
+      head.importers.get(importer) ?? new Map(),
+      mirrorSnapshotFor(name),
+    );
+  }
+  for (const [parent, edges] of head.snapshots) {
+    check(
+      parent,
+      ref.snapshots.get(parent),
+      edges,
+      mirror.snapshots.get(parent),
     );
   }
   if (missing.length) {
