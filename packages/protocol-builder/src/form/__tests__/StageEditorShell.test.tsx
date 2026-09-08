@@ -1949,3 +1949,85 @@ describe('StageEditorShell', () => {
     expect(onFinish).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Switching a capability off is a decision the SESSION records, and a session
+ * can refuse it: editing is a lease, and it can be taken away between the
+ * click that opened the confirmation and the click that answered it. The
+ * refusal is the whole answer — nothing was thrown away — so the capability
+ * has to be left exactly as it was, on screen and in the switch.
+ */
+describe('a capability switched off as editing is taken away', () => {
+  const withScript = () =>
+    createSession({
+      fields: { ...initialFields, interviewScript: 'Read this aloud' },
+    });
+
+  const openTheConfirmation = async (
+    user: ReturnType<typeof userEvent.setup>,
+  ) => {
+    await user.click(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    );
+    await screen.findByRole('button', { name: 'Clear script' });
+  };
+
+  it('leaves the capability holding what the session still holds', async () => {
+    const user = userEvent.setup();
+    const session = withScript();
+    renderEditor(session);
+    await openTheConfirmation(user);
+
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+    await user.click(screen.getByRole('button', { name: 'Clear script' }));
+
+    // Emptying the form here would leave the capability looking cleared while
+    // the session still holds every value, with nothing left to re-seed it.
+    expect(
+      await screen.findByRole('textbox', { name: 'Interviewer script text' }),
+    ).toHaveValue('Read this aloud');
+    expect(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    ).toBeChecked();
+    expect(
+      screen.getByText('This stage is read-only', { exact: false }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows them again when editing is handed back', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    const session = createSession({
+      onFinish,
+      fields: { ...initialFields, interviewScript: 'Read this aloud' },
+    });
+    renderEditor(session);
+    await openTheConfirmation(user);
+
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+    await user.click(screen.getByRole('button', { name: 'Clear script' }));
+    act(() => {
+      session.setAccess({
+        mode: 'editable',
+        leaseOwner: 'tab-1',
+        leaseEpoch: 1n,
+      });
+    });
+
+    expect(
+      await screen.findByRole('textbox', { name: 'Interviewer script text' }),
+    ).toHaveValue('Read this aloud');
+
+    // Nothing here re-seeds a form, so a save is what proves the researcher
+    // is looking at the values rather than at a capability the next save
+    // would empty.
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await waitFor(() => expect(onFinish).toHaveBeenCalled());
+    const request = onFinish.mock.calls[0]?.[0] as FinishRequest;
+    expect(request.stageDocument.interviewScript).toBe('Read this aloud');
+  });
+});

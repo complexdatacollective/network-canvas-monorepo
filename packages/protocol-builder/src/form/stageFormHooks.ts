@@ -209,11 +209,22 @@ export type DiscardCause = Readonly<{ path: string; value: unknown }>;
  * The FORM is emptied either way. A value typed into a capability and not yet
  * flushed is on screen and in no draft, so a reset that left it there would
  * write it back on the next save under a cause it no longer describes.
+ *
+ * **Unless the session refuses the batch**, which is what it does when editing
+ * has been taken away since this handler was built — between the click that
+ * opened a confirmation and the click that answered it, say. A refusal means
+ * nothing was thrown away, so nothing may be emptied either: the values are
+ * still the session's, the access change has already re-rendered everything
+ * that would re-seed them, and a form emptied here would leave the capability
+ * looking cleared with nothing left to fill it back in — and the next save
+ * writing that emptiness into a stage the session never agreed to. Answered
+ * rather than swallowed, so the caller can leave its own switch where the
+ * researcher left it; `applyOwnCommands` has already said so on screen.
  */
 export function useDiscardStageValues(): (
   paths: readonly string[],
   cause?: DiscardCause,
-) => void {
+) => boolean {
   const { applyOwnCommands } = useStageEditorForm();
   const clearStageValue = useClearStageValue();
 
@@ -252,11 +263,12 @@ export function useDiscardStageValues(): (
         ...causeBatch.filter((command) => !carriedBy(discards, command)),
         ...discards,
       ];
-      if (batch.length > 0) applyOwnCommands(batch);
+      if (batch.length > 0 && applyOwnCommands(batch).refused) return false;
 
       // The FORM only, and only the discarded paths: the cause is already on
       // screen — the researcher chose it — and it is the draft that was behind.
       for (const path of paths) clearStageValue(path);
+      return true;
     },
     [applyOwnCommands, clearStageValue],
   );
