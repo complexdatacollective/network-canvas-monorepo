@@ -288,32 +288,47 @@ test('a staged tree can be published later, from a checkout that never staged it
   // Phase 2: only the staged tree and the remote.
   const outputPath = join(directory, 'github-output');
   writeFileSync(outputPath, '');
-  execFileSync(
-    'node',
-    [
-      SCRIPT,
-      '--publish-from',
-      stage,
-      '--repo',
-      'unused/local-mirror',
-      '--version',
-      '0.0.1-test',
-      '--branch',
-      'main',
-    ],
-    {
-      cwd: directory,
-      env: {
-        ...process.env,
-        GIT_AUTHOR_EMAIL: 'ci@example.com',
-        GIT_AUTHOR_NAME: 'ci',
-        MIRROR_REPO_URL: remote,
-        MONOREPO_SHA: 'hotfix-source-sha',
-        GITHUB_OUTPUT: outputPath,
-      },
-      stdio: 'pipe',
-    },
+  const publishArgs = [
+    SCRIPT,
+    '--publish-from',
+    stage,
+    '--repo',
+    'unused/local-mirror',
+    '--version',
+    '0.0.1-test',
+    '--branch',
+    'main',
+  ];
+  const publishEnv = {
+    ...process.env,
+    GIT_AUTHOR_EMAIL: 'ci@example.com',
+    GIT_AUTHOR_NAME: 'ci',
+    MIRROR_REPO_URL: remote,
+    MONOREPO_SHA: 'hotfix-source-sha',
+    GITHUB_OUTPUT: outputPath,
+  };
+
+  // A workflow that appeared in the stage after it was checked — the shape
+  // a hostile lifecycle script would leave — is refused at the push, whatever
+  // the publisher itself says.
+  const stray = join(stage, '.github', 'workflows', 'stray.yml');
+  writeFileSync(stray, 'name: Stray\n');
+  assert.throws(
+    () =>
+      execFileSync('node', publishArgs, {
+        cwd: directory,
+        env: publishEnv,
+        stdio: 'pipe',
+      }),
+    /must carry exactly \.github\/workflows\/docker-publish\.yml.*stray\.yml/,
   );
+  rmSync(stray);
+
+  execFileSync('node', publishArgs, {
+    cwd: directory,
+    env: publishEnv,
+    stdio: 'pipe',
+  });
 
   const mirroredPaths = git(
     directory,

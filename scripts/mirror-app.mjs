@@ -63,6 +63,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   writeFileSync,
 } from 'node:fs';
@@ -548,28 +549,6 @@ function stage({
     assertCommitPinnedActionUses(workflow, readFileSync(source, 'utf8'));
     mkdirSync(dirname(destination), { recursive: true });
     cpSync(source, destination);
-    if (publisherWorkflow) {
-      // A trusted publisher is staged for a push that happens later, from
-      // elsewhere; verify now, anonymously, that the external repository
-      // will accept it, so the lane learns of a mismatch before it has
-      // claimed anything.
-      const checkout = mkdtempSync(join(tmpdir(), 'mirror-publisher-'));
-      run('git', [
-        'clone',
-        '--quiet',
-        '--depth',
-        '1',
-        '--branch',
-        branch,
-        '--single-branch',
-        process.env.MIRROR_REPO_URL ?? `https://github.com/${repo}.git`,
-        checkout,
-      ]);
-      assertStagedPublisherMatches({ staging, checkout });
-      console.error(
-        `[mirror] the external repository's ${workflow} matches the staged copy`,
-      );
-    }
   }
 
   const { manifest: resolved, dropped } = resolveManifest(appDir);
@@ -683,6 +662,31 @@ function stage({
     }
   }
 
+  if (publisherWorkflow) {
+    // A trusted publisher was staged for a push that happens later, from
+    // elsewhere. Verify now — on the FINISHED tree, after the packing and
+    // resolution above have run code from it — that the external repository
+    // will accept it, so the lane learns of a mismatch or a stray workflow
+    // before it has claimed anything. The push repeats the check on its own
+    // clone.
+    const checkout = mkdtempSync(join(tmpdir(), 'mirror-publisher-'));
+    run('git', [
+      'clone',
+      '--quiet',
+      '--depth',
+      '1',
+      '--branch',
+      branch,
+      '--single-branch',
+      process.env.MIRROR_REPO_URL ?? `https://github.com/${repo}.git`,
+      checkout,
+    ]);
+    assertStagedPublisherMatches({ staging, checkout });
+    console.error(
+      '[mirror] the external repository tracks exactly the staged publisher workflow',
+    );
+  }
+
   return { staging, appName };
 }
 
@@ -692,6 +696,18 @@ function stage({
 // keeps the publish phase independent of any source checkout.
 function assertStagedPublisherMatches({ staging, checkout }) {
   const workflow = '.github/workflows/docker-publish.yml';
+  // The STAGED set, not only the publisher's contents: the stage is handed
+  // to a push that copies it whole, and code from the tree being mirrored
+  // ran after it was assembled (`pnpm pack` lifecycle scripts), so anything
+  // that appeared under .github/workflows since would reach the external
+  // repository as workflow code running with its secrets. Checked here,
+  // immediately before the copy, rather than when the publisher was staged.
+  const stagedWorkflows = listFiles(join(staging, '.github', 'workflows'));
+  if (stagedWorkflows.length !== 1 || stagedWorkflows[0] !== workflow) {
+    throw new Error(
+      `Staged tree must carry exactly ${workflow} under .github/workflows; found ${stagedWorkflows.join(', ') || 'no workflows'}. Refusing to push workflow files with the release token.`,
+    );
+  }
   const target = join(checkout, workflow);
   const trackedWorkflows = capture('git', [
     '-C',
@@ -707,6 +723,19 @@ function assertStagedPublisherMatches({ staging, checkout }) {
     sourceContents: readFileSync(join(staging, workflow), 'utf8'),
     targetContents: existsSync(target) ? readFileSync(target, 'utf8') : '',
   });
+}
+
+// Every file under `dir`, as paths relative to its grandparent's parent —
+// i.e. `.github/workflows/<name>` for the workflows directory — sorted.
+function listFiles(dir) {
+  if (!existsSync(dir)) return [];
+  const root = resolve(dir, '..', '..');
+  return readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) =>
+      relative(root, join(entry.parentPath ?? entry.path, entry.name)),
+    )
+    .toSorted();
 }
 
 // Where a push goes and what it authenticates with. MIRROR_REPO_URL overrides

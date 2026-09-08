@@ -143,20 +143,23 @@ after the release cannot slip in.
 4. Run the **Hotfix Release** workflow **from main**, with `app: fresco` and
    `source_ref` set to the hotfix branch. Its first job runs typecheck and
    tests across Fresco's whole workspace dependency closure, builds the
-   closure so the changed packages can be packed, claims `fresco@<version>`
-   and stages the vendored mirror tree. A second job, `fresco-publish`,
-   pushes that tree to the Fresco repository's `main` — which is what triggers
-   the GHCR image build, exactly as a normal release does — and creates the
-   release on both repositories. The split is deliberate: staging runs code
-   from the hotfix branch (`pnpm pack` runs each vendored package's lifecycle
-   scripts), so the job that does it never holds the push token, and the job
-   that holds the token never checks out the branch. A protected
-   `fresco-hotfix-production` environment therefore asks for approval twice.
+   closure so the changed packages can be packed, and stages the vendored
+   mirror tree. A second job, `fresco-publish`, re-validates the version,
+   claims `fresco@<version>`, pushes that tree to the Fresco repository's
+   `main` — which is what triggers the GHCR image build, exactly as a normal
+   release does — and creates the release on both repositories. The split is
+   deliberate: staging runs code from the hotfix branch (`pnpm pack` runs each
+   vendored package's lifecycle scripts, which could also plant a fake `gh` on
+   that job's `$GITHUB_PATH`), so the job that does it holds no credential at
+   all, and the job that holds the tag-claiming token and the push token runs
+   nothing from the branch. A protected `fresco-hotfix-production` environment
+   therefore asks for approval twice.
    The GHCR publisher workflow the mirror carries is main's copy, not the
    branch's (a branch cut from an older tag may predate a publisher change
-   already pre-applied to the Fresco repository), and the staging step checks
-   that the Fresco repository tracks exactly that copy before the tag is
-   claimed.
+   already pre-applied to the Fresco repository). Both jobs check that the
+   staged tree carries exactly that workflow and that the Fresco repository
+   tracks exactly it — the publish job immediately before copying, so nothing
+   a lifecycle script left under `.github/workflows` can be pushed.
    The lane holds the normal lane's `apps-release-fresco` lock, re-checks the
    newest tag after building, and refuses a version older than the current
    release, because the mirror's newest push is what `latest` points at.
