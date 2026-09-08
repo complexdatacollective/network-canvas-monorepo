@@ -9,6 +9,7 @@ import {
 } from '@codaco/studio-sync/template-exchange';
 import { TemplateMetadataSchema } from '@codaco/studio-sync/template-metadata';
 import {
+  assertRegistryEntryArtifact,
   TemplateRegistryClient,
   TemplateRegistryClientError,
 } from '@codaco/studio-sync/template-registry-client';
@@ -444,6 +445,7 @@ export async function importRegistryTemplate(
     try {
       entry = await registry.entry(entryId);
       fetched = await registry.fetchArtifact(entry.root);
+      assertRegistryEntryArtifact(entry, fetched.artifact);
     } catch (error) {
       translateRegistryError(error);
     }

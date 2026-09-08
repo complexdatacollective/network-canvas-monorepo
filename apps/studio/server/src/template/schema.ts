@@ -5,9 +5,8 @@
 // manifest, and the pin set, deliberately mirroring `protocol_versions` /
 // `version_sections`.
 //
-// `template_registry_publications` is deliberately absent: the outbound record
-// of a publication to the central registry waits until #1284 defines the
-// exchange format (decided 2026-09-03).
+// Registry links and immutable publication receipts implement #1284's portable
+// publisher identity and content-addressed exchange format.
 import { sql } from 'drizzle-orm';
 import {
   boolean,
