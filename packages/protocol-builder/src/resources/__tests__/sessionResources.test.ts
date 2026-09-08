@@ -747,6 +747,70 @@ describe('a session that stages resources', () => {
   });
 
   /**
+   * The history is not a second account of what the session may send.
+   *
+   * An undo entry is a whole draft, and one made before a discard still names
+   * the bytes it chose. Restoring it is an ordinary edit of this session's
+   * own, so it is asked the question every edit is asked — and it puts back a
+   * reference to bytes no finish will ever promote, which is the hold's whole
+   * reason. Fencing the entry instead would take the researcher's own work
+   * away over a file they threw out; the history is cut only for a stage
+   * carrying something this session did not put there.
+   */
+  it('holds an undo that puts back the reference the discard left behind', async () => {
+    const { onCommands, session } = createFixture();
+    const staged = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(staged.id) },
+    ]);
+    session.dispatch([{ op: 'set', key: 'items', value: [] }]);
+    expectOk(await sessionGateway(session).discardStaged(staged.id));
+    expect(onCommands.mock.calls.map(([batch]) => batch.id)).toEqual([1, 2]);
+
+    session.undo();
+
+    // The draft names the discarded file again; the host must not be told so.
+    expect(session.getSnapshot().editedSection.fields.items).toEqual(
+      informationItems(staged.id),
+    );
+    expect(onCommands.mock.calls.map(([batch]) => batch.id)).toEqual([1, 2]);
+
+    // And the edit that takes it back lets the pair go, in the order made.
+    session.redo();
+    expect(onCommands.mock.calls.map(([batch]) => batch.id)).toEqual([
+      1, 2, 3, 4,
+    ]);
+  });
+
+  /** Redo restores a draft the same way, and is held the same way. */
+  it('holds a redo that puts it back, and lets go on the next removal', async () => {
+    const { onCommands, session } = createFixture();
+    const staged = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(staged.id) },
+    ]);
+    session.dispatch([{ op: 'set', key: 'items', value: [] }]);
+    expectOk(await sessionGateway(session).discardStaged(staged.id));
+    // Back past the choice, so both undos end in a draft naming nothing gone.
+    session.undo();
+    session.undo();
+    expect(onCommands.mock.calls.map(([batch]) => batch.id)).toEqual([
+      1, 2, 3, 4,
+    ]);
+
+    session.redo();
+
+    expect(onCommands.mock.calls.map(([batch]) => batch.id)).toEqual([
+      1, 2, 3, 4,
+    ]);
+
+    session.dispatch([{ op: 'set', key: 'items', value: [] }]);
+    expect(onCommands.mock.calls.map(([batch]) => batch.id)).toEqual([
+      1, 2, 3, 4, 5, 6,
+    ]);
+  });
+
+  /**
    * The release is a PREFIX, so what it cannot let go keeps everything behind
    * it waiting. Clearing the hold outright once anything went would let the
    * batches made afterwards overtake the one still waiting, and a host that
