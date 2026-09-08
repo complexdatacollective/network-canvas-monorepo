@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 
@@ -19,6 +20,7 @@ import type {
   ValidFieldComponent,
 } from '@codaco/fresco-ui/form/Field/types';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import FormErrors from '@codaco/fresco-ui/form/FormErrors';
 import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
 import FormStoreProvider, {
   FormStoreContext,
@@ -126,6 +128,15 @@ export type DialogFormProps = Readonly<{
   ) => void | DialogFormErrors | Promise<void | DialogFormErrors>;
   /** Footer submit label — 'Save', 'Add rule'. */
   submitLabel: string;
+  /**
+   * Footer dismiss label, for a dialog whose dismissal is not simply Cancel.
+   *
+   * Left out it is the shared, translated `common.cancel` rather than an
+   * English literal: every one of this package's row editors mounts this
+   * dialog and none of them names its own, so a default written as a word here
+   * is the one string that stays English inside an otherwise translated
+   * dialog.
+   */
   cancelLabel?: string;
   /** Semantic width preset, forwarded to `Dialog`. */
   size?: DialogProps['size'];
@@ -185,6 +196,38 @@ export function DialogFormField<C extends ValidFieldComponent>(
 
   return <Field<C> {...fieldProps} />;
 }
+
+/**
+ * Registers a reason this dialog cannot be submitted, and answers with the
+ * release. Absent outside a `DialogForm`.
+ */
+const DialogFormSubmissionBlockContext = createContext<
+  ((reason: string) => () => void) | undefined
+>(undefined);
+
+/**
+ * States that the dialog around this component may not be submitted, and why,
+ * for as long as this component is mounted.
+ *
+ * For a part of a dialog that has failed in a way no field can express — a
+ * caller's editor that threw while rendering, so the controls the researcher
+ * would have filled in are not there at all. Fields report themselves; this is
+ * for their ABSENCE, which nothing left on screen can validate. The dialog
+ * puts the reason above the fields, where it reports every other form-level
+ * problem, announces it on the submit control and refuses the submission —
+ * until this unmounts, which for a boundary means the editor rendering again.
+ *
+ * Answers whether a dialog took it. A caller mounted outside one — which
+ * nothing in this package does — has to report the problem itself, because
+ * nothing else will.
+ */
+export function useDialogFormSubmissionBlock(reason: string): boolean {
+  const block = useContext(DialogFormSubmissionBlockContext);
+  useEffect(() => block?.(reason), [block, reason]);
+  return block !== undefined;
+}
+
+const NO_SUBMISSION_BLOCKS: ReadonlyMap<number, string> = new Map();
 
 /** Distinguishes concurrently mounted forms — see `domFormId` below. */
 let nextDialogFormInstance = 0;
@@ -282,6 +325,29 @@ function DialogFormBody({
   });
 
   /**
+   * Why this dialog may not be submitted, keyed so that two blocks holding the
+   * same sentence are still two blocks: see
+   * {@link useDialogFormSubmissionBlock}.
+   */
+  const [submissionBlocks, setSubmissionBlocks] =
+    useState(NO_SUBMISSION_BLOCKS);
+  const nextBlockKey = useRef(0);
+  const block = useCallback((reason: string) => {
+    const key = (nextBlockKey.current += 1);
+    setSubmissionBlocks((held) => new Map(held).set(key, reason));
+    return () => {
+      setSubmissionBlocks((held) => {
+        const remaining = new Map(held);
+        remaining.delete(key);
+        return remaining;
+      });
+    };
+  }, []);
+  const blockedReasons = [...submissionBlocks.values()];
+  const blocked = blockedReasons.length > 0;
+  const blockedReasonsId = `${domFormId}-unsubmittable`;
+
+  /**
    * A live comparison against the values the fields registered with, never the
    * store's own sticky `isDirty` flag — that never returns to false once
    * anything has been typed, and would ask about a draft the researcher had
@@ -320,6 +386,13 @@ function DialogFormBody({
    * reason: only a submission that SUCCEEDS reaches `onClose`.
    */
   const handleSubmit: FormSubmitHandler = async (values) => {
+    // `aria-disabled` announces that this dialog cannot be submitted; it does
+    // not prevent it, and a form submits on Enter from any field it still
+    // has. The refusal is here, before `validate` — which is asked about the
+    // fields that ARE registered, and would pass a draft whose editor never
+    // rendered any. Nothing is added above the fields: the reason is already
+    // standing there.
+    if (blocked) return refusal({});
     const invalid = validate?.(values);
     if (hasErrors(invalid)) return refusal(invalid);
 
@@ -341,6 +414,24 @@ function DialogFormBody({
     return { success: true };
   };
 
+  /**
+   * The reasons stand ABOVE the fields, where `FormWithoutProvider` renders a
+   * failed submission's own form errors — one place for "something about this
+   * whole draft is wrong", whether it was found on submission or, as here,
+   * before the researcher could type anything at all. The id is what lets the
+   * submit control name them as the reason it is unavailable.
+   */
+  const fields = (
+    <>
+      {blocked && (
+        <div id={blockedReasonsId}>
+          <FormErrors errors={blockedReasons} />
+        </div>
+      )}
+      {children}
+    </>
+  );
+
   return (
     <Dialog
       open={open}
@@ -361,43 +452,51 @@ function DialogFormBody({
           >
             {cancelLabel ?? intl.formatMessage(commonMessages.cancel)}
           </Button>
-          <SubmitButton form={domFormId}>{submitLabel}</SubmitButton>
+          <SubmitButton
+            form={domFormId}
+            aria-disabled={blocked || undefined}
+            aria-describedby={blocked ? blockedReasonsId : undefined}
+          >
+            {submitLabel}
+          </SubmitButton>
         </>
       }
     >
-      <DialogFormInitialValuesContext value={initialValues}>
-        {aside ? (
-          // Every responsive rule below stays anchored to `Dialog`'s own
-          // container. Making this panel a container instead would have its
-          // descendants query the narrower pane width while the panel itself
-          // still queries the dialog, so the split and the handle's visibility
-          // would answer to two different widths.
-          <ResizableFlexPanel
-            storageKey={`${formId}-workspace-split`}
-            defaultBasis={50}
-            min={30}
-            max={70}
-            stickyHandle
-            aria-label={intl.formatMessage(dialogMessages.resizeHandle)}
-            className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
-          >
-            <FormWithoutProvider
-              id={domFormId}
-              onSubmit={handleSubmit}
-              className="min-w-0 @min-[60rem]:pr-4"
+      <DialogFormSubmissionBlockContext value={block}>
+        <DialogFormInitialValuesContext value={initialValues}>
+          {aside ? (
+            // Every responsive rule below stays anchored to `Dialog`'s own
+            // container. Making this panel a container instead would have its
+            // descendants query the narrower pane width while the panel itself
+            // still queries the dialog, so the split and the handle's visibility
+            // would answer to two different widths.
+            <ResizableFlexPanel
+              storageKey={`${formId}-workspace-split`}
+              defaultBasis={50}
+              min={30}
+              max={70}
+              stickyHandle
+              aria-label={intl.formatMessage(dialogMessages.resizeHandle)}
+              className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
             >
-              {children}
+              <FormWithoutProvider
+                id={domFormId}
+                onSubmit={handleSubmit}
+                className="min-w-0 @min-[60rem]:pr-4"
+              >
+                {fields}
+              </FormWithoutProvider>
+              <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
+                {aside}
+              </aside>
+            </ResizableFlexPanel>
+          ) : (
+            <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
+              {fields}
             </FormWithoutProvider>
-            <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
-              {aside}
-            </aside>
-          </ResizableFlexPanel>
-        ) : (
-          <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
-            {children}
-          </FormWithoutProvider>
-        )}
-      </DialogFormInitialValuesContext>
+          )}
+        </DialogFormInitialValuesContext>
+      </DialogFormSubmissionBlockContext>
     </Dialog>
   );
 }

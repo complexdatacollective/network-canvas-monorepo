@@ -87,6 +87,26 @@ jobs:
     environment: ${{ inputs.app }}-hotfix-production
     permissions:
       contents: write
+    # The verify step runs `test` across the app's whole workspace dependency
+    # closure, and Architect's reaches @codaco/studio-sync through
+    # protocol-builder. Its conformance suites need a Postgres on 127.0.0.1:54318
+    # and refuse to skip under CI, so without this service the verify step
+    # aborts before anything is released (run 34223425194 did exactly that).
+    # Mirrors the `test` job's service in ci-and-release.yml.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: spike
+          POSTGRES_DB: studio_dev
+          POSTGRES_INITDB_ARGS: --set=max_prepared_transactions=10
+        ports:
+          - 54318:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     outputs:
       sha: ${{ steps.commit.outputs.sha }}
     # No credential at job level: every step below that runs code from the

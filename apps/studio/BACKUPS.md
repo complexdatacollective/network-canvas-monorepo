@@ -23,11 +23,19 @@ command with only the backup connection URL supplied through `DATABASE_URL`:
 DATABASE_URL="$STUDIO_BACKUP_DATABASE_URL" node dist/backup.js
 ```
 
-The command starts no HTTP server, authentication service or worker. It accepts
-no arguments and requires no application encryption keys. Success prints
+The command starts no HTTP server, authentication service or worker. Its default
+mode requires no application encryption keys. Success prints
 `Studio backup access verified.`; any failure exits 1 with the fixed diagnostic
 `STUDIO_BACKUP_ACCESS_UNSAFE`, without the connection string or provider error.
 Treat a failure as a failed backup attempt and correct the drift before retrying.
+
+The coordinated capture script also runs `node dist/backup.js --verify-encryption`
+with the independent, offline recovery keyset after draining writers. This uses
+the same SELECT-only backup identity and read-only transaction to authenticate
+every existing key proof and stored key reference. Every configured key must
+already have a proof; verification never inserts one. All application,
+maintenance and migration logins remain closed throughout this final custody
+check and capture, so another operator cannot register a new key between them.
 
 The verification uses the actual pinned role and connecting login. It checks
 their attributes, memberships, ownership and effective privileges, including

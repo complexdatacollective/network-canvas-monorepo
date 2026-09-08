@@ -339,6 +339,49 @@ it('installs an immutable built image, drains a populated backup and restores al
     const token = await source.configure();
     await source.overlay();
     await source.compose(['config', '--quiet']);
+    const encryptionConfiguration = JSON.parse(
+      (
+        await source.compose([
+          '--profile',
+          'operator',
+          '-f',
+          'deployment/encryption.yml',
+          'config',
+          '--format',
+          'json',
+        ])
+      ).stdout.toString(),
+    ) as {
+      services: Record<
+        string,
+        {
+          environment?: Record<string, string>;
+          networks?: Record<string, unknown>;
+        }
+      >;
+    };
+    expect(
+      Object.keys(
+        encryptionConfiguration.services['encryption-verify']!.networks!,
+      ),
+    ).toEqual(['data']);
+    expect(
+      encryptionConfiguration.services['encryption-verify']!.environment,
+    ).toMatchObject({ STUDIO_ENCRYPTION_OFFLINE_CUSTODY: 'required' });
+    const custodyService =
+      encryptionConfiguration.services['encryption-verify-backup']!;
+    expect(Object.keys(custodyService.networks!)).toEqual(['data']);
+    expect(custodyService.environment).toMatchObject({
+      STUDIO_ENCRYPTION_OFFLINE_CUSTODY: 'required',
+    });
+    expect(new URL(custodyService.environment!.DATABASE_URL!).username).toBe(
+      'studio_backup_login',
+    );
+    expect(
+      Object.keys(
+        encryptionConfiguration.services['encryption-verify-online']!.networks!,
+      ).toSorted(),
+    ).toEqual(['data', 'edge']);
     await source.compose(['up', '-d', '--wait', 'postgres']);
     await source.compose(['up', '-d', 'minio-init']);
     await source.compose([
@@ -474,6 +517,77 @@ it('installs an immutable built image, drains a populated backup and restores al
     expect(baseline.credentials).toBeGreaterThan(0);
     expect(baseline.migrations).toBeGreaterThanOrEqual(5);
     expect(baseline.refs).toBe(1);
+    const directConfiguration = await readFile(
+      join(source.directory, 'deployment/encryption.env'),
+      'utf8',
+    );
+    const missingRecoveryAttempt = join(source.root, 'missing-recovery-backup');
+    const missingRecoveryResult = await source.execute(
+      'sh',
+      [
+        'deployment/backup.sh',
+        missingRecoveryAttempt,
+        join(source.root, 'missing-recovery-custody.env'),
+      ],
+      {
+        failure: true,
+        environment: {
+          STUDIO_RECOVERY_ENCRYPTION_FILE: join(
+            source.root,
+            'absent-recovery-roots.env',
+          ),
+        },
+      },
+    );
+    expect(missingRecoveryResult.code).not.toBe(0);
+    await expect(stat(missingRecoveryAttempt)).rejects.toThrow();
+    const wrongRecovery = join(source.root, 'wrong-recovery-roots.env');
+    await writeFile(
+      wrongRecovery,
+      directConfiguration.replace(
+        /^STUDIO_ENCRYPTION_ROOT_PII_V1=.*$/m,
+        `STUDIO_ENCRYPTION_ROOT_PII_V1='${Buffer.alloc(32, 7).toString('base64')}'`,
+      ),
+      { mode: 0o600 },
+    );
+    const wrongRecoveryAttempt = join(source.root, 'wrong-recovery-backup');
+    const wrongRecoveryResult = await source.execute(
+      'sh',
+      [
+        'deployment/backup.sh',
+        wrongRecoveryAttempt,
+        join(source.root, 'wrong-recovery-custody.env'),
+      ],
+      {
+        failure: true,
+        environment: { STUDIO_RECOVERY_ENCRYPTION_FILE: wrongRecovery },
+      },
+    );
+    expect(wrongRecoveryResult.code).not.toBe(0);
+    await expect(
+      stat(join(wrongRecoveryAttempt, 'COMPLETE')),
+    ).rejects.toThrow();
+    const ciphertextRecovery = join(source.root, 'ciphertext-only.env');
+    await writeFile(
+      ciphertextRecovery,
+      `${directConfiguration}\nSTUDIO_ENCRYPTION_KEY_PROVIDER='aws-kms'\n`,
+      { mode: 0o600 },
+    );
+    const ciphertextAttempt = join(source.root, 'ciphertext-recovery-backup');
+    const ciphertextResult = await source.execute(
+      'sh',
+      [
+        'deployment/backup.sh',
+        ciphertextAttempt,
+        join(source.root, 'ciphertext-recovery-custody.env'),
+      ],
+      {
+        failure: true,
+        environment: { STUDIO_RECOVERY_ENCRYPTION_FILE: ciphertextRecovery },
+      },
+    );
+    expect(ciphertextResult.code).not.toBe(0);
+    await expect(stat(join(ciphertextAttempt, 'COMPLETE'))).rejects.toThrow();
     const overlapHash = await overlapUploadAndBackup(
       source,
       data,
@@ -705,11 +819,20 @@ it('installs an immutable built image, drains a populated backup and restores al
       await rename(completeImages, imageArchive);
       await writeFile(checksumPath, originalChecksums);
     }
-    const restoredResult = await restored.execute('sh', [
-      'deployment/restore.sh',
-      backup,
-      custody,
-    ]);
+    // A fresh host may know only the loaded content IDs. Force the registry
+    // name to be absent even though the source image is warm in this daemon.
+    const uncachedStudioImage = `local.invalid/studio-recovery-${randomUUID()}:unavailable`;
+    const absentImage = await restored.execute(
+      'docker',
+      ['image', 'inspect', uncachedStudioImage],
+      { failure: true },
+    );
+    expect(absentImage.code).not.toBe(0);
+    const restoredResult = await restored.execute(
+      'sh',
+      ['deployment/restore.sh', backup, custody],
+      { environment: { STUDIO_IMAGE: uncachedStudioImage } },
+    );
     expect(restoredResult.stdout.toString()).toMatch(/Loaded image(?: ID)?:/);
     expect(await counts(restored)).toEqual({ ...baseline, refs: 2 });
     const quarantinePools = await restored.pools();
@@ -809,9 +932,9 @@ it('installs an immutable built image, drains a populated backup and restores al
       expect(failed.stdout.toString()).not.toContain('STUDIO_SERVER_STARTED');
     }
     await restored.compose([
-      ...quarantine,
       '-f',
       'deployment/encryption.yml',
+      ...quarantine,
       'run',
       '--rm',
       '--no-deps',

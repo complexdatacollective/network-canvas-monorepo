@@ -8,6 +8,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   symlink,
   writeFile,
 } from 'node:fs/promises';
@@ -210,6 +211,7 @@ exit 0
     result,
     log,
     backup,
+    custody,
     roleState: await readFile(roleStatePath, 'utf8'),
   };
 }
@@ -280,14 +282,17 @@ test('restore refuses existing project resources before any SQL or service start
     });
 });
 
-test('restore consumes one verified private snapshot and removes it', async () => {
-  const { result, log, backup } = await makeHarness({ mutateOriginal: true });
+test('restore consumes one verified private snapshot beside custody and removes it', async () => {
+  const { result, log, backup, custody } = await makeHarness({
+    mutateOriginal: true,
+  });
   assert.equal(result.status, 0, result.stderr);
   const loadedPath = log.match(
     /image load --input ([^\n]+)\/backup\/images\.tar/,
   )?.[1];
   assert.ok(loadedPath);
   assert.notEqual(loadedPath, backup);
+  assert.equal(dirname(loadedPath), await realpath(dirname(custody)));
   assert.match(log, new RegExp(`LOADED_SHA:${digest('images')}`));
   await assert.rejects(access(loadedPath));
 });

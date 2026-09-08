@@ -7,7 +7,7 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createElement, useState, type ComponentType } from 'react';
+import { createElement, useContext, useState, type ComponentType } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as DialogModule from '@codaco/fresco-ui/dialogs/Dialog';
@@ -29,7 +29,10 @@ import StageEditorShell from '../../StageEditorShell.tsx';
 import DialogArrayField, {
   type DialogArrayEditorValidate,
 } from '../DialogArrayField.tsx';
-import { useArrayFieldCommands } from '../useArrayFieldCommands.ts';
+import {
+  ArrayFieldBindingContext,
+  useArrayFieldCommands,
+} from '../useArrayFieldCommands.ts';
 import { promptItemLabel } from './itemLabel.ts';
 
 /**
@@ -307,7 +310,54 @@ async function editRow(
   return await screen.findByRole('textbox', { name: 'Prompt text' });
 }
 
+/**
+ * A family's own editor code, throwing where every one of them can: while it
+ * renders. Nothing the researcher typed causes this and nothing they type
+ * fixes it.
+ */
+function ThrowingPromptFields(): never {
+  throw new Error('the row editor is broken');
+}
+
 describe('the row editor', () => {
+  /**
+   * A dialog whose fields never rendered has nothing to save, and what it
+   * would save is worse than nothing: for a new item, the empty row the
+   * template made, committed as though the researcher had written it.
+   */
+  it('will not commit a row whose editor could not be shown', async () => {
+    const user = userEvent.setup();
+    // React reports the render it caught as well; the boundary is what this
+    // is about, and that report is not a failure.
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const session = createSession({ prompts: [] });
+    renderPromptList(session, {
+      editorFieldsComponent: ThrowingPromptFields,
+    });
+
+    try {
+      await user.click(
+        await screen.findByRole('button', { name: 'Create new prompt' }),
+      );
+      await screen.findByText(/could not be shown/);
+
+      const add = screen.getByRole('button', { name: 'Add' });
+      expect(add).toHaveAttribute('aria-disabled', 'true');
+      expect(add).toHaveAccessibleDescription(/could not be shown/);
+
+      await user.click(add);
+
+      // Nothing committed, and the dialog still there to be closed — which is
+      // the only recovery this boundary offers.
+      expect(promptsOf(session)).toEqual([]);
+      expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it('opens holding the values of the row it was opened on', async () => {
     const user = userEvent.setup();
     const session = createSession({
@@ -1317,5 +1367,78 @@ describe('a list key holding something that is not a list', () => {
         expect.objectContaining({ text: 'About work' }) as unknown as Prompt,
       ]),
     );
+  });
+});
+
+/**
+ * A list a family renders INSIDE the row dialog — a prompt's sort rules, a
+ * block's options — is part of one row of the list around it, and that outer
+ * list is what holds the document path.
+ *
+ * Left inherited, that path is what the inner list would commit its own
+ * insertions and reorderings against: adding a sort rule would insert a row
+ * into the array of prompts. It also must not commit anything at all until the
+ * dialog saves, which is the same rule `ProtocolArrayField` states for a list
+ * that finds itself in a nested form store — this closes the same gap for one
+ * that never goes through `ProtocolArrayField` at all.
+ */
+describe('a list nested inside a row dialog', () => {
+  function ReportedBinding() {
+    const binding = useContext(ArrayFieldBindingContext);
+    return (
+      <p>
+        Bound to:{' '}
+        {binding === null
+          ? 'no list at all'
+          : (binding.documentPath?.join('.') ?? 'no document path')}
+      </p>
+    );
+  }
+
+  function NestingPromptFields() {
+    return (
+      <>
+        <ReportedBinding />
+        <PromptFields />
+      </>
+    );
+  }
+
+  it('is bound to no place in the document of its own', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ prompts: [{ id: 'a', text: 'Alpha' }] });
+
+    function Host() {
+      const controller = useStageEditorController(session, 'stage-form');
+      return (
+        <StageEditorShell controller={controller}>
+          <BuilderSection title="Prompts">
+            <ProtocolArrayField
+              name="prompts"
+              label="Prompts"
+              component={DialogArrayField}
+              addButtonLabel="Create new prompt"
+              editorTitle="Edit prompt"
+              addTitle="Add prompt"
+              itemLabel={promptItemLabel}
+              previewComponent={PromptPreview}
+              editorFieldsComponent={NestingPromptFields}
+            />
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+
+    render(
+      <DialogProvider>
+        <Host />
+      </DialogProvider>,
+    );
+
+    await editRow(user, 0);
+
+    expect(
+      await screen.findByText('Bound to: no document path'),
+    ).toBeInTheDocument();
   });
 });

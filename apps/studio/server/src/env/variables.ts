@@ -64,6 +64,14 @@ export const serverSchemas = {
 
   DATABASE_URL: z.string().min(1).optional(),
   STUDIO_ENCRYPTION_KEYSET: z.string().min(1).max(32_768).optional(),
+  STUDIO_ENCRYPTION_KEY_PROVIDER: z.enum(['environment', 'aws-kms']).optional(),
+  // The encryption boundary validates these only when KMS is selected. The
+  // static Netlify entrypoint withholds all encryption/provider configuration.
+  STUDIO_ENCRYPTION_KMS_KEY_ARN: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_DEPLOYMENT: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_ACCESS_KEY_ID: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_SECRET_ACCESS_KEY: z.string().optional(),
+  STUDIO_ENCRYPTION_KMS_SESSION_TOKEN: z.string().optional(),
   STUDIO_MAINTENANCE_DATABASE_URL: z.string().min(1).optional(),
   // Parsed by production runtime admission and explicit operator entrypoints.
   STUDIO_DATABASE_ALLOWED_LOGINS: z.string().optional(),

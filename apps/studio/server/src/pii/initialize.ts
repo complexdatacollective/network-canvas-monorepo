@@ -54,14 +54,14 @@ const STORED_KEY_REFERENCES_SQL = `
 async function verifyExistingProofs(
   client: pg.PoolClient,
   keys: EncryptionKeys,
+  expectedRole: 'studio_maintenance' | 'studio_backup' = 'studio_maintenance',
 ): Promise<Set<string>> {
   // Refuse an accidentally supplied app pool even when this database has
   // no tenant rows yet: it would see only a subset on the next restart.
   const role = await client.query<{ role: string }>(
     'SELECT current_user AS role',
   );
-  if (role.rows[0]?.role !== 'studio_maintenance')
-    throw new EncryptionStartupError();
+  if (role.rows[0]?.role !== expectedRole) throw new EncryptionStartupError();
   const proofs = await client.query<KeyReference & { proof: Buffer }>(
     'SELECT purpose, key_id AS "keyId", proof FROM encryption_key_verifications',
   );
@@ -75,6 +75,43 @@ async function verifyExistingProofs(
     knownProofs.add(JSON.stringify([purpose, keyId]));
   }
   return knownProofs;
+}
+
+/** Verify independent key custody through the dedicated backup identity after
+ * writer admission has closed. Never register a proof or reopen a writer. */
+export async function verifyEncryptionBackupTransaction(
+  client: pg.PoolClient,
+  keys: EncryptionKeys,
+): Promise<void> {
+  const transaction = await client.query<{ readOnly: string }>(
+    `SELECT current_setting('transaction_read_only') AS "readOnly"`,
+  );
+  if (transaction.rows[0]?.readOnly !== 'on')
+    throw new EncryptionStartupError();
+  const proofs = await verifyExistingProofs(client, keys, 'studio_backup');
+  for (const purpose of PURPOSES) {
+    for (const keyId of keys.ids(purpose)) {
+      if (!proofs.has(JSON.stringify([purpose, keyId])))
+        throw new EncryptionStartupError();
+    }
+  }
+  await verifyLegacyIndexRemediationTransaction(client);
+  const references = await client.query<KeyReference>(
+    STORED_KEY_REFERENCES_SQL,
+  );
+  for (const { purpose, keyId } of references.rows) {
+    if (purpose === 'pii-index' && keyId === CLASSIFIED_LEGACY_CONTACT_INDEX_ID)
+      continue;
+    if (
+      !keys.has(purpose, keyId) ||
+      !proofs.has(JSON.stringify([purpose, keyId]))
+    )
+      throw new EncryptionStartupError();
+  }
+  const legacy = await client.query<{ exists: boolean }>(
+    'SELECT EXISTS (SELECT 1 FROM account WHERE legacy_tokens_present) AS exists',
+  );
+  if (legacy.rows[0]?.exists) throw new EncryptionStartupError();
 }
 
 export async function readUnverifiedLegacyKeyReferences(

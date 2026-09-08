@@ -8,9 +8,12 @@ import {
 } from './role-bootstrap.ts';
 
 const BACKUP_VERIFICATION_TIMEOUT_MS = 10_000;
+const MAX_BACKUP_VERIFICATION_TIMEOUT_MS = 2_147_483_647;
 
 export type PostgresBackupConfiguration = {
   readonly role: string;
+  /** Whole-operation deadline, including connection, queries and guard. */
+  readonly timeoutMs?: number;
   /** Require complete SELECT on all current and future relations here. */
   readonly completeSchemas: readonly string[];
   /** Refuse missing tables instead of silently producing a partial dump. */
@@ -37,6 +40,7 @@ export function createPostgresBackupVerifier(
   input: PostgresBackupConfiguration,
 ) {
   const { role, failureCode } = input;
+  const timeoutMs = input.timeoutMs ?? BACKUP_VERIFICATION_TIMEOUT_MS;
   try {
     validateRoleNames([role]);
     validateRoleNames(input.completeSchemas);
@@ -45,6 +49,12 @@ export function createPostgresBackupVerifier(
       input.expectedTables.length === 0
     )
       throw new Error('Invalid backup configuration');
+    if (
+      !Number.isSafeInteger(timeoutMs) ||
+      timeoutMs <= 0 ||
+      timeoutMs > MAX_BACKUP_VERIFICATION_TIMEOUT_MS
+    )
+      throw new Error('Invalid backup timeout');
     for (const table of input.expectedTables) {
       validateRoleNames([table.schema]);
       validateRoleNames([table.name]);
@@ -300,7 +310,7 @@ export function createPostgresBackupVerifier(
         release(!succeeded);
       }
     };
-    const timer = setTimeout(abort, BACKUP_VERIFICATION_TIMEOUT_MS);
+    const timer = setTimeout(abort, timeoutMs);
     try {
       // One deadline covers acquisition, every query, and rollback cleanup.
       await Promise.race([operation(), interrupted.promise]);

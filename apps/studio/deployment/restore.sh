@@ -28,7 +28,10 @@ if find "$backup" \( -type l -o \( ! -type d ! -type f \) \) -print -quit | grep
   echo 'Restore refused: backup contains a symbolic link or special file.' >&2
   exit 1
 fi
-snapshot=$(mktemp -d "${TMPDIR:-/tmp}/studio-restore.XXXXXX")
+# Restoring also copies plaintext roots: retain that snapshot on the same
+# encrypted operator storage as custody, never the host's generic TMPDIR.
+custody_directory=$(cd "$(dirname "$custody")" && pwd -P)
+snapshot=$(mktemp -d "$custody_directory/.studio-restore.XXXXXX")
 chmod 700 "$snapshot"
 trap 'rm -rf "$snapshot"' EXIT
 trap 'exit 1' HUP INT TERM
@@ -249,6 +252,14 @@ compose run --rm --no-deps -T --entrypoint tar minio -C /data -xf - \
 # in the foreground so failed recovered IAM or bucket state refuses completion.
 compose up -d minio
 compose run --rm --no-deps -T minio-init
+# Prove the independently held direct roots against the restored database while
+# it remains isolated. The cleanup trap closes this temporary login on every
+# subsequent success, failure or signal; the offline service has no edge path.
+compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+  -c 'ALTER ROLE studio_maintenance_runtime LOGIN;'
+# Retained content IDs must win over every registry-valued image declaration.
+COMPOSE_FILE="$COMPOSE_FILE:deployment/encryption.yml:deployment/recovery-images.yml" \
+  compose run --rm --no-deps encryption-verify
 close_writer_logins
 restore_complete=1
 exit 0
