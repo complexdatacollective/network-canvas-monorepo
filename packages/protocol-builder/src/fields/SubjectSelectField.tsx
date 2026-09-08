@@ -1,3 +1,5 @@
+import { useCallback } from 'react';
+
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import type { StageSubject } from '@codaco/protocol-validation';
@@ -24,6 +26,42 @@ export type SubjectChangeConfirmation = Readonly<{
   description: string;
   confirmLabel: string;
 }>;
+
+/**
+ * Asks the question a subject change raises, and answers whether the change
+ * may go ahead.
+ *
+ * Shared, because this control is not the only way a researcher moves a
+ * stage's subject: creating a type from inside the stage and selecting it on
+ * it moves the subject too, and costs the stage exactly the same prompts,
+ * form, panels and filter. One definition of the question, so the two cannot
+ * ask different ones — or so that one of them cannot quietly stop asking.
+ *
+ * `undefined` is "nothing to lose", and goes ahead without a dialog: a
+ * question about nothing is one a researcher learns to dismiss without
+ * reading. The dismissal is the provider's own plain "Cancel", which is what
+ * this question wants — backing out of a change that has not happened yet
+ * needs no words of its own.
+ */
+export function useConfirmSubjectChange(): (
+  question: SubjectChangeConfirmation | undefined,
+) => Promise<boolean> {
+  const { confirm } = useDialog();
+  return useCallback(
+    async (question) => {
+      if (question === undefined) return true;
+      const confirmed = await confirm({
+        title: question.title,
+        description: question.description,
+        confirmLabel: question.confirmLabel,
+        intent: 'warning',
+        onConfirm: () => undefined,
+      });
+      return confirmed === true;
+    },
+    [confirm],
+  );
+}
 
 export type SubjectSelectFieldProps = CreateFormFieldProps<
   EntitySubject,
@@ -67,7 +105,7 @@ export default function SubjectSelectField({
   confirmChange,
   ...props
 }: SubjectSelectFieldProps) {
-  const { confirm } = useDialog();
+  const confirmSubjectChange = useConfirmSubjectChange();
 
   // Written out per entity rather than assembled from `entityType`: the
   // subject union discriminates on `entity`, and a computed discriminant would
@@ -97,17 +135,7 @@ export default function SubjectSelectField({
           return;
         }
         void (async () => {
-          const confirmed = await confirm({
-            title: question.title,
-            description: question.description,
-            confirmLabel: question.confirmLabel,
-            // The provider's own default, which is the plain "Cancel" this
-            // question wants: backing out of a change that has not happened
-            // yet needs no words of its own.
-            intent: 'warning',
-            onConfirm: () => undefined,
-          });
-          if (confirmed === true) onChange?.(next);
+          if (await confirmSubjectChange(question)) onChange?.(next);
         })();
       }}
     />
