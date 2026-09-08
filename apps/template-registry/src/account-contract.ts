@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { OrcidSchema } from '@codaco/studio-sync/template-metadata';
+import { RegistryPublisherSchema } from '@codaco/studio-sync/template-registry-contract';
 
 const nonblank = z
   .string()
@@ -11,9 +12,7 @@ const nonblank = z
       value.trim().length > 0 && value.isWellFormed() && !value.includes('\0'),
   );
 const stamp = z.iso.datetime();
-export const PublisherSchema = z
-  .strictObject({ id: z.uuid(), name: nonblank, orcid: OrcidSchema.nullable() })
-  .meta({ id: 'Publisher' });
+export const PublisherSchema = RegistryPublisherSchema;
 export const ClaimPublisherSchema = z.strictObject({
   name: nonblank,
   orcid: OrcidSchema.optional(),

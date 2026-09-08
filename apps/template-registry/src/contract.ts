@@ -6,14 +6,16 @@ import { z } from 'zod';
 import {
   TEMPLATE_ARTIFACT_LIMITS,
   TEMPLATE_ARTIFACT_MEDIA_TYPE,
-  TemplateArtifactManifestSchema,
   TemplateContentHashSchema,
 } from '@codaco/studio-sync/template-exchange';
 import {
   TemplateKindSchema,
   TemplateLicenseSchema,
-  TemplateMetadataSchema,
 } from '@codaco/studio-sync/template-metadata';
+import {
+  RegistryEntrySchema,
+  RegistryEntrySummarySchema,
+} from '@codaco/studio-sync/template-registry-contract';
 
 import {
   AccountSchema,
@@ -31,24 +33,8 @@ import {
   registryErrorStatuses,
 } from './problems.ts';
 
-const stamp = z.iso.datetime();
-export const EntrySummarySchema = z
-  .strictObject({
-    id: z.uuid(),
-    publisher: PublisherSchema,
-    root: TemplateContentHashSchema,
-    template: TemplateArtifactManifestSchema.shape.template,
-    license: TemplateLicenseSchema,
-    curated: z.boolean(),
-    yanked: z.boolean(),
-    published_at: stamp,
-  })
-  .meta({ id: 'EntrySummary' });
-export const EntrySchema = EntrySummarySchema.extend({
-  metadata: TemplateMetadataSchema,
-  artifact_url: z.url(),
-  report_url: z.url(),
-}).meta({ id: 'Entry' });
+export const EntrySummarySchema = RegistryEntrySummarySchema;
+export const EntrySchema = RegistryEntrySchema;
 export type RegistryEntry = z.infer<typeof EntrySchema>;
 
 export const ListEntriesSchema = z

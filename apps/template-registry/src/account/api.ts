@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { RegistryCredentialSchema } from '@codaco/studio-sync/template-registry-contract';
+
 import {
   AccountSchema,
   ClaimPublisherSchema,
@@ -29,7 +31,7 @@ export class AccountRequestError extends Error {
 
 const success = z.strictObject({ ok: z.literal(true) });
 const issue = z.strictObject({
-  token: z.string().regex(/^ncr1_[A-Za-z0-9_-]{43}$/),
+  token: RegistryCredentialSchema,
   credential: TokenDescriptionSchema,
 });
 const tokenList = z.strictObject({

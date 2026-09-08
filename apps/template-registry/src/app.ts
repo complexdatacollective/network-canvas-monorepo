@@ -16,6 +16,7 @@ import {
   TEMPLATE_ARTIFACT_LIMITS,
   TEMPLATE_ARTIFACT_MEDIA_TYPE,
 } from '@codaco/studio-sync/template-exchange';
+import { RegistryCredentialSchema } from '@codaco/studio-sync/template-registry-contract';
 
 import type { RegistryAccountAssets } from './account-assets.ts';
 import type { RegistryAuth } from './auth/service.ts';
@@ -46,11 +47,12 @@ const os = implement(registryContract).$context<{
   requestId: string;
 }>();
 function bearer(request: Request): string {
-  const match = /^Bearer (ncr1_[A-Za-z0-9_-]{43})$/.exec(
-    request.headers.get('authorization') ?? '',
-  );
-  if (!match?.[1]) throw new RegistryError('AUTHENTICATION_REQUIRED');
-  return match[1];
+  const header = request.headers.get('authorization') ?? '';
+  if (!header.startsWith('Bearer '))
+    throw new RegistryError('AUTHENTICATION_REQUIRED');
+  const parsed = RegistryCredentialSchema.safeParse(header.slice(7));
+  if (!parsed.success) throw new RegistryError('AUTHENTICATION_REQUIRED');
+  return parsed.data;
 }
 
 async function invoke<T>(work: () => Promise<T>): Promise<T> {

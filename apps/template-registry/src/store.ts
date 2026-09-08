@@ -17,6 +17,10 @@ import {
   TemplateMetadataSchema,
   type TemplateMetadata,
 } from '@codaco/studio-sync/template-metadata';
+import {
+  REGISTRY_CREDENTIAL_PREFIX,
+  RegistryCredentialSchema,
+} from '@codaco/studio-sync/template-registry-contract';
 
 import {
   AccountSchema,
@@ -86,7 +90,6 @@ const CursorSchema = z.strictObject({
   after: SequenceSchema,
   filter: z.string().regex(/^[0-9a-f]{64}$/),
 });
-const TOKEN_PATTERN = /^ncr1_[A-Za-z0-9_-]{43}$/;
 
 // These credentials are supplied by trusted route handlers. Public exchange
 // routes accept bearer tokens; private account routes accept verified cookies.
@@ -123,7 +126,7 @@ export class RegistryStore {
     token: string,
     scope?: 'publish' | 'moderate',
   ): Promise<Principal> {
-    if (!TOKEN_PATTERN.test(token))
+    if (!RegistryCredentialSchema.safeParse(token).success)
       throw new RegistryError('AUTHENTICATION_REQUIRED');
     const result = await client.query<Principal>(
       `SELECT p.id AS "publisherId", p.user_id AS "userId", p.name, p.orcid, c.scopes,
@@ -291,7 +294,7 @@ export class RegistryStore {
       if ((count.rows[0]?.count ?? 0) >= 20)
         throw new RegistryError('CONFLICT');
       const id = randomUUID();
-      const token = `ncr1_${randomBytes(32).toString('base64url')}`;
+      const token = `${REGISTRY_CREDENTIAL_PREFIX}${randomBytes(32).toString('base64url')}`;
       const result = await client.query<{ created_at: Date; expires_at: Date }>(
         `INSERT INTO registry_credentials(id, publisher_id, token_hash, name, scopes, expires_at)
         VALUES ($1, $2, $3, $4, $5, statement_timestamp() + $6 * interval '1 day') RETURNING created_at, expires_at`,

@@ -27,6 +27,8 @@
     "./section-validation": "./src/section-validation.ts",
     "./template-metadata": "./src/template-metadata.ts",
     "./template-exchange": "./src/template-exchange.ts",
+    "./template-registry-contract": "./src/template-registry-contract.ts",
+    "./template-registry-client": "./src/template-registry-client.ts",
     "./email-sender": "./src/email-sender.ts",
     "./role-bootstrap": "./src/role-bootstrap.ts",
     "./postgres-migrations": "./src/postgres-migrations.ts",
