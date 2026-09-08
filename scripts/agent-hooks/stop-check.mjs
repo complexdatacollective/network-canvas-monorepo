@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Stop / SubagentStop hook, also `pnpm agent:check` (--manual): typechecks the
 // packages changed on this branch plus their dependents through turbo (cached,
-// so unchanged packages cost nothing), runs knip, and in manual mode also
+// so unchanged packages cost nothing). A turn that changed nothing since the
+// last clean run is skipped outright. Manual mode additionally runs knip and
 // lints and format-checks the changed files. When something fails the hook
 // returns a block decision so the agent fixes it before finishing; repeated
 // identical failures let the agent stop so it can report instead of looping.
@@ -10,6 +11,7 @@ import path from 'node:path';
 
 import {
   binPath,
+  changeFingerprint,
   changedFiles,
   emit,
   isFormattable,
@@ -39,6 +41,10 @@ if (changed.length === 0) {
 const relative = (file) => path.relative(root, file);
 const problems = [];
 const isCode = (file) => /\.(m?[jt]sx?|c[jt]s)$/.test(file);
+
+const fingerprint = changeFingerprint(root, changed);
+const state = readState(root);
+if (!manual && state.lastClean === fingerprint) process.exit(0);
 
 const { packages, all } = packagesForFiles(changed, root);
 const turbo = binPath(root, 'turbo');
@@ -70,10 +76,13 @@ if (turbo && (all || packages.length > 0)) {
   }
 }
 
-const knipRelevant = changed.some(
-  (file) =>
-    isCode(file) || /(^|\/)(package\.json|tsconfig[^/]*\.json)$/.test(file),
-);
+// knip is pre-push work (see .husky/pre-push); manual mode runs it on demand.
+const knipRelevant =
+  manual &&
+  changed.some(
+    (file) =>
+      isCode(file) || /(^|\/)(package\.json|tsconfig[^/]*\.json)$/.test(file),
+  );
 const knip = binPath(root, 'knip');
 if (knip && knipRelevant) {
   const result = run(knip, ['--no-progress'], {
@@ -135,13 +144,11 @@ function exists(file) {
 }
 
 const key = input.agent_id ?? input.agentId ?? 'main';
-const state = readState(root);
 
 if (problems.length === 0) {
-  if (state[key]) {
-    delete state[key];
-    writeState(root, state);
-  }
+  delete state[key];
+  if (!manual) state.lastClean = fingerprint;
+  writeState(root, state);
   if (manual)
     console.log(
       `agent:check: OK (${changed.length} changed files, packages: ${all ? 'all' : packages.join(', ') || 'none'}).`,
@@ -159,6 +166,7 @@ const sig = signature(report);
 const previous = state[key];
 const attempts = (previous?.attempts ?? 0) + 1;
 state[key] = { signature: sig, attempts };
+delete state.lastClean;
 writeState(root, state);
 
 const madeProgress = previous?.signature !== sig;

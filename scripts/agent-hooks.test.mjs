@@ -4,6 +4,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  changeFingerprint,
   changedFiles,
   classifyGateCommand,
   extractEditedFiles,
@@ -292,6 +293,26 @@ test('refuses whole-tree gate commands and --no-verify, allows scoped runs', () 
       `should allow: ${command}`,
     );
   }
+});
+
+test('the change fingerprint is stable until a changed file or the commit moves', () => {
+  const files = ['/repo/a.ts', '/repo/b.ts'];
+  const stats = { '/repo/a.ts': '10:1', '/repo/b.ts': '20:2' };
+  const options = { head: 'abc', stat: (file) => stats[file] };
+  const first = changeFingerprint('/repo', files, options);
+  assert.equal(changeFingerprint('/repo', files, options), first);
+  assert.notEqual(
+    changeFingerprint('/repo', files, { ...options, head: 'def' }),
+    first,
+  );
+  assert.notEqual(
+    changeFingerprint('/repo', files, {
+      ...options,
+      stat: (file) => (file === '/repo/b.ts' ? '21:3' : stats[file]),
+    }),
+    first,
+  );
+  assert.notEqual(changeFingerprint('/repo', ['/repo/a.ts'], options), first);
 });
 
 test('resolves the repository root from the hook environment or cwd', () => {

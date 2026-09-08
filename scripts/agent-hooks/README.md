@@ -6,14 +6,16 @@ the whole-tree gates themselves. Both harnesses run a hook as a subprocess
 with one JSON event on stdin and read a JSON verdict from stdout, and both
 accept the same verdict fields, so one script serves both.
 
-| Event                     | Script           | What it does                                                                                                                                                  |
-| ------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PostToolUse` (file edit) | `post-edit.mjs`  | Runs `oxfmt` and `oxlint --fix` on the edited file(s); reports reformatting and remaining lint errors as extra context. Under a second per edit.              |
-| `Stop`, `SubagentStop`    | `stop-check.mjs` | Typechecks the packages changed on the branch plus their dependents via turbo (cached), runs `knip`; returns a block decision so the agent fixes failures.    |
-| `PreToolUse` (shell)      | `pre-bash.mjs`   | Refuses whole-tree `pnpm lint`/`typecheck`/`knip`, bare `oxlint`/`oxfmt`, and `git commit --no-verify`, explaining the alternative. `AGENT_GATES=1` bypasses. |
+| Event                     | Script           | What it does                                                                                                                                                                                         |
+| ------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PostToolUse` (file edit) | `post-edit.mjs`  | Runs `oxfmt` and `oxlint --fix` on the edited file(s); reports reformatting and remaining lint errors as extra context. Under a second per edit.                                                     |
+| `Stop`, `SubagentStop`    | `stop-check.mjs` | Typechecks the packages changed on the branch plus their dependents via turbo (cached); skipped when nothing changed since the last clean run; returns a block decision so the agent fixes failures. |
+| `PreToolUse` (shell)      | `pre-bash.mjs`   | Refuses whole-tree `pnpm lint`/`typecheck`/`knip`, bare `oxlint`/`oxfmt`, and `git commit --no-verify`, explaining the alternative. `AGENT_GATES=1` bypasses.                                        |
 
-`pnpm agent:check` runs the stop check on demand and additionally lints and
-format-checks the changed files.
+`pnpm agent:check` runs the stop check on demand and additionally runs `knip`
+and lints and format-checks the changed files. `knip` itself is a pre-push
+gate (`.husky/pre-push`): once per branch push, the last local moment before
+CI.
 
 ## Wiring
 
@@ -41,10 +43,12 @@ format-checks the changed files.
   worktrees point that at the main checkout's `.husky/_`, so they run the main
   checkout's copy of the hook script; Codex worktrees run their own copy.
 
-## Stop-hook loop guard
+## Stop-hook state
 
-A block decision makes the agent continue with the reason as its next
-instruction. The hook records the failure signature in
-`node_modules/.cache/agent-hooks/stop-state.json`; when the agent stops again
-with the same failures, or after four attempts, it is allowed to stop so it
-can report instead of looping.
+`node_modules/.cache/agent-hooks/stop-state.json` (per worktree) records two
+things. The fingerprint of the last clean run (HEAD plus size and mtime of
+every changed file) lets a turn that changed nothing skip the check. A block
+decision makes the agent continue with the reason as its next instruction;
+the failure signature is recorded so that when the agent stops again with the
+same failures, or after four attempts, it is allowed to stop and report
+instead of looping.

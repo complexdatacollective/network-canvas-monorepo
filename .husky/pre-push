@@ -6,11 +6,31 @@
 # pushed, not on tag-only pushes (e.g. the per-package release tags emitted
 # by changesets/action, which would otherwise fail under hook load).
 pushing_main=0
+pushing_branch=0
+zero_sha=0000000000000000000000000000000000000000
 while read -r local_ref local_sha remote_ref remote_sha; do
   if [ "$remote_ref" = "refs/heads/main" ]; then
     pushing_main=1
   fi
+  case "$remote_ref" in
+    refs/heads/*)
+      if [ "$local_sha" != "$zero_sha" ]; then
+        pushing_branch=1
+      fi
+      ;;
+  esac
 done
+
+# knip (unused files, exports, dependencies) runs once per branch push: the
+# last local moment before CI, and far rarer than turn ends or commits. This
+# is the knip gate that lets agents skip whole-tree runs; see CLAUDE.md,
+# "Automatic quality gates".
+if [ "$pushing_branch" = "1" ]; then
+  pnpm knip || {
+    echo "knip found unused files, exports, or dependencies. Fix them before pushing (pnpm agent:check shows the report)."
+    exit 1
+  }
+fi
 
 if [ "$pushing_main" = "1" ]; then
   echo "Running strict checks for main branch..."

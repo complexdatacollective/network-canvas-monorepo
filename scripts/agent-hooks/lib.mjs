@@ -7,7 +7,13 @@
 // reports paths relative to the repository root.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 
 export const FORMAT_EXTENSIONS = new Set([
@@ -355,6 +361,29 @@ export function signature(text) {
   return createHash('sha256').update(text).digest('hex').slice(0, 16);
 }
 
+function defaultStat(file) {
+  try {
+    const stats = statSync(file);
+    return `${stats.size}:${Math.floor(stats.mtimeMs)}`;
+  } catch {
+    return 'missing';
+  }
+}
+
+// Identifies the working state the stop check ran against: the commit plus
+// size and mtime of every changed file. A chat-only turn reproduces the
+// fingerprint of the last clean run and skips the check entirely.
+export function changeFingerprint(
+  root,
+  files,
+  { head = git(['rev-parse', 'HEAD'], root), stat = defaultStat } = {},
+) {
+  const parts = [head ?? 'no-head'];
+  for (const file of files)
+    parts.push(`${path.relative(root, file)}=${stat(file)}`);
+  return signature(parts.join('\n'));
+}
+
 function stateFile(root) {
   const dir = path.join(root, 'node_modules', '.cache', 'agent-hooks');
   mkdirSync(dir, { recursive: true });
@@ -460,8 +489,8 @@ export const GATE_EXPLANATION =
   'This repository runs its quality gates for you: every file you edit is ' +
   'formatted and lint-fixed on save (oxfmt + oxlint --fix, remaining errors ' +
   'are reported back to you), the packages you changed and their dependents ' +
-  'are typechecked and knip runs each time you end a turn, and pre-commit ' +
-  'blocks commits with lint errors. Whole-tree lint/typecheck/knip runs take ' +
+  'are typechecked each time you end a turn, pre-commit blocks commits with ' +
+  'lint errors, and knip runs on push. Whole-tree lint/typecheck/knip runs take ' +
   'minutes and only duplicate CI. Fix what the hooks report; for an on-demand ' +
   'scoped check run `pnpm agent:check`. If the whole-tree command is genuinely ' +
   'required (for example after changing lint or TypeScript configuration), ' +

@@ -33,13 +33,15 @@ them.
   exact surrounding text.
 - **When you end a turn** (main agent and subagents alike) the packages you
   changed and their dependents are typechecked through turbo (cached, so
-  unchanged packages cost nothing) and `knip` runs; failures come back as an
-  instruction to fix them before finishing.
+  unchanged packages cost nothing; a turn that changed nothing is skipped);
+  failures come back as an instruction to fix them before finishing.
 - **On commit** `lint-staged` formats and lints the staged files and blocks
   the commit on lint errors.
+- **On push** `knip` runs once and blocks the push on unused files, exports,
+  or dependencies.
 - **On demand** `pnpm agent:check` runs the same scoped typecheck, `knip`,
   and a lint/format check of the changed files in seconds. Use it instead of
-  the whole-tree scripts when you want a check before you stop.
+  the whole-tree scripts when you want a check before you stop or push.
 - **Escape hatch**: prefix a command with `AGENT_GATES=1` when a whole-tree
   run is genuinely required (for example after changing lint or TypeScript
   configuration).
