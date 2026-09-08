@@ -209,6 +209,100 @@ for (const type of ['aws_caller_identity', 'google_client_config'])
       assert.match(result.stderr, /scoped check data sources/);
     });
 
+/** @type {[string, string, (value: string) => string][]} */
+const providerRoutingChanges = [
+  [
+    'AWS endpoint',
+    'versions.tf',
+    (value) =>
+      value.replace(
+        'region = "us-east-1"',
+        'region = "us-east-1"\n  endpoints {\n    kms = "https://foreign.example.test"\n  }',
+      ),
+  ],
+  [
+    'AWS proxy',
+    'versions.tf',
+    (value) =>
+      value.replace(
+        'region = "us-east-1"',
+        'region = "us-east-1"\n  https_proxy = "https://foreign.example.test"',
+      ),
+  ],
+  [
+    'Cloudflare endpoint',
+    'versions.tf',
+    (value) =>
+      value.replace(
+        'api_token = var.cloudflare_api_token',
+        'api_token = var.cloudflare_api_token\n  api_hostname = "foreign.example.test"',
+      ),
+  ],
+  [
+    'B2 endpoint expression',
+    'versions.tf',
+    (value) =>
+      value.replace(
+        'endpoint           = var.b2_endpoint',
+        'endpoint           = "https://foreign.example.test"',
+      ),
+  ],
+  [
+    'B2 endpoint value',
+    'terraform.tfvars.example',
+    (value) =>
+      value.replace(
+        'https://api.backblazeb2.com',
+        'https://foreign.example.test',
+      ),
+  ],
+];
+for (const [name, file, replace] of providerRoutingChanges)
+  test(`refuses approved provider routing change: ${name}`, async (context) => {
+    const temp = await mkdtemp(
+      join(tmpdir(), 'studio-approved-provider-routing-'),
+    );
+    context.after(() => rm(temp, { recursive: true, force: true }));
+    await copyReviewedEstate(temp);
+    const path = join(temp, file);
+    const before = await readFile(path, 'utf8');
+    const changed = replace(before);
+    assert.notEqual(changed, before);
+    await writeFile(path, changed);
+    await approveManifestFile(temp, file);
+    const result = generateAt(temp, true);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /provider configuration|B2 endpoint/);
+  });
+
+test('refuses an approved Terraform JSON provider endpoint', async (context) => {
+  const temp = await mkdtemp(join(tmpdir(), 'studio-approved-json-endpoint-'));
+  context.after(() => rm(temp, { recursive: true, force: true }));
+  await copyReviewedEstate(temp);
+  const path = join(temp, 'versions.tf');
+  const original = await readFile(path, 'utf8');
+  const removed = original.replace(/provider "aws" \{[^}]+\}\n/, '');
+  assert.notEqual(removed, original);
+  await writeFile(path, removed);
+  await approveManifestFile(temp, 'versions.tf');
+  const file = 'aws-provider.tf.json';
+  await writeFile(
+    join(temp, file),
+    JSON.stringify({
+      provider: {
+        aws: {
+          region: 'us-east-1',
+          endpoints: { kms: 'https://foreign.example.test' },
+        },
+      },
+    }),
+  );
+  await approveManifestFile(temp, file);
+  const result = generateAt(temp, true);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /provider configuration/);
+});
+
 for (const [name, extra] of [
   [
     'backend',

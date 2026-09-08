@@ -249,6 +249,50 @@ function oneBlock(kind, type, name) {
     throw new Error('Managed estate region contract is missing or ambiguous.');
   return matches[0];
 }
+// Routing and credential bindings are part of provider identity. In particular,
+// a known provider name must not hide an endpoint, proxy, or profile override.
+const reviewedProviderConfigurations = {
+  aws: { region: 'us-east-1' },
+  b2: {
+    application_key: '${var.b2_application_key}',
+    application_key_id: '${var.b2_application_key_id}',
+    endpoint: '${var.b2_endpoint}',
+  },
+  cloudflare: { api_token: '${var.cloudflare_api_token}' },
+  crunchybridge: {
+    application_secret: '${var.crunchybridge_application_secret}',
+  },
+};
+const configuredProviderNames = configurations.flatMap((configuration) =>
+  Object.entries(configuration.provider ?? {}).flatMap(([name, values]) =>
+    blocks(values).map(() => name),
+  ),
+);
+if (
+  JSON.stringify(configuredProviderNames.toSorted()) !==
+  JSON.stringify(Object.keys(reviewedProviderConfigurations).toSorted())
+)
+  throw new Error(
+    'Managed Terraform provider configuration requires explicit inventory support.',
+  );
+for (const [name, expected] of Object.entries(reviewedProviderConfigurations)) {
+  const provider = oneBlock('provider', name);
+  if (
+    Object.keys(provider).length !== Object.keys(expected).length ||
+    Object.entries(expected).some(([key, value]) => provider[key] !== value)
+  )
+    throw new Error(
+      'Managed Terraform provider configuration requires explicit inventory support.',
+    );
+}
+const candidateVariables = await parse('terraform.tfvars', tfvars);
+if (
+  typeof candidateVariables.b2_endpoint !== 'string' ||
+  !/^https:\/\/api[0-9]*\.backblazeb2\.com$/.test(
+    candidateVariables.b2_endpoint,
+  )
+)
+  throw new Error('Managed B2 endpoint is outside the reviewed provider.');
 const crunchyRegion = oneBlock(
   'resource',
   'crunchybridge_cluster',
@@ -260,7 +304,7 @@ const primaryObjectJurisdiction = oneBlock(
   'cloudflare_r2_bucket',
   'primary',
 ).jurisdiction;
-const recoveryRegion = (await parse('terraform.tfvars', tfvars)).b2_region;
+const recoveryRegion = candidateVariables.b2_region;
 if (
   crunchyRegion !== 'us-east-1' ||
   kmsRegion !== 'us-east-1' ||
