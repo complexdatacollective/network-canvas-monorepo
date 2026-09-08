@@ -95,3 +95,29 @@ test('fails and names the file when a changeset mixes product lanes', () => {
   assert.match(res.stderr, /independent release PR/);
   assert.match(res.stderr, /different lanes/);
 });
+
+test('fails when a changeset names a workspace that is never released', () => {
+  // `changeset version` accepts this one: `privatePackages.version` is true and
+  // the package is not in the config `ignore` list, so it would be bumped and
+  // given a CHANGELOG in the normal Version Packages PR — announcing a release
+  // of something nobody can install.
+  const cwd = fixture({
+    'private-package.md': `---\n"@codaco/protocol-builder": patch\n---\n\nprivate package`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /private-package\.md/);
+  assert.match(res.stderr, /never released: @codaco\/protocol-builder/);
+});
+
+test('fails when a never-released package rides along with a normal-lane app', () => {
+  // The realistic shape: the package is added beside the app that consumes it,
+  // where nothing else in the guard has an opinion about it.
+  const cwd = fixture({
+    'ride-along.md': `---\n"@codaco/architect": minor\n"@codaco/protocol-builder": minor\n---\n\nadoption`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /ride-along\.md/);
+  assert.match(res.stderr, /never released: @codaco\/protocol-builder/);
+});

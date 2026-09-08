@@ -23,6 +23,8 @@ import {
   readChangesets,
   releaseLaneForProduct,
   renderChangelogSection,
+  UNRELEASED_PACKAGES,
+  unreleasedReleases,
 } from './changeset-app-utils.mjs';
 
 test('normal Changesets versions private Architect and Interviewer packages', () => {
@@ -240,6 +242,91 @@ test('BUNDLED_RUNTIME_DEPENDENTS matches the apps that really bundle each runtim
       actual,
       [...apps].toSorted(byName),
       `apps depending on ${pkg} drifted from BUNDLED_RUNTIME_DEPENDENTS`,
+    );
+  }
+});
+
+test('unreleasedReleases names only the packages the changeset lists', () => {
+  const cs = parseChangeset(
+    `---\n"@codaco/architect": minor\n"@codaco/protocol-builder": minor\n---\n\nboth`,
+  );
+  assert.deepEqual(unreleasedReleases(cs), [
+    { name: '@codaco/protocol-builder', type: 'minor' },
+  ]);
+  assert.deepEqual(
+    unreleasedReleases(
+      parseChangeset(`---\n"@codaco/architect": minor\n---\n\napp`),
+    ),
+    [],
+  );
+});
+
+test('UNRELEASED_PACKAGES names only workspaces with no release path at all', () => {
+  // The list is static so the guard works on changeset fixtures; this pins it
+  // to the workspace. Being private is not the qualifying property — Architect,
+  // Interviewer, Fresco, `@codaco/art` and `@codaco/interface-images` are all
+  // private and versioned in the normal lane, and the Studio packages are
+  // private and released by the Studio lane — so each entry has to be shown to
+  // have none of the three release paths. A package that gains one must leave
+  // this list rather than be silently protected from a release it now has.
+  const root = new URL('..', import.meta.url);
+  const workspace = readFileSync(new URL('pnpm-workspace.yaml', root), 'utf8');
+  const globs = [];
+  let inPackages = false;
+  for (const line of workspace.split('\n')) {
+    if (line.startsWith('packages:')) {
+      inPackages = true;
+      continue;
+    }
+    if (!inPackages) continue;
+    if (/^\S/.test(line)) break;
+    const glob = line.match(/^\s+-\s+(\S+)/)?.[1];
+    if (glob) globs.push(glob);
+  }
+  assert.ok(globs.includes('packages/*'), 'workspace parsing broke');
+
+  const directories = globs.flatMap((glob) => {
+    assert.match(glob, /\/\*$/, `unsupported workspace glob shape: ${glob}`);
+    const parent = fileURLToPath(new URL(glob.slice(0, -1), root));
+    return readdirSync(parent, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => join(parent, entry.name));
+  });
+
+  const { ignore } = JSON.parse(
+    readFileSync(new URL('.changeset/config.json', root), 'utf8'),
+  );
+
+  for (const name of UNRELEASED_PACKAGES) {
+    const directory = directories.find((candidate) => {
+      const manifestPath = join(candidate, 'package.json');
+      return (
+        existsSync(manifestPath) &&
+        JSON.parse(readFileSync(manifestPath, 'utf8')).name === name
+      );
+    });
+    assert.ok(directory, `${name} is not a workspace in this repository`);
+
+    const manifest = JSON.parse(
+      readFileSync(join(directory, 'package.json'), 'utf8'),
+    );
+    assert.equal(manifest.private, true, `${name} is published to npm`);
+    assert.equal(
+      manifest.publishConfig,
+      undefined,
+      `${name} has a publish lane`,
+    );
+    assert.ok(
+      !existsSync(join(directory, 'CHANGELOG.md')),
+      `${name} has a CHANGELOG.md, so something already releases it`,
+    );
+    assert.ok(
+      !GATED_PRODUCT_PACKAGES.includes(name),
+      `${name} is a separately gated product`,
+    );
+    assert.ok(
+      !ignore.includes(name),
+      `${name} is in the changesets ignore list, which is a gated lane rather than no lane`,
     );
   }
 });
