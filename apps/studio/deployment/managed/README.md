@@ -167,7 +167,7 @@ configuration archive, and their account-recovery paths.
    For objects, current count/bytes, monthly version churn, and the complete
    recovery-retained version inventory are separate measurements. The retained
    inventory must cover current objects plus churn. Its 31-day storage,
-   recovery-copy reads/writes and transfer, every half-hourly primary-bucket
+   recovery-copy reads/writes and transfer, every one-minute primary-bucket
    inventory, and every retained version's
    30-day B2 readback/validator scrub are lower bounds on the aggregate R2, B2,
    and validator quantities. Retries, growth, and restore drills remain extra
@@ -209,7 +209,10 @@ configuration archive, and their account-recovery paths.
    an alert at four minutes lag, and stopped-WAL detection. A daily-backup time
    or general health signal is insufficient. Initial and quarterly restores must
    meet RPO <= 5 minutes and RTO <= 4 hours.
-5. Every 30 minutes, capture each database and reconcile each primary bucket to
+5. Every 30 minutes, capture each database. Independently reconcile every primary
+   bucket once per minute so new versions can be copied and validated within the
+   five-minute object recovery target; a database dump schedule cannot establish
+   object recovery freshness. Reconcile each primary bucket to
    an authoritative version inventory. The independent validator must run
    outside the primary account, authenticate/decrypt/read back, restore, verify
    schema/migrations/content/row counts/sequences and every referenced object,
@@ -218,7 +221,8 @@ configuration archive, and their account-recovery paths.
    at least 31 days and until no retained database point references them. Test
    corrupt, missing, truncated, wrong-key, stopped-stream, pagination, dropped
    event, orphan-cleanup, and at-least-29-day recovery cases. Meet independent
-   RPO <= 1 hour and end-to-end RTO <= 4 hours in initial and quarterly drills.
+   database RPO <= 1 hour, object RPO <= 5 minutes, and end-to-end RTO <= 4 hours
+   in initial and quarterly drills.
 6. Prove New Relic Free retains queryable logs and raw metrics for 30 days,
    implements the existing alert semantics including lost-signal behavior, and
    delivers independently of Studio mail. Enforce a hard stop before the 100 GB

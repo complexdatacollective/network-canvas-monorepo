@@ -307,7 +307,9 @@ export function evaluateManagedEstateCost(
     (sizing.monthlyHours * 60) / sizing.recovery.backupIntervalMinutes;
   const requiredValidations = monthlyPoints * databaseNames.length;
   const requiredPrimaryBucketInventories =
-    monthlyPoints * Object.keys(sizing.services).length;
+    ((sizing.monthlyHours * 60) /
+      sizing.recovery.objectReconciliationIntervalMinutes) *
+    Object.keys(sizing.services).length;
   const requiredObjectScrubRuns = Math.ceil(
     sizing.recovery.retentionDays / sizing.recovery.objectScrubIntervalDays,
   );
