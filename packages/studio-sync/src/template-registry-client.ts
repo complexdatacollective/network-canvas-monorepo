@@ -65,6 +65,7 @@ async function boundedOperation<T>(
   let cancellation: (() => Promise<unknown>) | undefined;
   let rejectStopped: (() => void) | undefined;
   let hasStopped = false;
+  const expiresAt = performance.now() + deadlineMs;
   const stopped = new Promise<never>((_, reject) => {
     rejectStopped = () => reject(new Error());
   });
@@ -77,9 +78,20 @@ async function boundedOperation<T>(
   };
   const timer = setTimeout(stop, deadlineMs);
   signal.addEventListener('abort', stop, { once: true });
+  const assertActive = () => {
+    if (signal.aborted || performance.now() >= expiresAt) {
+      stop();
+      throw new Error();
+    }
+  };
   const context: DeadlineContext = {
     signal,
-    race: async <R>(work: Promise<R>) => await Promise.race([work, stopped]),
+    race: async <R>(work: Promise<R>) => {
+      assertActive();
+      const result = await Promise.race([work, stopped]);
+      assertActive();
+      return result;
+    },
     setCancellation: (next) => {
       cancellation = next;
     },
@@ -121,7 +133,7 @@ async function readBody(
   if (!response.body) failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
   const reader = response.body.getReader();
   context.setCancellation(async () => await reader.cancel());
-  const chunks: Uint8Array[] = [];
+  let bytes = new Uint8Array(Math.min(maximum, 8192));
   let total = 0;
   let complete = false;
   try {
@@ -132,8 +144,19 @@ async function readBody(
         failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
       if (result.value.byteLength > maximum - total)
         failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
-      total += result.value.byteLength;
-      chunks.push(Uint8Array.from(result.value));
+      const nextTotal = total + result.value.byteLength;
+      if (nextTotal > bytes.byteLength) {
+        const grown = new Uint8Array(
+          Math.min(
+            maximum,
+            Math.max(nextTotal, Math.max(1, bytes.byteLength) * 2),
+          ),
+        );
+        grown.set(bytes.subarray(0, total));
+        bytes = grown;
+      }
+      bytes.set(result.value, total);
+      total = nextTotal;
     }
     complete = true;
   } finally {
@@ -145,13 +168,7 @@ async function readBody(
       // A transport may retain a pending read after the absolute deadline.
     }
   }
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return bytes;
+  return bytes.slice(0, total);
 }
 
 function exactOrigin(value: string): string {
@@ -256,6 +273,8 @@ export class TemplateRegistryClient {
       let complete = false;
       try {
         const entry = await parseEntry(response, 200, this.#origin, context);
+        if (entry.id !== parsedId.data)
+          failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
         complete = true;
         return entry;
       } finally {
@@ -338,14 +357,16 @@ export class TemplateRegistryClient {
     if (!parsedCredential.success) failure('TEMPLATE_REGISTRY_REQUEST_FAILED');
     if (source.byteLength > TEMPLATE_ARTIFACT_LIMITS.archiveBytes)
       failure('TEMPLATE_REGISTRY_ARTIFACT_INVALID');
-    const bytes = Uint8Array.from(source);
-    let artifact: VerifiedTemplateArtifact;
-    try {
-      artifact = await readTemplateArtifact(bytes);
-    } catch {
-      failure('TEMPLATE_REGISTRY_ARTIFACT_INVALID');
-    }
     return await boundedOperation(this.#deadlineMs, signal, async (context) => {
+      const bytes = Uint8Array.from(source);
+      let artifact: VerifiedTemplateArtifact;
+      try {
+        artifact = await context.race(readTemplateArtifact(bytes));
+      } catch (error) {
+        if (context.signal.aborted) throw error;
+        if (error instanceof TemplateRegistryClientError) throw error;
+        failure('TEMPLATE_REGISTRY_ARTIFACT_INVALID');
+      }
       const form = new FormData();
       form.set(
         'artifact',

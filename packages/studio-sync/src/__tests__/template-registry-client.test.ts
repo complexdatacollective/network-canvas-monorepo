@@ -215,6 +215,23 @@ describe('TemplateRegistryClient', () => {
     expect(requests).toBe(1);
   });
 
+  it('refuses a valid but wrong entry identity from a stale upstream response', async () => {
+    const built = await createTemplateArtifact(fixture());
+    const client = new TemplateRegistryClient({
+      origin: ORIGIN,
+      fetch: async () =>
+        jsonResponse(
+          entry(built.artifact.manifest.merkle_root, {
+            id: '33333333-3333-4333-8333-333333333333',
+            report_url: `${ORIGIN}/api/v1/entries/33333333-3333-4333-8333-333333333333/reports`,
+          }),
+        ),
+    });
+    await expect(client.entry(ENTRY_ID)).rejects.toMatchObject({
+      code: 'TEMPLATE_REGISTRY_RESPONSE_INVALID',
+    });
+  });
+
   it('refuses malformed and declared-oversized metadata bodies', async () => {
     const malformed = new TemplateRegistryClient({
       origin: ORIGIN,
@@ -307,6 +324,30 @@ describe('TemplateRegistryClient', () => {
     await expect(pending).rejects.toMatchObject({
       code: 'TEMPLATE_REGISTRY_REQUEST_FAILED',
     });
+  });
+
+  it('enforces elapsed time while immediately resolving one-byte chunks starve timers', async () => {
+    let emitted = 0;
+    const maximumChunks = 1_000_000;
+    const client = new TemplateRegistryClient({
+      origin: ORIGIN,
+      deadlineMs: 2,
+      fetch: async () =>
+        new Response(
+          new ReadableStream({
+            pull(controller) {
+              emitted += 1;
+              if (emitted > maximumChunks) controller.close();
+              else controller.enqueue(Uint8Array.of(0x20));
+            },
+          }),
+          { headers: { 'Content-Type': 'application/json' } },
+        ),
+    });
+    await expect(client.entry(ENTRY_ID)).rejects.toMatchObject({
+      code: 'TEMPLATE_REGISTRY_REQUEST_FAILED',
+    });
+    expect(emitted).toBeLessThan(maximumChunks);
   });
 
   it.each([
@@ -414,5 +455,22 @@ describe('TemplateRegistryClient', () => {
     }
     expect(error).toMatchObject({ code: 'TEMPLATE_REGISTRY_REQUEST_FAILED' });
     expect(String(error)).not.toContain(secret);
+  });
+
+  it('honors an already-aborted publication before validating or sending bytes', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    let requests = 0;
+    const client = new TemplateRegistryClient({
+      origin: ORIGIN,
+      fetch: async () => {
+        requests += 1;
+        throw new Error();
+      },
+    });
+    await expect(
+      client.publish(new Uint8Array([1, 2, 3]), CREDENTIAL, controller.signal),
+    ).rejects.toMatchObject({ code: 'TEMPLATE_REGISTRY_REQUEST_FAILED' });
+    expect(requests).toBe(0);
   });
 });
