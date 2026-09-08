@@ -67,14 +67,21 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   });
 }
 
-// The generated inputs knip depends on (fresco#codegen outputs) must exist
-// in the real tree: both the in-place check and the temporary checkout,
-// which links them from here, read them.
-if (!ensureKnipInputs(root)) {
-  console.log(
-    'knip: could not generate the inputs knip depends on (see turbo.json, //#knip dependsOn); run `pnpm install` and retry.',
-  );
-  process.exit(1);
+// The generated inputs knip depends on (fresco#codegen outputs) are produced
+// in the real tree only when a check will read them from here: an in-place
+// check, or a temporary checkout that borrows them. A checkout that
+// generates its own never touches the working tree's sources.
+let realTreeInputsReady = null;
+function realTreeInputs() {
+  if (realTreeInputsReady === null) {
+    realTreeInputsReady = ensureKnipInputs(root);
+    if (!realTreeInputsReady) {
+      console.log(
+        'knip: could not generate the inputs knip depends on (see turbo.json, //#knip dependsOn); run `pnpm install` and retry.',
+      );
+    }
+  }
+  return realTreeInputsReady;
 }
 
 const head = git(['rev-parse', 'HEAD'], root) ?? '';
@@ -160,10 +167,13 @@ function dependencyGraphDiffers(sha) {
   const manifests = (git(['ls-files', '*/package.json'], root) ?? '')
     .split('\n')
     .filter(Boolean);
+  // turbo.json decides which tasks knip depends on and what they read and
+  // write, so a difference there also means "generate for this revision".
   const graphFiles = [
     'pnpm-lock.yaml',
     'pnpm-workspace.yaml',
     'package.json',
+    'turbo.json',
     ...manifests,
   ];
   // Uncommitted edits to the graph files may already be installed in the
@@ -213,6 +223,7 @@ function prepareCheckout(temp, sha) {
     }
     return true;
   }
+  if (!realTreeInputs()) return false;
   const manifests = (git(['ls-files', '*/package.json'], temp) ?? '').split(
     '\n',
   );
@@ -258,7 +269,12 @@ let findings = false;
 for (const sha of shas) {
   const short = sha.slice(0, 10);
   if (knipTargetForPush(sha, { head, porcelain }) === 'in-place') {
-    if (!knipIn(root, `${short} (checked-out HEAD, clean tree)`)) ok = false;
+    if (
+      !realTreeInputs() ||
+      !knipIn(root, `${short} (checked-out HEAD, clean tree)`)
+    ) {
+      ok = false;
+    }
     continue;
   }
   const temp = mkdtempSync(path.join(os.tmpdir(), 'knip-push-'));

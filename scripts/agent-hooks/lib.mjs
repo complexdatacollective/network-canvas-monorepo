@@ -902,6 +902,18 @@ function shellScriptArgument(tokens) {
 
 const INFO_FLAGS = /^(--version|-V|--help|-h|--rules|--print-config)$/;
 
+// Filter selectors that mean "every package under here" when run from the
+// repository root: `--filter .` there is the whole workspace.
+const ROOT_WIDE_SELECTORS = new Set([
+  '.',
+  './',
+  '{.}',
+  '*',
+  '**',
+  "'*'",
+  '"*"',
+]);
+
 function bareTargets(args) {
   const targets = [];
   for (let i = 0; i < args.length; i += 1) {
@@ -942,7 +954,9 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
     from ? path.resolve(from, target.replace(/^['"]|['"]$/g, '')) : null;
   let currentDir = cwd ?? root ?? null;
   let exported = false;
-  for (const raw of splitSegments(stripEmbeddedText(command))) {
+  // A backslash-newline continues the same command line.
+  const joined = command.replace(/\\\r?\n/g, ' ');
+  for (const raw of splitSegments(stripEmbeddedText(joined))) {
     const trimmed = raw.trim();
     if (GATE_BYPASS_EXPORT.test(trimmed)) {
       exported = true;
@@ -1024,12 +1038,22 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
             continue;
           }
           if (t === '--filter' || t === '-F') {
-            scoped = true;
+            if (
+              !ROOT_WIDE_SELECTORS.has(rest[i + 1] ?? '') ||
+              inPackage(effectiveDir)
+            ) {
+              scoped = true;
+            }
             i += 1;
             continue;
           }
           if (t.startsWith('--filter=')) {
-            scoped = true;
+            const selector = t
+              .slice('--filter='.length)
+              .replace(/^['"]|['"]$/g, '');
+            if (!ROOT_WIDE_SELECTORS.has(selector) || inPackage(effectiveDir)) {
+              scoped = true;
+            }
             continue;
           }
           if (t.startsWith('-') || t === 'run') continue;

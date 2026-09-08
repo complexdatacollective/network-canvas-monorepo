@@ -970,3 +970,45 @@ test('knipCodegenInputs resolves the codegen source prefixes from turbo.json', (
   assert.ok(inputs.includes('apps/fresco/app'), inputs.join(', '));
   assert.ok(!inputs.some((p) => /[*?{]/.test(p)));
 });
+
+test('backslash line continuations are joined before classification', () => {
+  assert.equal(
+    classifyGateCommand('pnpm \\\n  typecheck')?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('pnpm --filter @codaco/interview \\\n  typecheck'),
+    null,
+  );
+});
+
+test('root-wide filter selectors from the repository root are whole-tree runs', () => {
+  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
+  const options = { root: '/repo', packageDir, cwd: '/repo' };
+  assert.equal(
+    classifyGateCommand('pnpm --filter . typecheck', options)?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand("pnpm --filter='*' lint", options)?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('pnpm -F {.} knip', options)?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('pnpm --filter . typecheck', {
+      ...options,
+      cwd: '/repo/packages/interview',
+    }),
+    null,
+  );
+  assert.equal(
+    classifyGateCommand(
+      'pnpm --filter ./packages/interview typecheck',
+      options,
+    ),
+    null,
+  );
+});
