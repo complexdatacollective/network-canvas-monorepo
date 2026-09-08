@@ -15,9 +15,14 @@ import { frescoCatalogs } from '~/src/locales/catalogs';
  * action ID lifted from the public `/_next/` bundle from reaching a
  * researcher-only action (export, deletion, settings) through one of these
  * routes. None of them binds a Server Action today, so a request naming one
- * here is never legitimate traffic and is refused outright.
+ * here is never legitimate traffic and is refused outright. The bare site
+ * root is included: `app/page.tsx` is a real page (a redirect to
+ * `/dashboard`), and Server Action dispatch happens before that redirect
+ * runs, so it needs the same treatment even though it renders no participant
+ * content of its own.
  */
 const PUBLIC_PARTICIPANT_PATHS: readonly RegExp[] = [
+  /^\/$/,
   /^\/interview\//,
   /^\/onboard\//,
   /^\/api\/assets\//,

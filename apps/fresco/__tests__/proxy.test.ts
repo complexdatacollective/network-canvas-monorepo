@@ -47,14 +47,18 @@ const SERVER_ACTION_REQUEST_SHAPES: Record<
 };
 
 /**
- * The only routes a participant reaches without signing in. None of them
- * binds a Server Action — verified by searching the interview and onboard
- * trees for 'use server' imports reachable from a client component — so a
- * request naming one here, whatever URL it targets, is never legitimate
- * traffic and always denotes an attempt to reach a researcher-only action
- * through a route an institutional reverse proxy would otherwise leave open.
+ * Routes that bind no Server Action of their own — the ones a participant
+ * reaches without signing in (verified by searching the interview and
+ * onboard trees for 'use server' imports reachable from a client component),
+ * plus the bare site root, which is a real page (`app/page.tsx`) whose only
+ * job is a redirect to `/dashboard` that Server Action dispatch runs ahead
+ * of. A request naming an action here, whatever URL it targets, is never
+ * legitimate traffic and always denotes an attempt to reach a researcher-only
+ * action through a route an institutional reverse proxy would otherwise
+ * leave open.
  */
 const PUBLIC_SERVER_ACTION_ROUTES = [
+  '/',
   '/interview/clzq3n5p40000356m1a2b3c4d',
   '/interview/clzq3n5p40000356m1a2b3c4d/sync',
   '/interview/finished',
@@ -76,7 +80,6 @@ const PUBLIC_SERVER_ACTION_ROUTES = [
  * network restriction must separately cover it.
  */
 const RESEARCHER_ROUTES = [
-  '/',
   '/signin',
   '/setup',
   '/reset',
