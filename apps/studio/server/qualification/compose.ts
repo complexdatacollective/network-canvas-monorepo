@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { once } from 'node:events';
 import {
   appendFile,
+  cp,
   mkdir,
   mkdtemp,
   readFile,
@@ -11,8 +12,9 @@ import {
 } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 import { parseEnv, promisify } from 'node:util';
 
 import { Pool } from 'pg';
@@ -97,9 +99,10 @@ async function port() {
 export async function localDeployment(label: string) {
   const image = process.env.STUDIO_QUALIFICATION_IMAGE;
   const minioImage = process.env.STUDIO_QUALIFICATION_MINIO_IMAGE;
-  if (!image || !minioImage)
+  const registryImage = process.env.STUDIO_QUALIFICATION_REGISTRY_IMAGE;
+  if (!image || !minioImage || !registryImage)
     throw new Error(
-      'Qualification requires explicitly built Studio and MinIO images.',
+      'Qualification requires explicitly built Studio, Registry and MinIO images.',
     );
   const project = `studio-qualification-${label}-${randomBytes(5).toString('hex')}`;
   const root = await mkdtemp(join(tmpdir(), `${project}-`));
@@ -111,13 +114,14 @@ export async function localDeployment(label: string) {
     ...(await localDockerEnvironment(root)),
     STUDIO_IMAGE: image,
     MINIO_IMAGE: minioImage,
+    REGISTRY_IMAGE: registryImage,
     STUDIO_PROXY_SUBNET: '172.30.240.0/24',
     STUDIO_PROXY_IP: '172.30.240.2',
     COMPOSE_PROJECT_NAME: project,
-    COMPOSE_FILE: [
-      join(directory, 'docker-compose.yml'),
-      join(directory, 'qualification.yml'),
-    ].join(':'),
+    // Every command supplies its Compose files explicitly. Keeping the
+    // inherited variable empty prevents deployment scripts from accidentally
+    // consuming the qualification-only overlay.
+    COMPOSE_FILE: '',
   };
   let qualificationSubnets:
     | { edge: string; data: string; edgeIp: string }
@@ -165,20 +169,35 @@ export async function localDeployment(label: string) {
       );
     return { code, stdout, stderr: Buffer.concat(errors) };
   }
-  const compose = (args: string[], options?: Parameters<typeof execute>[2]) =>
+  const compose = (
+    args: string[],
+    options: Parameters<typeof execute>[2] = {},
+  ) =>
     execute(
       'docker',
       [
         'compose',
         '--profile',
-        'worker',
+        '*',
+        '--env-file',
+        '.env',
+        '--env-file',
+        'registry.env',
         '-f',
         'docker-compose.yml',
+        '-f',
+        'deployment/registry/compose.yml',
         '-f',
         'qualification.yml',
         ...args,
       ],
-      options,
+      {
+        ...options,
+        environment: {
+          STUDIO_ENCRYPTION_FILE: './deployment/encryption.env',
+          ...options.environment,
+        },
+      },
     );
   async function configuration() {
     return {
@@ -226,6 +245,100 @@ export async function localDeployment(label: string) {
       typeof output.bootstrapToken !== 'string'
     )
       throw new Error('Configuration did not return its bootstrap token.');
+    const registryRoot = join(root, 'registry-configuration');
+    await mkdir(registryRoot, { mode: 0o700 });
+    const registryTemplateRoot =
+      templateRoot ??
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        '../../../template-registry/deployment',
+      );
+    const registryInput = Buffer.from(
+      JSON.stringify({
+        domain: 'registry.example.test',
+        mailFrom: 'registry@example.test',
+        registryImage: `local.invalid/registry@sha256:${'3'.repeat(64)}`,
+        minioImage: `local.invalid/minio@sha256:${'2'.repeat(64)}`,
+        output: '/registry-configuration',
+        smtpUrl: 'smtp://127.0.0.1:2525',
+      }),
+    ).toString('base64');
+    await execute(
+      'docker',
+      [
+        'run',
+        '--rm',
+        '--network=none',
+        '--read-only',
+        '--user',
+        `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`,
+        '--mount',
+        `type=bind,source=${registryRoot},target=/registry-configuration`,
+        '--mount',
+        `type=bind,source=${registryTemplateRoot},target=/app/deployment-bundle,readonly`,
+        '--env',
+        `REGISTRY_QUALIFICATION_INPUT=${registryInput}`,
+        '--entrypoint',
+        'node',
+        registryImage!,
+        '--input-type=module',
+        '-e',
+        "import { runRegistryConfigure } from './dist/configure.js'; await runRegistryConfigure(Buffer.from(process.env.REGISTRY_QUALIFICATION_INPUT, 'base64'));",
+      ],
+      { privateOutput: false },
+    );
+    await cp(
+      join(registryRoot, 'registry.env'),
+      join(directory, 'registry.env'),
+    );
+    await mkdir(join(directory, 'deployment/registry'), {
+      recursive: true,
+      mode: 0o700,
+    });
+    await cp(
+      join(registryRoot, 'deployment/registry'),
+      join(directory, 'deployment/registry'),
+      { recursive: true },
+    );
+    await writeFile(
+      join(directory, 'deployment/release-images.yml'),
+      `services:
+  studio:
+    image: ${image}
+    pull_policy: never
+  client-assets:
+    image: ${image}
+    pull_policy: never
+  worker:
+    image: ${image}
+    pull_policy: never
+  backup-verify:
+    image: ${image}
+    pull_policy: never
+  encryption-verify:
+    image: ${image}
+    pull_policy: never
+  registry:
+    image: ${registryImage}
+    pull_policy: never
+  registry-migrate:
+    image: ${registryImage}
+    pull_policy: never
+  registry-backup-verify:
+    image: ${registryImage}
+    pull_policy: never
+  registry-recover-verify:
+    image: ${registryImage}
+    pull_policy: never
+  minio:
+    image: ${minioImage}
+    pull_policy: never
+  registry-minio:
+    image: ${minioImage}
+    pull_policy: never
+`,
+      { mode: 0o600 },
+    );
     return output.bootstrapToken;
   }
   async function overlay() {
@@ -308,6 +421,14 @@ export async function localDeployment(label: string) {
     depends_on:
       telemetry-detector:
         condition: service_started
+  registry:
+    environment:
+      NODE_OPTIONS: '--require=/qualification-telemetry-egress-preload.cjs'
+    volumes:
+      - ./telemetry-egress-preload.cjs:/qualification-telemetry-egress-preload.cjs:ro
+    depends_on:
+      telemetry-detector:
+        condition: service_started
   postgres:
     ports: ["127.0.0.1:${ports.db}:5432"]
     networks: [data, edge]
@@ -334,7 +455,7 @@ export async function localDeployment(label: string) {
         aliases: [ph-relay.networkcanvas.com]
   traefik:
     ports: !reset []
-networks:
+  networks:
   edge: !override
     name: ${project}-edge
     ipam:
@@ -406,6 +527,7 @@ networks:
         '--no-log-prefix',
         'studio',
         'worker',
+        'registry',
       ])
     ).stdout.toString();
   }
@@ -414,7 +536,7 @@ networks:
     assertNoProcessTelemetryEgress(await processTelemetryLogs());
   }
   async function proveTelemetryProcessInstrumentation() {
-    for (const service of ['studio', 'worker']) {
+    for (const service of ['studio', 'worker', 'registry']) {
       const result = await compose([
         'run',
         '--rm',
@@ -430,7 +552,7 @@ networks:
     }
   }
   async function proveTelemetryDetector() {
-    for (const service of ['studio', 'worker']) {
+    for (const service of ['studio', 'worker', 'registry']) {
       await compose([
         'run',
         '--rm',

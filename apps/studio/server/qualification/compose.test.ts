@@ -59,6 +59,423 @@ async function counts(deployment: Deployment) {
   }
 }
 
+async function countsInRestoredCompose(deployment: Deployment) {
+  const result = await deployment.compose([
+    'exec',
+    '-T',
+    'postgres',
+    'psql',
+    '-X',
+    '-qAt',
+    '-v',
+    'ON_ERROR_STOP=1',
+    '-U',
+    'postgres',
+    '-d',
+    'studio',
+    '-c',
+    "SELECT json_build_object('instance', (SELECT count(*)::int FROM studio_instance), 'audit', (SELECT count(*)::int FROM audit_events), 'credentials', (SELECT count(*)::int FROM credential_audit_events), 'migrations', (SELECT count(*)::int FROM studio_migrations.history), 'refs', (SELECT count(*)::int FROM asset_references));",
+  ]);
+  return JSON.parse(result.stdout.toString().trim()) as {
+    instance: number;
+    audit: number;
+    credentials: number;
+    migrations: number;
+    refs: number;
+  };
+}
+
+async function existingRestoreState(deployment: Deployment) {
+  const ids = (
+    await deployment.execute('docker', [
+      'ps',
+      '--all',
+      '--quiet',
+      '--filter',
+      `label=com.docker.compose.project=${deployment.project}`,
+    ])
+  ).stdout
+    .toString()
+    .trim()
+    .split('\n');
+  expect(ids.length).toBeGreaterThan(0);
+  expect(ids.every((id) => /^[a-f0-9]+$/.test(id))).toBe(true);
+  const containers = await deployment.execute('docker', [
+    'inspect',
+    '--format',
+    '{{.Id}} {{.State.Status}} {{.State.StartedAt}} {{.State.FinishedAt}}',
+    ...ids,
+  ]);
+  return {
+    files: await restoreConfigurationState(deployment),
+    containers: containers.stdout.toString(),
+  };
+}
+
+async function restoreConfigurationState(deployment: Deployment) {
+  const files: Record<string, string> = {};
+  for (const path of [
+    '.env',
+    'deployment/encryption.env',
+    'deployment/recovery-images.yml',
+  ])
+    files[path] = createHash('sha256')
+      .update(await readFile(join(deployment.directory, path)))
+      .digest('hex');
+  return files;
+}
+
+async function prepareRestoreTarget(deployment: Deployment, backup: string) {
+  for (const name of [
+    '.env',
+    'docker-compose.yml',
+    'SELF_HOSTING.md',
+    'MIGRATIONS.md',
+    'BACKUPS.md',
+    'deployment',
+  ])
+    await cp(join(backup, name), join(deployment.directory, name), {
+      recursive: true,
+    });
+  await deployment.overlay();
+}
+
+async function alternateRestoreTargets(
+  backup: string,
+  custody: string,
+  registryCustody: string,
+  reconciliation: string,
+  reconciliationSha: string,
+  existing: Deployment,
+) {
+  const protectedState = await existingRestoreState(existing);
+  for (const kind of [
+    'project-name',
+    'custom-network',
+    'external-network',
+    'custom-volume',
+    'external-volume',
+    'orphan-network',
+    'orphan-volume',
+    'bind-data',
+    'bind-client-assets',
+    'misrouted-client-assets',
+    'driver-bind-data',
+    'inspection-failure',
+    'network-inspection-failure',
+    'unsupported-network-driver',
+    'missing-administrator-configuration',
+  ] as const) {
+    const probe = await localDeployment(kind);
+    const resource = `${probe.project}-existing`;
+    let volumeCreated = false;
+    let networkCreated = false;
+    let networkCanary: string | undefined;
+    async function networkAliases() {
+      const response = await probe.execute('docker', [
+        'run',
+        '--rm',
+        '--network',
+        resource,
+        '--entrypoint',
+        'node',
+        probe.images.studio,
+        '-e',
+        `async function reachable(address) {
+          for (let attempt = 0; attempt < 40; attempt++) {
+            try {
+              const response = await fetch(address, {signal: AbortSignal.timeout(1000)});
+              if (response.ok) return await response.text();
+            } catch {}
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+          throw new Error('The existing network alias did not become reachable');
+        }
+        Promise.all(['http://postgres:5432', 'http://minio:9000'].map(reachable))
+          .then(values => process.stdout.write(JSON.stringify(values)));`,
+      ]);
+      expect(JSON.parse(response.stdout.toString())).toEqual([
+        'Existing network bytes',
+        'Existing network bytes',
+      ]);
+    }
+    try {
+      await prepareRestoreTarget(probe, backup);
+      await cp(custody, join(probe.directory, 'deployment/encryption.env'));
+      if (kind === 'project-name')
+        await appendFile(
+          join(probe.directory, '.env'),
+          `\nCOMPOSE_PROJECT_NAME='${existing.project}'\n`,
+        );
+      for (const path of [
+        'deployment/encryption.env',
+        'deployment/recovery-images.yml',
+      ])
+        await appendFile(
+          join(probe.directory, path),
+          `\n# Target ${kind} canary ${randomUUID()}\n`,
+        );
+      const before = await restoreConfigurationState(probe);
+      const environment: Record<string, string> = {};
+      let override = '';
+      const guardedVolume = ['custom-volume', 'external-volume'].includes(kind);
+      const guardedNetwork = ['custom-network', 'external-network'].includes(
+        kind,
+      );
+      const inspectionFailure = kind.endsWith('inspection-failure');
+      if (kind === 'missing-administrator-configuration') {
+        await rm(join(probe.directory, 'deployment/postgres-privileges.sql'));
+      } else if (kind === 'project-name') {
+        // Restore passes explicit -f files, so COMPOSE_FILE cannot inject a
+        // test override. Bind the conflicting project name through the
+        // copied deployment environment instead.
+        environment.COMPOSE_PROJECT_NAME = '';
+      } else if (guardedNetwork) {
+        await probe.execute('docker', ['network', 'create', resource]);
+        networkCreated = true;
+        const started = await probe.execute('docker', [
+          'run',
+          '--detach',
+          '--network',
+          resource,
+          '--network-alias',
+          'postgres',
+          '--network-alias',
+          'minio',
+          '--entrypoint',
+          'node',
+          probe.images.studio,
+          '-e',
+          `const http = require('node:http');
+          for (const port of [5432, 9000])
+            http.createServer((request, response) => response.end('Existing network bytes'))
+              .listen(port, '0.0.0.0');`,
+        ]);
+        networkCanary = started.stdout.toString().trim();
+        expect(networkCanary).toMatch(/^[a-f0-9]{64}$/);
+        await networkAliases();
+        override = `networks:\n  data: !override\n    name: ${resource}\n    external: ${kind === 'external-network'}\n`;
+      } else if (guardedVolume || kind === 'orphan-volume') {
+        await probe.execute('docker', [
+          'volume',
+          'create',
+          ...(kind === 'orphan-volume'
+            ? ['--label', `com.docker.compose.project=${probe.project}`]
+            : []),
+          resource,
+        ]);
+        volumeCreated = true;
+        await probe.execute('docker', [
+          'run',
+          '--rm',
+          '--network=none',
+          '--user=0',
+          '--entrypoint',
+          'sh',
+          '--mount',
+          `type=volume,source=${resource},target=/canary`,
+          probe.images.minio,
+          '-c',
+          'printf "Existing volume bytes\\n" > /canary/restore-target-canary',
+        ]);
+        if (guardedVolume)
+          override = `volumes:\n  postgres:\n    name: ${resource}\n    external: ${kind === 'external-volume'}\n`;
+      } else if (kind === 'orphan-network') {
+        await probe.execute('docker', [
+          'network',
+          'create',
+          '--label',
+          `com.docker.compose.project=${probe.project}`,
+          resource,
+        ]);
+        networkCreated = true;
+      } else if (kind === 'bind-data' || kind === 'driver-bind-data') {
+        const path = join(probe.root, 'existing-data');
+        await mkdir(path);
+        await writeFile(join(path, 'canary'), 'Existing bind bytes\n');
+        override =
+          kind === 'bind-data'
+            ? `services:\n  postgres:\n    volumes: !override\n      - type: bind\n        source: ${JSON.stringify(path)}\n        target: /var/lib/postgresql\n`
+            : `volumes:\n  postgres:\n    driver: local\n    driver_opts:\n      type: none\n      o: bind\n      device: ${JSON.stringify(path)}\n`;
+      } else if (kind === 'bind-client-assets') {
+        const path = join(probe.root, 'existing-data');
+        await mkdir(path);
+        await writeFile(join(path, 'canary'), 'Existing bind bytes\n');
+        override = `services:\n  client-assets:\n    volumes: !override\n      - type: bind\n        source: ${JSON.stringify(path)}\n        target: /retained-assets\n`;
+      } else if (kind === 'misrouted-client-assets') {
+        override =
+          'services:\n  studio:\n    volumes: !override\n      - wrong-assets:/retained-assets:ro\nvolumes:\n  wrong-assets:\n';
+      } else if (kind === 'unsupported-network-driver') {
+        override =
+          'networks:\n  data:\n    driver: unsupported-qualification-driver\n';
+      } else if (inspectionFailure) {
+        const bin = join(probe.root, 'failing-inspection');
+        await mkdir(bin);
+        await writeFile(
+          join(bin, 'docker'),
+          '#!/bin/sh\nif [ "$1" = "$STUDIO_FAIL_DOCKER_SURFACE" ] && [ "$2" = ls ] && [ "$#" -eq 4 ]; then exit 73; fi\nexec "$STUDIO_REAL_DOCKER" "$@"\n',
+          { mode: 0o700 },
+        );
+        environment.PATH = `${bin}:${process.env.PATH}`;
+        environment.STUDIO_FAIL_DOCKER_SURFACE =
+          kind === 'network-inspection-failure' ? 'network' : 'volume';
+        environment.STUDIO_REAL_DOCKER = (
+          await probe.execute('sh', ['-c', 'command -v docker'])
+        ).stdout
+          .toString()
+          .trim();
+      }
+      if (override) {
+        await writeFile(join(probe.directory, 'target.yml'), override);
+        const restoreScript = join(probe.directory, 'deployment/restore.sh');
+        const restoreSource = await readFile(restoreScript, 'utf8');
+        const composeFiles = ' -f deployment/registry/recovery.yml --profile';
+        const targetComposeFiles =
+          ' -f deployment/registry/recovery.yml -f target.yml --profile';
+        const targetConfigFiles = String.raw`  -f "$backup/deployment/recovery-images.yml" -f deployment/registry/recovery.yml \
+  --profile`;
+        const targetConfigFilesWithOverlay = String.raw`  -f "$backup/deployment/recovery-images.yml" -f deployment/registry/recovery.yml -f target.yml \
+  --profile`;
+        if (
+          !restoreSource.includes(composeFiles) ||
+          !restoreSource.includes(targetConfigFiles)
+        )
+          throw new Error('Restore harness Compose file list changed.');
+        await writeFile(
+          restoreScript,
+          restoreSource
+            .replace(composeFiles, targetComposeFiles)
+            .replace(targetConfigFiles, targetConfigFilesWithOverlay),
+          { mode: 0o700 },
+        );
+      }
+      const networkId = networkCreated
+        ? (
+            await probe.execute('docker', [
+              'network',
+              'inspect',
+              '--format',
+              '{{.Id}}',
+              resource,
+            ])
+          ).stdout
+            .toString()
+            .trim()
+        : undefined;
+      if (networkCreated) expect(networkId).toMatch(/^[a-f0-9]{64}$/);
+      const refused = await probe.execute(
+        'sh',
+        [
+          'deployment/restore.sh',
+          backup,
+          custody,
+          registryCustody,
+          reconciliation,
+          reconciliationSha,
+        ],
+        { failure: true, environment },
+      );
+      expect(refused.code, kind).not.toBe(0);
+      expect(await restoreConfigurationState(probe), kind).toEqual(before);
+      expect(refused.stdout.toString(), kind).not.toMatch(
+        /Loaded image(?: ID)?:/,
+      );
+      expect(refused.stderr.toString(), kind).toContain(
+        kind === 'missing-administrator-configuration'
+          ? 'administrator privilege configuration is missing'
+          : inspectionFailure ||
+              kind === 'unsupported-network-driver' ||
+              kind === 'bind-data' ||
+              kind === 'bind-client-assets' ||
+              kind === 'misrouted-client-assets' ||
+              kind === 'driver-bind-data'
+            ? 'unable to verify a new Compose project'
+            : guardedNetwork
+              ? 'target Compose network already exists'
+              : 'target Compose project or named volumes already exist',
+      );
+      expect(await existingRestoreState(existing), kind).toEqual(
+        protectedState,
+      );
+      expect(
+        (
+          await probe.execute('docker', [
+            'ps',
+            '--all',
+            '--quiet',
+            '--filter',
+            `label=com.docker.compose.project=${probe.project}`,
+          ])
+        ).stdout
+          .toString()
+          .trim(),
+        kind,
+      ).toBe('');
+      if (volumeCreated) {
+        const canary = await probe.execute('docker', [
+          'run',
+          '--rm',
+          '--network=none',
+          '--entrypoint',
+          'sh',
+          '--mount',
+          `type=volume,source=${resource},target=/canary,readonly`,
+          probe.images.minio,
+          '-c',
+          'cat /canary/restore-target-canary',
+        ]);
+        expect(canary.stdout.toString(), kind).toBe('Existing volume bytes\n');
+      }
+      if (networkCreated)
+        expect(
+          (
+            await probe.execute('docker', [
+              'network',
+              'inspect',
+              '--format',
+              '{{.Id}}',
+              resource,
+            ])
+          ).stdout
+            .toString()
+            .trim(),
+        ).toBe(networkId);
+      if (networkCanary) {
+        expect(
+          (
+            await probe.execute('docker', [
+              'inspect',
+              '--format',
+              '{{.Id}} {{.State.Status}}',
+              networkCanary,
+            ])
+          ).stdout
+            .toString()
+            .trim(),
+        ).toBe(`${networkCanary} running`);
+        await networkAliases();
+      }
+      if (
+        kind === 'bind-data' ||
+        kind === 'bind-client-assets' ||
+        kind === 'driver-bind-data'
+      )
+        expect(
+          await readFile(join(probe.root, 'existing-data/canary'), 'utf8'),
+        ).toBe('Existing bind bytes\n');
+    } finally {
+      // The extra override is absent from dispose: it cannot remove a named
+      // volume borrowed from another project. Only our explicit fixtures follow.
+      await probe.dispose();
+      if (networkCanary)
+        await probe.execute('docker', ['rm', '--force', networkCanary]);
+      if (volumeCreated)
+        await probe.execute('docker', ['volume', 'rm', resource]);
+      if (networkCreated)
+        await probe.execute('docker', ['network', 'rm', resource]);
+    }
+  }
+}
 async function appendCurrentKeys(deployment: Deployment) {
   const values = await deployment.configuration();
   const keyset = JSON.parse(
@@ -111,6 +528,7 @@ async function overlapUploadAndBackup(
   cookie: string,
   backup: string,
   custody: string,
+  registryCustody: string,
 ) {
   const bytes = Buffer.from(
     'A committed asset reference whose bytes finish during admission drain.',
@@ -153,6 +571,7 @@ async function overlapUploadAndBackup(
     'deployment/backup.sh',
     backup,
     custody,
+    registryCustody,
   ]);
   try {
     const signal = await Promise.race([
@@ -313,6 +732,7 @@ it('runs recovery commands without inherited primary-account credentials or Dock
       'DOCKER_HOST',
       'MINIO_IMAGE',
       'PATH',
+      'REGISTRY_IMAGE',
       'STUDIO_IMAGE',
       'STUDIO_PROXY_IP',
       'STUDIO_PROXY_SUBNET',
@@ -335,6 +755,19 @@ it('installs an immutable built image, drains a populated backup and restores al
   const restored = await localDeployment('restore');
   const backup = join(source.root, 'backup');
   const custody = join(source.root, 'independent-custody', 'encryption.env');
+  const registryCustody = join(
+    source.root,
+    'independent-custody',
+    'registry.env',
+  );
+  const reconciliation = join(source.root, 'reconciliation.json');
+  const reconciliationBytes = Buffer.from(
+    '{"format":"template-registry-recovery-reconciliation","version":1,"users":[]}\n',
+  );
+  await writeFile(reconciliation, reconciliationBytes, { mode: 0o600 });
+  const reconciliationSha = createHash('sha256')
+    .update(reconciliationBytes)
+    .digest('hex');
   try {
     const token = await source.configure();
     await source.overlay();
@@ -384,6 +817,10 @@ it('installs an immutable built image, drains a populated backup and restores al
     ).toEqual(['data', 'edge']);
     await source.compose(['up', '-d', '--wait', 'postgres']);
     await source.compose(['up', '-d', 'minio-init']);
+    await source.compose(['up', '-d', '--wait', 'registry-postgres']);
+    await source.compose(['up', '-d', 'registry-minio-init']);
+    await source.compose(['run', '--rm', 'registry-migrate']);
+    await source.compose(['up', '-d', 'registry']);
     await source.compose([
       '-f',
       'deployment/migrate.yml',
@@ -494,6 +931,7 @@ it('installs an immutable built image, drains a populated backup and restores al
           'deployment/backup.sh',
           refusedBackup,
           join(source.root, 'refused-active-writer-keys.env'),
+          join(source.root, 'refused-active-writer-registry.env'),
         ],
         { failure: true },
       );
@@ -505,14 +943,37 @@ it('installs an immutable built image, drains a populated backup and restores al
         { code: 'ENOENT' },
       );
       await outside.query(
-        'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN',
+        'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; GRANT studio_app, studio_maintenance TO studio_migrator WITH SET TRUE, INHERIT FALSE; GRANT studio_app TO studio_runtime WITH SET TRUE, INHERIT FALSE; GRANT studio_maintenance TO studio_maintenance_runtime WITH SET TRUE, INHERIT FALSE',
       );
     } finally {
       outside.release();
       await outsidePools.close();
     }
+    await source.compose([
+      'exec',
+      '-T',
+      'registry-postgres',
+      'psql',
+      '-X',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-U',
+      'postgres',
+      '-d',
+      'postgres',
+      '-c',
+      'ALTER ROLE registry_migrator LOGIN; ALTER ROLE registry_runtime LOGIN; ALTER ROLE registry_operations LOGIN; GRANT registry_app TO registry_runtime WITH SET TRUE, INHERIT FALSE; GRANT registry_operator TO registry_operations WITH SET TRUE, INHERIT FALSE',
+    ]);
     await source.compose(['up', '-d', 'studio']);
     await source.ready();
+    const resumedPools = await source.pools();
+    try {
+      expect(
+        (await resumedPools.maintenance.query('SELECT current_user')).rows,
+      ).toEqual([{ current_user: 'studio_maintenance' }]);
+    } finally {
+      await resumedPools.close();
+    }
     const data = await populate(source, cookie);
     await source.assertTelemetryQuiet();
     const historical = await appendCurrentKeys(source);
@@ -599,6 +1060,7 @@ it('installs an immutable built image, drains a populated backup and restores al
       cookie,
       backup,
       custody,
+      registryCustody,
     );
     expect(await readFile(join(backup, 'COMPLETE'), 'utf8')).toContain(
       'quiesced backup',
@@ -711,7 +1173,14 @@ it('installs an immutable built image, drains a populated backup and restores al
     await restored.overlay();
     const missingCustody = await restored.execute(
       'sh',
-      ['deployment/restore.sh', backup, join(source.root, 'missing-keys.env')],
+      [
+        'deployment/restore.sh',
+        backup,
+        join(source.root, 'missing-keys.env'),
+        registryCustody,
+        reconciliation,
+        reconciliationSha,
+      ],
       { failure: true },
     );
     expect(missingCustody.code).not.toBe(0);
@@ -721,7 +1190,14 @@ it('installs an immutable built image, drains a populated backup and restores al
     });
     const wrongKeyCopy = await restored.execute(
       'sh',
-      ['deployment/restore.sh', backup, wrongCustody],
+      [
+        'deployment/restore.sh',
+        backup,
+        wrongCustody,
+        registryCustody,
+        reconciliation,
+        reconciliationSha,
+      ],
       { failure: true },
     );
     expect(wrongKeyCopy.code).not.toBe(0);
@@ -753,7 +1229,14 @@ it('installs an immutable built image, drains a populated backup and restores al
     );
     const truncated = await restored.execute(
       'sh',
-      ['deployment/restore.sh', backup, custody],
+      [
+        'deployment/restore.sh',
+        backup,
+        custody,
+        registryCustody,
+        reconciliation,
+        reconciliationSha,
+      ],
       { failure: true },
     );
     expect(truncated.code).not.toBe(0);
@@ -799,7 +1282,14 @@ it('installs an immutable built image, drains a populated backup and restores al
       );
       const incomplete = await restored.execute(
         'sh',
-        ['deployment/restore.sh', backup, custody],
+        [
+          'deployment/restore.sh',
+          backup,
+          custody,
+          registryCustody,
+          reconciliation,
+          reconciliationSha,
+        ],
         { failure: true },
       );
       expect(incomplete.code).not.toBe(0);
@@ -835,11 +1325,21 @@ it('installs an immutable built image, drains a populated backup and restores al
     expect(absentImage.code).not.toBe(0);
     const restoredResult = await restored.execute(
       'sh',
-      ['deployment/restore.sh', backup, custody],
+      [
+        'deployment/restore.sh',
+        backup,
+        custody,
+        registryCustody,
+        reconciliation,
+        reconciliationSha,
+      ],
       { environment: { STUDIO_IMAGE: uncachedStudioImage } },
     );
     expect(restoredResult.stdout.toString()).toMatch(/Loaded image(?: ID)?:/);
-    expect(await counts(restored)).toEqual({ ...baseline, refs: 2 });
+    expect(await countsInRestoredCompose(restored)).toEqual({
+      ...baseline,
+      refs: 2,
+    });
     const quarantinePools = await restored.pools();
     try {
       const roles = (
@@ -859,21 +1359,51 @@ it('installs an immutable built image, drains a populated backup and restores al
       // operator still has to reconcile authorization and invalidate sessions
       // before reopening any writer identity.
       await quarantinePools.admin.query(
-        'ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; ALTER ROLE studio_migrator LOGIN',
+        'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; GRANT studio_app, studio_maintenance TO studio_migrator WITH SET TRUE, INHERIT FALSE; GRANT studio_app TO studio_runtime WITH SET TRUE, INHERIT FALSE; GRANT studio_maintenance TO studio_maintenance_runtime WITH SET TRUE, INHERIT FALSE',
       );
     } finally {
       await quarantinePools.close();
     }
+    // Distinct, valid byte canaries prove an accidental repeat cannot replace
+    // the target's keys or image selection before refusing its populated DB.
+    for (const path of [
+      'deployment/encryption.env',
+      'deployment/recovery-images.yml',
+    ])
+      await appendFile(
+        join(restored.directory, path),
+        `\n# Existing target canary ${randomUUID()}\n`,
+      );
+    const beforeRepeat = await existingRestoreState(restored);
     const populatedRestore = await restored.execute(
       'sh',
-      ['deployment/restore.sh', backup, custody],
+      [
+        'deployment/restore.sh',
+        backup,
+        custody,
+        registryCustody,
+        reconciliation,
+        reconciliationSha,
+      ],
       { failure: true },
     );
     expect(populatedRestore.code).not.toBe(0);
     expect(populatedRestore.stderr.toString()).toContain(
       'Restore refused: target Compose project or named volumes already exist',
     );
-    expect(await counts(restored)).toEqual({ ...baseline, refs: 2 });
+    expect(await existingRestoreState(restored)).toEqual(beforeRepeat);
+    expect(await countsInRestoredCompose(restored)).toEqual({
+      ...baseline,
+      refs: 2,
+    });
+    await alternateRestoreTargets(
+      backup,
+      custody,
+      registryCustody,
+      reconciliation,
+      reconciliationSha,
+      restored,
+    );
     const quarantine = [
       '-f',
       'deployment/recovery-images.yml',
@@ -885,11 +1415,28 @@ it('installs an immutable built image, drains a populated backup and restores al
       'config',
       '--images',
     ]);
+    const recoveredReferences = [
+      ...new Set(recoveredImages.stdout.toString().trim().split('\n')),
+    ];
+    const recoveredImageIds = [
+      ...new Set(
+        (
+          await restored.execute('docker', [
+            'image',
+            'inspect',
+            '--format',
+            '{{.Id}}',
+            ...recoveredReferences,
+          ])
+        ).stdout
+          .toString()
+          .trim()
+          .split('\n'),
+      ),
+    ];
     expect(
-      [
-        ...new Set(recoveredImages.stdout.toString().trim().split('\n')),
-      ].toSorted(),
-    ).toEqual([...imageIds].toSorted());
+      recoveredImageIds.toSorted((left, right) => left.localeCompare(right)),
+    ).toEqual(imageIds.toSorted((left, right) => left.localeCompare(right)));
     for (const namespace of ['pii', 'integration', 'blindIndex'] as const) {
       const missing = structuredClone(historical);
       missing[namespace].keys = missing[namespace].keys.filter(
