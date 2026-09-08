@@ -207,7 +207,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     group: 'Authentication',
     summary: 'Signing secret for sessions and magic-link tokens.',
     deployment:
-      'Required whenever `DATABASE_URL` is set. Generate one with `openssl rand -base64 32`.',
+      'Required whenever an application or maintenance database connection is set. Generate one with `openssl rand -base64 32`.',
     devDefault: DEV.authSecret,
   },
   PUBLIC_URL: {

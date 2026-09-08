@@ -44,6 +44,7 @@ const TEMPLATE_FILES = [
   'deployment/migrate.yml',
   'deployment/encryption.yml',
   'deployment/postgres-init.sql',
+  'deployment/postgres-privileges.sql',
   'deployment/minio-init.sh',
   'deployment/minio-policy.json',
   'deployment/backup.sh',
@@ -70,10 +71,9 @@ export async function configureDeployment(
   const templates = await Promise.all(
     TEMPLATE_FILES.map(async (name) => {
       let bytes = await readFile(join(templateRoot, name));
-      if (name === 'deployment/postgres-init.sql') {
+      if (name.startsWith('deployment/postgres-')) {
         const sql = bytes.toString();
         const substitutions = new Map([
-          ['/* STUDIO_RUNTIME_ROLES */', runtimeRolesSql(DATABASE_ROLES)],
           [
             '/* STUDIO_LARGE_OBJECT_PRIVILEGES */',
             revokeLargeObjectPrivilegesSql([
@@ -82,6 +82,11 @@ export async function configureDeployment(
             ]),
           ],
         ]);
+        if (name === 'deployment/postgres-init.sql')
+          substitutions.set(
+            '/* STUDIO_RUNTIME_ROLES */',
+            runtimeRolesSql(DATABASE_ROLES),
+          );
         let rendered = sql;
         for (const [marker, replacement] of substitutions) {
           if (rendered.split(marker).length !== 2)

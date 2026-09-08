@@ -98,7 +98,7 @@ set -- $(cat "$backup/images.txt")
 docker image save "$@" > "$backup/images.tar"
 test -s "$backup/images.tar"
 cp .env docker-compose.yml SELF_HOSTING.md MIGRATIONS.md BACKUPS.md "$backup/"
-for name in traefik.yml migrate.yml encryption.yml postgres-init.sql minio-init.sh minio-policy.json backup.sh restore.sh checksum.sh quarantine.yml; do
+for name in traefik.yml migrate.yml encryption.yml postgres-init.sql postgres-privileges.sql minio-init.sh minio-policy.json backup.sh restore.sh checksum.sh quarantine.yml; do
   cp "deployment/$name" "$backup/deployment/"
 done
 if [ -f release.json ]; then cp release.json "$backup/"; fi
