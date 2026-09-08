@@ -275,7 +275,20 @@ export default function AttributeCodebookControls({
      */
     component: string;
   }> | null>(null);
-  const controls = useRef<HTMLDivElement>(null);
+  /**
+   * The row dialog these controls sit in, remembered rather than walked up to.
+   *
+   * `finalFocus` is resolved after the editor has closed, and closing it can
+   * be exactly what takes these controls off the screen: an attribute deleted
+   * under an open rules editor leaves nothing here to launch, so the container
+   * a lookup would walk up FROM is already gone by the time focus is being
+   * returned. The dialog outlives them, so it is what is held.
+   */
+  const rowDialog = useRef<HTMLElement | null>(null);
+  const holdRowDialog = (node: HTMLDivElement | null) => {
+    const dialog = node?.closest<HTMLElement>('[role="dialog"]') ?? null;
+    if (dialog !== null) rowDialog.current = dialog;
+  };
   const createTrigger = useRef<HTMLButtonElement>(null);
   const definesTrigger = useRef<HTMLButtonElement>(null);
   const rulesTrigger = useRef<HTMLButtonElement>(null);
@@ -357,15 +370,7 @@ export default function AttributeCodebookControls({
   }
 
   /**
-   * Where focus goes when the CREATE editor closes.
-   *
-   * Not its own trigger: creating the attribute is what takes this row out of
-   * inventing one, so by the time the editor closes the button that opened it
-   * has gone — and a `finalFocus` naming a detached node leaves focus on
-   * `<body>`, where the next Tab starts at the top of the document and a
-   * screen-reader user is returned to the page rather than to the control they
-   * left. The picker IS that control: the create just set its value, and it is
-   * the one thing on this surface guaranteed to outlive the button.
+   * The row's own attribute picker, as somewhere focus can always land.
    *
    * Scoped to the row dialog, so a picker on another surface cannot answer for
    * it. Resolved by hand rather than through `focusFirstError`'s
@@ -373,20 +378,45 @@ export default function AttributeCodebookControls({
    * candidate inside an `[inert]` subtree — correct for an invalid submit, and
    * wrong here: this runs while the editor being closed is still open, so the
    * whole dialog behind it is inert and every candidate is rejected.
-   *
-   * The other two surfaces keep their own triggers, which survive the edits
-   * they open.
    */
-  const focusAfterCreate = () => {
-    const container = controls.current
-      ?.closest('[role="dialog"]')
-      ?.querySelector<HTMLElement>(`[data-field-path="${VARIABLE_FIELD}"]`);
+  const rowPicker = (): HTMLElement | null => {
+    const dialog = rowDialog.current;
+    // A row dialog that has itself closed takes its picker with it, and a
+    // detached node is exactly what this exists to avoid handing over.
+    if (dialog === null || !dialog.isConnected) return null;
+    const container = dialog.querySelector<HTMLElement>(
+      `[data-field-path="${VARIABLE_FIELD}"]`,
+    );
     for (const selector of FOCUS_TARGETS) {
       const found = container?.querySelector<HTMLElement>(selector);
       if (found) return found;
     }
-    return createTrigger.current;
+    return null;
   };
+
+  /**
+   * Where focus goes when the VALUES or RULES editor closes.
+   *
+   * Its own trigger wherever that trigger is still there, and the row's picker
+   * wherever it is not — because a `finalFocus` naming a detached node leaves
+   * focus on `<body>`, where the next Tab starts at the top of the document
+   * and a screen-reader user is returned to the page rather than to the row
+   * they were in.
+   *
+   * These two are offered by facts about the LIVE codebook and the live lease,
+   * and every one of those can turn false under a researcher who is mid-edit:
+   * a collaborator changing what kind of answer the attribute holds takes the
+   * values button away, deleting it takes both away, and a lease taken back
+   * takes every launch control away while the editor deliberately stays open.
+   * All of that has already happened by the time the editor is closed, which
+   * is what makes "is it still there?" the right question to ask here — and
+   * the wrong one for the create, whose trigger is still on screen at exactly
+   * this moment and gone a render later.
+   */
+  const focusAfterEditor = (
+    trigger: HTMLButtonElement | null,
+  ): HTMLElement | null =>
+    trigger?.isConnected === true ? trigger : rowPicker();
 
   const close = () => {
     setEditing(null);
@@ -430,9 +460,9 @@ export default function AttributeCodebookControls({
         </p>
       )}
       {/* The container is rendered whether or not it holds anything, because
-          `focusAfterCreate` finds the row's picker by walking up from it. */}
+          it is what tells `rowPicker` which dialog this row is. */}
       <div
-        ref={controls}
+        ref={holdRowDialog}
         className={offerLaunch ? 'mb-8 flex flex-wrap gap-3' : undefined}
       >
         {offerLaunch && canCreate && (
@@ -497,7 +527,15 @@ export default function AttributeCodebookControls({
           title={editorTitle}
           size="readable"
           closeDialog={close}
-          finalFocus={focusAfterCreate}
+          // The picker outright, rather than the trigger-if-it-is-still-there
+          // rule the other two use. Creating the attribute is what takes this
+          // row out of inventing one, so the button that opened this editor is
+          // gone a render after it closes — and it is still in the document
+          // while focus is being returned, so asking whether it is there gets
+          // the wrong answer and leaves focus on a node about to be detached.
+          // The picker is the control the create just set, and the one thing
+          // on this surface guaranteed to outlive the button.
+          finalFocus={() => rowPicker() ?? createTrigger.current}
         >
           <VariableEditor
             mode="create"
@@ -532,7 +570,7 @@ export default function AttributeCodebookControls({
           title={editorTitle}
           size="readable"
           closeDialog={close}
-          finalFocus={() => definesTrigger.current}
+          finalFocus={() => focusAfterEditor(definesTrigger.current)}
         >
           <VariableEditor
             mode="update"
@@ -578,7 +616,7 @@ export default function AttributeCodebookControls({
           title={editorTitle}
           size="readable"
           closeDialog={close}
-          finalFocus={() => rulesTrigger.current}
+          finalFocus={() => focusAfterEditor(rulesTrigger.current)}
         >
           <CodebookVariableValidationEditor
             openId={editing.openId}

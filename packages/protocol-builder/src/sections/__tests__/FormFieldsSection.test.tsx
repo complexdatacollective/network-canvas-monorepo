@@ -2530,3 +2530,87 @@ describe('an attribute that stops being collectable under an open row', () => {
     ]);
   });
 });
+
+/**
+ * Where focus goes when a codebook editor closes and its trigger has gone.
+ *
+ * Two of the three surfaces keep their own trigger, and the create's does not
+ * survive the edit it opens — which is why that one already walks back to the
+ * row's picker. The other two can lose theirs just as completely, because what
+ * offers them is a fact about the LIVE codebook: a collaborator changing what
+ * kind of answer an attribute holds takes the values button away, deleting it
+ * takes both away, and a lost lease takes every launch control away while the
+ * editor deliberately stays open. A `finalFocus` naming a button that is no
+ * longer in the document leaves focus on `<body>`, where the next Tab starts
+ * at the top of the page and a screen-reader user is returned to the document
+ * rather than to the row they were in.
+ */
+describe('closing a codebook editor whose trigger has gone', () => {
+  const closeTheEditor = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    const editor = screen.getAllByRole('dialog').at(-1)!;
+    await harness.user.click(
+      within(editor).getByRole('button', { name: 'Close' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(1),
+    );
+  };
+
+  it('returns to the row’s picker when the attribute changes kind', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field', 1);
+    await harness.user.click(
+      dialog.getByRole('button', { name: EDIT_ANSWER_LABELS }),
+    );
+    await screen.findByRole('button', { name: 'Save attribute' });
+
+    // A boolean is the only kind with answer labels to change, so this takes
+    // the button that opened this editor away under the researcher.
+    harness.receiveCodebookUpdate({
+      node: {
+        person: {
+          ...personDocument(harness),
+          variables: {
+            ...personVariables(harness),
+            flagged: { name: 'flagged', type: 'text', component: 'Text' },
+          },
+        },
+      },
+    });
+
+    await closeTheEditor(harness);
+    expect(document.activeElement).toBe(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+    );
+  });
+
+  it('returns to the row’s picker when the attribute is deleted', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await screen.findByRole('button', { name: 'Save validation' });
+
+    const { relationship_to_ego: _gone, ...variables } =
+      personVariables(harness);
+    harness.receiveCodebookUpdate({
+      node: { person: { ...personDocument(harness), variables } },
+    });
+
+    await closeTheEditor(harness);
+    expect(document.activeElement).toBe(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+    );
+  });
+});
