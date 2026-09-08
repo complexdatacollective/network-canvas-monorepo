@@ -58,3 +58,8 @@ export const Editing: Story = {
     await expect(canvas.getByText(/"showTransit": true/)).toBeInTheDocument();
   },
 };
+
+/** Someone else holds the lease: every control is inert and saving is refused. */
+export const Spectating: Story = {
+  args: { readOnly: true },
+};

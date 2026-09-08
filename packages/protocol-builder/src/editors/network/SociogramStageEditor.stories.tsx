@@ -57,3 +57,8 @@ export const Editing: Story = {
     ).toBeInTheDocument();
   },
 };
+
+/** Someone else holds the lease: every control is inert and saving is refused. */
+export const Spectating: Story = {
+  args: { readOnly: true },
+};
