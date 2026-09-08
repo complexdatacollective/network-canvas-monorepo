@@ -167,6 +167,70 @@ describe('the nomination limits a name generator may set', () => {
   });
 
   /**
+   * A refusal that names a number names the one the researcher would
+   * recognise. Both ends stated their floor for anything below it — except the
+   * maximum, whose single `< 1` branch answered `-5` with "a maximum of 0", a
+   * cap the box had never held.
+   */
+  it('names the smallest maximum against a negative one', async () => {
+    const harness = renderStageEditor(unlimitedStage);
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Nomination limits' }),
+    );
+    const max = await screen.findByRole('spinbutton', { name: /Most people/ });
+    await harness.user.type(max, '-5');
+    expect(max).toHaveValue(-5);
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText('The smallest a maximum can be is 1.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('A maximum of 0 would let the stage name nobody.'),
+    ).not.toBeInTheDocument();
+  });
+
+  /** Zero is a cap the researcher really did type, so it keeps its own words. */
+  it('says what a maximum of 0 would do to the stage', async () => {
+    const harness = renderStageEditor(unlimitedStage);
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Nomination limits' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('spinbutton', { name: /Most people/ }),
+      '0',
+    );
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        'A maximum of 0 would let the stage name nobody.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /** The minimum's floor is 0, and it says so against a negative one. */
+  it('names the smallest minimum against a negative one', async () => {
+    const harness = renderStageEditor(unlimitedStage);
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Nomination limits' }),
+    );
+    const min = await screen.findByRole('spinbutton', {
+      name: /Fewest people/,
+    });
+    await harness.user.type(min, '-5');
+    expect(min).toHaveValue(-5);
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText('The smallest a minimum can be is 0.'),
+    ).toBeInTheDocument();
+  });
+
+  /**
    * The error belongs to the pair, so moving EITHER end has to clear it.
    *
    * Deliberately fixed from the other control. Field validation runs when a

@@ -65,6 +65,27 @@ const chooseImportedNetwork = async (
   );
 };
 
+/** A small network file, with records in it so the host accepts the import. */
+const IMPORTED_NETWORK = JSON.stringify({
+  nodes: [{ attributes: { name: 'Amara' } }, { attributes: { name: 'Beto' } }],
+});
+
+/** Imports a network file through the panel's picker, staging it. */
+const importNetworkFile = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  dialog: ReturnType<typeof within>,
+  fileName: string,
+) => {
+  await harness.user.click(
+    dialog.getByRole('radio', { name: 'Use an imported data file' }),
+  );
+  await harness.user.upload(
+    await screen.findByLabelText('Choose a file from your computer'),
+    new File([IMPORTED_NETWORK], fileName, { type: 'application/json' }),
+  );
+  await dialog.findByRole('button', { name: 'Discard this resource' });
+};
+
 const panelsOf = (
   request: Awaited<ReturnType<ReturnType<typeof renderStageEditor>['submit']>>,
 ): Record<string, unknown>[] => {
@@ -444,6 +465,107 @@ describe('the side panels a name generator shows', () => {
       title: 'Second panel',
       filter: { join: 'AND' },
     });
+  });
+
+  /**
+   * The same state a source change asks about, arriving already made. A
+   * protocol authored elsewhere can hold a panel that reads an imported file
+   * AND carries a rule about connections, and the confirmation above never
+   * fires for it: nothing changed. The protocol schema is what refuses it
+   * (`External-data panel filters cannot use edge rules`), and the refusal
+   * lands on this section rather than on a path.
+   */
+  it('refuses a panel that arrives reading a file with a connection rule', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        { ...panelWithAnEdgeRule, dataSource: 'roster_data' },
+      ]),
+      sections: panels,
+    });
+
+    expect(
+      await screen.findByText('People you named earlier'),
+    ).toBeInTheDocument();
+
+    expect(await harness.submit()).toBeNull();
+    expect(harness.pendingCommands()).toHaveLength(0);
+    expect(
+      await screen.findByText(
+        'External-data panel filters cannot use edge rules; rules must target node attributes.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * Discarding drops the bytes for the whole session, so a resource another
+   * part of the stage still names is refused. The second panel's dialog is the
+   * case that seam could not see on its own: its pick is in the DIALOG's form
+   * store until the row saves, so the stage form behind it holds one reference
+   * — the first panel's — and a count that missed the asking field read that
+   * as "only this field uses it".
+   */
+  it('refuses to discard an imported network the other panel still names', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+        { id: 'panel-2', title: 'Second panel', dataSource: 'existing' },
+      ]),
+      sections: panels,
+    });
+
+    const first = await openPanel(harness, 'Edit panel', 0);
+    await importNetworkFile(harness, first, 'community.json');
+    await harness.user.click(first.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    const second = await openPanel(harness, 'Edit panel', 1);
+    await harness.user.click(
+      second.getByRole('radio', { name: 'Use an imported data file' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'community.json' }),
+    );
+    await harness.user.click(
+      await second.findByRole('button', { name: 'Discard this resource' }),
+    );
+
+    expect(await second.findByRole('alert')).toHaveTextContent(
+      'This resource is still used elsewhere on this stage, so it was not discarded.',
+    );
+    // The bytes are still staged, so the first panel's reference still
+    // resolves — which is the whole point of the refusal.
+    expect(harness.gateway.getStagingResidue()).not.toEqual([]);
+  });
+
+  /**
+   * A network imported in this session is not in the protocol's manifest yet:
+   * it is promoted with the stage at finish. The summary has to look there as
+   * well, or a researcher is told the file they have just imported and saved
+   * is one this protocol no longer holds.
+   */
+  it('names a network imported in this session in the panel summary', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+      ]),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    await importNetworkFile(harness, dialog, 'community.json');
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(
+      await screen.findByText('Lists community.json.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/no longer in this protocol/),
+    ).not.toBeInTheDocument();
   });
 
   /**
