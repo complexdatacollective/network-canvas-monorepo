@@ -1437,6 +1437,20 @@ it('installs an immutable built image, drains a populated backup and restores al
     expect(
       recoveredImageIds.toSorted((left, right) => left.localeCompare(right)),
     ).toEqual(imageIds.toSorted((left, right) => left.localeCompare(right)));
+    const restoredConfiguration = await restored.configuration();
+    expect(restoredConfiguration.STUDIO_ENCRYPTION_KEYSET).toBe(
+      JSON.stringify(historical),
+    );
+    const admitted = await restored.compose([
+      ...quarantine,
+      '-f',
+      'deployment/encryption.yml',
+      'run',
+      '--rm',
+      '--no-deps',
+      'encryption-verify',
+    ]);
+    expect(admitted.stdout.toString()).toContain('"verified":true');
     for (const namespace of ['pii', 'integration', 'blindIndex'] as const) {
       const missing = structuredClone(historical);
       missing[namespace].keys = missing[namespace].keys.filter(
@@ -1483,15 +1497,6 @@ it('installs an immutable built image, drains a populated backup and restores al
       expect(failed.stdout.toString()).toContain('STUDIO_ENCRYPTION_INVALID');
       expect(failed.stdout.toString()).not.toContain('STUDIO_SERVER_STARTED');
     }
-    await restored.compose([
-      '-f',
-      'deployment/encryption.yml',
-      ...quarantine,
-      'run',
-      '--rm',
-      '--no-deps',
-      'encryption-verify',
-    ]);
     await restored.compose([...quarantine, 'up', '-d', 'studio', 'probe']);
     await restored.ready();
     expect((await fetch(`${restored.origin}/setup`)).status).toBe(404);
