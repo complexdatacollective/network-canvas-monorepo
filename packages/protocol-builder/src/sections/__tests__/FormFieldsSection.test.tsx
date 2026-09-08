@@ -2204,3 +2204,96 @@ describe('rebinding a form field to another attribute', () => {
     });
   });
 });
+
+/**
+ * Losing the lease with a codebook editor open over the row.
+ *
+ * The row dialog itself deliberately survives lease loss — a researcher who
+ * has just been made a spectator keeps what they had written, and the save
+ * says why it cannot be taken. An editor opened FROM that row holds a draft of
+ * exactly the same kind, made in exactly the same session, so unmounting it
+ * throws away more of the researcher's work than the surface it was opened
+ * from ever would. What goes is the ability to start another one.
+ */
+describe('a codebook editor open over a row when the lease goes', () => {
+  const loseTheLease = (harness: ReturnType<typeof renderStageEditor>) => {
+    act(() => {
+      harness.session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+  };
+
+  it('keeps the rules editor on screen, with its draft, and refuses the save', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await screen.findByRole('button', { name: 'Save validation' });
+    await harness.user.click(
+      screen.getByRole('checkbox', { name: 'Required' }),
+    );
+
+    loseTheLease(harness);
+
+    // Still on screen, still holding what the researcher had chosen...
+    expect(screen.getByRole('checkbox', { name: 'Required' })).toBeChecked();
+    // ...and unable to write it, which is what the lease actually means.
+    expect(
+      screen.getByRole('button', { name: 'Save validation' }),
+    ).toBeDisabled();
+  });
+
+  it('keeps the attribute editor on screen, with its draft, and refuses the save', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field', 1);
+    await harness.user.click(
+      dialog.getByRole('button', { name: EDIT_ANSWER_LABELS }),
+    );
+    await screen.findByRole('button', { name: 'Save attribute' });
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+      'Yes, definitely',
+    );
+
+    loseTheLease(harness);
+
+    expect(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+    ).toHaveValue('Yes, definitely');
+    expect(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    ).toBeDisabled();
+    expect(personVariables(harness).flagged).not.toHaveProperty('options');
+  });
+
+  /**
+   * The other half of the rule: what a spectator may not do is START one.
+   * Every launch control goes, so the row dialog left open by a lost lease
+   * offers no way into the codebook at all.
+   */
+  it('offers no way to open another one', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    expect(
+      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+    ).toBeInTheDocument();
+
+    loseTheLease(harness);
+
+    expect(
+      dialog.queryByRole('button', { name: 'Set rules for this answer' }),
+    ).toBeNull();
+  });
+});

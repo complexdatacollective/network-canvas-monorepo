@@ -330,16 +330,29 @@ export default function AttributeCodebookControls({
       ? messages.describeAnswerLabels
       : messages.describeParameters;
 
-  if (readOnly || subject === undefined || codebookDocument === null) {
+  // Nothing to edit AGAINST: there is no codebook for these editors to read,
+  // so there is nothing for an open one to be showing either.
+  if (subject === undefined || codebookDocument === null) {
     return null;
   }
-  if (
-    !canCreate &&
-    !canEditValues &&
-    !canEditAnswers &&
-    !canEditParameters &&
-    !canEditRules
-  ) {
+  /**
+   * Whether another editor may be STARTED from here.
+   *
+   * A lease taken back by a collaborator makes this false, and that is all it
+   * makes false: an editor already open holds a draft the researcher made in
+   * this session, of exactly the kind the row dialog around it deliberately
+   * keeps when the same thing happens. Unmounting it would throw that draft
+   * away to say something the editor can say for itself, with its own save
+   * refused — which is what `readOnly` does to both of them.
+   */
+  const offerLaunch =
+    !readOnly &&
+    (canCreate ||
+      canEditValues ||
+      canEditAnswers ||
+      canEditParameters ||
+      canEditRules);
+  if (!offerLaunch && editing === null) {
     return null;
   }
 
@@ -411,13 +424,18 @@ export default function AttributeCodebookControls({
 
   return (
     <>
-      {canCreate && (
+      {offerLaunch && canCreate && (
         <p className="mb-3 text-sm text-current/70">
           {intl.formatMessage(messages.createNeedsValues)}
         </p>
       )}
-      <div ref={controls} className="mb-8 flex flex-wrap gap-3">
-        {canCreate && (
+      {/* The container is rendered whether or not it holds anything, because
+          `focusAfterCreate` finds the row's picker by walking up from it. */}
+      <div
+        ref={controls}
+        className={offerLaunch ? 'mb-8 flex flex-wrap gap-3' : undefined}
+      >
+        {offerLaunch && canCreate && (
           <Button
             ref={createTrigger}
             type="button"
@@ -430,18 +448,19 @@ export default function AttributeCodebookControls({
             {intl.formatMessage(messages.createWithValues)}
           </Button>
         )}
-        {(canEditValues || canEditAnswers || canEditParameters) && (
-          <Button
-            ref={definesTrigger}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => open('defines', definesLabel, definesDescribe)}
-          >
-            {intl.formatMessage(definesLabel)}
-          </Button>
-        )}
-        {canEditRules && (
+        {offerLaunch &&
+          (canEditValues || canEditAnswers || canEditParameters) && (
+            <Button
+              ref={definesTrigger}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => open('defines', definesLabel, definesDescribe)}
+            >
+              {intl.formatMessage(definesLabel)}
+            </Button>
+          )}
+        {offerLaunch && canEditRules && (
           <Button
             ref={rulesTrigger}
             type="button"
@@ -491,6 +510,7 @@ export default function AttributeCodebookControls({
             // The kind of answer was chosen in the row behind this, and the
             // whole reason the editor is open is the values that kind needs.
             allowedVariableTypes={[inventingType]}
+            readOnly={readOnly}
             title={editorTitle}
             description={editorDescription}
             createRequestId={() => uuid()}
@@ -541,6 +561,7 @@ export default function AttributeCodebookControls({
             allowedVariableTypes={
               isCollectableType(pickedType) ? [pickedType] : undefined
             }
+            readOnly={readOnly}
             title={editorTitle}
             description={editorDescription}
             createRequestId={() => uuid()}
@@ -569,6 +590,7 @@ export default function AttributeCodebookControls({
               createId: () => uuid(),
               description: editorDescription,
             }}
+            readOnly={readOnly}
             onSubmitRequest={(request) =>
               controller.requestCompoundEdit(request)
             }
