@@ -31,7 +31,8 @@ export const env = createEnv({
     // Optional explicit key for sealing TOTP secrets at rest (see
     // utils/totpSecretEncryption.ts); without it the key is derived from the
     // database password in DATABASE_URL. The minimum length only applies to
-    // this explicit value.
+    // this explicit value and must match TOTP_ENCRYPTION_KEY_MIN_LENGTH there,
+    // which the deploy-time script enforces before validation runs.
     TOTP_ENCRYPTION_KEY: z.preprocess(
       emptyToUndefined,
       z

@@ -39,6 +39,13 @@ import {
  * sealed yet.
  */
 
+/**
+ * Shortest `TOTP_ENCRYPTION_KEY` accepted. `env.js` enforces the same bound on
+ * the validated environment; `resolveTotpKeyMaterials` enforces it for the
+ * deploy-time script, which reads the variable before validation runs.
+ */
+export const TOTP_ENCRYPTION_KEY_MIN_LENGTH = 32;
+
 const ALGORITHM = 'aes-256-gcm';
 const KEY_BYTES = 32;
 const NONCE_BYTES = 12;
@@ -96,6 +103,18 @@ export function resolveTotpKeyMaterials({
   overrideKey,
   databaseUrl,
 }: TotpKeySources): TotpKeyMaterials {
+  // The same rule env.js applies, so a value the server will refuse can never
+  // seal a row first: rows sealed under a key that is then corrected would be
+  // unreadable under both the corrected key and the database password.
+  if (
+    overrideKey !== undefined &&
+    overrideKey.length < TOTP_ENCRYPTION_KEY_MIN_LENGTH
+  ) {
+    throw new Error(
+      `TOTP_ENCRYPTION_KEY must be at least ${TOTP_ENCRYPTION_KEY_MIN_LENGTH} characters long; generate one with \`openssl rand -base64 32\`.`,
+    );
+  }
+
   const fromDatabaseUrl = databasePassword(databaseUrl);
   return overrideKey ? [overrideKey, fromDatabaseUrl] : [fromDatabaseUrl];
 }

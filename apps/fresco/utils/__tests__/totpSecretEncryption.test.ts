@@ -8,6 +8,7 @@ import {
   encryptTotpSecret,
   isEncryptedTotpSecret,
   resolveTotpKeyMaterials,
+  TOTP_ENCRYPTION_KEY_MIN_LENGTH,
   TotpSecretDecryptError,
 } from '~/utils/totpSecretEncryption';
 
@@ -185,6 +186,20 @@ describe('resolveTotpKeyMaterials', () => {
     expect(
       resolveTotpKeyMaterials({ overrideKey: KEY, databaseUrl: NEON_URL }),
     ).toEqual([KEY, 'npg_AbC@123']);
+  });
+
+  it('refuses an override shorter than the minimum, so a row can never be sealed under it', () => {
+    const short = 'x'.repeat(TOTP_ENCRYPTION_KEY_MIN_LENGTH - 1);
+
+    expect(() =>
+      resolveTotpKeyMaterials({ overrideKey: short, databaseUrl: NEON_URL }),
+    ).toThrow(/TOTP_ENCRYPTION_KEY must be at least 32 characters/);
+    expect(
+      resolveTotpKeyMaterials({
+        overrideKey: 'x'.repeat(TOTP_ENCRYPTION_KEY_MIN_LENGTH),
+        databaseUrl: NEON_URL,
+      })[0],
+    ).toBe('x'.repeat(TOTP_ENCRYPTION_KEY_MIN_LENGTH));
   });
 
   it('never yields the same material for two different database passwords', () => {

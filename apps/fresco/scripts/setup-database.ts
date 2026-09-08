@@ -123,6 +123,15 @@ async function handleMigrations(): Promise<void> {
 const DATA_MIGRATION_TIMEOUT_MS = 1000 * 60 * 30;
 
 try {
+  // Resolved before anything runs: an override the server would refuse (see
+  // env.js) aborts here, before a row could be sealed under it. A blank value
+  // behaves as unset, as in env.js.
+  const totpKeyMaterials = resolveTotpKeyMaterials({
+    // eslint-disable-next-line no-process-env
+    overrideKey: process.env.TOTP_ENCRYPTION_KEY || undefined,
+    databaseUrl,
+  });
+
   await handleMigrations();
 
   // Run the in-place data migrations together in a single transaction so a
@@ -132,15 +141,7 @@ try {
   // module. All-or-nothing keeps the old version working on the old data.
   await prisma.$transaction(
     async (tx) => {
-      await encryptStoredTotpSecrets(
-        tx,
-        resolveTotpKeyMaterials({
-          // Mirrors env.js: a blank value behaves as unset.
-          // eslint-disable-next-line no-process-env
-          overrideKey: process.env.TOTP_ENCRYPTION_KEY || undefined,
-          databaseUrl,
-        }),
-      );
+      await encryptStoredTotpSecrets(tx, totpKeyMaterials);
       await migrateProtocolsToCompatibleVersion(tx);
       await migrateInterviewCategoricals(tx);
     },
