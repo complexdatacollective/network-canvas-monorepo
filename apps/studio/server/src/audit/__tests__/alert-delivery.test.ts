@@ -381,7 +381,7 @@ describe.skipIf(!db)('researcher audit-alert delivery', () => {
   });
 
   it('suppresses email when recovery disables a recipient after enqueue', async () => {
-    await appendAlert(scratch);
+    const event = await appendAlert(scratch);
     await scratch.pool.query(
       `UPDATE "user" SET recovery_disabled = true WHERE id = $1`,
       [ADMIN],
@@ -401,6 +401,24 @@ describe.skipIf(!db)('researcher audit-alert delivery', () => {
         listInAppAuditAlerts(client, { teamId: TEAM, userId: ADMIN }),
       ),
     ).resolves.toEqual([]);
+    const retainedId = await scratch.pool.query<{ id: string }>(
+      `SELECT delivery.id
+       FROM audit_alert_deliveries delivery
+       JOIN audit_alert_outbox alert ON alert.id = delivery.alert_id
+       WHERE alert.audit_event_id = $1
+         AND delivery.recipient_user_id = $2
+         AND delivery.channel = 'in_app'`,
+      [event.id, ADMIN],
+    );
+    await expect(
+      tenant.transaction((client) =>
+        markInAppAuditAlertRead(client, {
+          id: retainedId.rows[0]!.id,
+          teamId: TEAM,
+          userId: ADMIN,
+        }),
+      ),
+    ).resolves.toBe(false);
   });
 
   it('suppresses a claim when its verified address changes before the send check', async () => {
