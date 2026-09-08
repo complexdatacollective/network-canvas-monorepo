@@ -625,6 +625,49 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
   });
 
   /**
+   * The rule the researcher is holding, rather than the one the prompt was
+   * opened on.
+   *
+   * A dialog's rules are the researcher's to change while it is open, and a
+   * collaborator's deletion lands against what they have now. Judged against
+   * the opened-on prompt alone, a rule pointed at an attribute that is deleted
+   * a moment later is a reference nothing reports: the option list drops it,
+   * the cell goes blank, and the prompt saves the reference the researcher has
+   * just made broken.
+   */
+  it('refuses the rule the researcher pointed at an attribute deleted after', async () => {
+    const harness = renderStageEditor(
+      seededWith(
+        [{ property: 'name', direction: 'desc' }],
+        CodebookPromptEditor,
+      ),
+    );
+
+    await openPrompt(harness);
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Property' }),
+      'age',
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Direction' }),
+      'asc',
+    );
+
+    harness.receiveCodebookUpdate({ node: { person: personWithout(['age']) } });
+    await expectDeletedOption();
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText(MISSING_ATTRIBUTE_MESSAGE);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    // And the cell still says what it points at, which is the other half of
+    // the same rule: a blank required cell the researcher cannot read is what
+    // sends the dangling reference back into the protocol.
+    expect(screen.getByRole('combobox', { name: 'Property' })).toHaveValue(
+      'age',
+    );
+  });
+
+  /**
    * The control: the same deletion applied BEFORE the dialog opens was always
    * refused, which is what pins the two above on the moment the rule was built
    * rather than on the rule.
