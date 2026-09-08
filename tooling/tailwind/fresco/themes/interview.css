@@ -126,10 +126,18 @@
     --destructive-contrast: oklch(var(--white));
     /* Redeclared (not inherited from :root) so the mix is made against the
        interview's own coral and white ink — see `--color-destructive-strong`
-       in theme.css for why one copy at `:root` cannot serve every theme. */
+       in theme.css for why one copy at `:root` cannot serve every theme.
+
+       Weighted far more toward the ink than any other scope, because this
+       theme's `--surface-accent` is the worst ground for the token anywhere:
+       `--surface-3` sits at L 0.44 and neat coral (L 0.57) reads 1.71:1 on
+       it. The 78% every other scope starts from only reaches 2.37:1; the
+       fill has to be carried most of the way to white before a normal-size
+       field error clears AA, and 36% measures 4.71:1 while staying visibly
+       pink. `DestructiveInkPerTheme` in `Colors.stories.tsx` measures it. */
     --destructive-strong: color-mix(
       in oklch,
-      var(--destructive) 78%,
+      var(--destructive) 36%,
       var(--text)
     );
 

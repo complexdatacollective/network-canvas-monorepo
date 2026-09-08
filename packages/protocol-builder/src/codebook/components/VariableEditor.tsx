@@ -507,9 +507,15 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   );
   const submittedDraft =
     props.mode === 'create'
-      ? draftWithOwnedBlocks(snapshot.draft, parameterShape, optionsShape)
+      ? draftWithOwnedBlocks(
+          snapshot.draft,
+          seededDraft.options,
+          parameterShape,
+          optionsShape,
+        )
       : draftOwnedByVariableEditor(
           snapshot.draft,
+          seededDraft.options,
           lockedOptions !== null,
           typeChanged,
           parameterShape,
@@ -918,10 +924,23 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                       spacing="sm"
                       shadow="xs"
                       series="accent"
-                      className="w-full overflow-visible! [--destructive:var(--destructive-strong)]"
+                      className="w-full overflow-visible!"
                     >
                       <div className="flex items-start gap-4">
-                        <div className="min-w-0 flex-1">
+                        {/* The strong destructive ink is opted into HERE, on the
+                            field column, and not on the Surface: it is meant for
+                            destructive TEXT drawn on this tinted background —
+                            the required marker and a field's error — and
+                            `--destructive` is also the fill of the destructive
+                            remove button beside it, whose foreground stays
+                            `--destructive-contrast`. Tinting the whole surface
+                            repaints that fill without repainting the icon on
+                            it, which on the default dark theme lands at 2.85:1
+                            against white where the untouched pair reaches
+                            3.85:1 — under the 3:1 WCAG asks of a control. The
+                            button is outside this element, so it keeps its own
+                            pair. */}
+                        <div className="min-w-0 flex-1 [--destructive:var(--destructive-strong)]">
                           <UnconnectedField
                             name={`option-${index + 1}-label`}
                             label={intl.formatMessage(
@@ -1136,6 +1155,7 @@ function draftWithLockedOptions(
 
 function draftOwnedByVariableEditor(
   draft: Readonly<SectionDoc>,
+  storedOptions: unknown,
   persistLockedOptions: boolean,
   includeTypeMetadata: boolean,
   parameterShape: ParameterShape | null,
@@ -1148,7 +1168,7 @@ function draftOwnedByVariableEditor(
   for (const property of properties) {
     if (Object.hasOwn(draft, property)) owned[property] = draft[property];
   }
-  const options = optionsForShape(optionsShape, draft.options);
+  const options = optionsForShape(optionsShape, draft.options, storedOptions);
   if (options === undefined) delete owned.options;
   else owned.options = options;
   // Written with them, for the reason the parameters block writes it: the pair
@@ -1190,6 +1210,7 @@ function draftOwnedByVariableEditor(
  */
 function draftWithOwnedBlocks(
   draft: CodebookVariableDraft,
+  storedOptions: unknown,
   parameterShape: ParameterShape | null,
   optionsShape: OptionsShape | null,
 ): CodebookVariableDraft {
@@ -1202,7 +1223,7 @@ function draftWithOwnedBlocks(
   // A choice list is passed through as authored, so an unauthored one still
   // reaches the request builder to be refused there — see `optionsForShape`.
   if (optionsShape === 'boolean') {
-    const options = optionsForShape(optionsShape, draft.options);
+    const options = optionsForShape(optionsShape, draft.options, storedOptions);
     if (options === undefined) delete next.options;
     else next.options = options;
   }

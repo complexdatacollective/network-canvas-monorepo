@@ -14,7 +14,6 @@ import {
 
 import {
   DAY_OFFSET_KEYS,
-  dateBoundWindow,
   dateResolutionOf,
   dateResolutionOptions,
   dayOffsetIssue,
@@ -22,6 +21,7 @@ import {
   type ParameterShape,
   readParameters,
 } from '../variableParameters.ts';
+import CoarseDateBound from './CoarseDateBound.tsx';
 
 const messages = defineMessages({
   minLabelLabel: {
@@ -149,6 +149,12 @@ const messages = defineMessages({
 });
 
 const DatePickerControl = DatePickerField as ComponentType<
+  Record<string, unknown>
+>;
+// Cast like the three around it, and for the same reason: `UnconnectedField`'s
+// component constraint erases the concrete prop shape. The two branches of
+// `boundControl` below also have to agree on one component type.
+const CoarseDateBoundControl = CoarseDateBound as ComponentType<
   Record<string, unknown>
 >;
 const InputControl = InputField as ComponentType<Record<string, unknown>>;
@@ -300,10 +306,17 @@ export default function VariableParameterFields({
   }
 
   const resolution = dateResolutionOf(held);
-  // The years the two bound controls offer. Spread rather than passed as a
-  // pair of props, so full resolution passes neither and its native input
-  // stays unbounded — see `dateBoundWindow`.
-  const boundWindow = dateBoundWindow(resolution) ?? {};
+  // Which control writes the two bounds, and what it needs to know.
+  //
+  // A full-resolution bound is a whole calendar date, and the native date
+  // input writes one — unbounded, deliberately: it is the only control that
+  // reaches the years 0001-0999, and handing it a window would take those
+  // away. The coarse resolutions get `CoarseDateBound`, which is where the
+  // reasoning for not offering a researcher a list of years lives.
+  const boundControl =
+    resolution === 'full'
+      ? { component: DatePickerControl, type: resolution }
+      : { component: CoarseDateBoundControl, resolution };
 
   return (
     <>
@@ -348,9 +361,7 @@ export default function VariableParameterFields({
         name="parameter-min"
         label={intl.formatMessage(messages.minLabel)}
         hint={intl.formatMessage(messages.minHint)}
-        component={DatePickerControl}
-        type={resolution}
-        {...boundWindow}
+        {...boundControl}
         value={asText(held.min)}
         onChange={(value: unknown) => {
           setClearedBounds(false);
@@ -362,9 +373,7 @@ export default function VariableParameterFields({
         name="parameter-max"
         label={intl.formatMessage(messages.maxLabel)}
         hint={intl.formatMessage(messages.maxHint)}
-        component={DatePickerControl}
-        type={resolution}
-        {...boundWindow}
+        {...boundControl}
         value={asText(held.max)}
         onChange={(value: unknown) => {
           setClearedBounds(false);

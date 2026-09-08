@@ -44,6 +44,8 @@
   "protocolBuilder.attributeCodebookControls.editParameters": "Definir qué acepta este campo",
   "protocolBuilder.attributeCodebookControls.editRules": "Definir reglas para esta respuesta",
   "protocolBuilder.attributeCodebookControls.editValues": "Cambiar los valores de este atributo",
+  "protocolBuilder.coarseDateBound.monthPart": "Mes",
+  "protocolBuilder.coarseDateBound.yearPart": "Año",
   "protocolBuilder.codebookEditing.createDescription": "Crear el atributo «{name}»",
   "protocolBuilder.codebookEditing.createVariableRefused": "No se ha podido crear este atributo, así que no se ha cambiado nada. Inténtalo de nuevo.",
   "protocolBuilder.codebookEditing.duplicateVariableName": "Ya existe un atributo con el nombre «{name}»",
