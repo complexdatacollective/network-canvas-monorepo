@@ -49,17 +49,12 @@ export async function encryptStoredTotpSecrets(
     // abandoned (enableTotp writes it before the wizard confirms a code). It
     // holds a seed nobody can use, and without a key the new version could
     // neither read it nor let the enrolment finish, so discard it; the user
-    // starts enrolment again. Recovery codes are only issued at verification,
-    // so none exist for these rows.
-    const abandoned = rows.filter((row) => !row.verified).map((row) => row.id);
-    if (abandoned.length > 0) {
-      await prisma.totpCredential.deleteMany({
-        where: { id: { in: abandoned } },
-      });
-      console.log(
-        `Discarded ${abandoned.length} unfinished two-factor enrolment(s); they cannot be completed without ${ENV_VAR}. Enrolment can be started again once it is set.`,
-      );
-    }
+    // starts enrolment again.
+    await discardUnfinishedEnrolments(
+      prisma,
+      rows.filter((row) => !row.verified).map((row) => row.id),
+      `they cannot be completed without ${ENV_VAR}. Enrolment can be started again once it is set.`,
+    );
 
     console.warn(
       `${ENV_VAR} is not set. No account has enabled two-factor authentication yet, and none can until it is: set ${ENV_VAR} to a long random string (for example the output of \`openssl rand -base64 32\`).`,
@@ -74,6 +69,7 @@ export async function encryptStoredTotpSecrets(
 
   let sealed = 0;
   let verified = 0;
+  const unreadableUnfinished: string[] = [];
 
   for (const row of rows) {
     if (isEncryptedTotpSecret(row.secret)) {
@@ -84,6 +80,13 @@ export async function encryptStoredTotpSecrets(
           error instanceof TotpSecretDecryptError &&
           error.reason === 'wrong-key'
         ) {
+          // An unfinished enrolment sealed under an earlier key holds a seed
+          // nobody can use; discarding it is safe and must not block the
+          // deploy. A verified account's row is a lockout, so that still fails.
+          if (!row.verified) {
+            unreadableUnfinished.push(row.id);
+            continue;
+          }
           throw new Error(
             `${ENV_VAR} does not match the key that encrypted the stored TOTP secrets, so no account with two-factor authentication could sign in. Restore the original key. If it is lost, delete the affected TotpCredential and RecoveryCode rows so those accounts can enrol again.`,
             { cause: error },
@@ -102,7 +105,29 @@ export async function encryptStoredTotpSecrets(
     sealed++;
   }
 
+  await discardUnfinishedEnrolments(
+    prisma,
+    unreadableUnfinished,
+    `they were sealed under a different ${ENV_VAR}. Enrolment can be started again.`,
+  );
+
   console.log(
     `TOTP secret encryption: sealed ${sealed} plaintext secret(s), verified ${verified} already-encrypted secret(s) against ${ENV_VAR}.`,
+  );
+}
+
+/**
+ * Delete enrolments that were started but never confirmed. Recovery codes are
+ * only issued at verification, so none exist for these rows.
+ */
+async function discardUnfinishedEnrolments(
+  prisma: Prisma.TransactionClient,
+  ids: string[],
+  why: string,
+): Promise<void> {
+  if (ids.length === 0) return;
+  await prisma.totpCredential.deleteMany({ where: { id: { in: ids } } });
+  console.log(
+    `Discarded ${ids.length} unfinished two-factor enrolment(s); ${why}`,
   );
 }

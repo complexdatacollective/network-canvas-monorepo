@@ -223,6 +223,56 @@ describe('encryptStoredTotpSecrets', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it('discards an unfinished enrolment sealed under a different key instead of failing', async () => {
+    const verifiedRow = {
+      id: LEGACY_ROW.id,
+      secret: encryptTotpSecret(LEGACY_ROW.secret, KEY),
+      verified: true,
+    };
+    const staleUnfinished = {
+      id: ABANDONED_ROW.id,
+      secret: encryptTotpSecret(ABANDONED_ROW.secret, OTHER_KEY),
+      verified: false,
+    };
+    const { tx, store, update, deleteMany } = makeTx([
+      verifiedRow,
+      staleUnfinished,
+    ]);
+
+    await expect(encryptStoredTotpSecrets(tx, KEY)).resolves.toBeUndefined();
+
+    expect(deleteMany).toHaveBeenCalledTimes(1);
+    expect(store.has(ABANDONED_ROW.id)).toBe(false);
+    expect(store.get(LEGACY_ROW.id)?.secret).toBe(verifiedRow.secret);
+    expect(update).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Discarded 1 unfinished two-factor enrolment(s); they were sealed under a different TOTP_ENCRYPTION_KEY',
+      ),
+    );
+  });
+
+  it('still fails the deploy when a verified row was sealed under a different key, even beside an unfinished one', async () => {
+    const { tx, deleteMany, update } = makeTx([
+      {
+        id: LEGACY_ROW.id,
+        secret: encryptTotpSecret(LEGACY_ROW.secret, OTHER_KEY),
+        verified: true,
+      },
+      {
+        id: ABANDONED_ROW.id,
+        secret: encryptTotpSecret(ABANDONED_ROW.secret, OTHER_KEY),
+        verified: false,
+      },
+    ]);
+
+    await expect(encryptStoredTotpSecrets(tx, KEY)).rejects.toThrow(
+      /TOTP_ENCRYPTION_KEY does not match/,
+    );
+    expect(deleteMany).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it('fails the deploy on a key shorter than the minimum', async () => {
     const { tx, update } = makeTx([LEGACY_ROW]);
 
