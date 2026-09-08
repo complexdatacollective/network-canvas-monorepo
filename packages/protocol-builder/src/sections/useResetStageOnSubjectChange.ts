@@ -1,6 +1,7 @@
 import { get } from 'es-toolkit/compat';
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import type { Command } from '@codaco/studio-sync/apply';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
@@ -40,6 +41,28 @@ function asFieldValue(value: unknown): FieldValue {
 }
 
 /**
+ * The stage key a parked field name belongs to.
+ *
+ * A value the researcher answered into a control that has since unmounted is
+ * held under that control's own name, which may be a path: a control named
+ * `behaviours.freeDraw` parks under that whole name, while the key a reset
+ * addresses is `behaviours`. Parsed rather than split on `.`, because a
+ * protocol-authored key may contain one — `["prompt text"]` is a single
+ * segment.
+ *
+ * `undefined` for a name that will not parse, which is a name no reset could
+ * address anyway.
+ */
+const parkedStageKey = (name: string): string | undefined => {
+  try {
+    const [first] = resolveFieldPath([], name, 'path');
+    return typeof first === 'string' ? first : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
  * Throws away everything that described the previous subject when the stage's
  * subject changes.
  *
@@ -71,10 +94,19 @@ export function useResetStageOnSubjectChange(): void {
 
   useOnResearcherChange('subject', (subject) => {
     const template = getInterfaceTemplate(identity.type);
+    // `getFormValues()` is built from REGISTERED fields, so a control the
+    // researcher answered and then unmounted contributes nothing to it, and an
+    // answer that has not been saved is not in `committedFields` either. That
+    // key is in neither place and is still on its way into the saved stage —
+    // `stageDraftFromSubmission` replays parked values on purpose — so the
+    // names the store is parking are read as well.
     const resets = subjectDependentResets(
       [
         ...Object.keys(storeApi.getState().getFormValues()),
         ...Object.keys(committedFields),
+        ...[...storeApi.getState().dormantValues.keys()]
+          .map(parkedStageKey)
+          .filter((key) => key !== undefined),
       ],
       template,
     );

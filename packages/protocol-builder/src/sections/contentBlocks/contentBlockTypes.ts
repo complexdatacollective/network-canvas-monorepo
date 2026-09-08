@@ -227,10 +227,7 @@ export function contentBlockKind(
  * `asset` type, gets no slot, and so gets no content control at all — which is
  * what stops a resource id being offered as prose.
  */
-export const expandContentBlock: DialogArrayItemSelector = (
-  context,
-  { item },
-) => {
+const expandContentBlock: DialogArrayItemSelector = (context, { item }) => {
   const kind = contentBlockKind(context, item);
   if (kind === undefined) return item;
   return { ...item, type: kind, [CONTENT_BLOCK_SLOTS[kind]]: item.content };
@@ -249,7 +246,7 @@ export const expandContentBlock: DialogArrayItemSelector = (
  * `content` stands: this also runs over rows the list normalises without
  * opening them.
  */
-export function collapseContentBlock(value: unknown): unknown {
+function collapseContentBlock(value: unknown): unknown {
   if (!isRow(value)) return value;
 
   const { size, ...rest } = value;
@@ -279,6 +276,21 @@ export function collapseContentBlock(value: unknown): unknown {
 }
 
 /**
+ * The pair `PageContentSection` opens and saves a block with.
+ *
+ * Exported together and only together, because they are two halves of one
+ * contract: `expand` invents the per-kind slots and `collapse` is the only
+ * thing that removes them again, and a page given the first without the second
+ * saves a block the protocol schema refuses. A module constant rather than an
+ * object written at each call site, so the section's row renderers are not
+ * rebuilt on every render.
+ */
+export const contentBlockSlots = Object.freeze({
+  expand: expandContentBlock,
+  collapse: collapseContentBlock,
+});
+
+/**
  * What the block editor's live region says when a kind is chosen or changed.
  *
  * Choosing a kind mounts a whole new required control, and changing one
@@ -304,17 +316,30 @@ const OUTCOME_MESSAGES: Readonly<
 const kindLabel = (kind: ContentBlockKind, intl: IntlShape): string =>
   intl.formatMessage(CONTENT_BLOCK_KIND_LABELS[kind]);
 
-export const contentKindChosenAnnouncement = (
-  kind: ContentBlockKind,
-  intl: IntlShape,
-): string =>
-  intl.formatMessage(messages.kindChosen, { kind: kindLabel(kind, intl) });
+/**
+ * What the live region has to say, as the branch it is rather than as the
+ * sentence it becomes.
+ *
+ * The editor holds THIS across renders and formats it at render time. Holding
+ * the formatted sentence instead would outlive its formatter: the announcement
+ * only changes when the researcher changes the block's kind, so a language
+ * switched under an open dialog would leave the previous language's sentence
+ * in the live region until they did.
+ *
+ * `'chosen'` sits beside the three draft outcomes because a control APPEARING
+ * — the first kind chosen for a new block — is a fourth thing that can have
+ * happened, not a variant of one of them.
+ */
+export type ContentKindAnnouncement = Readonly<{
+  kind: ContentBlockKind;
+  outcome: ContentDraftOutcome | 'chosen';
+}>;
 
-export const contentKindChangedAnnouncement = (
-  kind: ContentBlockKind,
-  outcome: ContentDraftOutcome,
+export const contentKindAnnouncement = (
+  { kind, outcome }: ContentKindAnnouncement,
   intl: IntlShape,
 ): string =>
-  intl.formatMessage(OUTCOME_MESSAGES[outcome], {
-    kind: kindLabel(kind, intl),
-  });
+  intl.formatMessage(
+    outcome === 'chosen' ? messages.kindChosen : OUTCOME_MESSAGES[outcome],
+    { kind: kindLabel(kind, intl) },
+  );
