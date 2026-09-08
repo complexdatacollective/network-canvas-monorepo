@@ -100,6 +100,12 @@ export const navLabelMessages = defineMessages({
     description:
       'Navigation label for the account screen managing personal API tokens.',
   },
+  registry: {
+    id: 'studio.nav.registry',
+    defaultMessage: 'Template Registry',
+    description:
+      "Navigation label for the researcher's linked template Registry publisher identity.",
+  },
   teamStudies: {
     id: 'studio.nav.teamStudies',
     defaultMessage: 'Studies',
@@ -419,6 +425,16 @@ export function accountDestinations(): NavManifestEntry[] {
       area: 'account',
       context: navContextMessages.account,
       isCurrent: (pathname) => pathname === '/account/sign-in-methods',
+    },
+    {
+      id: 'account:registry',
+      label: navLabelMessages.registry,
+      icon: KeyRound,
+      href: '/account/registry',
+      link: { to: '/account/registry' },
+      area: 'account',
+      context: navContextMessages.account,
+      isCurrent: (pathname) => pathname === '/account/registry',
     },
     {
       // No count, unlike the design's own account sidebar. An API token is

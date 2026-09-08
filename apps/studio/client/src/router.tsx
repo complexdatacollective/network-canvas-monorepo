@@ -36,6 +36,7 @@ import {
 } from './lib/session.ts';
 import AcceptInvitation from './routes/AcceptInvitation.tsx';
 import AccountLanguage from './routes/AccountLanguage.tsx';
+import AccountRegistry from './routes/AccountRegistry.tsx';
 import AppLayout from './routes/AppLayout.tsx';
 import Editor from './routes/Editor.tsx';
 import ErrorScreen from './routes/ErrorScreen.tsx';
@@ -46,6 +47,7 @@ import TeamActivity from './routes/TeamActivity.tsx';
 import TeamMembers from './routes/TeamMembers.tsx';
 import TeamSettings from './routes/TeamSettings.tsx';
 import TeamStudies from './routes/TeamStudies.tsx';
+import Templates from './routes/Templates.tsx';
 import AccountArea from './shell/AccountArea.tsx';
 import NoTeamSignOut from './shell/NoTeamSignOut.tsx';
 import Placeholder, { type PlaceholderProps } from './shell/Placeholder.tsx';
@@ -164,6 +166,17 @@ function libraryPlaceholder(props: PlaceholderProps) {
       </AppArea>
     );
   };
+}
+
+function TemplatesLibrary() {
+  const pathname = useRouterState({
+    select: (state) => (state.resolvedLocation ?? state.location).pathname,
+  });
+  return (
+    <AppArea location={pathname}>
+      <Templates />
+    </AppArea>
+  );
 }
 
 /**
@@ -1082,6 +1095,12 @@ const accountTokensRoute = createRoute({
   }),
 });
 
+const accountRegistryRoute = createRoute({
+  getParentRoute: () => accountLayoutRoute,
+  path: '/registry',
+  component: AccountRegistry,
+});
+
 const galleryRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/gallery',
@@ -1105,11 +1124,7 @@ const galleryTemplateRoute = createRoute({
 const templatesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/templates',
-  component: libraryPlaceholder({
-    title: screens.templatesTitle,
-    description: screens.templatesDescription,
-    issue: '#1282',
-  }),
+  component: TemplatesLibrary,
 });
 
 // ---------------------------------------------------------------------------
@@ -1439,6 +1454,7 @@ const routeTree = rootRoute.addChildren([
       accountLanguageRoute,
       accountSignInMethodsRoute,
       accountTokensRoute,
+      accountRegistryRoute,
     ]),
     galleryRoute,
     galleryTemplateRoute,

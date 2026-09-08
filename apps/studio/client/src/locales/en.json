@@ -7,6 +7,38 @@
     "defaultMessage": "The language Studio speaks to you: its navigation, forms, and messages. This is a separate choice from the languages a protocol offers its participants, which each study sets for itself.",
     "description": "Explanation under the language screen's heading, distinguishing the interface language from a protocol's participant languages."
   },
+  "studio.accountRegistry.credential": {
+    "defaultMessage": "Registry publishing credential",
+    "description": "Registry credential field label."
+  },
+  "studio.accountRegistry.failed": {
+    "defaultMessage": "Registry account details could not be loaded.",
+    "description": "Registry link read failure."
+  },
+  "studio.accountRegistry.heading": {
+    "defaultMessage": "Template Registry",
+    "description": "Heading for Registry account linking."
+  },
+  "studio.accountRegistry.intro": {
+    "defaultMessage": "Link your publisher identity to this Studio account. The publishing credential is verified once and is never saved by Studio.",
+    "description": "Registry linking explanation."
+  },
+  "studio.accountRegistry.link": {
+    "defaultMessage": "Verify and link account",
+    "description": "Registry link submit label."
+  },
+  "studio.accountRegistry.linkFailed": {
+    "defaultMessage": "The credential could not be verified. Check it in the Registry and try again.",
+    "description": "Registry link error."
+  },
+  "studio.accountRegistry.linked": {
+    "defaultMessage": "Linked as {name} on {origin}.",
+    "description": "Linked Registry publisher identity."
+  },
+  "studio.accountRegistry.unavailable": {
+    "defaultMessage": "This Studio instance has no Template Registry configured.",
+    "description": "Registry unavailable message."
+  },
   "studio.appLayout.skipToMainContent": {
     "defaultMessage": "Skip to main content",
     "description": "The keyboard skip link that jumps past the app shell's header."
@@ -674,6 +706,10 @@
   "studio.nav.profile": {
     "defaultMessage": "Profile",
     "description": "Navigation label for the researcher's own profile screen in the account area."
+  },
+  "studio.nav.registry": {
+    "defaultMessage": "Template Registry",
+    "description": "Navigation label for the researcher's linked template Registry publisher identity."
   },
   "studio.nav.signInMethods": {
     "defaultMessage": "Sign-in methods",
@@ -2050,5 +2086,45 @@
   "studio.teamStudies.openEditor": {
     "defaultMessage": "Open the protocol editor",
     "description": "Link on a study card into the study's protocol editor."
+  },
+  "studio.templates.credential": {
+    "defaultMessage": "Registry publishing credential",
+    "description": "Publish credential label."
+  },
+  "studio.templates.empty": {
+    "defaultMessage": "This team has no local template versions.",
+    "description": "Empty template list."
+  },
+  "studio.templates.entry": {
+    "defaultMessage": "Registry entry ID",
+    "description": "Registry import entry field."
+  },
+  "studio.templates.failed": {
+    "defaultMessage": "The Registry operation could not be completed. Check the values and try again.",
+    "description": "Registry operation failure."
+  },
+  "studio.templates.heading": {
+    "defaultMessage": "Templates",
+    "description": "Template workspace heading."
+  },
+  "studio.templates.import": {
+    "defaultMessage": "Import template",
+    "description": "Import submit label."
+  },
+  "studio.templates.intro": {
+    "defaultMessage": "Import a verified Registry entry into a team, or publish an immutable local template version.",
+    "description": "Template workspace explanation."
+  },
+  "studio.templates.publish": {
+    "defaultMessage": "Publish version",
+    "description": "Publish submit label."
+  },
+  "studio.templates.team": {
+    "defaultMessage": "Team",
+    "description": "Team selector label."
+  },
+  "studio.templates.version": {
+    "defaultMessage": "{name}, version {version}",
+    "description": "Template version label."
   }
 }

@@ -258,6 +258,7 @@ describe('shell branches', () => {
       app: [
         '/account',
         '/account/language',
+        '/account/registry',
         '/account/sign-in-methods',
         '/account/tokens',
         '/gallery',

@@ -122,6 +122,15 @@ vi.mock('../../lib/api.ts', () => ({
       }),
       key: () => ['me'],
     },
+    account: {
+      registry: {
+        queryOptions: () => ({
+          queryKey: ['registry-account'],
+          queryFn: () => ({ origin: null, link: null }),
+        }),
+        key: () => ['registry-account'],
+      },
+    },
     status: {
       queryOptions: () => ({
         queryKey: ['status'],
@@ -193,6 +202,12 @@ vi.mock('../../lib/api.ts', () => ({
         key: () => ['draft'],
       },
     },
+    templates: {
+      list: {
+        queryOptions: () => ({ queryKey: ['templates'], queryFn: () => [] }),
+        key: () => ['templates'],
+      },
+    },
     // The study sidebar's counts. This file asserts where every destination
     // goes, never how much is at one, so an empty study is the honest fixture:
     // `NavItem` renders no count for a zero, and each row's accessible name
@@ -249,7 +264,7 @@ vi.mock('../../lib/api.ts', () => ({
       },
     },
   },
-  rpcClient: { protocols: {}, team: {} },
+  rpcClient: { protocols: {}, team: {}, account: {}, templates: {} },
 }));
 
 const INVITATION_ID = '00000000-0000-4000-8000-000000000123';
@@ -314,6 +329,11 @@ const DESTINATIONS: Destination[] = [
   // App, platform level
   { path: '/account', url: '/account', heading: 'Profile' },
   { path: '/account/language', url: '/account/language', heading: 'Language' },
+  {
+    path: '/account/registry',
+    url: '/account/registry',
+    heading: 'Template Registry',
+  },
   {
     path: '/account/sign-in-methods',
     url: '/account/sign-in-methods',
@@ -760,6 +780,7 @@ describe('navigation', () => {
       '/account',
       '/account/language',
       '/account/sign-in-methods',
+      '/account/registry',
       '/account/tokens',
     ]);
   });
