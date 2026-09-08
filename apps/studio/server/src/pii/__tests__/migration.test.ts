@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
+import type pg from 'pg';
 import { expect, it } from 'vitest';
 
 import { createTenantDb } from '@codaco/studio-sync/tenant';
@@ -36,6 +37,25 @@ const database = await reachableDb();
 const migrations = await readMigrations(
   fileURLToPath(new URL('../../../migrations', import.meta.url)),
 );
+
+async function insertRestoredRow(
+  pool: pg.Pool,
+  sql: string,
+  values: unknown[],
+) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("SET LOCAL session_replication_role = 'replica'");
+    await client.query(sql, values);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 
 async function createLegacyNoContactUpgrade(
   options: {
@@ -641,7 +661,8 @@ it('refuses a historical key shared with a nonlegacy contact-index shape', async
       Buffer.from('mixed@example.org'),
       'v1',
     ).envelope;
-    await fixture.scratch.pool.query(
+    await insertRestoredRow(
+      fixture.scratch.pool,
       `INSERT INTO participants
         (id, team_id, study_id, participant_code, email_ciphertext, email_index,
          blind_index_key_id, pii_key_id, pii_algorithm)
@@ -678,7 +699,8 @@ it('refuses a historical key shared with a nonlegacy contact-index shape', async
 it('refuses a historical key shared with an empty null-marker PII reference', async () => {
   const fixture = await createLegacyNoContactUpgrade();
   try {
-    await fixture.scratch.pool.query(
+    await insertRestoredRow(
+      fixture.scratch.pool,
       `INSERT INTO participants
         (id, team_id, study_id, participant_code, pii_key_id, pii_algorithm)
        VALUES ($1, $2, $3, 'P-empty-mixed', 'v1', 'aes-256-gcm.v1')`,

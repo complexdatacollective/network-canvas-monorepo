@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import type pg from 'pg';
@@ -7,6 +8,7 @@ import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.
 import {
   createScratchDatabase,
   reachableDb,
+  seedTeam,
 } from '../../__tests__/support/postgres.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { readMigrations } from '../../db/migrations/artifact.ts';
@@ -36,7 +38,7 @@ type ProvisionedDatabase = Awaited<ReturnType<typeof createScratchDatabase>> & {
 };
 
 async function createProvisionedDatabase(
-  beforeLatestMigration?: (pool: pg.Pool) => Promise<void>,
+  beforeLegacyGuardMigration?: (pool: pg.Pool) => Promise<void>,
 ): Promise<ProvisionedDatabase> {
   if (!database) throw new Error('A local PostgreSQL database is required.');
   const scratch = await createScratchDatabase(database);
@@ -48,17 +50,21 @@ async function createProvisionedDatabase(
     const migrations = await readMigrations(
       fileURLToPath(new URL('../../../migrations', import.meta.url)),
     );
-    if (beforeLatestMigration) {
-      const prior = migrations.slice(0, -1);
+    if (beforeLegacyGuardMigration) {
+      const legacyGuard = migrations.findIndex(
+        ({ manifest }) => manifest.id === '0007_legacy_index_remediation_guard',
+      );
+      const prior = migrations.slice(0, legacyGuard);
       const priorFingerprint = prior.at(-1)?.manifest.fingerprint;
-      if (!priorFingerprint) throw new Error('Prior migration missing.');
+      if (legacyGuard < 1 || !priorFingerprint)
+        throw new Error('Legacy guard migration boundary missing.');
       await migrateDatabase(
         scratch.pool,
         prior,
         priorFingerprint,
         allowedLogins,
       );
-      await beforeLatestMigration(scratch.pool);
+      await beforeLegacyGuardMigration(scratch.pool);
     }
     await migrateDatabase(
       scratch.pool,
@@ -236,7 +242,139 @@ describe.skipIf(!database)('serving encryption database admission', () => {
     }
   });
 
-  it('accepts only classified legacy suppression in a read-only readiness transaction', async () => {
+  it('keeps recurring readiness proof-bounded while the database rejects new unverified key references', async () => {
+    first = await createProvisionedDatabase();
+    const keys = await initializeProofs(first.maintenance);
+    const teamId = randomUUID();
+    const protocolId = randomUUID();
+    const studyId = randomUUID();
+    await seedTeam(first.pool, teamId);
+    await first.pool.query(
+      'INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)',
+      [protocolId, teamId, 'Reference guard protocol'],
+    );
+    await first.pool.query(
+      'INSERT INTO studies (id, team_id, protocol_id, name) VALUES ($1, $2, $3, $4)',
+      [studyId, teamId, protocolId, 'Reference guard study'],
+    );
+    const guardedWrites: ReadonlyArray<
+      readonly [string, () => Promise<unknown>]
+    > = [
+      [
+        'participant encryption',
+        () =>
+          first!.pool.query(
+            `INSERT INTO participants
+              (id, team_id, study_id, participant_code, name_ciphertext, pii_key_id, pii_algorithm)
+             VALUES ($1, $2, $3, 'guarded-pii', $4, 'not-proved', 'aes-256-gcm.v1')`,
+            [randomUUID(), teamId, studyId, Buffer.alloc(32, 73)],
+          ),
+      ],
+      [
+        'participant index',
+        () =>
+          first!.pool.query(
+            `INSERT INTO participants
+              (id, team_id, study_id, participant_code, email_ciphertext, email_index, blind_index_key_id, pii_key_id, pii_algorithm)
+             VALUES ($1, $2, $3, 'guarded-index', $4, $5, 'not-proved', 'v1', 'aes-256-gcm.v1')`,
+            [
+              randomUUID(),
+              teamId,
+              studyId,
+              Buffer.alloc(32, 74),
+              Buffer.alloc(32, 75),
+            ],
+          ),
+      ],
+      [
+        'delivery index',
+        () =>
+          first!.pool.query(
+            `INSERT INTO message_deliveries
+              (id, team_id, study_id, participant_id, template_id, kind, channel,
+               recipient_blind_index, blind_index_key_id, rendered_body_hash)
+             VALUES ($1, $2, $3, $4, $5, 'reminder', 'email', $6, 'not-proved', $7)`,
+            [
+              randomUUID(),
+              teamId,
+              studyId,
+              randomUUID(),
+              randomUUID(),
+              Buffer.alloc(32, 76),
+              'a'.repeat(64),
+            ],
+          ),
+      ],
+      [
+        'suppression index',
+        () =>
+          first!.pool.query(
+            `INSERT INTO participant_contact_optouts
+              (channel, recipient_blind_index, blind_index_key_id, source)
+             VALUES ('email', $1, 'not-proved', 'provider')`,
+            [Buffer.alloc(32, 77)],
+          ),
+      ],
+      [
+        'webhook encryption',
+        () =>
+          first!.pool.query(
+            `INSERT INTO webhook_subscriptions
+              (id, team_id, url, event_types, secret_ciphertext, secret_key_id,
+               secret_algorithm, created_by_user_id)
+             VALUES ($1, $2, 'https://hooks.example.test/studio',
+               ARRAY['interview.completed'], $3, 'not-proved', 'aes-256-gcm.v1', 'operator')`,
+            [randomUUID(), teamId, Buffer.alloc(32, 78)],
+          ),
+      ],
+      [
+        'OAuth encryption',
+        () =>
+          first!.pool.query(
+            `INSERT INTO account
+              (id, "accountId", "providerId", issuer, "userId",
+               access_token_ciphertext, access_token_key_id,
+               access_token_algorithm, "updatedAt")
+             VALUES ($1, 'external', 'google', 'https://accounts.google.com',
+               'missing-user', $2, 'not-proved', 'aes-256-gcm.v1', now())`,
+            [randomUUID(), Buffer.alloc(32, 79)],
+          ),
+      ],
+    ];
+    for (const [domain, write] of guardedWrites)
+      await expect(write(), domain).rejects.toThrow(
+        'encrypted data may reference only a verified key',
+      );
+
+    const maintenance = await first.maintenance.connect();
+    const queries = vi.spyOn(maintenance, 'query');
+    const connect = vi
+      .spyOn(first.maintenance, 'connect')
+      .mockImplementationOnce(async () => maintenance);
+    const readiness = createReadiness({
+      maintenancePool: first.maintenance,
+      encryptionKeys: keys,
+      allowUnversionedSchema: true,
+      assetStore,
+      cacheMs: 0,
+    });
+    try {
+      expect(await readiness.check()).toMatchObject({ status: 'ready' });
+      const sql = queries.mock.calls
+        .map(([statement]) => (typeof statement === 'string' ? statement : ''))
+        .join('\n');
+      expect(sql).toContain('FROM encryption_key_verifications');
+      expect(sql).not.toContain("SELECT DISTINCT 'pii-enc'");
+      expect(sql).not.toContain('legacy_tokens_present');
+      expect(sql).not.toContain('Legacy blind-index remediation');
+    } finally {
+      readiness.stop();
+      connect.mockRestore();
+      queries.mockRestore();
+    }
+  });
+
+  it('accepts classified legacy suppression only after the exhaustive startup gate', async () => {
     const insertLegacyOptOut = (pool: pg.Pool) =>
       pool
         .query(
@@ -252,20 +390,7 @@ describe.skipIf(!database)('serving encryption database admission', () => {
       classifyLegacyContactIndexBatch(first.pool, 100),
     ).resolves.toEqual({ processed: 1, passComplete: true });
     const keys = await initializeProofs(first.maintenance);
-    const proofs = await first.pool.query<{
-      purpose: string;
-      keyId: string;
-      proof: Buffer;
-    }>(
-      `SELECT purpose, key_id AS "keyId", proof
-       FROM encryption_key_verifications`,
-    );
-    for (const proof of proofs.rows)
-      await second.maintenance.query(
-        `INSERT INTO encryption_key_verifications (purpose, key_id, proof)
-         VALUES ($1, $2, $3)`,
-        [proof.purpose, proof.keyId, proof.proof],
-      );
+    await expect(initializeProofs(second.maintenance)).rejects.toThrow();
     const proofCount = async (provisioned: ProvisionedDatabase) =>
       (
         await provisioned.pool.query<{ count: number }>(
@@ -273,18 +398,9 @@ describe.skipIf(!database)('serving encryption database admission', () => {
         )
       ).rows[0]?.count;
     const firstBefore = await proofCount(first);
-    const secondBefore = await proofCount(second);
     const classifiedReadiness = createReadiness({
       pool: first.app,
       maintenancePool: first.maintenance,
-      encryptionKeys: keys,
-      allowUnversionedSchema: true,
-      assetStore,
-      cacheMs: 0,
-    });
-    const rawReadiness = createReadiness({
-      pool: second.app,
-      maintenancePool: second.maintenance,
       encryptionKeys: keys,
       allowUnversionedSchema: true,
       assetStore,
@@ -295,14 +411,9 @@ describe.skipIf(!database)('serving encryption database admission', () => {
         status: 'ready',
       });
       expect(await proofCount(first)).toBe(firstBefore);
-      expect(await rawReadiness.check()).toMatchObject({
-        status: 'not_ready',
-        checks: { database: 'failed' },
-      });
-      expect(await proofCount(second)).toBe(secondBefore);
+      expect(await proofCount(second)).toBe(0);
     } finally {
       classifiedReadiness.stop();
-      rawReadiness.stop();
     }
   });
 });

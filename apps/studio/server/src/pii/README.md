@@ -79,6 +79,10 @@ key reference, and verifies durable non-PII HMAC proofs of all historical key
 material. Merely reusing a configured key ID with the wrong root fails. Startup
 never registers a missing proof for an ID already used by ciphertext/indexes.
 Unused newly configured IDs receive proofs in the same locked transaction.
+After that exhaustive gate, database triggers require every changed ciphertext
+or blind-index key reference to name registered proof evidence. Recurring
+readiness therefore reauthenticates the small immutable proof registry without
+rescanning participant, delivery, suppression, webhook or account rows.
 
 The Node entrypoint runs this gate before constructing authentication, starting
 workers or accepting traffic. Local development waits for a current schema;
