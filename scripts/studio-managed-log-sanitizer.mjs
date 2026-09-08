@@ -6,6 +6,7 @@ import { STUDIO_OPERATIONAL_ROUTES } from '../apps/studio/server/src/observabili
 import { REGISTRY_OPERATIONAL_DIAGNOSTICS } from '../apps/template-registry/src/diagnostic-catalog.ts';
 import { REGISTRY_OPERATIONAL_ROUTES } from '../apps/template-registry/src/observability/routes.ts';
 import { REQUEST_ID } from '../packages/studio-sync/src/operational-http.ts';
+import { hasDuplicateJsonObjectKeys } from './studio-managed-strict-json.mjs';
 
 export const MANAGED_LOG_MAX_INPUT_BYTES = 4_096;
 export const MANAGED_LOG_MAX_BATCH_RECORDS = 256;
@@ -307,7 +308,9 @@ export function sanitizeManagedLogRecord(input, binding) {
   )
     return undefined;
   try {
-    const record = JSON.parse(utf8.decode(input));
+    const source = utf8.decode(input);
+    if (hasDuplicateJsonObjectKeys(source)) return undefined;
+    const record = JSON.parse(source);
     if (!plainRecord(record)) return undefined;
     return selected.product === 'studio'
       ? sanitizeStudio(record, selected)

@@ -6,10 +6,12 @@ import {
   MANAGED_OPERATIONAL_LOG_SCHEMA,
   sanitizeManagedLogRecord,
 } from './studio-managed-log-sanitizer.mjs';
+import { hasDuplicateJsonObjectKeys } from './studio-managed-strict-json.mjs';
 
 const FLY_LOG_REGION = 'iad';
 export const FLY_LOG_MAX_ENVELOPE_BYTES = 8_192;
 export const FLY_LOG_MAX_BATCH_INPUT_BYTES = 262_144;
+export const FLY_LOG_MAX_SUBJECT_CHARACTERS = 87;
 export const AUTHENTICATED_FLY_NATS_TRANSPORT =
   'authenticated-fly-nats-subscription';
 
@@ -52,6 +54,7 @@ export const MANAGED_FLY_LOG_ENVELOPE_CONTRACT = Object.freeze({
   levels: Object.freeze([...LOG_LEVELS]),
   limits: Object.freeze({
     envelopeBytes: FLY_LOG_MAX_ENVELOPE_BYTES,
+    subjectCharacters: FLY_LOG_MAX_SUBJECT_CHARACTERS,
     batchRecords: MANAGED_LOG_MAX_BATCH_RECORDS,
     batchInputBytes: FLY_LOG_MAX_BATCH_INPUT_BYTES,
   }),
@@ -72,50 +75,6 @@ function exactKeys(record, required, allowed = new Set(required)) {
     required.every((key) => Object.hasOwn(record, key)) &&
     keys.every((key) => allowed.has(key))
   );
-}
-
-/** Detect repeated JSON object members before JSON.parse can overwrite them. */
-function hasDuplicateObjectKeys(source) {
-  const stack = [];
-  for (let index = 0; index < source.length; index += 1) {
-    const character = source[index];
-    if (character === '{') {
-      stack.push({ kind: 'object', keys: new Set() });
-      continue;
-    }
-    if (character === '[') {
-      stack.push({ kind: 'array' });
-      continue;
-    }
-    if (character === '}' || character === ']') {
-      stack.pop();
-      continue;
-    }
-    if (character !== '"') continue;
-    const start = index;
-    for (index += 1; index < source.length; index += 1) {
-      if (source[index] === '\\') {
-        index += 1;
-        continue;
-      }
-      if (source[index] === '"') break;
-    }
-    if (index >= source.length) return false;
-    let after = index + 1;
-    while (/\s/.test(source[after] ?? '')) after += 1;
-    if (source[after] !== ':') continue;
-    const frame = stack.at(-1);
-    if (frame?.kind !== 'object') continue;
-    let key;
-    try {
-      key = JSON.parse(source.slice(start, index + 1));
-    } catch {
-      return false;
-    }
-    if (frame.keys.has(key)) return true;
-    frame.keys.add(key);
-  }
-  return false;
 }
 
 function validTimestamp(value) {
@@ -162,15 +121,22 @@ function resolveConfiguration(configuration) {
   });
 }
 
-function bindingFromProvenance(provenance, configuration) {
+function boundedProvenanceSubject(provenance) {
   if (
     !plainRecord(provenance) ||
     !exactKeys(provenance, ['transport', 'subject']) ||
     provenance.transport !== AUTHENTICATED_FLY_NATS_TRANSPORT ||
-    typeof provenance.subject !== 'string'
+    typeof provenance.subject !== 'string' ||
+    provenance.subject.length > FLY_LOG_MAX_SUBJECT_CHARACTERS
   )
     return undefined;
-  const parts = provenance.subject.split('.');
+  return provenance.subject;
+}
+
+function bindingFromProvenance(provenance, configuration) {
+  const subject = boundedProvenanceSubject(provenance);
+  if (subject === undefined) return undefined;
+  const parts = subject.split('.');
   if (
     parts.length !== 4 ||
     parts[0] !== 'logs' ||
@@ -198,7 +164,7 @@ function innerApplicationBytes(payload, provenance, configuration) {
   let event;
   try {
     source = utf8.decode(payload);
-    if (hasDuplicateObjectKeys(source)) return undefined;
+    if (hasDuplicateJsonObjectKeys(source)) return undefined;
     event = JSON.parse(source);
   } catch {
     return undefined;
@@ -274,15 +240,20 @@ export function createAuthenticatedFlyLogAdapter(configuration) {
         return [];
       let inputBytes = 0;
       for (const entry of entries) {
+        const subject = plainRecord(entry)
+          ? boundedProvenanceSubject(entry.provenance)
+          : undefined;
         if (
           !plainRecord(entry) ||
           !exactKeys(entry, ['payload', 'provenance']) ||
           !(entry.payload instanceof Uint8Array) ||
           entry.payload.byteLength === 0 ||
-          entry.payload.byteLength > FLY_LOG_MAX_ENVELOPE_BYTES
+          entry.payload.byteLength > FLY_LOG_MAX_ENVELOPE_BYTES ||
+          subject === undefined
         )
           return [];
-        inputBytes += entry.payload.byteLength;
+        inputBytes +=
+          entry.payload.byteLength + encoder.encode(subject).byteLength;
         if (inputBytes > FLY_LOG_MAX_BATCH_INPUT_BYTES) return [];
       }
       const records = [];

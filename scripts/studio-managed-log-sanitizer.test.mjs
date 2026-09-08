@@ -287,6 +287,24 @@ test('drops tainted and unknown source fields without echoing their values', () 
   }
 });
 
+test('rejects duplicate inner members including Unicode-equivalent keys', () => {
+  const raw = JSON.stringify(studioRequest())
+    .replace(
+      '"event":"http_request"',
+      '"\\u0065vent":"private-event-canary","event":"http_request"',
+    )
+    .replace(
+      '"route":"/rpc/studies/create"',
+      '"route":"/private?token=route-secret-canary","route":"/rpc/studies/create"',
+    );
+  const output = sanitizeManagedLogRecord(
+    encoder.encode(raw),
+    binding('studio-production', 'production'),
+  );
+  assert.equal(output, undefined);
+  assert.equal(JSON.stringify([output]).includes('secret-canary'), false);
+});
+
 test('drops invalid request and diagnostic shapes', () => {
   const invalidStudio = [
     studioRequest({ request_id: 'not-a-uuid' }),

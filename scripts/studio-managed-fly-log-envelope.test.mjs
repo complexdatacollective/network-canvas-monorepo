@@ -6,6 +6,7 @@ import {
   createAuthenticatedFlyLogAdapter,
   FLY_LOG_MAX_BATCH_INPUT_BYTES,
   FLY_LOG_MAX_ENVELOPE_BYTES,
+  FLY_LOG_MAX_SUBJECT_CHARACTERS,
   MANAGED_FLY_LOG_ENVELOPE_CONTRACT,
 } from './studio-managed-fly-log-envelope.mjs';
 import { MANAGED_OPERATIONAL_LOG_SCHEMA_IDENTITY } from './studio-managed-log-sanitizer.mjs';
@@ -87,6 +88,7 @@ test('publishes the exact portable envelope contract', () => {
   );
   assert.deepEqual(MANAGED_FLY_LOG_ENVELOPE_CONTRACT.limits, {
     envelopeBytes: FLY_LOG_MAX_ENVELOPE_BYTES,
+    subjectCharacters: FLY_LOG_MAX_SUBJECT_CHARACTERS,
     batchRecords: 256,
     batchInputBytes: FLY_LOG_MAX_BATCH_INPUT_BYTES,
   });
@@ -168,6 +170,25 @@ test('rejects missing, claimed, malformed, wildcard, and mismatched provenance',
   }
 });
 
+test('rejects an overlong subject before splitting and poisons its batch', (context) => {
+  const input = bytes(flyEvent());
+  const oversized = {
+    ...provenance(),
+    subject: 'x'.repeat(FLY_LOG_MAX_SUBJECT_CHARACTERS + 1),
+  };
+  const split = context.mock.method(String.prototype, 'split');
+  assert.equal(adapter.sanitizeRecord(input, oversized), undefined);
+  assert.equal(split.mock.callCount(), 0);
+  split.mock.restore();
+  assert.deepEqual(
+    adapter.sanitizeBatch([
+      { payload: input, provenance: oversized },
+      { payload: input, provenance: provenance() },
+    ]),
+    [],
+  );
+});
+
 test('rejects spoofed or unknown envelope fields instead of deriving identity from them', () => {
   for (const event of [
     flyEvent('studio-staging'),
@@ -224,9 +245,14 @@ test('rejects duplicate members, unknown members, and invalid envelope metadata'
     '"region":"iad"',
     '"region":"iad","region":"iad"',
   );
+  const duplicateUnicodeMessage = valid.replace(
+    '"message":',
+    '"m\\u0065ssage":"{}","message":',
+  );
   const fixtures = [
     duplicateMessage,
     duplicateNestedRegion,
+    duplicateUnicodeMessage,
     flyEvent('studio-production', innerStudio(), { unknown: 'private' }),
     flyEvent('studio-production', innerStudio(), {
       timestamp: '2026-02-30T00:00:00Z',
@@ -280,6 +306,28 @@ test('counts every outer byte before parsing and drops bounded poison members', 
   assert.deepEqual(
     adapter.sanitizeBatch([
       ...Array.from({ length: count }, () => poison),
+      valid,
+    ]),
+    [],
+  );
+});
+
+test('counts every bounded subject even when its envelope is discarded', () => {
+  const valid = { payload: bytes(flyEvent()), provenance: provenance() };
+  const poisonPayload = new Uint8Array(8_170).fill(32);
+  const poison = { payload: poisonPayload, provenance: provenance() };
+  const poisonCount = 32;
+  const payloadBytes =
+    poisonPayload.byteLength * poisonCount + valid.payload.byteLength;
+  assert.ok(payloadBytes < FLY_LOG_MAX_BATCH_INPUT_BYTES);
+  assert.ok(
+    payloadBytes +
+      encoder.encode(provenance().subject).byteLength * (poisonCount + 1) >
+      FLY_LOG_MAX_BATCH_INPUT_BYTES,
+  );
+  assert.deepEqual(
+    adapter.sanitizeBatch([
+      ...Array.from({ length: poisonCount }, () => poison),
       valid,
     ]),
     [],

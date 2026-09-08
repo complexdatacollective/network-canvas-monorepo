@@ -136,19 +136,23 @@ fields can refuse a record but can never select its service or environment.
 The adapter accepts current Fly application envelopes for both stdout and
 stderr (`log.level` is checked and discarded). It validates and discards Fly's
 nanosecond-capable envelope timestamp; the forwarded timestamp remains the
-application logger's strict timestamp. Unknown or duplicate envelope members,
-platform/non-application events, malformed UTF-8, malformed subjects and
-unconfigured apps are dropped. Outer input is bounded at 8 KiB per event, 256
-events and 256 KiB per batch before JSON parsing. Every outer byte counts toward
-the batch limit even when that event is later dropped. These choices follow the
+application logger's strict timestamp. Unknown or duplicate envelope or inner
+application members, platform/non-application events, malformed UTF-8,
+malformed subjects and unconfigured apps are dropped. Outer input is bounded at
+8 KiB per event, 256
+events and 256 KiB per batch before JSON parsing. The concrete subject is capped
+before splitting or byte encoding, and its bytes count with every outer payload
+toward the batch limit even when that event is later dropped. These choices
+follow the
 [Fly Logs API description](https://fly.io/docs/monitoring/logs-api-options/),
 [official Log Shipper transform](https://github.com/superfly/fly-log-shipper/blob/main/vector-configs/vector.toml),
 and [official Fly Telemetry transform](https://github.com/superfly/fly-telemetry/blob/main/vector.yaml).
 The future network collector must still authenticate the read-only Fly NATS
 connection, take the subject from the subscription callback rather than the
 message, configure the four deployed app names, handle reconnect/backpressure,
-and preserve the egress-budget and delivery guarantees. Repository tests do not
-qualify that network boundary.
+measure and alert on bounded drops or Fly schema drift, and preserve the
+egress-budget and delivery guarantees. Repository tests do not qualify that
+network boundary.
 
 ## Required credentials and custody
 
