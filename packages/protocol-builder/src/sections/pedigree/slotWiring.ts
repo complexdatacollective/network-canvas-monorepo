@@ -1,8 +1,9 @@
 import { createMessageError } from '@codaco/app-i18n/messages';
-import type {
-  Variable,
-  VariableOption,
-  Variables,
+import {
+  FAMILY_PEDIGREE_SLOTS,
+  type Variable,
+  type VariableOption,
+  type Variables,
 } from '@codaco/protocol-validation';
 
 import {
@@ -13,6 +14,7 @@ import {
   hasConflictingUse,
   interfaceOwnedPickIssue,
   type VariableRoleMap,
+  variableRoleKey,
   type WriterClass,
 } from '../../codebook/variableRoles.ts';
 import type { VariablePickerOption } from '../../fields/VariablePicker.tsx';
@@ -146,6 +148,12 @@ export type SlotPickerOptionsInput<T extends SlotVariableOption> = Readonly<{
    * writer class — the same list `slotCrossClassIssue` judges a pick against.
    */
   draftConflicting?: readonly string[];
+  /**
+   * Exclusive claims this stage's own UNSAVED draft has made, kept apart from
+   * the saved ones so a refusal can say which it is. See
+   * `draftExclusiveSlotClaims`.
+   */
+  draftSlotMap?: ExclusiveVariableSlotMap;
 }>;
 
 /**
@@ -159,10 +167,12 @@ export type SlotPickerOptionsInput<T extends SlotVariableOption> = Readonly<{
  *   because both writer classes live on one stage form and a field added in
  *   this session is not in the saved protocol yet; and
  * - the interface-owned one, which drops an attribute ANOTHER interface slot
- *   claims. `ownSlot` keeps an attribute a second Family Pedigree binds in the
- *   SAME slot on offer — sharing structural attributes between two pedigrees
- *   over one node type is legitimate authoring, and the protocol rule is
- *   slot-aware for exactly that reason.
+ *   claims — in the saved protocol, and in this stage's own unsaved draft
+ *   (`draftSlotMap`), because a slot bound a moment ago is in no protocol yet.
+ *   `ownSlot` keeps an attribute a second Family Pedigree binds in the SAME
+ *   slot on offer — sharing structural attributes between two pedigrees over
+ *   one node type is legitimate authoring, and the protocol rule is slot-aware
+ *   for exactly that reason.
  *
  * All three keep `currentValue` offered, so an imported protocol's existing
  * pick never vanishes from its own picker; the save-time gate is what explains
@@ -185,6 +195,7 @@ export function slotPickerOptions<T extends SlotVariableOption>({
   ownSlot,
   writerClass,
   draftConflicting,
+  draftSlotMap,
 }: SlotPickerOptionsInput<T>): T[] {
   if (subject === null) return [];
   const crossClassFiltered =
@@ -199,13 +210,22 @@ export function slotPickerOptions<T extends SlotVariableOption>({
             option.value === currentValue ||
             !draftConflicting.includes(option.value),
         );
-  return excludeInterfaceOwned(
+  const savedOwnerFiltered = excludeInterfaceOwned(
     slotMap,
     subject,
     draftFiltered,
     currentValue,
     ownSlot,
   );
+  return draftSlotMap === undefined
+    ? savedOwnerFiltered
+    : excludeInterfaceOwned(
+        draftSlotMap,
+        subject,
+        savedOwnerFiltered,
+        currentValue,
+        ownSlot,
+      );
 }
 
 export type SlotCrossClassInput = Readonly<{
@@ -225,6 +245,9 @@ export type SlotCrossClassInput = Readonly<{
    * has no validated writer on its edge type.
    */
   draftConflicting?: readonly string[];
+  /** See `SlotPickerOptionsInput.draftSlotMap`; the same map, so the picker
+   * and this gate refuse the same picks. */
+  draftSlotMap?: ExclusiveVariableSlotMap;
   /** The subject's codebook attributes, read only for display names. */
   allVariables: Readonly<Variables>;
 }>;
@@ -234,11 +257,17 @@ export type SlotCrossClassInput = Readonly<{
  *
  * It refuses a pick that
  *
- * 1. another interface slot owns outright (the picker already drops those, so
- *    this catches a stale draft or an imported protocol); or
+ * 1. another interface slot owns outright in the SAVED protocol (the picker
+ *    already drops those, so this catches a stale draft or an imported
+ *    protocol); or
  * 2. this stage's own UNSAVED draft already claims in the opposite writer
  *    class — both classes live on one stage form; or
- * 3. the saved protocol already claims in the opposite writer class.
+ * 3. another exclusive slot of this stage has taken in this unsaved edit; or
+ * 4. the saved protocol already claims in the opposite writer class.
+ *
+ * The order is most specific first: an attribute both an unsaved form field
+ * and an unsaved slot claim earns the cross-class refusal, which says what the
+ * clash costs, rather than the bare "something else in this step has it".
  *
  * The slot's own COMMITTED value escapes throughout, so a pre-existing
  * conflict — an imported protocol, say — stays saveable rather than trapping
@@ -253,6 +282,7 @@ export function slotCrossClassIssue({
   ownSlot,
   writerClass,
   draftConflicting,
+  draftSlotMap,
   allVariables,
 }: SlotCrossClassInput): string | undefined {
   if (subject === null) return undefined;
@@ -269,6 +299,16 @@ export function slotCrossClassIssue({
     return draftCrossClassMessage[writerClass](
       variableDisplayName(allVariables, pick),
     );
+  }
+
+  if (draftSlotMap !== undefined) {
+    const draftOwnedIssue = interfaceOwnedPickIssue(
+      draftSlotMap,
+      subject,
+      pick,
+      ownSlot,
+    );
+    if (draftOwnedIssue !== undefined) return draftOwnedIssue;
   }
 
   return crossClassPickIssue({
@@ -303,4 +343,96 @@ export function draftRowVariables(rows: unknown): readonly string[] {
     .filter(isRecord)
     .map((row) => row.variable)
     .filter((variable): variable is string => typeof variable === 'string');
+}
+
+/**
+ * Every slot the Family Pedigree fills EXCLUSIVELY: where the stage keeps it,
+ * which codebook entity its attribute belongs to, and the schema's own id for
+ * the slot.
+ *
+ * One table because two things have to agree about each of these: the section
+ * that renders the control (which names the path and exempts the slot from its
+ * own exclusion) and the index that reads the researcher's unsaved picks back
+ * out of the stage form. Written twice, a renamed path would quietly stop the
+ * live index seeing a slot at all, and nothing would fail until a researcher
+ * bound two slots to one attribute and was refused at the save.
+ *
+ * `nodeConfig.biologicalSexVariable` is deliberately absent: binning family
+ * members by sex is legitimate authoring, so that slot is not exclusive. Its
+ * VALUES are interface-owned, which is a different rule.
+ */
+export const PEDIGREE_EXCLUSIVE_SLOTS = Object.freeze({
+  egoVariable: Object.freeze({
+    path: 'nodeConfig.egoVariable',
+    entity: 'node',
+    slot: FAMILY_PEDIGREE_SLOTS.egoVariable,
+  }),
+  relationshipVariable: Object.freeze({
+    path: 'nodeConfig.relationshipVariable',
+    entity: 'node',
+    slot: FAMILY_PEDIGREE_SLOTS.relationshipVariable,
+  }),
+  relationshipTypeVariable: Object.freeze({
+    path: 'edgeConfig.relationshipTypeVariable',
+    entity: 'edge',
+    slot: FAMILY_PEDIGREE_SLOTS.relationshipTypeVariable,
+  }),
+  isActiveVariable: Object.freeze({
+    path: 'edgeConfig.isActiveVariable',
+    entity: 'edge',
+    slot: FAMILY_PEDIGREE_SLOTS.isActiveVariable,
+  }),
+  isGestationalCarrierVariable: Object.freeze({
+    path: 'edgeConfig.isGestationalCarrierVariable',
+    entity: 'edge',
+    slot: FAMILY_PEDIGREE_SLOTS.isGestationalCarrierVariable,
+  }),
+  gameteRoleVariable: Object.freeze({
+    path: 'edgeConfig.gameteRoleVariable',
+    entity: 'edge',
+    slot: FAMILY_PEDIGREE_SLOTS.gameteRoleVariable,
+  }),
+});
+
+/** One slot's live pick: the type it names an attribute of, and the pick. */
+export type DraftSlotBinding = Readonly<{
+  subject: CodebookSubject | null;
+  slot: string;
+  variableId: unknown;
+}>;
+
+/**
+ * The exclusive claims this stage's UNSAVED draft has made, in the shape the
+ * saved protocol's claims arrive in.
+ *
+ * Overlaid on that map, every picker and every gate asks one question about a
+ * pick — "is some slot already writing this?" — and gets the same answer for a
+ * claim made a moment ago as for one that has been saved for a year. Without
+ * it, two slots could each be bound to one attribute in a single edit, both
+ * pickers offering it and both gates allowing it, and the whole stage was
+ * refused at the save: the researcher was told nothing until they had finished.
+ *
+ * ADDED to the saved claims rather than replacing them: a slot the researcher
+ * has just unbound goes on refusing its old attribute until the stage is
+ * saved. That is the conservative direction — an attribute held back from a
+ * picker for a moment, rather than one offered that the protocol still refuses.
+ */
+export function draftExclusiveSlotClaims(
+  bindings: readonly DraftSlotBinding[],
+): ExclusiveVariableSlotMap {
+  const claims: Record<string, { source: 'draft'; slot: string }> = {};
+  for (const { subject, slot, variableId } of bindings) {
+    if (
+      subject === null ||
+      typeof variableId !== 'string' ||
+      variableId === ''
+    ) {
+      continue;
+    }
+    claims[variableRoleKey(subject, variableId)] = Object.freeze({
+      source: 'draft' as const,
+      slot,
+    });
+  }
+  return Object.freeze(claims);
 }

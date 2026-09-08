@@ -79,8 +79,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  *    family member form, which is unsaved and so appears in no protocol the
  *    role map is built from; and
  * 2. it may never take one the pedigree itself derives — the participant
- *    marker above all — and that rule has NO unchanged-pick escape, because
- *    re-saving such a prompt would go on overwriting the marker.
+ *    marker above all, whether the pedigree has been bound to it since the
+ *    last save or only in this unsaved edit — and that rule has NO
+ *    unchanged-pick escape, because re-saving such a prompt would go on
+ *    overwriting the marker.
  *
  * The escape for rule 1 is anchored to the stage's own COMMITTED prompts,
  * found BY ROW ID rather than by the row the dialog opened on. The two differ
@@ -91,7 +93,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export default function NominationPromptsSection() {
   const intl = useAppIntl();
   const { committedFields, protocolContext } = useStageEditorForm();
-  const { roleMap, slotMap } = usePedigreeVariableIndexes();
+  const { roleMap, slotMap, draftSlotMap } = usePedigreeVariableIndexes();
   const nodeType = useStageValue(NODE_TYPE_FIELD);
   const formRows = useStageValue(FORM_FIELD);
   const waiting = typeof nodeType !== 'string';
@@ -136,7 +138,9 @@ export default function NominationPromptsSection() {
       if (subject === null || !isRecord(value)) return value;
       const variable = typeof value.variable === 'string' ? value.variable : '';
 
-      const ownedIssue = interfaceOwnedPickIssue(slotMap, subject, variable);
+      const ownedIssue =
+        interfaceOwnedPickIssue(slotMap, subject, variable) ??
+        interfaceOwnedPickIssue(draftSlotMap, subject, variable);
       if (ownedIssue !== undefined) {
         return { success: false, fieldErrors: { variable: [ownedIssue] } };
       }
@@ -179,6 +183,7 @@ export default function NominationPromptsSection() {
       allVariables,
       committedVariableFor,
       draftFormVariables,
+      draftSlotMap,
       roleMap,
       slotMap,
       subject,

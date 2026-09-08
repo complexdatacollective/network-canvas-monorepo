@@ -66,7 +66,7 @@ const asString = (value: unknown): string | undefined =>
 export function NominationPromptEditor({ item }: RowEditorProps) {
   const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
-  const { roleMap, slotMap } = usePedigreeVariableIndexes();
+  const { roleMap, slotMap, draftSlotMap } = usePedigreeVariableIndexes();
   const subject = useNominationSubject();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const { variable } = useFormValue([VARIABLE_FIELD] as const);
@@ -90,13 +90,16 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
         ),
         ...(currentValue === undefined ? {} : { currentValue }),
         // No `ownSlot`: a nomination toggle fills no interface slot of its own,
-        // so every attribute another slot owns is out of bounds.
+        // so every attribute another slot owns is out of bounds — including
+        // one a slot in this stage has only just been bound to.
         writerClass: 'unvalidated',
         draftConflicting,
+        draftSlotMap,
       }),
     [
       currentValue,
       draftConflicting,
+      draftSlotMap,
       protocolContext,
       roleMap,
       slotMap,

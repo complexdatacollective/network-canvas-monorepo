@@ -1387,6 +1387,30 @@ describe('the batch a framing change makes', () => {
  * researcher thought they had finished.
  */
 describe('picks this session has already claimed', () => {
+  /** One more attribute on the type the pedigree records relationships as. */
+  const addFamilyEdgeVariable = (
+    harness: StageEditorHarness,
+    variableId: string,
+    variable: Readonly<Record<string, unknown>>,
+  ): void => {
+    const section =
+      harness.session.getSnapshot().protocolSections[
+        sectionId({ kind: 'codebookEdge', typeId: 'family_edge' })
+      ];
+    if (section === undefined) {
+      throw new Error('the fixture protocol has no family_edge edge type');
+    }
+    const variables = isRecord(section.variables) ? section.variables : {};
+    harness.receiveCodebookUpdate({
+      edge: {
+        family_edge: {
+          ...section,
+          variables: { ...variables, [variableId]: variable },
+        },
+      },
+    });
+  };
+
   /**
    * A nomination toggle is an UNVALIDATED writer, so it may not take an
    * attribute this stage's own form collects — and the form field that
@@ -1458,5 +1482,38 @@ describe('picks this session has already claimed', () => {
     // Not an empty picker: the display label is collected through a form
     // field, so it is still on offer.
     expect(offered).toContain('fm_name');
+  });
+
+  /**
+   * Two exclusive slots may never name one attribute — each would overwrite
+   * the other's meaning — and the pedigree has four of them on its edge type,
+   * two of which take any boolean. A slot bound in this session is not in the
+   * saved protocol, so the sibling picker was still offering it.
+   */
+  it('never offers a second edge slot an attribute another slot took this session', async () => {
+    const harness = renderStageEditor(openFixture());
+    addFamilyEdgeVariable(harness, 'together', {
+      name: 'together',
+      type: 'boolean',
+    });
+
+    // On offer to both while nothing has claimed it, so the exclusion below is
+    // a change rather than a list that was always this short.
+    await waitFor(() =>
+      expect(optionsOf('Gestational carrier')).toEqual([
+        'isGestationalCarrier',
+        'together',
+      ]),
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Active status' }),
+      'together',
+    );
+
+    await waitFor(() =>
+      expect(optionsOf('Gestational carrier')).toEqual([
+        'isGestationalCarrier',
+      ]),
+    );
   });
 });

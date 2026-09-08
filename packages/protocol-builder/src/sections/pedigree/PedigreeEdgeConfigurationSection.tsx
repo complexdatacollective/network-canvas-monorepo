@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import {
-  FAMILY_PEDIGREE_SLOTS,
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
   type InterfaceOwnedOptionSetKey,
@@ -18,25 +17,31 @@ import { useResetOnEntityTypeChange } from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
 import SlotVariableField from './SlotVariableField.tsx';
 import {
+  PEDIGREE_EXCLUSIVE_SLOTS,
   subjectVariableOptions,
   type SlotVariableOption,
 } from './slotWiring.ts';
 
 const TYPE_FIELD = 'edgeConfig.type';
-const RELATIONSHIP_TYPE_FIELD = 'edgeConfig.relationshipTypeVariable';
-const IS_ACTIVE_FIELD = 'edgeConfig.isActiveVariable';
-const GESTATIONAL_CARRIER_FIELD = 'edgeConfig.isGestationalCarrierVariable';
-const GAMETE_ROLE_FIELD = 'edgeConfig.gameteRoleVariable';
+// Path AND slot id together, from the table the live slot index reads: a
+// section that spelled its own paths could be renamed out of that index
+// without anything failing until two slots collided at a save.
+const RELATIONSHIP_TYPE_SLOT =
+  PEDIGREE_EXCLUSIVE_SLOTS.relationshipTypeVariable;
+const IS_ACTIVE_SLOT = PEDIGREE_EXCLUSIVE_SLOTS.isActiveVariable;
+const GESTATIONAL_CARRIER_SLOT =
+  PEDIGREE_EXCLUSIVE_SLOTS.isGestationalCarrierVariable;
+const GAMETE_ROLE_SLOT = PEDIGREE_EXCLUSIVE_SLOTS.gameteRoleVariable;
 
 /**
  * Every slot that names an attribute of the edge type, and so cannot survive a
  * change of edge type.
  */
 const EDGE_TYPE_DEPENDENT_FIELDS: readonly string[] = Object.freeze([
-  RELATIONSHIP_TYPE_FIELD,
-  IS_ACTIVE_FIELD,
-  GESTATIONAL_CARRIER_FIELD,
-  GAMETE_ROLE_FIELD,
+  RELATIONSHIP_TYPE_SLOT.path,
+  IS_ACTIVE_SLOT.path,
+  GESTATIONAL_CARRIER_SLOT.path,
+  GAMETE_ROLE_SLOT.path,
 ]);
 
 /**
@@ -112,13 +117,13 @@ export default function PedigreeEdgeConfigurationSection() {
       {subject !== null && (
         <>
           <SlotVariableField
-            name={RELATIONSHIP_TYPE_FIELD}
+            name={RELATIONSHIP_TYPE_SLOT.path}
             label={pedigreeMessages.edgeRelationshipTypeLabel}
             hint={pedigreeMessages.edgeRelationshipTypeHint}
             subject={subject}
             options={relationshipTypeVariables}
             writerClass="unvalidated"
-            ownSlot={FAMILY_PEDIGREE_SLOTS.relationshipTypeVariable}
+            ownSlot={RELATIONSHIP_TYPE_SLOT.slot}
             variableType="categorical"
             lockedOptions={INTERFACE_OWNED_OPTION_SETS.relationshipType.options}
             createLabel={pedigreeMessages.edgeRelationshipTypeCreateLabel}
@@ -128,26 +133,26 @@ export default function PedigreeEdgeConfigurationSection() {
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
-            name={IS_ACTIVE_FIELD}
+            name={IS_ACTIVE_SLOT.path}
             label={pedigreeMessages.edgeIsActiveLabel}
             hint={pedigreeMessages.edgeIsActiveHint}
             subject={subject}
             options={booleanVariables}
             writerClass="unvalidated"
-            ownSlot={FAMILY_PEDIGREE_SLOTS.isActiveVariable}
+            ownSlot={IS_ACTIVE_SLOT.slot}
             variableType="boolean"
             createLabel={pedigreeMessages.edgeIsActiveCreateLabel}
             createDescription={pedigreeMessages.edgeIsActiveCreateDescription}
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
-            name={GESTATIONAL_CARRIER_FIELD}
+            name={GESTATIONAL_CARRIER_SLOT.path}
             label={pedigreeMessages.edgeGestationalCarrierLabel}
             hint={pedigreeMessages.edgeGestationalCarrierHint}
             subject={subject}
             options={booleanVariables}
             writerClass="unvalidated"
-            ownSlot={FAMILY_PEDIGREE_SLOTS.isGestationalCarrierVariable}
+            ownSlot={GESTATIONAL_CARRIER_SLOT.slot}
             variableType="boolean"
             createLabel={pedigreeMessages.edgeGestationalCarrierCreateLabel}
             createDescription={
@@ -156,13 +161,13 @@ export default function PedigreeEdgeConfigurationSection() {
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
-            name={GAMETE_ROLE_FIELD}
+            name={GAMETE_ROLE_SLOT.path}
             label={pedigreeMessages.edgeGameteRoleLabel}
             hint={pedigreeMessages.edgeGameteRoleHint}
             subject={subject}
             options={gameteRoleVariables}
             writerClass="unvalidated"
-            ownSlot={FAMILY_PEDIGREE_SLOTS.gameteRoleVariable}
+            ownSlot={GAMETE_ROLE_SLOT.slot}
             variableType="categorical"
             lockedOptions={INTERFACE_OWNED_OPTION_SETS.gameteRole.options}
             createLabel={pedigreeMessages.edgeGameteRoleCreateLabel}

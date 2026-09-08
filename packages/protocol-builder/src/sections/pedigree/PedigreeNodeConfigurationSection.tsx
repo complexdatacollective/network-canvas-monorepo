@@ -3,7 +3,6 @@ import { useMemo } from 'react';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import {
-  FAMILY_PEDIGREE_SLOTS,
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
 } from '@codaco/protocol-validation';
@@ -18,12 +17,20 @@ import FormFieldsSection from '../FormFieldsSection.tsx';
 import { useResetOnEntityTypeChange } from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
 import SlotVariableField from './SlotVariableField.tsx';
-import { draftRowVariables, subjectVariableOptions } from './slotWiring.ts';
+import {
+  draftRowVariables,
+  PEDIGREE_EXCLUSIVE_SLOTS,
+  subjectVariableOptions,
+} from './slotWiring.ts';
 
 const TYPE_FIELD = 'nodeConfig.type';
 const LABEL_FIELD = 'nodeConfig.nodeLabelVariable';
-const EGO_FIELD = 'nodeConfig.egoVariable';
-const RELATIONSHIP_FIELD = 'nodeConfig.relationshipVariable';
+// Path AND slot id together, from the table the live slot index reads: a
+// section that spelled its own paths could be renamed out of that index
+// without anything failing until two slots collided at a save. The display
+// label and the biological sex slot are not exclusive, so they are not in it.
+const EGO_SLOT = PEDIGREE_EXCLUSIVE_SLOTS.egoVariable;
+const RELATIONSHIP_SLOT = PEDIGREE_EXCLUSIVE_SLOTS.relationshipVariable;
 const BIOLOGICAL_SEX_FIELD = 'nodeConfig.biologicalSexVariable';
 const FORM_FIELD = 'nodeConfig.form';
 const NOMINATION_PROMPTS_FIELD = 'nominationPrompts';
@@ -50,8 +57,8 @@ const NOMINATION_PROMPTS_FIELD = 'nominationPrompts';
  */
 const NODE_TYPE_DEPENDENT_FIELDS: readonly string[] = Object.freeze([
   LABEL_FIELD,
-  EGO_FIELD,
-  RELATIONSHIP_FIELD,
+  EGO_SLOT.path,
+  RELATIONSHIP_SLOT.path,
   BIOLOGICAL_SEX_FIELD,
   FORM_FIELD,
   'nominationPrompts',
@@ -89,8 +96,8 @@ export default function PedigreeNodeConfigurationSection() {
   const nodeType = useStageValue(TYPE_FIELD);
   const formRows = useStageValue(FORM_FIELD);
   const nominationRows = useStageValue(NOMINATION_PROMPTS_FIELD);
-  const egoDraft = useStageValue(EGO_FIELD);
-  const relationshipDraft = useStageValue(RELATIONSHIP_FIELD);
+  const egoDraft = useStageValue(EGO_SLOT.path);
+  const relationshipDraft = useStageValue(RELATIONSHIP_SLOT.path);
   const biologicalSexDraft = useStageValue(BIOLOGICAL_SEX_FIELD);
   useResetOnEntityTypeChange(TYPE_FIELD, NODE_TYPE_DEPENDENT_FIELDS);
 
@@ -220,13 +227,13 @@ export default function PedigreeNodeConfigurationSection() {
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
-            name={EGO_FIELD}
+            name={EGO_SLOT.path}
             label={pedigreeMessages.nodeEgoLabel}
             hint={pedigreeMessages.nodeEgoHint}
             subject={subject}
             options={booleanVariables}
             writerClass="unvalidated"
-            ownSlot={FAMILY_PEDIGREE_SLOTS.egoVariable}
+            ownSlot={EGO_SLOT.slot}
             draftConflicting={draftFormVariables}
             variableType="boolean"
             createLabel={pedigreeMessages.nodeEgoCreateLabel}
@@ -234,13 +241,13 @@ export default function PedigreeNodeConfigurationSection() {
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
-            name={RELATIONSHIP_FIELD}
+            name={RELATIONSHIP_SLOT.path}
             label={pedigreeMessages.nodeRelationshipLabel}
             hint={pedigreeMessages.nodeRelationshipHint}
             subject={subject}
             options={textVariables}
             writerClass="unvalidated"
-            ownSlot={FAMILY_PEDIGREE_SLOTS.relationshipVariable}
+            ownSlot={RELATIONSHIP_SLOT.slot}
             draftConflicting={draftFormVariables}
             variableType="text"
             createLabel={pedigreeMessages.nodeRelationshipCreateLabel}
