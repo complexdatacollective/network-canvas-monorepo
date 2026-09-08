@@ -1,0 +1,280 @@
+name: Architect Archive Release
+
+# Publishes a released Architect version to a permanent, version-pinned host so
+# researchers on an older protocol schema keep a working Architect:
+#
+#   @codaco/architect@8.2.5  ->  https://v8.architect.networkcanvas.com
+#
+# The archive is keyed by MAJOR version, not by release. Major versions track
+# protocol schema versions, so only the newest release on each major line needs
+# to stay reachable: 8.3.0 replaces 8.2.5 at the same host. That keeps the host
+# count to one per schema generation rather than one per patch, which matters
+# because a zone allows 100 custom domains in total.
+#
+# Production stays on Netlify at architect.networkcanvas.com. This lane is
+# additive: it never touches the production site, the release tags, or the
+# GitHub releases, so a failure here cannot block or undo a release. It is not
+# yet wired into the release workflow — dispatch it by hand after a release, or
+# call it from another workflow. Integration is tracked in issue #1767, which
+# also records the sequencing constraint: the archive has to run AFTER the
+# release tag is pushed, because the guard below reads tags to decide whether
+# this version is still the newest on its line.
+#
+# The archive is a Cloudflare Worker serving static assets, one Worker per major
+# line. `custom_domain: true` in the generated Wrangler config has Cloudflare
+# provision both the DNS record and the certificate — including for this
+# two-label host, which Universal SSL's single-level wildcard does not cover.
+# Requests to static assets are free and unlimited on both Workers plans, so the
+# archive's running cost is zero.
+#
+# Why not keep the Netlify deploy that already exists for each version: Netlify
+# overrides `Cache-Control` on `/sw.js` and `/manifest.webmanifest` for any
+# deploy that is not the site's production deploy, so an aliased Netlify archive
+# cannot satisfy the cache contract in apps/architect/RELEASING.md. Cloudflare
+# honours those rules. It differs in two other ways instead, both handled by
+# write-cloudflare-archive-config.mjs — see that file.
+#
+# The build is made from the tag rather than reused from the original release,
+# so it is not byte-identical to what production served: PostHog credentials are
+# deliberately not passed here, and without them the build emits no source maps
+# and uploads nothing. Re-uploading maps for an already-released version would
+# duplicate them against that release in PostHog.
+#
+# NOTE(human-setup-required): needs the repository secret CLOUDFLARE_API_TOKEN,
+# scoped to the networkcanvas.com zone with DNS:Edit, Zone:Read and Workers
+# Routes:Edit, plus account-level Workers Scripts:Edit. Set the repository
+# variable CLOUDFLARE_ACCOUNT_ID as well when the token can see more than one
+# account; with a single-account token Wrangler resolves it on its own.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Released tag to archive (e.g. @codaco/architect@8.2.5)
+        required: true
+        type: string
+      zone:
+        description: Zone to publish the version host under
+        required: false
+        default: networkcanvas.com
+        type: string
+      force:
+        description: Archive even if a newer release exists on this major line
+        required: false
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      zone:
+        required: false
+        default: networkcanvas.com
+        type: string
+      force:
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Split from the deploy so the concurrency group below can be keyed on the
+  # major line: two runs for the same line share a Worker and a hostname and
+  # must not overlap, while runs for different lines are independent. A job's
+  # `concurrency` may read `needs` outputs; a workflow-level one may not.
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      major: ${{ steps.version.outputs.major }}
+      sha: ${{ steps.version.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-tags: true
+          # The newest-on-the-line guard reads every tag on this major.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve and guard version
+        id: version
+        env:
+          TAG: ${{ inputs.tag }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          set -euo pipefail
+
+          # The tag names the version; package.json is the authority on what the
+          # tree actually is. A mistyped tag that happens to exist would
+          # otherwise publish one version's code at another version's hostname.
+          tag_version="${TAG##*@}"
+          version="$(node -p "require('./apps/architect/package.json').version")"
+          if [ "$tag_version" != "$version" ]; then
+            echo "::error::tag $TAG carries version $tag_version but the tree is $version"
+            exit 1
+          fi
+
+          major="${version%%.*}"
+          case "$major" in
+            ''|*[!0-9]*) echo "::error::cannot read a major version from $version"; exit 1 ;;
+          esac
+
+          # One host per major line means a later dispatch overwrites an earlier
+          # one. Archiving an older patch after a newer one has shipped would
+          # roll the line backwards, so refuse it the way app-release-guard.sh
+          # refuses a superseded production deploy. `sort -V` orders plain
+          # x.y.z releases; a prerelease on the line needs --force.
+          newest="$(git tag --list "@codaco/architect@${major}.*" \
+            | sed 's/.*@//' | sort -V | tail -1)"
+          if [ -n "$newest" ] && [ "$newest" != "$version" ]; then
+            if [ "$FORCE" != "true" ]; then
+              echo "::error::$version is not the newest release on the ${major}.x line ($newest). Archive that instead, or re-run with force."
+              exit 1
+            fi
+            echo "::warning::forcing $version over newer ${major}.x release $newest"
+          fi
+
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+          echo "major=$major" >>"$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
+
+  deploy:
+    needs: resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: architect-archive-v${{ needs.resolve.outputs.major }}
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      # Pinned: an archive deploy that silently changes shape between runs is
+      # the failure this whole lane exists to avoid.
+      WRANGLER_VERSION: '4.129.1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/turbo-ci-setup
+
+      - name: Build architect
+        run: pnpm exec turbo run build --filter=@codaco/architect
+
+      # After the build so a turbo-restored dist still describes the archived
+      # commit. COMMIT_REF must be explicit: GITHUB_SHA is the commit the
+      # workflow definition was read from, not the tag being archived.
+      - name: Stamp archived commit
+        env:
+          COMMIT_REF: ${{ needs.resolve.outputs.sha }}
+        run: node apps/architect/scripts/write-build-info.mjs
+
+      # Rewrites dist/_headers for Cloudflare's append semantics and drops the
+      # Netlify _redirects file, then emits the Wrangler config naming this
+      # line's Worker and custom domain. Fails loudly rather than shipping a
+      # plausible-looking archive with the wrong cache headers.
+      - name: Prepare Cloudflare archive config
+        id: config
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          ZONE: ${{ inputs.zone }}
+        run: |
+          set -euo pipefail
+          result="$(node apps/architect/scripts/write-cloudflare-archive-config.mjs \
+            --version "$VERSION" --zone "$ZONE")"
+          echo "$result"
+          echo "hostname=$(echo "$result" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).hostname")" >>"$GITHUB_OUTPUT"
+
+      - name: Deploy archive
+        run: |
+          set -euo pipefail
+          pnpm dlx "wrangler@${WRANGLER_VERSION}" deploy \
+            --config apps/architect/wrangler.archive.json
+
+      # A deploy that reports success can still serve the wrong headers — that
+      # is exactly how the Netlify sw.js override went unnoticed. Assert the
+      # contract against the live host, and fail the run if it does not hold.
+      - name: Verify deployed archive
+        env:
+          HOSTNAME: ${{ steps.config.outputs.hostname }}
+        run: |
+          set -euo pipefail
+          base="https://${HOSTNAME}"
+
+          # A custom domain created for the first time needs its certificate
+          # before it answers, which for this two-label host took about three
+          # minutes when measured. Poll rather than sleeping a guessed interval.
+          for attempt in $(seq 1 30); do
+            if curl -fsS -o /dev/null --max-time 10 "$base/"; then
+              echo "reachable after ${attempt} attempt(s)"
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "::error::$base did not become reachable"
+              exit 1
+            fi
+            sleep 10
+          done
+
+          fail() { echo "::error::$1"; exit 1; }
+
+          header() {
+            curl -fsSI --max-time 20 "$1" | tr -d '\r' \
+              | awk 'tolower($1) == "cache-control:" { $1=""; sub(/^ /,""); print }'
+          }
+
+          # Content-hashed assets must be cacheable. This is the regression the
+          # header transform exists for: with Netlify's file lifted unchanged,
+          # Cloudflare joins `/*` and `/assets/*` into one header where
+          # no-store wins and every asset becomes uncacheable.
+          asset="$(find apps/architect/dist/assets -name '*.js' -type f -print -quit)"
+          asset_cc="$(header "$base/assets/$(basename "$asset")")"
+          echo "assets: $asset_cc"
+          case "$asset_cc" in
+            *no-store*) fail "asset carries no-store and is uncacheable: $asset_cc" ;;
+          esac
+          case "$asset_cc" in
+            *immutable*) ;;
+            *) fail "asset is not immutable: $asset_cc" ;;
+          esac
+
+          # The PWA entry points must not be stored, per RELEASING.md. This host
+          # is replaced by later releases on the line, so a visitor holding the
+          # previous shell has to revalidate to reach the newer one. Named
+          # `entry` rather than `path`, which some shells bind to $PATH.
+          for entry in / /sw.js /manifest.webmanifest; do
+            cc="$(header "$base$entry")"
+            echo "$entry: $cc"
+            case "$cc" in
+              *no-store*) ;;
+              *) fail "$entry must be no-store, got: $cc" ;;
+            esac
+          done
+
+          # The SPA fallback replaces Netlify's _redirects rule. Without it a
+          # deep link 404s and the archive is unusable for shared links.
+          code="$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 20 "$base/some/deep/link" || true)"
+          [ "$code" = "200" ] || fail "SPA deep link returned $code"
+
+          echo "archive verified at $base"
+
+      - name: Summary
+        if: success()
+        env:
+          HOSTNAME: ${{ steps.config.outputs.hostname }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          {
+            echo "### Architect ${VERSION} archived"
+            echo
+            echo "<https://${HOSTNAME}>"
+          } >>"$GITHUB_STEP_SUMMARY"
