@@ -1,32 +1,53 @@
 #!/usr/bin/env node
 // PostToolUse hook for file edits: formats and lint-fixes the edited file(s)
 // and tells the agent what changed on disk and which lint errors remain.
+// Shell commands that write files (redirects, sed -i, generators) name no
+// path in the event, so for those the hook formats the uncommitted files
+// modified since the previous hook run.
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import {
   binPath,
+  changedFiles,
   emit,
   extractEditedFiles,
   isFormattable,
   isLintable,
   isUnderRepo,
+  modifiedSince,
   readHookInput,
+  readState,
   resolveRepoRoot,
   run,
   shouldSkip,
   truncateLines,
+  writeState,
 } from './lib.mjs';
 
 const input = readHookInput();
 const root = resolveRepoRoot(input);
-const files = extractEditedFiles(input, root).filter(
-  (file) =>
-    isUnderRepo(file, root) &&
-    !shouldSkip(file, root) &&
-    existsSync(file) &&
-    isFormattable(file),
-);
+const toolName = input.tool_name ?? input.toolName ?? '';
+const startedAt = Date.now();
+
+const eligible = (file) =>
+  isUnderRepo(file, root) &&
+  !shouldSkip(file, root) &&
+  existsSync(file) &&
+  isFormattable(file);
+
+let files = extractEditedFiles(input, root).filter(eligible);
+const state = readState(root);
+if (
+  files.length === 0 &&
+  /^(Bash|shell|exec_command|local_shell)$/i.test(toolName)
+) {
+  // No explicit path: fall back to what changed on disk since the last run.
+  const since = state.lastPostEdit ?? startedAt - 60_000;
+  files = modifiedSince(changedFiles(root).filter(eligible), since);
+}
+state.lastPostEdit = startedAt;
+writeState(root, state);
 if (files.length === 0) process.exit(0);
 
 const oxfmt = binPath(root, 'oxfmt');
@@ -40,10 +61,7 @@ const before = new Map(files.map((file) => [file, readFileSync(file, 'utf8')]));
 const format = run(
   oxfmt,
   ['--no-error-on-unmatched-pattern', ...files.map(relative)],
-  {
-    cwd: root,
-    timeoutMs: 30_000,
-  },
+  { cwd: root, timeoutMs: 30_000 },
 );
 
 const lintable = files.filter(isLintable);
@@ -52,10 +70,7 @@ if (lintable.length > 0) {
   const lint = run(
     oxlint,
     ['--fix', '--quiet', '--format=agent', ...lintable.map(relative)],
-    {
-      cwd: root,
-      timeoutMs: 45_000,
-    },
+    { cwd: root, timeoutMs: 45_000 },
   );
   lintReport = lint.error
     ? `oxlint did not finish: ${lint.error.message}`

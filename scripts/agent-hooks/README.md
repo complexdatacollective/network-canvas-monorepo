@@ -6,11 +6,11 @@ the whole-tree gates themselves. Both harnesses run a hook as a subprocess
 with one JSON event on stdin and read a JSON verdict from stdout, and both
 accept the same verdict fields, so one script serves both.
 
-| Event                     | Script           | What it does                                                                                                                                                                                         |
-| ------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PostToolUse` (file edit) | `post-edit.mjs`  | Runs `oxfmt` and `oxlint --fix` on the edited file(s); reports reformatting and remaining lint errors as extra context. Under a second per edit.                                                     |
-| `Stop`, `SubagentStop`    | `stop-check.mjs` | Typechecks the packages changed on the branch plus their dependents via turbo (cached); skipped when nothing changed since the last clean run; returns a block decision so the agent fixes failures. |
-| `PreToolUse` (shell)      | `pre-bash.mjs`   | Refuses whole-tree `pnpm lint`/`typecheck`/`knip`, bare `oxlint`/`oxfmt`, and `git commit --no-verify`, explaining the alternative. `AGENT_GATES=1` bypasses.                                        |
+| Event                     | Script           | What it does                                                                                                                                                                                                                                                   |
+| ------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PostToolUse` (file edit) | `post-edit.mjs`  | Runs `oxfmt` and `oxlint --fix` on the edited file(s); reports reformatting and remaining lint errors as extra context. Under a second per edit. A shell command names no path, so for those it formats the uncommitted files modified since the previous run. |
+| `Stop`, `SubagentStop`    | `stop-check.mjs` | Typechecks the packages changed on the branch plus their dependents via turbo (cached); skipped when nothing changed since the last clean run; returns a block decision so the agent fixes failures.                                                           |
+| `PreToolUse` (shell)      | `pre-bash.mjs`   | Refuses whole-tree `pnpm lint`/`typecheck`/`knip`, bare `oxlint`/`oxfmt`, and `git commit --no-verify`, explaining the alternative. `AGENT_GATES=1` bypasses.                                                                                                  |
 
 `pnpm agent:test` (`agent-test.mjs`) runs, in each package that contains
 changed files, only the vitest tests whose import graph touches the changed

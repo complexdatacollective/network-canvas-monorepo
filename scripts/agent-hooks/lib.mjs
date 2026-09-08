@@ -11,6 +11,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
@@ -56,6 +57,8 @@ export const LINT_EXTENSIONS = new Set([
   '.svelte',
   '.astro',
 ]);
+
+const TYPESCRIPT_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
 
 const SKIP_SEGMENTS = new Set([
   'node_modules',
@@ -246,9 +249,34 @@ export function binPath(root, name) {
   return existsSync(candidate) ? candidate : null;
 }
 
+// Uncommitted paths from `git status --porcelain=v1 -z`: each record is
+// "XY path\0", and a rename or copy record is followed by the original path
+// as a second NUL-terminated field. Both sides are returned so the package
+// a file moved out of is still checked.
+export function parsePorcelainZ(output) {
+  const files = [];
+  const entries = output.split('\0');
+  for (let i = 0; i < entries.length; i += 1) {
+    const entry = entries[i];
+    if (!entry || entry.length < 4) continue;
+    const code = entry.slice(0, 2);
+    files.push(entry.slice(3));
+    if (
+      code[0] === 'R' ||
+      code[0] === 'C' ||
+      code[1] === 'R' ||
+      code[1] === 'C'
+    ) {
+      i += 1;
+      if (entries[i]) files.push(entries[i]);
+    }
+  }
+  return files;
+}
+
 // Everything that differs from origin/main: uncommitted work (staged, unstaged
-// and untracked) plus commits on this branch. Paths are absolute; deleted
-// files are included so their package still gets checked.
+// and untracked) plus commits on this branch. Paths are absolute; deleted and
+// moved-away files are included so their package still gets checked.
 export function changedFiles(root) {
   const files = new Set();
   const status = run(
@@ -257,23 +285,18 @@ export function changedFiles(root) {
     { cwd: root },
   );
   if (status.status === 0) {
-    const entries = status.stdout.split('\0');
-    for (let i = 0; i < entries.length; i += 1) {
-      const entry = entries[i];
-      if (!entry || entry.length < 4) continue;
-      const code = entry.slice(0, 2);
-      files.add(entry.slice(3));
-      if (code[0] === 'R' || code[0] === 'C') {
-        // A rename/copy record is followed by the original path.
-        i += 1;
-      }
-    }
+    for (const rel of parsePorcelainZ(status.stdout)) files.add(rel);
   }
   const base =
     git(['merge-base', 'HEAD', 'origin/main'], root) ??
     git(['merge-base', 'HEAD', 'main'], root);
   if (base) {
-    const diff = git(['diff', '--name-only', base, 'HEAD'], root);
+    // --no-renames reports a rename as a delete plus an add, so both paths
+    // appear rather than only the destination.
+    const diff = git(
+      ['diff', '--name-only', '--no-renames', base, 'HEAD'],
+      root,
+    );
     if (diff) for (const line of diff.split('\n')) if (line) files.add(line);
   }
   return [...files]
@@ -281,9 +304,12 @@ export function changedFiles(root) {
     .map((rel) => path.join(root, rel));
 }
 
-function isGlobalConfig(rel) {
-  return (
-    rel.startsWith(`tooling${path.sep}typescript${path.sep}`) ||
+// Files outside any workspace package that every package can depend on:
+// shared configuration, and root TypeScript sources (the Vite plugins under
+// scripts/ are compiled by the apps' node tsconfigs).
+function isGlobalInput(rel) {
+  if (rel.startsWith(`tooling${path.sep}typescript${path.sep}`)) return true;
+  if (
     [
       'package.json',
       'pnpm-workspace.yaml',
@@ -291,7 +317,10 @@ function isGlobalConfig(rel) {
       'turbo.json',
       'tsconfig.json',
     ].includes(rel)
-  );
+  ) {
+    return true;
+  }
+  return TYPESCRIPT_EXTENSIONS.has(path.extname(rel).toLowerCase());
 }
 
 function defaultReadPackage(manifestPath) {
@@ -303,38 +332,97 @@ function defaultReadPackage(manifestPath) {
   }
 }
 
-// Maps changed files to the workspace packages that define `script` (by
-// default `typecheck`). `all` is set when a file every package depends on
-// changed.
+// Finds the nearest workspace package manifest above `file`, or null when the
+// file belongs to the repository root.
+export function packageForFile(
+  file,
+  root,
+  { readPackage = defaultReadPackage, cache = new Map() } = {},
+) {
+  let dir = path.dirname(file);
+  while (dir !== root && isUnderRepo(dir, root)) {
+    if (!cache.has(dir))
+      cache.set(dir, readPackage(path.join(dir, 'package.json')));
+    const pkg = cache.get(dir);
+    if (pkg) return { dir, manifest: pkg };
+    dir = path.dirname(dir);
+  }
+  return null;
+}
+
+// Maps changed files to workspace packages. `seeds` is every named package
+// that contains a change (turbo filters seeded from them reach dependents
+// even when the seed lacks the task itself); `packages` is the subset that
+// defines `script` (by default `typecheck`). `all` is set when a file every
+// package depends on changed.
 export function packagesForFiles(
   files,
   root,
   { readPackage = defaultReadPackage, script = 'typecheck' } = {},
 ) {
+  const seeds = new Set();
   const names = new Set();
   let all = false;
   const cache = new Map();
   for (const file of files) {
-    const rel = path.relative(root, file);
-    if (isGlobalConfig(rel)) {
-      all = true;
+    const found = packageForFile(file, root, { readPackage, cache });
+    if (!found) {
+      if (isGlobalInput(path.relative(root, file))) all = true;
       continue;
     }
-    let dir = path.dirname(file);
-    let found = null;
-    while (dir !== root && isUnderRepo(dir, root)) {
-      if (!cache.has(dir))
-        cache.set(dir, readPackage(path.join(dir, 'package.json')));
-      const pkg = cache.get(dir);
-      if (pkg) {
-        found = pkg;
-        break;
-      }
-      dir = path.dirname(dir);
-    }
-    if (found?.name && found.scripts?.[script]) names.add(found.name);
+    const { manifest } = found;
+    if (!manifest.name) continue;
+    seeds.add(manifest.name);
+    if (manifest.scripts?.[script]) names.add(manifest.name);
   }
-  return { packages: [...names].sort((a, b) => a.localeCompare(b)), all };
+  const sorted = (set) => [...set].sort((a, b) => a.localeCompare(b));
+  return { packages: sorted(names), seeds: sorted(seeds), all };
+}
+
+// name -> { dir, manifest } for every workspace package, from the globs in
+// pnpm-workspace.yaml (one directory level per glob segment).
+export function workspacePackages(
+  root,
+  { readPackage = defaultReadPackage } = {},
+) {
+  const map = new Map();
+  let globs = [];
+  try {
+    const yaml = readFileSync(path.join(root, 'pnpm-workspace.yaml'), 'utf8');
+    const section = /^packages:\n((?:[ \t]+.*\n?)*)/m.exec(yaml)?.[1] ?? '';
+    globs = [...section.matchAll(/^\s*-\s*['"]?([^'"#\n]+?)['"]?\s*$/gm)].map(
+      (m) => m[1].trim(),
+    );
+  } catch {
+    return map;
+  }
+  for (const glob of globs) {
+    const parent = path.join(root, glob.replace(/\/\*$/, ''));
+    if (!glob.endsWith('/*') || !existsSync(parent)) continue;
+    for (const entry of readdirSync(parent, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const dir = path.join(parent, entry.name);
+      const manifest = readPackage(path.join(dir, 'package.json'));
+      if (manifest?.name) map.set(manifest.name, { dir, manifest });
+    }
+  }
+  return map;
+}
+
+// Is `dir` inside a workspace package (rather than the repository root)?
+export function isPackageDir(dir, root, options) {
+  if (!isUnderRepo(dir, root)) return false;
+  return packageForFile(path.join(dir, 'x'), root, options) !== null;
+}
+
+// Files that knip's result depends on.
+export function isKnipRelevant(rel) {
+  return (
+    /\.(m?[jt]sx?|c[jt]s)$/.test(rel) ||
+    /(^|\/)(package\.json|tsconfig[^/]*\.json|knip\.(json|jsonc)|knip\.config\.[cm]?[jt]s)$/.test(
+      rel,
+    )
+  );
 }
 
 // Turbo stream output prefixes every line with "<pkg>:typecheck: ". Keep the
@@ -385,6 +473,23 @@ export function changeFingerprint(
   return signature(parts.join('\n'));
 }
 
+// Among `files`, those modified at or after `sinceMs` (with a small margin).
+export function modifiedSince(files, sinceMs, { mtimeOf = defaultMtime } = {}) {
+  const threshold = sinceMs - 2000;
+  return files.filter((file) => {
+    const mtime = mtimeOf(file);
+    return mtime !== null && mtime >= threshold;
+  });
+}
+
+function defaultMtime(file) {
+  try {
+    return statSync(file).mtimeMs;
+  } catch {
+    return null;
+  }
+}
+
 function stateFile(root) {
   const dir = path.join(root, 'node_modules', '.cache', 'agent-hooks');
   mkdirSync(dir, { recursive: true });
@@ -409,12 +514,28 @@ export function emit(payload) {
 
 // Whole-tree gate commands the hooks make redundant. Returns null when the
 // command is fine, otherwise { kind, segment } for the offending segment.
+// A gate run from inside a workspace package (the tool's working directory,
+// or a `cd` earlier in the command) is package-scoped and allowed.
 const SCOPE_FLAGS = /(^|\s)(--filter(=|\s)|-F\s|--affected(\s|$))/;
+
+// Options that take a separate value, so the value is not a file target.
+const VALUE_OPTIONS = new Set([
+  '-c',
+  '--config',
+  '--tsconfig',
+  '--ignore-path',
+  '--ignore-pattern',
+  '-f',
+  '--format',
+  '--threads',
+  '--max-warnings',
+  '--stdin-filepath',
+  '--report-unused-disable-directives-severity',
+  '--fix-kind',
+]);
 
 function stripPrefixes(segment) {
   let s = segment.trim();
-  // Leading env assignments, `time`, `nohup`, and `cd dir &&`-style prefixes
-  // were split away already; drop assignments and common wrappers.
   s = s.replace(/^(\w+=\S*\s+)+/, '');
   s = s.replace(/^(time|nohup|command)\s+/, '');
   s = s.replace(
@@ -425,19 +546,41 @@ function stripPrefixes(segment) {
 }
 
 function bareTargets(args) {
-  return args.filter(
-    (arg) => !arg.startsWith('-') && arg !== '.' && arg !== './',
-  );
+  const targets = [];
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (VALUE_OPTIONS.has(arg)) {
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith('-') || arg === '.' || arg === './') continue;
+    targets.push(arg);
+  }
+  return targets;
 }
 
-export function classifyGateCommand(command) {
+export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
   if (!command || /(^|\s)AGENT_GATES=1(\s|$)/.test(command)) return null;
+  const inPackage = (dir) =>
+    Boolean(dir && root && (packageDir ?? isPackageDir)(dir, root));
+  let currentDir = cwd ?? root ?? null;
   const segments = stripEmbeddedText(command).split(/\n|&&|\|\||;|\|/);
   for (const raw of segments) {
     const segment = stripPrefixes(raw);
     if (!segment) continue;
     const tokens = segment.split(/\s+/);
     const [head, ...rest] = tokens;
+
+    if (head === 'cd') {
+      const target = rest.find((t) => !t.startsWith('-'));
+      if (target && !/^[~$]/.test(target) && currentDir) {
+        currentDir = path.resolve(
+          currentDir,
+          target.replace(/^['"]|['"]$/g, ''),
+        );
+      }
+      continue;
+    }
 
     if (
       head === 'git' &&
@@ -448,7 +591,7 @@ export function classifyGateCommand(command) {
     }
 
     if (/^(pnpm|npm|yarn|bun)$/.test(head)) {
-      if (SCOPE_FLAGS.test(segment)) continue;
+      if (SCOPE_FLAGS.test(segment) || inPackage(currentDir)) continue;
       const script = rest
         .filter((t) => !t.startsWith('-'))
         .filter((t) => t !== 'run')[0];
@@ -463,7 +606,7 @@ export function classifyGateCommand(command) {
     }
 
     if (head === 'turbo') {
-      if (SCOPE_FLAGS.test(segment)) continue;
+      if (SCOPE_FLAGS.test(segment) || inPackage(currentDir)) continue;
       if (
         rest.some((t) => /^(typecheck|lint|\/\/#lint|\/\/#knip|knip)$/.test(t))
       ) {
@@ -473,13 +616,13 @@ export function classifyGateCommand(command) {
     }
 
     if (head === 'oxlint' || head === 'oxfmt') {
-      if (bareTargets(rest).length === 0) {
+      if (bareTargets(rest).length === 0 && !inPackage(currentDir)) {
         return { kind: 'whole-tree-gate', segment: raw.trim() };
       }
       continue;
     }
 
-    if (head === 'knip') {
+    if (head === 'knip' && !inPackage(currentDir)) {
       return { kind: 'whole-tree-gate', segment: raw.trim() };
     }
   }
@@ -493,9 +636,11 @@ export const GATE_EXPLANATION =
   'are typechecked each time you end a turn, pre-commit blocks commits with ' +
   'lint errors, and knip runs on push. Whole-tree lint/typecheck/knip runs take ' +
   'minutes and only duplicate CI. Fix what the hooks report; for an on-demand ' +
-  'scoped check run `pnpm agent:check`. If the whole-tree command is genuinely ' +
-  'required (for example after changing lint or TypeScript configuration), ' +
-  'prefix it with AGENT_GATES=1.';
+  'scoped check run `pnpm agent:check`, and package-scoped runs ' +
+  '(`pnpm --filter <pkg> typecheck`, or running inside a package directory) ' +
+  'are always allowed. If the whole-tree command is genuinely required (for ' +
+  'example after changing lint or TypeScript configuration), prefix it with ' +
+  'AGENT_GATES=1.';
 
 export const NO_VERIFY_EXPLANATION =
   '`--no-verify` skips the pre-commit hook, which is the lint gate that ' +

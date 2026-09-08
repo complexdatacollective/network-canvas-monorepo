@@ -8,12 +8,16 @@ import {
   changedFiles,
   classifyGateCommand,
   extractEditedFiles,
+  isKnipRelevant,
+  modifiedSince,
   packagesForFiles,
   parseApplyPatchPaths,
   parseApplyPatchResponse,
-  stripEmbeddedText,
+  parsePorcelainZ,
   parseTypecheckOutput,
   resolveRepoRoot,
+  stripEmbeddedText,
+  workspacePackages,
 } from './agent-hooks/lib.mjs';
 
 const repoRoot = path.resolve(
@@ -174,7 +178,11 @@ test('maps changed files to workspace packages with a typecheck script', () => {
     '/repo',
     { readPackage },
   );
-  assert.deepEqual(result, { packages: ['@codaco/interview'], all: false });
+  assert.deepEqual(result, {
+    packages: ['@codaco/interview'],
+    seeds: ['@codaco/interview', 'posthog-proxy'],
+    all: false,
+  });
 });
 
 test('the script option selects packages by a different manifest script', () => {
@@ -359,4 +367,116 @@ test('changedFiles returns absolute paths inside the repository', () => {
     assert.ok(path.isAbsolute(file));
     assert.ok(file.startsWith(repoRoot + path.sep), file);
   }
+});
+
+test('rename records keep both paths so the source package is still checked', () => {
+  const output =
+    'R  packages/b/src/new.ts\0packages/a/src/old.ts\0 M apps/x/src/y.ts\0?? notes.md\0';
+  assert.deepEqual(parsePorcelainZ(output), [
+    'packages/b/src/new.ts',
+    'packages/a/src/old.ts',
+    'apps/x/src/y.ts',
+    'notes.md',
+  ]);
+});
+
+test('option values are not counted as formatter or linter file targets', () => {
+  assert.equal(
+    classifyGateCommand('oxlint -c .oxlintrc.json')?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('oxlint --config .oxlintrc.json --format=agent')?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('oxfmt --ignore-path .prettierignore --check .')?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand(
+      'oxlint -c .oxlintrc.json packages/interview/src/Shell.tsx',
+    ),
+    null,
+  );
+  assert.equal(
+    classifyGateCommand('oxlint -f agent apps/architect/src/App.tsx'),
+    null,
+  );
+});
+
+test('gate commands run from inside a workspace package are package-scoped', () => {
+  const packageDir = (dir) => /\/(apps|packages)\/[^/]+/.test(dir);
+  const options = { root: '/repo', packageDir };
+  assert.equal(
+    classifyGateCommand('cd apps/interviewer && pnpm typecheck', options),
+    null,
+  );
+  assert.equal(
+    classifyGateCommand(
+      'cd /repo/packages/interview && pnpm test && pnpm typecheck',
+      options,
+    ),
+    null,
+  );
+  assert.equal(
+    classifyGateCommand(
+      'cd packages/interview && cd ../.. && pnpm typecheck',
+      options,
+    )?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('pnpm typecheck', {
+      ...options,
+      cwd: '/repo/apps/architect',
+    }),
+    null,
+  );
+  assert.equal(
+    classifyGateCommand('pnpm typecheck', { ...options, cwd: '/repo' })?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('cd docs && pnpm lint', options)?.kind,
+    'whole-tree-gate',
+  );
+});
+
+test('knip relevance covers its configuration as well as code and manifests', () => {
+  for (const file of [
+    'knip.json',
+    'apps/fresco/knip.config.ts',
+    'packages/x/package.json',
+    'packages/x/tsconfig.build.json',
+    'src/a.ts',
+  ]) {
+    assert.equal(isKnipRelevant(file), true, file);
+  }
+  for (const file of ['README.md', 'docs/spec.md', 'apps/x/public/logo.svg']) {
+    assert.equal(isKnipRelevant(file), false, file);
+  }
+});
+
+test('modifiedSince keeps files touched at or after the threshold with a small margin', () => {
+  const mtimes = {
+    '/repo/a.ts': 10_000,
+    '/repo/b.ts': 8_500,
+    '/repo/c.ts': 5_000,
+    '/repo/gone.ts': null,
+  };
+  const mtimeOf = (file) => mtimes[file];
+  assert.deepEqual(modifiedSince(Object.keys(mtimes), 10_000, { mtimeOf }), [
+    '/repo/a.ts',
+    '/repo/b.ts',
+  ]);
+});
+
+test('workspacePackages reads every named package from the workspace globs', () => {
+  const map = workspacePackages(repoRoot);
+  assert.ok(map.has('@codaco/interview'));
+  assert.ok(map.has('@codaco/studio-server'), 'nested apps/studio/* glob');
+  assert.ok(map.has('@codaco/protocols'));
+  assert.equal(map.get('@codaco/protocols').manifest.scripts?.test, undefined);
+  assert.ok(map.get('@codaco/interview').manifest.scripts.test);
 });

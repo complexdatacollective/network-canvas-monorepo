@@ -15,6 +15,7 @@ import {
   changedFiles,
   emit,
   isFormattable,
+  isKnipRelevant,
   isLintable,
   packagesForFiles,
   parseTypecheckOutput,
@@ -40,17 +41,25 @@ if (changed.length === 0) {
 
 const relative = (file) => path.relative(root, file);
 const problems = [];
-const isCode = (file) => /\.(m?[jt]sx?|c[jt]s)$/.test(file);
 
 const fingerprint = changeFingerprint(root, changed);
 const state = readState(root);
 if (!manual && state.lastClean === fingerprint) process.exit(0);
 
-const { packages, all } = packagesForFiles(changed, root);
+// `checked` stays false when the typecheck could not run at all, so an
+// unchecked state is never recorded as clean.
+let checked = false;
+const { seeds, all } = packagesForFiles(changed, root);
 const turbo = binPath(root, 'turbo');
-if (turbo && (all || packages.length > 0)) {
+if (!all && seeds.length === 0) {
+  checked = true;
+} else if (!turbo) {
+  problems.push(
+    'Typecheck could not run: node_modules/.bin/turbo is missing (dependencies not installed).',
+  );
+} else {
   const args = ['run', 'typecheck', '--continue', '--output-logs=errors-only'];
-  if (!all) for (const name of packages) args.push(`--filter=...${name}`);
+  if (!all) for (const name of seeds) args.push(`--filter=...${name}`);
   const result = run(turbo, args, {
     cwd: root,
     env: {
@@ -62,29 +71,26 @@ if (turbo && (all || packages.length > 0)) {
   });
   if (result.error) {
     problems.push(`Typecheck did not finish: ${result.error.message}`);
-  } else if (result.status !== 0) {
-    const { errors, failed } = parseTypecheckOutput(
-      `${result.stdout}\n${result.stderr}`,
-    );
-    const detail =
-      errors.length > 0
-        ? errors.join('\n')
-        : `${result.stdout}\n${result.stderr}`.trim();
-    problems.push(
-      `Typecheck failed${failed.length > 0 ? ` (${failed.join('; ')})` : ''}:\n${truncateLines(detail, 40)}`,
-    );
+  } else {
+    checked = true;
+    if (result.status !== 0) {
+      const { errors, failed } = parseTypecheckOutput(
+        `${result.stdout}\n${result.stderr}`,
+      );
+      const detail =
+        errors.length > 0
+          ? errors.join('\n')
+          : `${result.stdout}\n${result.stderr}`.trim();
+      problems.push(
+        `Typecheck failed${failed.length > 0 ? ` (${failed.join('; ')})` : ''}:\n${truncateLines(detail, 40)}`,
+      );
+    }
   }
 }
 
 // knip is pre-push work (see .husky/pre-push); manual mode runs it on demand.
-const knipRelevant =
-  manual &&
-  changed.some(
-    (file) =>
-      isCode(file) || /(^|\/)(package\.json|tsconfig[^/]*\.json)$/.test(file),
-  );
 const knip = binPath(root, 'knip');
-if (knip && knipRelevant) {
+if (manual && knip && changed.some((file) => isKnipRelevant(relative(file)))) {
   const result = run(knip, ['--no-progress'], {
     cwd: root,
     env: { SKIP_ENV_VALIDATION: 'true' },
@@ -110,10 +116,7 @@ if (manual) {
     const result = run(
       oxfmt,
       ['--check', '--no-error-on-unmatched-pattern', ...formattable],
-      {
-        cwd: root,
-        timeoutMs: 60_000,
-      },
+      { cwd: root, timeoutMs: 60_000 },
     );
     if (result.status !== 0) {
       problems.push(
@@ -147,11 +150,11 @@ const key = input.agent_id ?? input.agentId ?? 'main';
 
 if (problems.length === 0) {
   delete state[key];
-  if (!manual) state.lastClean = fingerprint;
+  if (!manual && checked) state.lastClean = fingerprint;
   writeState(root, state);
   if (manual)
     console.log(
-      `agent:check: OK (${changed.length} changed files, packages: ${all ? 'all' : packages.join(', ') || 'none'}).`,
+      `agent:check: OK (${changed.length} changed files, packages: ${all ? 'all' : seeds.join(', ') || 'none'}).`,
     );
   process.exit(0);
 }

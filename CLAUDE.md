@@ -27,9 +27,9 @@ Formatting, lint, typecheck, and `knip` run for you through agent hooks
 `git commit --no-verify`: they take minutes, duplicate CI, and a hook refuses
 them.
 
-- **On every file edit** the file is formatted (`oxfmt`) and lint-fixed
-  (`oxlint --fix`); remaining lint errors and any reformatting are reported
-  back to you. Re-read a reformatted file before an edit that depends on its
+- **On every file edit** (including files written through shell commands)
+  the file is formatted (`oxfmt`) and lint-fixed (`oxlint --fix`); remaining
+  lint errors and any reformatting are reported back to you. Re-read a reformatted file before an edit that depends on its
   exact surrounding text.
 - **When you end a turn** (main agent and subagents alike) the packages you
   changed and their dependents are typechecked through turbo (cached, so

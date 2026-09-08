@@ -2,11 +2,14 @@
 // `pnpm agent:test`: in each workspace package that contains changed files,
 // runs only the vitest tests whose import graph touches the files changed on
 // this branch (vitest --changed <merge-base>, which also covers uncommitted
-// work). `--dependents` also runs the packages that consume the changed ones;
-// by default they are only listed, because a change in a widely imported
-// package legitimately reaches most of the repository's tests (a
-// shared-consts edit measured at eight minutes) and CI covers them anyway.
-// Other arguments are passed through to vitest.
+// work). A changed package that has no test script of its own (for example
+// packages/protocols, whose JSON is imported by other packages' tests) is
+// covered by running its test-bearing dependents. `--dependents` also runs
+// the dependents of packages that do have tests; by default those are only
+// listed, because a change in a widely imported package legitimately reaches
+// most of the repository's tests (a shared-consts edit measured at eight
+// minutes) and CI covers them anyway. Other arguments are passed through to
+// vitest.
 import { spawnSync } from 'node:child_process';
 
 import {
@@ -16,11 +19,16 @@ import {
   packagesForFiles,
   resolveRepoRoot,
   run,
+  workspacePackages,
 } from './lib.mjs';
 
 const root = resolveRepoRoot({});
 const includeDependents = process.argv.includes('--dependents');
-const extra = process.argv.slice(2).filter((arg) => arg !== '--dependents');
+// --list prints the plan without running vitest.
+const listOnly = process.argv.includes('--list');
+const extra = process.argv
+  .slice(2)
+  .filter((arg) => arg !== '--dependents' && arg !== '--list');
 const changed = changedFiles(root);
 
 if (changed.length === 0) {
@@ -28,30 +36,27 @@ if (changed.length === 0) {
   process.exit(0);
 }
 
-const { packages, all } = packagesForFiles(changed, root, { script: 'test' });
+const { packages, seeds, all } = packagesForFiles(changed, root, {
+  script: 'test',
+});
+const workspace = workspacePackages(root);
+const hasTests = (name) => Boolean(workspace.get(name)?.manifest.scripts?.test);
 const base =
   git(['merge-base', 'HEAD', 'origin/main'], root) ??
   git(['merge-base', 'HEAD', 'main'], root);
 
 if (all) {
   console.log(
-    'agent:test: shared configuration changed (root manifest, lockfile, turbo.json, or tooling/typescript). ' +
+    'agent:test: shared configuration changed (root manifest, lockfile, turbo.json, tooling/typescript, or a root TypeScript source). ' +
       'This run covers only the packages that contain changed files; CI runs the whole suite.',
   );
 }
-if (packages.length === 0) {
-  console.log(
-    'agent:test: no changed files inside a package with a test script.',
-  );
-  process.exit(0);
-}
 
-// A change in a package can break tests in the packages that consume its
-// source. turbo's `...pkg` filter lists them; vitest --changed then selects
-// only the tests whose import graph reaches the change.
+// Test-bearing packages that consume the given packages (turbo's `...pkg`
+// filter), excluding the seeds themselves.
 function dependentsOf(names) {
   const turbo = binPath(root, 'turbo');
-  if (!turbo) return [];
+  if (!turbo || names.length === 0) return [];
   const args = ['run', 'test', '--dry-run=json'];
   for (const name of names) args.push(`--filter=...${name}`);
   const result = run(turbo, args, {
@@ -63,20 +68,44 @@ function dependentsOf(names) {
   try {
     const selected = JSON.parse(result.stdout).packages ?? [];
     return selected
-      .filter((name) => !names.includes(name))
+      .filter((name) => !seeds.includes(name) && hasTests(name))
       .sort((a, b) => a.localeCompare(b));
   } catch {
     return [];
   }
 }
 
-const dependents = dependentsOf(packages);
-const targets = includeDependents ? [...packages, ...dependents] : packages;
-if (!includeDependents && dependents.length > 0) {
+const testless = seeds.filter((name) => !hasTests(name));
+const required = dependentsOf(testless);
+const optional = dependentsOf(seeds).filter((name) => !required.includes(name));
+const targets = [
+  ...new Set([
+    ...packages,
+    ...required,
+    ...(includeDependents ? optional : []),
+  ]),
+].sort((a, b) => a.localeCompare(b));
+
+if (testless.length > 0 && required.length > 0) {
   console.log(
-    `agent:test: not running the ${dependents.length} dependent package(s) that consume the changed code (${dependents.join(', ')}); ` +
+    `agent:test: ${testless.join(', ')} has no test script; running the tests of the packages that consume it (${required.join(', ')}).`,
+  );
+}
+if (!includeDependents && optional.length > 0) {
+  console.log(
+    `agent:test: not running the ${optional.length} dependent package(s) that consume the changed code (${optional.join(', ')}); ` +
       'CI runs them, or pass --dependents to include them here.',
   );
+}
+if (targets.length === 0) {
+  console.log('agent:test: no tests reach the changed files.');
+  process.exit(0);
+}
+if (listOnly) {
+  console.log(
+    `agent:test: would run vitest --changed in ${targets.join(', ')}`,
+  );
+  process.exit(0);
 }
 
 const failed = [];

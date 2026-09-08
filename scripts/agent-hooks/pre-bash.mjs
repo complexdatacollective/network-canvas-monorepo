@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 // PreToolUse hook for shell commands: refuses whole-tree lint/typecheck/knip
 // runs (the other hooks make them redundant and they cost minutes) and
-// `git commit --no-verify`, explaining the alternative. AGENT_GATES=1 in the
-// command bypasses the refusal.
+// `git commit --no-verify`, explaining the alternative. Package-scoped runs,
+// including those from inside a package directory, are allowed. AGENT_GATES=1
+// in the command bypasses the refusal.
 import {
   GATE_EXPLANATION,
   NO_VERIFY_EXPLANATION,
   classifyGateCommand,
   emit,
   readHookInput,
+  resolveRepoRoot,
 } from './lib.mjs';
 
 const input = readHookInput();
@@ -20,7 +22,11 @@ const command =
       ? toolInput.command.join(' ')
       : (toolInput.cmd ?? '');
 
-const verdict = classifyGateCommand(String(command));
+const root = resolveRepoRoot(input);
+const verdict = classifyGateCommand(String(command), {
+  cwd: toolInput.workdir ?? toolInput.cwd ?? input.cwd,
+  root,
+});
 if (!verdict) process.exit(0);
 
 const explanation =
