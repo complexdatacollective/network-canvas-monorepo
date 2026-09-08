@@ -113,11 +113,14 @@ close them.
 6. Generate a configuration-derived subprocessor inventory with explicit unknown
    contractual fields and a drift check.
 
-PRs #1718, #1723, #1734, #1735 and #1736 remain under review or awaiting their
-parents. Current-head findings, required checks and post-merge ancestry remain
-mandatory delivery gates. The separately rejected migration conflict resolution
-stays pending authorization; unrelated implementation continues in isolated
-trees.
+Update on 2026-09-08: PRs #1734, #1735 and #1736 are merged, and their
+reviewed commits are verified ancestors of origin/main. PRs #1718 and #1723
+remain under review or awaiting their parent. Current-head findings, required
+checks and post-merge ancestry remain mandatory delivery gates. Josh explicitly
+approved the migration conflict resolution twice; it is authorized and was
+applied before worktree reconstruction. It is no longer awaiting permission.
+See `2026-09-08-studio-1243-delivery-checkpoint.md` for current recovered work
+and remaining qualification gates.
 
 Live Netlify inventory on this date confirms production project
 `networkcanvas-studio` owns `networkcanvas.studio`, and
