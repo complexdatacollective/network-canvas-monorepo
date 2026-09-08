@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ComponentType, useMemo } from 'react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
@@ -11,6 +11,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { useStageEditorController } from '../../../controller.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
+import type { CreateOptionOutcome } from '../../../sections/CreatableVariablePicker.tsx';
 import {
   createStageIdentity,
   ProtocolBuilderSessionStore,
@@ -93,17 +94,35 @@ function createSession(fields: SectionDoc) {
 }
 
 /**
+ * What the row answered the picker with, newest last.
+ *
+ * The answer IS the contract — a picker keeps the name it submitted on a
+ * refusal and empties the box on every answer that means the attribute exists
+ * — so a create whose outcome nothing reads is a create only half tested.
+ * Emptied per test by the suite that presses the button.
+ */
+const answered: CreateOptionOutcome[] = [];
+
+/**
  * A picker that can CREATE. The real one is a host surface — it knows how that
  * host lists, groups and creates variables — so all this stands in for is the
- * one affordance that asks for a new attribute by name.
+ * one affordance that asks for a new attribute by name, and the one thing
+ * every picker does with the answer: read it.
  */
 function CreatingVariablePicker({
   onCreateOption,
 }: {
-  onCreateOption?: (variableName: string) => void;
+  onCreateOption?: (variableName: string) => Promise<CreateOptionOutcome>;
 }) {
   return (
-    <button type="button" onClick={() => onCreateOption?.('Brand new')}>
+    <button
+      type="button"
+      onClick={() =>
+        void onCreateOption?.('Brand new').then((outcome) =>
+          answered.push(outcome),
+        )
+      }
+    >
       Create an attribute
     </button>
   );
@@ -463,6 +482,19 @@ describe('a variable created while the list is moving', () => {
   const attributesOf = (session: ProtocolBuilderSessionStore) =>
     session.getSnapshot().editedSection.fields.additionalAttributes;
 
+  /**
+   * Dismisses the notice, which is what the row is waiting on before it
+   * answers the picker: the researcher has to have READ where the attribute
+   * went before the box it was named in empties under them.
+   */
+  const acknowledge = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+  };
+
+  beforeEach(() => {
+    answered.length = 0;
+  });
+
   it('assigns the new attribute to the row it was created from', async () => {
     const user = userEvent.setup();
     const session = openList([{ variable: 'helpful', value: true }], () =>
@@ -478,6 +510,8 @@ describe('a variable created while the list is moving', () => {
         { variable: 'worried', value: true },
       ]),
     );
+    // Which is what the picker is told, so it empties the name box.
+    await waitFor(() => expect(answered).toEqual([{ status: 'created' }]));
   });
 
   it('refuses to stamp it onto a row that was replaced meanwhile', async () => {
@@ -519,6 +553,10 @@ describe('a variable created while the list is moving', () => {
       await screen.findByText(/was replaced while it was being created/),
     ).toBeInTheDocument();
     expect(attributesOf(session)).toEqual(arrived);
+    // And the picker is told the same thing, so the name it submitted leaves
+    // the box: asking for it again is refused for a duplicate name.
+    await acknowledge(user);
+    await waitFor(() => expect(answered).toEqual([{ status: 'unassigned' }]));
   });
 
   /**
@@ -566,6 +604,7 @@ describe('a variable created while the list is moving', () => {
       ]),
     );
     expect(screen.queryByText(/was created but not assigned/)).toBeNull();
+    await waitFor(() => expect(answered).toEqual([{ status: 'created' }]));
   });
 
   /**
@@ -605,6 +644,8 @@ describe('a variable created while the list is moving', () => {
       ),
     ).toBeInTheDocument();
     expect(attributesOf(session)).toEqual(attributes);
+    await acknowledge(user);
+    await waitFor(() => expect(answered).toEqual([{ status: 'unassigned' }]));
   });
 
   /**
@@ -646,6 +687,27 @@ describe('a variable created while the list is moving', () => {
       await screen.findByText(/no longer in this list/),
     ).toBeInTheDocument();
     expect(attributesOf(session)).toEqual([]);
+    await acknowledge(user);
+    await waitFor(() => expect(answered).toEqual([{ status: 'unassigned' }]));
+  });
+
+  /**
+   * The only answer that is a refusal, and the only one that leaves the name
+   * in the box: the host wrote nothing, so there is no attribute anywhere and
+   * nothing to say about where it went.
+   */
+  it('answers a create the host refused with a refusal', async () => {
+    const user = userEvent.setup();
+    const attributes = [{ variable: 'helpful', value: true }];
+    const session = openList(attributes, () => Promise.resolve(undefined));
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create an attribute' }),
+    );
+
+    await waitFor(() => expect(answered).toEqual([{ status: 'refused' }]));
+    expect(attributesOf(session)).toEqual(attributes);
+    expect(screen.queryByText(/was created but not assigned/)).toBeNull();
   });
 });
 
