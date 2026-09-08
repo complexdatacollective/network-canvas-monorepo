@@ -12,7 +12,14 @@ export default defineConfig(({ mode }) => ({
   build: {
     ssr: true,
     rolldownOptions: {
-      input: { index: 'src/index.ts', migrate: 'src/migrate.ts' },
+      input: {
+        index: 'src/index.ts',
+        migrate: 'src/migrate.ts',
+        encryption: 'src/encryption.ts',
+        backup: 'src/backup.ts',
+        configure: 'src/configure.ts',
+        diagnostics: 'src/diagnostics.ts',
+      },
     },
     outDir: 'dist',
     emptyOutDir: true,

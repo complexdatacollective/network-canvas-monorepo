@@ -5,6 +5,8 @@ import { Pool, type PoolClient } from 'pg';
 import {
   assertSafePostgresDatabaseEnrollment,
   copyPostgresAdministrativeLogins,
+  copyPostgresDatabaseEnrollmentOptions,
+  type PostgresDatabaseEnrollmentOptions,
   UnsafePostgresDatabaseEnrollmentError,
 } from '@codaco/studio-sync/postgres-database-enrollment';
 import {
@@ -19,6 +21,10 @@ import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
 import { ASSET_SIDECAR_SQL, ASSET_TABLES } from '../asset/schema.ts';
+import {
+  AUDIT_ALERT_SIDECAR_SQL,
+  AUDIT_ALERT_TABLES,
+} from '../audit/alert-schema.ts';
 import { AUDIT_SIDECAR_SQL, AUDIT_TABLES } from '../audit/schema.ts';
 import { CONSENT_SIDECAR_SQL, CONSENT_TABLES } from '../consent/schema.ts';
 import {
@@ -26,11 +32,13 @@ import {
   EXPERIMENT_TABLES,
 } from '../experiment/schema.ts';
 import { FEEDBACK_SIDECAR_SQL, FEEDBACK_TABLES } from '../feedback/schema.ts';
+import { INSTANCE_SIDECAR_SQL, INSTANCE_TABLES } from '../instance/schema.ts';
 import {
   MONITORING_SIDECAR_SQL,
   MONITORING_TABLES,
 } from '../monitoring/schema.ts';
 import { NETWORK_SIDECAR_SQL, NETWORK_TABLES } from '../network/schema.ts';
+import { PII_SIDECAR_SQL, PII_TABLES } from '../pii/schema.ts';
 import { PROTOCOL_SIDECAR_SQL, PROTOCOL_TABLES } from '../protocol/schema.ts';
 import { SCHEDULE_SIDECAR_SQL, SCHEDULE_TABLES } from '../schedule/schema.ts';
 import {
@@ -45,8 +53,12 @@ import {
 import { TEMPLATE_SIDECAR_SQL, TEMPLATE_TABLES } from '../template/schema.ts';
 import { TOKEN_SIDECAR_SQL, TOKEN_TABLES } from '../token/schema.ts';
 import { WEBHOOK_SIDECAR_SQL, WEBHOOK_TABLES } from '../webhook/schema.ts';
-import { ACCESS_SIDECAR_SQL } from './access.ts';
+import {
+  ACCESS_SIDECAR_SQL,
+  FINGERPRINT_ACCESS_SIDECAR_SQL,
+} from './access.ts';
 import { AUTH_TABLES } from './auth-schema.ts';
+import { BACKUP_ACCESS_SIDECAR_SQL } from './backup-access.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 
 // Managed like every other table: push diffs the whole public schema, so an
@@ -80,7 +92,10 @@ export const SCHEMA = {
   ...FEEDBACK_TABLES,
   ...MONITORING_TABLES,
   ...AUDIT_TABLES,
+  ...AUDIT_ALERT_TABLES,
   ...INVITATION_DELIVERY_TABLES,
+  ...PII_TABLES,
+  ...INSTANCE_TABLES,
   schemaFingerprint,
 };
 
@@ -95,6 +110,7 @@ export const SCHEMA = {
 export const SIDECARS = [
   SYNC_SIDECAR_SQL,
   ACCESS_SIDECAR_SQL,
+  FINGERPRINT_ACCESS_SIDECAR_SQL,
   PROTOCOL_SIDECAR_SQL,
   ASSET_SIDECAR_SQL,
   STUDY_SIDECAR_SQL,
@@ -109,6 +125,10 @@ export const SIDECARS = [
   FEEDBACK_SIDECAR_SQL,
   MONITORING_SIDECAR_SQL,
   INVITATION_DELIVERY_SIDECAR_SQL,
+  PII_SIDECAR_SQL,
+  INSTANCE_SIDECAR_SQL,
+  BACKUP_ACCESS_SIDECAR_SQL,
+  AUDIT_ALERT_SIDECAR_SQL,
   AUDIT_SIDECAR_SQL,
 ];
 
@@ -149,6 +169,9 @@ export async function checkSchema(
     allowedLogins?: readonly string[];
     administrativeLogins?: readonly string[];
   } = {},
+  // Only an independently verified backup connection may inspect an enrollment
+  // whose writer LOGINs have been closed for capture or recovery.
+  enrollmentOptions: PostgresDatabaseEnrollmentOptions = {},
 ): Promise<SchemaState> {
   const allowUnversioned = options.allowUnversioned === true;
   const unsafe: SchemaState = {
@@ -159,7 +182,9 @@ export async function checkSchema(
   };
   let allowedLogins: string[] | undefined;
   let administrativeLogins: string[];
+  let enrollment: Required<PostgresDatabaseEnrollmentOptions>;
   try {
+    enrollment = copyPostgresDatabaseEnrollmentOptions(enrollmentOptions);
     allowedLogins = options.allowedLogins
       ? [...options.allowedLogins]
       : undefined;
@@ -175,11 +200,15 @@ export async function checkSchema(
   if (pool instanceof Pool) {
     const client = await pool.connect();
     try {
-      return await checkSchema(client, {
-        allowUnversioned,
-        allowedLogins,
-        administrativeLogins,
-      });
+      return await checkSchema(
+        client,
+        {
+          allowUnversioned,
+          allowedLogins,
+          administrativeLogins,
+        },
+        enrollment,
+      );
     } finally {
       client.release();
     }
@@ -187,7 +216,11 @@ export async function checkSchema(
   if (!allowUnversioned) {
     if (!allowedLogins) return unsafe;
     try {
-      await assertSafePostgresDatabaseEnrollment(pool, allowedLogins);
+      await assertSafePostgresDatabaseEnrollment(
+        pool,
+        allowedLogins,
+        enrollment,
+      );
     } catch (error) {
       if (!(error instanceof UnsafePostgresDatabaseEnrollmentError))
         throw error;
@@ -281,12 +314,16 @@ export async function checkSchema(
 
   if (!allowUnversioned && (stamped || tables)) {
     try {
-      await assertSafePostgresRestrictedIdentities(pool, {
-        allowedLogins: allowedLogins ?? [],
-        administrativeLogins,
-        runtimeRoleSets: [[TENANT_ROLES.app], [TENANT_ROLES.maintenance]],
-        backupRole: BACKUP_ROLE,
-      });
+      await assertSafePostgresRestrictedIdentities(
+        pool,
+        {
+          allowedLogins: allowedLogins ?? [],
+          administrativeLogins,
+          runtimeRoleSets: [[TENANT_ROLES.app], [TENANT_ROLES.maintenance]],
+          backupRole: BACKUP_ROLE,
+        },
+        enrollment,
+      );
     } catch (error) {
       if (!(error instanceof UnsafePostgresRestrictedIdentitiesError))
         throw error;

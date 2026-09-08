@@ -1,0 +1,14 @@
+# Offline key verification has no application login. It receives only the
+# maintenance role, which can SET studio_maintenance but never studio_app.
+services:
+  encryption-verify:
+    image: ${STUDIO_IMAGE:?Run configure with the released image digest}
+    env_file: ['${STUDIO_ENCRYPTION_FILE:-./deployment/encryption.env}']
+    command: [encryption, verify]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    environment:
+      DATABASE_URL: postgresql://studio_maintenance_runtime:${STUDIO_MAINTENANCE_DATABASE_PASSWORD:?Missing maintenance password}@postgres:5432/studio
+      STUDIO_DATABASE_ALLOWED_LOGINS: '${STUDIO_DATABASE_ALLOWED_LOGINS:?Missing explicit database login enrollment}'
+    networks: [data]
