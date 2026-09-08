@@ -1663,6 +1663,18 @@
     "defaultMessage": "Verification failed.",
     "description": "Researcher-facing actions / webauthn: Verification failed."
   },
+  "fresco.actions.webauthn.passkeyCannotVerifyUserAtRegistration": {
+    "defaultMessage": "This passkey cannot verify your identity. Choose a passkey that confirms who you are with a PIN, fingerprint, or face.",
+    "description": "Researcher-facing actions / webauthn: registration refused because the authenticator skipped user verification."
+  },
+  "fresco.actions.webauthn.passkeyDidNotVerifyUserAtReauth": {
+    "defaultMessage": "This passkey did not verify your identity. Add a passkey that confirms who you are with a PIN, fingerprint, or face, then try again.",
+    "description": "Researcher-facing actions / webauthn: an already signed-in researcher re-authenticated with a passkey whose authenticator skipped user verification."
+  },
+  "fresco.actions.webauthn.passkeyDidNotVerifyUserAtSignIn": {
+    "defaultMessage": "This passkey did not verify your identity. Fresco requires a passkey that confirms who you are with a PIN, fingerprint, or face. Try another passkey, or ask another administrator to reset your authentication.",
+    "description": "Researcher-facing actions / webauthn: sign-in refused because the authenticator skipped user verification; names the two ways back in."
+  },
   "fresco.activity.APITokenCreated": {
     "defaultMessage": "API Token Created",
     "description": "Localized display label for the stable API Token Created activity event type. Never persist the translated label."
@@ -2387,6 +2399,22 @@
     "defaultMessage": "{total, number} ({completed, plural, one {# completed} other {# completed}})",
     "description": "Total interviews and completed interviews for one participant."
   },
+  "fresco.passkeyCeremony.reauthDidNotComplete": {
+    "defaultMessage": "Passkey check did not complete. If you cancelled, try again. If your passkey cannot confirm who you are with a PIN, fingerprint, or face, add a passkey that can and use that one.",
+    "description": "Researcher-facing settings: the browser closed the passkey prompt without a credential while a signed-in researcher re-authenticated before switching to a password."
+  },
+  "fresco.passkeyCeremony.registrationDidNotComplete": {
+    "defaultMessage": "Passkey creation did not complete. If you cancelled, try again. If your device or security key cannot confirm who you are with a PIN, fingerprint, or face, choose a different one.",
+    "description": "Researcher-facing setup and settings: the browser closed the passkey creation prompt without a credential."
+  },
+  "fresco.passkeyCeremony.registrationUnsupported": {
+    "defaultMessage": "This device or security key cannot create a Fresco passkey. Fresco needs a passkey that is stored on the device and confirms who you are with a PIN, fingerprint, or face. Choose a different one.",
+    "description": "Researcher-facing setup and settings: the browser reported that the chosen authenticator cannot make a discoverable, user-verifying passkey."
+  },
+  "fresco.passkeyCeremony.signInDidNotComplete": {
+    "defaultMessage": "Passkey sign-in did not complete. If you cancelled, try again. If your passkey cannot confirm who you are with a PIN, fingerprint, or face, use a different passkey or ask another administrator to reset your authentication.",
+    "description": "Researcher-facing sign-in: the browser closed the passkey prompt without a credential (cancelled, timed out, or no authenticator could verify the user); names the two ways back in."
+  },
   "fresco.passkeyName.device": {
     "defaultMessage": "Security key",
     "description": "Generic name for an unknown authenticator whose credential is bound to one device. Vendor and stored friendly names remain unchanged."
@@ -2870,10 +2898,6 @@
   "fresco.settings.UserManagement.copyNewPasswordsDoNotMatch": {
     "defaultMessage": "New passwords do not match",
     "description": "Researcher-facing settings / UserManagement: New passwords do not match"
-  },
-  "fresco.settings.UserManagement.copyPasskeyCreationCancelled": {
-    "defaultMessage": "Passkey creation cancelled.",
-    "description": "Researcher-facing settings / UserManagement: Passkey creation cancelled."
   },
   "fresco.settings.UserManagement.copyPasskeyCreationFailed": {
     "defaultMessage": "Passkey creation failed.",
