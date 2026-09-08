@@ -62,6 +62,32 @@ async function counts(deployment: Deployment) {
   }
 }
 
+async function countsInRestoredCompose(deployment: Deployment) {
+  const result = await deployment.compose([
+    'exec',
+    '-T',
+    'postgres',
+    'psql',
+    '-X',
+    '-qAt',
+    '-v',
+    'ON_ERROR_STOP=1',
+    '-U',
+    'postgres',
+    '-d',
+    'studio',
+    '-c',
+    "SELECT json_build_object('instance', (SELECT count(*)::int FROM studio_instance), 'audit', (SELECT count(*)::int FROM audit_events), 'credentials', (SELECT count(*)::int FROM credential_audit_events), 'migrations', (SELECT count(*)::int FROM studio_migrations.history), 'refs', (SELECT count(*)::int FROM asset_references));",
+  ]);
+  return JSON.parse(result.stdout.toString().trim()) as {
+    instance: number;
+    audit: number;
+    credentials: number;
+    migrations: number;
+    refs: number;
+  };
+}
+
 async function existingRestoreState(deployment: Deployment) {
   const ids = (
     await deployment.execute('docker', [
@@ -120,6 +146,9 @@ async function prepareRestoreTarget(deployment: Deployment, backup: string) {
 async function alternateRestoreTargets(
   backup: string,
   custody: string,
+  registryCustody: string,
+  reconciliation: string,
+  reconciliationSha: string,
   existing: Deployment,
 ) {
   const protectedState = await existingRestoreState(existing);
@@ -176,6 +205,11 @@ async function alternateRestoreTargets(
     try {
       await prepareRestoreTarget(probe, backup);
       await cp(custody, join(probe.directory, 'deployment/encryption.env'));
+      if (kind === 'project-name')
+        await appendFile(
+          join(probe.directory, '.env'),
+          `\nCOMPOSE_PROJECT_NAME='${existing.project}'\n`,
+        );
       for (const path of [
         'deployment/encryption.env',
         'deployment/recovery-images.yml',
@@ -195,9 +229,10 @@ async function alternateRestoreTargets(
       if (kind === 'missing-administrator-configuration') {
         await rm(join(probe.directory, 'deployment/postgres-privileges.sql'));
       } else if (kind === 'project-name') {
-        // An empty environment value lets the top-level Compose name win.
+        // Restore passes explicit -f files, so COMPOSE_FILE cannot inject a
+        // test override. Bind the conflicting project name through the
+        // copied deployment environment instead.
         environment.COMPOSE_PROJECT_NAME = '';
-        override = `name: ${existing.project}\n`;
       } else if (guardedNetwork) {
         await probe.execute('docker', ['network', 'create', resource]);
         networkCreated = true;
@@ -295,11 +330,27 @@ async function alternateRestoreTargets(
       }
       if (override) {
         await writeFile(join(probe.directory, 'target.yml'), override);
-        environment.COMPOSE_FILE = [
-          join(probe.directory, 'docker-compose.yml'),
-          join(probe.directory, 'qualification.yml'),
-          join(probe.directory, 'target.yml'),
-        ].join(':');
+        const restoreScript = join(probe.directory, 'deployment/restore.sh');
+        const restoreSource = await readFile(restoreScript, 'utf8');
+        const composeFiles = ' -f deployment/registry/recovery.yml --profile';
+        const targetComposeFiles =
+          ' -f deployment/registry/recovery.yml -f target.yml --profile';
+        const targetConfigFiles = String.raw`  -f "$backup/deployment/recovery-images.yml" -f deployment/registry/recovery.yml \
+  --profile`;
+        const targetConfigFilesWithOverlay = String.raw`  -f "$backup/deployment/recovery-images.yml" -f deployment/registry/recovery.yml -f target.yml \
+  --profile`;
+        if (
+          !restoreSource.includes(composeFiles) ||
+          !restoreSource.includes(targetConfigFiles)
+        )
+          throw new Error('Restore harness Compose file list changed.');
+        await writeFile(
+          restoreScript,
+          restoreSource
+            .replace(composeFiles, targetComposeFiles)
+            .replace(targetConfigFiles, targetConfigFilesWithOverlay),
+          { mode: 0o700 },
+        );
       }
       const networkId = networkCreated
         ? (
@@ -317,7 +368,14 @@ async function alternateRestoreTargets(
       if (networkCreated) expect(networkId).toMatch(/^[a-f0-9]{64}$/);
       const refused = await probe.execute(
         'sh',
-        ['deployment/restore.sh', backup, custody],
+        [
+          'deployment/restore.sh',
+          backup,
+          custody,
+          registryCustody,
+          reconciliation,
+          reconciliationSha,
+        ],
         { failure: true, environment },
       );
       expect(refused.code, kind).not.toBe(0);
@@ -457,14 +515,6 @@ async function appendCurrentKeys(deployment: Deployment) {
     content,
     { mode: 0o600 },
   );
-  await deployment.compose([
-    'run',
-    '--rm',
-    '--no-deps',
-    'studio',
-    'encryption',
-    'verify',
-  ]);
   return keyset;
 }
 
@@ -474,6 +524,7 @@ async function overlapUploadAndBackup(
   cookie: string,
   backup: string,
   custody: string,
+  registryCustody: string,
 ) {
   const bytes = Buffer.from(
     'A committed asset reference whose bytes finish during admission drain.',
@@ -516,6 +567,7 @@ async function overlapUploadAndBackup(
     'deployment/backup.sh',
     backup,
     custody,
+    registryCustody,
   ]);
   try {
     const signal = await Promise.race([
@@ -676,6 +728,7 @@ it('runs recovery commands without inherited primary-account credentials or Dock
       'DOCKER_HOST',
       'MINIO_IMAGE',
       'PATH',
+      'REGISTRY_IMAGE',
       'STUDIO_IMAGE',
       'STUDIO_PROXY_IP',
       'STUDIO_PROXY_SUBNET',
@@ -698,12 +751,29 @@ it('installs an immutable built image, drains a populated backup and restores al
   const restored = await localDeployment('restore');
   const backup = join(source.root, 'backup');
   const custody = join(source.root, 'independent-custody', 'encryption.env');
+  const registryCustody = join(
+    source.root,
+    'independent-custody',
+    'registry.env',
+  );
+  const reconciliation = join(source.root, 'reconciliation.json');
+  const reconciliationBytes = Buffer.from(
+    '{"format":"template-registry-recovery-reconciliation","version":1,"users":[]}\n',
+  );
+  await writeFile(reconciliation, reconciliationBytes, { mode: 0o600 });
+  const reconciliationSha = createHash('sha256')
+    .update(reconciliationBytes)
+    .digest('hex');
   try {
     const token = await source.configure();
     await source.overlay();
     await source.compose(['config', '--quiet']);
     await source.compose(['up', '-d', '--wait', 'postgres']);
     await source.compose(['up', '-d', 'minio-init']);
+    await source.compose(['up', '-d', '--wait', 'registry-postgres']);
+    await source.compose(['up', '-d', 'registry-minio-init']);
+    await source.compose(['run', '--rm', 'registry-migrate']);
+    await source.compose(['up', '-d', 'registry']);
     await source.compose([
       '-f',
       'deployment/migrate.yml',
@@ -814,6 +884,7 @@ it('installs an immutable built image, drains a populated backup and restores al
           'deployment/backup.sh',
           refusedBackup,
           join(source.root, 'refused-active-writer-keys.env'),
+          join(source.root, 'refused-active-writer-registry.env'),
         ],
         { failure: true },
       );
@@ -825,14 +896,37 @@ it('installs an immutable built image, drains a populated backup and restores al
         { code: 'ENOENT' },
       );
       await outside.query(
-        'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN',
+        'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; GRANT studio_app, studio_maintenance TO studio_migrator WITH SET TRUE, INHERIT FALSE; GRANT studio_app TO studio_runtime WITH SET TRUE, INHERIT FALSE; GRANT studio_maintenance TO studio_maintenance_runtime WITH SET TRUE, INHERIT FALSE',
       );
     } finally {
       outside.release();
       await outsidePools.close();
     }
+    await source.compose([
+      'exec',
+      '-T',
+      'registry-postgres',
+      'psql',
+      '-X',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-U',
+      'postgres',
+      '-d',
+      'postgres',
+      '-c',
+      'ALTER ROLE registry_migrator LOGIN; ALTER ROLE registry_runtime LOGIN; ALTER ROLE registry_operations LOGIN; GRANT registry_app TO registry_runtime WITH SET TRUE, INHERIT FALSE; GRANT registry_operator TO registry_operations WITH SET TRUE, INHERIT FALSE',
+    ]);
     await source.compose(['up', '-d', 'studio']);
     await source.ready();
+    const resumedPools = await source.pools();
+    try {
+      expect(
+        (await resumedPools.maintenance.query('SELECT current_user')).rows,
+      ).toEqual([{ current_user: 'studio_maintenance' }]);
+    } finally {
+      await resumedPools.close();
+    }
     const data = await populate(source, cookie);
     await source.assertTelemetryQuiet();
     const historical = await appendCurrentKeys(source);
@@ -848,6 +942,7 @@ it('installs an immutable built image, drains a populated backup and restores al
       cookie,
       backup,
       custody,
+      registryCustody,
     );
     expect(await readFile(join(backup, 'COMPLETE'), 'utf8')).toContain(
       'quiesced backup',
@@ -952,7 +1047,14 @@ it('installs an immutable built image, drains a populated backup and restores al
     await prepareRestoreTarget(restored, backup);
     const missingCustody = await restored.execute(
       'sh',
-      ['deployment/restore.sh', backup, join(source.root, 'missing-keys.env')],
+      [
+        'deployment/restore.sh',
+        backup,
+        join(source.root, 'missing-keys.env'),
+        registryCustody,
+        reconciliation,
+        reconciliationSha,
+      ],
       { failure: true },
     );
     expect(missingCustody.code).not.toBe(0);
@@ -962,7 +1064,14 @@ it('installs an immutable built image, drains a populated backup and restores al
     });
     const wrongKeyCopy = await restored.execute(
       'sh',
-      ['deployment/restore.sh', backup, wrongCustody],
+      [
+        'deployment/restore.sh',
+        backup,
+        wrongCustody,
+        registryCustody,
+        reconciliation,
+        reconciliationSha,
+      ],
       { failure: true },
     );
     expect(wrongKeyCopy.code).not.toBe(0);
@@ -994,7 +1103,14 @@ it('installs an immutable built image, drains a populated backup and restores al
     );
     const truncated = await restored.execute(
       'sh',
-      ['deployment/restore.sh', backup, custody],
+      [
+        'deployment/restore.sh',
+        backup,
+        custody,
+        registryCustody,
+        reconciliation,
+        reconciliationSha,
+      ],
       { failure: true },
     );
     expect(truncated.code).not.toBe(0);
@@ -1040,7 +1156,14 @@ it('installs an immutable built image, drains a populated backup and restores al
       );
       const incomplete = await restored.execute(
         'sh',
-        ['deployment/restore.sh', backup, custody],
+        [
+          'deployment/restore.sh',
+          backup,
+          custody,
+          registryCustody,
+          reconciliation,
+          reconciliationSha,
+        ],
         { failure: true },
       );
       expect(incomplete.code).not.toBe(0);
@@ -1069,10 +1192,15 @@ it('installs an immutable built image, drains a populated backup and restores al
       'deployment/restore.sh',
       backup,
       custody,
+      registryCustody,
+      reconciliation,
+      reconciliationSha,
     ]);
     expect(restoredResult.stdout.toString()).toMatch(/Loaded image(?: ID)?:/);
-    await restored.compose(['wait', 'minio-init']);
-    expect(await counts(restored)).toEqual({ ...baseline, refs: 2 });
+    expect(await countsInRestoredCompose(restored)).toEqual({
+      ...baseline,
+      refs: 2,
+    });
     // Distinct, valid byte canaries prove an accidental repeat cannot replace
     // the target's keys or image selection before refusing its populated DB.
     for (const path of [
@@ -1086,7 +1214,14 @@ it('installs an immutable built image, drains a populated backup and restores al
     const beforeRepeat = await existingRestoreState(restored);
     const populatedRestore = await restored.execute(
       'sh',
-      ['deployment/restore.sh', backup, custody],
+      [
+        'deployment/restore.sh',
+        backup,
+        custody,
+        registryCustody,
+        reconciliation,
+        reconciliationSha,
+      ],
       { failure: true },
     );
     expect(populatedRestore.code).not.toBe(0);
@@ -1097,8 +1232,18 @@ it('installs an immutable built image, drains a populated backup and restores al
     expect(populatedRestore.stderr.toString()).toContain(
       'target Compose project or named volumes already exist',
     );
-    expect(await counts(restored)).toEqual({ ...baseline, refs: 2 });
-    await alternateRestoreTargets(backup, custody, restored);
+    expect(await countsInRestoredCompose(restored)).toEqual({
+      ...baseline,
+      refs: 2,
+    });
+    await alternateRestoreTargets(
+      backup,
+      custody,
+      registryCustody,
+      reconciliation,
+      reconciliationSha,
+      restored,
+    );
     const quarantine = [
       '-f',
       'deployment/recovery-images.yml',
@@ -1110,11 +1255,44 @@ it('installs an immutable built image, drains a populated backup and restores al
       'config',
       '--images',
     ]);
+    const recoveredReferences = [
+      ...new Set(recoveredImages.stdout.toString().trim().split('\n')),
+    ];
+    const recoveredImageIds = [
+      ...new Set(
+        (
+          await restored.execute('docker', [
+            'image',
+            'inspect',
+            '--format',
+            '{{.Id}}',
+            ...recoveredReferences,
+          ])
+        ).stdout
+          .toString()
+          .trim()
+          .split('\n'),
+      ),
+    ];
     expect(
-      [
-        ...new Set(recoveredImages.stdout.toString().trim().split('\n')),
-      ].toSorted((left, right) => left.localeCompare(right)),
+      recoveredImageIds.toSorted((left, right) => left.localeCompare(right)),
     ).toEqual(imageIds.toSorted((left, right) => left.localeCompare(right)));
+    await restored.compose(['up', '-d', '--wait', 'postgres']);
+    await restored.compose([
+      'exec',
+      '-T',
+      'postgres',
+      'psql',
+      '-X',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-U',
+      'postgres',
+      '-d',
+      'postgres',
+      '-c',
+      'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; GRANT studio_app, studio_maintenance TO studio_migrator WITH SET TRUE, INHERIT FALSE; GRANT studio_app TO studio_runtime WITH SET TRUE, INHERIT FALSE; GRANT studio_maintenance TO studio_maintenance_runtime WITH SET TRUE, INHERIT FALSE',
+    ]);
     for (const namespace of ['pii', 'integration', 'blindIndex'] as const) {
       const missing = structuredClone(historical);
       missing[namespace].keys = missing[namespace].keys.filter(

@@ -312,6 +312,14 @@ async function scenario(label: string, cosign: string) {
     depends_on:
       telemetry-detector:
         condition: service_started
+  registry:
+    environment:
+      NODE_OPTIONS: '--require=/qualification-telemetry-egress-preload.cjs'
+    volumes:
+      - ${preload}:/qualification-telemetry-egress-preload.cjs:ro
+    depends_on:
+      telemetry-detector:
+        condition: service_started
   telemetry-detector:
     image: \${STUDIO_IMAGE:?Select the signed Studio image digest}
     entrypoint: [node, -e]
@@ -425,11 +433,12 @@ networks:
         '--no-log-prefix',
         'studio',
         'worker',
+        'registry',
       ]),
     );
   }
   function proveTelemetryProcessInstrumentation(configuration: string) {
-    for (const service of ['studio', 'worker']) {
+    for (const service of ['studio', 'worker', 'registry']) {
       const output = compose(configuration, [
         'run',
         '--rm',
@@ -445,14 +454,17 @@ networks:
     }
   }
   function proveTelemetryDetector(configuration: string) {
-    for (const service of ['studio', 'worker']) {
+    for (const service of ['studio', 'worker', 'registry']) {
       compose(configuration, [
-        'exec',
+        'run',
+        '--rm',
+        '--no-deps',
         '-T',
         '-e',
         'NODE_OPTIONS=',
-        service,
+        '--entrypoint',
         'node',
+        service,
         '-e',
         TELEMETRY_CANARY_SOURCE,
       ]);
