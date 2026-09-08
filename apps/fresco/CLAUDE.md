@@ -105,10 +105,11 @@ ones the Fresco repository holds at that release before resolving, so only the
 vendored packages and the bumped app version are re-resolved, and neither a
 library or third-party version published after the release nor a dependency
 policy change that exists only on main can slip in. The corollary: a
-dependency fix that lives only in the branch's own `pnpm-lock.yaml` cannot
-reach the image, and the lane refuses such a branch — pin the fixed version in
-the catalog or the affected manifest so it becomes a specifier change the
-mirror carries.
+dependency fix that lives only in the branch's own `pnpm-lock.yaml`, or only
+in the root `pnpm-workspace.yaml` outside its catalog (an `overrides` entry,
+say), cannot reach the image, and the lane refuses such a branch — pin the
+fixed version in the affected manifest, or re-pin a catalog entry that package
+consumes, so it becomes a specifier change the mirror carries.
 
 1. Cut the branch from the released tag and cherry-pick the fix:
 

@@ -438,3 +438,43 @@ test('a seeded policy names the previous hotfix’s tarballs, and gives them up'
   // Idempotent, and quiet on a policy that vendored nothing.
   assert.deepEqual(previouslyVendoredPackages(stage), []);
 });
+
+// The mirror's workspace policy is seeded from the released mirror, so a root
+// override — the usual way to patch a transitive — never reaches the image.
+test('a lockfile change explained only by a root override is refused', () => {
+  inWorkspace((root) => {
+    writeFileSync(
+      join(root, 'pnpm-lock.yaml'),
+      "lockfileVersion: '9.0'\n# forced transitive\n",
+    );
+    writeFileSync(
+      join(root, 'pnpm-workspace.yaml'),
+      "packages:\n  - 'packages/*'\ncatalog:\n  redux: 2.0.0\n  lodash: 4.0.0\noverrides:\n  left: 1.0.1\n",
+    );
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'override left');
+    assert.throws(
+      () => assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages),
+      /root pnpm-workspace\.yaml override or policy change does not reach the image/,
+    );
+  });
+});
+
+test('a lockfile change beside a re-pin nothing consumes is refused', () => {
+  inWorkspace((root) => {
+    writeFileSync(
+      join(root, 'pnpm-lock.yaml'),
+      "lockfileVersion: '9.0'\n# re-pin\n",
+    );
+    writeFileSync(
+      join(root, 'pnpm-workspace.yaml'),
+      "packages:\n  - 'packages/*'\ncatalog:\n  redux: 2.0.0\n  lodash: 4.1.0\n",
+    );
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'bump lodash, which nothing uses');
+    assert.throws(
+      () => assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages),
+      /lockfile-only dependency change cannot reach the image/,
+    );
+  });
+});

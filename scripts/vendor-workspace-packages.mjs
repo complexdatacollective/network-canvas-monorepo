@@ -196,17 +196,43 @@ function specifiersAt(ref, path) {
   return JSON.stringify(SPECIFIER_FIELDS.map((f) => manifest[f] ?? null));
 }
 
+// pnpm-workspace.yaml with its default catalog block removed, at `ref`: the
+// part of the file — root overrides, allowed builds, the cooldown — that the
+// mirror never carries. Its policy is seeded from the released mirror's own.
+function workspacePolicyOutsideCatalog(ref) {
+  const shown = spawnSync('git', ['show', `${ref}:pnpm-workspace.yaml`], {
+    cwd: repoRoot(),
+    encoding: 'utf8',
+  });
+  if (shown.status !== 0) return null;
+  const kept = [];
+  let inCatalog = false;
+  for (const line of shown.stdout.split('\n')) {
+    if (/^catalog:\s*$/.test(line)) {
+      inCatalog = true;
+      continue;
+    }
+    if (inCatalog && /^\S/.test(line)) inCatalog = false;
+    if (!inCatalog) kept.push(line);
+  }
+  return kept.join('\n');
+}
+
 // A hotfix whose dependency change lives only in the root lockfile — a
 // transitive patch inside an unchanged range — cannot reach the image: the
 // mirror's resolution starts from the released mirror's own lockfile and
 // re-resolves only the specifiers that changed, and nothing in the branch's
 // lockfile is consulted. Refuse, rather than ship a release that silently
-// lacks the fix it was verified with. Pinning the version in the catalog or
-// in the affected manifest turns it into a specifier change the mirror
-// carries. What counts as a specifier change: any edit to
-// pnpm-workspace.yaml, or a change to the dependency fields (or the `pnpm`
-// block) of any workspace manifest — NOT a version bump, which every hotfix
-// makes to the app's manifest and which resolves nothing.
+// lacks the fix it was verified with. What the mirror carries, and so what
+// explains a lockfile change: a change to the dependency fields (or the
+// `pnpm` block) of a workspace manifest, or a re-pin of a default catalog
+// entry some workspace manifest consumes. What it does not carry: a version
+// bump (every hotfix makes one and it resolves nothing), a catalog entry
+// nothing consumes, and everything in pnpm-workspace.yaml outside the
+// catalog — root overrides included — since the mirror's policy is seeded
+// from the released mirror's own. A branch whose only dependency change is
+// one of those is refused with the way to make it a change the mirror
+// carries.
 export function assertSpecifierDrivenChanges(ref, appDir, wsPackages) {
   const changed = (paths) => {
     const result = spawnSync(
@@ -221,8 +247,17 @@ export function assertSpecifierDrivenChanges(ref, appDir, wsPackages) {
     }
     return result.status === 1;
   };
+  const policyChanged =
+    changed(['pnpm-workspace.yaml']) &&
+    workspacePolicyOutsideCatalog(ref) !==
+      workspacePolicyOutsideCatalog('HEAD');
+  if (policyChanged) {
+    console.error(
+      `[vendor] pnpm-workspace.yaml changed outside its catalog since ${ref}; the mirror's policy is seeded from the released mirror, so that change does not reach the image.`,
+    );
+  }
   if (!changed(['pnpm-lock.yaml'])) return;
-  if (changed(['pnpm-workspace.yaml'])) return;
+
   const manifests = [
     join(appDir, 'package.json'),
     ...Object.values(wsPackages).map(({ dir }) => join(dir, 'package.json')),
@@ -230,8 +265,30 @@ export function assertSpecifierDrivenChanges(ref, appDir, wsPackages) {
   for (const path of manifests) {
     if (specifiersAt(ref, path) !== specifiersAt('HEAD', path)) return;
   }
+  const changedCatalog = catalogEntriesChangedSince(ref);
+  if (changedCatalog.size) {
+    for (const path of manifests) {
+      if (!existsSync(join(repoRoot(), path))) continue;
+      const manifest = JSON.parse(readFileSync(join(repoRoot(), path), 'utf8'));
+      for (const field of ALL_DEP_FIELDS) {
+        for (const [dep, spec] of Object.entries(manifest[field] ?? {})) {
+          if (
+            typeof spec === 'string' &&
+            spec.startsWith('catalog:') &&
+            changedCatalog.has(dep)
+          ) {
+            return;
+          }
+        }
+      }
+    }
+  }
   throw new Error(
-    `The tree changes pnpm-lock.yaml since ${ref} without changing any dependency specifier — a lockfile-only dependency change cannot reach the image, whose resolution starts from the released mirror's lockfile. Pin the version in pnpm-workspace.yaml's catalog or in the affected package.json so the mirror re-resolves it.`,
+    `The tree changes pnpm-lock.yaml since ${ref} without changing any dependency specifier the mirror carries — a manifest's dependency fields, or a catalog entry a workspace manifest consumes. ` +
+      (policyChanged
+        ? 'A root pnpm-workspace.yaml override or policy change does not reach the image, whose policy is seeded from the released mirror. '
+        : "A lockfile-only dependency change cannot reach the image, whose resolution starts from the released mirror's lockfile. ") +
+      'Pin the version in the affected package.json, or re-pin a catalog entry that package consumes, so the mirror re-resolves it.',
   );
 }
 
