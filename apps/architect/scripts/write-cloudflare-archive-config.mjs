@@ -40,7 +40,7 @@
 // an archive whose assets are uncacheable or whose deep links 404, and neither
 // is visible without fetching the deployed site.
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -219,6 +219,10 @@ const main = () => {
 
   const distDir = resolve(appDir, args.get('dist') ?? 'dist');
   const outFile = resolve(appDir, args.get('out') ?? 'wrangler.archive.json');
+  const relativeDist = relative(dirname(outFile), distDir) || '.';
+  const assetsDirectory = relativeDist.startsWith('.')
+    ? relativeDist
+    : `./${relativeDist}`;
 
   const headersPath = resolve(distDir, '_headers');
   writeFileSync(
@@ -253,7 +257,11 @@ const main = () => {
         workers_dev: false,
         preview_urls: false,
         assets: {
-          directory: `./${args.get('dist') ?? 'dist'}`,
+          // Wrangler resolves this against the config file's own directory, so
+          // it is derived rather than echoed back from --dist: an absolute
+          // --dist (archiving a build made in another checkout, say) would
+          // otherwise be concatenated into a path that does not exist.
+          directory: assetsDirectory,
           // Replaces Netlify's `_redirects` SPA rule, which Cloudflare rejects.
           // `html_handling` is left at its default: `/index.html` 307s to `/`,
           // which differs from Netlify but is exercised by the deploy check.
