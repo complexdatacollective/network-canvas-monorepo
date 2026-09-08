@@ -1,6 +1,7 @@
 import {
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -293,6 +294,35 @@ export default function AttributeCodebookControls({
   const definesTrigger = useRef<HTMLButtonElement>(null);
   const rulesTrigger = useRef<HTMLButtonElement>(null);
 
+  /**
+   * The last section there WAS to edit, for an editor that outlives it.
+   *
+   * A collaborator deleting the node or edge type takes this whole document
+   * away under a researcher who is mid-edit, and so does a stage repointed at
+   * a type the codebook does not hold. What was already open then holds a
+   * draft made in this session, of exactly the kind the row dialog around it
+   * keeps through the same arrival — so it is kept too, showing what it had,
+   * against the section it was opened for. Its save is refused for the reason
+   * it is actually refused: there is nowhere left to write it.
+   *
+   * Held in an effect rather than written during the render, so the render
+   * where the section goes still reads the one before it.
+   */
+  const lastSection = useRef<Readonly<{
+    subject: CodebookSubject;
+    document: SectionDoc;
+  }> | null>(null);
+  useEffect(() => {
+    if (subject !== undefined && codebookDocument !== null) {
+      lastSection.current = { subject, document: codebookDocument };
+    }
+  }, [codebookDocument, subject]);
+  const sectionIsLive = subject !== undefined && codebookDocument !== null;
+  const section =
+    subject === undefined || codebookDocument === null
+      ? lastSection.current
+      : { subject, document: codebookDocument };
+
   const variables = variablesIn(codebookDocument);
   // An id no attribute carries is an attribute there is nothing to edit on —
   // which covers the sentinel a row picks while it is still inventing one.
@@ -343,22 +373,25 @@ export default function AttributeCodebookControls({
       ? messages.describeAnswerLabels
       : messages.describeParameters;
 
-  // Nothing to edit AGAINST: there is no codebook for these editors to read,
-  // so there is nothing for an open one to be showing either.
-  if (subject === undefined || codebookDocument === null) {
+  // Nothing to edit AGAINST, and nothing ever was: there is no codebook for
+  // these editors to read, and no editor open that was reading one.
+  if (section === null) {
     return null;
   }
   /**
    * Whether another editor may be STARTED from here.
    *
-   * A lease taken back by a collaborator makes this false, and that is all it
-   * makes false: an editor already open holds a draft the researcher made in
-   * this session, of exactly the kind the row dialog around it deliberately
-   * keeps when the same thing happens. Unmounting it would throw that draft
-   * away to say something the editor can say for itself, with its own save
-   * refused — which is what `readOnly` does to both of them.
+   * A lease taken back by a collaborator makes this false, and a section that
+   * has gone makes it false as well — the second is the stronger fact, because
+   * there is not even a document to open an editor against. Neither makes
+   * anything else false: an editor already open holds a draft the researcher
+   * made in this session, of exactly the kind the row dialog around it
+   * deliberately keeps when the same thing happens. Unmounting it would throw
+   * that draft away to say something the editor can say for itself, with its
+   * own save refused — which is what `readOnly` does to both of them.
    */
   const offerLaunch =
+    sectionIsLive &&
     !readOnly &&
     (canCreate ||
       canEditValues ||
@@ -368,6 +401,12 @@ export default function AttributeCodebookControls({
   if (!offerLaunch && editing === null) {
     return null;
   }
+  // What the open editor reads, which is the section it was opened against
+  // rather than whatever the row is pointing at now.
+  const editorVariables = variablesIn(section.document);
+  // A section that has gone is a section nothing can be written into, which is
+  // the same thing a lost lease says about this researcher.
+  const editorReadOnly = readOnly || !sectionIsLive;
 
   /**
    * The row's own attribute picker, as somewhere focus can always land.
@@ -540,15 +579,15 @@ export default function AttributeCodebookControls({
           <VariableEditor
             mode="create"
             openId={editing.openId}
-            subject={subject}
+            subject={section.subject}
             protocolContext={protocolContext}
-            authoritativeDocument={codebookDocument}
+            authoritativeDocument={section.document}
             variableId={editing.variableId}
             initialDraft={{ name: '', type: inventingType, options: [] }}
             // The kind of answer was chosen in the row behind this, and the
             // whole reason the editor is open is the values that kind needs.
             allowedVariableTypes={[inventingType]}
-            readOnly={readOnly}
+            readOnly={editorReadOnly}
             title={editorTitle}
             description={editorDescription}
             createRequestId={() => uuid()}
@@ -575,8 +614,8 @@ export default function AttributeCodebookControls({
           <VariableEditor
             mode="update"
             openId={editing.openId}
-            subject={subject}
-            authoritativeDocument={codebookDocument}
+            subject={section.subject}
+            authoritativeDocument={section.document}
             variableId={editing.variableId}
             // The control comes from the row rather than from the codebook,
             // because the row is where it was just chosen. The editor writes
@@ -588,7 +627,7 @@ export default function AttributeCodebookControls({
             // false, and reaches this surface for an attribute's VALUES alone,
             // which no control decides.
             initialDraft={{
-              ...asRecord(variables[editing.variableId]),
+              ...asRecord(editorVariables[editing.variableId]),
               ...(!offerParameters || editing.component === ''
                 ? {}
                 : { component: editing.component }),
@@ -599,7 +638,7 @@ export default function AttributeCodebookControls({
             allowedVariableTypes={
               isCollectableType(pickedType) ? [pickedType] : undefined
             }
-            readOnly={readOnly}
+            readOnly={editorReadOnly}
             title={editorTitle}
             description={editorDescription}
             createRequestId={() => uuid()}
@@ -620,15 +659,15 @@ export default function AttributeCodebookControls({
         >
           <CodebookVariableValidationEditor
             openId={editing.openId}
-            subject={subject}
+            subject={section.subject}
             variableId={editing.variableId}
-            authoritativeEntityDocument={codebookDocument}
-            allSubjectVariables={variables}
+            authoritativeEntityDocument={section.document}
+            allSubjectVariables={editorVariables}
             requestMetadata={{
               createId: () => uuid(),
               description: editorDescription,
             }}
-            readOnly={readOnly}
+            readOnly={editorReadOnly}
             onSubmitRequest={(request) =>
               controller.requestCompoundEdit(request)
             }

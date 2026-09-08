@@ -2411,6 +2411,94 @@ describe('a codebook editor open over a row when the lease goes', () => {
 });
 
 /**
+ * The same rule, met from the other direction: the SECTION these editors read
+ * disappearing while one of them is open.
+ *
+ * A collaborator deleting the node type takes the whole codebook document
+ * away, and the launch controls with it — there is nothing left to start an
+ * edit against. What was already started is a draft the researcher made in
+ * this session, exactly like the one a lost lease keeps, and the row dialog
+ * around it survives the same arrival. So the editor stays, holding what they
+ * had, with its save refused for the reason it is actually refused: there is
+ * no section to write into.
+ */
+describe('a codebook editor open over a row when its section goes', () => {
+  const deleteThePersonType = (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    harness.receiveCodebookUpdate({ node: { person: null } });
+  };
+
+  it('keeps the rules editor on screen, with its draft, and refuses the save', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await screen.findByRole('button', { name: 'Save validation' });
+    await harness.user.click(
+      screen.getByRole('checkbox', { name: 'Required' }),
+    );
+
+    deleteThePersonType(harness);
+
+    expect(screen.getByRole('checkbox', { name: 'Required' })).toBeChecked();
+    expect(
+      screen.getByRole('button', { name: 'Save validation' }),
+    ).toBeDisabled();
+  });
+
+  it('keeps the attribute editor on screen, with its draft, and refuses the save', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field', 1);
+    await harness.user.click(
+      dialog.getByRole('button', { name: EDIT_ANSWER_LABELS }),
+    );
+    await screen.findByRole('button', { name: 'Save attribute' });
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+      'Yes, definitely',
+    );
+
+    deleteThePersonType(harness);
+
+    expect(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+    ).toHaveValue('Yes, definitely');
+    expect(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    ).toBeDisabled();
+  });
+
+  /** And the other half, the same as the lease's: nothing new may be started. */
+  it('offers no way to open another one', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    expect(
+      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+    ).toBeInTheDocument();
+
+    deleteThePersonType(harness);
+
+    expect(
+      dialog.queryByRole('button', { name: 'Set rules for this answer' }),
+    ).toBeNull();
+  });
+});
+
+/**
  * A protocol whose codebook happens to hold the id the picker's create option
  * is spelled with.
  *
