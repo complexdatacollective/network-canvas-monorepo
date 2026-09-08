@@ -255,10 +255,12 @@ Any legacy OAuth value refuses normal boot. Startup reads only the stored
 forge that presence flag. `initializeCredentialMigration` permits only the
 bounded remediation references. A legacy participant encryption key must be
 configured, but it receives no proof until AEAD authentication succeeds in the
-same audited transaction that rewrites the row. Configure a distinct, already
-proved current PII key for the replacement. A missing key, invalid tag, invalid
-normalized contact, concurrent change, or interrupted batch leaves that row
-marked legacy and normal startup blocked.
+same audited transaction that rewrites the row. This includes historical
+participants that contain only an encrypted name or attribute bag and therefore
+have no contact blind index to carry the raw legacy marker. Configure a distinct,
+already proved current PII key for the replacement. A missing key, invalid tag,
+invalid normalized contact, concurrent change, or interrupted batch leaves that
+row on its historical key and normal startup blocked.
 
 `migrateLegacyDataBatch` processes at most 100 rows per call: participant
 ciphertext and indexes first, irreversible delivery and opt-out indexes second,
@@ -326,12 +328,15 @@ requires one more call to observe exhaustion. These are bounded progress values,
 not exact remaining-corpus counts. `passComplete` only declares traversal
 exhaustion, never safe key retirement or absence of concurrent old-key writes.
 
-The first CLI batch verifies every ordinary stored reference and admits only the
-two exact raw legacy index sentinels to the offline path. It registers ordinary
-configured keys, but never registers an unverified participant key until a row
-authenticates successfully and never registers a key proof for the public legacy
-contact HMAC. Pre-OAuth phases remove their own raw marker, so an interrupted
-command safely resumes without a separate cursor. Once OAuth returns a non-null
+The first CLI batch verifies every ordinary stored reference. The offline path
+admits the two exact raw legacy index sentinels and the exact no-contact legacy
+participant shape: no contact ciphertext or index, but an encrypted name or
+attributes under a configured non-current key. Mixed or empty shapes remain
+refused. It registers ordinary configured keys, but never registers an unverified
+participant key until a row authenticates successfully and never registers a key
+proof for the public legacy contact HMAC. Pre-OAuth phases remove their own raw
+marker or replace their historical key, so an interrupted command safely resumes
+without a separate cursor. Once OAuth returns a non-null
 `afterId`, resumed batches verify every retained root against immutable proofs.
 Run
 `encryption verify` after the pass for full startup/restore verification. Removing

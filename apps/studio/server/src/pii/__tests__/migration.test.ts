@@ -37,6 +37,100 @@ const migrations = await readMigrations(
   fileURLToPath(new URL('../../../migrations', import.meta.url)),
 );
 
+async function createLegacyNoContactUpgrade(
+  options: {
+    currentKeyId?: 'v1' | 'v2';
+    corruptCiphertext?: boolean;
+  } = {},
+) {
+  if (!database) throw new Error('A local database is required.');
+  const scratch = await createScratchDatabase(database);
+  const maintenance = createMaintenancePool(scratch.db);
+  try {
+    const allowedLogins = await enrollMigrationTestDatabase(
+      scratch.pool,
+      database,
+    );
+    const initial = migrations[0];
+    if (!initial) throw new Error('Initial migration missing.');
+    await migrateDatabase(
+      scratch.pool,
+      [initial],
+      initial.manifest.fingerprint,
+      allowedLogins,
+    );
+    const teamId = randomUUID();
+    const protocolId = randomUUID();
+    const studyId = randomUUID();
+    const participantId = randomUUID();
+    const config = configuration();
+    config.pii.current = options.currentKeyId ?? 'v2';
+    const keys = await loadTestKeys(config);
+    const protection = createDataProtection(keys, {
+      participant: async (_target, read) => {
+        read();
+      },
+      integration: async (_target, read) => {
+        read();
+      },
+    });
+    const plaintext = Buffer.from('Legacy name only');
+    const envelope = protection.encryptParticipant(
+      {
+        teamId,
+        studyId,
+        participantId,
+        column: 'name_ciphertext',
+      },
+      plaintext,
+      'v1',
+    ).envelope;
+    await scratch.pool.query(
+      "INSERT INTO teams (id, name, slug) VALUES ($1, 'Legacy team', $1)",
+      [teamId],
+    );
+    await scratch.pool.query(
+      "INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, 'Legacy protocol')",
+      [protocolId, teamId],
+    );
+    await scratch.pool.query(
+      "INSERT INTO studies (id, team_id, protocol_id, name) VALUES ($1, $2, $3, 'Legacy study')",
+      [studyId, teamId, protocolId],
+    );
+    await scratch.pool.query(
+      `INSERT INTO participants
+        (id, team_id, study_id, participant_code, name_ciphertext,
+         pii_key_id, pii_algorithm)
+       VALUES ($1, $2, $3, 'P-name-only', $4, 'v1', 'aes-256-gcm.v1')`,
+      [
+        participantId,
+        teamId,
+        studyId,
+        options.corruptCiphertext ? randomBytes(envelope.length) : envelope,
+      ],
+    );
+    await migrateDatabase(
+      scratch.pool,
+      migrations,
+      SCHEMA_FINGERPRINT,
+      allowedLogins,
+    );
+    return {
+      scratch,
+      maintenance,
+      config,
+      participantId,
+      plaintext,
+      teamId,
+      studyId,
+    };
+  } catch (error) {
+    await maintenance.end();
+    await scratch.dispose();
+    throw error;
+  }
+}
+
 it('preserves populated legacy credentials and index bytes through migration0002', async () => {
   if (!database) throw new Error('A local database is required.');
   const scratch = await createScratchDatabase(database);
@@ -293,6 +387,436 @@ it('preserves populated legacy credentials and index bytes through migration0002
     }
   } finally {
     await scratch.dispose();
+  }
+});
+
+it('authenticates and re-encrypts legacy participants whose PII has no contact index', async () => {
+  if (!database) throw new Error('A local database is required.');
+  const scratch = await createScratchDatabase(database);
+  const maintenance = createMaintenancePool(scratch.db);
+  try {
+    const allowedLogins = await enrollMigrationTestDatabase(
+      scratch.pool,
+      database,
+    );
+    const initial = migrations[0];
+    if (!initial) throw new Error('Initial migration missing.');
+    await migrateDatabase(
+      scratch.pool,
+      [initial],
+      initial.manifest.fingerprint,
+      allowedLogins,
+    );
+
+    const teamId = randomUUID();
+    const protocolId = randomUUID();
+    const studyId = randomUUID();
+    const nameParticipantId = randomUUID();
+    const attributesParticipantId = randomUUID();
+    const config = configuration();
+    config.pii.current = 'v2';
+    const preMigrationKeys = await loadTestKeys(config);
+    const protection = createDataProtection(preMigrationKeys, {
+      participant: async (_target, read) => {
+        read();
+      },
+      integration: async (_target, read) => {
+        read();
+      },
+    });
+    const name = Buffer.from('Legacy name only');
+    const attributes = Buffer.from('{"cohort":"legacy"}');
+    const nameCiphertext = protection.encryptParticipant(
+      {
+        teamId,
+        studyId,
+        participantId: nameParticipantId,
+        column: 'name_ciphertext',
+      },
+      name,
+      'v1',
+    ).envelope;
+    const attributesCiphertext = protection.encryptParticipant(
+      {
+        teamId,
+        studyId,
+        participantId: attributesParticipantId,
+        column: 'attributes_ciphertext',
+      },
+      attributes,
+      'v1',
+    ).envelope;
+    await scratch.pool.query(
+      "INSERT INTO teams (id, name, slug) VALUES ($1, 'Legacy team', $1)",
+      [teamId],
+    );
+    await scratch.pool.query(
+      "INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, 'Legacy protocol')",
+      [protocolId, teamId],
+    );
+    await scratch.pool.query(
+      "INSERT INTO studies (id, team_id, protocol_id, name) VALUES ($1, $2, $3, 'Legacy study')",
+      [studyId, teamId, protocolId],
+    );
+    await scratch.pool.query(
+      `INSERT INTO participants
+        (id, team_id, study_id, participant_code, name_ciphertext,
+         pii_key_id, pii_algorithm)
+       VALUES ($1, $2, $3, 'P-name-only', $4, 'v1', 'aes-256-gcm.v1')`,
+      [nameParticipantId, teamId, studyId, nameCiphertext],
+    );
+    await scratch.pool.query(
+      `INSERT INTO participants
+        (id, team_id, study_id, participant_code, attributes_ciphertext,
+         pii_key_id, pii_algorithm)
+       VALUES ($1, $2, $3, 'P-attributes-only', $4, 'v1', 'aes-256-gcm.v1')`,
+      [attributesParticipantId, teamId, studyId, attributesCiphertext],
+    );
+
+    await migrateDatabase(
+      scratch.pool,
+      migrations,
+      SCHEMA_FINGERPRINT,
+      allowedLogins,
+    );
+    expect(
+      (
+        await scratch.pool.query(
+          'SELECT blind_index_key_id FROM participants ORDER BY participant_code',
+        )
+      ).rows,
+    ).toEqual([{ blind_index_key_id: null }, { blind_index_key_id: null }]);
+
+    const input = {
+      maintenancePool: maintenance,
+      configuration: config,
+      loadRootKey: async (reference: string) => {
+        if (reference === 'TEST_ROOT_ONE') return rootOne;
+        return Buffer.alloc(32, 93);
+      },
+    };
+    const keys = await initializeCredentialMigration(input);
+    await expect(
+      migrateLegacyDataBatch(maintenance, scratch.pool, keys, { limit: 100 }),
+    ).resolves.toEqual({
+      processed: 2,
+      scanned: 2,
+      afterId: null,
+      passComplete: true,
+    });
+    await expect(initializeEncryption(input)).resolves.toBeDefined();
+
+    const rows = await scratch.pool.query<{
+      id: string;
+      name_ciphertext: Buffer | null;
+      attributes_ciphertext: Buffer | null;
+      pii_key_id: string;
+      blind_index_key_id: string | null;
+    }>(
+      `SELECT id, name_ciphertext, attributes_ciphertext, pii_key_id,
+         blind_index_key_id FROM participants ORDER BY participant_code`,
+    );
+    expect(
+      rows.rows.map(({ pii_key_id, blind_index_key_id }) => ({
+        pii_key_id,
+        blind_index_key_id,
+      })),
+    ).toEqual([
+      { pii_key_id: 'v2', blind_index_key_id: null },
+      { pii_key_id: 'v2', blind_index_key_id: null },
+    ]);
+    const read = createDataProtection(keys, {
+      participant: async (_target, reveal) => {
+        reveal();
+      },
+      integration: async (_target, reveal) => {
+        reveal();
+      },
+    });
+    const attributesRow = rows.rows[0];
+    const nameRow = rows.rows[1];
+    if (!attributesRow?.attributes_ciphertext || !nameRow?.name_ciphertext)
+      throw new Error('Migrated ciphertext is missing.');
+    await expect(
+      read.readParticipant(
+        {
+          teamId,
+          studyId,
+          participantId: attributesParticipantId,
+          column: 'attributes_ciphertext',
+        },
+        {
+          keyId: attributesRow.pii_key_id,
+          algorithm: 'aes-256-gcm.v1',
+          envelope: attributesRow.attributes_ciphertext,
+        },
+      ),
+    ).resolves.toEqual(attributes);
+    await expect(
+      read.readParticipant(
+        {
+          teamId,
+          studyId,
+          participantId: nameParticipantId,
+          column: 'name_ciphertext',
+        },
+        {
+          keyId: nameRow.pii_key_id,
+          algorithm: 'aes-256-gcm.v1',
+          envelope: nameRow.name_ciphertext,
+        },
+      ),
+    ).resolves.toEqual(name);
+    expect(
+      (
+        await scratch.pool.query(
+          `SELECT event_type, count(*)::int AS count FROM audit_events
+           WHERE resource_id = ANY($1::text[])
+           GROUP BY event_type ORDER BY event_type`,
+          [[nameParticipantId, attributesParticipantId]],
+        )
+      ).rows,
+    ).toEqual([
+      { event_type: 'participant.pii.rotated', count: 2 },
+      { event_type: 'participant.pii.rotation_read', count: 2 },
+    ]);
+  } finally {
+    await maintenance.end();
+    await scratch.dispose();
+  }
+});
+
+it('refuses an unproved current key on a legacy no-contact participant', async () => {
+  const fixture = await createLegacyNoContactUpgrade({ currentKeyId: 'v1' });
+  try {
+    await expect(
+      initializeCredentialMigration({
+        maintenancePool: fixture.maintenance,
+        configuration: fixture.config,
+        loadRootKey: async (reference) =>
+          reference === 'TEST_ROOT_ONE' ? rootOne : Buffer.alloc(32, 93),
+      }),
+    ).rejects.toThrow(EncryptionStartupError);
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          'SELECT pii_key_id, blind_index_key_id FROM participants WHERE id = $1',
+          [fixture.participantId],
+        )
+      ).rows,
+    ).toEqual([{ pii_key_id: 'v1', blind_index_key_id: null }]);
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          'SELECT * FROM encryption_key_verifications',
+        )
+      ).rowCount,
+    ).toBe(0);
+  } finally {
+    await fixture.maintenance.end();
+    await fixture.scratch.dispose();
+  }
+});
+
+it('refuses a historical key shared with a nonlegacy contact-index shape', async () => {
+  const fixture = await createLegacyNoContactUpgrade();
+  try {
+    const participantId = randomUUID();
+    const keys = await loadTestKeys(fixture.config);
+    const protection = createDataProtection(keys, {
+      participant: async (_target, read) => {
+        read();
+      },
+      integration: async (_target, read) => {
+        read();
+      },
+    });
+    const emailCiphertext = protection.encryptParticipant(
+      {
+        teamId: fixture.teamId,
+        studyId: fixture.studyId,
+        participantId,
+        column: 'email_ciphertext',
+      },
+      Buffer.from('mixed@example.org'),
+      'v1',
+    ).envelope;
+    await fixture.scratch.pool.query(
+      `INSERT INTO participants
+        (id, team_id, study_id, participant_code, email_ciphertext, email_index,
+         blind_index_key_id, pii_key_id, pii_algorithm)
+       VALUES ($1, $2, $3, 'P-mixed', $4, $5, 'index-1', 'v1', 'aes-256-gcm.v1')`,
+      [
+        participantId,
+        fixture.teamId,
+        fixture.studyId,
+        emailCiphertext,
+        randomBytes(32),
+      ],
+    );
+    await expect(
+      initializeCredentialMigration({
+        maintenancePool: fixture.maintenance,
+        configuration: fixture.config,
+        loadRootKey: async (reference) =>
+          reference === 'TEST_ROOT_ONE' ? rootOne : Buffer.alloc(32, 93),
+      }),
+    ).rejects.toThrow(EncryptionStartupError);
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          'SELECT * FROM encryption_key_verifications',
+        )
+      ).rowCount,
+    ).toBe(0);
+  } finally {
+    await fixture.maintenance.end();
+    await fixture.scratch.dispose();
+  }
+});
+
+it('refuses a historical key shared with an empty null-marker PII reference', async () => {
+  const fixture = await createLegacyNoContactUpgrade();
+  try {
+    await fixture.scratch.pool.query(
+      `INSERT INTO participants
+        (id, team_id, study_id, participant_code, pii_key_id, pii_algorithm)
+       VALUES ($1, $2, $3, 'P-empty-mixed', 'v1', 'aes-256-gcm.v1')`,
+      [randomUUID(), fixture.teamId, fixture.studyId],
+    );
+    await expect(
+      initializeCredentialMigration({
+        maintenancePool: fixture.maintenance,
+        configuration: fixture.config,
+        loadRootKey: async (reference) =>
+          reference === 'TEST_ROOT_ONE' ? rootOne : Buffer.alloc(32, 93),
+      }),
+    ).rejects.toThrow(EncryptionStartupError);
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          'SELECT * FROM encryption_key_verifications',
+        )
+      ).rowCount,
+    ).toBe(0);
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          'SELECT pii_key_id FROM participants WHERE id = $1',
+          [fixture.participantId],
+        )
+      ).rows,
+    ).toEqual([{ pii_key_id: 'v1' }]);
+  } finally {
+    await fixture.maintenance.end();
+    await fixture.scratch.dispose();
+  }
+});
+
+it.each([
+  ['corrupt ciphertext', true, rootOne],
+  ['wrong historical root', false, Buffer.alloc(32, 18)],
+] as const)(
+  'does not prove or replace a no-contact historical key with %s',
+  async (_case, corruptCiphertext, historicalRoot) => {
+    const fixture = await createLegacyNoContactUpgrade({ corruptCiphertext });
+    try {
+      const keys = await initializeCredentialMigration({
+        maintenancePool: fixture.maintenance,
+        configuration: fixture.config,
+        loadRootKey: async (reference) =>
+          reference === 'TEST_ROOT_ONE'
+            ? Buffer.from(historicalRoot)
+            : Buffer.alloc(32, 93),
+      });
+      await expect(
+        migrateLegacyDataBatch(
+          fixture.maintenance,
+          fixture.scratch.pool,
+          keys,
+          { limit: 100 },
+        ),
+      ).rejects.toThrow('Stored encrypted data could not be read');
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            `SELECT count(*)::int AS count FROM encryption_key_verifications
+             WHERE purpose = 'pii-enc' AND key_id = 'v1'`,
+          )
+        ).rows,
+      ).toEqual([{ count: 0 }]);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            'SELECT pii_key_id, blind_index_key_id FROM participants WHERE id = $1',
+            [fixture.participantId],
+          )
+        ).rows,
+      ).toEqual([{ pii_key_id: 'v1', blind_index_key_id: null }]);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            `SELECT count(*)::int AS count FROM audit_events
+             WHERE resource_id = $1 AND event_type = 'participant.pii.rotated'`,
+            [fixture.participantId],
+          )
+        ).rows,
+      ).toEqual([{ count: 0 }]);
+    } finally {
+      await fixture.maintenance.end();
+      await fixture.scratch.dispose();
+    }
+  },
+);
+
+it('refuses a no-contact participant changed after its authenticated read', async () => {
+  const fixture = await createLegacyNoContactUpgrade();
+  try {
+    const keys = await initializeCredentialMigration({
+      maintenancePool: fixture.maintenance,
+      configuration: fixture.config,
+      loadRootKey: async (reference) =>
+        reference === 'TEST_ROOT_ONE' ? rootOne : Buffer.alloc(32, 93),
+    });
+    await fixture.scratch.pool.query(`
+      CREATE FUNCTION change_legacy_participant_after_read() RETURNS trigger AS $$
+      BEGIN
+        IF NEW.event_type = 'participant.pii.rotation_read'
+           AND NEW.resource_id = '${fixture.participantId}' THEN
+          UPDATE participants SET name_ciphertext = name_ciphertext || '\\x00'::bytea
+          WHERE id = '${fixture.participantId}';
+        END IF;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql SET search_path = public, pg_catalog;
+      CREATE TRIGGER change_legacy_participant_after_read
+        AFTER INSERT ON audit_events FOR EACH ROW
+        EXECUTE FUNCTION change_legacy_participant_after_read();
+    `);
+    await expect(
+      migrateLegacyDataBatch(fixture.maintenance, fixture.scratch.pool, keys, {
+        limit: 100,
+      }),
+    ).rejects.toThrow('Stored encrypted data could not be read');
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          `SELECT count(*)::int AS count FROM encryption_key_verifications
+           WHERE purpose = 'pii-enc' AND key_id = 'v1'`,
+        )
+      ).rows,
+    ).toEqual([{ count: 0 }]);
+    expect(
+      (
+        await fixture.scratch.pool.query(
+          'SELECT pii_key_id, blind_index_key_id FROM participants WHERE id = $1',
+          [fixture.participantId],
+        )
+      ).rows,
+    ).toEqual([{ pii_key_id: 'v1', blind_index_key_id: null }]);
+  } finally {
+    await fixture.maintenance.end();
+    await fixture.scratch.dispose();
   }
 });
 
