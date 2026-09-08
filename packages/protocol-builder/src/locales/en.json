@@ -3571,6 +3571,10 @@
     "defaultMessage": "nominated_early",
     "description": "Example attribute name shown in the empty box. A name the codebook would accept: letters, digits and the symbols . _ - : only, so it deliberately has no space in it. Translate it to an equally valid example if that reads better."
   },
+  "protocolBuilder.variablePicker.createdUnassigned": {
+    "defaultMessage": "“{variableName}” was added to the codebook, but it has not been selected here.",
+    "description": "Notice under the create button, shown when the attribute the researcher named was added to the codebook — the protocol’s definition of what an interview records — but whatever they were creating it for did not take it. variableName is the name they typed and is not translated."
+  },
   "protocolBuilder.variablePicker.emptyState": {
     "defaultMessage": "No attributes are available to choose from.",
     "description": "Shown in place of the select when nothing can be picked — the caller offered no attributes at all. An attribute is a variable the protocol’s codebook defines. Callers that can say something more specific pass their own sentence instead."

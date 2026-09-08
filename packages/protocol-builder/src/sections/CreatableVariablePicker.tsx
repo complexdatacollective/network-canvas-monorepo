@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -36,7 +37,38 @@ const messages = defineMessages({
     description:
       'Button that adds the attribute named in the box beside it to the codebook and selects it.',
   },
+  createdUnassigned: {
+    id: 'protocolBuilder.variablePicker.createdUnassigned',
+    defaultMessage:
+      '“{variableName}” was added to the codebook, but it has not been selected here.',
+    description:
+      'Notice under the create button, shown when the attribute the researcher named was added to the codebook — the protocol’s definition of what an interview records — but whatever they were creating it for did not take it. variableName is the name they typed and is not translated.',
+  },
 });
+
+/**
+ * What became of a create the researcher asked for.
+ *
+ * Three answers rather than two, because "it does not exist" and "it exists,
+ * and nothing here was given it" are opposite instructions to this control. A
+ * refusal is ABOUT the name in the box, so the name stays there to be
+ * corrected. An attribute that EXISTS must leave the box whatever happened
+ * next: pressing Create again would ask the codebook for a name it already
+ * holds, and the duplicate-name refusal that comes back is about something the
+ * researcher did not do.
+ */
+export type CreateOptionOutcome =
+  /** The attribute exists, and the caller has been given it. */
+  | Readonly<{ status: 'created' }>
+  /**
+   * The attribute exists, and nothing here was given it — whatever the caller
+   * was creating it for was replaced, removed or stopped taking changes while
+   * the codebook was being written to. Not a failure: the write succeeded, and
+   * what is left to say is where the attribute went.
+   */
+  | Readonly<{ status: 'unassigned' }>
+  /** Nothing was created. The name is the researcher's to correct. */
+  | Readonly<{ status: 'refused' }>;
 
 export type CreatableVariablePickerProps = VariablePickerProps &
   Readonly<{
@@ -49,13 +81,14 @@ export type CreatableVariablePickerProps = VariablePickerProps &
      * created is the caller's — the row knows what it is going to do with the
      * attribute, and the researcher is only ever asked for a name.
      *
-     * Answers with whether the attribute now exists. A codebook write can be
-     * refused — a name it cannot store, a section someone else is holding —
-     * and the refusal arrives after the researcher has let go of the button,
-     * so the control has to wait for it before deciding what to do with the
+     * Answers with what became of the create — see `CreateOptionOutcome`. A
+     * codebook write can be refused (a name it cannot store, a section someone
+     * else is holding) and it can land somewhere the caller can no longer use,
+     * and both answers arrive after the researcher has let go of the button,
+     * so the control has to wait for one before deciding what to do with the
      * name they typed.
      */
-    onCreateOption?: (variableName: string) => Promise<boolean>;
+    onCreateOption?: (variableName: string) => Promise<CreateOptionOutcome>;
   }>;
 
 /**
@@ -78,6 +111,14 @@ export type CreatableVariablePickerProps = VariablePickerProps &
  * typed — arrived with the name gone and nothing to correct. Mirrors quick
  * add's own create (`QuickAddSection`), which is the same act on the stage.
  *
+ * Until it EXISTS, not until it was assigned: an attribute the codebook now
+ * holds is one this box may not offer to create again, whatever became of it
+ * afterwards, because the second press is refused for a duplicate name the
+ * researcher did not choose to ask for twice. So the box empties on both
+ * answers that mean the write landed, and the one where nothing here took the
+ * attribute says so — otherwise emptying the box beside an unchanged
+ * selection is indistinguishable from a create that quietly did nothing.
+ *
  * The box is held with the button while the write is in flight, for the same
  * reason and one more. The create submits the name as it was when it was
  * pressed, so a name typed while the answer was on its way was erased by a
@@ -92,6 +133,17 @@ export function CreatableVariablePickerControl({
   const intl = useAppIntl();
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  /**
+   * The name of an attribute that was created and then taken by nothing, held
+   * for as long as the notice about it is on screen.
+   *
+   * The submitted name rather than whatever the box holds now: the notice is
+   * about the attribute that was created, and the box is empty by the time it
+   * appears.
+   */
+  const [unassignedName, setUnassignedName] = useState<string | undefined>(
+    undefined,
+  );
   const { disabled = false, readOnly = false } = pickerProps;
 
   if (onCreateOption === undefined) {
@@ -99,19 +151,26 @@ export function CreatableVariablePickerControl({
   }
 
   const create = async () => {
+    const submitted = name.trim();
     setBusy(true);
-    let created = false;
+    setUnassignedName(undefined);
     try {
-      created = await onCreateOption(name.trim());
+      const outcome = await onCreateOption(submitted);
+      // A refusal is ABOUT this name, so it stays in the box to be corrected.
+      if (outcome.status === 'refused') return;
+      // Every other answer means the codebook now holds it, and asking for it
+      // a second time is refused for a duplicate name.
+      setName('');
+      if (outcome.status === 'unassigned') setUnassignedName(submitted);
     } catch {
-      // A caller that throws — synchronously, or by rejecting — has broken the
-      // promise `onCreateOption` makes, and from here the two are the same
-      // broken promise: the attribute does not exist, there is nothing more
-      // specific the researcher could be told about it, and the name they typed
-      // stays in the box for another try. `callGateway` answers a host that
-      // throws the same way, for the same reason. The call is inside the `try`
-      // rather than before it, so a synchronous throw is caught too.
-      created = false;
+      // A caller that throws — synchronously, or by rejecting, or by answering
+      // with something that is not an outcome at all — has broken the promise
+      // `onCreateOption` makes, and from here they are the same broken promise:
+      // nothing is known to exist, there is nothing more specific the
+      // researcher could be told, and the name they typed stays in the box for
+      // another try. `callGateway` answers a host that throws the same way, for
+      // the same reason. Everything is inside the `try` rather than only the
+      // call, so a synchronous throw is caught too.
     } finally {
       // In a `finally` because the button is disabled while this is true: a
       // create that ended in a throw would otherwise leave the researcher
@@ -119,7 +178,6 @@ export function CreatableVariablePickerControl({
       // again.
       setBusy(false);
     }
-    if (created) setName('');
   };
 
   return (
@@ -137,19 +195,52 @@ export function CreatableVariablePickerControl({
         placeholder={intl.formatMessage(messages.createPlaceholder)}
         value={name}
         disabled={disabled || readOnly || busy}
-        onChange={(next: unknown) =>
-          setName(typeof next === 'string' ? next : '')
-        }
+        onChange={(next: unknown) => {
+          // The notice is about the create that has just happened; naming
+          // another attribute is the start of a different one.
+          setUnassignedName(undefined);
+          setName(typeof next === 'string' ? next : '');
+        }}
       />
-      <Button
-        // Never a submit: this control lives inside a form whose submit means
-        // something else entirely, on both the stage and a row dialog.
-        type="button"
-        disabled={disabled || readOnly || busy || name.trim() === ''}
-        onClick={() => void create()}
-      >
-        {intl.formatMessage(messages.createAction)}
-      </Button>
+      {/* One column child, so the always-mounted live region below the button
+          takes up no room while it is saying nothing — a gap between flex
+          items is spent on an empty child too. */}
+      <div className="flex flex-col">
+        <Button
+          // Never a submit: this control lives inside a form whose submit means
+          // something else entirely, on both the stage and a row dialog.
+          type="button"
+          disabled={disabled || readOnly || busy || name.trim() === ''}
+          onClick={() => void create()}
+        >
+          {intl.formatMessage(messages.createAction)}
+        </Button>
+        {/* Always mounted, so a screen reader is watching this region before
+            the notice appears: a live region added to the page at the same
+            moment as its own content is not reliably announced.
+
+            The `Alert` inside it is presentational for exactly that reason.
+            Its `info` variant is a `role="status"` of its own — a second
+            polite region, inserted into this one at the moment its content
+            appears, which is the double (or, on some assistive technology,
+            dropped) announcement this wrapper exists to avoid. Same shape as
+            the bounds notice in `VariableParameterFields`. */}
+        <div
+          role="status"
+          aria-live="polite"
+          className={unassignedName === undefined ? undefined : 'mt-3'}
+        >
+          {unassignedName !== undefined && (
+            <Alert variant="info" role="presentation">
+              <AlertDescription>
+                {intl.formatMessage(messages.createdUnassigned, {
+                  variableName: unassignedName,
+                })}
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

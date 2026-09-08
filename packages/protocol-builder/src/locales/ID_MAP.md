@@ -278,7 +278,7 @@ for something else or reopens a decision that has been made:
   the hint, the empty state — belongs to the section that mounts it
   (`subjectSection`) or to the control it wraps (`entitySelect`). The name
   stays reserved rather than being reused for something else.
-- **`variablePicker`'s four `create*` ids are not on any screen yet.**
+- **`variablePicker`'s five `create*` ids are not on any screen yet.**
   `sections/CreatableVariablePicker.tsx` pairs a picker over what exists with a
   name box that creates an attribute under that name and selects it. Nothing in
   the product mounts it: `FormFieldsSection` answers the same question through
