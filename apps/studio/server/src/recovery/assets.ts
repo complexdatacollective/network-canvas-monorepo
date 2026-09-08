@@ -93,26 +93,41 @@ async function assertRecoveryQuarantine(
 ): Promise<void> {
   await client.query('SELECT pg_catalog.pg_stat_clear_snapshot()');
   const result = await client.query<{ safe: boolean }>(
-    `WITH runtime_logins AS MATERIALIZED (
+    `WITH database_identity AS MATERIALIZED (
+       SELECT database.datdba AS owner_oid
+       FROM pg_catalog.pg_database database
+       WHERE database.datname = pg_catalog.current_database()
+     ), runtime_logins AS MATERIALIZED (
        SELECT login.oid, login.rolcanlogin
        FROM pg_catalog.pg_roles login
        WHERE login.rolname = ANY($1::pg_catalog.text[])
          AND NOT login.rolname = ANY($2::pg_catalog.text[])
+         AND login.oid <> (SELECT owner_oid FROM database_identity)
          AND EXISTS (
            SELECT 1 FROM pg_catalog.pg_auth_members membership
            JOIN pg_catalog.pg_roles role ON role.oid = membership.roleid
            WHERE membership.member = login.oid
              AND role.rolname = ANY($3::pg_catalog.text[])
          )
+     ), writer_logins AS MATERIALIZED (
+       SELECT login.oid, login.rolcanlogin
+       FROM pg_catalog.pg_roles login
+       WHERE login.rolname = ANY($1::pg_catalog.text[])
+         AND login.rolname <> session_user
+         AND (
+           login.rolname = ANY($2::pg_catalog.text[])
+           OR login.oid = (SELECT owner_oid FROM database_identity)
+           OR login.oid IN (SELECT oid FROM runtime_logins)
+         )
      ) SELECT
        pg_catalog.current_setting('transaction_read_only') = 'on'
        AND pg_catalog.current_setting('transaction_isolation') = 'repeatable read'
        AND (SELECT count(*) FROM runtime_logins) = $4::pg_catalog.int4
-       AND NOT EXISTS (SELECT 1 FROM runtime_logins WHERE rolcanlogin)
+       AND NOT EXISTS (SELECT 1 FROM writer_logins WHERE rolcanlogin)
        AND NOT EXISTS (
          SELECT 1 FROM pg_catalog.pg_stat_activity activity
          WHERE activity.datname = pg_catalog.current_database()
-           AND activity.usesysid IN (SELECT oid FROM runtime_logins)
+           AND activity.usesysid IN (SELECT oid FROM writer_logins)
        )
        AND NOT EXISTS (
          SELECT 1 FROM pg_catalog.pg_prepared_xacts prepared
@@ -126,6 +141,35 @@ async function assertRecoveryQuarantine(
     ],
   );
   if (result.rows[0]?.safe !== true) throw new Error(FAILURE);
+}
+
+function disposeStream(
+  stream: ReadableStream<Uint8Array>,
+  reason: Error,
+): void {
+  try {
+    void stream.cancel(reason).catch(() => undefined);
+  } catch {
+    // A malformed or already-locked response must not extend failure cleanup.
+  }
+}
+
+function disposeReader(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  reason: Error,
+): void {
+  const release = () => {
+    try {
+      reader.releaseLock();
+    } catch {
+      // A still-pending read retains the lock until the provider settles it.
+    }
+  };
+  try {
+    void reader.cancel(reason).then(release, release);
+  } catch {
+    release();
+  }
 }
 
 async function readWithIdleDeadline(
@@ -164,16 +208,29 @@ async function verifyObject(
     throw new Error(FAILURE);
 
   const deadline = AbortSignal.timeout(timeoutMs);
-  const signal = AbortSignal.any([parentSignal, deadline]);
+  const disposal = new AbortController();
+  const signal = AbortSignal.any([parentSignal, deadline, disposal.signal]);
   const request = new AbortController();
   const requestTimer = setTimeout(
     () => request.abort(new Error(FAILURE)),
     requestTimeoutMs,
   );
   const requestSignal = AbortSignal.any([signal, request.signal]);
+  let pending: ReturnType<AssetStore['get']> | undefined;
   let asset: Awaited<ReturnType<AssetStore['get']>>;
   try {
-    asset = await abortable(store.get(row.hash, requestSignal), requestSignal);
+    pending = store.get(row.hash, requestSignal);
+    asset = await abortable(pending, requestSignal);
+  } catch (error) {
+    if (pending)
+      void pending.then(
+        (late) => {
+          if (late) disposeStream(late.body, new Error(FAILURE));
+          return undefined;
+        },
+        () => undefined,
+      );
+    throw error;
   } finally {
     clearTimeout(requestTimer);
   }
@@ -181,15 +238,21 @@ async function verifyObject(
   if (
     asset.size !== undefined &&
     (!Number.isSafeInteger(asset.size) || BigInt(asset.size) !== expected)
-  )
+  ) {
+    disposal.abort(new Error(FAILURE));
+    disposeStream(asset.body, new Error(FAILURE));
     throw new Error(FAILURE);
+  }
 
   const reader = asset.body.getReader();
   const digest = createHash('sha256');
   let actual = 0n;
   let complete = false;
+  let disposalStarted = false;
   const cancel = () => {
-    void reader.cancel(aborted(signal)).catch(() => undefined);
+    if (disposalStarted) return;
+    disposalStarted = true;
+    disposeReader(reader, aborted(signal));
   };
   signal.addEventListener('abort', cancel, { once: true });
   try {
@@ -210,8 +273,11 @@ async function verifyObject(
     }
   } finally {
     signal.removeEventListener('abort', cancel);
-    if (!complete) await reader.cancel().catch(() => undefined);
-    reader.releaseLock();
+    if (complete) reader.releaseLock();
+    else {
+      disposal.abort(new Error(FAILURE));
+      cancel();
+    }
   }
   if (actual !== expected || digest.digest('hex') !== row.hash)
     throw new Error(FAILURE);
@@ -247,12 +313,6 @@ async function verifyInventory(
     );
     if (page.rows.length === 0) break;
     for (const row of page.rows) {
-      if (
-        team !== null &&
-        (row.team_id < team ||
-          (row.team_id === team && row.hash <= (hash ?? '')))
-      )
-        throw new Error(FAILURE);
       await verifyObject(
         store,
         row,
@@ -270,6 +330,31 @@ async function verifyInventory(
   if (verified !== expectedCount || verified > BigInt(Number.MAX_SAFE_INTEGER))
     throw new Error(FAILURE);
   return Number(verified);
+}
+
+async function beginReadOnlySnapshot(
+  client: pg.PoolClient,
+  queryTimeoutMs: number,
+): Promise<void> {
+  const begin = {
+    text: 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY',
+    query_timeout: queryTimeoutMs,
+  };
+  await client.query(begin);
+  const configureDeadline = {
+    text: `SELECT pg_catalog.set_config('statement_timeout', $1, true)`,
+    values: [`${queryTimeoutMs}ms`],
+    query_timeout: queryTimeoutMs,
+  };
+  await client.query(configureDeadline);
+}
+
+async function rollbackReadOnlySnapshot(
+  client: pg.PoolClient,
+  queryTimeoutMs: number,
+): Promise<void> {
+  const rollback = { text: 'ROLLBACK', query_timeout: queryTimeoutMs };
+  await client.query(rollback);
 }
 
 /**
@@ -346,18 +431,8 @@ export async function verifyRecoveredAssets(
   try {
     client = await connectBounded(pool, acquisitionSignal);
     operationSignal.addEventListener('abort', interrupt, { once: true });
-    const begin = {
-      text: 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY',
-      query_timeout: queryTimeoutMs,
-    };
-    await client.query(begin);
+    await beginReadOnlySnapshot(client, queryTimeoutMs);
     transaction = true;
-    const configureDeadline = {
-      text: `SELECT pg_catalog.set_config('statement_timeout', $1, true)`,
-      values: [`${queryTimeoutMs}ms`],
-      query_timeout: queryTimeoutMs,
-    };
-    await client.query(configureDeadline);
     await assertBackupAccess(client, async (checked) => {
       const schema = await checkSchema(
         checked,
@@ -380,16 +455,23 @@ export async function verifyRecoveredAssets(
       streamIdleTimeoutMs,
       objectTimeoutMs,
     );
-    const rollback = { text: 'ROLLBACK', query_timeout: queryTimeoutMs };
-    await client.query(rollback);
+    await rollbackReadOnlySnapshot(client, queryTimeoutMs);
+    transaction = false;
+
+    // The inventory snapshot is intentionally stable. Admission state is not:
+    // take a new catalog snapshot after the scan so a writer reopened during
+    // object verification cannot be hidden by REPEATABLE READ.
+    await beginReadOnlySnapshot(client, queryTimeoutMs);
+    transaction = true;
+    await assertRecoveryQuarantine(client, allowedLogins, administrativeLogins);
+    await rollbackReadOnlySnapshot(client, queryTimeoutMs);
     transaction = false;
     release(false);
     return count;
   } catch {
     if (client && transaction && !released) {
       try {
-        const rollback = { text: 'ROLLBACK', query_timeout: queryTimeoutMs };
-        await client.query(rollback);
+        await rollbackReadOnlySnapshot(client, queryTimeoutMs);
         transaction = false;
       } catch {
         release(true);

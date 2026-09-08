@@ -6,27 +6,31 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
-import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
+import {
+  revokeLargeObjectPrivilegesSql,
+  runtimeRolesSql,
+} from '@codaco/studio-sync/role-bootstrap';
 
 import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
-import {
-  createScratchDatabase,
-  reachableDb,
-  seedTeam,
-} from '../../__tests__/support/postgres.ts';
+import { reachableDb, seedTeam } from '../../__tests__/support/postgres.ts';
 import type { AssetStore } from '../../assets.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { migrateDatabase } from '../../db/migrations/migrate.ts';
-import { createBackupPool } from '../../db/pool.ts';
+import { createBackupPool, createOwnerPool } from '../../db/pool.ts';
+import type { DbEnv } from '../../env.ts';
 import { verifyRecoveredAssets } from '../assets.ts';
 
 const database = await reachableDb();
 const FAILURE = 'STUDIO_RECOVERED_ASSET_VERIFICATION_FAILED';
 
 type Fixture = {
-  source: Awaited<ReturnType<typeof createScratchDatabase>>;
+  sourceDb: DbEnv;
+  administrativeDb: DbEnv;
+  owner: pg.Pool | undefined;
+  administrator: pg.Pool;
   backup: pg.Pool;
   backupLogin: string;
+  ownerLogin: string;
   runtimeLogin: string;
   maintenanceLogin: string;
   allowedLogins: string[];
@@ -78,20 +82,54 @@ function memoryStore(
 
 async function addAsset(teamId: string, bytes: Uint8Array): Promise<string> {
   const hash = createHash('sha256').update(bytes).digest('hex');
-  await seedTeam(requireFixture().source.pool, teamId);
-  await requireFixture().source.pool.query(
-    `INSERT INTO public.assets
-      (team_id, hash, media_type, media_class, byte_size, original_filename, origin)
-     VALUES ($1, $2, 'application/octet-stream', 'document', $3, 'recovery.bin', 'seed')`,
-    [teamId, hash, bytes.byteLength],
-  );
+  await withTargetAdministrator(async (administrator) => {
+    await seedTeam(administrator, teamId);
+    await administrator.query(
+      `INSERT INTO public.assets
+        (team_id, hash, media_type, media_class, byte_size, original_filename, origin)
+       VALUES ($1, $2, 'application/octet-stream', 'document', $3, 'recovery.bin', 'seed')`,
+      [teamId, hash, bytes.byteLength],
+    );
+  });
   return hash;
+}
+
+async function withTargetAdministrator<T>(
+  callback: (administrator: pg.Pool) => Promise<T>,
+): Promise<T> {
+  const administrator = createOwnerPool(requireFixture().administrativeDb);
+  try {
+    return await callback(administrator);
+  } finally {
+    await administrator.end();
+  }
+}
+
+async function closeOwner(): Promise<void> {
+  const f = requireFixture();
+  await f.owner?.end();
+  f.owner = undefined;
+  await f.administrator.query(
+    `ALTER ROLE ${pg.escapeIdentifier(f.ownerLogin)} NOLOGIN`,
+  );
+}
+
+async function openOwner(): Promise<pg.Pool> {
+  const f = requireFixture();
+  if (f.owner) return f.owner;
+  await f.administrator.query(
+    `ALTER ROLE ${pg.escapeIdentifier(f.ownerLogin)} LOGIN`,
+  );
+  f.owner = createOwnerPool(f.sourceDb);
+  return f.owner;
 }
 
 async function verify(store: AssetStore, overrides = {}) {
   const f = requireFixture();
+  await closeOwner();
   return await verifyRecoveredAssets(f.backup, store, {
     allowedLogins: f.allowedLogins,
+    administrativeLogins: [f.ownerLogin],
     pageSize: 1,
     requestTimeoutMs: 100,
     streamIdleTimeoutMs: 100,
@@ -103,60 +141,89 @@ async function verify(store: AssetStore, overrides = {}) {
 
 beforeAll(async () => {
   if (!database) return;
-  const source = await createScratchDatabase(database);
   const suffix = randomUUID().replaceAll('-', '');
+  const databaseName = `studio_test_db_${suffix.slice(0, 12)}`;
+  const ownerLogin = `asset_owner_${suffix}`;
   const backupLogin = `asset_backup_${suffix}`;
   const runtimeLogin = `asset_runtime_${suffix}`;
   const maintenanceLogin = `asset_maintenance_${suffix}`;
   const password = randomBytes(24).toString('hex');
   const loginOptions =
     'LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION';
-  await source.pool.query(runtimeRolesSql([BACKUP_ROLE]));
-  await source.pool.query(
-    `CREATE ROLE ${pg.escapeIdentifier(backupLogin)} ${loginOptions} PASSWORD ${pg.escapeLiteral(password)};
+  const administrator = createOwnerPool(database);
+  await administrator.query(runtimeRolesSql([BACKUP_ROLE]));
+  await administrator.query(
+    `CREATE ROLE ${pg.escapeIdentifier(ownerLogin)} ${loginOptions} PASSWORD ${pg.escapeLiteral(password)};
+     CREATE ROLE ${pg.escapeIdentifier(backupLogin)} ${loginOptions} PASSWORD ${pg.escapeLiteral(password)};
      CREATE ROLE ${pg.escapeIdentifier(runtimeLogin)} ${loginOptions} PASSWORD ${pg.escapeLiteral(password)};
      CREATE ROLE ${pg.escapeIdentifier(maintenanceLogin)} ${loginOptions} PASSWORD ${pg.escapeLiteral(password)};
+     GRANT ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance}, ${BACKUP_ROLE}
+       TO ${pg.escapeIdentifier(ownerLogin)} WITH ADMIN OPTION, INHERIT FALSE, SET TRUE;
      GRANT ${BACKUP_ROLE} TO ${pg.escapeIdentifier(backupLogin)} WITH INHERIT FALSE, SET TRUE;
      GRANT ${TENANT_ROLES.app} TO ${pg.escapeIdentifier(runtimeLogin)} WITH INHERIT FALSE, SET TRUE;
      GRANT ${TENANT_ROLES.maintenance} TO ${pg.escapeIdentifier(maintenanceLogin)} WITH INHERIT FALSE, SET TRUE`,
   );
-  const allowedLogins = await enrollMigrationTestDatabase(
-    source.pool,
-    database,
-    [backupLogin, runtimeLogin, maintenanceLogin],
+  await administrator.query(
+    `CREATE DATABASE ${pg.escapeIdentifier(databaseName)}
+       OWNER ${pg.escapeIdentifier(ownerLogin)} TEMPLATE template0
+       LOCALE_PROVIDER icu ICU_LOCALE 'en-US'`,
   );
-  const migrations = await readMigrations(
-    fileURLToPath(new URL('../../../migrations', import.meta.url)),
-  );
-  await migrateDatabase(
-    source.pool,
-    migrations,
-    SCHEMA_FINGERPRINT,
-    allowedLogins,
-  );
-  const url = new URL(source.db.url);
-  url.username = backupLogin;
+  const url = new URL(database.url);
+  url.pathname = `/${databaseName}`;
+  url.username = ownerLogin;
   url.password = password;
-  const backup = createBackupPool({ url: url.toString() });
-  await source.pool.query(
-    `ALTER ROLE ${pg.escapeIdentifier(runtimeLogin)} NOLOGIN;
-     ALTER ROLE ${pg.escapeIdentifier(maintenanceLogin)} NOLOGIN`,
+  const sourceDb = { url: url.toString() };
+  const owner = createOwnerPool(sourceDb);
+  const administrativeTarget = new URL(database.url);
+  administrativeTarget.pathname = `/${databaseName}`;
+  const administrativeDb = { url: administrativeTarget.toString() };
+  const targetAdministrator = createOwnerPool(administrativeDb);
+  await targetAdministrator.query(revokeLargeObjectPrivilegesSql());
+  await targetAdministrator.end();
+  await owner.query(
+    `REVOKE CONNECT, TEMPORARY ON DATABASE ${pg.escapeIdentifier(databaseName)} FROM PUBLIC`,
   );
-  fixture = {
-    source,
-    backup,
+  const allowedLogins = await enrollMigrationTestDatabase(owner, database, [
     backupLogin,
     runtimeLogin,
     maintenanceLogin,
+  ]);
+  const migrations = await readMigrations(
+    fileURLToPath(new URL('../../../migrations', import.meta.url)),
+  );
+  await migrateDatabase(owner, migrations, SCHEMA_FINGERPRINT, allowedLogins);
+  await owner.end();
+  const backupUrl = new URL(sourceDb.url);
+  backupUrl.username = backupLogin;
+  backupUrl.password = password;
+  const backup = createBackupPool({ url: backupUrl.toString() });
+  await administrator.query(
+    `ALTER ROLE ${pg.escapeIdentifier(ownerLogin)} NOLOGIN;
+     ALTER ROLE ${pg.escapeIdentifier(runtimeLogin)} NOLOGIN;
+     ALTER ROLE ${pg.escapeIdentifier(maintenanceLogin)} NOLOGIN`,
+  );
+  fixture = {
+    sourceDb,
+    administrativeDb,
+    owner: undefined,
+    administrator,
+    backup,
+    backupLogin,
+    ownerLogin,
+    runtimeLogin,
+    maintenanceLogin,
     allowedLogins,
-    backupUrl: url.toString(),
+    backupUrl: backupUrl.toString(),
   };
 });
 
 beforeEach(async () => {
   if (!fixture) return;
-  await fixture.source.pool.query('DELETE FROM public.assets');
-  await fixture.source.pool.query(
+  await closeOwner();
+  await withTargetAdministrator(async (administrator) => {
+    await administrator.query('DELETE FROM public.assets');
+  });
+  await fixture.administrator.query(
     `ALTER ROLE ${pg.escapeIdentifier(fixture.runtimeLogin)} NOLOGIN;
      ALTER ROLE ${pg.escapeIdentifier(fixture.maintenanceLogin)} NOLOGIN`,
   );
@@ -164,19 +231,29 @@ beforeEach(async () => {
 
 afterAll(async () => {
   if (!fixture || !database) return;
-  const { source, backup, backupLogin, runtimeLogin, maintenanceLogin } =
-    fixture;
+  const {
+    owner,
+    administrator,
+    backup,
+    backupLogin,
+    ownerLogin,
+    runtimeLogin,
+    maintenanceLogin,
+  } = fixture;
+  await owner?.end();
   await backup.end();
-  await source.dispose();
-  const cleanup = new pg.Pool({ connectionString: database.url });
   try {
-    await cleanup.query(
-      `DROP ROLE IF EXISTS ${pg.escapeIdentifier(backupLogin)},
+    await administrator.query(
+      `DROP DATABASE IF EXISTS ${pg.escapeIdentifier(new URL(fixture.sourceDb.url).pathname.slice(1))} WITH (FORCE)`,
+    );
+    await administrator.query(
+      `DROP ROLE IF EXISTS ${pg.escapeIdentifier(ownerLogin)},
+        ${pg.escapeIdentifier(backupLogin)},
         ${pg.escapeIdentifier(runtimeLogin)},
         ${pg.escapeIdentifier(maintenanceLogin)}`,
     );
   } finally {
-    await cleanup.end();
+    await administrator.end();
   }
 });
 
@@ -195,6 +272,41 @@ describe.skipIf(!database)('recovered Studio asset verification', () => {
 
     await expect(verify(memoryStore(objects, seen))).resolves.toBe(3);
     expect(seen).toEqual([firstHash, secondHash, firstHash]);
+  });
+
+  it('uses the database collation for composite-key traversal', async () => {
+    const lower = new TextEncoder().encode('lowercase-collation-object');
+    const upper = new TextEncoder().encode('uppercase-collation-object');
+    const lowerHash = await addAsset('asset-a', lower);
+    const upperHash = await addAsset('asset-B', upper);
+    const ordered = await requireFixture().backup.query<{ hash: string }>(
+      `SELECT hash FROM public.assets
+       WHERE team_id = ANY($1::pg_catalog.text[]) ORDER BY team_id, hash`,
+      [['asset-a', 'asset-B']],
+    );
+    const databaseOrder = ordered.rows.map(({ hash }) => hash);
+    const javascriptRows: [string, string][] = [
+      ['asset-a', lowerHash],
+      ['asset-B', upperHash],
+    ];
+    const javascriptOrder = javascriptRows
+      .toSorted(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(([, hash]) => hash);
+    expect(databaseOrder).not.toEqual(javascriptOrder);
+    const seen: string[] = [];
+
+    await expect(
+      verify(
+        memoryStore(
+          new Map([
+            [lowerHash, lower],
+            [upperHash, upper],
+          ]),
+          seen,
+        ),
+      ),
+    ).resolves.toBe(2);
+    expect(seen).toEqual(databaseOrder);
   });
 
   it('fails when a later keyset page has no matching object', async () => {
@@ -266,7 +378,7 @@ describe.skipIf(!database)('recovered Studio asset verification', () => {
         objectTimeoutMs: 1_000,
         operationTimeoutMs: 10_000,
       },
-      false,
+      true,
     ],
     [
       'whole-object',
@@ -342,6 +454,116 @@ describe.skipIf(!database)('recovered Studio asset verification', () => {
     expect(suppliedSignal?.aborted).toBe(true);
   });
 
+  it('does not await a stream cancellation that never resolves', async () => {
+    const bytes = new TextEncoder().encode('non-resolving cancellation');
+    await addAsset('asset-team-cancel', bytes);
+    let cancelled = false;
+    let suppliedSignal: AbortSignal | undefined;
+    const reader = {
+      read: () => new Promise<never>(() => {}),
+      cancel: () => {
+        cancelled = true;
+        return new Promise<void>(() => {});
+      },
+      releaseLock() {},
+    } as unknown as ReadableStreamDefaultReader<Uint8Array>;
+    const store: AssetStore = {
+      async checkHealth() {},
+      async put() {
+        throw new Error('unused');
+      },
+      async get(_hash, signal) {
+        suppliedSignal = signal;
+        return {
+          body: {
+            getReader: () => reader,
+          } as ReadableStream<Uint8Array>,
+          mediaType: 'application/octet-stream',
+          size: bytes.byteLength,
+        };
+      },
+    };
+
+    const started = performance.now();
+    await expect(
+      verify(store, {
+        streamIdleTimeoutMs: 1_000,
+        objectTimeoutMs: 1_000,
+        operationTimeoutMs: 250,
+      }),
+    ).rejects.toThrow(FAILURE);
+    expect(performance.now() - started).toBeLessThan(750);
+    expect(suppliedSignal?.aborted).toBe(true);
+    expect(cancelled).toBe(true);
+  });
+
+  it('disposes a body rejected from its size metadata', async () => {
+    const bytes = new TextEncoder().encode('metadata mismatch');
+    await addAsset('asset-team-metadata', bytes);
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      cancel() {
+        cancelled = true;
+      },
+    });
+
+    await expect(
+      verify({
+        async checkHealth() {},
+        async put() {
+          throw new Error('unused');
+        },
+        async get() {
+          return {
+            body,
+            mediaType: 'application/octet-stream',
+            size: bytes.byteLength + 1,
+          };
+        },
+      }),
+    ).rejects.toThrow(FAILURE);
+    expect(cancelled).toBe(true);
+  });
+
+  it('disposes a body returned after its object request timed out', async () => {
+    const bytes = new TextEncoder().encode('late request body');
+    await addAsset('asset-team-late', bytes);
+    let resolveRequest:
+      | ((asset: Awaited<ReturnType<AssetStore['get']>>) => void)
+      | undefined;
+    let cancelled = false;
+    const pending = new Promise<Awaited<ReturnType<AssetStore['get']>>>(
+      (resolve) => {
+        resolveRequest = resolve;
+      },
+    );
+    const verification = verify(
+      {
+        async checkHealth() {},
+        async put() {
+          throw new Error('unused');
+        },
+        get() {
+          return pending;
+        },
+      },
+      { requestTimeoutMs: 20 },
+    );
+    await expect(verification).rejects.toThrow(FAILURE);
+    resolveRequest?.({
+      body: new ReadableStream<Uint8Array>({
+        cancel() {
+          cancelled = true;
+        },
+      }),
+      mediaType: 'application/octet-stream',
+      size: bytes.byteLength,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(cancelled).toBe(true);
+  });
+
   it('bounds pool acquisition and cleans up a late borrower', async () => {
     const f = requireFixture();
     const pool = createBackupPool({ url: f.backupUrl });
@@ -370,12 +592,63 @@ describe.skipIf(!database)('recovered Studio asset verification', () => {
       reads += 1;
       return null;
     };
-    await requireFixture().source.pool.query(
+    await requireFixture().administrator.query(
       `ALTER ROLE ${pg.escapeIdentifier(requireFixture().runtimeLogin)} LOGIN`,
     );
 
     await expect(verify(store)).rejects.toThrow(FAILURE);
     expect(reads).toBe(0);
+  });
+
+  it('refuses an admitted or active administrative writer', async () => {
+    const f = requireFixture();
+    const reads: string[] = [];
+    const owner = await openOwner();
+    await expect(
+      verifyRecoveredAssets(f.backup, memoryStore(new Map(), reads), {
+        allowedLogins: f.allowedLogins,
+        administrativeLogins: [f.ownerLogin],
+      }),
+    ).rejects.toThrow(FAILURE);
+    expect(reads).toEqual([]);
+
+    const active = await owner.connect();
+    await f.administrator.query(
+      `ALTER ROLE ${pg.escapeIdentifier(f.ownerLogin)} NOLOGIN`,
+    );
+    try {
+      await expect(
+        verifyRecoveredAssets(f.backup, memoryStore(new Map(), reads), {
+          allowedLogins: f.allowedLogins,
+          administrativeLogins: [f.ownerLogin],
+        }),
+      ).rejects.toThrow(FAILURE);
+      expect(reads).toEqual([]);
+    } finally {
+      active.release();
+    }
+  });
+
+  it('rechecks fresh quarantine state after the inventory snapshot', async () => {
+    const f = requireFixture();
+    const bytes = new TextEncoder().encode('fresh quarantine check');
+    const hash = await addAsset('asset-team-fresh-check', bytes);
+    let reads = 0;
+    const store = memoryStore(new Map([[hash, bytes]]));
+    store.get = async () => {
+      reads += 1;
+      await f.administrator.query(
+        `ALTER ROLE ${pg.escapeIdentifier(f.ownerLogin)} LOGIN`,
+      );
+      return {
+        body: chunks(bytes),
+        mediaType: 'application/octet-stream',
+        size: bytes.byteLength,
+      };
+    };
+
+    await expect(verify(store)).rejects.toThrow(FAILURE);
+    expect(reads).toBe(1);
   });
 
   it('refuses the owner identity and a stale schema before object reads', async () => {
@@ -388,17 +661,20 @@ describe.skipIf(!database)('recovered Studio asset verification', () => {
       reads += 1;
       return null;
     };
+    const owner = await openOwner();
     await expect(
-      verifyRecoveredAssets(f.source.pool, store, {
+      verifyRecoveredAssets(owner, store, {
         allowedLogins: f.allowedLogins,
+        administrativeLogins: [f.ownerLogin],
       }),
     ).rejects.toThrow(FAILURE);
-    await f.source.pool.query(
+    await owner.query(
       `UPDATE public."schemaFingerprint" SET fingerprint = 'stale'`,
     );
     await expect(verify(store)).rejects.toThrow(FAILURE);
     expect(reads).toBe(0);
-    await f.source.pool.query(
+    const reopened = await openOwner();
+    await reopened.query(
       `UPDATE public."schemaFingerprint" SET fingerprint = $1`,
       [SCHEMA_FINGERPRINT],
     );
