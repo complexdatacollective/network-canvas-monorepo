@@ -178,6 +178,37 @@ for (const [file, extra] of [
     );
   });
 
+for (const type of ['aws_caller_identity', 'google_client_config'])
+  for (const format of ['hcl', 'json'])
+    test(`refuses approved scoped check data ${type} in ${format}`, async (context) => {
+      const temp = await mkdtemp(join(tmpdir(), 'studio-approved-check-data-'));
+      context.after(() => rm(temp, { recursive: true, force: true }));
+      await copyReviewedEstate(temp);
+      const file =
+        format === 'hcl' ? 'nested-check.tf' : 'nested-check.tf.json';
+      const source =
+        format === 'hcl'
+          ? `check "unreviewed" {\n  data "${type}" "nested" {}\n  assert {\n    condition = true\n    error_message = "unreviewed provider data"\n  }\n}\n`
+          : JSON.stringify({
+              check: {
+                unreviewed: {
+                  data: { [type]: { nested: {} } },
+                  assert: [
+                    {
+                      condition: true,
+                      error_message: 'unreviewed provider data',
+                    },
+                  ],
+                },
+              },
+            });
+      await writeFile(join(temp, file), source);
+      await approveManifestFile(temp, file);
+      const result = generateAt(temp, true);
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /scoped check data sources/);
+    });
+
 for (const [name, extra] of [
   [
     'backend',

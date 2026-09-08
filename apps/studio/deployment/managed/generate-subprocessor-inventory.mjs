@@ -122,6 +122,14 @@ for (const configuration of configurations) {
     throw new Error(
       'Managed Terraform top-level operational blocks require explicit support.',
     );
+  for (const check of Object.values(configuration.check ?? {}).flatMap(
+    blocks,
+  )) {
+    if (Object.hasOwn(check, 'data'))
+      throw new Error(
+        'Managed Terraform scoped check data sources require explicit inventory support.',
+      );
+  }
   for (const terraform of blocks(configuration.terraform)) {
     const unsupportedTerraform = Object.keys(terraform).filter(
       (kind) => !supportedTerraformBlocks.has(kind),
