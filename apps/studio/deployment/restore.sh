@@ -254,7 +254,8 @@ compose run --rm --no-deps -T minio-init
 # subsequent success, failure or signal; the offline service has no edge path.
 compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
   -c 'ALTER ROLE studio_maintenance_runtime LOGIN;'
-COMPOSE_FILE="$COMPOSE_FILE:deployment/encryption.yml" \
+# Retained content IDs must win over every registry-valued image declaration.
+COMPOSE_FILE="$COMPOSE_FILE:deployment/encryption.yml:deployment/recovery-images.yml" \
   compose run --rm --no-deps encryption-verify
 close_writer_logins
 restore_complete=1

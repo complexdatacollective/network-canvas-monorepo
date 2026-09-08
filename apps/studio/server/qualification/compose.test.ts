@@ -810,11 +810,20 @@ it('installs an immutable built image, drains a populated backup and restores al
       await rename(completeImages, imageArchive);
       await writeFile(checksumPath, originalChecksums);
     }
-    const restoredResult = await restored.execute('sh', [
-      'deployment/restore.sh',
-      backup,
-      custody,
-    ]);
+    // A fresh host may know only the loaded content IDs. Force the registry
+    // name to be absent even though the source image is warm in this daemon.
+    const uncachedStudioImage = `local.invalid/studio-recovery-${randomUUID()}:unavailable`;
+    const absentImage = await restored.execute(
+      'docker',
+      ['image', 'inspect', uncachedStudioImage],
+      { failure: true },
+    );
+    expect(absentImage.code).not.toBe(0);
+    const restoredResult = await restored.execute(
+      'sh',
+      ['deployment/restore.sh', backup, custody],
+      { environment: { STUDIO_IMAGE: uncachedStudioImage } },
+    );
     expect(restoredResult.stdout.toString()).toMatch(/Loaded image(?: ID)?:/);
     expect(await counts(restored)).toEqual({ ...baseline, refs: 2 });
     const quarantinePools = await restored.pools();
@@ -914,9 +923,9 @@ it('installs an immutable built image, drains a populated backup and restores al
       expect(failed.stdout.toString()).not.toContain('STUDIO_SERVER_STARTED');
     }
     await restored.compose([
-      ...quarantine,
       '-f',
       'deployment/encryption.yml',
+      ...quarantine,
       'run',
       '--rm',
       '--no-deps',

@@ -288,7 +288,7 @@ rewrite immutable history or triggers.
 ```sh
 export COMPOSE_PROJECT_NAME=studio-restore
 sh deployment/restore.sh "$BACKUP_DIR" "$KEY_CUSTODY"
-export COMPOSE_FILE=docker-compose.yml:deployment/recovery-images.yml:deployment/quarantine.yml:deployment/encryption.yml
+export COMPOSE_FILE=docker-compose.yml:deployment/quarantine.yml:deployment/encryption.yml:deployment/recovery-images.yml
 # Keep the login transition in a fail-closing shell. A failed proof check,
 # startup, diagnostic, interrupt or hangup commits NOLOGIN, terminates every
 # writer session and then attempts to stop the private web process. Teardown

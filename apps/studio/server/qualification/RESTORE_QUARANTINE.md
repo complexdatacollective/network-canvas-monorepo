@@ -122,3 +122,16 @@ development-performance case skipped. Server typecheck and repository Knip
 also passed. Removing only the invalid-decoding zeroization caused the new
 buffer-ownership assertion to fail, and the original implementation was
 restored before committing.
+
+The retained-image precedence correction was qualified on 2026-09-08 with
+Linux/arm64 image
+`sha256:3162859ba3e5cb6cc967273afaf28a4e1fdde225feda5039ba66f4b88f65a316`
+(`studio-kms-restore:retained-image-order`). Both Compose cases passed; the
+populated restore took 102.90 seconds. The restore environment deliberately
+used a unique, absent registry image name, verified absent before invocation,
+while only the retained content IDs could supply the offline verifier. The
+previous Compose-file order failed this same fixture with `No such image` at
+`encryption-verify`. Recovery image overrides now follow the encryption service
+definition in both the restore command and the documented private validation
+command. All 20 shell process controls also passed. This remains local
+quarantine evidence and does not establish authenticated reopening.
