@@ -1,5 +1,5 @@
 # This overlay is used only for the explicit, offline migration command.
-# The long-running service receives only studio_runtime credentials.
+# The migrator uses its own identity; serving app and maintenance logins stay separate.
 services:
   studio:
     environment:

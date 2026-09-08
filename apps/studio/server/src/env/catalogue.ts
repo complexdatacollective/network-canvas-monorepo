@@ -214,7 +214,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'Postgres application connection string, `pg.Pool`’s native format.',
     deployment:
-      'Unset ⇒ no database; auth and sync refuse while the server still boots. The persistent server uses a dedicated LOGIN permitted to SET only `studio_app`. Offline migration, reset, seed, backup and restore commands receive their separate administrative or backup `DATABASE_URL` for that invocation.',
+      'Required by web and combined processes; a worker-only process omits it. The persistent web server uses a dedicated LOGIN permitted to SET only `studio_app`. Offline migration, reset, seed, backup and restore commands receive their separate administrative or backup `DATABASE_URL` for that invocation.',
     devDefault: DEV_DATABASE_URL,
     example: 'postgres://user:password@host:5432/studio',
   },
@@ -224,7 +224,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'Postgres maintenance-worker connection string, `pg.Pool`’s native format.',
     deployment:
-      'Required by every persistent server with a database. Use a distinct dedicated LOGIN permitted to SET only `studio_maintenance`; never reuse the application, migration, restore, or backup LOGIN. Explicit local development alone falls back to `DATABASE_URL`.',
+      "Required by every persistent server with a database and is the worker-only process's sole database connection. Use a distinct dedicated LOGIN permitted to SET only `studio_maintenance`; never reuse the application, migration, restore, or backup LOGIN. Explicit local development alone falls back to `DATABASE_URL`.",
     example: 'postgres://maintenance:password@host:5432/studio',
   },
 

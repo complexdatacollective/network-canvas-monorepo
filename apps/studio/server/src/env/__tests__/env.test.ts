@@ -406,14 +406,31 @@ describe('database and auth', () => {
     });
   });
 
-  it('refuses a maintenance login without an application database', () => {
+  it('admits a worker with only its maintenance login', () => {
+    vi.stubEnv('STUDIO_ROLE', 'worker');
+    vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv(
+      'STUDIO_MAINTENANCE_DATABASE_URL',
+      'postgres://maintenance@localhost:5433/other',
+    );
+    const env = readEnv();
+    expect(env.db).toBeUndefined();
+    expect(env.maintenanceDb).toEqual({
+      url: 'postgres://maintenance@localhost:5433/other',
+    });
+    expect(env.auth?.baseUrl).toBe('http://localhost:5173');
+  });
+
+  it('refuses a web process with only a maintenance login', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', 'false');
+    vi.stubEnv('STUDIO_ROLE', 'web');
     vi.stubEnv('DATABASE_URL', '');
     vi.stubEnv(
       'STUDIO_MAINTENANCE_DATABASE_URL',
       'postgres://maintenance@localhost:5433/other',
     );
     expect(() => readEnv()).toThrow(
-      'DATABASE_URL is required when STUDIO_MAINTENANCE_DATABASE_URL is set',
+      'DATABASE_URL is required for a web-capable process',
     );
   });
 

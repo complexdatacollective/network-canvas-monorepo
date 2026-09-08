@@ -63,7 +63,8 @@ docker compose up -d --wait postgres
 docker compose up -d minio-init
 docker compose -f docker-compose.yml -f deployment/migrate.yml \
   run --rm --no-deps studio migrate
-docker compose run --rm --no-deps studio encryption verify
+docker compose -f docker-compose.yml -f deployment/encryption.yml \
+  run --rm --no-deps encryption-verify
 docker compose up -d studio
 docker compose run --rm --no-deps studio diagnostics
 docker compose up -d traefik
@@ -72,16 +73,17 @@ docker compose up -d traefik
 Migrations are explicit and never run at boot. The migration overlay supplies
 the separate schema-owner login only to that one command.
 `STUDIO_DATABASE_ALLOWED_LOGINS` is a JSON array that explicitly enrolls
-`studio_migrator`, `studio_runtime` and `studio_backup_login` for this bundle.
-It is supplied only by the migration
-overlay. Provisioning creates the database with connections disabled, commits
+`studio_migrator`, `studio_runtime`, `studio_maintenance_runtime` and
+`studio_backup_login` for this bundle. Provisioning creates the database with
+connections disabled, commits
 the restricted CONNECT allowlist, then opens it. Migration validates that
 already committed boundary and refuses unlisted or inherited access and
 retained outside sessions. Correct an existing misconfigured database only
 under explicit quarantine, removing outside sessions before migration. Each
 deployment needs its own login identities; never reuse one enrollment across
-isolated instances. The ordinary service
-gets the restricted runtime login, with no DDL, superuser or CREATEROLE power.
+isolated instances. The web service gets only the restricted application
+login; the worker gets only the distinct restricted maintenance login. Neither
+has DDL, superuser or CREATEROLE power.
 The container administrator password, migrator password, backup password and MinIO root
 credentials are not in the Studio service environment. Initialization creates
 a private bucket and a distinct application user limited to reading/writing
@@ -166,12 +168,13 @@ sh deployment/backup.sh /absolute/private/pre-upgrade-backup \
 docker compose pull
 # If the release requires new database roles, run its administrator-only
 # role-provision step before invoking the NOCREATEROLE migrator.
-# Backup closed the two dedicated logins as well as stopping the services.
+# Backup closed both runtime logins and the migrator as well as stopping the services.
 docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
-  -c 'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN;'
+  -c 'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN;'
 docker compose -f docker-compose.yml -f deployment/migrate.yml \
   run --rm --no-deps studio migrate
-docker compose run --rm --no-deps studio encryption verify
+docker compose -f docker-compose.yml -f deployment/encryption.yml \
+  run --rm --no-deps encryption-verify
 docker compose up -d studio
 docker compose run --rm --no-deps studio diagnostics
 # Run the release's authenticated smoke test against the private backend.
@@ -238,7 +241,7 @@ and all matching image digests with it. A directory without `COMPLETE` is not
 a successful backup. Referenced object bytes are captured after in-flight
 uploads drain; a database-only snapshot is insufficient.
 
-To resume the source after a successful backup, re-enable the two logins with
+To resume the source after a successful backup, re-enable all three logins with
 the administrator command shown above, start MinIO, run `encryption verify`,
 and start Studio privately. Check diagnostics and an authenticated smoke
 before starting the proxy and any separated workers. An unsuccessful capture
@@ -254,8 +257,8 @@ rewrite immutable history or triggers.
 ```sh
 export COMPOSE_PROJECT_NAME=studio-restore
 sh deployment/restore.sh "$BACKUP_DIR" "$KEY_CUSTODY"
-export COMPOSE_FILE=docker-compose.yml:deployment/recovery-images.yml:deployment/quarantine.yml
-docker compose run --rm --no-deps studio encryption verify
+export COMPOSE_FILE=docker-compose.yml:deployment/recovery-images.yml:deployment/quarantine.yml:deployment/encryption.yml
+docker compose run --rm --no-deps encryption-verify
 docker compose up -d studio
 docker compose run --rm --no-deps studio diagnostics
 ```

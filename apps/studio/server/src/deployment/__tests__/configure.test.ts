@@ -68,6 +68,7 @@ describe('explicit deployment configuration', () => {
         'POSTGRES_PASSWORD',
         'STUDIO_MIGRATION_PASSWORD',
         'STUDIO_DATABASE_PASSWORD',
+        'STUDIO_MAINTENANCE_DATABASE_PASSWORD',
         'STUDIO_BACKUP_PASSWORD',
         'BETTER_AUTH_SECRET',
         'STUDIO_BOOTSTRAP_TOKEN',
@@ -92,9 +93,34 @@ describe('explicit deployment configuration', () => {
       expect(env.STUDIO_IMAGE).toBe(options.image);
       expect(env.MINIO_IMAGE).toBe(options.minioImage);
       expect(env.STUDIO_TELEMETRY).toBe('on');
+      expect(JSON.parse(env.STUDIO_DATABASE_ALLOWED_LOGINS!)).toEqual([
+        'studio_migrator',
+        'studio_runtime',
+        'studio_maintenance_runtime',
+        'studio_backup_login',
+      ]);
       expect(await readdir(output)).not.toContain('.configure.lock');
       expect(await readFile(join(output, 'docker-compose.yml'), 'utf8')).toBe(
         await readFile(join(templateRoot, 'docker-compose.yml'), 'utf8'),
+      );
+      expect(
+        await readFile(join(output, 'deployment/encryption.yml'), 'utf8'),
+      ).toBe(
+        await readFile(join(templateRoot, 'deployment/encryption.yml'), 'utf8'),
+      );
+      const postgresInit = await readFile(
+        join(output, 'deployment/postgres-init.sql'),
+        'utf8',
+      );
+      expect(postgresInit).not.toContain('/* STUDIO_');
+      expect(postgresInit).toContain(
+        'GRANT studio_app TO studio_runtime WITH SET TRUE, INHERIT FALSE',
+      );
+      expect(postgresInit).toContain(
+        'GRANT studio_maintenance TO studio_maintenance_runtime WITH SET TRUE, INHERIT FALSE',
+      );
+      expect(postgresInit).toContain(
+        'REVOKE EXECUTE ON FUNCTION pg_catalog.lo_create(oid)',
       );
     });
   });

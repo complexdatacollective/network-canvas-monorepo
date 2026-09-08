@@ -197,7 +197,7 @@ const webLease = pool
 
 const observability = createObservability({
   encryptionKeys,
-  pool: schemaPool,
+  pool,
   maintenancePool,
   assetStore,
   monitorProcess: true,
