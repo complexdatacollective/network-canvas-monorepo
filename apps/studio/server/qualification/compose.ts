@@ -360,18 +360,20 @@ networks:
     assertNoTelemetryEgress(await telemetryLogs());
   }
   async function proveTelemetryDetector() {
-    await compose([
-      'exec',
-      '-T',
-      'studio',
-      'node',
-      '-e',
-      TELEMETRY_CANARY_SOURCE,
-    ]);
-    assertTelemetryDetectorPositive(await telemetryLogs());
-    await compose(['rm', '--stop', '--force', 'telemetry-detector']);
-    await compose(['up', '-d', 'telemetry-detector']);
-    assertNoTelemetryEgress(await telemetryLogs());
+    for (const service of ['studio', 'worker']) {
+      await compose([
+        'exec',
+        '-T',
+        service,
+        'node',
+        '-e',
+        TELEMETRY_CANARY_SOURCE,
+      ]);
+      assertTelemetryDetectorPositive(await telemetryLogs());
+      await compose(['rm', '--stop', '--force', 'telemetry-detector']);
+      await compose(['up', '-d', 'telemetry-detector']);
+      assertNoTelemetryEgress(await telemetryLogs());
+    }
   }
   async function dispose() {
     // This project name is generated above; never select a pre-existing stack.

@@ -721,7 +721,7 @@ it('installs an immutable built image, drains a populated backup and restores al
       '--no-deps',
       'encryption-verify',
     ]);
-    await source.compose(['up', '-d', 'studio', 'probe']);
+    await source.compose(['up', '-d', 'studio', 'worker', 'probe']);
     await source.ready();
     await source.assertTelemetryQuiet();
     await source.proveTelemetryDetector();

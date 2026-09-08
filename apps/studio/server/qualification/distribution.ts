@@ -390,18 +390,20 @@ networks:
     assertNoTelemetryEgress(telemetryLogs(configuration));
   }
   function proveTelemetryDetector(configuration: string) {
-    compose(configuration, [
-      'exec',
-      '-T',
-      'studio',
-      'node',
-      '-e',
-      TELEMETRY_CANARY_SOURCE,
-    ]);
-    assertTelemetryDetectorPositive(telemetryLogs(configuration));
-    compose(configuration, ['rm', '--stop', '--force', 'telemetry-detector']);
-    compose(configuration, ['up', '-d', 'telemetry-detector']);
-    assertNoTelemetryEgress(telemetryLogs(configuration));
+    for (const service of ['studio', 'worker']) {
+      compose(configuration, [
+        'exec',
+        '-T',
+        service,
+        'node',
+        '-e',
+        TELEMETRY_CANARY_SOURCE,
+      ]);
+      assertTelemetryDetectorPositive(telemetryLogs(configuration));
+      compose(configuration, ['rm', '--stop', '--force', 'telemetry-detector']);
+      compose(configuration, ['up', '-d', 'telemetry-detector']);
+      assertNoTelemetryEgress(telemetryLogs(configuration));
+    }
   }
   const operationOptions = (bundleDirectory: string, digest: string) => ({
     directory: installation,
