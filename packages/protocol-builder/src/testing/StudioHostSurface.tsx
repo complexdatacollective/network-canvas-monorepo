@@ -17,30 +17,7 @@ import type {
   ProtocolBuilderSessionStore,
 } from '../session.ts';
 import { FIXTURE_SESSION_OWNER } from './fixtureSession.ts';
-
-/**
- * Everything a host has to do for this package, and nothing else.
- *
- * Written down here because it is the deliverable: a future Studio integration
- * needs to know what it is signing up for, and the list a reader can check
- * against is the one the proof host is actually built from — every line below
- * is a call this file or `StageEditorStoryHost` makes, and every one of them
- * is a call `apps/studio/client/src/editor/useStudioStageSession.ts` already
- * makes for real.
- *
- * What is NOT on the list is as much the point. There is no store, no router,
- * no protocol document, no codebook model, no undo stack and no validation of
- * the host's own: the session owns all of it, and a host that tried to keep a
- * second copy would be the thing that drifts.
- */
-export const HOST_RESPONSIBILITIES: readonly string[] = Object.freeze([
-  'Open the session on the stage the researcher chose, with the protocol’s sections, the revision they were read at, and the access the section lock granted.',
-  'Commit each batch of commands in the order it is made, then answer with receiveAuthoritativeUpdate and acknowledge under the revision that committed it.',
-  'Pass on what changes elsewhere: receiveAuthoritativeUpdate for a newer revision, and replaceAuthoritativeStage when the stage itself moved while this session was only reading.',
-  'Own the section lock: setAccess to read-only the moment it is lost, and back to editable when it is regained under its new epoch.',
-  'Carry a compound edit to the protocol as one atomic change, and answer with what it applied, blocked or refused.',
-  'Provide the resource gateway, and apply a finish’s stage document and its resource manifest in the same revision.',
-]);
+import { HOST_RESPONSIBILITIES } from './hostResponsibilities.ts';
 
 /** The colleague every story here shares the protocol with. */
 export const COLLEAGUE: ProtocolBuilderPresence = Object.freeze({

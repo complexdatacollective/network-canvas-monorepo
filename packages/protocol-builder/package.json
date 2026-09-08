@@ -56,6 +56,7 @@
     "./StageEditor": "./src/StageEditor.tsx",
     "./stageEditorRegistry": "./src/stageEditorRegistry.ts",
     "./styles.css": "./src/styles.css",
+    "./testing/hostResponsibilities": "./src/testing/hostResponsibilities.ts",
     "./testing/renderStageEditor": "./src/testing/renderStageEditor.tsx",
     "./validation-attribution": "./src/validationAttribution.ts"
   },

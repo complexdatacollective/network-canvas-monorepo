@@ -5,8 +5,9 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import StageEditor from '../StageEditor.tsx';
+import { HOST_RESPONSIBILITIES } from './hostResponsibilities.ts';
 import { StageEditorStoryHost } from './StageEditorStoryHost.tsx';
-import { COLLEAGUE, HOST_RESPONSIBILITIES } from './StudioHostSurface.tsx';
+import { COLLEAGUE } from './StudioHostSurface.tsx';
 
 /**
  * The colleague, as presence: the host says who else is in the protocol, and
