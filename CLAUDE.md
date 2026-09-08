@@ -167,21 +167,26 @@ edge.
 - See the `creating-a-changeset` skill and
   `docs/superpowers/specs/2026-08-03-stable-app-release-design.md`.
 
-#### Hotfix releases for Architect and Interviewer
+#### Hotfix releases for Architect, Interviewer and Fresco
 
-Both apps' production jobs build `main`, so the normal lane cannot ship a patch
+The apps' production jobs build `main`, so the normal lane cannot ship a patch
 without everything else merged since the last release. When `main` holds work
 that must not go out yet, cut `hotfix/<app>-<version>` from the released tag,
 cherry-pick the fix, bump `package.json` + `CHANGELOG.md`, and run the
 **Hotfix Release** workflow (`.github/workflows/hotfix-release.yml`) from
 `main`, naming that branch in `source_ref`. The lane only ships the newest
-line — one production site per app means a `--prod` deploy always replaces what
-is live. Afterwards, merge the hotfix branch into `main` (dropping only that
-app's entry from the changeset it consumed). Both release lanes refuse to
-deploy a tree that does not contain the newest released commit, and the
-tag-driven guard skips a version whose tag already exists — so until that merge
-lands, `main` cannot release the app at all. Cherry-picking does not count: the
-guard checks commit ancestry. Full procedure in each app's `RELEASING.md`.
+line — one production target per app means a deploy always replaces what is
+live. Fresco's image installs the published `@codaco/*` packages rather than
+workspace source, so its hotfix mirrors the branch with every workspace package
+changed since the release tag (and its dependents) vendored as tarballs, and
+publishes nothing to npm. Afterwards, merge the hotfix branch into `main`
+(dropping only that app's entry from the changeset it consumed). Both release
+lanes refuse to deploy a tree that does not contain the newest released
+commit, and the tag-driven guard skips a version whose tag already exists — so
+until that merge lands, `main` cannot release the app at all. Cherry-picking
+does not count: the guard checks commit ancestry. Full procedure in
+`apps/architect/RELEASING.md`, `apps/interviewer/RELEASING.md` and
+`apps/fresco/CLAUDE.md`.
 
 #### Apps that release by mirroring
 
