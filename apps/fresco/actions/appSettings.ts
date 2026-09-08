@@ -125,6 +125,21 @@ function isStorageSettingEnvManaged(key: AppSetting): boolean {
   return false;
 }
 
+/**
+ * The one precondition on requiring two-factor authentication: the caller's
+ * own password account must already have it, or the write would hold the
+ * caller's session at the setup gate the moment it saved. Returns the error to
+ * report, or null when the caller complies.
+ */
+async function twoFactorRequirementRefusal(
+  userId: string,
+): Promise<string | null> {
+  const { passwordMode, totpEnabled } = await getTwoFactorStatus(userId);
+  return passwordMode && !totpEnabled
+    ? createMessageError(messages.setUpYourOwnTwoFactorFirst)
+    : null;
+}
+
 export async function setAppSetting<
   Key extends AppSetting,
   V extends z.infer<typeof appSettingPreprocessedSchema>[Key],
@@ -173,6 +188,17 @@ export async function setAppSetting<
           value1: key,
         }),
       );
+    }
+
+    // Enforced here, on the only write path, because this function is itself
+    // an exported Server Action: a check that lived only in
+    // `setRequireTwoFactor` could be skipped by calling this one directly. Read
+    // from the validated value so the serialised form ('true') is judged too.
+    if (key === 'requireTwoFactor' && validated.data === true) {
+      const refusal = await twoFactorRequirementRefusal(session.user.userId);
+      if (refusal) {
+        throw new Error(refusal);
+      }
     }
 
     await prisma.appSettings.upsert({
@@ -302,10 +328,10 @@ async function verifyUploadThingToken(token: string): Promise<string | null> {
 }
 
 /**
- * Turns the "Require Two-Factor Authentication" policy on or off. Turning it
- * on is refused while the caller's own password account has no authenticator:
- * the policy would hold that very session at the setup gate the moment it
- * saved, so the researcher enrols first and requires it for everyone second.
+ * Turns the "Require Two-Factor Authentication" policy on or off, returning
+ * the refusal as a value the settings card can show. `setAppSetting` applies
+ * the same precondition on the write itself; the check here only exists to
+ * hand the researcher the reason instead of a generic failure.
  */
 export async function setRequireTwoFactor(data: unknown) {
   const session = await requireApiAuth();
@@ -320,14 +346,9 @@ export async function setRequireTwoFactor(data: unknown) {
   const enabled = parsed.data;
 
   if (enabled) {
-    const { passwordMode, totpEnabled } = await getTwoFactorStatus(
-      session.user.userId,
-    );
-    if (passwordMode && !totpEnabled) {
-      return {
-        error: createMessageError(messages.setUpYourOwnTwoFactorFirst),
-        data: null,
-      };
+    const refusal = await twoFactorRequirementRefusal(session.user.userId);
+    if (refusal) {
+      return { error: refusal, data: null };
     }
   }
 
