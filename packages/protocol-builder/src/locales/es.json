@@ -298,6 +298,7 @@
   "protocolBuilder.formFields.hintLabel": "Texto de ayuda",
   "protocolBuilder.formFields.hintPlaceholder": "Selecciona todas las que correspondan",
   "protocolBuilder.formFields.incompleteField": "Cada campo necesita un atributo y una pregunta. Abre el campo incompleto y termínalo.",
+  "protocolBuilder.formFields.malformedField": "Este formulario contiene un elemento que no es un campo, por lo que sus campos no se pueden mostrar ni modificar aquí. Hay que quitar ese elemento del protocolo antes de poder guardar esta etapa.",
   "protocolBuilder.formFields.itemNoun": "campo",
   "protocolBuilder.formFields.newNameHint": "Cómo se llama este atributo en el libro de códigos y en los datos exportados.",
   "protocolBuilder.formFields.newNameLabel": "Nombre del atributo",

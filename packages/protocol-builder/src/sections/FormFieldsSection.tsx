@@ -128,6 +128,13 @@ const messages = defineMessages({
     description:
       'Refusal shown above a form’s list of fields when one of them names no attribute, or asks no question.',
   },
+  malformedField: {
+    id: 'protocolBuilder.formFields.malformedField',
+    defaultMessage:
+      'This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.',
+    description:
+      'Refusal shown above a form’s list of fields when the list holds an entry that is not a field at all — which an import, a migration or another session can leave behind. The list cannot render such an entry, so there is no row for the researcher to open and finish, which is why this says the protocol itself has to be repaired.',
+  },
   duplicateField: {
     id: 'protocolBuilder.formFields.duplicateField',
     defaultMessage:
@@ -425,6 +432,8 @@ const AT_LEAST_ONE_FIELD = createMessageError(messages.atLeastOne);
 
 const INCOMPLETE_FIELD = createMessageError(messages.incompleteField);
 
+const MALFORMED_FIELD = createMessageError(messages.malformedField);
+
 const DUPLICATE_FIELD = createMessageError(messages.duplicateField);
 
 const CREATE_WITH_VALUES_FIRST = createMessageError(
@@ -467,6 +476,23 @@ const rowsOf = (value: unknown): Record<string, unknown>[] =>
 const atLeastOneField = (value: unknown) =>
   Array.isArray(value) && value.length > 0 ? undefined : AT_LEAST_ONE_FIELD;
 
+/**
+ * Said of an entry the list cannot even show.
+ *
+ * Asked of the RAW array rather than of `rowsOf`, which drops what is not a
+ * record: a rule reading the filtered list is a rule about a list the
+ * researcher's protocol does not hold, and it answers that a form holding
+ * `[null]` is complete. The schema refuses that stage
+ * (`FormFieldSchema`), so the save fails either way — the difference is
+ * whether the section the researcher is looking at says why.
+ *
+ * Its own sentence rather than the incomplete one, because there is nothing to
+ * open: an entry of the wrong shape leaves the shared list with a value it
+ * cannot render, so the rows go with it and no row can be finished.
+ */
+const everyEntryIsAField = (value: unknown) =>
+  !Array.isArray(value) || value.every(isRecord) ? undefined : MALFORMED_FIELD;
+
 const everyFieldComplete = (value: unknown) =>
   rowsOf(value).every(
     (row) =>
@@ -497,13 +523,18 @@ const noAttributeTwice = (value: unknown) =>
 const REQUIRED_FIELDS_VALIDATION = Object.freeze({
   custom: messageRuleValidation([
     atLeastOneField,
+    everyEntryIsAField,
     everyFieldComplete,
     noAttributeTwice,
   ]),
 });
 
 const OPTIONAL_FIELDS_VALIDATION = Object.freeze({
-  custom: messageRuleValidation([everyFieldComplete, noAttributeTwice]),
+  custom: messageRuleValidation([
+    everyEntryIsAField,
+    everyFieldComplete,
+    noAttributeTwice,
+  ]),
 });
 
 /**

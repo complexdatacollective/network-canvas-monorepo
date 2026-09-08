@@ -187,6 +187,10 @@ const COLLECTS_A_POSITION = {
 } as const;
 
 /** Written out, so a catalog that lost the sentence cannot pass. */
+/** Written out, so a catalog that lost the sentence cannot pass. */
+const NOT_A_FIELD =
+  'This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.';
+
 const NO_WAY_TO_ANSWER =
   'This field’s attribute gives the participant no way to answer. Choose a different attribute, or remove this field.';
 
@@ -3153,5 +3157,42 @@ describe('closing a codebook editor whose trigger has gone', () => {
     expect(document.activeElement).toBe(
       dialog.getByRole('combobox', { name: 'Attribute' }),
     );
+  });
+});
+
+/**
+ * A list entry that is not a field at all.
+ *
+ * Nothing in the editor can author one — every route through this section
+ * writes a record — so it stands for the protocol that arrives holding one: an
+ * import, a migration, or another session. The schema refuses such a stage
+ * (`FormFieldSchema`), so the save fails whatever this section says; what the
+ * section owes the researcher is the reason, in the place they are looking,
+ * rather than a list that reports itself complete while the save is refused
+ * somewhere else.
+ */
+describe('a form whose list holds something that is not a field', () => {
+  const WITH_A_MALFORMED_ENTRY = {
+    id: 'alter-form-1',
+    type: 'AlterForm',
+    fields: {
+      ...loadFixtureStage('alter-form-1').fields,
+      form: {
+        fields: [
+          { variable: 'relationship_to_ego', prompt: 'How do you know them?' },
+          null,
+        ],
+      },
+    },
+  } as const;
+
+  it('says so above the list, and refuses the save', async () => {
+    const harness = renderStageEditor({
+      stage: WITH_A_MALFORMED_ENTRY,
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    expect(await harness.submit()).toBeNull();
+    expect(screen.getByText(NOT_A_FIELD)).toBeInTheDocument();
   });
 });
