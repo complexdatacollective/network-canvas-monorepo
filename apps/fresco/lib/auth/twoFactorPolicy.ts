@@ -20,8 +20,8 @@ export function isTwoFactorRequired(): boolean {
  * The two facts the requirement is judged against. Only password-mode
  * accounts are subject to it: a passkey-mode account has no password for a
  * TOTP code to protect, and Fresco treats the passkey as satisfying the
- * requirement (SECURITY.md records why, and the caveat that user verification
- * is not yet enforced on passkeys).
+ * requirement (SECURITY.md records why; every passkey already requires the
+ * authenticator to verify the user, so this is not a weaker substitute).
  */
 export async function getTwoFactorStatus(userId: string) {
   const [key, credential] = await Promise.all([

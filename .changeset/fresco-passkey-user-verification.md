@@ -6,4 +6,6 @@ Passkeys now have to verify who you are. Fresco asks every passkey to confirm yo
 
 Previously Fresco requested this verification but accepted responses without it, so a hardware security key with no PIN could sign in on possession of the key alone.
 
+Deployments that set `REQUIRE_TWO_FACTOR` exempt passkey-mode accounts from that requirement because a passkey already replaces the password; that exemption relied on the passkey proving the user's identity, which was not previously guaranteed. It now is.
+
 A passkey registered on a security key that cannot verify you no longer signs in, and Fresco tells you what to check rather than reporting a generic failure or, when the browser closes the passkey prompt on its own, saying nothing at all. Sign in with another of your passkeys, or ask another administrator to use **Reset Auth** on your account. If you are already signed in, add a passkey that verifies you from **Settings → User Management** before you sign out. Registering a new passkey on such a key is refused with the same explanation.
