@@ -23,6 +23,7 @@ import {
 
 import { commandsFromDraftChange, type StageFormDraft } from '../session.ts';
 import { withoutValueAt } from './absentValues.ts';
+import { mountedPathsOf } from './stageDraftFromSubmission.ts';
 import {
   type StageFormStoreApi,
   useStageEditorForm,
@@ -32,21 +33,39 @@ import {
 type FormStoreState = ReturnType<StageFormStoreApi['getState']>;
 
 /**
- * Where a field actually lives, and what the committed draft holds there.
+ * Where a field actually lives, and what it should start out holding.
  *
  * A field's name is not always its path: an enclosing `FieldNamespace`
  * prefixes it, and `nameMode="opaque"` makes a name containing dots a single
  * segment rather than a route through the document. Both are resolved here
  * exactly as Fresco's `Field` resolves them, so the name the outline asks the
- * store about and the path the committed value is read from are the ones the
- * field is really registered under.
+ * store about and the path the value is read from are the ones the field is
+ * really registered under.
  *
- * The committed draft is the only account of what a path holds, and it is
- * enough because everything that throws a value away tells the SESSION. A
- * capability the researcher switches off is unset there before the form is
- * emptied (`useDiscardStageValues`), so a control arriving under that path
- * afterwards — a list behind a collapsed group, say — reads the same absence
- * every other reader does, without a second record of the decision to consult.
+ * **The committed draft is the account of what a path holds once saved.**
+ * That is enough on its own because everything that throws a value away tells
+ * the SESSION: a capability the researcher switches off is unset there before
+ * the form is emptied (`useDiscardStageValues`), so a control arriving under
+ * that path afterwards — a list behind a collapsed group, say — reads the same
+ * absence every other reader does, without a second record of the decision to
+ * consult.
+ *
+ * **The live form is the account of an edit that has not been saved yet**, and
+ * only for as long as something is mounted to hold it. A field registered at a
+ * CONTAINER carries everything beneath it, so a leaf mounting later under one
+ * — a group of advanced options opened for the first time — has an account of
+ * its path already on screen, and it is newer than the draft. Seeded from the
+ * committed draft instead, such a leaf showed the value the researcher had
+ * just replaced, and then wrote it back over their edit on the next save:
+ * `stageDraftFromSubmission` replays the deeper field after the container
+ * above it, so the stale reading won.
+ *
+ * Beneath a mounted ancestor the form is asked and answers for the whole path,
+ * absence included — a container the researcher has emptied says there is
+ * nothing there, and the committed draft must not put it back. With no
+ * mounted ancestor the form holds no account of the path at all (a value
+ * PARKED by an unmounted field is deliberately not one: the submit drops a
+ * parked write a mounted field overlaps), and the committed draft answers.
  *
  * The value is memoised because `initialValue` is a dependency of the effect
  * that registers a field: an unstable one re-registers it on every render.
@@ -54,17 +73,46 @@ type FormStoreState = ReturnType<StageFormStoreApi['getState']>;
 export function useResolvedFieldIdentity(
   name: string,
   nameMode: FieldNameMode = 'legacy',
-): Readonly<{ registeredName: string; committedValue: unknown }> {
-  const { committedFields } = useStageEditorForm();
+): Readonly<{ registeredName: string; seedValue: unknown }> {
+  const { committedFields, storeApi } = useStageEditorForm();
   const namespace = useFieldNamespacePath();
 
   return useMemo(() => {
     const path = resolveFieldPath(namespace, name, nameMode);
+    const live = liveValueBeneathAMountedAncestor(storeApi, path);
     return {
       registeredName: formatObjectPath(path),
-      committedValue: getValue(committedFields, path),
+      seedValue: live.mounted ? live.value : getValue(committedFields, path),
     };
-  }, [committedFields, name, nameMode, namespace]);
+  }, [committedFields, name, nameMode, namespace, storeApi]);
+}
+
+/**
+ * What the form holds at `path`, and whether anything mounted is holding it.
+ *
+ * The two answers have to be separable: a container that does not hold the key
+ * and a path no mounted field reaches are both `undefined` to a plain read,
+ * and they mean opposite things — the first is the researcher's own emptiness,
+ * the second is nothing to say.
+ *
+ * Only a STRICT ancestor counts. A field registered at the path itself is the
+ * field being seeded remounting into its own dormant value, which the form
+ * store restores by itself.
+ */
+function liveValueBeneathAMountedAncestor(
+  storeApi: StageFormStoreApi,
+  path: ObjectPath,
+): Readonly<{ mounted: boolean; value: unknown }> {
+  if (path.length < 2) return { mounted: false, value: undefined };
+  const state = storeApi.getState();
+  const mounted = mountedPathsOf(storeApi).some(
+    (candidate) =>
+      candidate.length < path.length &&
+      candidate.every((segment, index) => path[index] === segment),
+  );
+  return mounted
+    ? { mounted: true, value: getValue(state.getFormValues(), path) }
+    : { mounted: false, value: undefined };
 }
 
 /**
@@ -161,11 +209,22 @@ export type DiscardCause = Readonly<{ path: string; value: unknown }>;
  * The FORM is emptied either way. A value typed into a capability and not yet
  * flushed is on screen and in no draft, so a reset that left it there would
  * write it back on the next save under a cause it no longer describes.
+ *
+ * **Unless the session refuses the batch**, which is what it does when editing
+ * has been taken away since this handler was built — between the click that
+ * opened a confirmation and the click that answered it, say. A refusal means
+ * nothing was thrown away, so nothing may be emptied either: the values are
+ * still the session's, the access change has already re-rendered everything
+ * that would re-seed them, and a form emptied here would leave the capability
+ * looking cleared with nothing left to fill it back in — and the next save
+ * writing that emptiness into a stage the session never agreed to. Answered
+ * rather than swallowed, so the caller can leave its own switch where the
+ * researcher left it; `applyOwnCommands` has already said so on screen.
  */
 export function useDiscardStageValues(): (
   paths: readonly string[],
   cause?: DiscardCause,
-) => void {
+) => boolean {
   const { applyOwnCommands } = useStageEditorForm();
   const clearStageValue = useClearStageValue();
 
@@ -204,11 +263,12 @@ export function useDiscardStageValues(): (
         ...causeBatch.filter((command) => !carriedBy(discards, command)),
         ...discards,
       ];
-      if (batch.length > 0) applyOwnCommands(batch);
+      if (batch.length > 0 && applyOwnCommands(batch).refused) return false;
 
       // The FORM only, and only the discarded paths: the cause is already on
       // screen — the researcher chose it — and it is the draft that was behind.
       for (const path of paths) clearStageValue(path);
+      return true;
     },
     [applyOwnCommands, clearStageValue],
   );
