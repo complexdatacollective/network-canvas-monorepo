@@ -227,6 +227,55 @@ function verifyPricingDeclaration(item, now, usage) {
     fail(`category ${item.category} requires a quoted recurring rate`);
 }
 
+/** Price shared included capacity once, including the full execution month. */
+function verifySharedAllowances(items, peakQuantities) {
+  const groups = new Map();
+  for (const item of items) {
+    if (item.pricing.kind !== 'included') continue;
+    const quote = item.pricing;
+    const allowance = quote.allowance;
+    if (!allowance || typeof allowance !== 'object' || Array.isArray(allowance))
+      fail(`category ${item.category} requires a shared allowance declaration`);
+    const identity = ['billingScopeId', 'productId', 'allowanceId', 'unit'].map(
+      (field) =>
+        boundedIdentifier(
+          allowance[field],
+          `category ${item.category} allowance.${field}`,
+        ).toLowerCase(),
+    );
+    const provider = boundedIdentifier(
+      quote.providerId,
+      `category ${item.category} providerId`,
+    ).toLowerCase();
+    if (allowance.period !== 'month')
+      fail(
+        `category ${item.category} allowance must cover the execution month`,
+      );
+    const limit = finiteNonNegative(
+      allowance.limitQuantity,
+      `category ${item.category} allowance.limitQuantity`,
+    );
+    if (quote.coveredQuantity !== limit)
+      fail(
+        `category ${item.category} coveredQuantity must equal its shared allowance limit`,
+      );
+    // Unit is intentionally not a grouping key: spelling the same provider
+    // allowance with incompatible units must fail, not create another limit.
+    const key = JSON.stringify([provider, ...identity.slice(0, 3)]);
+    const existing = groups.get(key);
+    if (existing && (existing.unit !== identity[3] || existing.limit !== limit))
+      fail('shared allowance declarations disagree about their units or limit');
+    const group = existing ?? { unit: identity[3], limit, total: 0 };
+    group.total += peakQuantities[item.category];
+    finiteNonNegative(group.total, 'shared allowance aggregate');
+    if (group.total > group.limit)
+      fail(
+        `shared allowance ${identity[2]} peak usage ${group.total} exceeds its limit ${group.limit}`,
+      );
+    groups.set(key, group);
+  }
+}
+
 export function evaluateManagedEstateCost(
   input,
   {
@@ -393,22 +442,27 @@ export function evaluateManagedEstateCost(
   if (input.flyApplicationEgressGb === 0)
     fail('Fly application egress must measure the active services');
   if (
-    input.monitoringCollectorMonthlyHours !== sizing.monthlyHours ||
-    monitoringCollectorRegion !== sizing.region ||
-    monitoringCollectorCpuKind !== 'shared' ||
-    input.monitoringCollectorCpus !== 1 ||
-    input.monitoringCollectorMemoryMb !== 512
+    input.monitoringCollectorMonthlyHours !==
+      sizing.monitoring.collector.monthlyHours ||
+    monitoringCollectorRegion !== sizing.monitoring.collector.region ||
+    monitoringCollectorCpuKind !==
+      sizing.monitoring.collector.resources.cpu_kind ||
+    input.monitoringCollectorCpus !==
+      sizing.monitoring.collector.resources.cpus ||
+    input.monitoringCollectorMemoryMb !==
+      sizing.monitoring.collector.resources.memory_mb
   )
     fail(
       'monitoring collector compute must cover the 744-hour IAD 1x shared 512 MB candidate',
     );
   if (
-    input.monitoringCollectorStorageGb === 0 ||
+    input.monitoringCollectorStorageGb <
+      sizing.monitoring.collector.minimumPersistentVolumeGb ||
     input.monitoringCollectorEgressGb === 0
   )
     fail('monitoring collector must measure checkpoint storage and egress');
   if (
-    monitoringAnchorRegion !== 'us-east-1' ||
+    monitoringAnchorRegion !== sizing.monitoring.anchor.region ||
     input.monitoringAnchorHttpRequestCount === 0 ||
     input.monitoringAnchorComputeGbSeconds === 0 ||
     input.monitoringAnchorDatabaseReadRequestUnits === 0 ||
@@ -820,7 +874,7 @@ export function evaluateManagedEstateCost(
       objectGb < input.primaryObjectRetainedVersionGb ||
       drill.databaseSourceRequestCount < 2 * databaseNames.length ||
       drill.databaseSourceTransferGb < dumpTotalGb ||
-      drill.objectSourceRequestCount < objectCount ||
+      drill.objectSourceRequestCount < objectCount + databaseNames.length ||
       drill.objectSourceTransferGb < objectGb ||
       drill.runnerTransferGb <
         drill.databaseSourceTransferGb +
@@ -1032,6 +1086,24 @@ export function evaluateManagedEstateCost(
     };
     for (const item of input.lineItems)
       verifyPricingDeclaration(item, now, usage);
+    const peakQuantities = Object.fromEntries(
+      Object.entries(quantities).map(([category, quantity]) => [
+        category,
+        quantity *
+          (category.startsWith('annual-reencryption-')
+            ? 12
+            : category.includes('-drill-')
+              ? sizing.recovery.restoreDrillIntervalMonths
+              : 1),
+      ]),
+    );
+    peakQuantities['backup-requests'] +=
+      monthlyDrillReceiptRequests *
+      (sizing.recovery.restoreDrillIntervalMonths - 1);
+    peakQuantities['backup-egress'] +=
+      monthlyDrillReceiptReadGb *
+      (sizing.recovery.restoreDrillIntervalMonths - 1);
+    verifySharedAllowances(input.lineItems, peakQuantities);
   }
 
   return {
