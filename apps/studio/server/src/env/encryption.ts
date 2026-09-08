@@ -38,6 +38,12 @@ export function resolveEncryptionEnv(
   const provider = source.STUDIO_ENCRYPTION_KEY_PROVIDER ?? 'environment';
   if (provider !== 'environment' && provider !== 'aws-kms')
     throw new KeyConfigurationError();
+  const offlineCustody = source.STUDIO_ENCRYPTION_OFFLINE_CUSTODY;
+  if (
+    (offlineCustody !== undefined && offlineCustody !== 'required') ||
+    (offlineCustody === 'required' && provider !== 'environment')
+  )
+    throw new KeyConfigurationError();
   const raw = source.STUDIO_ENCRYPTION_KEYSET;
   if (!raw?.trim()) {
     if (

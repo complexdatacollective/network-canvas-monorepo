@@ -8,7 +8,11 @@ import {
   createAwsKmsRootKeyLoader,
   kmsRootEncryptionContext,
 } from '../aws-kms.ts';
-import { KeyConfigurationError, loadEncryptionKeys } from '../keys.ts';
+import {
+  KeyConfigurationError,
+  loadEncryptionKeys,
+  TransferredRootKeyMaterial,
+} from '../keys.ts';
 import { configuration } from './fixtures.ts';
 
 // Exercise the real AWS serializer, credential signing, endpoint resolution,
@@ -92,6 +96,14 @@ const settings = () => ({
   },
   encryptedRoots: { [reference]: wrapped },
 });
+
+function copyTransferredRoot(
+  material: Uint8Array | TransferredRootKeyMaterial,
+) {
+  expect(material).toBeInstanceOf(TransferredRootKeyMaterial);
+  if (!(material instanceof TransferredRootKeyMaterial)) throw new Error();
+  return material.consume((bytes) => Buffer.from(bytes));
+}
 
 beforeEach(() => {
   fixture.configurations.length = 0;
@@ -186,6 +198,20 @@ describe('AWS KMS wrapped root loader', () => {
         development,
       ),
     ).toThrow(KeyConfigurationError);
+    expect(() =>
+      resolveEncryptionEnv({
+        STUDIO_ENCRYPTION_OFFLINE_CUSTODY: 'required',
+        STUDIO_ENCRYPTION_KEY_PROVIDER: 'aws-kms',
+        STUDIO_ENCRYPTION_KEYSET: JSON.stringify(config),
+        STUDIO_ENCRYPTION_KMS_KEY_ARN: arn,
+        STUDIO_ENCRYPTION_KMS_DEPLOYMENT: 'studio-staging',
+        STUDIO_ENCRYPTION_KMS_ACCESS_KEY_ID: settings().credentials.accessKeyId,
+        STUDIO_ENCRYPTION_KMS_SECRET_ACCESS_KEY:
+          settings().credentials.secretAccessKey,
+        STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: wrapped,
+        STUDIO_ENCRYPTION_ROOT_TEST_ROOT_TWO: wrapped,
+      }),
+    ).toThrow(KeyConfigurationError);
     expect(fixture.requests).toHaveLength(0);
     expect(fixture.configurations).toHaveLength(0);
   });
@@ -196,7 +222,7 @@ describe('AWS KMS wrapped root loader', () => {
     vi.stubEnv('AWS_PROFILE', 'must-not-be-loaded');
     vi.stubEnv('AWS_ACCESS_KEY_ID', 'UNRELATED_S3_IDENTITY');
     const load = createAwsKmsRootKeyLoader(settings());
-    expect(await load(reference)).toEqual(root);
+    expect(copyTransferredRoot(await load(reference))).toEqual(root);
     expect(fixture.requests).toHaveLength(1);
     expect(fixture.requests[0]).toMatchObject({
       hostname: 'kms.us-east-1.amazonaws.com',
@@ -237,6 +263,21 @@ describe('AWS KMS wrapped root loader', () => {
     );
   });
 
+  it('transfers its plaintext copy for mandatory destruction by the importer', async () => {
+    const material = await createAwsKmsRootKeyLoader(settings())(reference);
+    expect(material).toBeInstanceOf(TransferredRootKeyMaterial);
+    if (!(material instanceof TransferredRootKeyMaterial)) throw new Error();
+    let transferred: Uint8Array | undefined;
+    material.consume((bytes) => {
+      transferred = bytes;
+      expect(Buffer.from(bytes)).toEqual(root);
+    });
+    expect(transferred).toEqual(Buffer.alloc(32));
+    expect(() => material.consume(() => undefined)).toThrow(
+      KeyConfigurationError,
+    );
+  });
+
   it('snapshots operator settings, supports temporary credentials and keeps root-reference contexts distinct', async () => {
     const second = 'STUDIO_ENCRYPTION_ROOT_HISTORICAL';
     const input = {
@@ -251,8 +292,8 @@ describe('AWS KMS wrapped root loader', () => {
     input.deployment = 'mutated';
     input.credentials.secretAccessKey = 'mutated';
     input.encryptedRoots[reference] = 'bad';
-    expect(await load(reference)).toEqual(root);
-    expect(await load(second)).toEqual(root);
+    expect(copyTransferredRoot(await load(reference))).toEqual(root);
+    expect(copyTransferredRoot(await load(second))).toEqual(root);
     expect(fixture.requests).toHaveLength(2);
     expect(fixture.requests.map(({ body }) => body)).toEqual(
       [reference, second].map((name) =>

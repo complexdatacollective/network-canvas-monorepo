@@ -113,6 +113,13 @@ message, key material or credentials. The existing startup gate still verifies
 historical key proofs before accepting traffic; a provider outage refuses
 startup rather than choosing another root.
 
+Self-hosted online verification uses the explicit `encryption-verify-online`
+Compose service. It alone adds the edge network needed to reach the regional
+AWS endpoint. The recovery `encryption-verify` service has only the internal
+data network and requires direct environment roots; it refuses a KMS provider
+before constructing a client. Never add the online service or edge network to
+a quarantined restore.
+
 Enable annual KMS backing-key rotation in infrastructure. Application root
 rotation remains the separately audited, resumable operation below; rotating a
 KMS backing key does not change application key IDs or blind indexes. Retain

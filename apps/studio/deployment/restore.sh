@@ -249,6 +249,13 @@ compose run --rm --no-deps -T --entrypoint tar minio -C /data -xf - \
 # in the foreground so failed recovered IAM or bucket state refuses completion.
 compose up -d minio
 compose run --rm --no-deps -T minio-init
+# Prove the independently held direct roots against the restored database while
+# it remains isolated. The cleanup trap closes this temporary login on every
+# subsequent success, failure or signal; the offline service has no edge path.
+compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+  -c 'ALTER ROLE studio_maintenance_runtime LOGIN;'
+COMPOSE_FILE="$COMPOSE_FILE:deployment/encryption.yml" \
+  compose run --rm --no-deps encryption-verify
 close_writer_logins
 restore_complete=1
 exit 0

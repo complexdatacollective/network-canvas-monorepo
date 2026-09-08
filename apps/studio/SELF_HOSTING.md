@@ -48,8 +48,11 @@ Back up both secret files immediately into encrypted, operator-controlled custod
 independent key/configuration backup is essential; the database does not hold
 the roots needed to recover encrypted contacts and integration credentials.
 The encryption file contains only the keyset and its referenced roots; it is
-the only env file loaded into the application. Add new roots there during
-rotation and retain every historical PII, integration and blind-index root.
+the only env file loaded into the application. With the environment provider
+those values are direct roots. With AWS KMS they are wrapped ciphertext and a
+separate recovery file must retain the same direct roots. Add new roots to both
+inventories during rotation and retain every historical PII, integration and
+blind-index root.
 Never put administrative database or object-store credentials in that file.
 
 The one domain setting is `STUDIO_DOMAIN`. Traefik's route and Studio's public
@@ -69,6 +72,11 @@ docker compose up -d studio
 docker compose run --rm --no-deps studio diagnostics
 docker compose up -d traefik
 ```
+
+These examples use the generated direct-root configuration. When the
+operational provider is AWS KMS, target `encryption-verify-online` for normal
+installation and upgrade verification. That is the only verifier with the
+edge path required for the pinned regional AWS endpoint.
 
 Migrations are explicit and never run at boot. The migration overlay supplies
 the separate schema-owner login only to that one command.
@@ -182,6 +190,10 @@ docker compose run --rm --no-deps studio diagnostics
 docker compose up -d traefik
 ```
 
+Use `encryption-verify-online` in the upgrade command when the operational
+provider is AWS KMS. Keep the data-only `encryption-verify` name for recovery
+custody and quarantined restore validation.
+
 A date/time announcement does not block incompatible requests: the proxy and
 writers must actually be stopped. Failed migration rolls back its transaction
 and exits nonzero; keep admission closed while diagnosing it. A migrated
@@ -232,8 +244,21 @@ KEY_CUSTODY="/independent-encrypted-key-custody/studio-$(date -u +%Y%m%dT%H%M%SZ
 sh deployment/backup.sh "$BACKUP_DIR" "$KEY_CUSTODY"
 ```
 
-The command first copies the complete encryption file to the new independent
-custody path and verifies that exact key snapshot. It then takes a database
+For AWS KMS, create a mode 0600 environment-provider file containing the same
+keyset and every direct historical root, then name that existing private input
+without placing it in `.env`:
+
+```sh
+STUDIO_RECOVERY_ENCRYPTION_FILE=/operator-custody/all-direct-roots.env \
+  sh deployment/backup.sh "$BACKUP_DIR" "$KEY_CUSTODY"
+```
+
+The command privately snapshots the recovery input, verifies the operational
+provider through the explicitly online service, and verifies the direct-root
+snapshot against the same database through the data-only offline service. It
+then exclusively copies the verified snapshot to the new independent custody
+path. Missing or wrong roots and KMS ciphertext-only custody refuse before a
+complete backup can be published. The command then takes a database
 archive, stops MinIO and captures its volume, copies configuration while
 excluding all roots, records data counts, and verifies its
 checksum list before writing `COMPLETE`. Preserve the signed release manifest
@@ -242,8 +267,10 @@ a successful backup. Referenced object bytes are captured after in-flight
 uploads drain; a database-only snapshot is insufficient.
 
 To resume the source after a successful backup, re-enable all three logins with
-the administrator command shown above, start MinIO, run `encryption verify`,
-and start Studio privately. Check diagnostics and an authenticated smoke
+the administrator command shown above, start MinIO, run `encryption verify`
+through `encryption-verify-online` when KMS is selected (or the data-only
+`encryption-verify` for direct roots), and start Studio privately. Check
+diagnostics and an authenticated smoke
 before starting the proxy and any separated workers. An unsuccessful capture
 requires correcting the reported condition under quarantine first.
 

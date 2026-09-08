@@ -1,7 +1,11 @@
 import { DecryptCommand, KMSClient } from '@aws-sdk/client-kms';
 import { z } from 'zod';
 
-import { KeyConfigurationError, type RootKeyLoader } from './keys.ts';
+import {
+  KeyConfigurationError,
+  type RootKeyLoader,
+  TransferredRootKeyMaterial,
+} from './keys.ts';
 
 const DEADLINE_MS = 5_000;
 const referenceName = /^STUDIO_ENCRYPTION_ROOT_[A-Z0-9_]{1,100}$/;
@@ -116,7 +120,9 @@ export function createAwsKmsRootKeyLoader(input: unknown): RootKeyLoader {
               result.CiphertextForRecipient !== undefined
             )
               throw new KeyConfigurationError();
-            return Buffer.from(result.Plaintext);
+            return new TransferredRootKeyMaterial(
+              Buffer.from(result.Plaintext),
+            );
           } finally {
             // Also clear late responses after the absolute deadline has won.
             result.Plaintext?.fill(0);
