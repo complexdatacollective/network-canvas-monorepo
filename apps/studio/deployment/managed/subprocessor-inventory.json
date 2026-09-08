@@ -1,5 +1,8 @@
 {
-  "jurisdiction": "United States",
+  "validatedInfrastructure": {
+    "jurisdiction": "United States",
+    "scope": "Configured candidate placements only; provider-wide geography is not qualified by this inventory."
+  },
   "selfHostingAlternative": "Self-host the identical Studio artifact in an institution-selected region.",
   "configuredEstate": {
     "computeRegion": "iad",
@@ -45,6 +48,7 @@
     {
       "name": "Cloudflare",
       "role": "CDN, DNS, ingress Worker, and primary R2 object storage",
+      "geography": "R2 primary object jurisdiction is validated as US; CDN, DNS, Worker, and edge processing geography is unqualified by this inventory.",
       "dataCategories": [
         "research assets",
         "API request data",
@@ -90,6 +94,7 @@
     {
       "name": "New Relic",
       "role": "Operational logs, metrics, queries, and alerts",
+      "geography": "Provider geography is unqualified by this inventory.",
       "dataCategories": ["sanitized operational logs", "aggregate metrics"],
       "status": "cost-candidate",
       "sourcePaths": ["README.md", "cost-input.example.json"],
@@ -98,6 +103,7 @@
     {
       "name": "PostHog relay",
       "role": "Existing application telemetry and error reporting",
+      "geography": "Provider geography is unqualified by this inventory.",
       "dataCategories": ["redacted telemetry", "sanitized error reports"],
       "status": "existing-integration",
       "sourcePaths": ["../../TELEMETRY.md"],
@@ -106,6 +112,7 @@
     {
       "name": "Netlify",
       "role": "Managed Studio static-client hosting plus branch-preview client and function hosting; approved production domains networkcanvas.studio and staging studio.networkcanvas.dev",
+      "geography": "Provider geography is unqualified by this inventory.",
       "dataCategories": [
         "static client request metadata",
         "preview traffic",
@@ -118,6 +125,7 @@
     {
       "name": "Postmark",
       "role": "Transactional application mail provider",
+      "geography": "Provider geography is unqualified by this inventory.",
       "dataCategories": [
         "recipient addresses",
         "transactional message content"

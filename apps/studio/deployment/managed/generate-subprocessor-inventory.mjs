@@ -100,6 +100,38 @@ const configurations = await Promise.all(
 );
 const blocks = (value) =>
   value === undefined ? [] : Array.isArray(value) ? value : [value];
+const supportedTopLevelBlocks = new Set([
+  'check',
+  'data',
+  'locals',
+  'output',
+  'provider',
+  'resource',
+  'terraform',
+  'variable',
+]);
+const supportedTerraformBlocks = new Set([
+  'required_providers',
+  'required_version',
+]);
+for (const configuration of configurations) {
+  const unsupportedTopLevel = Object.keys(configuration).filter(
+    (kind) => !supportedTopLevelBlocks.has(kind),
+  );
+  if (unsupportedTopLevel.length)
+    throw new Error(
+      'Managed Terraform top-level operational blocks require explicit support.',
+    );
+  for (const terraform of blocks(configuration.terraform)) {
+    const unsupportedTerraform = Object.keys(terraform).filter(
+      (kind) => !supportedTerraformBlocks.has(kind),
+    );
+    if (unsupportedTerraform.length)
+      throw new Error(
+        'Managed Terraform backend/cloud subblocks require explicit support.',
+      );
+  }
+}
 // Every supported block participates in the residency review below. A new
 // resource/data block needs an explicit inventory extension, even if its
 // provider is already listed and the changed input hash has been approved.
@@ -170,6 +202,13 @@ for (const configuration of configurations) {
   for (const kind of ['resource', 'data']) {
     for (const [type, instances] of Object.entries(configuration[kind] ?? {})) {
       for (const instance of Object.values(instances).flatMap(blocks)) {
+        if (
+          Object.hasOwn(instance, 'provisioner') ||
+          Object.hasOwn(instance, 'connection')
+        )
+          throw new Error(
+            'Managed Terraform resource provisioner/connection side effects require explicit support.',
+          );
         const binding = instance.provider;
         const name =
           binding === undefined
@@ -225,6 +264,14 @@ if (
   throw new Error(
     'Managed estate regions differ from the reviewed US candidate.',
   );
+const requiredProviderGeography = {
+  'Cloudflare':
+    'R2 primary object jurisdiction is validated as US; CDN, DNS, Worker, and edge processing geography is unqualified by this inventory.',
+  'New Relic': 'Provider geography is unqualified by this inventory.',
+  'PostHog relay': 'Provider geography is unqualified by this inventory.',
+  'Netlify': 'Provider geography is unqualified by this inventory.',
+  'Postmark': 'Provider geography is unqualified by this inventory.',
+};
 for (const provider of source.providers) {
   if (
     !provider.name ||
@@ -236,6 +283,13 @@ for (const provider of source.providers) {
     provider.sourcePaths.length === 0
   )
     throw new Error('Subprocessor metadata is malformed.');
+  if (
+    Object.hasOwn(requiredProviderGeography, provider.name) &&
+    provider.geography !== requiredProviderGeography[provider.name]
+  )
+    throw new Error(
+      'Required provider geography qualification metadata is missing.',
+    );
   for (const sourcePath of provider.sourcePaths) {
     if (typeof sourcePath !== 'string' || sourcePath.includes('\0'))
       throw new Error('Subprocessor source path is malformed.');
@@ -249,7 +303,11 @@ if (sizing.region !== 'iad')
   );
 
 const estate = {
-  jurisdiction: source.residency.managedRegion,
+  validatedInfrastructure: {
+    jurisdiction: source.residency.managedRegion,
+    scope:
+      'Configured candidate placements only; provider-wide geography is not qualified by this inventory.',
+  },
   selfHostingAlternative: source.residency.selfHostingAlternative,
   configuredEstate: {
     computeRegion: sizing.region,
@@ -274,9 +332,9 @@ const outputJson = await formatOutput(
 
 const rows = estate.providers.map(
   (provider) =>
-    `| ${provider.name} | ${provider.role} | ${provider.dataCategories.join('; ')} | ${provider.status} |`,
+    `| ${provider.name} | ${provider.role} | ${provider.dataCategories.join('; ')} | ${provider.geography ?? 'Provider-wide geography is not qualified by this inventory.'} | ${provider.status} |`,
 );
-const outputMarkdown = `# Managed Studio subprocessor inventory\n\nGenerated from \`subprocessor-estate.json\`, \`candidate-sizing.json\`, the managed Terraform estate, and the reviewed \`estate-config-manifest.json\`. Configuration changes fail closed until the manifest is deliberately reviewed and updated. This is an infrastructure inventory, not legal or contractual qualification.\n\nManaged service residency: **${estate.jurisdiction}**. ${estate.selfHostingAlternative}\n\nConfigured candidate: compute \`${estate.configuredEstate.computeRegion}\`; PostgreSQL \`${estate.configuredEstate.postgresRegion}\` (${estate.configuredEstate.postgresPlan}, ${estate.configuredEstate.postgresStorageGb} GB); primary R2 jurisdiction \`${estate.configuredEstate.primaryObjectJurisdiction}\`; recovery \`${estate.configuredEstate.recoveryRegion}\`; KMS \`${estate.configuredEstate.kmsRegion}\`. Services: ${estate.configuredEstate.serviceNames.join(', ')}.\n\n| Provider | Role | Data categories | Estate status |\n| --- | --- | --- | --- |\n${rows.join('\n')}\n\nProvider legal entities, affiliates, retention/deletion, security reports, breach terms, support, and account recovery must be confirmed by the #1260 publication process.\n`;
+const outputMarkdown = `# Managed Studio subprocessor inventory\n\nGenerated from \`subprocessor-estate.json\`, \`candidate-sizing.json\`, the managed Terraform estate, and the reviewed \`estate-config-manifest.json\`. Configuration changes fail closed until the manifest is deliberately reviewed and updated. This is an infrastructure inventory, not legal or contractual qualification.\n\nValidated infrastructure placement jurisdiction: **${estate.validatedInfrastructure.jurisdiction}** for the configured candidate locations below only. Provider-wide geography, including mail delivery, telemetry, CDN, and edge processing, is not qualified by this inventory. ${estate.selfHostingAlternative}\n\nConfigured candidate: compute \`${estate.configuredEstate.computeRegion}\`; PostgreSQL \`${estate.configuredEstate.postgresRegion}\` (${estate.configuredEstate.postgresPlan}, ${estate.configuredEstate.postgresStorageGb} GB); primary R2 jurisdiction \`${estate.configuredEstate.primaryObjectJurisdiction}\`; recovery \`${estate.configuredEstate.recoveryRegion}\`; KMS \`${estate.configuredEstate.kmsRegion}\`. Services: ${estate.configuredEstate.serviceNames.join(', ')}.\n\n| Provider | Role | Data categories | Geography qualification | Estate status |\n| --- | --- | --- | --- | --- |\n${rows.join('\n')}\n\nProvider legal entities, affiliates, retention/deletion, security reports, breach terms, support, and account recovery must be confirmed by the #1260 publication process.\n`;
 
 const formattedMarkdown = await formatOutput(
   'SUBPROCESSORS.md',

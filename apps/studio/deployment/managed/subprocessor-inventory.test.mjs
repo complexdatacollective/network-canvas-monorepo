@@ -135,7 +135,87 @@ for (const [file, extra] of [
     assert.notEqual(result.status, 0);
     assert.match(
       result.stderr,
-      /provider.*inventory|provider.*mapping|resource\/data inventory/,
+      /top-level operational blocks|provider.*inventory|provider.*mapping|resource\/data inventory/,
+    );
+  });
+
+for (const [file, extra] of [
+  [
+    'ephemeral.tf',
+    'ephemeral "aws_secretsmanager_secret_version" "unreviewed" {\n  secret_id = "unreviewed"\n}\n',
+  ],
+  ['action.tf', 'action "external" "unreviewed" {}\n'],
+  [
+    'import.tf',
+    'import {\n  to = aws_kms_key.studio_root\n  id = "unreviewed"\n}\n',
+  ],
+  [
+    'moved.tf',
+    'moved {\n  from = aws_kms_key.studio_root\n  to = aws_kms_key.studio_root\n}\n',
+  ],
+])
+  test(`refuses unsupported approved top-level operational block ${file}`, async (context) => {
+    const temp = await mkdtemp(join(tmpdir(), 'studio-approved-top-level-'));
+    context.after(() => rm(temp, { recursive: true, force: true }));
+    await copyReviewedEstate(temp);
+    await writeFile(join(temp, file), extra);
+    await approveManifestFile(temp, file);
+    const result = generateAt(temp, true);
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.stderr,
+      /top-level operational blocks|configuration|support/i,
+    );
+  });
+
+for (const [name, extra] of [
+  [
+    'backend',
+    '\nterraform {\n  backend "http" {\n    address = "https://state.example.test"\n  }\n}\n',
+  ],
+  [
+    'cloud',
+    '\nterraform {\n  cloud {\n    organization = "unreviewed"\n    workspaces { name = "unreviewed" }\n  }\n}\n',
+  ],
+])
+  test(`refuses an approved Terraform ${name} subblock`, async (context) => {
+    const temp = await mkdtemp(join(tmpdir(), 'studio-approved-terraform-'));
+    context.after(() => rm(temp, { recursive: true, force: true }));
+    await copyReviewedEstate(temp);
+    const path = join(temp, 'versions.tf');
+    await writeFile(path, `${await readFile(path, 'utf8')}${extra}`);
+    await approveManifestFile(temp, 'versions.tf');
+    const result = generateAt(temp, true);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /backend\/cloud subblocks|support/i);
+  });
+
+for (const [name, nested] of [
+  [
+    'provisioner',
+    'provisioner "local-exec" {\n    command = "echo unreviewed"\n  }',
+  ],
+  ['connection', 'connection {\n    host = "unreviewed"\n  }'],
+])
+  test(`refuses an approved resource ${name} side effect`, async (context) => {
+    const temp = await mkdtemp(join(tmpdir(), 'studio-approved-side-effect-'));
+    context.after(() => rm(temp, { recursive: true, force: true }));
+    await copyReviewedEstate(temp);
+    const path = join(temp, 'main.tf');
+    const original = await readFile(path, 'utf8');
+    await writeFile(
+      path,
+      original.replace(
+        'rotation_period_in_days = 365',
+        `rotation_period_in_days = 365\n  ${nested}`,
+      ),
+    );
+    await approveManifestFile(temp, 'main.tf');
+    const result = generateAt(temp, true);
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.stderr,
+      /provisioner\/connection side effects|support/i,
     );
   });
 
@@ -194,6 +274,48 @@ test('generated inventory is current and includes every referenced estate provid
       inventory.providers.some((provider) => provider.name === name),
       name,
     );
+});
+
+test('scopes geography claims and preserves unqualified provider geography', async () => {
+  const inventory = JSON.parse(
+    await readFile(join(directory, 'subprocessor-inventory.json'), 'utf8'),
+  );
+  assert.equal(inventory.validatedInfrastructure.jurisdiction, 'United States');
+  assert.match(
+    inventory.validatedInfrastructure.scope,
+    /Configured candidate placements only/,
+  );
+  assert.equal(inventory.jurisdiction, undefined);
+  for (const name of ['New Relic', 'PostHog relay', 'Netlify', 'Postmark']) {
+    assert.equal(
+      inventory.providers.find((provider) => provider.name === name).geography,
+      'Provider geography is unqualified by this inventory.',
+    );
+  }
+  assert.match(
+    inventory.providers.find((provider) => provider.name === 'Cloudflare')
+      .geography,
+    /edge processing geography is unqualified/,
+  );
+  const markdown = await readFile(join(directory, 'SUBPROCESSORS.md'), 'utf8');
+  assert.doesNotMatch(markdown, /Managed service residency:/);
+  assert.match(markdown, /Validated infrastructure placement jurisdiction/);
+  assert.match(markdown, /Geography qualification/);
+  assert.match(markdown, /mail delivery, telemetry, CDN, and edge processing/);
+});
+
+test('required unqualified geography metadata cannot be removed after review', async (context) => {
+  const temp = await mkdtemp(join(tmpdir(), 'studio-subprocessor-geography-'));
+  context.after(() => rm(temp, { recursive: true, force: true }));
+  await copyReviewedEstate(temp);
+  const path = join(temp, 'subprocessor-estate.json');
+  const source = JSON.parse(await readFile(path, 'utf8'));
+  delete source.providers.find((provider) => provider.name === 'Postmark')
+    .geography;
+  await writeFile(path, `${JSON.stringify(source)}\n`);
+  const result = generateAt(temp, true);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /provider geography qualification metadata/i);
 });
 
 test('provider integration removal fails the generated inventory guard', async () => {
