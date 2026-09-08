@@ -1256,6 +1256,89 @@ describe('a picker over a session that has moved on', () => {
       'staged-resource-1',
     );
   });
+
+  /**
+   * The other end of the same hold. Discarding the file empties the picker,
+   * and emptying a picker is a FORM change: no batch says so until the next
+   * save. Releasing the batch that chose the file on the strength of a
+   * correction that has not been made hands a live-applying host a reference
+   * to bytes that will never exist — and a batch handed over is the host's, so
+   * there is no taking it back.
+   *
+   * The save here is refused for a reason of its own — the stage name has been
+   * emptied — which is what leaves the chosen file staged and the batch that
+   * named it pending. A save refused by the PROMOTION would not do: a
+   * promotion that never said what it did is exactly the state in which the
+   * resource cannot be discarded at all.
+   */
+  it('keeps a command naming a discarded roster away from a live-applying host', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const { onCommands, session } = createRosterFixture({ gateway });
+    const { fieldValue } = renderResourceEditor({
+      session,
+      actions: ({ formId }) => (
+        <SubmitButton form={formId}>Finished editing</SubmitButton>
+      ),
+      children: (
+        <>
+          {rosterField()}
+          <ProtocolField
+            component={InputField}
+            name="label"
+            label="Stage name"
+          />
+        </>
+      ),
+    });
+
+    // A command naming nothing staged reaches the host at once, which is what
+    // makes the silence below an assertion.
+    session.dispatch([{ op: 'set', key: 'label', value: 'People you know' }]);
+    expect(onCommands).toHaveBeenCalledTimes(1);
+    // Settled before the editor is touched: a draft the form itself did not
+    // write remounts the form store, which would close the browser under the
+    // click that opened it.
+    await act(flushPendingWork);
+
+    // The stage the next save will be refused for.
+    await user.clear(screen.getByRole('textbox', { name: 'Stage name' }));
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select a data file' }),
+    );
+    await user.upload(
+      await screen.findByLabelText('Choose a file from your computer'),
+      new File([ROSTER], 'community.json', { type: 'application/json' }),
+    );
+    await waitFor(() =>
+      expect(fieldValue('dataSource')).toBe('staged-resource-1'),
+    );
+
+    // The save is what writes the choice into the session. It is refused
+    // before any promotion starts, so the file is still staged and the batch
+    // that named it is still waiting when the researcher changes their mind.
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await waitFor(() =>
+      expect(JSON.stringify(session.getSnapshot().pendingCommands)).toContain(
+        'staged-resource-1',
+      ),
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Discard this resource' }),
+    );
+    await waitFor(() => expect(fieldValue('dataSource')).toBeUndefined());
+
+    expect(JSON.stringify(onCommands.mock.calls)).not.toContain(
+      'staged-resource-1',
+    );
+    // Held, not lost: the researcher's own edits are still theirs to send once
+    // the removal is something the session can say.
+    expect(JSON.stringify(session.getSnapshot().pendingCommands)).toContain(
+      'staged-resource-1',
+    );
+  });
 });
 
 /**

@@ -416,6 +416,118 @@ describe('a list the stage keeps at a nested path', () => {
     });
   });
 
+  /**
+   * The same rule `readArray` states for the list's own key, asked of the way
+   * to it: an import, a migration or a legacy protocol can leave an ancestor
+   * as a string, a number or a list, and then nothing under it is reachable at
+   * all — `set`, `insertItem`, `removeItem` and `moveItem` alike throw on the
+   * way past it, out of the click that asked for the row.
+   */
+  it('replaces an ancestor no command could reach through', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      // A bare string where the container belongs. The list reads as absent,
+      // so the researcher is shown an empty list with a working Add button.
+      nodeConfig: 'family_member',
+    });
+    renderNestedPromptList(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new prompt' }),
+    );
+    const text = await screen.findByRole('textbox', { name: 'Prompt text' });
+    await user.type(text, 'Charlie');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() =>
+      expect(nestedFormOf(session).map((prompt) => prompt.text)).toEqual([
+        'Charlie',
+      ]),
+    );
+    // The replacement rides in the same batch as the row, so undoing the add
+    // puts the string back, and it invents nothing but the way to the list.
+    expect(commandsOf(session)).toEqual([
+      { op: 'set', key: 'nodeConfig', value: { form: [] } },
+      {
+        op: 'insertItem',
+        key: ['nodeConfig', 'form'],
+        index: 0,
+        item: { id: expect.any(String) as unknown as string, text: 'Charlie' },
+      },
+    ]);
+    expect(session.getSnapshot().pendingCommands).toHaveLength(1);
+
+    session.undo();
+    expect(session.getSnapshot().editedSection.fields.nodeConfig).toBe(
+      'family_member',
+    );
+  });
+
+  /**
+   * Every shape the engine refuses to write through, repaired and then applied
+   * by the engine itself — which is what keeps this package's reading of that
+   * rule and `@codaco/studio-sync`'s own from drifting apart.
+   */
+  it.each([
+    ['a number', 42],
+    ['nothing at all', null],
+    ['a list', [{ id: 'a', text: 'Alpha' }]],
+  ])('replaces an ancestor left as %s', async (_shape, held) => {
+    const user = userEvent.setup();
+    const session = createSession({ title: 'Welcome', nodeConfig: held });
+    renderNestedPromptList(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new prompt' }),
+    );
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'Charlie',
+    );
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() =>
+      expect(nestedFormOf(session).map((prompt) => prompt.text)).toEqual([
+        'Charlie',
+      ]),
+    );
+  });
+
+  /**
+   * An ancestor that is simply not there needs no repair: the engine creates
+   * the containers on the way to a write, exactly as it does for a top-level
+   * key that does not exist yet.
+   */
+  it('invents no repair for an ancestor the document has not got', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ title: 'Welcome' });
+    renderNestedPromptList(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new prompt' }),
+    );
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'Charlie',
+    );
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() =>
+      expect(nestedFormOf(session).map((prompt) => prompt.text)).toEqual([
+        'Charlie',
+      ]),
+    );
+    expect(commandsOf(session)).toEqual([
+      {
+        op: 'insertItem',
+        key: ['nodeConfig', 'form'],
+        index: 0,
+        item: { id: expect.any(String) as unknown as string, text: 'Charlie' },
+      },
+    ]);
+  });
+
   it('commits a save that outlived its dialog to the row it was made on', async () => {
     const user = userEvent.setup();
     const session = createSession({

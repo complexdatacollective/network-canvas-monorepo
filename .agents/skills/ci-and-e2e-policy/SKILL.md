@@ -11,12 +11,23 @@ suite deterministic.
 #### Storybook interaction tests
 
 `test:storybook` (`vitest run --project=storybook`) executes every story's
-play function and assertions in a real browser. Five workspaces define it:
+play function and assertions in a real browser. Six workspaces define it:
 `@codaco/architect`, `@codaco/fresco-ui`, `@codaco/interview`,
-`@codaco/interviewer`, and `fresco`. The `test-storybook` CI job runs them
-through Turbo and the `quality` gate requires it. Chromatic does not replace
-this: it has no project for Architect or Fresco, and TurboSnap only
-re-captures the stories a pull request changed.
+`@codaco/interviewer`, `@codaco/protocol-builder`, and `fresco`. The
+`test-storybook` CI job runs them through Turbo and the `quality` gate requires
+it. Chromatic does not replace this: it has no project for Architect, Fresco or
+Protocol Builder, and TurboSnap only re-captures the stories a pull request
+changed.
+
+A workspace joins that set by declaring the script — nothing lists the projects.
+`turbo.json` defines `test:storybook` generically, and the CI job runs
+`turbo run test:storybook` with no filter, so a new workspace is selected the
+moment its `package.json` gains the script (and under `--affected`, whenever
+its own or a dependency's declared inputs change). Confirm a workspace is in by
+reading the task list rather than the workflow:
+`pnpm exec turbo run test:storybook --dry=json` and keeping the tasks whose
+`command` is a real command — turbo lists a task for every workspace, with
+`<NONEXISTENT>` as the command where the script is absent.
 
 Two constraints keep these suites deterministic, both documented at length in
 the configs themselves. Each project's `optimizeDeps.include` must list every

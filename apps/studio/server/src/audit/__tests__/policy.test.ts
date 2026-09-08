@@ -272,6 +272,7 @@ describe('audit mutation policy', () => {
   it('classifies every internal RPC mutation and only mutations', () => {
     const reads = new Set([
       'status',
+      'setup.status',
       'me',
       'protocols.draft',
       'protocols.list',
@@ -281,6 +282,8 @@ describe('audit mutation policy', () => {
       'audit.list',
       'audit.get',
       'audit.filterOptions',
+      'audit.alerts.list',
+      'audit.alerts.settings',
     ]);
     const mutations = contractLeaves(contract).filter(
       (procedure) => !reads.has(procedure),
@@ -406,11 +409,13 @@ describe('audit mutation policy', () => {
       );
     });
 
-    // read-authorization.ts is the one reader: audit reads must authorize the
-    // caller's committed role inside their own transaction, and confining that
-    // lock here keeps the store's write surface out of the RPC router.
+    // The audit, PII and webhook readers use lockActor to authorize the live
+    // committed membership in the audit transaction. The writable store stays
+    // confined to these reviewed services and the existing command producers.
     expect(importers.map((file) => relative(REPO_ROOT, file))).toEqual([
       'apps/studio/server/src/audit/read-authorization.ts',
+      'apps/studio/server/src/pii/participants.ts',
+      'apps/studio/server/src/pii/webhooks.ts',
       'apps/studio/server/src/protocol/commands.ts',
       'apps/studio/server/src/study/commands.ts',
       'apps/studio/server/src/team/commands.ts',
@@ -466,6 +471,7 @@ describe('audit mutation policy', () => {
     }
     expect(actual).toEqual({
       'apps/studio/server/src/audit/command.ts': [
+        { member: 'transaction', form: 'call', line: 0 },
         { member: 'transaction', form: 'call', line: 0 },
       ],
       'apps/studio/server/src/audit/transaction.ts': [

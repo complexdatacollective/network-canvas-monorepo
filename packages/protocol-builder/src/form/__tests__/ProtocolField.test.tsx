@@ -14,6 +14,7 @@ import {
   createStageIdentity,
   ProtocolBuilderSessionStore,
 } from '../../session.ts';
+import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import ProtocolField from '../ProtocolField.tsx';
 import StageEditorShell from '../StageEditorShell.tsx';
 
@@ -206,5 +207,91 @@ describe('a field mounting beneath overlapping fields', () => {
     expect(await screen.findByRole('textbox', { name: 'Minimum' })).toHaveValue(
       'one',
     );
+  });
+});
+
+/** A control that replaces the whole list it is registered at. */
+const SetItems = (({
+  onChange,
+}: Readonly<{ onChange?: (value: unknown) => void }>) => (
+  <button
+    type="button"
+    onClick={() =>
+      onChange?.([{ id: 'item-1', type: 'text', content: 'Rewritten' }])
+    }
+  >
+    Rewrite the items
+  </button>
+)) as ComponentType<Record<string, unknown>>;
+
+const SEEDED_ITEMS: SectionDoc = {
+  label: 'Welcome',
+  title: 'Welcome to the study',
+  items: [{ id: 'item-1', type: 'text', content: 'As it was seeded' }],
+};
+
+/**
+ * The other half of the overlap: a container that is still MOUNTED, holding an
+ * edit the researcher has made and no save has taken yet.
+ *
+ * The committed draft is the account of what a path holds once saved, and the
+ * live form is the account of the edit that has not been. A leaf mounting
+ * beneath a live container and seeding from the committed draft shows the
+ * value the researcher has just replaced — and, because a submit replays
+ * deeper fields after the containers above them, writes it back over their
+ * edit on the very next save.
+ */
+describe('a field mounting beneath a container holding an unsaved edit', () => {
+  const overlappingItems = (
+    <>
+      <ProtocolField name="items" label="Page items" component={SetItems} />
+      <Disclosure label="Show the first item">
+        <ProtocolField
+          name="items[0].content"
+          nameMode="path"
+          label="First item"
+          component={InputField}
+        />
+      </Disclosure>
+    </>
+  );
+
+  it('shows the edit rather than the draft it replaced', async () => {
+    const harness = renderStageEditor({
+      stage: { type: 'Information', fields: SEEDED_ITEMS },
+      sections: overlappingItems,
+    });
+
+    await harness.user.click(
+      await harness.findByRole('button', { name: 'Rewrite the items' }),
+    );
+    await harness.user.click(
+      harness.getByRole('button', { name: 'Show the first item' }),
+    );
+
+    expect(
+      await harness.findByRole('textbox', { name: 'First item' }),
+    ).toHaveValue('Rewritten');
+  });
+
+  it('does not write the replaced draft back over it on save', async () => {
+    const harness = renderStageEditor({
+      stage: { type: 'Information', fields: SEEDED_ITEMS },
+      sections: overlappingItems,
+    });
+
+    await harness.user.click(
+      await harness.findByRole('button', { name: 'Rewrite the items' }),
+    );
+    await harness.user.click(
+      harness.getByRole('button', { name: 'Show the first item' }),
+    );
+    await harness.findByRole('textbox', { name: 'First item' });
+
+    const request = await harness.submit();
+
+    expect(request?.stageDocument.items).toEqual([
+      { id: 'item-1', type: 'text', content: 'Rewritten' },
+    ]);
   });
 });

@@ -12,7 +12,10 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
+import {
+  teamIsolationPolicies,
+  tenantTablesSql,
+} from '@codaco/studio-sync/rls';
 
 import { PROTOCOL_TABLES } from '../protocol/schema.ts';
 import { ERASURE_GUC, STUDY_TABLES } from '../study/schema.ts';
@@ -88,7 +91,7 @@ const sessionSnapshots = pgTable(
           AND ${table.schemaVersion} > 0
           AND char_length(${table.payloadHash}) BETWEEN 1 AND 128`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -165,7 +168,7 @@ const nodes = pgTable(
     // GIN index on millions of rows is pure write cost. Add one per hot
     // attribute as an expression index inside this module when filtering
     // demands it.
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -211,7 +214,7 @@ const edges = pgTable(
     ),
     // The ADR's covering index, expressed as a key index: drizzle
     // 1.0.0-rc.4 has no `.include()`, and an index created in the sidecar
-    // would be dropped by the next drizzle-kit push (breaking apply-schema's
+    // would be dropped by the next developer drizzle-kit push (breaking its
     // no-op property). Index-only scans for the degree formulation are
     // unaffected; the index is larger because the endpoints ride in the key
     // rather than the leaf payload.
@@ -237,7 +240,7 @@ const edges = pgTable(
     // No `from_node <> to_node` check: no Network Canvas stage type creates a
     // self-loop today, but nothing in the protocol schema forbids one, and a
     // CHECK here would be a validation rule in the wrong layer.
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -313,7 +316,7 @@ const sessionStats = pgTable(
       sql`${table.nodeCount} >= 0 AND ${table.edgeCount} >= 0
           AND ${table.waveNumber} >= 1`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -341,7 +344,7 @@ const sessionDegreeHist = pgTable(
       'session_degree_hist_counts_check',
       sql`${table.degree} >= 0 AND ${table.nodeCount} > 0`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 

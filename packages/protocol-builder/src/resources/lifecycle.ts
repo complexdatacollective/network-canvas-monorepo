@@ -3,6 +3,7 @@ import type { ProtocolValidationIssue } from '@codaco/protocol-validation';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { stageOrderForValidation } from '../validationAttribution.ts';
 import {
   resourceFailure,
   resourceOk,
@@ -29,7 +30,6 @@ import {
 import { resourceFailureMessages } from './resourceMessages.ts';
 
 const ASSETS_SECTION = sectionId({ kind: 'assets' });
-const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
 
 /**
  * The manifest apply of a promotion replayed only to find out whether it
@@ -104,6 +104,16 @@ export type StagedResourceTracker = Readonly<{
   staged(): readonly ResourceDescriptor[];
   /** The opaque handle for a staged secret, for promotion. */
   secretHandle(resourceId: string): StagedSecretHandle | undefined;
+  /**
+   * Ids this session staged and then told the host to drop.
+   *
+   * Bytes that will never exist: no finish promotes them, so a draft naming
+   * one can only ever be a dangling reference. The session asks this before
+   * handing a batch to a live-applying host — the reference is the
+   * researcher's to take back, not this package's to rewrite, so the batch
+   * waits for them to.
+   */
+  discarded(): ReadonlySet<string>;
   /**
    * Resources this session promoted whose manifest entry has not reached the
    * session's authoritative sections yet.
@@ -621,6 +631,7 @@ export function createStagedResourceTracker(
 
   return Object.freeze({
     gateway,
+    discarded: (): ReadonlySet<string> => discardedIds,
     cancel: async (): Promise<ResourceResult<StagedResourceCancelReport>> => {
       // A finish that has started is the one deciding these resources, and it
       // decides them to the end: reporting a clean cancel here would be
@@ -1063,15 +1074,28 @@ export function assetsSectionForValidation(
 /**
  * Where the edited stage sits in the canonical protocol, so a resource problem
  * lands on the same path the schema would have used and is attributed to the
- * stage that owns it. A stage the order does not list yet is treated as
- * appended, which is where a host assembling a candidate puts it.
+ * stage that owns it.
+ *
+ * A stage being CREATED is not in the authoritative order at all, and where it
+ * goes is the host's decision rather than a guess: `creation` says where the
+ * candidate the schema judged has it, and the same order answers both halves
+ * of the validation (see `stageOrderForValidation`). Treated as appended
+ * without one — which is what a stage the order does not list and nothing
+ * else explains has to be — a stage inserted in the MIDDLE had its resource
+ * problems numbered past the end of the interview and attributed to the last
+ * existing stage, while its schema problems arrived at the insertion index.
  */
 export function stageIndexForValidation(
   protocolSections: Readonly<Record<string, SectionDoc>>,
   stageId: string,
+  creation?: Readonly<{ position: number }>,
 ): number {
-  const order = protocolSections[STAGE_ORDER_SECTION]?.stages;
-  if (!Array.isArray(order)) return 0;
+  const order = stageOrderForValidation(
+    protocolSections,
+    creation === undefined
+      ? undefined
+      : { stageId, position: creation.position },
+  );
   const index = order.indexOf(stageId);
   return index === -1 ? order.length : index;
 }

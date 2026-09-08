@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -161,16 +163,22 @@ export type PromptsSectionProps = Readonly<{
    */
   itemTemplate?: () => Partial<RowValues>;
   /**
-   * The row as the stage should hold it, given what the dialog collected.
+   * The family's own collapse of a saved prompt.
    *
-   * Defaults to dropping every control the researcher left empty. A family
-   * whose prompt carries an optional LIST supplies its own and drops that list
-   * when it is empty: the shared rule deliberately keeps empty arrays, because
-   * only the field that owns one can tell "emptied on purpose" from "never
-   * used", and a prompt that assigns nothing should carry no key at all rather
-   * than an empty one.
+   * Composed with, not instead of, this section's own rule that a control the
+   * researcher left empty is spelled by the key not being there — the same way
+   * `PageContentSection.slots.collapse` is, and under the same name, because
+   * the two sections are asking a family the same question and a family author
+   * moving between them should not get a different answer for writing the same
+   * thing.
+   *
+   * What a family adds is the part only the field owning a value can decide: a
+   * prompt carrying an optional LIST drops that list when it is empty, because
+   * the shared rule deliberately keeps empty arrays — it cannot tell "emptied
+   * on purpose" from "never used" — and a prompt that assigns nothing should
+   * carry no key at all rather than an empty one.
    */
-  normalizeRow?: (row: unknown) => unknown;
+  collapseRow?: (row: unknown) => unknown;
   /**
    * Sentences this interface's prompts need instead of the generic ones.
    *
@@ -198,8 +206,10 @@ export type PromptsSectionProps = Readonly<{
    * widens `defaultMessage` to `string`, so no conditional type can read the
    * braces and a descriptor declared through a helper that kept the literal
    * would be invisible to extraction. What says so instead is
-   * `sections/__tests__/namedDescriptorProps.test.tsx`, and the locale sweep,
-   * which fails on an unformatted placeholder wherever one reaches the screen.
+   * `sections/__tests__/namedDescriptorProps.test.tsx`, which lands with the
+   * form-fields section — the first surface to take a whole set of them — and
+   * the locale sweep, which fails on an unformatted placeholder wherever one
+   * reaches the screen.
    */
   description?: MessageDescriptor;
   /** Said instead of `description` while the section waits on a subject. */
@@ -227,7 +237,7 @@ export default function PromptsSection({
   requiresSubject = true,
   editorValidate,
   itemTemplate,
-  normalizeRow = withoutAbsentValues,
+  collapseRow,
   description = messages.description,
   waitingDescription = messages.waitingDescription,
   fieldHint = messages.fieldHint,
@@ -243,6 +253,18 @@ export default function PromptsSection({
   const { editorFieldsComponent, previewComponent } = useRowRenderers(
     PromptEditor,
     PromptPreview,
+  );
+
+  // The family's collapse runs FIRST, for the reason `PageContentSection`
+  // gives: it decides what each key becomes, and an emptied one has to be able
+  // to clear it. Keyed on the function rather than on the props object so a
+  // family writing it inline does not rebuild the row renderers every render.
+  const normalizeRow = useMemo(
+    () =>
+      collapseRow === undefined
+        ? withoutAbsentValues
+        : (row: unknown) => withoutAbsentValues(collapseRow(row)),
+    [collapseRow],
   );
 
   return (
