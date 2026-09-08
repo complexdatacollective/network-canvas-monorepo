@@ -10,9 +10,8 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 5_000;
 const DEFAULT_OPERATION_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_RESPONSE_BYTES = 128 * 1024;
 const MAX_MACHINES_PER_APP = 8;
-const LEASE_TTL_SECONDS = 15;
-const MACHINE_POLL_ATTEMPTS = 5;
 const MACHINE_POLL_INTERVAL_MS = 100;
+const MAX_LEASE_NONCE_BYTES = 1_024;
 const IDENTIFIER = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const MACHINE_ID = /^[a-z0-9]{1,64}$/;
 const MACHINE_VERSION = /^[A-Za-z0-9]{1,64}$/;
@@ -133,6 +132,37 @@ function combinedSignal(operationSignal, requestTimeoutMs) {
     operationSignal,
     AbortSignal.timeout(requestTimeoutMs),
   ]);
+}
+
+function headerSafeOpaque(value) {
+  if (
+    typeof value !== 'string' ||
+    value.length === 0 ||
+    value.trim() !== value ||
+    Buffer.byteLength(value) > MAX_LEASE_NONCE_BYTES
+  )
+    return false;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code < 0x20 || code > 0x7e) return false;
+  }
+  return true;
+}
+
+function boundedDelay(signal, milliseconds) {
+  if (signal.aborted) return Promise.reject(new Error('aborted'));
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(finish, milliseconds);
+    function finish() {
+      signal.removeEventListener('abort', abort);
+      resolve();
+    }
+    function abort() {
+      clearTimeout(timeout);
+      reject(new Error('aborted'));
+    }
+    signal.addEventListener('abort', abort, { once: true });
+  });
 }
 
 function abortRace(promise, signal, onLateResolve = () => {}) {
@@ -491,11 +521,24 @@ async function pollNonrunningMachine(
   machinePath,
   input,
   service,
+  expectedMachineId,
+  operationSignal,
   headers = {},
 ) {
   const spec = input.serviceSpecs[service];
-  for (let attempt = 0; attempt < MACHINE_POLL_ATTEMPTS; attempt += 1) {
+  while (true) {
     const value = await request(machinePath, { headers });
+    const observed = validateMutationMachine(
+      value,
+      input.estateName,
+      service,
+      spec,
+    );
+    if (observed.id !== expectedMachineId)
+      fail(`${service} lifecycle poll returned a substituted Machine identity`);
+    validateCorrectableConfig(observed, service);
+    if (!configMatches(observed, input.estateName, service, spec))
+      fail(`${service} Machine changed config during lifecycle polling`);
     if (value?.state === 'created' || value?.state === 'stopped') {
       const prepared = validateMachineIdentity(
         value,
@@ -508,15 +551,17 @@ async function pollNonrunningMachine(
         fail(`${service} Machine does not match the prepared config`);
       return prepared;
     }
-    if (attempt + 1 < MACHINE_POLL_ATTEMPTS)
-      await new Promise((resolve) =>
-        setTimeout(resolve, MACHINE_POLL_INTERVAL_MS),
-      );
+    if (value?.state !== 'creating' && value?.state !== 'replacing')
+      fail(`${service} Machine entered an unsafe lifecycle state`);
+    try {
+      await boundedDelay(operationSignal, MACHINE_POLL_INTERVAL_MS);
+    } catch {
+      fail('API request failed or timed out');
+    }
   }
-  return fail(`${service} Machine did not reach a nonrunning state`);
 }
 
-async function createMachine(request, input, service) {
+async function createMachine(request, input, service, operationSignal) {
   const spec = input.serviceSpecs[service];
   const appName = input.appNames[service];
   const created = await request(appPath(appName, '/machines'), {
@@ -542,36 +587,53 @@ async function createMachine(request, input, service) {
     appPath(appName, `/machines/${encodeURIComponent(mutation.id)}`),
     input,
     service,
+    mutation.id,
+    operationSignal,
   );
 }
 
 function validateLease(value) {
   const nonce = value?.data?.nonce;
+  const expiresAt = value?.data?.expires_at;
   if (
     value?.status !== 'success' ||
-    typeof nonce !== 'string' ||
-    !MACHINE_ID.test(nonce)
+    !headerSafeOpaque(nonce) ||
+    !Number.isSafeInteger(expiresAt) ||
+    expiresAt <= 0
   )
     fail('Machine lease response is malformed');
-  return nonce;
+  return { nonce, expiresAt };
 }
 
-async function updateMachine(request, input, service, inventoried) {
+async function updateMachine(
+  request,
+  input,
+  service,
+  inventoried,
+  operationSignal,
+  operationDeadlineMs,
+) {
   const spec = input.serviceSpecs[service];
   const appName = input.appNames[service];
   const machinePath = appPath(
     appName,
     `/machines/${encodeURIComponent(inventoried.id)}`,
   );
+  // expires_at uses whole Unix seconds. The extra second preserves the lease
+  // through rounding while the shared signal still forbids late requests.
+  const leaseTtlSeconds =
+    Math.ceil(Math.max(0, operationDeadlineMs - Date.now()) / 1_000) + 1;
   const lease = await request(`${machinePath}/lease`, {
     method: 'POST',
     body: {
       description: 'Network Canvas stopped-machine preparation',
-      ttl: LEASE_TTL_SECONDS,
+      ttl: leaseTtlSeconds,
     },
   });
-  const nonce = validateLease(lease);
+  const { nonce, expiresAt } = validateLease(lease);
   try {
+    if (expiresAt * 1_000 < operationDeadlineMs)
+      fail('Machine lease expires before the operation deadline');
     const fresh = validateMachineIdentity(
       await request(machinePath, {
         headers: { 'fly-machine-lease-nonce': nonce },
@@ -603,9 +665,15 @@ async function updateMachine(request, input, service, inventoried) {
       fail(`${service} update returned a substituted Machine identity`);
     if (!configMatches(mutation, input.estateName, service, spec))
       fail(`${service} updated Machine does not match the prepared config`);
-    return await pollNonrunningMachine(request, machinePath, input, service, {
-      'fly-machine-lease-nonce': nonce,
-    });
+    return await pollNonrunningMachine(
+      request,
+      machinePath,
+      input,
+      service,
+      mutation.id,
+      operationSignal,
+      { 'fly-machine-lease-nonce': nonce },
+    );
   } finally {
     await request(`${machinePath}/lease`, {
       method: 'DELETE',
@@ -663,6 +731,7 @@ export async function prepareFlyMachines({
     ),
   };
 
+  const operationDeadlineMs = Date.now() + operationTimeoutMs;
   const operationSignal = AbortSignal.timeout(operationTimeoutMs);
   const request = createClient({
     token,
@@ -689,7 +758,7 @@ export async function prepareFlyMachines({
     let machine;
     let action;
     if (existing === null) {
-      machine = await createMachine(request, input, service);
+      machine = await createMachine(request, input, service, operationSignal);
       action = 'created';
     } else if (
       configMatches(
@@ -702,7 +771,14 @@ export async function prepareFlyMachines({
       machine = existing;
       action = 'reused';
     } else {
-      machine = await updateMachine(request, input, service, existing);
+      machine = await updateMachine(
+        request,
+        input,
+        service,
+        existing,
+        operationSignal,
+        operationDeadlineMs,
+      );
       action = 'updated';
     }
     prepared.push({

@@ -68,7 +68,11 @@ organization and complete Machine inventory. It creates missing Machines with
 an exactly marked `created` or `stopped` Machine with optimistic version
 matching. Requests use the public `https://api.machines.dev/v1` API, reject
 redirects and pagination, and bound request time, total time, and response
-bytes. A final fresh inventory must show the same digest-pinned, candidate-sized,
+bytes. Lifecycle reads continue only through that total operation deadline and
+stop immediately on a changed identity, config, or unsafe state. Update leases
+use Fly's bounded opaque nonce as a header and request enough TTL to cover the
+remaining operation; a shorter returned expiry is refused before update. A
+final fresh inventory must show the same digest-pinned, candidate-sized,
 nonrunning Machine per app.
 
 Preparation does not create Fly apps or accounts, inject secrets, allocate
@@ -77,7 +81,12 @@ still requires the authenticated deployment workflow, private connectivity,
 health checks, secret delivery, routing, and live capacity evidence described
 below. The request and lifecycle shapes follow Fly's official
 [Apps](https://fly.io/docs/machines/api/apps-resource/) and
-[Machines](https://fly.io/docs/machines/api/machines-resource/) resources.
+[Machines](https://fly.io/docs/machines/api/machines-resource/) resources. The
+nested lease response and nonce-header behavior are also cross-checked against
+Fly's pinned
+[`fly-go` v0.9.15 client](https://github.com/superfly/fly-go/blob/v0.9.15/flaps/flaps_machines.go#L261-L316)
+and
+[`MachineLease` types](https://github.com/superfly/fly-go/blob/v0.9.15/machine_types.go#L1021-L1032).
 
 ## Required credentials and custody
 
