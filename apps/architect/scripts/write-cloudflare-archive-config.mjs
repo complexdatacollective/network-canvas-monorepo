@@ -162,16 +162,20 @@ export const toCloudflareHeaders = (text) => {
   if (!catchAll) {
     throw new Error('_headers has no "/*" rule; expected the shared PWA shape');
   }
+  // Zero is legitimate and must not abort: releases from before the no-store
+  // policy carry a `/*` rule with only security headers and set Cache-Control
+  // on each entry point instead. That shape is already free of the overlap this
+  // transform exists to remove, so there is simply nothing to strip — and since
+  // archiving old releases is the point of the lane, refusing it would block
+  // the feature's own use case. It also makes the rewrite idempotent, which
+  // costs nothing: the overlap check below is what actually enforces
+  // correctness, not the presence of a rule to delete.
   const removed = catchAll.headers.filter(
     (header) => header.name.toLowerCase() === 'cache-control',
   );
-  if (removed.length !== 1) {
+  if (removed.length > 1) {
     throw new Error(
-      `expected exactly one Cache-Control in the "/*" rule, found ${removed.length}.` +
-        (removed.length === 0
-          ? ' This dist may already have been transformed — the rewrite is not' +
-            ' idempotent by design, so run it on a freshly built dist.'
-          : ''),
+      `expected at most one Cache-Control in the "/*" rule, found ${removed.length}`,
     );
   }
 

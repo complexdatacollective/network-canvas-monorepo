@@ -76,6 +76,17 @@ on:
         required: false
         default: false
         type: boolean
+      # In a reusable workflow the `github` context belongs to the CALLER, so
+      # `github.sha` is the caller's triggering commit rather than the revision
+      # this workflow body was loaded from. For a local `./.github/workflows/…`
+      # call those are necessarily the same commit, which is how issue #1767
+      # intends to wire this up, and the default is correct. A caller that pins
+      # an explicit `@ref` must pass the matching revision here, or the tooling
+      # checkout below could be an older tree that lacks these scripts.
+      tooling_ref:
+        required: false
+        default: ''
+        type: string
     secrets:
       CLOUDFLARE_API_TOKEN:
         required: true
@@ -103,6 +114,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          # See `tooling_ref` above: the guard script has to come from this
+          # workflow's own revision, not merely the caller's commit.
+          ref: ${{ inputs.tooling_ref || github.sha }}
           fetch-tags: true
           # The newest-on-the-line check reads every tag on this major.
           fetch-depth: 0
@@ -144,7 +158,7 @@ jobs:
       # every build path stays ordinary.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ inputs.tooling_ref || github.sha }}
           path: .archive-tooling
           fetch-tags: true
           fetch-depth: 0
