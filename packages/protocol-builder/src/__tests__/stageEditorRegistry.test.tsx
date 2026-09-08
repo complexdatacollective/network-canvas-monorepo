@@ -138,25 +138,60 @@ describe('composing the registry from family parts', () => {
   });
 
   /**
-   * A key present but holding nothing claims nothing, which is the same
-   * reading `missingStageEditors` takes of the composed registry.
+   * Both parts of each case are ANNOTATED rather than written inline,
+   * because inline they are two literals the compiler can compare: one says
+   * `Information` holds nothing and the other says it holds an editor, and
+   * the merged type of the two is `never` — which is the right answer for a
+   * package whose parts the compiler can see. This is the other case, the
+   * one the runtime check exists for: a registry a HOST composed out of
+   * values typed as parts, where the key sets are no longer literals and
+   * nothing but the check itself can say whether an entry claims anything.
    *
-   * Both parts are ANNOTATED rather than written inline, because inline they
-   * are two literals the compiler can compare: one says `Information` holds
-   * nothing and the other says it holds an editor, and the merged type of the
-   * two is `never` — which is the right answer for a package whose parts the
-   * compiler can see. This is the other case, the one the runtime check exists
-   * for: a registry a HOST composed out of values typed as parts, where the
-   * key sets are no longer literals and nothing but the check itself can say
-   * whether an entry claims anything.
+   * Asked in BOTH orders, because they used to disagree. The scan for
+   * duplicates skips an empty entry, so neither order was refused — but the
+   * composition was an `Object.assign` per part, which copies an explicit
+   * `undefined` like any other value. A part carrying an empty entry AFTER the
+   * family that owns the interface therefore erased that family's editor, and
+   * left the key present with nothing under it: the one state that renders as
+   * an unregistered interface while `AWAITING_STAGE_EDITORS` and every claim
+   * test still say the interface has an editor.
    */
-  it('does not count an entry a part left empty as a claim', () => {
-    const empty: StageEditorRegistryPart = { Information: undefined };
-    const claimed: StageEditorRegistryPart = { Information: InformationEditor };
+  it.each<{
+    order: 'before' | 'after';
+    parts: readonly [StageEditorRegistryPart, StageEditorRegistryPart];
+  }>([
+    {
+      order: 'before',
+      parts: [{ Information: undefined }, { Information: InformationEditor }],
+    },
+    {
+      order: 'after',
+      parts: [{ Information: InformationEditor }, { Information: undefined }],
+    },
+  ])(
+    'does not count an empty entry $order the family as a claim',
+    ({ parts }) => {
+      const registry = composeStageEditorRegistry(...parts);
 
-    const registry = composeStageEditorRegistry(empty, claimed);
+      expect(registry.Information).toBe(InformationEditor);
+      expect(missingStageEditors(registry)).not.toContain('Information');
+      expect(Object.hasOwn(registry, 'Information')).toBe(true);
+    },
+  );
 
-    expect(registry.Information).toBe(InformationEditor);
+  /**
+   * The same reading, for a key NO part filled in: it stays off the composed
+   * registry altogether rather than sitting on it holding nothing, so
+   * `missingStageEditors` and `Object.keys` tell the same story.
+   */
+  it('leaves an entry every part left empty off the registry', () => {
+    const registry = composeStageEditorRegistry(
+      { Information: undefined },
+      { EgoForm: EgoFormEditor },
+    );
+
+    expect(Object.keys(registry)).toEqual(['EgoForm']);
+    expect(missingStageEditors(registry)).toContain('Information');
   });
 });
 
@@ -388,8 +423,11 @@ describe('dispatching to a named editor', () => {
       registry: { Information: ChromeEditor },
       actions: ({ formId, readOnly }) => `chrome for ${formId}, ${readOnly}`,
     });
+    // The id is this harness's own — one per mounted harness, so that two
+    // forms never answer to the same one — and it is what the host is handed,
+    // so it is read off the harness rather than written down here.
     expect(
-      withChrome.getByText('chrome for stage-form, false'),
+      withChrome.getByText(`chrome for ${withChrome.formId}, false`),
     ).toBeInTheDocument();
   });
 
@@ -401,7 +439,9 @@ describe('dispatching to a named editor', () => {
       actions: ({ formId }) => `chrome for ${formId}`,
     });
 
-    expect(harness.getByText('chrome for stage-form')).toBeInTheDocument();
+    expect(
+      harness.getByText(`chrome for ${harness.formId}`),
+    ).toBeInTheDocument();
   });
 
   /**
