@@ -133,7 +133,7 @@ export async function generatePostgresMigrationFiles({
   });
   const sql =
     [before, statements.join('\n'), after].filter(Boolean).join('\n') + '\n';
-  const sidecars = sidecarStatements.join('\n') + '\n';
+  const sidecars = sidecarStatements.join('\n').trimEnd() + '\n';
   const id = `${String(prior.length + 1).padStart(4, '0')}_${name}`;
   const manifest: MigrationManifest = {
     format: 1,

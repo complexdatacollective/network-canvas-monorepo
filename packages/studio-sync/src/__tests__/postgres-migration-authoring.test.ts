@@ -28,7 +28,9 @@ it('authors a separate application chain through the same engine without overwri
       replacement: text('replacement'),
     }),
   };
-  const sidecarStatements = ['SELECT 1;', 'SELECT 2;'];
+  // Application-owned template literals may already end in blank lines. The
+  // authored byte contract keeps exactly one final newline.
+  const sidecarStatements = ['SELECT 1;', 'SELECT 2;\n\n'];
   const fingerprint = async (schema: typeof original | typeof updated) =>
     fingerprintPostgresSchema(
       await renderPostgresSchemaStatements(schema),

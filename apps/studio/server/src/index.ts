@@ -207,6 +207,9 @@ const observability = createObservability({
 });
 startDatabaseWorkers();
 
+// Worker-only processes have no user routes and expose their operational
+// endpoints directly to internal probes; metrics retains its own bearer gate.
+// Managed web processes install ingress authorization through createApp.
 const app = servesWeb
   ? createApp(env, {
       mailer,
