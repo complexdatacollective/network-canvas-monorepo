@@ -69,8 +69,8 @@ export type SubjectSelectFieldProps = CreateFormFieldProps<
   {
     entityType: EntitySubject['entity'];
     /**
-     * What to ask before REPLACING a subject the stage already has, or
-     * `undefined` to change it without asking.
+     * What to ask before a pick that costs the stage what it is carrying, or
+     * `undefined` to let the pick through without asking.
      *
      * A function, because it is asked at the moment of the change: the answer
      * depends on what the stage is carrying, and a control re-rendering on
@@ -90,13 +90,14 @@ export type SubjectSelectFieldProps = CreateFormFieldProps<
  * own — so this is where the two are bridged, once, rather than in every
  * section that owns a subject.
  *
- * It is also where a change is held back until the researcher has agreed to
- * it. Changing a stage's subject throws away every prompt, form, panel and
- * filter that described the old type, and a radio is one click: asked HERE,
- * before the value moves, rather than by whatever watches it afterwards —
- * which would have to put the picker back, and would be answering a question
- * about a change the researcher can already see on screen. The shape Architect
- * has always used (`NodeType`'s `promptBeforeChange`).
+ * It is also where a pick is held back until the researcher has agreed to it.
+ * Moving a stage's subject throws away every prompt, form, panel and filter
+ * the stage was carrying — whether it had a type before or was configured
+ * without one — and a radio is one click: asked HERE, before the value moves,
+ * rather than by whatever watches it afterwards, which would have to put the
+ * picker back and would be answering a question about a change the researcher
+ * can already see on screen. The shape Architect has always used (`NodeType`'s
+ * `promptBeforeChange`).
  */
 export default function SubjectSelectField({
   value,
@@ -126,10 +127,14 @@ export default function SubjectSelectField({
       value={value?.type}
       onChange={(nextType) => {
         const next = asSubject(nextType);
-        // Nothing to lose: a stage with no subject yet is being filled in for
-        // the first time, and a question about nothing is one a researcher
-        // learns to dismiss without reading.
-        const question = value === undefined ? undefined : confirmChange?.();
+        // Asked whatever the picker is currently showing. "The stage has no
+        // subject yet" is not the same as "the stage has nothing to lose": a
+        // filter written before the type was picked is thrown away by the
+        // first choice exactly as it is by a later change, and a guard keyed
+        // on the value would let that one through in silence. `confirmChange`
+        // is where the loss is judged, and it already returns nothing to ask
+        // when there is nothing to lose.
+        const question = confirmChange?.();
         if (question === undefined) {
           onChange?.(next);
           return;

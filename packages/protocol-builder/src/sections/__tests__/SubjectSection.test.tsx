@@ -998,3 +998,129 @@ describe('changing a subject the stage is configured for', () => {
     expect(screen.queryByText(CHANGE_TITLE)).not.toBeInTheDocument();
   });
 });
+
+/**
+ * A stage does not have to have HAD a type for choosing one to cost the
+ * researcher something.
+ *
+ * The reset throws away everything the stage is carrying whichever way the
+ * subject moved — the same keys, the same batch — so work entered before a
+ * type was picked is lost by the first choice exactly as later work is lost by
+ * a change. The picker used to read "no subject yet" as "nothing to lose" and
+ * let that one through in silence; the loss is judged by what the stage HOLDS,
+ * and the question follows that judgement.
+ *
+ * The words differ, because what is true differs: there is no type the rest of
+ * the stage describes, so the sentence about replacing one would be about a
+ * change that is not happening.
+ */
+describe('choosing a type for a stage that has never had one', () => {
+  const FIRST_CHOICE_TITLE = 'Choose the node type?';
+  const FIRST_CHOICE_DESCRIPTION =
+    'Everything else on this stage was configured without a node type, and choosing one removes all of it.';
+  const FIRST_CHOICE_CONFIRM = 'Choose the node type';
+
+  /**
+   * A filter written before the type was chosen — the one section this package
+   * mounts beside the picker without waiting on a subject, and so the way a
+   * researcher reaches this state without doing anything unusual.
+   */
+  const configuredWithoutASubject = {
+    type: 'AlterForm' as const,
+    fields: {
+      label: 'Details',
+      filter: {
+        rules: [
+          {
+            id: 'rule-a',
+            type: 'node',
+            options: { type: 'person', operator: 'EXISTS' },
+          },
+        ],
+      },
+    },
+  };
+
+  const nodeSubjectAndFilter = <SubjectSection entity="node" filter />;
+
+  it('asks first, and changes nothing while the question stands', async () => {
+    const harness = renderStageEditor({
+      stage: configuredWithoutASubject,
+      sections: nodeSubjectAndFilter,
+    });
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    expect(await screen.findByText(FIRST_CHOICE_TITLE)).toBeInTheDocument();
+    // Its own words, not the ones about replacing a type the stage does not
+    // have: the two questions share a definition, not a sentence.
+    expect(screen.getByText(FIRST_CHOICE_DESCRIPTION)).toBeInTheDocument();
+    expect(screen.queryByText('Change the node type?')).not.toBeInTheDocument();
+    // Read from the session, which is where a reset would have landed first:
+    // everything behind the question is out of the accessibility tree while it
+    // stands.
+    const { fields } = harness.session.getSnapshot().editedSection;
+    expect(fields.subject).toBeUndefined();
+    expect(fields.filter).toBeDefined();
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  it('leaves the stage as it was when the researcher backs out', async () => {
+    const harness = renderStageEditor({
+      stage: configuredWithoutASubject,
+      sections: nodeSubjectAndFilter,
+    });
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Cancel' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText(FIRST_CHOICE_TITLE)).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('radio', { name: 'person' })).not.toBeChecked();
+    const { fields } = harness.session.getSnapshot().editedSection;
+    expect(fields.subject).toBeUndefined();
+    expect(fields.filter).toBeDefined();
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  it('throws it away once the researcher has said so', async () => {
+    const harness = renderStageEditor({
+      stage: configuredWithoutASubject,
+      sections: nodeSubjectAndFilter,
+    });
+
+    await changeSubjectTo(harness.user, 'person', FIRST_CHOICE_CONFIRM);
+
+    await waitFor(() =>
+      expect(
+        harness.session.getSnapshot().editedSection.fields.subject,
+      ).toEqual({ entity: 'node', type: 'person' }),
+    );
+    expect(
+      harness.session.getSnapshot().editedSection.fields.filter,
+    ).toBeUndefined();
+  });
+
+  /**
+   * The guard still turns on what the stage HOLDS: a stage carrying nothing
+   * but its name is the ordinary case, and it is not asked.
+   */
+  it('does not ask when the stage really has nothing to lose', async () => {
+    const harness = renderStageEditor({
+      stage: { type: 'AlterForm' as const, fields: { label: 'Details' } },
+      sections: nodeSubjectAndFilter,
+    });
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    await waitFor(() =>
+      expect(
+        harness.session.getSnapshot().editedSection.fields.subject,
+      ).toEqual({ entity: 'node', type: 'person' }),
+    );
+    expect(screen.queryByText(FIRST_CHOICE_TITLE)).not.toBeInTheDocument();
+  });
+});
