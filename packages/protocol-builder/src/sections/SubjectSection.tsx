@@ -250,14 +250,30 @@ function CreateSubjectType({
   const [submitting, setSubmitting] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const existingEntityNames = useMemo(() => {
-    // Read per entity rather than by a computed key: the codebook's two maps
-    // hold different definition types, and one indexed by a union is a union
-    // of maps nothing can be read out of without narrowing it again.
-    const definitions =
-      entity === 'node' ? (codebook.node ?? {}) : (codebook.edge ?? {});
-    return Object.values(definitions).map((definition) => definition.name);
-  }, [codebook, entity]);
+  /**
+   * Every type name the protocol already carries, of BOTH kinds.
+   *
+   * Node and edge types share one namespace — the rule Architect's own type
+   * editor has always applied — because a name is how a researcher tells one
+   * from another everywhere it matters: the codebook lists them by name, an
+   * export names them, and a rule or a form naming one reads as naming the
+   * other. Judged against the kind being created alone, a node could be given
+   * an edge's name, and the editor's deliberate folding of case and Unicode
+   * form would let a pair through that nobody reading the codebook could tell
+   * apart.
+   *
+   * Read map by map rather than by a computed key: the codebook's two maps
+   * hold different definition types, and one indexed by a union is a union of
+   * maps nothing can be read out of without narrowing it again.
+   */
+  const existingEntityNames = useMemo(
+    () =>
+      [
+        ...Object.values(codebook.node ?? {}),
+        ...Object.values(codebook.edge ?? {}),
+      ].map((definition) => definition.name),
+    [codebook],
+  );
 
   const selectCreatedType = useCallback(
     (typeId: string) => {
