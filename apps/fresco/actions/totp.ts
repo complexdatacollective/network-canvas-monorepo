@@ -14,6 +14,10 @@ import {
   sealTotpSecret,
   verifyStoredTotpCode,
 } from '~/lib/auth/totp';
+import {
+  getTwoFactorStatus,
+  isTwoFactorRequired,
+} from '~/lib/auth/twoFactorPolicy';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { createTotpSchemas } from '~/schemas/totp';
@@ -70,11 +74,20 @@ const messages = defineMessages({
     description:
       'Researcher-facing actions / totp: shown when a stored two-factor secret cannot be decrypted, usually because the database password changed after it was stored',
   },
+  twoFactorRequiredByInstallation: {
+    id: 'fresco.actions.totp.twoFactorRequiredByInstallation',
+    defaultMessage:
+      'This installation of Fresco requires two-factor authentication for every account that signs in with a password, so it cannot be turned off.',
+    description:
+      'Error returned when a researcher tries to disable two-factor authentication while the REQUIRE_TWO_FACTOR environment variable is set.',
+  },
 });
 
 export async function enableTotp() {
   try {
-    const session = await requireApiAuth();
+    // Setting up two-factor authentication is the one thing an account the
+    // "Require Two-Factor Authentication" gate holds is allowed to do.
+    const session = await requireApiAuth({ allowPendingTwoFactorSetup: true });
 
     const secret = generateTotpSecret();
     // Only the sealed envelope reaches the database; the plaintext goes to the
@@ -115,7 +128,7 @@ export async function enableTotp() {
 export async function verifyTotpSetup(data: unknown) {
   const { verifyTotpSetupSchema } = createTotpSchemas(createMessageError);
 
-  const session = await requireApiAuth();
+  const session = await requireApiAuth({ allowPendingTwoFactorSetup: true });
 
   const parsed = verifyTotpSetupSchema.safeParse(data);
   if (!parsed.success) {
@@ -258,6 +271,18 @@ export async function disableTotp(data: unknown) {
       error: createMessageError(
         messages.copyTwoFactorAuthenticationIsNotEnabled,
       ),
+      data: null,
+    };
+  }
+
+  // Refused before the code is checked, so a recovery code is not consumed by
+  // an attempt that could never succeed.
+  if (
+    isTwoFactorRequired() &&
+    (await getTwoFactorStatus(session.user.userId)).passwordMode
+  ) {
+    return {
+      error: createMessageError(messages.twoFactorRequiredByInstallation),
       data: null,
     };
   }

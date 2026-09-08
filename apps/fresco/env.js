@@ -43,6 +43,10 @@ export const env = createEnv({
         )
         .optional(),
     ),
+    // An environment variable rather than an app setting: every Fresco account
+    // is an equal administrator, so a requirement switchable from the
+    // dashboard could be switched off by any of them.
+    REQUIRE_TWO_FACTOR: z.stringbool().optional(),
   },
 
   /**
@@ -90,6 +94,7 @@ export const env = createEnv({
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
     UPLOADTHING_TOKEN: process.env.UPLOADTHING_TOKEN,
     TOTP_ENCRYPTION_KEY: process.env.TOTP_ENCRYPTION_KEY,
+    REQUIRE_TWO_FACTOR: process.env.REQUIRE_TWO_FACTOR,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

@@ -98,11 +98,18 @@ POSTGRES_PASSWORD=CHANGE_ME
 
 # Optional
 #DISABLE_ANALYTICS=true
+#REQUIRE_TWO_FACTOR=true
 ```
 
 <TipBox>
 
 We use anonymous analytics to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us. To disable all analytics, set `DISABLE_ANALYTICS=true` in your `.env`. Leaving it at the default (`false`) helps us identify bugs and improve the app.
+
+</TipBox>
+
+<TipBox>
+
+If your institution requires multi-factor authentication for every administrator, set `REQUIRE_TWO_FACTOR=true`. Every account that signs in with a password must then set up two-factor authentication before it can use the dashboard, and cannot turn it off; accounts that sign in with a passkey are not affected. It is an environment variable rather than a dashboard setting because every Fresco account is an equal administrator. See [Accounts & Security](/en/collect-data/fresco/accounts#requiring-two-factor-authentication-for-everyone) for what it enforces.
 
 </TipBox>
 

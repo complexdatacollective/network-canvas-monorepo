@@ -2,9 +2,11 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import SettingsCard from '~/components/settings/SettingsCard';
 import { env } from '~/env';
 import { getServerIntl } from '~/i18n/server';
+import { isTwoFactorRequired } from '~/lib/auth/twoFactorPolicy';
 import { prisma } from '~/lib/db';
 import { getUsers } from '~/queries/users';
 
+import TwoFactorRequirementField from './TwoFactorRequirementField';
 import UserManagement from './UserManagement';
 
 const messages = defineMessages({
@@ -62,6 +64,8 @@ export default async function UserManagementSection({
   const hasTwoFactorPromise = getHasTwoFactor(userId);
   const passkeysPromise = getPasskeys(userId);
   const hasPasswordPromise = getHasPassword(userId);
+  const twoFactorRequired = isTwoFactorRequired();
+  const sandboxMode = !!env.SANDBOX_MODE;
 
   return (
     <SettingsCard
@@ -75,8 +79,12 @@ export default async function UserManagementSection({
         currentUsername={username}
         passkeysPromise={passkeysPromise}
         hasPasswordPromise={hasPasswordPromise}
-        sandboxMode={!!env.SANDBOX_MODE}
+        sandboxMode={sandboxMode}
+        twoFactorRequired={twoFactorRequired}
       />
+      <div className="mt-6 border-t border-current/10 pt-4">
+        <TwoFactorRequirementField required={twoFactorRequired} />
+      </div>
     </SettingsCard>
   );
 }
