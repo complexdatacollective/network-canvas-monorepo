@@ -1293,6 +1293,20 @@ it('installs an immutable built image, drains a populated backup and restores al
       '-c',
       'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; GRANT studio_app, studio_maintenance TO studio_migrator WITH SET TRUE, INHERIT FALSE; GRANT studio_app TO studio_runtime WITH SET TRUE, INHERIT FALSE; GRANT studio_maintenance TO studio_maintenance_runtime WITH SET TRUE, INHERIT FALSE',
     ]);
+    const restoredConfiguration = await restored.configuration();
+    expect(restoredConfiguration.STUDIO_ENCRYPTION_KEYSET).toBe(
+      JSON.stringify(historical),
+    );
+    const admitted = await restored.compose([
+      ...quarantine,
+      '-f',
+      'deployment/encryption.yml',
+      'run',
+      '--rm',
+      '--no-deps',
+      'encryption-verify',
+    ]);
+    expect(admitted.stdout.toString()).toContain('"verified":true');
     for (const namespace of ['pii', 'integration', 'blindIndex'] as const) {
       const missing = structuredClone(historical);
       missing[namespace].keys = missing[namespace].keys.filter(
@@ -1341,12 +1355,12 @@ it('installs an immutable built image, drains a populated backup and restores al
     }
     await restored.compose([
       ...quarantine,
+      '-f',
+      'deployment/encryption.yml',
       'run',
       '--rm',
       '--no-deps',
-      'studio',
-      'encryption',
-      'verify',
+      'encryption-verify',
     ]);
     await restored.compose([...quarantine, 'up', '-d', 'studio', 'probe']);
     await restored.ready();
