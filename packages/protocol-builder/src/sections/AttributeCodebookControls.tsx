@@ -10,6 +10,7 @@ import { v4 as uuid } from 'uuid';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -24,7 +25,7 @@ import { optionsShapeFor } from '../codebook/variableOptions.ts';
 import { parameterShapeFor } from '../codebook/variableParameters.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
-import { isCollectableType } from './collectableTypes.ts';
+import { isCollectableType, isOptionType } from './collectableTypes.ts';
 
 /** Where every row that binds an attribute keeps the attribute it binds. */
 const VARIABLE_FIELD = 'variable';
@@ -110,6 +111,32 @@ const messages = defineMessages({
       'An attribute participants choose an answer from needs at least two values, so it is created together with them.',
     description:
       'Shown above the buttons when the researcher is inventing an attribute whose answers come from a list, explaining why they are sent to the codebook editor rather than being asked for a name here.',
+  },
+  createWithSettings: {
+    id: 'protocolBuilder.attributeCodebookControls.createWithSettings',
+    defaultMessage: 'Create this attribute and what it accepts',
+    description:
+      'The same button for inventing an attribute whose answer is not chosen from a list but still needs something a name cannot carry — a scale, whose two end labels say what each end means. Also the title of the dialog it opens.',
+  },
+  createNeedsSettings: {
+    id: 'protocolBuilder.attributeCodebookControls.createNeedsSettings',
+    defaultMessage:
+      'An attribute answered on a scale needs a label at each end, so it is created together with them.',
+    description:
+      'The same explanation for a scale: shown above the buttons when the researcher is inventing one, saying why they are sent to the codebook editor rather than being asked for a name here.',
+  },
+  attributeDeletedTitle: {
+    id: 'protocolBuilder.attributeCodebookControls.attributeDeletedTitle',
+    defaultMessage: 'Attribute deleted',
+    description:
+      'Heading of the warning shown over an open attribute editor when someone else deleted the attribute it was opened on.',
+  },
+  attributeDeletedDescription: {
+    id: 'protocolBuilder.attributeCodebookControls.attributeDeletedDescription',
+    defaultMessage:
+      'This attribute is no longer in the codebook, so these changes cannot be saved.',
+    description:
+      'Shown over an open attribute editor when someone else deleted the attribute it was opened on. The draft stays on screen; what it says is that there is nothing left to write it to.',
   },
 });
 
@@ -294,6 +321,14 @@ export default function AttributeCodebookControls({
     component: string;
   }> | null>(null);
   /**
+   * Whether a nested editor's save is with the host right now.
+   *
+   * Held here rather than inside the editors because it is the DIALOG that has
+   * to answer for it: what a dismissal mid-flight unmounts is the editor, and
+   * a state living there would go with it. See `submitEdit`.
+   */
+  const [submitting, setSubmitting] = useState(false);
+  /**
    * The row dialog these controls sit in, remembered rather than walked up to.
    *
    * `finalFocus` is resolved after the editor has closed, and closing it can
@@ -381,6 +416,23 @@ export default function AttributeCodebookControls({
   const canEditRules = picked !== undefined;
   const canCreate =
     inventingType !== undefined && isCollectableType(inventingType);
+  /**
+   * Whether the invention is of a LIST of answers, which is what the create
+   * controls are named after.
+   *
+   * Two ways to reach this editor rather than one: a list of answers, whose
+   * values the researcher authors, and a scale, whose two end labels they
+   * write. `needsCodebookEditorToCreate` decides WHICH types come here, and
+   * this decides what they are told when they arrive — a scale sent here under
+   * "and its values" would be asked for a list it does not have.
+   */
+  const creatingValues = isOptionType(inventingType ?? '');
+  const createLabel = creatingValues
+    ? messages.createWithValues
+    : messages.createWithSettings;
+  const createNeeds = creatingValues
+    ? messages.createNeedsValues
+    : messages.createNeedsSettings;
   const definesLabel = canEditValues
     ? messages.editValues
     : canEditAnswers
@@ -419,19 +471,44 @@ export default function AttributeCodebookControls({
   // section it was opened against rather than whatever the row points at now.
   const editorVariables = variablesIn(openEditor?.document ?? null);
   /**
-   * Whether what is open may be WRITTEN, which is three questions.
+   * Whether the attribute an open editor was opened ON has been deleted from
+   * under it.
+   *
+   * Asked of the LIVE section, and only of an editor that was opened on an
+   * attribute: a create's `variableId` is a fresh id nothing holds yet, so the
+   * same question there is always "yes" about an attribute that is about to
+   * exist. A section that has gone answers `editorReadOnly` on its own terms
+   * and is not this — there is no live document left to ask.
+   */
+  const editedAttributeDeleted =
+    openEditor !== null &&
+    openEditor.surface !== 'create' &&
+    editingDocument !== null &&
+    !Object.hasOwn(editorVariables, openEditor.variableId);
+
+  /**
+   * Whether what is open may be WRITTEN, which is four questions.
    *
    * A lease taken back says this researcher may write nothing. A section that
    * has gone is a section nothing can be written into, which says the same
-   * thing from the other side. And a stage that has been repointed at another
-   * type says it a third way: the row this editor was opened from is a row
-   * about something else now, and rules written for a person are not rules
-   * about their family — so the draft is kept and shown, and refused.
+   * thing from the other side. A stage that has been repointed at another type
+   * says it a third way: the row this editor was opened from is a row about
+   * something else now, and rules written for a person are not rules about
+   * their family — so the draft is kept and shown, and refused.
+   *
+   * And the attribute itself can go while the section stays. This one is here
+   * rather than left to the editor because `VariableEditor` cannot see it: an
+   * absent attribute has no type, which it reads as a type someone CHANGED —
+   * so the draft stayed writable and a press of Save came back "the attribute
+   * type changed elsewhere. Close and reopen this editor", about an attribute
+   * there is nothing left to reopen. The draft is kept and shown here too,
+   * with `attributeDeleted` above it saying what actually happened.
    */
   const editorReadOnly =
     readOnly ||
     editingDocument === null ||
     openEditor === null ||
+    editedAttributeDeleted ||
     subject === undefined ||
     sectionIdForCodebookSubject(subject) !==
       sectionIdForCodebookSubject(openEditor.subject);
@@ -488,6 +565,40 @@ export default function AttributeCodebookControls({
   const close = () => {
     setEditing(null);
   };
+
+  /**
+   * The compound edit an open editor submits, with the dialog held shut while
+   * it is in flight.
+   *
+   * The request outlives the dialog: dismissed mid-flight, the editor is
+   * unmounted but the handler awaiting the host is still alive, so a refusal
+   * is shown to nobody and a success still runs `onComplete` — which, for the
+   * create, binds the row to an attribute the researcher watched no editor
+   * finish. `SubjectSection`'s own create dialog withholds every way out for
+   * exactly this, and these three are the same act.
+   */
+  const submitEdit = async (
+    request: Parameters<typeof controller.requestCompoundEdit>[0],
+  ) => {
+    setSubmitting(true);
+    try {
+      return await controller.requestCompoundEdit(request);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /**
+   * Every way out of a nested editor, which is one handler.
+   *
+   * Escape, a press outside and the close button all arrive at `closeDialog`,
+   * so refusing here covers all three — and `dismissible` takes the close
+   * button away rather than leaving a control on screen that does nothing.
+   */
+  const requestClose = () => {
+    if (submitting) return;
+    close();
+  };
   const open = (
     surface: 'create' | 'defines' | 'rules',
     label: MessageDescriptor,
@@ -529,7 +640,7 @@ export default function AttributeCodebookControls({
     <>
       {offerLaunch && canCreate && (
         <p className="mb-3 text-sm text-current/70">
-          {intl.formatMessage(messages.createNeedsValues)}
+          {intl.formatMessage(createNeeds)}
         </p>
       )}
       {/* The container is rendered whether or not it holds anything, because
@@ -544,11 +655,9 @@ export default function AttributeCodebookControls({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() =>
-              open('create', messages.createWithValues, messages.describeCreate)
-            }
+            onClick={() => open('create', createLabel, messages.describeCreate)}
           >
-            {intl.formatMessage(messages.createWithValues)}
+            {intl.formatMessage(createLabel)}
           </Button>
         )}
         {offerLaunch &&
@@ -599,7 +708,8 @@ export default function AttributeCodebookControls({
           open
           title={editorTitle}
           size="readable"
-          closeDialog={close}
+          dismissible={!submitting}
+          closeDialog={requestClose}
           // The picker outright, rather than the trigger-if-it-is-still-there
           // rule the other two use. Creating the attribute is what takes this
           // row out of inventing one, so the button that opened this editor is
@@ -617,17 +727,26 @@ export default function AttributeCodebookControls({
             protocolContext={protocolContext}
             authoritativeDocument={openEditor.document}
             variableId={openEditor.variableId}
-            initialDraft={{ name: '', type: inventingType, options: [] }}
+            // The empty list only where a list is what is being authored. The
+            // editor passes a choice list through as the draft holds it, and
+            // every variable schema is a STRICT object that admits only its
+            // own keys — so an `options: []` seeded onto a scale would be
+            // written into the create request and refused there, for a key the
+            // researcher never saw a control for.
+            initialDraft={{
+              name: '',
+              type: inventingType,
+              ...(creatingValues ? { options: [] } : {}),
+            }}
             // The kind of answer was chosen in the row behind this, and the
-            // whole reason the editor is open is the values that kind needs.
+            // whole reason the editor is open is what that kind needs beyond a
+            // name.
             allowedVariableTypes={[inventingType]}
             readOnly={editorReadOnly}
             title={editorTitle}
             description={editorDescription}
             createRequestId={() => uuid()}
-            onSubmitRequest={(request) =>
-              controller.requestCompoundEdit(request)
-            }
+            onSubmitRequest={submitEdit}
             onComplete={(variableId) => {
               // The picker now names something that exists, which is what
               // takes this row out of inventing anything.
@@ -642,9 +761,26 @@ export default function AttributeCodebookControls({
           open
           title={editorTitle}
           size="readable"
-          closeDialog={close}
+          dismissible={!submitting}
+          closeDialog={requestClose}
           finalFocus={() => focusAfterEditor(definesTrigger.current)}
         >
+          {/* Said here rather than left to the editor, and only on THIS
+              surface. `VariableEditor` reads an absent attribute as a retyped
+              one and has no wording for a deleted one; the rules editor has
+              its own (`variableValidation.attributeUnavailableTitle`), and a
+              second sentence over the top of it would say the same thing
+              twice. */}
+          {editedAttributeDeleted && (
+            <Alert variant="destructive" appearance="soft" density="compact">
+              <AlertTitle>
+                {intl.formatMessage(messages.attributeDeletedTitle)}
+              </AlertTitle>
+              <AlertDescription>
+                {intl.formatMessage(messages.attributeDeletedDescription)}
+              </AlertDescription>
+            </Alert>
+          )}
           <VariableEditor
             mode="update"
             openId={openEditor.openId}
@@ -682,9 +818,7 @@ export default function AttributeCodebookControls({
             title={editorTitle}
             description={editorDescription}
             createRequestId={() => uuid()}
-            onSubmitRequest={(request) =>
-              controller.requestCompoundEdit(request)
-            }
+            onSubmitRequest={submitEdit}
             onComplete={close}
           />
         </Dialog>
@@ -694,7 +828,8 @@ export default function AttributeCodebookControls({
           open
           title={editorTitle}
           size="readable"
-          closeDialog={close}
+          dismissible={!submitting}
+          closeDialog={requestClose}
           finalFocus={() => focusAfterEditor(rulesTrigger.current)}
         >
           <CodebookVariableValidationEditor
@@ -708,9 +843,7 @@ export default function AttributeCodebookControls({
               description: editorDescription,
             }}
             readOnly={editorReadOnly}
-            onSubmitRequest={(request) =>
-              controller.requestCompoundEdit(request)
-            }
+            onSubmitRequest={submitEdit}
             onComplete={close}
           />
         </Dialog>
