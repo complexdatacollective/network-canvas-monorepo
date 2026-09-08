@@ -36,14 +36,17 @@ export function jsonHash(value: unknown): string {
 }
 
 /** Validate every artifact and its order before a database is connected. */
-export async function readMigrations(directory: string): Promise<Migration[]> {
+export async function readMigrations(
+  directory: string,
+  applicationName = 'Studio',
+): Promise<Migration[]> {
   const entries = await readdir(directory, { withFileTypes: true });
   const names = entries
     .filter((entry) => entry.isDirectory())
     .map((entry) => migrationId.parse(entry.name))
     .toSorted();
   if (names.length === 0)
-    throw new Error('No versioned Studio migrations found.');
+    throw new Error(`No versioned ${applicationName} migrations found.`);
 
   const migrations: Migration[] = [];
   for (const name of names) {

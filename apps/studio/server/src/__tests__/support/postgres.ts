@@ -3,7 +3,11 @@ import process from 'node:process';
 
 import pg from 'pg';
 
-import { TENANT_ROLES, TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
+import {
+  BACKUP_ROLE,
+  TENANT_ROLES,
+  TENANT_ROLES_SQL,
+} from '@codaco/studio-sync/rls';
 import {
   runtimeRolesSql,
   revokeLargeObjectPrivilegesSql,
@@ -43,7 +47,8 @@ export async function reachableDb(): Promise<DbEnv | null> {
     // The application pools pin roles the schema apply creates; provisioning
     // them here means no suite depends on another having run first.
     const probe = pool.query(
-      runtimeRolesSql(Object.values(TENANT_ROLES)) + TENANT_ROLES_SQL,
+      runtimeRolesSql([...Object.values(TENANT_ROLES), BACKUP_ROLE]) +
+        TENANT_ROLES_SQL,
     );
     // When the timeout wins the race, this query is still in flight and
     // `pool.end()` below rejects it. Promise.race has already settled by then,
