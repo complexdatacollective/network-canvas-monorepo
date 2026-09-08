@@ -138,6 +138,9 @@ verified-email state, with current publisher and operator permissions
 independently reconciled before running the command. Recovery object storage
 uses the runtime HTTPS policy; a non-loopback HTTP endpoint requires the same
 explicit `REGISTRY_S3_INSECURE_PRIVATE_NETWORK=true` operator opt-in.
+`REGISTRY_S3_PROVIDER` selects the runtime `s3` or `r2` capability contract;
+recovery selects its independently restored store with
+`REGISTRY_RECOVERY_S3_PROVIDER` (both default to `s3`).
 
 All serving logins and other enrolled administrators remain NOLOGIN, except
 the connecting recovery operator; surviving target sessions and prepared

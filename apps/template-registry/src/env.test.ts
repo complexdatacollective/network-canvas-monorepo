@@ -38,6 +38,7 @@ it('resolves explicit runtime inputs and bounded defaults without migration cred
     allowedLogins: ['runtime', 'operator'],
     administrativeLogins: [],
     limits: { publisherBytes: 104857600, totalBytes: 1073741824 },
+    s3: { provider: 's3' },
   });
   expect(JSON.stringify(result)).not.toContain('never-runtime');
 });
@@ -80,6 +81,7 @@ describe('refuses unsafe runtime configuration with a bounded private error', ()
     { REGISTRY_SMTP_URL: 'smtps://mail.example.test/secret' },
     { REGISTRY_MAIL_FROM: 'First <first@example.test>, second@example.test' },
     { REGISTRY_S3_ENDPOINT: 'http://objects.example.test' },
+    { REGISTRY_S3_PROVIDER: 'unknown' },
     { REGISTRY_S3_INSECURE_PRIVATE_NETWORK: '1' },
     { REGISTRY_S3_ENDPOINT: 'https://objects.example.test/?credential=secret' },
     { REGISTRY_S3_SECRET_ACCESS_KEY: undefined },
@@ -216,8 +218,45 @@ it('applies the runtime TLS policy to recovery object storage', () => {
     readRegistryRecoveryEnv({
       ...recovery,
       REGISTRY_S3_ENDPOINT: 'https://objects.example.test',
-    }).s3.insecurePrivateNetwork,
-  ).toBe(false);
+    }).s3,
+  ).toMatchObject({ provider: 's3', insecurePrivateNetwork: false });
+  expect(
+    readRegistryRecoveryEnv({
+      ...recovery,
+      REGISTRY_RECOVERY_S3_PROVIDER: 'r2',
+      REGISTRY_S3_ENDPOINT:
+        'https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com',
+    }).s3.provider,
+  ).toBe('r2');
+  expect(
+    readRegistryRecoveryEnv({
+      ...recovery,
+      REGISTRY_S3_PROVIDER: 'r2',
+      REGISTRY_S3_ENDPOINT:
+        'https://0123456789abcdef0123456789abcdef.us.r2.cloudflarestorage.com',
+      REGISTRY_S3_REGION: 'auto',
+    }).s3.provider,
+  ).toBe('r2');
+  expect(() =>
+    readRegistryRecoveryEnv({
+      ...recovery,
+      REGISTRY_RECOVERY_S3_PROVIDER: 'unknown',
+      REGISTRY_S3_ENDPOINT: 'https://objects.example.test',
+    }),
+  ).toThrow('REGISTRY_RECOVERY_CONFIGURATION_INVALID');
+  for (const invalid of [
+    'https://r2.cloudflarestorage.com',
+    'https://0123456789abcdef0123456789abcdef.r2.example.test',
+    'http://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com',
+  ])
+    expect(() =>
+      readRegistryRecoveryEnv({
+        ...recovery,
+        REGISTRY_RECOVERY_S3_PROVIDER: 'r2',
+        REGISTRY_S3_ENDPOINT: invalid,
+        REGISTRY_S3_INSECURE_PRIVATE_NETWORK: 'true',
+      }),
+    ).toThrow('REGISTRY_RECOVERY_CONFIGURATION_INVALID');
 });
 
 it('shares complete enrollment and explicit administrator parsing across runtime, migrations and backup', () => {

@@ -33,6 +33,10 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
       `INSERT INTO registry_auth_verification(id, identifier, value, expires_at)
        VALUES ('restored-one-time', 'restored@example.test', 'one-time', statement_timestamp() + interval '5 minutes')`,
     );
+    await fixture.owner.query(
+      `INSERT INTO registry_auth_user(id, name, email, email_verified, updated_at)
+       VALUES ('inactive-unverified', 'Inactive', 'inactive@EXAMPLE.TEST', false, statement_timestamp())`,
+    );
     await installation.closeRuntimePools();
     await installation.withAdministrator(async (administrator) => {
       await administrator.query(
@@ -56,11 +60,25 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
             publisher: 'active',
             operator: false,
           },
+          {
+            id: 'inactive-unverified',
+            email: 'inactive@example.test',
+            emailVerified: false,
+            publisher: 'none',
+            operator: false,
+          },
         ],
       },
     });
 
     expect(fixture.blobs.ready).toHaveBeenCalledOnce();
+    expect(
+      (
+        await fixture.owner.query(
+          "SELECT email, email_verified FROM registry_auth_user WHERE id = 'inactive-unverified'",
+        )
+      ).rows,
+    ).toEqual([{ email: 'inactive@EXAMPLE.TEST', email_verified: false }]);
 
     expect(
       (

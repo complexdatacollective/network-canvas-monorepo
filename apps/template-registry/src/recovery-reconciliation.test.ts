@@ -77,6 +77,28 @@ it('normalizes evidence email domains and requires verified authority', async ()
         templateBytesHash(unverifiedBytes),
       ),
     ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
+    const inactiveBytes = Buffer.from(
+      JSON.stringify({
+        ...input,
+        users: [
+          {
+            ...input.users[0],
+            emailVerified: false,
+            publisher: 'none',
+            operator: false,
+          },
+        ],
+      }),
+    );
+    await writeFile(path, inactiveBytes, { mode: 0o600 });
+    await expect(
+      readRegistryRecoveryReconciliation(
+        path,
+        templateBytesHash(inactiveBytes),
+      ),
+    ).resolves.toMatchObject({
+      users: [{ emailVerified: false, publisher: 'none', operator: false }],
+    });
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
