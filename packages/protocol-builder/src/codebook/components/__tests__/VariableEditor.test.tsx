@@ -1377,6 +1377,76 @@ describe('the settings the chosen input control takes', () => {
     });
   });
 
+  /**
+   * A day count that is not a whole number is a refusal, not a clearing.
+   *
+   * `1.5` is what a researcher reaches by pasting, or by writing a duration
+   * the way a duration is written. Dropped on the way into the draft it became
+   * an absent setting — a perfectly valid thing for this control to hold — so
+   * nothing refused it, the save went through, and the window the attribute
+   * HAD went with it: the interview fell back to its own default, and the
+   * researcher was told nothing.
+   */
+  it('refuses a day count that is not whole rather than clearing the window', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'met',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters: { before: 30 },
+    };
+    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+
+    const before = screen.getByLabelText('Days before');
+    // The whole value at once, which is what a paste delivers: a number input
+    // cannot be driven to a fraction a keystroke at a time, because the
+    // half-typed `1.` is not a number and the field reports it as empty.
+    fireEvent.change(before, { target: { value: '1.5' } });
+
+    // Still there to be corrected, rather than emptied by the field itself.
+    expect(before).toHaveValue(1.5);
+    expect(
+      await screen.findByText('Write a whole number of days, zero or more.'),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    // And nothing was submitted, so the window the codebook holds is still
+    // the one the interview will use — which is the whole difference between
+    // a refusal and a silent clearing.
+    expect(onSubmitRequest).not.toHaveBeenCalled();
+  });
+
+  it('saves a day count corrected after that refusal', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'met',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters: { before: 30 },
+    };
+    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+
+    const before = screen.getByLabelText('Days before');
+    fireEvent.change(before, { target: { value: '1.5' } });
+    await screen.findByText('Write a whole number of days, zero or more.');
+
+    await user.clear(before);
+    await user.type(before, '2');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    // A number, not the text the field reported: the draft carries the text
+    // only while it holds something the schema would refuse.
+    expect(savedVariable(onSubmitRequest).parameters).toEqual({ before: 2 });
+  });
+
   it('saves the labels a scale shows at each end', async () => {
     const user = userEvent.setup();
     const onSubmitRequest = vi.fn(
@@ -1904,6 +1974,115 @@ describe('the two answers a boolean offers', () => {
       ...committed,
       name: 'starred',
     });
+  });
+
+  /**
+   * The same rule reached by the other route. A pair recording the SAME
+   * boolean twice is one `booleanOptionsSchema` takes — it constrains neither
+   * value against the other — and one this fieldset cannot show: its two
+   * fields are keyed and labelled by the boolean each answer records, so a
+   * pair recording one of them twice arrives as two answers it cannot tell
+   * apart.
+   *
+   * Read as the pair, `true` and `false` were imposed on it to tell them
+   * apart, and the save that followed wrote that back. An attribute renamed
+   * and nothing else came out recording a boolean it had never recorded, and
+   * every answer a participant had already given to its second button changed
+   * what it meant.
+   */
+  it('keeps both stored booleans of a pair that records one of them twice, through an edit that only renames it', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Agreed', value: true },
+        { label: 'Agreed, with conditions', value: true },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'starred');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      ...committed,
+      name: 'starred',
+    });
+  });
+
+  it('shows a pair that does not record both booleans as answers it holds', () => {
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Agreed', value: true },
+        { label: 'Agreed, with conditions', value: true },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, vi.fn())} />);
+
+    expect(
+      screen.queryByRole('textbox', { name: 'Label for “true”' }),
+    ).toBeNull();
+    // Its own reason: this pair is two answers, so the count is not what puts
+    // it here, and a researcher told it offers "a different number of them"
+    // would be looking for an answer that is not on the screen.
+    expect(
+      screen.getByText(
+        'A yes/no attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
+      ),
+    ).toBeVisible();
+    const answers = within(screen.getByRole('table'));
+    expect(answers.getByRole('cell', { name: 'Agreed' })).toBeVisible();
+    expect(
+      answers.getByRole('cell', { name: 'Agreed, with conditions' }),
+    ).toBeVisible();
+    // What the participant meets, which is the pair's whole problem: two
+    // buttons recording the same thing.
+    expect(answers.getAllByRole('cell', { name: 'true' })).toHaveLength(2);
+  });
+
+  /**
+   * The other side of the same question: a pair that DOES record one of each
+   * is the fieldset's own, and stays editable answer by answer.
+   */
+  it('writes an answer edited on a pair that records both booleans', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    const negative = screen.getByRole('textbox', {
+      name: 'Label for “false”',
+    });
+    await user.clear(negative);
+    await user.type(negative, 'Never');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).options).toEqual([
+      { label: 'Yes', value: true },
+      { label: 'Never', value: false },
+    ]);
   });
 
   it('offers no answers to name for a boolean collected with a toggle', async () => {

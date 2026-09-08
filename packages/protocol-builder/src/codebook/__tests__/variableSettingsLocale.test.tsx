@@ -116,6 +116,35 @@ describe('codebook copy produced outside React, read in Spanish', () => {
   });
 
   /**
+   * The same refusal about the other thing a day-count field can hold. A
+   * fraction reaches the draft as the text it was typed as — see
+   * `asDayOffset`, which drops nothing it cannot store, so that this is asked
+   * about it rather than about an absent setting nobody would refuse.
+   *
+   * Read in both languages: the English proves the refusal is the one under
+   * the field, and the Spanish proves it comes from a catalog rather than a
+   * literal written into the check.
+   */
+  it('refuses a day count written as a fraction in the reader’s language', () => {
+    expect(
+      readAll(
+        validateParameters('relativeDatePicker', { before: '1.5' }),
+        enIntl,
+      ),
+    ).toEqual({
+      before: ['Write a whole number of days, zero or more.'],
+    });
+    expect(
+      readAll(
+        validateParameters('relativeDatePicker', { before: '1.5' }),
+        esIntl,
+      ),
+    ).toEqual({
+      before: ['Escribe un número entero de días, cero o más.'],
+    });
+  });
+
+  /**
    * What the schema still refuses after the authored checks pass, said as this
    * package's own sentence about the block rather than as the schema's about a
    * path. `0099-01` is a real month the interview's own date control could
