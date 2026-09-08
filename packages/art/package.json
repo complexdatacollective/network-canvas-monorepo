@@ -21,6 +21,7 @@
     "motion": "catalog:"
   },
   "devDependencies": {
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",

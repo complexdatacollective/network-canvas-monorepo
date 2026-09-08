@@ -8,6 +8,7 @@ import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { Stage } from '@codaco/protocol-validation';
 import StageFormBridge from '~/components/StageEditor/StageFormBridge';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
+import { messageSubmissionResult } from '~/test/messageText';
 
 // Isolates `handleChangeFields` (NodeConfiguration's replacement for the
 // `withHandlers`/`connect` composition): ArchitectField/FieldFields/
@@ -156,7 +157,7 @@ describe('FamilyPedigree NodeConfiguration handleChangeFields', () => {
     });
 
     expect(updateVariable).not.toHaveBeenCalled();
-    expect(result).toEqual({
+    expect(messageSubmissionResult(result)).toEqual({
       success: false,
       formErrors: ['Attribute not found'],
     });
@@ -176,10 +177,12 @@ describe('FamilyPedigree NodeConfiguration handleChangeFields', () => {
       });
     });
 
-    expect(result).toEqual({
+    expect(messageSubmissionResult(result)).toEqual({
       success: false,
       fieldErrors: {
-        variable: ['Variable name contains no valid characters'],
+        variable: [
+          'These changes could not be saved. Check the current settings and try again.',
+        ],
       },
     });
   });

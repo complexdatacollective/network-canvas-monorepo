@@ -9,7 +9,7 @@ export { interfaceDocumentationUrl };
 export const documentationLinks = {
   home: DOCS_BASE_URL,
   skipLogic: protocolAuthoringLinks.skipLogic,
-  networkFiltering: `${DOCS_BASE_URL}/design-protocols/key-concepts/network-filtering/`,
+  networkFiltering: protocolAuthoringLinks.networkFiltering,
   resources: `${DOCS_BASE_URL}/design-protocols/key-concepts/resources/`,
   supportedResourceTypes: `${DOCS_BASE_URL}/design-protocols/key-concepts/resources/#supported-resource-types`,
   responsiveSvgBackgrounds: `${DOCS_BASE_URL}/design-protocols/key-concepts/responsive-svg-backgrounds/`,

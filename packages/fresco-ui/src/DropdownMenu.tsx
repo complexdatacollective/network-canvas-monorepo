@@ -73,11 +73,14 @@ const DropdownMenuSubTrigger = React.forwardRef<
 >(({ className, inset, children, ...props }, ref) => (
   <Menu.SubmenuTrigger
     ref={ref}
-    className={cx(dropdownItemVariants(), inset && 'pl-8', className)}
+    className={cx(dropdownItemVariants(), inset && 'ps-8', className)}
     {...props}
   >
     {children}
-    <ChevronRight className="ml-auto size-4" />
+    {/* Base UI opens a nested menu on the `inline-end` side, so in RTL it
+        arrives on the left and the cue has to point there too. A chevron is
+        its own mirror image, so a half turn is the whole flip. */}
+    <ChevronRight className="ms-auto size-4 rtl:rotate-180" />
   </Menu.SubmenuTrigger>
 ));
 DropdownMenuSubTrigger.displayName = 'DropdownMenuSubTrigger';
@@ -206,10 +209,10 @@ const DropdownMenuCheckboxItem = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <Menu.CheckboxItem
     ref={ref}
-    className={cx(dropdownItemVariants(), 'relative pr-2 pl-8', className)}
+    className={cx(dropdownItemVariants(), 'relative ps-8 pe-2', className)}
     {...props}
   >
-    <span className="absolute left-2 flex size-3.5 items-center justify-center">
+    <span className="absolute inset-s-2 flex size-3.5 items-center justify-center">
       <Menu.CheckboxItemIndicator>
         <Check />
       </Menu.CheckboxItemIndicator>
@@ -255,7 +258,7 @@ const DropdownMenuLabel = React.forwardRef<
     ref={ref}
     className={cx(
       'px-2 py-1.5 text-sm font-semibold',
-      inset && 'pl-8',
+      inset && 'ps-8',
       className,
     )}
     {...props}
@@ -281,7 +284,7 @@ const DropdownMenuShortcut = ({
 }: React.HTMLAttributes<HTMLSpanElement>) => {
   return (
     <span
-      className={cx('ml-auto text-xs tracking-widest opacity-60', className)}
+      className={cx('ms-auto text-xs tracking-widest opacity-60', className)}
       {...props}
     />
   );

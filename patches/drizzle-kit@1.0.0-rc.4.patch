@@ -1,0 +1,76 @@
+diff --git a/api-postgres.d.mts b/api-postgres.d.mts
+index 6bb57f48913618880a417c8872748469904921e6..219aef164760439067d47461e8c0f380d5d27efc 100644
+--- a/api-postgres.d.mts
++++ b/api-postgres.d.mts
+@@ -6,7 +6,7 @@ import { PgAsyncDatabase } from "drizzle-orm/pg-core/async";
+ 
+ //#region src/ext/api-postgres.d.ts
+ declare const generateDrizzleJson: (imports: Record<string, unknown>, prevId?: string, schemaFilters?: string[]) => Promise<PostgresSnapshot>;
+-declare const generateMigration: (prev: PostgresSnapshot, cur: PostgresSnapshot) => Promise<string[]>;
++declare const generateMigration: (prev: PostgresSnapshot, cur: PostgresSnapshot, options?: { renames: "none" }) => Promise<string[]>;
+ declare const pushSchema: (imports: Record<string, unknown>, drizzleInstance: PgAsyncDatabase<any>, entitiesConfig?: EntitiesFilterConfig, migrationsConfig?: {
+   table?: string;
+   schema?: string;
+diff --git a/api-postgres.d.ts b/api-postgres.d.ts
+index 8d206277192490fa70d2000aa26ac7171ef56b53..ca895044efc9fa9a9ba1eb0846f59ece47660c12 100644
+--- a/api-postgres.d.ts
++++ b/api-postgres.d.ts
+@@ -6,7 +6,7 @@ import { PgAsyncDatabase } from "drizzle-orm/pg-core/async";
+ 
+ //#region src/ext/api-postgres.d.ts
+ declare const generateDrizzleJson: (imports: Record<string, unknown>, prevId?: string, schemaFilters?: string[]) => Promise<PostgresSnapshot>;
+-declare const generateMigration: (prev: PostgresSnapshot, cur: PostgresSnapshot) => Promise<string[]>;
++declare const generateMigration: (prev: PostgresSnapshot, cur: PostgresSnapshot, options?: { renames: "none" }) => Promise<string[]>;
+ declare const pushSchema: (imports: Record<string, unknown>, drizzleInstance: PgAsyncDatabase<any>, entitiesConfig?: EntitiesFilterConfig, migrationsConfig?: {
+   table?: string;
+   schema?: string;
+diff --git a/api-postgres.js b/api-postgres.js
+index bce99a92d2f9d7e383488f119329124939fdb8b8..6562d0aa30a71256b54403b62d4f76070ba32ea2 100644
+--- a/api-postgres.js
++++ b/api-postgres.js
+@@ -140254,14 +140254,18 @@ const generateDrizzleJson = async (imports, prevId, schemaFilters) => {
+ 	}
+ 	return toJsonSnapshot(ddl, prevId ? [prevId] : [originUUID], []);
+ };
+-const generateMigration = async (prev, cur) => {
++const generateMigration = async (prev, cur, options) => {
+ 	const { resolver } = await Promise.resolve().then(() => (init_prompts(), prompts_exports));
++	// Explicit authoring policy: additions and removals are never inferred renames.
++	const resolve = options?.renames === "none"
++		? () => async ({ created, deleted }) => ({ created, deleted, renamedOrMoved: [] })
++		: resolver;
+ 	const { ddlDiff } = await Promise.resolve().then(() => (init_diff(), diff_exports));
+ 	const from = createDDL$4();
+ 	const to = createDDL$4();
+ 	for (const it of prev.ddl) from.entities.push(it);
+ 	for (const it of cur.ddl) to.entities.push(it);
+-	const { sqlStatements } = await ddlDiff(from, to, resolver("schema"), resolver("enum"), resolver("sequence"), resolver("policy"), resolver("role"), resolver("privilege"), resolver("table"), resolver("column"), resolver("view"), resolver("unique"), resolver("index"), resolver("check"), resolver("primary_key"), resolver("foreign key"), "default");
++	const { sqlStatements } = await ddlDiff(from, to, resolve("schema"), resolve("enum"), resolve("sequence"), resolve("policy"), resolve("role"), resolve("privilege"), resolve("table"), resolve("column"), resolve("view"), resolve("unique"), resolve("index"), resolve("check"), resolve("primary_key"), resolve("foreign key"), "default");
+ 	return sqlStatements;
+ };
+ const pushSchema = async (imports, drizzleInstance, entitiesConfig, migrationsConfig) => {
+diff --git a/api-postgres.mjs b/api-postgres.mjs
+index f2d2742df79ad0269a6becb21a48e352a321315e..f4df6576a616be21842ac19021310e3faa2170b5 100644
+--- a/api-postgres.mjs
++++ b/api-postgres.mjs
+@@ -140239,14 +140239,18 @@ const generateDrizzleJson = async (imports, prevId, schemaFilters) => {
+ 	}
+ 	return toJsonSnapshot(ddl, prevId ? [prevId] : [originUUID], []);
+ };
+-const generateMigration = async (prev, cur) => {
++const generateMigration = async (prev, cur, options) => {
+ 	const { resolver } = await Promise.resolve().then(() => (init_prompts(), prompts_exports));
++	// Explicit authoring policy: additions and removals are never inferred renames.
++	const resolve = options?.renames === "none"
++		? () => async ({ created, deleted }) => ({ created, deleted, renamedOrMoved: [] })
++		: resolver;
+ 	const { ddlDiff } = await Promise.resolve().then(() => (init_diff(), diff_exports));
+ 	const from = createDDL$4();
+ 	const to = createDDL$4();
+ 	for (const it of prev.ddl) from.entities.push(it);
+ 	for (const it of cur.ddl) to.entities.push(it);
+-	const { sqlStatements } = await ddlDiff(from, to, resolver("schema"), resolver("enum"), resolver("sequence"), resolver("policy"), resolver("role"), resolver("privilege"), resolver("table"), resolver("column"), resolver("view"), resolver("unique"), resolver("index"), resolver("check"), resolver("primary_key"), resolver("foreign key"), "default");
++	const { sqlStatements } = await ddlDiff(from, to, resolve("schema"), resolve("enum"), resolve("sequence"), resolve("policy"), resolve("role"), resolve("privilege"), resolve("table"), resolve("column"), resolve("view"), resolve("unique"), resolve("index"), resolve("check"), resolve("primary_key"), resolve("foreign key"), "default");
+ 	return sqlStatements;
+ };
+ const pushSchema = async (imports, drizzleInstance, entitiesConfig, migrationsConfig) => {

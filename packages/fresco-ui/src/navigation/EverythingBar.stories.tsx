@@ -644,7 +644,8 @@ export const ComboboxSemantics: Story = {
 
     const { trigger, dialog, input } = await openBar(canvasElement);
 
-    await expect(input).toHaveFocus();
+    // The dialog can mount before its focus manager transfers focus.
+    await waitFor(() => expect(input).toHaveFocus());
     await expect(input).toHaveAttribute('aria-expanded', 'true');
     await expect(input).toHaveAccessibleName(labels.searchLabel);
 

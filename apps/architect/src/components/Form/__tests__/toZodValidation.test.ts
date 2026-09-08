@@ -320,9 +320,9 @@ describe('splitValidation — custom-routed Architect rules', () => {
     await expect(runCustom({ notEmpty }, ['a'])).resolves.toEqual([]);
   });
 
-  it('an unknown rule name, keeping the developer-facing message', async () => {
+  it('an unknown rule name, explaining how to review the field', async () => {
     await expect(runCustom({ notARule: true }, 'x')).resolves.toEqual([
-      'Validation "notARule" not found',
+      'The validation rule "notARule" is not available. Review this field’s settings.',
     ]);
   });
 
@@ -359,7 +359,9 @@ describe('uniqueArrayAttribute', () => {
         fieldName: 'options[0].label',
         formValues,
       }),
-    ).resolves.toEqual(['Labels must be unique']);
+    ).resolves.toEqual([
+      'This value is already in use. Enter a different value.',
+    ]);
   });
 
   it('flags the other duplicate row too', async () => {
@@ -368,7 +370,9 @@ describe('uniqueArrayAttribute', () => {
         fieldName: 'options[2].label',
         formValues,
       }),
-    ).resolves.toEqual(['Labels must be unique']);
+    ).resolves.toEqual([
+      'This value is already in use. Enter a different value.',
+    ]);
   });
 
   it('passes a unique value in the same array', async () => {
@@ -397,7 +401,9 @@ describe('uniqueArrayAttribute', () => {
           options: [...formValues.options, { label: 'APPLE', value: 'x' }],
         },
       }),
-    ).resolves.toEqual(['Labels must be unique']);
+    ).resolves.toEqual([
+      'This value is already in use. Enter a different value.',
+    ]);
   });
 
   it('no-ops for a field name without a bracket path', async () => {
@@ -414,6 +420,8 @@ describe('uniqueArrayAttribute', () => {
           prompts: [{ items: [{ name: 'Same' }, { name: 'Same' }] }],
         },
       }),
-    ).resolves.toEqual(['Names must be unique']);
+    ).resolves.toEqual([
+      'This value is already in use. Enter a different value.',
+    ]);
   });
 });

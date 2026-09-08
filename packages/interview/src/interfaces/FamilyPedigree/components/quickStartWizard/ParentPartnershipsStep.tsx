@@ -1,21 +1,21 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import RadioMatrixField from '@codaco/fresco-ui/form/fields/RadioMatrixField';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import { FRAMING_TERMS } from '../../framingTerms';
+import { getFramingTerms } from '../../framingTerms';
 import { useFramedTerms } from '../../hooks/useFramedTerms';
+import { messages } from '../../messages';
 
-const partnershipOptions = [
-  { value: 'current', label: 'Current partner' },
-  { value: 'ex', label: 'Ex-partner' },
-  { value: 'none', label: "Not a partner or Don't know" },
-];
+function emphasize(chunks: ReactNode) {
+  return <strong>{chunks}</strong>;
+}
 
 type ParentEntry = {
   id: string;
@@ -43,8 +43,15 @@ function getParentLabel(parent: ParentEntry): string {
 }
 
 export default function ParentPartnershipsStep() {
+  const intl = useAppIntl();
+  const partnershipOptions = [
+    { value: 'current', label: intl.formatMessage(messages.currentPartner) },
+    { value: 'ex', label: intl.formatMessage(messages.exPartner) },
+    { value: 'none', label: intl.formatMessage(messages.notPartnerUnknown) },
+  ];
+
   const values = useFormValue(BIO_PARENT_FIELDS);
-  const terms = useFramedTerms() ?? FRAMING_TERMS.gamete;
+  const terms = useFramedTerms() ?? getFramingTerms('gamete', intl);
 
   const parents = useMemo<ParentEntry[]>(() => {
     const list: ParentEntry[] = [
@@ -64,7 +71,7 @@ export default function ParentPartnershipsStep() {
       list.push({
         id: 'gestational-carrier',
         name: values['gestational-carrier.name'] as string | undefined,
-        roleLabel: 'your gestational carrier',
+        roleLabel: intl.formatMessage(messages.yourCarrier),
       });
     }
 
@@ -78,25 +85,26 @@ export default function ParentPartnershipsStep() {
             | undefined,
           // Additional parents always require a name, so this fallback is a
           // safety net rather than something the participant normally sees.
-          roleLabel: 'your additional parent',
+          roleLabel: intl.formatMessage(messages.yourAdditionalParent),
         });
       }
     }
 
     return list;
-  }, [values, terms]);
+  }, [values, terms, intl]);
 
   if (parents.length < 2) return null;
 
   return (
     <>
       <Paragraph>
-        We now want to ask about partnerships between the parents you named.
+        <AppMessage message={messages.partnershipIntro} />
       </Paragraph>
       <Paragraph>
-        Partnership means current and past romantic relationships, but{' '}
-        <strong>not co-parenting</strong> (where two people raised a child
-        together but were never romantically involved).
+        <AppMessage
+          message={messages.partnershipDefinition}
+          values={{ strong: emphasize }}
+        />
       </Paragraph>
       <hr />
       <FieldNamespace prefix="partnerships">
@@ -110,8 +118,16 @@ export default function ParentPartnershipsStep() {
             <Field
               key={focal.id}
               name={focal.id}
-              label={`Please indicate which of these people are partners of **${getParentLabel(focal)}**.`}
-              hint="If either person is deceased, please answer based on whether they were partners while both were alive."
+              label={
+                <AppMessage
+                  message={messages.partnersOf}
+                  values={{
+                    name: getParentLabel(focal),
+                    strong: emphasize,
+                  }}
+                />
+              }
+              hint={intl.formatMessage(messages.deceasedPartnerHint)}
               component={RadioMatrixField}
               rows={candidates.map((parent) => ({
                 id: parent.id,

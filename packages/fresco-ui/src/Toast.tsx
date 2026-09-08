@@ -7,6 +7,10 @@ import {
 } from '@base-ui/react/toast';
 import { AlertCircle, Info, type LucideIcon, PartyPopper } from 'lucide-react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import Button from './Button';
 import CloseButton from './CloseButton';
 import { surfaceVariants } from './layout/Surface';
@@ -21,6 +25,15 @@ import { cva, cx, type VariantProps } from './utils/cva';
 // the screen — the viewport anchors every toast to the bottom and grows it
 // upward, so unbounded content is clipped by the browser window with no way
 // back, not by anything the toast itself renders.
+const messages = defineMessages({
+  notifications: {
+    id: 'frescoUi.toast.notifications',
+    defaultMessage: 'Notifications',
+    description:
+      'Accessible name of the region containing status notifications and alerts.',
+  },
+});
+
 const DESCRIPTION_MAX_HEIGHT = 'max-h-[40dvh]';
 
 export const toastVariants = cva({
@@ -52,7 +65,7 @@ export const variantIcons: Record<ToastVariant, LucideIcon | null> = {
 
 type ToastData = {
   id?: string;
-  title: string;
+  title: React.ReactNode;
   description?: string | React.ReactNode;
   variant?: ToastVariant;
   icon?: React.ReactNode;
@@ -60,7 +73,7 @@ type ToastData = {
   onCancel?: () => void;
   // Label for the action button rendered when `onCancel` is set. Defaults to
   // "Cancel".
-  cancelLabel?: string;
+  cancelLabel?: React.ReactNode;
   // When set, the toast's title + description become a clickable region (the
   // close button and action button remain separate). Use for "click the toast
   // to see more" affordances.
@@ -71,7 +84,7 @@ type ToastData = {
 type ToastCustomData = {
   variant?: ToastVariant;
   onCancel?: () => void;
-  cancelLabel?: string;
+  cancelLabel?: React.ReactNode;
   onClick?: () => void;
   icon?: React.ReactNode;
 };
@@ -81,6 +94,7 @@ type ToastItemProps = {
 };
 
 function ToastItem({ toast }: ToastItemProps) {
+  const intl = useAppIntl();
   const variant: ToastVariant =
     toast.type === 'info' ||
     toast.type === 'success' ||
@@ -102,10 +116,10 @@ function ToastItem({ toast }: ToastItemProps) {
         '[--stack-opacity:calc(1-(var(--toast-index)*0.2))]', // opacity for stacked toasts (20% more transparent per position)
         '[--height:var(--toast-frontmost-height,var(--toast-height))]', // toast height (matches frontmost when stacked)
         '[--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))]', // vertical offset when expanded
-        'after:absolute after:top-full after:left-0 after:h-[calc(var(--gap)+1px)] after:w-full after:content-[""]',
-        'mr-0 select-none',
+        'after:absolute after:inset-s-0 after:top-full after:h-[calc(var(--gap)+1px)] after:w-full after:content-[""]',
+        'me-0 select-none',
         surfaceVariants({ spacing: 'sm' }),
-        'absolute right-0 bottom-0 left-auto',
+        'absolute inset-s-auto inset-e-0 bottom-0',
         'z-[calc(1000-var(--toast-index))]',
         'h-(--height) w-full origin-bottom',
         '[transition:transform_0.5s_cubic-bezier(0.22,1,0.36,1),opacity_0.5s,height_0.15s] data-ending-style:opacity-0 data-expanded:transform-[translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--offset-y)))] data-limited:opacity-0 data-starting-style:transform-[translateY(150%)] data-ending-style:data-swipe-direction-down:transform-[translateY(calc(var(--toast-swipe-movement-y)+150%))] data-expanded:data-ending-style:data-swipe-direction-down:transform-[translateY(calc(var(--toast-swipe-movement-y)+150%))] data-ending-style:data-swipe-direction-left:transform-[translateX(calc(var(--toast-swipe-movement-x)-150%))_translateY(var(--offset-y))] data-expanded:data-ending-style:data-swipe-direction-left:transform-[translateX(calc(var(--toast-swipe-movement-x)-150%))_translateY(var(--offset-y))] data-ending-style:data-swipe-direction-right:transform-[translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--offset-y))] data-expanded:data-ending-style:data-swipe-direction-right:transform-[translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--offset-y))] data-ending-style:data-swipe-direction-up:transform-[translateY(calc(var(--toast-swipe-movement-y)-150%))] data-expanded:data-ending-style:data-swipe-direction-up:transform-[translateY(calc(var(--toast-swipe-movement-y)-150%))] [&[data-ending-style]:not([data-limited]):not([data-swipe-direction])]:transform-[translateY(150%)]',
@@ -130,7 +144,7 @@ function ToastItem({ toast }: ToastItemProps) {
             <button
               type="button"
               onClick={toast.data.onClick}
-              className="block w-full cursor-pointer text-left"
+              className="block w-full cursor-pointer text-start"
             >
               <Toast.Title render={<Heading level="h4" />} />
               {/* A native <button> may not contain interactive/tabbable
@@ -152,7 +166,7 @@ function ToastItem({ toast }: ToastItemProps) {
                   'overflow-hidden not-last:mb-4',
                 )}
                 render={
-                  <ScrollArea viewportClassName="font-body text-pretty pr-2" />
+                  <ScrollArea viewportClassName="font-body text-pretty pe-2" />
                 }
               />
             </>
@@ -164,14 +178,15 @@ function ToastItem({ toast }: ToastItemProps) {
               onClick={toast.data.onCancel}
               className="mt-3 mb-1"
             >
-              {toast.data.cancelLabel ?? 'Cancel'}
+              {toast.data.cancelLabel ??
+                intl.formatMessage(commonMessages.cancel)}
             </Button>
           )}
         </div>
         <Toast.Close
           render={<CloseButton size="sm" />}
-          className="absolute top-2 right-2"
-          aria-label="Close"
+          className="absolute inset-e-2 top-2"
+          aria-label={intl.formatMessage(commonMessages.close)}
           nativeButton
         />
       </Toast.Content>
@@ -231,16 +246,18 @@ export function useToast(): TypedUseToastManager {
 }
 
 export function Toaster() {
+  const intl = useAppIntl();
   const { toasts } = useToast();
   const portalContainer = usePortalContainer();
 
   return (
     <Toast.Portal container={portalContainer ?? undefined}>
       <Toast.Viewport
+        aria-label={intl.formatMessage(messages.notifications)}
         data-testid="toast-viewport"
         className={cx(
           'phone-landscape:max-w-sm fixed top-auto bottom-2 mx-auto flex w-full',
-          'tablet-portrait:right-8 tablet-portrait:bottom-8 z-10',
+          'tablet-portrait:inset-e-8 tablet-portrait:bottom-8 z-10',
         )}
       >
         {toasts.map((toast) => (

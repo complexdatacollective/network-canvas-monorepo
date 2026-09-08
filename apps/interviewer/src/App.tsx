@@ -7,6 +7,7 @@ import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import { ErrorBoundary } from './components/AppErrorBoundary';
 import { AppUpdateProvider } from './components/AppUpdate/AppUpdateProvider';
 import { AuthGate } from './components/AuthGate';
+import { InterviewerI18nProvider } from './i18n/InterviewerI18nProvider';
 import { AppProviders } from './providers/AppProviders';
 import { HomeRoute } from './routes/Home';
 import { InterviewRoute } from './routes/Interview';
@@ -41,77 +42,80 @@ export default function App() {
 
   return (
     <ThemedRegion theme="interview" className="isolate h-full">
-      {/* Bare, dependency-free outer boundary: catches crashes in AppProviders
-          construction itself (before AnalyticsProvider exists) and always shows
-          the fallback. The analytics-reporting boundary lives inside
-          AppProviders, within AnalyticsProvider, so it can actually report. */}
+      {/* Locale startup itself must have provider-optional recovery. Keep the
+          inner boundary for localized recovery from later provider failures;
+          AppProviders also owns the boundary that can report to analytics. */}
       <ErrorBoundary>
-        <AppProviders>
-          <AppUpdateProvider>
-            <AnimatePresence>
-              {showBackgroundLights && (
-                <motion.div
-                  key="background-lights"
-                  data-testid="background-lights"
-                  className="fixed inset-0 -z-10"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 0.8 }}
-                  exit={{ opacity: 0, transition: { duration: 0.5 } }}
-                  transition={{ duration: 2 }}
-                >
-                  <BackgroundLights
-                    large={0}
-                    medium={4}
-                    small={0}
-                    blendMode="color-dodge"
-                    speedFactor={30}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <AuthGate>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={pageKeyFor(location)}
-                  variants={pageWrapperVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  // Fill #root so the route's full-screen surfaces can size to
-                  // the available space with `h-full` rather than the raw
-                  // viewport (`h-dvh`). #root can be inset by the
-                  // visual-viewport initializer (see globals.css); a
-                  // viewport-tall child would overflow that inset and make the
-                  // whole page scroll (the iPad-portrait overflow bug).
-                  // Safe-area insets are owned per-surface: the Home header and
-                  // the interview shell each pad themselves past the top inset.
-                  className="h-full"
-                >
-                  <Switch location={location}>
-                    <Route path="/welcome" component={WelcomeRoute} />
-                    <Route path="/interview/:sessionId">
-                      {({ sessionId }) => (
-                        <InterviewRoute sessionId={sessionId} />
-                      )}
-                    </Route>
-                    <Route path="/:view?">
-                      {(params) => {
-                        if (
-                          params.view !== undefined &&
-                          params.view !== 'data'
-                        ) {
-                          return <NotFoundRoute />;
-                        }
-                        return <HomeRoute />;
-                      }}
-                    </Route>
-                    <Route component={NotFoundRoute} />
-                  </Switch>
-                </motion.div>
-              </AnimatePresence>
-            </AuthGate>
-          </AppUpdateProvider>
-        </AppProviders>
+        <InterviewerI18nProvider>
+          <ErrorBoundary>
+            <AppProviders>
+              <AppUpdateProvider>
+                <AnimatePresence>
+                  {showBackgroundLights && (
+                    <motion.div
+                      key="background-lights"
+                      data-testid="background-lights"
+                      className="fixed inset-0 -z-10"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 0.8 }}
+                      exit={{ opacity: 0, transition: { duration: 0.5 } }}
+                      transition={{ duration: 2 }}
+                    >
+                      <BackgroundLights
+                        large={0}
+                        medium={4}
+                        small={0}
+                        blendMode="color-dodge"
+                        speedFactor={30}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <AuthGate>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={pageKeyFor(location)}
+                      variants={pageWrapperVariants}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      // Fill #root so the route's full-screen surfaces can size to
+                      // the available space with `h-full` rather than the raw
+                      // viewport (`h-dvh`). #root can be inset by the
+                      // visual-viewport initializer (see globals.css); a
+                      // viewport-tall child would overflow that inset and make the
+                      // whole page scroll (the iPad-portrait overflow bug).
+                      // Safe-area insets are owned per-surface: the Home header and
+                      // the interview shell each pad themselves past the top inset.
+                      className="h-full"
+                    >
+                      <Switch location={location}>
+                        <Route path="/welcome" component={WelcomeRoute} />
+                        <Route path="/interview/:sessionId">
+                          {({ sessionId }) => (
+                            <InterviewRoute sessionId={sessionId} />
+                          )}
+                        </Route>
+                        <Route path="/:view?">
+                          {(params) => {
+                            if (
+                              params.view !== undefined &&
+                              params.view !== 'data'
+                            ) {
+                              return <NotFoundRoute />;
+                            }
+                            return <HomeRoute />;
+                          }}
+                        </Route>
+                        <Route component={NotFoundRoute} />
+                      </Switch>
+                    </motion.div>
+                  </AnimatePresence>
+                </AuthGate>
+              </AppUpdateProvider>
+            </AppProviders>
+          </ErrorBoundary>
+        </InterviewerI18nProvider>
       </ErrorBoundary>
     </ThemedRegion>
   );

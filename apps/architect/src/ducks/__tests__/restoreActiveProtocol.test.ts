@@ -2,6 +2,7 @@ import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { messageFields } from '~/test/messageText';
 import { admitStoredProtocol } from '~/utils/storedProtocolAdmission';
 
 import createTimeline from '../middleware/timeline';
@@ -198,11 +199,15 @@ describe('restoreActiveProtocolFromLibrary', () => {
     });
 
     expect(result).toBe('invalid');
-    expect(admit).toHaveBeenCalledWith({
-      id: 'legacy',
-      schemaVersion: 8,
-      protocol: legacy,
-    });
+    expect(admit).toHaveBeenCalledWith(
+      {
+        id: 'legacy',
+        schemaVersion: 8,
+        protocol: legacy,
+      },
+      undefined,
+      expect.objectContaining({ locale: 'en' }),
+    );
     expect(getActiveProtocolId(store.getState())).toBeNull();
     expect(store.getState().activeProtocol.present).toBeNull();
     expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
@@ -288,12 +293,13 @@ describe('restoreActiveProtocolFromLibrary', () => {
       expect(result).toBe('invalid');
       expect(store.getState().activeProtocol.present).toBeNull();
       expect(persist).not.toHaveBeenCalled();
-      expect(onInvalid).toHaveBeenCalledWith({
+      expect(onInvalid).toHaveBeenCalledOnce();
+      expect(messageFields(onInvalid.mock.calls[0]?.[0])).toEqual({
         status: 'error',
         title: 'Failed to Open Protocol',
-        message: expect.stringContaining(
-          'This protocol could not be brought up to date.',
-        ) as string,
+        message:
+          'This protocol could not be brought up to date. Open it in the version of Architect that created it, check its settings, and try again.',
+        detail: 'Migration resulted in invalid protocol: nope',
       });
       expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
     });

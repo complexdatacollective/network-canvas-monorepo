@@ -1,7 +1,10 @@
-import { useId } from 'react';
+import { createElement, useId } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import { useEnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
@@ -13,31 +16,39 @@ import {
 } from '../form/stageEditorContext.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
 import { interfaceDisplayName } from '../interfaces/interfaceNames.ts';
+import {
+  type AutoStageNamePanel,
+  useAutoStageName,
+} from '../naming/useAutoStageName.ts';
 
 /** The character limit is the control's own; it is not a validation rule. */
 const STAGE_NAME_LIMIT = 50;
 
-/**
- * What this host calls a stage.
- *
- * Architect says "stage"; Studio says "screen". Each string is whole rather
- * than assembled from a noun and a frame, so a host can say the thing its
- * researchers already read everywhere else in it.
- */
-export type StageNameCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  fieldLabel: string;
-  placeholder: string;
-  position: (index: number, total: number) => string;
-}>;
-
-const DEFAULT_COPY: StageNameCopy = {
-  sectionTitle: 'Stage name',
-  fieldLabel: 'Stage name',
-  placeholder: 'Enter stage name...',
-  position: (index, total) => `Stage ${index} of ${total}`,
-};
+const messages = defineMessages({
+  stageName: {
+    id: 'protocolBuilder.stageName.name',
+    defaultMessage: 'Stage name',
+    description:
+      'Section heading and accessible field label for the researcher-authored stage name.',
+  },
+  placeholder: {
+    id: 'protocolBuilder.stageName.placeholder',
+    defaultMessage: 'Enter stage name...',
+    description: 'Placeholder for the researcher-authored stage name field.',
+  },
+  position: {
+    id: 'protocolBuilder.stageName.position',
+    defaultMessage: 'Stage {index, number} of {total, number}',
+    description:
+      'The current stage position in the interview. index is one-based.',
+  },
+  documentation: {
+    id: 'protocolBuilder.stageName.documentation',
+    defaultMessage: 'Documentation',
+    description:
+      'Link to the documentation for this type of interview interface.',
+  },
+});
 
 export type StageNameSectionProps = Readonly<{
   /** Where this stage sits in the interview, for orientation. */
@@ -46,7 +57,23 @@ export type StageNameSectionProps = Readonly<{
   documentationUrl?: string;
   /** A stage being created starts with its name focused. */
   autoFocus?: boolean;
-  copy?: Partial<StageNameCopy>;
+  /**
+   * What a proposed name is derived from, and whether to propose one at all.
+   *
+   * Whether to propose is the session's answer by default — only a stage being
+   * created is named automatically, and an existing stage's name is already the
+   * researcher's — so an editor that serves both cases leaves `propose` out and
+   * gets the right behaviour in each. `propose` overrides that answer, in
+   * either direction, for an editor that has a reason to.
+   *
+   * `panels` is supplied by the editor rather than read from the draft, because
+   * a name generator's panels are held in the form as per-index leaves that
+   * only the section writing them can assemble.
+   */
+  autoName?: Readonly<{
+    propose?: boolean;
+    panels?: readonly AutoStageNamePanel[];
+  }>;
 }>;
 
 /**
@@ -60,13 +87,26 @@ export default function StageNameSection({
   position,
   documentationUrl,
   autoFocus = false,
-  copy,
+  autoName,
 }: StageNameSectionProps) {
-  const { identity } = useStageEditorForm();
-  const words = { ...DEFAULT_COPY, ...copy };
-  const { sectionId } = useOutlineSection(words.sectionTitle);
+  const { identity, creation } = useStageEditorForm();
+  const intl = useAppIntl();
+  // One descriptor read twice: the section's name in the outline and the
+  // field's own label are the same words, and a translator moves them once.
+  const stageNameLabel = intl.formatMessage(messages.stageName);
+  const { sectionId } = useOutlineSection(stageNameLabel);
   const headingId = useId();
-  const interfaceName = interfaceDisplayName(identity.type) ?? identity.type;
+  // AT the level the shell states rather than one below it: this section wears
+  // the page's heading, so it IS the heading everything else in the editor
+  // counts down from. Absent a shell — a section rendered on its own — an `h2`
+  // is what a page heading is.
+  const headingLevel = useEnclosingHeadingLevel() ?? 'h2';
+  const interfaceName =
+    interfaceDisplayName(identity.type, intl) ?? identity.type;
+  const { onLabelBlur } = useAutoStageName({
+    isNewStage: autoName?.propose ?? creation !== undefined,
+    panels: autoName?.panels,
+  });
 
   return (
     <section
@@ -77,9 +117,19 @@ export default function StageNameSection({
       // under the position line, as one block of heading.
       className="flex min-w-0 flex-col justify-center pt-7 outline-none *:data-[field-name=label]:m-0"
     >
-      <span id={headingId} className="sr-only">
-        {words.sectionTitle}
-      </span>
+      {/*
+        A real heading rather than a label: the visible one is the name field
+        itself, which is a control and cannot be a heading, so without this the
+        stage editor has no heading at the rung every section below counts
+        from — nothing for a reader navigating by headings to arrive at, and a
+        level the shell states that nothing in the document occupies. Visually
+        hidden, so the hero input is still the only stage title on screen.
+      */}
+      {createElement(
+        headingLevel,
+        { id: headingId, className: 'sr-only' },
+        stageNameLabel,
+      )}
       {position && (
         <Paragraph
           emphasis="muted"
@@ -89,7 +139,10 @@ export default function StageNameSection({
             margin: 'none',
           })}
         >
-          {words.position(position.index, position.total)}
+          {intl.formatMessage(messages.position, {
+            index: position.index,
+            total: position.total,
+          })}
         </Paragraph>
       )}
       <SectionScopeContext value={sectionId}>
@@ -99,12 +152,13 @@ export default function StageNameSection({
           // The hero input is the visible heading, so the label exists for
           // assistive technology — but it still has to exist, because it is
           // what the outline and a host's problem panel call this field.
-          label={words.fieldLabel}
+          label={stageNameLabel}
           labelHidden
-          placeholder={words.placeholder}
+          placeholder={intl.formatMessage(messages.placeholder)}
           characterLimit={STAGE_NAME_LIMIT}
           required
           autoFocus={autoFocus}
+          onFieldBlur={onLabelBlur}
         />
       </SectionScopeContext>
       <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
@@ -115,7 +169,7 @@ export default function StageNameSection({
             target="_blank"
             rel="noopener noreferrer"
           >
-            Documentation
+            {intl.formatMessage(messages.documentation)}
           </NativeLink>
         )}
       </div>

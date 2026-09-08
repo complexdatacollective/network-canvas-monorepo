@@ -2,7 +2,7 @@ import type {
   FamilyPedigreeGenerationOptions,
   FamilyPedigreePopulationProfile,
   ResolvedFamilyPedigreeGenerationOptions,
-} from './types';
+} from './types.ts';
 
 /**
  * A transparent US reference profile for synthetic preview data.

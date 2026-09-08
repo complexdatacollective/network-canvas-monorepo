@@ -37,10 +37,12 @@ node apps/fresco/release-test/scripts/bundle-pending-packages.mjs "$STAGE_DIR"
 echo "[release-test] generating lockfile"
 (cd "$STAGE_DIR" && pnpm install --lockfile-only --ignore-scripts)
 
-# Every package the pending release publishes must resolve to its vendored
-# tarball and never from the registry (registry references appear as
-# '@codaco/<name>@<semver>'); packages without a pending changeset are
-# expected to resolve from the registry, exactly as the released image will.
+# Every package the pending release publishes — a planned bump, or a version
+# npm does not have yet, which `changeset publish` publishes regardless — must
+# resolve to its vendored tarball and never from the registry (registry
+# references appear as '@codaco/<name>@<semver>'); the remaining closure
+# packages are expected to resolve from the registry, exactly as the released
+# image will.
 node - "$STAGE_DIR" <<'EOF'
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
@@ -63,8 +65,13 @@ if (problems.length) {
   for (const p of problems) console.error(`  ${p}`);
   process.exit(1);
 }
+const unpublished = manifest.unpublished ?? [];
 console.log(
-  `[release-test] bundling guard OK: ${Object.keys(manifest.vendored).length} vendored, ${manifest.registry.length} from registry (${manifest.registry.join(', ') || 'none'})`,
+  `[release-test] bundling guard OK: ${Object.keys(manifest.vendored).length} vendored` +
+    (unpublished.length
+      ? ` (${unpublished.length} not on npm at their current version, so \`changeset publish\` ships them: ${unpublished.join(', ')})`
+      : '') +
+    `, ${manifest.registry.length} from registry (${manifest.registry.join(', ') || 'none'})`,
 );
 EOF
 

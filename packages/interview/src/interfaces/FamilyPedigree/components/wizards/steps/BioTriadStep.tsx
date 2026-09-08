@@ -9,6 +9,7 @@ import {
   useRef,
 } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import FieldNamespace, {
@@ -21,8 +22,9 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
-import { FRAMING_TERMS } from '../../../framingTerms';
+import { getFramingTerms } from '../../../framingTerms';
 import { useFramedTerms } from '../../../hooks/useFramedTerms';
+import { messages } from '../../../messages';
 import type { GameteRole } from '../../../store';
 import PersonFields from '../../quickStartWizard/PersonFields';
 import type { BioTriadOption } from './bioTriadOptions';
@@ -62,7 +64,18 @@ function BioTriadConfigProvider({
 }
 
 function useBioTriadConfig() {
-  return useContext(BioTriadConfigContext);
+  const intl = useAppIntl();
+  const config = useContext(BioTriadConfigContext);
+  return useMemo(
+    () => ({
+      ...config,
+      existingNodes: config.existingNodes?.map((option) => ({
+        ...option,
+        label: option.getLabel?.(intl) ?? option.label,
+      })),
+    }),
+    [config, intl],
+  );
 }
 
 type ParentSectionProps = {
@@ -146,7 +159,10 @@ function ParentSection({
           label={selectLabel}
           hint={selectHint}
           component={RadioGroupField}
-          options={options}
+          options={options.map(({ label, ...option }) => ({
+            ...option,
+            label: <>{label}</>,
+          }))}
           initialValue={initialValue}
           required
         />
@@ -191,13 +207,14 @@ function GestationalCarrierSection({
   initialValue,
   roleLabel,
 }: GestationalCarrierSectionProps) {
+  const intl = useAppIntl();
   const eggSource = useFormValue(['egg-source'])['egg-source'];
   const carrierOptions = useMemo(
     () => [
       ...options.filter((option) => option.value !== eggSource),
-      { value: 'new', label: 'Create a new person' },
+      { value: 'new', label: intl.formatMessage(messages.createNewPerson) },
     ],
-    [options, eggSource],
+    [options, eggSource, intl],
   );
   const onlyNewOption =
     carrierOptions.length === 1 && carrierOptions[0]?.value === 'new';
@@ -223,10 +240,13 @@ function GestationalCarrierSection({
       ) : (
         <Field
           name="carrier-source"
-          label="Who carried the pregnancy?"
-          hint="Select the person who carried the pregnancy, or create a new person."
+          label={intl.formatMessage(messages.whoCarried)}
+          hint={intl.formatMessage(messages.selectCarrier)}
           component={RadioGroupField}
-          options={carrierOptions}
+          options={carrierOptions.map(({ label, ...option }) => ({
+            ...option,
+            label: <>{label}</>,
+          }))}
           initialValue={validInitialValue}
           required
         />
@@ -242,9 +262,10 @@ function GestationalCarrierSection({
 }
 
 export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
+  const intl = useAppIntl();
   const { existingNodes, preselection, gameteRoles } = useBioTriadConfig();
   const nodeOptions = useMemo(() => existingNodes ?? [], [existingNodes]);
-  const terms = useFramedTerms() ?? FRAMING_TERMS.gamete;
+  const terms = useFramedTerms() ?? getFramingTerms('gamete', intl);
 
   // Reproductive role and sex recorded at birth are independent pedigree
   // facts. Candidate eligibility is based on existing gamete roles, never on
@@ -252,17 +273,17 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
   const eggOptions = useMemo(
     () => [
       ...nodeOptions.filter((o) => gameteRoles?.get(o.value) !== 'sperm'),
-      { value: 'new', label: 'Create a new person' },
+      { value: 'new', label: intl.formatMessage(messages.createNewPerson) },
     ],
-    [nodeOptions, gameteRoles],
+    [nodeOptions, gameteRoles, intl],
   );
 
   const spermOptions = useMemo(
     () => [
       ...nodeOptions.filter((o) => gameteRoles?.get(o.value) !== 'egg'),
-      { value: 'new', label: 'Create a new person' },
+      { value: 'new', label: intl.formatMessage(messages.createNewPerson) },
     ],
-    [nodeOptions, gameteRoles],
+    [nodeOptions, gameteRoles, intl],
   );
 
   const content = (
@@ -279,8 +300,8 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
         initialValue={preselection?.eggSource}
         carriedInitialValue={preselection?.eggParentCarried ?? true}
         carriedFieldName="egg-parent-carried"
-        carriedLabel="Did this person carry the pregnancy?"
-        carriedHint="If someone else carried the pregnancy (e.g. a gestational carrier or surrogate), select 'No'."
+        carriedLabel={intl.formatMessage(messages.personCarried)}
+        carriedHint={intl.formatMessage(messages.otherCarrierHint)}
       />
 
       <FieldGroup

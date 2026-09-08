@@ -2,6 +2,7 @@
   - heading "Conditional" [level=1]
   - paragraph: Shown only when a node exists.
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

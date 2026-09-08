@@ -1,6 +1,8 @@
 import { get, pickBy } from 'es-toolkit/compat';
 import { useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
@@ -8,6 +10,20 @@ import type { Variable } from '@codaco/protocol-validation';
 import Validations from '~/components/Validations/Validations';
 
 import { getFieldId } from '../../utils/issues';
+const defaultMessages = defineMessages({
+  label: {
+    id: 'architect.defaults.components.sections.ValidationSection.label',
+    defaultMessage: 'Validation',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own label.',
+  },
+  summary: {
+    id: 'architect.defaults.components.sections.ValidationSection.summary',
+    defaultMessage: 'Enable validation of this attribute.',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own summary.',
+  },
+});
 
 type ValidationValue = boolean | number | string | null;
 type ValidationMap = Record<string, ValidationValue>;
@@ -56,8 +72,8 @@ const ValidationSection = ({
   disabled = false,
   entity,
   id = getFieldId('validation'),
-  label = 'Validation',
-  summary = 'Enable validation of this attribute.',
+  label: providedLabel,
+  summary: providedSummary,
   variableType = '',
   existingVariables,
   allVariables,
@@ -66,6 +82,11 @@ const ValidationSection = ({
   commitsImmediately = false,
   onOpenChange,
 }: ValidationSectionProps) => {
+  const intl = useAppIntl();
+  const label = providedLabel ?? intl.formatMessage(defaultMessages.label);
+  const summary =
+    providedSummary ?? intl.formatMessage(defaultMessages.summary);
+
   // Sibling draft values, read reactively off the SAME form `ValidationSection`
   // itself is rendered in — the field-editor dialog's `options`/`component`/
   // `parameters`/`_createNewVariable` fields when nested there, or (from

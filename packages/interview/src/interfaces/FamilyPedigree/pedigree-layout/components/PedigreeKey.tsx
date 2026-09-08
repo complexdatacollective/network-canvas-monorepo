@@ -1,20 +1,24 @@
 'use client';
 
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
+
+import { messages } from '../../messages';
 import { DASHED_PATTERN, EDGE_WIDTH } from './EdgeRenderer';
 
 type KeyEntry = {
-  label: string;
+  label: MessageDescriptor;
   strokeWidth: number;
   strokeDasharray?: string;
 };
 
 const KEY_ENTRIES: KeyEntry[] = [
   {
-    label: 'Biological parent (incl. donor, surrogate)',
+    label: messages.biologicalKey,
     strokeWidth: EDGE_WIDTH,
   },
   {
-    label: 'Social parent (adoptive, step)',
+    label: messages.socialKey,
     strokeWidth: EDGE_WIDTH,
     strokeDasharray: DASHED_PATTERN,
   },
@@ -48,9 +52,11 @@ export default function PedigreeKey({ color, ...props }: PedigreeKeyProps) {
   return (
     <div {...props}>
       {KEY_ENTRIES.map((entry) => (
-        <div key={entry.label} className="flex items-center gap-3">
+        <div key={entry.label.id} className="flex items-center gap-3">
           <KeyLine entry={entry} color={color} />
-          <span className="text-sm">{entry.label}</span>
+          <span className="text-sm">
+            <AppMessage message={entry.label} />
+          </span>
         </div>
       ))}
     </div>

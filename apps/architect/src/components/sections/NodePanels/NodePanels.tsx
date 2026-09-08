@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { createElement, useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
@@ -29,6 +32,67 @@ import NodePanel, { type NodePanelValue } from './NodePanel';
 // rather than read off the `panels` container path — as is the stage name's
 // own read, which is why the bound is shared rather than local.
 import { MAX_PANELS } from './panelSlots';
+const utilityMessages = defineMessages({
+  thisWillDeleteYourPanelConfiguration: {
+    id: 'architect.utility.sections.nodePanels.nodePanels.thisWillDeleteYourPanelConfiguration',
+    defaultMessage: 'This will delete your panel configuration',
+    description:
+      'The title text in components / sections / NodePanels / NodePanels.',
+  },
+  thisWillClearYourPanelConfiguration: {
+    id: 'architect.utility.sections.nodePanels.nodePanels.thisWillClearYourPanelConfiguration',
+    defaultMessage:
+      'This will clear your panel configuration, and delete any filter rules you have created. Do you want to continue?',
+    description:
+      'The description text in components / sections / NodePanels / NodePanels.',
+  },
+  removePanels: {
+    id: 'architect.utility.sections.nodePanels.nodePanels.removePanels',
+    defaultMessage: 'Remove panels',
+    description:
+      'The confirmLabel text in components / sections / NodePanels / NodePanels.',
+  },
+});
+const additionalMessages = defineMessages({
+  addNewPanel: {
+    id: 'architect.additional.sections.nodePanels.nodePanels.addNewPanel',
+    defaultMessage: 'Add new panel',
+    description:
+      'The addButtonLabel text in components / sections / NodePanels / NodePanels.',
+  },
+  noSidePanelsConfigured: {
+    id: 'architect.additional.sections.nodePanels.nodePanels.noSidePanelsConfigured',
+    defaultMessage: 'No side panels configured.',
+    description:
+      'The emptyStateMessage text in components / sections / NodePanels / NodePanels.',
+  },
+});
+const messages = defineMessages({
+  sidePanels: {
+    id: 'architect.sections.nodePanels.nodePanels.sidePanels',
+    defaultMessage: 'Side panels',
+    description:
+      'The title text in components / sections / NodePanels / NodePanels.',
+  },
+  selectANodeTypeToConfigure: {
+    id: 'architect.sections.nodePanels.nodePanels.selectANodeTypeToConfigure',
+    defaultMessage: 'Select a node type to configure side panels.',
+    description:
+      'The description text in components / sections / NodePanels / NodePanels.',
+  },
+  configureUpToTwoSidePanels: {
+    id: 'architect.sections.nodePanels.nodePanels.configureUpToTwoSidePanels',
+    defaultMessage: 'Configure up to two side panels for this name generator.',
+    description:
+      'The description text in components / sections / NodePanels / NodePanels.',
+  },
+  panels: {
+    id: 'architect.sections.nodePanels.nodePanels.panels',
+    defaultMessage: 'Panels',
+    description:
+      'The label text in components / sections / NodePanels / NodePanels.',
+  },
+});
 
 // `ArrayField` decides whether to re-sync its internal item list from `value`
 // by REFERENCE (`useArrayFieldItems.ts`'s `value !== prevValueRef.current`),
@@ -88,11 +152,18 @@ export const handlePanelToggleChange = async (
 
   return (
     (await confirm({
-      title: 'This will delete your panel configuration',
-      description:
-        'This will clear your panel configuration, and delete any filter rules you have created. Do you want to continue?',
-      confirmLabel: 'Remove panels',
-      cancelLabel: 'Cancel',
+      title: createElement(AppMessage, {
+        message: utilityMessages.thisWillDeleteYourPanelConfiguration,
+      }),
+      description: createElement(AppMessage, {
+        message: utilityMessages.thisWillClearYourPanelConfiguration,
+      }),
+      confirmLabel: createElement(AppMessage, {
+        message: utilityMessages.removePanels,
+      }),
+      cancelLabel: createElement(AppMessage, {
+        message: commonMessages.cancel,
+      }),
       intent: 'warning',
       onConfirm: () => {},
     })) === true
@@ -100,6 +171,7 @@ export const handlePanelToggleChange = async (
 };
 
 export const NodePanels = (_props: StageEditorSectionProps) => {
+  const intl = useAppIntl();
   const { type } = useSubject();
   const disabled = !type;
   const { confirm } = useDialog();
@@ -203,11 +275,11 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
 
   return (
     <Section
-      title="Side panels"
+      title={intl.formatMessage(messages.sidePanels)}
       description={
         disabled
-          ? 'Select a node type to configure side panels.'
-          : 'Configure up to two side panels for this name generator.'
+          ? intl.formatMessage(messages.selectANodeTypeToConfigure)
+          : intl.formatMessage(messages.configureUpToTwoSidePanels)
       }
       toggleable
       disabled={disabled}
@@ -240,7 +312,7 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
       ))}
       <UnconnectedField
         name="panels"
-        label="Panels"
+        label={intl.formatMessage(messages.panels)}
         component={ArrayField<NodePanelValue>}
         value={panels ?? EMPTY_PANELS}
         onChange={handlePanelsChange}
@@ -248,8 +320,10 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
         itemTemplate={createNodePanel}
         getId={(panel: NodePanelValue) => panel.id}
         itemClasses="elevation-low"
-        addButtonLabel="Add new panel"
-        emptyStateMessage="No side panels configured."
+        addButtonLabel={intl.formatMessage(additionalMessages.addNewPanel)}
+        emptyStateMessage={intl.formatMessage(
+          additionalMessages.noSidePanelsConfigured,
+        )}
         immediateAdd
         sortable
         maxItems={MAX_PANELS}

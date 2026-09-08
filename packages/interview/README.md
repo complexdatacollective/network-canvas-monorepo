@@ -95,8 +95,6 @@ export default defineConfig({
 import {
   createDebouncedSyncHandler,
   Shell,
-  InterviewToastViewport,
-  interviewToastManager,
   type InterviewPayload,
 } from '@codaco/interview';
 ```
@@ -110,14 +108,11 @@ shape is identical for any other React framework):
 import {
   createDebouncedSyncHandler,
   Shell,
-  InterviewToastViewport,
-  interviewToastManager,
   type AssetRequestHandler,
   type FinishHandler,
   type InterviewPayload,
   type SyncHandler,
 } from '@codaco/interview';
-import { Toast } from '@base-ui/react/toast';
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -192,17 +187,14 @@ export default function InterviewClient({
   );
 
   return (
-    <Toast.Provider toastManager={interviewToastManager}>
-      <Shell
-        payload={payload}
-        currentStep={currentStep}
-        onStepChange={onStepChange}
-        onSync={onSync}
-        onFinish={onFinish}
-        onRequestAsset={onRequestAsset}
-      />
-      <InterviewToastViewport />
-    </Toast.Provider>
+    <Shell
+      payload={payload}
+      currentStep={currentStep}
+      onStepChange={onStepChange}
+      onSync={onSync}
+      onFinish={onFinish}
+      onRequestAsset={onRequestAsset}
+    />
   );
 }
 ```
@@ -220,21 +212,59 @@ different stages without re-creating the Redux store: only the
 
 ### Shell props
 
-| Prop                            | Type                             | Required | Notes                                                                                                                                                                                                                                                                                                                      |
-| ------------------------------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `payload`                       | `InterviewPayload`               | yes      | `{ session, protocol }` — see the type for shape. The store is created once per `payload.session.id`; pass a stable reference.                                                                                                                                                                                             |
-| `currentStep`                   | `number`                         | yes      | The stage index the participant is on. Owned by the host.                                                                                                                                                                                                                                                                  |
-| `onStepChange`                  | `(step: number) => void`         | yes      | Fired whenever the participant navigates. The host should mirror `step` into its own state.                                                                                                                                                                                                                                |
-| `onSync`                        | `(id, session, opts) => Promise` | yes      | Called after every Redux commit — the engine does not batch. Persist however you like; wrap in `createDebouncedSyncHandler` if writes are expensive. `opts.immediate` marks writes that must not be deferred (exit, finish); `opts.unloading` additionally marks the ones the document may not survive (hidden, pagehide). |
-| `onFinish`                      | `(id, AbortSignal) => Promise`   | yes      | Called from the FinishSession stage. The signal aborts if the user navigates away mid-flight.                                                                                                                                                                                                                              |
-| `onRequestAsset`                | `(assetId) => Promise<url>`      | yes      | Resolve a protocol asset to a URL. Called lazily as stages mount.                                                                                                                                                                                                                                                          |
-| `analytics`                     | `InterviewAnalyticsMetadata`     | yes      | Host metadata attached as super-properties on every event: `installationId` (anonymous host UUID), `hostApp` (e.g. `"Fresco"`), `hostVersion?`.                                                                                                                                                                            |
-| `posthogClient`                 | `PostHog` (from posthog-js)      | no       | Pre-initialised PostHog client. When provided, the package emits events through it without modifying its config. When absent, the package lazy-initialises its own named instance against `ph-relay.networkcanvas.com`.                                                                                                    |
-| `disableAnalytics`              | `boolean`                        | no       | When `true`, all event emission is suppressed (no `posthog-js` import). Default `false`. Use for E2E and synthetic-interview runs.                                                                                                                                                                                         |
-| `finishConfirmationDescription` | `string`                         | no       | Host-specific explanation shown in the finish confirmation dialog. Defaults to neutral guidance that does not promise responses are immutable.                                                                                                                                                                             |
-| `flags`                         | `{ isE2E?, isDevelopment? }`     | no       | `isE2E: true` exposes `window.__interviewStore` for Playwright fixtures. `isDevelopment: true` enables redux-logger.                                                                                                                                                                                                       |
+| Prop                            | Type                                  | Required | Notes                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------- | ------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `payload`                       | `InterviewPayload`                    | yes      | `{ session, protocol }` — see the type for shape. The store is created once per `payload.session.id`; pass a stable reference.                                                                                                                                                                                             |
+| `currentStep`                   | `number`                              | yes      | The stage index the participant is on. Owned by the host.                                                                                                                                                                                                                                                                  |
+| `onStepChange`                  | `(step: number) => void`              | yes      | Fired whenever the participant navigates. The host should mirror `step` into its own state.                                                                                                                                                                                                                                |
+| `onSync`                        | `(id, session, opts) => Promise`      | yes      | Called after every Redux commit — the engine does not batch. Persist however you like; wrap in `createDebouncedSyncHandler` if writes are expensive. `opts.immediate` marks writes that must not be deferred (exit, finish); `opts.unloading` additionally marks the ones the document may not survive (hidden, pagehide). |
+| `onFinish`                      | `(id, AbortSignal) => Promise`        | yes      | Called from the FinishSession stage. The signal aborts if the user navigates away mid-flight.                                                                                                                                                                                                                              |
+| `onRequestAsset`                | `(assetId) => Promise<url>`           | yes      | Resolve a protocol asset to a URL. Called lazily as stages mount.                                                                                                                                                                                                                                                          |
+| `analytics`                     | `InterviewAnalyticsMetadata`          | yes      | Host metadata attached as super-properties on every event: `installationId` (anonymous host UUID), `hostApp` (e.g. `"Fresco"`), `hostVersion?`.                                                                                                                                                                            |
+| `posthogClient`                 | `PostHog` (from posthog-js)           | no       | Pre-initialised PostHog client. When provided, the package emits events through it without modifying its config. When absent, the package lazy-initialises its own named instance against `ph-relay.networkcanvas.com`.                                                                                                    |
+| `disableAnalytics`              | `boolean`                             | no       | When `true`, all event emission is suppressed (no `posthog-js` import). Default `false`. Use for E2E and synthetic-interview runs.                                                                                                                                                                                         |
+| `finishConfirmationDescription` | `ReactNode`                           | no       | Host-specific explanation shown in the finish confirmation dialog. Defaults to localized neutral guidance that does not promise responses are immutable. A subscribed message component can keep a host override responsive to language changes.                                                                           |
+| `requestedLocale`               | `string \| readonly string[] \| null` | no       | A user preference, resolved host locale, or ordered locale requests. The package negotiates against its own supported interface languages; unmatched requests use English.                                                                                                                                                 |
+| `localePreference`              | `string \| null`                      | no       | Optional controlled menu choice, paired with `onLocaleChange`. A string selects the best supported match; `null` follows `requestedLocale`. Omit it to keep menu selection local to the package.                                                                                                                           |
+| `onLocaleChange`                | `(locale: string \| null) => void`    | no       | Called after a menu selection so the host can persist it. `null` means follow the host request again.                                                                                                                                                                                                                      |
+| `allowLanguageSelection`        | `boolean`                             | no       | Show the interface language chooser in the settings menu. Defaults to `true`.                                                                                                                                                                                                                                              |
+| `flags`                         | `{ isE2E?, isDevelopment? }`          | no       | `isE2E: true` exposes `window.__interviewStore` for Playwright fixtures. `isDevelopment: true` enables redux-logger.                                                                                                                                                                                                       |
 
 The package replaces a previous `onError` callback with internal `posthog.captureException` calls; render errors and asset-load failures are reported via the resolved analytics client (or suppressed when `disableAnalytics` is `true`). The host does not need to wire its own error sink.
+
+#### Interface language
+
+Pass the user's preference or your host's already negotiated locale as
+`requestedLocale`. The package owns its registry and messages: it currently
+supports `en`, `en-GB`, and `es`, matches regional requests such as `es-MX` to
+`es`, and falls back to `en` for unsupported or malformed requests. An array
+expresses requests in preference order. No host provider or catalog is required.
+All supported messages are bundled, so switching language needs no network.
+
+The setting controls package-provided buttons, menus, validation, accessibility
+labels, help, and stage controls. Protocol-authored titles, prompts, labels,
+options, research values, and identifiers are passed through unchanged. Protocol
+content localization is a separate schema concern.
+
+The menu can temporarily override the host request. Its Automatic option clears
+that override; a new host request also takes effect immediately. A host that
+persists menu changes can use `onLocaleChange` and pass its newly resolved locale
+back as `requestedLocale`. To mirror a saved explicit/automatic choice in the
+menu, also pass `localePreference`: a string takes precedence and is matched
+against the package registry; an unmatched or malformed preference falls
+through to `requestedLocale`. `null` follows `requestedLocale`, and omitting it
+keeps package-local menu state. This lets Automatic clear a saved preference
+directly after a reload. The package itself reads no browser preference or
+storage. Locale changes preserve the mounted interview, pending form input,
+navigation and answers. The package sets `lang` and `dir` on its own region and
+leaves the host document's language to the host.
+
+Hosts rendering exported controls outside `Shell`, such as an inline
+`ProtocolField` preview, can use `InterviewI18nProvider` from `@codaco/interview`
+with the same `requestedLocale` contract and package-owned catalogs. Hosts that
+already own a provider can instead merge `interviewCatalogs` from
+`@codaco/interview/locales` into their app catalog. Without a provider,
+standalone controls use their English defaults.
 
 #### Analytics
 
@@ -250,21 +280,14 @@ The full event taxonomy lives at [`docs/superpowers/specs/2026-05-05-interview-a
 
 ### Toast viewport
 
-The package routes toasts through a Base UI `Toast.Provider` you mount.
-Render exactly one `<InterviewToastViewport />` somewhere inside that
-provider — it controls position, animation, and z-index for all toasts
-the package emits (validation errors, save indicators, etc.).
+`Shell` mounts its own Base UI toast provider and viewport inside the themed,
+localized interview region. Hosts do not need another interview viewport.
+This keeps notification text and accessible names responsive to the interview
+menu's language, including when the host uses a different language.
 
-```tsx
-<Toast.Provider toastManager={interviewToastManager}>
-  <Shell {...props} />
-  <InterviewToastViewport />
-</Toast.Provider>
-```
-
-You can also enqueue your own toasts against `interviewToastManager`
-from anywhere in the host tree — useful for surfacing app-level
-errors inside the same viewport.
+Each Shell keeps its validation notifications independent from other mounted
+interviews. An app-level toast provider can remain separate for host-owned
+notifications outside the interview.
 
 ---
 
@@ -409,17 +432,15 @@ so persistence and export do not reintroduce nullish attribute values.
 
 ## Public API reference
 
-Everything below is exported from `'@codaco/interview'`. There are no
-sub-path exports — host code never reaches into the package's internals.
+Everything below is exported from `'@codaco/interview'`. Additional public
+subpaths expose the contract, protocol schema version, locale catalogs and
+styles; host code should not reach into package internals.
 
 ### Components
 
 - `Shell` — the runtime
-- `InterviewToastViewport` — Base UI toast viewport mounted next to `Shell`
-
-### Singletons
-
-- `interviewToastManager` — the toast manager passed into `Toast.Provider`
+- `InterviewI18nProvider` — package locale boundary for exported controls used
+  outside `Shell`
 
 ### Schemas + helpers
 

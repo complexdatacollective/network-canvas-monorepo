@@ -1,6 +1,26 @@
+'use client';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Node, { type NodeColorSequence } from '@codaco/fresco-ui/Node';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { GetInterviewsQuery } from '~/queries/interviews';
+
+const messages = defineMessages({
+  entityCount: {
+    id: 'fresco.interviews.networkSummary.entityCount',
+    defaultMessage: '{name} ({count, number})',
+    description:
+      'Researcher-defined entity type name and number of entities. Preserve the name value.',
+  },
+
+  noNodesOrEdges: {
+    id: 'fresco.InterviewsTable.NetworkSummary.noNodesOrEdges',
+    defaultMessage: 'No nodes or edges',
+    description:
+      'Researcher-facing InterviewsTable / NetworkSummary: No nodes or edges',
+  },
+});
 
 // TODO: Move to shared-consts or protocol-validation
 type EdgeColorSequence =
@@ -45,6 +65,7 @@ function EdgeSummary({ color, count, typeName }: EdgeSummaryProps) {
   );
   /* eslint-enable tailwindcss/enforce-canonical */
 
+  const intl = useAppIntl();
   return (
     <div className="flex flex-col items-center">
       <div className="flex size-8 items-center justify-center">
@@ -91,7 +112,7 @@ function EdgeSummary({ color, count, typeName }: EdgeSummaryProps) {
         </svg>
       </div>
       <span className="pt-1 text-xs">
-        {typeName} ({count})
+        {intl.formatMessage(messages.entityCount, { name: typeName, count })}
       </span>
     </div>
   );
@@ -102,13 +123,15 @@ const NetworkSummary = ({
 }: {
   network: GetInterviewsQuery[number]['network'];
 }) => {
+  const intl = useAppIntl();
+
   const nodeSummaries = network.nodes.map(
     ({ type: nodeType, count, name, color }) => (
       <div className="flex flex-col items-center" key={nodeType}>
         <Node
           size="xxs"
           color={color as NodeColorSequence}
-          label={count.toLocaleString()}
+          label={intl.formatNumber(count)}
         />
         <span className="pt-1 text-xs">{name}</span>
       </div>
@@ -131,7 +154,11 @@ const NetworkSummary = ({
     .filter(Boolean);
 
   if (nodeSummaries.length === 0 && edgeSummaries.length === 0) {
-    return <div className="text-xs">No nodes or edges</div>;
+    return (
+      <div className="text-xs">
+        {intl.formatMessage(messages.noNodesOrEdges)}
+      </div>
+    );
   }
 
   return (

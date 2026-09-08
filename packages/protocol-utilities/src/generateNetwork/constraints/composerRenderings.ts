@@ -7,10 +7,10 @@ import type {
 } from '@codaco/protocol-validation';
 import { collectEntityAttributeReferences } from '@codaco/protocol-validation';
 
-import type { VariableEntry } from '../../types';
-import { buildVariableConstraints } from './buildConstraints';
-import type { DateWindow } from './dateWindow';
-import type { ConstraintConflict } from './error';
+import type { VariableEntry } from '../../types.ts';
+import { buildVariableConstraints } from './buildConstraints.ts';
+import type { DateWindow } from './dateWindow.ts';
+import type { ConstraintConflict } from './error.ts';
 
 /**
  * One NetworkComposer field's control, as its stage declares it.
@@ -538,6 +538,7 @@ export function applyComposerRenderings(
       variableNames: [name ?? disagreement.variable],
       rules: [...COMPOSER_RENDERING_CONFLICT.rules],
       reason: COMPOSER_RENDERING_CONFLICT.reason,
+      reasonCode: 'incompatibleDateControls' as const,
     };
   });
 

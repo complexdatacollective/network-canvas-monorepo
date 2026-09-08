@@ -1,9 +1,25 @@
+import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Pattern } from '@codaco/art';
 import { ProtocolCard as ProtocolCardShell } from '@codaco/fresco-ui/ProtocolCard';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { PROTOCOL_NAME_MAX_LENGTH } from '~/config';
 import countGraphemes from '~/utils/countGraphemes';
 import { cx } from '~/utils/cva';
+const messages = defineMessages({
+  lastModified: {
+    id: 'architect.protocolSummary.protocolCard.lastModified',
+    defaultMessage: 'Last Modified: {value1}',
+    description:
+      'Visible text in lib / ProtocolSummary / components / ProtocolCard.',
+  },
+  schemaVersion: {
+    id: 'architect.protocolSummary.protocolCard.schemaVersion',
+    defaultMessage: 'Schema Version: {schemaVersion}',
+    description:
+      'Visible text in lib / ProtocolSummary / components / ProtocolCard.',
+  },
+});
 
 type ProtocolCardProps = {
   name: string;
@@ -12,11 +28,18 @@ type ProtocolCardProps = {
   schemaVersion: number;
 };
 
-const formatDate = (timeString: string | null) => {
+const formatDate = (timeString: string | null, intl: IntlShape) => {
   if (!timeString) return null;
   const date = new Date(timeString);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString(undefined);
+  return intl.formatDate(date, {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+  });
 };
 
 const ProtocolCard = ({
@@ -24,20 +47,26 @@ const ProtocolCard = ({
   description = null,
   lastModified,
   schemaVersion,
-}: ProtocolCardProps) => (
-  <ProtocolCardShell
-    background={
-      <Pattern aria-hidden seed={name} className="absolute inset-0 size-full" />
-    }
-    gradientClassName="from-rich-black/25 via-platinum/50 to-platinum via-20% to-45%"
-    className="max-w-[12cm] zoom-120 rounded-sm shadow-xl"
-  >
-    <div className="relative z-10 flex min-h-34 flex-col gap-5 p-7">
-      {/* Reserve space above the heading so the dark title clears the
+}: ProtocolCardProps) => {
+  const intl = useAppIntl();
+  return (
+    <ProtocolCardShell
+      background={
+        <Pattern
+          aria-hidden
+          seed={name}
+          className="absolute inset-0 size-full"
+        />
+      }
+      gradientClassName="from-rich-black/25 via-platinum/50 to-platinum via-20% to-45%"
+      className="max-w-[12cm] zoom-120 rounded-sm shadow-xl"
+    >
+      <div className="relative z-10 flex min-h-34 flex-col gap-5 p-7">
+        {/* Reserve space above the heading so the dark title clears the
           gradient's dark top, mirroring the timeline card's controls row. */}
-      <div className="min-h-14" aria-hidden />
+        <div className="min-h-14" aria-hidden />
 
-      {/* break-words so a long name with no spaces (or an over-long word)
+        {/* break-words so a long name with no spaces (or an over-long word)
           wraps instead of overflowing the overflow-hidden card and being
           clipped; hyphens-auto adds nicer breaks where the browser supports
           it. The timeline card sidesteps this via a soft-wrapping textarea.
@@ -60,29 +89,38 @@ const ProtocolCard = ({
           cover. Both are no-ops for text that already fits and for buttons
           with room to sit in, so no movement is expected — but the guarantee
           now belongs to the branch's baseline check, not to this comment. */}
-      <Heading
-        level="h2"
-        margin="none"
-        dir="auto"
-        title={name}
-        className={cx(
-          'wrap-break-word hyphens-auto',
-          countGraphemes(name) > PROTOCOL_NAME_MAX_LENGTH && 'line-clamp-3',
+        <Heading
+          level="h2"
+          margin="none"
+          dir="auto"
+          title={name}
+          className={cx(
+            'wrap-break-word hyphens-auto',
+            countGraphemes(name) > PROTOCOL_NAME_MAX_LENGTH && 'line-clamp-3',
+          )}
+        >
+          {name}
+        </Heading>
+
+        {description && (
+          <div className="text-sm wrap-break-word">{description}</div>
         )}
-      >
-        {name}
-      </Heading>
 
-      {description && (
-        <div className="text-sm wrap-break-word">{description}</div>
-      )}
-
-      <div className="text-navy-taupe/70 font-monospace mt-2.5 flex flex-col gap-1 text-xs tracking-widest uppercase">
-        <span>Last Modified: {formatDate(lastModified)}</span>
-        <span>Schema Version: {schemaVersion}</span>
+        <div className="text-navy-taupe/70 font-monospace mt-2.5 flex flex-col gap-1 text-xs tracking-widest uppercase">
+          <span>
+            {intl.formatMessage(messages.lastModified, {
+              value1: formatDate(lastModified, intl),
+            })}
+          </span>
+          <span>
+            {intl.formatMessage(messages.schemaVersion, {
+              schemaVersion: schemaVersion,
+            })}
+          </span>
+        </div>
       </div>
-    </div>
-  </ProtocolCardShell>
-);
+    </ProtocolCardShell>
+  );
+};
 
 export default ProtocolCard;

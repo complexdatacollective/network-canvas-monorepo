@@ -1,9 +1,15 @@
 import { isEmpty, omit } from 'es-toolkit/compat';
 import type { ComponentType } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import {
+  arrayItemMessages,
+  arrayValidationMessages,
+} from '~/components/Form/arrayFields/arrayMessages';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
@@ -14,6 +20,50 @@ import {
 import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequired';
 import PresetFields from './PresetFields';
 import PresetPreview from './PresetPreview';
+const remainingMessages = defineMessages({
+  editPreset: {
+    id: 'architect.remaining.sections.narrativePresets.narrativePresets.editPreset',
+    defaultMessage: 'Edit Preset',
+    description:
+      'The addTitle text in components / sections / NarrativePresets / NarrativePresets.',
+  },
+});
+const additionalMessages = defineMessages({
+  createNewPreset: {
+    id: 'architect.additional.sections.narrativePresets.narrativePresets.createNewPreset',
+    defaultMessage: 'Create new preset',
+    description:
+      'The addButtonLabel text in components / sections / NarrativePresets / NarrativePresets.',
+  },
+});
+const messages = defineMessages({
+  visualizationPresets: {
+    id: 'architect.sections.narrativePresets.narrativePresets.visualizationPresets',
+    defaultMessage: 'Visualization presets',
+    description:
+      'The title text in components / sections / NarrativePresets / NarrativePresets.',
+  },
+  createVisualizationsThatResearchersCanSwitch: {
+    id: 'architect.sections.narrativePresets.narrativePresets.createVisualizationsThatResearchersCanSwitch',
+    defaultMessage:
+      'Create visualizations that researchers can switch between during the interview.',
+    description:
+      'The description text in components / sections / NarrativePresets / NarrativePresets.',
+  },
+  presets: {
+    id: 'architect.sections.narrativePresets.narrativePresets.presets',
+    defaultMessage: 'Presets',
+    description:
+      'The label text in components / sections / NarrativePresets / NarrativePresets.',
+  },
+  addOneOrMorePresetsBelow: {
+    id: 'architect.sections.narrativePresets.narrativePresets.addOneOrMorePresetsBelow',
+    defaultMessage:
+      'Add one or more "presets" below, to create different visualizations that you can switch between within the interview.',
+    description:
+      'Visible text in components / sections / NarrativePresets / NarrativePresets.',
+  },
+});
 
 type Preset = Record<string, unknown>;
 
@@ -65,6 +115,7 @@ const NarrativePresets = ({
   disabled,
   disabledMessage,
 }: NarrativePresetsProps) => {
+  const intl = useAppIntl();
   const { entity, type } = useSubject();
   const initialPresets = useStageInitialValue<Preset[]>('presets');
   const availabilityProps = disabled
@@ -74,34 +125,37 @@ const NarrativePresets = ({
   return (
     <Section
       key={disabled ? 'disabled' : 'enabled'}
-      title="Visualization presets"
+      title={intl.formatMessage(messages.visualizationPresets)}
       description={
         disabled
           ? disabledMessage
-          : 'Create visualizations that researchers can switch between during the interview.'
+          : intl.formatMessage(
+              messages.createVisualizationsThatResearchersCanSwitch,
+            )
       }
       {...availabilityProps}
     >
       <ArchitectArrayField
         name="presets"
-        label="Presets"
+        label={intl.formatMessage(messages.presets)}
         hint={
           <Paragraph>
-            Add one or more &quot;presets&quot; below, to create different
-            visualizations that you can switch between within the interview.
+            {intl.formatMessage(messages.addOneOrMorePresetsBelow)}
           </Paragraph>
         }
         component={DialogArrayField}
-        addButtonLabel="Create new preset"
-        validation={{ required: 'You must create at least one item.' }}
+        addButtonLabel={intl.formatMessage(additionalMessages.createNewPreset)}
+        validation={{
+          required: createMessageError(arrayValidationMessages.required),
+        }}
         initialValue={initialPresets}
-        addTitle="Edit Preset"
+        addTitle={intl.formatMessage(remainingMessages.editPreset)}
         editorFieldsComponent={
           PresetFields as ComponentType<Record<string, unknown>>
         }
         editorProps={{ entity, type }}
-        editorTitle="Edit Preset"
-        itemLabel="preset"
+        editorTitle={intl.formatMessage(remainingMessages.editPreset)}
+        itemLabelMessage={arrayItemMessages.preset}
         itemTemplate={template}
         normalizeItem={(value) =>
           normalizePreset(value as Record<string, unknown>)

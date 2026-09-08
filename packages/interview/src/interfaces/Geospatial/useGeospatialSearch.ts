@@ -1,3 +1,5 @@
+'use client';
+
 import { useSearchBoxCore } from '@mapbox/search-js-react';
 import { debounce } from 'es-toolkit';
 import type { Map as MapboxMap } from 'mapbox-gl/esm';

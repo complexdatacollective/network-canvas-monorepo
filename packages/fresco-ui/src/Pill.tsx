@@ -9,7 +9,7 @@ export const pillVariants = cva({
   base: 'font-monospace inline-flex items-center rounded-full border border-transparent whitespace-nowrap',
   variants: {
     size: {
-      sm: 'gap-1 px-2 py-0.5 text-xs',
+      sm: 'text-2xs gap-1 px-2 py-0.5',
       md: 'gap-1.5 px-2.5 py-1 text-xs',
       lg: 'gap-2 px-3 py-1.5 text-sm',
     },

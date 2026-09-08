@@ -37,10 +37,13 @@ const fixtures = vi.hoisted(() => ({
   failing: undefined as 'area' | 'screen' | undefined,
   STUDY: {
     id: 'study-1',
-    draftId: 'draft-1',
     name: 'Shell proof',
+    state: 'draft',
+    participationMode: 'managed',
+    protocolId: 'protocol-1',
     createdAt: new Date('2026-08-28T00:00:00Z'),
-    updatedAt: new Date('2026-08-28T00:00:00Z'),
+    waveCount: 0,
+    participantCount: 0,
   },
 }));
 
@@ -114,31 +117,79 @@ vi.mock('../../lib/auth.ts', () => ({
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    me: {
+      queryOptions: () => ({
+        queryKey: ['me'],
+        queryFn: () => ({
+          userId: 'user-1',
+          email: 'researcher@example.org',
+          emailVerified: true,
+          name: 'Researcher',
+          // `me` carries the account's UI-language preference; null means
+          // "follow the browser" (2026-09-04 localization design §5.2).
+          locale: null,
+          teams: [{ teamId: 'team-a', role: 'owner' }],
+        }),
+      }),
+      key: () => ['me'],
+    },
     status: {
       queryOptions: () => ({
         queryKey: ['status'],
         queryFn: () => ({
           name: 'Network Canvas Studio',
           version: '0.1.0',
-          auth: { enabled: true, magicLink: true, socialProviders: [] },
+          auth: {
+            enabled: true,
+            magicLink: true,
+            emailAndPassword: true,
+            socialProviders: [],
+          },
           deployment: { mode: 'managed', billing: false },
         }),
       }),
     },
-    protocols: {
+    studies: {
       list: {
         queryOptions: () => ({
-          queryKey: ['protocols'],
+          queryKey: ['studies'],
           queryFn: () => [fixtures.STUDY],
         }),
-        key: () => ['protocols'],
+        key: () => ['studies'],
+      },
+      get: {
+        queryOptions: () => ({
+          queryKey: ['study'],
+          queryFn: () => ({
+            teamId: fixtures.TEAM.id,
+            study: fixtures.STUDY,
+            protocolDraftId: 'draft-1',
+          }),
+        }),
+        key: () => ['study'],
       },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+      counts: {
+        queryOptions: () => ({
+          queryKey: ['study-counts'],
+          queryFn: () => ({
+            versions: 0,
+            participants: 0,
+            waves: 0,
+            sessions: 0,
+          }),
+        }),
+      },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
         key: () => ['draft'],
       },
     },
+    // The study sidebar's counts. Nothing here asserts a number, so an empty
+    // study is the honest fixture: `NavItem` renders no count for a zero, and
+    // every row's accessible name stays its label alone.
   },
   rpcClient: { protocols: {}, team: {} },
 }));
@@ -159,9 +210,14 @@ function renderAt(path: string) {
   return router;
 }
 
-/** One route inside each of the four areas, all of them placeholders. */
+/**
+ * One route inside each of the four areas, all of them placeholders — which is
+ * what the `Placeholder` mock above needs to reach them. `/account/language`
+ * was the account area's entry until #1310 built it; any unbuilt route in the
+ * area serves, and each of these leaves as its own screen arrives.
+ */
 const AREA_ROUTES = [
-  ['the account area', '/account/language'],
+  ['the account area', '/account/tokens'],
   ['the team area', '/team/team-a/roles'],
   ['the study area', '/study/study-1/versions'],
   ['the protocol outline', '/study/study-1/editor/codebook'],

@@ -1,3 +1,4 @@
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import type {
   EverythingBarItem,
   EverythingBarProvider,
@@ -60,15 +61,22 @@ export function activatableDestinations(
 export function destinationItems({
   entries,
   currentArea,
+  intl,
 }: {
   entries: NavManifestEntry[];
   currentArea: NavManifestArea | undefined;
+  /**
+   * Resolves the manifest's message descriptors into the whole strings the
+   * bar renders. The provider is re-created when the active locale changes
+   * (the caller's memo includes `intl`), so recents re-resolve translated.
+   */
+  intl: IntlShape;
 }): EverythingBarItem[] {
   return activatableDestinations(entries).map((entry, position) => ({
     id: entry.id,
     group: 'go-to',
-    label: entry.label,
-    context: entry.context,
+    label: intl.formatMessage(entry.label),
+    context: intl.formatMessage(entry.context),
     // The manifest's own glyph, so a destination looks the same in the bar as
     // in the sidebar it came from.
     icon: entry.icon,
@@ -96,11 +104,13 @@ export function destinationItems({
 export function createDestinationsProvider({
   entries,
   currentArea,
+  intl,
 }: {
   entries: NavManifestEntry[];
   currentArea: NavManifestArea | undefined;
+  intl: IntlShape;
 }): EverythingBarProvider {
-  const items = destinationItems({ entries, currentArea });
+  const items = destinationItems({ entries, currentArea, intl });
 
   return {
     id: 'destinations',

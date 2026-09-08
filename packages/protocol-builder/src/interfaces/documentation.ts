@@ -14,4 +14,5 @@ export const interfaceDocumentationUrl = (slug: string): string =>
 /** Key concepts a stage editor's own sections link to. */
 export const protocolAuthoringLinks = {
   skipLogic: `${DOCS_BASE_URL}/design-protocols/key-concepts/skip-logic/`,
+  networkFiltering: `${DOCS_BASE_URL}/design-protocols/key-concepts/network-filtering/`,
 } as const;

@@ -1,8 +1,11 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+
 /**
  * Better Auth stores a member's roles as one comma-separated string, so every
  * question about what a member may do starts by splitting it. Shared because
- * the team sidebar and the team workspace now ask the same question: the
- * sidebar decides whether to offer the Activity destination, and the workspace
+ * the team sidebar and the team screen now ask the same question: the
+ * sidebar decides whether to offer the Activity destination, and the screen
  * decides whether to offer member administration.
  */
 export function teamRoles(role: string | undefined): string[] {
@@ -53,4 +56,61 @@ export function teamRole(
   return activeMember?.organizationId === teamId
     ? activeMember.role
     : undefined;
+}
+
+const roleMessages = defineMessages({
+  owner: {
+    id: 'studio.teamRoles.owner',
+    defaultMessage: 'Owner',
+    description: 'The team role with every permission, including billing.',
+  },
+  admin: {
+    id: 'studio.teamRoles.admin',
+    defaultMessage: 'Admin',
+    description: 'The team role that administers membership and studies.',
+  },
+  member: {
+    id: 'studio.teamRoles.member',
+    defaultMessage: 'Member',
+    description: 'The ordinary team role.',
+  },
+  unassigned: {
+    id: 'studio.teamRoles.unassigned',
+    defaultMessage: 'Unassigned',
+    description: 'Shown where a membership record carries no role at all.',
+  },
+});
+
+/**
+ * One role, as a researcher reads it.
+ *
+ * An unknown role is shown verbatim rather than hidden: a membership the
+ * client does not recognise is still a membership, and saying nothing about
+ * it would be a worse answer than saying its name. Takes the caller's intl so
+ * the label follows the active locale.
+ */
+export function roleLabel(intl: IntlShape, role: string): string {
+  switch (role) {
+    case 'owner':
+      return intl.formatMessage(roleMessages.owner);
+    case 'admin':
+      return intl.formatMessage(roleMessages.admin);
+    case 'member':
+      return intl.formatMessage(roleMessages.member);
+    default:
+      return role;
+  }
+}
+
+export function teamRolesLabel(intl: IntlShape, role: string): string {
+  const roles = teamRoles(role);
+  return roles.length === 0
+    ? intl.formatMessage(roleMessages.unassigned)
+    : // A legacy membership carries several roles in one value; the list
+      // formatter joins their labels in locale order rather than baking a
+      // separator into code.
+      intl.formatList(
+        roles.map((entry) => roleLabel(intl, entry)),
+        { type: 'unit' },
+      );
 }

@@ -1,3 +1,5 @@
+'use client';
+
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import type { LucideIcon } from 'lucide-react';

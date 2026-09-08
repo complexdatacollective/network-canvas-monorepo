@@ -1,3 +1,5 @@
+'use client';
+
 import { stagger } from 'motion/react';
 import { useEffect, useRef } from 'react';
 

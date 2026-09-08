@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { z as zm } from 'zod/mini';
 
+import {
+  defineMessages,
+  createAppIntl,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+
 const appSettingsSchema = z
   .object({
     initializedAt: z.date(),
@@ -77,16 +83,30 @@ const parseUploadThingToken = (token: string) => {
   return token.replace(/^(UPLOADTHING_TOKEN=)?['"]?|['"]$/g, '').trim();
 };
 
-// Client-side schema using zod/mini for smaller bundle
-export const createUploadThingTokenSchema = zm.pipe(
-  zm
-    .string()
-    .check(
-      zm.minLength(10, 'UPLOADTHING_TOKEN must have at least 10 characters.'),
-    ),
-  zm.transform((token: string) => parseUploadThingToken(token)),
-);
-
-export const createUploadThingTokenFormSchema = zm.object({
-  uploadThingToken: createUploadThingTokenSchema,
+const messages = defineMessages({
+  minimumToken: {
+    id: 'fresco.validation.uploadThing.minimumToken',
+    defaultMessage: 'UPLOADTHING_TOKEN must have at least 10 characters.',
+    description:
+      'Researcher-facing validation.uploadThing: UPLOADTHING_TOKEN must have at least 10 characters.',
+  },
 });
+
+export function createUploadThingSchemas(
+  formatMessage: (message: MessageDescriptor) => string = createAppIntl({
+    locale: 'en',
+  }).formatMessage,
+) {
+  const createUploadThingTokenSchema = zm.pipe(
+    zm.string().check(zm.minLength(10, formatMessage(messages.minimumToken))),
+    zm.transform((token: string) => parseUploadThingToken(token)),
+  );
+  return {
+    createUploadThingTokenSchema,
+    createUploadThingTokenFormSchema: zm.object({
+      uploadThingToken: createUploadThingTokenSchema,
+    }),
+  };
+}
+
+export const { createUploadThingTokenFormSchema } = createUploadThingSchemas();

@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { type ReactNode, createElement, useEffect, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -11,10 +13,38 @@ import * as authApi from '~/lib/auth/api';
 
 import NoRecoveryNotice from './NoRecoveryNotice';
 
+const messages = defineMessages({
+  pINSetupFailed: {
+    id: 'interviewer.step3PinConfigure.pINSetupFailed',
+    defaultMessage: 'PIN setup failed.',
+    description: 'User-facing message in Interviewer Step3Pin Configure.',
+  },
+  enterPIN: {
+    id: 'interviewer.step3PinConfigure.enterPIN',
+    defaultMessage: 'Enter PIN',
+    description: 'The label label in Interviewer Step3Pin Configure.',
+  },
+  an8DigitNumericPIN: {
+    id: 'interviewer.step3PinConfigure.an8DigitNumericPIN',
+    defaultMessage: 'An 8-digit numeric PIN.',
+    description: 'The hint label in Interviewer Step3Pin Configure.',
+  },
+  confirmPIN: {
+    id: 'interviewer.step3PinConfigure.confirmPIN',
+    defaultMessage: 'Confirm PIN',
+    description: 'The label label in Interviewer Step3Pin Configure.',
+  },
+  iUnderstandThereIsNoRecovery: {
+    id: 'interviewer.step3PinConfigure.iUnderstandThereIsNoRecovery',
+    defaultMessage: 'I understand there is no recovery',
+    description: 'The label label in Interviewer Step3Pin Configure.',
+  },
+});
+
 export default function Step3PinConfigure() {
   const wizard = useWizard();
   const [affirmed, setAffirmed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReactNode>(null);
   const { pin } = useFormValue<readonly ['pin'], string>(['pin']);
 
   useEffect(() => {
@@ -41,7 +71,13 @@ export default function Step3PinConfigure() {
       const result = await authApi.enrolWithPin(pin);
 
       if (!result.ok) {
-        setError(result.message ?? 'PIN setup failed.');
+        setError(
+          createElement(AppMessage, {
+            message:
+              result.localizedMessage?.descriptor ?? messages.pINSetupFailed,
+            values: result.localizedMessage?.values,
+          }),
+        );
         return false;
       }
 
@@ -64,17 +100,18 @@ export function Step3PinConfigureView({
   affirmed,
   onAffirmChange,
 }: {
-  error: string | null;
+  error: ReactNode;
   affirmed: boolean;
   onAffirmChange: (value: boolean) => void;
 }) {
+  const intl = useAppIntl();
   return (
     <>
       <Field
         component={SegmentedCodeField}
         name="pin"
-        label="Enter PIN"
-        hint="An 8-digit numeric PIN."
+        label={intl.formatMessage(messages.enterPIN)}
+        hint={intl.formatMessage(messages.an8DigitNumericPIN)}
         segments={8}
         characterSet="numeric"
         sensitive
@@ -86,7 +123,7 @@ export function Step3PinConfigureView({
       <Field
         component={SegmentedCodeField}
         name="pin-confirm"
-        label="Confirm PIN"
+        label={intl.formatMessage(messages.confirmPIN)}
         segments={8}
         characterSet="numeric"
         sensitive
@@ -108,7 +145,7 @@ export function Step3PinConfigureView({
       <UnconnectedField
         inline
         name="pin-affirmation"
-        label="I understand there is no recovery"
+        label={intl.formatMessage(messages.iUnderstandThereIsNoRecovery)}
         component={Checkbox}
         value={affirmed}
         onChange={(v) => onAffirmChange(v ?? false)}

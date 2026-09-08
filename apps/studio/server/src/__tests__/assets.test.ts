@@ -3,7 +3,6 @@ import { createHash } from 'node:crypto';
 import { ListBucketsCommand, S3Client } from '@aws-sdk/client-s3';
 import { describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
 import {
   type AssetStore,
   createAssetRoutes,
@@ -13,6 +12,7 @@ import {
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
+import { createHttpTestApp as createApp } from './support/http-app.ts';
 
 // Integration suite against a real S3-compatible endpoint — the dev MinIO
 // from scripts/dev-s3.ts (or whatever S3_* points at). Skips when no object
@@ -54,6 +54,7 @@ const PRINCIPAL: SessionPrincipal = {
   email: 'researcher@example.com',
   emailVerified: true,
   name: 'Researcher',
+  locale: null,
   sessionId: 'session-1',
 };
 
@@ -226,6 +227,7 @@ describe.skipIf(!reachable)('asset storage', () => {
 function memoryStore(): AssetStore {
   const objects = new Map<string, { bytes: Uint8Array; mediaType: string }>();
   return {
+    async checkHealth() {},
     async put(bytes, mediaType) {
       const hash = createHash('sha256').update(bytes).digest('hex');
       if (!objects.has(hash)) objects.set(hash, { bytes, mediaType });

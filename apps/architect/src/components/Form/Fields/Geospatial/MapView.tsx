@@ -7,11 +7,53 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Section from '@codaco/fresco-ui/Section';
 import { getAssetManifest } from '~/selectors/protocol';
+const messages = defineMessages({
+  initialMapView: {
+    id: 'architect.form.fields.geospatial.mapView.initialMapView',
+    defaultMessage: 'Initial Map View',
+    description:
+      'The title text in components / Form / Fields / Geospatial / MapView.',
+  },
+  saveChanges: {
+    id: 'architect.form.fields.geospatial.mapView.saveChanges',
+    defaultMessage: 'Save Changes',
+    description:
+      'Visible text in components / Form / Fields / Geospatial / MapView.',
+  },
+  initialMapViewe0149: {
+    id: 'architect.form.fields.geospatial.mapView.initialMapViewe0149',
+    defaultMessage: 'Initial map view',
+    description:
+      'The title text in components / Form / Fields / Geospatial / MapView.',
+  },
+  panAndZoomTheMapTo: {
+    id: 'architect.form.fields.geospatial.mapView.panAndZoomTheMapTo',
+    defaultMessage:
+      'Pan and zoom the map to set the view participants see when the map first loads or is reset.',
+    description:
+      'The description text in components / Form / Fields / Geospatial / MapView.',
+  },
+  loadingMapPreview: {
+    id: 'architect.form.fields.geospatial.mapView.loadingMapPreview',
+    defaultMessage: 'Loading map preview.',
+    description:
+      'Visible text in components / Form / Fields / Geospatial / MapView.',
+  },
+  interactiveMapPreview: {
+    id: 'architect.form.fields.geospatial.mapView.interactiveMapPreview',
+    defaultMessage: 'Interactive map preview',
+    description:
+      'The aria-label text in components / Form / Fields / Geospatial / MapView.',
+  },
+});
 
 export type MapOptions = {
   center?: number[];
@@ -70,11 +112,6 @@ export const hasMapViewChanged = (
 
 type MapStatus = 'loading' | 'ready' | 'error';
 
-const unavailableKeyMessage =
-  'The map preview could not be loaded because its API key is unavailable. Select an API key and try again.';
-const mapLoadErrorMessage =
-  'The map preview could not be loaded. Check the API key and map style, then try again.';
-
 const MapView = ({
   mapOptions = {
     center: [0, 0],
@@ -88,6 +125,7 @@ const MapView = ({
   onChange,
   close,
 }: MapViewProps) => {
+  const intl = useAppIntl();
   const { tokenAssetId, style } = mapOptions;
   const assetManifest = useSelector(getAssetManifest);
   const mapboxAPIKey = tokenAssetId
@@ -100,7 +138,9 @@ const MapView = ({
   );
   const [zoom, setZoom] = useState(() => resolveZoom(mapOptions.initialZoom));
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
-  const [mapError, setMapError] = useState<string | null>(null);
+  const [mapError, setMapError] = useState<keyof typeof failureMessages | null>(
+    null,
+  );
   const saveMapSelection = (newCenter: [number, number], newZoom: number) => {
     onChange({
       ...mapOptions,
@@ -116,7 +156,7 @@ const MapView = ({
     }
 
     if (!mapboxAPIKey) {
-      setMapError(unavailableKeyMessage);
+      setMapError('unavailableKeyMessage');
       setMapStatus('error');
       return undefined;
     }
@@ -151,7 +191,7 @@ const MapView = ({
         });
         map.on('error', () => {
           if (disposed) return;
-          setMapError(mapLoadErrorMessage);
+          setMapError('mapLoadErrorMessage');
           setMapStatus('error');
         });
         map.on('move', () => {
@@ -168,7 +208,7 @@ const MapView = ({
         map = null;
         mapRef.current = null;
         if (!disposed) {
-          setMapError(mapLoadErrorMessage);
+          setMapError('mapLoadErrorMessage');
           setMapStatus('error');
         }
       }
@@ -191,12 +231,12 @@ const MapView = ({
     <Dialog
       open={true}
       closeDialog={close}
-      title="Initial Map View"
+      title={intl.formatMessage(messages.initialMapView)}
       size="workspace"
       footer={
         <>
           <Button color="default" onClick={close}>
-            Cancel
+            {intl.formatMessage(commonMessages.cancel)}
           </Button>
           {isMapChanged && mapStatus === 'ready' && (
             <Button
@@ -208,27 +248,31 @@ const MapView = ({
               iconPosition="right"
               icon={<ArrowRight />}
             >
-              Save Changes
+              {intl.formatMessage(messages.saveChanges)}
             </Button>
           )}
         </>
       }
     >
       <Section
-        title="Initial map view"
-        description="Pan and zoom the map to set the view participants see when the map first loads or is reset."
+        title={intl.formatMessage(messages.initialMapViewe0149)}
+        description={intl.formatMessage(messages.panAndZoomTheMapTo)}
       >
         {mapStatus === 'loading' && (
-          <output className="sr-only">Loading map preview.</output>
+          <output className="sr-only">
+            {intl.formatMessage(messages.loadingMapPreview)}
+          </output>
         )}
         {mapError && (
           <Alert variant="destructive" density="compact">
-            <AlertDescription>{mapError}</AlertDescription>
+            <AlertDescription>
+              {intl.formatMessage(failureMessages[mapError])}
+            </AlertDescription>
           </Alert>
         )}
         <section
           ref={setMapContainer}
-          aria-label="Interactive map preview"
+          aria-label={intl.formatMessage(messages.interactiveMapPreview)}
           aria-busy={mapStatus === 'loading'}
           className="h-[50vh] w-full"
         />
@@ -237,3 +281,18 @@ const MapView = ({
   );
 };
 export default MapView;
+
+const failureMessages = defineMessages({
+  unavailableKeyMessage: {
+    id: 'architect.mapView.failure.unavailableKeyMessage',
+    defaultMessage:
+      'The map preview could not be loaded because its API key is unavailable. Select an API key and try again.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  mapLoadErrorMessage: {
+    id: 'architect.mapView.failure.mapLoadErrorMessage',
+    defaultMessage:
+      'The map preview could not be loaded. Check the API key and map style, then try again.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});

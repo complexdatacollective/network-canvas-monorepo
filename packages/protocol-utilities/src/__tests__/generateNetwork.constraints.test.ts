@@ -10,8 +10,8 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { generateNetwork } from '../generateNetwork';
-import { SyntheticDataConstraintError } from '../generateNetwork/constraints/error';
+import { generateNetwork } from '../generateNetwork.ts';
+import { SyntheticDataConstraintError } from '../generateNetwork/constraints/error.ts';
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 

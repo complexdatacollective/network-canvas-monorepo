@@ -1,3 +1,9 @@
+import { formatActionError } from './formatActionError';
+vi.mock('~/i18n/server', async () => {
+  const { createAppIntl } = await import('@codaco/app-i18n/messages');
+  return { getServerIntl: async () => createAppIntl({ locale: 'en' }) };
+});
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
@@ -58,6 +64,7 @@ const {
   mockIsAppConfigured,
   mockUserCreate,
   mockCreateUserSchemaSafeParse,
+  mockRequiresTwoFactorSetup,
 } = vi.hoisted(() => ({
   mockPrismaKeyFindUnique: vi.fn(),
   mockPrismaTotpCredentialFindFirst: vi.fn(),
@@ -74,6 +81,7 @@ const {
   mockIsAppConfigured: vi.fn(),
   mockUserCreate: vi.fn(),
   mockCreateUserSchemaSafeParse: vi.fn(),
+  mockRequiresTwoFactorSetup: vi.fn(),
 }));
 
 vi.mock('~/lib/db', () => ({
@@ -126,6 +134,10 @@ vi.mock('~/lib/auth/guards', () => ({
   getServerSession: vi.fn(),
 }));
 
+vi.mock('~/lib/auth/twoFactorPolicy', () => ({
+  requiresTwoFactorSetup: mockRequiresTwoFactorSetup,
+}));
+
 vi.mock('~/utils/getClientIp', () => ({
   getClientIp: mockGetClientIp,
 }));
@@ -145,12 +157,14 @@ vi.mock('~/queries/appSettings', () => ({
 }));
 
 vi.mock('~/schemas/auth', () => ({
-  loginSchema: {
-    safeParse: mockLoginSchemaSafeParse,
-  },
-  createUserSchema: {
-    safeParse: mockCreateUserSchemaSafeParse,
-  },
+  createAuthSchemas: () => ({
+    loginSchema: {
+      safeParse: mockLoginSchemaSafeParse,
+    },
+    createUserSchema: {
+      safeParse: mockCreateUserSchemaSafeParse,
+    },
+  }),
 }));
 
 import { login, signup } from '../auth';
@@ -163,6 +177,7 @@ describe('login', () => {
     mockRecordLoginAttempt.mockResolvedValue(undefined);
     mockCreateSessionCookie.mockResolvedValue(undefined);
     mockGetInstallationId.mockResolvedValue('test-installation-id');
+    mockRequiresTwoFactorSetup.mockResolvedValue(false);
   });
 
   describe('schema validation', () => {
@@ -229,7 +244,9 @@ describe('login', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain('Incorrect username or password');
+        expect(result.formErrors?.map(formatActionError)).toContain(
+          'Incorrect username or password',
+        );
       }
     });
 
@@ -251,7 +268,9 @@ describe('login', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain('Incorrect username or password');
+        expect(result.formErrors?.map(formatActionError)).toContain(
+          'Incorrect username or password',
+        );
       }
     });
 
@@ -292,7 +311,9 @@ describe('login', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain('Incorrect username or password');
+        expect(result.formErrors?.map(formatActionError)).toContain(
+          'Incorrect username or password',
+        );
       }
     });
 
@@ -439,12 +460,81 @@ describe('login', () => {
       expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
   });
+
+  describe('mandatory two-factor setup', () => {
+    const signInAsPasswordUser = async (userId: string) => {
+      mockLoginSchemaSafeParse.mockReturnValue({
+        success: true,
+        data: { username: 'newadmin', password: 'correctpassword' },
+      });
+      mockPrismaKeyFindUnique.mockResolvedValue({
+        id: 'username:newadmin',
+        user_id: userId,
+        hashed_password: '$argon2id$hashed',
+      });
+      mockVerifyPassword.mockResolvedValue(true);
+      mockPrismaTotpCredentialFindFirst.mockResolvedValue(null);
+      return login({ username: 'newadmin', password: 'correctpassword' });
+    };
+
+    it('sends a password account without an authenticator to setup when the installation requires two-factor', async () => {
+      mockRequiresTwoFactorSetup.mockResolvedValue(true);
+
+      const result = await signInAsPasswordUser('user-needs-setup');
+
+      expect(result).toEqual({ success: true, requiresTwoFactorSetup: true });
+      expect(mockRequiresTwoFactorSetup).toHaveBeenCalledWith(
+        'user-needs-setup',
+      );
+      // The session exists — the guards, not the absence of a session, keep
+      // it out of the dashboard until setup is complete.
+      expect(mockCreateSessionCookie).toHaveBeenCalledWith('user-needs-setup');
+    });
+
+    it('signs the same account straight in once the installation stops requiring two-factor', async () => {
+      mockRequiresTwoFactorSetup.mockResolvedValue(false);
+
+      const result = await signInAsPasswordUser('user-needs-setup');
+
+      expect(result).toEqual({ success: true });
+      expect(mockCreateSessionCookie).toHaveBeenCalledWith('user-needs-setup');
+    });
+  });
 });
 
 describe('signup', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+
+  it.each([
+    [undefined, null],
+    [null, null],
+    ['es', 'es'],
+    ['en-GB', 'en-GB'],
+    ['unsupported', null],
+    [42, null],
+  ])(
+    'preserves the explicit setup preference %s when creating the user',
+    async (preference, expected) => {
+      mockIsAppConfigured.mockResolvedValue(false);
+      mockCreateUserSchemaSafeParse.mockReturnValue({
+        success: true,
+        data: { username: 'Researcher', password: 'Sup3rSecret!' },
+      });
+      mockUserCreate.mockResolvedValue({ id: 'new-user' });
+      await signup(
+        { username: 'Researcher', password: 'Sup3rSecret!' },
+        preference,
+      );
+      expect(mockUserCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ locale: expected }),
+        }),
+      );
+      expect(mockCreateSessionCookie).toHaveBeenCalledWith('new-user');
+    },
+  );
 
   it('refuses to create an account once the app is configured', async () => {
     mockIsAppConfigured.mockResolvedValue(true);
@@ -454,7 +544,7 @@ describe('signup', () => {
       password: 'Sup3rSecret!',
     });
 
-    expect(result).toEqual({
+    expect({ ...result, error: formatActionError(result.error) }).toEqual({
       success: false,
       error: 'Setup is already complete.',
     });
@@ -467,7 +557,7 @@ describe('signup', () => {
 
     const result = await signup({ username: 'attacker', password: null });
 
-    expect(result).toEqual({
+    expect({ ...result, error: formatActionError(result.error) }).toEqual({
       success: false,
       error: 'Invalid form submission',
     });

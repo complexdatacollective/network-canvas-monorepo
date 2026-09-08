@@ -1,11 +1,69 @@
+'use client';
+
 import { Eye, EyeOff } from 'lucide-react';
 import { useMemo, useState } from 'react';
+
+import {
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { IconButton } from '../../Button';
 import ProgressBar from '../../ProgressBar';
 import { cx } from '../../utils/cva';
 import { getPasswordStrength } from './getPasswordStrength';
 import InputField from './InputField';
+
+const messages = defineMessages({
+  placeholder: {
+    id: 'frescoUi.passwordField.placeholder',
+    defaultMessage: 'Enter password',
+    description: 'Default placeholder of a password input.',
+  },
+  toggleVisibility: {
+    id: 'frescoUi.passwordField.toggleVisibility',
+    defaultMessage:
+      '{visible, select, true {Hide password} other {Show password}}',
+    description:
+      'Accessible name of the visibility toggle; says what pressing it will do.',
+  },
+  strengthMeterLabel: {
+    id: 'frescoUi.passwordField.strengthMeterLabel',
+    defaultMessage: 'Password strength',
+    description: 'Accessible name of the password strength meter.',
+  },
+  strengthWeak: {
+    id: 'frescoUi.passwordField.strengthWeak',
+    defaultMessage: 'Weak',
+    description: 'Password strength rating shown beside the meter.',
+  },
+  strengthFair: {
+    id: 'frescoUi.passwordField.strengthFair',
+    defaultMessage: 'Fair',
+    description: 'Password strength rating shown beside the meter.',
+  },
+  strengthGood: {
+    id: 'frescoUi.passwordField.strengthGood',
+    defaultMessage: 'Good',
+    description: 'Password strength rating shown beside the meter.',
+  },
+  strengthStrong: {
+    id: 'frescoUi.passwordField.strengthStrong',
+    defaultMessage: 'Strong',
+    description: 'Password strength rating shown beside the meter.',
+  },
+});
+
+// Presentation for getPasswordStrength's stable API labels: the function keeps
+// returning its literal English `label` (a public contract), and the rendered
+// text is looked up from the score here instead.
+const strengthLabelMessages: Record<1 | 2 | 3 | 4, MessageDescriptor> = {
+  1: messages.strengthWeak,
+  2: messages.strengthFair,
+  3: messages.strengthGood,
+  4: messages.strengthStrong,
+};
 
 type PasswordFieldProps = Omit<
   React.ComponentProps<typeof InputField>,
@@ -37,6 +95,7 @@ export default function PasswordField({
   suppressPasswordManager,
   ...props
 }: PasswordFieldProps) {
+  const intl = useAppIntl();
   const [showPassword, setShowPassword] = useState(false);
   const masked = Boolean(suppressPasswordManager) && supportsTextSecurity;
 
@@ -48,12 +107,14 @@ export default function PasswordField({
   return (
     <div className="flex flex-col gap-1">
       <InputField
-        placeholder="Enter password"
+        placeholder={intl.formatMessage(messages.placeholder)}
         suffixComponent={
           <IconButton
             variant="text"
             onClick={() => setShowPassword(!showPassword)}
-            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            aria-label={intl.formatMessage(messages.toggleVisibility, {
+              visible: String(showPassword),
+            })}
             icon={showPassword ? <EyeOff /> : <Eye />}
           />
         }
@@ -66,7 +127,7 @@ export default function PasswordField({
           props.inputClassName,
         )}
       />
-      {showStrengthMeter && strength && strength.score > 0 && (
+      {showStrengthMeter && strength && strength.score !== 0 && (
         <div
           className={cx(
             'flex items-center gap-2 transition-colors duration-200',
@@ -78,9 +139,11 @@ export default function PasswordField({
             orientation="horizontal"
             percentProgress={strength.percent}
             nudge={false}
-            label="Password strength"
+            label={intl.formatMessage(messages.strengthMeterLabel)}
           />
-          <span className="text-xs font-medium">{strength.label}</span>
+          <span className="text-xs font-medium">
+            {intl.formatMessage(strengthLabelMessages[strength.score])}
+          </span>
         </div>
       )}
     </div>

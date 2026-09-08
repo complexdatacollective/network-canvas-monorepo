@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
@@ -33,6 +35,98 @@ import { VariablePickerControl as VariablePicker } from '../../Form/Fields/Varia
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
 import { useLockedOptions } from '../useLockedOptions';
+const additionalMessages = defineMessages({
+  createNewOption: {
+    id: 'architect.additional.sections.ordinalBinPrompts.promptFields.createNewOption',
+    defaultMessage: 'Create new option',
+    description:
+      'The addButtonLabel text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+});
+const messages = defineMessages({
+  ordinalResponse: {
+    id: 'architect.sections.ordinalBinPrompts.promptFields.ordinalResponse',
+    defaultMessage: 'Ordinal response',
+    description:
+      'The title text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+  chooseTheOrdinalAttributeWhoseValues: {
+    id: 'architect.sections.ordinalBinPrompts.promptFields.chooseTheOrdinalAttributeWhoseValues',
+    defaultMessage:
+      'Choose the ordinal attribute whose values are shown as bins.',
+    description:
+      'The description text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+  attribute: {
+    id: 'architect.sections.ordinalBinPrompts.promptFields.attribute',
+    defaultMessage: 'Attribute',
+    description:
+      'The label text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+  selectAnOrdinalAttribute: {
+    id: 'architect.sections.ordinalBinPrompts.promptFields.selectAnOrdinalAttribute',
+    defaultMessage: 'Select an ordinal attribute.',
+    description:
+      'The hint text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+  attributeOptions: {
+    id: 'architect.sections.ordinalBinPrompts.promptFields.attributeOptions',
+    defaultMessage: 'Attribute options',
+    description:
+      'The title text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+  tooManyOptionValues: {
+    id: 'architect.sections.ordinalBinPrompts.promptFields.tooManyOptionValues',
+    defaultMessage: 'Too many option values',
+    description:
+      'Visible text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+  theOrdinalBinInterfaceIsDesigned: {
+    id: 'architect.sections.ordinalBinPrompts.promptFields.theOrdinalBinInterfaceIsDesigned',
+    defaultMessage:
+      'The ordinal bin interface is designed to use <strong>up to 5 option values</strong>. Using more will create a sub-optimal experience for participants, and might reduce data quality.',
+    description:
+      'Visible text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+  optionValues: {
+    id: 'architect.sections.ordinalBinPrompts.promptFields.optionValues',
+    defaultMessage: 'Option values',
+    description:
+      'The label text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+  anOrdinalAttributeContainsPreDefinedCategories: {
+    id: 'architect.sections.ordinalBinPrompts.promptFields.anOrdinalAttributeContainsPreDefinedCategories',
+    defaultMessage:
+      'An ordinal attribute contains pre-defined categories made up of a label (shown to the participant) and a value. Create <strong>up to 5</strong> option values for this attribute.',
+    description:
+      'Visible text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+  colorGradient: {
+    id: 'architect.sections.ordinalBinPrompts.promptFields.colorGradient',
+    defaultMessage: 'Color gradient',
+    description:
+      'The title text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+  chooseTheGradientUsedToDistinguish: {
+    id: 'architect.sections.ordinalBinPrompts.promptFields.chooseTheGradientUsedToDistinguish',
+    defaultMessage: 'Choose the gradient used to distinguish ordinal options.',
+    description:
+      'The description text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+  color: {
+    id: 'architect.sections.ordinalBinPrompts.promptFields.color',
+    defaultMessage: 'Color',
+    description:
+      'The label text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+  interviewerWillRenderEachOptionIn: {
+    id: 'architect.sections.ordinalBinPrompts.promptFields.interviewerWillRenderEachOptionIn',
+    defaultMessage:
+      'Interviewer will render each option in your ordinal attribute using a color gradient.',
+    description:
+      'The hint text in components / sections / OrdinalBinPrompts / PromptFields.',
+  },
+});
 
 type SelectOption = {
   label: string;
@@ -66,6 +160,7 @@ const PromptFields = ({
   bucketSortOrder,
   binSortOrder,
 }: PromptFieldsProps) => {
+  const intl = useAppIntl();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const { variable: liveVariable, variableOptions: liveVariableOptions } =
     useFormValue(['variable', 'variableOptions'] as const);
@@ -140,7 +235,7 @@ const PromptFields = ({
     setFieldValue('variableOptions', optionsForCurrentVariable);
   }, [currentVariable, optionsForCurrentVariable, setFieldValue]);
 
-  const getOptions = getSortOrderOptionGetter(sortVariableOptions);
+  const getOptions = getSortOrderOptionGetter(sortVariableOptions, intl);
   const sortMaxItems = getOptions('property', undefined, []).length;
   const showVariableOptionsTip = currentVariableOptions.length > 5;
 
@@ -168,13 +263,15 @@ const PromptFields = ({
     <>
       <PromptText initialValue={text} />
       <Section
-        title="Ordinal response"
-        description="Choose the ordinal attribute whose values are shown as bins."
+        title={intl.formatMessage(messages.ordinalResponse)}
+        description={intl.formatMessage(
+          messages.chooseTheOrdinalAttributeWhoseValues,
+        )}
       >
         <ArchitectField
           name="variable"
-          label="Attribute"
-          hint="Select an ordinal attribute."
+          label={intl.formatMessage(messages.attribute)}
+          hint={intl.formatMessage(messages.selectAnOrdinalAttribute)}
           component={VariablePicker}
           validation={{ required: true }}
           initialValue={variable}
@@ -185,46 +282,52 @@ const PromptFields = ({
         />
       </Section>
       {currentVariable && (
-        <Section title="Attribute options">
+        <Section title={intl.formatMessage(messages.attributeOptions)}>
           {lockedOptions && <LockedOptions options={lockedOptions} />}
           {!lockedOptions && showVariableOptionsTip && (
             <Alert variant="destructive" className="my-7">
-              <AlertTitle>Too many option values</AlertTitle>
+              <AlertTitle>
+                {intl.formatMessage(messages.tooManyOptionValues)}
+              </AlertTitle>
               <AlertDescription>
-                The ordinal bin interface is designed to use{' '}
-                <strong>up to 5 option values</strong>. Using more will create a
-                sub-optimal experience for participants, and might reduce data
-                quality.
+                {intl.formatMessage(messages.theOrdinalBinInterfaceIsDesigned, {
+                  strong: (chunks) => <strong>{chunks}</strong>,
+                })}
               </AlertDescription>
             </Alert>
           )}
           {!lockedOptions && (
             <ArchitectArrayField
               name="variableOptions"
-              label="Option values"
+              label={intl.formatMessage(messages.optionValues)}
               hint={
                 <>
-                  An ordinal attribute contains pre-defined categories made up
-                  of a label (shown to the participant) and a value. Create{' '}
-                  <strong>up to 5</strong> option values for this attribute.
+                  {intl.formatMessage(
+                    messages.anOrdinalAttributeContainsPreDefinedCategories,
+                    { strong: (chunks) => <strong>{chunks}</strong> },
+                  )}
                 </>
               }
               component={Options}
-              addButtonLabel="Create new option"
-              validation={optionsValidation}
+              addButtonLabel={intl.formatMessage(
+                additionalMessages.createNewOption,
+              )}
+              validation={optionsValidation(intl)}
               initialValue={variableOptions}
             />
           )}
         </Section>
       )}
       <Section
-        title="Color gradient"
-        description="Choose the gradient used to distinguish ordinal options."
+        title={intl.formatMessage(messages.colorGradient)}
+        description={intl.formatMessage(
+          messages.chooseTheGradientUsedToDistinguish,
+        )}
       >
         <ArchitectField
           name="color"
-          label="Color"
-          hint="Interviewer will render each option in your ordinal attribute using a color gradient."
+          label={intl.formatMessage(messages.color)}
+          hint={intl.formatMessage(messages.interviewerWillRenderEachOptionIn)}
           component={ColorPicker}
           validation={{ required: true }}
           initialValue={color}

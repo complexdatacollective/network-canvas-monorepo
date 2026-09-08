@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod/mini';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import type { StageSubject } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   type NcNetwork,
 } from '@codaco/shared-consts';
 
+import { frescoUiCatalogs } from '../../locales/catalogs';
 import type { FieldValue, ValidationContext } from '../store/types';
 import { required, validations } from './functions';
 import { makeValidationFunction } from './helpers';
@@ -140,7 +142,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          'Too long. Enter fewer than 5 characters.',
+          'Too long. Enter at most 5 characters.',
         );
       }
     });
@@ -168,6 +170,50 @@ describe('Validation Functions', () => {
       }).toThrow('Max length must be specified');
     });
   });
+
+  it.each([
+    {
+      locale: 'en',
+      maxHint: 'Enter at most 1 character.',
+      maxError: 'Too long. Enter at most 1 character.',
+      minHint: 'Enter at least 1 character.',
+      minError: 'Too short. Enter at least 2 characters.',
+    },
+    {
+      locale: 'es',
+      maxHint: 'Introduce como máximo 1 carácter.',
+      maxError:
+        'El texto es demasiado largo. Introduce como máximo 1 carácter.',
+      minHint: 'Introduce al menos 1 carácter.',
+      minError: 'El texto es demasiado corto. Introduce al menos 2 caracteres.',
+    },
+  ])(
+    'describes inclusive length limits and count grammar in $locale',
+    ({ locale, maxHint, maxError, minHint, minError }) => {
+      const intl = createAppIntl({
+        locale,
+        messages: frescoUiCatalogs[locale],
+      });
+      const maximum = validations.maxLength(1, createMockContext(), intl)({});
+      expect(maximum.safeParse('a').success).toBe(true);
+      expect(z.globalRegistry.get(maximum)?.hint).toBe(maxHint);
+      const tooLong = maximum.safeParse('ab');
+      expect(tooLong.success).toBe(false);
+      expect(tooLong.error?.issues[0]?.message).toBe(maxError);
+
+      const minimum = validations.minLength(1, createMockContext(), intl)({});
+      expect(z.globalRegistry.get(minimum)?.hint).toBe(minHint);
+      const twoCharacters = validations.minLength(
+        2,
+        createMockContext(),
+        intl,
+      )({});
+      expect(twoCharacters.safeParse('ab').success).toBe(true);
+      const tooShort = twoCharacters.safeParse('a');
+      expect(tooShort.success).toBe(false);
+      expect(tooShort.error?.issues[0]?.message).toBe(minError);
+    },
+  );
 
   describe('minLength', () => {
     it('should reject strings shorter than min', () => {
@@ -437,6 +483,89 @@ describe('Validation Functions', () => {
       expect(validator.safeParse('2000-06-15T09:00').success).toBe(true);
       expect(validator.safeParse('2000-06-15T08:59').success).toBe(false);
     });
+
+    // Comparison is against the authored bound, so a message that rounds the
+    // bound off names a boundary the rule does not have: the participant
+    // enters the time the message gave them and is told it is too early.
+    it.each([
+      ['12:34:56', '12:34:30', '12:34:56'],
+      ['2000-06-15T09:00:30', '2000-06-15T09:00:10', '9:00:30'],
+    ])(
+      'names every part of the bound %s it actually compares',
+      (bound, below, named) => {
+        const validator = validations.min(bound, createMockContext())({});
+        const result = validator.safeParse(below);
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error.issues[0]?.message).toContain(named);
+        }
+      },
+    );
+
+    it('leaves a bound authored without seconds written to the minute', () => {
+      const validator = validations.min('09:00', createMockContext())({});
+      const result = validator.safeParse('08:59');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        // Nothing in the bound distinguishes 09:00:00 from 09:00, so a
+        // trailing ":00" would be precision the author never asked for.
+        expect(result.error.issues[0]?.message).toContain('9:00');
+        expect(result.error.issues[0]?.message).not.toMatch(/\d:\d{2}:\d{2}/);
+      }
+    });
+
+    it('formats the bound in the supplied formatter’s locale', () => {
+      // The bound is substituted into a sentence written in the app's locale,
+      // so it has to be formatted in that locale too — not in whatever the
+      // runtime happens to default to. Pinned to en-US by vitest.setup.ts, so
+      // a bound formatted from the default reads "June 15, 2000".
+      const validator = validations.min(
+        '2000-06-15',
+        createMockContext(),
+        createAppIntl({ locale: 'en-GB' }),
+      )({});
+      const result = validator.safeParse('2000-06-14');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          'Must be on or after 15 June 2000.',
+        );
+      }
+    });
+
+    // One per shape the bound formatter recognises, because each builds its
+    // own options object: a year-month bound, a full date, and a date-time.
+    it.each([
+      ['2000-06', '2000-05'],
+      ['2000-06-15', '2000-06-14'],
+      ['2000-06-15T09:00', '2000-06-15T08:59'],
+    ])(
+      'keeps the bound %s on the calendar the field stores',
+      (bound, below) => {
+        // th-TH defaults to the Buddhist calendar, which numbers this year
+        // 2543. Fixture guard, so the assertion below can tell the two apart.
+        const buddhist = new Intl.DateTimeFormat('th-TH', {
+          dateStyle: 'long',
+          timeZone: 'UTC',
+        }).format(new Date(Date.UTC(2000, 5, 15)));
+        expect(buddhist).toContain('2543');
+
+        const validator = validations.min(
+          bound,
+          createMockContext(),
+          createAppIntl({ locale: 'th-TH' }),
+        )({});
+        const result = validator.safeParse(below);
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          // The rule constrains a Gregorian ISO value, and the picker offers
+          // Gregorian years, so a hint naming another calendar's year would
+          // describe a date the field cannot hold.
+          expect(result.error.issues[0]?.message).toContain('2000');
+          expect(result.error.issues[0]?.message).not.toContain('2543');
+        }
+      },
+    );
   });
 
   describe('max (numeric)', () => {
@@ -498,6 +627,23 @@ describe('Validation Functions', () => {
       expect(validator.safeParse('2020-05').success).toBe(true);
       // "2020-06" is strictly later month → reject
       expect(validator.safeParse('2020-06').success).toBe(false);
+    });
+
+    it('formats the bound in the supplied formatter’s locale', () => {
+      // Its own call to the shared bound formatter, so it gets its own guard;
+      // see the matching case under "min (date)".
+      const validator = validations.max(
+        '2020-05-15',
+        createMockContext(),
+        createAppIntl({ locale: 'en-GB' }),
+      )({});
+      const result = validator.safeParse('2020-05-16');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          'Must be on or before 15 May 2020.',
+        );
+      }
     });
   });
 
@@ -777,6 +923,86 @@ describe('Validation Functions', () => {
 
       const result = validator.safeParse('Jane');
       expect(result.success).toBe(false);
+    });
+
+    it("matches a number field's raw string against the number other entities store", () => {
+      // An `<input type="number">` holds its value as a string, and the
+      // interview coerces it to a real number only at submit — so the rule is
+      // asked about '12' while the alters already added hold 12.
+      const mockNetwork = {
+        nodes: [
+          {
+            _uid: 'node1',
+            type: 'person',
+            [entityAttributesProperty]: { numberAttribute: 12 },
+          },
+        ],
+        edges: [],
+        ego: {
+          _uid: 'ego',
+          [entityAttributesProperty]: {},
+        },
+      } as NcNetwork;
+
+      const validator = validations.unique(
+        'numberAttribute',
+        createMockContext({ network: mockNetwork }),
+      )({});
+
+      expect(validator.safeParse('12').success).toBe(false);
+      expect(validator.safeParse(12).success).toBe(false);
+      expect(validator.safeParse('13').success).toBe(true);
+    });
+
+    it('reads a number an older session stored as a string as that number', () => {
+      const mockNetwork = {
+        nodes: [
+          {
+            _uid: 'node1',
+            type: 'person',
+            [entityAttributesProperty]: { numberAttribute: '12' },
+          },
+        ],
+        edges: [],
+        ego: {
+          _uid: 'ego',
+          [entityAttributesProperty]: {},
+        },
+      } as NcNetwork;
+
+      const validator = validations.unique(
+        'numberAttribute',
+        createMockContext({ network: mockNetwork }),
+      )({});
+
+      expect(validator.safeParse(12).success).toBe(false);
+      expect(validator.safeParse('12').success).toBe(false);
+      expect(validator.safeParse(13).success).toBe(true);
+    });
+
+    it('keeps a text value literal even when it looks numeric', () => {
+      const mockNetwork = {
+        nodes: [
+          {
+            _uid: 'node1',
+            type: 'person',
+            [entityAttributesProperty]: { testAttribute: '012' },
+          },
+        ],
+        edges: [],
+        ego: {
+          _uid: 'ego',
+          [entityAttributesProperty]: {},
+        },
+      } as NcNetwork;
+
+      const validator = validations.unique(
+        'testAttribute',
+        createMockContext({ network: mockNetwork }),
+      )({});
+
+      expect(validator.safeParse('12').success).toBe(true);
+      expect(validator.safeParse('012').success).toBe(false);
     });
   });
 
@@ -1461,6 +1687,32 @@ describe('Validation Functions', () => {
 
       expect(validator.safeParse('taken').success).toBe(false);
       expect(validator.safeParse('fresh').success).toBe(true);
+    });
+
+    it("sameAs matches a number field's raw string against the persisted number", () => {
+      const validator = validations.sameAs(
+        'numberAttribute',
+        createMockContext({
+          network: networkWithNode,
+          currentEntityId: 'node1',
+        }),
+      )({});
+
+      expect(validator.safeParse('10').success).toBe(true);
+      expect(validator.safeParse('11').success).toBe(false);
+    });
+
+    it("differentFrom matches a number field's raw string against the persisted number", () => {
+      const validator = validations.differentFrom(
+        'numberAttribute',
+        createMockContext({
+          network: networkWithNode,
+          currentEntityId: 'node1',
+        }),
+      )({});
+
+      expect(validator.safeParse('10').success).toBe(false);
+      expect(validator.safeParse('11').success).toBe(true);
     });
 
     it('still no-ops when the variable is absent from both form and attributes', () => {

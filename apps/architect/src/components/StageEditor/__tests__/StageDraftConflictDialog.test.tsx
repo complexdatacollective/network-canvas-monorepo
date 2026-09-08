@@ -1,5 +1,6 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { act, render, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -21,6 +22,7 @@ import stageEditorDraft, {
   setLiveValues,
 } from '~/ducks/modules/stageEditorDraft';
 import { getStageEditorDraftOpen } from '~/selectors/stageEditorDraft';
+import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
 import StageDraftConflictDialog from '../StageDraftConflictDialog';
 
@@ -131,16 +133,18 @@ const renderBothReclaimDialogs = (store: TestStore, nestedDirty: boolean) =>
   );
 
 const openedDialogTitles = () =>
-  openDialogMock.mock.calls.map((call) => (call[0] as { title: string }).title);
+  openDialogMock.mock.calls.map((call) =>
+    renderQueuedMessage((call[0] as { title: ReactNode }).title),
+  );
 
 const lastChoiceDialog = () =>
   openDialogMock.mock.calls.at(-1)?.[0] as {
-    title: string;
-    description: string;
+    title: ReactNode;
+    description: ReactNode;
     actions: {
-      primary: { label: string; value: string };
-      secondary?: { label: string; value: string };
-      cancel: { label: string; value: null };
+      primary: { label: ReactNode; value: string };
+      secondary?: { label: ReactNode; value: string };
+      cancel: { label: ReactNode; value: null };
     };
   };
 
@@ -187,13 +191,19 @@ describe('StageDraftConflictDialog', () => {
     const dialog = lastChoiceDialog();
     // Whole sentences, and specific about what is lost: the stage changes AND
     // the codebook edits made while the editor was open.
-    expect(dialog.description).toMatch(/cannot be combined|no safe way/i);
-    expect(dialog.description).toMatch(/discards your changes to this stage/i);
-    expect(dialog.description).toMatch(/attributes you added or edited/i);
+    expect(renderQueuedMessage(dialog.description)).toMatch(
+      /cannot be combined|no safe way/i,
+    );
+    expect(renderQueuedMessage(dialog.description)).toMatch(
+      /discards your changes to this stage/i,
+    );
+    expect(renderQueuedMessage(dialog.description)).toMatch(
+      /attributes you added or edited/i,
+    );
     // …and honest about what the rescue copy does NOT contain: it is built from
     // this tab's pre-demotion buffer, so the other tab's saved work is missing
     // from it.
-    expect(dialog.description).toMatch(
+    expect(renderQueuedMessage(dialog.description)).toMatch(
       /will not contain anything the other tab saved/i,
     );
     // Keeping the work leads.
@@ -255,8 +265,10 @@ describe('StageDraftConflictDialog', () => {
       expect(openDialogMock).toHaveBeenCalledTimes(2);
     });
     expect(getStageEditorDraftOpen(store.getState())).toBe(true);
-    expect(lastChoiceDialog().description).toMatch(/has been downloaded/i);
-    expect(lastChoiceDialog().description).toMatch(
+    expect(renderQueuedMessage(lastChoiceDialog().description)).toMatch(
+      /has been downloaded/i,
+    );
+    expect(renderQueuedMessage(lastChoiceDialog().description)).toMatch(
       /not the changes the other tab saved/i,
     );
   });

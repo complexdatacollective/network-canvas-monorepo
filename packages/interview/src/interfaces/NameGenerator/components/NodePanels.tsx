@@ -1,3 +1,5 @@
+'use client';
+
 import { invariant } from 'es-toolkit';
 import { get } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

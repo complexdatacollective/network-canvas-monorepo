@@ -1,6 +1,8 @@
 import type { ErrorComponentProps } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import { DEFAULT_SKIP_TARGET_ID } from '@codaco/fresco-ui/layout/AppFrame';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -9,6 +11,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { ServerUnreachableError } from '../lib/session.ts';
+import { clientTelemetry } from '../lib/telemetry.ts';
 import { useInsideAreaMain } from '../shell/AreaMain.tsx';
 
 const CENTRED = 'flex h-full items-center justify-center p-4';
@@ -40,10 +43,41 @@ function ErrorLandmark({ children }: { children: ReactNode }) {
   );
 }
 
+const messages = defineMessages({
+  heading: {
+    id: 'studio.errorScreen.heading',
+    defaultMessage: 'Something went wrong',
+    description:
+      'Heading of the whole-route error screen shown when a screen could not load.',
+  },
+  serverUnreachable: {
+    id: 'studio.errorScreen.serverUnreachable',
+    defaultMessage:
+      'The server could not be reached. Check that it is running, then reload this page.',
+    description:
+      'Error-screen explanation when the Studio server did not answer at all.',
+  },
+  loadFailed: {
+    id: 'studio.errorScreen.loadFailed',
+    defaultMessage: 'This page could not be loaded. Reload to try again.',
+    description:
+      'Error-screen explanation for any failure other than an unreachable server.',
+  },
+  reload: {
+    id: 'studio.errorScreen.reload',
+    defaultMessage: 'Reload',
+    description: 'Button on the error screen that reloads the page.',
+  },
+});
+
 // The error message itself is deliberately not shown — an unhandled render
 // error's text is for a developer, and this screen is for whoever is holding
 // the tab.
 export default function ErrorScreen({ error }: ErrorComponentProps) {
+  useEffect(() => {
+    clientTelemetry.capture('client_render', error);
+  }, [error]);
+  const intl = useAppIntl();
   const unreachable = error instanceof ServerUnreachableError;
   return (
     <ErrorLandmark>
@@ -55,14 +89,16 @@ export default function ErrorScreen({ error }: ErrorComponentProps) {
           nothing at all — the one arrival where saying nothing is worst.
         */}
         <Heading level="h1" {...routeFocusTargetProps}>
-          Something went wrong
+          {intl.formatMessage(messages.heading)}
         </Heading>
         <Paragraph role="alert">
-          {unreachable
-            ? 'The server could not be reached. Check that it is running, then reload this page.'
-            : 'This page could not be loaded. Reload to try again.'}
+          {intl.formatMessage(
+            unreachable ? messages.serverUnreachable : messages.loadFailed,
+          )}
         </Paragraph>
-        <Button onClick={() => window.location.reload()}>Reload</Button>
+        <Button onClick={() => window.location.reload()}>
+          {intl.formatMessage(messages.reload)}
+        </Button>
       </Surface>
     </ErrorLandmark>
   );

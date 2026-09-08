@@ -1,16 +1,16 @@
 import type { VariableValue } from '@codaco/shared-consts';
 
-import { addSteps, stepsBetween } from './dateWindow';
-import type { ComparatorEdge } from './dependencyOrder';
-import { comparatorSpan, type Span } from './groupConstraints';
+import { addSteps, stepsBetween } from './dateWindow.ts';
+import type { ComparatorEdge } from './dependencyOrder.ts';
+import { comparatorSpan, type Span } from './groupConstraints.ts';
 import {
   MAX_COMPONENT_VARIABLES,
   MAX_DOMAIN_ELEMENTS,
   MAX_DOMAIN_PRODUCT,
   MAX_SEARCH_NODES,
-} from './solverLimits';
-import type { ConstrainedVariable } from './types';
-import { valueKey } from './uniqueRegistry';
+} from './solverLimits.ts';
+import type { ConstrainedVariable } from './types.ts';
+import { valueKey } from './uniqueRegistry.ts';
 import {
   booleanDomainValues,
   type DecimalGrid,
@@ -19,7 +19,7 @@ import {
   distinctOptionValues,
   scalarDrawGrid,
   selectionSizeRange,
-} from './valueSpace';
+} from './valueSpace.ts';
 
 /**
  * One connected web of cross-variable rules, ready for complete search: every

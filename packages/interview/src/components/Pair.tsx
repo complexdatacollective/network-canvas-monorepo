@@ -2,10 +2,12 @@
 
 import { motion } from 'motion/react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { EdgeColor } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { useNodeLabel } from '../interfaces/Anonymisation/useNodeLabel';
 import { edgeColorMap } from '../utils/edgeColorMap';
 import Node from './ConnectedNode';
@@ -60,6 +62,7 @@ export default function Pair({
   animateForwards = true,
   labelId,
 }: PairProps) {
+  const intl = useAppIntl();
   const fromLabel = useNodeLabel(fromNode);
   const toLabel = useNodeLabel(toNode);
 
@@ -78,7 +81,10 @@ export default function Pair({
     >
       {labelId && (
         <span id={labelId} className="sr-only">
-          {fromLabel ?? 'First node'} and {toLabel ?? 'second node'}
+          {intl.formatList([
+            fromLabel ?? intl.formatMessage(messages.firstNode),
+            toLabel ?? intl.formatMessage(messages.secondNode),
+          ])}
         </span>
       )}
       <Node nodeId={fromNode[entityPrimaryKeyProperty]} type={fromNode.type} />

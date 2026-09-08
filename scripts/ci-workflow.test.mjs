@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
@@ -496,6 +497,10 @@ test('short quality checks share one setup without joining the critical path', (
   assert.match(support, /pnpm check:changesets/);
   assert.match(support, /pnpm check:compat-protocols/);
   assert.match(support, /pnpm check:mapbox-tokens/);
+  assert.match(
+    support,
+    /pnpm --filter @codaco\/studio-server check:schema-docs/,
+  );
   assert.match(support, /pnpm test:scripts/);
   assert.match(support, /turbo run build --filter='\.\/packages\/\*'/);
   assert.match(support, /turbo run typecheck/);
@@ -703,6 +708,90 @@ test('release-sensitive app builds run before merge', () => {
   );
   assert.match(supportJob, /pnpm --filter=@codaco\/architect build/);
   assert.match(supportJob, /pnpm --filter=@codaco\/interviewer build/);
+  assert.match(supportJob, /pnpm --filter=@codaco\/studio-client build$/m);
+  assert.match(supportJob, /pnpm --filter=@codaco\/studio-server build$/m);
+  assert.match(
+    supportJob,
+    /pnpm --filter=@codaco\/studio-server build:netlify$/m,
+  );
+});
+
+test('Studio browser telemetry failures fail the actual quality-support gate', () => {
+  const steps = parsedWorkflow.jobs['quality-support'].steps;
+  const telemetry = steps.find((step) => step.id === 'studio-telemetry');
+  assert.ok(telemetry, 'the built-browser telemetry check exists');
+  assert.match(telemetry.run, /playwright install --with-deps chromium/);
+  assert.match(
+    telemetry.run,
+    /pnpm --filter @codaco\/studio-client test:telemetry/,
+  );
+  const verify = steps.at(-1);
+  const outcomes = Object.fromEntries(
+    Object.keys(verify.env).map((key) => [key, 'success']),
+  );
+  const run = (state) =>
+    spawnSync('bash', ['-c', verify.run], {
+      encoding: 'utf8',
+      timeout: 3_000,
+      env: {
+        PATH: process.env.PATH,
+        ...outcomes,
+        STUDIO_TELEMETRY_OUTCOME: state,
+      },
+    });
+  const positive = run('success');
+  assert.equal(positive.error, undefined);
+  assert.equal(positive.status, 0, positive.stderr);
+  for (const state of ['failure', 'cancelled', 'skipped', '']) {
+    const result = run(state);
+    assert.equal(result.error, undefined);
+    assert.equal(
+      result.status,
+      1,
+      `telemetry=${state} must fail the job: ${result.stdout}`,
+    );
+  }
+});
+
+// Every check in quality-support is `continue-on-error`, so the job's own
+// conclusion says nothing about them: the final step is what fails the job.
+// A check added without a line there passes silently forever.
+test('every quality-support check is consulted by the step that fails the job', () => {
+  const steps = parsedWorkflow.jobs['quality-support'].steps;
+  const verify = steps.at(-1);
+  assert.equal(verify.name, 'Verify support checks passed');
+
+  const checks = steps.filter((step) => step['continue-on-error'] === true);
+  assert.ok(checks.length >= 8, 'quality-support runs the short checks');
+
+  for (const { id, name } of checks) {
+    assert.ok(id, `${name} has a step id`);
+    const outcome = Object.entries(verify.env).find(
+      ([, value]) => value === `\${{ steps.${id}.outcome }}`,
+    );
+    assert.ok(outcome, `${id}'s outcome reaches the verify step`);
+    assert.match(
+      verify.run,
+      new RegExp(`=\\$${escapeRegExp(outcome[0])}"`),
+      `${id}'s outcome is checked, not just passed in`,
+    );
+    const outcomes = Object.fromEntries(
+      Object.keys(verify.env).map((key) => [key, 'success']),
+    );
+    for (const state of ['failure', 'cancelled', 'skipped', '']) {
+      const result = spawnSync('bash', ['-c', verify.run], {
+        encoding: 'utf8',
+        timeout: 3_000,
+        env: { PATH: process.env.PATH, ...outcomes, [outcome[0]]: state },
+      });
+      assert.equal(result.error, undefined);
+      assert.equal(
+        result.status,
+        1,
+        `${id}=${state} must fail the actual support job: ${result.stdout}`,
+      );
+    }
+  }
 });
 
 test('changed public npm versions are checked against the registry before merge', () => {
@@ -1214,5 +1303,39 @@ test('Architect E2E builds disable both animation systems', () => {
     dockerRunner,
     /-e VITE_DISABLE_ANIMATIONS=true/,
     'the Docker build disables Motion and Base UI animations',
+  );
+});
+
+test('release job refuses a first publication on the publish path before changesets/action', () => {
+  const releaseJob = job('release');
+  assert.ok(releaseJob, 'release job exists');
+
+  const pruneIndex = releaseJob.indexOf(
+    'run: node scripts/prune-ignored-changesets.mjs',
+  );
+  const checkIndex = releaseJob.indexOf(
+    'run: node scripts/check-first-publications.mjs --publish-path-only',
+  );
+  const actionIndex = releaseJob.indexOf('uses: changesets/action@');
+  assert.ok(checkIndex !== -1, 'release job runs check-first-publications.mjs');
+  // After the prune, so the publish-path decision sees only normal-lane
+  // changesets; before the action, so nothing is published first.
+  assert.ok(
+    pruneIndex !== -1 && pruneIndex < checkIndex,
+    'the first-publication check runs after the ignored-lane prune',
+  );
+  assert.ok(
+    actionIndex !== -1 && checkIndex < actionIndex,
+    'the first-publication check runs before changesets/action publishes',
+  );
+});
+
+test('the Version Packages merge check refuses a publish npm cannot make', () => {
+  const freshnessJob = job('version-packages-freshness');
+  assert.ok(freshnessJob, 'version-packages-freshness job exists');
+  assert.match(
+    freshnessJob,
+    /- name: Refuse a release PR whose publish needs a package npm does not know\n\s+if: steps\.head\.outputs\.release_pr == 'true'\n\s+run: node scripts\/check-first-publications\.mjs\n/,
+    'the merge check runs check-first-publications.mjs on the tree that merges the release PR',
   );
 });

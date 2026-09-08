@@ -1,5 +1,8 @@
 import { Outlet } from '@tanstack/react-router';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import AppFrame from '@codaco/fresco-ui/layout/AppFrame';
@@ -10,6 +13,22 @@ import {
   useActiveTeamReconciler,
   type ActiveTeamFailure,
 } from '../shell/useActiveTeamReconciler.ts';
+
+const messages = defineMessages({
+  teamSwitchFailure: {
+    id: 'studio.appLayout.teamSwitchFailure',
+    defaultMessage:
+      'Studio could not switch to this team. Screens that depend on it will stay empty until it does.',
+    description:
+      'Shown above every screen when the active team could not follow the team in the URL.',
+  },
+  skipToMainContent: {
+    id: 'studio.appLayout.skipToMainContent',
+    defaultMessage: 'Skip to main content',
+    description:
+      "The keyboard skip link that jumps past the app shell's header.",
+  },
+});
 
 /**
  * What the researcher sees when the active team could not be moved to the team
@@ -22,15 +41,13 @@ import {
  * spinner with nothing to say about why.
  */
 function TeamSwitchFailure({ failure }: { failure: ActiveTeamFailure }) {
+  const intl = useAppIntl();
   return (
     <Alert variant="destructive" density="compact" className="m-0 rounded-none">
       <div className="flex flex-wrap items-center gap-3">
-        <span>
-          Studio could not switch to this team. Screens that depend on it will
-          stay empty until it does.
-        </span>
+        <span>{intl.formatMessage(messages.teamSwitchFailure)}</span>
         <Button size="sm" variant="outline" onClick={failure.retry}>
-          Try again
+          {intl.formatMessage(commonMessages.retry)}
         </Button>
       </div>
     </Alert>
@@ -75,8 +92,15 @@ function TeamSwitchFailure({ failure }: { failure: ActiveTeamFailure }) {
  * mounted for every app route and unmounted for none of them, so the setting
  * cannot be left behind by an area transition. When that write fails it says
  * so here, above every area, for the reason `TeamSwitchFailure` records.
+ *
+ * `LocaleSync` deliberately does NOT sit here. "Mounted for every app route"
+ * is not the same as "mounted wherever a signed-in researcher can be":
+ * `/no-team` is in the focused branch, a sibling of this layout, and a
+ * researcher with no team can spend a whole visit there. It is at the root
+ * instead, above all four shells.
  */
 export default function AppLayout() {
+  const intl = useAppIntl();
   const teamSwitchFailure = useActiveTeamReconciler();
   useSessionRevalidation();
 
@@ -93,7 +117,7 @@ export default function AppLayout() {
           )}
         </>
       }
-      skipLinkLabel="Skip to main content"
+      skipLinkLabel={intl.formatMessage(messages.skipToMainContent)}
     >
       <Outlet />
     </AppFrame>

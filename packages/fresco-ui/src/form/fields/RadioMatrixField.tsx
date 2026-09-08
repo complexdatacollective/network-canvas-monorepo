@@ -11,6 +11,7 @@ import {
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 import { RadioItem } from './RadioGroup';
 
 export type RadioMatrixRow = { id: string; label: string };
@@ -109,7 +110,13 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
       )}
     >
       <fieldset
-        {...rest}
+        // A `<fieldset>` is `role="group"`, which allows neither
+        // `aria-readonly` nor `aria-required`. Each row's radio group carries
+        // the read-only state; the matrix's required-ness stays with the
+        // label's marker and the "Required" element named in
+        // `aria-describedby`, because the field is answered as a whole rather
+        // than any single row being independently required.
+        {...omitWidgetOnlyAria(rest)}
         id={id}
         aria-invalid={rest['aria-invalid'] ?? undefined}
         className={cx(

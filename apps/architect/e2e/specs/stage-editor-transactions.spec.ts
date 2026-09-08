@@ -124,7 +124,7 @@ test('discarding stage edits reverts a validation change to a shared variable', 
   });
   await openValidationSection(fieldDialog);
   await fieldDialog
-    .getByRole('switch', { name: 'Required', exact: true })
+    .getByRole('switch', { name: 'Required answer', exact: true })
     .click();
   await architectPage
     .getByRole('button', { name: 'Save', exact: true })

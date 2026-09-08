@@ -31,6 +31,7 @@ import stageEditorDraft, {
 } from '~/ducks/modules/stageEditorDraft';
 import { useProtocolNavGuard } from '~/hooks/useProtocolNavGuard';
 import { useProtocolTabLock } from '~/hooks/useProtocolTabLock';
+import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 import type { ProtocolTabLock } from '~/utils/protocolTabLock';
 
 import GeoAPIKey from './GeoAPIKey';
@@ -190,8 +191,8 @@ const reclaimFromAPeer = async (fake: ReturnType<typeof makeFakeLock>) => {
 };
 
 const dialogTitles = () =>
-  openDialogSpy.mock.calls.map(
-    (call) => (call[0] as { title?: ReactNode }).title,
+  openDialogSpy.mock.calls.map((call) =>
+    renderQueuedMessage((call[0] as { title?: ReactNode }).title),
   );
 
 /**

@@ -1,10 +1,10 @@
 ---
 title: FAQ for IT Departments
-date: 22nd July 2026
+date: 8th September 2026
 navOrder: 9
 ---
 
-This article answers common questions raised by IT departments, sysadmins, and information security teams who are supporting a researcher with deploying Fresco. It covers what Fresco is, what infrastructure it needs, how it handles participant data, and the security posture of the application.
+This article answers common questions raised by IT departments, sysadmins, and information security teams who are supporting a researcher with deploying Fresco. It covers who makes Fresco and on what terms, what infrastructure it needs, how it handles participant data, what the project team itself hosts, and the security posture of the application.
 
 For background on what Fresco is and how researchers use it, see [About Fresco](/en/collect-data/fresco/about). For broader compliance guidance covering both Fresco and Interviewer, see the [GDPR Compliance Guide](/en/get-started/planning-a-study/gdpr-compliance).
 
@@ -12,9 +12,57 @@ For background on what Fresco is and how researchers use it, see [About Fresco](
 
 Fresco is an open-source web application that allows researchers to administer Network Canvas social network interviews through a browser. Researchers upload a protocol (an interview definition file), generate participant URLs, and collect interview responses through a web-based dashboard.
 
+Fresco is one of three tools produced by the Network Canvas project. The other two, [Architect](/en/design-protocols/choosing-architect) (for designing interview protocols) and [Interviewer](/en/collect-data/interviewer) (for conducting interviews in person), run in the browser and keep everything they store on the device they run on. Fresco is the tool that involves a server, so it is the one IT departments usually need to evaluate.
+
 Fresco is not a SaaS product. There is no central server operated by the development team, and no participant data is ever transmitted to the developers. Each research group runs their own independent instance.
 
 The source code is publicly available on [GitHub](https://github.com/complexdatacollective/Fresco) under an open-source license.
+
+## Who develops Fresco, who owns it, and how is it funded?
+
+Network Canvas is developed by a team of researchers and developers based at Northwestern University and the University of Oxford, together with contracted developers and community contributors. Development has been funded primarily by grants from the National Institutes of Health:
+
+- The [original development award](https://reporter.nih.gov/project-details/9306043), which produced the suite.
+- The [current award](https://reporter.nih.gov/project-details/10715902), which funds ongoing development.
+- A [dedicated award](https://reporter.nih.gov/search/vB-u312oGkW58r46HT8FmA/project-details/11339209) supporting the maintenance and support of the existing tools.
+
+Smaller grants in the UK have also supported development, and consultancy arrangements between the developers and individual research groups have resulted in contributed code.
+
+The intellectual property and copyright are held by the Complex Data Collective (CODACO), a registered not-for-profit made up of the core project staff, which licenses the software to everyone under the [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html). See the [project FAQ](/en/get-started/project-information/faq) for more on the project's history and funding model.
+
+## Is Fresco a vendor product? Who may use it, and on what terms?
+
+Fresco is free, open-source research software, and anyone in the world may use it. There is no sign-up with the project, no license to purchase, and no central service to enrol in: a research team obtains the code from GitHub and deploys it themselves.
+
+The project team are contributors to an open-source project, not a software vendor. Like other open-source software, Fresco is provided "as is" and without warranty under the terms of the GPLv3. The project does not offer service-level agreements, contractual remediation windows, or other vendor-style assurances as part of the software. Where an institution needs those assurances, they are available only through a formal subcontract or consultancy arrangement with the project team; contact [info@networkcanvas.com](mailto:info@networkcanvas.com) to discuss this.
+
+The [Terms of Use](https://assets.networkcanvas.com/public/files/Website/terms-and-conditions.txt) and [Privacy Policy](https://assets.networkcanvas.com/public/files/Website/privacy.txt) for the project's own websites and hosted services are linked from the footer of [networkcanvas.com](https://networkcanvas.com). They govern your use of those sites, not the Fresco instance your institution deploys; for a deployed instance, your institution is the Data Controller for the study data (see [Is Fresco GDPR-compliant?](#is-fresco-gdpr-compliant-hipaa) below).
+
+## Where do we download Fresco?
+
+There is no download link, because Fresco is deployed rather than installed:
+
+- The source code lives in the [Fresco repository on GitHub](https://github.com/complexdatacollective/Fresco). The supported route for most research teams is to fork that repository and deploy it to a serverless platform, as described in the [Deployment Guide](./guide).
+- For institutional infrastructure, prebuilt container images are published to the GitHub Container Registry at `ghcr.io/complexdatacollective/fresco`, tagged both `latest` and by version number (for example `ghcr.io/complexdatacollective/fresco:4.1.4`). The [Advanced Deployment](./advanced) guide covers running the image with Docker Compose alongside PostgreSQL and S3-compatible storage.
+
+The other Network Canvas tools have no download step either. Architect and Interviewer run in the browser at [architect.networkcanvas.com](https://architect.networkcanvas.com) and [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com), and both can optionally be installed to a device as a Progressive Web App from the browser's "Install" option. The older downloadable desktop and tablet apps, Architect Classic and Interviewer Classic, are in maintenance mode; their installers are linked from the [Get Started page](https://networkcanvas.com/get-started) on the project website.
+
+## What does the Network Canvas project itself host, and does it hold research data?
+
+The project team operates a small number of public web properties. None of them is used to hold research or participant data, and the project does not host Fresco instances for research groups or institutions. Deploying and managing an instance for a research group only happens under a formal subcontract or consultancy arrangement. Two of the sites below do hold data that users submit to them, the sandbox and the forum, and both are called out explicitly.
+
+Sites operated by the project:
+
+- **[networkcanvas.com](https://networkcanvas.com)** and **[documentation.networkcanvas.com](https://documentation.networkcanvas.com)** — the project website and this documentation. Static sites hosted on Netlify.
+- **[architect.networkcanvas.com](https://architect.networkcanvas.com)** and **[interviewer.networkcanvas.com](https://interviewer.networkcanvas.com)** — the browser-based Architect and Interviewer apps, hosted on Netlify as static sites. Both store everything (protocols, interview sessions, settings) in the user's own browser storage on the device; no research data is sent to a server. The only things either app transmits are the optional anonymous usage and error analytics described below, which can be turned off in each app, and, on protocols that use the Geospatial interface, map tiles fetched from Mapbox and whatever a participant types into that interface's search box, which goes to Mapbox's search API (see [Does Fresco send data to third parties?](#does-fresco-send-data-to-third-parties)). Interviewer additionally encrypts its on-device data at rest when an app lock is set up.
+- **[bg-creator.networkcanvas.com](https://bg-creator.networkcanvas.com)** — Background Creator, a small utility for making background images for sociogram stages. Static, hosted on Netlify.
+- **[fresco-sandbox.networkcanvas.com](https://fresco-sandbox.networkcanvas.com)** — the shared [Fresco Sandbox](./sandbox), a demonstration instance operated by the project team. It stores whatever its users upload, demonstration protocols and the interviews run against them, until the next reset. That is why it is explicitly not for real interviews: its login credentials are published in the documentation, anything uploaded is visible to every sandbox user, and its database is periodically wiped. Real study or participant data must never be uploaded to it.
+- **[community.networkcanvas.com](https://community.networkcanvas.com)** — the user community forum, a self-hosted Discourse instance. It holds the accounts and posts that forum users create; posts are public.
+- **assets.networkcanvas.com** — static file hosting for downloads, videos, and the legal documents linked above.
+- **ph-relay.networkcanvas.com** — a relay endpoint (a Cloudflare Worker) that forwards the optional anonymous usage and error analytics from the apps to PostHog. See [Does Fresco send data to third parties?](#does-fresco-send-data-to-third-parties) for what those analytics contain.
+- **[github.com/complexdatacollective](https://github.com/complexdatacollective)** — source code, releases, and the container image registry.
+
+Apart from what users choose to submit to the sandbox and the forum, the only data that reaches infrastructure the project operates is the apps' optional, anonymous analytics, which never include participant or interview data and which can be disabled in each app or blocked at the network.
 
 ## What infrastructure does Fresco require?
 
@@ -26,7 +74,7 @@ Fresco is a Next.js application (Node.js 24) backed by a PostgreSQL database and
   - **UploadThing** — a hosted S3 wrapper. Easiest to set up; the free tier is US-only, paid tiers offer EU regions.
   - **Any S3-compatible endpoint** — AWS S3, MinIO (self-hosted), Cloudflare R2, Backblaze B2, etc. Configured with endpoint URL, bucket, region, and access key/secret.
 - **A domain name with HTTPS**. Fresco requires TLS. Free certificates from Let's Encrypt are sufficient.
-- **Inbound HTTPS on port 443**. If using UploadThing, the `/api/uploadthing` endpoint must additionally be reachable from the public Internet, because it is the callback target for UploadThing uploads. A directly-configured S3-compatible backend does not require this external callback.
+- **Inbound HTTPS on port 443**. If using UploadThing, the `/api/uploadthing` endpoint must additionally be reachable from the public Internet: it is the callback target for UploadThing uploads, and the same URL also serves the browser-initiated request a signed-in researcher's browser makes to start an upload, so it cannot be restricted to your institutional network without also blocking uploads (see [Does Fresco support single sign-on with our institutional identity provider?](#does-fresco-support-single-sign-on-with-our-institutional-identity-provider)). A directly-configured S3-compatible backend does not require this external callback.
 
 For step-by-step storage setup, see [Configure storage](./guide#configure-storage) in the deployment guide. For full details on self-hosted deployments, see the [Advanced Deployment](./advanced) guide. For the recommended cloud-based path, see the [Deployment Guide](./guide).
 
@@ -58,25 +106,40 @@ Fresco does not implement an additional application-layer encryption envelope on
 
 Authentication for the researcher dashboard is session-cookie based (cookies are HTTP-only and `Secure` when served over HTTPS). Passwords are hashed before storage. Each account uses one of two **mutually exclusive** primary sign-in methods, and never both at once:
 
-- **Password mode** — username and password, optionally protected by **TOTP-based two-factor authentication** (an authenticator app such as Google Authenticator, 1Password, or Authy). TOTP is the only second factor Fresco supports. Enrolling 2FA issues **10 single-use recovery codes** for use if the authenticator is lost.
+- **Password mode** — username and password, optionally protected by **TOTP-based two-factor authentication** (an authenticator app such as Google Authenticator, 1Password, or Authy). TOTP is the only second factor Fresco supports. Enrolling 2FA issues **10 single-use recovery codes** for use if the authenticator is lost. Passwords must be at least 8 characters and include a lowercase letter, an uppercase letter, a number, and a symbol.
 - **Passkey mode** — one or more registered WebAuthn passkeys (platform authenticators such as Touch ID or Windows Hello, or hardware security keys) and **no password**. A passkey is a complete password-free sign-in method, not a second factor layered on a password; passkey-mode accounts do not use TOTP.
 
 Other relevant properties:
 
 - **Multiple administrator accounts.** A first user is created during setup, and additional users can be added, removed, and managed from the settings screen. All accounts are equal administrators — there are no roles or permission tiers.
+- **Two-factor authentication can be required for every password account.** Setting the `REQUIRE_TWO_FACTOR` environment variable to `true` makes TOTP mandatory for every account that signs in with a password. It is an environment variable rather than a dashboard setting because all accounts are equal administrators: anything switchable from the dashboard could be switched off by any of them. An account without TOTP must complete enrollment immediately after its next password sign-in (or, for the first administrator of a new deployment, immediately after the setup wizard), before any dashboard page or session-authenticated request is served, and TOTP cannot be disabled on a password-mode account while the variable is set. An administrator can still reset a locked-out colleague's authentication; that account is required to enroll again at its next sign-in. Passkey-mode accounts are exempt: a passkey replaces the password entirely, and Fresco treats it as satisfying the requirement. Note that Fresco requests WebAuthn user verification but does not require it (`userVerification: 'preferred'`), so a passkey can authenticate on possession of the authenticator alone and is not guaranteed to involve a second factor; if your policy demands two distinct factors for every account, keep every account in password mode.
 - **Login rate limiting.** Failed login attempts are recorded (with username and source IP) and used to apply exponential back-off — this is the one place where IP addresses are persisted, and they are scoped to the auth flow only.
 
 There is still **no email-based "forgot password" flow**. Password changes are performed from inside an authenticated session. If all credentials and recovery codes for every account are lost and the database is inaccessible, the only recovery option is to reset the database, which destroys all data. We recommend storing credentials in an institutional password manager and enrolling more than one administrator.
 
 Participant-facing URLs do not require authentication; access is controlled by the unguessability of the per-participant URL. If your IRB requires stronger participant authentication, that should be layered externally (e.g. via SSO/IdP-protected URLs).
 
+## Does Fresco support single sign-on with our institutional identity provider?
+
+Not yet. Fresco's researcher accounts are local to the instance, and there is currently no SAML, OIDC, or Shibboleth integration, so researchers cannot sign in with an institutional username. Native single sign-on is something the project intends to add. If it is a condition of use at your institution, please contact [info@networkcanvas.com](mailto:info@networkcanvas.com) with your requirements (SAML or OIDC, and which identity provider) so that the implementation matches what institutions actually need.
+
+Until then, institutions whose policy requires institutional identity for internal applications have used a network-level mitigation. Because participants never sign in, the researcher-facing and participant-facing parts of Fresco live on different URL paths and can be treated differently at a reverse proxy or firewall:
+
+- Restrict the researcher surfaces to your institutional network or VPN: `/signin`, `/setup`, `/reset`, `/dashboard` together with everything beneath it (match the bare path as well as `/dashboard/…`; the site root redirects to it), and everything under `/api/` except the participant routes listed in the next point. The `/api/` restriction is what puts the researcher data endpoints behind the boundary: the session-authenticated routes the dashboard calls, such as `/api/export-interviews/` (streams complete interview exports), `/api/storage/` and `/api/generate-test-interviews`, and the read-only [Interview Data API](/en/analyze-data/fresco-api) under `/api/v1/`, which returns participant identifiers and complete interview records to any bearer-token holder. Each of those checks a Fresco credential, not the network, so a researcher with a valid session or token could otherwise reach them from anywhere. Reaching any of them then requires an institutional login to the network first.
+- Leave everything else reachable from the public Internet, since participants are usually not members of your institution. Implement this as a block list of the researcher paths above, not as an allow list of participant paths: an interview uses several application routes besides `/interview/` and `/onboard/`, including the static assets under `/_next/`, protocol media under `/api/assets/`, and the completion endpoint `/api/interviews/<id>/finish` that records a finished interview, and that set can change between releases. Exempt these participant and infrastructure routes from the `/api/` restriction so they stay reachable from the Internet: `/api/assets/` (protocol media), `/api/interviews/<id>/finish` (records a finished interview), `/api/uploadthing` if you use that storage backend, and `/api/health`, a liveness endpoint that returns service status, uptime, and the Fresco version to anyone who asks and can be restricted unless your platform's health probes rely on it. The unauthenticated surface a participant uses is then exactly: the pages under `/interview/` and `/onboard/`, the interview's own save endpoint `/interview/<id>/sync` (which accepts the participant's network using the URL's interview id as the capability, so it must stay open), the two participant API routes above, and the static assets under `/_next/`.
+
+`/api/uploadthing` is a partial exception worth naming explicitly. The same URL serves both the required public callback UploadThing's infrastructure calls after a file is stored, and the browser-initiated request a signed-in researcher's browser makes to request an upload slot — the SDK does not separate them at the URL level. Exempting the path from the restriction, as above, therefore also lets a researcher with a valid session initiate uploads from outside the institutional network; that request is still session-gated, just not network-gated. If your policy requires every researcher action to cross the institutional boundary, use a directly-configured S3-compatible bucket instead of UploadThing — that backend needs no public callback, and asset uploads go through `/api/storage/presign`, which the restriction above already covers.
+
+Fresco is designed to run behind a reverse proxy, so this is a supported topology, but test it with a real participant link from outside your network, through to the interview's completion screen, before collecting data. Combine it with two-factor authentication on every account rather than using it as a substitute.
+
 ## Does Fresco send data to third parties?
 
 Fresco itself does not transmit participant data to third parties. The following outbound calls do occur:
 
 - **Database and object-store requests** to the providers the researcher has configured. These are required for the app to function.
+- **Mapbox requests from the participant's browser** on protocols that use the Geospatial interface: map tiles are fetched from Mapbox during the stage, and anything the participant types into the interface's search box is sent to Mapbox's search API. This is a functional data flow, not telemetry, and it cannot be disabled while keeping the stage; factor it into your assessment when locations are sensitive, and note that Mapbox GL also sends its own usage telemetry to Mapbox. Protocols without a Geospatial stage make no Mapbox requests.
 - **GitHub API requests** to check for new releases. No identifiable data is sent.
-- **Optional anonymous usage and error analytics** via PostHog. These collect feature usage, error types, and performance metrics — no participant data is included. They can be disabled in the in-app Privacy settings, by setting the `DISABLE_ANALYTICS` environment variable to `true`, or by blocking the endpoint at the network layer.
+- **Optional anonymous usage and error analytics** via PostHog, routed through a relay endpoint operated by the project. These collect feature usage, error types, and performance metrics — no participant data is included. Error reports carry a stack trace and a route or field name for context, not interview identifiers: an interview id is the participant's access link, so the browser-side analytics strip it from page URLs before sending, server-side reports do not attach it, and the identifier that groups one interview's events together is a random per-session value generated in the browser rather than the interview id. PostHog's autocapture, which attaches the text of clicked elements to events, is switched off throughout Fresco, as it is in Interviewer and Architect, and any element data reaching the send path is dropped, so neither a participant's answers (such as the names they give to people) nor the participant identifiers and labels shown in the dashboard's tables can be captured as telemetry. Fresco reports only the usage events it emits explicitly. They can be disabled in the in-app Privacy settings, by setting the `DISABLE_ANALYTICS` environment variable to `true`, or by blocking the endpoint at the network layer.
 
 There are no third-party tracking pixels, advertising scripts, or analytics SDKs running in the participant interview experience.
 
@@ -96,12 +159,13 @@ At a minimum:
 
 - **Inbound HTTPS (port 443)** to the application server, so participants and researchers can reach the dashboard and interview URLs. If you are using UploadThing for asset storage, the `/api/uploadthing` endpoint must additionally be reachable from the public Internet to receive upload callbacks; this requirement does **not** apply when using a directly-configured S3-compatible backend.
 - **Outbound HTTPS** from the application server to the PostgreSQL host, the configured object-store endpoint, and (optionally) the GitHub API and the analytics endpoint.
+- **Outbound HTTPS from participants' and researchers' browsers to Mapbox**, only for protocols that use the Geospatial interface: map tiles, the search API, and Mapbox GL's telemetry are fetched by the browser, not the server. On an egress-restricted network that blocks Mapbox, Geospatial stages will not load; protocols without one need no Mapbox access.
 
 Fresco can run behind an institutional firewall or reverse proxy.
 
 ## Can Fresco be deployed entirely on institutional infrastructure?
 
-Yes. With the S3-compatible storage backend, every component — Next.js application, PostgreSQL database, and object store (e.g. MinIO) — can run inside your network with no required external dependency. The official `docker-compose.prod.yml` in the Fresco repository demonstrates this layout, bringing up Fresco, PostgreSQL, and MinIO together.
+Yes. With the S3-compatible storage backend, every component — Next.js application, PostgreSQL database, and object store (e.g. MinIO) — can run inside your network with no required external dependency on the server side. The one browser-side exception is the Geospatial interface, whose map tiles and search come from Mapbox (see [What network access does the deployment need?](#what-network-access-does-the-deployment-need)); a protocol without a Geospatial stage runs entirely within your network. The official `docker-compose.prod.yml` in the Fresco repository demonstrates this layout, bringing up Fresco, PostgreSQL, and MinIO together.
 
 External connectivity may still be useful for GitHub release checks and optional analytics, but neither is required for the app to function and both can be disabled or firewalled off.
 
@@ -130,15 +194,34 @@ Fresco includes an in-app activity feed, visible from the dashboard, that record
 
 Failed and successful login attempts are also stored with the source IP for the purpose of rate-limiting auth attempts. **Participant** IP addresses are not stored, and Fresco does not maintain a separate immutable audit log — the activity feed lives in the same application database and is not tamper-evident. If your institutional policy requires detailed or tamper-resistant audit logs, capture them at the hosting/reverse-proxy layer.
 
-## How are updates and security patches handled?
+## How are vulnerabilities and updates handled?
 
-Updates are the deployer's responsibility. The Network Canvas team does not push updates to deployed instances.
+The starting point is the one described under [Is Fresco a vendor product?](#is-fresco-a-vendor-product-who-may-use-it-and-on-what-terms) above: the project team maintains Fresco as open-source software, provided as is, and does not offer a contractual SLA or a formally defined remediation window. Within that model, the project applies the following due diligence.
 
-- New releases are announced on the [User Community](https://community.networkcanvas.com/).
+**How the code is kept secure:**
+
+- **Dependency monitoring.** Dependencies are monitored with GitHub Dependabot. Routine version updates are opened weekly; security (CVE) updates are opened immediately. The package manager additionally enforces a 24-hour minimum age on newly published dependency versions as a supply-chain guard, with a carve-out for security fixes.
+- **Continuous integration.** Every change goes through automated type checking, linting, and unit tests before it can be merged, end-to-end tests run for whichever apps the change affects, and releases are cut from the main branch with semantic versioning.
+- **Code and secret scanning.** GitHub code scanning (CodeQL) runs against the repository, and secret scanning with push protection is enabled.
+- **Automated review.** An automated code review and a separate automated security review run on every pull request, and every review thread must be resolved before a change can merge.
+- **Application hardening.** Fresco applies security headers (`Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options`, and a strict referrer policy), hashes passwords with scrypt, stores recovery codes and API tokens only as hashes, rate-limits login attempts, and requires TLS. A TOTP secret has to remain readable to verify codes, so it is stored in the database as-is: a copy of the database or a backup exposes the seed for future codes, which is one more reason to encrypt the database at rest (see [Is data encrypted at rest and in transit?](#is-data-encrypted-at-rest-and-in-transit)). The full security model is described in the [Fresco security policy](https://github.com/complexdatacollective/network-canvas-monorepo/blob/main/apps/fresco/SECURITY.md), maintained in the monorepo where Fresco is developed.
+
+**Reporting a vulnerability:** email [info@networkcanvas.com](mailto:info@networkcanvas.com). Please report privately rather than in a public issue. If a vulnerability in Fresco is confirmed, the project will disclose it responsibly alongside the fixed release.
+
+**Responsibilities and timeline:**
+
+- Only the latest release is maintained. Fixes, including security fixes, ship as new releases against the current version; the project does not backport to older versions except in exceptional circumstances. Run the latest version.
+- There is no contractual remediation window. In practice, security-relevant fixes are prioritised ahead of other work and typically ship as a patch release within hours or days of confirmation.
+- For the sites the project hosts (the website, documentation, Architect, Interviewer, the sandbox, and the forum), applying updates is the project's responsibility.
+- For a Fresco instance deployed by a research group, applying updates is the deployer's responsibility. The Network Canvas team does not push updates to deployed instances.
+
+**How deployers learn about and apply updates:**
+
+- New releases are announced on the [User Community](https://community.networkcanvas.com/), and Fresco checks GitHub for new releases and shows a notice on its Settings screen.
 - Fork-based deployments (the standard Netlify path) update by syncing the fork with the upstream repository, as described in the [Upgrade Guide](./upgrading). Docker deployments update by pulling the latest image and recreating the stack, as described in the [Advanced Deployment guide's updating section](./advanced#updating-fresco).
-- Docker images are tagged with both `latest` and `vX.Y.Z` semantic version tags, allowing pinning to a known version.
+- Docker images are tagged with both `latest` and the release's version number (for example `4.1.4`), allowing pinning to a known version.
 
-We recommend subscribing to release announcements and applying security-relevant updates promptly. Dependency vulnerabilities are tracked through GitHub's standard Dependabot tooling on the upstream repository.
+We recommend subscribing to release announcements and applying security-relevant updates promptly.
 
 ## How do backups work?
 
@@ -167,6 +250,6 @@ Participants and researchers use the latest versions of Chrome, Safari, or Firef
 
 ## Where can we get help with an institutional deployment?
 
-There is no commercial support contract for Fresco. Community support is available via the [User Community forum](https://community.networkcanvas.com/). For research collaborations or institutional engagements, contact the project team at [info@networkcanvas.com](mailto:info@networkcanvas.com).
+There is no commercial support contract for Fresco. Community support is available via the [User Community forum](https://community.networkcanvas.com/). For research collaborations, institutional engagements, or vendor-style assurances such as an SLA, contact the project team at [info@networkcanvas.com](mailto:info@networkcanvas.com) to discuss a subcontract or consultancy arrangement.
 
 The [Deployment Troubleshooting](./deployment-troubleshooting) article covers common deployment issues.

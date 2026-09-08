@@ -1,5 +1,6 @@
 'use client';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import {
@@ -8,6 +9,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import {
+  biologicalSexMessages,
   BIOLOGICAL_SEX_HINT,
   BIOLOGICAL_SEX_QUESTION,
 } from '../biologicalSexCopy';
@@ -34,13 +36,17 @@ export default function BiologicalSexField({
   subject = 'other',
   initialValue,
 }: BiologicalSexFieldProps) {
+  const intl = useAppIntl();
   return (
     <Field
       name={name}
-      label={BIOLOGICAL_SEX_QUESTION[subject]}
+      label={intl.formatMessage(BIOLOGICAL_SEX_QUESTION[subject])}
       component={RadioGroupField}
-      options={BIOLOGICAL_SEX_OPTIONS}
-      hint={BIOLOGICAL_SEX_HINT}
+      options={BIOLOGICAL_SEX_OPTIONS.map(({ value }) => ({
+        value,
+        label: intl.formatMessage(biologicalSexMessages[value]),
+      }))}
+      hint={intl.formatMessage(BIOLOGICAL_SEX_HINT)}
       required
       initialValue={initialValue}
     />
