@@ -582,6 +582,18 @@ jobs:
           pnpm --filter=@codaco/studio-client build
           pnpm --filter=@codaco/studio-server build
           pnpm --filter=@codaco/studio-server build:netlify
+      # Every other Storybook is built in CI as Chromatic's upload input
+      # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
+      # Builder has no Chromatic project by design, so without this step
+      # nothing ever runs its static build. `test:storybook` is not a
+      # substitute: it serves stories through Vite dev, where a broken autodocs
+      # block, a docgen failure or an unresolvable MDX import stays green and
+      # only the static build fails. Cached through turbo like the other
+      # build tasks, so it replays on the PRs that do not touch the package.
+      - name: Build the Protocol Builder Storybook
+        id: protocol_builder_storybook
+        continue-on-error: true
+        run: pnpm exec turbo run build-storybook --filter=@codaco/protocol-builder
       - name: Verify Studio telemetry opt-out and browser privacy
         id: studio-telemetry
         continue-on-error: true
@@ -606,6 +618,7 @@ jobs:
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PROTOCOL_BUILDER_STORYBOOK_OUTCOME: ${{ steps.protocol_builder_storybook.outcome }}
           STUDIO_TELEMETRY_OUTCOME: ${{ steps.studio-telemetry.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
         run: |
@@ -619,6 +632,7 @@ jobs:
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
+            "protocol-builder-storybook=$PROTOCOL_BUILDER_STORYBOOK_OUTCOME" \
             "studio-telemetry=$STUDIO_TELEMETRY_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
             echo "$result"

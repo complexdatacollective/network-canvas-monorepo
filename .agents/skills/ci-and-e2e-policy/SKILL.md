@@ -50,6 +50,14 @@ job uses its matching `CHROMATIC_PROJECT_TOKEN_FRESCO_UI`,
 `CHROMATIC_PROJECT_TOKEN_INTERVIEW`, or
 `CHROMATIC_PROJECT_TOKEN_INTERVIEWER` repository secret.
 
+`build-storybook` therefore runs in CI for those three as Chromatic's upload
+input, and for `@codaco/protocol-builder` — which has no Chromatic project — as
+its own `quality-support` step. `test:storybook` does not cover the static
+build: it serves stories through Vite dev, where a broken autodocs block, a
+docgen failure or an unresolvable MDX import passes and only `storybook build`
+fails. A workspace that gains a Storybook and no Chromatic project needs a step
+there too.
+
 Each project's `build-storybook` script must emit `preview-stats.json` with
 Storybook's `--stats-json` option. Its `chromatic` script uploads the prebuilt
 `storybook-static` directory with `--only-changed` and the correct
