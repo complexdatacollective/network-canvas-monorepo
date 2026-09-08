@@ -40,6 +40,7 @@ PostgreSQL 18 ran in the isolated `studio-registry-flow-pg` container on host po
 - Shared migration authoring/migrator plus Registry client/artifact tests: 4 files, 84 tests passed; the two PostgreSQL files were then run separately above.
 - Studio client: 22 files, 366 tests passed.
 - Focused UI route, shell, and catalogue tests: 3 files, 88 tests passed.
+- The actual Registry application, shared client, and PostgreSQL 18 completed a publish/read/fetch wire round trip. Studio's managed and self-hosted topology/ingress suites passed 53/53 alongside it.
 - Studio client/server builds passed. Studio client/server/RPC/sync typechecks passed.
 - `pnpm knip` and `pnpm check:changesets` passed.
 - Targeted `oxlint` and `oxfmt --check` passed for every changed flow file.
