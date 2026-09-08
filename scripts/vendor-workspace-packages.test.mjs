@@ -958,3 +958,39 @@ test('a build input that moved beneath an unchanged direct edge is vendored agai
     );
   });
 });
+
+// An npm alias records the real package in the edge's value — the compiler
+// is reached as `typescript: '@typescript/typescript6@6.0.2'`, and its own
+// `'@typescript/old': typescript@6.0.3` — so the walk must continue under the
+// real name, or everything beneath an alias is invisible to it.
+test('the walk follows npm aliases to the snapshot they name', () => {
+  inWorkspace(() => {
+    const closure = collectClosure(wsPackages, 'apps/app');
+    const graph = (oldVersion) =>
+      lock({
+        devImporters: {
+          'packages/ui': { typescript: '@typescript/typescript6@6.0.2' },
+        },
+        snapshots: {
+          "'@typescript/typescript6@6.0.2'": {
+            "'@typescript/old'": `typescript@${oldVersion}`,
+          },
+          [`typescript@${oldVersion}`]: {},
+        },
+      });
+    assert.deepEqual(
+      packagesChangedSince('app@4.0.0', closure, wsPackages, {
+        refLock: graph('6.0.3'),
+        headLock: graph('6.0.4'),
+      }),
+      ['@x/ui'],
+    );
+    assert.deepEqual(
+      packagesChangedSince('app@4.0.0', closure, wsPackages, {
+        refLock: graph('6.0.3'),
+        headLock: graph('6.0.3'),
+      }),
+      [],
+    );
+  });
+});

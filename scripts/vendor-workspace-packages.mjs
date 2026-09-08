@@ -129,6 +129,15 @@ function catalogEntriesChangedSince(ref) {
   return changed;
 }
 
+// The snapshot an edge resolves to. An edge's value is normally a version
+// (with its peer suffix), keyed under the dependency's own name; for an npm
+// alias — `typescript: '@typescript/typescript6@6.0.2'`, `'@typescript/old':
+// typescript@6.0.3` — it is the real package's `name@version`, and that is
+// the snapshot's key. A version never contains `@` before its peer suffix, so
+// one there means the value already names the package.
+const snapshotKey = (dep, version) =>
+  /^(@[^/]+\/)?[^@(]+@/.test(version) ? version : `${dep}@${version}`;
+
 // Every resolution an importer reaches, by full snapshot key: its own edges
 // and, through the lockfile's snapshots, everything those resolve to. Two
 // importers with identical direct edges still built with different tools if
@@ -138,14 +147,14 @@ function catalogEntriesChangedSince(ref) {
 function reachableResolutions(edges, importer) {
   const seen = new Set();
   const queue = [...(edges.importers.get(importer) ?? new Map())].map(
-    ([dep, version]) => `${dep}@${version}`,
+    ([dep, version]) => snapshotKey(dep, version),
   );
   while (queue.length) {
     const key = queue.pop();
     if (seen.has(key)) continue;
     seen.add(key);
     for (const [dep, version] of edges.snapshots.get(key) ?? new Map()) {
-      queue.push(`${dep}@${version}`);
+      queue.push(snapshotKey(dep, version));
     }
   }
   return seen;
