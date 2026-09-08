@@ -946,7 +946,43 @@ describe('what a family member form field’s attribute holds', () => {
     sections: <PedigreeNodeConfigurationSection />,
   });
 
-  it('creates a categorical field together with the values it offers', async () => {
+  /**
+   * A categorical attribute a form field may collect, already on the node
+   * type, offering the values the journey below authors by hand.
+   *
+   * `CheckboxGroup` is one of the two controls the schema lets a categorical
+   * be collected with; a control belonging to another type would make the
+   * variable invalid, and an entity definition is parsed whole, so the picker
+   * would then offer NONE of this node type's attributes rather than complain
+   * about this one.
+   */
+  const seedCategorical = (harness: StageEditorHarness): string => {
+    addFamilyMemberVariable(harness, 'seeded-household-role', {
+      name: 'household_role',
+      type: 'categorical',
+      component: 'CheckboxGroup',
+      options: [
+        { label: 'Parent', value: 'parent' },
+        { label: 'Sibling', value: 'sibling' },
+      ],
+    });
+    return 'seeded-household-role';
+  };
+
+  /**
+   * A date attribute a form field may collect, already on the node type,
+   * carrying the control its settings belong to and no settings of its own.
+   */
+  const seedDatetime = (harness: StageEditorHarness): string => {
+    addFamilyMemberVariable(harness, 'seeded-diagnosed-on', {
+      name: 'diagnosed_on',
+      type: 'datetime',
+      component: 'DatePicker',
+    });
+    return 'seeded-diagnosed-on';
+  };
+
+  it('creates a categorical attribute, with its values, from the field that collects it', async () => {
     const harness = renderStageEditor(openNodeConfig());
 
     await harness.user.click(
@@ -995,11 +1031,43 @@ describe('what a family member form field’s attribute holds', () => {
       ],
     });
 
-    // And the field is now bound to what was just created, so finishing the
-    // row records a question against it rather than against nothing.
+    // And the field is left collecting what was just created, so finishing the
+    // row would record a question against it rather than against nothing.
+    expect(field.getByRole('combobox', { name: 'Attribute' })).toHaveValue(
+      created[0],
+    );
+  });
+
+  /**
+   * The row's save, from a row collecting an attribute that already exists.
+   *
+   * Split from the journey above rather than run after it, because the two are
+   * separate subjects and the create journey is not cheap: two pickers, a
+   * name, two option rows and four typed fields, each keystroke a render of
+   * the open dialog. Paying for it again to reach the save made this the
+   * slowest test in the file, and the one nearest the 20s per-test timeout on
+   * a CI runner tens of times slower than a developer's machine — while the
+   * attribute this half needs is one the host can simply hand over.
+   *
+   * The control chosen is the OTHER one a categorical may be collected with,
+   * so this asserts a write: seeded as `CheckboxGroup`, a row that chose it
+   * would have asserted the value the codebook already held.
+   */
+  it('writes the control the row chose onto what it collects, with the field', async () => {
+    const harness = renderStageEditor(openNodeConfig());
+    const householdRole = seedCategorical(harness);
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new form field' }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      householdRole,
+    );
     await harness.user.selectOptions(
       await field.findByRole('combobox', { name: 'Input control' }),
-      'CheckboxGroup',
+      'ToggleButtonGroup',
     );
     await harness.user.type(
       field.getByRole('textbox', { name: 'Question text' }),
@@ -1009,11 +1077,20 @@ describe('what a family member form field’s attribute holds', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
+
+    // On the pedigree's OWN node type, beside the values the attribute already
+    // offered.
+    await waitFor(() =>
+      expect(familyMemberVariables(harness)[householdRole]).toMatchObject({
+        type: 'categorical',
+        component: 'ToggleButtonGroup',
+      }),
+    );
     expect(formRows(harness)).toEqual([
       { variable: 'fm_name', prompt: 'What do they go by?' },
       {
         id: expect.any(String) as unknown as string,
-        variable: created[0],
+        variable: householdRole,
         prompt: 'Q?',
       },
     ]);
@@ -1022,42 +1099,14 @@ describe('what a family member form field’s attribute holds', () => {
   it('writes a date field’s settings onto the attribute it collects', async () => {
     const harness = renderStageEditor(openNodeConfig());
 
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Create new form field' }),
-    );
-    const creating = within(await screen.findByRole('dialog'));
-    await harness.user.selectOptions(
-      creating.getByRole('combobox', { name: 'Attribute' }),
-      CREATE_NEW_ATTRIBUTE,
-    );
-    await harness.user.selectOptions(
-      await creating.findByRole('combobox', { name: 'Kind of answer' }),
-      'datetime',
-    );
-    await harness.user.type(
-      await creating.findByRole('textbox', { name: 'Attribute name' }),
-      'diagnosed_on',
-    );
-    await harness.user.selectOptions(
-      await creating.findByRole('combobox', { name: 'Input control' }),
-      'DatePicker',
-    );
-    await harness.user.type(
-      creating.getByRole('textbox', { name: 'Question text' }),
-      'Q?',
-    );
-    await harness.user.click(creating.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
+    // The attribute is seeded rather than invented: inventing one is the
+    // subject of the journey above, and only setup for a claim about the
+    // settings a control takes once the attribute exists. Seeded with the
+    // control those settings belong to, and with no settings of its own, so
+    // `parameters` below is a write rather than the value the seed held.
+    const diagnosedOn = seedDatetime(harness);
+    await addFormFieldCollecting(harness, diagnosedOn);
 
-    // Two steps, because the settings belong to an attribute: there is nothing
-    // to configure until the attribute exists, and it is the row's save that
-    // creates it.
-    const diagnosedOn = variableIdByName(harness, 'diagnosed_on');
-    if (diagnosedOn === undefined) {
-      throw new Error('the attribute was not created');
-    }
     const editing = await openFormField(harness, 1);
     await harness.user.click(
       await editing.findByRole('button', {
