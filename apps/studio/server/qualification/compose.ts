@@ -107,8 +107,9 @@ export async function localDeployment(label: string) {
       join(directory, 'qualification.yml'),
     ].join(':'),
   };
-  const edgeNetwork = `${project}-reserved-edge`;
-  let edgeReserved = false;
+  let qualificationSubnets:
+    | { edge: string; data: string; edgeIp: string }
+    | undefined;
   const origin = `http://127.0.0.1:${ports.web}`;
   async function execute(
     command: string,
@@ -216,30 +217,40 @@ export async function localDeployment(label: string) {
     return output.bootstrapToken;
   }
   async function overlay() {
-    if (!edgeReserved) {
-      // Docker owns address allocation. Atomically reserve a candidate instead
-      // of racing another qualification project or its auto-allocated /16.
-      for (let attempt = 0; attempt < 32; attempt++) {
-        const bytes = randomBytes(2);
-        const prefix = `172.${16 + (bytes[0]! % 16)}.${bytes[1]!}`;
-        const result = await execute(
-          'docker',
-          ['network', 'create', '--subnet', `${prefix}.0/24`, edgeNetwork],
-          { failure: true },
-        );
-        if (result.code === 0) {
-          environment.STUDIO_PROXY_SUBNET = `${prefix}.0/24`;
-          environment.STUDIO_PROXY_IP = `${prefix}.2`;
-          edgeReserved = true;
-          break;
-        }
-        if (!result.stderr.toString().includes('Pool overlaps'))
-          throw new Error(
-            `Cannot reserve a qualification network; evidence: ${log}`,
+    if (!qualificationSubnets) {
+      const selected = new Set<string>();
+      const selectSubnet = async (networkLabel: string) => {
+        // Ask Docker to validate a non-overlapping /24, then remove the probe.
+        // Compose must create the actual network so restore preflight can prove
+        // its resolved name is absent before touching a target.
+        for (let attempt = 0; attempt < 64; attempt++) {
+          const bytes = randomBytes(2);
+          const prefix = `172.${16 + (bytes[0]! % 16)}.${bytes[1]!}`;
+          if (selected.has(prefix)) continue;
+          const reservation = `${project}-reserved-${networkLabel}`;
+          const result = await execute(
+            'docker',
+            ['network', 'create', '--subnet', `${prefix}.0/24`, reservation],
+            { failure: true },
           );
-      }
-      if (!edgeReserved)
+          if (result.code === 0) {
+            await execute('docker', ['network', 'rm', reservation]);
+            selected.add(prefix);
+            return `${prefix}.0/24`;
+          }
+          if (!result.stderr.toString().includes('Pool overlaps'))
+            throw new Error(
+              `Cannot reserve a qualification network; evidence: ${log}`,
+            );
+        }
         throw new Error('No free qualification subnet was found.');
+      };
+      const edge = await selectSubnet('edge');
+      const data = await selectSubnet('data');
+      const edgeIp = edge.replace(/\.0\/24$/, '.2');
+      qualificationSubnets = { edge, data, edgeIp };
+      environment.STUDIO_PROXY_SUBNET = edge;
+      environment.STUDIO_PROXY_IP = edgeIp;
     }
     await writeFile(
       join(directory, 'probe.yml'),
@@ -280,23 +291,30 @@ export async function localDeployment(label: string) {
     ports: !reset []
 networks:
   edge: !override
-    external: true
-    name: ${edgeNetwork}
+    name: ${project}-edge
+    ipam:
+      config: [{subnet: ${qualificationSubnets.edge}}]
+  data:
+    ipam:
+      config: [{subnet: ${qualificationSubnets.data}}]
 `,
     );
   }
   async function pools() {
     const env = await configuration();
     const address = `127.0.0.1:${ports.db}/studio`;
-    const db = {
+    const appDb = {
       url: `postgresql://studio_runtime:${env.STUDIO_DATABASE_PASSWORD}@${address}`,
+    };
+    const maintenanceDb = {
+      url: `postgresql://studio_maintenance_runtime:${env.STUDIO_MAINTENANCE_DATABASE_PASSWORD}@${address}`,
     };
     const admin = new Pool({
       connectionString: `postgresql://postgres:${env.POSTGRES_PASSWORD}@${address}`,
       connectionTimeoutMillis: 10_000,
     });
-    const app = createPool(db);
-    const maintenance = createMaintenancePool(db);
+    const app = createPool(appDb);
+    const maintenance = createMaintenancePool(maintenanceDb);
     return {
       admin,
       app,
@@ -331,7 +349,6 @@ networks:
       failure: true,
       environment: { STUDIO_ENCRYPTION_FILE: '/dev/null' },
     });
-    if (edgeReserved) await execute('docker', ['network', 'rm', edgeNetwork]);
   }
   return {
     project,

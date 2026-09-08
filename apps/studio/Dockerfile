@@ -33,6 +33,11 @@ ENV HUSKY=0
 COPY --from=pruner /repo/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /repo/out/full/ .
+# Turbo's pruned workspace omits these shared build inputs because they are
+# outside both package roots. Copy the exact candidate bytes from the pruner
+# stage so the client and server Vite configurations resolve the same plugins.
+COPY --from=pruner /repo/apps/studio/scripts/telemetry-plugins.ts ./apps/studio/scripts/telemetry-plugins.ts
+COPY --from=pruner /repo/scripts/posthog-source-maps-plugin.ts ./scripts/posthog-source-maps-plugin.ts
 RUN pnpm --filter @codaco/studio-client build && pnpm --filter @codaco/studio-server build
 RUN pnpm --filter @codaco/studio-server deploy --prod --legacy /deploy
 

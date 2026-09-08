@@ -43,10 +43,34 @@ the fresh administrator initialization and explicit postrestore privilege file
 both establish the same reviewed boundary. The last value confirms all seven
 canonical migrations were present after restore.
 
-Building a new full Studio image for the broader Compose qualification stopped
-at the existing Docker pruning boundary: the pruned client context omitted
-`apps/studio/scripts/telemetry-plugins.ts`, so Vite could not resolve the import
-from `apps/studio/client/vite.config.ts`. This repair does not change that build
-path. The direct PostgreSQL drill and fake-executable controls above therefore
-qualify the restore mechanics while full rebuilt-image recovery remains a
-separate caller boundary.
+The first full Studio image build stopped at the Docker pruning boundary: the
+pruned client context omitted `apps/studio/scripts/telemetry-plugins.ts`, so
+Vite could not resolve the import from `apps/studio/client/vite.config.ts`. The
+follow-up Dockerfile repair copies that exact candidate file from the pruner
+stage into the builder. The same build then exposed the plugin's root-level
+`scripts/posthog-source-maps-plugin.ts` dependency, so the builder copies that
+exact candidate file as well. No ignored or host-generated source enters the
+build.
+
+The resulting local Linux/arm64 image was
+`sha256:2c0581bfa5ce796b6461062ba7c80547fb31212d4b769462110b9598a067e790`
+(`studio-pii-restore:6bf-telemetry-fix`). Its full populated Compose
+qualification passed in 92.34 seconds. That run configured the generated
+deployment, applied unchanged migrations 0001 through 0007 with distinct
+application and maintenance credentials, rejected an active-session backup,
+captured concurrent database and object-store writes, restored into a distinct
+empty project, and compared both database counts and two referenced object
+hashes. It also proved all three writer roles were `NOLOGIN` immediately after
+restore before opening a local canary-only validation window, and exercised
+missing and incorrect historical encryption keys.
+
+Two caller defects surfaced only in this full composition. The qualification
+pool helper still used the application credential for maintenance work after
+the split-login change; it now uses the two configured credentials. The backup
+script's key-verification command also replaced a caller's `COMPOSE_FILE`,
+which made Compose attempt to reconcile the active qualification networks and
+volumes. It now preserves the caller overlays and appends the dedicated
+encryption-verification service. These fixes do not perform authorization
+reconciliation or session invalidation, so this evidence remains a quarantined
+restore qualification rather than a production reactivation or published
+multi-platform image qualification.

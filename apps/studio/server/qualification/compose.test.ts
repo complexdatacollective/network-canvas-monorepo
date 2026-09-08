@@ -95,12 +95,12 @@ async function appendCurrentKeys(deployment: Deployment) {
     { mode: 0o600 },
   );
   await deployment.compose([
+    '-f',
+    'deployment/encryption.yml',
     'run',
     '--rm',
     '--no-deps',
-    'studio',
-    'encryption',
-    'verify',
+    'encryption-verify',
   ]);
   return keyset;
 }
@@ -351,12 +351,12 @@ it('installs an immutable built image, drains a populated backup and restores al
       'migrate',
     ]);
     await source.compose([
+      '-f',
+      'deployment/encryption.yml',
       'run',
       '--rm',
       '--no-deps',
-      'studio',
-      'encryption',
-      'verify',
+      'encryption-verify',
     ]);
     await source.compose(['up', '-d', 'studio', 'probe']);
     await source.ready();
@@ -458,7 +458,7 @@ it('installs an immutable built image, drains a populated backup and restores al
         { code: 'ENOENT' },
       );
       await outside.query(
-        'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN',
+        'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN',
       );
     } finally {
       outside.release();
@@ -712,6 +712,30 @@ it('installs an immutable built image, drains a populated backup and restores al
     ]);
     expect(restoredResult.stdout.toString()).toMatch(/Loaded image(?: ID)?:/);
     expect(await counts(restored)).toEqual({ ...baseline, refs: 2 });
+    const quarantinePools = await restored.pools();
+    try {
+      const roles = (
+        await quarantinePools.admin.query<{
+          rolname: string;
+          rolcanlogin: boolean;
+        }>(
+          "SELECT rolname, rolcanlogin FROM pg_roles WHERE rolname = ANY(ARRAY['studio_runtime', 'studio_maintenance_runtime', 'studio_migrator']) ORDER BY rolname",
+        )
+      ).rows;
+      expect(roles).toEqual([
+        { rolname: 'studio_maintenance_runtime', rolcanlogin: false },
+        { rolname: 'studio_migrator', rolcanlogin: false },
+        { rolname: 'studio_runtime', rolcanlogin: false },
+      ]);
+      // This local canary window is deliberately separate from restore. A real
+      // operator still has to reconcile authorization and invalidate sessions
+      // before reopening any writer identity.
+      await quarantinePools.admin.query(
+        'ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; ALTER ROLE studio_migrator LOGIN',
+      );
+    } finally {
+      await quarantinePools.close();
+    }
     const populatedRestore = await restored.execute(
       'sh',
       ['deployment/restore.sh', backup, custody],
@@ -719,7 +743,7 @@ it('installs an immutable built image, drains a populated backup and restores al
     );
     expect(populatedRestore.code).not.toBe(0);
     expect(populatedRestore.stderr.toString()).toContain(
-      'Restore requires an empty database',
+      'Restore refused: target Compose project or named volumes already exist',
     );
     expect(await counts(restored)).toEqual({ ...baseline, refs: 2 });
     const quarantine = [
@@ -734,8 +758,10 @@ it('installs an immutable built image, drains a populated backup and restores al
       '--images',
     ]);
     expect(
-      [...new Set(recoveredImages.stdout.toString().trim().split('\n'))].sort(),
-    ).toEqual([...imageIds].sort());
+      [
+        ...new Set(recoveredImages.stdout.toString().trim().split('\n')),
+      ].toSorted(),
+    ).toEqual([...imageIds].toSorted());
     for (const namespace of ['pii', 'integration', 'blindIndex'] as const) {
       const missing = structuredClone(historical);
       missing[namespace].keys = missing[namespace].keys.filter(
@@ -784,12 +810,12 @@ it('installs an immutable built image, drains a populated backup and restores al
     }
     await restored.compose([
       ...quarantine,
+      '-f',
+      'deployment/encryption.yml',
       'run',
       '--rm',
       '--no-deps',
-      'studio',
-      'encryption',
-      'verify',
+      'encryption-verify',
     ]);
     await restored.compose([...quarantine, 'up', '-d', 'studio', 'probe']);
     await restored.ready();
