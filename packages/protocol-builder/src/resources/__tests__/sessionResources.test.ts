@@ -16,6 +16,7 @@ import {
   SessionReadOnlyError,
   type CompoundSectionEdit,
   type FinishRequest,
+  type PendingCommandBatch,
   type ProtocolBuilderPresence,
   type StageFormDraft,
 } from '../../session.ts';
@@ -222,7 +223,9 @@ function createFixture(options: SessionFixtureOptions = {}) {
             return gateway.stageSecret(request);
           },
         };
-  const onCommands = vi.fn();
+  // Typed, so a test can read the batches a live-applying host was handed
+  // rather than only how many there were.
+  const onCommands = vi.fn<(batch: PendingCommandBatch) => void>();
   const onResourceCleanupFailed = vi.fn();
   let finishes = 0;
   const onFinish = vi.fn(
@@ -670,6 +673,117 @@ describe('a session that stages resources', () => {
     expect(
       session.getSnapshot().pendingCommands.map((batch) => batch.id),
     ).toEqual([1, 2, 3]);
+  });
+
+  /**
+   * What lets a hold go is the researcher's own removal being something the
+   * SESSION can say — not the file leaving.
+   *
+   * Emptying a picker is a form change; no batch says so until the save that
+   * flushes it. A batch handed to `onCommands` is the host's from that moment,
+   * so releasing the one that chose the file the instant it is discarded
+   * leaves the host holding a reference to bytes that will never exist — for
+   * good, or refused along with every batch behind it. Held instead, the whole
+   * run travels in the finish apply, which is where the removal arrives too.
+   */
+  it('holds a batch naming a discarded resource, which nothing has taken back', async () => {
+    const { onCommands, session } = createFixture();
+    const staged = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(staged.id) },
+    ]);
+    expect(onCommands).not.toHaveBeenCalled();
+
+    expectOk(await sessionGateway(session).discardStaged(staged.id));
+
+    // No finish will ever promote those bytes, and the draft still names them.
+    expect(onCommands).not.toHaveBeenCalled();
+    // Held, not lost: the researcher's own edit is still theirs to send.
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.id),
+    ).toEqual([1]);
+  });
+
+  it('lets the run go when the draft has already let the resource go', async () => {
+    const { onCommands, session } = createFixture();
+    const staged = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(staged.id) },
+    ]);
+    // The researcher moved off the file before discarding it, so the removal
+    // is in the session by the time the bytes go.
+    session.dispatch([{ op: 'set', key: 'items', value: [] }]);
+    expect(onCommands).not.toHaveBeenCalled();
+
+    expectOk(await sessionGateway(session).discardStaged(staged.id));
+
+    // Both edits travel, in the order they were made, and the host is left
+    // holding neither the reference nor the file.
+    expect(onCommands.mock.calls.map(([batch]) => batch.id)).toEqual([1, 2]);
+    // The hold is gone with them, so the next edit flows live again.
+    session.dispatch([{ op: 'set', key: 'title', value: 'Renamed' }]);
+    expect(onCommands).toHaveBeenCalledTimes(3);
+  });
+
+  /**
+   * The release is a PREFIX, so what it cannot let go keeps everything behind
+   * it waiting. Clearing the hold outright once anything went would let the
+   * batches made afterwards overtake the one still waiting, and a host that
+   * acknowledged one of those would drop the researcher's edit for good.
+   */
+  it('keeps holding the batches behind the last one it could release', async () => {
+    const { onCommands, session } = createFixture();
+    const first = await stageImage(session, 'first');
+    const second = await stageImage(session, 'second');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(first.id) },
+    ]);
+    session.dispatch([{ op: 'set', key: 'items', value: [] }]);
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(second.id) },
+    ]);
+    expect(onCommands).not.toHaveBeenCalled();
+
+    expectOk(await sessionGateway(session).discardStaged(second.id));
+    expectOk(await sessionGateway(session).discardStaged(first.id));
+
+    // The draft had let go of the first file before the second was chosen, so
+    // the two edits either side of that are the host's. The batch that named
+    // the second file is not: nothing has taken that reference back.
+    expect(onCommands.mock.calls.map(([batch]) => batch.id)).toEqual([1, 2]);
+
+    session.dispatch([{ op: 'set', key: 'title', value: 'Renamed' }]);
+    expect(onCommands.mock.calls.map(([batch]) => batch.id)).toEqual([1, 2]);
+  });
+
+  /**
+   * The carve-out, and the reason the question is asked against the base: a
+   * stage the protocol already holds can name a resource the manifest does not
+   * — a collaborator deleted it — and the host is holding that stage already.
+   * Refusing to release over it would hold this session's work back for the
+   * rest of the session, which is the very starvation the release exists to
+   * end.
+   */
+  it('lets go over a reference the stage the host holds already had', async () => {
+    const { onCommands, session } = createFixture({
+      fields: { ...informationFields, items: informationItems('deleted-item') },
+    });
+    const staged = await stageImage(session, 'first');
+    session.dispatch([
+      {
+        op: 'set',
+        key: 'items',
+        value: informationItems('deleted-item', staged.id),
+      },
+    ]);
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems('deleted-item') },
+    ]);
+    expect(onCommands).not.toHaveBeenCalled();
+
+    expectOk(await sessionGateway(session).discardStaged(staged.id));
+
+    expect(onCommands.mock.calls.map(([batch]) => batch.id)).toEqual([1, 2]);
   });
 
   it('delivers the withheld commands with the manifest in the finish apply', async () => {
