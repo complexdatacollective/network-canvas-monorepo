@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, within } from 'storybook/test';
 
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
@@ -412,4 +413,106 @@ export const AllColors: Story = {
       </div>
     </div>
   ),
+};
+
+/**
+ * The five scopes a theme variable can be declared in. A region carrying both
+ * studio and dark resolves to studio's dark block, which is why the pair is
+ * listed as one scope rather than two attributes.
+ */
+const THEME_SCOPES = [
+  { name: 'Default', attributes: {} },
+  { name: 'Default dark', attributes: { 'data-theme': 'dark' } },
+  { name: 'Studio', attributes: { 'data-theme-studio': '' } },
+  {
+    name: 'Studio dark',
+    attributes: { 'data-theme-studio': '', 'data-theme': 'dark' },
+  },
+  { name: 'Interview', attributes: { 'data-theme-interview': '' } },
+] as const;
+
+/**
+ * The destructive ink a tinted surface opts into, drawn in every theme.
+ *
+ * `--destructive-strong` is `--destructive` mixed toward the reader's own text
+ * colour until it is legible on a tinted surface, and BOTH of those are
+ * per-theme. A derived value like it has to be declared in each theme scope:
+ * written once in the `@theme` block its `var()`s are substituted against
+ * `:root` — the same trap the swatch component above is documented against —
+ * and every dark, studio and interview region inherits the default theme's
+ * one answer. It did: on the dark accent surface the error ink landed at
+ * 2.04:1, below the 3.44:1 of the plain `--destructive` it exists to improve
+ * on, where a mixture made in the dark scope reaches 4.63:1.
+ *
+ * Read as a swatch pair rather than described: the fill and the ink beside it,
+ * on the surface the ink is chosen for.
+ */
+export const DestructiveInkPerTheme: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  render: () => (
+    <div className="space-y-8">
+      <div>
+        <Heading level="h2" margin="none" className="mb-4">
+          Destructive ink per theme
+        </Heading>
+        <Paragraph margin="none" className="text-text/70 mb-6 text-sm">
+          Each row draws one theme’s <code>--destructive</code> fill and the{' '}
+          <code>--destructive-strong</code> ink a tinted surface opts into, both
+          on that theme’s accent surface.
+        </Paragraph>
+        <div className="space-y-4">
+          {THEME_SCOPES.map((scope) => (
+            <div key={scope.name} {...scope.attributes}>
+              <div
+                className="border-outline flex flex-col gap-2 rounded-lg border-2 p-4"
+                style={{ background: 'var(--surface-accent)' }}
+              >
+                <span
+                  className="text-xs font-medium"
+                  style={{ color: 'var(--surface-accent-contrast)' }}
+                >
+                  {scope.name}
+                </span>
+                <span
+                  data-testid={`fill-${scope.name}`}
+                  style={{ color: 'var(--destructive)' }}
+                >
+                  --destructive
+                </span>
+                <span
+                  data-testid={`ink-${scope.name}`}
+                  style={{ color: 'var(--destructive-strong)' }}
+                >
+                  --destructive-strong
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const inkOf = (scope: string) =>
+      getComputedStyle(canvas.getByTestId(`ink-${scope}`)).color;
+    const fillOf = (scope: string) =>
+      getComputedStyle(canvas.getByTestId(`fill-${scope}`)).color;
+
+    const defaultInk = inkOf('Default');
+
+    for (const scope of THEME_SCOPES) {
+      // The ink is a mixture, not the fill: a scope that lost the declaration
+      // altogether would fall back to nothing and paint the inherited colour.
+      await expect(inkOf(scope.name)).not.toBe(fillOf(scope.name));
+    }
+
+    // Every other scope declares a `--destructive`, a `--text`, or both that
+    // the default theme does not, so a mixture made where it is READ can never
+    // equal the default theme's. Equality here means the value was made once
+    // at `:root` and inherited — the whole failure this pins.
+    for (const scope of THEME_SCOPES.slice(1)) {
+      await expect(inkOf(scope.name)).not.toBe(defaultInk);
+    }
+  },
 };
