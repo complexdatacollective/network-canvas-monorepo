@@ -1,7 +1,8 @@
 import { fileURLToPath } from 'node:url';
 
-import { escapeIdentifier } from 'pg';
-import { expect, it } from 'vitest';
+import { escapeIdentifier, escapeLiteral } from 'pg';
+import type { PoolClient } from 'pg';
+import { expect, it, vi } from 'vitest';
 
 import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { templateBytesHash } from '@codaco/studio-sync/template-exchange';
@@ -32,6 +33,7 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
       `INSERT INTO registry_auth_verification(id, identifier, value, expires_at)
        VALUES ('restored-one-time', 'restored@example.test', 'one-time', statement_timestamp() + interval '5 minutes')`,
     );
+    await installation.closeRuntimePools();
     await installation.withAdministrator(async (administrator) => {
       await administrator.query(
         `ALTER ROLE ${escapeIdentifier(installation.logins.app)} NOLOGIN;
@@ -80,6 +82,89 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
   }
 });
 
+it.each([
+  'surviving-session',
+  'prepared-transaction',
+  'reopened-during-validation',
+])('refuses %s and preserves the original credentials', async (kind) => {
+  const installation = await createRegistryInstallation();
+  const fixture = await createRegistryFixture({}, installation);
+  let held: PoolClient | undefined;
+  const preparedName = `registry_recovery_${installation.databaseName}`;
+  let prepared = false;
+  try {
+    const migrations = await readMigrations(
+      fileURLToPath(new URL('../migrations', import.meta.url)),
+      'Template Registry',
+    );
+    await registryMigrator.migrate(
+      fixture.owner,
+      migrations,
+      REGISTRY_SCHEMA_FINGERPRINT,
+      installation.allowedLogins,
+    );
+    const account = await fixture.account('quarantine@example.test', true);
+    await fixture.published(account.token, 'Quarantined template');
+    await installation.closeRuntimePools();
+    await installation.withAdministrator((administrator) =>
+      administrator.query(
+        `ALTER ROLE ${escapeIdentifier(installation.logins.app)} NOLOGIN; ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
+      ),
+    );
+    if (kind === 'surviving-session') held = await fixture.owner.connect();
+    if (kind === 'prepared-transaction') {
+      await fixture.owner.query(
+        `BEGIN; SELECT 1; PREPARE TRANSACTION ${escapeLiteral(preparedName)}`,
+      );
+      prepared = true;
+    }
+    if (kind === 'reopened-during-validation') {
+      const get = fixture.blobs.get.bind(fixture.blobs);
+      vi.spyOn(fixture.blobs, 'get').mockImplementationOnce(async (hash) => {
+        await installation.withAdministrator((administrator) =>
+          administrator.query(
+            `ALTER ROLE ${escapeIdentifier(installation.logins.app)} LOGIN`,
+          ),
+        );
+        return get(hash);
+      });
+    }
+    await expect(
+      reconcileRegistryRecovery({
+        pool: fixture.owner,
+        backupPool: installation.backupPool,
+        blobs: fixture.blobs,
+        admission: { allowedLogins: installation.allowedLogins },
+        reconciliation: {
+          format: 'template-registry-recovery-reconciliation',
+          version: 1,
+          users: [
+            {
+              id: account.session.userId,
+              publisher: 'active',
+              operator: false,
+            },
+          ],
+        },
+      }),
+    ).rejects.toThrow('REGISTRY_RECOVERY_QUARANTINE_REQUIRED');
+    expect(
+      (
+        await fixture.owner.query(
+          'SELECT count(*)::int AS count FROM registry_credentials WHERE revoked_at IS NULL',
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+  } finally {
+    held?.release();
+    if (prepared)
+      await fixture.owner.query(
+        `ROLLBACK PREPARED ${escapeLiteral(preparedName)}`,
+      );
+    await fixture.dispose();
+  }
+});
+
 it('rolls back credential invalidation when restored artifact bytes fail verification', async () => {
   const installation = await createRegistryInstallation();
   const fixture = await createRegistryFixture({}, installation);
@@ -102,6 +187,13 @@ it('rolls back credential invalidation when restored artifact bytes fail verific
     fixture.objects.set(
       templateBytesHash(published.bytes),
       new Uint8Array([1]),
+    );
+    await installation.closeRuntimePools();
+    await installation.withAdministrator((administrator) =>
+      administrator.query(
+        `ALTER ROLE ${escapeIdentifier(installation.logins.app)} NOLOGIN;
+         ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
+      ),
     );
 
     await expect(
@@ -130,6 +222,53 @@ it('rolls back credential invalidation when restored artifact bytes fail verific
           (SELECT count(*)::integer FROM registry_credentials WHERE revoked_at IS NULL) AS credentials`)
       ).rows,
     ).toEqual([{ sessions: 1, credentials: 1 }]);
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+it('refuses recovery while an enrolled runtime can still reconnect', async () => {
+  const installation = await createRegistryInstallation();
+  const fixture = await createRegistryFixture({}, installation);
+  try {
+    const migrations = await readMigrations(
+      fileURLToPath(new URL('../migrations', import.meta.url)),
+      'Template Registry',
+    );
+    await registryMigrator.migrate(
+      fixture.owner,
+      migrations,
+      REGISTRY_SCHEMA_FINGERPRINT,
+      installation.allowedLogins,
+    );
+    const account = await fixture.account('still-serving@example.test', true);
+    await installation.closeRuntimePools();
+    await expect(
+      reconcileRegistryRecovery({
+        pool: fixture.owner,
+        backupPool: installation.backupPool,
+        blobs: fixture.blobs,
+        admission: { allowedLogins: installation.allowedLogins },
+        reconciliation: {
+          format: 'template-registry-recovery-reconciliation',
+          version: 1,
+          users: [
+            {
+              id: account.session.userId,
+              publisher: 'active',
+              operator: false,
+            },
+          ],
+        },
+      }),
+    ).rejects.toThrow('REGISTRY_RECOVERY_QUARANTINE_REQUIRED');
+    expect(
+      (
+        await fixture.owner.query(
+          'SELECT count(*)::int AS count FROM registry_credentials WHERE revoked_at IS NULL',
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
   } finally {
     await fixture.dispose();
   }

@@ -127,6 +127,24 @@ volumes and network. Managed deployment must use the required managed container
 platform. See `deployment/README.md` for credentials, provisioning, offline
 commands and the recovery boundary.
 
+Offline reconciliation runs `node dist/recover.js` with independently held
+`REGISTRY_RECOVERY_DATABASE_URL`, `REGISTRY_BACKUP_DATABASE_URL`, object-store
+settings and the complete login inventory. `REGISTRY_RECOVERY_RECONCILIATION_PATH`
+names a private regular JSON file of at most 16 MiB; its exact-byte SHA-256 is
+supplied separately as `REGISTRY_RECOVERY_RECONCILIATION_SHA256`. This is an
+operator-approved inventory, not a signature or evidence of who approved it.
+Its users must exactly match the restored users, with current publisher and
+operator permissions independently reconciled before running the command.
+
+All serving logins and other enrolled administrators remain NOLOGIN, except
+the connecting recovery operator; surviving target sessions and prepared
+transactions cause refusal. Recovery keeps that operator and its read-only
+backup connection pinned to the same live database. Permission observations use
+a read-committed backup transaction so reopening a login during validation is
+detected; the reconciliation itself remains serializable. Successful recovery
+revokes restored credentials and sessions and leaves service admission closed.
+Reopening admission is a separate operator action after private validation.
+
 ## Remaining issue integration
 
 Person-owned encrypted Studio account connections, audited immutable version
