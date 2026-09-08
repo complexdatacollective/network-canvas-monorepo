@@ -4,7 +4,8 @@ import { esIntl, readMessage } from '../../testing/i18n.ts';
 import {
   getSortOrderOptionGetter,
   MISSING_SORT_PROPERTY_MESSAGE,
-  orphanedSortProperties,
+  UNSORTABLE_SORT_PROPERTY_MESSAGE,
+  unusableSortProperties,
 } from '../sortOrderOptions.ts';
 
 /**
@@ -32,16 +33,38 @@ describe('sort-rule options, read in Spanish', () => {
 
   it('explains a dangling rule inside the option that carries it', () => {
     expect(
-      orphanedSortProperties(
+      unusableSortProperties(
         [{ property: 'nickname', direction: 'asc' }],
         [{ value: 'age', label: 'Age' }],
         esIntl,
       ),
     ).toEqual([
       {
-        value: 'nickname',
-        label: 'nickname — este atributo ya no está en el libro de códigos',
-        disabled: true,
+        option: {
+          value: 'nickname',
+          label: 'nickname — este atributo ya no está en el libro de códigos',
+          disabled: true,
+        },
+        message: MISSING_SORT_PROPERTY_MESSAGE,
+      },
+    ]);
+  });
+
+  it('explains an attribute nothing can be ordered by in the same place', () => {
+    expect(
+      unusableSortProperties(
+        [{ property: 'position', direction: 'asc' }],
+        [{ value: 'position', label: 'Posición', type: 'layout' }],
+        esIntl,
+      ),
+    ).toEqual([
+      {
+        option: {
+          value: 'position',
+          label: 'Posición — este atributo no se puede usar para ordenar',
+          disabled: true,
+        },
+        message: UNSORTABLE_SORT_PROPERTY_MESSAGE,
       },
     ]);
   });
@@ -51,6 +74,9 @@ describe('sort-rule options, read in Spanish', () => {
     // so this reads it exactly as `FormErrors` would.
     expect(readMessage(MISSING_SORT_PROPERTY_MESSAGE, esIntl)).toBe(
       'Esta regla apunta a un atributo que ya no está en el libro de códigos. Elige otro o elimina la regla.',
+    );
+    expect(readMessage(UNSORTABLE_SORT_PROPERTY_MESSAGE, esIntl)).toBe(
+      'Esta regla apunta a un atributo que no se puede usar para ordenar. Elige otro o elimina la regla.',
     );
   });
 });

@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { enIntl } from '../../testing/i18n.ts';
 import {
   getSortOrderOptionGetter,
+  MISSING_SORT_PROPERTY_MESSAGE,
   missingSortPropertyLabel,
-  orphanedSortProperties,
+  UNSORTABLE_SORT_PROPERTY_MESSAGE,
+  unusableSortProperties,
 } from '../sortOrderOptions.ts';
 
 describe('getSortOrderOptionGetter', () => {
@@ -194,7 +196,7 @@ describe('getSortOrderOptionGetter', () => {
  * an attribute must not make a collaborator's stage unopenable — so the
  * dangling reference is kept, and the editor is what has to say it is dangling.
  */
-describe('orphanedSortProperties', () => {
+describe('unusableSortProperties', () => {
   const properties = [
     { label: 'Name', type: 'text', value: 'name' },
     { label: 'Age', type: 'number', value: 'age' },
@@ -202,7 +204,7 @@ describe('orphanedSortProperties', () => {
 
   it('names the attributes the rules point at and the codebook has lost', () => {
     expect(
-      orphanedSortProperties(
+      unusableSortProperties(
         [
           { property: 'name', direction: 'asc' },
           { property: 'nickname', direction: 'desc' },
@@ -212,9 +214,12 @@ describe('orphanedSortProperties', () => {
       ),
     ).toEqual([
       {
-        value: 'nickname',
-        label: 'nickname — this attribute is no longer in the codebook',
-        disabled: true,
+        option: {
+          value: 'nickname',
+          label: 'nickname — this attribute is no longer in the codebook',
+          disabled: true,
+        },
+        message: MISSING_SORT_PROPERTY_MESSAGE,
       },
     ]);
   });
@@ -223,7 +228,7 @@ describe('orphanedSortProperties', () => {
     // Two rules naming the same missing id is a protocol nothing refuses, and
     // two identical options in one select is a control nobody can read.
     expect(
-      orphanedSortProperties(
+      unusableSortProperties(
         [
           { property: 'nickname', direction: 'asc' },
           { property: 'nickname', direction: 'desc' },
@@ -237,7 +242,7 @@ describe('orphanedSortProperties', () => {
   it('leaves the order-they-were-added-in key alone', () => {
     // `*` names no attribute, so it can never be missing from the codebook.
     expect(
-      orphanedSortProperties(
+      unusableSortProperties(
         [{ property: '*', direction: 'asc' }],
         properties,
         enIntl,
@@ -253,7 +258,7 @@ describe('orphanedSortProperties', () => {
    */
   it('reports nothing while the caller does not know its properties yet', () => {
     expect(
-      orphanedSortProperties(
+      unusableSortProperties(
         [{ property: 'nickname', direction: 'asc' }],
         undefined,
         enIntl,
@@ -269,16 +274,50 @@ describe('orphanedSortProperties', () => {
    */
   it('judges the rules against a subject with nothing to sort by', () => {
     expect(
-      orphanedSortProperties(
+      unusableSortProperties(
         [{ property: 'nickname', direction: 'asc' }],
         [],
         enIntl,
       ),
     ).toEqual([
       {
-        value: 'nickname',
-        label: 'nickname — this attribute is no longer in the codebook',
-        disabled: true,
+        option: {
+          value: 'nickname',
+          label: 'nickname — this attribute is no longer in the codebook',
+          disabled: true,
+        },
+        message: MISSING_SORT_PROPERTY_MESSAGE,
+      },
+    ]);
+  });
+
+  /**
+   * The other half of "cannot be pointed at", and the half the option getter
+   * decides: an attribute of a type nothing can be ordered by is filtered out
+   * of the offer, so a rule naming it renders blank. Counting it as a property
+   * in good standing left that blank cell with no refusal behind it, and the
+   * hidden rule saved itself straight back.
+   */
+  it('names an attribute the offer filters out, in its own words', () => {
+    expect(
+      unusableSortProperties(
+        [{ property: 'position', direction: 'asc' }],
+        [
+          ...properties,
+          { label: 'Position', type: 'layout', value: 'position' },
+        ],
+        enIntl,
+      ),
+    ).toEqual([
+      {
+        option: {
+          value: 'position',
+          // Named as the codebook names it: the attribute is still there to be
+          // found, unlike a deleted one, whose id is all that is left of it.
+          label: 'Position — this attribute cannot be used to sort',
+          disabled: true,
+        },
+        message: UNSORTABLE_SORT_PROPERTY_MESSAGE,
       },
     ]);
   });
@@ -291,6 +330,6 @@ describe('orphanedSortProperties', () => {
     ['a row that is not an object', ['nickname']],
     ['a property cleared back to empty', [{ property: '', direction: 'asc' }]],
   ])('reports nothing for %s', (_label, rules) => {
-    expect(orphanedSortProperties(rules, properties, enIntl)).toEqual([]);
+    expect(unusableSortProperties(rules, properties, enIntl)).toEqual([]);
   });
 });

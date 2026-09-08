@@ -3327,6 +3327,14 @@
     "defaultMessage": "Property",
     "description": "Visible text and accessible name of the column of a sort rule that chooses what the rule sorts by — an attribute of the node, or one of the orders the interview itself can supply."
   },
+  "protocolBuilder.sortOrder.unsortableProperty": {
+    "defaultMessage": "{property} — this attribute cannot be used to sort",
+    "description": "Label of the only choice left standing for a sort rule that names an attribute nothing can be put in order by — a node’s position on the canvas, say. property is the attribute’s name as the codebook gives it. Rendered inside a plain dropdown option, which can carry no styling, so the explanation is part of the label."
+  },
+  "protocolBuilder.sortOrder.unsortablePropertyRefusal": {
+    "defaultMessage": "This rule points at an attribute that cannot be used to sort. Choose another or delete the rule.",
+    "description": "Shown above a prompt’s sort rules when one of them names an attribute that is still in the codebook but holds nothing one network member can be put ahead of another by. Names both ways out, because the rule looks complete and is not."
+  },
   "protocolBuilder.stageName.documentation": {
     "defaultMessage": "Documentation",
     "description": "Link to the documentation for this type of interview interface."
