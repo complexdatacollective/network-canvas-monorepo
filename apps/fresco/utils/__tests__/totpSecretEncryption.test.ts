@@ -234,6 +234,23 @@ describe('resolveTotpKeyMaterials', () => {
     ).toThrow(/TOTP_ENCRYPTION_KEY is required/);
   });
 
+  it('prefers a ?password= query parameter, as the pg driver does', () => {
+    expect(
+      resolveTotpKeyMaterials({
+        overrideKey: undefined,
+        databaseUrl:
+          'postgres://postgres:ignored-by-driver@postgres:5432/postgres?password=from%20query',
+      }),
+    ).toEqual(['from query']);
+    expect(
+      resolveTotpKeyMaterials({
+        overrideKey: undefined,
+        databaseUrl:
+          'postgres://postgres@postgres:5432/postgres?password=only-here',
+      }),
+    ).toEqual(['only-here']);
+  });
+
   it('keeps a password with a stray percent sign rather than discarding it', () => {
     expect(
       resolveTotpKeyMaterials({

@@ -135,19 +135,27 @@ export function resolveTotpKeyMaterials({
   return [password];
 }
 
-/** The password component of a connection URL, decoded; empty when absent. */
+/**
+ * The password the database driver will actually use, decoded; empty when
+ * absent. `pg` (behind `PrismaPg`) lets a `?password=` query parameter take
+ * precedence over the userinfo password, so this does the same: keying on a
+ * userinfo value the driver ignores would seal rows under a credential that
+ * can be removed without anyone noticing.
+ */
 function databasePassword(databaseUrl: string): string {
-  let password: string;
+  let url: URL;
   try {
-    password = new URL(databaseUrl).password;
+    url = new URL(databaseUrl);
   } catch {
     return '';
   }
+  const fromQuery = url.searchParams.get('password');
+  if (fromQuery) return fromQuery;
   try {
-    return decodeURIComponent(password);
+    return decodeURIComponent(url.password);
   } catch {
     // A stray percent sign: the raw value is still stable and secret.
-    return password;
+    return url.password;
   }
 }
 
