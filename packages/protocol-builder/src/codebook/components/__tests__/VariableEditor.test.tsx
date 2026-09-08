@@ -2679,6 +2679,103 @@ describe('the two answers a boolean offers', () => {
       ],
     });
   });
+
+  /**
+   * The same drop the update path makes, on the way in.
+   *
+   * A create draft reaches this editor from the row that authored it, so a
+   * researcher who names two answers beside `Boolean` and then moves the
+   * control to `Toggle` arrives here carrying a pair the toggle's strict
+   * schema has no key for. The toggle renders no answer fields, so there is
+   * nothing to clear them with — a draft that submitted them as authored
+   * would be refused with no way out of the refusal, and the attribute could
+   * never be created at all.
+   */
+  it('drops the answers a create draft carried to a toggle', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    render(
+      <VariableEditor
+        {...createProps({
+          variableId: 'flagged',
+          initialDraft: {
+            name: 'flagged',
+            type: 'boolean',
+            component: 'Toggle',
+            options: [
+              { label: 'Yes', value: true },
+              { label: 'No', value: false, negative: true },
+            ],
+          },
+          onSubmitRequest,
+        })}
+      />,
+    );
+
+    expect(
+      screen.queryByRole('textbox', { name: 'Label for “true”' }),
+    ).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Create attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    const request = onSubmitRequest.mock.calls[0]?.[0] as CompoundEditRequest;
+    const created = submittedVariables(request).flagged;
+    if (!isRecord(created)) throw new Error('the attribute was not submitted');
+    expect(Object.hasOwn(created, 'options')).toBe(false);
+    expect(created).toEqual({
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Toggle',
+    });
+  });
+
+  /**
+   * And only where the control cannot show them: a create draft that reaches
+   * this editor already holding the pair `Boolean` renders keeps it, whether
+   * or not the researcher touches the fields.
+   */
+  it('creates a boolean with the answers its draft already carried', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    render(
+      <VariableEditor
+        {...createProps({
+          variableId: 'flagged',
+          initialDraft: {
+            name: 'flagged',
+            type: 'boolean',
+            component: 'Boolean',
+            options: [
+              { label: 'Yes', value: true },
+              { label: 'No', value: false, negative: true },
+            ],
+          },
+          onSubmitRequest,
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+    ).toHaveValue('Yes');
+    await user.click(screen.getByRole('button', { name: 'Create attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    const request = onSubmitRequest.mock.calls[0]?.[0] as CompoundEditRequest;
+    expect(submittedVariables(request).flagged).toEqual({
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false, negative: true },
+      ],
+    });
+  });
 });
 
 /**
