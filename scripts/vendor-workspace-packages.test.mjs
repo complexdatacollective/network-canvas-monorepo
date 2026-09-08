@@ -605,12 +605,14 @@ test('lockfile edges parse importers and snapshots, dropping peer suffixes', () 
       },
     }),
   );
-  assert.equal(importers.get('apps/app').get('next'), '15.5.0');
+  // Values keep their peer suffix too: a move to another peer context is a
+  // different resolution.
+  assert.equal(importers.get('apps/app').get('next'), '15.5.0(react@19.2.8)');
   assert.equal(
     importers.get('apps/app').get('@x/ui'),
     'link:../../packages/ui',
   );
-  // Snapshot identity keeps the peer context; only the values drop it.
+  // Snapshot identity keeps the peer context as well.
   assert.equal(
     snapshots.get('next@15.5.0(react@19.2.8)').get('@next/env'),
     '15.5.0',
@@ -785,4 +787,50 @@ test('a closure package is checked in every peer context the mirror holds it in'
       }),
     /@x\/ui@file:vendor\/x-ui-1\.0\.0\.tgz\(react@16\.14\.0\) → foo/,
   );
+});
+
+test('an edge that moved only to another peer context is still a change to carry', () => {
+  assert.throws(
+    () =>
+      assertBranchResolutionsCarried({
+        ...graphArgs,
+        refLock: lock({
+          importers: { 'apps/app': { foo: '1.0.0(peer@1.0.0)' } },
+        }),
+        headLock: lock({
+          importers: { 'apps/app': { foo: '1.0.0(peer@2.0.0)' } },
+        }),
+        mirrorLock: lock({ importers: { '.': { foo: '1.0.0(peer@1.0.0)' } } }),
+      }),
+    /apps\/app → foo: the branch resolves 1\.0\.0\(peer@2\.0\.0\); the image would keep 1\.0\.0\(peer@1\.0\.0\)/,
+  );
+});
+
+// The mirror reads a few catalog entries on the app's behalf; a re-pin of one
+// of those is carried although no workspace manifest names it.
+test('a re-pin of a catalog entry the mirror itself consumes explains a lockfile change', () => {
+  inWorkspace((root) => {
+    writeFileSync(
+      join(root, 'pnpm-lock.yaml'),
+      "lockfileVersion: '9.0'\n# re-pin\n",
+    );
+    writeFileSync(
+      join(root, 'pnpm-workspace.yaml'),
+      "packages:\n  - 'packages/*'\ncatalog:\n  redux: 2.0.0\n  lodash: 4.1.0\n",
+    );
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'bump lodash, which only the mirror uses');
+    const closure = collectClosure(wsPackages, 'apps/app');
+    assert.throws(() =>
+      assertSpecifierDrivenChanges(
+        'app@4.0.0',
+        'apps/app',
+        closure,
+        wsPackages,
+      ),
+    );
+    assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', closure, wsPackages, {
+      mirrorCatalogEntries: ['lodash'],
+    });
+  });
 });

@@ -228,13 +228,20 @@ function workspacePolicyOutsideCatalog(ref) {
 // `pnpm` block) of a workspace manifest, or a re-pin of a default catalog
 // entry some workspace manifest consumes. What it does not carry: a version
 // bump (every hotfix makes one and it resolves nothing), a catalog entry
-// nothing in the closure consumes, a manifest outside the app and its
+// nothing in the closure consumes (unless the mirror itself reads it — see
+// `mirrorCatalogEntries`), a manifest outside the app and its
 // closure, and everything in pnpm-workspace.yaml outside the
 // catalog — root overrides included — since the mirror's policy is seeded
 // from the released mirror's own. A branch whose only dependency change is
 // one of those is refused with the way to make it a change the mirror
 // carries.
-export function assertSpecifierDrivenChanges(ref, appDir, closure, wsPackages) {
+export function assertSpecifierDrivenChanges(
+  ref,
+  appDir,
+  closure,
+  wsPackages,
+  { mirrorCatalogEntries = [] } = {},
+) {
   const changed = (paths) => {
     const result = spawnSync(
       'git',
@@ -270,6 +277,10 @@ export function assertSpecifierDrivenChanges(ref, appDir, closure, wsPackages) {
     if (specifiersAt(ref, path) !== specifiersAt('HEAD', path)) return;
   }
   const changedCatalog = catalogEntriesChangedSince(ref);
+  // Entries the mirror reads from the catalog on the app's behalf — a
+  // synthesized devDependency, a catalog-backed override — are carried
+  // without any manifest naming them.
+  if (mirrorCatalogEntries.some((entry) => changedCatalog.has(entry))) return;
   if (changedCatalog.size) {
     for (const path of manifests) {
       if (!existsSync(join(repoRoot(), path))) continue;
@@ -301,19 +312,15 @@ export function assertSpecifierDrivenChanges(ref, appDir, closure, wsPackages) {
 // its full key — `name@version` PLUS its peer suffix, since one version
 // resolved against two peer contexts is two graphs, and merging them would
 // let one context's edge answer for the other's), the dependency name →
-// resolved version (peer suffix dropped) it was locked to. Edges, not a flat set of
+// resolved version it was locked to, peer suffix included: a resolution
+// that moved only to another peer context is still a different resolution. Edges, not a flat set of
 // versions: a move from `foo@1` to `foo@2` where some other workspace already
 // used `foo@2` changes no version set, but it changes an edge.
-const withoutPeerSuffix = (spec) => {
-  const paren = spec.indexOf('(');
-  return paren === -1 ? spec : spec.slice(0, paren);
-};
 const unquote = (key) => key.replace(/^'(.*)'$/, '$1');
 
 export function lockfileEdges(lockfile) {
   const importers = new Map();
   const snapshots = new Map();
-  const base = withoutPeerSuffix;
   let section = null;
   let key = null;
   let field = null;
@@ -337,7 +344,7 @@ export function lockfileEdges(lockfile) {
       } else if (indent === 8 && key !== null && dep !== null) {
         const match = /^version:\s*(.+)$/.exec(text);
         if (match && /dependencies$/i.test(field ?? '')) {
-          importers.get(key).set(dep, base(unquote(match[1])));
+          importers.get(key).set(dep, unquote(match[1]));
         }
       }
     } else if (section === 'snapshots') {
@@ -353,7 +360,7 @@ export function lockfileEdges(lockfile) {
       ) {
         const match = /^('?[^']+?'?):\s*(.+)$/.exec(text);
         if (match) {
-          snapshots.get(key).set(unquote(match[1]), base(unquote(match[2])));
+          snapshots.get(key).set(unquote(match[1]), unquote(match[2]));
         }
       }
     }

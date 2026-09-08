@@ -282,6 +282,15 @@ const CATALOG_BACKED_OVERRIDES = [
   ['postcss', 'postcss'],
 ];
 
+// Every catalog entry the mirror reads on the app's behalf: the override
+// values above, and the ts-reset devDependency `vendorSharedTsconfig` adds to
+// the staged manifest. A hotfix that re-pins one of these is carried even
+// though no workspace manifest names it.
+const MIRROR_CATALOG_ENTRIES = [
+  ...CATALOG_BACKED_OVERRIDES.map(([, entry]) => entry),
+  '@total-typescript/ts-reset',
+];
+
 // A seeded (released) policy with its catalog-backed override values brought
 // to THIS tree's catalog. pnpm applies an override over a direct specifier,
 // so without this a hotfix that re-pins, say, postcss in the catalog would
@@ -671,7 +680,9 @@ function stage({
     }
     const wsPackages = readWorkspacePackages();
     const closure = collectClosure(wsPackages, app);
-    assertSpecifierDrivenChanges(vendorChangedSince, app, closure, wsPackages);
+    assertSpecifierDrivenChanges(vendorChangedSince, app, closure, wsPackages, {
+      mirrorCatalogEntries: MIRROR_CATALOG_ENTRIES,
+    });
     const changed = packagesChangedSince(
       vendorChangedSince,
       closure,
