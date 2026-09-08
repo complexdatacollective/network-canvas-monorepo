@@ -12,9 +12,9 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { chromium } from '@playwright/test';
-
 import { POSTHOG_APP_PROPS } from '@codaco/shared-consts';
+
+import { launchKernelObservedChromium } from './telemetry-kernel-browser.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const serverRoot = resolve(root, '../server');
@@ -51,12 +51,24 @@ await writeFile(
   preload,
   `globalThis.fetch = async () => { process.send({ type: 'unexpected-server-egress' }); throw new Error('Test refuses server egress'); };`,
 );
-const browser = await chromium.launch({ headless: true });
+const kernelImage = process.env.STUDIO_TELEMETRY_KERNEL_IMAGE;
+assert(
+  kernelImage,
+  'Kernel browser qualification requires the built Studio image.',
+);
+const serverPorts = await Promise.all(Array.from({ length: 4 }, () => port()));
+const kernel = await launchKernelObservedChromium({
+  image: kernelImage,
+  serverPorts,
+  scratch,
+});
+const browser = kernel.browser;
+let serverPortIndex = 0;
 try {
   for (const mode of ['managed', 'self-hosted']) {
     for (const enabled of [false, true]) {
-      const serverPort = await port();
-      const origin = `http://127.0.0.1:${serverPort}`;
+      const serverPort = serverPorts[serverPortIndex++];
+      const origin = kernel.origin(serverPort);
       const child = spawn(
         process.execPath,
         ['--import', preload, join(serverRoot, 'dist/index.js')],
@@ -65,7 +77,7 @@ try {
           env: {
             PATH: process.env.PATH,
             NODE_ENV: 'production',
-            HOST: '127.0.0.1',
+            HOST: '0.0.0.0',
             PORT: String(serverPort),
             CLIENT_DIST: join(root, 'dist'),
             STUDIO_DEPLOYMENT_MODE: mode,
@@ -114,6 +126,10 @@ try {
           headers: await request.allHeaders(),
           body: request.postData(),
         });
+        // The internal browser network has no route to the Internet. In the
+        // off cases, continue the request so the kernel observer sees any
+        // attempted TCP, UDP or DNS path instead of hiding it in Playwright.
+        if (!enabled) return route.continue();
         await route.fulfill({
           status: 200,
           headers: {
@@ -404,8 +420,17 @@ try {
       }
     }
   }
-  process.stdout.write(`${JSON.stringify({ passed: true, cases: results })}\n`);
+  await kernel.assertQuiet();
+  await kernel.proveExternalLookalike();
+  process.stdout.write(
+    `${JSON.stringify({
+      passed: true,
+      kernelNetworkObserved: true,
+      browserTransports: ['tcp', 'udp'],
+      cases: results,
+    })}\n`,
+  );
 } finally {
-  await browser.close();
+  await kernel.close();
   await rm(scratch, { recursive: true, force: true });
 }
