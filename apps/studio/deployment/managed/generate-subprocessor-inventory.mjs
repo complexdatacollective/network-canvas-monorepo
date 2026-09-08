@@ -28,188 +28,30 @@ const terraformSources = await Promise.all(
   ]),
 );
 const terraform = terraformSources.map(([, text]) => text).join('\n');
-const knownResourceTypes = new Set([
-  'cloudflare_r2_bucket',
-  'crunchybridge_cluster',
-  'aws_kms_key',
-  'aws_kms_alias',
-  'b2_bucket',
-]);
-const knownDataTypes = new Set([
-  'crunchybridge_cloudprovider',
-  'aws_caller_identity',
-  'aws_iam_session_context',
-]);
-const knownProviderNames = new Set([
-  'aws',
-  'b2',
-  'cloudflare',
-  'crunchybridge',
-]);
-
-function matchingBrace(text, opening) {
-  let depth = 0;
-  let quote = false;
-  let escaped = false;
-  let lineComment = false;
-  let blockComment = false;
-  for (let index = opening; index < text.length; index += 1) {
-    const character = text[index];
-    const next = text[index + 1];
-    if (lineComment) {
-      if (character === '\n') lineComment = false;
-      continue;
-    }
-    if (blockComment) {
-      if (character === '*' && next === '/') {
-        blockComment = false;
-        index += 1;
-      }
-      continue;
-    }
-    if (!quote && character === '#') {
-      lineComment = true;
-      continue;
-    }
-    if (!quote && character === '/' && next === '/') {
-      lineComment = true;
-      index += 1;
-      continue;
-    }
-    if (!quote && character === '/' && next === '*') {
-      blockComment = true;
-      index += 1;
-      continue;
-    }
-    if (character === '"' && !escaped) quote = !quote;
-    escaped = quote && character === '\\' && !escaped;
-    if (quote) continue;
-    if (character === '{') depth += 1;
-    if (character === '}' && --depth === 0) return index;
-  }
-  throw new Error('Managed Terraform configuration has an unterminated block.');
-}
-
-function hclBlocks(text) {
-  const blocks = [];
-  const header =
-    /\b(terraform|provider|resource|data)\s*(?:"([a-zA-Z0-9_-]+)")?\s*(?:"([a-zA-Z0-9_-]+)")?\s*\{/g;
-  for (const match of text.matchAll(header)) {
-    const opening = match.index + match[0].lastIndexOf('{');
-    blocks.push({
-      kind: match[1],
-      first: match[2],
-      second: match[3],
-      body: text.slice(opening + 1, matchingBrace(text, opening)),
-    });
-  }
-  return blocks;
-}
-
-function topLevelAssignments(body) {
-  const assignments = [];
-  let depth = 0;
-  let quote = false;
-  let escaped = false;
-  const assignment = /([a-zA-Z_][a-zA-Z0-9_-]*)\s*=\s*/y;
-  for (let index = 0; index < body.length; index += 1) {
-    const character = body[index];
-    if (character === '"' && !escaped) quote = !quote;
-    escaped = quote && character === '\\' && !escaped;
-    if (quote) continue;
-    if (character === '{') depth += 1;
-    else if (character === '}') depth -= 1;
-    if (depth === 0) {
-      assignment.lastIndex = index;
-      const match = assignment.exec(body);
-      if (match) {
-        assignments.push(match[1]);
-        index = assignment.lastIndex - 1;
-      }
-    }
-  }
-  return assignments;
-}
-
-const hcl = terraformSources
-  .filter(([file]) => file.endsWith('.tf'))
-  .flatMap(([file, text]) =>
-    hclBlocks(text).map((block) => ({ file, ...block })),
-  );
-const providersInHcl = hcl
-  .filter(({ kind }) => kind === 'provider')
-  .map(({ first }) => first);
-const resourcesInHcl = hcl
-  .filter(({ kind }) => kind === 'resource')
-  .map(({ first }) => first);
-const dataInHcl = hcl
-  .filter(({ kind }) => kind === 'data')
-  .map(({ first }) => first);
-if (
-  providersInHcl.some((name) => !knownProviderNames.has(name)) ||
-  resourcesInHcl.some((name) => !knownResourceTypes.has(name)) ||
-  dataInHcl.some((name) => !knownDataTypes.has(name))
-)
+const manifest = JSON.parse(
+  await readFile(join(root, 'estate-config-manifest.json'), 'utf8'),
+);
+const manifestFiles = Object.keys(manifest.files).toSorted();
+const actualConfigFiles = terraformFiles
+  .concat([
+    'candidate-sizing.json',
+    'cost-input.example.json',
+    'terraform.tfvars.example',
+  ])
+  .toSorted();
+if (JSON.stringify(manifestFiles) !== JSON.stringify(actualConfigFiles))
   throw new Error(
-    'Managed Terraform provider/resource inventory differs from the reviewed estate.',
+    'Managed estate configuration files differ from the reviewed manifest.',
   );
-const rootAssignments = hcl
-  .filter(({ kind }) => kind === 'terraform')
-  .flatMap(({ body }) => topLevelAssignments(body));
-if (
-  rootAssignments.some(
-    (name) => !['required_version', 'required_providers'].includes(name),
-  )
-)
-  throw new Error(
-    'Managed Terraform configuration contains an unsupported top-level declaration.',
-  );
-const inlineTopLevelAssignments = terraformSources
-  .filter(([file]) => file.endsWith('.tf'))
-  .flatMap(
-    ([, text]) => text.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)\s*=\s*\{/gm) ?? [],
-  )
-  .map((line) => line.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)/)?.[1])
-  .filter(Boolean);
-if (inlineTopLevelAssignments.some((name) => name !== 'terraform'))
-  throw new Error(
-    'Managed Terraform configuration contains an unsupported top-level declaration.',
-  );
-const requiredProviderNames = hcl
-  .filter(({ kind }) => kind === 'terraform')
-  .flatMap(({ body }) =>
-    [
-      ...body.matchAll(
-        /\b([a-zA-Z_][a-zA-Z0-9_-]*)\s*=\s*\{[^{}]*\bsource\s*=\s*"[^"]+"/g,
-      ),
-    ].map((match) => match[1]),
-  );
-if (requiredProviderNames.some((name) => !knownProviderNames.has(name)))
-  throw new Error(
-    'Managed Terraform provider inventory differs from the reviewed estate.',
-  );
-for (const [, text] of terraformSources.filter(([file]) =>
-  file.endsWith('.tf.json'),
-)) {
-  const parsed = JSON.parse(text);
-  if (
-    Object.keys(parsed.provider ?? {}).some(
-      (name) => !knownProviderNames.has(name),
-    )
-  )
+const { createHash } = await import('node:crypto');
+for (const file of manifestFiles) {
+  const digest = createHash('sha256')
+    .update(await readFile(join(root, file)))
+    .digest('hex');
+  if (digest !== manifest.files[file])
     throw new Error(
-      'Managed Terraform provider inventory differs from the reviewed estate.',
+      `Managed estate configuration changed: ${file}. Review and update the manifest.`,
     );
-  for (const resourceType of Object.keys(parsed.resource ?? {})) {
-    if (!knownResourceTypes.has(resourceType))
-      throw new Error(
-        `Managed Terraform resource inventory differs: ${resourceType}.`,
-      );
-  }
-  for (const dataType of Object.keys(parsed.data ?? {})) {
-    if (!knownDataTypes.has(dataType))
-      throw new Error(`Managed Terraform data inventory differs: ${dataType}.`);
-  }
 }
 const tfvars = await readFile(join(root, 'terraform.tfvars.example'), 'utf8');
 
@@ -234,27 +76,17 @@ if (
   throw new Error(
     'Every Terraform provider must have exactly one inventory mapping.',
   );
-const declaredSources = [
-  ...hcl
-    .filter(({ kind }) => kind === 'terraform')
-    .flatMap(({ body }) =>
-      [...body.matchAll(/\bsource\s*=\s*"([^"]+)"/g)].map((match) => match[1]),
-    ),
-  ...terraformSources
-    .filter(([file]) => file.endsWith('.tf.json'))
-    .flatMap(([, text]) => {
-      const parsed = JSON.parse(text);
-      return Object.values(parsed.terraform?.required_providers ?? {}).map(
-        (provider) => provider.source,
-      );
-    }),
-];
-const declaredProviderBlocks = [
-  ...providersInHcl,
-  ...terraformSources
-    .filter(([file]) => file.endsWith('.tf.json'))
-    .flatMap(([, text]) => Object.keys(JSON.parse(text).provider ?? {})),
-];
+const declaredSources = terraformSources
+  .filter(([file]) => file.endsWith('.tf.json'))
+  .flatMap(([, text]) => {
+    const parsed = JSON.parse(text);
+    return Object.values(parsed.terraform?.required_providers ?? {}).map(
+      (provider) => provider.source,
+    );
+  });
+const declaredProviderBlocks = terraformSources
+  .filter(([file]) => file.endsWith('.tf.json'))
+  .flatMap(([, text]) => Object.keys(JSON.parse(text).provider ?? {}));
 const expectedSources = Object.values(expectedProviderSources);
 if (
   declaredSources.length !== expectedSources.length ||
@@ -342,7 +174,7 @@ const rows = estate.providers.map(
   (provider) =>
     `| ${provider.name} | ${provider.role} | ${provider.dataCategories.join('; ')} | ${provider.status} |`,
 );
-const outputMarkdown = `# Managed Studio subprocessor inventory\n\nGenerated from \`subprocessor-estate.json\`, \`candidate-sizing.json\`, and the managed Terraform estate. This is an infrastructure inventory, not legal or contractual qualification.\n\nManaged service residency: **${estate.jurisdiction}**. ${estate.selfHostingAlternative}\n\nConfigured candidate: compute \`${estate.configuredEstate.computeRegion}\`; PostgreSQL \`${estate.configuredEstate.postgresRegion}\` (${estate.configuredEstate.postgresPlan}, ${estate.configuredEstate.postgresStorageGb} GB); primary R2 jurisdiction \`${estate.configuredEstate.primaryObjectJurisdiction}\`; recovery \`${estate.configuredEstate.recoveryRegion}\`; KMS \`${estate.configuredEstate.kmsRegion}\`. Services: ${estate.configuredEstate.serviceNames.join(', ')}.\n\n| Provider | Role | Data categories | Estate status |\n| --- | --- | --- | --- |\n${rows.join('\n')}\n\nProvider legal entities, affiliates, retention/deletion, security reports, breach terms, support, and account recovery must be confirmed by the #1260 publication process.\n`;
+const outputMarkdown = `# Managed Studio subprocessor inventory\n\nGenerated from \`subprocessor-estate.json\`, \`candidate-sizing.json\`, the managed Terraform estate, and the reviewed \`estate-config-manifest.json\`. Configuration changes fail closed until the manifest is deliberately reviewed and updated. This is an infrastructure inventory, not legal or contractual qualification.\n\nManaged service residency: **${estate.jurisdiction}**. ${estate.selfHostingAlternative}\n\nConfigured candidate: compute \`${estate.configuredEstate.computeRegion}\`; PostgreSQL \`${estate.configuredEstate.postgresRegion}\` (${estate.configuredEstate.postgresPlan}, ${estate.configuredEstate.postgresStorageGb} GB); primary R2 jurisdiction \`${estate.configuredEstate.primaryObjectJurisdiction}\`; recovery \`${estate.configuredEstate.recoveryRegion}\`; KMS \`${estate.configuredEstate.kmsRegion}\`. Services: ${estate.configuredEstate.serviceNames.join(', ')}.\n\n| Provider | Role | Data categories | Estate status |\n| --- | --- | --- | --- |\n${rows.join('\n')}\n\nProvider legal entities, affiliates, retention/deletion, security reports, breach terms, support, and account recovery must be confirmed by the #1260 publication process.\n`;
 
 if (process.argv.includes('--check')) {
   const [json, markdown, providerTerraformOutput] = await Promise.all([
