@@ -140,6 +140,7 @@ function backendHeaders(request, publicOrigin) {
   for (const name of FORWARDED_REQUEST_HEADERS) headers.delete(name);
   headers.set('x-forwarded-host', new URL(publicOrigin).host);
   headers.set('x-forwarded-proto', 'https');
+  headers.set('x-request-id', crypto.randomUUID());
   return headers;
 }
 

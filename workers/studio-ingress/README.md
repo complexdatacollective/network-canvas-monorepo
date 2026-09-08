@@ -31,7 +31,8 @@ through without handling messages.
   foreign host.
 - Server surfaces preserve cookie, authorization, Origin, `Sec-Fetch-Site`, and
   WebSocket handshake headers. Untrusted forwarding headers are replaced with
-  the approved public host and HTTPS scheme. The Node server still performs its
+  the approved public host and HTTPS scheme, and the ingress replaces incoming
+  request IDs with fresh UUIDs. The Node server still performs its
   existing cookie principal, CSRF, and WebSocket-Origin checks.
 - Every non-WebSocket backend response receives browser and CDN `no-store`
   directives. A missing API route remains the backend problem response; it can
@@ -72,8 +73,10 @@ pnpm --filter studio-managed-ingress-worker check:bundle
 
 Deployment remains pending the managed-estate qualification workflow. Before a
 domain change, verify the Netlify deploy receipt and Fly image/Machine receipt,
-set the Fly server's `PUBLIC_URL` to the matching public origin, configure only
-reviewed Cloudflare proxy CIDRs in `TRUSTED_PROXIES`, enable Cloudflare
+set the Fly server's `PUBLIC_URL` to the matching public origin, configure `TRUSTED_PROXIES` only after verifying the immediate Fly transport
+peers seen by the Node process. Forwarded headers and Cloudflare
+CIDRs alone cannot establish that trust; leave it empty until verified so the
+server generates its own request IDs. Enable Cloudflare
 WebSockets, and test HTTP, authentication mutation, and a real `/ws` reconnect.
 The same release artifact and server configuration contract serve managed and
 self-hosted installations.
