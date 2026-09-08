@@ -8,11 +8,11 @@ import { resolveFrescoLocale } from '~/i18n/resolve';
 import { frescoCatalogs } from '~/src/locales/catalogs';
 
 /**
- * Next.js dispatches a Server Action by the function its `Next-Action` header
- * names, independent of the URL the request is sent to — so an institutional
- * reverse proxy that restricts researcher paths and leaves these public ones
- * open does not by itself stop a request carrying a valid session cookie and
- * an action ID lifted from the public `/_next/` bundle from reaching a
+ * Next.js dispatches a Server Action by the function a request names,
+ * independent of the URL the request is sent to — so an institutional reverse
+ * proxy that restricts researcher paths and leaves these public ones open
+ * does not by itself stop a request carrying a valid session cookie and an
+ * action ID lifted from the public `/_next/` bundle from reaching a
  * researcher-only action (export, deletion, settings) through one of these
  * routes. None of them binds a Server Action today, so a request naming one
  * here is never legitimate traffic and is refused outright.
@@ -30,8 +30,31 @@ export function isPublicParticipantPath(pathname: string): boolean {
   return PUBLIC_PARTICIPANT_PATHS.some((pattern) => pattern.test(pathname));
 }
 
+/**
+ * Mirrors Next's own `isPossibleServerAction` (server-action-request-meta.ts):
+ * a POST names an action either through the `Next-Action` header (the
+ * fetch-based path React's client runtime uses) or, for a plain HTML
+ * `<form action={serverAction}>` submitted without JavaScript, through a
+ * `multipart/form-data` (or `application/x-www-form-urlencoded`) body naming
+ * the action in a `$ACTION_ID_<id>` field instead of a header. A guard that
+ * only checked the header would let that second form through untouched.
+ */
+export function isPossibleServerActionRequest(request: NextRequest): boolean {
+  if (request.method !== 'POST') {
+    return false;
+  }
+  if (request.headers.has('next-action')) {
+    return true;
+  }
+  const contentType = request.headers.get('content-type');
+  return (
+    contentType?.startsWith('multipart/form-data') === true ||
+    contentType === 'application/x-www-form-urlencoded'
+  );
+}
+
 export async function proxy(request: NextRequest) {
-  if (!request.headers.has('next-action')) {
+  if (!isPossibleServerActionRequest(request)) {
     return NextResponse.next();
   }
 
