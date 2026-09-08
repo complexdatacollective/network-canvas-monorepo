@@ -272,7 +272,9 @@
     --destructive-contrast: oklch(var(--white));
     /* Redeclared here rather than inherited, like every other expression in
        this block: made at `:root` it would carry the default theme's ink into
-       a studio region. See `--color-destructive-strong` in theme.css. */
+       a studio region. See `--color-destructive-strong` in theme.css. 78%
+       measures 5.46:1 on this scope's pale `--surface-accent`; the dark block
+       below cannot afford the same weighting and says so. */
     --destructive-strong: color-mix(
       in oklch,
       var(--destructive) 78%,
@@ -536,10 +538,17 @@
     --destructive-contrast: oklch(0.16 0.03 var(--base-hue));
     /* Remade against this block's own pair, for the reason stated at the top
        of it: the light expression re-resolved here would mix the bright fill
-       toward near-black ink and darken the error into the surface. */
+       toward near-black ink and darken the error into the surface.
+
+       The weighting is chosen per scope, not shared: `--surface-accent` here
+       is a mid-lightness violet, so the 78% this theme's light block can
+       afford leaves the ink on 4.32:1 — under AA for the normal-size field
+       errors the token carries. 72% measures 4.67:1 and is still plainly
+       red. `DestructiveInkPerTheme` in `Colors.stories.tsx` measures every
+       scope and fails below 4.5:1. */
     --destructive-strong: color-mix(
       in oklch,
-      var(--destructive) 78%,
+      var(--destructive) 72%,
       var(--text)
     );
 

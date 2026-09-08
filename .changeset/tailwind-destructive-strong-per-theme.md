@@ -24,9 +24,17 @@ to improve on, where a mixture made in the dark scope reaches 4.63:1. It is the
 same rule that already makes `--surface-accent` and the radius scale redeclare
 themselves per theme.
 
+How far the fill travels is chosen per scope as well, because how far it has to
+travel depends on how light that scope's `--surface-accent` is. Default light
+and dark and studio light clear AA at 78% (5.00:1, 4.63:1, 5.46:1); studio dark
+would sit at 4.32:1 there and takes 72% to reach 4.67:1; interview, whose
+accent surface is the darkest ground the token stands on anywhere, only reaches
+2.37:1 at 78% and takes 36% to reach 4.71:1.
+
 `--color-destructive-strong` maps to it, so `text-destructive-strong` and the
 other generated utilities work anywhere. Reading `var(--color-destructive-strong)`
 by hand does not: `@theme inline` substitutes the token into utilities at build
 time, but the alias itself is declared once at `:root`. Fresco UI's Colors
-story measures the ink in all five scopes and fails if any of them inherits the
-default theme's.
+story measures the ink in all five scopes: it fails if any of them inherits the
+default theme's, and it fails if any of them draws below 4.5:1 on its own
+`--surface-accent`.
