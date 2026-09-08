@@ -529,7 +529,7 @@ describe('operator-only retained OAuth credentials', () => {
         });
         expect(firstMigration.output).toMatchObject({
           passComplete: false,
-          afterId: expect.stringMatching(/^[A-Za-z0-9_-]+$/),
+          afterId: expect.stringMatching(/^v1_[A-Za-z0-9_-]+$/),
         });
         if (
           firstMigration.output === null ||

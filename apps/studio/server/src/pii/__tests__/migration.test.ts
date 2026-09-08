@@ -1164,7 +1164,7 @@ it('authenticates and resumes every legacy index phase before OAuth and preserve
     );
     expect(first).toMatchObject({ processed: 1, passComplete: false });
     afterId = first.afterId;
-    expect(afterId).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(afterId).toMatch(/^v1_[A-Za-z0-9_-]+$/);
     if (afterId === null) throw new Error('Expected participant cursor.');
     const cursorCanaries = [afterId, legacyIndex.toString('base64url')];
     const tampered = `${afterId.slice(0, -1)}${afterId.endsWith('A') ? 'B' : 'A'}`;
