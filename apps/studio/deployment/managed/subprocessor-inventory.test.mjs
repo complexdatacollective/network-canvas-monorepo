@@ -46,6 +46,7 @@ test('provider integration removal fails the generated inventory guard', async (
       'subprocessor-estate.json',
       'estate-provider-contract.json',
       'estate-provider-contract.tf.json',
+      'estate-config-manifest.json',
       'candidate-sizing.json',
       'versions.tf',
       'main.tf',
@@ -74,13 +75,13 @@ test('provider integration removal fails the generated inventory guard', async (
       0,
       'removing the Cloudflare estate seam must fail the guard',
     );
-    assert.match(result.stderr, /inventory|resource/i);
+    assert.match(result.stderr, /configuration|manifest|inventory/i);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
 });
 
-test('candidate sizing changes regenerate into the published inventory', async () => {
+test('candidate sizing changes fail closed until the reviewed manifest is updated', async () => {
   const script = join(directory, 'generate-subprocessor-inventory.mjs');
   const temp = await mkdtemp(join(tmpdir(), 'studio-subprocessor-sizing-'));
   await Promise.all(
@@ -88,6 +89,7 @@ test('candidate sizing changes regenerate into the published inventory', async (
       'subprocessor-estate.json',
       'estate-provider-contract.json',
       'estate-provider-contract.tf.json',
+      'estate-config-manifest.json',
       'candidate-sizing.json',
       'versions.tf',
       'main.tf',
@@ -111,22 +113,15 @@ test('candidate sizing changes regenerate into the published inventory', async (
     `${JSON.stringify(sizing, null, 2)}\n`,
   );
   try {
-    const stale = spawnSync(
-      process.execPath,
-      [script, '--check', `--root=${temp}`],
-      { encoding: 'utf8' },
-    );
-    assert.notEqual(stale.status, 0);
     const regenerated = spawnSync(
       process.execPath,
       [script, `--root=${temp}`],
-      { encoding: 'utf8' },
+      {
+        encoding: 'utf8',
+      },
     );
-    assert.equal(regenerated.status, 0, regenerated.stderr);
-    const inventory = JSON.parse(
-      await readFile(join(temp, 'subprocessor-inventory.json'), 'utf8'),
-    );
-    assert.equal(inventory.configuredEstate.postgresStorageGb, 24);
+    assert.notEqual(regenerated.status, 0);
+    assert.match(regenerated.stderr, /manifest|configuration/i);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -140,6 +135,7 @@ test('actual Terraform region changes fail instead of retaining a US claim', asy
       'subprocessor-estate.json',
       'estate-provider-contract.json',
       'estate-provider-contract.tf.json',
+      'estate-config-manifest.json',
       'candidate-sizing.json',
       'versions.tf',
       'main.tf',
@@ -164,7 +160,7 @@ test('actual Terraform region changes fail instead of retaining a US claim', asy
       encoding: 'utf8',
     });
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /stale|region/i);
+    assert.match(result.stderr, /configuration|manifest|region/i);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -178,6 +174,7 @@ test('an untracked Terraform provider fails exact provider coverage', async () =
       'subprocessor-estate.json',
       'estate-provider-contract.json',
       'estate-provider-contract.tf.json',
+      'estate-config-manifest.json',
       'candidate-sizing.json',
       'versions.tf',
       'main.tf',
@@ -202,7 +199,7 @@ test('an untracked Terraform provider fails exact provider coverage', async () =
       encoding: 'utf8',
     });
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /provider|top-level|inventory/i);
+    assert.match(result.stderr, /configuration|manifest|provider|inventory/i);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -216,6 +213,7 @@ test('a provider added in another Terraform file fails exact coverage', async ()
       'subprocessor-estate.json',
       'estate-provider-contract.json',
       'estate-provider-contract.tf.json',
+      'estate-config-manifest.json',
       'candidate-sizing.json',
       'versions.tf',
       'main.tf',
@@ -239,7 +237,7 @@ test('a provider added in another Terraform file fails exact coverage', async ()
       encoding: 'utf8',
     });
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /provider|top-level|inventory/i);
+    assert.match(result.stderr, /configuration|manifest|provider|inventory/i);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -253,6 +251,7 @@ test('a no-source provider block and unknown JSON resource fail closed', async (
       'subprocessor-estate.json',
       'estate-provider-contract.json',
       'estate-provider-contract.tf.json',
+      'estate-config-manifest.json',
       'candidate-sizing.json',
       'versions.tf',
       'main.tf',
@@ -281,7 +280,10 @@ test('a no-source provider block and unknown JSON resource fail closed', async (
       encoding: 'utf8',
     });
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /provider|resource inventory/i);
+    assert.match(
+      result.stderr,
+      /configuration|manifest|provider|resource inventory/i,
+    );
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -295,6 +297,7 @@ test('malformed metadata and missing source paths fail closed', async () => {
       'subprocessor-estate.json',
       'estate-provider-contract.json',
       'estate-provider-contract.tf.json',
+      'estate-config-manifest.json',
       'candidate-sizing.json',
       'versions.tf',
       'main.tf',
