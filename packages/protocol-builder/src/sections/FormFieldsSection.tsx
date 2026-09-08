@@ -1142,7 +1142,11 @@ function InputControlField({
   const belongsTo =
     chosen === NEW_VARIABLE ? `${NEW_VARIABLE}:${type}` : chosen;
   const seeded = committed ?? options[0]?.value ?? '';
-  useResetControlOnRebinding(belongsTo, seeded);
+  useControlThatFollowsTheAttribute(
+    belongsTo,
+    seeded,
+    asString(useRowValue(INPUT_CONTROL)),
+  );
 
   // Nothing to choose from — and which of the two reasons it is decides
   // whether the researcher is mid-answer or stuck.
@@ -1173,42 +1177,70 @@ function InputControlField({
 }
 
 /**
- * Puts the control back to the ATTRIBUTE's own whenever the row is rebound.
+ * Keeps the control saying what the CODEBOOK says, until the researcher
+ * answers it themselves.
  *
- * `initialValue` cannot do this. A field keeps its value across a change of
- * initial value by design — that is what stops a re-render from wiping what
- * someone has typed — and the value survives even an unmount: `useField`
- * unregisters preserving the value, and `registerField` prefers that dormant
- * value over the initial one it is handed. So a row rebound from an attribute
- * collected in a text AREA to one collected in a text BOX kept the text area,
- * and the row's save wrote it onto the newly chosen attribute, changing how
- * that attribute is collected in every form that asks for it — a codebook
- * write the researcher never made and never saw.
+ * The row saves this control TO the codebook, so a control the row goes on
+ * showing after the codebook's own answer has moved is not a stale label: the
+ * row's next save writes it back, and the change it undoes reaches every form
+ * that collects the attribute. Two ways the codebook's answer moves under a
+ * row, and both used to be missed.
+ *
+ * Rebinding is one. `initialValue` cannot follow it: a field keeps its value
+ * across a change of initial value by design — that is what stops a re-render
+ * from wiping what someone has typed — and the value survives even an unmount,
+ * because `useField` unregisters preserving it and `registerField` prefers
+ * that dormant value over the initial one it is handed. So a row rebound from
+ * an attribute collected in a text AREA to one collected in a text BOX kept
+ * the text area, and the row's save wrote it onto the newly chosen attribute.
+ *
+ * A COLLABORATOR changing how the bound attribute is collected is the other,
+ * and it is the same write from the other end: the binding never changes, so
+ * nothing about the row is different — only the codebook is — and saving
+ * anything else in the row put the collaborator's change back.
  *
  * A write through the store rather than a tombstone: the control is not being
- * discarded, it is being answered again for a different attribute, and the
- * answer is the one the codebook already holds.
+ * discarded, it is being answered again, and the answer is the one the
+ * codebook now holds.
  *
  * `binding` is what the control is an answer ABOUT — the chosen attribute, or,
  * while one is being invented, the kind of answer that decides which controls
- * exist at all. The first render records it without writing anything: the
- * field has just registered from the same seed, and a write there would mark a
- * row dirty that nobody has touched.
+ * exist at all. `seeded` is the codebook's own answer for it, and `live` is
+ * what the row is showing: whatever the row shows that the codebook did not
+ * put there is the researcher's, and from then on it is theirs whatever the
+ * codebook does next. The first render records all three without writing
+ * anything — the field has just registered from the same seed, and a write
+ * there would mark a row dirty that nobody has touched.
  */
-function useResetControlOnRebinding(binding: string, seeded: string): void {
+function useControlThatFollowsTheAttribute(
+  binding: string,
+  seeded: string,
+  live: string | undefined,
+): void {
   const setFieldValue = useFormStore((state) => state.setFieldValue);
-  const boundTo = useRef(binding);
+  const shown = useRef({ binding, seeded, answered: false });
 
   useEffect(() => {
-    if (boundTo.current === binding) return;
-    boundTo.current = binding;
-    // Nothing is on screen to answer: the row names no attribute yet, or names
-    // one no control can collect. The field is unmounted in both cases, and
-    // whatever it left behind is refused by `useCommitFormField` rather than
-    // written.
-    if (seeded === '') return;
+    const previous = shown.current;
+    if (binding !== previous.binding) {
+      // A different question, so the answer starts again from the codebook's.
+      shown.current = { binding, seeded, answered: false };
+      // Nothing is on screen to answer: the row names no attribute yet, or
+      // names one no control can collect. The field is unmounted in both
+      // cases, and whatever it left behind is refused by `useCommitFormField`
+      // rather than written.
+      if (seeded === '') return;
+      setFieldValue(INPUT_CONTROL, seeded);
+      return;
+    }
+    // The control has not registered yet, so there is nothing on screen for
+    // anyone to have answered.
+    if (live === undefined) return;
+    const answered = previous.answered || live !== previous.seeded;
+    shown.current = { binding, seeded, answered };
+    if (answered || seeded === '' || seeded === previous.seeded) return;
     setFieldValue(INPUT_CONTROL, seeded);
-  }, [binding, seeded, setFieldValue]);
+  }, [binding, live, seeded, setFieldValue]);
 }
 
 /**

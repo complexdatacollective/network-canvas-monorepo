@@ -2216,6 +2216,108 @@ describe('rebinding a form field to another attribute', () => {
 });
 
 /**
+ * A collaborator changing how the bound attribute is collected, under an open
+ * row.
+ *
+ * The other half of the rebinding rule, and the same write either way: the row
+ * saves its control to the CODEBOOK, so a control the row is still showing
+ * after the codebook has moved is not a stale label — saving anything else in
+ * the row puts it back, and the collaborator's change is undone in every form
+ * that asks for the attribute, by a researcher who only rewrote a question.
+ *
+ * The row is not rebound, so nothing about which attribute this is has
+ * changed: what changed is the codebook's own answer to a question the row is
+ * showing on its behalf.
+ */
+describe('a control the collaborator changed under an open row', () => {
+  const collectItWith = (
+    harness: ReturnType<typeof renderStageEditor>,
+    component: string,
+  ) => {
+    harness.receiveCodebookUpdate({
+      node: {
+        person: {
+          ...personDocument(harness),
+          variables: {
+            ...personVariables(harness),
+            relationship_to_ego: {
+              ...asRecord(personVariables(harness).relationship_to_ego),
+              component,
+            },
+          },
+        },
+      },
+    });
+  };
+
+  const inputControl = (dialog: ReturnType<typeof within>) =>
+    dialog.getByRole('combobox', { name: 'Input control' });
+
+  it('shows the new control, and saving the row leaves it alone', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    expect(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+    ).toHaveValue('Text');
+
+    collectItWith(harness, 'TextArea');
+    await waitFor(() => expect(inputControl(dialog)).toHaveValue('TextArea'));
+
+    // An edit about the QUESTION, which is the whole point: the researcher
+    // never went near the control.
+    const question = dialog.getByRole('textbox', { name: 'Question text' });
+    await harness.user.clear(question);
+    await harness.user.type(question, 'How do you know this person?');
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(
+      asRecord(personVariables(harness).relationship_to_ego).component,
+    ).toBe('TextArea');
+  });
+
+  /**
+   * And the answer the researcher DID give stands, however the codebook moves
+   * afterwards. The control the row shows is only the codebook's until they
+   * answer it; from then on it is theirs, and a codebook that later happens to
+   * agree with them does not turn it back into a value that may be overwritten.
+   */
+  it('keeps the control the researcher chose, whatever the codebook does next', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'TextArea',
+    );
+
+    // The collaborator arrives at the researcher's answer, and then leaves it.
+    collectItWith(harness, 'TextArea');
+    await waitFor(() => expect(inputControl(dialog)).toHaveValue('TextArea'));
+    collectItWith(harness, 'Text');
+
+    await waitFor(() => expect(inputControl(dialog)).toHaveValue('TextArea'));
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(
+      asRecord(personVariables(harness).relationship_to_ego).component,
+    ).toBe('TextArea');
+  });
+});
+
+/**
  * Losing the lease with a codebook editor open over the row.
  *
  * The row dialog itself deliberately survives lease loss — a researcher who
