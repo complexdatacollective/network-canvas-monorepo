@@ -2,7 +2,19 @@ import { access, readdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { parse } from '@cdktn/hcl2json';
+import { format } from 'oxfmt';
+
 const directory = fileURLToPath(new URL('.', import.meta.url));
+const formatting = JSON.parse(
+  await readFile(new URL('../../../../.oxfmtrc.json', import.meta.url), 'utf8'),
+);
+async function formatOutput(name, sourceText) {
+  const result = await format(name, sourceText, formatting);
+  if (result.errors.length)
+    throw new Error(`Cannot format generated inventory: ${name}`);
+  return result.code;
+}
 const requestedRoot = process.argv.find((argument) =>
   argument.startsWith('--root='),
 );
@@ -15,6 +27,8 @@ const source = JSON.parse(
 const providerContract = JSON.parse(
   await readFile(join(root, 'estate-provider-contract.json'), 'utf8'),
 );
+const providerTerraform = `${JSON.stringify({ terraform: { required_providers: providerContract.providers } }, null, 2)}\n`;
+const generatedProviderFile = 'estate-provider-contract.tf.json';
 const sizing = JSON.parse(
   await readFile(join(root, 'candidate-sizing.json'), 'utf8'),
 );
@@ -22,18 +36,19 @@ const terraformFiles = (await readdir(root)).filter((name) =>
   /\.tf(?:\.json)?$/.test(name),
 );
 const terraformSources = await Promise.all(
-  terraformFiles.map(async (name) => [
-    name,
-    await readFile(join(root, name), 'utf8'),
-  ]),
+  terraformFiles
+    .filter((name) => name !== generatedProviderFile)
+    .map(async (name) => [name, await readFile(join(root, name), 'utf8')]),
 );
-const terraform = terraformSources.map(([, text]) => text).join('\n');
+terraformSources.push([generatedProviderFile, providerTerraform]);
 const manifest = JSON.parse(
   await readFile(join(root, 'estate-config-manifest.json'), 'utf8'),
 );
 const manifestFiles = Object.keys(manifest.files).toSorted();
 const actualConfigFiles = terraformFiles
+  .filter((name) => name !== generatedProviderFile)
   .concat([
+    'estate-provider-contract.json',
     'candidate-sizing.json',
     'cost-input.example.json',
     'terraform.tfvars.example',
@@ -76,53 +91,137 @@ if (
   throw new Error(
     'Every Terraform provider must have exactly one inventory mapping.',
   );
-const declaredSources = terraformSources
-  .filter(([file]) => file.endsWith('.tf.json'))
-  .flatMap(([, text]) => {
-    const parsed = JSON.parse(text);
-    return Object.values(parsed.terraform?.required_providers ?? {}).map(
-      (provider) => provider.source,
+// Parse HCL as well as Terraform JSON. A refreshed review manifest does not
+// make an unmapped provider/resource or an inconsistent residency claim safe.
+const configurations = await Promise.all(
+  terraformSources.map(async ([file, text]) =>
+    file.endsWith('.tf.json') ? JSON.parse(text) : parse(file, text),
+  ),
+);
+const blocks = (value) =>
+  value === undefined ? [] : Array.isArray(value) ? value : [value];
+// Every supported block participates in the residency review below. A new
+// resource/data block needs an explicit inventory extension, even if its
+// provider is already listed and the changed input hash has been approved.
+const supportedBlocks = {
+  resource: [
+    'aws_kms_alias.studio_root',
+    'aws_kms_key.studio_root',
+    'b2_bucket.independent_recovery',
+    'cloudflare_r2_bucket.primary',
+    'crunchybridge_cluster.postgres',
+  ],
+  data: [
+    'aws_caller_identity.deployment',
+    'aws_iam_session_context.deployment',
+    'crunchybridge_cloudprovider.aws',
+  ],
+};
+for (const [kind, expected] of Object.entries(supportedBlocks)) {
+  const actual = configurations.flatMap((configuration) =>
+    Object.entries(configuration[kind] ?? {}).flatMap(([type, instances]) =>
+      Object.entries(instances).flatMap(([name, values]) =>
+        blocks(values).map(() => `${type}.${name}`),
+      ),
+    ),
+  );
+  if (JSON.stringify(actual.toSorted()) !== JSON.stringify(expected))
+    throw new Error(
+      'Managed Terraform resource/data inventory requires explicit support.',
     );
-  });
-const declaredProviderBlocks = terraformSources
-  .filter(([file]) => file.endsWith('.tf.json'))
-  .flatMap(([, text]) => Object.keys(JSON.parse(text).provider ?? {}));
-const expectedSources = Object.values(expectedProviderSources);
+}
+const declarations = configurations.flatMap((configuration) =>
+  blocks(configuration.terraform).flatMap((terraform) =>
+    blocks(terraform.required_providers).flatMap((providers) =>
+      Object.entries(providers),
+    ),
+  ),
+);
 if (
-  declaredSources.length !== expectedSources.length ||
-  expectedSources.some(
-    (value) =>
-      declaredSources.filter((candidate) => candidate === value).length !== 1,
+  declarations.length !== Object.keys(providerContract.providers).length ||
+  Object.keys(providerContract.providers).some(
+    (name) =>
+      declarations.filter(([candidate]) => candidate === name).length !== 1,
   ) ||
-  declaredSources.some((value) => !expectedSources.includes(value)) ||
-  declaredProviderBlocks.some(
-    (name) => !Object.hasOwn(expectedProviderSources, name),
+  declarations.some(
+    ([name, provider]) =>
+      provider.source !== providerContract.providers[name]?.source ||
+      provider.version !== providerContract.providers[name]?.version,
   )
 )
   throw new Error(
-    'Managed Terraform provider inventory differs from the reviewed estate.',
+    'Managed Terraform provider declarations differ from the reviewed inventory.',
   );
-const crunchyRegion = terraform.match(
-  /resource\s+"crunchybridge_cluster"\s+"postgres"\s*\{[\s\S]*?^\s*region_id\s*=\s*"([^"]+)"/m,
-)?.[1];
-const kmsRegion = terraform.match(
-  /provider\s+"aws"\s*\{[\s\S]*?^\s*region\s*=\s*"([^"]+)"/m,
-)?.[1];
-const primaryObjectJurisdiction = terraform.match(
-  /resource\s+"cloudflare_r2_bucket"\s+"primary"\s*\{[\s\S]*?^\s*jurisdiction\s*=\s*"([^"]+)"/m,
-)?.[1];
-const recoveryRegion = tfvars.match(/^\s*b2_region\s*=\s*"([^"]+)"/m)?.[1];
-if (!crunchyRegion)
-  throw new Error(
-    'Crunchy Data / Crunchy Bridge estate region contract is missing.',
+for (const configuration of configurations) {
+  if (Object.keys(configuration.module ?? {}).length)
+    throw new Error(
+      'Managed Terraform module provider inventory requires explicit support.',
+    );
+  for (const [name, values] of Object.entries(configuration.provider ?? {})) {
+    if (!Object.hasOwn(expectedProviderSources, name))
+      throw new Error(
+        'Managed Terraform provider block has no inventory mapping.',
+      );
+    if (blocks(values).some((provider) => provider.alias !== undefined))
+      throw new Error(
+        'Managed Terraform provider aliases require explicit inventory support.',
+      );
+  }
+  for (const kind of ['resource', 'data']) {
+    for (const [type, instances] of Object.entries(configuration[kind] ?? {})) {
+      for (const instance of Object.values(instances).flatMap(blocks)) {
+        const binding = instance.provider;
+        const name =
+          binding === undefined
+            ? type.split('_')[0]
+            : typeof binding === 'string'
+              ? binding.replace(/^\$\{(.+)\}$/, '$1').split('.')[0]
+              : '';
+        if (
+          !Object.hasOwn(expectedProviderSources, name) ||
+          (binding !== undefined &&
+            binding !== name &&
+            binding !== `\${${name}}`)
+        )
+          throw new Error(
+            'Managed Terraform resource provider has no inventory mapping.',
+          );
+      }
+    }
+  }
+}
+function oneBlock(kind, type, name) {
+  const matches = configurations.flatMap((configuration) =>
+    blocks(
+      name === undefined
+        ? configuration[kind]?.[type]
+        : configuration[kind]?.[type]?.[name],
+    ),
   );
-if (!kmsRegion)
-  throw new Error('Amazon Web Services KMS region contract is missing.');
-if (!primaryObjectJurisdiction)
-  throw new Error('Cloudflare R2 jurisdiction contract is missing.');
-if (!recoveryRegion)
-  throw new Error('Backblaze recovery region contract is missing.');
-if (crunchyRegion !== 'us-east-1' || kmsRegion !== 'us-east-1')
+  if (matches.length !== 1)
+    throw new Error('Managed estate region contract is missing or ambiguous.');
+  return matches[0];
+}
+const crunchyRegion = oneBlock(
+  'resource',
+  'crunchybridge_cluster',
+  'postgres',
+).region_id;
+const kmsRegion = oneBlock('provider', 'aws').region;
+const primaryObjectJurisdiction = oneBlock(
+  'resource',
+  'cloudflare_r2_bucket',
+  'primary',
+).jurisdiction;
+const recoveryRegion = (await parse('terraform.tfvars', tfvars)).b2_region;
+if (
+  crunchyRegion !== 'us-east-1' ||
+  kmsRegion !== 'us-east-1' ||
+  primaryObjectJurisdiction !== 'us' ||
+  typeof recoveryRegion !== 'string' ||
+  !/^us-(?:east|west)-\d{3}$/.test(recoveryRegion) ||
+  source.residency.managedRegion !== 'United States'
+)
   throw new Error(
     'Managed estate regions differ from the reviewed US candidate.',
   );
@@ -168,14 +267,21 @@ const estate = {
   })),
 };
 
-const outputJson = JSON.stringify(estate, null, 2) + '\n';
-const providerTerraform = `${JSON.stringify({ terraform: { required_providers: providerContract.providers } }, null, 2)}\n`;
+const outputJson = await formatOutput(
+  'subprocessor-inventory.json',
+  JSON.stringify(estate, null, 2) + '\n',
+);
+
 const rows = estate.providers.map(
   (provider) =>
     `| ${provider.name} | ${provider.role} | ${provider.dataCategories.join('; ')} | ${provider.status} |`,
 );
 const outputMarkdown = `# Managed Studio subprocessor inventory\n\nGenerated from \`subprocessor-estate.json\`, \`candidate-sizing.json\`, the managed Terraform estate, and the reviewed \`estate-config-manifest.json\`. Configuration changes fail closed until the manifest is deliberately reviewed and updated. This is an infrastructure inventory, not legal or contractual qualification.\n\nManaged service residency: **${estate.jurisdiction}**. ${estate.selfHostingAlternative}\n\nConfigured candidate: compute \`${estate.configuredEstate.computeRegion}\`; PostgreSQL \`${estate.configuredEstate.postgresRegion}\` (${estate.configuredEstate.postgresPlan}, ${estate.configuredEstate.postgresStorageGb} GB); primary R2 jurisdiction \`${estate.configuredEstate.primaryObjectJurisdiction}\`; recovery \`${estate.configuredEstate.recoveryRegion}\`; KMS \`${estate.configuredEstate.kmsRegion}\`. Services: ${estate.configuredEstate.serviceNames.join(', ')}.\n\n| Provider | Role | Data categories | Estate status |\n| --- | --- | --- | --- |\n${rows.join('\n')}\n\nProvider legal entities, affiliates, retention/deletion, security reports, breach terms, support, and account recovery must be confirmed by the #1260 publication process.\n`;
 
+const formattedMarkdown = await formatOutput(
+  'SUBPROCESSORS.md',
+  outputMarkdown,
+);
 if (process.argv.includes('--check')) {
   const [json, markdown, providerTerraformOutput] = await Promise.all([
     readFile(join(root, 'subprocessor-inventory.json'), 'utf8'),
@@ -184,7 +290,7 @@ if (process.argv.includes('--check')) {
   ]);
   if (
     json !== outputJson ||
-    markdown !== outputMarkdown ||
+    markdown !== formattedMarkdown ||
     providerTerraformOutput !== providerTerraform
   )
     throw new Error(
@@ -193,7 +299,7 @@ if (process.argv.includes('--check')) {
 } else {
   await Promise.all([
     writeFile(join(root, 'subprocessor-inventory.json'), outputJson),
-    writeFile(join(root, 'SUBPROCESSORS.md'), outputMarkdown),
+    writeFile(join(root, 'SUBPROCESSORS.md'), formattedMarkdown),
     writeFile(
       join(root, 'estate-provider-contract.tf.json'),
       providerTerraform,

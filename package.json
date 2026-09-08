@@ -25,6 +25,7 @@
     "knip": "SKIP_ENV_VALIDATION=true knip"
   },
   "devDependencies": {
+    "@cdktn/hcl2json": "0.24.0",
     "@changesets/cli": "^3.0.1",
     "@posthog/cli": "catalog:",
     "@posthog/plugin-utils": "catalog:",

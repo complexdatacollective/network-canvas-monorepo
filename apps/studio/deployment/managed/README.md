@@ -372,11 +372,19 @@ configuration archive, and their account-recovery paths.
 
 ## Generated subprocessor inventory
 
-The machine-readable estate source is `subprocessor-estate.json`. Run
-`node generate-subprocessor-inventory.mjs` after changing the managed Terraform
-estate or candidate sizing. It generates [`subprocessor-inventory.json`](./subprocessor-inventory.json)
-and [`SUBPROCESSORS.md`](./SUBPROCESSORS.md); the managed-estate test fails when
-the generated files drift or a required provider seam disappears. This inventory
+The machine-readable estate sources are `subprocessor-estate.json` and
+`estate-provider-contract.json`. After reviewing an infrastructure change,
+update the affected input hashes in `estate-config-manifest.json`, then run
+`node generate-subprocessor-inventory.mjs`. The generator parses both HCL and
+Terraform JSON, checks provider/resource mappings and the selected US storage
+locations, and formats [`subprocessor-inventory.json`](./subprocessor-inventory.json),
+[`SUBPROCESSORS.md`](./SUBPROCESSORS.md) and `estate-provider-contract.tf.json`.
+Generated provider declarations are outputs, not manually edited manifest inputs.
+Every supported resource and data block is counted by type and name; extra blocks,
+provider aliases and uninspected Terraform modules are refused. Adding support
+requires an explicit extension of the inventory and residency checks, even for an
+already listed provider. The managed-estate test rejects stale
+outputs and missing required providers, including transactional mail. This inventory
 is input to the #1260 subprocessor list and HECVAT Lite handoff. Provider legal
 entities, affiliates, residency, retention/deletion, security reports, breach
 terms, support, and account recovery require separate publication evidence.
