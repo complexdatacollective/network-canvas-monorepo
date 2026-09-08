@@ -597,6 +597,10 @@ export function createRpcRouter(
             if (!(error instanceof TemplateRegistryCommandError)) throw error;
             if (error.code === 'FORBIDDEN') throw new ORPCError('FORBIDDEN');
             if (error.code === 'NOT_FOUND') throw new ORPCError('NOT_FOUND');
+            if (error.code === 'SCHEMA_UNSUPPORTED')
+              throw new ORPCError('UNPROCESSABLE_CONTENT', {
+                message: 'TEMPLATE_SCHEMA_UNSUPPORTED',
+              });
             throw new ORPCError('SERVICE_UNAVAILABLE');
           }
         }),

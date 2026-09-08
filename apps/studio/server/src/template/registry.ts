@@ -8,7 +8,10 @@ import {
   type VerifiedTemplateArtifact,
 } from '@codaco/studio-sync/template-exchange';
 import { TemplateMetadataSchema } from '@codaco/studio-sync/template-metadata';
-import { TemplateRegistryClient } from '@codaco/studio-sync/template-registry-client';
+import {
+  TemplateRegistryClient,
+  TemplateRegistryClientError,
+} from '@codaco/studio-sync/template-registry-client';
 
 import type { AssetStore } from '../assets.ts';
 import {
@@ -26,6 +29,7 @@ export class TemplateRegistryCommandError extends Error {
     | 'FORBIDDEN'
     | 'NOT_FOUND'
     | 'REGISTRY_UNAVAILABLE'
+    | 'SCHEMA_UNSUPPORTED'
     | 'STORAGE_UNAVAILABLE'
     | 'PUBLISHER_MISMATCH';
 
@@ -55,6 +59,17 @@ const teamStore = new TeamStore();
 
 function clientFor(config: RegistryConfig): TemplateRegistryClient {
   return config.client ?? new TemplateRegistryClient({ origin: config.origin });
+}
+
+function translateRegistryError(error: unknown): never {
+  if (error instanceof TemplateRegistryClientError) {
+    throw new TemplateRegistryCommandError(
+      error.code === 'TEMPLATE_REGISTRY_SCHEMA_UNSUPPORTED'
+        ? 'SCHEMA_UNSUPPORTED'
+        : 'REGISTRY_UNAVAILABLE',
+    );
+  }
+  throw error;
 }
 
 async function requireLockedAdministrator(
@@ -234,11 +249,15 @@ export async function linkRegistryAccount(
   origin: string | undefined,
   userId: string,
   credential: string,
+  registry = origin ? new TemplateRegistryClient({ origin }) : undefined,
 ) {
   if (!origin) throw new TemplateRegistryCommandError('REGISTRY_UNAVAILABLE');
-  const publisher = await new TemplateRegistryClient({ origin }).publisher(
-    credential,
-  );
+  let publisher: Publisher;
+  try {
+    publisher = await registry!.publisher(credential);
+  } catch (error) {
+    translateRegistryError(error);
+  }
   await pool.query(
     `INSERT INTO template_registry_accounts
        (user_id, registry_url, publisher_id, publisher_name, publisher_orcid)
@@ -334,11 +353,21 @@ export async function publishTemplateVersion(
       [context.principal.userId, config.origin],
     );
     const registry = clientFor(config);
-    const publisher = await registry.publisher(input.credential);
+    let publisher: Publisher;
+    try {
+      publisher = await registry.publisher(input.credential);
+    } catch (error) {
+      translateRegistryError(error);
+    }
     if (link.rows[0]?.publisher_id !== publisher.id)
       throw new TemplateRegistryCommandError('PUBLISHER_MISMATCH');
     const artifact = await createTemplateArtifact(local.input);
-    const entry = await registry.publish(artifact.bytes, input.credential);
+    let entry;
+    try {
+      entry = await registry.publish(artifact.bytes, input.credential);
+    } catch (error) {
+      translateRegistryError(error);
+    }
     const recorded = await client.query<{ published_at: Date }>(
       `INSERT INTO template_registry_publications
         (id, team_id, template_version_id, registry_url, registry_entry_id,
@@ -410,8 +439,14 @@ export async function importRegistryTemplate(
       };
     }
     const registry = clientFor(config);
-    const entry = await registry.entry(entryId);
-    const fetched = await registry.fetchArtifact(entry.root);
+    let entry;
+    let fetched;
+    try {
+      entry = await registry.entry(entryId);
+      fetched = await registry.fetchArtifact(entry.root);
+    } catch (error) {
+      translateRegistryError(error);
+    }
     if (entry.id !== entryId || fetched.root !== entry.root)
       throw new TemplateRegistryCommandError('NOT_FOUND');
 

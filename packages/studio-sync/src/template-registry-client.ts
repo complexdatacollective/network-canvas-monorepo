@@ -4,6 +4,7 @@ import {
   TEMPLATE_ARTIFACT_LIMITS,
   TEMPLATE_ARTIFACT_MEDIA_TYPE,
   TemplateContentHashSchema,
+  TemplateArtifactError,
   type VerifiedTemplateArtifact,
 } from './template-exchange.ts';
 import {
@@ -23,6 +24,7 @@ export type TemplateRegistryClientErrorCode =
   | 'TEMPLATE_REGISTRY_CONFIGURATION_INVALID'
   | 'TEMPLATE_REGISTRY_REQUEST_FAILED'
   | 'TEMPLATE_REGISTRY_RESPONSE_INVALID'
+  | 'TEMPLATE_REGISTRY_SCHEMA_UNSUPPORTED'
   | 'TEMPLATE_REGISTRY_ARTIFACT_INVALID';
 
 /** Stable errors never include origins, credentials, response bodies or URLs. */
@@ -375,7 +377,12 @@ export class TemplateRegistryClient {
         let artifact: VerifiedTemplateArtifact;
         try {
           artifact = await readTemplateArtifact(bytes);
-        } catch {
+        } catch (error) {
+          if (
+            error instanceof TemplateArtifactError &&
+            error.code === 'TEMPLATE_SCHEMA_UNSUPPORTED'
+          )
+            failure('TEMPLATE_REGISTRY_SCHEMA_UNSUPPORTED');
           failure('TEMPLATE_REGISTRY_ARTIFACT_INVALID');
         }
         if (artifact.manifest.merkle_root !== parsedRoot.data)

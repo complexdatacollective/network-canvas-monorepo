@@ -409,7 +409,7 @@ describe('TemplateRegistryClient', () => {
     );
   });
 
-  it('refuses unsupported schema and over-inflated artifacts through the archive verifier', async () => {
+  it('preserves the unsupported-schema refusal and rejects over-inflated artifacts', async () => {
     const built = await createTemplateArtifact(fixture());
     const root = built.artifact.manifest.merkle_root;
     const files = unzipSync(built.bytes);
@@ -437,7 +437,7 @@ describe('TemplateRegistryClient', () => {
       fetch: async () => artifactResponse(responses.shift()!, root),
     });
     await expect(client.fetchArtifact(root)).rejects.toMatchObject({
-      code: 'TEMPLATE_REGISTRY_ARTIFACT_INVALID',
+      code: 'TEMPLATE_REGISTRY_SCHEMA_UNSUPPORTED',
     });
     await expect(client.fetchArtifact(root)).rejects.toMatchObject({
       code: 'TEMPLATE_REGISTRY_ARTIFACT_INVALID',
