@@ -691,17 +691,28 @@ function usePanelFilterValidation() {
 /** How one panel reads in the list when its dialog is closed. */
 function PanelPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
-  const { protocolContext } = useStageEditorForm();
+  const { controller, protocolContext } = useStageEditorForm();
   const dataSource = asString(item.dataSource) ?? INTERVIEW_NETWORK;
   const rules = ruleSetRules(item.filter).length;
   // The imported file's own name, which the researcher gave it, or one of two
   // phrases about it. All three are the same argument of one sentence, so the
   // sentence is a single message with a plural rather than three fragments
   // joined in English word order.
+  //
+  // Looked for in BOTH places a resource this panel may legally name exists.
+  // A network imported in this session is not in the manifest yet — it is
+  // promoted with the stage at finish — so a manifest-only lookup told the
+  // researcher that the file they had just imported and saved was "no longer
+  // in this protocol", which is neither true nor anything they could act on.
+  // The missing phrase is left for an id that is in neither: a resource a
+  // collaborator deleted, or one discarded here.
   const source =
     dataSource === INTERVIEW_NETWORK
       ? intl.formatMessage(messages.interviewSource)
       : (protocolContext.assets[dataSource]?.name ??
+        controller.snapshot.stagedResources.find(
+          (resource) => resource.id === dataSource,
+        )?.name ??
         intl.formatMessage(messages.missingSource));
 
   return (

@@ -540,6 +540,35 @@ describe('the side panels a name generator shows', () => {
   });
 
   /**
+   * A network imported in this session is not in the protocol's manifest yet:
+   * it is promoted with the stage at finish. The summary has to look there as
+   * well, or a researcher is told the file they have just imported and saved
+   * is one this protocol no longer holds.
+   */
+  it('names a network imported in this session in the panel summary', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+      ]),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    await importNetworkFile(harness, dialog, 'community.json');
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(
+      await screen.findByText('Lists community.json.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/no longer in this protocol/),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
    * A collaborator's codebook change is not this session's edit. It reaches the
    * rule builder's targets, and must not be echoed back as a command of ours —
    * doing so would write their change into this stage's pending batches.
