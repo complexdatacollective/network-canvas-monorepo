@@ -271,19 +271,29 @@ function CreateSubjectType({
     [entity, storeApi],
   );
 
-  if (readOnly) return null;
-
   return (
     <>
-      <Button
-        ref={triggerRef}
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setSession({ key: uuid(), typeId: uuid() })}
-      >
-        {intl.formatMessage(words.createLabel)}
-      </Button>
+      {/*
+        The trigger goes when editing does, because a create nobody may start
+        is not on offer. An editor already OPEN stays, because the draft inside
+        it is the researcher's own work and nowhere else: they opened it
+        because the type they need does not exist yet, and unmounting it with
+        the trigger would throw the name they were typing away without a word.
+        `CodebookEntityEditor` takes `readOnly` for exactly this — interaction
+        stops, the draft does not — and it is the rule the row dialogs follow
+        after a lease is lost.
+      */}
+      {!readOnly && (
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setSession({ key: uuid(), typeId: uuid() })}
+        >
+          {intl.formatMessage(words.createLabel)}
+        </Button>
+      )}
       {session !== null && (
         <Dialog
           open
@@ -303,6 +313,7 @@ function CreateSubjectType({
                 : { entity: 'edge', type: session.typeId }
             }
             initialDraft={NEW_ENTITY_DRAFT[entity]}
+            readOnly={readOnly}
             existingEntityNames={existingEntityNames}
             onSubmit={(request) => controller.requestCompoundEdit(request)}
             onApplied={() => selectCreatedType(session.typeId)}
