@@ -57,7 +57,9 @@ missing, stale, or hand-edited. Never type into a derived column.
    `protocolGallerySync` re-derives the whole dataset from the assets and
    asserts it equals the checked-in file, so a stale CSV fails here rather than
    in the Netlify build. Then `pnpm --filter networkcanvas.com dev` and open
-   `/en/protocol-gallery` and the new detail page.
+   `/en-US/protocol-gallery/` and the new detail page (`en-US`, `en-GB` and
+   `es` are the generated locales; there is no bare `en` route, and locally
+   there is no edge function to negotiate one).
 
 5. **Commit the CSV together with the assets.** A row whose asset is missing
    fails the build with `Missing gallery asset: <filename>`.
