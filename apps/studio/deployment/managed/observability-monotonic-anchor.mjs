@@ -170,7 +170,7 @@ function validateMonth(previous, next) {
     refuse('ANCHOR_STATE_INVALID');
 }
 
-async function readBody(request) {
+async function readBody(request, signal) {
   if (request.headers.get('content-type') !== 'application/json')
     refuse('ANCHOR_INPUT_INVALID');
   const declared = Number(request.headers.get('content-length'));
@@ -178,18 +178,25 @@ async function readBody(request) {
     refuse('ANCHOR_INPUT_INVALID');
   const reader = request.body?.getReader();
   if (!reader) refuse('ANCHOR_INPUT_INVALID');
+  const cancel = () => {
+    void reader.cancel().catch(() => undefined);
+  };
+  signal.addEventListener('abort', cancel, { once: true });
   const chunks = [];
   let size = 0;
   try {
     for (;;) {
+      signal.throwIfAborted();
       const { done, value } = await reader.read();
+      signal.throwIfAborted();
       if (done) break;
       size += value.byteLength;
       if (size > MAX_BODY_BYTES) refuse('ANCHOR_INPUT_INVALID');
       chunks.push(value);
     }
   } finally {
-    await reader.cancel().catch(() => undefined);
+    signal.removeEventListener('abort', cancel);
+    cancel();
   }
   try {
     return JSON.parse(Buffer.concat(chunks, size).toString());
@@ -229,29 +236,37 @@ export function createMonotonicAnchorHandler({
   )
     refuse('ANCHOR_INPUT_INVALID');
 
-  async function current() {
-    const value = await store.read();
-    if (value === null) refuse('ANCHOR_LINEAGE_MISSING');
+  function boundCheckpoint(value) {
     const checkpoint = validateMonotonicCheckpoint(value);
     if (checkpoint.accountIdentitySha256 !== accountIdentitySha256)
       refuse('ANCHOR_STATE_INVALID');
     return checkpoint;
   }
 
+  async function current() {
+    const value = await store.read();
+    if (value === null) refuse('ANCHOR_LINEAGE_MISSING');
+    return boundCheckpoint(value);
+  }
+
   return async (request) => {
     let timer;
+    const cancellation = new AbortController();
+    const signal = cancellation.signal;
     const operation = (async () => {
       try {
         if (!(request instanceof Request) || request.method !== 'POST')
           refuse('ANCHOR_INPUT_INVALID');
-        const principal = await authenticate(request);
+        const principal = await authenticate(request, { signal });
+        signal.throwIfAborted();
         if (
           !exact(principal, ['accountIdentitySha256', 'authority']) ||
           principal.accountIdentitySha256 !== accountIdentitySha256 ||
           !['forwarder', 'operator'].includes(principal.authority)
         )
           refuse('ANCHOR_AUTH_REQUIRED');
-        const body = await readBody(request);
+        const body = await readBody(request, signal);
+        signal.throwIfAborted();
         const pathname = new URL(request.url).pathname;
         if (pathname === '/v1/read') {
           if (!exact(body, ['format']) || body.format !== 1)
@@ -263,12 +278,13 @@ export function createMonotonicAnchorHandler({
             refuse('ANCHOR_METHOD_FORBIDDEN');
           if (!exact(body, ['format', 'next']) || body.format !== 1)
             refuse('ANCHOR_INPUT_INVALID');
-          const next = validateMonotonicCheckpoint(body.next);
+          const next = boundCheckpoint(body.next);
           if (
             next.accountIdentitySha256 !== accountIdentitySha256 ||
             !initial(next)
           )
             refuse('ANCHOR_STATE_INVALID');
+          signal.throwIfAborted();
           if (!(await store.initialize(next))) refuse('ANCHOR_CONFLICT');
           if (!same(await current(), next)) refuse('ANCHOR_INTERNAL_FAILURE');
           return json(200, { checkpoint: next, format: 1 });
@@ -278,9 +294,10 @@ export function createMonotonicAnchorHandler({
             refuse('ANCHOR_METHOD_FORBIDDEN');
           if (!exact(body, ['format', 'next', 'previous']) || body.format !== 1)
             refuse('ANCHOR_INPUT_INVALID');
-          const previous = validateMonotonicCheckpoint(body.previous);
-          const next = validateMonotonicCheckpoint(body.next);
+          const previous = boundCheckpoint(body.previous);
+          const next = boundCheckpoint(body.next);
           validateAdvance(previous, next);
+          signal.throwIfAborted();
           if (!(await store.compareAndSet(previous, next)))
             refuse('ANCHOR_CONFLICT');
           if (!same(await current(), next)) refuse('ANCHOR_INTERNAL_FAILURE');
@@ -297,8 +314,8 @@ export function createMonotonicAnchorHandler({
             body.authorization.length > 4_096
           )
             refuse('ANCHOR_INPUT_INVALID');
-          const previous = validateMonotonicCheckpoint(body.previous);
-          const next = validateMonotonicCheckpoint(body.next);
+          const previous = boundCheckpoint(body.previous);
+          const next = boundCheckpoint(body.next);
           validateMonth(previous, next);
           if (
             !(await authorizeMonth({
@@ -306,9 +323,11 @@ export function createMonotonicAnchorHandler({
               next,
               previous,
               principal,
+              signal,
             }))
           )
             refuse('ANCHOR_MONTH_AUTHORIZATION_REQUIRED');
+          signal.throwIfAborted();
           if (!(await store.compareAndSet(previous, next)))
             refuse('ANCHOR_CONFLICT');
           if (!same(await current(), next)) refuse('ANCHOR_INTERNAL_FAILURE');
@@ -335,7 +354,9 @@ export function createMonotonicAnchorHandler({
     })();
     const timeout = new Promise((resolve) => {
       timer = setTimeout(() => {
-        void request.body?.cancel().catch(() => undefined);
+        cancellation.abort();
+        if (!request.body?.locked)
+          void request.body?.cancel().catch(() => undefined);
         resolve(json(503, { code: 'ANCHOR_INTERNAL_FAILURE' }));
       }, operationTimeoutMs);
     });
