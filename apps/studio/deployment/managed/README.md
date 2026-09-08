@@ -113,8 +113,12 @@ configuration archive, and their account-recovery paths.
    pricing declarations.
 
    Quantities must match measured usage. Compute prices all four candidate
-   Machines for 744 hours, and `flyApplicationEgressGb` separately prices their
-   API, WebSocket, Registry, and other outbound delivery. The ingress Worker has
+   Machines for 744 hours. `flyApplicationEgressGb` measures their API,
+   WebSocket, Registry, and other outbound delivery; `flyRecoveryUploadGb`
+   separately measures capture/upload traffic, including encrypted-envelope
+   overhead, metadata, and retries. Its floor includes every scheduled dump
+   and changed object uploaded from Fly to B2. `flyEgressGb` prices at least
+   the sum of both measurements (650.2 GB in this synthetic example). The ingress Worker has
    separate mandatory tier, request, CPU-millisecond, and WebSocket-minute
    categories. Plain Workers bill a WebSocket upgrade as a request and do not
    charge for connection duration, so upgrades belong in
@@ -140,8 +144,9 @@ configuration archive, and their account-recovery paths.
    and validator quantities. Every changed version requires a readback GET,
    a validation invocation, and separately measured validation GB-seconds
    before its copy can be included in a checkpoint. The periodic history scrub
-   cannot substitute for that validation. Retries, growth, and restore drills remain extra
-   measured usage.
+   cannot substitute for that validation. Retries and growth must increase the
+   relevant measurements. Quarterly restore drills are separate mandatory costs
+   below; a reserve cannot substitute for their execution.
 
    `primaryObjectBucketInventories` binds each of the four buckets' retained
    version count to its measured requests for one complete authoritative scan.
@@ -180,6 +185,35 @@ configuration archive, and their account-recovery paths.
    measurements. Proof-index read bytes and outgoing signed checkpoint bytes
    are included in the respective transfer floors; object payload reads alone
    cannot pay for recovery metadata I/O.
+
+   Every history scrub also persists a result for every retained version and
+   publishes each bucket's revised proof index, including invalidation after a
+   corruption finding. `objectScrubResultSizeBytes` measures each complete
+   durable record. `objectScrubResultRequestsPerVersion` and
+   `objectScrubPublicationRequestsPerBucket` each require at least one PUT;
+   additional shards, readback, and retries increase them. The estimator includes
+   all result/index PUTs, outgoing validator bytes, and locked result/index
+   retention. Scrub execution measurements must include this publication work.
+
+   `restoreDrills.pitr` and `restoreDrills.independent` each require at least one
+   complete estate drill per quarter. Both name all four services and measure
+   their restored database storage and retained object counts/bytes. The model
+   prices each mode's compute GB-seconds, runner requests, source requests,
+   source transfer, runner transfer, four scratch database hours, scratch
+   database GB-hours, and temporary GB-hours separately, amortized over the
+   shared three-month interval. Restore transfer includes archive/envelope and
+   metadata overhead; paged discovery, object fetches, failed attempts, cleanup,
+   and receipt publication must be included in the measured resource totals.
+   Source request floors include every object, all four database archives, and
+   proof discovery. The independent B2 store also prices each drill receipt's
+   PUT/readback GET, readback bytes, and full immutable retention. Scratch
+   database storage must measure the expanded restored database, rather than
+   treating a compressed dump as its storage requirement. The fixture's four
+   hours and 28,800 GB-seconds per mode are synthetic inputs, not RTO evidence.
+   Initial qualification drills are additional setup usage. The result reports
+   monthly accrual as `totalUsd` and the conservative month in which both drill
+   paths execute as `peakMonthUsd`. Budget acceptance and dollar headroom use
+   that peak cost, so quarterly amortization cannot hide a breach of the cap.
 
    `databaseCheckpointSizeBytes` and `objectCheckpointSizeBytes` are positive
    measured upper bounds for complete signed checkpoint records, including

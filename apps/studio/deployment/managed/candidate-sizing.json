@@ -34,7 +34,8 @@
     "backupRequestsPerObjectValidation": 1,
     "validatorRequestsPerObjectValidation": 1,
     "validatorRequestsPerObjectCopy": 1,
-    "validatorRequestsPerObjectReconciliation": 1
+    "validatorRequestsPerObjectReconciliation": 1,
+    "restoreDrillIntervalMonths": 3
   },
   "postgres": {
     "planId": "hobby-2",

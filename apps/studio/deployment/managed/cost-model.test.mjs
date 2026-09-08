@@ -15,7 +15,7 @@ function declaredBudget() {
   const input = structuredClone(fixture);
   input.postmarkPlanRef = 'synthetic-mail-plan';
   input.workerTierId = 'synthetic-worker-tier';
-  input.minimumHeadroomUsd = 5;
+  input.minimumHeadroomUsd = 1;
   input.lineItems.find(({ category }) => category === 'reserve').unitPriceUsd =
     1;
   for (const item of input.lineItems) {
@@ -254,7 +254,11 @@ test('does not round away a breach of the minimum budget headroom', () => {
   const mutated = structuredClone(fixture);
   mutated.minimumHeadroomUsd = 1;
   const subtotal = mutated.lineItems.reduce(
-    (sum, item) => sum + item.quantity * item.unitPriceUsd,
+    (sum, item) =>
+      sum +
+      item.quantity *
+        item.unitPriceUsd *
+        (item.category.includes('-drill-') ? 3 : 1),
     0,
   );
   mutated.lineItems.find(
@@ -506,6 +510,15 @@ test('binds all bucket pages to the retained inventory, including empty buckets 
   const line = input.lineItems.find(
     ({ category }) => category === 'primary-object-class-a',
   );
+  for (const drill of Object.values(input.restoreDrills)) {
+    for (const [name, inventory] of Object.entries(
+      input.primaryObjectBucketInventories,
+    )) {
+      drill.services[name].objectRestoreCount = inventory.retainedVersionCount;
+      drill.services[name].objectRestoreGb =
+        inventory.retainedVersionCount * 0.002;
+    }
+  }
   input.primaryObjectClassARequests = 44_640 * 16 + 2_500;
   line.quantity = input.primaryObjectClassARequests / 1_000_000;
   assert.doesNotThrow(() => evaluateManagedEstateCost(input));
@@ -912,5 +925,254 @@ test('zero-price categories need explicit coverage of their whole usage', () => 
       () => evaluateManagedEstateCost(input, budgetOptions),
       /coverage|coveredQuantity/,
     );
+  }
+});
+
+test('prices Fly recovery uploads in addition to measured application delivery', () => {
+  for (const [field, amount] of [
+    ['flyRecoveryUploadGb', 600],
+    ['flyEgressGb', 600],
+  ]) {
+    const input = structuredClone(fixture);
+    input[field] -= amount;
+    input.lineItems.find((row) => row.category === 'fly-egress').quantity =
+      input.flyEgressGb;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      new RegExp(`${field} is below`),
+    );
+  }
+  const input = structuredClone(fixture);
+  input.flyRecoveryUploadGb += 1;
+  assert.throws(() => evaluateManagedEstateCost(input), /flyEgressGb is below/);
+});
+
+test('prices durable scrub results, revised proof indexes, and immutable result retention', () => {
+  const resultBytes = 2 * (12_500 * 256 + 4 * 1_024);
+  for (const [field, category, omitted, divisor] of [
+    ['backupRequestCount', 'backup-requests', 25_008, 1],
+    ['backupStoredGb', 'backup-storage', resultBytes / 1e9, 1_000],
+    ['validatorTransferGb', 'validator-transfer', resultBytes / 1e9, 1],
+  ]) {
+    const input = structuredClone(fixture);
+    input[field] -= omitted;
+    input.lineItems.find((row) => row.category === category).quantity =
+      input[field] / divisor;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      new RegExp(`${field} is below`),
+    );
+  }
+  for (const field of [
+    'objectScrubResultSizeBytes',
+    'objectScrubResultRequestsPerVersion',
+    'objectScrubPublicationRequestsPerBucket',
+  ]) {
+    const input = structuredClone(fixture);
+    input[field] = 0;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      /durable per-version records/,
+    );
+    input[field] = fixture[field] * 2;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      /below the required recovery/,
+    );
+  }
+});
+
+test('requires both quarterly drills to cover every database and retained object store', () => {
+  for (const mode of ['pitr', 'independent']) {
+    for (const edit of [
+      (input) => {
+        delete input.restoreDrills[mode];
+      },
+      (input) => {
+        delete input.restoreDrills[mode].services['registry-staging'];
+      },
+      (input) => {
+        input.restoreDrills[mode].services[
+          'registry-staging'
+        ].objectRestoreCount = 0;
+      },
+      (input) => {
+        input.restoreDrills[mode].services[
+          'registry-staging'
+        ].databaseStorageGb = 0;
+      },
+      (input) => {
+        input.restoreDrills[mode].sourceTransferGb = 1;
+      },
+      (input) => {
+        input.restoreDrills[mode].runnerTransferGb = 1;
+      },
+      (input) => {
+        input.restoreDrills[mode].scratchStorageGb = 1;
+      },
+      (input) => {
+        input.restoreDrills[mode].sourceRequestCount = 4;
+      },
+      (input) => {
+        input.restoreDrills[mode].runsPerQuarter = 0;
+      },
+      (input) => {
+        input.restoreDrills[mode].receiptRequestCount = 1;
+      },
+    ]) {
+      const input = structuredClone(fixture);
+      edit(input);
+      assert.throws(
+        () => evaluateManagedEstateCost(input),
+        /drill|restoreDrills/,
+      );
+    }
+    for (const unit of [
+      'compute',
+      'requests',
+      'source-requests',
+      'source-transfer',
+      'runner-transfer',
+      'database-hours',
+      'database-storage',
+      'scratch-storage',
+    ]) {
+      const input = structuredClone(fixture);
+      const category = `${mode}-drill-${unit}`;
+      input.lineItems.find((row) => row.category === category).quantity = 0;
+      assert.throws(
+        () => evaluateManagedEstateCost(input),
+        /quantity does not match/,
+        category,
+      );
+      input.lineItems = input.lineItems.filter(
+        (row) => row.category !== category,
+      );
+      assert.throws(
+        () => evaluateManagedEstateCost(input),
+        /missing categories/,
+        category,
+      );
+    }
+  }
+});
+
+test('amortizes measured quarterly restore resources without absorbing them into reserve', () => {
+  for (const mode of ['pitr', 'independent']) {
+    const input = structuredClone(fixture);
+    const row = input.lineItems.find(
+      (item) => item.category === `${mode}-drill-compute`,
+    );
+    assert.equal(row.quantity, 9_600);
+    input.restoreDrills[mode].computeGbSeconds *= 2;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      /quantity does not match/,
+    );
+    row.quantity *= 2;
+    assert.ok(
+      evaluateManagedEstateCost(input).totalUsd >
+        evaluateManagedEstateCost(fixture).totalUsd,
+    );
+  }
+  for (const field of [
+    'backupRequestCount',
+    'backupEgressGb',
+    'backupStoredGb',
+  ]) {
+    const input = structuredClone(fixture);
+    // Increase receipt size/publications while leaving normal recovery fully priced.
+    for (const drill of Object.values(input.restoreDrills)) {
+      if (field === 'backupRequestCount') drill.receiptRequestCount = 100;
+      else drill.receiptSizeBytes = 1_000_000;
+    }
+    for (const [other, value, category, divisor] of [
+      ['backupRequestCount', 1_000_000, 'backup-requests', 1],
+      ['backupEgressGb', 651, 'backup-egress', 1],
+      ['backupStoredGb', 621, 'backup-storage', 1_000],
+    ]) {
+      if (other === field) continue;
+      input[other] = value;
+      input.lineItems.find((row) => row.category === category).quantity =
+        value / divisor;
+    }
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      new RegExp(`${field} must also cover quarterly drill receipt`),
+    );
+  }
+});
+
+test('refuses a quarterly execution month above the cap even when its monthly accrual fits', () => {
+  const input = structuredClone(fixture);
+  const before = evaluateManagedEstateCost(input);
+  assert.ok(before.peakMonthUsd > before.totalUsd);
+  input.lineItems.find((row) => row.category === 'reserve').unitPriceUsd =
+    100 - before.peakMonthUsd + 0.5;
+  const estimate = evaluateManagedEstateCost(input);
+  assert.ok(estimate.totalUsd < 100);
+  assert.ok(estimate.peakMonthUsd > 100);
+  assert.equal(estimate.withinCap, false);
+  assert.throws(
+    () => evaluateManagedEstateCost(input, { requireBudget: true }),
+    /peak monthly total.*exceeds/,
+  );
+});
+
+test('includes quarterly receipt traffic in peak-month budget enforcement', () => {
+  const input = declaredBudget();
+  for (const drill of Object.values(input.restoreDrills))
+    drill.receiptRequestCount = 1_000_000;
+  input.backupRequestCount += (2_000_000 - 4) / 3;
+  for (const row of input.lineItems) {
+    row.unitPriceUsd =
+      row.category === 'backup-requests'
+        ? 0.00006
+        : row.category === 'reserve'
+          ? 1
+          : 0;
+    if (row.category === 'backup-requests')
+      row.quantity = input.backupRequestCount;
+    Object.assign(row.pricing, {
+      quantity: row.quantity,
+      unitPriceUsd: row.unitPriceUsd,
+      kind:
+        row.category === 'reserve'
+          ? 'operator-reserve'
+          : row.unitPriceUsd === 0
+            ? 'included'
+            : 'rate',
+      coveredQuantity: row.quantity,
+      coverage: 'Synthetic included allowance',
+    });
+  }
+  const result = evaluateManagedEstateCost(input);
+  assert.ok(result.totalUsd < 100);
+  assert.ok(result.peakMonthUsd > 100);
+  assert.throws(
+    () => evaluateManagedEstateCost(input, budgetOptions),
+    /peak monthly total.*exceeds/,
+  );
+});
+
+test('refuses smaller drill I/O even when the quoted quantities match', () => {
+  for (const mode of ['pitr', 'independent']) {
+    for (const [field, unit, quantity] of [
+      ['sourceTransferGb', 'source-transfer', 1 / 3],
+      ['runnerTransferGb', 'runner-transfer', 1 / 3],
+      ['sourceRequestCount', 'source-requests', 1 / 3],
+      ['scratchStorageGb', 'scratch-storage', 4 / 3],
+    ]) {
+      const input = structuredClone(fixture);
+      input.restoreDrills[mode][field] = 1;
+      input.lineItems.find(
+        (row) => row.category === `${mode}-drill-${unit}`,
+      ).quantity = quantity;
+      assert.throws(
+        () => evaluateManagedEstateCost(input),
+        /must cover the complete recovery inventory/,
+        `${mode} ${field}`,
+      );
+    }
   }
 });
