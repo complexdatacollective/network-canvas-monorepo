@@ -78,10 +78,12 @@ Use the deployment's real complete enrollment list; the names above only show
 the required JSON form. The command accepts no arguments and starts no server,
 authentication service or worker. It requires the application and maintenance
 LOGINs and every configured administrative writer to be `NOLOGIN`, refuses
-their surviving sessions and prepared transactions, and verifies the current
-schema and dedicated read-only backup identity on one pinned `REPEATABLE READ
-READ ONLY` transaction. It rechecks writer quarantine from a fresh snapshot
-after the scan. It counts and keyset-pages every restored `public.assets` row,
+every other login-backed session on the restored target database and prepared
+transactions, and verifies the current schema and dedicated read-only backup
+identity on one pinned `REPEATABLE READ READ ONLY` transaction. Administrative
+sessions on another database do not block it. It rechecks target-session and
+writer quarantine from a fresh snapshot after the scan. It counts and
+keyset-pages every restored `public.assets` row,
 then streams each corresponding
 `assets/<sha256>` object through an exact byte-size and SHA-256 check without
 buffering the object. Acquisition, database statements, each object request,

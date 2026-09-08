@@ -125,9 +125,15 @@ async function assertRecoveryQuarantine(
        AND (SELECT count(*) FROM runtime_logins) = $4::pg_catalog.int4
        AND NOT EXISTS (SELECT 1 FROM writer_logins WHERE rolcanlogin)
        AND NOT EXISTS (
+         -- PostgreSQL masks backend_type for sessions owned by another login
+         -- unless this narrow backup identity gains a statistics-reader role.
+         -- Database, PID and login OID remain visible, so identify client
+         -- sessions by their login instead of letting an unclassified writer
+         -- survive.
          SELECT 1 FROM pg_catalog.pg_stat_activity activity
          WHERE activity.datname = pg_catalog.current_database()
-           AND activity.usesysid IN (SELECT oid FROM writer_logins)
+           AND activity.usesysid IS NOT NULL
+           AND activity.pid <> pg_catalog.pg_backend_pid()
        )
        AND NOT EXISTS (
          SELECT 1 FROM pg_catalog.pg_prepared_xacts prepared

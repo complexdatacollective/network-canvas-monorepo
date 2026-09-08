@@ -629,6 +629,103 @@ describe.skipIf(!database)('recovered Studio asset verification', () => {
     }
   });
 
+  it('refuses an active superuser session on the recovered database', async () => {
+    const f = requireFixture();
+    const bytes = new TextEncoder().encode('target superuser quarantine');
+    const hash = await addAsset('asset-team-target-superuser', bytes);
+    const reads: string[] = [];
+    const targetAdministrator = createOwnerPool(f.administrativeDb);
+    const active = await targetAdministrator.connect();
+    try {
+      const target = await active.query<{ database: string; pid: number }>(
+        'SELECT pg_catalog.current_database() AS database, pg_catalog.pg_backend_pid() AS pid',
+      );
+      expect(target).toMatchObject({
+        rows: [{ database: new URL(f.sourceDb.url).pathname.slice(1) }],
+      });
+      await expect(
+        f.backup.query<{ present: boolean }>(
+          `SELECT EXISTS (
+             SELECT 1 FROM pg_catalog.pg_stat_activity
+             WHERE pid = $1 AND usesysid IS NOT NULL
+           ) AS present`,
+          [target.rows[0]?.pid],
+        ),
+      ).resolves.toMatchObject({ rows: [{ present: true }] });
+      await expect(
+        verify(memoryStore(new Map([[hash, bytes]]), reads)),
+      ).rejects.toThrow(FAILURE);
+      expect(reads).toEqual([]);
+    } finally {
+      active.release();
+      await targetAdministrator.end();
+    }
+  });
+
+  it('refuses a superuser that connects and commits during object verification', async () => {
+    const f = requireFixture();
+    const bytes = new TextEncoder().encode('late target superuser quarantine');
+    const hash = await addAsset('asset-team-late-superuser', bytes);
+    const unverifiedHash = createHash('sha256')
+      .update('unverified committed object')
+      .digest('hex');
+    const targetAdministrator = createOwnerPool(f.administrativeDb);
+    let active: pg.PoolClient | undefined;
+    let reads = 0;
+    const store = memoryStore(new Map([[hash, bytes]]));
+    store.get = async () => {
+      reads += 1;
+      active = await targetAdministrator.connect();
+      await active.query(
+        `INSERT INTO public.assets
+          (team_id, hash, media_type, media_class, byte_size, original_filename, origin)
+         VALUES ($1, $2, 'application/octet-stream', 'document', 1,
+           'unverified.bin', 'seed')`,
+        ['asset-team-late-superuser', unverifiedHash],
+      );
+      return {
+        body: chunks(bytes),
+        mediaType: 'application/octet-stream',
+        size: bytes.byteLength,
+      };
+    };
+
+    try {
+      await expect(
+        verify(store, { requestTimeoutMs: 1_000, objectTimeoutMs: 2_000 }),
+      ).rejects.toThrow(FAILURE);
+      expect(reads).toBe(1);
+      if (!active) throw new Error('Expected an active target writer.');
+      await expect(
+        active.query<{ present: boolean }>(
+          `SELECT EXISTS (
+             SELECT 1 FROM public.assets WHERE team_id = $1 AND hash = $2
+           ) AS present`,
+          ['asset-team-late-superuser', unverifiedHash],
+        ),
+      ).resolves.toMatchObject({ rows: [{ present: true }] });
+    } finally {
+      active?.release();
+      await targetAdministrator.end();
+    }
+  });
+
+  it('permits a recovery administrator session on another database', async () => {
+    const f = requireFixture();
+    const administrative = await f.administrator.connect();
+    try {
+      const current = await administrative.query<{ database: string }>(
+        'SELECT pg_catalog.current_database() AS database',
+      );
+      expect(current.rows[0]?.database).not.toBe(
+        new URL(f.sourceDb.url).pathname.slice(1),
+      );
+      await expect(verify(memoryStore(new Map()))).resolves.toBe(0);
+    } finally {
+      administrative.release();
+    }
+  });
+
   it('rechecks fresh quarantine state after the inventory snapshot', async () => {
     const f = requireFixture();
     const bytes = new TextEncoder().encode('fresh quarantine check');
