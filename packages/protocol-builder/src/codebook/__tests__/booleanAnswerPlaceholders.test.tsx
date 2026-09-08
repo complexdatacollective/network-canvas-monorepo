@@ -9,7 +9,6 @@ import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
 
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
-import { esIntl } from '../../testing/i18n.ts';
 import VariableBooleanAnswerFields from '../components/VariableBooleanAnswerFields.tsx';
 import { optionsForShape, validateBooleanAnswers } from '../variableOptions.ts';
 
@@ -53,13 +52,12 @@ describe('the placeholders on an unnamed yes/no answer', () => {
           { label: '', value: false },
         ]}
         onChange={() => undefined}
-        issues={validateBooleanAnswers(
-          [
-            { label: 'Acepto', value: true },
-            { label: '', value: false },
-          ],
-          esIntl,
-        )}
+        // Encoded, not formatted: `FieldErrors` decodes it against the
+        // provider mounted above, which is the same reading the editor gets.
+        issues={validateBooleanAnswers([
+          { label: 'Acepto', value: true },
+          { label: '', value: false },
+        ])}
         readOnly={false}
       />,
     );
