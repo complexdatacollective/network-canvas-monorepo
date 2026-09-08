@@ -38,7 +38,10 @@
     "./postgres-runtime-identity": "./src/postgres-runtime-identity.ts",
     "./postgres-restricted-identities": "./src/postgres-restricted-identities.ts",
     "./postgres-backup": "./src/postgres-backup.ts",
-    "./postgres-recovery-quarantine": "./src/postgres-recovery-quarantine.ts"
+    "./postgres-recovery-quarantine": "./src/postgres-recovery-quarantine.ts",
+    "./operational-http": "./src/operational-http.ts",
+    "./operational-metrics": "./src/operational-metrics.ts",
+    "./proxy-trust": "./src/proxy-trust.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -48,10 +51,12 @@
   "dependencies": {
     "@codaco/protocol-validation": "workspace:^",
     "@noble/hashes": "^2.3.0",
+    "@prometheus-io/client": "^0.16.1",
     "crc-32": "^1.2.2",
     "drizzle-orm": "catalog:",
     "fflate": "^0.8.3",
     "file-type": "^22.0.2",
+    "ipaddr.js": "^2.5.0",
     "nodemailer": "9.0.5",
     "pg": "^8.22.0",
     "pg-connection-string": "^2.14.0",

@@ -2,6 +2,12 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 import pino, { type DestinationStream } from 'pino';
 
+import {
+  REQUEST_ID,
+  requestLogFields,
+  type RequestObservation as SharedRequestObservation,
+} from '@codaco/studio-sync/operational-http';
+
 const DIAGNOSTICS = {
   STUDIO_AUDIT_ALERT_WORKER_ERROR: 'error',
   STUDIO_CONFIGURATION_INVALID: 'error',
@@ -38,13 +44,8 @@ const DIAGNOSTICS = {
 type DiagnosticCode = keyof typeof DIAGNOSTICS;
 type Correlation = { requestId?: string; teamId?: string };
 
-export type RequestObservation = {
-  requestId: string;
+export type RequestObservation = SharedRequestObservation & {
   teamId?: string;
-  route: string;
-  method: string;
-  status: number;
-  durationMs: number;
 };
 
 export type OperationalLogger = {
@@ -60,8 +61,7 @@ export type RequestContext = {
 
 export const requestContext = new AsyncLocalStorage<RequestContext>();
 
-export const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const UUID = REQUEST_ID;
 
 function correlationFields(correlation?: Correlation) {
   // Callers obtain team ids from authorization or committed audit context,
@@ -90,10 +90,7 @@ export function createOperationalLogger(
         logger.info({
           event: 'http_request',
           ...correlationFields(observation),
-          route: observation.route,
-          method: observation.method,
-          status: observation.status,
-          duration_ms: Math.round(observation.durationMs * 1000) / 1000,
+          ...requestLogFields(observation),
         });
       } catch {
         /* Logging failures cannot alter a request or domain transaction. */

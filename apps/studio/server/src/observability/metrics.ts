@@ -1,7 +1,7 @@
-import { monitorEventLoopDelay } from 'node:perf_hooks';
-
-import { Counter, Gauge, Histogram, Registry } from '@prometheus-io/client';
+import { Counter, Gauge, Histogram } from '@prometheus-io/client';
 import type pg from 'pg';
+
+import { createHttpRuntimeMetrics } from '@codaco/studio-sync/operational-metrics';
 
 import type { OutboxObserver } from '../outbox/instrumentation.ts';
 import type { RequestObservation } from './logger.ts';
@@ -18,42 +18,19 @@ export function createOperationalMetrics(options: {
   timeoutMs?: number;
   cacheMs?: number;
 }) {
-  const registry = new Registry();
+  const runtime = createHttpRuntimeMetrics({
+    prefix: 'studio',
+    pools: [
+      ['application', options.pool],
+      ['maintenance', options.maintenancePool],
+    ],
+    monitorProcess: options.monitorProcess,
+  });
+  const registry = runtime.registry;
   const registers = [registry];
-  const requests = new Counter({
-    name: 'studio_http_requests_total',
-    help: 'Completed HTTP requests, including WebSocket handshakes.',
-    labelNames: ['method', 'route', 'status'] as const,
-    registers,
-  });
-  const latency = new Histogram({
-    name: 'studio_http_request_duration_seconds',
-    help: 'HTTP request duration through response completion.',
-    labelNames: ['method', 'route'] as const,
-    buckets: [0.005, 0.025, 0.1, 0.25, 0.5, 1, 2, 5, 10],
-    registers,
-  });
   const sockets = new Gauge({
     name: 'studio_websocket_connections',
     help: 'Open application WebSocket connections.',
-    registers,
-  });
-  const poolConnections = new Gauge({
-    name: 'studio_database_pool_connections',
-    help: 'Pool connections and waiting checkouts.',
-    labelNames: ['pool', 'state'] as const,
-    registers,
-  });
-  const poolCapacity = new Gauge({
-    name: 'studio_database_pool_capacity',
-    help: 'Configured maximum pool connections.',
-    labelNames: ['pool'] as const,
-    registers,
-  });
-  const lag = new Gauge({
-    name: 'studio_event_loop_lag_seconds',
-    help: 'Event loop delay since the preceding scrape.',
-    labelNames: ['statistic'] as const,
     registers,
   });
   const ready = new Gauge({
@@ -121,11 +98,6 @@ export function createOperationalMetrics(options: {
     options.timeoutMs,
     options.cacheMs,
   );
-  const eventLoop = options.monitorProcess
-    ? monitorEventLoopDelay({ resolution: 20 })
-    : undefined;
-  eventLoop?.enable();
-
   const observer: OutboxObserver = (event) => {
     if (event.kind === 'dispatch') {
       dispatchLatency.observe({ queue: event.queue }, event.durationMs / 1000);
@@ -152,15 +124,7 @@ export function createOperationalMetrics(options: {
   return {
     observer,
     request(this: void, observation: RequestObservation) {
-      requests.inc({
-        method: observation.method,
-        route: observation.route,
-        status: String(observation.status),
-      });
-      latency.observe(
-        { method: observation.method, route: observation.route },
-        observation.durationMs / 1000,
-      );
+      runtime.request(observation);
     },
     socketOpened() {
       sockets.inc();
@@ -202,28 +166,7 @@ export function createOperationalMetrics(options: {
             queueCounts.set({ queue: row.queue, state }, row[state]);
         }
       }
-      for (const [name, pool] of [
-        ['application', options.pool],
-        ['maintenance', options.maintenancePool],
-      ] as const) {
-        if (!pool) continue;
-        poolCapacity.set({ pool: name }, pool.options.max ?? 10);
-        for (const [state, count] of [
-          ['active', pool.totalCount - pool.idleCount],
-          ['idle', pool.idleCount],
-          ['waiting', pool.waitingCount],
-        ] as const)
-          poolConnections.set({ pool: name, state }, count);
-      }
-      if (eventLoop) {
-        for (const [statistic, value] of [
-          ['mean', eventLoop.mean],
-          ['max', eventLoop.max],
-          ['p99', eventLoop.percentile(99)],
-        ] as const)
-          lag.set({ statistic }, Number.isFinite(value) ? value / 1e9 : 0);
-        eventLoop.reset();
-      }
+      runtime.collectRuntime();
       return {
         body: await registry.metrics(),
         contentType: registry.contentType,
@@ -231,7 +174,7 @@ export function createOperationalMetrics(options: {
     },
     stop() {
       queueProbe.stop();
-      eventLoop?.disable();
+      runtime.stop();
     },
   };
 }

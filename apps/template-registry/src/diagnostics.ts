@@ -1,3 +1,5 @@
+import { REQUEST_ID } from '@codaco/studio-sync/operational-http';
+
 import type { RegistryAuthDiagnostic } from './auth/service.ts';
 
 export type RegistryDiagnostic =
@@ -30,10 +32,7 @@ export function logRegistryDiagnostic(
     `${JSON.stringify({
       timestamp: new Date().toISOString(),
       code,
-      ...(requestId &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
-        requestId,
-      )
+      ...(requestId && REQUEST_ID.test(requestId)
         ? { request_id: requestId }
         : {}),
     })}\n`,

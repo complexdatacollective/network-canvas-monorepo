@@ -1,6 +1,7 @@
 import { getProcedureContractOrThrow } from '@orpc/contract';
 
 import { contract } from '@codaco/studio-rpc';
+import { boundedRequestMethod } from '@codaco/studio-sync/operational-http';
 
 const rpcRoutes = new Set<string>();
 function collectRpcRoutes(router: object, parts: string[] = []): void {
@@ -25,18 +26,6 @@ const exactRoutes = new Set([
   '/api/v1/status',
   '/api/v1/openapi.json',
 ]);
-const methods = new Set([
-  'GET',
-  'HEAD',
-  'POST',
-  'PUT',
-  'PATCH',
-  'DELETE',
-  'OPTIONS',
-  'CONNECT',
-  'TRACE',
-]);
-
 /** Finite server-owned route labels: never a raw URL, query, hash or SPA id. */
 export function requestRoute(path: string): string {
   if (exactRoutes.has(path) || rpcRoutes.has(path)) return path;
@@ -54,5 +43,5 @@ export function requestRoute(path: string): string {
 }
 
 export function requestMethod(method: string): string {
-  return methods.has(method) ? method : 'OTHER';
+  return boundedRequestMethod(method);
 }

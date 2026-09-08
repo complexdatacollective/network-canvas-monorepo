@@ -22,6 +22,8 @@ services:
       REGISTRY_OPERATOR_DATABASE_URL: postgresql://registry_operations:${REGISTRY_OPERATOR_PASSWORD:?Missing registry operator password}@registry-postgres:5432/registry
       REGISTRY_DATABASE_ALLOWED_LOGINS: '["registry_migrator","registry_runtime","registry_operations","registry_backup_login"]'
       REGISTRY_AUTH_SECRET: ${REGISTRY_AUTH_SECRET:?Missing registry authentication key}
+      REGISTRY_METRICS_TOKEN: ${REGISTRY_METRICS_TOKEN:-}
+      REGISTRY_TRUSTED_PROXIES: ${REGISTRY_TRUSTED_PROXIES:-}
       REGISTRY_SMTP_URL: ${REGISTRY_SMTP_URL:-}
       REGISTRY_POSTMARK_SERVER_TOKEN: ${REGISTRY_POSTMARK_SERVER_TOKEN:-}
       REGISTRY_POSTMARK_MESSAGE_STREAM: ${REGISTRY_POSTMARK_MESSAGE_STREAM:-}

@@ -16,6 +16,7 @@ import { parseEnv } from 'node:util';
 
 import { z } from 'zod';
 
+import { isProxyAddress } from '@codaco/studio-sync/proxy-trust';
 import {
   revokeLargeObjectPrivilegesSql,
   runtimeRolesSql,
@@ -45,6 +46,11 @@ const optionsSchema = z
     smtpUrl: dotenvValue.url().max(2048).optional(),
     postmarkServerToken: dotenvValue.min(1).max(1024).optional(),
     postmarkMessageStream: dotenvValue.min(1).max(256).optional(),
+    trustedProxies: z
+      .array(z.string().refine(isProxyAddress))
+      .max(32)
+      .refine((values) => new Set(values).size === values.length)
+      .optional(),
   })
   .superRefine((value, context) => {
     if (Boolean(value.smtpUrl) === Boolean(value.postmarkServerToken))
@@ -80,6 +86,7 @@ const generatedNames = [
   'REGISTRY_OPERATOR_PASSWORD',
   'REGISTRY_BACKUP_PASSWORD',
   'REGISTRY_AUTH_SECRET',
+  'REGISTRY_METRICS_TOKEN',
   'REGISTRY_MINIO_ROOT_USER',
   'REGISTRY_MINIO_ROOT_PASSWORD',
   'REGISTRY_S3_ACCESS_KEY_ID',
@@ -94,6 +101,7 @@ const publicEnvironmentNames = [
   'REGISTRY_POSTMARK_SERVER_TOKEN',
   'REGISTRY_POSTMARK_MESSAGE_STREAM',
   'REGISTRY_S3_REGION',
+  'REGISTRY_TRUSTED_PROXIES',
 ] as const;
 
 export function renderRegistryDeploymentTemplate(
@@ -142,6 +150,7 @@ function generatedEnvironment() {
     REGISTRY_OPERATOR_PASSWORD: secret(),
     REGISTRY_BACKUP_PASSWORD: secret(),
     REGISTRY_AUTH_SECRET: secret(),
+    REGISTRY_METRICS_TOKEN: secret(),
     REGISTRY_MINIO_ROOT_USER: `registry_admin_${randomBytes(8).toString('hex')}`,
     REGISTRY_MINIO_ROOT_PASSWORD: secret(),
     REGISTRY_S3_ACCESS_KEY_ID: `registry_${randomBytes(8).toString('hex')}`,
@@ -167,6 +176,7 @@ function retainedGenerated(values: Record<string, string | undefined>) {
     !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_OPERATOR_PASSWORD ?? '') ||
     !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_BACKUP_PASSWORD ?? '') ||
     !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_AUTH_SECRET ?? '') ||
+    !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_METRICS_TOKEN ?? '') ||
     !/^registry_admin_[a-f0-9]{16}$/.test(
       valuesByName.REGISTRY_MINIO_ROOT_USER ?? '',
     ) ||
@@ -319,6 +329,7 @@ export async function configureRegistryDeployment(
     REGISTRY_POSTMARK_SERVER_TOKEN: options.postmarkServerToken ?? '',
     REGISTRY_POSTMARK_MESSAGE_STREAM: options.postmarkMessageStream ?? '',
     REGISTRY_S3_REGION: 'us-east-1',
+    REGISTRY_TRUSTED_PROXIES: options.trustedProxies?.join(',') ?? '',
   };
   const retained = options.previousConfigurationRoot
     ? await (async () => {

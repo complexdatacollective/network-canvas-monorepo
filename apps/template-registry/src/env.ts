@@ -6,6 +6,7 @@ import {
   postmarkConfiguration,
   validatePostmarkFrom,
 } from '@codaco/studio-sync/postmark-email-sender';
+import { isProxyAddress } from '@codaco/studio-sync/proxy-trust';
 
 import { DEFAULT_REGISTRY_LIMITS, RegistryLimitsSchema } from './limits.ts';
 
@@ -49,6 +50,15 @@ const integer = (value: string | undefined, fallback: number) =>
   value === undefined ? fallback : Number(value);
 const databaseUrl = networkUrl(['postgres:', 'postgresql:']);
 const loginName = z.string().regex(/^[a-z_][a-z0-9_]{0,62}$/);
+const proxyList = z
+  .string()
+  .transform((value) =>
+    value
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean),
+  )
+  .refine((entries) => entries.every(isProxyAddress));
 const enrollmentSchema = z.strictObject({
   allowedLogins: z
     .array(loginName)
@@ -100,6 +110,8 @@ const schema = z.strictObject({
   operatorDatabaseUrl: databaseUrl,
   ...enrollmentSchema.shape,
   authSecret: nonblank.min(32).max(1024),
+  metricsToken: nonblank.min(32).max(1024).optional(),
+  trustedProxies: proxyList.optional(),
   mailer: z.discriminatedUnion('kind', [
     z.strictObject({
       kind: z.literal('smtp'),
@@ -151,6 +163,8 @@ export function readRegistryEnv(raw: RawEnv = process.env): RegistryEnv {
       databaseUrl: raw.REGISTRY_DATABASE_URL,
       operatorDatabaseUrl: raw.REGISTRY_OPERATOR_DATABASE_URL,
       authSecret: raw.REGISTRY_AUTH_SECRET,
+      metricsToken: raw.REGISTRY_METRICS_TOKEN || undefined,
+      trustedProxies: raw.REGISTRY_TRUSTED_PROXIES || undefined,
       mailer: postmark
         ? {
             kind: 'postmark',
