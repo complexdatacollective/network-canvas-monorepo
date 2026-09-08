@@ -285,14 +285,19 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * The attributes a Family Pedigree's own unsaved `nodeConfig.form` draft
- * collects — the VALIDATED writers a structural slot must not also claim.
+ * The attributes one of a Family Pedigree's own unsaved lists binds.
  *
- * Read from the live rows rather than the committed stage: a field added in
- * this editing session is not saved yet, and one just deleted must stop
- * refusing picks immediately.
+ * Both lists it has are rows carrying a `variable`, and both are read the same
+ * way: `nodeConfig.form`, whose fields COLLECT their attribute with
+ * validation, and `nominationPrompts`, whose toggles WRITE theirs without any.
+ * Which list was read is what says which writer class the answer belongs to,
+ * so the caller names it rather than this helper.
+ *
+ * Read from the live rows rather than the committed stage: a row added in this
+ * editing session is not saved yet, and one just deleted must stop refusing
+ * picks immediately.
  */
-export function draftFormFieldVariables(rows: unknown): readonly string[] {
+export function draftRowVariables(rows: unknown): readonly string[] {
   if (!Array.isArray(rows)) return [];
   return rows
     .filter(isRecord)

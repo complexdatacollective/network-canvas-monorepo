@@ -17,10 +17,15 @@ import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
 import CreateVariableButton from './CreateVariableButton.tsx';
 import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
-import { slotPickerOptions, subjectVariableOptions } from './slotWiring.ts';
+import {
+  draftRowVariables,
+  slotPickerOptions,
+  subjectVariableOptions,
+} from './slotWiring.ts';
 
 const TEXT_FIELD = 'text';
 const VARIABLE_FIELD = 'variable';
+const FORM_FIELD_PATH = 'nodeConfig.form';
 
 /**
  * The node type a nomination prompt's attribute belongs to.
@@ -51,6 +56,12 @@ const asString = (value: unknown): string | undefined =>
  * bypassed, and an attribute the pedigree derives structurally (the
  * participant marker above all) would be overwritten every time the
  * participant answered.
+ *
+ * "Nothing else" includes the stage the researcher has open. The family member
+ * form is one section above this dialog, and a field added there in this
+ * session is in no saved protocol yet: read from the committed protocol alone,
+ * the picker offered the very attribute that field collects, and the refusal
+ * arrived at the save.
  */
 export function NominationPromptEditor({ item }: RowEditorProps) {
   const intl = useAppIntl();
@@ -60,6 +71,13 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const { variable } = useFormValue([VARIABLE_FIELD] as const);
   const currentValue = asString(variable) ?? asString(item.variable);
+  // The stage form behind this dialog, which the dialog's own form store does
+  // not hide: see `useNominationSubject`.
+  const formRows = useStageValue(FORM_FIELD_PATH);
+  const draftConflicting = useMemo(
+    () => draftRowVariables(formRows),
+    [formRows],
+  );
 
   const options = useMemo(
     () =>
@@ -74,8 +92,16 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
         // No `ownSlot`: a nomination toggle fills no interface slot of its own,
         // so every attribute another slot owns is out of bounds.
         writerClass: 'unvalidated',
+        draftConflicting,
       }),
-    [currentValue, protocolContext, roleMap, slotMap, subject],
+    [
+      currentValue,
+      draftConflicting,
+      protocolContext,
+      roleMap,
+      slotMap,
+      subject,
+    ],
   );
 
   return (

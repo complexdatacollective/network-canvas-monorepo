@@ -1375,3 +1375,88 @@ describe('the batch a framing change makes', () => {
     expect(await terminology()).toHaveValue('gendered');
   });
 });
+
+/**
+ * The same window the display label and the family member form already close,
+ * seen from the two places that were still reading the SAVED protocol alone:
+ * the nomination prompts, and a second structural slot.
+ *
+ * An exclusion built only from what is committed cannot see the edit in front
+ * of the researcher, so the picker offers an attribute this session has
+ * already claimed — and the refusal arrives at the save, naming a stage the
+ * researcher thought they had finished.
+ */
+describe('picks this session has already claimed', () => {
+  /**
+   * A nomination toggle is an UNVALIDATED writer, so it may not take an
+   * attribute this stage's own form collects — and the form field that
+   * collects it is unsaved, so only the live draft knows about it.
+   *
+   * The field invents its attribute, for the reason `addFormFieldInventing`
+   * gives: every boolean the node type already has is written unvalidated
+   * somewhere, so the shared form picker refuses all of them.
+   */
+  it('never offers a nomination prompt an attribute this stage’s own form collects', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Family member form' }),
+    );
+    await addFormFieldInventing(harness, 'unwell', 'boolean');
+    expect(variableIdByName(harness, 'unwell')).toBeDefined();
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit nomination prompt' }),
+    );
+    await screen.findByRole('combobox', { name: 'Attribute' });
+
+    // The prompt's own committed pick, and nothing the form now collects.
+    expect(optionsOf('Attribute')).toEqual(['hasConditionX']);
+  });
+
+  /**
+   * The other direction: the family member form may not collect an attribute
+   * a nomination prompt claimed in this session. The pedigree answers for its
+   * own stage here — the shared section drops the open stage from the saved
+   * role map as soon as it is handed a live list — so a nomination prompt
+   * missing from that list is a writer nothing accounts for.
+   */
+  it('never offers the family member form an attribute a nomination prompt took this session', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+    addFamilyMemberVariable(harness, 'unwell', {
+      name: 'unwell',
+      type: 'boolean',
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit nomination prompt' }),
+    );
+    const prompt = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      await prompt.findByRole('combobox', { name: 'Attribute' }),
+      'unwell',
+    );
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Family member form' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new form field' }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    const offered = [
+      ...field
+        .getByRole('combobox', { name: 'Attribute' })
+        .querySelectorAll('option'),
+    ].map((option) => option.value);
+
+    expect(offered).not.toContain('unwell');
+    // Not an empty picker: the display label is collected through a form
+    // field, so it is still on offer.
+    expect(offered).toContain('fm_name');
+  });
+});
