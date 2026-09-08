@@ -466,6 +466,19 @@ permanent enrollment marker must be outside collector filesystem and deletion
 authority. Handler timeouts are ambiguous failures: a late commit remains
 charged and the next read discovers it.
 
+`observability-dynamodb-anchor-store.mjs` supplies the transactional adapter.
+An operator first creates its permanent `ENROLLMENT` item; initialization then
+atomically creates `STATE` and closes that marker. Reads use
+`TransactGetItems`, and every advance transaction checks the marker plus the
+exact serialized previous checkpoint. The table belongs in the independently
+administered recovery AWS account with point-in-time recovery. Its service role
+is limited to the fixed table and account partition. Collector forwarder and
+operator identities invoke separately authorized HTTP routes and receive no
+DynamoDB permissions; the service role denies `DeleteItem`, `DeleteTable`, and
+marker recreation. Deployment administration is disjoint from all three. The
+adapter and mocked request-shape tests do not provision or qualify the table,
+IAM policy, recovery account, or a live network path.
+
 No production anchor adapter or forwarding integration is qualified here. An
 adapter stored on the same filesystem or administered through the same rollback
 boundary does not satisfy the independent monotonic-store requirement. The

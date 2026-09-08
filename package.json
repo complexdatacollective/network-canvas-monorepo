@@ -24,6 +24,9 @@
     "prepare": "husky",
     "knip": "SKIP_ENV_VALIDATION=true knip"
   },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1102.0"
+  },
   "devDependencies": {
     "@changesets/cli": "^3.0.1",
     "@posthog/cli": "catalog:",
