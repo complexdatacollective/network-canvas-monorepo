@@ -58,13 +58,24 @@ const PROBLEM_MESSAGES: Readonly<
  */
 export default function SourceStageSection() {
   const intl = useAppIntl();
-  const { committedFields, identity, protocolContext } = useStageEditorForm();
+  const { committedFields, creation, identity, protocolContext } =
+    useStageEditorForm();
   const sourceStageId = useStageValue(SOURCE_FIELD);
   const discardStageValues = useDiscardStageValues();
 
+  // Where the stage runs decides which pedigrees precede it, and a stage being
+  // created is not in the order to be found in: the session carries the
+  // position the host is about to insert it at, so a new stage placed at the
+  // top of an interview is not offered the pedigrees it will run before.
   const { options, problem } = useMemo(
-    () => resolveSourceStages(protocolContext, identity.id, sourceStageId),
-    [identity.id, protocolContext, sourceStageId],
+    () =>
+      resolveSourceStages(
+        protocolContext,
+        identity.id,
+        sourceStageId,
+        creation?.position,
+      ),
+    [creation?.position, identity.id, protocolContext, sourceStageId],
   );
 
   // A stored choice the list no longer contains is still offered, as the

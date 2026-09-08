@@ -48,9 +48,10 @@ describe('the pedigrees a narrative pedigree may read', () => {
   });
 
   /**
-   * A stage being created is not in the interview's order yet, and every
-   * pedigree already in it therefore precedes it. Treating it as first instead
-   * would offer a new narrative pedigree nothing at all to read.
+   * A stage being created is not in the interview's order yet, and a host that
+   * appends puts it at the end — so with nowhere named, every pedigree already
+   * in the interview precedes it. Treating it as first instead would offer a
+   * new narrative pedigree nothing at all to read.
    */
   it('treats a stage the order does not list as running last', () => {
     const { options, problem } = resolveSourceStages(
@@ -63,6 +64,57 @@ describe('the pedigrees a narrative pedigree may read', () => {
       'family-pedigree-1',
     ]);
     expect(problem).toBeNull();
+  });
+
+  /**
+   * And where the host says it is going, that is where it goes. A stage being
+   * inserted ahead of the only pedigree in the interview runs BEFORE it, so
+   * that pedigree's family has not been collected when this stage would draw
+   * it — which is the same exclusion an existing stage above it gets.
+   */
+  it('offers a stage being created only the pedigrees it will run after', () => {
+    const context = contextInOrder(FIXTURE_ORDER);
+    const pedigreeIndex = FIXTURE_ORDER.indexOf('family-pedigree-1');
+
+    expect(
+      resolveSourceStages(context, 'not-in-the-order-yet', undefined, 0)
+        .options,
+    ).toEqual([]);
+    // Inserted AT the pedigree's index, the new stage displaces it downwards
+    // and still runs first.
+    expect(
+      resolveSourceStages(
+        context,
+        'not-in-the-order-yet',
+        undefined,
+        pedigreeIndex,
+      ).options,
+    ).toEqual([]);
+    expect(
+      resolveSourceStages(
+        context,
+        'not-in-the-order-yet',
+        undefined,
+        pedigreeIndex + 1,
+      ).options.map((option) => option.value),
+    ).toEqual(['family-pedigree-1']);
+  });
+
+  /**
+   * The same rule seen from the stored choice: a pedigree that will run after
+   * the stage being created is the problem it is for an existing stage, not a
+   * choice silently left standing.
+   */
+  it('reports a source that will run after the stage being created', () => {
+    const { options, problem } = resolveSourceStages(
+      contextInOrder(FIXTURE_ORDER),
+      'not-in-the-order-yet',
+      'family-pedigree-1',
+      0,
+    );
+
+    expect(problem).toBe('afterThisStage');
+    expect(options).toEqual([]);
   });
 
   it('reports a source that now runs after this stage', () => {

@@ -7,6 +7,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
 import {
   fixtureProtocolSections,
+  fixtureStageIds,
   loadFixtureStage,
 } from '../../../testing/protocolFixture.ts';
 import {
@@ -117,6 +118,17 @@ function familyMemberCodebook(
   return { ...definition, variables: next };
 }
 
+/** The pedigrees the source control is currently offering, by their labels. */
+async function offeredSources(harness: StageEditorHarness): Promise<string[]> {
+  await harness.user.click(
+    screen.getByRole('combobox', { name: 'Source stage' }),
+  );
+  const listbox = await screen.findByRole('listbox');
+  return [...listbox.querySelectorAll('[role="option"]')].map(
+    (option) => option.textContent ?? '',
+  );
+}
+
 const A_SECOND_BOOLEAN = {
   hasConditionY: { name: 'hasConditionY', type: 'boolean' },
 } as const;
@@ -213,6 +225,50 @@ describe('the pedigree a narrative pedigree draws', () => {
     await harness.cancel();
 
     expect(harness.pendingCommands()).toEqual([]);
+  });
+});
+
+/**
+ * A stage being created is not in the interview's order, so where it runs is
+ * something only the host knows — and it says so when it opens the session.
+ * The pedigrees this stage may read are the ones that will run BEFORE it once
+ * it exists, which for a stage inserted at the top of an interview is none of
+ * them: read as arriving last instead, a new first stage was offered every
+ * pedigree in the interview, including the ones the participant would not
+ * reach until after it.
+ */
+describe('a narrative pedigree the host is creating', () => {
+  const createAt = (position: number) => ({
+    create: { type: 'NarrativePedigree' as const, position },
+    sections: narrativePedigreeSections,
+  });
+
+  it('offers no pedigree the participant has not reached yet', () => {
+    renderStageEditor(createAt(0));
+
+    expect(
+      screen.queryByRole('combobox', { name: 'Source stage' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('No pedigree to read')).toBeInTheDocument();
+  });
+
+  it('offers the pedigrees it will run after', async () => {
+    const harness = renderStageEditor(createAt(fixtureStageIds().length));
+
+    expect(await offeredSources(harness)).toEqual(['Family Pedigree']);
+  });
+
+  /**
+   * Read from the fixture's own order rather than written down, so a fixture
+   * that grows a stage above the pedigree does not quietly turn this into the
+   * case above.
+   */
+  it('counts a pedigree it displaces as running after it', () => {
+    renderStageEditor(createAt(fixtureStageIds().indexOf('family-pedigree-1')));
+
+    expect(
+      screen.queryByRole('combobox', { name: 'Source stage' }),
+    ).not.toBeInTheDocument();
   });
 });
 
