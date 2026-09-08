@@ -447,6 +447,35 @@ describe('the side panels a name generator shows', () => {
   });
 
   /**
+   * The same state a source change asks about, arriving already made. A
+   * protocol authored elsewhere can hold a panel that reads an imported file
+   * AND carries a rule about connections, and the confirmation above never
+   * fires for it: nothing changed. The protocol schema is what refuses it
+   * (`External-data panel filters cannot use edge rules`), and the refusal
+   * lands on this section rather than on a path.
+   */
+  it('refuses a panel that arrives reading a file with a connection rule', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        { ...panelWithAnEdgeRule, dataSource: 'roster_data' },
+      ]),
+      sections: panels,
+    });
+
+    expect(
+      await screen.findByText('People you named earlier'),
+    ).toBeInTheDocument();
+
+    expect(await harness.submit()).toBeNull();
+    expect(harness.pendingCommands()).toHaveLength(0);
+    expect(
+      await screen.findByText(
+        'External-data panel filters cannot use edge rules; rules must target node attributes.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
    * A collaborator's codebook change is not this session's edit. It reaches the
    * rule builder's targets, and must not be echoed back as a command of ours —
    * doing so would write their change into this stage's pending batches.
