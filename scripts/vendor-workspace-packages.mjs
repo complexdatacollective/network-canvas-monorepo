@@ -135,7 +135,7 @@ function catalogEntriesChangedSince(ref) {
 // a dependency of a tool moved — the graph beneath the edge is the build
 // input, not the edge alone. Edges to workspace packages (`link:`) and to
 // local tarballs have no snapshot to follow and are compared as they are.
-export function reachableResolutions(edges, importer) {
+function reachableResolutions(edges, importer) {
   const seen = new Set();
   const queue = [...(edges.importers.get(importer) ?? new Map())].map(
     ([dep, version]) => `${dep}@${version}`,
