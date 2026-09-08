@@ -172,6 +172,49 @@ describe('TemplateRegistryClient', () => {
     expect(seen[0]?.redirect).toBe('manual');
   });
 
+  it('verifies a credential against the configured Registry publisher endpoint', async () => {
+    const seen: Request[] = [];
+    const client = new TemplateRegistryClient({
+      origin: ORIGIN,
+      fetch: async (input, init) => {
+        seen.push(new Request(input, init));
+        return jsonResponse({
+          id: PUBLISHER_ID,
+          name: 'Publisher',
+          orcid: null,
+        });
+      },
+    });
+    await expect(client.publisher(CREDENTIAL)).resolves.toEqual({
+      id: PUBLISHER_ID,
+      name: 'Publisher',
+      orcid: null,
+    });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.url).toBe(`${ORIGIN}/publisher`);
+    expect(seen[0]?.headers.get('authorization')).toBe(`Bearer ${CREDENTIAL}`);
+    expect(seen[0]?.redirect).toBe('manual');
+  });
+
+  it('refuses an unvalidated publisher response and never includes the credential in the error', async () => {
+    const secret = `ncr1_${'z'.repeat(43)}`;
+    const client = new TemplateRegistryClient({
+      origin: ORIGIN,
+      fetch: async () =>
+        jsonResponse({ id: PUBLISHER_ID, name: '', orcid: null }),
+    });
+    let error: unknown;
+    try {
+      await client.publisher(secret);
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toMatchObject({
+      code: 'TEMPLATE_REGISTRY_RESPONSE_INVALID',
+    });
+    expect(String(error)).not.toContain(secret);
+  });
+
   it('does not follow a foreign redirect or forward the write credential', async () => {
     const built = await createTemplateArtifact(fixture());
     const seen: Request[] = [];

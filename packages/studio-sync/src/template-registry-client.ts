@@ -11,6 +11,8 @@ import {
   RegistryEntryIdSchema,
   RegistryEntrySchema,
   type RegistryEntry,
+  RegistryPublisherSchema,
+  type RegistryPublisher,
 } from './template-registry-contract.ts';
 
 const JSON_RESPONSE_BYTES = 256 * 1024;
@@ -225,6 +227,21 @@ async function parseEntry(
   }
 }
 
+async function parsePublisher(
+  response: Response,
+  context: DeadlineContext,
+): Promise<RegistryPublisher> {
+  if (response.status !== 200 || mediaType(response) !== 'application/json')
+    failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
+  const bytes = await readBody(response, JSON_RESPONSE_BYTES, context);
+  try {
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    return RegistryPublisherSchema.parse(JSON.parse(text));
+  } catch {
+    return failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
+  }
+}
+
 export type FetchedRegistryArtifact = {
   root: string;
   rawHash: string;
@@ -255,6 +272,38 @@ export class TemplateRegistryClient {
       this.#deadlineMs > MAX_DEADLINE_MS
     )
       failure('TEMPLATE_REGISTRY_CONFIGURATION_INVALID');
+  }
+
+  async publisher(
+    credential: string,
+    signal?: AbortSignal,
+  ): Promise<RegistryPublisher> {
+    const parsedCredential = RegistryCredentialSchema.safeParse(credential);
+    if (!parsedCredential.success) failure('TEMPLATE_REGISTRY_REQUEST_FAILED');
+    return await boundedOperation(this.#deadlineMs, signal, async (context) => {
+      const response = await context.race(
+        this.#fetch(pathUrl(this.#origin, '/publisher'), {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${parsedCredential.data}`,
+          },
+          redirect: 'manual',
+          signal: context.signal,
+        }),
+      );
+      context.setCancellation(async () => await response.body?.cancel());
+      let complete = false;
+      try {
+        const publisher = await parsePublisher(response, context);
+        complete = true;
+        return publisher;
+      } finally {
+        if (!complete)
+          cancelWithoutWaiting(async () => await response.body?.cancel());
+        context.setCancellation(undefined);
+      }
+    });
   }
 
   async entry(id: string, signal?: AbortSignal): Promise<RegistryEntry> {
