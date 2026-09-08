@@ -150,6 +150,7 @@ export function executeDistributionRestore(
 }
 
 type ExecutionOptions = {
+  allowFailure?: boolean;
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   input?: string | Buffer;
@@ -353,17 +354,32 @@ networks:
   ) => {
     const selectedProgram = program === 'cosign' ? cosign : program;
     const selectedArgs = [...args];
-    return execFileSync(selectedProgram, selectedArgs, {
-      encoding: 'utf8',
-      maxBuffer: 32 * 1024 * 1024,
-      timeout: DEADLINE,
-      killSignal: 'SIGKILL',
-      ...options,
-      env: {
-        ...options.env,
-        ...environment,
-      },
-    });
+    const { allowFailure, ...execOptions } = options;
+    try {
+      return execFileSync(selectedProgram, selectedArgs, {
+        encoding: 'utf8',
+        maxBuffer: 32 * 1024 * 1024,
+        timeout: DEADLINE,
+        killSignal: 'SIGKILL',
+        ...execOptions,
+        env: {
+          ...execOptions.env,
+          ...environment,
+        },
+      });
+    } catch (error) {
+      if (
+        !allowFailure ||
+        !error ||
+        typeof error !== 'object' ||
+        !('stdout' in error) ||
+        !('stderr' in error) ||
+        typeof error.stdout !== 'string' ||
+        typeof error.stderr !== 'string'
+      )
+        throw error;
+      return `${error.stdout}${error.stderr}`;
+    }
   };
   const compose = (
     configuration: string,
@@ -419,8 +435,9 @@ networks:
         '--rm',
         '--no-deps',
         '-T',
-        service,
+        '--entrypoint',
         'node',
+        service,
         '-e',
         TELEMETRY_PROCESS_CANARY_SOURCE,
       ]);
@@ -447,20 +464,24 @@ networks:
   }
   function proveTelemetrySwitch(configuration: string) {
     for (const telemetry of ['on', 'off']) {
-      compose(configuration, [
-        'run',
-        '--rm',
-        '--no-deps',
-        '-T',
-        '-e',
-        `STUDIO_TELEMETRY=${telemetry}`,
-        '--entrypoint',
-        'node',
-        'studio',
-        '--input-type=module',
-        '-e',
-        TELEMETRY_IMPLEMENTATION_CANARY_SOURCE,
-      ]);
+      compose(
+        configuration,
+        [
+          'run',
+          '--rm',
+          '--no-deps',
+          '-T',
+          '-e',
+          `STUDIO_TELEMETRY=${telemetry}`,
+          '--entrypoint',
+          'node',
+          'studio',
+          '--input-type=module',
+          '-e',
+          TELEMETRY_IMPLEMENTATION_CANARY_SOURCE,
+        ],
+        { allowFailure: true },
+      );
       if (telemetry === 'on') {
         assertTelemetryDetectorObserved(telemetryLogs(configuration));
         compose(configuration, [

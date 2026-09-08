@@ -49,10 +49,12 @@ describe('local distribution recovery boundary', () => {
     ).toThrow('control failed');
   });
   it('requires every native transport in the process-level positive control', () => {
-    const logs = TELEMETRY_PROCESS_APIS.map(
-      (api) =>
-        `${TELEMETRY_PROCESS_EGRESS_MARKER} {"api":"${api}","host":"192.0.2.123"}`,
-    ).join('\n');
+    const logs =
+      TELEMETRY_PROCESS_APIS.map(
+        (api) =>
+          `${TELEMETRY_PROCESS_EGRESS_MARKER} {"api":"${api}","host":"192.0.2.123"}`,
+      ).join('\n') +
+      `\n${TELEMETRY_PROCESS_EGRESS_MARKER} {"api":"fetch","host":"postgres.example.test"}`;
     expect(() =>
       assertProcessTelemetryInstrumentationPositive(logs),
     ).not.toThrow();

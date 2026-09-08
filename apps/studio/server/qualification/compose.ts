@@ -279,6 +279,7 @@ export async function localDeployment(label: string) {
         condition: service_started
   worker:
     environment:
+      STUDIO_TELEMETRY: 'off'
       NODE_OPTIONS: '--require=/qualification-telemetry-egress-preload.cjs'
     volumes:
       - ./telemetry-egress-preload.cjs:/qualification-telemetry-egress-preload.cjs:ro
@@ -396,8 +397,9 @@ networks:
         '--rm',
         '--no-deps',
         '-T',
-        service,
+        '--entrypoint',
         'node',
+        service,
         '-e',
         TELEMETRY_PROCESS_CANARY_SOURCE,
       ]);
@@ -407,12 +409,15 @@ networks:
   async function proveTelemetryDetector() {
     for (const service of ['studio', 'worker']) {
       await compose([
-        'exec',
+        'run',
+        '--rm',
+        '--no-deps',
         '-T',
         '-e',
         'NODE_OPTIONS=',
-        service,
+        '--entrypoint',
         'node',
+        service,
         '-e',
         TELEMETRY_CANARY_SOURCE,
       ]);
@@ -424,20 +429,23 @@ networks:
   }
   async function proveTelemetrySwitch() {
     for (const telemetry of ['on', 'off']) {
-      await compose([
-        'run',
-        '--rm',
-        '--no-deps',
-        '-T',
-        '-e',
-        `STUDIO_TELEMETRY=${telemetry}`,
-        '--entrypoint',
-        'node',
-        'studio',
-        '--input-type=module',
-        '-e',
-        TELEMETRY_IMPLEMENTATION_CANARY_SOURCE,
-      ]);
+      await compose(
+        [
+          'run',
+          '--rm',
+          '--no-deps',
+          '-T',
+          '-e',
+          `STUDIO_TELEMETRY=${telemetry}`,
+          '--entrypoint',
+          'node',
+          'studio',
+          '--input-type=module',
+          '-e',
+          TELEMETRY_IMPLEMENTATION_CANARY_SOURCE,
+        ],
+        { failure: true },
+      );
       if (telemetry === 'on') {
         assertTelemetryDetectorObserved(await telemetryLogs());
         await compose(['rm', '--stop', '--force', 'telemetry-detector']);
