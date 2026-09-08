@@ -410,6 +410,41 @@ export function packagesForFiles(
 
 // name -> { dir, manifest } for every workspace package, from the globs in
 // pnpm-workspace.yaml (one directory level per glob segment).
+// A changed package.json may have renamed or removed a workspace package.
+// Consumers that still declare the old name are only reached through that
+// name, so the base revision's name is returned for each changed manifest
+// whose name differs from (or no longer exists in) the working tree.
+export function previousPackageNames(root, files, { base } = {}) {
+  const ref =
+    base ??
+    git(['merge-base', 'HEAD', 'origin/main'], root) ??
+    git(['merge-base', 'HEAD', 'main'], root);
+  if (!ref) return [];
+  const names = new Set();
+  for (const file of files) {
+    const rel = path.relative(root, file);
+    if (path.basename(rel) !== 'package.json' || rel === 'package.json')
+      continue;
+    const before = git(['show', `${ref}:${rel}`], root);
+    if (!before) continue;
+    let oldName;
+    try {
+      oldName = JSON.parse(before).name;
+    } catch {
+      continue;
+    }
+    if (!oldName) continue;
+    let currentName;
+    try {
+      currentName = JSON.parse(readFileSync(file, 'utf8')).name;
+    } catch {
+      currentName = undefined;
+    }
+    if (currentName !== oldName) names.add(oldName);
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
 export function workspacePackages(
   root,
   { readPackage = defaultReadPackage } = {},
@@ -467,6 +502,19 @@ export function parseTypecheckOutput(output) {
     }
   }
   return { errors: [...new Set(errors)], failed };
+}
+
+// oxlint's diagnostics go to stdout; a configuration or plugin failure goes
+// to stderr with a non-zero exit and empty stdout, and must be reported too.
+export function lintReportFrom(result) {
+  if (result.error) return `oxlint did not finish: ${result.error.message}`;
+  const out = result.stdout.trim();
+  if (out) return out;
+  if (result.status !== 0) {
+    const err = result.stderr.trim() || '(no output)';
+    return `oxlint exited with status ${result.status}:\n${err}`;
+  }
+  return '';
 }
 
 export function truncateLines(text, max) {
@@ -776,8 +824,12 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
       return { kind: 'no-verify', segment: trimmed };
     }
 
+    // Arguments after `--` are passed to the script, not to pnpm or turbo,
+    // so a scope flag there does not scope anything.
+    const own = segment.split(/\s--(\s|$)/)[0];
+
     if (/^(pnpm|npm|yarn|bun)$/.test(head)) {
-      if (SCOPE_FLAGS.test(segment) || inPackage(currentDir)) continue;
+      if (SCOPE_FLAGS.test(own) || inPackage(currentDir)) continue;
       const script = rest
         .filter((t) => !t.startsWith('-'))
         .filter((t) => t !== 'run')[0];
@@ -792,7 +844,7 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
     }
 
     if (head === 'turbo') {
-      if (SCOPE_FLAGS.test(segment) || inPackage(currentDir)) continue;
+      if (SCOPE_FLAGS.test(own) || inPackage(currentDir)) continue;
       if (
         rest.some((t) => /^(typecheck|lint|\/\/#lint|\/\/#knip|knip)$/.test(t))
       ) {

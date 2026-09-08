@@ -19,6 +19,7 @@ import {
   isLintable,
   packagesForFiles,
   parseTypecheckOutput,
+  previousPackageNames,
   readHookInput,
   readState,
   resolveRepoRoot,
@@ -49,7 +50,12 @@ if (!manual && state.lastClean === fingerprint) process.exit(0);
 // `checked` stays false when the typecheck could not run at all, so an
 // unchecked state is never recorded as clean.
 let checked = false;
-const { seeds, all } = packagesForFiles(changed, root);
+const mapped = packagesForFiles(changed, root);
+const all = mapped.all;
+// A renamed or removed workspace package is still reachable by its old name.
+const seeds = [
+  ...new Set([...mapped.seeds, ...previousPackageNames(root, changed)]),
+].sort((a, b) => a.localeCompare(b));
 const turbo = binPath(root, 'turbo');
 if (!all && seeds.length === 0) {
   checked = true;

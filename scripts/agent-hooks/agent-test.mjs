@@ -57,8 +57,13 @@ if (all) {
 // Test-bearing packages that consume the given packages (turbo's `...pkg`
 // filter), excluding the seeds themselves.
 function dependentsOf(names) {
+  if (names.length === 0) return [];
   const turbo = binPath(root, 'turbo');
-  if (!turbo || names.length === 0) return [];
+  if (!turbo) {
+    fail(
+      'node_modules/.bin/turbo is missing (dependencies not installed), so the packages whose tests reach this change cannot be found.',
+    );
+  }
   const args = ['run', 'test', '--dry-run=json'];
   for (const name of names) args.push(`--filter=...${name}`);
   const result = run(turbo, args, {
@@ -66,15 +71,27 @@ function dependentsOf(names) {
     env: { TURBO_TELEMETRY_DISABLED: '1', TURBO_NO_UPDATE_NOTIFIER: '1' },
     timeoutMs: 60_000,
   });
-  if (result.status !== 0) return [];
-  try {
-    const selected = JSON.parse(result.stdout).packages ?? [];
-    return selected
-      .filter((name) => !seeds.includes(name) && hasTests(name))
-      .sort((a, b) => a.localeCompare(b));
-  } catch {
-    return [];
+  if (result.error || result.status !== 0) {
+    fail(
+      `turbo could not list the packages that consume ${names.join(', ')}:\n${(result.error?.message ?? `${result.stdout}\n${result.stderr}`).trim()}`,
+    );
   }
+  let selected;
+  try {
+    selected = JSON.parse(result.stdout).packages ?? [];
+  } catch {
+    fail(`turbo returned an unreadable package graph for ${names.join(', ')}.`);
+  }
+  return selected
+    .filter((name) => !seeds.includes(name) && hasTests(name))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+// Discovery failures exit non-zero: an unchecked change must never read as
+// one that no test reaches.
+function fail(message) {
+  console.log(`agent:test: ${message}`);
+  process.exit(2);
 }
 
 const testless = seeds.filter((name) => !hasTests(name));

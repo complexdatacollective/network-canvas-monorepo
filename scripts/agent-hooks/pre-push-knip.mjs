@@ -79,7 +79,48 @@ function borrowNodeModules(sourceDir, targetDir) {
   }
 }
 
-function prepareCheckout(temp) {
+// The pushed revision's dependency graph is the working tree's only when
+// the lockfile and manifests agree; otherwise it gets its own install
+// (offline from the pnpm store, scripts skipped like CI's install).
+function dependencyGraphDiffers(sha) {
+  const manifests = (git(['ls-files', '*/package.json'], root) ?? '')
+    .split('\n')
+    .filter(Boolean);
+  const diff = run(
+    'git',
+    [
+      'diff',
+      '--quiet',
+      sha,
+      'HEAD',
+      '--',
+      'pnpm-lock.yaml',
+      'pnpm-workspace.yaml',
+      'package.json',
+      ...manifests,
+    ],
+    { cwd: root },
+  );
+  return diff.status !== 0;
+}
+
+function prepareCheckout(temp, sha) {
+  if (dependencyGraphDiffers(sha)) {
+    console.log(
+      'knip: the pushed revision changes dependencies; installing them for the check',
+    );
+    const install = spawnSync(
+      'pnpm',
+      ['install', '--prefer-offline', '--frozen-lockfile', '--ignore-scripts'],
+      { cwd: temp, stdio: 'inherit', env: { ...process.env, CI: 'true' } },
+    );
+    if (install.status !== 0) {
+      console.log('knip: install failed in the temporary worktree');
+      return false;
+    }
+    linkCodegenOutputs(temp);
+    return true;
+  }
   const manifests = (git(['ls-files', '*/package.json'], temp) ?? '').split(
     '\n',
   );
@@ -91,6 +132,11 @@ function prepareCheckout(temp) {
       path.join(target, 'node_modules'),
     );
   }
+  linkCodegenOutputs(temp);
+  return true;
+}
+
+function linkCodegenOutputs(temp) {
   for (const absolute of knipCodegenOutputs(root)) {
     if (!existsSync(absolute)) continue;
     const target = path.join(temp, path.relative(root, absolute));
@@ -121,7 +167,10 @@ for (const sha of shas) {
     ok = false;
     continue;
   }
-  prepareCheckout(temp);
+  if (!prepareCheckout(temp, sha)) {
+    ok = false;
+    continue;
+  }
   const reason =
     sha === head
       ? 'working tree has uncommitted changes'

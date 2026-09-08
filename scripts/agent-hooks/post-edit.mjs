@@ -15,6 +15,7 @@ import {
   isFormattable,
   isLintable,
   isUnderRepo,
+  lintReportFrom,
   modifiedSince,
   readHookInput,
   resolveRepoRoot,
@@ -78,9 +79,7 @@ if (lintable.length > 0) {
     ['--fix', '--quiet', '--format=agent', ...lintable.map(relative)],
     { cwd: root, timeoutMs: 45_000 },
   );
-  lintReport = lint.error
-    ? `oxlint did not finish: ${lint.error.message}`
-    : lint.stdout.trim();
+  lintReport = lintReportFrom(lint);
 }
 
 const reformatted = files

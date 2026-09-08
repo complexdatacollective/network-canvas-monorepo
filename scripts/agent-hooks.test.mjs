@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -13,6 +19,7 @@ import {
   extractEditedFiles,
   isKnipRelevant,
   knipCodegenOutputs,
+  lintReportFrom,
   knipTargetForPush,
   modifiedSince,
   nodeModulesDirs,
@@ -22,6 +29,7 @@ import {
   packageForFile,
   parsePorcelainZ,
   parseTypecheckOutput,
+  previousPackageNames,
   resolveRepoRoot,
   stripEmbeddedText,
   takeCommandStart,
@@ -675,4 +683,73 @@ test('knipCodegenOutputs resolves the generated inputs knip depends on from turb
   );
   assert.ok(outputs.includes('apps/fresco/next-env.d.ts'));
   assert.ok(!outputs.some((p) => p.includes('**')));
+});
+
+test('scope flags after the pass-through separator do not scope a gate run', () => {
+  assert.equal(
+    classifyGateCommand('pnpm typecheck -- --filter foo')?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand(
+      'pnpm exec turbo run typecheck -- --filter=@codaco/interview',
+    )?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand(
+      'pnpm --filter @codaco/interview typecheck -- --pretty',
+    ),
+    null,
+  );
+});
+
+test('lintReportFrom surfaces stderr when oxlint fails without diagnostics', () => {
+  assert.equal(lintReportFrom({ status: 0, stdout: '', stderr: '' }), '');
+  assert.equal(
+    lintReportFrom({ status: 1, stdout: 'a.ts:1:1: error x', stderr: '' }),
+    'a.ts:1:1: error x',
+  );
+  assert.match(
+    lintReportFrom({
+      status: 1,
+      stdout: '',
+      stderr: 'Failed to parse oxlint configuration file.',
+    }),
+    /status 1:\nFailed to parse/,
+  );
+  assert.match(
+    lintReportFrom({
+      status: null,
+      stdout: '',
+      stderr: '',
+      error: new Error('timed out'),
+    }),
+    /did not finish: timed out/,
+  );
+});
+
+test('previousPackageNames returns the base revision name of a renamed manifest', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-rename-'));
+  const sh = (args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+  sh(['init', '-q', '-b', 'main', '.']);
+  sh(['config', 'user.email', 'a@b']);
+  sh(['config', 'user.name', 't']);
+  mkdirSync(path.join(root, 'packages', 'old'), { recursive: true });
+  const manifest = path.join(root, 'packages', 'old', 'package.json');
+  writeFileSync(manifest, JSON.stringify({ name: '@x/old' }));
+  sh(['add', '.']);
+  sh(['commit', '-q', '-m', 'base']);
+  const base = sh(['rev-parse', 'HEAD']).stdout.trim();
+  writeFileSync(manifest, JSON.stringify({ name: '@x/new' }));
+  assert.deepEqual(previousPackageNames(root, [manifest], { base }), [
+    '@x/old',
+  ]);
+  writeFileSync(manifest, JSON.stringify({ name: '@x/old' }));
+  assert.deepEqual(previousPackageNames(root, [manifest], { base }), []);
+  rmSync(manifest);
+  assert.deepEqual(previousPackageNames(root, [manifest], { base }), [
+    '@x/old',
+  ]);
+  rmSync(root, { recursive: true, force: true });
 });
