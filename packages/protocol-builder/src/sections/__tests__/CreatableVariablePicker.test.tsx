@@ -264,6 +264,39 @@ describe('the creatable attribute picker', () => {
   });
 
   /**
+   * The other half a host supplies, refused: a control that cannot collect the
+   * kind of answer the host asks the attribute to be created as.
+   *
+   * The schema says so as one `invalid_union` at the empty path — every branch
+   * it could have been fails somewhere — so there is nothing in the issue to
+   * anchor a sentence to, and what the researcher is told has to be read from
+   * the draft that was refused rather than from the refusal.
+   */
+  it('says why an attribute its control cannot collect was not created', async () => {
+    const harness = renderRows(
+      <StampedAttributes
+        createAs={{
+          into: SUBJECT,
+          draft: { type: 'text', component: 'DatePicker' },
+        }}
+      />,
+    );
+    await addRow(harness);
+
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Create a new attribute' }),
+      'nominated_early',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create the attribute' }),
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This attribute cannot be collected with that input control.',
+    );
+  });
+
+  /**
    * Choosing from what exists is the right answer wherever inventing an
    * attribute would be a decision the researcher has not been asked to make,
    * so the control offers nothing to create when nothing can be created — and
@@ -504,16 +537,14 @@ describe('the creatable attribute picker, read in Spanish', () => {
    * about: a categorical attribute IS its list of answers, and a name and a
    * type cannot make one.
    *
-   * A control the attribute's type cannot take reads the SAME way, which is
-   * why there is no test for `codebookEditing.unsupportedControl` beside this
-   * one. `draftIssueMessage` reaches for that sentence when the schema refused
-   * something at `component`, and `VariableSchema` is a plain union: zod
-   * hoists an issue to its own path only when every branch reports it there,
-   * which happens for `name` (every variable has one) and never for
-   * `component` — a text variable collected with a date picker fails the text
-   * branch at `component` and every other branch at `type`, so what comes back
-   * is one `invalid_union` at the empty path and the fallback below is what
-   * the researcher reads.
+   * A control the attribute's type cannot take arrives in the SAME shape —
+   * `VariableSchema` is a plain union, and zod hoists an issue to its own path
+   * only when every branch reports it there, which happens for `name` (every
+   * variable has one) and never for `component`: a text variable collected
+   * with a date picker fails the text branch at `component` and every other
+   * branch at `type`, so one `invalid_union` at the empty path is all that
+   * comes back. It is told apart from this one by the draft rather than by the
+   * refusal — see `controlIsNotOffered`, and the test above that reads it.
    */
   it('says in Spanish that nothing was created, when there is nothing else to say', async () => {
     const harness = renderInSpanish({
@@ -523,6 +554,17 @@ describe('the creatable attribute picker, read in Spanish', () => {
 
     expect(await askFor(harness, 'nominado_pronto')).toHaveTextContent(
       'No se ha podido crear este atributo, así que no se ha cambiado nada. Inténtalo de nuevo.',
+    );
+  });
+
+  it('says in Spanish that the control cannot collect this kind of answer', async () => {
+    const harness = renderInSpanish({
+      into: SUBJECT,
+      draft: { type: 'text', component: 'DatePicker' },
+    });
+
+    expect(await askFor(harness, 'nominado_pronto')).toHaveTextContent(
+      'Este atributo no se puede recoger con ese control de entrada.',
     );
   });
 });
