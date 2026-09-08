@@ -51,7 +51,7 @@
     "@t3-oss/env-core": "^0.13.11",
     "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
-    "hono": "^4.13.0",
+    "hono": "^4.13.5",
     "ipaddr.js": "^2.5.0",
     "pg": "^8.22.0",
     "pino": "^10.3.1",
