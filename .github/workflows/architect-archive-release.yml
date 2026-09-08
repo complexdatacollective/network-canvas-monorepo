@@ -17,8 +17,8 @@ name: Architect Archive Release
 # yet wired into the release workflow — dispatch it by hand after a release, or
 # call it from another workflow. Integration is tracked in issue #1767, which
 # also records the sequencing constraint: the archive has to run AFTER the
-# release tag is pushed, because the guard below reads tags to decide whether
-# this version is still the newest on its line.
+# release tag is pushed, because the guard reads tags to decide whether this
+# version is still the newest on its line.
 #
 # The archive is a Cloudflare Worker serving static assets, one Worker per major
 # line. `custom_domain: true` in the generated Wrangler config has Cloudflare
@@ -84,67 +84,36 @@ permissions:
   contents: read
 
 jobs:
-  # Split from the deploy so the concurrency group below can be keyed on the
-  # major line: two runs for the same line share a Worker and a hostname and
-  # must not overlap, while runs for different lines are independent. A job's
-  # `concurrency` may read `needs` outputs; a workflow-level one may not.
+  # Fails a bad tag before a build is spent on it. Split from the deploy so the
+  # concurrency group below can be keyed on the major line: two runs for the
+  # same line share a Worker and a hostname and must not overlap, while runs for
+  # different lines are independent. A job's `concurrency` may read `needs`
+  # outputs; a workflow-level one may not.
+  #
+  # Checks out THIS workflow's revision, not the tag: the guard reads the tag's
+  # manifest with `git show` and needs no working tree, and the tag's own tree
+  # predates the guard script.
   resolve:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      version: ${{ steps.version.outputs.version }}
-      major: ${{ steps.version.outputs.major }}
-      sha: ${{ steps.version.outputs.sha }}
+      version: ${{ steps.guard.outputs.version }}
+      major: ${{ steps.guard.outputs.major }}
+      sha: ${{ steps.guard.outputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
-          ref: ${{ inputs.tag }}
           fetch-tags: true
-          # The newest-on-the-line guard reads every tag on this major.
+          # The newest-on-the-line check reads every tag on this major.
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Resolve and guard version
-        id: version
+      - name: Resolve and guard tag
+        id: guard
         env:
           TAG: ${{ inputs.tag }}
           FORCE: ${{ inputs.force }}
-        run: |
-          set -euo pipefail
-
-          # The tag names the version; package.json is the authority on what the
-          # tree actually is. A mistyped tag that happens to exist would
-          # otherwise publish one version's code at another version's hostname.
-          tag_version="${TAG##*@}"
-          version="$(node -p "require('./apps/architect/package.json').version")"
-          if [ "$tag_version" != "$version" ]; then
-            echo "::error::tag $TAG carries version $tag_version but the tree is $version"
-            exit 1
-          fi
-
-          major="${version%%.*}"
-          case "$major" in
-            ''|*[!0-9]*) echo "::error::cannot read a major version from $version"; exit 1 ;;
-          esac
-
-          # One host per major line means a later dispatch overwrites an earlier
-          # one. Archiving an older patch after a newer one has shipped would
-          # roll the line backwards, so refuse it the way app-release-guard.sh
-          # refuses a superseded production deploy. `sort -V` orders plain
-          # x.y.z releases; a prerelease on the line needs --force.
-          newest="$(git tag --list "@codaco/architect@${major}.*" \
-            | sed 's/.*@//' | sort -V | tail -1)"
-          if [ -n "$newest" ] && [ "$newest" != "$version" ]; then
-            if [ "$FORCE" != "true" ]; then
-              echo "::error::$version is not the newest release on the ${major}.x line ($newest). Archive that instead, or re-run with force."
-              exit 1
-            fi
-            echo "::warning::forcing $version over newer ${major}.x release $newest"
-          fi
-
-          echo "version=$version" >>"$GITHUB_OUTPUT"
-          echo "major=$major" >>"$GITHUB_OUTPUT"
-          echo "sha=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
+        run: bash .github/scripts/architect-archive-guard.sh
 
   deploy:
     needs: resolve
@@ -160,23 +129,56 @@ jobs:
       # the failure this whole lane exists to avoid.
       WRANGLER_VERSION: '4.129.1'
     steps:
+      # Application source, from the tag. This is the tree that gets built, so
+      # the install resolves the lockfile that release actually shipped with.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           ref: ${{ inputs.tag }}
           persist-credentials: false
 
-      - uses: ./.github/actions/turbo-ci-setup
+      # Archive tooling, from THIS workflow's revision. Every release tagged
+      # before this lane existed has no write-cloudflare-archive-config.mjs and
+      # no guard script in its tree, so running them from the checked-out tag
+      # would fail with MODULE_NOT_FOUND before the first archive could deploy.
+      # Kept in a subdirectory so the tag's tree stays the workspace root and
+      # every build path stays ordinary.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          path: .archive-tooling
+          fetch-tags: true
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Not redundant with `resolve`: this one runs while the concurrency lock
+      # is held. A newer release on the same major line tagged in between would
+      # otherwise let this older run publish last and roll the shared host back.
+      - name: Re-check newest release on the line
+        working-directory: .archive-tooling
+        env:
+          TAG: ${{ inputs.tag }}
+          FORCE: ${{ inputs.force }}
+        run: bash .github/scripts/architect-archive-guard.sh
+
+      # Composite action taken from the tooling checkout for the same reason,
+      # but its steps still run in the workspace root, so the install and cache
+      # apply to the tag's tree.
+      - uses: ./.archive-tooling/.github/actions/turbo-ci-setup
 
       - name: Build architect
         run: pnpm exec turbo run build --filter=@codaco/architect
 
       # After the build so a turbo-restored dist still describes the archived
       # commit. COMMIT_REF must be explicit: GITHUB_SHA is the commit the
-      # workflow definition was read from, not the tag being archived.
+      # workflow definition was read from, not the tag being archived. The
+      # script takes its output directory as an argument precisely so a lane can
+      # run a newer copy against an older tree — the hotfix lane does the same.
       - name: Stamp archived commit
         env:
           COMMIT_REF: ${{ needs.resolve.outputs.sha }}
-        run: node apps/architect/scripts/write-build-info.mjs
+        run: |
+          node .archive-tooling/apps/architect/scripts/write-build-info.mjs \
+            "${GITHUB_WORKSPACE}/apps/architect/dist"
 
       # Rewrites dist/_headers for Cloudflare's append semantics and drops the
       # Netlify _redirects file, then emits the Wrangler config naming this
@@ -189,8 +191,10 @@ jobs:
           ZONE: ${{ inputs.zone }}
         run: |
           set -euo pipefail
-          result="$(node apps/architect/scripts/write-cloudflare-archive-config.mjs \
-            --version "$VERSION" --zone "$ZONE")"
+          result="$(node .archive-tooling/apps/architect/scripts/write-cloudflare-archive-config.mjs \
+            --version "$VERSION" --zone "$ZONE" \
+            --dist "${GITHUB_WORKSPACE}/apps/architect/dist" \
+            --out "${GITHUB_WORKSPACE}/apps/architect/wrangler.archive.json")"
           echo "$result"
           echo "hostname=$(echo "$result" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).hostname")" >>"$GITHUB_OUTPUT"
 
