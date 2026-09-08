@@ -614,31 +614,53 @@ test('gives the bounded 100 MiB upload path its upload-appropriate deadline', as
   assert.deepEqual(await response.json(), { size: 100 * 1024 * 1024 });
 });
 
-test('keeps stalled uploads bounded and does not broaden the upload deadline', async () => {
+test('keeps stalled uploads bounded and does not broaden the upload deadline', async (context) => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
   const router = ingress(() => new Promise(() => {}), {
     originTimeoutMs: 20,
     uploadOriginTimeoutMs: 60,
   });
-  const started = Date.now();
-  const upload = await router.fetch(
-    new Request(`${PUBLIC_ORIGIN}/storage`, {
-      method: 'POST',
-      body: 'stalled',
-    }),
-  );
-  const uploadElapsed = Date.now() - started;
+  let uploadSettled = false;
+  const pendingUpload = router
+    .fetch(
+      new Request(`${PUBLIC_ORIGIN}/storage`, {
+        method: 'POST',
+        body: 'stalled',
+      }),
+    )
+    .then((response) => {
+      uploadSettled = true;
+      return response;
+    });
+  await new Promise((resolve) => setImmediate(resolve));
+  context.mock.timers.tick(59);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(uploadSettled, false);
+  context.mock.timers.tick(1);
+  const upload = await pendingUpload;
   assert.equal(upload.status, 504);
-  assert.ok(uploadElapsed >= 40 && uploadElapsed < 500);
 
-  const otherStarted = Date.now();
-  const nonUpload = await router.fetch(
-    new Request(`${PUBLIC_ORIGIN}/storage/${'d'.repeat(64)}`, {
-      method: 'POST',
-      body: 'not an upload route',
-    }),
-  );
+  let nonUploadSettled = false;
+  const pendingNonUpload = router
+    .fetch(
+      new Request(`${PUBLIC_ORIGIN}/storage/${'d'.repeat(64)}`, {
+        method: 'POST',
+        body: 'not an upload route',
+      }),
+    )
+    .then((response) => {
+      nonUploadSettled = true;
+      return response;
+    });
+  await new Promise((resolve) => setImmediate(resolve));
+  context.mock.timers.tick(19);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(nonUploadSettled, false);
+  context.mock.timers.tick(1);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(nonUploadSettled, true);
+  const nonUpload = await pendingNonUpload;
   assert.equal(nonUpload.status, 504);
-  assert.ok(Date.now() - otherStarted < 50);
 });
 
 test('does not apply the header timeout to a response body stream', async () => {
