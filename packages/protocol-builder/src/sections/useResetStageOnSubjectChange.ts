@@ -116,7 +116,7 @@ export function useResetStageOnSubjectChange(): void {
     // draft it is editing. `applyOwnCommands` also marks the write as this
     // form's own, so the draft moving here does not re-seed the controls the
     // loop below is about to set.
-    applyOwnCommands([
+    const { refused } = applyOwnCommands([
       subject === undefined
         ? { op: 'unset', key: 'subject' }
         : { op: 'set', key: 'subject', value: subject },
@@ -126,6 +126,16 @@ export function useResetStageOnSubjectChange(): void {
           : { op: 'set', key: reset.key, value: reset.value },
       ),
     ]);
+    // A refusal means nothing was thrown away, so nothing may be emptied
+    // either — the rule `useDiscardStageValues` follows, for the same reason.
+    // Editing can be taken away between the render that observed the
+    // researcher's choice and this effect, and the session then refuses the
+    // whole batch: the configuration it holds is the only copy of itself, and
+    // a form emptied here would leave the stage looking unconfigured with
+    // nothing left to fill it back in — and the next save writing that
+    // emptiness into a stage the session never agreed to. `applyOwnCommands`
+    // has already said so on screen.
+    if (refused) return;
 
     for (const reset of resets) {
       // Clears the path itself, everything beneath it, and every registered or
