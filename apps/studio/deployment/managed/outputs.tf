@@ -26,7 +26,7 @@ output "candidate_inventory" {
       provider                = "Backblaze B2"
       asserted_account_region = var.b2_region
       bucket_id               = b2_bucket.independent_recovery.id
-      object_lock_days        = 31
+      object_lock_days        = jsondecode(file("${path.module}/candidate-sizing.json")).recovery.retentionDays
       server_side_encryption  = "SSE-B2/AES256"
       client_side_encryption  = "required-outside-this-module"
       independent_key_custody = "pending-qualification"
@@ -38,6 +38,25 @@ output "candidate_inventory" {
       required_log_retention_days    = 30
       required_metric_retention_days = 30
       paid_upgrade_allowed           = false
+      collector = merge(jsondecode(file("${path.module}/candidate-sizing.json")).monitoring.collector, {
+        name                      = "${var.estate_name}-observability-collector"
+        public_ingress            = false
+        auto_stop                 = false
+        checkpoint_directory_mode = "0700"
+        required_image            = "signed-immutable-collector-image-pending"
+        required_secret_names     = ["FLY_NATS_TOKEN", "NEW_RELIC_LICENSE_KEY", "NEW_RELIC_USER_KEY", "OBSERVABILITY_ANCHOR_FORWARDER_TOKEN"]
+        provisioning_supported    = false
+      })
+      anchor = merge(jsondecode(file("${path.module}/candidate-sizing.json")).monitoring.anchor, {
+        name                                      = "${var.estate_name}-observability-anchor"
+        required_secret_names                     = ["OBSERVABILITY_ANCHOR_FORWARDER_TOKEN", "OBSERVABILITY_ANCHOR_OPERATOR_TOKEN"]
+        required_application_permissions          = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:ConditionCheckItem"]
+        required_enclosing_operations             = ["TransactGetItems", "TransactWriteItems"]
+        collector_direct_database_access          = false
+        independent_enrollment_authority_required = true
+        forbidden_collector_permissions           = ["dynamodb:DeleteItem", "dynamodb:DeleteTable", "dynamodb:UpdateTable", "dynamodb:PutItem"]
+        provisioning_supported                    = false
+      })
     }
   }
 }
