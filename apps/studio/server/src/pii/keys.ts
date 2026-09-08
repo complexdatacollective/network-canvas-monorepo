@@ -87,6 +87,7 @@ export function createBase64RootKeyLoader(
       }
       const bytes = Buffer.from(raw, 'base64');
       if (bytes.byteLength !== 32 || bytes.toString('base64') !== raw) {
+        bytes.fill(0);
         throw new KeyConfigurationError();
       }
       return new TransferredRootKeyMaterial(bytes);

@@ -22,7 +22,35 @@ for path in "$operational" "$recovery_source"; do
 done
 input_snapshot=$(mktemp -d "${TMPDIR:-/tmp}/studio-backup-keys.XXXXXX")
 chmod 700 "$input_snapshot"
-cleanup_backup_inputs() { rm -rf "$input_snapshot"; }
+verification_login_open=0
+close_verification_login() {
+  # Commit admission closure separately so a termination failure cannot roll
+  # LOGIN state back. Verification never gives the application/migrator LOGIN.
+  compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -c 'ALTER ROLE studio_maintenance_runtime NOLOGIN;' || return 1
+  compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
+SELECT pg_catalog.pg_terminate_backend(pid, 5000)
+FROM pg_catalog.pg_stat_activity
+WHERE usename = 'studio_maintenance_runtime' AND pid <> pg_catalog.pg_backend_pid();
+SELECT pg_catalog.pg_stat_clear_snapshot();
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity WHERE usename = 'studio_maintenance_runtime') THEN
+    RAISE EXCEPTION 'Backup key verification session survived quarantine';
+  END IF;
+END $$;
+SQL
+}
+cleanup_backup_inputs() {
+  backup_exit_code=$?
+  trap - EXIT HUP INT TERM
+  if [ "$verification_login_open" -eq 1 ] && ! close_verification_login; then
+    echo 'Backup cleanup could not prove verification admission closed.' >&2
+    compose stop postgres >&2 || true
+    backup_exit_code=1
+  fi
+  if ! rm -rf "$input_snapshot"; then backup_exit_code=1; fi
+  exit "$backup_exit_code"
+}
 trap cleanup_backup_inputs EXIT
 trap 'exit 1' HUP INT TERM
 cp "$recovery_source" "$input_snapshot/recovery.env"
@@ -70,6 +98,18 @@ DO $$ BEGIN
   END IF;
 END $$;
 SQL
+
+# Verification before admission drain is only a preflight: a concurrent key
+# rotation can finish while writers are stopping. Check the exact custody
+# snapshot again after all writers and outside sessions have been excluded.
+# Arm cleanup before opening the sole temporary, read-only verification login.
+verification_login_open=1
+compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+  -c 'ALTER ROLE studio_maintenance_runtime LOGIN;'
+STUDIO_ENCRYPTION_FILE="$input_snapshot/recovery.env" \
+  compose run --rm --no-deps encryption-verify
+close_verification_login
+verification_login_open=0
 
 # A failure intentionally leaves admission/logins closed and no complete
 # marker. Never restart writers from an EXIT trap after a failed capture.

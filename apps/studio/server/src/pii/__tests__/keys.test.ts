@@ -197,6 +197,19 @@ describe('key configuration and loader boundary', () => {
 });
 
 describe('canonical base64 root adapter', () => {
+  it('clears allocated plaintext when canonical decoding is rejected', async () => {
+    const fill = vi.spyOn(Buffer.prototype, 'fill');
+    try {
+      await expect(
+        createBase64RootKeyLoader(() => `${'B'.repeat(43)}=`)('ROOT_REFERENCE'),
+      ).rejects.toThrow(KeyConfigurationError);
+      expect(fill).toHaveBeenCalledExactlyOnceWith(0);
+      expect(fill.mock.contexts[0]).toEqual(Buffer.alloc(32));
+    } finally {
+      fill.mockRestore();
+    }
+  });
+
   it('loads a 32-byte root through the injected reference reader', async () => {
     const read = vi.fn(() => rootOne.toString('base64'));
     const material = await createBase64RootKeyLoader(read)('ROOT_REFERENCE');
