@@ -436,9 +436,6 @@ const NO_INPUT_CONTROL = createMessageError(messages.noInputControl);
 /** Stable identity: `options` is a memo dependency of the picker below. */
 const NO_OPTIONS: VariablePickerOption[] = [];
 
-/** Stable identity, for the same reason: see `draftUnvalidatedVariables`. */
-const NO_DRAFT_UNVALIDATED: readonly string[] = Object.freeze([]);
-
 const VariablePicker = VariablePickerControl as ComponentType<
   Record<string, unknown>
 >;
@@ -529,6 +526,11 @@ type FormFieldsScope = Readonly<{
   subject: CodebookSubject | undefined;
   /** See `draftUnvalidatedVariables`. Carried for the row's own picker. */
   draftUnvalidated: ReadonlySet<string>;
+  /**
+   * The stage `draftUnvalidated` is the whole account of, where there is one.
+   * Carried so the picker and the save-time gate build the same role map.
+   */
+  answeredFor: string | undefined;
 }>;
 
 const FormFieldsScopeContext = createContext<FormFieldsScope | undefined>(
@@ -591,10 +593,21 @@ export type FormFieldsSectionProps = Readonly<{
    * dialog goes on accepting it. The contradiction then surfaces at stage
    * submit, against the slot the researcher was not looking at.
    *
+   * Supplying it at all is what makes it the WHOLE account of this stage's
+   * unvalidated writes, and the saved copy of them is then dropped from the
+   * role map. That is the other half of the same fact: an account that could
+   * only add to the saved one could never say a slot had been UNBOUND, so an
+   * attribute the researcher had just freed went on being hidden from the
+   * picker and refused at save until they saved the stage and opened it again.
+   * A host that supplies nothing has said nothing about its own stage, and the
+   * saved protocol stays the only account there is of it.
+   *
    * The interface that owns those slots supplies this, because only it knows
    * where its own unvalidated writes live: a name generator reads its prompts'
-   * `additionalAttributes`, a Family Pedigree its node configuration. Give a
-   * stable array — a fresh one each render re-registers the list's validator.
+   * `additionalAttributes`, a Family Pedigree its node configuration — so an
+   * interface that supplies this has to name EVERY unvalidated write its stage
+   * makes, not only the ones it has changed. Give a stable array — a fresh one
+   * each render re-registers the list's validator.
    */
   draftUnvalidatedVariables?: readonly string[];
   /**
@@ -651,7 +664,7 @@ export default function FormFieldsSection({
   optional = false,
   capability,
   hasTitle = false,
-  draftUnvalidatedVariables = NO_DRAFT_UNVALIDATED,
+  draftUnvalidatedVariables,
   title = messages.title,
   description = messages.description,
   fieldLabel = messages.fieldLabel,
@@ -667,19 +680,30 @@ export default function FormFieldsSection({
     FormFieldPreview,
   );
   const draftUnvalidated = useMemo(
-    () => new Set(draftUnvalidatedVariables),
+    () => new Set(draftUnvalidatedVariables ?? []),
     [draftUnvalidatedVariables],
   );
+  // The stage whose saved unvalidated writes the draft above replaces, where
+  // there is a draft to replace them with. See `draftUnvalidatedVariables`.
+  const { identity } = useStageEditorForm();
+  const answeredFor =
+    draftUnvalidatedVariables === undefined ? undefined : identity.id;
   const onBeforeSave = useCommitFormField(codebookSubject, intl);
   const editorValidate = useFormFieldValidate(
     codebookSubject,
     fieldsPath,
     draftUnvalidated,
+    answeredFor,
     intl,
   );
   const scope = useMemo(
-    () => ({ fieldsPath, subject: codebookSubject, draftUnvalidated }),
-    [codebookSubject, draftUnvalidated, fieldsPath],
+    () => ({
+      fieldsPath,
+      subject: codebookSubject,
+      draftUnvalidated,
+      answeredFor,
+    }),
+    [answeredFor, codebookSubject, draftUnvalidated, fieldsPath],
   );
 
   return (
@@ -859,6 +883,7 @@ function useFormFieldValidate(
   codebookSubject: CodebookSubject | undefined,
   fieldsPath: string,
   draftUnvalidated: ReadonlySet<string>,
+  answeredFor: string | undefined,
   intl: IntlShape,
 ) {
   const { protocolContext } = useStageEditorForm();
@@ -871,7 +896,7 @@ function useFormFieldValidate(
         : variablesForSubject(protocolContext, codebookSubject),
     [codebookSubject, protocolContext],
   );
-  const roleMap = useUnvalidatedWriterMap();
+  const roleMap = useUnvalidatedWriterMap(answeredFor);
 
   return useMemo(() => {
     const validateVariable = makeFieldEditorValidate(
@@ -947,29 +972,33 @@ function useFormFieldValidate(
 }
 
 /**
- * Every unvalidated write in the protocol, the stage being edited included.
+ * Every unvalidated write in the protocol that this section is not already
+ * being told about.
  *
- * Unscoped deliberately. A form field is a VALIDATED writer, so a stage's own
- * form contributes nothing this map is read for — but a stage may write the
- * same subject unvalidated somewhere else in itself: a name generator's prompt
- * stamps an attribute onto every node it adds, and a Family Pedigree derives
- * three from the tree the participant draws. Those are exactly the picks the
- * schema's own role-conflict rule refuses, and excluding the open stage would
- * offer every one of them and let the researcher author a stage that cannot be
- * saved.
+ * The open stage is INCLUDED unless a host has taken responsibility for it. A
+ * form field is a VALIDATED writer, so a stage's own form contributes nothing
+ * this map is read for — but a stage may write the same subject unvalidated
+ * somewhere else in itself: a name generator's prompt stamps an attribute onto
+ * every node it adds, and a Family Pedigree derives three from the tree the
+ * participant draws. Those are exactly the picks the schema's own
+ * role-conflict rule refuses, so dropping the open stage from a map nothing
+ * replaces it in would offer every one of them and let the researcher author a
+ * stage that cannot be saved.
+ *
+ * `answeredFor` is the stage a host HAS replaced, by supplying
+ * `draftUnvalidatedVariables` — the live account of what that stage writes
+ * unvalidated, which the saved sections can only contradict: they still hold
+ * the slot the researcher unbound a moment ago, and a live list can add to a
+ * map but never subtract from it.
  *
  * Each field's committed pick escapes throughout (`committed` below), so a
  * protocol that arrives already conflicting stays editable.
- *
- * Built from the AUTHORITATIVE sections, so it describes the open stage as it
- * was last saved. What this session has bound since is the other half of the
- * question, and arrives as `draftUnvalidatedVariables`.
  */
-function useUnvalidatedWriterMap() {
+function useUnvalidatedWriterMap(answeredFor: string | undefined) {
   const { protocolContext } = useStageEditorForm();
   return useMemo(
-    () => buildVariableRoleMap(protocolContext),
-    [protocolContext],
+    () => buildVariableRoleMap(protocolContext, answeredFor),
+    [answeredFor, protocolContext],
   );
 }
 
@@ -1285,11 +1314,12 @@ function AttributePicker({
 }: Readonly<{ item: RowEditorProps['item']; editIndex?: number }>) {
   const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
-  const { fieldsPath, subject, draftUnvalidated } = useFormFieldsScope();
+  const { fieldsPath, subject, draftUnvalidated, answeredFor } =
+    useFormFieldsScope();
   const fields = useStageValue(fieldsPath);
   const committed = asString(item.variable) ?? '';
 
-  const roleMap = useUnvalidatedWriterMap();
+  const roleMap = useUnvalidatedWriterMap(answeredFor);
 
   const options = useMemo(() => {
     // The ONLY way to an empty list: every other path appends the

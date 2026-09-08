@@ -1006,11 +1006,15 @@ const UNSTAMPED_NAME_GENERATOR = {
 /** What that prompt looks like once the researcher has bound the slot. */
 const STAMPED_PROMPTS = STAMPING_NAME_GENERATOR.fields.prompts;
 
-/** Lets a test bind the slot from outside, past the row dialog. */
-type SlotBinder = { bind?: () => void };
+/** The same prompt with the stamp taken off it again. */
+const UNSTAMPED_PROMPTS = UNSTAMPED_NAME_GENERATOR.fields.prompts;
+
+/** Lets a test bind or unbind the slot from outside, past the row dialog. */
+type SlotBinder = { bind?: () => void; unbind?: () => void };
 
 /**
- * Binds the prompt's stamp in the DRAFT, as the prompts section does.
+ * Binds the prompt's stamp in the DRAFT, as the prompts section does, and
+ * takes it off again the same way.
  *
  * Written through `applyOwnCommands` rather than through a control, because
  * the moment this test is about is one where a row dialog is open over the
@@ -1023,6 +1027,11 @@ function SlotBinder({ handle }: Readonly<{ handle: SlotBinder }>) {
   useEffect(() => {
     handle.bind = () => {
       applyOwnCommands([{ op: 'set', key: 'prompts', value: STAMPED_PROMPTS }]);
+    };
+    handle.unbind = () => {
+      applyOwnCommands([
+        { op: 'set', key: 'prompts', value: UNSTAMPED_PROMPTS },
+      ]);
     };
   }, [applyOwnCommands, handle]);
 
@@ -1089,6 +1098,52 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
     // Not the empty picker: everything else about this subject is still there.
     expect(offered).toContain('age');
     expect(offered).not.toContain('flagged');
+  });
+
+  /**
+   * And the other direction, which is the same fact: the draft is the account
+   * of what THIS stage writes unvalidated, so a slot the stage saved and the
+   * researcher has since unbound writes nothing any more.
+   *
+   * The saved protocol still says the stamp is there — it is what the stage
+   * was last saved holding — and the draft cannot subtract from it. So an
+   * attribute the researcher has just freed stayed hidden from the picker and
+   * refused at save, and the only way to collect it was to save the stage,
+   * close it and open it again.
+   */
+  it('is offered again once the slot the stage saved is unbound', async () => {
+    const handle: SlotBinder = {};
+    const harness = renderStageEditor({
+      stage: STAMPING_NAME_GENERATOR,
+      sections: <FormBesideItsSlots handle={handle} />,
+    });
+
+    const before = await openField(harness, 'Create new form field');
+    expect(offeredAttributes(before)).not.toContain('flagged');
+    await harness.user.click(before.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    act(() => handle.unbind?.());
+
+    const after = await openField(harness, 'Create new form field');
+    expect(offeredAttributes(after)).toContain('flagged');
+
+    // And the save-time gate asks the same question of the same two sources,
+    // so the row it now offers is a row that commits.
+    await harness.user.selectOptions(
+      after.getByRole('combobox', { name: 'Attribute' }),
+      'flagged',
+    );
+    await harness.user.type(
+      after.getByRole('textbox', { name: 'Question text' }),
+      'Are they flagged?',
+    );
+    await harness.user.click(after.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
   });
 
   /**
