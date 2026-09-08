@@ -107,6 +107,32 @@ test('the closure follows published fields only and drops the app’s private de
   });
 });
 
+// The image installs the app's optionalDependencies too (resolveManifest
+// keeps the field), so a workspace package reached only that way is in the
+// closure.
+test('the closure seeds from the app’s optional dependencies as well', () => {
+  inWorkspace((root) => {
+    writeFileSync(
+      join(root, 'apps/app/package.json'),
+      `${JSON.stringify(
+        {
+          name: 'app',
+          version: '4.0.0',
+          dependencies: { '@x/runtime': 'workspace:^' },
+          optionalDependencies: { '@x/exporters': 'workspace:^' },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    assert.deepEqual(collectClosure(wsPackages, 'apps/app'), [
+      '@x/exporters',
+      '@x/runtime',
+      '@x/ui',
+    ]);
+  });
+});
+
 test('nothing has changed right after the release', () => {
   inWorkspace(() => {
     const closure = collectClosure(wsPackages, 'apps/app');
@@ -996,6 +1022,39 @@ test('a build input that moved beneath an unchanged direct edge is vendored agai
 // is reached as `typescript: '@typescript/typescript6@6.0.2'`, and its own
 // `'@typescript/old': typescript@6.0.3` — so the walk must continue under the
 // real name, or everything beneath an alias is invisible to it.
+// A tool's edge moving between two helper versions that are both reachable
+// either way changes no snapshot, only an edge — and the package was built
+// with a different graph all the same.
+test('an edge moving between two snapshots that stay reachable is a change', () => {
+  inWorkspace(() => {
+    const closure = collectClosure(wsPackages, 'apps/app');
+    const graph = (toolHelper, otherHelper) =>
+      lock({
+        devImporters: { 'packages/ui': { tool: '1.0.0', other: '1.0.0' } },
+        snapshots: {
+          'tool@1.0.0': { helper: toolHelper },
+          'other@1.0.0': { helper: otherHelper },
+          'helper@1.0.0': {},
+          'helper@1.0.1': {},
+        },
+      });
+    assert.deepEqual(
+      packagesChangedSince('app@4.0.0', closure, wsPackages, {
+        refLock: graph('1.0.0', '1.0.1'),
+        headLock: graph('1.0.1', '1.0.0'),
+      }),
+      ['@x/ui'],
+    );
+    assert.deepEqual(
+      packagesChangedSince('app@4.0.0', closure, wsPackages, {
+        refLock: graph('1.0.0', '1.0.1'),
+        headLock: graph('1.0.0', '1.0.1'),
+      }),
+      [],
+    );
+  });
+});
+
 test('the walk follows npm aliases to the snapshot they name', () => {
   inWorkspace(() => {
     const closure = collectClosure(wsPackages, 'apps/app');

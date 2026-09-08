@@ -106,7 +106,13 @@ export function collectClosure(wsPackages, appDir = 'apps/fresco') {
       visit(readManifest(ws.dir), PUBLISHED_DEP_FIELDS, name);
     }
   };
-  visit(appManifest, ['dependencies', 'devDependencies'], appName);
+  // The app's runtime fields the mirrored manifest keeps, plus its
+  // devDependencies: all of them install in the image.
+  visit(
+    appManifest,
+    ['dependencies', 'optionalDependencies', 'devDependencies'],
+    appName,
+  );
   return [...closure].toSorted((a, b) => a.localeCompare(b));
 }
 
@@ -138,23 +144,33 @@ function catalogEntriesChangedSince(ref) {
 const snapshotKey = (dep, version) =>
   /^(@[^/]+\/)?[^@(]+@/.test(version) ? version : `${dep}@${version}`;
 
-// Every resolution an importer reaches, by full snapshot key: its own edges
-// and, through the lockfile's snapshots, everything those resolve to. Two
-// importers with identical direct edges still built with different tools if
-// a dependency of a tool moved — the graph beneath the edge is the build
-// input, not the edge alone. Edges to workspace packages (`link:`) and to
-// local tarballs have no snapshot to follow and are compared as they are.
+// Everything an importer's resolution reaches — every snapshot, by full key,
+// and every edge between them — starting from the importer's own edges and
+// following the lockfile's snapshots. Two importers with identical direct
+// edges were still built with different tools if a dependency of a tool
+// moved: the graph beneath the edge is the build input, not the edge alone.
+// The edges are recorded too, not only the snapshots: a tool's edge moving
+// from one helper version to another that was already reachable elsewhere
+// changes no snapshot set, but it is a different graph. Edges to workspace
+// packages (`link:`) and to local tarballs have no snapshot to follow and are
+// compared as they are.
 function reachableResolutions(edges, importer) {
   const seen = new Set();
-  const queue = [...(edges.importers.get(importer) ?? new Map())].map(
-    ([dep, version]) => snapshotKey(dep, version),
-  );
+  const queue = [];
+  const edge = (parent, dep, version) => {
+    const child = snapshotKey(dep, version);
+    seen.add(`${parent} → ${child}`);
+    queue.push(child);
+  };
+  for (const [dep, version] of edges.importers.get(importer) ?? new Map()) {
+    edge(importer, dep, version);
+  }
   while (queue.length) {
     const key = queue.pop();
     if (seen.has(key)) continue;
     seen.add(key);
     for (const [dep, version] of edges.snapshots.get(key) ?? new Map()) {
-      queue.push(snapshotKey(dep, version));
+      edge(key, dep, version);
     }
   }
   return seen;
