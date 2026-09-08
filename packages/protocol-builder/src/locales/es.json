@@ -900,6 +900,7 @@
   "protocolBuilder.variablePicker.createHint": "Lo añade al libro de códigos de este tipo y lo selecciona arriba.",
   "protocolBuilder.variablePicker.createLabel": "Crear un atributo nuevo",
   "protocolBuilder.variablePicker.createPlaceholder": "nominado_pronto",
+  "protocolBuilder.variablePicker.createdUnassigned": "Se ha añadido «{variableName}» al libro de códigos, pero no se ha seleccionado aquí.",
   "protocolBuilder.variablePicker.emptyState": "No hay atributos entre los que elegir.",
   "protocolBuilder.variablePicker.missingAttribute": "Este atributo ya no está en el libro de códigos. Elige otro.",
   "protocolBuilder.variablePicker.missingOptionLabel": "{attributeId} — este atributo ya no está en el libro de códigos",
