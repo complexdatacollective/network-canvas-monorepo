@@ -11,6 +11,7 @@ const DEFAULT_UPLOAD_ORIGIN_TIMEOUT_MS = 15 * 60_000;
 const MAX_UPLOAD_ORIGIN_TIMEOUT_MS = 30 * 60_000;
 const IMMUTABLE_ASSET_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const IMMUTABLE_ASSET_PATH = /^\/storage\/([0-9a-f]{64})$/;
+const INGRESS_PROOF_HEADER = 'x-studio-managed-ingress-proof';
 const STATIC_REQUEST_HEADERS = new Set([
   'accept',
   'accept-encoding',
@@ -36,6 +37,7 @@ const FORWARDED_REQUEST_HEADERS = [
   'x-forwarded-for',
   'x-forwarded-host',
   'x-forwarded-proto',
+  INGRESS_PROOF_HEADER,
 ];
 const CORS_RESPONSE_HEADERS = [
   'access-control-allow-credentials',
@@ -102,10 +104,18 @@ function resolvePolicy(configuration) {
     backendOrigin.includes('replace-with-')
   )
     throw new Error('placeholder ingress origin');
+  if (
+    typeof configuration.backendIngressSecret !== 'string' ||
+    configuration.backendIngressSecret.length < 32 ||
+    configuration.backendIngressSecret.length > 256 ||
+    !/^[!-~]+$/.test(configuration.backendIngressSecret)
+  )
+    throw new Error('invalid backend ingress secret');
   return {
     publicOrigin,
     staticOrigin,
     backendOrigin,
+    backendIngressSecret: configuration.backendIngressSecret,
     originTimeoutMs: positiveInteger(
       configuration.originTimeoutMs,
       DEFAULT_ORIGIN_TIMEOUT_MS,
@@ -161,13 +171,95 @@ function staticHeaders(request) {
   return headers;
 }
 
-function backendHeaders(request, publicOrigin) {
+function canonicalClientIp(headers) {
+  const ipv6 = headers.get('cf-connecting-ipv6');
+  const candidate = ipv6 || headers.get('cf-connecting-ip');
+  if (
+    !candidate ||
+    candidate.length > 45 ||
+    candidate.includes('%') ||
+    candidate.includes(',') ||
+    [...candidate].some((character) => {
+      const code = character.charCodeAt(0);
+      return code <= 32 || code === 127;
+    })
+  )
+    return undefined;
+  if (/^(?:0|[1-9]\d{0,2})(?:\.(?:0|[1-9]\d{0,2})){3}$/.test(candidate)) {
+    if (candidate.split('.').every((part) => Number(part) <= 255))
+      return candidate;
+    return undefined;
+  }
+  if (!candidate.includes(':')) return undefined;
+  try {
+    const hostname = new URL(`http://[${candidate}]/`).hostname;
+    return hostname.slice(1, -1).toLowerCase();
+  } catch {
+    return undefined;
+  }
+}
+
+function backendHeaders(request, policy, clientIp) {
   const headers = new Headers(request.headers);
   for (const name of FORWARDED_REQUEST_HEADERS) headers.delete(name);
-  headers.set('x-forwarded-host', new URL(publicOrigin).host);
+  headers.delete('cf-connecting-ip');
+  headers.delete('cf-connecting-ipv6');
+  headers.delete('x-real-ip');
+  headers.set('x-forwarded-for', clientIp);
+  headers.set('x-forwarded-host', new URL(policy.publicOrigin).host);
   headers.set('x-forwarded-proto', 'https');
+  headers.set(INGRESS_PROOF_HEADER, policy.backendIngressSecret);
   headers.set('x-request-id', crypto.randomUUID());
   return headers;
+}
+
+function assetCacheKey(policy, pathname, requestHeaders) {
+  const headers = new Headers();
+  for (const name of ['if-modified-since', 'if-none-match', 'range']) {
+    const value = requestHeaders?.get(name);
+    if (value) headers.set(name, value);
+  }
+  return new Request(`${policy.publicOrigin}${pathname}`, {
+    method: 'GET',
+    headers,
+  });
+}
+
+function isSafeCachedAssetResponse(response, request, pathname) {
+  if (!(response instanceof Response)) return false;
+  const range = request.headers.has('range');
+  const conditional =
+    request.headers.has('if-none-match') ||
+    request.headers.has('if-modified-since');
+  if (
+    response.status !== 200 &&
+    !(response.status === 206 && range) &&
+    !(response.status === 304 && conditional)
+  )
+    return false;
+  const match = IMMUTABLE_ASSET_PATH.exec(pathname);
+  return Boolean(
+    match &&
+    response.headers.get('cache-control') === IMMUTABLE_ASSET_CACHE_CONTROL &&
+    response.headers.get('etag') === `"${match[1]}"` &&
+    !response.headers.has('set-cookie'),
+  );
+}
+
+async function boundedCacheMatch(cache, request, timeoutMs) {
+  let timer;
+  const pending = Promise.resolve().then(() => cache.match(request));
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('cache timeout')), timeoutMs);
+  });
+  try {
+    return await Promise.race([pending, timeout]);
+  } catch (error) {
+    pending.then(cancelResponse, () => {});
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function requestBody(request) {
@@ -376,6 +468,9 @@ export function createManagedStudioIngress(configuration) {
       }
       incoming.pathname = pathname;
       const backend = isBackendPath(pathname);
+      const clientIp = backend ? canonicalClientIp(request.headers) : undefined;
+      if (backend && !clientIp)
+        return problem(400, 'Edge client address is invalid');
       const upgrade = request.headers.get('upgrade');
       if (
         upgrade &&
@@ -395,6 +490,25 @@ export function createManagedStudioIngress(configuration) {
           headers: { 'allow': 'GET, HEAD', 'cache-control': 'no-store' },
         });
 
+      const cache = configuration.cache;
+      if (
+        backend &&
+        request.method === 'GET' &&
+        IMMUTABLE_ASSET_PATH.test(pathname) &&
+        cache?.match
+      ) {
+        try {
+          const cached = await boundedCacheMatch(
+            cache,
+            assetCacheKey(policy, pathname, request.headers),
+            policy.originTimeoutMs,
+          );
+          if (cached && isSafeCachedAssetResponse(cached, request, pathname))
+            return cached;
+          if (cached) cancelResponse(cached);
+        } catch {}
+      }
+
       const upstreamOrigin = backend
         ? policy.backendOrigin
         : policy.staticOrigin;
@@ -405,7 +519,7 @@ export function createManagedStudioIngress(configuration) {
       // receive authentication, invitation, and callback query data.
       if (backend) upstream.search = incoming.search;
       const headers = backend
-        ? backendHeaders(request, policy.publicOrigin)
+        ? backendHeaders(request, policy, clientIp)
         : staticHeaders(request);
       const body = requestBody(request);
       const originRequest = new Request(upstream, {
@@ -425,7 +539,7 @@ export function createManagedStudioIngress(configuration) {
             ? policy.uploadOriginTimeoutMs
             : policy.originTimeoutMs,
         );
-        return backend
+        const routed = backend
           ? backendResponse(
               response,
               policy,
@@ -434,6 +548,23 @@ export function createManagedStudioIngress(configuration) {
               pathname === '/ws',
             )
           : staticResponse(response, policy);
+        if (
+          backend &&
+          request.method === 'GET' &&
+          isImmutableAssetResponse(routed, 'GET', pathname) &&
+          cache?.put &&
+          typeof configuration.waitUntil === 'function'
+        ) {
+          const cacheWrite = Promise.resolve()
+            .then(() =>
+              cache.put(assetCacheKey(policy, pathname), routed.clone()),
+            )
+            .catch(() => {});
+          try {
+            configuration.waitUntil(cacheWrite);
+          } catch {}
+        }
+        return routed;
       } catch {
         return problem(504, 'Origin request failed or timed out');
       }
@@ -442,11 +573,17 @@ export function createManagedStudioIngress(configuration) {
 }
 
 export default {
-  fetch(request, env) {
+  fetch(request, env, context) {
     return createManagedStudioIngress({
       publicOrigin: env?.PUBLIC_ORIGIN,
       staticOrigin: env?.STATIC_ORIGIN,
       backendOrigin: env?.BACKEND_ORIGIN,
+      backendIngressSecret: env?.STUDIO_MANAGED_INGRESS_SECRET,
+      cache: globalThis.caches?.default,
+      waitUntil:
+        typeof context?.waitUntil === 'function'
+          ? context.waitUntil.bind(context)
+          : undefined,
     }).fetch(request);
   },
 };

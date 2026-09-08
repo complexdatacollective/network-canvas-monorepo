@@ -116,6 +116,13 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     devDefault: 'managed',
     example: 'self-hosted',
   },
+  STUDIO_MANAGED_INGRESS_SECRET: {
+    group: 'Process',
+    summary:
+      'Shared proof required on requests from the managed Cloudflare ingress.',
+    deployment:
+      'Set only as the same independent random secret in the Cloudflare Worker and Fly runtime. Managed database servers configure it together with TRUSTED_PROXIES; never store it in IaC inputs or logs.',
+  },
 
   S3_ENDPOINT: {
     group: 'Object storage',

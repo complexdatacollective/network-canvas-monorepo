@@ -7,16 +7,29 @@ import { createManagedStudioIngress } from './index.mjs';
 const PUBLIC_ORIGIN = 'https://networkcanvas.studio';
 const STATIC_ORIGIN = 'https://networkcanvas-studio.netlify.app';
 const BACKEND_ORIGIN = 'https://networkcanvas-studio-production.fly.dev';
+const INGRESS_SECRET = 'synthetic-ingress-secret-at-least-32-characters';
+const CLIENT_IP = '203.0.113.80';
 
 function ingress(fetchImpl, overrides = {}) {
-  return createManagedStudioIngress({
+  const { edgeClientIp = CLIENT_IP, ...configuration } = overrides;
+  const router = createManagedStudioIngress({
     publicOrigin: PUBLIC_ORIGIN,
     staticOrigin: STATIC_ORIGIN,
     backendOrigin: BACKEND_ORIGIN,
+    backendIngressSecret: INGRESS_SECRET,
     originTimeoutMs: 500,
     fetchImpl,
-    ...overrides,
+    ...configuration,
   });
+  return {
+    fetch(request) {
+      if (edgeClientIp === false) return router.fetch(request);
+      const headers = new Headers(request.headers);
+      if (!headers.has('cf-connecting-ip'))
+        headers.set('cf-connecting-ip', edgeClientIp);
+      return router.fetch(new Request(request, { headers }));
+    },
+  };
 }
 
 function serverOrigin(server) {
@@ -67,7 +80,11 @@ test('routes server surfaces to Fly with same-origin auth and CSRF headers intac
     'networkcanvas.studio',
   );
   assert.equal(captured[0].headers.get('x-forwarded-proto'), 'https');
-  assert.equal(captured[0].headers.get('x-forwarded-for'), null);
+  assert.equal(captured[0].headers.get('x-forwarded-for'), CLIENT_IP);
+  assert.equal(
+    captured[0].headers.get('x-studio-managed-ingress-proof'),
+    INGRESS_SECRET,
+  );
   assert.notEqual(
     captured[0].headers.get('x-request-id'),
     '123e4567-e89b-42d3-a456-426614174000',
@@ -82,6 +99,67 @@ test('routes server surfaces to Fly with same-origin auth and CSRF headers intac
   assert.equal(response.headers.get('cdn-cache-control'), 'no-store');
   assert.match(response.headers.get('set-cookie'), /studio\.session=next/);
   assert.deepEqual(await response.json(), { title: 'Missing', status: 404 });
+});
+
+test('accepts only a validated Cloudflare client address and replaces spoofable forwarding headers', async () => {
+  const seen = [];
+  const router = ingress(async (request) => {
+    seen.push(request);
+    return new Response(null, { status: 204 });
+  });
+  await router.fetch(
+    new Request(`${PUBLIC_ORIGIN}/api/status`, {
+      headers: {
+        'cf-connecting-ip': '192.0.2.8',
+        'cf-connecting-ipv6': '2001:db8::7',
+        'x-forwarded-for': '198.51.100.1, 198.51.100.2',
+        'x-real-ip': '198.51.100.3',
+        'x-studio-managed-ingress-proof': 'attacker-controlled',
+      },
+    }),
+  );
+  assert.equal(seen[0].headers.get('x-forwarded-for'), '2001:db8::7');
+  assert.equal(seen[0].headers.get('cf-connecting-ip'), null);
+  assert.equal(seen[0].headers.get('cf-connecting-ipv6'), null);
+  assert.equal(seen[0].headers.get('x-real-ip'), null);
+  assert.equal(
+    seen[0].headers.get('x-studio-managed-ingress-proof'),
+    INGRESS_SECRET,
+  );
+
+  for (const edgeClientIp of [
+    false,
+    '999.1.1.1',
+    '01.2.3.4',
+    '1.2.3.4, 5.6.7.8',
+    '2001:db8::g',
+    '[2001:db8::1]',
+    'client.example',
+  ]) {
+    const refused = await ingress(
+      async () => {
+        throw new Error('invalid address reached origin');
+      },
+      { edgeClientIp },
+    ).fetch(new Request(`${PUBLIC_ORIGIN}/api/status`));
+    assert.equal(refused.status, 400);
+  }
+});
+
+test('refuses to route when the backend ingress proof is absent or malformed', async () => {
+  for (const backendIngressSecret of [undefined, 'too-short', 'a'.repeat(31)]) {
+    const router = createManagedStudioIngress({
+      publicOrigin: PUBLIC_ORIGIN,
+      staticOrigin: STATIC_ORIGIN,
+      backendOrigin: BACKEND_ORIGIN,
+      backendIngressSecret,
+      fetchImpl: async () => {
+        throw new Error('unconfigured ingress reached origin');
+      },
+    });
+    const response = await router.fetch(new Request(`${PUBLIC_ORIGIN}/`));
+    assert.equal(response.status, 503);
+  }
 });
 
 test('keeps authentication cookies and redirects while refusing API caching', async () => {
@@ -165,6 +243,212 @@ test('preserves caching only for successful immutable content-addressed reads', 
     assert.equal(response.headers.get('cdn-cache-control'), immutable);
     assert.equal(response.headers.get('etag'), `"${hash}"`);
   }
+});
+
+test('admits a proved immutable GET to Cache API and serves its canonical cache entry', async () => {
+  const hash = '9'.repeat(64);
+  const immutable = 'public, max-age=31536000, immutable';
+  const entries = new Map();
+  const matchRequests = [];
+  const putRequests = [];
+  const cache = {
+    async match(request) {
+      matchRequests.push(request);
+      return entries.get(request.url)?.clone();
+    },
+    async put(request, response) {
+      putRequests.push(request);
+      entries.set(request.url, response.clone());
+    },
+  };
+  const tasks = [];
+  let originCalls = 0;
+  const router = ingress(
+    async () => {
+      originCalls += 1;
+      return new Response('immutable bytes', {
+        headers: {
+          'cache-control': immutable,
+          'content-type': 'application/octet-stream',
+          'etag': `"${hash}"`,
+        },
+      });
+    },
+    { cache, waitUntil: (task) => tasks.push(task) },
+  );
+  const browserRequest = new Request(
+    `${PUBLIC_ORIGIN}/storage/${hash}?private=query`,
+    {
+      headers: {
+        authorization: 'Bearer secret',
+        cookie: 'studio.session=secret',
+      },
+    },
+  );
+  const first = await router.fetch(browserRequest);
+  assert.equal(await first.text(), 'immutable bytes');
+  await Promise.all(tasks);
+  const second = await router.fetch(browserRequest);
+  assert.equal(await second.text(), 'immutable bytes');
+  assert.equal(originCalls, 1);
+  assert.equal(putRequests.length, 1);
+  assert.equal(putRequests[0].url, `${PUBLIC_ORIGIN}/storage/${hash}`);
+  assert.deepEqual([...putRequests[0].headers], []);
+  assert.equal(matchRequests[0].url, `${PUBLIC_ORIGIN}/storage/${hash}`);
+  assert.equal(matchRequests[0].headers.get('authorization'), null);
+  assert.equal(matchRequests[0].headers.get('cookie'), null);
+});
+
+test('uses only safe Cache API variants and never populates a bodyless HEAD entry', async () => {
+  const hash = '8'.repeat(64);
+  const immutable = 'public, max-age=31536000, immutable';
+  let cached;
+  let puts = 0;
+  let origins = 0;
+  const cache = {
+    async match(request) {
+      if (cached.status === 206)
+        assert.equal(request.headers.get('range'), 'bytes=0-3');
+      if (cached.status === 304)
+        assert.equal(request.headers.get('if-none-match'), `"${hash}"`);
+      return cached;
+    },
+    async put() {
+      puts += 1;
+    },
+  };
+  cached = new Response('part', {
+    status: 206,
+    headers: {
+      'cache-control': immutable,
+      'content-range': 'bytes 0-3/12',
+      'etag': `"${hash}"`,
+    },
+  });
+  const router = ingress(
+    async () => {
+      origins += 1;
+      return new Response(null, {
+        headers: { 'cache-control': immutable, 'etag': `"${hash}"` },
+      });
+    },
+    { cache, waitUntil: () => {} },
+  );
+  const ranged = await router.fetch(
+    new Request(`${PUBLIC_ORIGIN}/storage/${hash}`, {
+      headers: { range: 'bytes=0-3' },
+    }),
+  );
+  assert.equal(ranged.status, 206);
+  assert.equal(await ranged.text(), 'part');
+  assert.equal(origins, 0);
+
+  cached = new Response(null, {
+    status: 304,
+    headers: { 'cache-control': immutable, 'etag': `"${hash}"` },
+  });
+  const conditional = await router.fetch(
+    new Request(`${PUBLIC_ORIGIN}/storage/${hash}`, {
+      headers: { 'if-none-match': `"${hash}"` },
+    }),
+  );
+  assert.equal(conditional.status, 304);
+  assert.equal(origins, 0);
+
+  const headRouter = ingress(
+    async () =>
+      new Response(null, {
+        headers: { 'cache-control': immutable, 'etag': `"${hash}"` },
+      }),
+    { cache: { put: async () => (puts += 1) }, waitUntil: () => {} },
+  );
+  const head = await headRouter.fetch(
+    new Request(`${PUBLIC_ORIGIN}/storage/${hash}`, { method: 'HEAD' }),
+  );
+  assert.equal(head.status, 200);
+  assert.equal(puts, 0);
+});
+
+test('cache failures and unsafe cache entries preserve the streamed origin response', async () => {
+  const hash = '7'.repeat(64);
+  const immutable = 'public, max-age=31536000, immutable';
+  let originCalls = 0;
+  const tasks = [];
+  const router = ingress(
+    async () => {
+      originCalls += 1;
+      return new Response('origin bytes', {
+        headers: { 'cache-control': immutable, 'etag': `"${hash}"` },
+      });
+    },
+    {
+      cache: {
+        match: async () =>
+          new Response('poison', {
+            headers: {
+              'cache-control': immutable,
+              'etag': `"${'6'.repeat(64)}"`,
+            },
+          }),
+        put: async () => {
+          throw new Error('cache write failed');
+        },
+      },
+      waitUntil: (task) => tasks.push(task),
+    },
+  );
+  const response = await router.fetch(
+    new Request(`${PUBLIC_ORIGIN}/storage/${hash}`),
+  );
+  assert.equal(await response.text(), 'origin bytes');
+  await Promise.all(tasks);
+  assert.equal(originCalls, 1);
+
+  const contextFailure = ingress(
+    async () =>
+      new Response('still streamed', {
+        headers: { 'cache-control': immutable, 'etag': `"${hash}"` },
+      }),
+    {
+      cache: { put: async () => {} },
+      waitUntil: () => {
+        throw new Error('execution context rejected task');
+      },
+    },
+  );
+  const preserved = await contextFailure.fetch(
+    new Request(`${PUBLIC_ORIGIN}/storage/${hash}`),
+  );
+  assert.equal(await preserved.text(), 'still streamed');
+});
+
+test('never consults or populates Cache API for dynamic backend responses', async () => {
+  let cacheCalls = 0;
+  const router = ingress(
+    async () =>
+      Response.json(
+        { user: 'private' },
+        { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
+      ),
+    {
+      cache: {
+        match: async () => {
+          cacheCalls += 1;
+        },
+        put: async () => {
+          cacheCalls += 1;
+        },
+      },
+      waitUntil: () => {},
+    },
+  );
+  const response = await router.fetch(
+    new Request(`${PUBLIC_ORIGIN}/api/auth/get-session`, {
+      headers: { cookie: 'studio.session=private' },
+    }),
+  );
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(cacheCalls, 0);
 });
 
 test('refuses backend caching when any immutable asset proof is absent', async () => {

@@ -31,8 +31,11 @@ through without handling messages.
   foreign host.
 - Server surfaces preserve cookie, authorization, Origin, `Sec-Fetch-Site`, and
   WebSocket handshake headers. Untrusted forwarding headers are replaced with
-  the approved public host and HTTPS scheme, and the ingress replaces incoming
-  request IDs with fresh UUIDs. The Node server still performs its
+  the approved public host, HTTPS scheme, and a single validated
+  `CF-Connecting-IP` address, and the ingress replaces incoming request IDs
+  with fresh UUIDs. A shared ingress proof, stored only as a Worker secret and
+  Fly runtime secret, makes that client address unusable on direct origin
+  requests. The Node server still performs its
   existing cookie principal, CSRF, and WebSocket-Origin checks.
 - Backend responses receive browser and CDN `no-store` directives unless they
   are a successful public `GET` or `HEAD` of an exact lowercase SHA-256
@@ -41,6 +44,14 @@ through without handling messages.
   upload, API route, authentication response, redirect, and every failed cache
   proof remain `no-store`; an API failure can never fall through to Netlify's
   SPA fallback.
+- Proved immutable GETs are admitted explicitly to Cloudflare's Cache API
+  under their canonical public hash URL, without query, cookie, or
+  authorization data. Cache hits are rechecked against the path hash and
+  immutable headers; conditional and range variants remain Cache API
+  operations. HEAD and every unproved response bypass cache admission. Cache
+  failures do not replace or buffer the streamed origin response. Cache API
+  entries are local to a Cloudflare data center and do not provide tiered
+  replication.
 - Ordinary origin connection/header waits are bounded at 10 seconds. The
   supported 100 MiB `/storage` upload has a separate 15-minute total deadline:
   100 MiB takes about 14 minutes at 1 Mbit/s before the backend completes its
@@ -63,6 +74,16 @@ non-secret inputs required for each environment:
 | `PUBLIC_ORIGIN`  | `https://networkcanvas.studio`                    | One of the two compiled approved browser origins |
 | `STATIC_ORIGIN`  | `https://networkcanvas-studio.netlify.app`        | Exact reviewed Netlify site origin               |
 | `BACKEND_ORIGIN` | `https://networkcanvas-studio-production.fly.dev` | Exact reviewed Fly app origin                    |
+
+Set `STUDIO_MANAGED_INGRESS_SECRET` with `wrangler secret put` and place the
+same independent random value in the Fly runtime environment. It is
+deliberately absent from `wrangler.example.jsonc`; a missing, short, or
+malformed secret makes the Worker refuse every request with 503. The Fly server
+must configure the proof and managed `TRUSTED_PROXIES` together and refuses
+requests without it before authentication. The direct `/healthz` liveness
+probe is the sole exception: it makes no identity or readiness decision and
+does not reach Better Auth. Fly health checks can use that path without storing
+the runtime secret in their configuration.
 
 The checked-in template deliberately contains invalid `replace-with-*`
 upstreams and is not Wrangler's default config filename. Copy the relevant
@@ -101,5 +122,7 @@ Official capability references:
 - [Cloudflare Worker Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
 - [Cloudflare WebSockets](https://developers.cloudflare.com/network/websockets/)
 - [Cloudflare Workers WebSocket forwarding](https://developers.cloudflare.com/workers/examples/websockets/)
+- [Cloudflare Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/)
+- [Cloudflare request headers](https://developers.cloudflare.com/fundamentals/reference/http-headers/)
 - [Cloudflare Origin Rules availability](https://developers.cloudflare.com/rules/origin-rules/)
 - [Netlify external DNS](https://docs.netlify.com/manage/domains/configure-domains/configure-external-dns/)
