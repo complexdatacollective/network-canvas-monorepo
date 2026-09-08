@@ -146,6 +146,16 @@ for (const [file, extra] of [
   ],
   ['action.tf', 'action "external" "unreviewed" {}\n'],
   [
+    'ephemeral.tf.json',
+    JSON.stringify({
+      ephemeral: {
+        aws_secretsmanager_secret_version: {
+          unreviewed: { secret_id: 'unreviewed' },
+        },
+      },
+    }),
+  ],
+  [
     'import.tf',
     'import {\n  to = aws_kms_key.studio_root\n  id = "unreviewed"\n}\n',
   ],
@@ -188,6 +198,27 @@ for (const [name, extra] of [
     const result = generateAt(temp, true);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /backend\/cloud subblocks|support/i);
+  });
+
+for (const [name, terraform] of [
+  ['backend', { backend: { http: { address: 'https://state.example.test' } } }],
+  [
+    'cloud',
+    {
+      cloud: { organization: 'unreviewed', workspaces: { name: 'unreviewed' } },
+    },
+  ],
+])
+  test(`refuses an approved Terraform JSON ${name} subblock`, async (context) => {
+    const temp = await mkdtemp(join(tmpdir(), 'studio-approved-json-state-'));
+    context.after(() => rm(temp, { recursive: true, force: true }));
+    await copyReviewedEstate(temp);
+    const file = 'remote-state.tf.json';
+    await writeFile(join(temp, file), JSON.stringify({ terraform }));
+    await approveManifestFile(temp, file);
+    const result = generateAt(temp, true);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /backend\/cloud subblocks/);
   });
 
 for (const [name, nested] of [
