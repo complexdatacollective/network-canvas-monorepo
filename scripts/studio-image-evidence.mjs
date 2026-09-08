@@ -1,0 +1,195 @@
+import {
+  IMAGE_REPOSITORIES,
+  sha256,
+} from '../apps/studio/deployment/installer/release.mjs';
+
+const OCI_INDEX = 'application/vnd.oci.image.index.v1+json';
+const OCI_MANIFEST = 'application/vnd.oci.image.manifest.v1+json';
+const OCI_CONFIG = 'application/vnd.oci.image.config.v1+json';
+const DOCKER_INDEX =
+  'application/vnd.docker.distribution.manifest.list.v2+json';
+const DOCKER_MANIFEST = 'application/vnd.docker.distribution.manifest.v2+json';
+const DOCKER_CONFIG = 'application/vnd.docker.container.image.v1+json';
+const FAMILIES = new Map([
+  [OCI_INDEX, { config: OCI_CONFIG, manifest: OCI_MANIFEST }],
+  [DOCKER_INDEX, { config: DOCKER_CONFIG, manifest: DOCKER_MANIFEST }],
+]);
+const PLATFORMS = new Set(['linux/amd64', 'linux/arm64']);
+const MAX_JSON_BYTES = 1024 * 1024;
+const MINIO_REPOSITORY = 'https://github.com/minio/minio';
+
+function ociDigest(bytes) {
+  return `sha256:${sha256(bytes)}`;
+}
+
+function requireDigest(value, message) {
+  if (typeof value !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(value)) {
+    throw new Error(message);
+  }
+  return value;
+}
+
+function parseJson(bytes, message) {
+  if (!Buffer.isBuffer(bytes) || bytes.length > MAX_JSON_BYTES) {
+    throw new Error(message);
+  }
+  try {
+    return JSON.parse(bytes.toString('utf8'));
+  } catch {
+    throw new Error(message);
+  }
+}
+
+function requireBlob(blobs, descriptor, message) {
+  requireDigest(descriptor?.digest, message);
+  if (
+    !Number.isSafeInteger(descriptor.size) ||
+    descriptor.size < 0 ||
+    descriptor.size > MAX_JSON_BYTES
+  ) {
+    throw new Error(message);
+  }
+  const bytes = blobs.get(descriptor.digest);
+  if (
+    !Buffer.isBuffer(bytes) ||
+    bytes.length !== descriptor.size ||
+    ociDigest(bytes) !== descriptor.digest
+  ) {
+    throw new Error(message);
+  }
+  return bytes;
+}
+
+export function deriveImageEvidence({ name, reference, manifestBytes, blobs }) {
+  const repository = IMAGE_REPOSITORIES[name];
+  if (!repository || reference !== repository) {
+    throw new Error('Image reference is outside the controlled repositories.');
+  }
+  if (!(blobs instanceof Map)) {
+    throw new Error('OCI evidence blobs must be a Map.');
+  }
+
+  const index = parseJson(manifestBytes, 'Invalid OCI image index.');
+  const family = FAMILIES.get(index.mediaType);
+  if (!family || index.schemaVersion !== 2 || !Array.isArray(index.manifests)) {
+    throw new Error('Unexpected OCI index media type.');
+  }
+
+  const expectedBlobs = new Set();
+  const configurations = {};
+  for (const descriptor of index.manifests) {
+    const platform = `${descriptor?.platform?.os}/${descriptor?.platform?.architecture}`;
+    if (
+      !PLATFORMS.has(platform) ||
+      descriptor.platform.variant !== undefined ||
+      configurations[platform] ||
+      descriptor.mediaType !== family.manifest ||
+      expectedBlobs.has(descriptor.digest)
+    ) {
+      throw new Error('Invalid OCI platform descriptor.');
+    }
+    const childBytes = requireBlob(
+      blobs,
+      descriptor,
+      'OCI child manifest digest mismatch.',
+    );
+    expectedBlobs.add(descriptor.digest);
+    const child = parseJson(childBytes, 'Invalid OCI child manifest.');
+    if (
+      child.schemaVersion !== 2 ||
+      child.mediaType !== family.manifest ||
+      child.config?.mediaType !== family.config
+    ) {
+      throw new Error('Unexpected OCI child manifest media type.');
+    }
+    const configBytes = requireBlob(
+      blobs,
+      child.config,
+      'OCI config digest mismatch.',
+    );
+    expectedBlobs.add(child.config.digest);
+    const config = parseJson(configBytes, 'Invalid OCI image configuration.');
+    if (
+      config.os !== descriptor.platform.os ||
+      config.architecture !== descriptor.platform.architecture ||
+      config.variant !== undefined
+    ) {
+      throw new Error('OCI configuration does not match its platform.');
+    }
+    configurations[platform] = child.config.digest;
+  }
+
+  if (
+    Object.keys(configurations).length !== PLATFORMS.size ||
+    [...PLATFORMS].some((platform) => !configurations[platform])
+  ) {
+    throw new Error('OCI index does not contain every required platform.');
+  }
+  if (
+    blobs.size !== expectedBlobs.size ||
+    [...blobs.keys()].some((key) => !expectedBlobs.has(key))
+  ) {
+    throw new Error('Extraneous OCI evidence blob.');
+  }
+
+  return {
+    reference: `${reference}@${ociDigest(manifestBytes)}`,
+    configurations,
+  };
+}
+
+export function validateCycloneDx({ image, bytes }) {
+  const at = image?.lastIndexOf('@');
+  const repository =
+    typeof at === 'number' && at > 0 ? image.slice(0, at) : undefined;
+  const digest =
+    typeof at === 'number' && at > 0 ? image.slice(at + 1) : undefined;
+  if (
+    !Object.values(IMAGE_REPOSITORIES).includes(repository) ||
+    !requireDigest(
+      digest,
+      'SBOM subject is not an immutable controlled image reference.',
+    )
+  ) {
+    throw new Error(
+      'SBOM subject is not an immutable controlled image reference.',
+    );
+  }
+  const sbom = parseJson(bytes, 'Invalid CycloneDX SBOM.');
+  const component = sbom.metadata?.component;
+  const hasImageHash = component?.hashes?.some(
+    (hash) =>
+      hash.alg === 'SHA-256' && hash.content === digest.slice('sha256:'.length),
+  );
+  if (
+    sbom.bomFormat !== 'CycloneDX' ||
+    !/^1\.[5-9]$/.test(String(sbom.specVersion)) ||
+    component?.type !== 'container' ||
+    component['bom-ref'] !== image ||
+    !hasImageHash
+  ) {
+    throw new Error(
+      'CycloneDX SBOM does not bind the immutable image reference.',
+    );
+  }
+  return { sha256: sha256(bytes), format: 'cyclonedx-json', subject: image };
+}
+
+export function deriveMinioSourceEvidence(dockerfile) {
+  const add =
+    /^ADD --checksum=sha256:([a-f0-9]{64}) https:\/\/codeload\.github\.com\/minio\/minio\/tar\.gz\/([a-f0-9]{40}) \/source\.tar\.gz$/m.exec(
+      dockerfile,
+    );
+  if (!add) {
+    throw new Error('Missing immutable MinIO source archive.');
+  }
+  const [, archiveSha256, commit] = add;
+  const revision = new RegExp(
+    `org\\.opencontainers\\.image\\.revision="${commit}"`,
+  ).test(dockerfile);
+  const buildCommit = new RegExp(`cmd\\.CommitID=${commit}`).test(dockerfile);
+  if (!revision || !buildCommit) {
+    throw new Error('MinIO source commit is not consistently pinned.');
+  }
+  return { repository: MINIO_REPOSITORY, commit, sha256: archiveSha256 };
+}

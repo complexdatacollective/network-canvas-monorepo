@@ -72,7 +72,7 @@ describe('Registry deployment configuration', () => {
       expect((await stat(join(output, 'registry.env'))).mode & 0o777).toBe(
         0o600,
       );
-      expect(registryConfigurationFiles).toHaveLength(4);
+      expect(registryConfigurationFiles).toHaveLength(6);
       for (const name of registryConfigurationFiles)
         expect(
           await readFile(join(output, 'deployment/registry', name)),

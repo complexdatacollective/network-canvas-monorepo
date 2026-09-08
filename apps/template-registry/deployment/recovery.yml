@@ -1,0 +1,17 @@
+# Offline restore validation only. No HTTP listener, cleanup worker, mail, or
+# edge network is present in this service.
+services:
+  registry-recover-verify:
+    environment:
+      REGISTRY_RECOVERY_DATABASE_URL: postgresql://registry_migrator:${REGISTRY_MIGRATION_PASSWORD:?Missing registry migration password}@registry-postgres:5432/registry
+      REGISTRY_BACKUP_DATABASE_URL: postgresql://registry_backup_login:${REGISTRY_BACKUP_PASSWORD:?Missing registry backup password}@registry-postgres:5432/registry
+      REGISTRY_DATABASE_ALLOWED_LOGINS: '["registry_migrator","registry_runtime","registry_operations","registry_backup_login"]'
+      REGISTRY_RECOVERY_RECONCILIATION_PATH: /operator/reconciliation.json
+      REGISTRY_RECOVERY_RECONCILIATION_SHA256: ${REGISTRY_RECOVERY_RECONCILIATION_SHA256:?Pin independently obtained reconciliation evidence}
+      REGISTRY_S3_ENDPOINT: http://registry-minio:9000
+      REGISTRY_S3_REGION: ${REGISTRY_S3_REGION:-us-east-1}
+      REGISTRY_S3_BUCKET: registry
+      REGISTRY_S3_ACCESS_KEY_ID: ${REGISTRY_S3_ACCESS_KEY_ID:?Missing scoped registry object-store identity}
+      REGISTRY_S3_SECRET_ACCESS_KEY: ${REGISTRY_S3_SECRET_ACCESS_KEY:?Missing scoped registry object-store key}
+    volumes:
+      - ${REGISTRY_RECOVERY_RECONCILIATION_PATH:?Select independently obtained reconciliation evidence}:/operator/reconciliation.json:ro
