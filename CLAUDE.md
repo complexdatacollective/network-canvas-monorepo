@@ -45,6 +45,13 @@ them.
 - **Escape hatch**: prefix a command with `AGENT_GATES=1` when a whole-tree
   run is genuinely required (for example after changing lint or TypeScript
   configuration).
+- **Tests are not gated**; running one after a change is the normal loop.
+  Choose the smallest scope that answers the question: a named test file
+  first; then `pnpm agent:test`, which runs only the tests whose import graph
+  touches the files changed on the branch (vitest `--changed`, so a test that
+  reads a fixture through the filesystem rather than importing it is not
+  selected); then one package's `test` script. Leave the whole-tree
+  `pnpm test` to CI.
 
 CI remains the authority. The hooks exist so you get the same feedback locally
 without spending minutes on it.

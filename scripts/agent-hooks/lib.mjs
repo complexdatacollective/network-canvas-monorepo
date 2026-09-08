@@ -303,12 +303,13 @@ function defaultReadPackage(manifestPath) {
   }
 }
 
-// Maps changed files to the workspace packages whose `typecheck` script must
-// run. `all` is set when a file every package depends on changed.
+// Maps changed files to the workspace packages that define `script` (by
+// default `typecheck`). `all` is set when a file every package depends on
+// changed.
 export function packagesForFiles(
   files,
   root,
-  { readPackage = defaultReadPackage } = {},
+  { readPackage = defaultReadPackage, script = 'typecheck' } = {},
 ) {
   const names = new Set();
   let all = false;
@@ -331,7 +332,7 @@ export function packagesForFiles(
       }
       dir = path.dirname(dir);
     }
-    if (found?.name && found.scripts?.typecheck) names.add(found.name);
+    if (found?.name && found.scripts?.[script]) names.add(found.name);
   }
   return { packages: [...names].sort((a, b) => a.localeCompare(b)), all };
 }

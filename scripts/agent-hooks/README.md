@@ -12,6 +12,13 @@ accept the same verdict fields, so one script serves both.
 | `Stop`, `SubagentStop`    | `stop-check.mjs` | Typechecks the packages changed on the branch plus their dependents via turbo (cached); skipped when nothing changed since the last clean run; returns a block decision so the agent fixes failures. |
 | `PreToolUse` (shell)      | `pre-bash.mjs`   | Refuses whole-tree `pnpm lint`/`typecheck`/`knip`, bare `oxlint`/`oxfmt`, and `git commit --no-verify`, explaining the alternative. `AGENT_GATES=1` bypasses.                                        |
 
+`pnpm agent:test` (`agent-test.mjs`) runs, in each package that contains
+changed files, only the vitest tests whose import graph touches the changed
+files (`vitest --changed <merge-base>`); extra arguments go to vitest. It is
+guidance rather than a gate: test runs are already scoped in practice, and a
+test that reads a fixture through the filesystem is not selected by the
+import graph, so a package-wide run is still the right call sometimes.
+
 `pnpm agent:check` runs the stop check on demand and additionally runs `knip`
 and lints and format-checks the changed files. `knip` itself is a pre-push
 gate (`.husky/pre-push`): once per branch push, the last local moment before

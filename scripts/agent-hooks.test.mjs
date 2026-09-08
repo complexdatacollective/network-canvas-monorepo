@@ -177,6 +177,37 @@ test('maps changed files to workspace packages with a typecheck script', () => {
   assert.deepEqual(result, { packages: ['@codaco/interview'], all: false });
 });
 
+test('the script option selects packages by a different manifest script', () => {
+  const manifests = {
+    '/repo/packages/a/package.json': {
+      name: 'a',
+      scripts: { typecheck: 'tsc', test: 'vitest run' },
+    },
+    '/repo/packages/b/package.json': {
+      name: 'b',
+      scripts: { typecheck: 'tsc' },
+    },
+    '/repo/packages/c/package.json': {
+      name: 'c',
+      scripts: { test: 'vitest run' },
+    },
+  };
+  const readPackage = (manifestPath) => manifests[manifestPath] ?? null;
+  const files = [
+    '/repo/packages/a/src/x.ts',
+    '/repo/packages/b/src/y.ts',
+    '/repo/packages/c/src/z.ts',
+  ];
+  assert.deepEqual(packagesForFiles(files, '/repo', { readPackage }).packages, [
+    'a',
+    'b',
+  ]);
+  assert.deepEqual(
+    packagesForFiles(files, '/repo', { readPackage, script: 'test' }).packages,
+    ['a', 'c'],
+  );
+});
+
 test('a change to shared TypeScript configuration selects every package', () => {
   const readPackage = () => null;
   for (const file of [
