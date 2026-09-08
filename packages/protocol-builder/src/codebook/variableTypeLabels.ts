@@ -18,7 +18,7 @@ import { type VariableType, VariableTypes } from '@codaco/protocol-validation';
  * schema tokens — `text`, `datetime`, `scalar` — in every language, which is
  * exactly what happened before this moved.
  */
-export const VARIABLE_TYPE_LABELS = defineMessages({
+const VARIABLE_TYPE_LABELS = defineMessages({
   text: {
     id: 'protocolBuilder.codebookVariable.typeText',
     defaultMessage: 'Text',
