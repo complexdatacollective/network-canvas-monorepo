@@ -388,6 +388,158 @@ Lite handoff. Provider legal names, affiliates, data categories, residency,
 retention/deletion, security reports, breach terms, support, and account recovery
 must be confirmed before publication.
 
+## Collector egress budget state
+
+`observability-egress-budget.mjs` is the admission primitive for the planned
+private collector. It deliberately has no same-directory rollback marker. Its
+operations require separate `runtimeAnchor` and `operatorAnchor` ports backed by
+one independently durable, monotonic store. The runtime port provides `read` and
+atomic compare-and-set `advance`; the operator port provides `read`, create-once
+`initialize`, and authenticated `advanceMonth`.
+Each format-2 checkpoint exposes the fixed account hash, reviewed policy
+binding, payload and final-signal limits, both attempted-byte counters,
+exhaustion state, last observed time, UTC month, month and reservation
+sequences, and exact local-state digest. The remote state machine enforces the
+visible counters and independently recomputes the digest; it does not treat an
+opaque hash as evidence of spend. `advanceMonth(previous, next,
+authorization)` receives the target UTC month in `next`, so its authorization
+decision can bind the requested transition rather than accept generic freshness.
+The primitive writes and fsyncs local state first, updates the anchor second,
+and reads the anchor back before returning. A missing, stale, corrupt, failed,
+or ambiguous anchor operation refuses forwarding. A failure after the local
+rename can leave local state ahead; this conservatively requires operator
+reconciliation and never refunds an attempted reservation.
+
+An operator awaits `bootstrapMonthlyEgressBudget(options, { operatorAnchor })`
+once in a private mode-0700 directory. Normal collector startup awaits
+`openMonthlyEgressBudget(options, { runtimeAnchor })`; it refuses missing, partial,
+corrupt, differently bound, permissive, linked, concurrently locked,
+clock-regressed, or anchor-mismatched state. Changing the dedicated New Relic
+account, the externally reviewed schema/usage policy digest, the monthly limit,
+or the final-signal reserve is refused by the active remote lineage. A new
+operator-controlled directory does not create another allowance for the same
+account. A future policy transition must conservatively preserve attempted
+bytes; none is implemented here. The primitive refuses a monthly limit
+above the plan's measured 50 GB forecast bound.
+
+Crossing a UTC month never resets capacity from the host clock. Open and reserve
+operations return `EGRESS_BUDGET_MONTH_TRANSITION_REQUIRED` until an operator
+calls `transitionMonthlyEgressBudget` with the next month's canonical observed
+instant and an opaque authorization. The anchor's separately qualified
+`advanceMonth` implementation must authenticate that authorization and atomically
+advance its checkpoint. Arbitrary future-month jumps and locally invented
+freshness booleans are not accepted.
+
+The collector must hold the returned budget open for its complete process
+lifetime and await `close()` during orderly shutdown. Reservations and close are
+serialized on each instance: close drains already admitted operations and
+immediately refuses new ones. Every reservation is asynchronous and returns only
+after the local state is fsynced, the remote compare-and-set is acknowledged, and
+the exact checkpoint is read back. The inherited-descriptor
+`flock` is a kernel lease: a second process is refused, orderly close releases
+it, and process death releases it. Linux uses the native util-linux `flock`;
+the Perl implementation is only a macOS test fallback. Lock acquisition has a
+five-second subprocess timeout and a dedicated contention exit code. The held
+directory and lock descriptors are revalidated against their paths, and regular
+budget files must have exactly one link. Each log or metric request must call
+`reserveEstimatedIngest` with
+its conservative estimated **provider-billed ingest bytes before forwarding**.
+A returned reservation is never refunded after an ambiguous request. Regular
+traffic cannot consume `finalSignalReserveBytes`; after exhaustion, exactly one
+`reserveFinalExhaustionSignal` call may admit the separately estimated closure
+signal. State replacement and its containing directory are fsynced before a
+reservation returns. Creating the private state directory also fsyncs its parent.
+
+This counter deliberately has no `providerUsageFresh` Boolean and does not
+accept raw compressed or uncompressed wire bytes as proof. Before calling it,
+the forwarding layer still has to authenticate fresh New Relic account-usage
+evidence, measure the stored-byte expansion of the exact bounded schemas,
+reserve the maximum traffic outstanding during reporting lag, and bind those
+rules into `configurationIdentity`. Missing or stale provider evidence must
+close forwarding outside this primitive. The counter does not establish New
+Relic qualification, retention, queryability, alerts, or the provider's hard
+account limit.
+
+`observability-monotonic-anchor.mjs` defines bounded JSON POST routes
+`/v1/read`, `/v1/initialize`, `/v1/advance`, and `/v1/advance-month` for one
+fixed account. Authentication resolves a forwarding or operator authority.
+Only the operator initializes the permanent lineage and authorizes an exact
+next-month transition; only the forwarder advances ordinary spend. The durable
+store must make initialization create-once even after active-record loss and
+compare-and-set the complete checkpoint atomically. Its account partition and
+permanent enrollment marker must be outside collector filesystem and deletion
+authority. Handler timeouts are ambiguous failures: a late commit remains
+charged and the next read discovers it.
+
+`observability-dynamodb-anchor-store.mjs` supplies the transactional adapter.
+An operator first creates its permanent `ENROLLMENT` item; initialization then
+atomically creates `STATE` and closes that marker. Reads use
+`TransactGetItems`, and every advance transaction checks the marker plus the
+exact serialized previous checkpoint. The table belongs in the independently
+administered recovery AWS account with point-in-time recovery. Its service role
+is limited to the fixed table and account partition. Collector forwarder and
+operator identities invoke separately authorized HTTP routes and receive no
+DynamoDB permissions; the service role denies `DeleteItem`, `DeleteTable`, and
+marker recreation. Deployment administration is disjoint from all three. The
+adapter and mocked request-shape tests do not provision or qualify the table,
+IAM policy, recovery account, or a live network path.
+
+`observability-anchor-client.mjs` is the server-side HTTPS adapter for that
+boundary. A forwarder client exposes only `read` and `advance`; an operator
+client exposes only `read`, `initialize`, and `advanceMonth`. The fixed account,
+HTTPS origin, and bearer token are snapshotted at construction. The token is
+accepted only as explicit process input and never appears in returned state or
+errors. Requests refuse redirects, cap JSON request and response bodies at 16
+KiB, enforce a 100–30,000 ms deadline with an abort signal, and validate the
+complete returned checkpoint and state digest. The injected request adapter is
+for tests; production still requires an independently authenticated HTTPS
+service and separately held operator and forwarder credentials.
+
+The complete local path can be exercised without cloud calls against an
+explicit loopback DynamoDB Local endpoint:
+
+```sh
+DYNAMODB_LOCAL_ENDPOINT=http://127.0.0.1:58000 node --test apps/studio/deployment/managed/observability-anchor-client.test.mjs
+```
+
+Without that variable the real-service case is skipped; the client never falls
+back to a cloud endpoint.
+
+No production anchor adapter or forwarding integration is qualified here. An
+adapter stored on the same filesystem or administered through the same rollback
+boundary does not satisfy the independent monotonic-store requirement. The
+adapter must separately prove atomic compare-and-set behavior, durable readback,
+month-authorization authentication, bounded calls, and its failure semantics
+before this primitive can admit live forwarding. Descriptor revalidation also
+does not defend against a malicious same-UID process racing filesystem paths;
+the private directory remains an operator-owned custody boundary.
+
+## New Relic log transport
+
+`observability-new-relic-logs.mjs` applies the authenticated Fly envelope and
+strict operational sanitizer before constructing the New Relic detailed-array
+request. It posts only to the fixed US Log API endpoint, with a separate API-key
+header, manual redirects, a 262,144-byte body limit and a bounded deadline.
+Provider response text is discarded. A successful HTTP response records only
+acceptance; it does not prove storage, queryability or retention.
+
+Every attempt has a fresh random identifier and a digest binding that identifier,
+the reviewed policy, exact schema identity, payload hash, wire bytes and record
+count. The supplied `reserveAttempt` authorizer must echo that binding after
+awaiting durable budget admission. Receipts cannot be reused across attempts,
+including a collector restart; the transport also rejects backward month or
+reservation sequences. UTC month is checked again immediately before fetch.
+Retries require a new reservation, and uncertain requests are never refunded.
+
+The transport has no subscription, queue or independent account-usage reader.
+Its authorizer must still authenticate fresh provider usage and measured schema
+expansion before admitting production traffic. Local tests use injected fetch
+and native Request construction; they do not send data to New Relic. Positive
+controls and deliberate mutations cover cached receipts, sequence replay and
+rollover between reservation and fetch.
+
+The request contract follows the [official New Relic Log API](https://docs.newrelic.com/docs/logs/log-api/introduction-log-api/).
+
 ## Offline review
 
 Run `terraform fmt -check -recursive`, `terraform init -backend=false
