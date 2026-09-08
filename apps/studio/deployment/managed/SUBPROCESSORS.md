@@ -1,6 +1,6 @@
 # Managed Studio subprocessor inventory
 
-Generated from `subprocessor-estate.json`, `candidate-sizing.json`, and the managed Terraform estate. This is an infrastructure inventory, not legal or contractual qualification.
+Generated from `subprocessor-estate.json`, `candidate-sizing.json`, the managed Terraform estate, and the reviewed `estate-config-manifest.json`. Configuration changes fail closed until the manifest is deliberately reviewed and updated. This is an infrastructure inventory, not legal or contractual qualification.
 
 Managed service residency: **United States**. Self-host the identical Studio artifact in an institution-selected region.
 
