@@ -557,6 +557,54 @@ test('a Machine becoming active under its lease is refused before update', async
   );
 });
 
+test('a volume attached or unknown config added before the lease is preserved', async () => {
+  const changes = [
+    ['mounts', [{ volume: 'vol_added_concurrently', path: '/data' }]],
+    ['unreviewed_provider_option', { enabled: true }],
+  ];
+  assert.equal(changes.length, 2);
+  for (const [field, value] of changes) {
+    const initial = Object.fromEntries(
+      services.map((service) => [service, machine(service)]),
+    );
+    initial['registry-production'].config.guest.memory_mb = 256;
+    const fixture = new FlyFixture(initial);
+    let changed = false;
+    fixture.override = (call) => {
+      if (call.method === 'POST' && call.path.endsWith('/lease')) {
+        fixture.machines.get('registry-production')[0].config[field] = value;
+        changed = true;
+      }
+      return null;
+    };
+    await assert.rejects(
+      prepareFlyMachines(input(fixture)),
+      /attached volume|unsupported field/,
+    );
+    assert.equal(
+      changed,
+      true,
+      'the concurrent change occurred before the leased read',
+    );
+    assert.deepEqual(
+      fixture.machines.get('registry-production')[0].config[field],
+      value,
+      'preparation must preserve the unreviewed config',
+    );
+    assert.deepEqual(
+      mutationCalls(fixture).map(({ method, path }) => [
+        method,
+        path.split('/').at(-1),
+      ]),
+      [
+        ['POST', 'lease'],
+        ['DELETE', 'lease'],
+      ],
+      'the lease is released without updating the Machine',
+    );
+  }
+});
+
 test('executable or nonempty provider config is corrected, while volumes refuse before mutation', async () => {
   const unsafeConfigs = [
     ['init', { exec: ['/bin/sh', '-c', 'unreviewed'] }],

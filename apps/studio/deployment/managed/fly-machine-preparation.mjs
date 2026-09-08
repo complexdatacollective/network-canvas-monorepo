@@ -576,6 +576,9 @@ async function updateMachine(request, input, service, inventoried) {
       service,
       spec,
     );
+    // Inventory precedes the lease. Another operator may have attached a
+    // volume or added an unsupported setting before we obtained this lock.
+    validateCorrectableConfig(fresh, service);
     const updated = await request(machinePath, {
       method: 'POST',
       headers: { 'fly-machine-lease-nonce': nonce },
