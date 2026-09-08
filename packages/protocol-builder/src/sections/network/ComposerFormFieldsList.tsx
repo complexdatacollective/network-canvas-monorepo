@@ -108,11 +108,7 @@ export default function ComposerFormFieldsList({
         values.component,
       );
       if (shape !== null) {
-        const issues = validateParameters(
-          shape,
-          values[PARAMETERS_FIELD],
-          intl,
-        );
+        const issues = validateParameters(shape, values[PARAMETERS_FIELD]);
         if (hasParameterIssues(issues)) {
           return { [PARAMETERS_FIELD]: Object.values(issues).flat() };
         }

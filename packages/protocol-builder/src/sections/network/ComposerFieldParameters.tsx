@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
@@ -156,7 +157,7 @@ export default function ComposerFieldParameters({
   if (shape === null) return null;
 
   const issues =
-    refused || refusedNow ? validateParameters(shape, held, intl) : NO_ISSUES;
+    refused || refusedNow ? validateParameters(shape, held) : NO_ISSUES;
   const blockMessages = issues[PARAMETERS_BLOCK] ?? [];
 
   return (
@@ -175,7 +176,9 @@ export default function ComposerFieldParameters({
       {blockMessages.length > 0 && (
         <ul className="text-destructive mb-3 list-disc pl-5">
           {blockMessages.map((message) => (
-            <li key={message}>{message}</li>
+            <li key={message}>
+              {formatMessageError(message, intl) ?? message}
+            </li>
           ))}
         </ul>
       )}
