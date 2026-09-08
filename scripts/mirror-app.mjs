@@ -63,6 +63,7 @@ import {
   appendFileSync,
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -83,6 +84,7 @@ import {
   assertVendoredLockfile,
   collectClosure,
   packagesChangedSince,
+  previouslyVendoredPackages,
   vendorPackages,
   withDependents,
   writeBundleManifest,
@@ -629,13 +631,26 @@ function stage({
     const wsPackages = readWorkspacePackages();
     assertSpecifierDrivenChanges(vendorChangedSince, app, wsPackages);
     const closure = collectClosure(wsPackages, app);
+    const changed = packagesChangedSince(
+      vendorChangedSince,
+      closure,
+      wsPackages,
+    );
+    // A previous hotfix's vendored packages, still unpublished, that the
+    // seeded policy points at tarballs this stage does not have yet.
+    const carried = previouslyVendoredPackages(staging).filter((name) =>
+      closure.includes(name),
+    );
     const names = withDependents(
-      packagesChangedSince(vendorChangedSince, closure, wsPackages),
+      [...new Set([...changed, ...carried])],
       closure,
       wsPackages,
     );
     console.error(
-      `[mirror] vendoring packages changed since ${vendorChangedSince}: ${names.join(', ') || 'none'}`,
+      `[mirror] vendoring packages changed since ${vendorChangedSince}: ${changed.join(', ') || 'none'}` +
+        (carried.length
+          ? `; still unpublished from the previous hotfix: ${carried.join(', ')}`
+          : ''),
     );
     vendorManifest = vendorPackages({
       stageDir: staging,
@@ -736,11 +751,28 @@ function assertStagedPublisherMatches({ staging, checkout }) {
 }
 
 // Every file under `dir`, as paths relative to its grandparent's parent —
-// i.e. `.github/workflows/<name>` for the workflows directory — sorted.
+// i.e. `.github/workflows/<name>` for the workflows directory — sorted. A
+// symlink anywhere on or under the path is refused: `readdirSync` follows
+// one, `copyTree` preserves it, and the push would then carry a link where
+// git expects a workflow — either rejected, or landing without a publisher.
 function listFiles(dir) {
-  if (!existsSync(dir)) return [];
   const root = resolve(dir, '..', '..');
-  return readdirSync(dir, { recursive: true, withFileTypes: true })
+  for (const path of [resolve(dir, '..'), dir]) {
+    if (!existsSync(path)) return [];
+    if (lstatSync(path).isSymbolicLink()) {
+      throw new Error(
+        `${relative(root, path)} in the staged tree is a symlink; refusing to push workflow files through one.`,
+      );
+    }
+  }
+  const entries = readdirSync(dir, { recursive: true, withFileTypes: true });
+  const link = entries.find((entry) => entry.isSymbolicLink());
+  if (link) {
+    throw new Error(
+      `${relative(root, join(link.parentPath ?? link.path, link.name))} in the staged tree is a symlink; refusing to push workflow files through one.`,
+    );
+  }
+  return entries
     .filter((entry) => entry.isFile())
     .map((entry) =>
       relative(root, join(entry.parentPath ?? entry.path, entry.name)),
@@ -777,12 +809,20 @@ function publish({ staging, expectApp, repo, branch, version }) {
   // rewritten (its lifecycle scripts ran during staging), so it decides
   // nothing: the caller names the app it is publishing, the stage must agree,
   // and the Fresco checks below key off that name.
-  const { name: stagedName } = JSON.parse(
+  const { name: stagedName, version: stagedVersion } = JSON.parse(
     readFileSync(join(staging, 'package.json'), 'utf8'),
   );
   if (stagedName !== expectApp) {
     throw new Error(
       `Staged tree names package "${stagedName}", not the "${expectApp}" this publish is for.`,
+    );
+  }
+  // The Fresco publisher tags the image with the manifest's version, so a
+  // staged version that differs from the one being released would publish an
+  // image under a different tag from the releases that describe it.
+  if (stagedVersion !== version) {
+    throw new Error(
+      `Staged tree is version "${stagedVersion}", not the "${version}" this publish is for.`,
     );
   }
   const appName = expectApp;

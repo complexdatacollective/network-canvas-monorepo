@@ -182,6 +182,20 @@ export function packagesChangedSince(ref, names, wsPackages) {
   });
 }
 
+// The dependency fields of a manifest at `ref` and at HEAD, or `null` where
+// the file does not exist. Only these fields drive resolution; a version bump
+// — which every hotfix makes to the app's own manifest — does not.
+const SPECIFIER_FIELDS = [...ALL_DEP_FIELDS, 'pnpm'];
+function specifiersAt(ref, path) {
+  const shown = spawnSync('git', ['show', `${ref}:${path}`], {
+    cwd: repoRoot(),
+    encoding: 'utf8',
+  });
+  if (shown.status !== 0) return null;
+  const manifest = JSON.parse(shown.stdout);
+  return JSON.stringify(SPECIFIER_FIELDS.map((f) => manifest[f] ?? null));
+}
+
 // A hotfix whose dependency change lives only in the root lockfile — a
 // transitive patch inside an unchanged range — cannot reach the image: the
 // mirror's resolution starts from the released mirror's own lockfile and
@@ -189,8 +203,10 @@ export function packagesChangedSince(ref, names, wsPackages) {
 // lockfile is consulted. Refuse, rather than ship a release that silently
 // lacks the fix it was verified with. Pinning the version in the catalog or
 // in the affected manifest turns it into a specifier change the mirror
-// carries. Any manifest in the workspace counts as a specifier file, since a
-// build input's manifest shapes artifacts too.
+// carries. What counts as a specifier change: any edit to
+// pnpm-workspace.yaml, or a change to the dependency fields (or the `pnpm`
+// block) of any workspace manifest — NOT a version bump, which every hotfix
+// makes to the app's manifest and which resolves nothing.
 export function assertSpecifierDrivenChanges(ref, appDir, wsPackages) {
   const changed = (paths) => {
     const result = spawnSync(
@@ -206,15 +222,39 @@ export function assertSpecifierDrivenChanges(ref, appDir, wsPackages) {
     return result.status === 1;
   };
   if (!changed(['pnpm-lock.yaml'])) return;
-  const specifierFiles = [
-    'pnpm-workspace.yaml',
+  if (changed(['pnpm-workspace.yaml'])) return;
+  const manifests = [
     join(appDir, 'package.json'),
     ...Object.values(wsPackages).map(({ dir }) => join(dir, 'package.json')),
   ];
-  if (changed(specifierFiles)) return;
+  for (const path of manifests) {
+    if (specifiersAt(ref, path) !== specifiersAt('HEAD', path)) return;
+  }
   throw new Error(
-    `The tree changes pnpm-lock.yaml since ${ref} without changing any specifier — a lockfile-only dependency change cannot reach the image, whose resolution starts from the released mirror's lockfile. Pin the version in pnpm-workspace.yaml's catalog or in the affected package.json so the mirror re-resolves it.`,
+    `The tree changes pnpm-lock.yaml since ${ref} without changing any dependency specifier — a lockfile-only dependency change cannot reach the image, whose resolution starts from the released mirror's lockfile. Pin the version in pnpm-workspace.yaml's catalog or in the affected package.json so the mirror re-resolves it.`,
   );
+}
+
+// The packages a seeded workspace policy still resolves to local tarballs —
+// the ones the PREVIOUS hotfix vendored, which no release has published
+// since. Their source is unchanged since that release's tag, so change
+// detection would leave them on the registry, where the fixed version does
+// not exist; they have to be vendored again from this tree. The stale
+// `file:vendor/` override lines are removed here so `vendorPackages` writes
+// fresh ones; every other override the release carried stays.
+export function previouslyVendoredPackages(stageDir) {
+  const workspaceYamlPath = join(stageDir, 'pnpm-workspace.yaml');
+  if (!existsSync(workspaceYamlPath)) return [];
+  const lines = readFileSync(workspaceYamlPath, 'utf8').split('\n');
+  const names = [];
+  const kept = lines.filter((line) => {
+    const match = /^\s+'([^']+)':\s*'file:vendor\//.exec(line);
+    if (!match) return true;
+    names.push(match[1]);
+    return false;
+  });
+  if (names.length) writeFileSync(workspaceYamlPath, kept.join('\n'));
+  return names;
 }
 
 // `names` plus every closure package that depends on one of them, directly or

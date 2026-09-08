@@ -5,7 +5,9 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  renameSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -138,7 +140,7 @@ test('Fresco mirror keeps only its matching GHCR publisher workflow', (t) => {
       '--repo',
       'unused/local-mirror',
       '--version',
-      '0.0.0-test',
+      '0.0.0',
       '--branch',
       'main',
     ],
@@ -242,7 +244,7 @@ test('a staged tree can be published later, from a checkout that never staged it
     '--repo',
     'unused/local-mirror',
     '--version',
-    '0.0.1-test',
+    '0.0.0',
     '--branch',
     'main',
     '--publisher-workflow',
@@ -298,7 +300,7 @@ test('a staged tree can be published later, from a checkout that never staged it
     '--repo',
     'unused/local-mirror',
     '--version',
-    '0.0.1-test',
+    '0.0.0',
     '--branch',
     'main',
   ];
@@ -326,6 +328,43 @@ test('a staged tree can be published later, from a checkout that never staged it
     /must carry exactly \.github\/workflows\/docker-publish\.yml.*stray\.yml/,
   );
   rmSync(stray);
+
+  // A workflows directory reached through a symlink lists the right file but
+  // would be pushed as a link; refused likewise.
+  const workflowsDir = join(stage, '.github', 'workflows');
+  const realDir = join(directory, 'real-workflows');
+  renameSync(workflowsDir, realDir);
+  symlinkSync(realDir, workflowsDir);
+  assert.throws(
+    () =>
+      execFileSync('node', publishArgs, {
+        cwd: directory,
+        env: publishEnv,
+        stdio: 'pipe',
+      }),
+    /\.github\/workflows in the staged tree is a symlink/,
+  );
+  rmSync(workflowsDir);
+  renameSync(realDir, workflowsDir);
+
+  // A staged version that is not the one being released would tag the image
+  // differently from the releases; refused before anything is cloned.
+  const stagedManifestPath = join(stage, 'package.json');
+  const stagedManifest = readFileSync(stagedManifestPath, 'utf8');
+  writeFileSync(
+    stagedManifestPath,
+    stagedManifest.replace('"version": "0.0.0"', '"version": "9.9.9"'),
+  );
+  assert.throws(
+    () =>
+      execFileSync('node', publishArgs, {
+        cwd: directory,
+        env: publishEnv,
+        stdio: 'pipe',
+      }),
+    /is version "9\.9\.9", not the "0\.0\.0"/,
+  );
+  writeFileSync(stagedManifestPath, stagedManifest);
 
   // The staged manifest is content the branch could have rewritten; the
   // caller says which app it is publishing, and a stage that disagrees is
@@ -367,7 +406,7 @@ test('a staged tree can be published later, from a checkout that never staged it
   );
   assert.equal(
     git(directory, `--git-dir=${remote}`, 'log', '-1', '--format=%s', 'main'),
-    'Release v0.0.1-test (mirrored from monorepo hotfix-source-sha)',
+    'Release v0.0.0 (mirrored from monorepo hotfix-source-sha)',
   );
   const mirrorSha = git(directory, `--git-dir=${remote}`, 'rev-parse', 'main');
   assert.equal(

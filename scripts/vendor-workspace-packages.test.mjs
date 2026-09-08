@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -11,6 +11,7 @@ import {
   collectClosure,
   packagesChangedSince,
   patchDockerfileForVendor,
+  previouslyVendoredPackages,
   tarballName,
   withDependents,
 } from './vendor-workspace-packages.mjs';
@@ -352,4 +353,88 @@ test('an unchanged lockfile needs no explanation', () => {
   inWorkspace(() => {
     assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages);
   });
+});
+
+// Every hotfix bumps the app's version, so a whole-file comparison of the
+// manifest would call every hotfix a specifier change and never refuse.
+test('a lockfile change beside only a version bump is still lockfile-only', () => {
+  inWorkspace((root) => {
+    writeFileSync(
+      join(root, 'pnpm-lock.yaml'),
+      "lockfileVersion: '9.0'\n# transitive patch\n",
+    );
+    writeFileSync(
+      join(root, 'apps/app/package.json'),
+      `${JSON.stringify(
+        {
+          name: 'app',
+          version: '4.0.1',
+          dependencies: {
+            '@x/runtime': 'workspace:^',
+            '@x/exporters': 'workspace:^',
+          },
+          devDependencies: { '@x/config': 'workspace:^' },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'bump the app and a transitive');
+    assert.throws(
+      () => assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages),
+      /lockfile-only dependency change cannot reach the image/,
+    );
+  });
+});
+
+test('a lockfile change beside a dependency change in a manifest passes', () => {
+  inWorkspace((root) => {
+    writeFileSync(
+      join(root, 'pnpm-lock.yaml'),
+      "lockfileVersion: '9.0'\n# re-pin\n",
+    );
+    writeFileSync(
+      join(root, 'packages/exporters/package.json'),
+      `${JSON.stringify(
+        {
+          name: '@x/exporters',
+          version: '3.0.0',
+          dependencies: { left: '1.0.1' },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'pin left');
+    assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages);
+  });
+});
+
+test('a seeded policy names the previous hotfix’s tarballs, and gives them up', () => {
+  const stage = mkdtempSync(join(tmpdir(), 'stage-'));
+  writeFileSync(
+    join(stage, 'pnpm-workspace.yaml'),
+    [
+      'packages:',
+      "  - '.'",
+      'overrides:',
+      '  # Packages changed since fresco@4.1.4 (and their dependents), bundled by the hotfix lane (local tarballs).',
+      "  '@codaco/fresco-ui': 'file:vendor/codaco-fresco-ui-6.4.0.tgz'",
+      "  '@codaco/interview': 'file:vendor/codaco-interview-9.0.1.tgz'",
+      "  'effect@3.17.7': '3.17.7'",
+      '',
+    ].join('\n'),
+  );
+  assert.deepEqual(previouslyVendoredPackages(stage), [
+    '@codaco/fresco-ui',
+    '@codaco/interview',
+  ]);
+  const remaining = readFileSync(join(stage, 'pnpm-workspace.yaml'), 'utf8');
+  assert.doesNotMatch(remaining, /file:vendor/);
+  assert.match(remaining, /^overrides:$/m);
+  assert.match(remaining, /'effect@3\.17\.7': '3\.17\.7'/);
+  // Idempotent, and quiet on a policy that vendored nothing.
+  assert.deepEqual(previouslyVendoredPackages(stage), []);
 });
