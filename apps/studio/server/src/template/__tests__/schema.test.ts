@@ -448,14 +448,14 @@ describe.skipIf(!db)('template schema', () => {
           publicationId,
         ]),
       ).rejects.toThrow('published template versions are immutable');
-      const visible = await tenantA.query<{ id: string }>(
+      const visible = await tenantA.query(
         `SELECT id FROM template_registry_publications WHERE id = $1`,
         [publicationId],
       );
       expect(visible.rows).toEqual([{ id: publicationId }]);
 
       const tenantB = createTenantDb(app, TEAM_B);
-      const hidden = await tenantB.query<{ id: string }>(
+      const hidden = await tenantB.query(
         `SELECT id FROM template_registry_publications WHERE id = $1`,
         [publicationId],
       );
