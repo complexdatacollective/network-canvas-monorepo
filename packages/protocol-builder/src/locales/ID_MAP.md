@@ -285,10 +285,14 @@ for something else or reopens a decision that has been made:
   the `#create-new-attribute` sentinel in its own picker, and the control is
   there for the `variablePickerComponent` seam a family PR will fill. Said here
   so the native-Spanish review pass is not asked to check copy nobody can see.
-- **`attributeCodebookControls`** owns only the words on its own buttons. What
-  each dialog it opens says is the codebook editor's
-  (`codebookVariable`, `variableValidation`), because the researcher is looking
-  at that editor by then.
+- **`attributeCodebookControls`** owns the words on its own buttons, and the
+  one sentence its dialogs carry that the editor inside them cannot say.
+  Almost everything a dialog it opens says is the codebook editor's
+  (`codebookVariable`, `variableValidation`), because the researcher is
+  looking at that editor by then. The exception is `attributeDeleted*`:
+  `VariableEditor` reads an attribute deleted under it as one whose TYPE
+  changed, so the only surface that can tell a researcher what actually
+  happened is the one that knows which attribute the editor was opened on.
 
 `sections/StageHeading.tsx` holds no copy either: it composes
 `StageNameSection` from the protocol's own stage order.
