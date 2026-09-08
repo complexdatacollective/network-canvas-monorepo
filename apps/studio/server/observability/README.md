@@ -73,10 +73,13 @@ Queue collection uses the same bounds on the maintenance pool.
 
 Set a separate random `STUDIO_METRICS_TOKEN` of at least 32 characters (for
 example, `openssl rand -base64 32`). `GET /metrics` refuses with 404 while the
-token is absent, and 401 unless `Authorization: Bearer <token>` matches. No
+token is absent or `Authorization: Bearer <token>` does not match. No
 cookie or researcher membership grants scraper access. Keep the endpoint on
 the operator network where practical and carry the credential over TLS outside
-localhost. Responses are not cacheable.
+localhost. Responses are not cacheable. In managed deployments, exact
+`/metrics` is deliberately exempt from the Worker-to-origin ingress proof so a
+private operator scraper needs only this independent bearer token. Other paths,
+including `/metrics/` and `/metrics/*`, retain the ingress-proof requirement.
 
 An example Prometheus scrape uses a secret file rather than a token in source:
 

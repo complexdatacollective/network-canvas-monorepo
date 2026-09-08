@@ -12,9 +12,9 @@ import {
   SELF_HOST_ONLY_PATHS,
 } from '@codaco/studio-rpc/surfaces';
 
-import { createApp } from '../app.ts';
 import { mountClient } from '../client-assets.ts';
 import { resolve } from '../env/resolve.ts';
+import { createHttpTestApp as createApp } from './support/http-app.ts';
 import { createRpcClient } from './support/rpc.ts';
 
 // The deployment-mode gate, at the layer it lives at. `notFound()` on the
