@@ -164,6 +164,41 @@ describe('Collection', () => {
       expect(apple).not.toContain('aria-selected');
     });
 
+    // The animated renderer's `AnimatePresence` is mounted with
+    // `initial={false}`, so its children render in their `animate` state
+    // rather than the hidden `initial` one. Without that, static output
+    // would carry `opacity: 0` and stay invisible wherever the entrance
+    // animation never runs (no JavaScript, or failed hydration).
+    it('renders animated items visibly in the initial markup', () => {
+      const markup = renderToString(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="none"
+          nativeItemSemantics
+          scrollable={false}
+          animate
+          animationKey="initial"
+          renderItem={(item, itemProps) => (
+            <a {...itemProps} href={`#${item.id}`}>
+              {item.name}
+            </a>
+          )}
+        >
+          {(collectionElements) => collectionElements}
+        </Collection>,
+      );
+
+      const wrappers = markup.match(/style="[^"]*opacity:[^"]*"/g) ?? [];
+      expect(wrappers).toHaveLength(testItems.length);
+      for (const style of wrappers) {
+        expect(style).toContain('opacity:1');
+        expect(style).toContain('transform:none');
+      }
+    });
+
     it('renders in page flow without a scroll region when not scrollable', () => {
       const { container } = render(
         <Collection
