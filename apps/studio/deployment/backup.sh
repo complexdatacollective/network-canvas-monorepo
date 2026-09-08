@@ -24,7 +24,11 @@ compose() { docker compose --profile worker "$@"; }
 key_checksum=$(studio_checksum "$custody")
 printf '%s\n' "${key_checksum%% *}" > "$backup/encryption.sha256"
 # Verify the exact retained key snapshot before stopping or capturing writers.
-STUDIO_ENCRYPTION_FILE="$custody" compose -f docker-compose.yml -f deployment/encryption.yml run --rm --no-deps encryption-verify
+# Preserve caller-supplied Compose overlays and append only the operator service;
+# replacing COMPOSE_FILE could reconcile a live project's networks or volumes.
+STUDIO_ENCRYPTION_FILE="$custody" \
+  COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}:deployment/encryption.yml" \
+  compose run --rm --no-deps encryption-verify
 
 # Stop admission first, then every replica of either service. One-off operator
 # jobs are deliberately not terminated: the session check below refuses them.
@@ -98,7 +102,7 @@ set -- $(cat "$backup/images.txt")
 docker image save "$@" > "$backup/images.tar"
 test -s "$backup/images.tar"
 cp .env docker-compose.yml SELF_HOSTING.md MIGRATIONS.md BACKUPS.md "$backup/"
-for name in traefik.yml migrate.yml encryption.yml postgres-init.sql minio-init.sh minio-policy.json backup.sh restore.sh checksum.sh quarantine.yml; do
+for name in traefik.yml migrate.yml encryption.yml postgres-init.sql postgres-privileges.sql minio-init.sh minio-policy.json backup.sh restore.sh checksum.sh quarantine.yml; do
   cp "deployment/$name" "$backup/deployment/"
 done
 if [ -f release.json ]; then cp release.json "$backup/"; fi

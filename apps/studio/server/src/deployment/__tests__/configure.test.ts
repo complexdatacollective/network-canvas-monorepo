@@ -122,6 +122,14 @@ describe('explicit deployment configuration', () => {
       expect(postgresInit).toContain(
         'REVOKE EXECUTE ON FUNCTION pg_catalog.lo_create(oid)',
       );
+      const postgresPrivileges = await readFile(
+        join(output, 'deployment/postgres-privileges.sql'),
+        'utf8',
+      );
+      expect(postgresPrivileges).not.toContain('/* STUDIO_');
+      expect(postgresPrivileges).toContain(
+        'REVOKE EXECUTE ON FUNCTION pg_catalog.lo_create(oid)',
+      );
     });
   });
 

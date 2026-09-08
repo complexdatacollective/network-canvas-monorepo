@@ -273,11 +273,22 @@ credentials. Keep it in `COMPOSE_FILE` for every recovery command. Docker's
 restores images and tags; recovery does not rely on registry digest names
 surviving a change of Docker storage backend.
 
-Restore refuses populated volumes or retained database
-sessions, and restores the archive in one transaction. The quarantine overlay
-runs only the web role on the private data network, with mail and optional
-telemetry disabled. The process has no external network route. Do not start
-the production proxy or workers until validation finishes.
+Restore privately snapshots regular, non-symlinked backup and custody inputs,
+then verifies and consumes only that snapshot. Before the first restore write it
+uses host `jq` and successful Docker inventories to require a new resolved
+Compose project with unused local named volumes and networks; bind mounts and
+existing project resources refuse before image loading, service startup, or
+database quarantine. Only after that gate does it commit `NOLOGIN` for all three
+application, maintenance, and migration writer logins, then terminate and
+reject surviving writer sessions in a separate step. Its exit trap repeats that
+quarantine after success, failure, or a signal.
+It also reapplies the generated administrator-owned large-object and temporary
+schema privilege boundary after `pg_restore`, because the logical dump does not
+carry PostgreSQL built-in function ACLs. Restore refuses populated volumes or
+retained database sessions, and restores the archive in one transaction. The
+quarantine overlay runs only the web role on the private data network, with mail
+and optional telemetry disabled. The process has no external network route. Do
+not start the production proxy or workers until validation finishes.
 
 After successful validation, remove only `:deployment/quarantine.yml` from
 `COMPOSE_FILE` before starting the proxy and the selected worker topology. Keep
