@@ -368,6 +368,19 @@ export function Collection<T extends Record<string, unknown>>({
 }: CollectionProps<T>) {
   const intl = useAppIntl();
 
+  const disabledKeysSet = useMemo(
+    () => (disabledKeys ? new Set(disabledKeys) : undefined),
+    [disabledKeys],
+  );
+  const selectedKeysSet = useMemo(
+    () => (selectedKeys ? new Set(selectedKeys) : undefined),
+    [selectedKeys],
+  );
+  const defaultSelectedKeysSet = useMemo(
+    () => (defaultSelectedKeys ? new Set(defaultSelectedKeys) : undefined),
+    [defaultSelectedKeys],
+  );
+
   return (
     <CollectionProvider
       items={items}
@@ -383,9 +396,9 @@ export function Collection<T extends Record<string, unknown>>({
           defaultSortType,
           sortRules,
         }),
-        disabledKeys,
+        disabledKeys: disabledKeysSet,
         selectionMode,
-        selectedKeys: selectedKeys ?? defaultSelectedKeys,
+        selectedKeys: selectedKeysSet ?? defaultSelectedKeysSet,
       }}
     >
       <CollectionContent
@@ -406,10 +419,10 @@ export function Collection<T extends Record<string, unknown>>({
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
         selectionMode={selectionMode}
-        selectedKeys={selectedKeys}
-        defaultSelectedKeys={defaultSelectedKeys}
+        selectedKeys={selectedKeysSet}
+        defaultSelectedKeys={defaultSelectedKeysSet}
         onSelectionChange={onSelectionChange}
-        disabledKeys={disabledKeys}
+        disabledKeys={disabledKeysSet}
         disallowEmptySelection={disallowEmptySelection}
         nativeItemSemantics={nativeItemSemantics}
         animate={animate}

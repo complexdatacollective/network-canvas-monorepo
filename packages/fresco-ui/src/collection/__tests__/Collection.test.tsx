@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useMemo, useState } from 'react';
 import { renderToString } from 'react-dom/server';
@@ -197,6 +197,41 @@ describe('Collection', () => {
         expect(style).toContain('opacity:1');
         expect(style).toContain('transform:none');
       }
+    });
+
+    it('keeps one-shot iterables of keys after mounting', async () => {
+      function* disabled() {
+        yield '2';
+      }
+      function* selected() {
+        yield '3';
+      }
+
+      render(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="single"
+          defaultSelectedKeys={selected()}
+          disabledKeys={disabled()}
+          animate={false}
+          aria-label="Fruit"
+          renderItem={(item, itemProps) => (
+            <div {...itemProps}>{item.name}</div>
+          )}
+        >
+          {(collectionElements) => collectionElements}
+        </Collection>,
+      );
+
+      const option = (name: string) => screen.getByRole('option', { name });
+      await waitFor(() => {
+        expect(option('Banana').getAttribute('aria-disabled')).toBe('true');
+      });
+      expect(option('Cherry').getAttribute('aria-selected')).toBe('true');
+      expect(option('Apple').getAttribute('aria-disabled')).toBeNull();
     });
 
     it('renders in page flow without a scroll region when not scrollable', () => {
