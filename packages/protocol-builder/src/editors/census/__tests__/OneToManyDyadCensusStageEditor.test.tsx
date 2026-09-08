@@ -6,7 +6,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
 import type { StageEditorComponent } from '../../../stage-editor-contract.ts';
-import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import {
+  renderStageEditor,
+  type RenderStageEditorOptions,
+} from '../../../testing/renderStageEditor.tsx';
 import { OneToManyDyadCensusStageEditor } from '../OneToManyDyadCensusStageEditor.tsx';
 import {
   CREATE_POSITION,
@@ -30,7 +33,7 @@ const editor: StageEditorComponent<'OneToManyDyadCensus'> = (props) => (
   />
 );
 
-const openFixture = () => ({
+const openFixture = (): RenderStageEditorOptions<'OneToManyDyadCensus'> => ({
   stageId: 'one-to-many-dyad-census-1',
   editor,
 });
