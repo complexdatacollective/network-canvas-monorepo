@@ -187,7 +187,9 @@ const bareDigest = (value) => {
 };
 
 // A version as the health endpoint reports it ("v4.1.2") compared with a
-// version as package manifests carry it ("4.1.2").
+// version as package manifests carry it ("4.1.2"). The endpoint names a
+// version only because release-test/docker-compose.yml sets
+// EXPOSE_HEALTH_DETAILS=true; anonymous callers of a real deployment get none.
 const stripV = (value) => {
   const clean = shaped(value, VERSION, 64);
   return clean ? clean.replace(/^v/i, '') : null;

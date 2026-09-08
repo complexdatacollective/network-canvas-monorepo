@@ -97,7 +97,7 @@ At a minimum:
 - **Inbound HTTPS (port 443)** to the application server, so participants and researchers can reach the dashboard and interview URLs. If you are using UploadThing for asset storage, the `/api/uploadthing` endpoint must additionally be reachable from the public Internet to receive upload callbacks; this requirement does **not** apply when using a directly-configured S3-compatible backend.
 - **Outbound HTTPS** from the application server to the PostgreSQL host, the configured object-store endpoint, and (optionally) the GitHub API and the analytics endpoint.
 
-Fresco can run behind an institutional firewall or reverse proxy.
+Fresco can run behind an institutional firewall or reverse proxy. Its liveness endpoint, `/api/health`, is unauthenticated so that load balancers and container orchestrators can probe it. By default it reports only whether the service is up; it names the running Fresco version and process uptime only if the deployer opts in with `EXPOSE_HEALTH_DETAILS=true`, so leaving it reachable does not tell an anonymous caller which release an instance runs.
 
 ## Can Fresco be deployed entirely on institutional infrastructure?
 

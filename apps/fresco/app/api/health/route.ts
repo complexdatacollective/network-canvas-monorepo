@@ -9,33 +9,48 @@ type HealthCheck = {
   status: HealthStatus;
   duration: number;
   error?: string;
-  details?: Record<string, unknown>;
 };
 
-type HealthResponse = {
+// Reported only when the deployer opts in; see getHealthDetails.
+type HealthDetails = {
+  uptime: number;
+  version: string;
+};
+
+type HealthResponse = Partial<HealthDetails> & {
   status: HealthStatus;
   timestamp: string;
-  uptime: number;
-  version?: string;
   checks: HealthCheck[];
 };
+
+// This endpoint is unauthenticated so that load balancers and container
+// orchestrators can probe it, and a liveness probe needs nothing beyond the
+// status. The running version tells an anonymous caller which published
+// vulnerabilities apply to this instance, and the process uptime whether a
+// fix has been deployed yet, so neither is reported unless the deployer opts
+// in with EXPOSE_HEALTH_DETAILS=true (the release-test harness does, to bind
+// the stack under test to the build it certifies). The Node.js version and
+// NODE_ENV are never reported.
+function getHealthDetails(): Partial<HealthDetails> {
+  if (!env.EXPOSE_HEALTH_DETAILS) return {};
+
+  return {
+    uptime: Math.round(process.uptime()),
+    version: env.APP_VERSION ?? 'unknown',
+  };
+}
 
 function checkBasicHealth(): HealthCheck {
   const start = performance.now();
 
   try {
-    // Basic health check - just verify the service is running. Deliberately
-    // does NOT expose Node.js version or NODE_ENV to unauthenticated callers
-    // (information disclosure that aids CVE targeting).
+    // Basic health check - just verify the service is running.
     const duration = performance.now() - start;
 
     return {
       name: 'basic',
       status: 'healthy',
       duration: Math.round(duration),
-      details: {
-        uptime: Math.round(process.uptime()),
-      },
     };
   } catch (error) {
     const duration = performance.now() - start;
@@ -84,8 +99,7 @@ export function GET(_request: NextRequest): NextResponse {
     const response: HealthResponse = {
       status: overallStatus,
       timestamp: new Date().toISOString(),
-      uptime: Math.round(process.uptime()),
-      version: env.APP_VERSION ?? 'unknown',
+      ...getHealthDetails(),
       checks,
     };
 
@@ -110,7 +124,6 @@ export function GET(_request: NextRequest): NextResponse {
     const response: HealthResponse = {
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      uptime: Math.round(process.uptime()),
       checks: [
         {
           name: 'health_check',

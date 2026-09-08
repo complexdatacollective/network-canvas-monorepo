@@ -92,6 +92,7 @@ POSTGRES_PASSWORD=CHANGE_ME
 
 # Optional
 #DISABLE_ANALYTICS=true
+#EXPOSE_HEALTH_DETAILS=true
 ```
 
 <TipBox>
@@ -190,6 +191,10 @@ On first start, Traefik will request a Let's Encrypt certificate for `FRESCO_DOM
 ### Pinning a version
 
 The compose files use the `ghcr.io/complexdatacollective/fresco:latest` image, which always tracks the most recent release. To pin a specific version, change the image tag to `:vX.Y.Z` in the compose file. You can browse published images on the [Fresco container registry](https://github.com/complexdatacollective/Fresco/pkgs/container/fresco/versions).
+
+### Health checks
+
+Fresco serves a liveness endpoint at `/api/health` for load balancers, container orchestrators, and uptime monitors. It requires no authentication. While the service is up it answers with HTTP `200` and a JSON body whose `status` is `healthy` (or `degraded`); when it is not, it answers `503` with `unhealthy`. By default that is all it reports. The running Fresco version and the process uptime are withheld from anonymous callers, because together they tell a scanner which published vulnerabilities apply to an instance and whether a fix has been deployed yet. If your monitoring needs those fields, set `EXPOSE_HEALTH_DETAILS=true` in your `.env` and they are added to the response.
 
 ## Access Fresco
 
