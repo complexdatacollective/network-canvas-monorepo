@@ -13,6 +13,7 @@ import {
 import BuilderSection from '../BuilderSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
+import { changeSubjectTo } from './changeSubject.ts';
 import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
 
 /**
@@ -91,9 +92,7 @@ describe('resetting a stage whose interface has nested defaults', () => {
     });
     expect(toggle).not.toBeChecked();
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
 
     await waitFor(() => expect(toggle).toBeChecked());
   });
@@ -119,9 +118,7 @@ describe('resetting a key the researcher has never looked at', () => {
       'form',
     );
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
 
     await waitFor(() =>
       expect(
@@ -143,9 +140,7 @@ describe('resetting a key the researcher has never looked at', () => {
       sections: nodeSubjectAndPrompts,
     });
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
     await waitFor(() =>
       expect(
         harness.session.getSnapshot().editedSection.fields,
@@ -230,9 +225,7 @@ describe('resetting a key the form is holding parked', () => {
     );
 
     // 3. The researcher changes what the stage collects.
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
     await waitFor(() =>
       expect(
         harness.session.getSnapshot().editedSection.fields.subject,
@@ -379,7 +372,7 @@ describe('a subject change the session refuses', () => {
     await screen.findByText(READ_ONLY_MESSAGE);
 
     harness.setReadOnly(false);
-    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await changeSubjectTo(harness.user, 'person');
 
     await waitFor(() =>
       expect(

@@ -3019,6 +3019,18 @@
     "defaultMessage": "Preview of {interfaceName}",
     "description": "Alternative text for a screenshot of an interview interface. interfaceName is the localized interface name, or an unchanged identifier for an unknown future interface."
   },
+  "protocolBuilder.subjectSection.edgeChangeConfirm": {
+    "defaultMessage": "Change the edge type",
+    "description": "Button that goes ahead with changing the kind of relationship a stage works with, throwing away the configuration that described the previous one."
+  },
+  "protocolBuilder.subjectSection.edgeChangeDescription": {
+    "defaultMessage": "Everything else on this stage describes the edge type it works with now, and choosing a different type removes all of it.",
+    "description": "Body of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.edgeChangeTitle": {
+    "defaultMessage": "Change the edge type?",
+    "description": "Title of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured for the one it has."
+  },
   "protocolBuilder.subjectSection.edgeCreateDescription": {
     "defaultMessage": "Create an edge type and use it on this stage",
     "description": "Description shown inside the dialog for inventing a kind of relationship, and what the change is called in the record a host keeps of protocol edits."
@@ -3042,6 +3054,18 @@
   "protocolBuilder.subjectSection.edgeTitle": {
     "defaultMessage": "Edge type",
     "description": "Heading of the section where a researcher says which kind of relationship this step of the interview is about. An edge is a connection between two members of the network."
+  },
+  "protocolBuilder.subjectSection.nodeChangeConfirm": {
+    "defaultMessage": "Change the node type",
+    "description": "Button that goes ahead with changing the kind of network member a stage works with, throwing away the configuration that described the previous one."
+  },
+  "protocolBuilder.subjectSection.nodeChangeDescription": {
+    "defaultMessage": "Everything else on this stage describes the node type it works with now, and choosing a different type removes all of it.",
+    "description": "Body of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.nodeChangeTitle": {
+    "defaultMessage": "Change the node type?",
+    "description": "Title of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured for the one it has."
   },
   "protocolBuilder.subjectSection.nodeCreateDescription": {
     "defaultMessage": "Create a node type and use it on this stage",

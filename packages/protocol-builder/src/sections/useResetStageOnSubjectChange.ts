@@ -1,14 +1,25 @@
 import { get } from 'es-toolkit/compat';
+import { useCallback } from 'react';
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import type { Command } from '@codaco/studio-sync/apply';
 
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
-import { useClearStageValue } from '../form/stageFormHooks.ts';
+import {
+  type StageFormStoreApi,
+  useStageEditorForm,
+} from '../form/stageEditorContext.ts';
+import {
+  useAskStageHasAnyValue,
+  useClearStageValue,
+} from '../form/stageFormHooks.ts';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
+import type { StageFormDraft } from '../session.ts';
 import { useOnResearcherChange } from './researcherChange.ts';
-import { subjectDependentResets } from './subjectReset.ts';
+import {
+  SUBJECT_INDEPENDENT_FIELDS,
+  subjectDependentResets,
+} from './subjectReset.ts';
 
 /**
  * Narrows a value read back out of a template by a dynamic path.
@@ -63,6 +74,58 @@ const parkedStageKey = (name: string): string | undefined => {
 };
 
 /**
+ * Every stage key the form or the draft is holding, from all three places one
+ * can be hiding.
+ *
+ * `getFormValues()` is built from REGISTERED fields, so a control the
+ * researcher answered and then unmounted contributes nothing to it, and an
+ * answer that has not been saved is not in `committedFields` either. That key
+ * is in neither place and is still on its way into the saved stage —
+ * `stageDraftFromSubmission` replays parked values on purpose — so the names
+ * the store is parking are read as well.
+ */
+const heldStageKeys = (
+  storeApi: StageFormStoreApi,
+  committedFields: StageFormDraft,
+): string[] => [
+  ...Object.keys(storeApi.getState().getFormValues()),
+  ...Object.keys(committedFields),
+  ...[...storeApi.getState().dormantValues.keys()]
+    .map(parkedStageKey)
+    .filter((key) => key !== undefined),
+];
+
+/**
+ * Whether changing the subject would actually cost the researcher anything.
+ *
+ * Asked before the change rather than after it — see `SubjectSelectField`,
+ * which holds the pick back until it is answered — so it reads what the stage
+ * is carrying NOW rather than what a reset would write. A key the template
+ * supplies and the stage does not is no loss, which is why this is not the
+ * reset's own list; and a key that is only a registered field holding nothing
+ * — an empty prompt list a section has mounted — is no loss either, which is
+ * why it asks the same "holds something" a capability's switch-off asks rather
+ * than counting keys.
+ *
+ * A function rather than a value: it reads the form's values, and a section
+ * re-rendering on every keystroke to keep an answer current is one
+ * re-rendering for a question nobody has asked yet.
+ */
+export function useSubjectChangeDiscards(): () => boolean {
+  const { storeApi, committedFields } = useStageEditorForm();
+  const hasAnyValue = useAskStageHasAnyValue();
+  return useCallback(
+    () =>
+      hasAnyValue(
+        heldStageKeys(storeApi, committedFields).filter(
+          (key) => !SUBJECT_INDEPENDENT_FIELDS.includes(key),
+        ),
+      ),
+    [committedFields, hasAnyValue, storeApi],
+  );
+}
+
+/**
  * Throws away everything that described the previous subject when the stage's
  * subject changes.
  *
@@ -94,20 +157,8 @@ export function useResetStageOnSubjectChange(): void {
 
   useOnResearcherChange('subject', (subject) => {
     const template = getInterfaceTemplate(identity.type);
-    // `getFormValues()` is built from REGISTERED fields, so a control the
-    // researcher answered and then unmounted contributes nothing to it, and an
-    // answer that has not been saved is not in `committedFields` either. That
-    // key is in neither place and is still on its way into the saved stage —
-    // `stageDraftFromSubmission` replays parked values on purpose — so the
-    // names the store is parking are read as well.
     const resets = subjectDependentResets(
-      [
-        ...Object.keys(storeApi.getState().getFormValues()),
-        ...Object.keys(committedFields),
-        ...[...storeApi.getState().dormantValues.keys()]
-          .map(parkedStageKey)
-          .filter((key) => key !== undefined),
-      ],
+      heldStageKeys(storeApi, committedFields),
       template,
     );
 

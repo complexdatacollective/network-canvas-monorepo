@@ -5,6 +5,7 @@ import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import IntroductionSection from '../IntroductionSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import SubjectSection, { NEW_ENTITY_DRAFT } from '../SubjectSection.tsx';
+import { changeSubjectTo } from './changeSubject.ts';
 import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
 
 const nodeSubjectAndPrompts = (
@@ -95,9 +96,7 @@ describe('the section that says what a stage is about', () => {
       sections: <SubjectSection entity="edge" filter />,
     });
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family_edge' }),
-    );
+    await changeSubjectTo(harness.user, 'family_edge', 'Change the edge type');
 
     await waitFor(() =>
       expect(
@@ -139,9 +138,7 @@ describe('changing what a stage is about', () => {
       screen.getByText('Who are the people you know?'),
     ).toBeInTheDocument();
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
 
     await waitFor(() =>
       expect(
@@ -166,9 +163,7 @@ describe('changing what a stage is about', () => {
       sections: nodeSubjectAndPrompts,
     });
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
     await waitFor(() =>
       expect(
         screen.queryByText('Who are the people you know?'),
@@ -214,9 +209,7 @@ describe('changing what a stage is about', () => {
       sections: nodeSubjectAndPrompts,
     });
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
     await waitFor(() =>
       expect(
         screen.queryByText('Who are the people you know?'),
@@ -399,9 +392,7 @@ describe('creating the type a stage needs without leaving it', () => {
       sections: nodeSubjectAndPrompts,
     });
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'family member' }),
-    );
+    await changeSubjectTo(harness.user, 'family member');
     await waitFor(() =>
       expect(
         screen.queryByText('Who are the people you know?'),
@@ -784,5 +775,119 @@ describe('naming a new type', () => {
     expect(
       codebookEdgeNames(harness.host.getSnapshot().protocolSections),
     ).toEqual(['family_edge', 'knows']);
+  });
+});
+
+/**
+ * The one destructive thing this section does, and the researcher gets to say
+ * so first.
+ *
+ * A radio is a single click, and the click throws away every prompt, form,
+ * panel and filter the stage carried. Architect has always asked before it
+ * (`NodeType`'s `promptBeforeChange`), and this package already asks before
+ * the far smaller loss of switching a capability off, so a stage-wide reset
+ * that happens on a mis-click is out of step with both.
+ */
+describe('changing a subject the stage is configured for', () => {
+  const CHANGE_TITLE = 'Change the node type?';
+  const CHANGE_DESCRIPTION =
+    'Everything else on this stage describes the node type it works with now, and choosing a different type removes all of it.';
+  const CHANGE_CONFIRM = 'Change the node type';
+
+  it('asks first, and changes nothing while the question stands', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family member' }),
+    );
+
+    expect(await screen.findByText(CHANGE_TITLE)).toBeInTheDocument();
+    expect(screen.getByText(CHANGE_DESCRIPTION)).toBeInTheDocument();
+    // The pick has not been made: the stage still holds the type and the
+    // configuration it opened with. The editor behind the question is out of
+    // the accessibility tree while it stands, so this is read from the
+    // session — which is where a reset would have landed first.
+    const { fields } = harness.session.getSnapshot().editedSection;
+    expect(fields.subject).toEqual({ entity: 'node', type: 'person' });
+    expect(fields.prompts).toHaveLength(1);
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  it('leaves the stage as it was when the researcher backs out', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family member' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Cancel' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText(CHANGE_TITLE)).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('radio', { name: 'person' })).toBeChecked();
+    expect(
+      screen.getByText('Who are the people you know?'),
+    ).toBeInTheDocument();
+    expect(harness.pendingCommands()).toEqual([]);
+    // And the stage still saves as the stage it opened as.
+    await harness.roundTrip({ unowned: ['label', 'form'] });
+  });
+
+  it('throws it away once the researcher has said so', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await changeSubjectTo(harness.user, 'family member', CHANGE_CONFIRM);
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Who are the people you know?'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(harness.session.getSnapshot().editedSection.fields.subject).toEqual({
+      entity: 'node',
+      type: 'family_member',
+    });
+  });
+
+  /**
+   * A question about nothing is one a researcher learns to dismiss without
+   * reading — the rule the discard guard already states. A stage that has just
+   * been created carries its name and its type and nothing else, and choosing
+   * the type it is for is the first thing the researcher does with it.
+   */
+  it('does not ask about a stage that has nothing to lose', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'name-generator-1',
+        type: 'NameGenerator' as const,
+        fields: {
+          label: 'Name Generator',
+          subject: { entity: 'node', type: 'person' },
+        },
+      },
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family member' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        harness.session.getSnapshot().editedSection.fields.subject,
+      ).toEqual({ entity: 'node', type: 'family_member' }),
+    );
+    expect(screen.queryByText(CHANGE_TITLE)).not.toBeInTheDocument();
   });
 });
