@@ -81,6 +81,9 @@ const headingLadder = (): string[] =>
  * The count is asserted as well as the violations: axe reports a document with
  * no headings in it as inapplicable, with no violations to show, so a rendered
  * surface that quietly stopped writing headings would otherwise pass this.
+ * `incomplete` nodes are asserted empty and excluded from that count: they are
+ * headings axe could not judge either way, so counting them toward the total
+ * would let an inconclusive verdict through as a pass.
  */
 async function expectHeadingOrder(judgedAtLeast: number): Promise<void> {
   const results = await axe.run(document.body, {
@@ -93,8 +96,12 @@ async function expectHeadingOrder(judgedAtLeast: number): Promise<void> {
     ),
   ).toEqual([]);
   expect(
-    [...results.passes, ...results.incomplete].flatMap((result) => result.nodes)
-      .length,
+    results.incomplete.flatMap((result) =>
+      result.nodes.map((node) => node.html),
+    ),
+  ).toEqual([]);
+  expect(
+    results.passes.flatMap((result) => result.nodes).length,
   ).toBeGreaterThanOrEqual(judgedAtLeast);
 }
 

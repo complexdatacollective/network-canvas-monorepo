@@ -199,7 +199,7 @@ const createCategoricalAttribute = async (
 ) => {
   await harness.user.selectOptions(
     dialog.getByRole('combobox', { name: 'Attribute' }),
-    '__create_new_attribute__',
+    '#create-new-attribute',
   );
   await harness.user.selectOptions(
     await dialog.findByRole('combobox', { name: 'Kind of answer' }),
@@ -278,7 +278,7 @@ export const authorsDateSettingsFromField = async (
   const dating = await openField(harness, 'Create new form field');
   await harness.user.selectOptions(
     dating.getByRole('combobox', { name: 'Attribute' }),
-    '__create_new_attribute__',
+    '#create-new-attribute',
   );
   await harness.user.selectOptions(
     await dating.findByRole('combobox', { name: 'Kind of answer' }),

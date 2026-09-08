@@ -2,10 +2,7 @@ import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
 import ContentBlockEditor from '../../sections/contentBlocks/ContentBlockEditor.tsx';
 import ContentBlockPreview from '../../sections/contentBlocks/ContentBlockPreview.tsx';
-import {
-  collapseContentBlock,
-  expandContentBlock,
-} from '../../sections/contentBlocks/contentBlockTypes.ts';
+import { contentBlockSlots } from '../../sections/contentBlocks/contentBlockTypes.ts';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import PageContentSection from '../../sections/PageContentSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
@@ -42,8 +39,7 @@ export function InformationStageEditor({
       <PageContentSection
         ItemEditor={ContentBlockEditor}
         ItemPreview={ContentBlockPreview}
-        itemSelector={expandContentBlock}
-        normalizeItem={collapseContentBlock}
+        slots={contentBlockSlots}
       />
       <SkipLogicSection />
       <InterviewerGuidanceSection />
