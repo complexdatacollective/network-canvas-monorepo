@@ -20,7 +20,8 @@
     "@codaco/studio-client",
     "@codaco/studio-rpc",
     "@codaco/studio-server",
-    "@codaco/studio-sync"
+    "@codaco/studio-sync",
+    "@codaco/template-registry"
   ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true

@@ -22,6 +22,14 @@ versioned in lockstep with the `studio.sync.v1` subprotocol.
   (default 10), and calls the idle-error logger without connection details.
 - `@codaco/studio-sync/client` — the client half: optimistic local echo,
   pending queue, suffix rollback on rejection, reconnect with retransmission.
+- `@codaco/studio-sync/template-registry-contract` — the shared Registry
+  credential, publisher, and public-entry wire schemas used by the service and
+  its instance clients.
+- `@codaco/studio-sync/template-registry-client` — the bounded Node Registry
+  client for public entry/artifact reads and explicit-credential publication.
+  It accepts one pathless HTTPS origin, never follows redirects, never sends a
+  credential on reads, caps response bodies and deadlines, and verifies raw
+  hashes plus the complete template archive before returning an artifact.
 - `@codaco/studio-sync/schema` — the Postgres schema (drafts, immutable
   content-addressed sections, manifests, leases, command log).
 - `@codaco/studio-sync/email-sender` — the Node `EmailSender` contract,
@@ -32,8 +40,8 @@ versioned in lockstep with the `studio.sync.v1` subprotocol.
   `outbound`) and `EMAIL_FROM`; setting `SMTP_URL` instead retains SMTP.
   Configuring both transports is refused.
 
-The server/schema/postgres-pool modules depend on `pg`; client code must
-import only `./apply` and `./client`.
+The server/schema/postgres-pool and template-registry-client modules are Node
+boundaries; browser client code must import only `./apply` and `./client`.
 
 ## Email delivery boundary
 
