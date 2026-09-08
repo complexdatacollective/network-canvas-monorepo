@@ -32,12 +32,14 @@ export async function getWebAuthnConfig() {
       // credentials can ever be offered. A non-resident credential would
       // register successfully and then lock a passkey-only account out.
       residentKey: 'required' as const,
-      // 'preferred' means the authenticator MAY skip user verification.
-      // requireUserVerification must stay in sync — when generation uses
-      // 'preferred', verification must accept responses without UV.
-      userVerification: 'preferred' as const,
+      // Must be 'required': the documentation promises that a passkey sign-in
+      // always proves the user's identity as well as possession of the
+      // authenticator, so a response whose UV flag is unset is never enough.
+      // requireUserVerification must stay in sync — when generation asks for
+      // 'required', verification must reject responses without UV.
+      userVerification: 'required' as const,
     },
-    requireUserVerification: false,
+    requireUserVerification: true,
   };
 }
 

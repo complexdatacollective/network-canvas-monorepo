@@ -28,15 +28,18 @@ function resolve({
   version,
   tags = [],
   strandedTags = [],
+  mirrorVersion,
 }) {
   const cwd = mkdtempSync(join(tmpdir(), 'rhr-'));
   mkdirSync(join(cwd, 'apps', app), { recursive: true });
   git(cwd, 'init', '-q');
   git(cwd, 'config', 'user.email', 'ci@example.com');
   git(cwd, 'config', 'user.name', 'ci');
+  // Fresco's package is the bare `fresco`; the Netlify apps are scoped.
+  const name = app === 'fresco' ? 'fresco' : `@codaco/${app}`;
   writeFileSync(
     join(cwd, 'apps', app, 'package.json'),
-    `${JSON.stringify({ name: `@codaco/${app}`, version }, null, 2)}\n`,
+    `${JSON.stringify({ name, version }, null, 2)}\n`,
   );
   git(cwd, 'add', '.');
   git(cwd, 'commit', '-qm', 'first');
@@ -65,7 +68,12 @@ function resolve({
     execFileSync('node', [SCRIPT], {
       cwd,
       stdio: 'pipe',
-      env: { ...process.env, APP: app, GITHUB_OUTPUT: outputPath },
+      env: {
+        ...process.env,
+        APP: app,
+        GITHUB_OUTPUT: outputPath,
+        ...(mirrorVersion ? { MIRROR_VERSION: mirrorVersion } : {}),
+      },
     });
   } catch (error) {
     ok = false;
@@ -88,7 +96,39 @@ test('clears a hotfix newer than every released tag', () => {
   assert.ok(ok);
   assert.equal(output.version, '8.1.3');
   assert.equal(output.label, 'Interviewer');
+  assert.equal(output.package, '@codaco/interviewer');
+  assert.equal(output.tag, '@codaco/interviewer@8.1.3');
   assert.equal(output.newest, '8.1.2');
+  assert.equal(output.newest_tag, '@codaco/interviewer@8.1.2');
+});
+
+// Fresco tags carry the bare package name (`fresco@4.1.4`), because the app
+// releases by mirroring rather than publishing under the scope. The tag the
+// lane claims, and the one it reports as newest, must use that form — a
+// scoped `@codaco/fresco@…` tag would be one the normal lane never looks for.
+test('clears a Fresco hotfix and names its bare-package tags', () => {
+  const { ok, output } = resolve({
+    app: 'fresco',
+    version: '4.1.5',
+    tags: ['fresco@4.1.3', 'fresco@4.1.4'],
+  });
+  assert.ok(ok);
+  assert.equal(output.label, 'Fresco');
+  assert.equal(output.package, 'fresco');
+  assert.equal(output.tag, 'fresco@4.1.5');
+  assert.equal(output.newest, '4.1.4');
+  assert.equal(output.newest_tag, 'fresco@4.1.4');
+});
+
+test('reads only bare-package tags for Fresco', () => {
+  const { ok, stderr } = resolve({
+    app: 'fresco',
+    version: '4.1.5',
+    tags: ['fresco@4.1.5'],
+    strandedTags: ['@codaco/fresco@9.9.9'],
+  });
+  assert.equal(ok, false);
+  assert.match(stderr, /fresco@4\.1\.5 is already released/);
 });
 
 test('labels architect too', () => {
@@ -118,6 +158,36 @@ test('fails on a version older than the newest release', () => {
   assert.match(stderr, /older than the released 8\.1\.2/);
 });
 
+// The Fresco repository is what is live, and the normal lane pushes it before
+// it tags here: a mirror ahead of the tags means a release the tags do not
+// record, which a hotfix cut from the newest tag would append older code over.
+test('refuses a Fresco hotfix while the mirror is ahead of the tags', () => {
+  for (const version of ['4.1.5', '4.1.6']) {
+    const { ok, stderr } = resolve({
+      app: 'fresco',
+      version,
+      tags: ['fresco@4.1.4'],
+      mirrorVersion: '4.1.5',
+    });
+    assert.equal(ok, false, version);
+    assert.match(
+      stderr,
+      /carries 4\.1\.5 but the newest fresco@ tag here is 4\.1\.4: a release was pushed without its tag/,
+    );
+  }
+});
+
+test('clears a Fresco hotfix when the mirror matches the newest tag', () => {
+  const { ok, output } = resolve({
+    app: 'fresco',
+    version: '4.1.5',
+    tags: ['fresco@4.1.4'],
+    mirrorVersion: '4.1.4',
+  });
+  assert.equal(ok, true);
+  assert.equal(output.tag, 'fresco@4.1.5');
+});
+
 test('fails on a prerelease version', () => {
   const { ok, stderr } = resolve({ version: '8.1.3-beta.1' });
   assert.equal(ok, false);
@@ -125,7 +195,7 @@ test('fails on a prerelease version', () => {
 });
 
 test('fails on an app the lane does not release', () => {
-  const { ok, stderr } = resolve({ app: 'fresco', version: '1.0.0' });
+  const { ok, stderr } = resolve({ app: 'documentation', version: '1.0.0' });
   assert.equal(ok, false);
   assert.match(stderr, /Unsupported app/);
 });

@@ -94,7 +94,7 @@ groups:
           severity: warning
         annotations:
           summary: Studio has delivery acknowledgements requiring reconciliation
-          description: The provider accepted a delivery but database finalization failed. Do not blindly resend uncertain work.
+          description: Delivery or database finalization was not confirmed. Reconcile the provider outcome before considering a resend.
       - alert: StudioWorkerErrors
         expr: |
           studio_outbox_last_worker_error_timestamp_seconds > 0
