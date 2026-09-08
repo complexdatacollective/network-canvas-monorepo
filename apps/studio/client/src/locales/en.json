@@ -2115,6 +2115,10 @@
     "defaultMessage": "Import template",
     "description": "Import submit label."
   },
+  "studio.templates.importOrigin": {
+    "defaultMessage": "Imported from {registry} on {date}.",
+    "description": "Imported template provenance."
+  },
   "studio.templates.imported": {
     "defaultMessage": "The Registry template was imported.",
     "description": "Registry import success announcement."
@@ -2123,9 +2127,29 @@
     "defaultMessage": "Import a verified Registry entry into a team, or publish an immutable local template version.",
     "description": "Template workspace explanation."
   },
+  "studio.templates.linkFirst": {
+    "defaultMessage": "Link your publisher identity in Account → Template Registry before publishing.",
+    "description": "Explains the Registry account-link prerequisite."
+  },
+  "studio.templates.loadFailed": {
+    "defaultMessage": "Templates could not be loaded. Try again.",
+    "description": "Template workspace read error."
+  },
+  "studio.templates.loading": {
+    "defaultMessage": "Loading templates…",
+    "description": "Template workspace loading status."
+  },
+  "studio.templates.noTeams": {
+    "defaultMessage": "Join a team to work with templates.",
+    "description": "No team memberships."
+  },
   "studio.templates.origin": {
     "defaultMessage": "Configured Registry: {origin}",
     "description": "Operator-configured Registry origin."
+  },
+  "studio.templates.publication": {
+    "defaultMessage": "Published by {publisher} on {date} to {registry}.",
+    "description": "Immutable Registry publication receipt."
   },
   "studio.templates.publish": {
     "defaultMessage": "Publish version",
@@ -2134,6 +2158,14 @@
   "studio.templates.published": {
     "defaultMessage": "The template version was published.",
     "description": "Registry publication success announcement."
+  },
+  "studio.templates.publishedLabel": {
+    "defaultMessage": "Published",
+    "description": "Status of an already-published immutable version."
+  },
+  "studio.templates.readOnly": {
+    "defaultMessage": "Only team owners and administrators can publish or import templates.",
+    "description": "Explains template read-only access."
   },
   "studio.templates.team": {
     "defaultMessage": "Team",
