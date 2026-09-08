@@ -1,6 +1,7 @@
 import { act, screen, waitFor } from '@testing-library/react';
-import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { isEqual } from 'es-toolkit/compat';
+import { useEffect, useState } from 'react';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 
@@ -297,12 +298,51 @@ describe('a subject change the session refuses', () => {
     return null;
   }
 
+  /** The type the stage has, and the one the picker is put back to. */
+  const PERSON = { entity: 'node', type: 'person' };
+
+  /**
+   * Editing to hand back the moment the picker goes back, or `null` for the
+   * tests that do not want it.
+   *
+   * Armed by one test. A form-store SUBSCRIBER, because that is where the gap
+   * being described is: the restore is a store write, and its subscribers run
+   * during it — before React has re-rendered, and before the effect that reads
+   * the value back has run.
+   */
+  const handBackEditing = { current: null as (() => void) | null };
+
+  function HandBackWhenThePickerGoesBack() {
+    const { storeApi } = useStageEditorForm();
+    useEffect(
+      () =>
+        storeApi.subscribe(() => {
+          const handBack = handBackEditing.current;
+          if (handBack === null) return;
+          if (!isEqual(storeApi.getState().getFormValues().subject, PERSON)) {
+            return;
+          }
+          handBackEditing.current = null;
+          handBack();
+        }),
+      [storeApi],
+    );
+    return null;
+  }
+
   const sections = (
     <>
       <SubjectPickProbe />
+      <HandBackWhenThePickerGoesBack />
       {nodeSubjectAndPrompts}
     </>
   );
+
+  // Disarmed for everything that has not asked for it, so a test that never
+  // reaches the gap cannot leave the hand-back armed for the next one.
+  beforeEach(() => {
+    handBackEditing.current = null;
+  });
 
   const READ_ONLY_MESSAGE =
     'This stage is read-only, so your changes were not saved. Take over editing and try again.';
@@ -336,18 +376,29 @@ describe('a subject change the session refuses', () => {
     // copy is the only one there is, and a form cleared here would leave the
     // stage looking unconfigured with nothing left to fill it back in.
     //
-    // Editing is handed back and the stage saved before this is read, because
-    // a prompt removed from the list leaves the document a frame later — the
-    // save is a round of work the removal would have finished inside. The save
-    // is refused, and refused for the right reason: the stage now says it
-    // collects family members while its form still asks for a person's name,
-    // which is the researcher's own unfinished change rather than something
-    // this reset threw away.
-    harness.setReadOnly(false);
-    expect(await harness.submit()).toBeNull();
+    // The PICK goes back with it. The refusal was of the whole batch, the
+    // subject included, so a picker left showing the new type would be the
+    // only part of the stage saying the change happened — and would say it
+    // about a change nothing else on screen or in the session agrees with.
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'person' })).toBeChecked(),
+    );
     expect(
-      screen.getByText('The attribute "name" does not exist in the codebook'),
-    ).toBeInTheDocument();
+      screen.getByRole('radio', { name: 'family member' }),
+    ).not.toBeChecked();
+
+    // Editing is handed back and the stage saved before the configuration is
+    // read, because a prompt removed from the list leaves the document a frame
+    // later — the save is a round of work the removal would have finished
+    // inside. What comes back is the stage the researcher had: the type the
+    // session held all along, and the prompt that describes it.
+    harness.setReadOnly(false);
+    const request = await harness.submit();
+    expect(request?.stageDocument.subject).toEqual({
+      entity: 'node',
+      type: 'person',
+    });
+    expect(request?.stageDocument.prompts).toHaveLength(1);
     expect(
       screen.getByText('Who are the people you know?'),
     ).toBeInTheDocument();
@@ -361,7 +412,7 @@ describe('a subject change the session refuses', () => {
    * has to leave the reset exactly as armed as it was, or the researcher's
    * next choice of type keeps the previous one's configuration for good.
    */
-  it('resets again once editing has been handed back', async () => {
+  it('resets once the researcher picks the new type again', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
       sections,
@@ -370,17 +421,110 @@ describe('a subject change the session refuses', () => {
 
     pickWhileEditingIsTaken(harness);
     await screen.findByText(READ_ONLY_MESSAGE);
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'person' })).toBeChecked(),
+    );
 
+    // The whole gesture again, the question included: the picker is back where
+    // it was, so the change is one the researcher can make — and the stage is
+    // still configured, so it still costs them something and is still asked
+    // about. `changeSubjectTo` waits for that question, so a change that went
+    // through unasked would never get past it.
     harness.setReadOnly(false);
-    await changeSubjectTo(harness.user, 'person');
+    await changeSubjectTo(harness.user, 'family member');
 
     await waitFor(() =>
       expect(
         screen.queryByText('Who are the people you know?'),
       ).not.toBeInTheDocument(),
     );
+    const { fields } = harness.session.getSnapshot().editedSection;
+    expect(fields.subject).toEqual({ entity: 'node', type: 'family_member' });
+    expect(fields).not.toHaveProperty('prompts');
+    // ONCE. The refused batch left nothing behind, and putting the picker back
+    // is not a change of its own — a second reset would be one the researcher
+    // never asked for, and would carry a second entry in the session's history
+    // for an undo to walk back through.
+    expect(harness.pendingCommands()).toHaveLength(1);
+  });
+
+  /**
+   * The other half of the same fact: a researcher who stays with the type the
+   * stage has keeps everything that describes it.
+   *
+   * This was the failure the picker being left on the rejected type created.
+   * With it showing a type the stage does not have, choosing the type it DOES
+   * have is a change like any other, and the reset threw away the very
+   * configuration that belonged to it.
+   */
+  it('leaves the stage alone when the researcher keeps the type it has', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections,
+    });
+    await screen.findByText('Who are the people you know?');
+
+    pickWhileEditingIsTaken(harness);
+    await screen.findByText(READ_ONLY_MESSAGE);
+    harness.setReadOnly(false);
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    // Nothing is asked, because nothing is being changed: the picker already
+    // shows this type.
     expect(
-      harness.session.getSnapshot().editedSection.fields,
-    ).not.toHaveProperty('prompts');
+      screen.queryByRole('button', { name: 'Change the node type' }),
+    ).not.toBeInTheDocument();
+
+    // And the save is the settling round behind that: a question raised a tick
+    // later would still be open here, and a stage whose subject and form
+    // disagree cannot be saved at all. What comes back is untouched.
+    const request = await harness.submit();
+    expect(request?.stageDocument.subject).toEqual({
+      entity: 'node',
+      type: 'person',
+    });
+    expect(request?.stageDocument.prompts).toHaveLength(1);
+  });
+
+  /**
+   * Editing handed back inside the window the restore itself opens.
+   *
+   * Putting the picker back moves the value the reset watches, and the effect
+   * that reads it is a commit later — the same render-wide window the refusal
+   * lives in, seen from the other side. A lease that returns in that gap makes
+   * the restored subject a write the session would now accept, and taking it
+   * would throw away the configuration belonging to the type the picker was
+   * just put back to: the refused change carried out after all, against a
+   * stage that never changed.
+   */
+  it('does not read the picker going back as a choice of its own', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections,
+    });
+    await screen.findByText('Who are the people you know?');
+
+    act(() => {
+      handBackEditing.current = () => {
+        harness.setReadOnly(false);
+      };
+      pickTheOtherType.current();
+      harness.session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+    // The gap was reached: the picker went back, and editing was handed over
+    // while it did.
+    expect(handBackEditing.current).toBeNull();
+
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'person' })).toBeChecked(),
+    );
+    expect(
+      screen.getByText('Who are the people you know?'),
+    ).toBeInTheDocument();
+    const { fields } = harness.session.getSnapshot().editedSection;
+    expect(fields.subject).toEqual({ entity: 'node', type: 'person' });
+    expect(fields.prompts).toHaveLength(1);
+    expect(harness.pendingCommands()).toEqual([]);
   });
 });

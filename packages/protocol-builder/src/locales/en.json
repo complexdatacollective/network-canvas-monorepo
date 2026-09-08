@@ -3395,6 +3395,18 @@
     "defaultMessage": "Edge type",
     "description": "Label of the control choosing which kind of relationship this step of the interview is about. The same words as the section heading, and translated once for each."
   },
+  "protocolBuilder.subjectSection.edgeFirstChoiceConfirm": {
+    "defaultMessage": "Choose the edge type",
+    "description": "Button that goes ahead with choosing the first kind of relationship a stage works with, throwing away the configuration entered before it."
+  },
+  "protocolBuilder.subjectSection.edgeFirstChoiceDescription": {
+    "defaultMessage": "Everything else on this stage was configured without an edge type, and choosing one removes all of it.",
+    "description": "Body of the confirmation raised when a researcher picks the first kind of relationship for a stage that has none yet, but that has already been configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.edgeFirstChoiceTitle": {
+    "defaultMessage": "Choose the edge type?",
+    "description": "Title of the confirmation raised when a researcher picks the first kind of relationship for a stage that has none yet, but that has already been configured. A stage is one step of an interview."
+  },
   "protocolBuilder.subjectSection.edgeTitle": {
     "defaultMessage": "Edge type",
     "description": "Heading of the section where a researcher says which kind of relationship this step of the interview is about. An edge is a connection between two members of the network."
@@ -3430,6 +3442,18 @@
   "protocolBuilder.subjectSection.nodeFieldLabel": {
     "defaultMessage": "Node type",
     "description": "Label of the control choosing which kind of network member this step of the interview is about. The same words as the section heading, and translated once for each: the heading names the part of the stage, and this names the control."
+  },
+  "protocolBuilder.subjectSection.nodeFirstChoiceConfirm": {
+    "defaultMessage": "Choose the node type",
+    "description": "Button that goes ahead with choosing the first kind of network member a stage works with, throwing away the configuration entered before it."
+  },
+  "protocolBuilder.subjectSection.nodeFirstChoiceDescription": {
+    "defaultMessage": "Everything else on this stage was configured without a node type, and choosing one removes all of it.",
+    "description": "Body of the confirmation raised when a researcher picks the first kind of network member for a stage that has none yet, but that has already been configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.nodeFirstChoiceTitle": {
+    "defaultMessage": "Choose the node type?",
+    "description": "Title of the confirmation raised when a researcher picks the first kind of network member for a stage that has none yet, but that has already been configured. A stage is one step of an interview."
   },
   "protocolBuilder.subjectSection.nodeTitle": {
     "defaultMessage": "Node type",

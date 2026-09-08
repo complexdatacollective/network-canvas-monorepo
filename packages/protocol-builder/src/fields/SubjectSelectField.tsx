@@ -1,3 +1,5 @@
+import { useCallback } from 'react';
+
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import type { StageSubject } from '@codaco/protocol-validation';
@@ -25,14 +27,50 @@ export type SubjectChangeConfirmation = Readonly<{
   confirmLabel: string;
 }>;
 
+/**
+ * Asks the question a subject change raises, and answers whether the change
+ * may go ahead.
+ *
+ * Shared, because this control is not the only way a researcher moves a
+ * stage's subject: creating a type from inside the stage and selecting it on
+ * it moves the subject too, and costs the stage exactly the same prompts,
+ * form, panels and filter. One definition of the question, so the two cannot
+ * ask different ones — or so that one of them cannot quietly stop asking.
+ *
+ * `undefined` is "nothing to lose", and goes ahead without a dialog: a
+ * question about nothing is one a researcher learns to dismiss without
+ * reading. The dismissal is the provider's own plain "Cancel", which is what
+ * this question wants — backing out of a change that has not happened yet
+ * needs no words of its own.
+ */
+export function useConfirmSubjectChange(): (
+  question: SubjectChangeConfirmation | undefined,
+) => Promise<boolean> {
+  const { confirm } = useDialog();
+  return useCallback(
+    async (question) => {
+      if (question === undefined) return true;
+      const confirmed = await confirm({
+        title: question.title,
+        description: question.description,
+        confirmLabel: question.confirmLabel,
+        intent: 'warning',
+        onConfirm: () => undefined,
+      });
+      return confirmed === true;
+    },
+    [confirm],
+  );
+}
+
 export type SubjectSelectFieldProps = CreateFormFieldProps<
   EntitySubject,
   'div',
   {
     entityType: EntitySubject['entity'];
     /**
-     * What to ask before REPLACING a subject the stage already has, or
-     * `undefined` to change it without asking.
+     * What to ask before a pick that costs the stage what it is carrying, or
+     * `undefined` to let the pick through without asking.
      *
      * A function, because it is asked at the moment of the change: the answer
      * depends on what the stage is carrying, and a control re-rendering on
@@ -52,13 +90,14 @@ export type SubjectSelectFieldProps = CreateFormFieldProps<
  * own — so this is where the two are bridged, once, rather than in every
  * section that owns a subject.
  *
- * It is also where a change is held back until the researcher has agreed to
- * it. Changing a stage's subject throws away every prompt, form, panel and
- * filter that described the old type, and a radio is one click: asked HERE,
- * before the value moves, rather than by whatever watches it afterwards —
- * which would have to put the picker back, and would be answering a question
- * about a change the researcher can already see on screen. The shape Architect
- * has always used (`NodeType`'s `promptBeforeChange`).
+ * It is also where a pick is held back until the researcher has agreed to it.
+ * Moving a stage's subject throws away every prompt, form, panel and filter
+ * the stage was carrying — whether it had a type before or was configured
+ * without one — and a radio is one click: asked HERE, before the value moves,
+ * rather than by whatever watches it afterwards, which would have to put the
+ * picker back and would be answering a question about a change the researcher
+ * can already see on screen. The shape Architect has always used (`NodeType`'s
+ * `promptBeforeChange`).
  */
 export default function SubjectSelectField({
   value,
@@ -67,7 +106,7 @@ export default function SubjectSelectField({
   confirmChange,
   ...props
 }: SubjectSelectFieldProps) {
-  const { confirm } = useDialog();
+  const confirmSubjectChange = useConfirmSubjectChange();
 
   // Written out per entity rather than assembled from `entityType`: the
   // subject union discriminates on `entity`, and a computed discriminant would
@@ -88,26 +127,20 @@ export default function SubjectSelectField({
       value={value?.type}
       onChange={(nextType) => {
         const next = asSubject(nextType);
-        // Nothing to lose: a stage with no subject yet is being filled in for
-        // the first time, and a question about nothing is one a researcher
-        // learns to dismiss without reading.
-        const question = value === undefined ? undefined : confirmChange?.();
+        // Asked whatever the picker is currently showing. "The stage has no
+        // subject yet" is not the same as "the stage has nothing to lose": a
+        // filter written before the type was picked is thrown away by the
+        // first choice exactly as it is by a later change, and a guard keyed
+        // on the value would let that one through in silence. `confirmChange`
+        // is where the loss is judged, and it already returns nothing to ask
+        // when there is nothing to lose.
+        const question = confirmChange?.();
         if (question === undefined) {
           onChange?.(next);
           return;
         }
         void (async () => {
-          const confirmed = await confirm({
-            title: question.title,
-            description: question.description,
-            confirmLabel: question.confirmLabel,
-            // The provider's own default, which is the plain "Cancel" this
-            // question wants: backing out of a change that has not happened
-            // yet needs no words of its own.
-            intent: 'warning',
-            onConfirm: () => undefined,
-          });
-          if (confirmed === true) onChange?.(next);
+          if (await confirmSubjectChange(question)) onChange?.(next);
         })();
       }}
     />
