@@ -4,6 +4,13 @@ const PUBLIC_ORIGINS = new Set([
 ]);
 const DEFAULT_ORIGIN_TIMEOUT_MS = 10_000;
 const MAX_ORIGIN_TIMEOUT_MS = 30_000;
+// A 100 MiB upload takes about 14 minutes at 1 Mbit/s before the backend can
+// finish its object-store write. Keep that supported path bounded without
+// applying the ordinary response-header deadline to it.
+const DEFAULT_UPLOAD_ORIGIN_TIMEOUT_MS = 15 * 60_000;
+const MAX_UPLOAD_ORIGIN_TIMEOUT_MS = 30 * 60_000;
+const IMMUTABLE_ASSET_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const IMMUTABLE_ASSET_PATH = /^\/storage\/([0-9a-f]{64})$/;
 const STATIC_REQUEST_HEADERS = new Set([
   'accept',
   'accept-encoding',
@@ -50,13 +57,9 @@ function problem(status, title) {
   });
 }
 
-function positiveInteger(value, fallback) {
+function positiveInteger(value, fallback, maximum = MAX_ORIGIN_TIMEOUT_MS) {
   const resolved = value === undefined ? fallback : value;
-  if (
-    !Number.isSafeInteger(resolved) ||
-    resolved <= 0 ||
-    resolved > MAX_ORIGIN_TIMEOUT_MS
-  )
+  if (!Number.isSafeInteger(resolved) || resolved <= 0 || resolved > maximum)
     throw new Error('invalid origin timeout');
   return resolved;
 }
@@ -107,6 +110,11 @@ function resolvePolicy(configuration) {
       configuration.originTimeoutMs,
       DEFAULT_ORIGIN_TIMEOUT_MS,
     ),
+    uploadOriginTimeoutMs: positiveInteger(
+      configuration.uploadOriginTimeoutMs,
+      DEFAULT_UPLOAD_ORIGIN_TIMEOUT_MS,
+      MAX_UPLOAD_ORIGIN_TIMEOUT_MS,
+    ),
   };
 }
 
@@ -118,6 +126,24 @@ function isBackendPath(pathname) {
 
 function isAuthPath(pathname) {
   return pathname === '/api/auth' || pathname.startsWith('/api/auth/');
+}
+
+function isAssetUpload(method, pathname) {
+  return (
+    method === 'POST' && (pathname === '/storage' || pathname === '/storage/')
+  );
+}
+
+function isImmutableAssetResponse(response, method, pathname) {
+  if ((method !== 'GET' && method !== 'HEAD') || response.status !== 200)
+    return false;
+  const match = IMMUTABLE_ASSET_PATH.exec(pathname);
+  if (!match) return false;
+  return (
+    response.headers.get('cache-control') === IMMUTABLE_ASSET_CACHE_CONTROL &&
+    response.headers.get('etag') === `"${match[1]}"` &&
+    !response.headers.has('set-cookie')
+  );
 }
 
 function canonicalPath(url) {
@@ -246,7 +272,7 @@ function rewriteLocation(
   };
 }
 
-function backendResponse(response, policy, pathname, expectWebSocket) {
+function backendResponse(response, policy, method, pathname, expectWebSocket) {
   if (expectWebSocket) {
     if (response?.status === 101 && response?.webSocket) return response;
     cancelResponse(response);
@@ -269,9 +295,15 @@ function backendResponse(response, policy, pathname, expectWebSocket) {
   if (redirected.failed) return redirected.response;
   const headers = new Headers(redirected.response.headers);
   removeCorsHeaders(headers);
-  headers.set('cache-control', 'no-store');
-  headers.set('cloudflare-cdn-cache-control', 'no-store');
-  headers.set('cdn-cache-control', 'no-store');
+  if (isImmutableAssetResponse(redirected.response, method, pathname)) {
+    headers.set('cache-control', IMMUTABLE_ASSET_CACHE_CONTROL);
+    headers.set('cloudflare-cdn-cache-control', IMMUTABLE_ASSET_CACHE_CONTROL);
+    headers.set('cdn-cache-control', IMMUTABLE_ASSET_CACHE_CONTROL);
+  } else {
+    headers.set('cache-control', 'no-store');
+    headers.set('cloudflare-cdn-cache-control', 'no-store');
+    headers.set('cdn-cache-control', 'no-store');
+  }
   return new Response(redirected.response.body, {
     status: redirected.response.status,
     headers,
@@ -389,10 +421,18 @@ export function createManagedStudioIngress(configuration) {
         const response = await boundedFetch(
           fetchImpl,
           originRequest,
-          policy.originTimeoutMs,
+          isAssetUpload(request.method, pathname)
+            ? policy.uploadOriginTimeoutMs
+            : policy.originTimeoutMs,
         );
         return backend
-          ? backendResponse(response, policy, pathname, pathname === '/ws')
+          ? backendResponse(
+              response,
+              policy,
+              request.method,
+              pathname,
+              pathname === '/ws',
+            )
           : staticResponse(response, policy);
       } catch {
         return problem(504, 'Origin request failed or timed out');

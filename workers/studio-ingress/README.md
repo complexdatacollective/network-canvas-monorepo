@@ -34,12 +34,20 @@ through without handling messages.
   the approved public host and HTTPS scheme, and the ingress replaces incoming
   request IDs with fresh UUIDs. The Node server still performs its
   existing cookie principal, CSRF, and WebSocket-Origin checks.
-- Every non-WebSocket backend response receives browser and CDN `no-store`
-  directives. A missing API route remains the backend problem response; it can
-  never fall through to Netlify's SPA fallback.
-- Origin connection/header waits are bounded. Responses remain streamed, so
-  large static assets and long-lived WebSockets are not buffered or cut off by
-  that header timeout.
+- Backend responses receive browser and CDN `no-store` directives unless they
+  are a successful public `GET` or `HEAD` of an exact lowercase SHA-256
+  `/storage/:hash` path and carry the backend's matching ETag, canonical
+  one-year immutable policy, and no `Set-Cookie`. A missing or malformed asset,
+  upload, API route, authentication response, redirect, and every failed cache
+  proof remain `no-store`; an API failure can never fall through to Netlify's
+  SPA fallback.
+- Ordinary origin connection/header waits are bounded at 10 seconds. The
+  supported 100 MiB `/storage` upload has a separate 15-minute total deadline:
+  100 MiB takes about 14 minutes at 1 Mbit/s before the backend completes its
+  object-store write. A stalled upload is therefore bounded, while normal
+  uploads are not forced through the ordinary deadline. Response bodies remain
+  streamed, so large asset downloads and long-lived WebSockets are not
+  buffered or cut off by those request deadlines.
 
 This is pure ingress despite running in a Worker: it classifies a fixed path
 table, sanitizes the static boundary, and streams one of two upstream responses.
