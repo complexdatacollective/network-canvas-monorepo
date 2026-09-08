@@ -28,6 +28,18 @@ import {
 /** The one tab holding the lease in everything opened here. */
 export const FIXTURE_SESSION_OWNER = 'harness-tab';
 
+/**
+ * The epoch that lease is issued under, on the host AND in the session.
+ *
+ * One constant rather than the same literal in both places, because the two
+ * ends have to agree: a compound edit carries the session's epoch and the host
+ * refuses it as `stale-epoch` unless it matches the lease the host holds. This
+ * host never rotates its lease — nothing here takes editing away and grants it
+ * again — so anything that hands editing back to the session has to hand back
+ * THIS epoch. See `StageEditorHarness.setReadOnly`.
+ */
+export const FIXTURE_LEASE_EPOCH = 1n;
+
 const FIXTURE_MANIFEST_REVISION: ManifestRevision = Object.freeze({
   sequence: 1n,
   hash: 'revision-1',
@@ -155,7 +167,7 @@ export function openFixtureStageSession(
       {
         sectionId: stageSectionId,
         leaseOwner: FIXTURE_SESSION_OWNER,
-        leaseEpoch: 1n,
+        leaseEpoch: FIXTURE_LEASE_EPOCH,
         holder: {
           sessionId: FIXTURE_SESSION_OWNER,
           userId: 'researcher',
@@ -227,7 +239,7 @@ export function openFixtureStageSession(
         : {
             mode: 'editable',
             leaseOwner: FIXTURE_SESSION_OWNER,
-            leaseEpoch: 1n,
+            leaseEpoch: FIXTURE_LEASE_EPOCH,
           },
     resourceGateway: gateway,
     // A stage being created is validated where it is about to live: the host
