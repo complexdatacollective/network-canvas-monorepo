@@ -345,6 +345,23 @@ describe('stageDraftFromSubmission', () => {
     expect(draft.items).toEqual([{}, { id: 'second' }]);
   });
 
+  it('leaves a row whose every setting cleaned down to nothing', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { items: [{ label: 'Old', size: 3 }, { id: 'second' }] },
+      // The row's own control, holding every spelling of emptiness a form
+      // produces: text the researcher blanked back to its spaces, and a number
+      // input mid-entry.
+      submittedValues: { items: [{ label: '  ', size: Number.NaN }] },
+      mountedPaths: [['items', 0]],
+      dormantFields: [],
+    });
+
+    // The settings go, because that is what the form says they hold. The ROW
+    // stays: removing an array index punches a hole in the list, and taking a
+    // row out is the list editor's own operation.
+    expect(draft.items).toEqual([{}, { id: 'second' }]);
+  });
+
   it('keeps a capability the researcher switched off and then reopened', () => {
     const draft = stageDraftFromSubmission({
       currentFields: {},
