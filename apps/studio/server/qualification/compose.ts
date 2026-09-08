@@ -273,6 +273,7 @@ export async function localDeployment(label: string) {
     environment:
       PUBLIC_URL: ${origin}
       STUDIO_TELEMETRY: 'off'
+      STUDIO_DATABASE_ADMINISTRATIVE_LOGINS: '["studio_migrator"]'
       GOOGLE_CLIENT_ID: synthetic-qualification-client
       GOOGLE_CLIENT_SECRET: synthetic-qualification-secret
   postgres:
