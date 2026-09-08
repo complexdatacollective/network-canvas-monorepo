@@ -65,6 +65,14 @@ data "crunchybridge_cloudprovider" "aws" {
   provider_id = "aws"
 }
 
+data "aws_caller_identity" "deployment" {}
+
+# Resolve temporary STS sessions to their actual IAM role, including its path.
+# Do not derive a role ARN by editing an assumed-role string.
+data "aws_iam_session_context" "deployment" {
+  arn = data.aws_caller_identity.deployment.arn
+}
+
 resource "crunchybridge_cluster" "postgres" {
   team_id       = var.crunchybridge_team_id
   name          = "${var.estate_name}-postgres"
@@ -146,6 +154,10 @@ resource "aws_kms_key" "studio_root" {
 
   lifecycle {
     prevent_destroy = true
+    precondition {
+      condition     = contains(var.kms_admin_principal_arns, data.aws_iam_session_context.deployment.issuer_arn)
+      error_message = "The authenticated Terraform IAM principal must be listed in kms_admin_principal_arns so it retains PutKeyPolicy access."
+    }
   }
 }
 
@@ -170,7 +182,7 @@ resource "b2_bucket" "independent_recovery" {
     default_retention {
       mode = "compliance"
       period {
-        duration = 31
+        duration = jsondecode(file("${path.module}/candidate-sizing.json")).recovery.retentionDays
         unit     = "days"
       }
     }

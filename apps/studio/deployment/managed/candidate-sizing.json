@@ -23,6 +23,12 @@
       "memory_mb": 512
     }
   },
+  "recovery": {
+    "backupIntervalMinutes": 30,
+    "retentionDays": 31,
+    "requestsPerBackup": 2,
+    "requestsPerValidation": 2
+  },
   "postgres": {
     "planId": "hobby-2",
     "planName": "Hobby-2",

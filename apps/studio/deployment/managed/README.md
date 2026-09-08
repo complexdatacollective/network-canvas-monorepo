@@ -34,7 +34,11 @@ assets in the composite image. There is no managed product fork.
   distinct valid deployment context ids. Wrappers are distinct across
   environments and from administrators. KMS administrators retain full `kms:*`
   authority and are fully trusted cryptographic principals; disjoint runtime
-  and wrapper identities do not restrict an administrator's key access.
+  and wrapper identities do not restrict an administrator's key access. The
+  authenticated Terraform IAM principal must itself appear in the administrator
+  list, preserving KMS's default policy lockout check. STS sessions are resolved
+  to their issuing IAM role (including its path); that session needs `iam:GetRole`
+  on its own role. Account-root delegation and lockout-check bypass are not used.
 - One private B2 bucket with SSE-B2/AES256, Object Lock, and 31-day compliance
   retention. The recovery pipeline must additionally encrypt and authenticate
   every archive client-side using a private key held outside B2 and the primary
@@ -89,7 +93,9 @@ their secret values would enter Terraform state. The remaining API modules need
 `B2_APPLICATION_KEY_ID`, `B2_APPLICATION_KEY`, `B2_BUCKET_NAME`, and its
 archive recipient, while the validator alone receives the matching private
 archive key. These are missing module contracts, not currently implemented app
-variables. Runtime secret names are exported separately as names only. The B2
+variables. Runtime secret names are exported separately as names only, including
+Studio's `POSTMARK_SERVER_TOKEN` and the separate Registry
+`REGISTRY_POSTMARK_SERVER_TOKEN`. The B2
 account and archive-decryption private key must remain under independent
 operator custody, outside Cloudflare, Fly, Crunchy Bridge, the primary
 configuration archive, and their account-recovery paths.
@@ -98,7 +104,8 @@ configuration archive, and their account-recovery paths.
 
 1. Confirm current provider quotes and account-visible product identifiers. Run
    `node cost-model.mjs cost-input.json --budget` to check the arithmetic,
-   complete billing categories, reserve, and headroom against the $100 cap.
+   complete billing categories, current pricing declarations, reserve, and headroom
+   against the $100 cap.
    This command **cannot qualify an apply or promotion**: its result always
    reports `qualificationComplete: false`. The retired `--gate` option fails
    closed even if the input contains true evidence Booleans. Actual provider,
@@ -108,11 +115,29 @@ configuration archive, and their account-recovery paths.
 
    The checked-in input is illustrative and incomplete, with unverified prices
    and zero reserve; it fails `--budget`. `node cost-model.mjs cost-input.json`
-   only reports the estimate. Quantities must match measured usage: compute
+   only reports the estimate. Every budget line requires a `pricing` object with
+   `currency: "USD"`, the exact `quantity` and `unitPriceUsd`, and a `reviewedAt`
+   date (`YYYY-MM-DD`) within the preceding 30 days. Paid categories require
+   `kind: "rate"` and an HTTPS provider `sourceUrl`; zero-priced categories
+   require `kind: "included"`, that source, a written `coverage` explanation,
+   and `coveredQuantity` covering the entire declared usage. The reserve uses
+   `kind: "operator-reserve"`. Placeholder evidence is refused even after a
+   reserve is added. These are operator declarations, not authenticated quotes;
+   the command never grants deployment qualification.
+
+   Quantities must match measured usage: compute
    prices all four candidate Machines for 744 hours, ingress is priced per GB
    separately from fixed DNS, and validator compute prices run count times
    measured memory GB times billed seconds (GB-seconds), with requests and
-   transfer separate. A changed resource size is refused unless the shared
+   transfer separate. `databaseDumpSizesGb` must measure each of the four
+   databases. The shared 30-minute schedule requires at least 5,952 database
+   validations in a 31-day month, with corresponding requests and full dump
+   transfer. B2's shared 31-day compliance lock means storage must cover every
+   frequent archive for all 31 days, plus at least current primary object data;
+   a seven-day storage estimate would underprice locked archives. These are
+   lower bounds: retained historical object versions, retries, growing dumps,
+   full object readback and restore drills must also be measured and priced.
+   A changed resource size is refused unless the shared
    candidate and price review are updated together. PostgreSQL storage and
    plan identity are also bound to that same candidate; an independent tfvars
    storage increase or plan substitution refuses validation. Measure database transfer,

@@ -39,9 +39,79 @@ function finiteNonNegative(value, path) {
   return value;
 }
 
+function verifyPricingDeclaration(item, now) {
+  const quote = item.pricing;
+  if (
+    !quote ||
+    typeof quote !== 'object' ||
+    Array.isArray(quote) ||
+    quote.currency !== 'USD' ||
+    quote.unitPriceUsd !== item.unitPriceUsd ||
+    quote.quantity !== item.quantity ||
+    typeof quote.reviewedAt !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(quote.reviewedAt) ||
+    /placeholder|illustrative|unverified|pending|requiring.*quote/i.test(
+      item.evidence,
+    )
+  )
+    fail(
+      `category ${item.category} requires a current pricing declaration, not a placeholder`,
+    );
+  const reviewed = Date.parse(quote.reviewedAt + 'T00:00:00.000Z');
+  if (
+    !Number.isFinite(reviewed) ||
+    new Date(reviewed).toISOString().slice(0, 10) !== quote.reviewedAt ||
+    reviewed > now ||
+    now - reviewed > 30 * 86_400_000
+  )
+    fail(
+      `category ${item.category} pricing review must be within the preceding 30 days`,
+    );
+  if (item.category === 'reserve') {
+    if (quote.kind !== 'operator-reserve')
+      fail('reserve requires an operator allocation');
+    return;
+  }
+  let source;
+  try {
+    source = new URL(quote.sourceUrl);
+  } catch {
+    fail(`category ${item.category} requires a provider pricing source URL`);
+  }
+  if (
+    source.protocol !== 'https:' ||
+    source.username ||
+    source.password ||
+    source.hash
+  )
+    fail(
+      `category ${item.category} requires an HTTPS provider pricing source without credentials`,
+    );
+  if (item.unitPriceUsd === 0) {
+    if (
+      quote.kind !== 'included' ||
+      finiteNonNegative(
+        quote.coveredQuantity,
+        `category ${item.category} coveredQuantity`,
+      ) < item.quantity ||
+      typeof quote.coverage !== 'string' ||
+      !quote.coverage.trim() ||
+      /placeholder|illustrative|unverified|pending/i.test(quote.coverage)
+    )
+      fail(
+        `category ${item.category} requires explicit included-price coverage for its complete quantity`,
+      );
+  } else if (quote.kind !== 'rate')
+    fail(`category ${item.category} requires a quoted recurring rate`);
+}
+
 export function evaluateManagedEstateCost(
   input,
-  { requireBudget = false, requireQualification = false } = {},
+  {
+    requireBudget = false,
+    requireQualification = false,
+    now = Date.now(),
+  } = {},
 ) {
   if (!input || typeof input !== 'object' || Array.isArray(input))
     fail('root must be an object');
@@ -127,6 +197,58 @@ export function evaluateManagedEstateCost(
 
   if (input.validatorMemoryGb === 0 || input.validatorDurationSeconds === 0)
     fail('validator memory and duration must be positive');
+
+  const dumpSizes = input.databaseDumpSizesGb;
+  const databaseNames = Object.keys(sizing.services);
+  if (
+    !dumpSizes ||
+    typeof dumpSizes !== 'object' ||
+    Array.isArray(dumpSizes) ||
+    Object.keys(dumpSizes).length !== databaseNames.length ||
+    !databaseNames.every((name) => Object.hasOwn(dumpSizes, name))
+  )
+    fail('databaseDumpSizesGb must measure all four logical databases');
+  let dumpTotalGb = 0;
+  for (const name of databaseNames) {
+    const size = finiteNonNegative(
+      dumpSizes[name],
+      `databaseDumpSizesGb.${name}`,
+    );
+    if (size === 0)
+      fail('every logical database requires a positive measured dump size');
+    dumpTotalGb += size;
+  }
+  const monthlyPoints =
+    (sizing.monthlyHours * 60) / sizing.recovery.backupIntervalMinutes;
+  const requiredValidations = monthlyPoints * databaseNames.length;
+  if (
+    !Number.isSafeInteger(input.validatorRunCount) ||
+    input.validatorRunCount < requiredValidations
+  )
+    fail(
+      `validatorRunCount must cover at least ${requiredValidations} scheduled database validations`,
+    );
+  const recoveryMinimums = {
+    backupRequestCount: requiredValidations * sizing.recovery.requestsPerBackup,
+    validatorRequestCount:
+      input.validatorRunCount * sizing.recovery.requestsPerValidation,
+    // Every immutable archive remains locked for 31 days, including frequent
+    // points older than the seven-day operational retention target.
+    backupStoredGb:
+      ((sizing.recovery.retentionDays * 24 * 60) /
+        sizing.recovery.backupIntervalMinutes) *
+        dumpTotalGb +
+      input.primaryObjectStoredGb,
+    backupEgressGb: monthlyPoints * dumpTotalGb,
+    validatorTransferGb: monthlyPoints * dumpTotalGb,
+  };
+  for (const [field, minimum] of Object.entries(recoveryMinimums)) {
+    finiteNonNegative(minimum, `minimum ${field}`);
+    if (input[field] < minimum)
+      fail(
+        `${field} is below the required recovery cadence and measured dump sizes`,
+      );
+  }
 
   if (
     input.postgresStorageGb !== sizing.postgres.storageGb ||
@@ -216,6 +338,10 @@ export function evaluateManagedEstateCost(
     fail(
       `monthly headroom $${headroomUsd.toFixed(2)} is below the explicit minimum`,
     );
+  if (requireBudget) {
+    if (!Number.isFinite(now)) fail('pricing review time is invalid');
+    for (const item of input.lineItems) verifyPricingDeclaration(item, now);
+  }
 
   return {
     totalUsd,
