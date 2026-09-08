@@ -40,6 +40,29 @@ const pendingReports: ((posthog: PostHog) => void)[] = [];
  * made on the server, in `AnalyticsLoader`.
  */
 /**
+ * Events whose payload is the element the person interacted with — see
+ * `redactEvent`. Autocapture, rageclick and dead-click capture are switched
+ * off at init; `$$heatmap` is listed too although heatmaps are only off on
+ * participant pages. Dropping them here as well means a later change to the
+ * init options cannot quietly start sending element data.
+ */
+// Always-off event types: dropping them here as well means a later change to
+// the init options cannot quietly start sending element data.
+const ELEMENT_EVENTS = new Set(['$autocapture', '$rageclick', '$dead_click']);
+
+// $$heatmap carries element selectors rather than text, so it is only off on
+// participant pages, matching capture_heatmaps at init — dropping it
+// unconditionally here would silence the dashboard heatmaps init deliberately
+// leaves on.
+
+/** Element-derived properties posthog-js may attach to any event. */
+const ELEMENT_PROPERTIES = [
+  '$elements',
+  '$elements_chain',
+  '$el_text',
+] as const;
+
+/**
  * Strips participant access links out of every event before it is sent.
  *
  * posthog-js attaches the current URL to everything it captures, and on a
@@ -51,6 +74,21 @@ const pendingReports: ((posthog: PostHog) => void)[] = [];
 function redactEvent(event: CaptureResult | null): CaptureResult | null {
   if (!event) {
     return event;
+  }
+
+  // Autocapture-family events carry the clicked element's text. On a
+  // participant's page that text is their answers — a node's name is a
+  // response — and on the dashboard it is what the tables show: participant
+  // identifiers and labels. Init keeps those features off everywhere; this
+  // covers any event that picked up element data on the way regardless.
+  if (
+    ELEMENT_EVENTS.has(event.event) ||
+    (event.event === '$$heatmap' && isParticipantPath(window.location.pathname))
+  ) {
+    return null;
+  }
+  for (const key of ELEMENT_PROPERTIES) {
+    delete event.properties[key];
   }
 
   event.properties = redactProperties(event.properties);
@@ -66,19 +104,33 @@ function redactEvent(event: CaptureResult | null): CaptureResult | null {
 
 async function getClient(): Promise<PostHog> {
   clientPromise ??= import('posthog-js').then(({ default: posthog }) => {
+    // Participants always arrive on their pages through a fresh page load, so
+    // deciding once at init covers them; `redactEvent` backs this up for a
+    // participant page reached any other way.
+    const participantPage = isParticipantPath(window.location.pathname);
+
     posthog.init(POSTHOG_API_KEY, {
       api_host: POSTHOG_PROXY_HOST,
       defaults: '2026-01-30',
       capture_exceptions: true,
-      autocapture: true,
       tracing_headers: [window.location.hostname],
       before_send: redactEvent,
       // Replay records the page's own URL inside its payload, out of reach of
       // `before_send`, and a recording of someone answering interview
-      // questions is research data rather than telemetry. Participants always
-      // arrive on these pages through a fresh page load, so deciding once at
-      // init covers them.
-      disable_session_recording: isParticipantPath(window.location.pathname),
+      // questions is research data rather than telemetry.
+      disable_session_recording: participantPage,
+      // Autocapture attaches the clicked element's text to each event, and
+      // rageclick and dead-click capture are built on the same element data.
+      // On a participant's page that text is their answers; on the dashboard
+      // it is what the tables show — participant identifiers and labels. The
+      // usage events Fresco reports are the explicit ones it captures itself,
+      // as in Interviewer and Architect, so all three stay off everywhere.
+      autocapture: false,
+      rageclick: false,
+      capture_dead_clicks: false,
+      // Heatmaps carry element selectors rather than text; off where the
+      // page is a participant's, as the rest of participant telemetry is.
+      capture_heatmaps: !participantPage,
     });
 
     // Registered here, before startPostHog opts in, because opting in captures

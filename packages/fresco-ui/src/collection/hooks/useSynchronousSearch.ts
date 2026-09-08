@@ -1,3 +1,5 @@
+'use client';
+
 import Fuse from 'fuse.js';
 import { useCallback, useMemo } from 'react';
 

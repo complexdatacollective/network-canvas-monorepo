@@ -25,8 +25,9 @@ export function WorkflowPath({
     >
       <Reveal {...scrollDrivenRevealMotion} className="max-w-3xl">
         <Paragraph
+          intent="smallText"
           margin="none"
-          className="font-heading text-neon-coral text-sm font-bold tracking-[0.14em] uppercase"
+          className="font-heading text-neon-coral font-bold tracking-[0.14em] uppercase"
         >
           {t(`sections.${workflow}.label`)}
         </Paragraph>

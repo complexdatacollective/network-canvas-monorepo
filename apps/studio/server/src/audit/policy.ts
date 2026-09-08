@@ -6,10 +6,24 @@ export type AuditPolicy =
 // Every currently exposed meaningful domain mutation is required. Lease-only
 // coordination remains excluded by the audit design.
 export const RPC_MUTATION_AUDIT_POLICIES = {
+  'audit.alerts.updateSettings': { kind: 'required' },
+  'audit.alerts.acknowledge': { kind: 'required' },
+  'audit.alerts.markRead': {
+    kind: 'none',
+    reason:
+      'Personal alert read state is operational and creates no audit event or send.',
+  },
+  'setup.complete': { kind: 'required' },
+  'account.updateLocale': {
+    kind: 'none',
+    reason:
+      'A personal presentation preference has no tenant and no research-data significance; the audit log is study/team-scoped by design (2026-09-04 localization design §5.2, decision 7).',
+  },
   'team.acceptInvitation': { kind: 'required' },
   'team.updateMemberRole': { kind: 'required' },
   'team.createInvitation': { kind: 'required' },
   'team.cancelInvitation': { kind: 'required' },
+  'studies.create': { kind: 'required' },
   'protocols.create': { kind: 'required' },
   'protocols.commitSection': { kind: 'required' },
   'protocols.addInformationStage': { kind: 'required' },

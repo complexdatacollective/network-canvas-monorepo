@@ -4,10 +4,10 @@ import { safe } from '@orpc/client';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
+import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,
@@ -25,6 +25,7 @@ const PRINCIPAL: SessionPrincipal = {
   email: 'rpc-audit-protocol-owner@example.com',
   emailVerified: true,
   name: 'RPC Audit Protocol Owner',
+  locale: null,
   sessionId: 'rpc-audit-protocol-owner-session',
 };
 
@@ -306,6 +307,7 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       email: 'rpc-audit-revoked@example.com',
       emailVerified: true,
       name: 'Revoked protocol member',
+      locale: null,
       sessionId: 'rpc-audit-revoked-session',
     };
     await pool.query(
@@ -313,9 +315,12 @@ describe.skipIf(!db)('audited protocol RPC', () => {
        VALUES ($1, $2, $3, true)`,
       [actor.userId, actor.name, actor.email],
     );
+    // An Admin, so the middleware admits the request and the refusal below can
+    // only come from the locked membership re-read inside the transaction —
+    // which is what this test is about.
     await pool.query(
       `INSERT INTO team_members (id, team_id, user_id, role)
-       VALUES ($1, $2, $3, 'member')`,
+       VALUES ($1, $2, $3, 'admin')`,
       [memberId, TEAM_ID, actor.userId],
     );
 
@@ -330,7 +335,7 @@ describe.skipIf(!db)('audited protocol RPC', () => {
           getSession: () => Promise.resolve(actor),
           getMembership: () => {
             reportMiddlewareAuthorization();
-            return Promise.resolve({ role: 'member' });
+            return Promise.resolve({ role: 'admin' });
           },
         }),
       }),

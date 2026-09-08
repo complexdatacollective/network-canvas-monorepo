@@ -23,45 +23,46 @@ import {
   EDGE_COLORS,
   NODE_COLORS,
   ORDINAL_COLORS,
-} from './constants';
+} from './constants.ts';
 import {
   claimFixedValues,
   constraintsFor,
   definedAttributesOf,
   generateAttributesForEntity,
-} from './generateNetwork/attributes';
-import { resolveGenerationConfig } from './generateNetwork/config';
-import { buildVariableConstraints } from './generateNetwork/constraints/buildConstraints';
+} from './generateNetwork/attributes.ts';
+import { resolveGenerationConfig } from './generateNetwork/config.ts';
+import { buildVariableConstraints } from './generateNetwork/constraints/buildConstraints.ts';
 import {
   COMPOSER_RENDERING_CONFLICT,
   type ComposerField,
   type ComposerRendering,
   type ComposerRenderings,
   resolveComposerRenderings,
-} from './generateNetwork/constraints/composerRenderings';
-import { todayYmd } from './generateNetwork/constraints/dateWindow';
+} from './generateNetwork/constraints/composerRenderings.ts';
+import { todayYmd } from './generateNetwork/constraints/dateWindow.ts';
 import {
   type ConstraintConflict,
+  type ConstraintReasonCode,
   SyntheticDataConstraintError,
-} from './generateNetwork/constraints/error';
+} from './generateNetwork/constraints/error.ts';
 import {
   type EntityScopeRef,
   scopeKey,
   uniqueSlotMembers,
-} from './generateNetwork/constraints/generateEntityAttributes';
+} from './generateNetwork/constraints/generateEntityAttributes.ts';
 import {
   COMPARISON_RULES,
   type EntityConstraints,
-} from './generateNetwork/constraints/types';
+} from './generateNetwork/constraints/types.ts';
 import {
   UniqueRegistry,
   valueKey,
-} from './generateNetwork/constraints/uniqueRegistry';
-import type { GenerationContext } from './generateNetwork/context';
+} from './generateNetwork/constraints/uniqueRegistry.ts';
+import type { GenerationContext } from './generateNetwork/context.ts';
 import {
   crossRuleBrokenByFixedValues,
   ownRuleBrokenByFixedValues,
-} from './generateNetwork/nodes';
+} from './generateNetwork/nodes.ts';
 import type {
   AddCategoricalBinPromptInput,
   AddDiseaseNominationStepInput,
@@ -100,10 +101,10 @@ import type {
   StageEntry,
   TieStrengthCensusPromptEntry,
   VariableEntry,
-} from './types';
+} from './types.ts';
 
 const omittedAttributeValue = Symbol('omittedAttributeValue');
-import { ValueGenerator } from './ValueGenerator';
+import { ValueGenerator } from './ValueGenerator.ts';
 
 type VariableRef = {
   id: string;
@@ -2081,7 +2082,10 @@ export class SyntheticInterview {
             { entity: disagreement.entity, type: disagreement.type },
             [disagreement.variable],
             [...COMPOSER_RENDERING_CONFLICT.rules],
-            { reason: COMPOSER_RENDERING_CONFLICT.reason },
+            {
+              reason: COMPOSER_RENDERING_CONFLICT.reason,
+              reasonCode: 'incompatibleDateControls',
+            },
           ),
         ),
         COMPOSER_RENDERING_CONFLICT.summary,
@@ -2154,6 +2158,7 @@ export class SyntheticInterview {
         throw new SyntheticDataConstraintError(
           [
             this.conflict(ref, [...memberIds], ['unique'], {
+              reasonCode: 'duplicateFixedValues',
               // Reported as the key the collision was judged on rather than
               // the value as written: it is what the registry compared, and a
               // layout or categorical value has no useful `String()` form.
@@ -2204,6 +2209,7 @@ export class SyntheticInterview {
     throw new SyntheticDataConstraintError(
       [
         this.conflict(ref, broken.variableIds, [broken.rule], {
+          reasonCode: 'fixedValueRejected',
           reason: `the caller sets these variables on one ${ref.entity} to ${setTo}, which ${broken.rule} cannot hold`,
         }),
       ],
@@ -2235,6 +2241,7 @@ export class SyntheticInterview {
     throw new SyntheticDataConstraintError(
       offending.map(([id]) =>
         this.conflict({ entity: 'ego' }, [id], ['unique'], {
+          reasonCode: 'uniqueEgo',
           reason: 'unique is not supported on ego variables',
         }),
       ),
@@ -2286,6 +2293,7 @@ export class SyntheticInterview {
 
     throw new SyntheticDataConstraintError([
       this.conflict(ref, broken.variableIds, [broken.rule], {
+        reasonCode: 'noSolution',
         reason: `the closest value these rules leave drawable is ${displayedValue}, which ${broken.rule} rejects`,
       }),
     ]);
@@ -2302,7 +2310,10 @@ export class SyntheticInterview {
     ref: EntityScopeRef,
     variableIds: string[],
     rules: string[],
-    { reason }: { reason: string },
+    {
+      reason,
+      reasonCode,
+    }: { reason: string; reasonCode: ConstraintReasonCode },
   ): ConstraintConflict {
     const entityType =
       ref.entity === 'ego'
@@ -2321,6 +2332,7 @@ export class SyntheticInterview {
       variableNames: variableIds.map((id) => variables?.get(id)?.name ?? id),
       rules,
       reason,
+      reasonCode,
     };
   }
 

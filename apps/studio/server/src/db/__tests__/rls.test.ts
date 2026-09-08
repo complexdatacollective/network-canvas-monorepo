@@ -77,17 +77,56 @@ describe.skipIf(!db)('row-level security', () => {
       .toSorted();
     // Spelled out so a new tenant table cannot slip in without a policy.
     expect(expected).toEqual([
+      'api_tokens',
+      'asset_references',
+      'assets',
+      'audit_alert_deliveries',
+      'audit_alert_outbox',
+      'audit_alert_recipients',
+      'audit_alert_settings',
       'audit_events',
+      'audit_export_jobs',
       'command_log',
+      'consent_documents',
+      'consent_items',
       'drafts',
+      'edges',
+      'experiment_assignments',
+      'experiment_exposures',
+      'experiments',
+      'feedback_reports',
+      'interview_links',
+      'interview_sessions',
       'leases',
       'manifests',
+      'message_deliveries',
+      'message_delivery_events',
+      'message_templates',
+      'nodes',
+      'participant_consent_item_responses',
+      'participant_consents',
+      'participants',
       'protocol_drafts',
       'protocol_versions',
       'protocols',
+      'schedule_occurrences',
       'sections',
+      'session_degree_hist',
+      'session_snapshots',
+      'session_stats',
+      'studies',
+      'study_role_grants',
+      'study_schedules',
+      'study_stage_rollups',
+      'study_wave_rollups',
+      'study_waves',
       'team_invitation_deliveries',
+      'template_version_sections',
+      'template_versions',
+      'templates',
       'version_sections',
+      'webhook_deliveries',
+      'webhook_subscriptions',
     ]);
 
     const rows = await pool.query<{
@@ -116,12 +155,32 @@ describe.skipIf(!db)('row-level security', () => {
         forced: true,
         policies: [
           table === 'audit_events' ? 'audit_team_isolation' : 'team_isolation',
-        ],
+          'backup_read',
+        ].toSorted(),
       })),
     );
-    const others = rows.rows.filter((row) => !expected.includes(row.table));
+    expect(
+      rows.rows.find((row) => row.table === 'audit_alert_dispatch_budget'),
+    ).toEqual({
+      table: 'audit_alert_dispatch_budget',
+      enabled: true,
+      forced: true,
+      policies: ['backup_read', 'maintenance_only'],
+    });
+    const others = rows.rows.filter(
+      (row) =>
+        !expected.includes(row.table) &&
+        row.table !== 'audit_alert_dispatch_budget',
+    );
     expect(others.map((row) => row.table).toSorted()).toEqual(
-      [...authTables, 'schemaFingerprint'].toSorted(),
+      [
+        ...authTables,
+        'schemaFingerprint',
+        'encryption_key_verifications',
+        'credential_audit_events',
+        'participant_contact_optouts',
+        'studio_instance',
+      ].toSorted(),
     );
     for (const row of others) {
       expect(row).toMatchObject({

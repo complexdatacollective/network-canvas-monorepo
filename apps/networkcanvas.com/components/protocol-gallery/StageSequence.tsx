@@ -3,6 +3,7 @@ import { useTranslations } from 'next-intl';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { StageBar } from '@codaco/fresco-ui/stages/StageBar';
 import { stageTypeColorStyle } from '@codaco/fresco-ui/stages/stageTypes';
+import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { ProtocolStage } from '~/lib/protocolStages';
 
@@ -36,9 +37,9 @@ export function StageSequence({ stages }: { stages: ProtocolStage[] }) {
             <span className="min-w-0 truncate" title={stage.label}>
               {stage.label}
             </span>
-            <span className="font-monospace text-text/60 text-right tracking-widest whitespace-nowrap uppercase">
+            <Eyebrow render={<span />} className="text-right whitespace-nowrap">
               {t(`stageTypes.${stage.type}`)}
-            </span>
+            </Eyebrow>
           </Surface>
         ))}
       </ol>

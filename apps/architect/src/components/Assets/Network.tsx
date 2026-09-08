@@ -2,6 +2,8 @@
 import { compose } from '@reduxjs/toolkit';
 import { useEffect, useMemo, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   getVariableNamesFromNetwork,
@@ -15,6 +17,14 @@ import {
 import { networkReader } from '../../utils/protocols/assetTools';
 import Table, { type TableColumn } from './Table';
 import withAssetPath from './withAssetPath';
+const messages = defineMessages({
+  showingOfRows: {
+    id: 'architect.assets.network.showingOfRows',
+    defaultMessage: 'Showing {ROW_LIMIT} of {value2} rows',
+    description: 'Visible text in components / Assets / Network.',
+  },
+});
+
 const ROW_LIMIT = 100;
 const initialContent: NetworkType = {
   nodes: [],
@@ -42,6 +52,7 @@ const Network = ({
   assetId,
   assetName,
 }: NetworkProps) => {
+  const intl = useAppIntl();
   const [content, setContent] = useState({ ...initialContent });
   useEffect(() => {
     if (!assetId || !assetName) {
@@ -67,8 +78,11 @@ const Network = ({
   return (
     <>
       {isTruncated && (
-        <Paragraph className="mb-2 text-sm text-current/70">
-          Showing {ROW_LIMIT} of {totalRows.toLocaleString()} rows
+        <Paragraph intent="smallText" emphasis="muted" className="mb-2">
+          {intl.formatMessage(messages.showingOfRows, {
+            ROW_LIMIT: intl.formatNumber(ROW_LIMIT),
+            value2: intl.formatNumber(totalRows),
+          })}
         </Paragraph>
       )}
       <Table data={data} columns={columns} />

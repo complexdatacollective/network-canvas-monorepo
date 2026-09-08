@@ -1,6 +1,9 @@
+'use client';
+
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 
-import { STATUS_LABELS, type Status } from '../genetics/status';
+import { getStatusLabel, type Status } from '../genetics/status';
 import { StatusMarker } from './StatusMarker';
 
 export type StickerProps = {
@@ -57,7 +60,8 @@ export function Sticker({
   nodeMode = 'perimeter',
   onClick,
 }: StickerProps) {
-  const label = STATUS_LABELS[status];
+  const intl = useAppIntl();
+  const label = getStatusLabel(status, intl);
   const isInteractive = onClick !== undefined;
   const statusAttr =
     nodeMode === 'single'

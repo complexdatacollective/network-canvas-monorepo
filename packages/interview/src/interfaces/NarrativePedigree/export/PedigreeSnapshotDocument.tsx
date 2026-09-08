@@ -2,12 +2,14 @@
 
 import { type CSSProperties, forwardRef, type ReactNode } from 'react';
 
+import { AppMessage } from '@codaco/app-i18n/react';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout';
 import type { VariableConfig } from '../../FamilyPedigree/store';
 import { NotationKey } from '../components/NotationKey';
+import { messages } from '../messages';
 
 type PedigreeSnapshotDocumentProps = {
   title: string;
@@ -118,7 +120,7 @@ export const PedigreeSnapshotDocument = forwardRef<
               fontWeight: 700,
             }}
           >
-            Key
+            <AppMessage message={messages.key} />
           </h3>
           <div className="flex flex-col gap-2" style={{ maxWidth: '28rem' }}>
             <NotationKey

@@ -5,7 +5,8 @@
     - strong: each relationship
     - text: you noted.
   - navigation:
-    - button "Previous Step"
+    - button "Settings"
+    - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

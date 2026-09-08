@@ -1,3 +1,4 @@
+import { logOperational } from '../observability/logger.ts';
 const DEFAULT_WINDOW_MS = 60_000;
 const DEFAULT_MAX_KEYS = 10_000;
 const DEFAULT_MAX_WAITERS_PER_KEY = 25;
@@ -118,27 +119,10 @@ export class DeniedAuditRateLimiter {
       options?.scheduleFlushTimeout ?? scheduleFlushTimeout;
     this.#onSummaryError =
       options?.onSummaryError ??
-      ((error) => {
-        process.emitWarning(
-          error instanceof Error ? error.message : 'Unknown summary failure',
-          {
-            type: 'StudioAuditWarning',
-            code: 'STUDIO_DENIED_AUDIT_SUMMARY_FAILED',
-          },
-        );
-      });
+      (() => logOperational('STUDIO_DENIED_AUDIT_SUMMARY_FAILED'));
     this.#onFlushTimeout =
       options?.onFlushTimeout ??
-      ((pendingWrites) => {
-        process.emitWarning(
-          'Timed out flushing denied-attempt audit summaries during shutdown.',
-          {
-            type: 'StudioAuditWarning',
-            code: 'STUDIO_DENIED_AUDIT_FLUSH_TIMEOUT',
-            detail: JSON.stringify({ pendingWrites }),
-          },
-        );
-      });
+      (() => logOperational('STUDIO_DENIED_AUDIT_FLUSH_TIMEOUT'));
   }
 
   #trackSummaryWrite(

@@ -331,3 +331,80 @@ export const WideContainer: Story = {
     </Region>
   ),
 };
+
+/**
+ * The whole region in a right-to-left locale. Group headings, rows, icons and
+ * counts all follow the direction; nothing in the list is positioned from a
+ * physical side.
+ */
+export const RightToLeft: Story = {
+  args: {
+    children: (
+      <>
+        <NavItem
+          href="/study/1"
+          label="نظرة عامة"
+          icon={LayoutDashboard}
+          current
+        />
+        <NavListGroup heading="التصميم">
+          <NavItem href="/study/1/editor" label="المحرر" icon={PencilRuler} />
+          <NavItem
+            href="/study/1/versions"
+            label="الإصدارات"
+            icon={GitBranch}
+            count={6}
+          />
+        </NavListGroup>
+        <NavListGroup heading="جمع البيانات">
+          <NavItem
+            href="/study/1/participants"
+            label="المشاركون"
+            icon={Users}
+            count={84}
+          />
+        </NavListGroup>
+      </>
+    ),
+  },
+  render: (args) => (
+    <div dir="rtl">
+      <Region className="w-72">
+        <NavList {...args} />
+      </Region>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const design = canvas.getByRole('list', { name: 'التصميم' });
+    const heading = canvas.getByText('التصميم');
+
+    await expect(getComputedStyle(design).direction).toBe('rtl');
+
+    // The group name starts at the inline-start edge, which here is the right:
+    // measured from the text itself rather than from its full-width box, which
+    // spans the column in either direction and so could not tell them apart.
+    const range = document.createRange();
+    range.selectNodeContents(heading);
+    const textBox = range.getBoundingClientRect();
+    const headingBox = heading.getBoundingClientRect();
+    const PX_4 = 16;
+    await expect(
+      Math.abs(headingBox.right - PX_4 - textBox.right),
+    ).toBeLessThanOrEqual(1);
+
+    // Sibling lists, unchanged by the direction: the grouping is semantic, so
+    // it must survive the flip untouched.
+    await expect(canvas.getAllByRole('list')).toHaveLength(3);
+    await expect(canvasElement.querySelectorAll('ul ul')).toHaveLength(0);
+
+    // Every row runs right to left too, so a count sits at the left-hand end
+    // of its row rather than the right.
+    const participants = canvas.getByRole('link', { name: 'المشاركون 84' });
+    const count = within(participants).getByText((84).toLocaleString());
+    const label = within(participants).getByText('المشاركون');
+    await expect(count.getBoundingClientRect().left).toBeLessThan(
+      label.getBoundingClientRect().left,
+    );
+  },
+};

@@ -361,3 +361,50 @@ export const UnavailableInAList: Story = {
     }
   },
 };
+
+/**
+ * The row in a right-to-left region. Its spacing is written in logical
+ * properties, so the wide edge, the icon and the count all move to the other
+ * side of the row without a second stylesheet.
+ */
+export const RightToLeft: Story = {
+  args: {
+    href: '/study/1/participants',
+    label: 'المشاركون',
+    icon: Users,
+    count: 84,
+  },
+  render: (args) => (
+    <div dir="rtl">
+      <SidebarFrame className="w-72">
+        <NavItem {...args} />
+      </SidebarFrame>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const link = canvas.getByRole('link', { name: 'المشاركون 84' });
+    const styles = getComputedStyle(link);
+
+    await expect(styles.direction).toBe('rtl');
+
+    // `ps-4 pe-3` resolves against the row's own direction: the wider padding
+    // is on the right here, and would be on the left with `pl-4 pr-3`.
+    await expect(styles.paddingRight).toBe('16px');
+    await expect(styles.paddingLeft).toBe('12px');
+
+    // And the row itself runs right to left: the leading icon sits at the
+    // right-hand edge, ahead of the label, with the count last on the left.
+    const icon = link.querySelector('svg');
+    const label = canvas.getByText('المشاركون');
+    const count = canvas.getByText((84).toLocaleString());
+
+    await expect(icon).not.toBeNull();
+    await expect(icon!.getBoundingClientRect().left).toBeGreaterThan(
+      label.getBoundingClientRect().left,
+    );
+    await expect(count.getBoundingClientRect().left).toBeLessThan(
+      label.getBoundingClientRect().left,
+    );
+  },
+};

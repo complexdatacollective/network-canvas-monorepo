@@ -1,10 +1,10 @@
 import { Mail } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { OverlineHeading } from '~/components/protocol-gallery/OverlineHeading';
-import { ButtonLink } from '~/components/ui/ButtonLink';
 import { contactEmail } from '~/lib/content';
 
 export function SubmitProtocolCard() {
@@ -23,17 +23,16 @@ export function SubmitProtocolCard() {
           {t('description')}
         </Paragraph>
       </div>
-      <ButtonLink
-        native
-        href={`mailto:${contactEmail}`}
+      <Button
+        asChild
         color="secondary"
         variant="raised"
         size="sm"
         className="tablet-portrait:self-center shrink-0 self-start"
+        icon={<Mail aria-hidden />}
       >
-        <Mail aria-hidden />
-        {t('action')}
-      </ButtonLink>
+        <a href={`mailto:${contactEmail}`}>{t('action')}</a>
+      </Button>
     </Surface>
   );
 }

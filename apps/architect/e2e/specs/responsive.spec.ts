@@ -2,7 +2,6 @@ import { type Page } from '@playwright/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
-import { PROTOCOL_NAME_TOO_LONG_MESSAGE } from '../../src/config/index.js';
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
@@ -598,7 +597,9 @@ test('a refused protocol name is painted on screen, not only announced', async (
   expect(afterRefusal?.height ?? 0).toBeGreaterThan(1);
 
   // ...and what is painted is the refusal, not the counter carrying on.
-  await expect(allowance).toHaveText(PROTOCOL_NAME_TOO_LONG_MESSAGE);
+  await expect(allowance).toHaveText(
+    'Protocol names are limited to 100 characters.',
+  );
 
   // Refused: neither accepted nor truncated.
   await expect(nameControl).toHaveValue('Wave 2 pilot');

@@ -10,10 +10,10 @@ import {
 import { useTranslations } from 'next-intl';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
+import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { SchemaVersionTooltip } from '~/components/get-started/SchemaVersionTooltip';
-import { ButtonLink } from '~/components/ui/ButtonLink';
 import { cn } from '~/lib/cn';
 import {
   type AppRecord,
@@ -42,19 +42,20 @@ function AppActions({ app }: { app: WebApp }) {
   return (
     <div className="mt-8 flex flex-wrap gap-3">
       {app.actions.map((action) => (
-        <ButtonLink
+        <Button
           key={action.href}
-          href={action.href}
-          external
+          asChild
           color="default"
           className={cn(
             'rounded-full text-white',
             app.treatment === 'fresco' ? 'bg-slate-blue' : 'bg-neon-coral',
           )}
         >
-          {t(action.labelKey)}
-          <ExternalLink aria-hidden className="size-4" />
-        </ButtonLink>
+          <a href={action.href} target="_blank" rel="noreferrer">
+            {t(action.labelKey)}
+            <ExternalLink aria-hidden className="size-4" />
+          </a>
+        </Button>
       ))}
     </div>
   );
@@ -77,22 +78,27 @@ function PlatformActions({ app }: { app: ClassicApp }) {
           const label = t(platform.labelKey);
 
           return (
-            <ButtonLink
+            <Button
               key={platform.id}
-              href={platform.href}
-              external
+              asChild
               variant="outline"
               color="dynamic"
-              aria-label={t('shared.platformAccessibleName', {
-                platform: label,
-                app: app.name,
-              })}
               className="bg-surface/70 hover:bg-surface rounded-full"
             >
-              <PlatformIcon aria-hidden className="size-4" />
-              {label}
-              <ExternalLink aria-hidden className="size-3.5" />
-            </ButtonLink>
+              <a
+                href={platform.href}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={t('shared.platformAccessibleName', {
+                  platform: label,
+                  app: app.name,
+                })}
+              >
+                <PlatformIcon aria-hidden className="size-4" />
+                {label}
+                <ExternalLink aria-hidden className="size-3.5" />
+              </a>
+            </Button>
           );
         })}
       </div>

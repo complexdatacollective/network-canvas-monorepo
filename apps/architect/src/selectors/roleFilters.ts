@@ -1,3 +1,5 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { interfaceNameMessages } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import type { RootState } from '~/ducks/modules/root';
 
 import {
@@ -7,6 +9,22 @@ import {
   roleMapKey,
   type VariableRoleMap,
 } from './indexes';
+const utilityMessages = defineMessages({
+  interfaceOwned: {
+    id: 'architect.utility.selectors.roleFilters.interfaceOwned',
+    defaultMessage:
+      'An interface sets this attribute, so it cannot be used here. Choose a different attribute.',
+    description:
+      'Fallback when an unknown interface owns an attribute. Its raw implementation name is not researcher repair guidance.',
+  },
+  thisAttributeIsSetBy: {
+    id: 'architect.utility.selectors.roleFilters.thisAttributeIsSetBy',
+    defaultMessage:
+      'This attribute is set by {interfaceName}, so it cannot be used here. Choose a different attribute.',
+    description:
+      'Researcher-facing explanatory text in selectors / roleFilters.',
+  },
+});
 
 type Subject = { entity: string; type?: string };
 type Option = { value: string; label: string };
@@ -159,5 +177,12 @@ export const interfaceOwnedPickIssue = (
   if (!variableId) return undefined;
   const claim = slotMap[roleMapKey(subject, variableId)];
   if (!claim || claim.slot === ownSlot) return undefined;
-  return `This attribute is set by ${claim.owner}, so it cannot be used here. Choose a different attribute.`;
+  const descriptor = Object.entries(interfaceNameMessages).find(
+    ([type]) => type === claim.ownerInterface,
+  )?.[1];
+  return descriptor
+    ? createMessageError(utilityMessages.thisAttributeIsSetBy, {
+        interfaceName: { messageError: createMessageError(descriptor) },
+      })
+    : createMessageError(utilityMessages.interfaceOwned);
 };

@@ -2,8 +2,8 @@ import { BookOpenText, Download, ExternalLink, Images } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useId } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
-import { ButtonLink } from '~/components/ui/ButtonLink';
 import type {
   ProtocolDownload,
   ProtocolSupplementaryMaterial,
@@ -20,26 +20,27 @@ function WaveActions({
 
   return (
     <>
-      <ButtonLink
-        native
-        href={download.protocolPath}
-        download={download.protocolFilename}
+      <Button
+        asChild
         color="primary"
         variant="raised"
+        icon={<Download aria-hidden />}
       >
-        <Download aria-hidden />
-        {t('downloadProtocol')}
-      </ButtonLink>
+        <a href={download.protocolPath} download={download.protocolFilename}>
+          {t('downloadProtocol')}
+        </a>
+      </Button>
       {children}
-      <ButtonLink
-        external
-        href={download.codebookPath}
+      <Button
+        asChild
         color="warning"
         variant="raised"
+        icon={<BookOpenText aria-hidden />}
       >
-        <BookOpenText aria-hidden />
-        {t('viewCodebook')}
-      </ButtonLink>
+        <a href={download.codebookPath} target="_blank" rel="noreferrer">
+          {t('viewCodebook')}
+        </a>
+      </Button>
     </>
   );
 }
@@ -77,22 +78,29 @@ export function ProtocolDownloads({
   if (!firstWave) return null;
 
   const sandboxAction = sandboxUrl ? (
-    <ButtonLink external href={sandboxUrl} color="secondary" variant="raised">
-      {t('openSandbox')}
-      <ExternalLink aria-hidden />
-    </ButtonLink>
-  ) : null;
-  const materialActions = supplementaryMaterials.map((material) => (
-    <ButtonLink
-      key={material.filename}
-      external
-      href={material.path}
+    <Button
+      asChild
       color="secondary"
       variant="raised"
+      icon={<ExternalLink aria-hidden />}
     >
-      <Images aria-hidden />
-      {material.label}
-    </ButtonLink>
+      <a href={sandboxUrl} target="_blank" rel="noreferrer">
+        {t('openSandbox')}
+      </a>
+    </Button>
+  ) : null;
+  const materialActions = supplementaryMaterials.map((material) => (
+    <Button
+      key={material.filename}
+      asChild
+      color="secondary"
+      variant="raised"
+      icon={<Images aria-hidden />}
+    >
+      <a href={material.path} target="_blank" rel="noreferrer">
+        {material.label}
+      </a>
+    </Button>
   ));
 
   if (laterWaves.length === 0) {

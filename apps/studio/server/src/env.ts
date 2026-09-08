@@ -1,6 +1,11 @@
 import { createEnv } from '@t3-oss/env-core';
 
-import { resolve, type StudioEnv } from './env/resolve.ts';
+import {
+  parseDatabaseAllowedLogins,
+  parseDatabaseAdministrativeLogins,
+} from './env/database-enrollment.ts';
+import { resolveEncryptionEnv, type EncryptionEnv } from './env/encryption.ts';
+import { resolve, type DbEnv, type StudioEnv } from './env/resolve.ts';
 import { serverSchemas, type VariableName } from './env/variables.ts';
 
 // The single sanctioned environment boundary for the Studio server: the only
@@ -29,12 +34,15 @@ const VARIABLES_WITHOUT_DATABASE_OR_AUTH = [
   'NODE_ENV',
   'STUDIO_DEV_DEFAULTS',
   'PORT',
+  'STUDIO_METRICS_TOKEN',
+  'TRUSTED_PROXIES',
   'HOST',
   'CLIENT_DIST',
   // The Netlify lane is the managed service, and its `status` procedure has
   // to say so; withholding this would make it report `self-hosted` however
   // the site is configured.
   'STUDIO_DEPLOYMENT_MODE',
+  'STUDIO_TELEMETRY',
   'S3_ENDPOINT',
   'S3_REGION',
   'S3_BUCKET',
@@ -84,7 +92,61 @@ export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
     runtimeEnv,
     emptyStringAsUndefined: true,
     skipValidation,
+    // The library default prints the complete validation issues object.
+    // Entry points decide how to report this fixed, value-free failure.
+    onValidationError: () => {
+      throw new Error('Invalid environment variables');
+    },
   });
 
-  return resolve(raw);
+  // Proxy admission and Better Auth both consume an address array. Tooling's
+  // validation-skip mode must not pass the raw comma-separated string through
+  // or allow an invalid trust boundary to reach either consumer.
+  const trustedProxies = serverSchemas.TRUSTED_PROXIES.safeParse(
+    runtimeEnv.TRUSTED_PROXIES || undefined,
+  );
+  if (!trustedProxies.success) throw new Error('Invalid environment variables');
+
+  // This privacy switch is always parsed, even in tooling's validation-skip
+  // mode. A raw 'false' must never become a truthy telemetry decision.
+  return resolve({
+    ...raw,
+    TRUSTED_PROXIES: trustedProxies.data,
+    STUDIO_TELEMETRY: serverSchemas.STUDIO_TELEMETRY.parse(
+      runtimeEnv.STUDIO_TELEMETRY || undefined,
+    ),
+  });
+}
+
+/** Offline schema administration needs only database credentials, never auth. */
+export function readMigrationDatabase(): DbEnv {
+  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
+  const url = serverSchemas.DATABASE_URL.parse(process.env.DATABASE_URL);
+  if (!url)
+    throw new Error('DATABASE_URL is required to run Studio migrations.');
+  return { url };
+}
+
+/** The operator lane omits development; server/dev tools pass their resolved local evidence. */
+export function readEncryptionEnv(
+  development?: Pick<StudioEnv, 'devDefaults' | 'db'>,
+): EncryptionEnv {
+  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
+  return resolveEncryptionEnv(process.env, development);
+}
+
+/** Read the explicit, precommitted deployment enrollment without inferring logins. */
+export function readMigrationAllowedLogins(): string[] {
+  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
+  const source = process.env.STUDIO_DATABASE_ALLOWED_LOGINS;
+  return parseDatabaseAllowedLogins(source);
+}
+
+/** Optional explicit administrative exceptions for offline operator commands. */
+export function readMigrationAdministrativeLogins(
+  allowedLogins: readonly string[],
+): string[] {
+  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
+  const source = process.env.STUDIO_DATABASE_ADMINISTRATIVE_LOGINS;
+  return parseDatabaseAdministrativeLogins(source, allowedLogins);
 }

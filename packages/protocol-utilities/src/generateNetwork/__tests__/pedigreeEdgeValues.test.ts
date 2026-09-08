@@ -15,9 +15,9 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { generateNetwork } from '../../generateNetwork';
-import { US_FAMILY_PEDIGREE_POPULATION } from '../familyPedigree/referencePopulation';
-import { PEDIGREE_RELATIONSHIP_TO_EGO_VALUES } from '../familyPedigree/types';
+import { generateNetwork } from '../../generateNetwork.ts';
+import { US_FAMILY_PEDIGREE_POPULATION } from '../familyPedigree/referencePopulation.ts';
+import { PEDIGREE_RELATIONSHIP_TO_EGO_VALUES } from '../familyPedigree/types.ts';
 
 const familyStage = {
   id: 'family-stage',

@@ -1,6 +1,7 @@
 import { type Dispatch } from '@reduxjs/toolkit';
 import { navigate } from 'wouter/use-browser-location';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
 import {
   type CurrentProtocol,
   type ExtractedAsset,
@@ -17,6 +18,7 @@ import { posthog } from '~/analytics';
 import { APP_SCHEMA_VERSION } from '~/config';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { timelineActions } from '~/ducks/middleware/timeline';
+import { getArchitectIntl } from '~/i18n/imperative';
 import type { ProtocolSourceRef } from '~/templates';
 import {
   saveProtocolAssets,
@@ -38,6 +40,7 @@ import {
   NetcanvasTooLargeError,
 } from '~/utils/netcanvasSizeGuard';
 import {
+  type LocalizedText,
   describeImportFailure,
   PROTOCOL_OPEN_FAILURE_MESSAGE,
   TEMPLATE_OPEN_FAILURE_MESSAGE,
@@ -57,6 +60,43 @@ import {
   setActiveProtocolId,
   setStorageUnavailable,
 } from '../app';
+const extraMessages = defineMessages({
+  failed: {
+    id: 'architect.protocolActions.failed',
+    defaultMessage: 'Failed to Open Protocol',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  unsupported: {
+    id: 'architect.protocolActions.unsupported',
+    defaultMessage: 'Unsupported file type. Please open a .netcanvas file.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  migrationFailed: {
+    id: 'architect.protocolActions.migrationFailed',
+    defaultMessage: 'Protocol migration failed.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  importError: {
+    id: 'architect.protocolActions.importError',
+    defaultMessage: 'Protocol Import Error',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  notFound: {
+    id: 'architect.protocolActions.notFound',
+    defaultMessage: 'Protocol Not Found',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  missing: {
+    id: 'architect.protocolActions.missing',
+    defaultMessage: 'This protocol could not be found in your library.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  openError: {
+    id: 'architect.protocolActions.openError',
+    defaultMessage: 'Protocol Open Error',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 type ImportSource = 'local' | 'bundled';
 
@@ -65,6 +105,8 @@ export type ProtocolOpenResult =
   | {
       status: 'error';
       title: string;
+      localizedTitle?: LocalizedText;
+      localizedMessage?: LocalizedText;
       message: string;
       /**
        * The underlying error's own text, for the dialog's collapsed technical
@@ -218,8 +260,10 @@ export const openLocalNetcanvas = createAppAsyncThunk(
         // dialog and return without reaching the exception-reporting catch.
         return {
           status: 'error',
-          title: 'Failed to Open Protocol',
-          message: 'Unsupported file type. Please open a .netcanvas file.',
+          title: getArchitectIntl().formatMessage(extraMessages.failed),
+          localizedTitle: { message: extraMessages.failed },
+          message: getArchitectIntl().formatMessage(extraMessages.unsupported),
+          localizedMessage: { message: extraMessages.unsupported },
         };
       }
 
@@ -242,8 +286,13 @@ export const openLocalNetcanvas = createAppAsyncThunk(
         if (error instanceof NetcanvasTooLargeError) {
           return {
             status: 'error',
-            title: 'Failed to Open Protocol',
-            message: error.message,
+            title: getArchitectIntl().formatMessage(extraMessages.failed),
+            localizedTitle: { message: extraMessages.failed },
+            ...describeImportFailure(
+              error,
+              PROTOCOL_OPEN_FAILURE_MESSAGE,
+              getArchitectIntl(),
+            ),
           };
         }
         throw error;
@@ -264,8 +313,13 @@ export const openLocalNetcanvas = createAppAsyncThunk(
         if (error instanceof NetcanvasInflationLimitError) {
           return {
             status: 'error',
-            title: 'Failed to Open Protocol',
-            message: error.message,
+            title: getArchitectIntl().formatMessage(extraMessages.failed),
+            localizedTitle: { message: extraMessages.failed },
+            ...describeImportFailure(
+              error,
+              PROTOCOL_OPEN_FAILURE_MESSAGE,
+              getArchitectIntl(),
+            ),
           };
         }
         throw error;
@@ -312,15 +366,18 @@ export const openLocalNetcanvas = createAppAsyncThunk(
       // The raw error still reaches exception reporting and the console above;
       // what the dialog leads with is Architect's own description of it, and
       // the raw text is offered only behind the technical-details disclosure.
-      const { message, detail } = describeImportFailure(
+      const { message, detail, localizedMessage } = describeImportFailure(
         error,
         PROTOCOL_OPEN_FAILURE_MESSAGE,
+        getArchitectIntl(),
       );
       return {
         status: 'error',
-        title: 'Failed to Open Protocol',
+        title: getArchitectIntl().formatMessage(extraMessages.failed),
+        localizedTitle: { message: extraMessages.failed },
         message,
         detail,
+        localizedMessage,
       };
     } finally {
       setImportInProgress(false);
@@ -402,13 +459,14 @@ const handleProtocolMigration = ({
           protocol: migratedProtocol as CurrentProtocol,
         };
       } catch (caught) {
-        const { title, message } = describeMigrationFailure(
+        const { title, message, detail } = describeMigrationFailure(
           ensureError(caught),
           protocol,
+          getArchitectIntl(),
         );
         return {
           status: 'needs-ui',
-          result: { status: 'error', title, message },
+          result: { status: 'error', title, message, detail },
         };
       }
     }
@@ -425,8 +483,12 @@ const handleProtocolMigration = ({
         status: 'needs-ui',
         result: {
           status: 'error',
-          title: 'Failed to Open Protocol',
-          message: 'Protocol migration failed.',
+          title: getArchitectIntl().formatMessage(extraMessages.failed),
+          localizedTitle: { message: extraMessages.failed },
+          message: getArchitectIntl().formatMessage(
+            extraMessages.migrationFailed,
+          ),
+          localizedMessage: { message: extraMessages.migrationFailed },
         },
       };
   }
@@ -514,15 +576,18 @@ export const openBundledTemplate = createAppAsyncThunk(
       // A bundled template never opens an archive, so the file-shaped reasons
       // are unreachable here — but storage failures are not, and the default
       // must talk about the template, never about a damaged file.
-      const { message, detail } = describeImportFailure(
+      const { message, detail, localizedMessage } = describeImportFailure(
         error,
         TEMPLATE_OPEN_FAILURE_MESSAGE,
+        getArchitectIntl(),
       );
       return {
         status: 'error',
-        title: 'Protocol Import Error',
+        title: getArchitectIntl().formatMessage(extraMessages.importError),
+        localizedTitle: { message: extraMessages.importError },
         message,
         detail,
+        localizedMessage,
       };
     } finally {
       setImportInProgress(false);
@@ -580,25 +645,30 @@ export const openLibraryProtocol = createAppAsyncThunk(
     if (!row) {
       return {
         status: 'error',
-        title: 'Protocol Not Found',
-        message: 'This protocol could not be found in your library.',
+        title: getArchitectIntl().formatMessage(extraMessages.notFound),
+        localizedTitle: { message: extraMessages.notFound },
+        message: getArchitectIntl().formatMessage(extraMessages.missing),
+        localizedMessage: { message: extraMessages.missing },
       };
     }
 
     let admission: Awaited<ReturnType<typeof admitStoredProtocol>>;
     try {
-      admission = await admitStoredProtocol(row);
+      admission = await admitStoredProtocol(row, undefined, getArchitectIntl());
     } catch (error: unknown) {
       reportError(error, { operation: 'stored-protocol-admission' });
-      const { message, detail } = describeImportFailure(
+      const { message, detail, localizedMessage } = describeImportFailure(
         error,
         PROTOCOL_OPEN_FAILURE_MESSAGE,
+        getArchitectIntl(),
       );
       return {
         status: 'error',
-        title: 'Protocol Open Error',
+        title: getArchitectIntl().formatMessage(extraMessages.openError),
+        localizedTitle: { message: extraMessages.openError },
         message,
         detail,
+        localizedMessage,
       };
     }
 

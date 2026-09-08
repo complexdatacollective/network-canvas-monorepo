@@ -103,6 +103,34 @@ type RetryOption =
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    me: {
+      queryOptions: () => ({
+        queryKey: ['me'],
+        queryFn: () => ({
+          userId: 'user-1',
+          email: 'researcher@example.org',
+          emailVerified: true,
+          name: 'Researcher',
+          // `me` carries the account's UI-language preference; null means
+          // "follow the browser" (2026-09-04 localization design §5.2).
+          locale: null,
+          teams: [{ teamId: 'team-a', role: 'owner' }],
+        }),
+      }),
+      key: () => ['me'],
+    },
+    // The header renders on every app route, and its study segment asks for
+    // the team's studies — a real dependency of the shell these tests mount,
+    // not of this screen. It answers nothing here: no study is open, so the
+    // query is disabled and the segment is absent.
+    protocols: {
+      list: {
+        queryOptions: () => ({
+          queryKey: ['protocols', 'list'],
+          queryFn: () => [],
+        }),
+      },
+    },
     // The team area reads the deployment topology from here to decide whether
     // this instance has billing at all (§10.4), so every test that renders a
     // team route needs an answer.
@@ -115,6 +143,19 @@ vi.mock('../../lib/api.ts', () => ({
           deployment: { mode: 'managed', billing: false },
         }),
       }),
+    },
+    // The header's study chip asks for the study on every app route, and
+    // answers nothing on one that names no study.
+    studies: {
+      list: {
+        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
+        key: () => ['studies'],
+      },
+      get: {
+        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
+        key: () => ['study'],
+      },
+      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
     },
     audit: {
       list: {

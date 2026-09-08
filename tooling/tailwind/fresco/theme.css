@@ -41,6 +41,25 @@
 
   --text-*: initial; /* Reset TW theme defaults */
 
+  /*
+   * One step below `xs`, for the small uppercase labels that qualify a value
+   * rather than being one — the kicker over a switcher's entity name, and
+   * anything else that has to read as a label at a glance without competing
+   * with what it labels.
+   *
+   * Its ceiling sits just under `xs`'s floor, so the two never converge at
+   * any viewport: the step is a real one at every size, not only at the
+   * extremes. Tracking is wider than `xs` because the sizes this small are
+   * almost always set in caps, where the default fit is too tight to read.
+   */
+  --text-2xs: clamp(
+    calc(0.512 * var(--theme-root-size)),
+    calc(0.586 * var(--theme-root-size) + calc(0.226 * var(--theme-vw, 1vw))),
+    calc(0.632 * var(--theme-root-size))
+  );
+  --text-2xs--line-height: 1.9;
+  --text-2xs--letter-spacing: 0.06em;
+
   --text-xs: clamp(
     calc(0.64 * var(--theme-root-size)),
     calc(0.733 * var(--theme-root-size) + calc(0.283 * var(--theme-vw, 1vw))),
@@ -430,21 +449,33 @@
   --node-font-size-md: clamp(0.875rem, 1.2vw, 1.125rem);
   --node-font-size-lg: clamp(1rem, 1.4vw, 1.25rem);
   --radius-*: initial;
-  --radius-none: 0px; /* 0px */
-  --radius-2xs: calc(var(--radius) * 0.125); /* 3.5px */
-  --radius-xs: calc(var(--radius) * 0.25); /* 7px */
-  --radius-sm: calc(var(--radius) * 0.5); /* 14px */
   /*
-   * Indirection through `--radius-base` so the bare `rounded` utility (which
-   * Tailwind v4's `@theme inline` would otherwise inline as a literal) keeps a
-   * `var()` reference and resolves at the use-site — same as `rounded-sm` /
-   * `rounded-lg` / etc. Theme files declare `--radius-base` (not `--radius`).
+   * EVERY step reads `--radius-base`, and none of them reads `--radius`.
+   *
+   * Under `@theme inline` a utility inlines its token's VALUE, so what a step
+   * is written in terms of decides where it resolves. `var(--radius-base, …)`
+   * inlines a `var()` reference, which resolves against the element — so a
+   * themed region gets its own theme's radius. `var(--radius)` would inline a
+   * reference to a custom property declared once at `:root`, which is
+   * substituted there against whatever `--radius-base` is at `:root` and then
+   * inherits that number everywhere. Deriving these steps from `--radius` did
+   * exactly that: `rounded-sm` was 14px and `rounded-xs` 7px in every theme,
+   * however the theme had set its base, while the bare `rounded` alone
+   * followed it.
+   *
+   * Theme files declare `--radius-base` and nothing else in this scale.
+   * Pixel comments below are the default theme's 1.75rem base; studio's
+   * 0.875rem halves them and interview's 2rem scales them by 8/7.
    */
-  --radius: var(--radius-base, 1.75rem);
-  --radius-lg: calc(var(--radius) * 1.5); /* 42px */
-  --radius-xl: calc(var(--radius) * 2); /* 56px */
-  --radius-2xl: calc(var(--radius) * 3); /* 84px */
-  --radius-3xl: calc(var(--radius) * 4); /* 112px */
+  --radius-none: 0px; /* 0px */
+  --radius-2xs: calc(var(--radius-base, 1.75rem) * 0.125); /* 3.5px */
+  --radius-xs: calc(var(--radius-base, 1.75rem) * 0.25); /* 7px */
+  --radius-sm: calc(var(--radius-base, 1.75rem) * 0.5); /* 14px */
+  --radius: var(--radius-base, 1.75rem); /* 28px */
+  --radius-lg: calc(var(--radius-base, 1.75rem) * 1.5); /* 42px */
+  --radius-xl: calc(var(--radius-base, 1.75rem) * 2); /* 56px */
+  --radius-2xl: calc(var(--radius-base, 1.75rem) * 3); /* 84px */
+  --radius-3xl: calc(var(--radius-base, 1.75rem) * 4); /* 112px */
   --radius-full: 9999px; /* 9999px */
 
   /*

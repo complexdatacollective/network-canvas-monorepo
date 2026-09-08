@@ -1,7 +1,18 @@
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 
 import AssetBrowser from './AssetBrowser';
+const messages = defineMessages({
+  resourceBrowser: {
+    id: 'architect.assetBrowser.assetBrowserWindow.resourceBrowser',
+    defaultMessage: 'Resource Browser',
+    description:
+      'The title text in components / AssetBrowser / AssetBrowserWindow.',
+  },
+});
 
 type AssetBrowserWindowProps = {
   show?: boolean;
@@ -18,15 +29,16 @@ const AssetBrowserWindow = ({
   onCancel = () => {},
   onSelect = (_assetId: string) => {},
 }: AssetBrowserWindowProps) => {
+  const intl = useAppIntl();
   return (
     <Dialog
       open={show}
       closeDialog={onCancel}
-      title="Resource Browser"
+      title={intl.formatMessage(messages.resourceBrowser)}
       size="workspace"
       footer={
         <Button color="default" onClick={onCancel}>
-          Cancel
+          {intl.formatMessage(commonMessages.cancel)}
         </Button>
       }
     >

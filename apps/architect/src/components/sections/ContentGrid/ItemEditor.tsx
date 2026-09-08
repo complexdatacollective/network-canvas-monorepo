@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -7,6 +9,7 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
 import RichText from '@codaco/protocol-builder/fields/RichTextField';
 import ArchitectField from '~/components/Form/ArchitectField';
+import { formatConfig } from '~/i18n/formatConfig';
 
 import Audio from '../../Form/Fields/Audio';
 import Image from '../../Form/Fields/Image';
@@ -23,6 +26,59 @@ import {
   isManifestAssetType,
 } from './itemTypes';
 import { sizeOptions, typeOptions } from './options';
+const messages = defineMessages({
+  itemDetails: {
+    id: 'architect.sections.contentGrid.itemEditor.itemDetails',
+    defaultMessage: 'Item details',
+    description:
+      'The title text in components / sections / ContentGrid / ItemEditor.',
+  },
+  chooseTheContentTypeProvideWhat: {
+    id: 'architect.sections.contentGrid.itemEditor.chooseTheContentTypeProvideWhat',
+    defaultMessage:
+      'Choose the content type, provide what participants will see, and adjust its presentation when available.',
+    description:
+      'The description text in components / sections / ContentGrid / ItemEditor.',
+  },
+  contentType: {
+    id: 'architect.sections.contentGrid.itemEditor.contentType',
+    defaultMessage: 'Content type',
+    description:
+      'The label text in components / sections / ContentGrid / ItemEditor.',
+  },
+  chooseTheTypeOfContentThis: {
+    id: 'architect.sections.contentGrid.itemEditor.chooseTheTypeOfContentThis',
+    defaultMessage: 'Choose the type of content this item will show.',
+    description:
+      'The hint text in components / sections / ContentGrid / ItemEditor.',
+  },
+  content: {
+    id: 'architect.sections.contentGrid.itemEditor.content',
+    defaultMessage: 'Content',
+    description:
+      'The label text in components / sections / ContentGrid / ItemEditor.',
+  },
+  provideTheContentForThisItem: {
+    id: 'architect.sections.contentGrid.itemEditor.provideTheContentForThisItem',
+    defaultMessage:
+      'Provide the {slotType, select, text {text} image {image} audio {audio} other {video}} content for this item. This is what participants will see when they reach this item in the study.',
+    description:
+      'The hint text in components / sections / ContentGrid / ItemEditor.',
+  },
+  displaySize: {
+    id: 'architect.sections.contentGrid.itemEditor.displaySize',
+    defaultMessage: 'Display size',
+    description:
+      'The label text in components / sections / ContentGrid / ItemEditor.',
+  },
+  optionallyConstrainTheHeightOfThis: {
+    id: 'architect.sections.contentGrid.itemEditor.optionallyConstrainTheHeightOfThis',
+    defaultMessage:
+      'Optionally constrain the height of this item. Full size lets it display at its natural height.',
+    description:
+      'The hint text in components / sections / ContentGrid / ItemEditor.',
+  },
+});
 
 const FrescoRadioGroupField = RadioGroupField as ComponentType<
   Record<string, unknown>
@@ -78,10 +134,24 @@ const isBlank = (value: unknown) => value === undefined || value === '';
  * Whole sentences rather than an assembled one: these are the strings a
  * translation would have to carry.
  */
-const MISSING_RESOURCE_NOTICE =
-  'This item’s resource is no longer in this protocol. Choose a content type above to replace it.';
-const UNPRESENTABLE_RESOURCE_NOTICE =
-  'This item’s resource is not an image, audio or video file, so this item cannot show it. Choose a content type above to replace it.';
+const MISSING_RESOURCE_NOTICE = defineMessages({
+  message: {
+    id: 'architect.notice.missingResourceNotice',
+    defaultMessage:
+      'This item\u2019s resource is no longer in this protocol. Choose a content type above to replace it.',
+    description:
+      'Researcher-facing explanation in components/sections/ContentGrid/ItemEditor.tsx.',
+  },
+}).message;
+const UNPRESENTABLE_RESOURCE_NOTICE = defineMessages({
+  message: {
+    id: 'architect.notice.unpresentableResourceNotice',
+    defaultMessage:
+      'This item\u2019s resource is not an image, audio or video file, so this item cannot show it. Choose a content type above to replace it.',
+    description:
+      'Researcher-facing explanation in components/sections/ContentGrid/ItemEditor.tsx.',
+  },
+}).message;
 
 /**
  * Announces what became of the item's content each time the researcher chooses
@@ -98,8 +168,12 @@ const UNPRESENTABLE_RESOURCE_NOTICE =
 const useContentTypeChangeAnnouncement = (
   slotType: ContentSlotType | undefined,
 ) => {
+  const intl = useAppIntl();
   const getFieldState = useFormStore((store) => store.getFieldState);
-  const [announcement, setAnnouncement] = useState('');
+  const [announcement, setAnnouncement] = useState<{
+    type: ContentSlotType;
+    outcome?: ContentDraftOutcome;
+  } | null>(null);
   const previousSlotType = useRef(slotType);
 
   useEffect(() => {
@@ -119,7 +193,7 @@ const useContentTypeChangeAnnouncement = (
     // the first type chosen for a new item, or the first choice for an item
     // whose saved reference could not be resolved.
     if (previous === undefined) {
-      setAnnouncement(getContentTypeChosenAnnouncement(slotType));
+      setAnnouncement({ type: slotType });
       return;
     }
 
@@ -128,10 +202,18 @@ const useContentTypeChangeAnnouncement = (
       : hasContent(previous)
         ? 'kept'
         : 'empty';
-    setAnnouncement(getContentTypeChangedAnnouncement(slotType, outcome));
+    setAnnouncement({ type: slotType, outcome });
   }, [getFieldState, slotType]);
 
-  return announcement;
+  return announcement
+    ? announcement.outcome
+      ? getContentTypeChangedAnnouncement(
+          announcement.type,
+          announcement.outcome,
+          intl,
+        )
+      : getContentTypeChosenAnnouncement(announcement.type, intl)
+    : '';
 };
 
 const ItemEditor = ({
@@ -140,6 +222,7 @@ const ItemEditor = ({
   content: initialContent,
   size,
 }: ItemEditorProps) => {
+  const intl = useAppIntl();
   const liveType = useFormValue(['type'] as const).type;
   // Falls back to the row's own pre-edit `type` until the field registers
   // (the reactive read is `undefined` for one render on mount), so an
@@ -158,14 +241,14 @@ const ItemEditor = ({
     slotType !== undefined || !initialContent
       ? undefined
       : isManifestAssetType(initialType)
-        ? UNPRESENTABLE_RESOURCE_NOTICE
-        : MISSING_RESOURCE_NOTICE;
+        ? intl.formatMessage(UNPRESENTABLE_RESOURCE_NOTICE)
+        : intl.formatMessage(MISSING_RESOURCE_NOTICE);
   const announcement = useContentTypeChangeAnnouncement(slotType);
 
   return (
     <Section
-      title="Item details"
-      description="Choose the content type, provide what participants will see, and adjust its presentation when available."
+      title={intl.formatMessage(messages.itemDetails)}
+      description={intl.formatMessage(messages.chooseTheContentTypeProvideWhat)}
     >
       {/*
         Mounted for the whole dialog, not rendered alongside its first message:
@@ -177,12 +260,12 @@ const ItemEditor = ({
       </span>
       <ArchitectField
         name="type"
-        label="Content type"
-        hint="Choose the type of content this item will show."
+        label={intl.formatMessage(messages.contentType)}
+        hint={intl.formatMessage(messages.chooseTheTypeOfContentThis)}
         component={FrescoRadioGroupField}
         validation={{ required: true }}
         initialValue={initialType}
-        options={typeOptions}
+        options={formatConfig(typeOptions, intl)}
       />
       {unusableContentNotice && (
         <Alert variant="warning">
@@ -193,8 +276,10 @@ const ItemEditor = ({
         <ArchitectField
           name={CONTENT_SLOT_NAMES[slotType]}
           component={contentInputs[slotType]}
-          label="Content"
-          hint={`Provide the ${slotType} content for this item. This is what participants will see when they reach this item in the study.`}
+          label={intl.formatMessage(messages.content)}
+          hint={intl.formatMessage(messages.provideTheContentForThisItem, {
+            slotType: slotType,
+          })}
           validation={{ required: true }}
           // Only the slot for the type the row was saved as starts from
           // the row's content; every other slot starts empty, which is
@@ -206,10 +291,10 @@ const ItemEditor = ({
         <ArchitectField
           name="size"
           component={FrescoRadioGroupField}
-          label="Display size"
-          hint="Optionally constrain the height of this item. Full size lets it display at its natural height."
+          label={intl.formatMessage(messages.displaySize)}
+          hint={intl.formatMessage(messages.optionallyConstrainTheHeightOfThis)}
           initialValue={size ?? ''}
-          options={sizeOptions}
+          options={formatConfig(sizeOptions, intl)}
           orientation="horizontal"
         />
       )}

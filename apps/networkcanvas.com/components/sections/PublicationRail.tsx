@@ -226,8 +226,9 @@ export function PublicationRail({
                       </time>
                     </Paragraph>
                     <Paragraph
+                      intent="smallText"
                       margin="none"
-                      className="text-surface-3-contrast/70 mt-3 text-sm"
+                      className="text-surface-3-contrast/70 mt-3"
                     >
                       {publication.authors}
                     </Paragraph>

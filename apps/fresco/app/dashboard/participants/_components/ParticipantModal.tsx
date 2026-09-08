@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { z } from 'zod/mini';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -19,10 +22,111 @@ import { createParticipant, updateParticipant } from '~/actions/participants';
 import ActionError from '~/components/ActionError';
 import InfoTooltip from '~/components/InfoTooltip';
 import type { Participant } from '~/lib/db/generated/client';
-import {
-  participantIdentifierSchema,
-  participantLabelSchema,
-} from '~/schemas/participant';
+import { createParticipantSchemas } from '~/schemas/participant';
+
+const messages = defineMessages({
+  error: {
+    id: 'fresco.ParticipantModal.error',
+    defaultMessage: 'Error',
+    description: 'Researcher-facing ParticipantModal: Error',
+  },
+
+  copyEditParticipant: {
+    id: 'fresco.participants.ParticipantModal.copyEditParticipant',
+    defaultMessage: 'Edit Participant',
+    description:
+      'Researcher-facing participants / ParticipantModal: Edit Participant',
+  },
+  copyAddParticipant: {
+    id: 'fresco.participants.ParticipantModal.copyAddParticipant',
+    defaultMessage: 'Add Participant',
+    description:
+      'Researcher-facing participants / ParticipantModal: Add Participant',
+  },
+  copyUpdate: {
+    id: 'fresco.participants.ParticipantModal.copyUpdate',
+    defaultMessage: 'Update',
+    description: 'Researcher-facing participants / ParticipantModal: Update',
+  },
+  copySubmit: {
+    id: 'fresco.participants.ParticipantModal.copySubmit',
+    defaultMessage: 'Submit',
+    description: 'Researcher-facing participants / ParticipantModal: Submit',
+  },
+  label: {
+    id: 'fresco.participants.ParticipantModal.label',
+    defaultMessage: 'Label',
+    description: 'Researcher-facing participants / ParticipantModal: Label',
+  },
+  thisOptionalFieldAllowsYouToProvide: {
+    id: 'fresco.participants.ParticipantModal.thisOptionalFieldAllowsYouToProvide',
+    defaultMessage:
+      'This optional field allows you to provide a human readable label. This could be a name, or an internal project label for this participant. It does not need to be unique, and will not be exposed to participants.',
+    description:
+      'Researcher-facing participants / ParticipantModal: This optional field allows you to provide a human readable label. This could be a name, or an internal project label for',
+  },
+  enterOptionalLabel: {
+    id: 'fresco.participants.ParticipantModal.enterOptionalLabel',
+    defaultMessage: 'Enter optional label...',
+    description:
+      'Researcher-facing participants / ParticipantModal: Enter optional label...',
+  },
+  optionalHumanReadableLabel: {
+    id: 'fresco.participants.ParticipantModal.optionalHumanReadableLabel',
+    defaultMessage: 'Optional human-readable label',
+    description:
+      'Researcher-facing participants / ParticipantModal: Optional human-readable label',
+  },
+  thisIdentifierIsAlreadyInUse: {
+    id: 'fresco.participants.ParticipantModal.thisIdentifierIsAlreadyInUse',
+    defaultMessage: 'This identifier is already in use.',
+    description:
+      'Researcher-facing participants / ParticipantModal: This identifier is already in use.',
+  },
+  thisCouldBeAStudyIDA: {
+    id: 'fresco.participants.ParticipantModal.thisCouldBeAStudyIDA',
+    defaultMessage:
+      'This could be a study ID, a number, or any other unique identifier. It should be unique for each participant, and should not be easy to guess',
+    description:
+      'Researcher-facing participants / ParticipantModal: This could be a study ID, a number, or any other unique identifier. It should be unique for each participant, and should',
+  },
+  participantIdentifiers: {
+    id: 'fresco.participants.ParticipantModal.participantIdentifiers',
+    defaultMessage: 'Participant Identifiers',
+    description:
+      'Researcher-facing participants / ParticipantModal: Participant Identifiers',
+  },
+  participantIdentifiersAreUsedByFrescoTo: {
+    id: 'fresco.participants.ParticipantModal.participantIdentifiersAreUsedByFrescoTo',
+    defaultMessage:
+      'Participant identifiers are used by Fresco to onboard participants. They might be exposed to the participant during this process via the participation URL, and so must <tag1>not</tag1> contain any sensitive information, and must not be easy for other participants to guess (e.g. sequential numbers, or easily guessable strings).',
+    description:
+      'Researcher-facing participants / ParticipantModal: Participant identifiers are used by Fresco to onboard participants. They might be exposed to the participant during this',
+  },
+  participantIdentifier: {
+    id: 'fresco.participants.ParticipantModal.participantIdentifier',
+    defaultMessage: 'Participant Identifier',
+    description:
+      'Researcher-facing participants / ParticipantModal: Participant Identifier',
+  },
+  enterAnIdentifier: {
+    id: 'fresco.participants.ParticipantModal.enterAnIdentifier',
+    defaultMessage: 'Enter an identifier...',
+    description:
+      'Researcher-facing participants / ParticipantModal: Enter an identifier...',
+  },
+  uniqueIdentifierForThisParticipant: {
+    id: 'fresco.participants.ParticipantModal.uniqueIdentifierForThisParticipant',
+    defaultMessage: 'Unique identifier for this participant',
+    description:
+      'Researcher-facing participants / ParticipantModal: Unique identifier for this participant',
+  },
+  generate: {
+    id: 'fresco.participants.ParticipantModal.generate',
+    defaultMessage: 'Generate',
+    description: 'Researcher-facing participants / ParticipantModal: Generate',
+  },
+});
 
 type ParticipantModalProps = {
   open: boolean;
@@ -39,6 +143,10 @@ function ParticipantModal({
   setEditingParticipant,
   existingParticipants,
 }: ParticipantModalProps) {
+  const intl = useAppIntl();
+  const { participantLabelSchema } =
+    createParticipantSchemas(createMessageError);
+
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -50,23 +158,17 @@ function ParticipantModal({
       label?: string | null;
     };
 
-    if (editingParticipant) {
-      await updateParticipant({
-        existingIdentifier: editingParticipant.identifier,
-        formData: data,
-      });
-      router.refresh();
-      setOpen(false);
-      return { success: true };
-    }
-
-    const result = await createParticipant([typedData]);
+    const result = editingParticipant
+      ? await updateParticipant({
+          existingIdentifier: editingParticipant.identifier,
+          formData: data,
+        })
+      : await createParticipant([typedData]);
 
     if (result.error) {
       setError(result.error);
       return {
         success: false,
-        errors: { form: [result.error] },
       };
     }
 
@@ -96,21 +198,30 @@ function ParticipantModal({
       <Dialog
         open={open}
         closeDialog={() => handleOpenChange(false)}
-        title={editingParticipant ? 'Edit Participant' : 'Add Participant'}
+        title={
+          editingParticipant
+            ? intl.formatMessage(messages.copyEditParticipant)
+            : intl.formatMessage(messages.copyAddParticipant)
+        }
         footer={
           <>
             <Button type="button" onClick={() => handleOpenChange(false)}>
-              Cancel
+              {intl.formatMessage(commonMessages.cancel)}
             </Button>
             <SubmitButton form="participantForm">
-              {editingParticipant ? 'Update' : 'Submit'}
+              {editingParticipant
+                ? intl.formatMessage(messages.copyUpdate)
+                : intl.formatMessage(messages.copySubmit)}
             </SubmitButton>
           </>
         }
       >
         {error && (
           <div className="mb-6 flex flex-wrap">
-            <ActionError errorTitle="Error" errorDescription={error} />
+            <ActionError
+              errorTitle={intl.formatMessage(messages.error)}
+              errorDescription={error}
+            />
           </div>
         )}
         <FormWithoutProvider
@@ -126,12 +237,14 @@ function ParticipantModal({
           <Field
             key="label"
             name="label"
-            label="Label"
-            hint="This optional field allows you to provide a human readable label. This could be a name, or an internal project label for this participant. It does not need to be unique, and will not be exposed to participants."
-            placeholder="Enter optional label..."
+            label={intl.formatMessage(messages.label)}
+            hint={intl.formatMessage(
+              messages.thisOptionalFieldAllowsYouToProvide,
+            )}
+            placeholder={intl.formatMessage(messages.enterOptionalLabel)}
             custom={{
               schema: participantLabelSchema,
-              hint: 'Optional human-readable label',
+              hint: intl.formatMessage(messages.optionalHumanReadableLabel),
             }}
             component={InputField}
             type="text"
@@ -153,6 +266,10 @@ function IdentifierField({
   editingParticipant?: Participant | null;
   initialValue?: string;
 }) {
+  const intl = useAppIntl();
+  const { participantIdentifierSchema } =
+    createParticipantSchemas(createMessageError);
+
   const setFieldValue = useFormStore((state) => state.setFieldValue);
 
   // Create validation that includes the uniqueness check
@@ -169,29 +286,26 @@ function IdentifierField({
         );
       },
       {
-        message: 'This identifier is already in use.',
+        message: createMessageError(messages.thisIdentifierIsAlreadyInUse),
       },
     ),
   );
 
   const hint = (
     <>
-      This could be a study ID, a number, or any other unique identifier. It
-      should be unique for each participant, and should not be easy to guess{' '}
+      {intl.formatMessage(messages.thisCouldBeAStudyIDA)}{' '}
       <InfoTooltip
         trigger={<HelpCircle className="inline-block size-4" />}
-        title="Participant Identifiers"
+        title={intl.formatMessage(messages.participantIdentifiers)}
         description={(props) => (
           <Paragraph {...props}>
-            Participant identifiers are used by Fresco to onboard participants.
-            They might be exposed to the participant during this process via the
-            participation URL, and so must <strong>not</strong> contain any
-            sensitive information, and must not be easy for other participants
-            to guess (e.g. sequential numbers, or easily guessable strings).
+            {intl.formatMessage(
+              messages.participantIdentifiersAreUsedByFrescoTo,
+              { tag1: (chunks) => <strong>{chunks}</strong> },
+            )}
           </Paragraph>
         )}
       />
-      .
     </>
   );
 
@@ -199,12 +313,12 @@ function IdentifierField({
     <Field
       key="identifier"
       name="identifier"
-      label="Participant Identifier"
+      label={intl.formatMessage(messages.participantIdentifier)}
       hint={hint}
-      placeholder="Enter an identifier..."
+      placeholder={intl.formatMessage(messages.enterAnIdentifier)}
       custom={{
         schema: identifierValidation,
-        hint: 'Unique identifier for this participant',
+        hint: intl.formatMessage(messages.uniqueIdentifierForThisParticipant),
       }}
       type="text"
       component={InputField}
@@ -218,7 +332,7 @@ function IdentifierField({
           }}
           icon={<WandSparkles />}
         >
-          Generate
+          {intl.formatMessage(messages.generate)}
         </Button>
       }
       initialValue={initialValue}

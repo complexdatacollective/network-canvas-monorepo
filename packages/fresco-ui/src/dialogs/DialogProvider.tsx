@@ -12,6 +12,14 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
+
 import { Button } from '../Button';
 import type { FieldValue } from '../form/Field/types';
 import { FormWithoutProvider } from '../form/Form';
@@ -30,10 +38,52 @@ import Dialog from './Dialog';
 import type { DialogSize } from './DialogPopup';
 import useWizardState from './useWizardState';
 
+const messages = defineMessages({
+  exitAndLoseProgress: {
+    id: 'frescoUi.dialogProvider.exitAndLoseProgress',
+    defaultMessage: 'Exit and lose progress',
+    description:
+      'Default confirm action of the dialog asking whether to abandon a wizard mid-way.',
+  },
+  continueEditing: {
+    id: 'frescoUi.dialogProvider.continueEditing',
+    defaultMessage: 'Continue editing',
+    description:
+      'Default cancel action of the dialog asking whether to abandon a wizard mid-way.',
+  },
+  pleaseWait: {
+    id: 'frescoUi.dialogProvider.pleaseWait',
+    defaultMessage: 'Please wait...',
+    description:
+      'Label shown on a confirm button while its action is still running.',
+  },
+  areYouSure: {
+    id: 'frescoUi.dialogProvider.areYouSure',
+    defaultMessage: 'Are you sure?',
+    description: 'Default title of a confirmation dialog.',
+  },
+  cannotBeUndone: {
+    id: 'frescoUi.dialogProvider.cannotBeUndone',
+    defaultMessage: 'This action cannot be undone.',
+    description: 'Default description of a confirmation dialog.',
+  },
+  submit: {
+    id: 'frescoUi.dialogProvider.submit',
+    defaultMessage: 'Submit',
+    description: 'Default submit action of a form dialog.',
+  },
+  errorOccurred: {
+    id: 'frescoUi.dialogProvider.errorOccurred',
+    defaultMessage: 'An error occurred',
+    description:
+      'Fallback error shown in a confirmation dialog when the failing action carries no message of its own.',
+  },
+});
+
 type BaseDialog = {
   id?: string;
-  title: string;
-  description?: string;
+  title: React.ReactNode;
+  description?: React.ReactNode;
   intent?: 'default' | 'destructive' | 'success' | 'info' | 'warning';
   children?: React.ReactNode;
   className?: string;
@@ -55,7 +105,7 @@ export type AcknowledgeDialog = BaseDialog & {
   type: 'acknowledge';
   actions: {
     primary: {
-      label: string;
+      label: React.ReactNode;
       value: true;
     };
   };
@@ -67,15 +117,15 @@ export type ChoiceDialog<P = unknown, S = unknown, C = null> = BaseDialog & {
   intent: 'default' | 'destructive' | 'success' | 'info' | 'warning';
   actions: {
     primary: {
-      label: string;
+      label: React.ReactNode;
       value: P;
     };
     secondary?: {
-      label: string;
+      label: React.ReactNode;
       value: S;
     };
     cancel: {
-      label: string;
+      label: React.ReactNode;
       value: C;
     };
   };
@@ -88,8 +138,8 @@ export type CustomDialog = BaseDialog & {
 
 type FormDialog = BaseDialog & {
   type: 'form';
-  submitLabel?: string;
-  cancelLabel?: string;
+  submitLabel?: React.ReactNode;
+  cancelLabel?: React.ReactNode;
 };
 
 export type GetFieldValue = (fieldName: string) => FieldValue | undefined;
@@ -107,8 +157,8 @@ export type WizardStep = {
   title: React.ReactNode;
   description?: React.ReactNode;
   content: React.ComponentType;
-  nextLabel?: string;
-  backLabel?: string;
+  nextLabel?: React.ReactNode;
+  backLabel?: React.ReactNode;
   skip?: (context: SkipContext) => boolean;
 };
 
@@ -121,13 +171,13 @@ export type WizardDialog = BaseDialog & {
   }> | null;
   onFinish?: (data: Record<string, unknown>) => unknown;
   confirmCancel?: {
-    title: string;
-    description: string;
-    primaryLabel?: string;
-    cancelLabel?: string;
+    title: React.ReactNode;
+    description: React.ReactNode;
+    primaryLabel?: React.ReactNode;
+    cancelLabel?: React.ReactNode;
     intent?: 'default' | 'destructive' | 'success' | 'info' | 'warning';
   };
-  cancelLabel?: string;
+  cancelLabel?: React.ReactNode;
 };
 
 // Helper type to extract return type from a dialog
@@ -154,7 +204,7 @@ type DialogState = AnyDialog & {
   open: boolean;
   abortController: AbortController | null;
   onConfirmHandler: (() => void | Promise<void>) | null;
-  error: string | null;
+  error: React.ReactNode;
   /**
    * The control that was focused when this dialog was requested. Captured
    * synchronously at the call, BEFORE the microtask that renders the dialog —
@@ -165,11 +215,13 @@ type DialogState = AnyDialog & {
 };
 
 type ConfirmOptions = {
+  /** Localized error guidance rendered while the confirm remains open for retry. */
+  describeError?: (error: unknown) => React.ReactNode;
   onConfirm: (signal: AbortSignal) => void | Promise<void>;
-  title?: string;
-  description?: string;
-  confirmLabel: string;
-  cancelLabel?: string;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  confirmLabel: React.ReactNode;
+  cancelLabel?: React.ReactNode;
   intent?: 'default' | 'destructive' | 'warning';
   size?: DialogSize;
   /**
@@ -296,12 +348,15 @@ function WizardDialogRenderer({
         intent: dialog.confirmCancel.intent ?? 'default',
         actions: {
           primary: {
-            label:
-              dialog.confirmCancel.primaryLabel ?? 'Exit and lose progress',
+            label: dialog.confirmCancel.primaryLabel ?? (
+              <AppMessage message={messages.exitAndLoseProgress} />
+            ),
             value: true,
           },
           cancel: {
-            label: dialog.confirmCancel.cancelLabel ?? 'Continue editing',
+            label: dialog.confirmCancel.cancelLabel ?? (
+              <AppMessage message={messages.continueEditing} />
+            ),
             value: false,
           },
         },
@@ -328,6 +383,7 @@ function WizardDialogRenderer({
 const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const intl = useAppIntl();
   const [dialogs, setDialogs] = useState<DialogState[]>([]);
   const dialogsRef = useRef<DialogState[]>([]);
   const isMounted = useRef(true);
@@ -478,7 +534,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   );
 
-  const setDialogError = useCallback((id: string, error: string | null) => {
+  const setDialogError = useCallback((id: string, error: React.ReactNode) => {
     setDialogs((prevDialogs) =>
       prevDialogs.map((d) => (d.id === id ? { ...d, error } : d)),
     );
@@ -499,7 +555,12 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         } catch (e) {
           setDialogError(
             dialogId,
-            e instanceof Error ? e.message : 'An error occurred',
+            options.describeError?.(e) ??
+              (e instanceof Error ? (
+                <AppErrorMessage error={e.message} />
+              ) : (
+                <AppMessage message={messages.errorOccurred} />
+              )),
           );
           return;
         }
@@ -522,7 +583,12 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
           setDialogAbortController(dialogId, null);
           setDialogError(
             dialogId,
-            e instanceof Error ? e.message : 'An error occurred',
+            options.describeError?.(e) ??
+              (e instanceof Error ? (
+                <AppErrorMessage error={e.message} />
+              ) : (
+                <AppMessage message={messages.errorOccurred} />
+              )),
           );
         }
       };
@@ -530,15 +596,19 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
       const result = await openDialog({
         id: dialogId,
         type: 'choice',
-        title: options.title ?? 'Are you sure?',
-        description: options.description ?? 'This action cannot be undone.',
+        title: options.title ?? <AppMessage message={messages.areYouSure} />,
+        description: options.description ?? (
+          <AppMessage message={messages.cannotBeUndone} />
+        ),
         intent: options.intent ?? 'destructive',
         size: options.size,
         finalFocus: options.finalFocus,
         actions: {
           primary: { label: options.confirmLabel, value: true },
           cancel: {
-            label: options.cancelLabel ?? 'Cancel',
+            label: options.cancelLabel ?? (
+              <AppMessage message={commonMessages.cancel} />
+            ),
             value: false,
           },
         },
@@ -602,7 +672,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
       return (
         <>
           {dialog.error && (
-            <Paragraph className="text-destructive w-full text-sm">
+            <Paragraph intent="smallText" className="text-destructive w-full">
               {dialog.error}
             </Paragraph>
           )}
@@ -635,7 +705,9 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
             icon={isLoading ? <Loader2 className="animate-spin" /> : undefined}
             data-testid="dialog-primary"
           >
-            {isLoading ? 'Please wait...' : dialog.actions.primary.label}
+            {isLoading
+              ? intl.formatMessage(messages.pleaseWait)
+              : dialog.actions.primary.label}
           </Button>
         </>
       );
@@ -673,10 +745,11 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
                   onClick={() => closeDialog(dialog.id, null)}
                   data-testid="dialog-cancel"
                 >
-                  {dialog.cancelLabel ?? 'Cancel'}
+                  {dialog.cancelLabel ??
+                    intl.formatMessage(commonMessages.cancel)}
                 </Button>
                 <SubmitButton form={formId} data-testid="dialog-submit">
-                  {dialog.submitLabel ?? 'Submit'}
+                  {dialog.submitLabel ?? intl.formatMessage(messages.submit)}
                 </SubmitButton>
               </>
             }

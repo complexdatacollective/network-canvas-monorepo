@@ -10,6 +10,7 @@
   - button "Alice"
   - button "Carol"
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

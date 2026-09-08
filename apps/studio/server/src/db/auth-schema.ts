@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
+  bytea,
   check,
   index,
   integer,
@@ -14,19 +15,40 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
-const user = pgTable('user', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
-  emailVerified: boolean('emailVerified').notNull(),
-  image: text('image'),
-  createdAt: timestamp('createdAt', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+const user = pgTable(
+  'user',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    email: text('email').notNull().unique(),
+    emailVerified: boolean('emailVerified').notNull(),
+    image: text('image'),
+    // Studio's addition, not better-auth's: the per-user UI-language
+    // preference (2026-09-04 localization design §5.2). Declared to
+    // better-auth as user.additionalFields.locale with input disabled, so
+    // only the account.updateLocale RPC — which validates tags against the
+    // supported registry — ever writes it. NULL means "no preference;
+    // negotiate from the browser".
+    locale: text('locale'),
+    createdAt: timestamp('createdAt', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updatedAt', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // The house locale bound (consent_documents_lengths_check,
+    // message_templates_locale_check): a plausible BCP 47 tag is 2–35
+    // characters. A NULL already passes a CHECK by SQL semantics; the IS NULL
+    // arm keeps the intent explicit for this nullable column.
+    check(
+      'user_locale_length_check',
+      sql`${table.locale} IS NULL
+          OR char_length(${table.locale}) BETWEEN 2 AND 35`,
+    ),
+  ],
+);
 
 const session = pgTable(
   'session',
@@ -48,18 +70,46 @@ const session = pgTable(
   (table) => [index('session_userId_idx').on(table.userId)],
 );
 
-const account = pgTable(
-  'account',
-  {
+function accountColumns() {
+  return {
     id: text('id').primaryKey(),
     accountId: text('accountId').notNull(),
     providerId: text('providerId').notNull(),
+    // Who vouches for `accountId`: `local:credential` for email/password,
+    // `https://accounts.google.com` for Google, the id token's per-tenant
+    // `iss` for Microsoft. better-auth 1.7 keys every account lookup
+    // (findCredentialAccount, findAccountByKey) on (issuer, accountId), so
+    // omitting the column made every credential and OAuth account
+    // unmatchable while looking otherwise fine — magic-link, the only path
+    // exercised until #1256's admin account, creates no account row at all.
+    issuer: text('issuer').notNull(),
     userId: text('userId')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    accessToken: text('accessToken'),
-    refreshToken: text('refreshToken'),
-    idToken: text('idToken'),
+    // Better Auth's logical token fields now map only to encrypted storage.
+    // Its adapter boundary encrypts before writing and audits before reading.
+    accessToken: bytea('access_token_ciphertext'),
+    accessTokenKeyId: text('access_token_key_id'),
+    accessTokenAlgorithm: text('access_token_algorithm'),
+    refreshToken: bytea('refresh_token_ciphertext'),
+    refreshTokenKeyId: text('refresh_token_key_id'),
+    refreshTokenAlgorithm: text('refresh_token_algorithm'),
+    idToken: bytea('id_token_ciphertext'),
+    idTokenKeyId: text('id_token_key_id'),
+    idTokenAlgorithm: text('id_token_algorithm'),
+    // Preserved for the offline, transactional migration of pre-encryption
+    // installations. Startup refuses any remaining value. Better Auth never
+    // sees these model fields and new writes must leave them NULL.
+    legacyAccessToken: text('accessToken'),
+    legacyRefreshToken: text('refreshToken'),
+    legacyIdToken: text('idToken'),
+    // Startup needs only presence, never retained credential contents. This
+    // stored expression cannot be forged by an ordinary runtime UPDATE.
+    legacyTokensPresent: boolean('legacy_tokens_present')
+      .generatedAlwaysAs(
+        sql`"accessToken" IS NOT NULL OR "refreshToken" IS NOT NULL OR "idToken" IS NOT NULL`,
+      )
+      .notNull(),
     accessTokenExpiresAt: timestamp('accessTokenExpiresAt', {
       withTimezone: true,
     }),
@@ -72,8 +122,34 @@ const account = pgTable(
       .notNull()
       .defaultNow(),
     updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
-  },
-  (table) => [index('account_userId_idx').on(table.userId)],
+  };
+}
+
+const account = pgTable(
+  'account',
+  accountColumns(),
+  // (issuer, accountId) is the external identity better-auth's own schema
+  // declares unique; without it two concurrent sign-ins for one identity can
+  // each insert a row, after which lookups pick one arbitrarily.
+  (table) => [
+    uniqueIndex('account_issuer_accountId_idx').on(
+      table.issuer,
+      table.accountId,
+    ),
+    index('account_userId_idx').on(table.userId),
+    check(
+      'account_access_token_envelope_check',
+      sql`(${table.accessToken} IS NULL) = (${table.accessTokenKeyId} IS NULL) AND (${table.accessToken} IS NULL) = (${table.accessTokenAlgorithm} IS NULL) AND (${table.accessToken} IS NULL OR (octet_length(${table.accessToken}) >= 29 AND ${table.accessTokenAlgorithm} = 'aes-256-gcm.v1'))`,
+    ),
+    check(
+      'account_refresh_token_envelope_check',
+      sql`(${table.refreshToken} IS NULL) = (${table.refreshTokenKeyId} IS NULL) AND (${table.refreshToken} IS NULL) = (${table.refreshTokenAlgorithm} IS NULL) AND (${table.refreshToken} IS NULL OR (octet_length(${table.refreshToken}) >= 29 AND ${table.refreshTokenAlgorithm} = 'aes-256-gcm.v1'))`,
+    ),
+    check(
+      'account_id_token_envelope_check',
+      sql`(${table.idToken} IS NULL) = (${table.idTokenKeyId} IS NULL) AND (${table.idToken} IS NULL) = (${table.idTokenAlgorithm} IS NULL) AND (${table.idToken} IS NULL OR (octet_length(${table.idToken}) >= 29 AND ${table.idTokenAlgorithm} = 'aes-256-gcm.v1'))`,
+    ),
+  ],
 );
 
 const verification = pgTable(
@@ -185,4 +261,19 @@ export const AUTH_TABLES = {
   teams,
   team_members,
   team_invitations,
+};
+
+// The adapter uses SELECT/RETURNING without an explicit projection. The same
+// column builders keep its runtime model aligned with the physical schema,
+// while excluding legacy plaintext even on create, update and joined reads.
+const {
+  legacyAccessToken: _legacyAccessToken,
+  legacyRefreshToken: _legacyRefreshToken,
+  legacyIdToken: _legacyIdToken,
+  legacyTokensPresent: _legacyTokensPresent,
+  ...runtimeAccountColumns
+} = accountColumns();
+export const AUTH_RUNTIME_TABLES = {
+  ...AUTH_TABLES,
+  account: pgTable('account', runtimeAccountColumns),
 };

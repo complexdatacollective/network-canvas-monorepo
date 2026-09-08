@@ -19,6 +19,7 @@ import {
 } from 'nuqs';
 import { use, useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { useNuqsTable } from '~/components/DataTable/nuqs/NuqsTableProvider';
 import type { Events } from '~/lib/db/generated/client';
@@ -35,12 +36,13 @@ export default function ActivityFeedRows({
 }) {
   // TanStack Table returns a mutable ref with stable identity, defeating React Compiler memoization.
   'use no memo';
+  const intl = useAppIntl();
   const tableData = use(activitiesPromise);
   const { startTransition } = useNuqsTable();
 
   const columns = useMemo<ColumnDef<Events>[]>(
-    () => fetchActivityFeedTableColumnDefs(),
-    [],
+    () => fetchActivityFeedTableColumnDefs(intl),
+    [intl],
   );
 
   // Pagination + sort writes go through the shared transition so the table

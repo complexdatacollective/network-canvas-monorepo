@@ -1,5 +1,4 @@
 'use client';
-
 import { Toggle } from '@base-ui/react';
 import { Search, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -12,6 +11,8 @@ import {
   useState,
 } from 'react';
 
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
@@ -20,6 +21,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
+import { interfaceMessages } from '../messages';
 import {
   type Suggestion,
   type UseGeospatialSearchProps,
@@ -43,18 +45,16 @@ const preventBlur = (e: React.MouseEvent) => e.preventDefault();
  * Search outcomes, as whole sentences a translator can work with — never
  * assembled from fragments, and never a status code.
  */
-const NO_RESULTS_MESSAGE = 'Nothing matched your search.';
+const NO_RESULTS_MESSAGE = interfaceMessages.noSearchResults;
 /**
  * Kept distinct from `NO_RESULTS_MESSAGE` on purpose: a search that could not
  * run tells us nothing about whether the place exists, and saying "Nothing
  * matched your search." to someone who is simply offline is a false statement
  * the participant cannot act on.
  */
-const SEARCH_FAILED_MESSAGE =
-  'Search could not be completed. Try again in a moment.';
-const RETRIEVE_FAILED_MESSAGE =
-  'That place could not be loaded. Try another search.';
-const movedMessage = (place: string) => `Map moved to ${place}.`;
+const SEARCH_FAILED_MESSAGE = interfaceMessages.searchFailed;
+const RETRIEVE_FAILED_MESSAGE = interfaceMessages.placeUnavailable;
+type SearchStatus = { message: MessageDescriptor; values?: { place: string } };
 
 export default function GeospatialSearch({
   accessToken,
@@ -64,8 +64,9 @@ export default function GeospatialSearch({
   onSearchPerformed,
   className,
 }: UseGeospatialSearchProps & { className?: string }) {
+  const intl = useAppIntl();
   const [isOpen, setIsOpen] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
+  const [statusMessage, setStatusMessage] = useState<SearchStatus | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -173,7 +174,7 @@ export default function GeospatialSearch({
   }, [isOpen, resetField]);
 
   const handleClear = useCallback(() => {
-    setStatusMessage('');
+    setStatusMessage(null);
     clear();
     inputRef.current?.focus();
   }, [clear]);
@@ -186,7 +187,7 @@ export default function GeospatialSearch({
    */
   const handleSearchQueryChange = useCallback(
     (value: string | undefined) => {
-      setStatusMessage('');
+      setStatusMessage(null);
       handleQueryChange(value);
     },
     [handleQueryChange],
@@ -245,8 +246,11 @@ export default function GeospatialSearch({
         if (selectionGenerationRef.current !== generation) return;
         setStatusMessage(
           outcome === 'moved'
-            ? movedMessage(suggestion.name)
-            : RETRIEVE_FAILED_MESSAGE,
+            ? {
+                message: interfaceMessages.mapMoved,
+                values: { place: suggestion.name },
+              }
+            : { message: RETRIEVE_FAILED_MESSAGE },
         );
       });
       closeSearch();
@@ -331,7 +335,7 @@ export default function GeospatialSearch({
 
   useEffect(() => {
     if (!settledMessage) return;
-    setStatusMessage(settledMessage);
+    setStatusMessage({ message: settledMessage });
   }, [settledMessage]);
 
   const showSuggestions =
@@ -358,7 +362,7 @@ export default function GeospatialSearch({
         className="sr-only"
         data-testid="geospatial-search-status"
       >
-        {statusMessage}
+        {statusMessage && <AppMessage {...statusMessage} />}
       </div>
 
       <Toggle
@@ -369,7 +373,11 @@ export default function GeospatialSearch({
             ref={buttonRef}
             icon={<Search />}
             color={isOpen ? 'secondary' : 'dynamic'}
-            aria-label={isOpen ? 'Close search' : 'Search location'}
+            aria-label={
+              isOpen
+                ? intl.formatMessage(interfaceMessages.closeSearch)
+                : intl.formatMessage(interfaceMessages.searchLocation)
+            }
             aria-expanded={isOpen}
             data-testid="geospatial-search-toggle"
             className="relative"
@@ -395,7 +403,7 @@ export default function GeospatialSearch({
                 ref={inputRef}
                 type="text"
                 autoFocus
-                placeholder="Search for a place..."
+                placeholder={intl.formatMessage(interfaceMessages.searchPlace)}
                 value={query}
                 onChange={handleSearchQueryChange}
                 onKeyDown={handleInputKeyDown}
@@ -413,7 +421,9 @@ export default function GeospatialSearch({
                       variant="text"
                       size="sm"
                       onClick={handleClear}
-                      aria-label="Clear search"
+                      aria-label={intl.formatMessage(
+                        interfaceMessages.clearSearch,
+                      )}
                       data-testid="geospatial-search-clear"
                       tabIndex={-1}
                     />
@@ -445,7 +455,9 @@ export default function GeospatialSearch({
                       textValueExtractor={textValueExtractor}
                       selectionMode="none"
                       animate={false}
-                      aria-label="Search suggestions"
+                      aria-label={intl.formatMessage(
+                        interfaceMessages.searchSuggestions,
+                      )}
                       className="flex flex-col p-1"
                       renderItem={renderItem}
                     >
@@ -462,7 +474,9 @@ export default function GeospatialSearch({
                     <div
                       id={listboxId}
                       role="listbox"
-                      aria-label="Search suggestions"
+                      aria-label={intl.formatMessage(
+                        interfaceMessages.searchSuggestions,
+                      )}
                       aria-busy={isLoading || undefined}
                       data-testid="geospatial-search-empty"
                       className={cx(
@@ -470,9 +484,13 @@ export default function GeospatialSearch({
                         isLoading && 'italic',
                       )}
                     >
-                      {isLoading
-                        ? 'Searching...'
-                        : (settledMessage ?? NO_RESULTS_MESSAGE)}
+                      {isLoading ? (
+                        <AppMessage message={interfaceMessages.searching} />
+                      ) : (
+                        <AppMessage
+                          message={settledMessage ?? NO_RESULTS_MESSAGE}
+                        />
+                      )}
                     </div>
                   )}
                 </MotionSurface>

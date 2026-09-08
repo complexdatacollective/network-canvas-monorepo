@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import { useStore } from 'react-redux';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
-import { ensureError } from '@codaco/shared-consts';
 import { getTypeForComponent } from '~/config/variables';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
@@ -10,6 +10,7 @@ import {
   updateVariableAsync,
 } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/modules/root';
+import { submissionMessages, toSubmissionError } from '~/i18n/submissionErrors';
 import { makeGetVariable } from '~/selectors/codebook';
 
 import { COMPOSER_CODEBOOK_PROPERTIES } from './composerHelpers';
@@ -52,7 +53,7 @@ type FieldValues = {
 
 const VARIABLE_NOT_FOUND: FormSubmissionResult = {
   success: false,
-  formErrors: ['Attribute not found'],
+  formErrors: [createMessageError(submissionMessages.missingAttribute)],
 };
 
 const isSubmissionResult = (
@@ -91,7 +92,7 @@ const useCodebookCommit = () => {
       } catch (error) {
         return {
           success: false,
-          fieldErrors: { variable: [ensureError(error).message] },
+          fieldErrors: { variable: [toSubmissionError(error)] },
         };
       }
     },

@@ -1,4 +1,13 @@
 import {
+  type IntlShape,
+  createAppIntl,
+  createMessageError,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+
+const defaultIntl = createAppIntl({ locale: 'en' });
+
+import {
   type CurrentProtocol,
   migrateProtocol,
   validateProtocol,
@@ -13,6 +22,21 @@ import {
   putStoredProtocolIfUnchanged,
 } from './protocolLibrary';
 import { reportProtocolUpgrade } from './protocolUpgradeQueue';
+const utilityMessages = defineMessages({
+  protocolChangedWhileUpgrading: {
+    id: 'architect.utility.utils.storedProtocolAdmission.protocolChangedWhileUpgrading',
+    defaultMessage: 'Protocol changed while upgrading',
+    description: 'The title text in utils / storedProtocolAdmission.',
+  },
+});
+const extraMessages = defineMessages({
+  changed: {
+    id: 'architect.storedProtocol.changed',
+    defaultMessage:
+      '"{name}" was saved by another window while it was being upgraded. Nothing was changed. Open the protocol again to continue.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 /**
  * Why a stored row was refused, already shaped as the app's protocol-open
@@ -28,7 +52,7 @@ import { reportProtocolUpgrade } from './protocolUpgradeQueue';
 export type StoredProtocolRefusal =
   | { status: 'validation-error'; message: string }
   | { status: 'app-upgrade-required'; protocolSchemaVersion: number }
-  | { status: 'error'; title: string; message: string };
+  | { status: 'error'; title: string; message: string; detail?: string };
 
 export type StoredProtocolAdmissionResult =
   | {
@@ -68,6 +92,7 @@ type AdmissionDependencies = {
 const upgradeStoredProtocol = async (
   row: StoredProtocolRow,
   dependencies: AdmissionDependencies,
+  intl: IntlShape = defaultIntl,
 ): Promise<StoredProtocolAdmissionResult> => {
   let migrated: CurrentProtocol;
   try {
@@ -81,11 +106,15 @@ const upgradeStoredProtocol = async (
     // forward. `describeMigrationFailure` turns that into something the
     // researcher can act on (see its own notes on why duplicate attribute
     // names are reported rather than repaired).
-    const { title, message } = describeMigrationFailure(
+    const { title, message, detail } = describeMigrationFailure(
       ensureError(caught),
       row.protocol,
+      intl,
     );
-    return { success: false, refusal: { status: 'error', title, message } };
+    return {
+      success: false,
+      refusal: { status: 'error', title, message, detail },
+    };
   }
 
   const validation = await (dependencies.validate ?? validateProtocol)(
@@ -126,10 +155,10 @@ const upgradeStoredProtocol = async (
       success: false,
       refusal: {
         status: 'error',
-        title: 'Protocol changed while upgrading',
-        message:
-          `"${row.name}" was saved by another window while it was being upgraded. ` +
-          'Nothing was changed. Open the protocol again to continue.',
+        title: createMessageError(
+          utilityMessages.protocolChangedWhileUpgrading,
+        ),
+        message: createMessageError(extraMessages.changed, { name: row.name }),
       },
     };
   }
@@ -152,6 +181,7 @@ const upgradeStoredProtocol = async (
 export const admitStoredProtocol = async (
   row: StoredProtocolRow,
   dependencies: AdmissionDependencies = {},
+  intl: IntlShape = defaultIntl,
 ): Promise<StoredProtocolAdmissionResult> => {
   if (row.schemaVersion > APP_SCHEMA_VERSION) {
     // Written by a newer Architect. There is no downgrade path, and guessing at
@@ -167,7 +197,7 @@ export const admitStoredProtocol = async (
   }
 
   if (row.schemaVersion < APP_SCHEMA_VERSION) {
-    return await upgradeStoredProtocol(row, dependencies);
+    return await upgradeStoredProtocol(row, dependencies, intl);
   }
 
   if (row.validated) return { success: true, protocol: row.protocol };

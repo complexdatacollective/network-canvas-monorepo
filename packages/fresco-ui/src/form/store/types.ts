@@ -45,13 +45,22 @@ export type FieldValidationFunction =
     ) => z.ZodMiniType | Promise<z.ZodMiniType>);
 
 /**
- * Custom field validation with required hint metadata.
+ * Custom field validation with optional hint metadata.
  * The schema can be a Zod schema directly, or a function that receives
  * form values and validation context and returns a schema.
  */
 export type CustomFieldValidation = {
   schema: FieldValidationFunction;
-  hint: string;
+  /**
+   * What `showValidationHints` promises up front about this rule.
+   *
+   * Optional because a custom rule need not have anything to promise: a rule
+   * that is domain reasoning rather than a stated constraint — "every option
+   * needs a unique value" — speaks only when it fails, and a required slot
+   * left it no way to say so except an empty string, which
+   * `makeValidationHints` then rendered as an empty bullet.
+   */
+  hint?: string;
 };
 
 /**

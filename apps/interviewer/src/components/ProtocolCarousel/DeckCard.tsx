@@ -12,6 +12,8 @@ import {
 } from 'react';
 import { Link } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Pattern } from '@codaco/art';
 import { buttonVariants, IconButton } from '@codaco/fresco-ui/Button';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
@@ -27,6 +29,42 @@ import { protocolDataViewPath } from '~/components/DataView/dataViewUrlState';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
 import { cardHeadingSizeClass } from './cardStyles';
+
+const messages = defineMessages({
+  protocol: {
+    id: 'interviewer.deckCard.protocol',
+    defaultMessage: 'Protocol',
+    description:
+      'Fallback protocol label while the real researcher-authored protocol name is unavailable.',
+  },
+  requiresInternet: {
+    id: 'interviewer.deckCard.requiresInternet',
+    defaultMessage: 'Requires Internet',
+    description:
+      'Protocol card badge warning that an interview stage needs an internet connection.',
+  },
+  deleteProtocol: {
+    id: 'interviewer.deckCard.deleteProtocol',
+    defaultMessage: 'Delete Protocol',
+    description: 'User-facing message in Interviewer Deck Card.',
+  },
+  loadingProtocol: {
+    id: 'interviewer.deckCard.loadingProtocol',
+    defaultMessage: 'Loading protocol',
+    description: 'User-facing message in Interviewer Deck Card.',
+  },
+  cardName: {
+    id: 'interviewer.deckCard.cardName',
+    defaultMessage: '{active, select, true {{name} (active)} other {{name}}}',
+    description:
+      'Accessible protocol-card name, where name is researcher-authored data.',
+  },
+  interviewCount: {
+    id: 'interviewer.deckCard.interviewCount',
+    defaultMessage: '{count, plural, one {# interview} other {# interviews}}',
+    description: 'Administration text in Interviewer DeckCard.',
+  },
+});
 
 function Pill({
   children,
@@ -386,6 +424,7 @@ const PRESENCE_EXIT = { opacity: 0 };
 const REGION_TRANSITION = { duration: 0.3, ease: 'easeOut' } as const;
 
 export function DeckCard(props: DeckCardProps) {
+  const intl = useAppIntl();
   const {
     protocol,
     isActive = false,
@@ -470,7 +509,10 @@ export function DeckCard(props: DeckCardProps) {
           'effect-shadow-xl h-full',
           isActive && 'effect-shadow-2xl',
         )}
-        aria-label={`${protocol.name ?? 'Protocol'}${isActive ? ' (active)' : ''}`}
+        aria-label={intl.formatMessage(messages.cardName, {
+          name: protocol.name ?? intl.formatMessage(messages.protocol),
+          active: String(isActive),
+        })}
         aria-busy={loading || undefined}
         onKeyDown={onCardKeyDown}
       >
@@ -503,7 +545,7 @@ export function DeckCard(props: DeckCardProps) {
                 >
                   {requiresInternetConnection && (
                     <Pill icon={<Globe />} intent="warning">
-                      Requires Internet
+                      {intl.formatMessage(messages.requiresInternet)}
                     </Pill>
                   )}
 
@@ -523,7 +565,10 @@ export function DeckCard(props: DeckCardProps) {
                       >
                         <IconButton
                           icon={<Trash2 />}
-                          aria-label={deleteLabel ?? 'Delete Protocol'}
+                          aria-label={
+                            deleteLabel ??
+                            intl.formatMessage(messages.deleteProtocol)
+                          }
                           variant="outline"
                           color="dynamic"
                           className="bg-rich-black/60 text-platinum size-[max(40px,10cqi)] border text-[max(16px,4cqi)]"
@@ -681,8 +726,9 @@ export function DeckCard(props: DeckCardProps) {
                       <Skeleton className="h-[3cqi] w-[18cqi]" />
                     ) : (
                       <span>
-                        {sessionCount}{' '}
-                        {sessionCount === 1 ? 'interview' : 'interviews'}
+                        {intl.formatMessage(messages.interviewCount, {
+                          count: sessionCount ?? 0,
+                        })}
                       </span>
                     )
                   ) : (
@@ -691,8 +737,9 @@ export function DeckCard(props: DeckCardProps) {
                         <Link href={protocolDataViewPath(protocol.name)} />
                       }
                     >
-                      {sessionCount ?? 0}{' '}
-                      {sessionCount === 1 ? 'interview' : 'interviews'}
+                      {intl.formatMessage(messages.interviewCount, {
+                        count: sessionCount ?? 0,
+                      })}
                     </NativeLink>
                   )}
                 </motion.div>
@@ -819,6 +866,7 @@ export function DeckCardProgressFooter({
   // Status line from the protocol import process (e.g. "Extracting…").
   message?: string;
 }) {
+  const intl = useAppIntl();
   return (
     <div className="flex flex-col gap-[1.5cqi] py-[2.5cqi]">
       <ProgressBar
@@ -829,13 +877,17 @@ export function DeckCardProgressFooter({
             ? 0
             : Math.min(100, Math.max(0, progress * 100))
         }
-        label={message ?? 'Loading protocol'}
+        label={message ?? intl.formatMessage(messages.loadingProtocol)}
         className="h-[2cqi] min-h-2"
       />
       <div className="font-monospace flex min-h-lh items-center justify-between text-[max(11px,2.8cqi)]">
         <span>{message}</span>
         {progress !== undefined && (
-          <span>{Math.round(Math.min(1, Math.max(0, progress)) * 100)}%</span>
+          <span>
+            {intl.formatNumber(Math.min(1, Math.max(0, progress)), {
+              style: 'percent',
+            })}
+          </span>
         )}
       </div>
     </div>

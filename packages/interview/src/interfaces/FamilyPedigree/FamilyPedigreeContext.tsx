@@ -1,3 +1,5 @@
+'use client';
+
 import { invariant } from 'es-toolkit';
 import { type ReactNode, createContext, useContext } from 'react';
 import { useStore } from 'zustand';

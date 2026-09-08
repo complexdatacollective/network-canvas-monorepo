@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { messageText } from '~/test/messageText';
 
 const { captureMock, scopeMock } = vi.hoisted(() => ({
   captureMock: vi.fn(),
@@ -215,7 +216,12 @@ describe('launchPreview', () => {
       useSyntheticData: true,
       respectSkipLogic: false,
     });
-    const expectation = expect(promise).rejects.toThrow(/didn't load/i);
+    const outcome = promise.catch((error: unknown) =>
+      error instanceof Error ? messageText(error.message) : error,
+    );
+    const expectation = expect(outcome).resolves.toBe(
+      'Preview window did not load in time. Close it and try again.',
+    );
     await vi.advanceTimersByTimeAsync(55_000);
     await expectation;
   });

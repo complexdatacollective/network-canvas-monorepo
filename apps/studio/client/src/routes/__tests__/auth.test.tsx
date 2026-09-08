@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client';
 import type { InferContractRouterOutputs } from '@orpc/contract';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
@@ -11,9 +12,10 @@ import {
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { contract } from '@codaco/studio-rpc';
+import type { contract, SetupStatus } from '@codaco/studio-rpc';
 
 import { registerStudioEditorSession } from '../../editor/sessionLifecycle.ts';
+import { rpcClient } from '../../lib/api.ts';
 import { authClient } from '../../lib/auth.ts';
 import { reportUnauthorizedResponse } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
@@ -26,46 +28,81 @@ vi.mock('../../lib/auth.ts', () => ({
     useActiveOrganization: vi.fn(),
     useActiveMember: vi.fn(),
     organization: { setActive: vi.fn(), list: vi.fn() },
-    signIn: { magicLink: vi.fn(), social: vi.fn() },
+    signIn: { magicLink: vi.fn(), social: vi.fn(), email: vi.fn() },
     signOut: vi.fn(),
   },
 }));
 
 type Status = InferContractRouterOutputs<typeof contract>['status'];
 const STATUS: Status = {
+  telemetry: false,
   name: 'Network Canvas Studio',
   version: '0.1.0',
-  auth: { enabled: true, magicLink: true, socialProviders: [] },
+  auth: {
+    enabled: true,
+    magicLink: true,
+    emailAndPassword: true,
+    socialProviders: [],
+  },
   deployment: { mode: 'managed', billing: false },
 };
 let currentStatus: Status = STATUS;
+let currentSetup: SetupStatus | Error = { state: 'complete' };
+let setupReads = 0;
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    setup: {
+      status: {
+        queryOptions: (options: object = {}) => ({
+          queryKey: ['setup'],
+          queryFn: () => {
+            setupReads++;
+            if (currentSetup instanceof Error) throw currentSetup;
+            return currentSetup;
+          },
+          ...options,
+        }),
+      },
+    },
+    me: {
+      queryOptions: () => ({
+        queryKey: ['me'],
+        queryFn: () => ({
+          userId: 'user-1',
+          email: 'researcher@example.org',
+          emailVerified: true,
+          name: 'Researcher',
+          teams: [{ teamId: 'team-a', role: 'owner' }],
+        }),
+      }),
+      key: () => ['me'],
+    },
     status: {
       queryOptions: () => ({
         queryKey: ['status'],
         queryFn: () => currentStatus,
       }),
     },
-    protocols: {
+    studies: {
       list: {
-        queryOptions: () => ({
-          queryKey: ['protocols'],
-          queryFn: () => [],
-        }),
-        key: () => ['protocols'],
+        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
+        key: () => ['studies'],
       },
-      create: {
-        mutationOptions: () => ({ mutationFn: vi.fn() }),
+      get: {
+        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
+        key: () => ['study'],
       },
+      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
         key: () => ['draft'],
       },
     },
   },
-  rpcClient: { protocols: {} },
+  rpcClient: { protocols: {}, setup: { complete: vi.fn() } },
 }));
 
 const mocked = vi.mocked(authClient, true);
@@ -74,6 +111,7 @@ type GetSessionResult = Awaited<ReturnType<typeof authClient.getSession>>;
 type UseSessionResult = ReturnType<typeof authClient.useSession>;
 type MagicLinkResult = Awaited<ReturnType<typeof authClient.signIn.magicLink>>;
 type SocialResult = Awaited<ReturnType<typeof authClient.signIn.social>>;
+type EmailPasswordResult = Awaited<ReturnType<typeof authClient.signIn.email>>;
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -152,6 +190,8 @@ async function clickSignOut() {
 beforeEach(() => {
   vi.resetAllMocks();
   currentStatus = STATUS;
+  currentSetup = { state: 'complete' };
+  setupReads = 0;
   mocked.getSession.mockResolvedValue(signedOut);
   mocked.organization.list.mockResolvedValue({
     data: [TEAM],
@@ -253,7 +293,12 @@ describe('route guard', () => {
     } as unknown as GetSessionResult);
     currentStatus = {
       ...STATUS,
-      auth: { enabled: false, magicLink: false, socialProviders: [] },
+      auth: {
+        enabled: false,
+        magicLink: false,
+        emailAndPassword: false,
+        socialProviders: [],
+      },
     };
     const router = renderAt(LANDING);
     await waitFor(() =>
@@ -577,10 +622,15 @@ describe('sign-in page', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('offers no email form when the server cannot send mail', async () => {
+  it('offers no email form when neither magic-link nor a password is available', async () => {
     currentStatus = {
       ...STATUS,
-      auth: { ...STATUS.auth, magicLink: false, socialProviders: ['google'] },
+      auth: {
+        ...STATUS.auth,
+        magicLink: false,
+        emailAndPassword: false,
+        socialProviders: ['google'],
+      },
     };
     renderAt('/sign-in');
     expect(
@@ -590,10 +640,36 @@ describe('sign-in page', () => {
     expect(screen.queryByText('or')).not.toBeInTheDocument();
   });
 
+  it('falls back to the password form when the server cannot send mail', async () => {
+    // magicLink is gated on the mailer being configured; emailAndPassword is
+    // not (app.ts), so a broken mailer alone leaves password sign-in intact
+    // — the researcher gets the password form directly, with no toggle back
+    // to a magic link that is not actually offered.
+    currentStatus = {
+      ...STATUS,
+      auth: { ...STATUS.auth, magicLink: false, socialProviders: [] },
+    };
+    renderAt('/sign-in');
+    // Password-only is the RESOLVED state; the optimistic pre-resolution
+    // render shows the magic-link form instead (magicLink defaults true
+    // while `auth` is undefined), so waiting on the email field alone would
+    // resolve against that transient render instead of this one.
+    expect(await screen.findByLabelText(/Password/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email address/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /magic link instead/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it('says so when no sign-in method is available at all', async () => {
     currentStatus = {
       ...STATUS,
-      auth: { enabled: true, magicLink: false, socialProviders: [] },
+      auth: {
+        enabled: true,
+        magicLink: false,
+        emailAndPassword: false,
+        socialProviders: [],
+      },
     };
     renderAt('/sign-in');
     await waitFor(() =>
@@ -610,6 +686,106 @@ describe('sign-in page', () => {
       expect(
         screen.getByText(/That sign-in link is no longer valid/),
       ).toBeInTheDocument(),
+    );
+  });
+});
+
+describe('password sign-in', () => {
+  it('switches to the password form and back', async () => {
+    renderAt('/sign-in');
+    // Both `magicLink` and `emailAndPassword` default conservatively before
+    // the status query resolves ('Send sign-in link' renders optimistically,
+    // the toggle does not) — findByRole here is what waits for that data.
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Sign in with a password instead',
+      }),
+    );
+    expect(await screen.findByLabelText(/Password/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Send sign-in link' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Sign in with a magic link instead',
+      }),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Send sign-in link' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Password/)).not.toBeInTheDocument();
+  });
+
+  it('signs in with a password and lands where the researcher belongs', async () => {
+    mocked.signIn.email.mockResolvedValue({
+      data: { token: 'session-token' },
+      error: null,
+    } as unknown as EmailPasswordResult);
+    const router = renderAt('/sign-in');
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Sign in with a password instead',
+      }),
+    );
+    const email = await screen.findByLabelText(/Email address/);
+    fireEvent.change(email, { target: { value: 'researcher@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Password/), {
+      target: { value: 'correct horse battery staple' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe(LANDING));
+    expect(mocked.signIn.email).toHaveBeenCalledWith({
+      email: 'researcher@example.com',
+      password: 'correct horse battery staple',
+    });
+  });
+
+  it('reports a generic error for a wrong password', async () => {
+    mocked.signIn.email.mockResolvedValue({
+      data: null,
+      error: { status: 401 },
+    } as unknown as EmailPasswordResult);
+    renderAt('/sign-in');
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Sign in with a password instead',
+      }),
+    );
+    fireEvent.change(await screen.findByLabelText(/Email address/), {
+      target: { value: 'researcher@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/), {
+      target: { value: 'wrong' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/That email or password is not correct/),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it('reports a failed sign-in when the request never completes', async () => {
+    mocked.signIn.email.mockRejectedValue(new Error('network down'));
+    renderAt('/sign-in');
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Sign in with a password instead',
+      }),
+    );
+    fireEvent.change(await screen.findByLabelText(/Email address/), {
+      target: { value: 'researcher@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/), {
+      target: { value: 'whatever' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/Sign-in did not complete/)).toBeInTheDocument(),
     );
   });
 });
@@ -711,5 +887,217 @@ describe('OAuth sign-in', () => {
     await waitFor(() =>
       expect(screen.getByText(/Sign-in did not complete/)).toBeInTheDocument(),
     );
+  });
+});
+
+describe('self-hosted first-run setup', () => {
+  const validToken = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+  function ready() {
+    currentStatus = {
+      ...STATUS,
+      deployment: { mode: 'self-hosted', billing: false },
+    };
+    currentSetup = { state: 'ready' };
+  }
+  async function fillSetup() {
+    await screen.findByRole('button', { name: 'Create instance' });
+    for (const [label, value] of [
+      [/^Instance name/, 'Field research'],
+      [/^Your name/, 'Initial Owner'],
+      [/^Email address/, 'owner@example.com'],
+      [/^Password/, 'test-only setup password'],
+      [/^Setup token/, validToken],
+    ] as const)
+      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  }
+
+  it('redirects a fresh self-hosted root to setup and renders five accessible required fields', async () => {
+    ready();
+    const router = renderAt('/');
+    expect(
+      await screen.findByRole('heading', { name: 'First-run setup' }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.pathname).toBe('/setup'));
+    for (const label of [
+      /^Instance name/,
+      /^Your name/,
+      /^Email address/,
+      /^Password/,
+      /^Setup token/,
+    ]) {
+      expect(await screen.findByLabelText(label)).toHaveAttribute(
+        'aria-required',
+        'true',
+      );
+    }
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Create instance' }));
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^Instance name/)).toHaveAttribute(
+        'aria-invalid',
+        'true',
+      ),
+    );
+    expect(rpcClient.setup.complete).not.toHaveBeenCalled();
+  });
+
+  it('submits once, removes setup secrets, and moves to sign-in', async () => {
+    ready();
+    vi.mocked(rpcClient.setup.complete).mockImplementation(async () => {
+      currentSetup = { state: 'complete' };
+      return { state: 'complete' };
+    });
+    const router = renderAt('/setup');
+    await fillSetup();
+    fireEvent.click(screen.getByRole('button', { name: 'Create instance' }));
+    await screen.findByRole('heading', { name: 'Sign in' });
+    expect(rpcClient.setup.complete).toHaveBeenCalledExactlyOnceWith({
+      token: validToken,
+      instanceName: 'Field research',
+      ownerName: 'Initial Owner',
+      ownerEmail: 'owner@example.com',
+      ownerPassword: 'test-only setup password',
+    });
+    expect(router.state.location.pathname).toBe('/sign-in');
+    expect(screen.queryByLabelText(/^Setup token/)).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Create instance' }),
+    ).toBeNull();
+    expect(screen.queryByLabelText(/^Password/)).toBeNull();
+    await act(() => router.navigate({ to: '/setup' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Page not found' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Setup token/)).toBeNull();
+  });
+
+  it('keeps an invalid token error on its field and lets the operator correct and retry it', async () => {
+    ready();
+    vi.mocked(rpcClient.setup.complete)
+      .mockRejectedValueOnce(new ORPCError('FORBIDDEN'))
+      .mockResolvedValueOnce({ state: 'complete' });
+    renderAt('/setup');
+    await fillSetup();
+    fireEvent.click(screen.getByRole('button', { name: 'Create instance' }));
+    expect(
+      await screen.findByText(
+        'That setup token is not valid. Check it and try again.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Setup token/)).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    fireEvent.change(screen.getByLabelText(/^Setup token/), {
+      target: { value: 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBA' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create instance' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Sign in' }),
+    ).toBeInTheDocument();
+    expect(rpcClient.setup.complete).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps a malformed token on its own field without sending it to the server', async () => {
+    ready();
+    renderAt('/setup');
+    await fillSetup();
+    fireEvent.change(screen.getByLabelText(/^Setup token/), {
+      target: { value: `${'A'.repeat(42)}!` },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create instance' }));
+    expect(
+      await screen.findByText(
+        'That setup token is not valid. Check it and try again.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Setup token/)).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    expect(rpcClient.setup.complete).not.toHaveBeenCalled();
+  });
+
+  it('recovers from a lost completion response by accepting the server replay refusal', async () => {
+    ready();
+    vi.mocked(rpcClient.setup.complete)
+      .mockRejectedValueOnce(new Error('internal secret detail'))
+      .mockRejectedValueOnce(new ORPCError('CONFLICT'));
+    renderAt('/setup');
+    await fillSetup();
+    fireEvent.click(screen.getByRole('button', { name: 'Create instance' }));
+    expect(
+      await screen.findByText(
+        'Setup could not be completed. Check the details and try again.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('internal secret detail')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Create instance' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Sign in' }),
+    ).toBeInTheDocument();
+    expect(rpcClient.setup.complete).toHaveBeenCalledTimes(2);
+  });
+
+  it('refuses setup on managed deployments before reading its state', async () => {
+    renderAt('/setup');
+    expect(
+      await screen.findByRole('heading', { name: 'Page not found' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Create instance' }),
+    ).toBeNull();
+    expect(setupReads).toBe(0);
+  });
+
+  it('renders not found when a completed self-hosted instance is reopened', async () => {
+    ready();
+    currentSetup = { state: 'complete' };
+    renderAt('/setup');
+    expect(
+      await screen.findByRole('heading', { name: 'Page not found' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Setup token/)).toBeNull();
+    expect(rpcClient.setup.complete).not.toHaveBeenCalled();
+  });
+
+  it('lets an existing development owner sign in when first-run setup is unavailable', async () => {
+    ready();
+    currentSetup = { state: 'unavailable' };
+    const router = renderAt('/');
+    expect(
+      await screen.findByRole('heading', { name: 'Sign in' }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/sign-in');
+    await act(() => router.navigate({ to: '/setup' }));
+    expect(
+      await screen.findByText(/First-run setup is unavailable/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+      'href',
+      '/sign-in',
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Create instance' }),
+    ).toBeNull();
+  });
+
+  it('shows a retryable state-load error without allowing setup on an unknown state', async () => {
+    ready();
+    currentSetup = new Error('internal detail');
+    renderAt('/setup');
+    expect(
+      await screen.findByText(
+        'Setup availability could not be checked. Try again.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Create instance' }),
+    ).toBeNull();
+    currentSetup = { state: 'ready' };
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(
+      await screen.findByRole('button', { name: 'Create instance' }),
+    ).toBeInTheDocument();
   });
 });

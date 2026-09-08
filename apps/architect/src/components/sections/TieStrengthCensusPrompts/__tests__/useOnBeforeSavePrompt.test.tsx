@@ -8,6 +8,7 @@ import {
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
 } from '@codaco/protocol-validation';
+import { messageFields, messageSubmissionResult } from '~/test/messageText';
 
 import { useCrossClassEditorValidate } from '../../useCrossClassEditorValidate';
 import {
@@ -72,10 +73,12 @@ describe('useOnBeforeSaveTieStrengthPrompt options contradiction', () => {
         { label: 'Different', value: 'different' },
       ],
     });
-    expect(result).toMatchObject({
+    expect(messageSubmissionResult(result)).toMatchObject({
       success: false,
       fieldErrors: {
-        variableOptions: [expect.stringContaining('share no option values')],
+        variableOptions: [
+          'The comparisons for A and B cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+        ],
       },
     });
   });
@@ -93,7 +96,10 @@ describe('useOnBeforeSaveTieStrengthPrompt options contradiction', () => {
         { label: 'Medium', value: 'medium' },
       ],
     });
-    expect(result).toMatchObject({ edgeVariable: 'b', createEdge: 'friend' });
+    expect(messageSubmissionResult(result)).toMatchObject({
+      edgeVariable: 'b',
+      createEdge: 'friend',
+    });
   });
 });
 
@@ -169,7 +175,7 @@ describe('useOnBeforeSaveTieStrengthPrompt saved row', () => {
         { label: 'Strong', value: 'strong' },
       ],
     });
-    expect(result).toEqual({
+    expect(messageSubmissionResult(result)).toEqual({
       id: 'p1',
       text: 'T',
       createEdge: 'friend',
@@ -256,7 +262,7 @@ describe('useOnBeforeSaveTieStrengthPrompt interface-owned gate', () => {
       edgeVariable: 'relationshipType',
       variableOptions: RELATIONSHIP_TYPE_OPTIONS,
     });
-    expect(result).toMatchObject({
+    expect(messageSubmissionResult(result)).toMatchObject({
       success: false,
       fieldErrors: {
         edgeVariable: [expect.stringContaining('cannot be used here')],
@@ -276,7 +282,7 @@ describe('useOnBeforeSaveTieStrengthPrompt interface-owned gate', () => {
         { label: 'Strong', value: 'strong' },
       ],
     });
-    expect(result).toMatchObject({
+    expect(messageSubmissionResult(result)).toMatchObject({
       edgeVariable: 'strength',
       createEdge: 'family_edge',
     });
@@ -312,7 +318,9 @@ describe('tieStrengthPromptSubject', () => {
   it('scopes the gate to the edge type the ROW names', () => {
     const validate = renderValidate(PROTOCOL_WITH_FORM_CONFLICT);
     expect(
-      validate({ createEdge: 'friend', edgeVariable: 'strength' }),
+      messageFields(
+        validate({ createEdge: 'friend', edgeVariable: 'strength' }),
+      ),
     ).toEqual({
       edgeVariable:
         '"Strength" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
@@ -337,7 +345,9 @@ describe('tieStrengthPromptSubject', () => {
       },
     });
     expect(
-      validate({ createEdge: 'rival', edgeVariable: 'strength' }),
+      messageFields(
+        validate({ createEdge: 'rival', edgeVariable: 'strength' }),
+      ),
     ).toBeUndefined();
   });
 });

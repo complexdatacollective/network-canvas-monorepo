@@ -1,4 +1,11 @@
 {
   "$comment": "Add an exact manifestPath, name, version, and reason only in the pull request that needs first-publication approval; existing entries cannot be reused.",
-  "approvals": []
+  "approvals": [
+    {
+      "manifestPath": "packages/app-i18n/package.json",
+      "name": "@codaco/app-i18n",
+      "version": "0.1.0",
+      "reason": "New shared app UI i18n infrastructure package (#1309); first publication from the Studio UI localization design (docs/superpowers/specs/2026-09-04-studio-ui-localization-design.md)."
+    }
+  ]
 }

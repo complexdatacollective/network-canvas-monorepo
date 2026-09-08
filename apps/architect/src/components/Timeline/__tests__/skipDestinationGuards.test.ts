@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Stage } from '@codaco/protocol-validation';
+import { messageFields } from '~/test/messageText';
 
 import {
   getSkipDestinationDeleteWarning,
@@ -25,7 +26,9 @@ const committedStages = [
 describe('Timeline skip destination guards', () => {
   it('builds a dependent-delete dialog with absolute stage numbers', () => {
     expect(
-      getSkipDestinationDeleteWarning(committedStages, 'destination'),
+      messageFields(
+        getSkipDestinationDeleteWarning(committedStages, 'destination'),
+      ),
     ).toEqual({
       title: 'Cannot delete stage',
       description:
@@ -44,7 +47,10 @@ describe('Timeline skip destination guards', () => {
       proposedStages,
     );
 
-    expect(guard).toMatchObject({
+    expect({
+      ...guard,
+      warning: !guard.allowed ? messageFields(guard.warning) : undefined,
+    }).toMatchObject({
       allowed: false,
       warning: {
         title: 'Cannot move stage',

@@ -4,6 +4,7 @@ import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
+import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
@@ -17,8 +18,6 @@ import { ProtocolDetailFacts } from '~/components/protocol-gallery/ProtocolDetai
 import { ProtocolDownloads } from '~/components/protocol-gallery/ProtocolDownloads';
 import { StageSequenceRail } from '~/components/protocol-gallery/StageSequenceRail';
 import { Container } from '~/components/ui/Container';
-import { NativeLink } from '~/components/ui/NativeLink';
-import { Pill } from '~/components/ui/Pill';
 import { routing } from '~/lib/i18n/routing';
 import { getProtocolBySlug, loadProtocolGallery } from '~/lib/protocolGallery';
 import { protocolGalleryHref, protocolGalleryUrl } from '~/lib/siteUrls';
@@ -84,7 +83,6 @@ export default async function ProtocolDetailPage({
   if (!protocol) notFound();
 
   const t = await getTranslations({ locale, namespace: 'ProtocolGallery' });
-  const [firstWave] = protocol.downloads;
 
   return (
     <main className="relative isolate">
@@ -92,25 +90,18 @@ export default async function ProtocolDetailPage({
 
       <div className="type-scale-product">
         <Container maxWidth="full" margin="none" className="mt-12">
-          <div
-            id={SITE_NAVIGATION_SKIP_TARGET_ID}
-            className="flex flex-wrap items-center justify-between gap-4"
-          >
-            <span className="inline-flex items-center gap-2">
-              <ArrowLeft aria-hidden className="text-link size-5" />
-              <NativeLink href={protocolGalleryHref(locale)}>
-                {t('detail.back')}
-              </NativeLink>
-            </span>
-            {firstWave ? (
-              <Pill variant="filled">
-                <span className="sr-only">{t('detail.protocolFile')} </span>
-                {firstWave.protocolFilename}
-              </Pill>
-            ) : null}
+          <div id={SITE_NAVIGATION_SKIP_TARGET_ID}>
+            <Button
+              asChild
+              color="default"
+              size="sm"
+              icon={<ArrowLeft aria-hidden />}
+            >
+              <a href={protocolGalleryHref(locale)}>{t('detail.back')}</a>
+            </Button>
           </div>
 
-          <div className="tablet-landscape:grid-cols-[minmax(0,1.4fr)_minmax(24rem,1fr)] mt-8 grid grid-cols-1 gap-8">
+          <div className="tablet-landscape:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] mt-8 grid grid-cols-1 gap-8">
             <div className="min-w-0 space-y-8">
               <div>
                 {protocol.featured ? (
@@ -148,14 +139,14 @@ export default async function ProtocolDetailPage({
                     sandboxUrl={protocol.sandboxUrl}
                   />
                 </div>
-                <Paragraph margin="none" className="mt-8">
+                <Paragraph margin="none" className="mt-8 max-w-[80ch]">
                   {protocol.summary}
                 </Paragraph>
               </div>
 
               <Surface noContainer spacing="lg" shadow="md">
                 <OverlineHeading>{t('detail.demonstrates')}</OverlineHeading>
-                <Paragraph margin="none" className="mt-3">
+                <Paragraph margin="none" className="mt-3 max-w-[80ch]">
                   {protocol.description}
                 </Paragraph>
               </Surface>

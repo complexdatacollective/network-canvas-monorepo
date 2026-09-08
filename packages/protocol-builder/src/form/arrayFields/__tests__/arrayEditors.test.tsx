@@ -1,0 +1,1155 @@
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useMemo } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import type { Command, SectionDoc } from '@codaco/studio-sync/apply';
+
+import { useStageEditorController } from '../../../controller.ts';
+import BuilderSection from '../../../sections/BuilderSection.tsx';
+import {
+  createStageIdentity,
+  type FinishRequest,
+  type ProtocolBuilderSession,
+  ProtocolBuilderSessionStore,
+  SessionReadOnlyError,
+} from '../../../session.ts';
+import { fixtureMessage } from '../../../testing/i18n.ts';
+import ProtocolArrayField from '../../ProtocolArrayField.tsx';
+import ProtocolField from '../../ProtocolField.tsx';
+import StageEditorShell from '../../StageEditorShell.tsx';
+import MultiSelect, {
+  makeMultiSelectValidation,
+  type PropertyField,
+} from '../MultiSelect.tsx';
+import Options, { optionsValidation } from '../Options.tsx';
+
+function createSession(
+  fields: SectionDoc,
+  onFinish?: (request: FinishRequest) => void,
+) {
+  return new ProtocolBuilderSessionStore({
+    identity: createStageIdentity('Information', () => 'stage-1'),
+    fields,
+    protocolSections: {},
+    manifestRevision: { sequence: 1n, hash: 'revision-1' },
+    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
+    buildCandidate: ({ stageDocument }) => ({
+      name: 'Array editors test',
+      schemaVersion: 8,
+      codebook: {},
+      stages: [stageDocument],
+    }),
+    ...(onFinish === undefined ? {} : { onFinish }),
+  });
+}
+
+/**
+ * A session whose next write is refused, while the snapshot still says the
+ * stage is editable — the lease taken back between the render a handler was
+ * built in and the click that dispatches.
+ *
+ * `setAccess` cannot stand in for it: it re-renders, and `ArrayField` withdraws
+ * every control of a read-only list, so there is nothing left to click. This is
+ * the only arrangement in which the refusal happens inside the list's own
+ * commit.
+ */
+function withRevocableDispatch(
+  store: ProtocolBuilderSessionStore,
+): ProtocolBuilderSession {
+  return {
+    subscribe: (listener) => store.subscribe(listener),
+    getSnapshot: () => store.getSnapshot(),
+    getServerSnapshot: () => store.getServerSnapshot(),
+    dispatch: () => {
+      throw new SessionReadOnlyError();
+    },
+    undo: () => store.undo(),
+    redo: () => store.redo(),
+    validate: () => store.validate(),
+    requestCompoundEdit: (request) => store.requestCompoundEdit(request),
+    finish: () => store.finish(),
+    cancel: () => store.cancel(),
+    getResourceGateway: () => store.getResourceGateway(),
+  };
+}
+
+const OPTIONS_CAPABILITY = {
+  fields: ['options'],
+  confirmClear: {
+    title: fixtureMessage('This will clear your answer options'),
+    description: fixtureMessage('The options you entered will be deleted.'),
+    confirmLabel: fixtureMessage('Clear options'),
+  },
+};
+
+/** The same list, behind a capability the researcher can switch off. */
+function renderOptionalOptions(session: ProtocolBuilderSessionStore) {
+  function Host() {
+    const controller = useStageEditorController(session, 'stage-form');
+    return (
+      <StageEditorShell
+        controller={controller}
+        actions={({ formId }) => (
+          <SubmitButton form={formId}>Finished editing</SubmitButton>
+        )}
+      >
+        <BuilderSection title="Answer options" capability={OPTIONS_CAPABILITY}>
+          <ProtocolArrayField
+            name="options"
+            label="Answer options"
+            component={Options}
+            addButtonLabel="Create new option"
+            {...optionsValidation}
+          />
+        </BuilderSection>
+      </StageEditorShell>
+    );
+  }
+
+  return render(
+    <DialogProvider>
+      <Host />
+    </DialogProvider>,
+  );
+}
+
+const commandsOf = (session: ProtocolBuilderSessionStore): Command[] =>
+  session.getSnapshot().pendingCommands.flatMap((batch) => [...batch.commands]);
+
+function renderOptions(session: ProtocolBuilderSession) {
+  function Host() {
+    const controller = useStageEditorController(session, 'stage-form');
+    return (
+      <StageEditorShell
+        controller={controller}
+        actions={({ formId }) => (
+          <SubmitButton form={formId}>Finished editing</SubmitButton>
+        )}
+      >
+        <BuilderSection title="Answer options">
+          <ProtocolArrayField
+            name="options"
+            label="Answer options"
+            component={Options}
+            addButtonLabel="Create new option"
+            {...optionsValidation}
+          />
+        </BuilderSection>
+      </StageEditorShell>
+    );
+  }
+
+  return render(
+    <DialogProvider>
+      <Host />
+    </DialogProvider>,
+  );
+}
+
+const SORT_PROPERTIES: PropertyField[] = [
+  { fieldName: 'property', control: 'input', label: 'Property' },
+  { fieldName: 'direction', control: 'input', label: 'Direction' },
+];
+
+function renderSortRules(session: ProtocolBuilderSession) {
+  function Host() {
+    const controller = useStageEditorController(session, 'stage-form');
+    const validation = useMemo(
+      () => makeMultiSelectValidation(SORT_PROPERTIES),
+      [],
+    );
+    return (
+      <StageEditorShell
+        controller={controller}
+        actions={({ formId }) => (
+          <SubmitButton form={formId}>Finished editing</SubmitButton>
+        )}
+      >
+        <BuilderSection title="Sort order">
+          <ProtocolArrayField
+            name="sortOrder"
+            label="Sort order"
+            component={MultiSelect}
+            addButtonLabel="Add new sort rule"
+            properties={SORT_PROPERTIES}
+            options={() => []}
+            {...validation}
+          />
+        </BuilderSection>
+      </StageEditorShell>
+    );
+  }
+
+  return render(
+    <DialogProvider>
+      <Host />
+    </DialogProvider>,
+  );
+}
+
+/**
+ * A list and an ordinary field in the one stage, which is the arrangement an
+ * undo of a list edit leaves behind: the draft moves for the list, and the
+ * researcher is typing somewhere else on the page while it does.
+ */
+function renderOptionsBesideHeading(session: ProtocolBuilderSession) {
+  function Host() {
+    const controller = useStageEditorController(session, 'stage-form');
+    return (
+      <StageEditorShell
+        controller={controller}
+        actions={({ formId }) => (
+          <SubmitButton form={formId}>Finished editing</SubmitButton>
+        )}
+      >
+        <BuilderSection title="Page content">
+          <ProtocolField
+            name="title"
+            label="Page heading"
+            component={InputField}
+          />
+        </BuilderSection>
+        <BuilderSection title="Answer options">
+          <ProtocolArrayField
+            name="options"
+            label="Answer options"
+            component={Options}
+            addButtonLabel="Create new option"
+            {...optionsValidation}
+          />
+        </BuilderSection>
+      </StageEditorShell>
+    );
+  }
+
+  return render(
+    <DialogProvider>
+      <Host />
+    </DialogProvider>,
+  );
+}
+
+describe('Options', () => {
+  it('adds a row as an insert and edits it as a replacement of that row', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [{ label: 'Yes', value: 'yes' }],
+    });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+
+    // A blank option opens straight into its editor, so the value cell is
+    // reachable without a further click.
+    const valueCell = await screen.findByRole('textbox', { name: 'Value' });
+    await user.type(valueCell, 'no');
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([
+        { label: 'Yes', value: 'yes' },
+        { value: 'no' },
+      ]),
+    );
+    // Options carry no id, so the row is followed by position while the list
+    // is unchanged — but the ADD is still an insert, and every keystroke after
+    // it lands on that row and no other. The first option is untouched
+    // throughout, which a whole-array rewrite could not promise.
+    const commands = commandsOf(session);
+    expect(commands[0]).toEqual({
+      op: 'insertItem',
+      key: 'options',
+      index: 1,
+      item: {},
+    });
+    expect(commands.slice(1).every(({ op }) => op === 'set')).toBe(true);
+  });
+
+  /**
+   * Options carry no id of their own, so `ArrayField` gives each row an
+   * internal id and infers, whenever the value is replaced, which arriving row
+   * each one belongs to. A confirm dialog is a window in which the list can be
+   * replaced — and when what arrives is an edit to the row being confirmed,
+   * the delete handler this row was rendered with names a row the dialog never
+   * described.
+   */
+  it('removes nothing when the option it confirmed was replaced beneath it', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [
+        { label: 'Alpha', value: 'alpha' },
+        { label: 'Bravo', value: 'bravo' },
+      ],
+    });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove option 2' }),
+    );
+    await screen.findByRole('button', { name: 'Remove option' });
+
+    // The row itself is edited from elsewhere while the confirm sits open, so
+    // this control now names an option the researcher has not read about.
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: {
+          title: 'Welcome',
+          options: [
+            { label: 'Alpha', value: 'alpha' },
+            { label: 'Bravo, revised', value: 'bravo-revised' },
+          ],
+        },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+    await screen.findByText('Bravo, revised');
+
+    await user.click(screen.getByRole('button', { name: 'Remove option' }));
+
+    // Nothing is removed, and the dialog says why rather than closing over a
+    // deletion that landed on an option the researcher never looked at.
+    expect(
+      await screen.findByText(
+        'This option was replaced while you were confirming, so nothing was removed. Check the list and remove it again if you still want to.',
+      ),
+    ).toBeInTheDocument();
+    expect(session.getSnapshot().editedSection.fields.options).toEqual([
+      { label: 'Alpha', value: 'alpha' },
+      { label: 'Bravo, revised', value: 'bravo-revised' },
+    ]);
+  });
+
+  /**
+   * The other half of that: a row that has NOT changed is still the row the
+   * researcher confirmed, however far the list has moved around it. Its id is
+   * inferred from its content rather than from where it sits, so an insertion
+   * above no longer hands this control the row above's handle — and refusing
+   * the removal here would send the researcher back to delete a row they had
+   * already told the list to delete.
+   */
+  it('removes the option it confirmed when a row arrives above it meanwhile', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [
+        { label: 'Alpha', value: 'alpha' },
+        { label: 'Bravo', value: 'bravo' },
+      ],
+    });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove option 2' }),
+    );
+    await screen.findByRole('button', { name: 'Remove option' });
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: {
+          title: 'Welcome',
+          options: [
+            { label: 'Zulu', value: 'zulu' },
+            { label: 'Alpha', value: 'alpha' },
+            { label: 'Bravo', value: 'bravo' },
+          ],
+        },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+    await waitFor(() =>
+      expect(
+        document.querySelectorAll('[aria-label^="Remove option "]'),
+      ).toHaveLength(3),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Remove option' }));
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([
+        { label: 'Zulu', value: 'zulu' },
+        { label: 'Alpha', value: 'alpha' },
+      ]),
+    );
+  });
+
+  /**
+   * The same arrival, met by an open row editor rather than a confirm dialog,
+   * and carrying two ordinary collaborator edits at once: the row the
+   * researcher has open is renamed, and another row is inserted above it.
+   *
+   * An option has no id of its own, so the list infers which arriving row is
+   * which from content — and the one row it cannot recognise here is the row
+   * that was both rewritten AND moved. Giving it the id that used to sit at
+   * its position would hand the open editor to the row the collaborator just
+   * added, and the next keystroke would overwrite their row. So the row gets a
+   * new id, the editor closes with the row it was holding, and the researcher
+   * opens whichever row they now want.
+   */
+  it('closes the open editor rather than moving it onto the row that arrived', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [
+        { label: 'Alpha', value: 'alpha' },
+        { label: 'Bravo', value: 'bravo' },
+      ],
+    });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit option 1' }),
+    );
+    expect(await screen.findByRole('textbox', { name: 'Value' })).toHaveValue(
+      'alpha',
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: {
+          title: 'Welcome',
+          options: [
+            { label: 'Zulu', value: 'zulu' },
+            { label: 'Alpha renamed', value: 'alpha' },
+            { label: 'Bravo', value: 'bravo' },
+          ],
+        },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+    await waitFor(() =>
+      expect(
+        document.querySelectorAll('[aria-label^="Remove option "]'),
+      ).toHaveLength(3),
+    );
+
+    expect(
+      screen.queryByRole('textbox', { name: 'Value' }),
+    ).not.toBeInTheDocument();
+
+    // Their own row is still there to go back to, and typing in it reaches it
+    // and nothing else — the row the collaborator added is untouched.
+    await user.click(screen.getByRole('button', { name: 'Edit option 2' }));
+    const value = screen.getByRole('textbox', { name: 'Value' });
+    await user.clear(value);
+    await user.type(value, 'mine');
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([
+        { label: 'Zulu', value: 'zulu' },
+        { label: 'Alpha renamed', value: 'mine' },
+        { label: 'Bravo', value: 'bravo' },
+      ]),
+    );
+  });
+
+  it('removes the option it confirmed when the list has not moved', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [
+        { label: 'Alpha', value: 'alpha' },
+        { label: 'Bravo', value: 'bravo' },
+      ],
+    });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove option 2' }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove option' }),
+    );
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([
+        { label: 'Alpha', value: 'alpha' },
+      ]),
+    );
+  });
+
+  /**
+   * The other thing a confirm's window can outlive: not the row, but what the
+   * list will accept.
+   *
+   * `ArrayField` withdraws a row's delete handler the moment its list becomes
+   * read-only or disabled, and says nothing else about it. A confirm answered
+   * after that calls a handler that is no longer there, removes nothing, and
+   * closes as though the option had gone.
+   */
+  it('removes nothing when the list stops accepting changes mid-confirm', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [
+        { label: 'Alpha', value: 'alpha' },
+        { label: 'Bravo', value: 'bravo' },
+      ],
+    });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove option 2' }),
+    );
+    await screen.findByRole('button', { name: 'Remove option' });
+
+    // The lease goes while the confirm sits open. The option is untouched —
+    // only what may be done to it has changed.
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Remove option' }));
+
+    expect(
+      await screen.findByText(
+        'This list stopped accepting changes while you were confirming, so this option was not removed. Remove it again once the list can be edited.',
+      ),
+    ).toBeInTheDocument();
+    expect(session.getSnapshot().editedSection.fields.options).toEqual([
+      { label: 'Alpha', value: 'alpha' },
+      { label: 'Bravo', value: 'bravo' },
+    ]);
+  });
+
+  it('refuses to finish the stage while a row it added is still blank', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    const session = createSession(
+      {
+        // A stage the schema would otherwise accept, so a refusal here can
+        // only be the one this test is about.
+        label: 'Welcome',
+        title: 'Welcome',
+        items: [],
+        options: [
+          { label: 'Yes', value: 'yes' },
+          { label: 'No', value: 'no' },
+        ],
+      },
+      onFinish,
+    );
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+    // The blank row reaches the document the moment it is added, because a
+    // list edit is committed as the operation it was. Nothing downstream will
+    // catch it: an unknown key is not what makes a stage invalid, so this
+    // field's own rule is the only thing standing between the researcher and a
+    // protocol carrying an option with neither half.
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([
+        { label: 'Yes', value: 'yes' },
+        { label: 'No', value: 'no' },
+        {},
+      ]),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    const message = await screen.findByText(
+      'Every option needs both a label and a value.',
+    );
+    // Attributed to the list that holds the row, so the outline and the
+    // problem panel can say where to go — a refusal nobody can act on is not
+    // much better than none.
+    expect(message.closest('[data-field-name="options"]')).not.toBeNull();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('leaves no blank row behind when the capability that held it is switched off', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    const session = createSession(
+      {
+        // A stage the schema would otherwise accept, so a refusal here can
+        // only be the one this test is about.
+        label: 'Welcome',
+        title: 'Welcome',
+        items: [],
+        options: [
+          { label: 'Yes', value: 'yes' },
+          { label: 'No', value: 'no' },
+        ],
+      },
+      onFinish,
+    );
+    renderOptionalOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toHaveLength(
+        3,
+      ),
+    );
+
+    await user.click(screen.getByRole('switch', { name: 'Answer options' }));
+    await user.click(screen.getByRole('button', { name: 'Clear options' }));
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    // The list is gone from the page, and with it the only rule that could
+    // have refused the blank row. What has to be true is that there is no
+    // blank row left to refuse: switching a capability off clears the paths it
+    // owns, so the stage saves with no options at all rather than with the
+    // half-finished one the researcher never got to see again.
+    await waitFor(() => expect(onFinish).toHaveBeenCalled());
+    const request = onFinish.mock.calls[0]?.[0] as FinishRequest;
+    expect(Object.hasOwn(request.stageDocument, 'options')).toBe(false);
+    expect(session.getSnapshot().editedSection.fields.options).toBeUndefined();
+  });
+
+  /**
+   * The first row added after the capability comes back on.
+   *
+   * A list resolves every insertion against the draft the SESSION holds, never
+   * against the rows it happens to be rendering, so "the list is empty now" has
+   * to be true there rather than only on screen. A switch-off that stopped at
+   * the form left the old rows in the draft, and the researcher's next Add was
+   * placed after them: the row they added arrived beside a row they had just
+   * confirmed the deletion of, looking every bit as authored.
+   */
+  it('adds the first row after a switch-off to an empty list', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      label: 'Welcome',
+      title: 'Welcome',
+      items: [],
+      options: [{ label: 'Yes', value: 'yes' }],
+    });
+    renderOptionalOptions(session);
+
+    await user.click(screen.getByRole('switch', { name: 'Answer options' }));
+    await user.click(screen.getByRole('button', { name: 'Clear options' }));
+    await user.click(screen.getByRole('switch', { name: 'Answer options' }));
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Label' }),
+      'No',
+    );
+    await user.type(screen.getByRole('textbox', { name: 'Value' }), 'no');
+
+    // One row, and it is the researcher's. The list they are typing into and
+    // the list the next save will write are the same list.
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([
+        { label: 'No', value: 'no' },
+      ]),
+    );
+    expect(screen.getAllByRole('textbox', { name: 'Label' })).toHaveLength(1);
+    // Said as an insert at the end of the list the session holds, which is
+    // where the researcher put it. At index 1 it would have followed a row
+    // they had just confirmed the deletion of.
+    expect(
+      commandsOf(session).filter((command) => command.op === 'insertItem'),
+    ).toEqual([{ op: 'insertItem', key: 'options', index: 0, item: {} }]);
+    // And the switch-off is in the same log, as the unset it is: the decision
+    // travels with the batches rather than sitting in the form.
+    expect(commandsOf(session)[0]).toEqual({ op: 'unset', key: 'options' });
+  });
+
+  it('adds an option to a key an import left holding something else', async () => {
+    const user = userEvent.setup();
+    // What a list key can hold after an import, a migration or a hand-edited
+    // protocol. The editor renders it as an empty list with a WORKING Add
+    // button — fresco-ui's render-tolerance contract — so the click behind
+    // that button has to reach the document rather than throw out of the
+    // handler.
+    const session = createSession({ title: 'Welcome', options: 'yes' });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([{}]),
+    );
+  });
+});
+
+describe('a list edit undone while another field is being typed in', () => {
+  it('puts the list back without taking the keystrokes with it', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [{ label: 'Yes', value: 'yes' }],
+    });
+    renderOptionsBesideHeading(session);
+
+    // A list edit commits on its own, so the session now holds an undo entry
+    // for it and the draft the controls were built from has moved.
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toHaveLength(
+        2,
+      ),
+    );
+
+    // Typing never reaches the session: this heading lives in the form and
+    // nowhere else until the stage is saved.
+    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+      'A new heading',
+    );
+
+    act(() => {
+      session.undo();
+    });
+
+    // The undo was about the list, so the list is what goes back.
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([
+        { label: 'Yes', value: 'yes' },
+      ]),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: /^Remove option/ }),
+      ).toHaveLength(1),
+    );
+    // The heading was no part of it. Reverting it too would discard work the
+    // researcher has not saved yet and never asked to undo.
+    expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+      'A new heading',
+    );
+  });
+});
+
+describe('MultiSelect', () => {
+  it('refuses a save while a row is missing a column', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      sortOrder: [{ property: 'name' }],
+    });
+    renderSortRules(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Finished editing' }),
+    );
+
+    await screen.findByText('Every row needs a value in each column.');
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+  });
+
+  it('adds a sort rule to a key an import left holding something else', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      sortOrder: { property: 'name' },
+    });
+    renderSortRules(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Add new sort rule' }),
+    );
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.sortOrder).toEqual([
+        {},
+      ]),
+    );
+  });
+});
+
+/**
+ * The same window, in the second of the three lists that share the confirm.
+ * A sort rule names its Remove control identically in every row, and the
+ * confirm's own control is named the same again, so the confirm is asked
+ * inside its own dialog rather than by name alone.
+ */
+describe('a row removal confirm the list stops accepting', () => {
+  it('removes no sort rule and says why', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      sortOrder: [
+        { property: 'name', direction: 'asc' },
+        { property: 'age', direction: 'desc' },
+      ],
+    });
+    renderSortRules(session);
+
+    const [firstRemove] = await screen.findAllByRole('button', {
+      name: 'Remove item',
+    });
+    await user.click(firstRemove!);
+    const dialog = await screen.findByRole('dialog');
+
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Remove item' }),
+    );
+
+    expect(
+      await screen.findByText(
+        'This list stopped accepting changes while you were confirming, so this item was not removed. Remove it again once the list can be edited.',
+      ),
+    ).toBeInTheDocument();
+    expect(session.getSnapshot().editedSection.fields.sortOrder).toEqual([
+      { property: 'name', direction: 'asc' },
+      { property: 'age', direction: 'desc' },
+    ]);
+  });
+});
+
+/**
+ * The lists that have no dialog over them, and therefore nobody to hand a
+ * refusal to.
+ *
+ * `ArrayField` draws every mutation out of its own state before anything is
+ * written, and re-reads the value only when the value CHANGES — so a write the
+ * document does not take leaves the edit on screen looking exactly like one
+ * that landed. What has to be true of both lists below is that the researcher
+ * is told, and that the rows go back to being the document's.
+ */
+describe('an inline list whose write the document does not take', () => {
+  it('says so and takes the added option back off screen when the stage refuses it', async () => {
+    const user = userEvent.setup();
+    const store = createSession({
+      title: 'Welcome',
+      options: [{ label: 'Yes', value: 'yes' }],
+    });
+    renderOptions(withRevocableDispatch(store));
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+
+    expect(
+      await screen.findByText(
+        'This stage is read-only, so this item was not saved. Take over editing and try again.',
+      ),
+    ).toBeInTheDocument();
+    expect(store.getSnapshot().editedSection.fields.options).toEqual([
+      { label: 'Yes', value: 'yes' },
+    ]);
+    // A blank option opens straight into its inline editor, so the cells of a
+    // row that was never written are the thing on screen that says it was.
+    expect(
+      screen.queryByRole('textbox', { name: 'Value' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole('button', { name: /^Edit option/ }),
+    ).toHaveLength(1);
+  });
+
+  // What an import, a migration or a legacy protocol can leave at a list's
+  // key. The editor draws the empty list for it with a working Add, and the
+  // write behind that Add carries the repair that makes the key a list — so a
+  // refusal here refuses BOTH, and the value the control is reconciled against
+  // never changes. Every shape the package's own docs name reaches the same
+  // path, and an object is not the one that would break first.
+  it.each([
+    ['an object', { label: 'Yes', value: 'yes' }],
+    ['a string', 'a legacy string'],
+    ['a number', 7],
+  ])(
+    'takes it back off screen when the key it would have repaired holds %s',
+    async (_shape, legacy) => {
+      const user = userEvent.setup();
+      const store = createSession({
+        title: 'Welcome',
+        options: legacy,
+      } as SectionDoc);
+      renderOptions(withRevocableDispatch(store));
+
+      await user.click(
+        await screen.findByRole('button', { name: 'Create new option' }),
+      );
+
+      expect(
+        await screen.findByText(
+          'This stage is read-only, so this item was not saved. Take over editing and try again.',
+        ),
+      ).toBeInTheDocument();
+      // The legacy value is still there: a repair rides with a write or not at
+      // all, and putting the empty list into the form value would discard it at
+      // the next submit for an edit that never landed.
+      expect(store.getSnapshot().editedSection.fields.options).toEqual(legacy);
+      // And the row is off the screen all the same. Nothing about the value can
+      // take it back — which is why the list is TOLD the write reached nothing;
+      // left there, it could never be edited or removed either, since every
+      // operation naming it resolves against the same foreign value.
+      await waitFor(() =>
+        expect(
+          screen.queryAllByRole('button', { name: /^Remove option/ }),
+        ).toHaveLength(0),
+      );
+      expect(
+        screen.queryByRole('textbox', { name: 'Value' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it('keeps the row open while it puts back a keystroke the document did not take', async () => {
+    const user = userEvent.setup();
+    const twin = () => ({ label: 'A', value: 'a' });
+    const session = createSession({
+      title: 'Welcome',
+      // A hole, and two options the researcher cannot tell apart. Adding an
+      // option appends past the hole and hands the control the rows without
+      // it, after which an edit to either twin resolves to no row: content is
+      // all a row without an id has, and both have the same content.
+      options: [null, twin(), twin()],
+    });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: /^Remove option/ }),
+      ).toHaveLength(3),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Edit option 1' }));
+    const valueCell = await screen.findByRole('textbox', { name: 'Value' });
+    await user.type(valueCell, 'x');
+
+    expect(
+      await screen.findByText(
+        'This list changed while you were editing, so this item could not be matched to a row in it and nothing was saved. Copy anything you want to keep, then check the list and make the change again.',
+      ),
+    ).toBeInTheDocument();
+    // Putting the rows back is what takes a refused edit off the screen, and it
+    // must not take the researcher out of the row they are in with it: they are
+    // being asked to look at the list and try again, not to find their way back
+    // to a row that closed itself.
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Value' })).toHaveValue('a'),
+    );
+    expect(session.getSnapshot().editedSection.fields.options).toEqual([
+      null,
+      twin(),
+      twin(),
+      {},
+    ]);
+  });
+
+  /**
+   * The move whose ROW names two places.
+   *
+   * Which of two rules nothing tells apart the researcher took hold of is the
+   * same question as which of them a destination sits after, and it has the
+   * same answer: the rules are paired off in order with the document's, so a
+   * position names the second of them at both ends. Resolving the row on its
+   * own — by content, and only while exactly one row matched — refused every
+   * such reorder outright, telling the researcher a list they could see
+   * perfectly well had changed underneath them.
+   *
+   * The refusal that reading exists for is still made where the answer decides
+   * which row an edit is written INTO: see the keystroke above, which is put
+   * back rather than landed on a guess.
+   */
+  it('moves the rule the researcher took hold of past the one between the copies', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      // A list an import left a hole in, holding two rules the researcher
+      // cannot tell apart with a third between them. `ArrayField` draws no
+      // rows for a list with a hole in it, so the add below appends past the
+      // hole and hands the control the rows WITHOUT it — which is what leaves
+      // the control and the document numbered differently for everything
+      // after.
+      sortOrder: [
+        null,
+        { property: 'name', direction: 'asc' },
+        { property: 'age', direction: 'desc' },
+        { property: 'name', direction: 'asc' },
+      ],
+    });
+    renderSortRules(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Add new sort rule' }),
+    );
+    await waitFor(() =>
+      expect(screen.getAllByRole('textbox', { name: 'Property' })).toHaveLength(
+        4,
+      ),
+    );
+
+    // The SECOND of the two rules that cannot be told apart moves up one, past
+    // the rule that was between them.
+    fireEvent.keyDown(
+      screen.getByRole('button', { name: 'Reorder item 3 of 4' }),
+      { key: 'ArrowUp' },
+    );
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.sortOrder).toEqual([
+        null,
+        { property: 'name', direction: 'asc' },
+        { property: 'name', direction: 'asc' },
+        { property: 'age', direction: 'desc' },
+        {},
+      ]),
+    );
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole('textbox', { name: 'Property' })
+          .map((cell) => (cell as HTMLInputElement).value),
+      ).toEqual(['name', 'name', 'age', '']),
+    );
+  });
+
+  /**
+   * The move whose destination — and not whose row — names two places.
+   *
+   * A row the list holds twice is a place all the same: the rows are paired off
+   * in order, so "after the first of them" is one position and "after the
+   * second" is another. Refusing over that told the researcher their reorder
+   * went nowhere for a list they could see perfectly well, and the same reading
+   * is what puts a NEW row back between two identical ones.
+   */
+  it('moves a rule to a place between two rules it cannot tell apart', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      sortOrder: [
+        null,
+        { property: 'name', direction: 'asc' },
+        { property: 'name', direction: 'asc' },
+      ],
+    });
+    renderSortRules(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Add new sort rule' }),
+    );
+    await waitFor(() =>
+      expect(screen.getAllByRole('textbox', { name: 'Property' })).toHaveLength(
+        3,
+      ),
+    );
+
+    // The blank row moves up one, which is between the two twins — and the
+    // hole the editor never drew stays where the import left it.
+    fireEvent.keyDown(
+      screen.getByRole('button', { name: 'Reorder item 3 of 3' }),
+      { key: 'ArrowUp' },
+    );
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.sortOrder).toEqual([
+        null,
+        { property: 'name', direction: 'asc' },
+        {},
+        { property: 'name', direction: 'asc' },
+      ]),
+    );
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole('textbox', { name: 'Property' })
+          .map((cell) => (cell as HTMLInputElement).value),
+      ).toEqual(['name', '', 'name']),
+    );
+  });
+});
+
+/**
+ * The other half of telling the researcher a write went nowhere: the message
+ * has to stop being true at some point, and the only thing that can say so is
+ * a later write that DID land.
+ */
+describe('a refusal the researcher has since written past', () => {
+  const REFUSAL =
+    'This list changed while you were editing, so this item could not be matched to a row in it and nothing was saved. Copy anything you want to keep, then check the list and make the change again.';
+
+  const twin = () => ({ label: 'A', value: 'a' });
+
+  /** Refuses one inline edit, on a stage that stays editable throughout. */
+  async function refuseAnOptionEdit(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: /^Remove option/ }),
+      ).toHaveLength(3),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Edit option 1' }));
+    await user.type(await screen.findByRole('textbox', { name: 'Value' }), 'x');
+    expect(await screen.findByText(REFUSAL)).toBeInTheDocument();
+  }
+
+  it('takes the message down once a later list edit lands', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [null, twin(), twin()],
+    });
+    renderOptions(session);
+    await refuseAnOptionEdit(user);
+
+    // A second add, which resolves to a row of its own and reaches the
+    // document. The stage was never read-only, so nothing else will ever
+    // retract the message.
+    await user.click(screen.getByRole('button', { name: 'Create new option' }));
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toHaveLength(
+        5,
+      ),
+    );
+
+    expect(screen.queryByText(REFUSAL)).not.toBeInTheDocument();
+  });
+
+  it('takes the message down once the stage saves', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    const session = createSession(
+      {
+        label: 'Welcome',
+        title: 'Welcome',
+        items: [],
+        options: [null, twin(), twin()],
+      },
+      onFinish,
+    );
+    renderOptionalOptions(session);
+    await refuseAnOptionEdit(user);
+
+    // Switching the capability off clears the list in the form and nowhere
+    // else, so the save that follows is the first thing since the refusal to
+    // reach the document at all.
+    await user.click(screen.getByRole('switch', { name: 'Answer options' }));
+    await user.click(screen.getByRole('button', { name: 'Clear options' }));
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    await waitFor(() => expect(onFinish).toHaveBeenCalled());
+    expect(screen.queryByText(REFUSAL)).not.toBeInTheDocument();
+  });
+});

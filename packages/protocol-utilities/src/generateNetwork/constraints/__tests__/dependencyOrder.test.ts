@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
 
-import { buildEntityConstraints } from '../buildConstraints';
-import { resolveGenerationOrder } from '../dependencyOrder';
+import { buildEntityConstraints } from '../buildConstraints.ts';
+import { resolveGenerationOrder } from '../dependencyOrder.ts';
 
 const TODAY = '2026-07-27';
 

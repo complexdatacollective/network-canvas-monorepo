@@ -1,3 +1,5 @@
+'use client';
+
 import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import { AnimatePresence } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';

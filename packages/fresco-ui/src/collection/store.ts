@@ -515,22 +515,42 @@ export const createCollectionStore = <T>(
 };
 
 /**
- * Create a store whose *initial* state already holds `items`, sorted by
- * `sortRules`. Zustand serves `getInitialState()` as the server snapshot, so
- * anything written after creation — the items, or the sort applied to them —
- * would never appear in server-rendered or static markup.
+ * What a collection starts with besides its items: the order they are in,
+ * which of them are disabled, and which are selected. Seeded alongside the
+ * items so the first render already carries all of it.
+ */
+export type CollectionSeed = {
+  sortRules?: SortRule[];
+  disabledKeys?: Iterable<Key>;
+  selectionMode?: SelectionMode;
+  selectedKeys?: Iterable<Key>;
+};
+
+/**
+ * Create a store whose *initial* state already holds `items`, sorted,
+ * disabled and selected per `seed`. Zustand serves `getInitialState()` as the
+ * server snapshot, so anything written after creation — the items, or the
+ * state applied to them — would never appear in server-rendered or static
+ * markup.
  */
 export const createSeededCollectionStore = <T>(
   items: T[],
   keyExtractor: KeyExtractor<T>,
   textValueExtractor: TextValueExtractor<T>,
-  sortRules: SortRule[] = [],
-  disabledKeys: Iterable<Key> = [],
+  {
+    sortRules = [],
+    disabledKeys = [],
+    selectionMode = 'none',
+    selectedKeys,
+  }: CollectionSeed = {},
 ) => {
   const seed = createCollectionStore<T>();
-  seed.getState().updateSortState(sortStateForRules(sortRules));
-  seed.getState().setDisabledKeys(new Set(disabledKeys));
-  seed.getState().setItems(items, keyExtractor, textValueExtractor);
+  const state = seed.getState();
+  state.updateSortState(sortStateForRules(sortRules));
+  state.setDisabledKeys(new Set(disabledKeys));
+  state.setSelectionMode(selectionMode);
+  if (selectedKeys) state.setSelectedKeys(new Selection(selectedKeys));
+  state.setItems(items, keyExtractor, textValueExtractor);
   return createCollectionStore<T>(seed.getState());
 };
 

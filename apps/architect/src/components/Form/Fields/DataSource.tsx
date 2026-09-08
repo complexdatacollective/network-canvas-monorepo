@@ -1,10 +1,24 @@
 import { useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import NetworkThumbnail from '~/components/Thumbnail/Network';
 
 import ResourcePicker from './File';
+const messages = defineMessages({
+  optionUseTheNetworkFromTheInProgress: {
+    id: 'architect.form.fields.dataSource.useTheNetworkFromTheInProgress',
+    defaultMessage: 'Use the network from the in-progress interview',
+    description: 'The label text in components / Form / Fields / DataSource.',
+  },
+  optionUseANetworkDataFile: {
+    id: 'architect.form.fields.dataSource.useANetworkDataFile',
+    defaultMessage: 'Use a network data file',
+    description: 'The label text in components / Form / Fields / DataSource.',
+  },
+});
 
 type DataSourceProps = CreateFormFieldProps<
   string,
@@ -42,6 +56,7 @@ const DataSource = ({
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
 }: DataSourceProps) => {
+  const intl = useAppIntl();
   const [selectNetworkAsset, setSelectNetworkAsset] = useState(false);
 
   const isRequired = required || Boolean(ariaRequired);
@@ -114,9 +129,14 @@ const DataSource = ({
         options={[
           {
             value: EXISTING_NETWORK,
-            label: 'Use the network from the in-progress interview',
+            label: intl.formatMessage(
+              messages.optionUseTheNetworkFromTheInProgress,
+            ),
           },
-          { value: 'asset', label: 'Use a network data file' },
+          {
+            value: 'asset',
+            label: intl.formatMessage(messages.optionUseANetworkDataFile),
+          },
         ]}
       />
       {showNetworkAssetInput && <div>{picker}</div>}

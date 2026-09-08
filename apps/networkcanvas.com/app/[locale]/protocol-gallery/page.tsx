@@ -82,7 +82,7 @@ export default async function ProtocolGalleryPage({
                 intent="lead"
                 margin="none"
                 emphasis="muted"
-                className="mt-6 max-w-3xl"
+                className="mt-6 max-w-prose"
               >
                 {t('intro.introduction')}
               </Paragraph>

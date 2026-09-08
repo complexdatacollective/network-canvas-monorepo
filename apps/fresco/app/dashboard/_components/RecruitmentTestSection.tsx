@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { use, useEffect, useState } from 'react';
 import { SuperJSON } from 'superjson';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import type { Participant, Protocol } from '~/lib/db/generated/client';
@@ -16,6 +18,33 @@ import {
   type GetProtocolsReturnType,
 } from '~/queries/protocols';
 
+const messages = defineMessages({
+  selectAProtocol: {
+    id: 'fresco.RecruitmentTestSection.selectAProtocol',
+    defaultMessage: 'Select a Protocol...',
+    description:
+      'Researcher-facing RecruitmentTestSection: Select a Protocol...',
+  },
+  selectAParticipant: {
+    id: 'fresco.RecruitmentTestSection.selectAParticipant',
+    defaultMessage: 'Select a Participant...',
+    description:
+      'Researcher-facing RecruitmentTestSection: Select a Participant...',
+  },
+  startInterviewWithGET: {
+    id: 'fresco.RecruitmentTestSection.startInterviewWithGET',
+    defaultMessage: 'Start Interview with GET',
+    description:
+      'Researcher-facing RecruitmentTestSection: Start Interview with GET',
+  },
+  startInterviewWithPOST: {
+    id: 'fresco.RecruitmentTestSection.startInterviewWithPOST',
+    defaultMessage: 'Start Interview with POST',
+    description:
+      'Researcher-facing RecruitmentTestSection: Start Interview with POST',
+  },
+});
+
 export default function RecruitmentTestSection({
   protocolsPromise,
   participantsPromise,
@@ -25,6 +54,8 @@ export default function RecruitmentTestSection({
   participantsPromise: GetParticipantsForSelectReturnType;
   allowAnonymousRecruitmentPromise: Promise<boolean>;
 }) {
+  const intl = useAppIntl();
+
   const rawProtocols = use(protocolsPromise);
   const protocols = SuperJSON.parse<GetProtocolsQuery>(rawProtocols);
   const rawParticipants = use(participantsPromise);
@@ -60,6 +91,7 @@ export default function RecruitmentTestSection({
     <>
       <div className="tablet-landscape:flex-row flex flex-col gap-4">
         <SelectField
+          aria-label={intl.formatMessage(messages.selectAProtocol)}
           name="Protocol"
           options={protocols.map((p) => ({ value: p.id, label: p.name }))}
           onChange={(value) => {
@@ -70,9 +102,10 @@ export default function RecruitmentTestSection({
             setSelectedProtocol(protocol);
           }}
           value={selectedProtocol?.id}
-          placeholder="Select a Protocol..."
+          placeholder={intl.formatMessage(messages.selectAProtocol)}
         />
         <SelectField
+          aria-label={intl.formatMessage(messages.selectAParticipant)}
           name="Participant"
           options={participants.map((p) => ({
             value: p.id,
@@ -86,7 +119,7 @@ export default function RecruitmentTestSection({
             setSelectedParticipant(participant);
           }}
           value={selectedParticipant?.id}
-          placeholder="Select a Participant..."
+          placeholder={intl.formatMessage(messages.selectAParticipant)}
         />
       </div>
       <div className="tablet-landscape:flex-row mt-4 flex flex-col gap-2">
@@ -94,7 +127,7 @@ export default function RecruitmentTestSection({
           disabled={buttonDisabled}
           onClick={() => router.push(getInterviewURL())}
         >
-          Start Interview with GET
+          {intl.formatMessage(messages.startInterviewWithGET)}
         </Button>
         <Button
           disabled={buttonDisabled}
@@ -114,7 +147,7 @@ export default function RecruitmentTestSection({
             })
           }
         >
-          Start Interview with POST
+          {intl.formatMessage(messages.startInterviewWithPOST)}
         </Button>
       </div>
     </>

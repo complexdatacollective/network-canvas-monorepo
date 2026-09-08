@@ -34,6 +34,28 @@ const fixtures = vi.hoisted(() => ({
   teams: [] as { id: string; name: string }[],
   STUDY: {
     id: 'study-1',
+    name: 'Shell proof',
+    state: 'draft',
+    participationMode: 'managed',
+    protocolId: 'protocol-1',
+    createdAt: new Date('2026-08-28T00:00:00Z'),
+    waveCount: 0,
+    participantCount: 0,
+  },
+  /** A second study in the same team, so the chip has a sibling to offer. */
+  SIBLING_STUDY: {
+    id: 'study-2',
+    name: 'Second study',
+    state: 'live',
+    participationMode: 'managed',
+    protocolId: 'protocol-2',
+    createdAt: new Date('2026-08-27T00:00:00Z'),
+    waveCount: 1,
+    participantCount: 3,
+  },
+  /** The protocol line the study points at, as `protocols.draft` reports it. */
+  PROTOCOL: {
+    id: 'protocol-1',
     draftId: 'draft-1',
     name: 'Shell proof',
     createdAt: new Date('2026-08-28T00:00:00Z'),
@@ -76,39 +98,94 @@ vi.mock('../../lib/auth.ts', () => ({
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    setup: {
+      status: {
+        queryOptions: () => ({
+          queryKey: ['setup'],
+          queryFn: () => ({ state: 'complete' }),
+        }),
+      },
+    },
+    me: {
+      queryOptions: () => ({
+        queryKey: ['me'],
+        queryFn: () => ({
+          userId: 'user-1',
+          email: 'researcher@example.org',
+          emailVerified: true,
+          name: 'Researcher',
+          // `me` carries the account's UI-language preference; null means
+          // "follow the browser" (2026-09-04 localization design §5.2).
+          locale: null,
+          teams: [{ teamId: 'team-a', role: 'owner' }],
+        }),
+      }),
+      key: () => ['me'],
+    },
     status: {
       queryOptions: () => ({
         queryKey: ['status'],
         queryFn: () => ({
           name: 'Network Canvas Studio',
           version: '0.1.0',
-          auth: { enabled: true, magicLink: true, socialProviders: [] },
+          auth: {
+            enabled: true,
+            magicLink: true,
+            emailAndPassword: true,
+            socialProviders: [],
+          },
           // Read at call time, so a test can put the client on a self-hosted
           // instance before it renders.
           deployment: fixtures.deployment,
         }),
       }),
     },
-    protocols: {
+    studies: {
       list: {
         queryOptions: () => ({
-          queryKey: ['protocols'],
-          queryFn: () => [fixtures.STUDY],
+          queryKey: ['studies'],
+          queryFn: () => [fixtures.STUDY, fixtures.SIBLING_STUDY],
         }),
-        key: () => ['protocols'],
+        key: () => ['studies'],
+      },
+      // The study chip and the editor are both addressed by the study id and
+      // resolve everything else from here (§6.3).
+      get: {
+        queryOptions: () => ({
+          queryKey: ['study'],
+          queryFn: () => ({
+            teamId: fixtures.TEAM.id,
+            study: fixtures.STUDY,
+            protocolDraftId: fixtures.PROTOCOL.draftId,
+          }),
+        }),
+        key: () => ['study'],
       },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+      counts: {
+        queryOptions: () => ({
+          queryKey: ['study-counts'],
+          queryFn: () => ({
+            versions: 0,
+            participants: 0,
+            waves: 0,
+            sessions: 0,
+          }),
+        }),
+      },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({
           queryKey: ['draft'],
           queryFn: () => ({
-            protocol: fixtures.STUDY,
+            protocol: fixtures.PROTOCOL,
             revision: { sequence: '1', hash: 'revision-1' },
             // No stages, so the editor selects none and acquires no editing
             // session: this file renders every route, and the editor's leased
             // session belongs to `Editor.test.tsx`.
             sections: {
-              settings: { name: fixtures.STUDY.name, schemaVersion: 8 },
+              settings: { name: fixtures.PROTOCOL.name, schemaVersion: 8 },
               stageOrder: { stages: [] },
             },
           }),
@@ -116,7 +193,38 @@ vi.mock('../../lib/api.ts', () => ({
         key: () => ['draft'],
       },
     },
+    // The study sidebar's counts. This file asserts where every destination
+    // goes, never how much is at one, so an empty study is the honest fixture:
+    // `NavItem` renders no count for a zero, and each row's accessible name
+    // stays the label these cases look it up by.
     audit: {
+      alerts: {
+        settings: {
+          queryOptions: () => ({
+            queryKey: ['audit-alert-settings'],
+            queryFn: () => ({
+              revision: null,
+              recipients: [],
+              eligibleMembers: [],
+              eligibleMembersTruncated: false,
+              emailAvailable: true,
+            }),
+          }),
+        },
+        list: {
+          infiniteOptions: (options: {
+            initialPageParam: string | undefined;
+            getNextPageParam: (page: {
+              nextCursor: string | null;
+            }) => string | undefined;
+          }) => ({
+            queryKey: ['audit-alert-list'],
+            queryFn: () => ({ items: [], nextCursor: null }),
+            initialPageParam: options.initialPageParam,
+            getNextPageParam: options.getNextPageParam,
+          }),
+        },
+      },
       list: {
         infiniteOptions: (options: {
           initialPageParam: string | undefined;
@@ -437,7 +545,17 @@ function announcements(): string[] {
 function menuDestinations(
   router: ReturnType<typeof createAppRouter>,
 ): (string | undefined)[] {
-  return [...document.querySelectorAll('[role="menu"] a[href]')]
+  // Whichever popup is open: the account `menu`, or a switcher's popup, which
+  // holds its siblings in a `listbox` and its trailing command beside that.
+  // Both are searched, so a link appearing in either is caught.
+  const popups = [
+    ...document.querySelectorAll('[role="menu"]'),
+    ...[...document.querySelectorAll('[role="listbox"]')]
+      .map((list) => list.parentElement)
+      .filter((popup) => popup !== null),
+  ];
+  return popups
+    .flatMap((popup) => [...popup.querySelectorAll('a[href]')])
     .map((link) => link.getAttribute('href') ?? '')
     .map((href) => registeredPathFor(router, href));
 }
@@ -545,6 +663,8 @@ describe('every destination in §5.2', () => {
   it.each(DESTINATIONS)(
     'renders $path with exactly one main landmark',
     async ({ url, heading, signedOut, teamless }) => {
+      if (url === '/setup')
+        fixtures.deployment = { mode: 'self-hosted', billing: false };
       if (signedOut) {
         fixtures.getSession.mockResolvedValue({ data: null, error: null });
       }
@@ -666,27 +786,43 @@ describe('navigation', () => {
   it('reaches only registered routes from the team switcher', async () => {
     const router = renderAt('/team/team-a');
     fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'Current team Alpha research team',
+      await screen.findByRole('combobox', {
+        name: 'Team Alpha research team',
       }),
     );
-    await screen.findByRole('menuitem', { name: 'Team administration' });
 
-    // The teams themselves are `menuitemradio`s that navigate rather than
-    // links (§6.5), so the one link in this menu is the command beneath them.
-    expect(menuDestinations(router)).toEqual(['/team/$teamId/settings']);
+    // The teams are listbox `option`s that navigate (§6.5), so they are not
+    // links; the destination beneath them is. Its address is asserted where it
+    // is written, and then against the route table, so the link both points
+    // somewhere registered and can be opened the way any link can.
+    const admin = await screen.findByRole('link', {
+      name: 'Team administration',
+    });
+    expect(admin).toHaveAttribute('href', '/team/team-a/settings');
+    expect(registeredPathFor(router, '/team/team-a/settings')).toBe(
+      '/team/$teamId/settings',
+    );
   });
 
-  it('names the study and reaches its team from the study chip', async () => {
+  it('names the study, offers its siblings, and reaches its team', async () => {
     const router = renderAt('/study/study-1');
+    // The NAME, which only `studies.get` can supply: the switcher would
+    // otherwise fall back to the identifier, as the chip it replaces did.
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Current study study-1' }),
+      await screen.findByRole('combobox', { name: /^Study Shell proof/ }),
     );
-    await screen.findByRole('menuitem', {
+    const allStudies = await screen.findByRole('link', {
       name: 'All studies in this team',
     });
+    expect(allStudies).toHaveAttribute('href', '/team/team-a');
+    expect(registeredPathFor(router, '/team/team-a')).toBe('/team/$teamId');
 
-    expect(menuDestinations(router)).toEqual(['/team/$teamId']);
+    // The team's other studies are offered, this one among them: the switcher
+    // marks the current entity rather than hiding it, which is what tells a
+    // reader where they already are.
+    expect(
+      await screen.findByRole('option', { name: /^Second study/ }),
+    ).toBeInTheDocument();
   });
 });
 

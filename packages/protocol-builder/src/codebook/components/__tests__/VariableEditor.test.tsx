@@ -24,6 +24,7 @@ const SUBJECT = { entity: 'node', type: 'person' } as const;
 const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 const EMPTY_CONTEXT: ProtocolBuilderProtocolContext = {
   codebook: { node: {}, edge: {} },
+  assets: {},
   orderedStages: [],
   issues: [],
 };

@@ -1,5 +1,7 @@
 'use client';
 
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import type { SkipContext } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
@@ -9,34 +11,37 @@ import type { FramingId, RelationshipType } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 
 import type { OpenPedigreeDialog } from '../../familyPedigreeDialog';
+import { messages } from '../../messages';
 import { getNodeLabel } from '../../pedigree-layout/utils/getDisplayLabel';
 import type { CommitBatch, VariableConfig } from '../../store';
 import { getEdgeRelationshipType } from '../../utils/edgeUtils';
 import { writeOwnAttribute } from '../../utils/writeOwnAttributes';
-import type { ParentEdgeTypeOption } from '../quickStartWizard/fieldOptions';
+import {
+  parentEdgeTypeOptions,
+  type ParentEdgeTypeOption,
+} from '../quickStartWizard/fieldOptions';
 import PersonFields from '../quickStartWizard/PersonFields';
 import { socialParentCandidates } from './parentCandidates';
+import type { BioTriadOption } from './steps/bioTriadOptions';
 import {
   extractCustomAttributes,
   runFamilyPedigreeTransform,
 } from './transforms/personAttributes';
-
-const partnershipOptions = [
-  { value: 'current', label: 'Current partners' },
-  { value: 'ex', label: 'Ex-partners' },
-  { value: 'none', label: 'Never partners' },
-];
 
 function ParentDetailsStep({
   parentTypeOptions,
   candidateOptions,
 }: {
   parentTypeOptions: ParentEdgeTypeOption[];
-  candidateOptions: { value: string; label: string }[];
+  candidateOptions: BioTriadOption[];
 }) {
+  const intl = useAppIntl();
   const selectionOptions = [
-    ...candidateOptions,
-    { value: 'new', label: 'Create a new person' },
+    ...candidateOptions.map((option) => ({
+      ...option,
+      label: option.getLabel?.(intl) ?? option.label,
+    })),
+    { value: 'new', label: intl.formatMessage(messages.createNewPerson) },
   ];
   const onlyNew =
     selectionOptions.length === 1 && selectionOptions[0]?.value === 'new';
@@ -46,7 +51,7 @@ function ParentDetailsStep({
         <div className="hidden">
           <Field
             name="parent-selection"
-            label="Who is this parent?"
+            label={intl.formatMessage(messages.whoParent)}
             component={RadioGroupField}
             options={[{ value: 'new', label: 'new' }]}
             initialValue="new"
@@ -55,10 +60,13 @@ function ParentDetailsStep({
       ) : (
         <Field
           name="parent-selection"
-          label="Who is this parent?"
-          hint="Select an existing person or create a new one."
+          label={intl.formatMessage(messages.whoParent)}
+          hint={intl.formatMessage(messages.selectExistingPerson)}
           component={RadioGroupField}
-          options={selectionOptions}
+          options={selectionOptions.map(({ label, ...option }) => ({
+            ...option,
+            label: <>{label}</>,
+          }))}
           initialValue="new"
           required
         />
@@ -71,9 +79,11 @@ function ParentDetailsStep({
       </FieldGroup>
       <Field
         name="edgeType"
-        label="Parent type"
+        label={intl.formatMessage(messages.parentType)}
         component={RichSelectGroupField}
-        options={parentTypeOptions}
+        options={parentEdgeTypeOptions(intl).filter((option) =>
+          parentTypeOptions.some(({ value }) => value === option.value),
+        )}
         initialValue={parentTypeOptions[0]?.value ?? 'social'}
         required
       />
@@ -84,8 +94,15 @@ function ParentDetailsStep({
 function ExistingParentPartnershipsStep({
   existingParents,
 }: {
-  existingParents: { id: string; label: string }[];
+  existingParents: { id: string; getLabel: (intl: IntlShape) => string }[];
 }) {
+  const intl = useAppIntl();
+  const partnershipOptions = [
+    { value: 'current', label: intl.formatMessage(messages.currentPartners) },
+    { value: 'ex', label: intl.formatMessage(messages.exPartners) },
+    { value: 'none', label: intl.formatMessage(messages.neverPartners) },
+  ];
+
   if (existingParents.length === 0) return null;
 
   return (
@@ -94,7 +111,12 @@ function ExistingParentPartnershipsStep({
         <Field
           key={`partnership-${parent.id}`}
           name={`partnership-${parent.id}`}
-          label={`Are the new parent and ${parent.label} partners?`}
+          label={
+            <AppMessage
+              message={messages.newParentAndPartner}
+              values={{ name: parent.getLabel(intl) }}
+            />
+          }
           component={RadioGroupField}
           options={partnershipOptions}
           required
@@ -216,7 +238,8 @@ export async function openAddParentWizard(
       if (!nodes.has(id)) return null;
       return {
         id,
-        label: getNodeLabel(id, nodes, edges, variableConfig, framing),
+        getLabel: (intl: IntlShape) =>
+          getNodeLabel(id, nodes, edges, variableConfig, framing, intl),
       };
     })
     .filter((p) => p !== null);
@@ -228,15 +251,17 @@ export async function openAddParentWizard(
     .map((id) => ({
       value: id,
       label: getNodeLabel(id, nodes, edges, variableConfig, framing),
+      getLabel: (intl: IntlShape) =>
+        getNodeLabel(id, nodes, edges, variableConfig, framing, intl),
     }));
 
   const result = await openDialog({
     type: 'wizard',
-    title: 'Add parent',
+    title: <AppMessage message={messages.addParent} />,
     progress: null,
     steps: [
       {
-        title: 'Parent details',
+        title: <AppMessage message={messages.parentDetails} />,
         content: () => (
           <ParentDetailsStep
             parentTypeOptions={parentTypeOptions}
@@ -245,7 +270,7 @@ export async function openAddParentWizard(
         ),
       },
       {
-        title: 'Partnerships',
+        title: <AppMessage message={messages.partnerships} />,
         content: () => (
           <ExistingParentPartnershipsStep existingParents={existingParents} />
         ),

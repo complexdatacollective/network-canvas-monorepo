@@ -1,10 +1,26 @@
-import { useCallback } from 'react';
+import { createElement, useCallback } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppErrorMessage, AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { VariableType } from '@codaco/protocol-validation';
-import { ensureError } from '@codaco/shared-consts';
 import { useAppDispatch } from '~/ducks/hooks';
 import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
+import { toSubmissionError } from '~/i18n/submissionErrors';
+const messages = defineMessages({
+  couldNotCreateAttribute: {
+    id: 'architect.form.arrayFields.useCreateVariable.couldNotCreateAttribute',
+    defaultMessage: 'Could not create attribute',
+    description:
+      'The title text in components / Form / arrayFields / useCreateVariable.',
+  },
+  oK: {
+    id: 'architect.form.arrayFields.useCreateVariable.oK',
+    defaultMessage: 'OK',
+    description:
+      'The label text in components / Form / arrayFields / useCreateVariable.',
+  },
+});
 
 type Entity = 'node' | 'edge' | 'ego';
 
@@ -53,20 +69,21 @@ export const useCreateVariable = (
         // unwrap() can reject with a serialized error object (a plain object
         // carrying a string `message`) rather than an Error instance, which
         // ensureError would stringify instead of surface. Prefer that message.
-        const message =
-          typeof error === 'object' &&
-          error !== null &&
-          'message' in error &&
-          typeof error.message === 'string'
-            ? error.message
-            : ensureError(error).message;
+        const message = toSubmissionError(error);
 
         void openDialog({
           type: 'acknowledge',
           intent: 'warning',
-          title: 'Could not create attribute',
-          description: message,
-          actions: { primary: { label: 'OK', value: true } },
+          title: createElement(AppMessage, {
+            message: messages.couldNotCreateAttribute,
+          }),
+          description: createElement(AppErrorMessage, { error: message }),
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
         });
         return undefined;
       }

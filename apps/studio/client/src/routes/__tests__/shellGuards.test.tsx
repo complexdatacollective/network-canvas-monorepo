@@ -89,23 +89,58 @@ vi.mock('../../lib/auth.ts', () => ({
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    setup: {
+      status: {
+        queryOptions: () => ({
+          queryKey: ['setup'],
+          queryFn: () => ({ state: 'complete' }),
+        }),
+      },
+    },
+    me: {
+      queryOptions: () => ({
+        queryKey: ['me'],
+        queryFn: () => ({
+          userId: 'user-1',
+          email: 'researcher@example.org',
+          emailVerified: true,
+          name: 'Researcher',
+          // `me` carries the account's UI-language preference; null means
+          // "follow the browser" (2026-09-04 localization design §5.2).
+          locale: null,
+          teams: [{ teamId: 'team-a', role: 'owner' }],
+        }),
+      }),
+      key: () => ['me'],
+    },
     status: {
       queryOptions: () => ({
         queryKey: ['status'],
         queryFn: () => ({
           name: 'Network Canvas Studio',
           version: '0.1.0',
-          auth: { enabled: true, magicLink: true, socialProviders: [] },
+          auth: {
+            enabled: true,
+            magicLink: true,
+            emailAndPassword: true,
+            socialProviders: [],
+          },
           deployment: fixtures.deployment,
         }),
       }),
     },
-    protocols: {
+    studies: {
       list: {
-        queryOptions: () => ({ queryKey: ['protocols'], queryFn: () => [] }),
-        key: () => ['protocols'],
+        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
+        key: () => ['studies'],
+      },
+      get: {
+        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
+        key: () => ['study'],
       },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
         key: () => ['draft'],
@@ -310,39 +345,58 @@ describe('an active-team write whose refresh does not land', () => {
 });
 
 /**
- * A team list that could not be read is not a researcher with no teams, and
- * `teams.data ?? []` makes the two indistinguishable. The one who belongs to
- * four teams then gets a header with no switcher in it, no word of what went
- * wrong, and no way to a different team but reloading the page.
+ * The switcher reports no failure of its own — it shows what it was given, and
+ * the shell above owns the outage. These two say what that leaves on screen.
  */
 describe('the team list, when it cannot be read', () => {
-  it('says so and offers to ask again', async () => {
-    const refetch = vi.fn();
+  it('draws no team segment when nothing could be read', async () => {
     fixtures.useListOrganizations.mockReturnValue({
       data: null,
       isPending: false,
       error: { status: 500, message: 'unavailable' },
-      refetch,
+      refetch: vi.fn(),
+    });
+    renderAt('/team/team-a');
+    await screen.findByRole('button', { name: 'Account' });
+
+    // A resolved read with nothing in it, as far as this component can tell.
+    // It draws no segment rather than an empty one, and says nothing about
+    // why — reporting the failure belongs to the layer that made the request.
+    expect(screen.queryByRole('combobox', { name: /^Team/ })).toBeNull();
+    expect(screen.queryByText('Your teams could not be loaded.')).toBeNull();
+  });
+
+  it('keeps an earlier list usable when a later read fails', async () => {
+    // Better Auth leaves the last good `data` in place beside the error, and
+    // those teams are still the researcher's way to every team they name. A
+    // later read failing must not take them away.
+    fixtures.useListOrganizations.mockReturnValue({
+      data: [fixtures.TEAM_A, fixtures.TEAM_B],
+      isPending: false,
+      error: { status: 500, message: 'unavailable' },
+      refetch: vi.fn(),
     });
     renderAt('/team/team-a');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Your teams could not be loaded',
+    fireEvent.click(
+      await screen.findByRole('combobox', { name: 'Team Alpha research team' }),
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-
-    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByRole('option', { name: /^Beta research team/ }),
+    ).toBeInTheDocument();
   });
 
   it('stays quiet for a list that really is empty', async () => {
     // The other half of the distinction: a RESOLVED empty list is an answer,
-    // and the switcher's absence is the right treatment for it.
+    // and the switcher's absence is the right treatment for it — §6.4's
+    // `/no-team` is where that researcher belongs.
     fixtures.useListOrganizations.mockReturnValue(resolved([]));
     renderAt('/team/team-a');
 
     await screen.findByRole('link', { name: 'Studio' });
     expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('combobox', { name: /^Team/ })).toBeNull();
   });
 });
 
@@ -448,7 +502,7 @@ describe('a session that ends outside this tab', () => {
     const router = renderAt('/team/team-a');
     await screen.findByRole('heading', { level: 1, name: 'Studies' });
     const { queryClient } = router.options.context;
-    expect(queryClient.getQueryData(['protocols'])).toBeDefined();
+    expect(queryClient.getQueryData(['studies'])).toBeDefined();
 
     // Signed out in another tab, or simply expired. Nothing here fails, and
     // the session query is `staleTime: Infinity`, so left alone no guard ever
@@ -463,7 +517,7 @@ describe('a session that ends outside this tab', () => {
     expect(router.state.resolvedLocation?.pathname).toBe('/sign-in');
     // §6.2: what was in the cache belonged to the researcher whose session has
     // ended, and nobody signing in next may be served it.
-    expect(queryClient.getQueryData(['protocols'])).toBeUndefined();
+    expect(queryClient.getQueryData(['studies'])).toBeUndefined();
   });
 });
 

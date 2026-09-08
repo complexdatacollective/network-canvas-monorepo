@@ -1,7 +1,11 @@
-import type { VariableEntry } from '../../types';
-import { type DateResolution, openDateFloor, stepsBetween } from './dateWindow';
-import type { ConstrainedVariable, VariableConstraints } from './types';
-import { valueKey } from './uniqueRegistry';
+import type { VariableEntry } from '../../types.ts';
+import {
+  type DateResolution,
+  openDateFloor,
+  stepsBetween,
+} from './dateWindow.ts';
+import type { ConstrainedVariable, VariableConstraints } from './types.ts';
+import { valueKey } from './uniqueRegistry.ts';
 
 /**
  * Symbols the unique-text generator draws from. Kept in sync with

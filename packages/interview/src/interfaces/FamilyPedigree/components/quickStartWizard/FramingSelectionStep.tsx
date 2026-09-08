@@ -2,11 +2,13 @@
 
 import { useId } from 'react';
 
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { FramingId } from '@codaco/protocol-validation';
 
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
+import { messages } from '../../messages';
 
 type FramingConfig =
   | { mode: 'fixed'; value: FramingId }
@@ -18,22 +20,21 @@ export function shouldSkipFramingSelectionStep(
   return framingConfig.mode !== 'participantChoice';
 }
 
-const FRAMING_OPTIONS = [
-  {
-    value: 'gendered' as const,
-    label: 'Mother & father',
-    description:
-      "We'll talk about your biological mother and biological father.",
-  },
-  {
-    value: 'gamete' as const,
-    label: 'Egg parent & sperm parent',
-    description:
-      "We'll talk about the person whose egg you came from and the person whose sperm you came from.",
-  },
-];
-
 export function FramingSelectionStep() {
+  const intl = useAppIntl();
+  const FRAMING_OPTIONS = [
+    {
+      value: 'gendered' as const,
+      label: intl.formatMessage(messages.framingMotherFather),
+      description: intl.formatMessage(messages.framingMotherFatherDescription),
+    },
+    {
+      value: 'gamete' as const,
+      label: intl.formatMessage(messages.framingGamete),
+      description: intl.formatMessage(messages.framingGameteDescription),
+    },
+  ];
+
   const framing = useFamilyPedigreeStore((s) => s.framing);
   const setFraming = useFamilyPedigreeStore((s) => s.setFraming);
   const promptId = useId();
@@ -41,8 +42,7 @@ export function FramingSelectionStep() {
   return (
     <>
       <Paragraph id={promptId}>
-        How would you like us to refer to the people you&apos;re biologically
-        related to?
+        <AppMessage message={messages.framingQuestion} />
       </Paragraph>
       <RichSelectGroupField
         aria-labelledby={promptId}

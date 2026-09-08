@@ -3,6 +3,9 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Button from '@codaco/fresco-ui/Button';
@@ -36,22 +39,88 @@ import { orpc } from '../lib/api.ts';
 // The route id carries the area layout it sits under (§5.3).
 const route = getRouteApi('/app/team/$teamId/activity');
 
-const CATEGORY_LABELS: Record<AuditCategory, string> = {
-  team_access: 'Team access',
-  protocol: 'Protocols',
-  study: 'Studies',
-  participant_data: 'Participant data',
-  data_egress: 'Data egress',
-  credential: 'Credentials',
-  integration: 'Integrations',
-  security: 'Security',
-  audit: 'Activity log',
+const categoryMessages = defineMessages({
+  teamAccess: {
+    id: 'studio.teamActivity.categoryTeamAccess',
+    defaultMessage: 'Team access',
+    description: 'Audit category: membership, invitations and role changes.',
+  },
+  protocol: {
+    id: 'studio.teamActivity.categoryProtocol',
+    defaultMessage: 'Protocols',
+    description: 'Audit category: protocol design and publication.',
+  },
+  study: {
+    id: 'studio.teamActivity.categoryStudy',
+    defaultMessage: 'Studies',
+    description: 'Audit category: study lifecycle actions.',
+  },
+  participantData: {
+    id: 'studio.teamActivity.categoryParticipantData',
+    defaultMessage: 'Participant data',
+    description: 'Audit category: reads and writes of participant data.',
+  },
+  dataEgress: {
+    id: 'studio.teamActivity.categoryDataEgress',
+    defaultMessage: 'Data egress',
+    description: 'Audit category: exports and other data leaving Studio.',
+  },
+  credential: {
+    id: 'studio.teamActivity.categoryCredential',
+    defaultMessage: 'Credentials',
+    description: 'Audit category: API tokens and other credentials.',
+  },
+  integration: {
+    id: 'studio.teamActivity.categoryIntegration',
+    defaultMessage: 'Integrations',
+    description: 'Audit category: webhooks and external integrations.',
+  },
+  security: {
+    id: 'studio.teamActivity.categorySecurity',
+    defaultMessage: 'Security',
+    description: 'Audit category: security-relevant events.',
+  },
+  audit: {
+    id: 'studio.teamActivity.categoryAudit',
+    defaultMessage: 'Activity log',
+    description: 'Audit category: reads of the activity log itself.',
+  },
+});
+
+const CATEGORY_LABELS: Record<AuditCategory, MessageDescriptor> = {
+  team_access: categoryMessages.teamAccess,
+  protocol: categoryMessages.protocol,
+  study: categoryMessages.study,
+  participant_data: categoryMessages.participantData,
+  data_egress: categoryMessages.dataEgress,
+  credential: categoryMessages.credential,
+  integration: categoryMessages.integration,
+  security: categoryMessages.security,
+  audit: categoryMessages.audit,
 };
 
-const OUTCOME_LABELS: Record<AuditOutcome, string> = {
-  succeeded: 'Succeeded',
-  denied: 'Denied',
-  failed: 'Failed',
+const outcomeMessages = defineMessages({
+  succeeded: {
+    id: 'studio.teamActivity.outcomeSucceeded',
+    defaultMessage: 'Succeeded',
+    description: 'Audit outcome: the action completed.',
+  },
+  denied: {
+    id: 'studio.teamActivity.outcomeDenied',
+    defaultMessage: 'Denied',
+    description: 'Audit outcome: the action was refused by authorization.',
+  },
+  failed: {
+    id: 'studio.teamActivity.outcomeFailed',
+    defaultMessage: 'Failed',
+    description: 'Audit outcome: the action was attempted and failed.',
+  },
+});
+
+const OUTCOME_LABELS: Record<AuditOutcome, MessageDescriptor> = {
+  succeeded: outcomeMessages.succeeded,
+  denied: outcomeMessages.denied,
+  failed: outcomeMessages.failed,
 };
 
 const OUTCOME_BADGE_VARIANTS: Record<
@@ -63,10 +132,306 @@ const OUTCOME_BADGE_VARIANTS: Record<
   failed: 'destructive',
 };
 
-const ACTOR_KIND_LABELS: Record<string, string> = {
-  api_token: 'API token',
-  system: 'System',
+const actorKindMessages = defineMessages({
+  apiToken: {
+    id: 'studio.teamActivity.actorKindApiToken',
+    defaultMessage: 'API token',
+    description: 'Kind label for an audit actor that is an API token.',
+  },
+  system: {
+    id: 'studio.teamActivity.actorKindSystem',
+    defaultMessage: 'System',
+    description: 'Kind label for an audit actor that is Studio itself.',
+  },
+});
+
+const ACTOR_KIND_LABELS: Record<string, MessageDescriptor> = {
+  api_token: actorKindMessages.apiToken,
+  system: actorKindMessages.system,
 };
+
+const messages = defineMessages({
+  heading: {
+    id: 'studio.teamActivity.heading',
+    defaultMessage: 'Team activity',
+    description: "Heading of a team's activity log screen.",
+  },
+  forbidden: {
+    id: 'studio.teamActivity.forbidden',
+    defaultMessage:
+      'Team activity is only available to team owners and admins. Ask a team owner if you need access to this record.',
+    description: 'Shown to a member whose role may not read the activity log.',
+  },
+  backToStudies: {
+    id: 'studio.teamActivity.backToStudies',
+    defaultMessage: 'Back to this team\u2019s studies',
+    description: "Link from the activity log back to the team's study list.",
+  },
+  intro: {
+    id: 'studio.teamActivity.intro',
+    defaultMessage:
+      'The immutable record of actions taken in this team, newest first.',
+    description: "Introduction under the activity log's heading.",
+  },
+  filtersLabel: {
+    id: 'studio.teamActivity.filtersLabel',
+    defaultMessage: 'Activity filters',
+    description: 'Accessible name of the activity filter form.',
+  },
+  categoryLabel: {
+    id: 'studio.teamActivity.categoryLabel',
+    defaultMessage: 'Category',
+    description: "Label of the filter form's category selector.",
+  },
+  allCategories: {
+    id: 'studio.teamActivity.allCategories',
+    defaultMessage: 'All categories',
+    description: 'Placeholder option meaning no category filter.',
+  },
+  actionFilterLabel: {
+    id: 'studio.teamActivity.actionFilterLabel',
+    defaultMessage: 'Action',
+    description: "Label of the filter form's action selector.",
+  },
+  allActions: {
+    id: 'studio.teamActivity.allActions',
+    defaultMessage: 'All actions',
+    description: 'Placeholder option meaning no action filter.',
+  },
+  actorFilterLabel: {
+    id: 'studio.teamActivity.actorFilterLabel',
+    defaultMessage: 'Actor',
+    description: "Label of the filter form's actor selector.",
+  },
+  allActors: {
+    id: 'studio.teamActivity.allActors',
+    defaultMessage: 'All actors',
+    description: 'Placeholder option meaning no actor filter.',
+  },
+  outcomeFilterLabel: {
+    id: 'studio.teamActivity.outcomeFilterLabel',
+    defaultMessage: 'Outcome',
+    description: "Label of the filter form's outcome selector.",
+  },
+  allOutcomes: {
+    id: 'studio.teamActivity.allOutcomes',
+    defaultMessage: 'All outcomes',
+    description: 'Placeholder option meaning no outcome filter.',
+  },
+  fromDate: {
+    id: 'studio.teamActivity.fromDate',
+    defaultMessage: 'From date',
+    description: "Label of the filter form's start-date field.",
+  },
+  toDate: {
+    id: 'studio.teamActivity.toDate',
+    defaultMessage: 'To date',
+    description: "Label of the filter form's end-date field.",
+  },
+  applyFilters: {
+    id: 'studio.teamActivity.applyFilters',
+    defaultMessage: 'Apply filters',
+    description: 'Submit button of the activity filter form.',
+  },
+  clearFilters: {
+    id: 'studio.teamActivity.clearFilters',
+    defaultMessage: 'Clear filters',
+    description: 'Button resetting every activity filter.',
+  },
+  filterOptionsTruncated: {
+    id: 'studio.teamActivity.filterOptionsTruncated',
+    defaultMessage:
+      'This team has taken more kinds of action, or has had more actors, than these menus can list. Some values are missing from them.',
+    description:
+      'Shown when the filter menus could not list every historical action or actor.',
+  },
+  loading: {
+    id: 'studio.teamActivity.loading',
+    defaultMessage: 'Loading team activity…',
+    description: 'Shown while the activity feed loads.',
+  },
+  eventsShown: {
+    id: 'studio.teamActivity.eventsShown',
+    defaultMessage:
+      '{count, plural, one {# activity event shown.} other {# activity events shown.}}',
+    description:
+      'Politely announced count of activity events currently listed.',
+  },
+  loadFailed: {
+    id: 'studio.teamActivity.loadFailed',
+    defaultMessage: 'Team activity could not be loaded.',
+    description: 'Shown when the activity feed could not be fetched.',
+  },
+  retry: {
+    id: 'studio.teamActivity.retry',
+    defaultMessage: 'Retry',
+    description: 'Button retrying a failed activity read.',
+  },
+  noMatches: {
+    id: 'studio.teamActivity.noMatches',
+    defaultMessage: 'No activity matches these filters.',
+    description: 'Shown when the applied filters match no events.',
+  },
+  noneRecorded: {
+    id: 'studio.teamActivity.noneRecorded',
+    defaultMessage: 'No activity has been recorded for this team yet.',
+    description: 'Shown when the team has no recorded activity at all.',
+  },
+  whenColumn: {
+    id: 'studio.teamActivity.whenColumn',
+    defaultMessage: 'When',
+    description: 'Activity table column heading: when the event happened.',
+  },
+  actorColumn: {
+    id: 'studio.teamActivity.actorColumn',
+    defaultMessage: 'Actor',
+    description: 'Activity table column heading: who performed the action.',
+  },
+  actionColumn: {
+    id: 'studio.teamActivity.actionColumn',
+    defaultMessage: 'Action',
+    description: 'Activity table column heading: what was done.',
+  },
+  subjectColumn: {
+    id: 'studio.teamActivity.subjectColumn',
+    defaultMessage: 'Subject or resource',
+    description: 'Activity table column heading: what the action was about.',
+  },
+  outcomeColumn: {
+    id: 'studio.teamActivity.outcomeColumn',
+    defaultMessage: 'Outcome',
+    description: 'Activity table column heading: how the action ended.',
+  },
+  unrecognizedEvent: {
+    id: 'studio.teamActivity.unrecognizedEvent',
+    defaultMessage: 'Unrecognized event',
+    description:
+      'Badge on an event row whose type this Studio version cannot render.',
+  },
+  loadingMore: {
+    id: 'studio.teamActivity.loadingMore',
+    defaultMessage: 'Loading more…',
+    description: 'Shown on the load-more button while a page is loading.',
+  },
+  loadMore: {
+    id: 'studio.teamActivity.loadMore',
+    defaultMessage: 'Load more',
+    description: 'Button loading the next page of activity events.',
+  },
+  beginning: {
+    id: 'studio.teamActivity.beginning',
+    defaultMessage:
+      'This is the beginning of the recorded activity for this team. Actions taken before activity recording was enabled are not available.',
+    description: 'Shown under the last page of the activity feed.',
+  },
+  loadingEvent: {
+    id: 'studio.teamActivity.loadingEvent',
+    defaultMessage: 'Loading event…',
+    description: "Shown while one event's detail dialog loads.",
+  },
+  eventLoadFailed: {
+    id: 'studio.teamActivity.eventLoadFailed',
+    defaultMessage: 'The event could not be loaded.',
+    description: "Shown when one event's detail could not be fetched.",
+  },
+  detailTime: {
+    id: 'studio.teamActivity.detailTime',
+    defaultMessage: 'Time',
+    description: 'Event detail field: when the event happened, local time.',
+  },
+  detailTimeUtc: {
+    id: 'studio.teamActivity.detailTimeUtc',
+    defaultMessage: 'Time (UTC)',
+    description: 'Event detail field: when the event happened, in UTC.',
+  },
+  detailActor: {
+    id: 'studio.teamActivity.detailActor',
+    defaultMessage: 'Actor',
+    description: 'Event detail field: who performed the action.',
+  },
+  detailActorId: {
+    id: 'studio.teamActivity.detailActorId',
+    defaultMessage: 'Actor ID',
+    description: "Event detail field: the actor's identifier.",
+  },
+  detailSubject: {
+    id: 'studio.teamActivity.detailSubject',
+    defaultMessage: 'Subject',
+    description: 'Event detail field: who or what the action was about.',
+  },
+  detailResource: {
+    id: 'studio.teamActivity.detailResource',
+    defaultMessage: 'Resource',
+    description: 'Event detail field: the resource the action touched.',
+  },
+  detailOutcome: {
+    id: 'studio.teamActivity.detailOutcome',
+    defaultMessage: 'Outcome',
+    description: 'Event detail field: how the action ended.',
+  },
+  detailCategory: {
+    id: 'studio.teamActivity.detailCategory',
+    defaultMessage: 'Category',
+    description: 'Event detail field: which audit category the event is in.',
+  },
+  detailEventType: {
+    id: 'studio.teamActivity.detailEventType',
+    defaultMessage: 'Event type',
+    description: 'Event detail field: the machine name of the event type.',
+  },
+  detailTeam: {
+    id: 'studio.teamActivity.detailTeam',
+    defaultMessage: 'Team',
+    description: 'Event detail field: the team the event belongs to.',
+  },
+  detailSequence: {
+    id: 'studio.teamActivity.detailSequence',
+    defaultMessage: 'Sequence',
+    description:
+      "Event detail field: the event's position in the immutable log.",
+  },
+  detailRequestId: {
+    id: 'studio.teamActivity.detailRequestId',
+    defaultMessage: 'Request ID',
+    description: 'Event detail field: the request identifier for correlation.',
+  },
+  entityWithType: {
+    id: 'studio.teamActivity.entityWithType',
+    defaultMessage: '{name} ({type})',
+    description:
+      "A subject or resource with its wire-level type; {name} is its label and {type} the type's machine name.",
+  },
+  eventTypeVersion: {
+    id: 'studio.teamActivity.eventTypeVersion',
+    defaultMessage: '{eventType} (version {version})',
+    description:
+      'The event type with its schema version; both values are machine names.',
+  },
+  actorWithKind: {
+    id: 'studio.teamActivity.actorWithKind',
+    defaultMessage: '{name} ({kind})',
+    description:
+      "An audit actor with its kind; {name} is the actor's label and {kind} a kind label like API token.",
+  },
+  unrecognizedDetail: {
+    id: 'studio.teamActivity.unrecognizedDetail',
+    defaultMessage:
+      'Studio does not recognize this event type. It was likely recorded by a newer version of Studio; its identifying information is shown without further detail.',
+    description:
+      'Shown in the detail dialog of an event type this Studio version cannot render.',
+  },
+  detailsHeading: {
+    id: 'studio.teamActivity.detailsHeading',
+    defaultMessage: 'Details',
+    description: "Heading of the event detail dialog's extra-details list.",
+  },
+  detailsSectionLabel: {
+    id: 'studio.teamActivity.detailsSectionLabel',
+    defaultMessage: 'Event details',
+    description:
+      "Accessible name of the event detail dialog's extra-details section.",
+  },
+});
 
 type ActivityFilters = {
   category: '' | AuditCategory;
@@ -140,11 +505,6 @@ function listInput(teamId: string, filters: ActivityFilters) {
 // nothing and saves a second read on every remount.
 const FILTER_OPTIONS_STALE_MS = 5 * 60 * 1000;
 
-const timestampFormat = new Intl.DateTimeFormat(undefined, {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
-
 function isForbidden(error: unknown): boolean {
   return error instanceof ORPCError && error.code === 'FORBIDDEN';
 }
@@ -156,12 +516,20 @@ function retryUnlessForbidden(failureCount: number, error: unknown): boolean {
   return !isForbidden(error) && failureCount < 3;
 }
 
-function actorText(actor: AuditActorFilter & { label: string }): string {
+function actorText(
+  intl: IntlShape,
+  actor: AuditActorFilter & { label: string },
+): string {
   const kind = ACTOR_KIND_LABELS[actor.kind];
   if (kind === undefined) return actor.label;
   // An actor with no name of its own is named by its kind alone, rather than
   // by a parenthetical hanging off an empty string.
-  return actor.label === '' ? kind : `${actor.label} (${kind})`;
+  return actor.label === ''
+    ? intl.formatMessage(kind)
+    : intl.formatMessage(messages.actorWithKind, {
+        name: actor.label,
+        kind: intl.formatMessage(kind),
+      });
 }
 
 function detailValueText(value: unknown): string {
@@ -186,6 +554,7 @@ function detailValueText(value: unknown): string {
 }
 
 export default function TeamActivity() {
+  const intl = useAppIntl();
   const { teamId } = route.useParams();
   const [staged, setStaged] = useState<ActivityFilters>(EMPTY_FILTERS);
   const [applied, setApplied] = useState<ActivityFilters>(EMPTY_FILTERS);
@@ -257,10 +626,10 @@ export default function TeamActivity() {
     }
     return [...byToken.entries()].map(([value, actor]) => ({
       value,
-      label: actorText(actor),
+      label: actorText(intl, actor),
       actor,
     }));
-  }, [filterOptions.data, applied.actor]);
+  }, [filterOptions.data, applied.actor, intl]);
 
   const openDetail = (event: AuditEventSummary) => {
     void dialog.openDialog({
@@ -276,16 +645,13 @@ export default function TeamActivity() {
       // The `<main id="main-content">` is the area layout's (§5.3, §7.1).
       <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
         <Heading level="h1" {...routeFocusTargetProps}>
-          Team activity
+          {intl.formatMessage(messages.heading)}
         </Heading>
-        <Alert>
-          Team activity is only available to team owners and admins. Ask a team
-          owner if you need access to this record.
-        </Alert>
+        <Alert>{intl.formatMessage(messages.forbidden)}</Alert>
         <div>
           <Button asChild variant="outline">
             <Link to="/team/$teamId" params={{ teamId }}>
-              Back to this team&rsquo;s studies
+              {intl.formatMessage(messages.backToStudies)}
             </Link>
           </Button>
         </div>
@@ -298,22 +664,22 @@ export default function TeamActivity() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Heading level="h1" margin="none" {...routeFocusTargetProps}>
-            Team activity
+            {intl.formatMessage(messages.heading)}
           </Heading>
           <Paragraph margin="none">
-            The immutable record of actions taken in this team, newest first.
+            {intl.formatMessage(messages.intro)}
           </Paragraph>
         </div>
         <Button asChild size="sm" variant="outline">
           <Link to="/team/$teamId" params={{ teamId }}>
-            Back to this team&rsquo;s studies
+            {intl.formatMessage(messages.backToStudies)}
           </Link>
         </Button>
       </div>
 
       <Surface spacing="lg">
         <form
-          aria-label="Activity filters"
+          aria-label={intl.formatMessage(messages.filtersLabel)}
           className="phone-landscape:grid-cols-2 tablet-portrait:grid-cols-3 laptop:grid-cols-6 grid items-end gap-4"
           onSubmit={(event) => {
             event.preventDefault();
@@ -322,7 +688,7 @@ export default function TeamActivity() {
         >
           <div>
             <label className="text-sm font-bold" htmlFor="activity-category">
-              Category
+              {intl.formatMessage(messages.categoryLabel)}
             </label>
             <NativeSelectField
               id="activity-category"
@@ -330,10 +696,10 @@ export default function TeamActivity() {
               className="mt-1"
               size="sm"
               value={staged.category}
-              placeholder="All categories"
+              placeholder={intl.formatMessage(messages.allCategories)}
               options={AUDIT_CATEGORIES.map((category) => ({
                 value: category,
-                label: CATEGORY_LABELS[category],
+                label: intl.formatMessage(CATEGORY_LABELS[category]),
               }))}
               onChange={(value) => {
                 const category = String(value);
@@ -346,7 +712,7 @@ export default function TeamActivity() {
           </div>
           <div>
             <label className="text-sm font-bold" htmlFor="activity-action">
-              Action
+              {intl.formatMessage(messages.actionFilterLabel)}
             </label>
             <NativeSelectField
               id="activity-action"
@@ -354,7 +720,7 @@ export default function TeamActivity() {
               className="mt-1"
               size="sm"
               value={staged.eventType}
-              placeholder="All actions"
+              placeholder={intl.formatMessage(messages.allActions)}
               options={actionOptions}
               onChange={(value) => {
                 setStaged((current) => ({
@@ -366,7 +732,7 @@ export default function TeamActivity() {
           </div>
           <div>
             <label className="text-sm font-bold" htmlFor="activity-actor">
-              Actor
+              {intl.formatMessage(messages.actorFilterLabel)}
             </label>
             <NativeSelectField
               id="activity-actor"
@@ -374,7 +740,7 @@ export default function TeamActivity() {
               className="mt-1"
               size="sm"
               value={staged.actor === null ? '' : actorToken(staged.actor)}
-              placeholder="All actors"
+              placeholder={intl.formatMessage(messages.allActors)}
               options={actorOptions.map(({ value, label }) => ({
                 value,
                 label,
@@ -395,7 +761,7 @@ export default function TeamActivity() {
           </div>
           <div>
             <label className="text-sm font-bold" htmlFor="activity-outcome">
-              Outcome
+              {intl.formatMessage(messages.outcomeFilterLabel)}
             </label>
             <NativeSelectField
               id="activity-outcome"
@@ -403,10 +769,10 @@ export default function TeamActivity() {
               className="mt-1"
               size="sm"
               value={staged.outcome}
-              placeholder="All outcomes"
+              placeholder={intl.formatMessage(messages.allOutcomes)}
               options={AUDIT_OUTCOMES.map((outcome) => ({
                 value: outcome,
-                label: OUTCOME_LABELS[outcome],
+                label: intl.formatMessage(OUTCOME_LABELS[outcome]),
               }))}
               onChange={(value) => {
                 const outcome = String(value);
@@ -419,7 +785,7 @@ export default function TeamActivity() {
           </div>
           <div>
             <label className="text-sm font-bold" htmlFor="activity-from">
-              From date
+              {intl.formatMessage(messages.fromDate)}
             </label>
             <InputField
               id="activity-from"
@@ -435,7 +801,7 @@ export default function TeamActivity() {
           </div>
           <div>
             <label className="text-sm font-bold" htmlFor="activity-to">
-              To date
+              {intl.formatMessage(messages.toDate)}
             </label>
             <InputField
               id="activity-to"
@@ -451,7 +817,7 @@ export default function TeamActivity() {
           </div>
           <div className="phone-landscape:col-span-2 tablet-portrait:col-span-3 laptop:col-span-6 flex gap-3">
             <Button size="sm" type="submit">
-              Apply filters
+              {intl.formatMessage(messages.applyFilters)}
             </Button>
             <Button
               size="sm"
@@ -463,7 +829,7 @@ export default function TeamActivity() {
                 setApplied(EMPTY_FILTERS);
               }}
             >
-              Clear filters
+              {intl.formatMessage(messages.clearFilters)}
             </Button>
           </div>
           {/*
@@ -478,8 +844,7 @@ export default function TeamActivity() {
               className="phone-landscape:col-span-2 tablet-portrait:col-span-3 laptop:col-span-6 text-sm"
               margin="none"
             >
-              This team has taken more kinds of action, or has had more actors,
-              than these menus can list. Some values are missing from them.
+              {intl.formatMessage(messages.filterOptionsTruncated)}
             </Paragraph>
           )}
         </form>
@@ -487,27 +852,29 @@ export default function TeamActivity() {
 
       <Paragraph className="sr-only" role="status" margin="none">
         {activity.isPending
-          ? 'Loading team activity…'
-          : `${items.length} activity ${items.length === 1 ? 'event' : 'events'} shown.`}
+          ? intl.formatMessage(messages.loading)
+          : intl.formatMessage(messages.eventsShown, { count: items.length })}
       </Paragraph>
 
       {activity.isPending && (
         <div className="flex items-center gap-3">
           <Spinner size="sm" />
-          <Paragraph margin="none">Loading team activity…</Paragraph>
+          <Paragraph margin="none">
+            {intl.formatMessage(messages.loading)}
+          </Paragraph>
         </div>
       )}
 
       {activity.isError && !isForbidden(activity.error) && (
         <Alert variant="destructive">
-          Team activity could not be loaded.
+          {intl.formatMessage(messages.loadFailed)}
           <Button
             className="mt-3"
             size="sm"
             variant="outline"
             onClick={() => void activity.refetch()}
           >
-            Retry
+            {intl.formatMessage(messages.retry)}
           </Button>
         </Alert>
       )}
@@ -515,8 +882,8 @@ export default function TeamActivity() {
       {activity.isSuccess && items.length === 0 && (
         <Alert>
           {hasActiveFilter(applied)
-            ? 'No activity matches these filters.'
-            : 'No activity has been recorded for this team yet.'}
+            ? intl.formatMessage(messages.noMatches)
+            : intl.formatMessage(messages.noneRecorded)}
         </Alert>
       )}
 
@@ -525,11 +892,19 @@ export default function TeamActivity() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>When</TableHead>
-                <TableHead>Actor</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Subject or resource</TableHead>
-                <TableHead>Outcome</TableHead>
+                <TableHead>{intl.formatMessage(messages.whenColumn)}</TableHead>
+                <TableHead>
+                  {intl.formatMessage(messages.actorColumn)}
+                </TableHead>
+                <TableHead>
+                  {intl.formatMessage(messages.actionColumn)}
+                </TableHead>
+                <TableHead>
+                  {intl.formatMessage(messages.subjectColumn)}
+                </TableHead>
+                <TableHead>
+                  {intl.formatMessage(messages.outcomeColumn)}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -539,10 +914,13 @@ export default function TeamActivity() {
                   <TableRow key={event.id}>
                     <TableCell>
                       <time dateTime={event.occurredAt.toISOString()}>
-                        {timestampFormat.format(event.occurredAt)}
+                        {intl.formatDate(event.occurredAt, {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })}
                       </time>
                     </TableCell>
-                    <TableCell>{actorText(event.actor)}</TableCell>
+                    <TableCell>{actorText(intl, event.actor)}</TableCell>
                     <TableCell>
                       <Button
                         variant="link"
@@ -552,15 +930,18 @@ export default function TeamActivity() {
                         {event.title}
                       </Button>
                       {!event.rendered && (
-                        <Badge className="ml-2" variant="outline">
-                          Unrecognized event
+                        <Badge className="ms-2" variant="outline">
+                          {intl.formatMessage(messages.unrecognizedEvent)}
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>{target?.label ?? target?.id ?? '—'}</TableCell>
+                    <TableCell>
+                      {/* eslint-disable-next-line formatjs/no-literal-string-in-jsx -- the em dash is locale-neutral typography, not copy */}
+                      {target?.label ?? target?.id ?? '—'}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={OUTCOME_BADGE_VARIANTS[event.outcome]}>
-                        {OUTCOME_LABELS[event.outcome]}
+                        {intl.formatMessage(OUTCOME_LABELS[event.outcome])}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -576,14 +957,14 @@ export default function TeamActivity() {
                 disabled={activity.isFetchingNextPage}
                 onClick={() => void activity.fetchNextPage()}
               >
-                {activity.isFetchingNextPage ? 'Loading more…' : 'Load more'}
+                {activity.isFetchingNextPage
+                  ? intl.formatMessage(messages.loadingMore)
+                  : intl.formatMessage(messages.loadMore)}
               </Button>
             </div>
           ) : (
             <Paragraph className="text-sm opacity-70" margin="none">
-              This is the beginning of the recorded activity for this team.
-              Actions taken before activity recording was enabled are not
-              available.
+              {intl.formatMessage(messages.beginning)}
             </Paragraph>
           )}
         </>
@@ -593,6 +974,7 @@ export default function TeamActivity() {
 }
 
 function ActivityEventDetail(props: { teamId: string; eventId: string }) {
+  const intl = useAppIntl();
   const detail = useQuery(
     orpc.audit.get.queryOptions({
       input: { teamId: props.teamId, eventId: props.eventId },
@@ -604,7 +986,9 @@ function ActivityEventDetail(props: { teamId: string; eventId: string }) {
     return (
       <div className="flex items-center gap-3" role="status">
         <Spinner size="sm" />
-        <Paragraph margin="none">Loading event…</Paragraph>
+        <Paragraph margin="none">
+          {intl.formatMessage(messages.loadingEvent)}
+        </Paragraph>
       </div>
     );
   }
@@ -612,14 +996,14 @@ function ActivityEventDetail(props: { teamId: string; eventId: string }) {
   if (detail.isError) {
     return (
       <Alert variant="destructive">
-        The event could not be loaded.
+        {intl.formatMessage(messages.eventLoadFailed)}
         <Button
           className="mt-3"
           size="sm"
           variant="outline"
           onClick={() => void detail.refetch()}
         >
-          Retry
+          {intl.formatMessage(messages.retry)}
         </Button>
       </Alert>
     );
@@ -628,47 +1012,81 @@ function ActivityEventDetail(props: { teamId: string; eventId: string }) {
   const event = detail.data;
   const detailEntries = Object.entries(event.details);
   const fields: { label: string; value: string }[] = [
-    { label: 'Time', value: timestampFormat.format(event.occurredAt) },
-    { label: 'Time (UTC)', value: event.occurredAt.toISOString() },
-    { label: 'Actor', value: actorText(event.actor) },
+    {
+      label: intl.formatMessage(messages.detailTime),
+      value: intl.formatDate(event.occurredAt, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }),
+    },
+    {
+      label: intl.formatMessage(messages.detailTimeUtc),
+      value: event.occurredAt.toISOString(),
+    },
+    {
+      label: intl.formatMessage(messages.detailActor),
+      value: actorText(intl, event.actor),
+    },
     ...(event.actor.id === null
       ? []
-      : [{ label: 'Actor ID', value: event.actor.id }]),
+      : [
+          {
+            label: intl.formatMessage(messages.detailActorId),
+            value: event.actor.id,
+          },
+        ]),
     ...(event.subject
       ? [
           {
-            label: 'Subject',
-            value: `${event.subject.label ?? event.subject.id ?? ''} (${event.subject.type})`,
+            label: intl.formatMessage(messages.detailSubject),
+            value: intl.formatMessage(messages.entityWithType, {
+              name: event.subject.label ?? event.subject.id ?? '',
+              type: event.subject.type,
+            }),
           },
         ]
       : []),
     ...(event.resource
       ? [
           {
-            label: 'Resource',
-            value: `${event.resource.label ?? event.resource.id ?? ''} (${event.resource.type})`,
+            label: intl.formatMessage(messages.detailResource),
+            value: intl.formatMessage(messages.entityWithType, {
+              name: event.resource.label ?? event.resource.id ?? '',
+              type: event.resource.type,
+            }),
           },
         ]
       : []),
-    { label: 'Outcome', value: OUTCOME_LABELS[event.outcome] },
-    { label: 'Category', value: CATEGORY_LABELS[event.category] },
     {
-      label: 'Event type',
-      value: `${event.eventType} (version ${event.eventVersion})`,
+      label: intl.formatMessage(messages.detailOutcome),
+      value: intl.formatMessage(OUTCOME_LABELS[event.outcome]),
     },
-    { label: 'Team', value: event.teamLabel },
-    { label: 'Sequence', value: event.sequence },
-    { label: 'Request ID', value: event.requestId },
+    {
+      label: intl.formatMessage(messages.detailCategory),
+      value: intl.formatMessage(CATEGORY_LABELS[event.category]),
+    },
+    {
+      label: intl.formatMessage(messages.detailEventType),
+      value: intl.formatMessage(messages.eventTypeVersion, {
+        eventType: event.eventType,
+        version: String(event.eventVersion),
+      }),
+    },
+    { label: intl.formatMessage(messages.detailTeam), value: event.teamLabel },
+    {
+      label: intl.formatMessage(messages.detailSequence),
+      value: event.sequence,
+    },
+    {
+      label: intl.formatMessage(messages.detailRequestId),
+      value: event.requestId,
+    },
   ];
 
   return (
     <div className="flex flex-col gap-4">
       {!event.rendered && (
-        <Alert>
-          Studio does not recognize this event type. It was likely recorded by a
-          newer version of Studio; its identifying information is shown without
-          further detail.
-        </Alert>
+        <Alert>{intl.formatMessage(messages.unrecognizedDetail)}</Alert>
       )}
       <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
         {fields.map((field) => (
@@ -679,9 +1097,9 @@ function ActivityEventDetail(props: { teamId: string; eventId: string }) {
         ))}
       </dl>
       {detailEntries.length > 0 && (
-        <section aria-label="Event details">
+        <section aria-label={intl.formatMessage(messages.detailsSectionLabel)}>
           <Heading level="h3" margin="none">
-            Details
+            {intl.formatMessage(messages.detailsHeading)}
           </Heading>
           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
             {detailEntries.map(([key, value]) => (

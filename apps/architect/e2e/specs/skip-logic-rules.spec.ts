@@ -58,18 +58,26 @@ test('skip-logic rule cards carry valid, distinct semantics', async ({
   const section = editor.section('Skip logic');
   const rules = editor.field('skipLogic.filter');
 
-  // The rule builder is the required group targeted by the visible field
-  // label; the label used to point at nothing at all.
+  // The rule builder is the group targeted by the visible field label; the
+  // label used to point at nothing at all. `group` is not a role that may
+  // carry `aria-required` (axe reports it as `aria-allowed-attr`), so the
+  // requirement has to be announced by the description the group names.
   expect(
     await rules.evaluate((element) => {
       const label = element.querySelector('label');
       const target = label && document.getElementById(label.htmlFor);
+      const description = (target?.getAttribute('aria-describedby') ?? '')
+        .split(' ')
+        .filter(Boolean)
+        .map((id) => document.getElementById(id)?.textContent ?? '')
+        .join(' ');
       return {
         role: target?.getAttribute('role') ?? null,
         required: target?.getAttribute('aria-required') ?? null,
+        describedAsRequired: /Required/.test(description),
       };
     }),
-  ).toEqual({ role: 'group', required: 'true' });
+  ).toEqual({ role: 'group', required: null, describedAsRequired: true });
   const ruleItems = rules.getByRole('list').getByRole('listitem');
   await expect(ruleItems).toHaveCount(2);
 

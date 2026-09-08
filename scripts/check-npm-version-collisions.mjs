@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { collectWorkspacePackages } from './release-e2e-policy.mjs';
 
-const DEFAULT_REGISTRY_URL = 'https://registry.npmjs.org/';
+export const DEFAULT_REGISTRY_URL = 'https://registry.npmjs.org/';
 const FIRST_PUBLICATION_APPROVALS_PATH = '.github/npm-first-publications.json';
 
 function git(repoRoot, args) {
@@ -140,7 +140,7 @@ export function npmVersionUrl(registryUrl, packageName, version) {
   return new URL(`${encodedName}/${encodeURIComponent(version)}`, base).href;
 }
 
-function npmPackageUrl(registryUrl, packageName) {
+export function npmPackageUrl(registryUrl, packageName) {
   const base = registryUrl.endsWith('/') ? registryUrl : `${registryUrl}/`;
   const encodedName = encodeURIComponent(packageName).replace(/^%40/, '@');
   return new URL(encodedName, base).href;

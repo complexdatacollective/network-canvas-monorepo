@@ -27,6 +27,7 @@ function makeConflicts(howMany: number): ConstraintConflict[] {
     variableIds: [`variable-${i}`],
     variableNames: [`Attribute ${i + 1}`],
     rules: [RULES[i % RULES.length] ?? 'unique'],
+    reasonCode: 'insufficientUniqueValues',
     reason:
       'only 2 distinct values are possible, but up to 5 nodes of this type can be generated',
   }));

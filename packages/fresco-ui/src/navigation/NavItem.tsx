@@ -3,6 +3,8 @@
 import { Lock, type LucideIcon } from 'lucide-react';
 import type { ReactElement, ReactNode } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { cva, cx } from '../utils/cva';
 
 /**
@@ -203,6 +205,7 @@ function defaultRenderLink({ children, ...props }: NavItemLinkRenderProps) {
  * and why it is not a disabled widget.
  */
 const NavItem = (props: NavItemProps) => {
+  const intl = useAppIntl();
   const {
     href,
     label,
@@ -302,9 +305,10 @@ const NavItem = (props: NavItemProps) => {
         // `outline`, and five bordered chips down a sidebar shout over the
         // labels they annotate.
         <div className="text-text/70 shrink-0 text-xs font-bold tabular-nums">
-          {/* Grouped by the runtime's locale, so five-figure counts stay
-              readable. */}
-          {count.toLocaleString()}
+          {/* Grouped by the app locale (English on provider-less hosts), so
+              five-figure counts stay readable and grouping matches the
+              language of the chrome around it. */}
+          {intl.formatNumber(count)}
         </div>
       ) : null}
     </>

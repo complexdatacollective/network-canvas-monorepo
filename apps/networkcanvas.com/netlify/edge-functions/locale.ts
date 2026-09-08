@@ -172,8 +172,31 @@ export function getLocaleRedirect(request: Request, savedLocale?: string) {
   return url;
 }
 
-export function isProtocolGalleryHost(hostname: string) {
-  return hostname === protocolGalleryHost;
+/**
+ * The gallery origin a deployment is configured to serve, when it overrides
+ * the canonical subdomain. The same variable drives the app's canonical and
+ * navigation URLs (`lib/siteUrls.ts`), so the edge runtime must recognise the
+ * same host or those short URLs would 404 there. Absent in production, where
+ * the canonical subdomain is a domain alias of the deploy.
+ */
+export function getConfiguredGalleryHost(
+  configuredOrigin = typeof Netlify === 'undefined'
+    ? undefined
+    : Netlify.env.get('NEXT_PUBLIC_PROTOCOL_GALLERY_URL'),
+) {
+  if (!configuredOrigin) return undefined;
+  try {
+    return new URL(configuredOrigin).hostname;
+  } catch {
+    return undefined;
+  }
+}
+
+export function isProtocolGalleryHost(
+  hostname: string,
+  configuredHost = getConfiguredGalleryHost(),
+) {
+  return hostname === protocolGalleryHost || hostname === configuredHost;
 }
 
 export function getGalleryLegacyRedirect(url: URL, locale: SiteLocale) {

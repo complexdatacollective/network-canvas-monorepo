@@ -1,0 +1,28 @@
+{
+  "name": "@codaco/storybook-config",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "src/**"
+  ],
+  "type": "module",
+  "exports": {
+    "./i18n": "./src/i18n.tsx"
+  },
+  "scripts": {
+    "typecheck": "tsc --build --noEmit"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.4.0",
+    "@codaco/app-i18n": "workspace:^"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:^",
+    "@storybook/react-vite": "catalog:",
+    "@types/react": "catalog:",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "catalog:"
+  }
+}

@@ -9,6 +9,9 @@ import {
   useRef,
 } from 'react';
 
+import { AppMessage } from '@codaco/app-i18n/react';
+
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import type {
   AssetRequestHandler,
   FinishHandler,
@@ -23,7 +26,7 @@ type ContractHandlers = {
 type ContractValue = {
   handlers: ContractHandlers;
   flags: Required<InterviewerFlags>;
-  finishConfirmationDescription: string;
+  finishConfirmationDescription: ReactNode;
 };
 
 const ContractContext = createContext<ContractValue | null>(null);
@@ -32,7 +35,7 @@ type ContractProviderProps = {
   onFinish: FinishHandler;
   onRequestAsset: AssetRequestHandler;
   flags?: InterviewerFlags;
-  finishConfirmationDescription?: string;
+  finishConfirmationDescription?: ReactNode;
   children: ReactNode;
 };
 
@@ -70,9 +73,9 @@ export function ContractProvider({
         isE2E: flags?.isE2E ?? false,
         isDevelopment: flags?.isDevelopment ?? false,
       },
-      finishConfirmationDescription:
-        finishConfirmationDescription ??
-        'Finish this interview only when you are satisfied with your responses.',
+      finishConfirmationDescription: finishConfirmationDescription ?? (
+        <AppMessage message={messages.finishConfirmationDescription} />
+      ),
     }),
     [
       stableOnFinish,
@@ -108,6 +111,6 @@ export function useContractFlags(): Required<InterviewerFlags> {
   return useContract().flags;
 }
 
-export function useFinishConfirmationDescription(): string {
+export function useFinishConfirmationDescription(): ReactNode {
   return useContract().finishConfirmationDescription;
 }

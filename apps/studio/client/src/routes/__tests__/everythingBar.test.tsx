@@ -10,6 +10,8 @@ import {
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
+
 import { authClient } from '../../lib/auth.ts';
 import { createAppRouter } from '../../router.tsx';
 import {
@@ -45,10 +47,13 @@ const fixtures = vi.hoisted(() => ({
   getSession: vi.fn(),
   STUDY: {
     id: 'study-1',
-    draftId: 'draft-1',
     name: 'Shell proof',
+    state: 'draft',
+    participationMode: 'managed',
+    protocolId: 'protocol-1',
     createdAt: new Date('2026-08-28T00:00:00Z'),
-    updatedAt: new Date('2026-08-28T00:00:00Z'),
+    waveCount: 0,
+    participantCount: 0,
   },
 }));
 
@@ -89,33 +94,81 @@ vi.mock('../../lib/auth.ts', () => ({
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    me: {
+      queryOptions: () => ({
+        queryKey: ['me'],
+        queryFn: () => ({
+          userId: 'user-1',
+          email: 'researcher@example.org',
+          emailVerified: true,
+          name: 'Researcher',
+          // `me` carries the account's UI-language preference; null means
+          // "follow the browser" (2026-09-04 localization design §5.2).
+          locale: null,
+          teams: [{ teamId: 'team-a', role: 'owner' }],
+        }),
+      }),
+      key: () => ['me'],
+    },
     status: {
       queryOptions: () => ({
         queryKey: ['status'],
         queryFn: () => ({
           name: 'Network Canvas Studio',
           version: '0.1.0',
-          auth: { enabled: true, magicLink: true, socialProviders: [] },
+          auth: {
+            enabled: true,
+            magicLink: true,
+            emailAndPassword: true,
+            socialProviders: [],
+          },
           // Read at call time, so a test can put the client on a self-hosted
           // instance before it renders.
           deployment: fixtures.deployment,
         }),
       }),
     },
-    protocols: {
+    studies: {
       list: {
         queryOptions: () => ({
-          queryKey: ['protocols'],
+          queryKey: ['studies'],
           queryFn: () => [fixtures.STUDY],
         }),
-        key: () => ['protocols'],
+        key: () => ['studies'],
+      },
+      get: {
+        queryOptions: () => ({
+          queryKey: ['study'],
+          queryFn: () => ({
+            teamId: fixtures.TEAM.id,
+            study: fixtures.STUDY,
+            protocolDraftId: 'draft-1',
+          }),
+        }),
+        key: () => ['study'],
       },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+      counts: {
+        queryOptions: () => ({
+          queryKey: ['study-counts'],
+          queryFn: () => ({
+            versions: 0,
+            participants: 0,
+            waves: 0,
+            sessions: 0,
+          }),
+        }),
+      },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
         key: () => ['draft'],
       },
     },
+    // The study sidebar's counts. The bar never renders one, so an empty study
+    // is the honest fixture: a result's label is its destination's name and
+    // nothing else, whatever the sidebar beside it shows.
     audit: {
       list: {
         infiniteOptions: (options: {
@@ -336,6 +389,8 @@ describe('go to', () => {
     const items = destinationItems({
       entries,
       currentArea: currentAreaFor('/study/study-1'),
+      // The English formatter the app renders with when no catalog applies.
+      intl: createAppIntl({ locale: 'en' }),
     });
 
     // Not a vacuous pass: every area contributes, so a manifest that silently
@@ -477,6 +532,7 @@ describe('commands', () => {
       teamId: 'team-a',
       studyId: 'study-1',
       canManageTeam: true,
+      intl: createAppIntl({ locale: 'en' }),
     });
     if (!provider.local) throw new Error('the commands provider is local');
 
@@ -489,6 +545,32 @@ describe('commands', () => {
       expect(item.activate.kind).toBe('open');
       expect(registeredPathFor(router, item.activate.href)).toBeDefined();
     }
+  });
+
+  it('reads its rows out of the catalog, like every other string on screen', () => {
+    // The commands are invented, but they are copy a researcher reads, in the
+    // shipped bar. Left as literals they would stay English while the bar
+    // around them changed language — the destinations beside them resolve
+    // through the same formatter.
+    const provider = createMockCommandsProvider({
+      teamId: 'team-a',
+      studyId: 'study-1',
+      canManageTeam: true,
+      intl: createAppIntl({
+        locale: 'en',
+        messages: {
+          'studio.everythingBar.command.inviteMember': 'Ask somebody to join',
+          'studio.nav.context.team': 'Research team',
+        },
+      }),
+    });
+    if (!provider.local) throw new Error('the commands provider is local');
+
+    const invite = provider
+      .items()
+      .find((item) => item.id === 'team:team-a:members.invite');
+    expect(invite?.label).toBe('Ask somebody to join');
+    expect(invite?.context).toBe('Research team');
   });
 });
 

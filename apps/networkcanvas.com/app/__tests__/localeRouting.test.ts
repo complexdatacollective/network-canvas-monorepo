@@ -10,6 +10,7 @@ import { loadProtocolGallery } from '~/lib/protocolGallery';
 import localeRedirect, {
   config,
   detectLocale,
+  getConfiguredGalleryHost,
   getGalleryCanonicalRedirect,
   getGalleryLegacyRedirect,
   getGalleryRewrite,
@@ -197,6 +198,27 @@ describe('locale routing', () => {
         true,
       );
       expect(isProtocolGalleryHost('networkcanvas.com')).toBe(false);
+    });
+
+    it('also recognises a configured gallery origin, so its short URLs resolve', () => {
+      expect(getConfiguredGalleryHost('https://gallery.example.test')).toBe(
+        'gallery.example.test',
+      );
+      expect(getConfiguredGalleryHost(undefined)).toBeUndefined();
+      expect(getConfiguredGalleryHost('not a url')).toBeUndefined();
+
+      expect(
+        isProtocolGalleryHost('gallery.example.test', 'gallery.example.test'),
+      ).toBe(true);
+      expect(
+        isProtocolGalleryHost(
+          'protocolgallery.networkcanvas.com',
+          'gallery.example.test',
+        ),
+      ).toBe(true);
+      expect(isProtocolGalleryHost('gallery.example.test', undefined)).toBe(
+        false,
+      );
     });
 
     it('negotiates a locale before anything is rewritten', () => {

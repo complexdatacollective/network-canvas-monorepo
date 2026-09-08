@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 import {
   FAMILY_PEDIGREE_SLOTS,
@@ -41,6 +43,125 @@ import {
   makeSlotCrossClassValidator,
   selectSlotPickerOptions,
 } from './slotWiring';
+const remainingMessages = defineMessages({
+  youAttemptedToChangeTheEdge: {
+    id: 'architect.remaining.sections.familyPedigree.edgeConfiguration.youAttemptedToChangeTheEdge',
+    defaultMessage:
+      'You attempted to change the edge type of a stage that you have already configured. Before you can proceed the attributes selected for this edge type must be cleared. Do you want to change the edge type now?',
+    description:
+      'The promptBeforeChange text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+});
+const messages = defineMessages({
+  relationshipData: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.relationshipData',
+    defaultMessage: 'Relationship data',
+    description:
+      'The title text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  chooseTheEdgeTypeAndMap: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.chooseTheEdgeTypeAndMap',
+    defaultMessage:
+      'Choose the edge type and map the attributes used to store family relationships.',
+    description:
+      'The description text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  edgeType: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.edgeType',
+    defaultMessage: 'Edge type',
+    description:
+      'The description text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  relationshipAttributes: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.relationshipAttributes',
+    defaultMessage: 'Relationship attributes',
+    description:
+      'The title text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  mapTheEdgeAttributesUsedTo: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.mapTheEdgeAttributesUsedTo',
+    defaultMessage:
+      'Map the edge attributes used to describe family relationships and support inheritance tracing.',
+    description:
+      'The description text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  relationshipTypeAttribute: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.relationshipTypeAttribute',
+    defaultMessage: 'Relationship type attribute',
+    description:
+      'The description text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  relationshipType: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.relationshipType',
+    defaultMessage: 'Relationship type',
+    description:
+      'The label text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  storesTheRelationshipCategoryBetweenFamily: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.storesTheRelationshipCategoryBetweenFamily',
+    defaultMessage:
+      'Stores the relationship category between family members, such as biological, social, donor, surrogate, adoptive, or partner.',
+    description:
+      'The hint text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  activeStatusAttribute: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.activeStatusAttribute',
+    defaultMessage: 'Active status attribute',
+    description:
+      'The description text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  activeStatus: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.activeStatus',
+    defaultMessage: 'Active status',
+    description:
+      'The label text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  aBooleanAttributeIndicatingWhetherThe: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.aBooleanAttributeIndicatingWhetherThe',
+    defaultMessage:
+      'A boolean attribute indicating whether the relationship is currently active.',
+    description:
+      'The hint text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  gestationalCarrierAttribute: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.gestationalCarrierAttribute',
+    defaultMessage: 'Gestational carrier attribute',
+    description:
+      'The description text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  gestationalCarrier: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.gestationalCarrier',
+    defaultMessage: 'Gestational carrier',
+    description:
+      'The label text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  aBooleanAttributeIndicatingWhetherA: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.aBooleanAttributeIndicatingWhetherA',
+    defaultMessage:
+      'A boolean attribute indicating whether a parent is a gestational carrier. Used only for parent relationships.',
+    description:
+      'The hint text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  gameteRoleAttribute: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.gameteRoleAttribute',
+    defaultMessage: 'Gamete role attribute',
+    description:
+      'The description text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  gameteRole: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.gameteRole',
+    defaultMessage: 'Gamete role',
+    description:
+      'The label text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+  storesWhetherAParentContributedThe: {
+    id: 'architect.sections.familyPedigree.edgeConfiguration.storesWhetherAParentContributedThe',
+    defaultMessage:
+      'Stores whether a parent contributed the egg or sperm. The interface uses this fixed value set to trace biological inheritance.',
+    description:
+      'The hint text in components / sections / FamilyPedigree / EdgeConfiguration.',
+  },
+});
 
 const edgeEntity: Entity = 'edge';
 
@@ -65,6 +186,7 @@ type VariableWindowInitialProps = {
 };
 
 const EdgeConfiguration = (_props: StageEditorSectionProps) => {
+  const intl = useAppIntl();
   const { storeApi, draft } = useStageFormContext();
   const setStageValue = useSetStageValue();
   const edgeType = useStageFormValue<string>('edgeConfig.type');
@@ -277,33 +399,44 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
   return (
     <>
       <Section
-        title="Relationship data"
-        description="Choose the edge type and map the attributes used to store family relationships."
+        title={intl.formatMessage(messages.relationshipData)}
+        description={intl.formatMessage(messages.chooseTheEdgeTypeAndMap)}
       >
-        <IssueAnchor fieldName="edgeConfig.type" description="Edge type" />
+        <IssueAnchor
+          fieldName="edgeConfig.type"
+          description={intl.formatMessage(messages.edgeType)}
+        />
         <ArchitectField
           name="edgeConfig.type"
           component={EntitySelectControl}
           entityType="edge"
-          promptBeforeChange="You attempted to change the edge type of a stage that you have already configured. Before you can proceed the attributes selected for this edge type must be cleared. Do you want to change the edge type now?"
+          promptBeforeChange={intl.formatMessage(
+            remainingMessages.youAttemptedToChangeTheEdge,
+          )}
           validation={{ required: true }}
-          label="Edge type"
+          label={intl.formatMessage(messages.edgeType)}
           initialValue={edgeTypeInitial}
         />
 
         {edgeType && (
           <Section
-            title="Relationship attributes"
-            description="Map the edge attributes used to describe family relationships and support inheritance tracing."
+            title={intl.formatMessage(messages.relationshipAttributes)}
+            description={intl.formatMessage(
+              messages.mapTheEdgeAttributesUsedTo,
+            )}
           >
             <IssueAnchor
               fieldName="edgeConfig.relationshipTypeVariable"
-              description="Relationship type attribute"
+              description={intl.formatMessage(
+                messages.relationshipTypeAttribute,
+              )}
             />
             <ArchitectField
               name="edgeConfig.relationshipTypeVariable"
-              label="Relationship type"
-              hint="Stores the relationship category between family members, such as biological, social, donor, surrogate, adoptive, or partner."
+              label={intl.formatMessage(messages.relationshipType)}
+              hint={intl.formatMessage(
+                messages.storesTheRelationshipCategoryBetweenFamily,
+              )}
               component={VariablePickerControl}
               validation={{
                 required: true,
@@ -319,12 +452,14 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
             />
             <IssueAnchor
               fieldName="edgeConfig.isActiveVariable"
-              description="Active status attribute"
+              description={intl.formatMessage(messages.activeStatusAttribute)}
             />
             <ArchitectField
               name="edgeConfig.isActiveVariable"
-              label="Active status"
-              hint="A boolean attribute indicating whether the relationship is currently active."
+              label={intl.formatMessage(messages.activeStatus)}
+              hint={intl.formatMessage(
+                messages.aBooleanAttributeIndicatingWhetherThe,
+              )}
               component={VariablePickerControl}
               validation={{
                 required: true,
@@ -340,12 +475,16 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
             />
             <IssueAnchor
               fieldName="edgeConfig.isGestationalCarrierVariable"
-              description="Gestational carrier attribute"
+              description={intl.formatMessage(
+                messages.gestationalCarrierAttribute,
+              )}
             />
             <ArchitectField
               name="edgeConfig.isGestationalCarrierVariable"
-              label="Gestational carrier"
-              hint="A boolean attribute indicating whether a parent is a gestational carrier. Used only for parent relationships."
+              label={intl.formatMessage(messages.gestationalCarrier)}
+              hint={intl.formatMessage(
+                messages.aBooleanAttributeIndicatingWhetherA,
+              )}
               component={VariablePickerControl}
               validation={{
                 required: true,
@@ -363,12 +502,14 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
             />
             <IssueAnchor
               fieldName="edgeConfig.gameteRoleVariable"
-              description="Gamete role attribute"
+              description={intl.formatMessage(messages.gameteRoleAttribute)}
             />
             <ArchitectField
               name="edgeConfig.gameteRoleVariable"
-              label="Gamete role"
-              hint="Stores whether a parent contributed the egg or sperm. The interface uses this fixed value set to trace biological inheritance."
+              label={intl.formatMessage(messages.gameteRole)}
+              hint={intl.formatMessage(
+                messages.storesWhetherAParentContributedThe,
+              )}
               component={VariablePickerControl}
               validation={{
                 required: true,

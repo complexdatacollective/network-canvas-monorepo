@@ -1,7 +1,8 @@
+import { Toast } from '@base-ui/react/toast';
+
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
 import './analytics';
-import { Toast } from '@base-ui/react/toast';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 
@@ -12,10 +13,11 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 import { Toaster } from '@codaco/fresco-ui/Toast';
 
-import { AppErrorBoundary } from './components/Errors';
 import AppView from './components/ViewManager/views/App';
 import { restoreActiveProtocolAfterStoreRehydration } from './ducks/restoreActiveProtocol';
 import { store, storeRehydrated } from './ducks/store';
+import { ArchitectI18nRoot } from './i18n/ArchitectI18nRoot';
+import { initializeArchitectDocument } from './i18n/documentMetadata';
 import { preloadTimelineImages } from './images/timeline';
 import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
 import { isCriticalOperationInProgress } from './utils/criticalOperation';
@@ -29,6 +31,8 @@ import {
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './utils/pwa';
+
+initializeArchitectDocument();
 
 // Register before the startup update check: skipWaiting moves every existing
 // tab to the new worker, which must retain the precache for each tab's compiled
@@ -88,10 +92,10 @@ async function startApp(): Promise<void> {
   }
 
   createRoot(root).render(
-    <AnimationProvider
-      disableAnimations={import.meta.env.VITE_DISABLE_ANIMATIONS === 'true'}
-    >
-      <AppErrorBoundary>
+    <ArchitectI18nRoot>
+      <AnimationProvider
+        disableAnimations={import.meta.env.VITE_DISABLE_ANIMATIONS === 'true'}
+      >
         <Provider store={store}>
           {/* PortalContainerProvider outermost so fresco-ui overlays portal into
             its viewport layer; the `root` (isolation: isolate) wrapper keeps the
@@ -112,8 +116,8 @@ async function startApp(): Promise<void> {
             </Toast.Provider>
           </PortalContainerProvider>
         </Provider>
-      </AppErrorBoundary>
-    </AnimationProvider>,
+      </AnimationProvider>
+    </ArchitectI18nRoot>,
   );
 
   // Matches the boot loader's opacity transition in index.html (400ms), plus a

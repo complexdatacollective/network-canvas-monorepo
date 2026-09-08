@@ -140,6 +140,30 @@ describe('Collection', () => {
       expect(apple).not.toContain('aria-disabled');
     });
 
+    it('marks the initial selection in the initial markup', () => {
+      const markup = renderToString(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="single"
+          defaultSelectedKeys={['3']}
+          animate={false}
+          renderItem={(item, itemProps) => (
+            <div {...itemProps}>{item.name}</div>
+          )}
+        >
+          {(collectionElements) => collectionElements}
+        </Collection>,
+      );
+
+      const cherry = markup.match(/<div[^>]*>Cherry<\/div>/)?.[0] ?? '';
+      const apple = markup.match(/<div[^>]*>Apple<\/div>/)?.[0] ?? '';
+      expect(cherry).toContain('aria-selected="true"');
+      expect(apple).not.toContain('aria-selected');
+    });
+
     it('renders in page flow without a scroll region when not scrollable', () => {
       const { container } = render(
         <Collection
@@ -277,6 +301,39 @@ describe('Collection', () => {
 
       expect(screen.getByTestId('empty')).toBeDefined();
     });
+
+    // The default empty state is a message descriptor formatted here rather
+    // than a default parameter on the prop, and a default parameter applies
+    // to `undefined` alone. `emptyState` is a ReactNode, and passing `null`
+    // is how a caller says the collection should show nothing at all when it
+    // is empty — a nullish fallback would talk over them.
+    it.each([
+      ['null', null, false],
+      ['nothing', undefined, true],
+    ])(
+      'renders no default text when a caller passes %s',
+      (_label, emptyState, expectsDefault) => {
+        const layout = new ListLayout<Item>({ gap: 2 });
+
+        render(
+          <Collection
+            items={[]}
+            keyExtractor={(item) => item.id}
+            textValueExtractor={(item) => item.name}
+            layout={layout}
+            emptyState={emptyState}
+            renderItem={(item, itemProps) => (
+              <div {...itemProps}>{item.name}</div>
+            )}
+          >
+            {(CollectionElements) => CollectionElements}
+          </Collection>,
+        );
+
+        const defaultText = screen.queryByText('No items to display.');
+        expect(defaultText === null).toBe(!expectsDefault);
+      },
+    );
 
     it('should apply ARIA attributes', () => {
       render(<ControlledCollection />);

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { messageText } from '~/test/messageText';
+
 import {
   floorIssue,
   formatCommitted,
@@ -91,6 +93,14 @@ describe('formatCommitted', () => {
 });
 
 describe('floorIssue', () => {
+  const ruleLabels: Record<string, string> = {
+    minLength: 'Minimum text length',
+    maxLength: 'Maximum text length',
+    minValue: 'Minimum value',
+    maxValue: 'Maximum value',
+    minSelected: 'Minimum selection',
+    maxSelected: 'Maximum selection',
+  };
   const integerRules = [
     'minLength',
     'maxLength',
@@ -101,22 +111,26 @@ describe('floorIssue', () => {
   ];
 
   it.each(integerRules)('rejects a fractional %s value', (rule) => {
-    expect(floorIssue(rule, 1.5)).toBe(`${rule} must be a whole number`);
+    expect(messageText(floorIssue(rule, 1.5))).toBe(
+      `${ruleLabels[rule]} must be a whole number`,
+    );
   });
 
   it.each(integerRules)('accepts an integer %s value', (rule) => {
-    expect(floorIssue(rule, 2)).toBeUndefined();
+    expect(messageText(floorIssue(rule, 2))).toBeUndefined();
   });
 
   it.each(['maxLength', 'maxSelected'])(
     'accepts zero for an optional %s',
     (rule) => {
-      expect(floorIssue(rule, 0)).toBeUndefined();
+      expect(messageText(floorIssue(rule, 0))).toBeUndefined();
     },
   );
 
   it.each(['maxLength', 'maxSelected'])('rejects a negative %s', (rule) => {
-    expect(floorIssue(rule, -1)).toBe(`${rule} must be at least 0`);
+    expect(messageText(floorIssue(rule, -1))).toBe(
+      `${ruleLabels[rule]} must be at least 0`,
+    );
   });
 });
 
@@ -130,8 +144,10 @@ describe('ruleMapPrecheck', () => {
   it('reports an unanswered rule ahead of everything else', () => {
     // The fractional value would be reported too, and the pair is inverted as
     // well; neither can be judged until the switched-on rule has a value.
-    expect(ruleMapPrecheck({ sameAs: null, minValue: 1.5 }).issue).toBe(
-      'Choose a comparison attribute for "Same as", or switch the rule off.',
+    expect(
+      messageText(ruleMapPrecheck({ sameAs: null, minValue: 1.5 }).issue),
+    ).toBe(
+      'Choose a comparison attribute for "Same as another attribute", or switch the rule off.',
     );
   });
 
@@ -142,11 +158,11 @@ describe('ruleMapPrecheck', () => {
   });
 
   it('reports a value the schema itself would reject', () => {
-    expect(ruleMapPrecheck({ minValue: 1.5 }).issue).toBe(
-      'minValue must be a whole number',
+    expect(messageText(ruleMapPrecheck({ minValue: 1.5 }).issue)).toBe(
+      'Minimum value must be a whole number',
     );
-    expect(ruleMapPrecheck({ maxLength: -1 }).issue).toBe(
-      'maxLength must be at least 0',
+    expect(messageText(ruleMapPrecheck({ maxLength: -1 }).issue)).toBe(
+      'Maximum text length must be at least 0',
     );
   });
 

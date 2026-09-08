@@ -4,6 +4,9 @@ import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
 import { useMemo, useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
@@ -18,6 +21,7 @@ import {
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 import ScaleValuePopover from './scale/ScaleValuePopover';
 import {
   ROTATED_LABEL_WRAP_CLASS,
@@ -39,7 +43,23 @@ type LikertScaleFieldProps = CreateFormFieldProps<
   }
 >;
 
+const messages = defineMessages({
+  sliderLabel: {
+    id: 'frescoUi.likertScale.sliderLabel',
+    defaultMessage: 'Select value on scale',
+    description:
+      'Accessible name of the scale’s slider thumb, when the caller named neither the field nor the control.',
+  },
+  noSelection: {
+    id: 'frescoUi.likertScale.noSelection',
+    defaultMessage: 'No selection',
+    description:
+      'Announced value of the scale’s slider before anything has been chosen.',
+  },
+});
+
 export default function LikertScaleField(props: LikertScaleFieldProps) {
+  const intl = useAppIntl();
   const {
     className,
     value,
@@ -55,7 +75,6 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
     'aria-labelledby': ariaLabelledBy,
     'aria-describedby': ariaDescribedBy,
     'aria-invalid': ariaInvalid,
-    'aria-required': ariaRequired,
     ...rest
   } = props;
 
@@ -146,7 +165,13 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
   };
 
   return (
-    <div ref={rootRef} className={cx('relative w-full', className)} {...rest}>
+    <div
+      ref={rootRef}
+      className={cx('relative w-full', className)}
+      // A roleless layout element carries only the global ARIA attributes,
+      // which `aria-readonly` and `aria-required` are not.
+      {...omitWidgetOnlyAria(rest)}
+    >
       <div
         className="relative"
         style={
@@ -178,9 +203,16 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
           min={0}
           max={Math.max(0, options.length - 1)}
           step={1}
+          // `Slider.Root` renders a `role="group"` wrapper, not the slider:
+          // the widget is the `<input type="range">` nested inside
+          // `Slider.Thumb`, and Base UI forwards only naming attributes to it.
+          // `aria-invalid` is global and valid on the group; `aria-readonly`
+          // and `aria-required` are not, and there is no seam to move them
+          // onto the input. Required-ness still reaches the input through the
+          // `aria-describedby` reference to the "Required" element below, and
+          // the read-only state through the suppressed pointer and key
+          // handlers.
           aria-invalid={ariaInvalid}
-          aria-required={ariaRequired}
-          aria-readonly={readOnly || undefined}
           aria-labelledby={ariaLabelledBy}
           className={sliderRootVariants({ state })}
         >
@@ -217,11 +249,14 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 aria-label={
                   ariaLabelledBy
                     ? undefined
-                    : (ariaLabel ?? 'Select value on scale')
+                    : (ariaLabel ?? intl.formatMessage(messages.sliderLabel))
                 }
                 aria-labelledby={ariaLabelledBy}
                 aria-describedby={ariaDescribedBy}
-                getAriaValueText={() => currentOption?.label ?? 'No selection'}
+                getAriaValueText={() =>
+                  currentOption?.label ??
+                  intl.formatMessage(messages.noSelection)
+                }
               >
                 <motion.div
                   // base-ui's nested <input type="range"> is the focusable
