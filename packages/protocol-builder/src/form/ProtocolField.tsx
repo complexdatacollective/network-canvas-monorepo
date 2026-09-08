@@ -73,10 +73,11 @@ export type ProtocolFieldProps<C extends ValidFieldComponent> = Omit<
  * and a host's problem panel give the field, so the researcher reads the same
  * words above the control and in the list of problems.
  *
- * A field's `name` is also its path into the stage document, so its committed
- * value is seeded from there rather than being wired up again by every section
- * that renders a field. A section meaning something else can still pass its
- * own `initialValue`.
+ * A field's `name` is also its path into the stage document, so its starting
+ * value is read from there rather than being wired up again by every section
+ * that renders a field — from the stage draft, or from the unsaved edit a
+ * mounted control above it is holding; see `useResolvedFieldIdentity`. A
+ * section meaning something else can still pass its own `initialValue`.
  */
 export default function ProtocolField<C extends ValidFieldComponent>(
   props: ProtocolFieldProps<C>,
@@ -88,9 +89,9 @@ export default function ProtocolField<C extends ValidFieldComponent>(
   // Resolved the way `Field` resolves it — through any enclosing namespace and
   // through `nameMode` — because that is the name the form store files the
   // field under and the path the stage document holds it at. Reading the
-  // committed value from the root instead would start a namespaced or opaque
+  // starting value from the root instead would start a namespaced or opaque
   // field blank and then write that blank over what the author had.
-  const { registeredName, committedValue } = useResolvedFieldIdentity(
+  const { registeredName, seedValue } = useResolvedFieldIdentity(
     name,
     nameMode,
   );
@@ -106,7 +107,7 @@ export default function ProtocolField<C extends ValidFieldComponent>(
 
   const fieldProps = {
     ...stripStoreOwnedProps(props),
-    initialValue: props.initialValue ?? committedValue,
+    initialValue: props.initialValue ?? seedValue,
     // Read-only is a property of the session, not of any one control, so no
     // section has to remember to pass it down.
     disabled: props.disabled === true || readOnly,
