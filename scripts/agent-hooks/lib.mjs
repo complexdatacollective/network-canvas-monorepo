@@ -532,7 +532,7 @@ export function recordCommandStart(root, toolUseId, now = Date.now()) {
 }
 
 // When did the command that just finished start? Its own record when the
-// id is known, otherwise the earliest outstanding record, otherwise the
+// id is known, otherwise the most recent outstanding record, otherwise the
 // previous post-edit run, otherwise a minute ago.
 export function takeCommandStart(state, toolUseId, now = Date.now()) {
   const starts = state.commandStarts ?? {};
@@ -541,11 +541,17 @@ export function takeCommandStart(state, toolUseId, now = Date.now()) {
     since = starts[toolUseId];
     delete starts[toolUseId];
   } else {
+    // The pre-command hook fired just before this command, so the most
+    // recent record is its start. Anonymous records are dropped once used
+    // so a stale one cannot widen the window on a later call.
     const outstanding = Object.values(starts);
     since =
       outstanding.length > 0
-        ? Math.min(...outstanding)
+        ? Math.max(...outstanding)
         : (state.lastPostEdit ?? now - 60_000);
+    for (const id of Object.keys(starts)) {
+      if (id.startsWith('anon-')) delete starts[id];
+    }
   }
   state.commandStarts = starts;
   return since;

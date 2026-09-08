@@ -170,6 +170,8 @@ test('maps changed files to workspace packages with a typecheck script', () => {
     },
   };
   const readPackage = (manifestPath) => manifests[manifestPath] ?? null;
+  const isWorkspaceDir = (dir) =>
+    /^\/repo\/(packages|workers)\/[^/]+$/.test(dir);
   const result = packagesForFiles(
     [
       '/repo/packages/interview/src/deep/nested/File.tsx',
@@ -178,7 +180,7 @@ test('maps changed files to workspace packages with a typecheck script', () => {
       '/repo/docs/guide.md',
     ],
     '/repo',
-    { readPackage },
+    { readPackage, isWorkspaceDir },
   );
   assert.deepEqual(result, {
     packages: ['@codaco/interview'],
@@ -203,17 +205,22 @@ test('the script option selects packages by a different manifest script', () => 
     },
   };
   const readPackage = (manifestPath) => manifests[manifestPath] ?? null;
+  const isWorkspaceDir = (dir) => /^\/repo\/packages\/[^/]+$/.test(dir);
   const files = [
     '/repo/packages/a/src/x.ts',
     '/repo/packages/b/src/y.ts',
     '/repo/packages/c/src/z.ts',
   ];
-  assert.deepEqual(packagesForFiles(files, '/repo', { readPackage }).packages, [
-    'a',
-    'b',
-  ]);
   assert.deepEqual(
-    packagesForFiles(files, '/repo', { readPackage, script: 'test' }).packages,
+    packagesForFiles(files, '/repo', { readPackage, isWorkspaceDir }).packages,
+    ['a', 'b'],
+  );
+  assert.deepEqual(
+    packagesForFiles(files, '/repo', {
+      readPackage,
+      isWorkspaceDir,
+      script: 'test',
+    }).packages,
     ['a', 'c'],
   );
 });
@@ -541,11 +548,17 @@ test('the gate bypass must be an assignment on the gated command or an earlier e
   );
 });
 
-test("takeCommandStart prefers the command's own start, then the earliest outstanding one", () => {
+test("takeCommandStart prefers the command's own start, then the most recent outstanding one", () => {
   const state = { commandStarts: { a: 1_000, b: 5_000 }, lastPostEdit: 7_000 };
   assert.equal(takeCommandStart(state, 'b', 10_000), 5_000);
   assert.deepEqual(state.commandStarts, { a: 1_000 });
-  assert.equal(takeCommandStart(state, 'unknown', 10_000), 1_000);
+  state.commandStarts = { 'a': 1_000, 'anon-2': 2_000 };
+  assert.equal(takeCommandStart(state, 'unknown', 10_000), 2_000);
+  assert.deepEqual(
+    state.commandStarts,
+    { a: 1_000 },
+    'anonymous records are dropped',
+  );
   assert.equal(takeCommandStart({ lastPostEdit: 7_000 }, 'x', 10_000), 7_000);
   assert.equal(takeCommandStart({}, undefined, 100_000), 40_000);
 });
