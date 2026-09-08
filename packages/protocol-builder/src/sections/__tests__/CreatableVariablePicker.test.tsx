@@ -406,6 +406,41 @@ describe('the create control while the codebook write is in flight', () => {
     expect(nameBox()).toHaveValue('nominated_early');
   });
 
+  /**
+   * And the box with it, for the same reason and one more.
+   *
+   * A name typed while the write was in flight was erased by the answer: the
+   * create captured the name it submitted and the success emptied the box
+   * whatever was in it by then. The refusal was worse — it is written about
+   * the name that was SUBMITTED, and it arrived beside a box showing a
+   * different one. Held, the box says exactly what the answer will be about.
+   */
+  it('holds the name box too, so the answer is about what is in it', async () => {
+    const { user, answerWith } = mountControl();
+
+    await user.type(nameBox(), 'nominated_early');
+    await user.click(createButton());
+
+    expect(nameBox()).toBeDisabled();
+    expect(nameBox()).toHaveValue('nominated_early');
+
+    answerWith(true);
+    await waitFor(() => expect(nameBox()).toHaveValue(''));
+    expect(nameBox()).toBeEnabled();
+  });
+
+  it('control: gives the box back when the create was refused', async () => {
+    const { user, answerWith } = mountControl();
+
+    await user.type(nameBox(), 'nominated early');
+    await user.click(createButton());
+    answerWith(false);
+
+    await waitFor(() => expect(nameBox()).toBeEnabled());
+    await user.type(nameBox(), '_enough');
+    expect(nameBox()).toHaveValue('nominated early_enough');
+  });
+
   /** The refusal is about that name, so the box is what they correct. */
   it('gives the button back with the refused name still in the box', async () => {
     const { user, answerWith } = mountControl();
