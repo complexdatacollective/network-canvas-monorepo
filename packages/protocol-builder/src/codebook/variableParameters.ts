@@ -174,46 +174,6 @@ export const dateResolutionOf = (parameters: unknown): DateResolution => {
 };
 
 /**
- * The years a date bound may be chosen from, as Architect's own date settings
- * offer them (`components/Parameters/DatePicker.tsx` hands the same pair to
- * the same control). The two editors author the same key for the same runtime,
- * so they offer the same years.
- *
- * The floor is the schema's: `datePickerParametersSchema` takes any four-digit
- * year of 1000 or later at year and month resolution, and `datePickerWindows`
- * clamps the coarse dropdowns to the same 1000. The ceiling is short of the
- * schema's 9999 because a year dropdown is a closed list and nine thousand
- * entries is not a list anyone can use. A bound beyond it stays valid and is
- * left exactly as authored — this window decides what can be CHOSEN here, not
- * what may be held.
- */
-const DATE_BOUND_EARLIEST = '1000-01-01';
-const DATE_BOUND_LATEST = '3000-12-31';
-
-/**
- * The window the controls that author `min` and `max` offer, or `null` where
- * they need none.
- *
- * At year and month resolution the control is a pair of closed dropdowns, and
- * a `DatePicker` given no bounds of its own builds them from the window it
- * shows a PARTICIPANT by default — 1920 to today. Those are answers, not
- * bounds: a researcher offered only them cannot author an earliest year of
- * 1900 or a latest of 2030, and cannot even see one the protocol already
- * holds.
- *
- * Full resolution gets nothing, deliberately. It renders a native date input,
- * which stays genuinely unbounded while neither bound is declared and accepts
- * the years 0001-0999 the coarse window cannot represent; handing it this
- * window would narrow what a researcher can type.
- */
-export const dateBoundWindow = (
-  resolution: DateResolution,
-): Readonly<{ min: string; max: string }> | null =>
-  resolution === 'full'
-    ? null
-    : { min: DATE_BOUND_EARLIEST, max: DATE_BOUND_LATEST };
-
-/**
  * The `parameters` block this shape would write, from whatever the draft holds.
  *
  * `undefined` when nothing is authored, so an attribute nobody has configured
