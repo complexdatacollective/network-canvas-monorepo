@@ -616,3 +616,102 @@ describe('editing taken away while the create dialog is open', () => {
     expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
   });
 });
+
+/**
+ * A dismissal while the create is in flight.
+ *
+ * The request outlives the dialog: the handler awaiting it is still alive, and
+ * a success arriving after the dialog has gone still selects the new type on
+ * the stage — which throws away everything that described the old one. The
+ * researcher sees the configuration of a stage they had closed a dialog on
+ * disappear, for a type they never saw arrive.
+ */
+describe('dismissing the create dialog while it is submitting', () => {
+  /** Holds the compound edit open, and hands back the release. */
+  const holdTheCompoundEdit = (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    const send = harness.session.requestCompoundEdit.bind(harness.session);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
+      async (request) => {
+        await held;
+        return send(request);
+      },
+    );
+    return () => {
+      release();
+    };
+  };
+
+  const startTheCreate = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new node type' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+      'Place',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+  };
+
+  it('refuses every way out until the request has answered', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+    const release = holdTheCompoundEdit(harness);
+    await startTheCreate(harness);
+
+    // Escape, a press outside and the close button are the three routes the
+    // researcher has left — Cancel disables itself — and all of them reach the
+    // dialog through `closeDialog`.
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(document.body);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    // …and the one that is a visible control is not offered at all, rather
+    // than offered and inert.
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+
+    release();
+    await waitFor(() =>
+      expect(
+        codebookNodeNames(harness.host.getSnapshot().protocolSections),
+      ).toContain('Place'),
+    );
+    expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
+  });
+
+  /**
+   * And the way out comes back. A refusal that outlived the request would
+   * leave the researcher shut inside a dialog with nothing left to wait for.
+   */
+  it('can be dismissed again once the request has failed', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockResolvedValue({
+      status: 'failed',
+      reason: 'host-error',
+      message: 'expected object, received undefined',
+    });
+
+    await startTheCreate(harness);
+    await screen.findByText(
+      'The protocol would not be valid with this change, so nothing was saved. Adjust this type and try again, or close this and come back once the rest of the stage is filled in.',
+    );
+
+    await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+  });
+});

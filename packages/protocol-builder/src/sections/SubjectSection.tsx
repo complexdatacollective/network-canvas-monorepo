@@ -242,6 +242,12 @@ function CreateSubjectType({
     key: string;
     typeId: string;
   } | null>(null);
+  /**
+   * Whether a create is in flight, which is a fact this host has for itself:
+   * the editor owns the draft and this owns request execution, so the request
+   * passes through here on its way out and its answer on the way back.
+   */
+  const [submitting, setSubmitting] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const existingEntityNames = useMemo(() => {
@@ -299,7 +305,20 @@ function CreateSubjectType({
           open
           title={intl.formatMessage(words.createLabel)}
           size="readable"
-          closeDialog={() => setSession(null)}
+          // A request in flight refuses every way out, because the dialog is
+          // about to show what the host made of it. Escape, a press outside
+          // and the close button all arrive at `closeDialog`, so refusing
+          // there covers all three — and `dismissible` takes the close button
+          // away rather than leaving a control on screen that does nothing.
+          // Dismissed mid-flight, the handler awaiting the request stays alive
+          // and a success arriving afterwards still selects the new type on
+          // the stage: the researcher would watch everything describing the
+          // old type disappear, for a type they never saw arrive.
+          dismissible={!submitting}
+          closeDialog={() => {
+            if (submitting) return;
+            setSession(null);
+          }}
           finalFocus={() => triggerRef.current}
         >
           <CodebookEntityEditor
@@ -315,7 +334,14 @@ function CreateSubjectType({
             initialDraft={NEW_ENTITY_DRAFT[entity]}
             readOnly={readOnly}
             existingEntityNames={existingEntityNames}
-            onSubmit={(request) => controller.requestCompoundEdit(request)}
+            onSubmit={async (request) => {
+              setSubmitting(true);
+              try {
+                return await controller.requestCompoundEdit(request);
+              } finally {
+                setSubmitting(false);
+              }
+            }}
             onApplied={() => selectCreatedType(session.typeId)}
             onCancel={() => setSession(null)}
           />
