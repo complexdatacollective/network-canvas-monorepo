@@ -3,10 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   decryptTotpSecret,
+  decryptTotpSecretWithAny,
   deriveTotpEncryptionKey,
   encryptTotpSecret,
   isEncryptedTotpSecret,
-  TOTP_ENCRYPTION_KEY_MIN_LENGTH,
+  resolveTotpKeyMaterials,
   TotpSecretDecryptError,
 } from '~/utils/totpSecretEncryption';
 
@@ -15,7 +16,7 @@ const OTHER_KEY = 'a-different-totp-encryption-key-9876543210';
 const SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
 
 function expectDecryptFailure(
-  run: () => string,
+  run: () => unknown,
   reason: TotpSecretDecryptError['reason'],
 ) {
   let caught: unknown;
@@ -119,11 +120,99 @@ describe('encryptTotpSecret / decryptTotpSecret', () => {
   });
 });
 
+describe('decryptTotpSecretWithAny', () => {
+  it('opens with the primary material and says so', () => {
+    const stored = encryptTotpSecret(SECRET, KEY);
+    expect(decryptTotpSecretWithAny(stored, [KEY, OTHER_KEY])).toEqual({
+      secret: SECRET,
+      keyIndex: 0,
+    });
+  });
+
+  it('falls back to a later material and reports which one opened the row', () => {
+    const stored = encryptTotpSecret(SECRET, OTHER_KEY);
+    expect(decryptTotpSecretWithAny(stored, [KEY, OTHER_KEY])).toEqual({
+      secret: SECRET,
+      keyIndex: 1,
+    });
+  });
+
+  it('fails as wrong-key when no material fits', () => {
+    const stored = encryptTotpSecret(
+      SECRET,
+      'yet-another-key-material-000000000',
+    );
+    expectDecryptFailure(
+      () => decryptTotpSecretWithAny(stored, [KEY, OTHER_KEY]),
+      'wrong-key',
+    );
+  });
+
+  it('does not try further materials on a plaintext or malformed value', () => {
+    expectDecryptFailure(
+      () => decryptTotpSecretWithAny(SECRET, [KEY, OTHER_KEY]),
+      'not-encrypted',
+    );
+    expectDecryptFailure(
+      () => decryptTotpSecretWithAny('v1:truncated', [KEY, OTHER_KEY]),
+      'malformed',
+    );
+  });
+});
+
 describe('isEncryptedTotpSecret', () => {
   it('recognises an envelope and rejects a Base32 secret', () => {
     expect(isEncryptedTotpSecret(encryptTotpSecret(SECRET, KEY))).toBe(true);
     expect(isEncryptedTotpSecret(SECRET)).toBe(false);
     expect(isEncryptedTotpSecret(new Secret().base32)).toBe(false);
+  });
+});
+
+describe('resolveTotpKeyMaterials', () => {
+  const NEON_URL =
+    'postgresql://neondb_owner:npg_AbC%40123@ep-x-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require';
+
+  it('uses the database password when no override is set', () => {
+    expect(
+      resolveTotpKeyMaterials({
+        overrideKey: undefined,
+        databaseUrl: NEON_URL,
+      }),
+    ).toEqual(['npg_AbC@123']);
+  });
+
+  it('puts the override first and keeps the database password as a fallback', () => {
+    expect(
+      resolveTotpKeyMaterials({ overrideKey: KEY, databaseUrl: NEON_URL }),
+    ).toEqual([KEY, 'npg_AbC@123']);
+  });
+
+  it('never yields the same material for two different database passwords', () => {
+    const [a] = resolveTotpKeyMaterials({
+      overrideKey: undefined,
+      databaseUrl: 'postgres://postgres:one@postgres:5432/postgres',
+    });
+    const [b] = resolveTotpKeyMaterials({
+      overrideKey: undefined,
+      databaseUrl: 'postgres://postgres:two@postgres:5432/postgres',
+    });
+    expect(a).not.toBe(b);
+  });
+
+  it('falls back to the whole connection string when the URL has no password', () => {
+    const url = 'postgres://postgres@postgres:5432/postgres';
+    expect(
+      resolveTotpKeyMaterials({ overrideKey: undefined, databaseUrl: url }),
+    ).toEqual([url]);
+  });
+
+  it('falls back to the raw value when the URL does not parse', () => {
+    expect(
+      resolveTotpKeyMaterials({
+        overrideKey: undefined,
+        databaseUrl: 'not a url',
+      }),
+    ).toEqual(['not a url']);
   });
 });
 
@@ -136,16 +225,16 @@ describe('deriveTotpEncryptionKey', () => {
     expect(first.equals(deriveTotpEncryptionKey(OTHER_KEY))).toBe(false);
   });
 
-  it('rejects key material shorter than the minimum', () => {
-    const short = 'x'.repeat(TOTP_ENCRYPTION_KEY_MIN_LENGTH - 1);
-    expect(() => deriveTotpEncryptionKey(short)).toThrow(
-      /at least 32 characters/,
-    );
-    expect(() => encryptTotpSecret(SECRET, short)).toThrow(
-      /at least 32 characters/,
-    );
-    expect(() =>
-      deriveTotpEncryptionKey('x'.repeat(TOTP_ENCRYPTION_KEY_MIN_LENGTH)),
-    ).not.toThrow();
+  it('derives different keys for a short password and its neighbours', () => {
+    expect(
+      deriveTotpEncryptionKey('CHANGE_ME').equals(
+        deriveTotpEncryptionKey('CHANGE_ME2'),
+      ),
+    ).toBe(false);
+  });
+
+  it('rejects empty key material', () => {
+    expect(() => deriveTotpEncryptionKey('')).toThrow(/non-empty/);
+    expect(() => encryptTotpSecret(SECRET, '')).toThrow(/non-empty/);
   });
 });

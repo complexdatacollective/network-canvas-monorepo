@@ -112,18 +112,6 @@ DATABASE_URL_UNPOOLED="postgresql://neondb_owner:*************@ep-wispy-thunder-
 
 </Tipbox>
 
-### Add a two-factor authentication key
-
-Fresco encrypts the secrets behind two-factor authentication (TOTP) codes before storing them, using a key that only your deployment holds, so a copy of the database alone cannot reveal them. You need to provide that key as a third environment variable, `TOTP_ENCRYPTION_KEY`, before any account enables two-factor authentication. Adding it now, alongside the database variables, means it is in place when you [enable two-factor authentication](/en/collect-data/fresco/accounts) later.
-
-Add this line to the text file where you stored your database variables, replacing the value with a long random string of your own — at least 32 characters. A password manager's generator works well, as does running `openssl rand -base64 32` in a terminal:
-
-```bash
-TOTP_ENCRYPTION_KEY="replace-this-with-a-long-random-string-of-at-least-32-characters"
-```
-
-Keep the value stable. Changing or losing it locks every account that has two-factor authentication enabled out until the original key is restored, so store it in a password manager along with your other deployment secrets.
-
 ## Create a project on Netlify
 
 Next, we will deploy your fork of the application to the Netlify platform. You can use the Free tier or paid plans (for more information about cloud pricing, read our [cloud pricing](./cloud-pricing) documentation), but for the purposes of this guide, we will use the free tier.

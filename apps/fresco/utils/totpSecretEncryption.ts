@@ -1,8 +1,8 @@
 import {
   createCipheriv,
   createDecipheriv,
-  hkdfSync,
   randomBytes,
+  scryptSync,
 } from 'node:crypto';
 
 /**
@@ -10,20 +10,26 @@ import {
  *
  * A TOTP secret has to stay readable to verify codes, so unlike passwords,
  * recovery codes, and API tokens it cannot be stored as a hash. Instead the
- * Base32 seed is sealed with AES-256-GCM under a key derived from the
- * deployment's `TOTP_ENCRYPTION_KEY`, and only the sealed envelope reaches the
- * database. A copy of the database alone therefore no longer yields the seed
- * for future codes; an attacker needs the key from the deployment environment
- * as well.
+ * Base32 seed is sealed with AES-256-GCM under a key that lives outside the
+ * database, and only the sealed envelope reaches the `TotpCredential.secret`
+ * column. A copy of the database alone therefore no longer yields the seed for
+ * future codes; an attacker needs the deployment's key material as well.
+ *
+ * The key material comes from the deployment environment, so that an upgrade
+ * needs no action from the operator: by default it is the database password
+ * inside `DATABASE_URL`, which every deployment already holds outside the
+ * database, and an explicit `TOTP_ENCRYPTION_KEY` takes precedence when set
+ * (see `resolveTotpKeyMaterials`). Because the default may be a password an
+ * operator typed by hand, the key is derived with scrypt rather than a fast
+ * KDF, which is what makes guessing it from a leaked dump expensive.
  *
  * This module is plain Node crypto with no `server-only` guard and no `~/env`
  * import, because `scripts/setup-database.ts` (which runs under tsx before the
  * server starts) seals legacy plaintext rows with the same envelope the app
- * reads. The app-facing wrappers that bind the environment key live in
+ * reads. The app-facing wrappers that bind the environment live in
  * `lib/auth/totp.ts`.
  *
- * Envelope format, stored as a plain string in the `TotpCredential.secret`
- * column, every part base64url:
+ * Envelope format, stored as a plain string, every part base64url:
  *
  *   v1:<12-byte nonce>:<ciphertext>:<16-byte GCM tag>
  *
@@ -33,16 +39,24 @@ import {
  * sealed yet.
  */
 
-/** Shortest `TOTP_ENCRYPTION_KEY` accepted; `env.js` enforces the same bound. */
-export const TOTP_ENCRYPTION_KEY_MIN_LENGTH = 32;
-
 const ALGORITHM = 'aes-256-gcm';
 const KEY_BYTES = 32;
 const NONCE_BYTES = 12;
 const TAG_BYTES = 16;
 const ENVELOPE_VERSION = 'v1';
 const ENVELOPE_PREFIX = `${ENVELOPE_VERSION}:`;
-const HKDF_INFO = 'fresco-totp-secret-encryption';
+
+// The salt is fixed because derivation has to be reproducible from the
+// environment alone, with nothing stored beside the ciphertext; the cost
+// parameters are what resist guessing. 2^16 / 8 / 1 is ~90ms on a laptop core
+// and 64MB, paid once per process per key material (see the cache below).
+const KDF_SALT = 'fresco-totp-secret-encryption';
+const SCRYPT_N = 2 ** 16;
+const SCRYPT_R = 8;
+const SCRYPT_P = 1;
+const SCRYPT_MAXMEM = 128 * SCRYPT_N * SCRYPT_R * 2;
+
+const derivedKeys = new Map<string, Buffer>();
 
 export type TotpSecretDecryptFailure =
   /** The stored value is a legacy plaintext secret, not an envelope. */
@@ -62,19 +76,64 @@ export class TotpSecretDecryptError extends Error {
   }
 }
 
+export type TotpKeySources = {
+  /** `TOTP_ENCRYPTION_KEY`, when the deployment sets it. */
+  overrideKey: string | undefined;
+  /** `DATABASE_URL`, which every deployment has. */
+  databaseUrl: string;
+};
+
+/** Key materials a deployment can open TOTP secrets with, preferred first. */
+export type TotpKeyMaterials = [primary: string, ...fallbacks: string[]];
+
 /**
- * Derive the AES-256 key from the deployment's key material. HKDF gives the
- * key a fixed length whatever the operator pasted, and the info string keeps
- * this key separate from any other purpose the same material might serve.
+ * Resolve the key materials for a deployment. Secrets are always sealed under
+ * the first one; the rest are tried when opening, so that a deployment which
+ * starts setting `TOTP_ENCRYPTION_KEY` can still read rows sealed under the
+ * database password until the startup step has re-sealed them.
  */
+export function resolveTotpKeyMaterials({
+  overrideKey,
+  databaseUrl,
+}: TotpKeySources): TotpKeyMaterials {
+  const fromDatabaseUrl = databasePassword(databaseUrl);
+  return overrideKey ? [overrideKey, fromDatabaseUrl] : [fromDatabaseUrl];
+}
+
+/**
+ * The password component of a connection URL, decoded. A URL with no password
+ * (peer or IAM authentication) still has to yield something held outside the
+ * database, and the whole connection string is the best available.
+ */
+function databasePassword(databaseUrl: string): string {
+  let password = '';
+  try {
+    password = new URL(databaseUrl).password;
+    password = decodeURIComponent(password);
+  } catch {
+    // An unparsable URL, or a password with a stray percent sign: keep what
+    // we have. Whatever the value, it only has to be stable and outside the
+    // database.
+  }
+  return password.length > 0 ? password : databaseUrl;
+}
+
 export function deriveTotpEncryptionKey(keyMaterial: string): Buffer {
-  if (keyMaterial.length < TOTP_ENCRYPTION_KEY_MIN_LENGTH) {
-    throw new Error(
-      `TOTP_ENCRYPTION_KEY must be at least ${TOTP_ENCRYPTION_KEY_MIN_LENGTH} characters long; generate one with \`openssl rand -base64 32\`.`,
-    );
+  if (keyMaterial.length === 0) {
+    throw new Error('TOTP secret encryption needs non-empty key material.');
   }
 
-  return Buffer.from(hkdfSync('sha256', keyMaterial, '', HKDF_INFO, KEY_BYTES));
+  const cached = derivedKeys.get(keyMaterial);
+  if (cached) return cached;
+
+  const key = scryptSync(keyMaterial, KDF_SALT, KEY_BYTES, {
+    N: SCRYPT_N,
+    r: SCRYPT_R,
+    p: SCRYPT_P,
+    maxmem: SCRYPT_MAXMEM,
+  });
+  derivedKeys.set(keyMaterial, key);
+  return key;
 }
 
 export function isEncryptedTotpSecret(stored: string): boolean {
@@ -145,7 +204,41 @@ export function decryptTotpSecret(stored: string, keyMaterial: string): string {
   } catch {
     throw new TotpSecretDecryptError(
       'wrong-key',
-      'The stored TOTP secret could not be decrypted with the configured TOTP_ENCRYPTION_KEY. Either the key changed since the secret was stored, or the stored value was altered.',
+      'The stored TOTP secret could not be decrypted with the current key material. Either the key material changed since the secret was stored, or the stored value was altered.',
     );
   }
+}
+
+/**
+ * Open an envelope with the first key material that fits. `keyIndex` says
+ * which one did, so a caller can re-seal a row that only a fallback opened.
+ */
+export function decryptTotpSecretWithAny(
+  stored: string,
+  keyMaterials: TotpKeyMaterials,
+): { secret: string; keyIndex: number } {
+  let wrongKey: TotpSecretDecryptError | undefined;
+
+  for (const [keyIndex, keyMaterial] of keyMaterials.entries()) {
+    try {
+      return { secret: decryptTotpSecret(stored, keyMaterial), keyIndex };
+    } catch (error) {
+      if (
+        error instanceof TotpSecretDecryptError &&
+        error.reason === 'wrong-key'
+      ) {
+        wrongKey = error;
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw (
+    wrongKey ??
+    new TotpSecretDecryptError(
+      'wrong-key',
+      'No key material was available to open the stored TOTP secret.',
+    )
+  );
 }

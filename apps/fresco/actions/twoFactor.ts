@@ -6,8 +6,7 @@ import { addEvent } from '~/lib/activityFeed';
 import { createSessionCookie } from '~/lib/auth/session';
 import {
   hashRecoveryCode,
-  openTotpSecret,
-  verifyTotpCode,
+  verifyStoredTotpCode,
   verifyTwoFactorToken,
 } from '~/lib/auth/totp';
 import { safeUpdateTag } from '~/lib/cache';
@@ -67,6 +66,13 @@ const messages = defineMessages({
     id: 'fresco.actions.twoFactor.copyInvalidCodeFormat',
     defaultMessage: 'Invalid code format',
     description: 'Researcher-facing actions / twoFactor: Invalid code format',
+  },
+  copyTwoFactorSecretUnreadable: {
+    id: 'fresco.actions.twoFactor.copyTwoFactorSecretUnreadable',
+    defaultMessage:
+      "Authenticator codes cannot be checked right now because your two-factor secret cannot be read with this server's current encryption key. Sign in with a recovery code and contact an administrator.",
+    description:
+      'Researcher-facing actions / twoFactor: shown at sign-in when a stored two-factor secret cannot be decrypted, usually because the database password changed after it was stored',
   },
 });
 
@@ -151,7 +157,17 @@ export async function verifyTwoFactor(
   const isRecoveryCode = RECOVERY_CODE_PATTERN.test(code);
 
   if (isTotpCode) {
-    if (!verifyTotpCode(openTotpSecret(credential.secret), code)) {
+    const verification = verifyStoredTotpCode(credential.secret, code);
+    if (verification === 'unreadable') {
+      // Not the user's doing, so it does not count against the rate limit.
+      return {
+        success: false,
+        formErrors: [
+          createMessageError(messages.copyTwoFactorSecretUnreadable),
+        ],
+      };
+    }
+    if (verification === 'invalid') {
       await recordLoginAttempt(user.username, ipAddress, false);
       return {
         success: false,

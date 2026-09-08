@@ -65,9 +65,8 @@ const {
   mockVerifyTotpCode,
   mockGenerateRecoveryCodes,
   mockHashRecoveryCode,
-  mockIsTotpEncryptionConfigured,
   mockSealTotpSecret,
-  mockOpenTotpSecret,
+  mockVerifyStoredTotpCode,
   mockAddEvent,
   mockVerifyTotpSetupSchemaSafeParse,
   mockDisableTotpSchemaSafeParse,
@@ -88,9 +87,8 @@ const {
   mockVerifyTotpCode: vi.fn(),
   mockGenerateRecoveryCodes: vi.fn(),
   mockHashRecoveryCode: vi.fn(),
-  mockIsTotpEncryptionConfigured: vi.fn(),
   mockSealTotpSecret: vi.fn(),
-  mockOpenTotpSecret: vi.fn(),
+  mockVerifyStoredTotpCode: vi.fn(),
   mockAddEvent: vi.fn(),
   mockVerifyTotpSetupSchemaSafeParse: vi.fn(),
   mockDisableTotpSchemaSafeParse: vi.fn(),
@@ -138,9 +136,8 @@ vi.mock('~/lib/auth/totp', () => ({
   verifyTotpCode: mockVerifyTotpCode,
   generateRecoveryCodes: mockGenerateRecoveryCodes,
   hashRecoveryCode: mockHashRecoveryCode,
-  isTotpEncryptionConfigured: mockIsTotpEncryptionConfigured,
   sealTotpSecret: mockSealTotpSecret,
-  openTotpSecret: mockOpenTotpSecret,
+  verifyStoredTotpCode: mockVerifyStoredTotpCode,
   createTwoFactorToken: vi.fn(),
   verifyTwoFactorToken: vi.fn(),
 }));
@@ -224,7 +221,6 @@ describe('enableTotp', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequireApiAuth.mockResolvedValue(mockSession);
-    mockIsTotpEncryptionConfigured.mockReturnValue(true);
     mockSealTotpSecret.mockReturnValue(SEALED_SECRET);
     mockGenerateTotpSecret.mockReturnValue(TOTP_SECRET);
     mockGenerateTotpUri.mockReturnValue(TOTP_URI);
@@ -288,19 +284,6 @@ describe('enableTotp', () => {
     expect(upsertArgs).not.toContain(TOTP_SECRET);
   });
 
-  it('refuses to enable two-factor authentication when no encryption key is configured', async () => {
-    mockIsTotpEncryptionConfigured.mockReturnValue(false);
-
-    const result = await enableTotp();
-
-    expect(formatActionError(result.error)).toBe(
-      'Two-factor authentication cannot be enabled on this server because it has no TOTP_ENCRYPTION_KEY configured. Ask whoever deploys Fresco to set one, then try again.',
-    );
-    expect(result.data).toBeNull();
-    expect(mockGenerateTotpSecret).not.toHaveBeenCalled();
-    expect(mockPrismaTotpCredentialUpsert).not.toHaveBeenCalled();
-  });
-
   it('requires authentication', async () => {
     mockRequireApiAuth.mockRejectedValue(new Error('Unauthorized'));
 
@@ -312,7 +295,6 @@ describe('verifyTotpSetup', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequireApiAuth.mockResolvedValue(mockSession);
-    mockOpenTotpSecret.mockReturnValue(TOTP_SECRET);
     mockPrismaTransaction.mockResolvedValue([{}, {}]);
   });
 
@@ -368,12 +350,33 @@ describe('verifyTotpSetup', () => {
       secret: SEALED_SECRET,
       verified: false,
     });
-    mockVerifyTotpCode.mockReturnValue(false);
+    mockVerifyStoredTotpCode.mockReturnValue('invalid');
 
     const result = await verifyTotpSetup({ code: '000000' });
 
     expect(formatActionError(result.error)).toBe('Invalid verification code');
     expect(result.data).toBeNull();
+  });
+
+  it('explains an unreadable stored secret instead of calling the code invalid', async () => {
+    mockVerifyTotpSetupSchemaSafeParse.mockReturnValue({
+      success: true,
+      data: { code: VALID_TOTP_CODE },
+    });
+    mockPrismaTotpCredentialFindUnique.mockResolvedValue({
+      user_id: CURRENT_USER_ID,
+      secret: SEALED_SECRET,
+      verified: false,
+    });
+    mockVerifyStoredTotpCode.mockReturnValue('unreadable');
+
+    const result = await verifyTotpSetup({ code: VALID_TOTP_CODE });
+
+    expect(formatActionError(result.error)).toMatch(
+      /cannot be read with this server's current encryption key/,
+    );
+    expect(result.data).toBeNull();
+    expect(mockPrismaTransaction).not.toHaveBeenCalled();
   });
 
   it('marks credential as verified and returns recovery codes on success', async () => {
@@ -386,15 +389,14 @@ describe('verifyTotpSetup', () => {
       secret: SEALED_SECRET,
       verified: false,
     });
-    mockVerifyTotpCode.mockReturnValue(true);
+    mockVerifyStoredTotpCode.mockReturnValue('valid');
     mockGenerateRecoveryCodes.mockReturnValue(RECOVERY_CODES);
     mockHashRecoveryCode.mockImplementation((code: string) => `hash-${code}`);
 
     const result = await verifyTotpSetup({ code: VALID_TOTP_CODE });
 
-    expect(mockOpenTotpSecret).toHaveBeenCalledWith(SEALED_SECRET);
-    expect(mockVerifyTotpCode).toHaveBeenCalledWith(
-      TOTP_SECRET,
+    expect(mockVerifyStoredTotpCode).toHaveBeenCalledWith(
+      SEALED_SECRET,
       VALID_TOTP_CODE,
     );
     expect(formatActionError(result.error)).toBeNull();
@@ -408,7 +410,6 @@ describe('disableTotp', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequireApiAuth.mockResolvedValue(mockSession);
-    mockOpenTotpSecret.mockReturnValue(TOTP_SECRET);
     mockPrismaTransaction.mockResolvedValue([{}, {}]);
   });
 
@@ -468,7 +469,7 @@ describe('disableTotp', () => {
       secret: SEALED_SECRET,
       verified: true,
     });
-    mockVerifyTotpCode.mockReturnValue(false);
+    mockVerifyStoredTotpCode.mockReturnValue('invalid');
 
     const result = await disableTotp({ code: '000000' });
 
@@ -487,7 +488,7 @@ describe('disableTotp', () => {
       secret: SEALED_SECRET,
       verified: true,
     });
-    mockVerifyTotpCode.mockReturnValue(true);
+    mockVerifyStoredTotpCode.mockReturnValue('valid');
 
     const result = await disableTotp({ code: VALID_TOTP_CODE });
 
@@ -502,7 +503,6 @@ describe('regenerateRecoveryCodes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequireApiAuth.mockResolvedValue(mockSession);
-    mockOpenTotpSecret.mockReturnValue(TOTP_SECRET);
     mockPrismaTransaction.mockResolvedValue([{}, {}]);
   });
 
@@ -543,7 +543,7 @@ describe('regenerateRecoveryCodes', () => {
       secret: SEALED_SECRET,
       verified: true,
     });
-    mockVerifyTotpCode.mockReturnValue(false);
+    mockVerifyStoredTotpCode.mockReturnValue('invalid');
 
     const result = await regenerateRecoveryCodes({ code: '000000' });
 
@@ -562,7 +562,7 @@ describe('regenerateRecoveryCodes', () => {
       secret: SEALED_SECRET,
       verified: true,
     });
-    mockVerifyTotpCode.mockReturnValue(true);
+    mockVerifyStoredTotpCode.mockReturnValue('valid');
     mockGenerateRecoveryCodes.mockReturnValue(RECOVERY_CODES);
     mockHashRecoveryCode.mockImplementation((code: string) => `hash-${code}`);
 

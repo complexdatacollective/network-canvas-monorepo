@@ -17,10 +17,9 @@ import {
   generateTotpSecret,
   generateTotpUri,
   hashRecoveryCode,
-  isTotpEncryptionConfigured,
   openTotpSecret,
   sealTotpSecret,
-  TotpEncryptionKeyMissingError,
+  verifyStoredTotpCode,
   verifyTotpCode,
   verifyTwoFactorToken,
 } from '~/lib/auth/totp';
@@ -33,6 +32,9 @@ const ENCRYPTION_KEY = 'unit-test-totp-encryption-key-0123456789';
 
 beforeEach(() => {
   delete mockEnv.TOTP_ENCRYPTION_KEY;
+  delete mockEnv.DATABASE_URL;
+  vi.restoreAllMocks();
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
 });
 
 describe('generateTotpSecret', () => {
@@ -205,68 +207,80 @@ describe('createTwoFactorToken and verifyTwoFactorToken', () => {
   });
 });
 
-describe('sealTotpSecret and openTotpSecret', () => {
-  it('seal keeps the secret out of the stored value and open recovers it', () => {
-    mockEnv.TOTP_ENCRYPTION_KEY = ENCRYPTION_KEY;
+describe('sealTotpSecret, openTotpSecret and verifyStoredTotpCode', () => {
+  const DATABASE_URL =
+    'postgresql://neondb_owner:npg_unit-test-db-password@ep-x-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require';
+  const DATABASE_PASSWORD = 'npg_unit-test-db-password';
+
+  beforeEach(() => {
+    mockEnv.DATABASE_URL = DATABASE_URL;
+  });
+
+  it('seals under a key derived from the database password when no override is set', () => {
     const secret = generateTotpSecret();
 
     const stored = sealTotpSecret(secret);
 
     expect(stored).not.toContain(secret);
     expect(isEncryptedTotpSecret(stored)).toBe(true);
+    expect(decryptTotpSecret(stored, DATABASE_PASSWORD)).toBe(secret);
     expect(openTotpSecret(stored)).toBe(secret);
   });
 
-  it('seals with the configured environment key, not some other one', () => {
+  it('seals under TOTP_ENCRYPTION_KEY when it is set, not the database password', () => {
     mockEnv.TOTP_ENCRYPTION_KEY = ENCRYPTION_KEY;
     const secret = generateTotpSecret();
 
     const stored = sealTotpSecret(secret);
 
     expect(decryptTotpSecret(stored, ENCRYPTION_KEY)).toBe(secret);
-  });
-
-  it('a code from the enrolment secret still verifies against the opened secret', () => {
-    mockEnv.TOTP_ENCRYPTION_KEY = ENCRYPTION_KEY;
-    const secret = new Secret();
-    const code = new TOTP({ secret }).generate();
-
-    expect(
-      verifyTotpCode(openTotpSecret(sealTotpSecret(secret.base32)), code),
-    ).toBe(true);
-  });
-
-  it('refuses to seal or open when TOTP_ENCRYPTION_KEY is unset', () => {
-    const secret = generateTotpSecret();
-
-    expect(isTotpEncryptionConfigured()).toBe(false);
-    expect(() => sealTotpSecret(secret)).toThrow(TotpEncryptionKeyMissingError);
-    expect(() => openTotpSecret('v1:a:b:c')).toThrow(
-      TotpEncryptionKeyMissingError,
+    expect(() => decryptTotpSecret(stored, DATABASE_PASSWORD)).toThrow(
+      /could not be decrypted/,
     );
+    expect(openTotpSecret(stored)).toBe(secret);
+  });
+
+  it('still opens a row sealed under the database password after the override is set', () => {
+    const secret = generateTotpSecret();
+    const sealedBefore = sealTotpSecret(secret);
+    mockEnv.TOTP_ENCRYPTION_KEY = ENCRYPTION_KEY;
+
+    expect(openTotpSecret(sealedBefore)).toBe(secret);
   });
 
   it('treats a blank TOTP_ENCRYPTION_KEY as unset', () => {
     mockEnv.TOTP_ENCRYPTION_KEY = '';
+    const secret = generateTotpSecret();
 
-    expect(isTotpEncryptionConfigured()).toBe(false);
-    expect(() => sealTotpSecret(generateTotpSecret())).toThrow(
-      TotpEncryptionKeyMissingError,
+    expect(decryptTotpSecret(sealTotpSecret(secret), DATABASE_PASSWORD)).toBe(
+      secret,
     );
   });
 
-  it('refuses to open a row sealed under a different key', () => {
-    mockEnv.TOTP_ENCRYPTION_KEY = ENCRYPTION_KEY;
-    const stored = sealTotpSecret(generateTotpSecret());
-    mockEnv.TOTP_ENCRYPTION_KEY = 'a-rotated-totp-encryption-key-9876543210';
+  it('a code from the enrolment secret verifies against the stored value', () => {
+    const secret = new Secret();
+    const code = new TOTP({ secret }).generate();
+    const stored = sealTotpSecret(secret.base32);
 
-    expect(() => openTotpSecret(stored)).toThrow(/could not be decrypted/);
+    expect(verifyStoredTotpCode(stored, code)).toBe('valid');
+    expect(verifyStoredTotpCode(stored, '000000')).toBe('invalid');
   });
 
-  it('refuses to open a legacy plaintext row', () => {
-    mockEnv.TOTP_ENCRYPTION_KEY = ENCRYPTION_KEY;
+  it('reports a row sealed under a rotated database password as unreadable', () => {
+    const stored = sealTotpSecret(generateTotpSecret());
+    mockEnv.DATABASE_URL =
+      'postgresql://neondb_owner:npg_rotated-password@ep-x-pooler.c-2.us-east-1.aws.neon.tech/neondb';
 
-    expect(() => openTotpSecret(generateTotpSecret())).toThrow(/not encrypted/);
+    expect(() => openTotpSecret(stored)).toThrow(/could not be decrypted/);
+    expect(verifyStoredTotpCode(stored, '000000')).toBe('unreadable');
+  });
+
+  it('reports a legacy plaintext row as unreadable rather than verifying against it', () => {
+    const secret = new Secret();
+    const code = new TOTP({ secret }).generate();
+
+    expect(() => openTotpSecret(secret.base32)).toThrow(/not encrypted/);
+    expect(verifyStoredTotpCode(secret.base32, code)).toBe('unreadable');
   });
 });
 

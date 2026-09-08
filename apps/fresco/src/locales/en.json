@@ -1519,9 +1519,9 @@
     "defaultMessage": "Two-factor authentication is not enabled",
     "description": "Researcher-facing actions / totp: Two-factor authentication is not enabled"
   },
-  "fresco.actions.totp.copyTwoFactorAuthenticationUnavailable": {
-    "defaultMessage": "Two-factor authentication cannot be enabled on this server because it has no TOTP_ENCRYPTION_KEY configured. Ask whoever deploys Fresco to set one, then try again.",
-    "description": "Researcher-facing actions / totp: shown when enabling two-factor authentication is refused because the server has no TOTP_ENCRYPTION_KEY environment variable to encrypt the secret with"
+  "fresco.actions.totp.copyTwoFactorSecretUnreadable": {
+    "defaultMessage": "Your two-factor authentication secret cannot be read with this server's current encryption key, so authenticator codes cannot be checked. Ask an administrator to reset your two-factor authentication, then enrol again.",
+    "description": "Researcher-facing actions / totp: shown when a stored two-factor secret cannot be decrypted, usually because the database password changed after it was stored"
   },
   "fresco.actions.twoFactor.copyInvalidCodeFormat": {
     "defaultMessage": "Invalid code format",
@@ -1550,6 +1550,10 @@
   "fresco.actions.twoFactor.copyTwoFactorAuthenticationIsNotConfigured": {
     "defaultMessage": "Two-factor authentication is not configured",
     "description": "Researcher-facing actions / twoFactor: Two-factor authentication is not configured"
+  },
+  "fresco.actions.twoFactor.copyTwoFactorSecretUnreadable": {
+    "defaultMessage": "Authenticator codes cannot be checked right now because your two-factor secret cannot be read with this server's current encryption key. Sign in with a recovery code and contact an administrator.",
+    "description": "Researcher-facing actions / twoFactor: shown at sign-in when a stored two-factor secret cannot be decrypted, usually because the database password changed after it was stored"
   },
   "fresco.actions.twoFactor.copyTwoFactorSessionExpiredPleaseSignIn": {
     "defaultMessage": "Two-factor session expired. Please sign in again.",

@@ -79,12 +79,13 @@ scan the QR code into your authenticator app, and enter the current code to conf
 will then be asked for a code each time you sign in. On enrollment Fresco issues **10
 single-use recovery codes** to sign in if you lose your authenticator device.
 
-Fresco encrypts the authenticator secret before storing it, using a `TOTP_ENCRYPTION_KEY`
-that only your deployment holds. If turning on two-factor authentication reports that this
-key is not configured, ask whoever deploys your instance to add it (see the
-[deployment guide](/en/collect-data/fresco/guide#add-a-two-factor-authentication-key) or,
-for Docker, [Advanced Deployment](/en/collect-data/fresco/advanced#environment-variables))
-and try again.
+Fresco encrypts the authenticator secret before storing it, using a key that only your
+deployment holds: by default one derived from your database password, or an explicit
+`TOTP_ENCRYPTION_KEY` if whoever deploys your instance has set one (see
+[Advanced Deployment](/en/collect-data/fresco/advanced#environment-variables)). If the
+database password is changed without setting that variable first, Fresco reports that
+your authenticator codes cannot be checked; sign in with a recovery code and ask an
+administrator to reset your two-factor authentication so you can enrol again.
 
 <TipBox danger>
 

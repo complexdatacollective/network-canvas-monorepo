@@ -28,11 +28,10 @@ export const env = createEnv({
     S3_ACCESS_KEY_ID: z.preprocess(emptyToUndefined, z.string().optional()),
     S3_SECRET_ACCESS_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
     UPLOADTHING_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
-    // Seals TOTP secrets at rest (see utils/totpSecretEncryption.ts). Optional
-    // until an account enables two-factor authentication: the startup
-    // migration refuses to run while TOTP secrets exist without it, and
-    // enabling TOTP is refused while it is unset. Same minimum length as
-    // TOTP_ENCRYPTION_KEY_MIN_LENGTH there.
+    // Optional explicit key for sealing TOTP secrets at rest (see
+    // utils/totpSecretEncryption.ts); without it the key is derived from the
+    // database password in DATABASE_URL. The minimum length only applies to
+    // this explicit value.
     TOTP_ENCRYPTION_KEY: z.preprocess(
       emptyToUndefined,
       z

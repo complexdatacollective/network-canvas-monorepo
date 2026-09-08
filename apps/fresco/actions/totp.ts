@@ -11,10 +11,8 @@ import {
   generateTotpSecret,
   generateTotpUri,
   hashRecoveryCode,
-  isTotpEncryptionConfigured,
-  openTotpSecret,
   sealTotpSecret,
-  verifyTotpCode,
+  verifyStoredTotpCode,
 } from '~/lib/auth/totp';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
@@ -65,27 +63,18 @@ const messages = defineMessages({
     description:
       'Researcher-facing actions / totp: Cannot reset your own two-factor authentication',
   },
-  copyTwoFactorAuthenticationUnavailable: {
-    id: 'fresco.actions.totp.copyTwoFactorAuthenticationUnavailable',
+  copyTwoFactorSecretUnreadable: {
+    id: 'fresco.actions.totp.copyTwoFactorSecretUnreadable',
     defaultMessage:
-      'Two-factor authentication cannot be enabled on this server because it has no TOTP_ENCRYPTION_KEY configured. Ask whoever deploys Fresco to set one, then try again.',
+      "Your two-factor authentication secret cannot be read with this server's current encryption key, so authenticator codes cannot be checked. Ask an administrator to reset your two-factor authentication, then enrol again.",
     description:
-      'Researcher-facing actions / totp: shown when enabling two-factor authentication is refused because the server has no TOTP_ENCRYPTION_KEY environment variable to encrypt the secret with',
+      'Researcher-facing actions / totp: shown when a stored two-factor secret cannot be decrypted, usually because the database password changed after it was stored',
   },
 });
 
 export async function enableTotp() {
   try {
     const session = await requireApiAuth();
-
-    if (!isTotpEncryptionConfigured()) {
-      return {
-        error: createMessageError(
-          messages.copyTwoFactorAuthenticationUnavailable,
-        ),
-        data: null,
-      };
-    }
 
     const secret = generateTotpSecret();
     // Only the sealed envelope reaches the database; the plaintext goes to the
@@ -146,9 +135,14 @@ export async function verifyTotpSetup(data: unknown) {
     };
   }
 
-  if (!verifyTotpCode(openTotpSecret(credential.secret), code)) {
+  const verification = verifyStoredTotpCode(credential.secret, code);
+  if (verification !== 'valid') {
     return {
-      error: createMessageError(messages.copyInvalidVerificationCode),
+      error: createMessageError(
+        verification === 'unreadable'
+          ? messages.copyTwoFactorSecretUnreadable
+          : messages.copyInvalidVerificationCode,
+      ),
       data: null,
     };
   }
@@ -201,10 +195,17 @@ export async function verifyCurrentUserTotp(
   }
 
   if (TOTP_CODE_PATTERN.test(code)) {
-    if (!verifyTotpCode(openTotpSecret(credential.secret), code)) {
+    const verification = verifyStoredTotpCode(credential.secret, code);
+    if (verification !== 'valid') {
       return {
         success: false,
-        formErrors: [createMessageError(messages.copyInvalidVerificationCode)],
+        formErrors: [
+          createMessageError(
+            verification === 'unreadable'
+              ? messages.copyTwoFactorSecretUnreadable
+              : messages.copyInvalidVerificationCode,
+          ),
+        ],
       };
     }
     return { success: true };
@@ -262,9 +263,14 @@ export async function disableTotp(data: unknown) {
   }
 
   if (TOTP_CODE_PATTERN.test(code)) {
-    if (!verifyTotpCode(openTotpSecret(credential.secret), code)) {
+    const verification = verifyStoredTotpCode(credential.secret, code);
+    if (verification !== 'valid') {
       return {
-        error: createMessageError(messages.copyInvalidVerificationCode),
+        error: createMessageError(
+          verification === 'unreadable'
+            ? messages.copyTwoFactorSecretUnreadable
+            : messages.copyInvalidVerificationCode,
+        ),
         data: null,
       };
     }
@@ -335,9 +341,17 @@ export async function regenerateRecoveryCodes(data: unknown) {
     };
   }
 
-  if (!verifyTotpCode(openTotpSecret(credential.secret), parsed.data.code)) {
+  const verification = verifyStoredTotpCode(
+    credential.secret,
+    parsed.data.code,
+  );
+  if (verification !== 'valid') {
     return {
-      error: createMessageError(messages.copyInvalidVerificationCode),
+      error: createMessageError(
+        verification === 'unreadable'
+          ? messages.copyTwoFactorSecretUnreadable
+          : messages.copyInvalidVerificationCode,
+      ),
       data: null,
     };
   }

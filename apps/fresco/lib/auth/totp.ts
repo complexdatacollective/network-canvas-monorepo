@@ -12,8 +12,11 @@ import { toDataURL } from 'qrcode';
 
 import { env } from '~/env';
 import {
-  decryptTotpSecret,
+  decryptTotpSecretWithAny,
   encryptTotpSecret,
+  resolveTotpKeyMaterials,
+  type TotpKeyMaterials,
+  TotpSecretDecryptError,
 } from '~/utils/totpSecretEncryption';
 
 const RECOVERY_CODE_COUNT = 10;
@@ -31,25 +34,11 @@ export function generateTotpSecret(): string {
   return secret.base32;
 }
 
-export class TotpEncryptionKeyMissingError extends Error {
-  constructor() {
-    super(
-      'TOTP_ENCRYPTION_KEY is not set. Fresco encrypts TOTP secrets at rest with this key; set it to a long random string (for example the output of `openssl rand -base64 32`) and restart.',
-    );
-    this.name = 'TotpEncryptionKeyMissingError';
-  }
-}
-
-export function isTotpEncryptionConfigured(): boolean {
-  return Boolean(env.TOTP_ENCRYPTION_KEY);
-}
-
-function requireTotpEncryptionKey(): string {
-  const key = env.TOTP_ENCRYPTION_KEY;
-  if (!key) {
-    throw new TotpEncryptionKeyMissingError();
-  }
-  return key;
+function totpKeyMaterials(): TotpKeyMaterials {
+  return resolveTotpKeyMaterials({
+    overrideKey: env.TOTP_ENCRYPTION_KEY || undefined,
+    databaseUrl: env.DATABASE_URL,
+  });
 }
 
 /**
@@ -58,17 +47,50 @@ function requireTotpEncryptionKey(): string {
  * the enrolment QR code.
  */
 export function sealTotpSecret(secret: string): string {
-  return encryptTotpSecret(secret, requireTotpEncryptionKey());
+  const [primary] = totpKeyMaterials();
+  return encryptTotpSecret(secret, primary);
 }
 
 /**
- * Open a value read from the `TotpCredential.secret` column. Throws rather
- * than returning a wrong secret when the key is missing, differs from the one
- * that sealed the row, or the row is still a legacy plaintext secret the
- * startup migration has not sealed.
+ * Open a value read from the `TotpCredential.secret` column, trying every key
+ * material the deployment has. Throws `TotpSecretDecryptError` rather than
+ * returning a wrong secret when none of them fits or the row is still a
+ * legacy plaintext secret the startup migration has not sealed.
  */
 export function openTotpSecret(stored: string): string {
-  return decryptTotpSecret(stored, requireTotpEncryptionKey());
+  return decryptTotpSecretWithAny(stored, totpKeyMaterials()).secret;
+}
+
+export type StoredTotpVerification =
+  | 'valid'
+  | 'invalid'
+  /**
+   * The stored secret cannot be opened with the deployment's current key
+   * material, typically because the database password changed after it was
+   * sealed without `TOTP_ENCRYPTION_KEY` set first. The account can still use
+   * a recovery code, and an administrator can reset its two-factor
+   * authentication so it can enrol again.
+   */
+  | 'unreadable';
+
+/** Check a code against a stored (sealed) secret. */
+export function verifyStoredTotpCode(
+  stored: string,
+  code: string,
+): StoredTotpVerification {
+  let secret: string;
+  try {
+    secret = openTotpSecret(stored);
+  } catch (error) {
+    if (error instanceof TotpSecretDecryptError) {
+      // eslint-disable-next-line no-console
+      console.error('[totp] Stored TOTP secret is unreadable:', error.message);
+      return 'unreadable';
+    }
+    throw error;
+  }
+
+  return verifyTotpCode(secret, code) ? 'valid' : 'invalid';
 }
 
 export function generateTotpUri(

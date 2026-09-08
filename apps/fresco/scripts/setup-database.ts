@@ -8,17 +8,22 @@ import { execSync, spawnSync } from 'child_process';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 import { PrismaClient } from '~/lib/db/generated/client';
+import { resolveTotpKeyMaterials } from '~/utils/totpSecretEncryption';
 
 import { encryptStoredTotpSecrets } from './encrypt-totp-secrets';
 import { migrateInterviewCategoricals } from './migrate-interview-categoricals';
 import { migrateProtocolsToCompatibleVersion } from './migrate-protocols';
 
+// eslint-disable-next-line no-process-env
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  console.error('DATABASE_URL is not set.');
+  process.exit(1);
+}
+
 // CLI scripts must use the PG adapter directly because the Neon serverless
 // adapter doesn't work in CLI/Node.js context (only in serverless runtimes)
-const adapter = new PrismaPg({
-  // eslint-disable-next-line no-process-env
-  connectionString: process.env.DATABASE_URL,
-});
+const adapter = new PrismaPg({ connectionString: databaseUrl });
 const prisma = new PrismaClient({ adapter });
 
 type TableRow = {
@@ -127,13 +132,14 @@ try {
   // module. All-or-nothing keeps the old version working on the old data.
   await prisma.$transaction(
     async (tx) => {
-      // First, so a missing or wrong TOTP_ENCRYPTION_KEY aborts the deploy
-      // before the slower protocol and network rewrites run. Mirrors env.js:
-      // a blank value behaves as unset.
       await encryptStoredTotpSecrets(
         tx,
-        // eslint-disable-next-line no-process-env
-        process.env.TOTP_ENCRYPTION_KEY || undefined,
+        resolveTotpKeyMaterials({
+          // Mirrors env.js: a blank value behaves as unset.
+          // eslint-disable-next-line no-process-env
+          overrideKey: process.env.TOTP_ENCRYPTION_KEY || undefined,
+          databaseUrl,
+        }),
       );
       await migrateProtocolsToCompatibleVersion(tx);
       await migrateInterviewCategoricals(tx);

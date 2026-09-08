@@ -58,7 +58,7 @@ const {
   mockCreateSessionCookie,
   mockVerifyTwoFactorToken,
   mockVerifyTotpCode,
-  mockOpenTotpSecret,
+  mockVerifyStoredTotpCode,
   mockHashRecoveryCode,
   mockGetClientIp,
   mockAddEvent,
@@ -74,7 +74,7 @@ const {
   mockCreateSessionCookie: vi.fn(),
   mockVerifyTwoFactorToken: vi.fn(),
   mockVerifyTotpCode: vi.fn(),
-  mockOpenTotpSecret: vi.fn(),
+  mockVerifyStoredTotpCode: vi.fn(),
   mockHashRecoveryCode: vi.fn(),
   mockGetClientIp: vi.fn(),
   mockAddEvent: vi.fn(),
@@ -114,7 +114,7 @@ vi.mock('~/lib/auth/session', () => ({
 vi.mock('~/lib/auth/totp', () => ({
   verifyTwoFactorToken: mockVerifyTwoFactorToken,
   verifyTotpCode: mockVerifyTotpCode,
-  openTotpSecret: mockOpenTotpSecret,
+  verifyStoredTotpCode: mockVerifyStoredTotpCode,
   hashRecoveryCode: mockHashRecoveryCode,
   createTwoFactorToken: vi.fn(),
   generateTotpSecret: vi.fn(),
@@ -167,8 +167,7 @@ const VALID_USERNAME = 'testuser2fa';
 const VALID_IP = '192.168.1.1';
 const VALID_TOTP_CODE = '123456';
 const VALID_RECOVERY_CODE = 'a1b2c3d4e5f6a1b2c3d4';
-const TOTP_SECRET = 'BASE32SECRET';
-// What the database holds for TOTP_SECRET: the sealed envelope, never the seed.
+// What the database holds for a TOTP secret: the sealed envelope, never the seed.
 const SEALED_SECRET = 'v1:sealed-nonce:sealed-ciphertext:sealed-tag';
 
 describe('verifyTwoFactor', () => {
@@ -180,7 +179,6 @@ describe('verifyTwoFactor', () => {
     mockCreateSessionCookie.mockResolvedValue(undefined);
     mockGetInstallationId.mockResolvedValue('test-installation-id');
     mockPrismaUserFindUnique.mockResolvedValue({ username: VALID_USERNAME });
-    mockOpenTotpSecret.mockReturnValue(TOTP_SECRET);
   });
 
   describe('schema validation', () => {
@@ -293,7 +291,7 @@ describe('verifyTwoFactor', () => {
         secret: SEALED_SECRET,
         verified: true,
       });
-      mockVerifyTotpCode.mockReturnValue(true);
+      mockVerifyStoredTotpCode.mockReturnValue('valid');
 
       const result = await verifyTwoFactor({
         twoFactorToken: 'valid-token',
@@ -305,7 +303,7 @@ describe('verifyTwoFactor', () => {
       expect(mockSafeUpdateTag).toHaveBeenCalledWith('activityFeed');
     });
 
-    it('verifies the code against the opened secret, not the stored envelope', async () => {
+    it('tells the user to use a recovery code when the stored secret is unreadable, without counting an attempt', async () => {
       mockVerifyTwoFactorSchemaSafeParse.mockReturnValue({
         success: true,
         data: { twoFactorToken: 'valid-token', code: VALID_TOTP_CODE },
@@ -319,16 +317,46 @@ describe('verifyTwoFactor', () => {
         secret: SEALED_SECRET,
         verified: true,
       });
-      mockVerifyTotpCode.mockReturnValue(true);
+      mockVerifyStoredTotpCode.mockReturnValue('unreadable');
+
+      const result = await verifyTwoFactor({
+        twoFactorToken: 'valid-token',
+        code: VALID_TOTP_CODE,
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success && 'formErrors' in result) {
+        expect(result.formErrors?.map(formatActionError).join(' ')).toMatch(
+          /Sign in with a recovery code/,
+        );
+      }
+      expect(mockRecordLoginAttempt).not.toHaveBeenCalled();
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
+    });
+
+    it('verifies the code against the stored value through verifyStoredTotpCode', async () => {
+      mockVerifyTwoFactorSchemaSafeParse.mockReturnValue({
+        success: true,
+        data: { twoFactorToken: 'valid-token', code: VALID_TOTP_CODE },
+      });
+      mockVerifyTwoFactorToken.mockReturnValue({
+        valid: true,
+        userId: VALID_USER_ID,
+      });
+      mockPrismaTotpCredentialFindFirst.mockResolvedValue({
+        user_id: VALID_USER_ID,
+        secret: SEALED_SECRET,
+        verified: true,
+      });
+      mockVerifyStoredTotpCode.mockReturnValue('valid');
 
       await verifyTwoFactor({
         twoFactorToken: 'valid-token',
         code: VALID_TOTP_CODE,
       });
 
-      expect(mockOpenTotpSecret).toHaveBeenCalledWith(SEALED_SECRET);
-      expect(mockVerifyTotpCode).toHaveBeenCalledWith(
-        TOTP_SECRET,
+      expect(mockVerifyStoredTotpCode).toHaveBeenCalledWith(
+        SEALED_SECRET,
         VALID_TOTP_CODE,
       );
     });
@@ -347,7 +375,7 @@ describe('verifyTwoFactor', () => {
         secret: SEALED_SECRET,
         verified: true,
       });
-      mockVerifyTotpCode.mockReturnValue(false);
+      mockVerifyStoredTotpCode.mockReturnValue('invalid');
 
       const result = await verifyTwoFactor({
         twoFactorToken: 'valid-token',
@@ -376,7 +404,7 @@ describe('verifyTwoFactor', () => {
         secret: SEALED_SECRET,
         verified: true,
       });
-      mockVerifyTotpCode.mockReturnValue(false);
+      mockVerifyStoredTotpCode.mockReturnValue('invalid');
 
       await verifyTwoFactor({
         twoFactorToken: 'valid-token',

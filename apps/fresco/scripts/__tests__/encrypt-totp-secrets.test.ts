@@ -7,10 +7,17 @@ import {
   decryptTotpSecret,
   encryptTotpSecret,
   isEncryptedTotpSecret,
+  type TotpKeyMaterials,
 } from '~/utils/totpSecretEncryption';
 
-const KEY = 'release-test-totp-encryption-key-0123456789';
-const OTHER_KEY = 'a-different-totp-encryption-key-9876543210';
+/** The database password a deployment derives its default key from. */
+const DB_PASSWORD = 'npg_release-test-database-password';
+/** An explicit TOTP_ENCRYPTION_KEY. */
+const OVERRIDE = 'release-test-totp-encryption-key-0123456789';
+const ROTATED_PASSWORD = 'npg_a-rotated-database-password';
+
+const DERIVED_ONLY: TotpKeyMaterials = [DB_PASSWORD];
+const WITH_OVERRIDE: TotpKeyMaterials = [OVERRIDE, DB_PASSWORD];
 
 /**
  * A `TotpCredential` row exactly as Fresco wrote it before secrets were
@@ -26,6 +33,13 @@ const LEGACY_ROW = Object.freeze({
   createdAt: new Date('2026-03-01T09:00:00.000Z'),
 });
 
+/** An enrolment someone started and never confirmed, as enableTotp writes it. */
+const ABANDONED_ROW = Object.freeze({
+  id: 'cm0abandonedtotpcredential0003',
+  secret: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+  verified: false,
+});
+
 type StoredRow = { id: string; secret: string; verified: boolean };
 
 function makeTx(rows: StoredRow[]) {
@@ -34,15 +48,6 @@ function makeTx(rows: StoredRow[]) {
     [...store.values()]
       .toSorted((a, b) => a.id.localeCompare(b.id))
       .map(({ id, secret, verified }) => ({ id, secret, verified })),
-  );
-  const deleteMany = vi.fn(
-    async ({ where }: { where: { id: { in: string[] } } }) => {
-      let count = 0;
-      for (const id of where.id.in) {
-        if (store.delete(id)) count++;
-      }
-      return { count };
-    },
   );
   const update = vi.fn(
     async ({
@@ -58,18 +63,20 @@ function makeTx(rows: StoredRow[]) {
       return row;
     },
   );
+  const deleteMany = vi.fn(
+    async ({ where }: { where: { id: { in: string[] } } }) => {
+      let count = 0;
+      for (const id of where.id.in) {
+        if (store.delete(id)) count++;
+      }
+      return { count };
+    },
+  );
   const tx = {
     totpCredential: { findMany, update, deleteMany },
   } as unknown as Prisma.TransactionClient;
   return { tx, store, findMany, update, deleteMany };
 }
-
-/** An enrolment someone started and never confirmed, as enableTotp writes it. */
-const ABANDONED_ROW = Object.freeze({
-  id: 'cm0abandonedtotpcredential0003',
-  secret: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
-  verified: false,
-});
 
 describe('encryptStoredTotpSecrets', () => {
   let warn: ReturnType<typeof vi.spyOn>;
@@ -84,10 +91,10 @@ describe('encryptStoredTotpSecrets', () => {
     vi.restoreAllMocks();
   });
 
-  it('seals a legacy plaintext row so the column no longer holds the seed', async () => {
+  it('seals a legacy plaintext row under the derived key so the column no longer holds the seed', async () => {
     const { tx, store, update } = makeTx([LEGACY_ROW]);
 
-    await encryptStoredTotpSecrets(tx, KEY);
+    await encryptStoredTotpSecrets(tx, DERIVED_ONLY);
 
     const stored = store.get(LEGACY_ROW.id)?.secret;
     expect(update).toHaveBeenCalledTimes(1);
@@ -95,6 +102,9 @@ describe('encryptStoredTotpSecrets', () => {
     expect(stored).not.toBe(LEGACY_ROW.secret);
     expect(stored).not.toContain(LEGACY_ROW.secret);
     expect(isEncryptedTotpSecret(stored ?? '')).toBe(true);
+    expect(decryptTotpSecret(stored ?? '', DB_PASSWORD)).toBe(
+      LEGACY_ROW.secret,
+    );
   });
 
   it('keeps codes from the pre-upgrade seed verifiable after the upgrade', async () => {
@@ -104,11 +114,11 @@ describe('encryptStoredTotpSecrets', () => {
     });
     const code = authenticator.generate();
 
-    await encryptStoredTotpSecrets(tx, KEY);
+    await encryptStoredTotpSecrets(tx, DERIVED_ONLY);
 
     const opened = decryptTotpSecret(
       store.get(LEGACY_ROW.id)?.secret ?? '',
-      KEY,
+      DB_PASSWORD,
     );
     expect(opened).toBe(LEGACY_ROW.secret);
     expect(
@@ -119,213 +129,148 @@ describe('encryptStoredTotpSecrets', () => {
     ).toBe(0);
   });
 
+  it('seals under the override when one is set', async () => {
+    const { tx, store } = makeTx([LEGACY_ROW]);
+
+    await encryptStoredTotpSecrets(tx, WITH_OVERRIDE);
+
+    const stored = store.get(LEGACY_ROW.id)?.secret ?? '';
+    expect(decryptTotpSecret(stored, OVERRIDE)).toBe(LEGACY_ROW.secret);
+    expect(() => decryptTotpSecret(stored, DB_PASSWORD)).toThrow(
+      /could not be decrypted/,
+    );
+  });
+
   it('is idempotent: a second run verifies the sealed row and rewrites nothing', async () => {
     const { tx, store, update } = makeTx([LEGACY_ROW]);
-    await encryptStoredTotpSecrets(tx, KEY);
+    await encryptStoredTotpSecrets(tx, DERIVED_ONLY);
     const sealedOnce = store.get(LEGACY_ROW.id)?.secret;
     update.mockClear();
 
-    await encryptStoredTotpSecrets(tx, KEY);
+    await encryptStoredTotpSecrets(tx, DERIVED_ONLY);
 
     expect(update).not.toHaveBeenCalled();
     expect(store.get(LEGACY_ROW.id)?.secret).toBe(sealedOnce);
     expect(log).toHaveBeenCalledWith(
-      expect.stringContaining('verified 1 already-encrypted secret(s)'),
+      expect.stringContaining('verified 1 already current'),
+    );
+  });
+
+  it('re-seals a row sealed under the database password once an override is set', async () => {
+    const { tx, store, update } = makeTx([LEGACY_ROW]);
+    await encryptStoredTotpSecrets(tx, DERIVED_ONLY);
+    update.mockClear();
+
+    await encryptStoredTotpSecrets(tx, WITH_OVERRIDE);
+
+    expect(update).toHaveBeenCalledTimes(1);
+    const stored = store.get(LEGACY_ROW.id)?.secret ?? '';
+    expect(decryptTotpSecret(stored, OVERRIDE)).toBe(LEGACY_ROW.secret);
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining('re-sealed 1 under the current key'),
     );
   });
 
   it('seals only the plaintext rows in a mixed database', async () => {
     const sealedRow = {
       id: 'cm0sealedtotpcredential000002',
-      secret: encryptTotpSecret('MFRGGZDFMZTWQ2LKNNWG23TPOBSXE', KEY),
+      secret: encryptTotpSecret('MFRGGZDFMZTWQ2LKNNWG23TPOBSXE', DB_PASSWORD),
       verified: true,
     };
     const { tx, store, update } = makeTx([LEGACY_ROW, sealedRow]);
 
-    await encryptStoredTotpSecrets(tx, KEY);
+    await encryptStoredTotpSecrets(tx, DERIVED_ONLY);
 
     expect(update).toHaveBeenCalledTimes(1);
     expect(update.mock.calls[0]?.[0].where).toEqual({ id: LEGACY_ROW.id });
     expect(store.get(sealedRow.id)?.secret).toBe(sealedRow.secret);
-    expect(decryptTotpSecret(store.get(LEGACY_ROW.id)?.secret ?? '', KEY)).toBe(
-      LEGACY_ROW.secret,
-    );
+    expect(
+      decryptTotpSecret(store.get(LEGACY_ROW.id)?.secret ?? '', DB_PASSWORD),
+    ).toBe(LEGACY_ROW.secret);
   });
 
-  it('fails the deploy when secrets exist but no key is configured', async () => {
-    const { tx, store, update, deleteMany } = makeTx([LEGACY_ROW]);
-
-    await expect(encryptStoredTotpSecrets(tx, undefined)).rejects.toThrow(
-      /1 account\(s\) have two-factor authentication enabled, but TOTP_ENCRYPTION_KEY is not set/,
-    );
-
-    expect(update).not.toHaveBeenCalled();
-    expect(deleteMany).not.toHaveBeenCalled();
-    expect(store.get(LEGACY_ROW.id)?.secret).toBe(LEGACY_ROW.secret);
-  });
-
-  it('counts only verified accounts in the missing-key failure and touches nothing', async () => {
+  it('warns, without failing the deploy, when a verified row was sealed under a rotated password', async () => {
     const { tx, store, update, deleteMany } = makeTx([
-      LEGACY_ROW,
-      ABANDONED_ROW,
+      {
+        id: LEGACY_ROW.id,
+        secret: encryptTotpSecret(LEGACY_ROW.secret, ROTATED_PASSWORD),
+        verified: true,
+      },
     ]);
-
-    await expect(encryptStoredTotpSecrets(tx, undefined)).rejects.toThrow(
-      /^1 account\(s\) have two-factor authentication enabled/,
-    );
-
-    expect(update).not.toHaveBeenCalled();
-    expect(deleteMany).not.toHaveBeenCalled();
-    expect(store.get(ABANDONED_ROW.id)?.secret).toBe(ABANDONED_ROW.secret);
-  });
-
-  it('discards unfinished enrolments and continues when no key is configured', async () => {
-    const { tx, store, update, deleteMany } = makeTx([ABANDONED_ROW]);
 
     await expect(
-      encryptStoredTotpSecrets(tx, undefined),
+      encryptStoredTotpSecrets(tx, DERIVED_ONLY),
     ).resolves.toBeUndefined();
 
-    expect(deleteMany).toHaveBeenCalledTimes(1);
-    expect(store.has(ABANDONED_ROW.id)).toBe(false);
     expect(update).not.toHaveBeenCalled();
-    expect(log).toHaveBeenCalledWith(
-      expect.stringContaining('Discarded 1 unfinished two-factor enrolment(s)'),
-    );
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('TOTP_ENCRYPTION_KEY is not set'),
-    );
-  });
-
-  it('seals an unfinished enrolment rather than discarding it when a key is configured', async () => {
-    const { tx, store, deleteMany } = makeTx([ABANDONED_ROW]);
-
-    await encryptStoredTotpSecrets(tx, KEY);
-
     expect(deleteMany).not.toHaveBeenCalled();
-    expect(
-      decryptTotpSecret(store.get(ABANDONED_ROW.id)?.secret ?? '', KEY),
-    ).toBe(ABANDONED_ROW.secret);
-  });
-
-  it('fails the deploy when the configured key does not open the sealed rows', async () => {
-    const { tx, update } = makeTx([
-      {
-        id: LEGACY_ROW.id,
-        secret: encryptTotpSecret(LEGACY_ROW.secret, KEY),
-        verified: true,
-      },
-    ]);
-
-    await expect(encryptStoredTotpSecrets(tx, OTHER_KEY)).rejects.toThrow(
-      /TOTP_ENCRYPTION_KEY does not match the key that encrypted the stored TOTP secrets/,
-    );
-    expect(update).not.toHaveBeenCalled();
-  });
-
-  it('discards an unfinished enrolment sealed under a different key instead of failing', async () => {
-    const verifiedRow = {
-      id: LEGACY_ROW.id,
-      secret: encryptTotpSecret(LEGACY_ROW.secret, KEY),
-      verified: true,
-    };
-    const staleUnfinished = {
-      id: ABANDONED_ROW.id,
-      secret: encryptTotpSecret(ABANDONED_ROW.secret, OTHER_KEY),
-      verified: false,
-    };
-    const { tx, store, update, deleteMany } = makeTx([
-      verifiedRow,
-      staleUnfinished,
-    ]);
-
-    await expect(encryptStoredTotpSecrets(tx, KEY)).resolves.toBeUndefined();
-
-    expect(deleteMany).toHaveBeenCalledTimes(1);
-    expect(store.has(ABANDONED_ROW.id)).toBe(false);
-    expect(store.get(LEGACY_ROW.id)?.secret).toBe(verifiedRow.secret);
-    expect(update).not.toHaveBeenCalled();
-    expect(log).toHaveBeenCalledWith(
+    expect(store.get(LEGACY_ROW.id)?.secret).toBeDefined();
+    expect(warn).toHaveBeenCalledWith(
       expect.stringContaining(
-        'Discarded 1 unfinished two-factor enrolment(s); they could not be read with the configured TOTP_ENCRYPTION_KEY',
+        '1 account(s) have a two-factor authentication secret that cannot be opened with the current key',
       ),
     );
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('set TOTP_ENCRYPTION_KEY'),
+    );
   });
 
-  it('still fails the deploy when a verified row was sealed under a different key, even beside an unfinished one', async () => {
-    const { tx, deleteMany, update } = makeTx([
-      {
-        id: LEGACY_ROW.id,
-        secret: encryptTotpSecret(LEGACY_ROW.secret, OTHER_KEY),
-        verified: true,
-      },
+  it('discards an unfinished enrolment that no key material opens', async () => {
+    const { tx, store, update, deleteMany } = makeTx([
       {
         id: ABANDONED_ROW.id,
-        secret: encryptTotpSecret(ABANDONED_ROW.secret, OTHER_KEY),
+        secret: encryptTotpSecret(ABANDONED_ROW.secret, ROTATED_PASSWORD),
         verified: false,
       },
     ]);
 
-    await expect(encryptStoredTotpSecrets(tx, KEY)).rejects.toThrow(
-      /TOTP_ENCRYPTION_KEY does not match/,
-    );
-    expect(deleteMany).not.toHaveBeenCalled();
-    expect(update).not.toHaveBeenCalled();
-  });
-
-  it('discards an unfinished enrolment whose envelope is malformed', async () => {
-    const { tx, store, update, deleteMany } = makeTx([
-      { id: ABANDONED_ROW.id, secret: 'v1:truncated', verified: false },
-    ]);
-
-    await expect(encryptStoredTotpSecrets(tx, KEY)).resolves.toBeUndefined();
+    await encryptStoredTotpSecrets(tx, WITH_OVERRIDE);
 
     expect(deleteMany).toHaveBeenCalledTimes(1);
     expect(store.has(ABANDONED_ROW.id)).toBe(false);
     expect(update).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining('Discarded 1 unfinished two-factor enrolment(s)'),
+    );
   });
 
-  it('still fails the deploy when a verified row has a malformed envelope', async () => {
-    const { tx, deleteMany, update } = makeTx([
+  it('discards an unfinished enrolment whose envelope is malformed, and only warns for a verified one', async () => {
+    const { tx, store, deleteMany } = makeTx([
+      { id: ABANDONED_ROW.id, secret: 'v1:truncated', verified: false },
       { id: LEGACY_ROW.id, secret: 'v1:truncated', verified: true },
     ]);
 
-    await expect(encryptStoredTotpSecrets(tx, KEY)).rejects.toThrow(
-      /not a valid encrypted envelope/,
-    );
-    expect(deleteMany).not.toHaveBeenCalled();
-    expect(update).not.toHaveBeenCalled();
-  });
-
-  it('fails the deploy on a key shorter than the minimum', async () => {
-    const { tx, update } = makeTx([LEGACY_ROW]);
-
-    await expect(encryptStoredTotpSecrets(tx, 'short')).rejects.toThrow(
-      /at least 32 characters/,
-    );
-    expect(update).not.toHaveBeenCalled();
-  });
-
-  it('only warns when no secrets exist and no key is configured', async () => {
-    const { tx, update, deleteMany } = makeTx([]);
-
     await expect(
-      encryptStoredTotpSecrets(tx, undefined),
+      encryptStoredTotpSecrets(tx, DERIVED_ONLY),
     ).resolves.toBeUndefined();
 
-    expect(update).not.toHaveBeenCalled();
-    expect(deleteMany).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('TOTP_ENCRYPTION_KEY is not set'),
-    );
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: [ABANDONED_ROW.id] } },
+    });
+    expect(store.has(ABANDONED_ROW.id)).toBe(false);
+    expect(store.get(LEGACY_ROW.id)?.secret).toBe('v1:truncated');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('1 account(s)'));
   });
 
-  it('does nothing when no secrets exist and a key is configured', async () => {
-    const { tx, update } = makeTx([]);
+  it('seals a plaintext unfinished enrolment like any other row', async () => {
+    const { tx, store, deleteMany } = makeTx([ABANDONED_ROW]);
 
-    await encryptStoredTotpSecrets(tx, KEY);
+    await encryptStoredTotpSecrets(tx, DERIVED_ONLY);
+
+    expect(deleteMany).not.toHaveBeenCalled();
+    expect(
+      decryptTotpSecret(store.get(ABANDONED_ROW.id)?.secret ?? '', DB_PASSWORD),
+    ).toBe(ABANDONED_ROW.secret);
+  });
+
+  it('does nothing when no secrets exist', async () => {
+    const { tx, update, deleteMany } = makeTx([]);
+
+    await encryptStoredTotpSecrets(tx, DERIVED_ONLY);
 
     expect(update).not.toHaveBeenCalled();
+    expect(deleteMany).not.toHaveBeenCalled();
     expect(warn).not.toHaveBeenCalled();
   });
 });
