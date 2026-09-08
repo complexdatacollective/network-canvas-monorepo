@@ -3,6 +3,8 @@ import { Component, type ReactNode } from 'react';
 import { createMessageError, defineMessage } from '@codaco/app-i18n/messages';
 import FormErrors from '@codaco/fresco-ui/form/FormErrors';
 
+import { useDialogFormSubmissionBlock } from '../DialogForm.tsx';
+
 /**
  * Said when the fields a family renders inside a row dialog cannot be shown.
  *
@@ -28,6 +30,27 @@ const EDITOR_FAILED = createMessageError(editorFailedMessage);
 
 type RowEditorBoundaryProps = Readonly<{ children: ReactNode }>;
 
+/**
+ * What is left where the fields were.
+ *
+ * The dialog is told, rather than only shown: a dialog whose fields never
+ * rendered has nothing to save, and what it WOULD save is worse than nothing
+ * — for a new row, the empty record the template made, committed as though
+ * the researcher had written it. `DialogForm` validates the fields that
+ * registered themselves, and none did, so it would have found nothing wrong.
+ * Registered instead, the reason stands above the fields, the submit control
+ * announces that it is unavailable and says why, and the submission is
+ * refused for as long as this is on screen.
+ *
+ * The sentence is rendered here only when there is no dialog to report it —
+ * nothing in this package mounts a row editor outside one, and a boundary
+ * that said nothing at all would be worse than one that says it twice.
+ */
+function RowEditorFailed() {
+  const reported = useDialogFormSubmissionBlock(EDITOR_FAILED);
+  return reported ? null : <FormErrors errors={[EDITOR_FAILED]} />;
+}
+
 type RowEditorBoundaryState = Readonly<{ failed: boolean }>;
 
 /**
@@ -45,7 +68,8 @@ type RowEditorBoundaryState = Readonly<{ failed: boolean }>;
  * Deliberately not a retry: the same fields would be mounted again with the
  * same values and throw again. Closing the dialog is the recovery, and the
  * dialog's own close is still there to do it — which is the point of catching
- * INSIDE the dialog rather than around it.
+ * INSIDE the dialog rather than around it. Saving is not a recovery, and is
+ * refused: see {@link RowEditorFailed}.
  *
  * A class because that is the only thing React lets catch a render error; it
  * is remounted whenever the dialog opens on a different row, so a row whose
@@ -62,7 +86,7 @@ export default class RowEditorBoundary extends Component<
   }
 
   render(): ReactNode {
-    if (this.state.failed) return <FormErrors errors={[EDITOR_FAILED]} />;
+    if (this.state.failed) return <RowEditorFailed />;
     return this.props.children;
   }
 }

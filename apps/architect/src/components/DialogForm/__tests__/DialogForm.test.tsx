@@ -1,5 +1,6 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -359,9 +360,14 @@ describe('DialogForm', () => {
       'true',
     );
 
-    // Non-dismissible: neither Escape nor the (disabled) Cancel button close it.
-    fireEvent.keyDown(document, { key: 'Escape' });
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    // Non-dismissible while the submit is in flight: none of the three ways
+    // out close it. Driven through `userEvent` so Escape and the outside press
+    // take the same route a researcher's do — `dismissible={!isSubmitting}` is
+    // what refuses those two, and `requestClose` refuses all three.
+    const user = userEvent.setup();
+    await user.keyboard('{Escape}');
+    await user.click(document.body);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 

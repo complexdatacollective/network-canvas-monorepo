@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
+import { changeSubjectTo } from '../../../sections/__tests__/changeSubject.ts';
 import {
   CANVAS_IMAGE_ID,
   canvasImageAssets,
@@ -129,7 +130,10 @@ describe('the network composer stage editor', () => {
       screen.getByRole('textbox', { name: 'Stage name' }),
       'Build',
     );
-    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    // The template's own automatic-layout default is a dependent the picker
+    // can see, so the first node type chosen for this stage still asks
+    // before it throws that default away.
+    await changeSubjectTo(harness.user, 'person', 'Choose the node type');
     await harness.user.selectOptions(
       await screen.findByRole('combobox', {
         name: 'Attribute filled in when a node is added',

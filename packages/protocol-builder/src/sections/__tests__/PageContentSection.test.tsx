@@ -5,8 +5,7 @@ import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import PageContentSection from '../PageContentSection.tsx';
 import StageNameSection from '../StageNameSection.tsx';
 import {
-  collapseMediaItem,
-  expandMediaItem,
+  mediaItemSlots,
   TestItemEditor,
   TestItemPreview,
   TestMediaItemEditor,
@@ -214,8 +213,7 @@ describe('a page whose blocks can be prose or a resource', () => {
       <PageContentSection
         ItemEditor={TestMediaItemEditor}
         ItemPreview={TestMediaItemPreview}
-        itemSelector={expandMediaItem}
-        normalizeItem={collapseMediaItem}
+        slots={mediaItemSlots}
       />
     ),
   });
@@ -283,8 +281,7 @@ describe('a block field the researcher left empty', () => {
         <PageContentSection
           ItemEditor={TestMediaItemEditor}
           ItemPreview={TestMediaItemPreview}
-          itemSelector={expandMediaItem}
-          normalizeItem={collapseMediaItem}
+          slots={mediaItemSlots}
         />
       ),
     });
@@ -335,8 +332,7 @@ describe('a block whose active slot the researcher emptied', () => {
         <PageContentSection
           ItemEditor={TestMediaItemEditor}
           ItemPreview={TestMediaItemPreview}
-          itemSelector={expandMediaItem}
-          normalizeItem={collapseMediaItem}
+          slots={mediaItemSlots}
         />
       ),
     });
@@ -359,5 +355,84 @@ describe('a block whose active slot the researcher emptied', () => {
     expect(harness.session.getSnapshot().editedSection.fields.items).toEqual([
       { id: 'block-text', type: 'text' },
     ]);
+  });
+});
+
+/**
+ * The two halves of the slot contract travel together, and the type system is
+ * what says so.
+ *
+ * A family that declared the expand half alone used to compile. Its row edits
+ * then reached the session — and a live-applying host — carrying an
+ * editor-only key and the pre-edit `content`, and the researcher was held at
+ * the save by an error naming a key that is in no protocol schema and nowhere
+ * on their screen. Nothing but the types can catch that: both halves are
+ * plain functions, and the collapse's absence is invisible until a save.
+ */
+describe('the expand and collapse halves of a block', () => {
+  it('cannot be declared one at a time', () => {
+    const halfDeclared = (
+      <PageContentSection
+        ItemEditor={TestMediaItemEditor}
+        ItemPreview={TestMediaItemPreview}
+        // @ts-expect-error — `slots` requires `collapse` as well: a page given
+        // the expand half alone saves the editor's private slot key into the
+        // protocol. Deleting `collapse` from `PageContentSectionProps` — or
+        // making it optional — makes this directive unused and fails
+        // `typecheck`.
+        slots={{ expand: mediaItemSlots.expand }}
+      />
+    );
+
+    expect(halfDeclared.type).toBe(PageContentSection);
+  });
+
+  /**
+   * The other half of the same proof, at run time and against a host that
+   * applies what it is sent: the pair the types now insist on is the pair that
+   * strips the slot before the batch leaves.
+   */
+  it('send the host a row the protocol schema accepts', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'information-live',
+        type: 'Information',
+        fields: {
+          label: 'Information',
+          title: 'Welcome',
+          items: [{ id: 'block-text', type: 'text', content: 'Read this.' }],
+        },
+      },
+      sections: (
+        <PageContentSection
+          ItemEditor={TestMediaItemEditor}
+          ItemPreview={TestMediaItemPreview}
+          slots={mediaItemSlots}
+        />
+      ),
+      applyLive: true,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit block' }),
+    );
+    const text = await screen.findByRole('textbox', { name: 'Block text' });
+    await harness.user.clear(text);
+    await harness.user.type(text, 'Read this instead.');
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    expect(harness.liveCommands()).toEqual([
+      {
+        op: 'set',
+        key: 'items',
+        value: [
+          { id: 'block-text', type: 'text', content: 'Read this instead.' },
+        ],
+      },
+    ]);
+    expect(await harness.submit()).not.toBeNull();
   });
 });

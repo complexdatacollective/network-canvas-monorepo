@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
+import { changeSubjectTo } from '../../../sections/__tests__/changeSubject.ts';
 import {
   CANVAS_IMAGE_ID,
   canvasImageAssets,
@@ -135,7 +136,10 @@ describe('the narrative stage editor', () => {
       screen.getByRole('textbox', { name: 'Stage name' }),
       'Story',
     );
-    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    // The template's own automatic-layout default is a dependent the picker
+    // can see, so the first node type chosen for this stage still asks
+    // before it throws that default away.
+    await changeSubjectTo(harness.user, 'person', 'Choose the node type');
     await harness.user.click(
       await screen.findByRole('button', { name: 'Create new preset' }),
     );

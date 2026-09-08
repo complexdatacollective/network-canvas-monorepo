@@ -186,8 +186,7 @@ const bareDigest = (value) => {
   return clean ? clean.replace(/^sha256:/i, '').toLowerCase() : null;
 };
 
-// A version as the health endpoint reports it ("v4.1.2") compared with a
-// version as package manifests carry it ("4.1.2").
+// A version as a build stamp or manifest may carry it ("v4.1.2" or "4.1.2").
 const stripV = (value) => {
   const clean = shaped(value, VERSION, 64);
   return clean ? clean.replace(/^v/i, '') : null;
@@ -341,7 +340,10 @@ const STACK_SCHEMA = {
   properties: {
     ok: { type: 'boolean' },
     baseUrl: { type: 'string' },
-    version: { type: 'string' },
+    imageId: {
+      type: 'string',
+      description: "The .Image id up.sh read from the lane's Fresco container",
+    },
     error: {
       type: 'string',
       description: 'Only on failure: the decisive log/output lines',
@@ -506,6 +508,10 @@ const AUDIT_SCHEMA = {
       type: 'string',
       description:
         'The RepoDigest docker currently reports for the baseline tag',
+    },
+    releasedImageId: {
+      type: 'string',
+      description: 'The .Id docker currently reports for the baseline tag',
     },
     upgradeContainerImage: {
       type: 'string',
@@ -804,7 +810,7 @@ const runUpgradeLane = async () => {
 
   const upReleased = await agent(
     `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run: rm -rf ${ARTIFACTS}/exports && bash ${HARNESS}/up.sh --lane upgrade --image ${releasedImage}
-(The rm clears any previous run's export captures so the diff can never mix runs — required because skipBuild bypasses the build step's artifact cleanup. Bash timeout 480000 — first boot runs migrations.) The last stdout line is JSON with baseUrl and the health response. Return ok:true with baseUrl and the health "version" field verbatim, or ok:false with the decisive error lines in "error".`,
+(The rm clears any previous run's export captures so the diff can never mix runs — required because skipBuild bypasses the build step's artifact cleanup. Bash timeout 480000 — first boot runs migrations.) The last stdout line is JSON with baseUrl, imageId and the health response. Return ok:true with baseUrl and the "imageId" field verbatim, or ok:false with the decisive error lines in "error".`,
     {
       label: 'up-released',
       phase: 'Upgrade lane',
@@ -815,9 +821,9 @@ const runUpgradeLane = async () => {
   lane.upReleased = upReleased;
   if (!upReleased?.ok) return lane;
 
-  const releasedVersion = stripV(upReleased.version);
+  lane.releasedImageId = bareDigest(upReleased.imageId);
   const seed = await agent(
-    `You are seeding a fresh Fresco instance (the CURRENTLY RELEASED version, ${releasedVersion ?? 'unknown'}) at ${UPGRADE_URL} so an upgrade can be tested against real data. Stay in your working directory — it is already the correct repository checkout; do NOT cd to another checkout.
+    `You are seeding a fresh Fresco instance (the CURRENTLY RELEASED image, ${releasedImage}) at ${UPGRADE_URL} so an upgrade can be tested against real data. Stay in your working directory — it is already the correct repository checkout; do NOT cd to another checkout.
 ${BROWSER_HOWTO}
 
 Do, in order, recording one check per numbered item:
@@ -876,7 +882,7 @@ Set area="seed" and pass=true only if every item passed or was legitimately skip
 Run: bash ${HARNESS}/up.sh --lane upgrade --image ${pendingImage} --keep-data
 (Bash timeout 480000.) Then run: FRESCO_IMAGE=${pendingImage} docker compose -p fresco-release-test-upgrade -f ${HARNESS}/docker-compose.yml logs --tail 200 fresco
 (The FRESCO_IMAGE prefix is required: the compose file refuses interpolation without it, and up.sh's export does not survive into your shell.)
-Inspect the logs for the migration/startup sequence (prisma migrate deploy, protocol/data migrations, server start). Return ok:true with the health "version" field verbatim, or ok:false with the decisive failing log lines in "error". Any migration error, stack trace, or crash-loop is a failure even if the container eventually reports healthy.`,
+Inspect the logs for the migration/startup sequence (prisma migrate deploy, protocol/data migrations, server start). Return ok:true with the "imageId" field of up.sh's last stdout line verbatim, or ok:false with the decisive failing log lines in "error". Any migration error, stack trace, or crash-loop is a failure even if the container eventually reports healthy.`,
     {
       label: 'upgrade-swap',
       phase: 'Upgrade lane',
@@ -885,8 +891,7 @@ Inspect the logs for the migration/startup sequence (prisma migrate deploy, prot
     },
   );
   lane.swap = swap;
-  lane.releasedVersion = releasedVersion;
-  lane.swappedVersion = stripV(swap?.version);
+  lane.swappedImageId = bareDigest(swap?.imageId);
   if (!swap?.ok) return lane;
 
   // Strictly serialized, twice over: capture and integrity must observe the
@@ -1001,7 +1006,7 @@ const runFreshLane = async () => {
 
   const up = await agent(
     `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run: bash ${HARNESS}/up.sh --lane fresh --image ${pendingImage}
-(Bash timeout 480000.) The last stdout line is JSON with baseUrl and health. Return ok:true with baseUrl and the health "version" field verbatim, or ok:false with the decisive error lines in "error".`,
+(Bash timeout 480000.) The last stdout line is JSON with baseUrl, imageId and health. Return ok:true with baseUrl and the "imageId" field verbatim, or ok:false with the decisive error lines in "error".`,
     {
       label: 'up-fresh',
       phase: 'Fresh lane',
@@ -1010,7 +1015,7 @@ const runFreshLane = async () => {
     },
   );
   lane.up = up;
-  lane.version = stripV(up?.version);
+  lane.imageId = bareDigest(up?.imageId);
   if (!up?.ok) return lane;
 
   lane.setup = await agent(
@@ -1115,7 +1120,7 @@ Report, exactly:
 - stampExists: whether ${STAMP} exists. If it does, also report its contents verbatim: stampVersion, stampCommit, stampImageId and stampDirty (the "version", "commit", "imageId" and "dirty" keys of that JSON file). Report the flag as the file states it — do NOT recompute or second-guess it.
 - pendingImageId: the output of docker image inspect --format '{{.Id}}' ${pendingImage} (omit the field if the image does not exist).
 - headCommit: the output of git rev-parse --short HEAD. worktreeDirty: true if git status --porcelain prints anything, false if it prints nothing. Report what these commands say about the checkout you are in — do not read them from any file.
-- releasedImageDigest: the output of docker image inspect --format '{{index .RepoDigests 0}}' ${releasedImage} (omit the field if that image is not present locally).
+- releasedImageDigest: the output of docker image inspect --format '{{index .RepoDigests 0}}' ${releasedImage} (omit the field if that image is not present locally). releasedImageId: the output of docker image inspect --format '{{.Id}}' ${releasedImage} (omit likewise).
 - upgradeContainerImage and freshContainerImage: the image each lane's Fresco container is ACTUALLY running, from docker inspect --format '{{.Image}}' fresco-release-test-upgrade-fresco-1 and docker inspect --format '{{.Image}}' fresco-release-test-fresh-fresco-1. Omit a field if that container does not exist. Report what docker says about the container, never what a tag resolves to.
 - baselineSnapshotIds: the <id> part of every file matching ${BASELINE_DIR}/api-interview-<id>.json (empty array if the directory is missing). upgradedSnapshotIds: the same for ${UPGRADED_DIR}.
 - suspectSnapshots: how many of those files, across BOTH directories, are unusable. Count a file if ANY of these holds: it is smaller than 64 bytes; it is byte-identical to a different snapshot in the same directory (compare checksums, e.g. cksum, within each directory); or it does not contain its own <id> anywhere in its contents (grep -q -- "<id>" on that file). A count of files is not evidence that each one holds the interview it is named for, which is what this reports.
@@ -1353,61 +1358,44 @@ const anyAreaRan = Object.values(areaResults).some(Boolean);
 
 // --- provenance: the containers must be running the image we built ----------
 
-// Health versions come from the app; container images come from docker. A
-// container left running from another build that reports the same version
-// would satisfy every version check, so each lane is also bound to the image
-// the stamp describes.
-for (const [lane, ran, field] of [
-  ['upgrade', upgradeLane?.swap?.ok === true, 'upgradeContainerImage'],
-  ['fresh', freshLane?.up?.ok === true, 'freshContainerImage'],
+// Nothing the app reports identifies a build: /api/health names no version,
+// on purpose. Image ids come from docker — up.sh reads each lane's Fresco
+// container as it comes up, and the audit re-reads the containers that still
+// exist at the end — so each lane is bound to the image the stamp describes by
+// what docker says ran, corroborated by a second reader.
+const stampedImageId = bareDigest(audit?.stampImageId);
+for (const [lane, ran, cameUpAs, field] of [
+  [
+    'upgrade',
+    upgradeLane?.swap?.ok === true,
+    upgradeLane?.swappedImageId,
+    'upgradeContainerImage',
+  ],
+  [
+    'fresh',
+    freshLane?.up?.ok === true,
+    freshLane?.imageId,
+    'freshContainerImage',
+  ],
 ]) {
-  if (!ran || !audit) continue;
+  if (!ran) continue;
+  if (!cameUpAs)
+    unaccounted.push(
+      `${lane} lane: up.sh reported no image id for its Fresco container, so nothing proves it ran the pending build`,
+    );
+  else if (stampedImageId && cameUpAs !== stampedImageId)
+    failures.push(
+      `${lane} lane: its Fresco container came up running image ${cameUpAs}, but the pending build is ${audit.stampImageId} — the lane did not run the image under test`,
+    );
+  if (!audit) continue;
   const running = bareDigest(audit[field]);
-  const stamped = bareDigest(audit.stampImageId);
   if (!running)
     unaccounted.push(
-      `${lane} lane: the artifact audit could not read the image its Fresco container is running, so nothing but a version string says it ran the pending build`,
+      `${lane} lane: the artifact audit could not read the image its Fresco container is running, so the image id up.sh reported is uncorroborated`,
     );
-  else if (stamped && running !== stamped)
+  else if (stampedImageId && running !== stampedImageId)
     unaccounted.push(
       `${lane} lane: its Fresco container is running image ${audit[field]}, but the pending build is ${audit.stampImageId} — that lane exercised a different image`,
-    );
-}
-
-if (upgradeLane?.swap?.ok === true) {
-  if (!upgradeLane.swappedVersion)
-    unaccounted.push(
-      'upgrade lane: the swapped stack reported no usable version, so nothing proves it is running the pending image',
-    );
-  else if (buildVersion && upgradeLane.swappedVersion !== buildVersion)
-    failures.push(
-      `upgrade lane: after the swap the stack reports version ${upgradeLane.swappedVersion}, but the pending image is ${buildVersion} — the swap did not run the image under test`,
-    );
-  // Required as strictly as the swapped and fresh versions are: it is the only
-  // evidence distinguishing a real upgrade from running one build twice, and a
-  // missing field must not be able to skip the comparison.
-  if (!upgradeLane.releasedVersion)
-    unaccounted.push(
-      'upgrade lane: the released baseline reported no usable version, so nothing distinguishes this run from upgrading a build to itself',
-    );
-  if (
-    upgradeLane.releasedVersion &&
-    upgradeLane.swappedVersion &&
-    upgradeLane.releasedVersion === upgradeLane.swappedVersion
-  ) {
-    const message = `upgrade lane: the released and pending stacks both report version ${upgradeLane.swappedVersion} — no version change means no upgrade path was exercised`;
-    if (expectedVersion) failures.push(message);
-    else warnings.push(message);
-  }
-}
-if (freshLane?.up?.ok === true) {
-  if (!freshLane.version)
-    unaccounted.push(
-      'fresh lane: the stack reported no usable version, so nothing proves it is running the pending image',
-    );
-  else if (buildVersion && freshLane.version !== buildVersion)
-    failures.push(
-      `fresh lane: the stack reports version ${freshLane.version}, but the pending image is ${buildVersion} — the lane tested a different build`,
     );
 }
 
@@ -1759,8 +1747,8 @@ if (upgradeLane?.seed?.pass) {
 // current release is the digest the pull resolved, so a run that never
 // recorded one has no baseline identity — and the audit re-reads the tag's
 // digest so a pull agent that reported success without pulling is caught.
-// This binds the image the tag pointed at; it cannot retro-inspect the
-// baseline container, which the swap has already replaced by audit time.
+// This binds the image the tag pointed at; the baseline container itself is
+// covered below, from the image id up.sh read as it came up.
 const pulledDigest = shaped(released?.image, DIGEST_REF, 256);
 if (upgradeLane?.upReleased?.ok === true) {
   if (!pulledDigest)
@@ -1777,6 +1765,36 @@ if (upgradeLane?.upReleased?.ok === true) {
       unaccounted.push(
         `the pull reported baseline digest ${pulledDigest} but ${releasedImage} now resolves to ${auditedDigest} — the lane may not have started from the image the pull claims`,
       );
+  }
+
+  // The swap replaced the baseline container before the audit ran, so the
+  // image id up.sh read from it as it came up is the only record of what the
+  // upgrade started from. Required as strictly as the swapped and fresh ids:
+  // it is the only evidence distinguishing a real upgrade from running one
+  // build twice, and a missing field must not be able to skip the comparison.
+  const baselineImageId = upgradeLane.releasedImageId;
+  if (!baselineImageId)
+    unaccounted.push(
+      'upgrade lane: up.sh reported no image id for the released baseline, so nothing distinguishes this run from upgrading a build to itself',
+    );
+  else {
+    if (audit) {
+      const auditedBaselineId = bareDigest(audit.releasedImageId);
+      if (!auditedBaselineId)
+        unaccounted.push(
+          `the artifact audit could not read an image id for ${releasedImage}, so the baseline up.sh reported is uncorroborated`,
+        );
+      else if (auditedBaselineId !== baselineImageId)
+        unaccounted.push(
+          `the upgrade lane's baseline container ran image ${baselineImageId}, but ${releasedImage} is image ${auditedBaselineId} — the lane may not have started from the released image`,
+        );
+    }
+    if (stampedImageId && baselineImageId === stampedImageId) {
+      const message =
+        'upgrade lane: the released baseline and the pending build are the same image — no upgrade path was exercised';
+      if (expectedVersion) failures.push(message);
+      else warnings.push(message);
+    }
   }
 }
 
