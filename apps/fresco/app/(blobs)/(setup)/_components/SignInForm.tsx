@@ -26,6 +26,7 @@ import {
   generateAuthenticationOptions,
   verifyAuthentication,
 } from '~/actions/webauthn';
+import { TWO_FACTOR_SETUP_PATH } from '~/lib/auth/paths';
 import { createAuthSchemas } from '~/schemas/auth';
 
 const messages = defineMessages({
@@ -207,6 +208,13 @@ function isTwoFactorRequired(result: LoginResult): result is {
   return 'requiresTwoFactor' in result;
 }
 
+function isTwoFactorSetupRequired(result: LoginResult): result is {
+  success: true;
+  requiresTwoFactorSetup: true;
+} {
+  return 'requiresTwoFactorSetup' in result;
+}
+
 export const SignInForm = () => {
   const intl = useAppIntl();
   const { loginSchema } = createAuthSchemas(createMessageError);
@@ -269,7 +277,11 @@ export const SignInForm = () => {
     }
 
     if (result.success) {
-      router.push('/dashboard');
+      // The dashboard would only send a gated account back out to the setup
+      // page; going there directly avoids rendering the dashboard shell first.
+      router.push(
+        isTwoFactorSetupRequired(result) ? TWO_FACTOR_SETUP_PATH : '/dashboard',
+      );
     }
 
     return result;

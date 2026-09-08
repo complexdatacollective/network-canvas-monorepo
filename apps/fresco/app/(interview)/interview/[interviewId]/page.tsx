@@ -7,7 +7,7 @@ import SuperJSON from 'superjson';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { type ActivityType } from '~/app/dashboard/_components/ActivityFeed/types';
 import type { ActivityLocalization } from '~/i18n/activityDetails';
-import { getServerSession } from '~/lib/auth/guards';
+import { getAdmittedSession } from '~/lib/auth/guards';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { captureEvent, flushPostHog } from '~/lib/posthog-server';
@@ -56,7 +56,9 @@ async function InterviewContent({
 
   const interview =
     SuperJSON.parse<NonNullable<GetInterviewByIdQuery>>(rawInterview);
-  const session = await getServerSession();
+  // A session still held at the mandatory two-factor gate is not a
+  // researcher yet, and gets the participant treatment below.
+  const session = await getAdmittedSession();
 
   const limitInterviews = await getAppSetting('limitInterviews');
 
