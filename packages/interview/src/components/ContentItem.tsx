@@ -99,12 +99,20 @@ type MediaLoadState = 'loading' | 'loaded' | 'error';
 function VideoPlayer({
   src,
   name,
+  description,
   source,
   isE2E,
   size,
 }: {
   src: string;
   name: string;
+  /**
+   * What the researcher wrote about this video, which names the player for a
+   * participant who cannot see it. The same key an image reads as its alt text
+   * and an audio player reads as its own name; the file's name is only what is
+   * left when nobody has written one.
+   */
+  description: string | undefined;
   source: string | undefined;
   isE2E: boolean;
   size: string | undefined;
@@ -137,7 +145,7 @@ function VideoPlayer({
       <video
         loop
         controls
-        aria-label={name}
+        aria-label={description ?? name}
         autoPlay={!isE2E}
         muted={!isE2E}
         playsInline
@@ -229,6 +237,7 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
         <VideoPlayer
           src={url}
           name={assetMeta.name}
+          description={item.description}
           source={assetMeta.source}
           isE2E={isE2E}
           size={itemSize}
