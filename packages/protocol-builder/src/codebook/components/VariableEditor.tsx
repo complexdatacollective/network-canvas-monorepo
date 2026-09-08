@@ -59,7 +59,7 @@ import {
   type BooleanAnswer,
   type BooleanAnswerIssues,
   hasBooleanAnswerIssues,
-  holdsEditableBooleanAnswers,
+  heldBooleanAnswersReason,
   optionsForShape,
   optionsShapeFor,
   type OptionsShape,
@@ -210,6 +210,13 @@ const messages = defineMessages({
       'A yes/no attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.',
     description:
       'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds some number of answers other than the two this editor writes. It says that saving the attribute does not alter them.',
+  },
+  heldAnswerValuesCaption: {
+    id: 'protocolBuilder.codebookVariable.heldAnswerValuesCaption',
+    defaultMessage:
+      'A yes/no attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
+    description:
+      'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds two answers that do not record one “true” and one “false” — both recording the same one, for instance. It says that saving the attribute does not alter them. “true” and “false” are the literal values the protocol stores and stay as they are.',
   },
   parametersLegend: {
     id: 'protocolBuilder.codebookVariable.parametersLegend',
@@ -511,10 +518,10 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const hasOptions = optionsShape === 'choice';
   // Whether the two-answer fieldset is the right editor for what this
   // attribute holds, or whether its answers are a list to be shown and left
-  // alone — see `holdsEditableBooleanAnswers`.
-  const booleanAnswersEditable = holdsEditableBooleanAnswers(
-    snapshot.draft.options,
-  );
+  // alone — and if so, why, because the researcher is told which it is. See
+  // `heldBooleanAnswersReason`.
+  const heldAnswersReason = heldBooleanAnswersReason(snapshot.draft.options);
+  const booleanAnswersEditable = heldAnswersReason === null;
   const booleanAnswers = readBooleanAnswers(snapshot.draft.options);
   const heldBooleanAnswers = readHeldBooleanAnswers(snapshot.draft.options);
   const optionsLocked =
@@ -1043,7 +1050,11 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               </legend>
               <LockedOptions
                 options={heldBooleanAnswers}
-                caption={intl.formatMessage(messages.heldAnswersCaption)}
+                caption={intl.formatMessage(
+                  heldAnswersReason === 'values'
+                    ? messages.heldAnswerValuesCaption
+                    : messages.heldAnswersCaption,
+                )}
               />
             </fieldset>
           )}
