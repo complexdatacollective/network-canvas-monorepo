@@ -29,6 +29,7 @@ import path from 'node:path';
 import {
   ensureKnipInputs,
   git,
+  knipCodegenInputs,
   knipCodegenOutputs,
   knipTargetForPush,
   nodeModulesDirs,
@@ -127,6 +128,34 @@ function borrowNodeModules(sourceDir, targetDir) {
 // The pushed revision's dependency graph is the working tree's only when
 // the lockfile and manifests agree; otherwise it gets its own install
 // (offline from the pnpm store, scripts skipped like CI's install).
+// The generated inputs knip depends on are linked from the real tree only
+// when their sources are identical in the pushed revision; otherwise the
+// checkout gets its own install and runs the codegen tasks itself.
+function codegenInputsDiffer(sha) {
+  const inputs = knipCodegenInputs(root);
+  if (inputs.length === 0) return false;
+  const dirty = porcelain
+    .split('\n')
+    .map((line) => line.slice(3).trim())
+    .filter(Boolean);
+  if (
+    dirty.some((file) =>
+      inputs.some(
+        (prefix) =>
+          file === prefix ||
+          file.startsWith(`${prefix}/`) ||
+          file.startsWith(prefix),
+      ),
+    )
+  ) {
+    return true;
+  }
+  return (
+    run('git', ['diff', '--quiet', sha, 'HEAD', '--', ...inputs], { cwd: root })
+      .status !== 0
+  );
+}
+
 function dependencyGraphDiffers(sha) {
   const manifests = (git(['ls-files', '*/package.json'], root) ?? '')
     .split('\n')
@@ -161,9 +190,9 @@ function dependencyGraphDiffers(sha) {
 }
 
 function prepareCheckout(temp, sha) {
-  if (dependencyGraphDiffers(sha)) {
+  if (dependencyGraphDiffers(sha) || codegenInputsDiffer(sha)) {
     console.log(
-      'knip: the pushed revision changes dependencies; installing them for the check',
+      'knip: the pushed revision changes dependencies or generated inputs; installing and generating them for the check',
     );
     const install = spawnSync(
       'pnpm',
@@ -174,7 +203,14 @@ function prepareCheckout(temp, sha) {
       console.log('knip: install failed in the temporary worktree');
       return false;
     }
-    linkCodegenOutputs(temp);
+    // With its own install the checkout may run turbo; generate the inputs
+    // for this revision rather than linking the working tree's.
+    if (!ensureKnipInputs(temp)) {
+      console.log(
+        'knip: could not generate the inputs knip depends on in the temporary worktree',
+      );
+      return false;
+    }
     return true;
   }
   const manifests = (git(['ls-files', '*/package.json'], temp) ?? '').split(

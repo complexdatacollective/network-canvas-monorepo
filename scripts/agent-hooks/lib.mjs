@@ -729,13 +729,30 @@ export function knipCodegenOutputs(root) {
   return outputs;
 }
 
-// A fresh checkout, or one whose ignored outputs were cleaned, lacks the
-// generated inputs; run the tasks `//#knip` depends on (turbo-cached) in the
-// real tree before knip is enforced. Returns false when they cannot be made.
-export function ensureKnipInputs(root) {
-  if (knipCodegenOutputs(root).every((absolute) => existsSync(absolute))) {
-    return true;
+// The generated inputs knip depends on may be missing (a fresh or cleaned
+// checkout) or stale (their sources changed since they were generated), so
+// the tasks `//#knip` depends on always run before knip is enforced; turbo
+// replays them from cache when nothing changed. Returns false when they
+// cannot be produced.
+// The source files of the tasks `//#knip` depends on, as repository-relative
+// path prefixes (a glob's fixed leading part), for diffing two revisions.
+export function knipCodegenInputs(root) {
+  const { tasks, dependencies } = knipDependencyTasks(root);
+  const inputs = [];
+  for (const dep of dependencies) {
+    const [pkg, task] = dep.split('#');
+    if (!pkg || !task) continue;
+    const dir = workspacePackages(root).get(pkg)?.dir;
+    if (!dir) continue;
+    for (const glob of tasks[dep]?.inputs ?? []) {
+      if (glob.startsWith('!') || glob.startsWith('$')) continue;
+      inputs.push(path.relative(root, path.join(dir, glob.split(/[*?{]/)[0])));
+    }
   }
+  return inputs;
+}
+
+export function ensureKnipInputs(root) {
   const turbo = binPath(root, 'turbo');
   const { dependencies } = knipDependencyTasks(root);
   if (!turbo || dependencies.length === 0) return false;
@@ -806,7 +823,13 @@ function stripPrefixes(segment) {
   do {
     previous = s;
     s = s.replace(/^(\w+=\S*\s+)+/, '');
-    s = s.replace(/^(time|nohup|command|env|nice|xargs)\s+/, '');
+    s = s.replace(/^(time|nohup|command|nice|xargs)\s+/, '');
+    // env's own options (`env -u NAME`, `-i`, `-S str`, `-P path`) precede
+    // the assignments and the command.
+    s = s.replace(
+      /^env\s+((-u\s+\S+|--unset=\S+|-[iv]+|--ignore-environment|-[SP]\s+\S+)\s+)*/,
+      '',
+    );
     s = s.replace(
       /^timeout\s+((-k|-s|--kill-after|--signal)\s+\S+\s+|-\S+\s+)*\S+\s+/,
       '',
@@ -973,31 +996,51 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
     const own = segment.split(/\s--(\s|$)/)[0];
 
     if (/^(pnpm|npm|yarn|bun)$/.test(head)) {
-      // `pnpm -C dir` / `--dir dir` runs the script in that directory.
+      // pnpm's own options come before the script name: `-C dir`/`--dir dir`
+      // run it in that directory, `-w`/`--workspace-root` at the root, and a
+      // `--filter` there scopes the run. Anything after the script name is
+      // forwarded to the script and scopes nothing.
       let effectiveDir = currentDir;
-      const args = [];
+      let scoped = false;
+      let scriptName = null;
+      const positional = [];
       for (let i = 0; i < rest.length; i += 1) {
         const t = rest[i];
-        if (t === '-C' || t === '--dir') {
-          if (rest[i + 1])
-            effectiveDir = resolveDir(currentDir, rest[i + 1]) ?? effectiveDir;
-          i += 1;
-          continue;
+        if (scriptName === null) {
+          if (t === '-C' || t === '--dir') {
+            if (rest[i + 1])
+              effectiveDir =
+                resolveDir(currentDir, rest[i + 1]) ?? effectiveDir;
+            i += 1;
+            continue;
+          }
+          const dirMatch = /^(?:-C|--dir)=(.+)$/.exec(t);
+          if (dirMatch) {
+            effectiveDir = resolveDir(currentDir, dirMatch[1]) ?? effectiveDir;
+            continue;
+          }
+          if (t === '-w' || t === '--workspace-root') {
+            effectiveDir = root ?? null;
+            continue;
+          }
+          if (t === '--filter' || t === '-F') {
+            scoped = true;
+            i += 1;
+            continue;
+          }
+          if (t.startsWith('--filter=')) {
+            scoped = true;
+            continue;
+          }
+          if (t.startsWith('-') || t === 'run') continue;
+          scriptName = t;
         }
-        const dirMatch = /^(?:-C|--dir)=(.+)$/.exec(t);
-        if (dirMatch) {
-          effectiveDir = resolveDir(currentDir, dirMatch[1]) ?? effectiveDir;
-          continue;
-        }
-        args.push(t);
+        positional.push(t);
       }
-      const positional = args
-        .filter((t) => !t.startsWith('-'))
-        .filter((t) => t !== 'run');
       // `pnpm turbo run typecheck` is a turbo invocation.
-      if (positional[0] === 'turbo') {
+      if (scriptName === 'turbo') {
         const verdict = turboVerdict(
-          positional.slice(1),
+          positional.slice(1).filter((t) => t !== 'run'),
           own,
           trimmed,
           inPackage(effectiveDir),
@@ -1005,10 +1048,10 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
         if (verdict) return verdict;
         continue;
       }
-      if (SCOPE_FLAGS.test(own) || inPackage(effectiveDir)) continue;
+      if (scoped || inPackage(effectiveDir)) continue;
       if (
         /^(lint|lint:fix|typecheck|knip|format|format:check)$/.test(
-          positional[0] ?? '',
+          scriptName ?? '',
         )
       ) {
         return { kind: 'whole-tree-gate', segment: trimmed };

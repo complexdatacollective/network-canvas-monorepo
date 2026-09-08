@@ -20,6 +20,7 @@ import {
   ensureKnipInputs,
   extractEditedFiles,
   isKnipRelevant,
+  knipCodegenInputs,
   knipCodegenOutputs,
   lintReportFrom,
   knipTargetForPush,
@@ -899,4 +900,73 @@ test('updateState fails fast instead of spinning when the lock cannot be created
   rmSync(root, { recursive: true, force: true });
   assert.equal(result.signal, null, 'the process was killed by the timeout');
   assert.ok(Date.now() - started < 8_000, 'returned within the deadline');
+});
+
+test('pnpm scope flags count only before the script name; -w returns to the root', () => {
+  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
+  const options = { root: '/repo', packageDir };
+  assert.equal(
+    classifyGateCommand('pnpm lint --filter foo')?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('pnpm typecheck -F @codaco/interview')?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('pnpm --filter @codaco/interview typecheck'),
+    null,
+  );
+  assert.equal(
+    classifyGateCommand('pnpm -F @codaco/interview run typecheck'),
+    null,
+  );
+  assert.equal(
+    classifyGateCommand('pnpm -w lint', {
+      ...options,
+      cwd: '/repo/apps/interviewer',
+    })?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('pnpm --workspace-root typecheck', {
+      ...options,
+      cwd: '/repo/packages/interview',
+    })?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('pnpm typecheck', {
+      ...options,
+      cwd: '/repo/packages/interview',
+    }),
+    null,
+  );
+});
+
+test('env options are consumed before the wrapped command is classified', () => {
+  assert.equal(
+    classifyGateCommand('env -u NODE_OPTIONS pnpm lint')?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('env -i PATH=/usr/bin pnpm typecheck')?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand(
+      'env -u NODE_OPTIONS pnpm --filter @codaco/interview test',
+    ),
+    null,
+  );
+});
+
+test('knipCodegenInputs resolves the codegen source prefixes from turbo.json', () => {
+  const inputs = knipCodegenInputs(repoRoot);
+  assert.ok(
+    inputs.includes('apps/fresco/lib/db/schema.prisma'),
+    inputs.join(', '),
+  );
+  assert.ok(inputs.includes('apps/fresco/app'), inputs.join(', '));
+  assert.ok(!inputs.some((p) => /[*?{]/.test(p)));
 });
