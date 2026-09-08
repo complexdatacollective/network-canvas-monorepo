@@ -14,8 +14,11 @@ accept the same verdict fields, so one script serves both.
 
 `pnpm agent:test` (`agent-test.mjs`) runs, in each package that contains
 changed files, only the vitest tests whose import graph touches the changed
-files (`vitest --changed <merge-base>`); extra arguments go to vitest. It is
-guidance rather than a gate: test runs are already scoped in practice, and a
+files (`vitest --changed <merge-base>`); other arguments go to vitest. The
+packages that consume the changed code are listed but only run with
+`--dependents`, because a change in a widely imported package legitimately
+reaches most of the repository's tests (a shared-consts edit measured at
+eight minutes) and CI covers them. It is guidance rather than a gate: test runs are already scoped in practice, and a
 test that reads a fixture through the filesystem is not selected by the
 import graph, so a package-wide run is still the right call sometimes.
 

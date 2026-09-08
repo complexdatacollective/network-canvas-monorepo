@@ -50,7 +50,8 @@ them.
   first; then `pnpm agent:test`, which runs only the tests whose import graph
   touches the files changed on the branch (vitest `--changed`, so a test that
   reads a fixture through the filesystem rather than importing it is not
-  selected); then one package's `test` script. Leave the whole-tree
+  selected; add `--dependents` to also run the packages that consume the
+  change); then one package's `test` script. Leave the whole-tree
   `pnpm test` to CI.
 
 CI remains the authority. The hooks exist so you get the same feedback locally
