@@ -2479,10 +2479,6 @@
     "defaultMessage": "Upload and manage your interview protocols.",
     "description": "Researcher-facing protocols / page: Upload and manage your interview protocols."
   },
-  "fresco.proxy.copyServerActionRefused": {
-    "defaultMessage": "This route does not accept Server Action requests.",
-    "description": "Refusal shown when a request carries a Server Action (Next-Action) header aimed at a public participant or infrastructure route."
-  },
   "fresco.settings.ApiTokensSection.aPITokens": {
     "defaultMessage": "API Tokens",
     "description": "Researcher-facing settings / ApiTokensSection: API Tokens"
