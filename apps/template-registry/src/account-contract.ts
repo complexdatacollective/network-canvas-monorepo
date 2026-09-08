@@ -75,4 +75,5 @@ export const ReportsPageSchema = z.strictObject({
     }),
   ),
   next_cursor: z.string().nullable(),
+  has_more: z.boolean(),
 });

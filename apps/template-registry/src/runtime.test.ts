@@ -218,7 +218,11 @@ it('serves live health and public reads, refuses stale readiness, drains admissi
     expect((await fetch(`${origin}/readyz`)).status).toBe(200);
     const entries = await fetch(`${origin}/api/v1/entries`);
     expect(entries.status).toBe(200);
-    expect(await entries.json()).toEqual({ data: [], next_cursor: null });
+    expect(await entries.json()).toEqual({
+      data: [],
+      next_cursor: null,
+      has_more: false,
+    });
     await inputs.database.owner.query(
       "UPDATE registry_schema_fingerprint SET fingerprint = repeat('0', 64)",
     );

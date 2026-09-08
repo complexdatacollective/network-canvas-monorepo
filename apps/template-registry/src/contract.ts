@@ -203,6 +203,7 @@ export const registryContract = {
       z.strictObject({
         data: z.array(EntrySummarySchema),
         next_cursor: z.string().nullable(),
+        has_more: z.boolean(),
       }),
     ),
   entry: route

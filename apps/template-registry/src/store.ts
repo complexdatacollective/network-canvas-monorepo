@@ -531,6 +531,7 @@ export class RegistryStore {
               canonicalize({ version: 1, after: last.sequence, filter }),
             ).toString('base64url')
           : null,
+      has_more: rows.length > limit,
     };
   }
 
@@ -909,6 +910,7 @@ export class RegistryStore {
         })),
         next_cursor:
           rows.length > limit ? (selected.at(-1)?.sequence ?? null) : null,
+        has_more: rows.length > limit,
       };
     });
   }
