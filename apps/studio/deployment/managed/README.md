@@ -151,9 +151,14 @@ configuration archive, and their account-recovery paths.
    Machines for 744 hours, and `flyApplicationEgressGb` separately prices their
    API, WebSocket, Registry, and other outbound delivery. The ingress Worker has
    separate mandatory tier, request, CPU-millisecond, and WebSocket-minute
-   categories; no zero-priced per-GB placeholder represents those account
-   charges. `workerTierId` remains unselected until an account-visible product
-   and its current allowances/rates have been reviewed.
+   categories. Plain Workers bill a WebSocket upgrade as a request and do not
+   charge for connection duration, so upgrades belong in
+   `workerMonthlyRequestCount`; the WebSocket-minute row must carry an explicit
+   zero-price inclusion declaration for the same selected tier. Durable Objects
+   are unsupported by this model and require a reviewed extension for their
+   request, duration, and storage dimensions. No zero-priced per-GB placeholder
+   represents Worker account charges. `workerTierId` remains unselected until an
+   account-visible product and its current allowances/rates have been reviewed.
 
    `databaseDumpSizesGb` must measure each of the four databases. The shared
    30-minute schedule requires at least 5,952 database validations and 595.2 GB
@@ -162,7 +167,8 @@ configuration archive, and their account-recovery paths.
    For objects, current count/bytes, monthly version churn, and the complete
    recovery-retained version inventory are separate measurements. The retained
    inventory must cover current objects plus churn. Its 31-day storage,
-   recovery-copy reads/writes and transfer, and every retained version's
+   recovery-copy reads/writes and transfer, every half-hourly primary-bucket
+   inventory, and every retained version's
    30-day B2 readback/validator scrub are lower bounds on the aggregate R2, B2,
    and validator quantities. Retries, growth, and restore drills remain extra
    measured usage.

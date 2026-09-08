@@ -379,6 +379,36 @@ test('prices retained object versions, recovery copies, and 30-day readback', ()
     () => evaluateManagedEstateCost(omittedCopyTransfer),
     /application delivery and recovery copies/,
   );
+
+  const omittedPrimaryWritesAndInventory = structuredClone(fixture);
+  omittedPrimaryWritesAndInventory.primaryObjectClassARequests = 0;
+  omittedPrimaryWritesAndInventory.lineItems.find(
+    ({ category }) => category === 'primary-object-class-a',
+  ).quantity = 0;
+  assert.throws(
+    () => evaluateManagedEstateCost(omittedPrimaryWritesAndInventory),
+    /8452 scheduled bucket inventories and measured version writes/,
+  );
+
+  const exactPrimaryClassAMinimum = structuredClone(fixture);
+  exactPrimaryClassAMinimum.primaryObjectClassARequests = 5_952 + 2_500;
+  exactPrimaryClassAMinimum.lineItems.find(
+    ({ category }) => category === 'primary-object-class-a',
+  ).quantity =
+    exactPrimaryClassAMinimum.primaryObjectClassARequests / 1_000_000;
+  assert.doesNotThrow(() =>
+    evaluateManagedEstateCost(exactPrimaryClassAMinimum),
+  );
+
+  exactPrimaryClassAMinimum.primaryObjectClassARequests -= 1;
+  exactPrimaryClassAMinimum.lineItems.find(
+    ({ category }) => category === 'primary-object-class-a',
+  ).quantity =
+    exactPrimaryClassAMinimum.primaryObjectClassARequests / 1_000_000;
+  assert.throws(
+    () => evaluateManagedEstateCost(exactPrimaryClassAMinimum),
+    /8452 scheduled bucket inventories and measured version writes/,
+  );
 });
 
 test('binds Postmark plan and overage costs to measured message volume', () => {
@@ -450,6 +480,18 @@ test('requires measured Fly egress and Worker tier, request, CPU, and WebSocket 
   assert.throws(
     () => evaluateManagedEstateCost(wrongTier, budgetOptions),
     /selected Worker tier/,
+  );
+
+  const inventedWebSocketRate = declaredBudget();
+  const webSocket = inventedWebSocketRate.lineItems.find(
+    ({ category }) => category === 'primary-ingress-websocket',
+  );
+  webSocket.unitPriceUsd = 0.000001;
+  webSocket.pricing.unitPriceUsd = webSocket.unitPriceUsd;
+  webSocket.pricing.kind = 'rate';
+  assert.throws(
+    () => evaluateManagedEstateCost(inventedWebSocketRate, budgetOptions),
+    /explicit zero-price inclusion declaration for plain Workers/,
   );
 
   for (const [field, value] of [

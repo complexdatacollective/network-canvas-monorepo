@@ -115,6 +115,10 @@ function verifyPricingDeclaration(item, now, usage) {
     fail(
       `category ${item.category} pricing must identify the selected Worker tier`,
     );
+  if (item.category === 'primary-ingress-websocket' && item.unitPriceUsd !== 0)
+    fail(
+      'primary-ingress-websocket must use an explicit zero-price inclusion declaration for plain Workers',
+    );
   let source;
   try {
     source = new URL(quote.sourceUrl);
@@ -302,6 +306,8 @@ export function evaluateManagedEstateCost(
   const monthlyPoints =
     (sizing.monthlyHours * 60) / sizing.recovery.backupIntervalMinutes;
   const requiredValidations = monthlyPoints * databaseNames.length;
+  const requiredPrimaryBucketInventories =
+    monthlyPoints * Object.keys(sizing.services).length;
   const requiredObjectScrubRuns = Math.ceil(
     sizing.recovery.retentionDays / sizing.recovery.objectScrubIntervalDays,
   );
@@ -363,6 +369,13 @@ export function evaluateManagedEstateCost(
     input.primaryObjectMonthlyVersionChurnCount
   )
     fail('primary object read requests must cover every recovery copy');
+  const requiredPrimaryClassARequests =
+    requiredPrimaryBucketInventories +
+    input.primaryObjectMonthlyVersionChurnCount;
+  if (input.primaryObjectClassARequests < requiredPrimaryClassARequests)
+    fail(
+      `primary object Class A requests must cover at least ${requiredPrimaryClassARequests} scheduled bucket inventories and measured version writes`,
+    );
   if (
     input.primaryObjectEgressGb <
     input.primaryObjectApplicationEgressGb +
