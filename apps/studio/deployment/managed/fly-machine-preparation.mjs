@@ -136,7 +136,10 @@ function combinedSignal(operationSignal, requestTimeoutMs) {
 }
 
 function abortRace(promise, signal, onLateResolve = () => {}) {
-  if (signal.aborted) return Promise.reject(new Error('aborted'));
+  if (signal.aborted) {
+    Promise.resolve(promise).then(onLateResolve, () => {});
+    return Promise.reject(new Error('aborted'));
+  }
   return new Promise((resolve, reject) => {
     let settled = false;
     const abort = () => {
@@ -231,6 +234,7 @@ function createClient({
     { method = 'GET', body, headers = {} } = {},
   ) {
     const signal = combinedSignal(operationSignal, requestTimeoutMs);
+    if (signal.aborted) fail('API request failed or timed out');
     let response;
     try {
       response = await abortRace(
