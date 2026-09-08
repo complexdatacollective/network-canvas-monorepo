@@ -25,18 +25,26 @@ export function withoutAbsentValues(value: unknown): unknown {
   const kept: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(value)) {
     const cleaned = withoutAbsentValues(entry);
-    if (isAbsent(cleaned)) continue;
+    if (isAbsentValue(cleaned)) continue;
     kept[key] = cleaned;
   }
   return kept;
 }
 
 /**
+ * Whether a value, once cleaned, says nothing at all.
+ *
+ * Exported because the reading and the judgement belong together: a caller
+ * that cleans a submitted value has to ask the same question of what comes
+ * back — a control cleared to `''` and a group of controls that cleaned down
+ * to `{}` are both "this field holds nothing", and the caller's answer to that
+ * is to remove the key rather than to write anything at it.
+ *
  * `false` and `0` are answers. An empty object is not: it is what a group of
  * unanswered controls assembles into, and it is never a value in its own
  * right.
  */
-function isAbsent(value: unknown): boolean {
+export function isAbsentValue(value: unknown): boolean {
   if (value === undefined || value === null || value === '') return true;
   return (
     typeof value === 'object' &&

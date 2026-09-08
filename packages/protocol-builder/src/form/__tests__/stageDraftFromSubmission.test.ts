@@ -51,6 +51,77 @@ describe('stageDraftFromSubmission', () => {
     expect(draft).toEqual({ label: 'Friends' });
   });
 
+  it('removes a field emptied on screen rather than blanking it', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { label: 'Friends', interviewScript: 'Read this aloud' },
+      // What a cleared fresco-ui text input submits.
+      submittedValues: { label: 'Friends', interviewScript: '' },
+      mountedPaths: [['label'], ['interviewScript']],
+      dormantFields: [],
+    });
+
+    expect(draft).toEqual({ label: 'Friends' });
+  });
+
+  it('removes a field emptied and then hidden rather than replaying the blank', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { label: 'Friends', interviewScript: 'Read this aloud' },
+      submittedValues: { label: 'Friends' },
+      mountedPaths: [['label']],
+      // Emptied on screen and then hidden when its group collapsed. The store
+      // parks what the control held, which is the empty string rather than
+      // the `undefined` a discard leaves.
+      dormantFields: [
+        { name: 'interviewScript', path: ['interviewScript'], value: '' },
+      ],
+    });
+
+    expect(draft).toEqual({ label: 'Friends' });
+  });
+
+  it('drops the parts of a compound value that hold nothing', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { edges: { create: 'knows', display: ['knows'] } },
+      // One control registered at `edges` carries the whole pair, and the
+      // researcher has cleared the half of it that picks what to display.
+      submittedValues: { edges: { create: 'knows', display: null } },
+      mountedPaths: [['edges']],
+      dormantFields: [],
+    });
+
+    expect(draft.edges).toEqual({ create: 'knows' });
+  });
+
+  it('keeps a row whose every setting was cleared', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { items: [{ optionalSetting: 'on' }, { id: 'second' }] },
+      submittedValues: {},
+      mountedPaths: [],
+      // One control registered at the row itself, parked holding the object
+      // the clear emptied.
+      dormantFields: [{ name: 'items[0]', path: ['items', 0], value: {} }],
+    });
+
+    // A row is a position in a list rather than a value the stage may simply
+    // not have: removing the index would punch a hole in the list, and taking
+    // a row out is the list editor's operation to make.
+    expect(draft.items).toEqual([{}, { id: 'second' }]);
+  });
+
+  it('keeps a list the researcher emptied', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { prompts: [{ id: 'a' }] },
+      submittedValues: { prompts: [] },
+      mountedPaths: [['prompts']],
+      dormantFields: [],
+    });
+
+    // Whether an emptied list means "no list" belongs to the field that owns
+    // it, which says so by handing back `undefined`. An empty array reaching
+    // here is a list, and the schema rule about it is the owner's to state.
+    expect(draft.prompts).toEqual([]);
+  });
+
   it('removes a container its last discarded member emptied', () => {
     const draft = stageDraftFromSubmission({
       currentFields: {
