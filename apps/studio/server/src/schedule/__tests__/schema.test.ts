@@ -19,6 +19,7 @@ import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
+  seedTestEncryptionKeyVerifications,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
 import { ERASURE_GUC } from '../../study/schema.ts';
@@ -206,6 +207,10 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     ({ pool, app, maintenance, dispose } = await createScratchSchema(db));
     await provisionScratchSchema(pool);
+    await seedTestEncryptionKeyVerifications(pool, [
+      { purpose: 'pii-index', keyId: 'index-v1' },
+      { purpose: 'pii-index', keyId: 'index-v2' },
+    ]);
 
     for (const teamId of [TEAM_A, TEAM_B]) {
       await seedTeam(pool, teamId);

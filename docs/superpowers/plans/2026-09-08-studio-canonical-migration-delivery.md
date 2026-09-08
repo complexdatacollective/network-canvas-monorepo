@@ -1,15 +1,16 @@
 # Studio canonical migration delivery
 
 PR #1718 integrates encrypted private data, first-owner setup, runtime roles,
-read-only backups and audit-alert delivery with the canonical migration sequence
-through `0007_legacy_index_remediation_guard`. This is a repository delivery
+read-only backups and audit-alert delivery with the canonical eight-migration
+sequence through `0008_verified_key_references`. This is a repository delivery
 checkpoint for #1243, not a managed deployment or disaster-recovery qualification.
 
 The canonical composition `c0577bd2f4b3df699669d03e64385e0d07f77d9b` contains
 PII readiness/remediation `e15be348d3908db14a1797f498cccd2af9a09b73` and the final
 audit migration sequence. The current-main merge `e66be8bf13abf2be23892e7af52323049656c05f`
-adds the already merged experiment clock-fixture correction. All migration files
-remain byte-identical to that canonical composition. Migrations 0004–0006 were
+adds the already merged experiment clock-fixture correction. The original seven
+migrations remain byte-identical to that canonical composition, with the new
+verified-reference guards added as migration 0008. Migrations 0004–0006 were
 finalized together before mainline delivery; their earlier unpublished draft
 forms must not be shipped as independent intermediate releases. Migration 0007
 must accompany the legacy remediation contract so runtime writers cannot forge

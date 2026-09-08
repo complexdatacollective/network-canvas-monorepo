@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import process from 'node:process';
 
 import pg from 'pg';
@@ -136,6 +136,34 @@ export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
   await pool.query(runtimeRolesSql(Object.values(TENANT_ROLES)));
   await pool.query((await renderSchemaStatements()).join('\n'));
   await stampFingerprint(pool, SCHEMA_FINGERPRINT);
+}
+
+type TestEncryptionKeyPurpose = 'pii-enc' | 'pii-index' | 'integration-enc';
+
+/**
+ * Registers deterministic test-only evidence for schema fixtures that use
+ * synthetic encrypted bytes. Encryption tests exercise the real key proof
+ * derivation; structural schema tests need only satisfy the independent
+ * verified-reference guard before reaching the constraint under test.
+ */
+export async function seedTestEncryptionKeyVerifications(
+  db: pg.Pool,
+  references: ReadonlyArray<{
+    purpose: TestEncryptionKeyPurpose;
+    keyId: string;
+  }>,
+): Promise<void> {
+  for (const { purpose, keyId } of references) {
+    const proof = createHash('sha256')
+      .update(`studio-schema-fixture:${purpose}:${keyId}`)
+      .digest();
+    await db.query(
+      `INSERT INTO encryption_key_verifications (purpose, key_id, proof)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (purpose, key_id) DO NOTHING`,
+      [purpose, keyId, proof],
+    );
+  }
 }
 
 export async function seedTeam(db: pg.Pool, teamId: string): Promise<void> {
