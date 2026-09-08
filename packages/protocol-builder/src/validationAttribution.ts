@@ -24,11 +24,33 @@ export type AttributedProtocolValidationIssue = ProtocolValidationIssue &
     }>;
   }>;
 
+/**
+ * A stage that does not exist yet, and where the interview it is joining will
+ * put it.
+ *
+ * The authoritative stage order has no entry for such a stage — the protocol
+ * does not hold it until the finish that creates it — while the protocol being
+ * VALIDATED does: a host assembling a candidate inserts the draft at this
+ * position, and every `stages[n]` path the validator answers with is numbered
+ * against that. Given here so the two agree. Without it a created stage's
+ * problems were attributed to whichever stage the authoritative order happened
+ * to hold at the same index — an existing stage blamed for a draft it has
+ * nothing to do with — or, for a stage being appended, to no section at all,
+ * which is how a newly created invalid stage came to have an outline reading
+ * "Finished" beside a save that refused it.
+ */
+export type CreatedStagePlacement = Readonly<{
+  stageId: string;
+  /** Where the host will insert it, counting from zero. */
+  position: number;
+}>;
+
 export function attributeValidationIssues(
   issues: readonly ProtocolValidationIssue[],
   sections: Readonly<Record<string, SectionDoc>>,
   attribution: Readonly<Record<string, ChangeAttribution>>,
   revision: ManifestRevision,
+  createdStage?: CreatedStagePlacement,
 ): readonly AttributedProtocolValidationIssue[] {
   const changesAtRevision = new Map(
     Object.entries(attribution).filter(([, change]) =>
@@ -36,10 +58,11 @@ export function attributeValidationIssues(
     ),
   );
   const dependencySections = referencedDependencySections(sections);
+  const stageOrder = stageOrderForValidation(sections, createdStage);
 
   return Object.freeze(
     issues.map((issue) => {
-      const ownerSectionId = sectionForIssuePath(issue.path, sections);
+      const ownerSectionId = sectionForIssuePath(issue.path, stageOrder);
       const ownerAttribution =
         ownerSectionId === undefined ? undefined : attribution[ownerSectionId];
       const ownerChange =
@@ -123,20 +146,45 @@ function referencedDependencySections(
 const pathKey = (path: readonly (string | number)[]): string =>
   JSON.stringify(path);
 
+/**
+ * The stage order a validation path's `stages[n]` counts against.
+ *
+ * The authoritative order, except that a stage being CREATED is put where the
+ * host will insert it — because that is where the candidate the validator
+ * judged has it. Positions are kept exactly as the order holds them: an entry
+ * that is not a stage id becomes an empty string rather than being dropped, so
+ * a malformed order cannot shift every stage after it onto its neighbour.
+ */
+export function stageOrderForValidation(
+  sections: Readonly<Record<string, SectionDoc>>,
+  createdStage?: CreatedStagePlacement,
+): readonly string[] {
+  const order = sections[sectionId({ kind: 'stageOrder' })]?.stages;
+  const stages = Array.isArray(order)
+    ? order.map((stage) => (typeof stage === 'string' ? stage : ''))
+    : [];
+  if (createdStage === undefined) return stages;
+  // Filtered first, so an order that has already gained the stage — a host
+  // that inserted it before the session was told the creation is over — does
+  // not list it twice and renumber everything after it.
+  const existing = stages.filter((stage) => stage !== createdStage.stageId);
+  const index = Math.min(Math.max(createdStage.position, 0), existing.length);
+  return [
+    ...existing.slice(0, index),
+    createdStage.stageId,
+    ...existing.slice(index),
+  ];
+}
+
 function sectionForIssuePath(
   path: readonly (string | number)[],
-  sections: Readonly<Record<string, SectionDoc>>,
+  stageOrder: readonly string[],
 ): ProtocolSectionId | undefined {
   const [root, second, third] = path;
   if (root === 'stages' && typeof second === 'number') {
-    const stageOrder = sections[sectionId({ kind: 'stageOrder' })]?.stages;
-    if (Array.isArray(stageOrder)) {
-      const stageId = stageOrder[second];
-      if (typeof stageId === 'string' && stageId !== '') {
-        return sectionId({ kind: 'stage', stageId });
-      }
-    }
-    return undefined;
+    const stageId = stageOrder[second];
+    if (stageId === undefined || stageId === '') return undefined;
+    return sectionId({ kind: 'stage', stageId });
   }
   if (root === 'codebook') {
     if (second === 'node' && typeof third === 'string' && third !== '') {
