@@ -21,14 +21,21 @@ import { Pool } from 'pg';
 
 import { createMaintenancePool, createPool } from '../src/db/pool.ts';
 import {
+  assertKernelTelemetryControls,
+  assertKernelTelemetryReady,
+  assertNativeChildTelemetryControl,
+  assertNoKernelTelemetryEgress,
   assertNoProcessTelemetryEgress,
   assertNoTelemetryEgress,
   assertProcessTelemetryInstrumentationPositive,
   assertTelemetryDetectorObserved,
   assertTelemetryDetectorPositive,
+  kernelTelemetryControlCount,
+  telemetryKernelComposeServices,
   TELEMETRY_CANARY_SOURCE,
   TELEMETRY_DETECTOR_SOURCE,
   TELEMETRY_IMPLEMENTATION_CANARY_SOURCE,
+  TELEMETRY_KERNEL_SERVICES,
   TELEMETRY_PROCESS_CANARY_SOURCE,
   TELEMETRY_PROCESS_PRELOAD_SOURCE,
 } from './telemetry-egress.ts';
@@ -430,7 +437,13 @@ export async function localDeployment(label: string) {
     networks:
       edge:
         aliases: [ph-relay.networkcanvas.com]
-  traefik:
+      data:
+        aliases: [telemetry-control-data]
+      registry-data:
+        aliases: [telemetry-control-registry]
+${telemetryKernelComposeServices(
+  '${STUDIO_IMAGE:?Select the signed Studio image digest}',
+)}  traefik:
     ports: !reset []
 `,
     );
@@ -500,9 +513,89 @@ export async function localDeployment(label: string) {
       ])
     ).stdout.toString();
   }
+  async function kernelTelemetryLogs(
+    service?: (typeof TELEMETRY_KERNEL_SERVICES)[number],
+  ) {
+    const selected = service
+      ? [`telemetry-kernel-${service}`]
+      : TELEMETRY_KERNEL_SERVICES.map((name) => `telemetry-kernel-${name}`);
+    return (
+      await compose(['logs', '--no-color', '--no-log-prefix', ...selected])
+    ).stdout.toString();
+  }
+  async function startKernelObservers() {
+    await compose([
+      'up',
+      '-d',
+      ...TELEMETRY_KERNEL_SERVICES.map(
+        (service) => `telemetry-kernel-${service}`,
+      ),
+    ]);
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const results = await Promise.all(
+        TELEMETRY_KERNEL_SERVICES.map(async (service) => {
+          try {
+            assertKernelTelemetryReady(await kernelTelemetryLogs(service));
+            return true;
+          } catch {
+            return false;
+          }
+        }),
+      );
+      if (results.every(Boolean)) return;
+      await delay(100);
+    }
+    throw new Error('Kernel egress observers did not become live.');
+  }
   async function assertTelemetryQuiet() {
+    await startKernelObservers();
+    const kernelLogs = await kernelTelemetryLogs();
+    assertKernelTelemetryReady(kernelLogs);
+    assertNoKernelTelemetryEgress(kernelLogs);
     assertNoTelemetryEgress(await telemetryLogs());
     assertNoProcessTelemetryEgress(await processTelemetryLogs());
+  }
+  async function proveKernelTelemetryControls() {
+    await startKernelObservers();
+    for (const service of TELEMETRY_KERNEL_SERVICES) {
+      for (let attempt = 0; attempt < 50; attempt++) {
+        const logs = await kernelTelemetryLogs(service);
+        try {
+          assertKernelTelemetryControls(logs);
+          break;
+        } catch (error) {
+          if (attempt === 49) throw error;
+          await delay(50);
+        }
+      }
+    }
+    const before = kernelTelemetryControlCount(
+      await kernelTelemetryLogs('studio'),
+    );
+    await compose(
+      [
+        'exec',
+        '-T',
+        '-e',
+        'NODE_OPTIONS=',
+        'telemetry-kernel-studio',
+        '/usr/lib/apt/apt-helper',
+        'download-file',
+        'http://telemetry-control-data:8443/native-child-control',
+        '/tmp/native-child-control',
+      ],
+      { failure: true },
+    );
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const logs = await kernelTelemetryLogs('studio');
+      try {
+        assertNativeChildTelemetryControl(before, logs);
+        return;
+      } catch (error) {
+        if (attempt === 49) throw error;
+        await delay(50);
+      }
+    }
   }
   async function proveTelemetryProcessInstrumentation() {
     for (const service of ['studio', 'worker', 'registry']) {
@@ -594,6 +687,7 @@ export async function localDeployment(label: string) {
     ready,
     assertTelemetryQuiet,
     proveTelemetryProcessInstrumentation,
+    proveKernelTelemetryControls,
     proveTelemetryDetector,
     proveTelemetrySwitch,
     dispose,

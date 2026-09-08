@@ -31,14 +31,21 @@ import { createMaintenancePool, createPool } from '../src/db/pool.ts';
 import recoveryFixture from './combined-recovery.fixture.json' with { type: 'json' };
 import { owner, populate, rpc } from './data.ts';
 import {
+  assertKernelTelemetryControls,
+  assertKernelTelemetryReady,
+  assertNativeChildTelemetryControl,
+  assertNoKernelTelemetryEgress,
   assertNoProcessTelemetryEgress,
   assertNoTelemetryEgress,
   assertProcessTelemetryInstrumentationPositive,
   assertTelemetryDetectorObserved,
   assertTelemetryDetectorPositive,
+  kernelTelemetryControlCount,
+  telemetryKernelComposeServices,
   TELEMETRY_CANARY_SOURCE,
   TELEMETRY_DETECTOR_SOURCE,
   TELEMETRY_IMPLEMENTATION_CANARY_SOURCE,
+  TELEMETRY_KERNEL_SERVICES,
   TELEMETRY_PROCESS_CANARY_SOURCE,
   TELEMETRY_PROCESS_PRELOAD_SOURCE,
 } from './telemetry-egress.ts';
@@ -332,7 +339,13 @@ async function scenario(label: string, cosign: string) {
     networks:
       edge:
         aliases: [ph-relay.networkcanvas.com]
-  postgres:
+      data:
+        aliases: [telemetry-control-data]
+      registry-data:
+        aliases: [telemetry-control-registry]
+${telemetryKernelComposeServices(
+  '${STUDIO_IMAGE:?Select the signed Studio image digest}',
+)}  postgres:
     ports: !override ["127.0.0.1:${databasePort}:5432"]
   registry-postgres:
     ports: !override ["127.0.0.1:${registryDatabasePort}:5432"]
@@ -424,7 +437,45 @@ networks:
       'telemetry-detector',
     ]);
   }
+  function kernelTelemetryLogs(
+    configuration: string,
+    service?: (typeof TELEMETRY_KERNEL_SERVICES)[number],
+  ) {
+    return compose(configuration, [
+      'logs',
+      '--no-color',
+      '--no-log-prefix',
+      ...(service
+        ? [`telemetry-kernel-${service}`]
+        : TELEMETRY_KERNEL_SERVICES.map((name) => `telemetry-kernel-${name}`)),
+    ]);
+  }
+  function startKernelObservers(configuration: string) {
+    compose(configuration, [
+      'up',
+      '-d',
+      '--wait',
+      ...TELEMETRY_KERNEL_SERVICES.map(
+        (service) => `telemetry-kernel-${service}`,
+      ),
+    ]);
+    const deadline = Date.now() + 10_000;
+    while (Date.now() < deadline) {
+      const logs = kernelTelemetryLogs(configuration);
+      try {
+        assertKernelTelemetryReady(logs);
+        return;
+      } catch {
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+      }
+    }
+    throw new Error('Kernel egress observers did not become live.');
+  }
   function assertTelemetryQuiet(configuration: string) {
+    startKernelObservers(configuration);
+    const kernelLogs = kernelTelemetryLogs(configuration);
+    assertKernelTelemetryReady(kernelLogs);
+    assertNoKernelTelemetryEgress(kernelLogs);
     assertNoTelemetryEgress(telemetryLogs(configuration));
     assertNoProcessTelemetryEgress(
       compose(configuration, [
@@ -436,6 +487,42 @@ networks:
         'registry',
       ]),
     );
+  }
+  function proveKernelTelemetryControls(configuration: string) {
+    startKernelObservers(configuration);
+    for (const service of TELEMETRY_KERNEL_SERVICES)
+      assertKernelTelemetryControls(
+        kernelTelemetryLogs(configuration, service),
+      );
+    const before = kernelTelemetryControlCount(
+      kernelTelemetryLogs(configuration, 'studio'),
+    );
+    compose(
+      configuration,
+      [
+        'exec',
+        '-T',
+        '-e',
+        'NODE_OPTIONS=',
+        'telemetry-kernel-studio',
+        '/usr/lib/apt/apt-helper',
+        'download-file',
+        'http://telemetry-control-data:8443/native-child-control',
+        '/tmp/native-child-control',
+      ],
+      { allowFailure: true },
+    );
+    const deadline = Date.now() + 5_000;
+    while (Date.now() < deadline) {
+      const logs = kernelTelemetryLogs(configuration, 'studio');
+      try {
+        assertNativeChildTelemetryControl(before, logs);
+        return;
+      } catch {
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+      }
+    }
+    throw new Error('Kernel egress observer missed the native child control.');
   }
   function proveTelemetryProcessInstrumentation(configuration: string) {
     for (const service of ['studio', 'worker', 'registry']) {
@@ -592,6 +679,7 @@ networks:
       configurations.add(configuration),
     registerCleanup: (cleanup: () => void) => extraCleanup.push(cleanup),
     assertTelemetryQuiet,
+    proveKernelTelemetryControls,
     proveTelemetryProcessInstrumentation,
     proveTelemetryDetector,
     proveTelemetrySwitch,
@@ -649,6 +737,7 @@ async function exerciseInstall(
     fixture.registerConfiguration(first.configuration);
     await fixture.setup(first);
     fixture.assertTelemetryQuiet(first.configuration);
+    fixture.proveKernelTelemetryControls(first.configuration);
     fixture.proveTelemetryProcessInstrumentation(first.configuration);
     fixture.proveTelemetryDetector(first.configuration);
     fixture.proveTelemetrySwitch(first.configuration);

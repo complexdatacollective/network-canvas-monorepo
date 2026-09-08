@@ -9,6 +9,7 @@ import {
 import {
   assertKernelTelemetryControls,
   assertKernelTelemetryReady,
+  assertNativeChildTelemetryControl,
   assertNoKernelTelemetryEgress,
   assertNoProcessTelemetryEgress,
   assertNoTelemetryEgress,
@@ -85,6 +86,14 @@ describe('local distribution recovery boundary', () => {
 
   it('ships a syntactically valid kernel observer', () => {
     expect(() => new Function(TELEMETRY_KERNEL_OBSERVER_SOURCE)).not.toThrow();
+  });
+
+  it('requires a new kernel flow for the uninstrumented native child', () => {
+    const logs = `${TELEMETRY_KERNEL_CONTROL_MARKER}\n${TELEMETRY_KERNEL_CONTROL_MARKER}\n${TELEMETRY_KERNEL_CONTROL_MARKER}\n`;
+    expect(() => assertNativeChildTelemetryControl(2, logs)).not.toThrow();
+    expect(() => assertNativeChildTelemetryControl(3, logs)).toThrow(
+      'native child',
+    );
   });
   it('fails closed for a wrong-off mutant after a singular positive canary', () => {
     expect(() => assertNoTelemetryEgress('detector booted\n')).not.toThrow();

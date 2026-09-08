@@ -795,6 +795,7 @@ it('installs an immutable built image, drains a populated backup and restores al
     await source.ready();
     await source.assertTelemetryQuiet();
     await source.proveTelemetryProcessInstrumentation();
+    await source.proveKernelTelemetryControls();
     await source.proveTelemetrySwitch();
     await source.proveTelemetryDetector();
     const initialPools = await source.pools();
