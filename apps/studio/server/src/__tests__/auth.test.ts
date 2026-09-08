@@ -281,6 +281,34 @@ describe.skipIf(!db)('email/password sign-in', () => {
     });
     expect(response.headers.get('set-cookie')).toBeNull();
   });
+
+  it('refuses new and existing sessions while recovery authorization is disabled', async () => {
+    if (!scratch) throw new Error('scratch schema was not provisioned');
+    const admitted = await signIn(SEED_ADMIN_PASSWORD);
+    expect(admitted.status).toBe(200);
+    const setCookie = admitted.headers.get('set-cookie');
+    expect(setCookie).toBeTruthy();
+    const cookie = (setCookie ?? '').split(';')[0]!;
+
+    await scratch.pool.query(
+      `UPDATE "user" SET recovery_disabled = true WHERE email = $1`,
+      [SEED_ADMIN_EMAIL],
+    );
+    try {
+      const { error } = await safe(createRpcClient(app, { cookie }).me());
+      expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
+
+      await scratch.pool.query(`DELETE FROM "rateLimit"`);
+      const refused = await signIn(SEED_ADMIN_PASSWORD);
+      expect(refused.status).toBe(403);
+      expect(refused.headers.get('set-cookie')).toBeNull();
+    } finally {
+      await scratch.pool.query(
+        `UPDATE "user" SET recovery_disabled = false WHERE email = $1`,
+        [SEED_ADMIN_EMAIL],
+      );
+    }
+  });
 });
 
 describe.skipIf(!db)('teams (organization plugin)', () => {

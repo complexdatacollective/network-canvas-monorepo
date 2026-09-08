@@ -132,6 +132,7 @@ const webhookDeliveries = pgTable(
     leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
     deliveredAt: timestamp('delivered_at', { withTimezone: true }),
     failedAt: timestamp('failed_at', { withTimezone: true }),
+    uncertainAt: timestamp('uncertain_at', { withTimezone: true }),
     lastStatusCode: smallint('last_status_code'),
     lastError: text('last_error'),
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -147,7 +148,9 @@ const webhookDeliveries = pgTable(
     }),
     index('webhook_deliveries_dispatch_idx')
       .on(table.availableAt, table.leaseExpiresAt)
-      .where(sql`delivered_at IS NULL AND failed_at IS NULL`),
+      .where(
+        sql`delivered_at IS NULL AND failed_at IS NULL AND uncertain_at IS NULL`,
+      ),
     index('webhook_deliveries_team_id_created_at_idx').on(
       table.teamId,
       table.createdAt.desc(),
@@ -163,9 +166,9 @@ const webhookDeliveries = pgTable(
     ),
     check(
       'webhook_deliveries_terminal_state_check',
-      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}) <= 1
+      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.uncertainAt}) <= 1
           AND (
-            num_nonnulls(${table.deliveredAt}, ${table.failedAt}) = 0
+            num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.uncertainAt}) = 0
             OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL)
           )`,
     ),

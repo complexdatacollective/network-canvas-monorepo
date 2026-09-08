@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0009_recovery_authorization",
+  "previous": "0008_verified_key_references",
+  "fingerprint": "01e8b6fce6424a2886c1d184e7bf008da5d971535301e6a1c1afb946f8303df0",
+  "snapshotHash": "8e8e483712a37ba41d43d0c8c174909fe4c24a79bad0fdcc7313d15e1d8476bb",
+  "sqlHash": "d2849271edeee8ddaeef40c067eeb4dc7cba1fcffc47886aa649393991190d43",
+  "sidecarsHash": "2296d62a7d058f60e3b0eb5cc37d2a6b63248bf107b52ad948cdf8ec1ae2b5cb"
+}
