@@ -18,8 +18,8 @@ import ContentBlockPreview from '../contentBlocks/ContentBlockPreview.tsx';
 import { contentBlockSlots } from '../contentBlocks/contentBlockTypes.ts';
 import IntroductionSection from '../IntroductionSection.tsx';
 import PageContentSection from '../PageContentSection.tsx';
-import PromptsSection from '../PromptsSection.tsx';
 import SortOrderRows from '../prompts/SortOrderRows.tsx';
+import PromptsSection from '../PromptsSection.tsx';
 import type { RowEditorProps } from '../rowRenderers.tsx';
 import StageNameSection from '../StageNameSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
@@ -177,10 +177,7 @@ describe('the introduction section’s empty prose field, read in Spanish', () =
 
     expect(
       await screen.findByRole('textbox', { name: 'Texto de introducción' }),
-    ).toHaveAttribute(
-      'aria-placeholder',
-      'Introduce aquí tu introducción...',
-    );
+    ).toHaveAttribute('aria-placeholder', 'Introduce aquí tu introducción...');
   });
 });
 
@@ -244,7 +241,9 @@ describe('the content-block dialog, read in Spanish', () => {
     });
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Crear nuevo bloque de contenido' }),
+      await screen.findByRole('button', {
+        name: 'Crear nuevo bloque de contenido',
+      }),
     );
     const dialog = await screen.findByRole('dialog');
 
@@ -256,7 +255,9 @@ describe('the content-block dialog, read in Spanish', () => {
     ).toBeInTheDocument();
     expect(within(dialog).getByText('Tipo de contenido')).toBeInTheDocument();
     expect(
-      within(dialog).getByText('Elige qué muestra este bloque al participante.'),
+      within(dialog).getByText(
+        'Elige qué muestra este bloque al participante.',
+      ),
     ).toBeInTheDocument();
     for (const kind of ['Imagen', 'Vídeo', 'Audio', 'Texto']) {
       expect(
@@ -274,7 +275,9 @@ describe('the content-block dialog, read in Spanish', () => {
     });
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Crear nuevo bloque de contenido' }),
+      await screen.findByRole('button', {
+        name: 'Crear nuevo bloque de contenido',
+      }),
     );
     const dialog = await screen.findByRole('dialog');
     const commit = async () => {
@@ -331,7 +334,9 @@ describe('the content-block dialog, read in Spanish', () => {
     ).toBeInTheDocument();
     await commit();
     expect(
-      await within(dialog).findByText('Elige el vídeo que reproduce este bloque.'),
+      await within(dialog).findByText(
+        'Elige el vídeo que reproduce este bloque.',
+      ),
     ).toBeInTheDocument();
 
     await chooseKind('Texto');
@@ -344,10 +349,15 @@ describe('the content-block dialog, read in Spanish', () => {
     // is what a researcher reads while the block is still empty.
     expect(
       await within(dialog).findByRole('textbox', { name: 'Contenido' }),
-    ).toHaveAttribute('aria-placeholder', 'Introduce el texto de este bloque...');
+    ).toHaveAttribute(
+      'aria-placeholder',
+      'Introduce el texto de este bloque...',
+    );
     await commit();
     expect(
-      await within(dialog).findByText('Escribe el texto que muestra este bloque.'),
+      await within(dialog).findByText(
+        'Escribe el texto que muestra este bloque.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -391,9 +401,13 @@ describe('what a Spanish screen reader is told when a block changes type', () =>
     const harness = renderStageEditor(mediaPage());
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Crear nuevo bloque de contenido' }),
+      await screen.findByRole('button', {
+        name: 'Crear nuevo bloque de contenido',
+      }),
     );
-    await harness.user.click(await screen.findByRole('radio', { name: 'Texto' }));
+    await harness.user.click(
+      await screen.findByRole('radio', { name: 'Texto' }),
+    );
 
     await waitFor(() =>
       expect(status()).toBe(
@@ -453,7 +467,11 @@ describe('a block a page cannot show, read in Spanish', () => {
         label: 'Information',
         title: 'Bienvenida',
         items: [
-          { id: 'block-missing', type: 'asset', content: 'retirada_del_protocolo' },
+          {
+            id: 'block-missing',
+            type: 'asset',
+            content: 'retirada_del_protocolo',
+          },
           { id: 'block-layer', type: 'asset', content: 'geo_data' },
           { id: 'block-empty', type: 'asset', content: '' },
         ],
@@ -597,9 +615,7 @@ describe('the introduction-screen variant, read in Spanish', () => {
         'Muestra al participante una pantalla de texto y medios antes de que empiece esta tarea.',
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText('Bloques de introducción'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Bloques de introducción')).toBeInTheDocument();
     expect(
       screen.getByText(
         'El participante los recorre en este orden antes de empezar la tarea. Arrástralos para reordenarlos.',
@@ -619,7 +635,9 @@ describe('the introduction-screen variant, read in Spanish', () => {
     );
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Crear nuevo bloque de introducción' }),
+      screen.getByRole('button', {
+        name: 'Crear nuevo bloque de introducción',
+      }),
     );
     expect(
       await screen.findByText('Crear bloque de introducción'),
@@ -657,7 +675,9 @@ describe('the introduction-screen variant, read in Spanish', () => {
     // The cancel verb comes from the shared common.* catalog rather than from
     // this package, so this fails if the common layer stopped reaching the
     // merge.
-    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Cancelar' }),
+    ).toBeInTheDocument();
     expectNoLocaleLeaks(
       'the clear-the-introduction confirmation',
       researcherWords(harness),
@@ -848,9 +868,7 @@ describe('a prompt’s sort rules, read in Spanish', () => {
       await screen.findByRole('button', { name: 'Editar pregunta' }),
     );
     await screen.findByRole('dialog');
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Guardar' }),
-    );
+    await harness.user.click(screen.getByRole('button', { name: 'Guardar' }));
 
     expect(
       await screen.findByText(

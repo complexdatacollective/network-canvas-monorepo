@@ -174,7 +174,6 @@ describe('a page whose blocks are text and media', () => {
     ).toBeInTheDocument();
     expect(dispatch).not.toHaveBeenCalled();
     expect(harness.pendingCommands()).toHaveLength(0);
-
   });
 
   it('carries no editor slot into the saved block', async () => {
@@ -262,7 +261,9 @@ describe('what a screen reader is told when a block changes type', () => {
     await harness.user.click(
       await screen.findByRole('button', { name: 'Create new content block' }),
     );
-    await harness.user.click(await screen.findByRole('radio', { name: 'Text' }));
+    await harness.user.click(
+      await screen.findByRole('radio', { name: 'Text' }),
+    );
 
     await waitFor(() =>
       expect(status()).toBe(

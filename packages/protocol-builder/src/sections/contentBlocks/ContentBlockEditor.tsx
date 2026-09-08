@@ -245,7 +245,9 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
           live region that appears at the same moment as its text is not
           announced. */}
       <span role="status" aria-live="polite" className="sr-only">
-        {announced === undefined ? '' : contentKindAnnouncement(announced, intl)}
+        {announced === undefined
+          ? ''
+          : contentKindAnnouncement(announced, intl)}
       </span>
       <DialogFormField<typeof RadioGroupField>
         name="type"

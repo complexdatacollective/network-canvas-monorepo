@@ -321,7 +321,9 @@ describe('the prompt list a stage owns', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeEnabled();
     expect(
-      screen.getByText('Write the questions this stage asks, and drag them into the order the participant answers them.'),
+      screen.getByText(
+        'Write the questions this stage asks, and drag them into the order the participant answers them.',
+      ),
     ).toBeInTheDocument();
   });
 });
@@ -452,7 +454,9 @@ describe('a stage whose subject names no type yet', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeEnabled();
     expect(
-      screen.getByText('Write the questions this stage asks, and drag them into the order the participant answers them.'),
+      screen.getByText(
+        'Write the questions this stage asks, and drag them into the order the participant answers them.',
+      ),
     ).toBeInTheDocument();
   });
 });
