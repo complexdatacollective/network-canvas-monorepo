@@ -73,7 +73,11 @@ const LEGACY_PHASES = [
   'optouts',
   'oauth',
 ] as const;
-const legacyOperatorCursorSchema = z.string().regex(/^[A-Za-z0-9_-]{40,4096}$/);
+// The fixed transport prefix prevents a random nonce beginning with '-' from
+// being interpreted as another option by the CLI's --after-id parser.
+const legacyOperatorCursorSchema = z
+  .string()
+  .regex(/^v1_[A-Za-z0-9_-]{40,4093}$/);
 const legacyProgressSchema = z.strictObject({
   version: z.literal(1),
   phase: z.enum(LEGACY_PHASES),
@@ -181,9 +185,7 @@ function sealLegacyProgress(
       cipher.update(plaintext),
       cipher.final(),
     ]);
-    return Buffer.concat([nonce, ciphertext, cipher.getAuthTag()]).toString(
-      'base64url',
-    );
+    return `v1_${Buffer.concat([nonce, ciphertext, cipher.getAuthTag()]).toString('base64url')}`;
   } finally {
     plaintext.fill(0);
   }
@@ -195,11 +197,9 @@ function openLegacyProgress(
   expected: Omit<LegacyProgress, 'phase' | 'after' | 'version'>,
 ): LegacyProgress {
   try {
-    const bytes = Buffer.from(
-      legacyOperatorCursorSchema.parse(cursor),
-      'base64url',
-    );
-    if (bytes.length < 29 || bytes.toString('base64url') !== cursor)
+    const encoded = legacyOperatorCursorSchema.parse(cursor).slice(3);
+    const bytes = Buffer.from(encoded, 'base64url');
+    if (bytes.length < 29 || bytes.toString('base64url') !== encoded)
       throw new Error();
     const template = {
       version: 1,
