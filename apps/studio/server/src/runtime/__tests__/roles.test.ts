@@ -2,8 +2,8 @@ import { spawn } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { request } from 'node:http';
-import { createServer, type Socket } from 'node:net';
+import { createServer as createHttpServer, request } from 'node:http';
+import { createServer as createNetServer, type Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -43,7 +43,7 @@ const runtimePassword = 'test-only restricted runtime password';
 const token = randomBytes(32).toString('base64url');
 
 async function unusedPort() {
-  const server = createServer();
+  const server = createNetServer();
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const address = server.address();
@@ -64,6 +64,7 @@ function launch(
   role: string,
   smtp?: string,
   clientDist?: string,
+  s3Endpoint?: string,
 ) {
   const origin = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, [entry], {
@@ -72,13 +73,22 @@ function launch(
       HOST: '127.0.0.1',
       PORT: String(port),
       STUDIO_ROLE: role,
-      DATABASE_URL: db.app.url,
+      ...(role === 'worker' ? {} : { DATABASE_URL: db.app.url }),
       STUDIO_MAINTENANCE_DATABASE_URL: db.maintenance.url,
       STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(db.allowedLogins),
       PUBLIC_URL: origin,
       BETTER_AUTH_SECRET: 'synthetic-runtime-signing-secret-value',
       STUDIO_BOOTSTRAP_TOKEN: token,
       ...encryptionEnvironment(),
+      ...(s3Endpoint
+        ? {
+            S3_ENDPOINT: s3Endpoint,
+            S3_REGION: 'local',
+            S3_BUCKET: 'studio-runtime-test',
+            S3_ACCESS_KEY_ID: 'synthetic-access-key',
+            S3_SECRET_ACCESS_KEY: 'synthetic-secret-key',
+          }
+        : {}),
       ...(clientDist ? { CLIENT_DIST: clientDist } : {}),
       ...(smtp ? { SMTP_URL: smtp, EMAIL_FROM: 'studio@example.test' } : {}),
     },
@@ -232,7 +242,7 @@ async function fixture() {
 async function smtpServer() {
   const connections = new Set<Socket>();
   const messages: { accept(): void }[] = [];
-  const server = createServer((socket) => {
+  const server = createNetServer((socket) => {
     connections.add(socket);
     socket.once('close', () => connections.delete(socket));
     socket.on('error', () => undefined);
@@ -274,10 +284,29 @@ async function smtpServer() {
   };
 }
 
+async function objectStoreHealthServer() {
+  const server = createHttpServer((_request, response) => {
+    response.statusCode = 200;
+    response.end();
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No S3 port');
+  return {
+    endpoint: `http://127.0.0.1:${address.port}`,
+    stop: () =>
+      new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      ),
+  };
+}
+
 describe('actual runtime role separation and drain', () => {
   it('serves one web replica, keeps its queue untouched, and lets a worker deliver without exposing researcher routes', async () => {
     const scratch = await fixture();
     const smtp = await smtpServer();
+    const objectStore = await objectStoreHealthServer();
     const invitationId = await scratch.enqueue();
     const web = launch(
       scratch.db,
@@ -327,9 +356,20 @@ describe('actual runtime role separation and drain', () => {
         'worker',
         smtp.url,
         scratch.clientDist,
+        objectStore.endpoint,
       );
       expect(await worker.started).toBe(true);
       expect((await fetch(`${worker.origin}/healthz`)).status).toBe(200);
+      const ready = await fetch(`${worker.origin}/readyz`);
+      expect(ready.status).toBe(200);
+      expect(await ready.json()).toEqual({
+        status: 'ready',
+        checks: {
+          database: 'ok',
+          object_store: 'ok',
+          schema: 'current',
+        },
+      });
       for (const path of [
         '/rpc/status',
         '/api/auth/get-session',
@@ -362,6 +402,7 @@ describe('actual runtime role separation and drain', () => {
     } finally {
       await Promise.all([worker?.stop(), duplicate?.stop(), web.stop()]);
       await smtp.stop();
+      await objectStore.stop();
       await scratch.dispose();
     }
   });
