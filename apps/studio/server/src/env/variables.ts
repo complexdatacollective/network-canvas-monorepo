@@ -3,8 +3,7 @@ import { z } from 'zod';
 import { BootstrapTokenSchema } from '@codaco/studio-rpc';
 import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
 import { postmarkConfiguration } from '@codaco/studio-sync/postmark-email-sender';
-
-import { isProxyAddress } from '../observability/proxy.ts';
+import { isProxyAddress } from '@codaco/studio-sync/proxy-trust';
 
 // Deliberately NO `.default()` calls anywhere in this file. Defaults declared
 // here would be compiled into the production server bundle, which is how the

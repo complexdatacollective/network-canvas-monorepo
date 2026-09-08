@@ -10,6 +10,7 @@ import {
   observeNodeResponse,
   selectRequestId,
 } from '@codaco/studio-sync/operational-http';
+import { trustedPeer } from '@codaco/studio-sync/proxy-trust';
 
 import type { PrincipalVariables } from '../auth/principal.ts';
 import {
@@ -18,7 +19,6 @@ import {
   type OperationalLogger,
   type RequestObservation,
 } from './logger.ts';
-import { trustedPeer } from './proxy.ts';
 import { requestMethod, requestRoute } from './routes.ts';
 
 const upgrades = new WeakMap<

@@ -108,11 +108,6 @@ it('retains artifact capacity while actual Node responses are blocked on a pause
     expect(fixture.blobs.get).toHaveBeenCalledTimes(2);
     sockets[0]!.destroy();
     await vi.waitFor(() => expect(responses[0]!.destroyed).toBe(true));
-    await vi.waitFor(() =>
-      expect(
-        fixture.requestLogs.filter(({ status }) => status === 499),
-      ).toHaveLength(1),
-    );
     const recovered = await fetch(`http://127.0.0.1:${bound.port}${path}`);
     expect(recovered.status).toBe(200);
     expect(new Uint8Array(await recovered.arrayBuffer())).toEqual(
@@ -121,6 +116,70 @@ it('retains artifact capacity while actual Node responses are blocked on a pause
     expect(fixture.blobs.get).toHaveBeenCalledTimes(3);
   } finally {
     for (const socket of sockets) socket.destroy();
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await fixture.dispose();
+  }
+});
+
+it('records one cancellation when the client resets before a private artifact read completes', async () => {
+  const fixture = await createRegistryFixture();
+  const reading = Promise.withResolvers<void>();
+  const bytesReady = Promise.withResolvers<Uint8Array | null>();
+  const responses: ServerResponse[] = [];
+  const server = createServer((incoming, outgoing) => {
+    responses.push(outgoing);
+    void getRequestListener(fixture.app.fetch, {
+      overrideGlobalObjects: false,
+    })(incoming, outgoing);
+  });
+  let socket: Socket | undefined;
+  try {
+    const account = await fixture.account();
+    const created = await fixture.published(account.token, 'Interrupted read');
+    vi.mocked(fixture.blobs.get).mockImplementationOnce(async () => {
+      reading.resolve();
+      return bytesReady.promise;
+    });
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const bound = server.address();
+    if (!bound || typeof bound === 'string')
+      throw new Error('REGISTRY_TEST_HTTP_ADDRESS_MISSING');
+    const path = `/api/v1/artifacts/${created.entry.root}`;
+    socket = createConnection({ host: '127.0.0.1', port: bound.port });
+    socket.on('error', () => undefined);
+    await once(socket, 'connect');
+    socket.write(
+      `GET ${path} HTTP/1.1\r\nHost: 127.0.0.1:${bound.port}\r\nConnection: close\r\n\r\n`,
+    );
+    await reading.promise;
+    // The body producer is still gated: this is an interrupted request, not
+    // a fully written response whose bytes remain unread in a TCP buffer.
+    expect(responses).toHaveLength(1);
+    expect(responses[0]!.headersSent).toBe(false);
+    expect(responses[0]!.writableFinished).toBe(false);
+    socket.resetAndDestroy();
+    await vi.waitFor(() => expect(responses[0]!.destroyed).toBe(true));
+    const cancellations = () =>
+      fixture.requestLogs.filter(({ status }) => status === 499);
+    await vi.waitFor(() => expect(cancellations()).toHaveLength(1));
+    expect(cancellations()[0]).toMatchObject({
+      request_id: expect.stringMatching(REQUEST_ID),
+      method: 'GET',
+      route: '/api/v1/artifacts/:root',
+      status: 499,
+    });
+    bytesReady.resolve(created.bytes);
+    const recovered = await fetch(`http://127.0.0.1:${bound.port}${path}`);
+    expect(recovered.status).toBe(200);
+    expect(new Uint8Array(await recovered.arrayBuffer())).toEqual(
+      created.bytes,
+    );
+    expect(cancellations()).toHaveLength(1);
+  } finally {
+    bytesReady.resolve(null);
+    socket?.destroy();
     server.closeAllConnections();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await fixture.dispose();

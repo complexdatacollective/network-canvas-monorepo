@@ -9,12 +9,13 @@ import { serve } from '@hono/node-server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket, WebSocketServer } from 'ws';
 
+import { isProxyAddress, trustedPeer } from '@codaco/studio-sync/proxy-trust';
+
 import { stubAuthService } from '../../__tests__/support/auth.ts';
 import { createApp } from '../../app.ts';
 import { mountClient } from '../../client-assets.ts';
 import { readEnv } from '../../env.ts';
 import { createOperationalLogger, operationalLogger, UUID } from '../logger.ts';
-import { isProxyAddress, trustedPeer } from '../proxy.ts';
 import { observeWebSocketServer } from '../requests.ts';
 import { createObservability } from '../runtime.ts';
 
