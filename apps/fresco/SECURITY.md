@@ -14,7 +14,7 @@ Fresco is a **single-tenant, single-trust-level** application. Understanding thi
 
 ## Data at rest
 
-- Passwords are hashed with scrypt; TOTP secrets and recovery codes are stored hashed and are single-use; API tokens are stored only as a SHA-256 hash (the plaintext is shown once, at creation).
+- Passwords are hashed with scrypt; recovery codes are stored hashed and are single-use; API tokens are stored only as a SHA-256 hash (the plaintext is shown once, at creation). TOTP secrets must remain readable to verify codes, so they are stored as-is — a copy of the database exposes the seed for future codes, which is part of why database-at-rest encryption matters (see below).
 - **Storage credentials** (S3 access key/secret, the UploadThing token) must remain reversible for the app to use them, so when configured through the **setup UI** they are stored **unencrypted** in the database. If database-at-rest exposure is part of your threat model, configure storage through **environment variables** instead — `STORAGE_PROVIDER`, `S3_ENDPOINT`, `S3_PUBLIC_URL`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, or `UPLOADTHING_TOKEN`. Env-provided values are read from the environment and never written to the database, and the setup UI locks the corresponding fields. See the `docker-compose.*.yml` deployment files.
 
 ## Transport & headers
