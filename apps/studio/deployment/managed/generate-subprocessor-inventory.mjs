@@ -32,17 +32,183 @@ const knownResourceTypes = new Set([
   'cloudflare_r2_bucket',
   'crunchybridge_cluster',
   'aws_kms_key',
+  'aws_kms_alias',
   'b2_bucket',
 ]);
+const knownDataTypes = new Set([
+  'crunchybridge_cloudprovider',
+  'aws_caller_identity',
+  'aws_iam_session_context',
+]);
+const knownProviderNames = new Set([
+  'aws',
+  'b2',
+  'cloudflare',
+  'crunchybridge',
+]);
+
+function matchingBrace(text, opening) {
+  let depth = 0;
+  let quote = false;
+  let escaped = false;
+  let lineComment = false;
+  let blockComment = false;
+  for (let index = opening; index < text.length; index += 1) {
+    const character = text[index];
+    const next = text[index + 1];
+    if (lineComment) {
+      if (character === '\n') lineComment = false;
+      continue;
+    }
+    if (blockComment) {
+      if (character === '*' && next === '/') {
+        blockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+    if (!quote && character === '#') {
+      lineComment = true;
+      continue;
+    }
+    if (!quote && character === '/' && next === '/') {
+      lineComment = true;
+      index += 1;
+      continue;
+    }
+    if (!quote && character === '/' && next === '*') {
+      blockComment = true;
+      index += 1;
+      continue;
+    }
+    if (character === '"' && !escaped) quote = !quote;
+    escaped = quote && character === '\\' && !escaped;
+    if (quote) continue;
+    if (character === '{') depth += 1;
+    if (character === '}' && --depth === 0) return index;
+  }
+  throw new Error('Managed Terraform configuration has an unterminated block.');
+}
+
+function hclBlocks(text) {
+  const blocks = [];
+  const header =
+    /\b(terraform|provider|resource|data)\s*(?:"([a-zA-Z0-9_-]+)")?\s*(?:"([a-zA-Z0-9_-]+)")?\s*\{/g;
+  for (const match of text.matchAll(header)) {
+    const opening = match.index + match[0].lastIndexOf('{');
+    blocks.push({
+      kind: match[1],
+      first: match[2],
+      second: match[3],
+      body: text.slice(opening + 1, matchingBrace(text, opening)),
+    });
+  }
+  return blocks;
+}
+
+function topLevelAssignments(body) {
+  const assignments = [];
+  let depth = 0;
+  let quote = false;
+  let escaped = false;
+  const assignment = /([a-zA-Z_][a-zA-Z0-9_-]*)\s*=\s*/y;
+  for (let index = 0; index < body.length; index += 1) {
+    const character = body[index];
+    if (character === '"' && !escaped) quote = !quote;
+    escaped = quote && character === '\\' && !escaped;
+    if (quote) continue;
+    if (character === '{') depth += 1;
+    else if (character === '}') depth -= 1;
+    if (depth === 0) {
+      assignment.lastIndex = index;
+      const match = assignment.exec(body);
+      if (match) {
+        assignments.push(match[1]);
+        index = assignment.lastIndex - 1;
+      }
+    }
+  }
+  return assignments;
+}
+
+const hcl = terraformSources
+  .filter(([file]) => file.endsWith('.tf'))
+  .flatMap(([file, text]) =>
+    hclBlocks(text).map((block) => ({ file, ...block })),
+  );
+const providersInHcl = hcl
+  .filter(({ kind }) => kind === 'provider')
+  .map(({ first }) => first);
+const resourcesInHcl = hcl
+  .filter(({ kind }) => kind === 'resource')
+  .map(({ first }) => first);
+const dataInHcl = hcl
+  .filter(({ kind }) => kind === 'data')
+  .map(({ first }) => first);
+if (
+  providersInHcl.some((name) => !knownProviderNames.has(name)) ||
+  resourcesInHcl.some((name) => !knownResourceTypes.has(name)) ||
+  dataInHcl.some((name) => !knownDataTypes.has(name))
+)
+  throw new Error(
+    'Managed Terraform provider/resource inventory differs from the reviewed estate.',
+  );
+const rootAssignments = hcl
+  .filter(({ kind }) => kind === 'terraform')
+  .flatMap(({ body }) => topLevelAssignments(body));
+if (
+  rootAssignments.some(
+    (name) => !['required_version', 'required_providers'].includes(name),
+  )
+)
+  throw new Error(
+    'Managed Terraform configuration contains an unsupported top-level declaration.',
+  );
+const inlineTopLevelAssignments = terraformSources
+  .filter(([file]) => file.endsWith('.tf'))
+  .flatMap(
+    ([, text]) => text.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)\s*=\s*\{/gm) ?? [],
+  )
+  .map((line) => line.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)/)?.[1])
+  .filter(Boolean);
+if (inlineTopLevelAssignments.some((name) => name !== 'terraform'))
+  throw new Error(
+    'Managed Terraform configuration contains an unsupported top-level declaration.',
+  );
+const requiredProviderNames = hcl
+  .filter(({ kind }) => kind === 'terraform')
+  .flatMap(({ body }) =>
+    [
+      ...body.matchAll(
+        /\b([a-zA-Z_][a-zA-Z0-9_-]*)\s*=\s*\{[^{}]*\bsource\s*=\s*"[^"]+"/g,
+      ),
+    ].map((match) => match[1]),
+  );
+if (requiredProviderNames.some((name) => !knownProviderNames.has(name)))
+  throw new Error(
+    'Managed Terraform provider inventory differs from the reviewed estate.',
+  );
 for (const [, text] of terraformSources.filter(([file]) =>
   file.endsWith('.tf.json'),
 )) {
   const parsed = JSON.parse(text);
+  if (
+    Object.keys(parsed.provider ?? {}).some(
+      (name) => !knownProviderNames.has(name),
+    )
+  )
+    throw new Error(
+      'Managed Terraform provider inventory differs from the reviewed estate.',
+    );
   for (const resourceType of Object.keys(parsed.resource ?? {})) {
     if (!knownResourceTypes.has(resourceType))
       throw new Error(
         `Managed Terraform resource inventory differs: ${resourceType}.`,
       );
+  }
+  for (const dataType of Object.keys(parsed.data ?? {})) {
+    if (!knownDataTypes.has(dataType))
+      throw new Error(`Managed Terraform data inventory differs: ${dataType}.`);
   }
 }
 const tfvars = await readFile(join(root, 'terraform.tfvars.example'), 'utf8');
@@ -69,11 +235,26 @@ if (
     'Every Terraform provider must have exactly one inventory mapping.',
   );
 const declaredSources = [
-  ...terraform.matchAll(/\bsource["']?\s*(?:=|:)\s*"([^"]+)"/g),
-].map((match) => match[1]);
+  ...hcl
+    .filter(({ kind }) => kind === 'terraform')
+    .flatMap(({ body }) =>
+      [...body.matchAll(/\bsource\s*=\s*"([^"]+)"/g)].map((match) => match[1]),
+    ),
+  ...terraformSources
+    .filter(([file]) => file.endsWith('.tf.json'))
+    .flatMap(([, text]) => {
+      const parsed = JSON.parse(text);
+      return Object.values(parsed.terraform?.required_providers ?? {}).map(
+        (provider) => provider.source,
+      );
+    }),
+];
 const declaredProviderBlocks = [
-  ...terraform.matchAll(/\bprovider\s+"([a-z][\w-]*)"/g),
-].map((match) => match[1]);
+  ...providersInHcl,
+  ...terraformSources
+    .filter(([file]) => file.endsWith('.tf.json'))
+    .flatMap(([, text]) => Object.keys(JSON.parse(text).provider ?? {})),
+];
 const expectedSources = Object.values(expectedProviderSources);
 if (
   declaredSources.length !== expectedSources.length ||
@@ -109,6 +290,10 @@ if (!primaryObjectJurisdiction)
   throw new Error('Cloudflare R2 jurisdiction contract is missing.');
 if (!recoveryRegion)
   throw new Error('Backblaze recovery region contract is missing.');
+if (crunchyRegion !== 'us-east-1' || kmsRegion !== 'us-east-1')
+  throw new Error(
+    'Managed estate regions differ from the reviewed US candidate.',
+  );
 for (const provider of source.providers) {
   if (
     !provider.name ||
