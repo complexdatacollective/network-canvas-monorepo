@@ -2,6 +2,7 @@ import { deepStrictEqual } from 'node:assert';
 
 import type pg from 'pg';
 
+import { assertPostgresRecoveryQuarantine } from '@codaco/studio-sync/postgres-recovery-quarantine';
 import { readTemplateArtifact } from '@codaco/studio-sync/template-exchange';
 
 import type { RegistryBlobStore } from './blob-store.ts';
@@ -12,7 +13,11 @@ import {
 } from './db/admission.ts';
 import { assertRegistryBackupAccess } from './db/backup.ts';
 import { readRegistrySchemaIdentity } from './db/schema-state.ts';
-import type { RegistryRecoveryReconciliation } from './recovery-reconciliation.ts';
+import { REGISTRY_ROLES } from './db/schema.ts';
+import {
+  copyRegistryRecoveryReconciliation,
+  type RegistryRecoveryReconciliation,
+} from './recovery-reconciliation.ts';
 
 type Artifact = {
   root: string;
@@ -89,19 +94,50 @@ export async function reconcileRegistryRecovery({
   reconciliation: RegistryRecoveryReconciliation;
 }): Promise<void> {
   const policy = copyRegistryDatabasePolicy(admission);
-  await assertRegistryMigrationOperator(pool, policy);
-  await readRegistrySchemaIdentity(pool, policy, {
-    allowClosedEnrolledLogins: true,
-  });
-  await assertRegistryBackupAccess(backupPool, async (client) => {
+  const evidence = copyRegistryRecoveryReconciliation(reconciliation);
+  let client: pg.PoolClient | undefined;
+  let backup: pg.PoolClient | undefined;
+  let discard = false;
+  let backupDiscard = false;
+  let committed = false;
+  let backupCompleted = false;
+  try {
+    client = await pool.connect();
+    backup = await backupPool.connect();
+    await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+    await backup.query('BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY');
+    await client.query(
+      "SET LOCAL lock_timeout = '10s'; SET LOCAL statement_timeout = '5min'; SET LOCAL idle_in_transaction_session_timeout = '5min'",
+    );
+    await backup.query(
+      "SET LOCAL statement_timeout = '5min'; SET LOCAL idle_in_transaction_session_timeout = '5min'",
+    );
+    await assertRegistryMigrationOperator(client, policy);
     await readRegistrySchemaIdentity(client, policy, {
       allowClosedEnrolledLogins: true,
     });
-  });
-  const client = await pool.connect();
-  let discard = false;
-  try {
-    await client.query('BEGIN');
+    await assertRegistryBackupAccess(backup, async (checked) => {
+      await readRegistrySchemaIdentity(checked, policy, {
+        allowClosedEnrolledLogins: true,
+      });
+    });
+    const backupPid = (
+      await backup.query<{ pid: number }>(
+        'SELECT pg_catalog.pg_backend_pid() AS pid',
+      )
+    ).rows[0]?.pid;
+    if (!backupPid) throw new Error('REGISTRY_RECOVERY_QUARANTINE_REQUIRED');
+    const quarantine = {
+      ...policy,
+      runtimeRoles: Object.values(REGISTRY_ROLES),
+      allowedClientPids: [backupPid],
+      transaction: { isolation: 'serializable' as const, readOnly: false },
+    };
+    await assertPostgresRecoveryQuarantine(client, backup, quarantine).catch(
+      () => {
+        throw new Error('REGISTRY_RECOVERY_QUARANTINE_REQUIRED');
+      },
+    );
     await client.query(`LOCK TABLE registry_auth_user, registry_auth_session,
       registry_auth_verification, registry_publishers, registry_operators,
       registry_credentials, registry_artifacts, registry_artifact_content
@@ -111,10 +147,10 @@ export async function reconcileRegistryRecovery({
     );
     assertReconciliationUsers(
       users.rows.map((user) => user.id),
-      reconciliation,
+      evidence,
     );
     await verifyArtifacts(client, blobs);
-    const publisherIds = reconciliation.users
+    const publisherIds = evidence.users
       .filter((user) => user.publisher !== 'none')
       .map((user) => user.id);
     const actualPublishers = await client.query<{ user_id: string }>(
@@ -140,13 +176,13 @@ export async function reconcileRegistryRecovery({
        WHERE publisher.user_id = evidence.user_id`,
       [
         publisherIds,
-        reconciliation.users
+        evidence.users
           .filter((user) => user.publisher !== 'none')
           .map((user) => user.publisher === 'suspended'),
       ],
     );
     await client.query('UPDATE registry_operators SET enabled = false');
-    const enabledOperators = reconciliation.users
+    const enabledOperators = evidence.users
       .filter((user) => user.operator)
       .map((user) => user.id);
     if (enabledOperators.length)
@@ -170,16 +206,28 @@ export async function reconcileRegistryRecovery({
       remaining.rows[0]?.credentials !== 0
     )
       throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+    await assertPostgresRecoveryQuarantine(client, backup, quarantine).catch(
+      () => {
+        throw new Error('REGISTRY_RECOVERY_QUARANTINE_REQUIRED');
+      },
+    );
+    await backup.query('ROLLBACK');
+    backupCompleted = true;
     await client.query('COMMIT');
+    committed = true;
   } catch (error) {
     discard = true;
-    try {
-      await client.query('ROLLBACK');
-    } catch {
-      discard = true;
-    }
     throw error;
   } finally {
-    client.release(discard);
+    if (client && !committed)
+      await client.query('ROLLBACK').catch(() => {
+        discard = true;
+      });
+    if (backup && !backupCompleted)
+      await backup.query('ROLLBACK').catch(() => {
+        backupDiscard = true;
+      });
+    client?.release(discard);
+    backup?.release(backupDiscard);
   }
 }
