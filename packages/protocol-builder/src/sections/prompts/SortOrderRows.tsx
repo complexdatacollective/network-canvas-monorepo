@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
 
 import {
@@ -72,11 +73,14 @@ export type SortOrderRowsProps = Readonly<{
   properties: readonly SortableProperty[] | undefined;
   disabled?: boolean;
   /**
-   * The rules this prompt already has, which decide whether the group starts
-   * open and which of them point at an attribute that has been deleted. Read
-   * from the row rather than from form state: these rules are rendered inside
-   * a per-row dialog with a form store of its own, which has no whole-form
-   * initial values to consult for a field that has not mounted.
+   * The rules this prompt was OPENED on, which decide whether the group starts
+   * open and which values stay unchoosable once a rule has moved off them.
+   * Read from the row rather than from form state: these rules are rendered
+   * inside a per-row dialog with a form store of its own, which has no
+   * whole-form initial values to consult for a field that has not mounted.
+   *
+   * What the researcher has NOW is read from that dialog's own store instead,
+   * because a rule they change is one a collaborator's deletion can land on.
    */
   committedRules?: unknown;
 }>;
@@ -130,9 +134,39 @@ export default function SortOrderRows({
     ],
     [intl],
   );
+  /**
+   * The rules as the researcher has them NOW.
+   *
+   * The whole list arrives at `MultiSelect` as one `value`, so the field
+   * registered under `name` holds every row and every cell of them; no row is a
+   * field of its own. `undefined` while the group is closed, which is a group
+   * holding no rules at all.
+   */
+  const liveRules = useFormStore((state) => state.fields.get(name)?.value);
+  /**
+   * Judged against both the rules the prompt was OPENED on and the rules on
+   * screen, because each answers half of it.
+   *
+   * The live rules are what the researcher would save, and a rule they have
+   * just pointed somewhere is exactly the one a collaborator's deletion can
+   * land on: read from the opened-on prompt alone, that reference is reported
+   * by nothing, renders blank, and saves itself back. The opened-on rules are
+   * what keeps a value unchoosable once the rule has moved off it — the getter
+   * only disables the option a rule currently names, so an attribute dropped
+   * from the offer would otherwise become selectable again the moment the
+   * researcher looked elsewhere.
+   */
   const unusable = useMemo(
-    () => unusableSortProperties(committedRules, properties, intl),
-    [committedRules, intl, properties],
+    () =>
+      unusableSortProperties(
+        [
+          ...(Array.isArray(committedRules) ? committedRules : []),
+          ...(Array.isArray(liveRules) ? liveRules : []),
+        ],
+        properties,
+        intl,
+      ),
+    [committedRules, intl, liveRules, properties],
   );
   const options = useMemo(
     () =>
