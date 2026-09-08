@@ -159,7 +159,12 @@
        each theme scope rather than once in the token block because a custom
        property's `var()`s are substituted on the element the declaration sits
        on, so one copy at `:root` would cascade the light mixture into every
-       dark region below it. */
+       dark region below it.
+
+       The WEIGHTING is per scope too, not just the expression: how far the
+       fill has to travel toward the ink depends on how light that scope's
+       `--surface-accent` is. 78% measures 5.00:1 here, and the studio and
+       interview blocks say why they need their own numbers. */
     --destructive-strong: color-mix(
       in oklch,
       var(--destructive) 78%,
@@ -309,7 +314,9 @@
     /* Redeclared, like the surface aliases above: the mixture has to be made
        against THIS scope's `--destructive` and `--text` — mixing toward the
        light theme's near-black ink darkens the error on a dark surface
-       instead of lifting it off one. */
+       instead of lifting it off one. 78% still serves this scope — the ink
+       measures 4.63:1 on its `--surface-accent` — where studio dark and
+       interview need lighter mixtures; see those blocks. */
     --destructive-strong: color-mix(
       in oklch,
       var(--destructive) 78%,
