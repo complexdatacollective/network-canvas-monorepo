@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Adding a Gallery Protocol'
+  short_description: 'Add or update a networkcanvas.com Protocol Gallery entry'
+  default_prompt: 'Use $adding-a-gallery-protocol to add this protocol to the networkcanvas.com Protocol Gallery.'
