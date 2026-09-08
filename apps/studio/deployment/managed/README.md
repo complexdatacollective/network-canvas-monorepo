@@ -129,14 +129,29 @@ configuration archive, and their account-recovery paths.
    represents Worker account charges. `workerTierId` remains unselected until an
    account-visible product and its current allowances/rates have been reviewed.
 
-   `databaseDumpSizesGb` must measure each of the four databases. The shared
+   The New Relic subscription row covers only New Relic. The private collector
+   is a fifth persistent workload with separate 744-hour compute, checkpoint
+   storage, and egress rows. Its synthetic candidate is one 512 MB shared CPU
+   Machine in IAD; provider pricing declarations must identify that exact size
+   and region. The independently administered monotonic anchor has separate AWS
+   HTTP-request, compute GB-second, DynamoDB read/write request-unit, and durable
+   storage rows bound to `us-east-1`. These measured dimensions must include
+   retries and reconciliation. Free allowances need explicit complete coverage;
+   they cannot be represented by the unrelated New Relic Free declaration.
+
+   `databaseDumpSizesGb` must measure each of the four compressed archives.
+   `databaseExpandedSizesGb` separately measures each restored database after
+   expansion, must fit within the selected PostgreSQL storage, and sets the
+   minimum scratch-database storage for both drill paths. The shared
    30-minute schedule requires at least 5,952 database validations and 595.2 GB
    of source-provider egress in this illustrative 0.4 GB aggregate-dump case,
    with the corresponding B2 and validator requests and full-dump transfer.
    Each database generation prices an archive PUT, independent readback GET,
    and a separate immutable checkpoint PUT after successful validation.
    For objects, current count/bytes, monthly version churn, and the complete
-   recovery-retained version inventory are separate measurements. The retained
+   recovery-retained version inventory are separate measurements. Each count
+   and byte total must be zero or nonzero together so a nonempty inventory
+   cannot be priced as zero bytes. The retained
    inventory must cover current objects plus churn. Its 31-day storage,
    recovery-copy reads/writes and immediate independent readback transfer, every one-minute primary-bucket
    inventory page, and every retained version's
@@ -198,14 +213,20 @@ configuration archive, and their account-recovery paths.
    `restoreDrills.pitr` and `restoreDrills.independent` each require at least one
    complete estate drill per quarter. Both name all four services and measure
    their restored database storage and retained object counts/bytes. The model
-   prices each mode's compute GB-seconds, runner requests, source requests,
-   source transfer, runner transfer, four scratch database hours, scratch
+   prices each mode's compute GB-seconds, runner requests, provider-specific
+   database and object source requests and transfer, runner transfer, four
+   scratch database hours, scratch
    database GB-hours, and temporary GB-hours separately, amortized over the
    shared three-month interval. Restore transfer includes archive/envelope and
    metadata overhead; paged discovery, object fetches, failed attempts, cleanup,
    and receipt publication must be included in the measured resource totals.
    Source request floors include every object, all four database archives, and
-   proof discovery. The independent B2 store also prices each drill receipt's
+   proof discovery. PITR database source usage is declared against Crunchy
+   Bridge while PITR object source usage is declared against Cloudflare R2.
+   Independent database and object source usage remain separate categories even
+   though both are declared against B2. A budget declaration must identify the
+   expected provider on each source-pricing row. The independent B2 store also
+   prices each drill receipt's
    PUT/readback GET, readback bytes, and full immutable retention. Scratch
    database storage must measure the expanded restored database, rather than
    treating a compressed dump as its storage requirement. The fixture's four
@@ -214,6 +235,20 @@ configuration archive, and their account-recovery paths.
    monthly accrual as `totalUsd` and the conservative month in which both drill
    paths execute as `peakMonthUsd`. Budget acceptance and dollar headroom use
    that peak cost, so quarterly amortization cannot hide a breach of the cap.
+
+   Annual maintenance re-encryption is also measured rather than absorbed into
+   the monthly KMS rows or reserve. Production and staging each declare their
+   scanned record inventory, batch size, actual bounded batch invocations,
+   final verification invocations, complete configured historical-root count,
+   and measured compute GB-seconds. A command loads the full configured root
+   set once before its batch or verification work, so the KMS quantity is the
+   sum of `(batch invocations + verification invocations) * configured roots`
+   for each environment. The batch count must cover every record plus the
+   terminal empty/full-page proof, and even an empty environment prices one
+   batch invocation, final verification, root loads, and positive compute.
+   Annual usage accrues monthly in `totalUsd`; `peakMonthUsd` restores the other
+   eleven months to the execution month so rotation cannot pass the cap through
+   averaging.
 
    `databaseCheckpointSizeBytes` and `objectCheckpointSizeBytes` are positive
    measured upper bounds for complete signed checkpoint records, including

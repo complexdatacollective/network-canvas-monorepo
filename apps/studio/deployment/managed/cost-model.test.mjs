@@ -17,8 +17,22 @@ function declaredBudget() {
   input.workerTierId = 'synthetic-worker-tier';
   input.minimumHeadroomUsd = 1;
   input.lineItems.find(({ category }) => category === 'reserve').unitPriceUsd =
-    1;
+    0.5;
   for (const item of input.lineItems) {
+    const sourceProvider = Object.entries({
+      'independent-drill-database': 'backblaze-b2',
+      'independent-drill-object': 'backblaze-b2',
+      'pitr-drill-database': 'crunchybridge',
+      'pitr-drill-object': 'cloudflare-r2',
+    }).find(([prefix]) => item.category.startsWith(`${prefix}-source-`))?.[1];
+    const monitoringProvider =
+      item.category === 'monitoring'
+        ? 'new-relic'
+        : item.category.startsWith('monitoring-collector-')
+          ? 'fly'
+          : item.category.startsWith('monitoring-anchor-')
+            ? 'aws'
+            : undefined;
     item.evidence = 'Synthetic regression fixture only';
     item.pricing = {
       kind:
@@ -40,6 +54,21 @@ function declaredBudget() {
         : {}),
       ...(item.category.startsWith('primary-ingress')
         ? { tierId: input.workerTierId }
+        : {}),
+      ...(sourceProvider ? { providerId: sourceProvider } : {}),
+      ...(monitoringProvider ? { providerId: monitoringProvider } : {}),
+      ...(item.category.startsWith('monitoring-collector-')
+        ? { region: input.monitoringCollectorRegion }
+        : {}),
+      ...(item.category.startsWith('monitoring-anchor-')
+        ? { region: input.monitoringAnchorRegion }
+        : {}),
+      ...(item.category === 'monitoring-collector-compute'
+        ? {
+            cpuKind: input.monitoringCollectorCpuKind,
+            cpus: input.monitoringCollectorCpus,
+            memoryMb: input.monitoringCollectorMemoryMb,
+          }
         : {}),
       ...(item.unitPriceUsd === 0
         ? {
@@ -153,6 +182,8 @@ test('prices the declared services and traffic instead of independent smaller qu
     'primary-object-egress',
     'kms-keys',
     'kms-requests',
+    'annual-reencryption-kms-requests',
+    'annual-reencryption-compute',
     'backup-storage',
     'backup-requests',
     'backup-egress',
@@ -160,6 +191,14 @@ test('prices the declared services and traffic instead of independent smaller qu
     'validator-requests',
     'validator-transfer',
     'mail-overage',
+    'monitoring-collector-compute',
+    'monitoring-collector-storage',
+    'monitoring-collector-egress',
+    'monitoring-anchor-http-requests',
+    'monitoring-anchor-compute',
+    'monitoring-anchor-database-reads',
+    'monitoring-anchor-database-writes',
+    'monitoring-anchor-storage',
     'primary-ingress',
     'primary-ingress-requests',
     'primary-ingress-cpu',
@@ -184,6 +223,65 @@ test('requires the actual free monitoring limit and refuses missing price eviden
   const missingQuote = structuredClone(fixture);
   delete missingQuote.lineItems[0].evidence;
   assert.throws(() => evaluateManagedEstateCost(missingQuote), /evidence/);
+});
+
+test('prices the persistent collector and independent anchor outside New Relic', () => {
+  for (const [field, value, message] of [
+    ['monitoringCollectorMonthlyHours', 743, /744-hour/],
+    ['monitoringCollectorRegion', 'ord', /744-hour/],
+    ['monitoringCollectorCpuKind', 'performance', /744-hour/],
+    ['monitoringCollectorCpus', 2, /744-hour/],
+    ['monitoringCollectorMemoryMb', 1024, /744-hour/],
+    ['monitoringCollectorStorageGb', 0, /checkpoint storage/],
+    ['monitoringCollectorEgressGb', 0, /checkpoint storage/],
+    ['monitoringAnchorHttpRequestCount', 0, /anchor must measure/],
+    ['monitoringAnchorComputeGbSeconds', 0, /anchor must measure/],
+    ['monitoringAnchorDatabaseReadRequestUnits', 0, /anchor must measure/],
+    ['monitoringAnchorDatabaseWriteRequestUnits', 0, /anchor must measure/],
+    ['monitoringAnchorStorageGb', 0, /anchor must measure/],
+    ['monitoringAnchorRegion', 'eu-west-1', /anchor must measure/],
+  ]) {
+    const input = structuredClone(fixture);
+    input[field] = value;
+    assert.throws(() => evaluateManagedEstateCost(input), message, field);
+  }
+
+  const wrongProvider = declaredBudget();
+  wrongProvider.lineItems.find(
+    (row) => row.category === 'monitoring-anchor-storage',
+  ).pricing.providerId = 'new-relic';
+  assert.throws(
+    () => evaluateManagedEstateCost(wrongProvider, budgetOptions),
+    /provider aws/,
+  );
+
+  const wrongRegion = declaredBudget();
+  wrongRegion.lineItems.find(
+    (row) => row.category === 'monitoring-anchor-compute',
+  ).pricing.region = 'us-west-2';
+  assert.throws(
+    () => evaluateManagedEstateCost(wrongRegion, budgetOptions),
+    /anchor region/,
+  );
+
+  const wrongCollectorSize = declaredBudget();
+  wrongCollectorSize.lineItems.find(
+    (row) => row.category === 'monitoring-collector-compute',
+  ).pricing.memoryMb = 256;
+  assert.throws(
+    () => evaluateManagedEstateCost(wrongCollectorSize, budgetOptions),
+    /candidate sizing/,
+  );
+
+  const missingIndependentCosts = structuredClone(fixture);
+  missingIndependentCosts.lineItems = missingIndependentCosts.lineItems.filter(
+    ({ category }) =>
+      category === 'monitoring' || !category.startsWith('monitoring-'),
+  );
+  assert.throws(
+    () => evaluateManagedEstateCost(missingIndependentCosts),
+    /missing categories: .*monitoring-collector|missing categories: .*monitoring-anchor/,
+  );
 });
 
 test('cannot qualify production from Boolean declarations and placeholder quotes', () => {
@@ -1002,7 +1100,10 @@ test('requires both quarterly drills to cover every database and retained object
         ].databaseStorageGb = 0;
       },
       (input) => {
-        input.restoreDrills[mode].sourceTransferGb = 1;
+        input.restoreDrills[mode].databaseSourceTransferGb = 0.1;
+      },
+      (input) => {
+        input.restoreDrills[mode].objectSourceTransferGb = 1;
       },
       (input) => {
         input.restoreDrills[mode].runnerTransferGb = 1;
@@ -1011,7 +1112,10 @@ test('requires both quarterly drills to cover every database and retained object
         input.restoreDrills[mode].scratchStorageGb = 1;
       },
       (input) => {
-        input.restoreDrills[mode].sourceRequestCount = 4;
+        input.restoreDrills[mode].databaseSourceRequestCount = 1;
+      },
+      (input) => {
+        input.restoreDrills[mode].objectSourceRequestCount = 1;
       },
       (input) => {
         input.restoreDrills[mode].runsPerQuarter = 0;
@@ -1030,8 +1134,10 @@ test('requires both quarterly drills to cover every database and retained object
     for (const unit of [
       'compute',
       'requests',
-      'source-requests',
-      'source-transfer',
+      'database-source-requests',
+      'database-source-transfer',
+      'object-source-requests',
+      'object-source-transfer',
       'runner-transfer',
       'database-hours',
       'database-storage',
@@ -1158,9 +1264,11 @@ test('includes quarterly receipt traffic in peak-month budget enforcement', () =
 test('refuses smaller drill I/O even when the quoted quantities match', () => {
   for (const mode of ['pitr', 'independent']) {
     for (const [field, unit, quantity] of [
-      ['sourceTransferGb', 'source-transfer', 1 / 3],
+      ['databaseSourceTransferGb', 'database-source-transfer', 1 / 3],
+      ['objectSourceTransferGb', 'object-source-transfer', 1 / 3],
       ['runnerTransferGb', 'runner-transfer', 1 / 3],
-      ['sourceRequestCount', 'source-requests', 1 / 3],
+      ['databaseSourceRequestCount', 'database-source-requests', 1 / 3],
+      ['objectSourceRequestCount', 'object-source-requests', 1 / 3],
       ['scratchStorageGb', 'scratch-storage', 4 / 3],
     ]) {
       const input = structuredClone(fixture);
@@ -1175,4 +1283,134 @@ test('refuses smaller drill I/O even when the quoted quantities match', () => {
       );
     }
   }
+});
+
+test('requires object counts and byte totals to agree in both directions', () => {
+  for (const [bytes, count] of [
+    ['primaryObjectStoredGb', 'primaryObjectCurrentCount'],
+    ['primaryObjectRetainedVersionGb', 'primaryObjectRetainedVersionCount'],
+  ]) {
+    const missingBytes = structuredClone(fixture);
+    missingBytes[bytes] = 0;
+    assert.throws(
+      () => evaluateManagedEstateCost(missingBytes),
+      /object byte and object-count measurements/,
+    );
+    const missingCount = structuredClone(fixture);
+    missingCount[count] = 0;
+    assert.throws(
+      () => evaluateManagedEstateCost(missingCount),
+      /object byte and object-count measurements/,
+    );
+  }
+});
+
+test('prices database and object drill sources as separate provider quantities', () => {
+  for (const mode of ['pitr', 'independent']) {
+    for (const kind of ['database', 'object']) {
+      for (const unit of ['requests', 'transfer']) {
+        const input = structuredClone(fixture);
+        const category = `${mode}-drill-${kind}-source-${unit}`;
+        input.lineItems.find((row) => row.category === category).quantity = 0;
+        assert.throws(
+          () => evaluateManagedEstateCost(input),
+          /quantity does not match/,
+          category,
+        );
+      }
+    }
+  }
+
+  const wrongProvider = declaredBudget();
+  wrongProvider.lineItems.find(
+    (row) => row.category === 'pitr-drill-object-source-transfer',
+  ).pricing.providerId = 'crunchybridge';
+  assert.throws(
+    () => evaluateManagedEstateCost(wrongProvider, budgetOptions),
+    /source provider cloudflare-r2/,
+  );
+});
+
+test('drill storage uses measured expanded databases rather than compressed dumps', () => {
+  for (const mode of ['pitr', 'independent']) {
+    const input = structuredClone(fixture);
+    input.databaseExpandedSizesGb['studio-production'] = 5;
+    const otherMode = mode === 'pitr' ? 'independent' : 'pitr';
+    input.restoreDrills[otherMode].services[
+      'studio-production'
+    ].databaseStorageGb = 5;
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      /expanded|retained object inventory/,
+      mode,
+    );
+  }
+  const missing = structuredClone(fixture);
+  delete missing.databaseExpandedSizesGb['studio-staging'];
+  assert.throws(
+    () => evaluateManagedEstateCost(missing),
+    /databaseExpandedSizesGb/,
+  );
+});
+
+test('annual re-encryption binds measured KMS and compute and raises peak month', () => {
+  for (const [field, value] of [
+    ['batchSize', 0],
+    ['batchInvocationCount', 500],
+    ['verificationInvocationCount', 0],
+    ['configuredRootCount', 0],
+    ['computeGbSeconds', 0],
+  ]) {
+    const input = structuredClone(fixture);
+    input.annualReencryption['studio-production'][field] = value;
+    if (field === 'batchInvocationCount')
+      input.lineItems.find(
+        (row) => row.category === 'annual-reencryption-kms-requests',
+      ).quantity = 2006 / 12;
+    assert.throws(() => evaluateManagedEstateCost(input), /annualReencryption/);
+  }
+
+  const changedRoots = structuredClone(fixture);
+  changedRoots.annualReencryption['studio-production'].configuredRootCount = 3;
+  assert.throws(
+    () => evaluateManagedEstateCost(changedRoots),
+    /quantity does not match/,
+  );
+  const repricedRoots = structuredClone(changedRoots);
+  repricedRoots.lineItems.find(
+    (row) => row.category === 'annual-reencryption-kms-requests',
+  ).quantity = 2510 / 12;
+  assert.doesNotThrow(() => evaluateManagedEstateCost(repricedRoots));
+
+  const emptyEnvironment = structuredClone(fixture);
+  Object.assign(emptyEnvironment.annualReencryption['studio-production'], {
+    recordCount: 0,
+    batchInvocationCount: 1,
+    computeGbSeconds: 1,
+  });
+  emptyEnvironment.lineItems.find(
+    (row) => row.category === 'annual-reencryption-kms-requests',
+  ).quantity = 1008 / 12;
+  emptyEnvironment.lineItems.find(
+    (row) => row.category === 'annual-reencryption-compute',
+  ).quantity = 51 / 12;
+  assert.doesNotThrow(() => evaluateManagedEstateCost(emptyEnvironment));
+
+  const priced = structuredClone(fixture);
+  priced.lineItems.find(
+    (row) => row.category === 'annual-reencryption-compute',
+  ).unitPriceUsd = 0.01;
+  const result = evaluateManagedEstateCost(priced);
+  assert.ok(result.peakMonthUsd > result.totalUsd);
+
+  const peakBreach = declaredBudget();
+  const compute = peakBreach.lineItems.find(
+    (row) => row.category === 'annual-reencryption-compute',
+  );
+  compute.unitPriceUsd = 0.1;
+  compute.pricing.unitPriceUsd = compute.unitPriceUsd;
+  assert.throws(
+    () => evaluateManagedEstateCost(peakBreach, budgetOptions),
+    /peak monthly total .* exceeds the \$100\.00 cap/,
+  );
 });
