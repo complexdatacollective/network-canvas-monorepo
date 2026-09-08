@@ -41,6 +41,25 @@ it('resolves explicit runtime inputs and bounded defaults without migration cred
   expect(JSON.stringify(result)).not.toContain('never-runtime');
 });
 
+it('accepts an optional bounded private metrics token', () => {
+  expect(readRegistryEnv(valid).metricsToken).toBeUndefined();
+  const metricsToken = 'm'.repeat(32);
+  expect(
+    readRegistryEnv({ ...valid, REGISTRY_METRICS_TOKEN: metricsToken })
+      .metricsToken,
+  ).toBe(metricsToken);
+});
+
+it('accepts only explicit IP and CIDR trusted transport peers', () => {
+  expect(readRegistryEnv(valid).trustedProxies).toBeUndefined();
+  expect(
+    readRegistryEnv({
+      ...valid,
+      REGISTRY_TRUSTED_PROXIES: ' 10.0.0.0/8, ,127.0.0.1,::1 ',
+    }).trustedProxies,
+  ).toEqual(['10.0.0.0/8', '127.0.0.1', '::1']);
+});
+
 describe('refuses unsafe runtime configuration with a bounded private error', () => {
   const cases = [
     { REGISTRY_DATABASE_URL: undefined },
@@ -57,6 +76,11 @@ describe('refuses unsafe runtime configuration with a bounded private error', ()
     { REGISTRY_PUBLIC_URL: 'https://registry.example.test/untrusted' },
     { REGISTRY_PUBLIC_URL: 'https://secret@registry.example.test/' },
     { REGISTRY_AUTH_SECRET: 'short' },
+    { REGISTRY_METRICS_TOKEN: 'short' },
+    { REGISTRY_METRICS_TOKEN: 'm'.repeat(1_025) },
+    { REGISTRY_METRICS_TOKEN: 'bad\0token'.padEnd(32, 'm') },
+    { REGISTRY_TRUSTED_PROXIES: 'proxy.internal' },
+    { REGISTRY_TRUSTED_PROXIES: '10.0.0.0/999' },
     { REGISTRY_SMTP_URL: undefined },
     { REGISTRY_POSTMARK_SERVER_TOKEN: 'synthetic-token' },
     { REGISTRY_POSTMARK_MESSAGE_STREAM: 'outbound' },

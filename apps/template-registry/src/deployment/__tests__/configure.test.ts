@@ -39,6 +39,7 @@ const generatedNames = [
   'REGISTRY_OPERATOR_PASSWORD',
   'REGISTRY_BACKUP_PASSWORD',
   'REGISTRY_AUTH_SECRET',
+  'REGISTRY_METRICS_TOKEN',
   'REGISTRY_MINIO_ROOT_USER',
   'REGISTRY_MINIO_ROOT_PASSWORD',
   'REGISTRY_S3_ACCESS_KEY_ID',
@@ -92,7 +93,32 @@ describe('Registry deployment configuration', () => {
       expect(env.REGISTRY_IMAGE).toBe(options.registryImage);
       expect(env.REGISTRY_SMTP_URL).toBe(options.smtpUrl);
       expect(env.REGISTRY_DOMAIN).toBe(options.domain);
+      expect(env.REGISTRY_TRUSTED_PROXIES).toBe('');
       expect(env.REGISTRY_S3_ACCESS_KEY_ID).toMatch(/^registry_/);
+    });
+  });
+
+  it('serializes only validated explicit trusted transport peers', async () => {
+    await fixture(async (output) => {
+      await configureRegistryDeployment(
+        {
+          ...options,
+          output,
+          trustedProxies: ['10.0.0.0/8', '192.168.0.1'],
+        },
+        templateRoot,
+      );
+      expect((await environment(output)).REGISTRY_TRUSTED_PROXIES).toBe(
+        '10.0.0.0/8,192.168.0.1',
+      );
+    });
+    await fixture(async (output) => {
+      await expect(
+        configureRegistryDeployment(
+          { ...options, output, trustedProxies: ['proxy.internal'] },
+          templateRoot,
+        ),
+      ).rejects.toThrow();
     });
   });
 

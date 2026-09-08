@@ -1,6 +1,6 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
-
 import type pg from 'pg';
+
+import { authorizeBearerToken } from '@codaco/studio-sync/operational-http';
 
 import type { AssetStore } from '../assets.ts';
 import { createOperationalMetrics } from './metrics.ts';
@@ -29,12 +29,9 @@ export function createObservability(options: {
   };
 }
 
-const digest = (value: string) => createHash('sha256').update(value).digest();
-
 export function authorizeMetrics(
   header: string | undefined,
   token: string,
 ): boolean {
-  if (!header?.startsWith('Bearer ')) return false;
-  return timingSafeEqual(digest(header.slice(7)), digest(token));
+  return authorizeBearerToken(header, token);
 }

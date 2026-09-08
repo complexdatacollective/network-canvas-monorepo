@@ -2020,9 +2020,6 @@ importers:
       hono:
         specifier: ^4.13.0
         version: 4.13.0
-      ipaddr.js:
-        specifier: ^2.5.0
-        version: 2.5.0
       pg:
         specifier: ^8.22.0
         version: 8.22.0
@@ -3192,6 +3189,9 @@ importers:
       '@noble/hashes':
         specifier: ^2.3.0
         version: 2.3.0
+      '@prometheus-io/client':
+        specifier: ^0.16.1
+        version: 0.16.1
       crc-32:
         specifier: ^1.2.2
         version: 1.2.2
@@ -3204,6 +3204,9 @@ importers:
       file-type:
         specifier: ^22.0.2
         version: 22.0.2(supports-color@10.2.2)
+      ipaddr.js:
+        specifier: ^2.5.0
+        version: 2.5.0
       nodemailer:
         specifier: 9.0.5
         version: 9.0.5

@@ -7,8 +7,14 @@ import { getRequestListener } from '@hono/node-server';
 import { expect, it, vi } from 'vitest';
 
 import { CURRENT_SCHEMA_VERSION } from '@codaco/protocol-validation';
+import { REQUEST_ID } from '@codaco/studio-sync/operational-http';
 
+import { createRegistryApp } from '../app.ts';
 import { createRegistryFixture, ORIGIN, template } from './fixtures.ts';
+
+const PRIVACY_CANARY =
+  'participant@example.test-secret-token-template-id-0123456789';
+const SUPPLIED_REQUEST_ID = 'CB6DC2C0-DF78-4FD2-9131-7FF2909C88E5';
 
 it('retains artifact capacity while actual Node responses are blocked on a paused TCP reader', async () => {
   const fixture = await createRegistryFixture({
@@ -102,6 +108,11 @@ it('retains artifact capacity while actual Node responses are blocked on a pause
     expect(fixture.blobs.get).toHaveBeenCalledTimes(2);
     sockets[0]!.destroy();
     await vi.waitFor(() => expect(responses[0]!.destroyed).toBe(true));
+    await vi.waitFor(() =>
+      expect(
+        fixture.requestLogs.filter(({ status }) => status === 499),
+      ).toHaveLength(1),
+    );
     const recovered = await fetch(`http://127.0.0.1:${bound.port}${path}`);
     expect(recovered.status).toBe(200);
     expect(new Uint8Array(await recovered.arrayBuffer())).toEqual(
@@ -182,3 +193,146 @@ it.each(['auth', 'json', 'multipart'] as const)(
     }
   },
 );
+
+it('logs one bounded line at actual Node completion and exports bounded metrics', async () => {
+  const fixture = await createRegistryFixture();
+  const server = createServer(
+    getRequestListener(fixture.app.fetch, { overrideGlobalObjects: false }),
+  );
+  try {
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const bound = server.address();
+    if (!bound || typeof bound === 'string')
+      throw new Error('REGISTRY_TEST_HTTP_ADDRESS_MISSING');
+    const response = await fetch(
+      `http://127.0.0.1:${bound.port}/api/${PRIVACY_CANARY}?token=${PRIVACY_CANARY}`,
+      {
+        headers: {
+          'x-request-id': SUPPLIED_REQUEST_ID,
+          'cookie': PRIVACY_CANARY,
+        },
+      },
+    );
+    expect(response.status).toBe(404);
+    expect(response.headers.get('x-request-id')).toMatch(REQUEST_ID);
+    expect(response.headers.get('x-request-id')).not.toBe(
+      SUPPLIED_REQUEST_ID.toLowerCase(),
+    );
+    await response.text();
+    await vi.waitFor(() => expect(fixture.requestLogs).toHaveLength(1));
+    expect(fixture.requestLogs[0]).toEqual({
+      timestamp: expect.any(String),
+      event: 'http_request',
+      request_id: response.headers.get('x-request-id'),
+      route: 'unmatched',
+      method: 'GET',
+      status: 404,
+      duration_ms: expect.any(Number),
+    });
+    expect(JSON.stringify(fixture.requestLogs)).not.toContain(PRIVACY_CANARY);
+    const metrics = await fixture.observability.scrape();
+    expect(metrics.body).toContain(
+      'registry_http_requests_total{method="GET",route="unmatched",status="404"} 1',
+    );
+    expect(metrics.body).not.toContain(PRIVACY_CANARY);
+    expect(metrics.body).toContain(
+      'registry_database_pool_capacity{pool="application"}',
+    );
+    expect(metrics.body).toContain(
+      'registry_database_pool_capacity{pool="operator"}',
+    );
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await fixture.dispose();
+  }
+});
+
+it('accepts a supplied request UUID only from an explicitly trusted transport peer', async () => {
+  const fixture = await createRegistryFixture();
+  const app = createRegistryApp({
+    ...fixture,
+    trustedProxies: ['127.0.0.1'],
+    accepting: () => true,
+    ready: async () => true,
+    onDiagnostic: () => {
+      throw new Error('Unexpected diagnostic');
+    },
+  });
+  expect(
+    (
+      await app.request(`${ORIGIN}/healthz`, {
+        headers: { 'x-request-id': SUPPLIED_REQUEST_ID },
+      })
+    ).headers.get('x-request-id'),
+  ).not.toBe(SUPPLIED_REQUEST_ID.toLowerCase());
+  const server = createServer(
+    getRequestListener(app.fetch, { overrideGlobalObjects: false }),
+  );
+  try {
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const bound = server.address();
+    if (!bound || typeof bound === 'string')
+      throw new Error('REGISTRY_TEST_HTTP_ADDRESS_MISSING');
+    const response = await fetch(`http://127.0.0.1:${bound.port}/healthz`, {
+      headers: { 'x-request-id': SUPPLIED_REQUEST_ID },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-request-id')).toBe(
+      SUPPLIED_REQUEST_ID.toLowerCase(),
+    );
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await fixture.dispose();
+  }
+});
+
+it('keeps metrics outside Better Auth and requires its optional dedicated token', async () => {
+  const fixture = await createRegistryFixture();
+  const token = 'registry-metrics-token-at-least-32-characters';
+  try {
+    expect((await fixture.app.request(`${ORIGIN}/metrics`)).status).toBe(404);
+    const app = createRegistryApp({
+      ...fixture,
+      metricsToken: token,
+      accepting: () => true,
+      ready: async () => true,
+      onDiagnostic: () => {
+        throw new Error('Unexpected diagnostic');
+      },
+    });
+    for (const authorization of [
+      undefined,
+      'Basic wrong',
+      'Bearer wrong',
+      `Bearer ${token} extra`,
+    ]) {
+      const response = await app.request(`${ORIGIN}/metrics`, {
+        headers: authorization ? { authorization } : undefined,
+      });
+      expect(response.status).toBe(401);
+      expect(response.headers.get('www-authenticate')).toBe('Bearer');
+      expect(await response.text()).not.toContain(token);
+    }
+    const response = await app.request(`${ORIGIN}/metrics`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('content-type')).toContain('text/plain');
+    expect(await response.text()).toContain('registry_http_requests_total');
+    expect(
+      (
+        await app.request(`${ORIGIN}/api/auth/metrics`, {
+          headers: { authorization: `Bearer ${token}` },
+        })
+      ).status,
+    ).not.toBe(200);
+    expect(JSON.stringify(fixture.requestLogs)).not.toContain(token);
+  } finally {
+    await fixture.dispose();
+  }
+});

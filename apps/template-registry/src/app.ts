@@ -1,9 +1,17 @@
-import { randomUUID } from 'node:crypto';
+import { IncomingMessage, ServerResponse } from 'node:http';
 
+import { getConnInfo } from '@hono/node-server/conninfo';
 import { OpenAPIHandler } from '@orpc/openapi/fetch';
 import { implement, ORPCError } from '@orpc/server';
 import { Hono } from 'hono';
 
+import {
+  authorizeBearerToken,
+  createRequestCompletion,
+  observeNodeResponse,
+  selectRequestId,
+} from '@codaco/studio-sync/operational-http';
+import { trustedPeer } from '@codaco/studio-sync/proxy-trust';
 import {
   TEMPLATE_ARTIFACT_LIMITS,
   TEMPLATE_ARTIFACT_MEDIA_TYPE,
@@ -13,6 +21,11 @@ import type { RegistryAccountAssets } from './account-assets.ts';
 import type { RegistryAuth } from './auth/service.ts';
 import { readBytesCapped } from './body.ts';
 import { generateRegistryOpenApi, registryContract } from './contract.ts';
+import {
+  registryRequestMethod,
+  registryRequestRoute,
+} from './observability/routes.ts';
+import type { RegistryObservability } from './observability/runtime.ts';
 import {
   ProblemContextSchema,
   RegistryError,
@@ -66,6 +79,9 @@ export type RegistryAppDependencies = {
   accountAssets?: RegistryAccountAssets;
   accepting: () => boolean;
   ready: () => Promise<boolean>;
+  metricsToken?: string;
+  trustedProxies?: readonly string[];
+  observability: Pick<RegistryObservability, 'request' | 'scrape'>;
   onDiagnostic: (
     code: 'REGISTRY_REQUEST_FAILED' | 'REGISTRY_READINESS_FAILED',
     requestId: string,
@@ -78,6 +94,9 @@ export function createRegistryApp({
   accountAssets,
   accepting,
   ready,
+  metricsToken,
+  trustedProxies = [],
+  observability,
   onDiagnostic,
 }: RegistryAppDependencies) {
   const router = {
@@ -286,7 +305,7 @@ export function createRegistryApp({
     ),
   };
   const app = new Hono<{
-    Bindings: { outgoing?: RegistryResponse };
+    Bindings: { incoming?: IncomingMessage; outgoing?: RegistryResponse };
     Variables: { requestId: string };
   }>();
   let activeArtifactUnits = 0;
@@ -294,8 +313,24 @@ export function createRegistryApp({
   let openapi: Awaited<ReturnType<typeof generateRegistryOpenApi>> | undefined;
 
   app.use('*', async (context, next) => {
-    const requestId = randomUUID();
+    const incoming = context.env?.incoming;
+    const suppliedRequestId = context.req.header('x-request-id');
+    const requestId = selectRequestId(
+      suppliedRequestId,
+      incoming instanceof IncomingMessage &&
+        trustedPeer(getConnInfo(context).remote.address, trustedProxies),
+    );
     context.set('requestId', requestId);
+    context.header('X-Request-ID', requestId);
+    const outgoing = context.env?.outgoing;
+    const complete = createRequestCompletion({
+      requestId,
+      route: registryRequestRoute(context.req.path),
+      method: registryRequestMethod(context.req.method),
+      record: observability.request,
+    });
+    if (outgoing instanceof ServerResponse)
+      observeNodeResponse(outgoing, complete);
     await next();
     context.header('X-Request-ID', requestId);
     context.header('X-Content-Type-Options', 'nosniff');
@@ -307,9 +342,13 @@ export function createRegistryApp({
         "default-src 'none'; frame-ancestors 'none'; sandbox",
       );
     context.header('Referrer-Policy', 'no-referrer');
+    if (!(outgoing instanceof ServerResponse)) complete(context.res.status);
   });
   app.use('*', async (context, next) => {
-    if (!accepting() && !['/healthz', '/readyz'].includes(context.req.path))
+    if (
+      !accepting() &&
+      !['/healthz', '/readyz', '/metrics'].includes(context.req.path)
+    )
       throw new RegistryError('SERVICE_UNAVAILABLE');
     await next();
   });
@@ -380,6 +419,21 @@ export function createRegistryApp({
       onDiagnostic('REGISTRY_READINESS_FAILED', context.get('requestId'));
     }
     return context.json({ status: 'unavailable' }, 503);
+  });
+  app.get('/metrics', async (context) => {
+    if (!metricsToken)
+      return context.json({ title: 'Not Found', status: 404 }, 404);
+    if (
+      !authorizeBearerToken(context.req.header('authorization'), metricsToken)
+    )
+      return context.json({ title: 'Unauthorized', status: 401 }, 401, {
+        'WWW-Authenticate': 'Bearer',
+      });
+    const metrics = await observability.scrape();
+    return context.body(metrics.body, 200, {
+      'Cache-Control': 'no-store',
+      'Content-Type': metrics.contentType,
+    });
   });
   app.all('/api/auth/*', async (context) => {
     const original = context.req.raw;

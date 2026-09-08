@@ -10,6 +10,7 @@ import { verifyRegistryDatabases } from './db/schema-state.ts';
 import type { RegistryDiagnostic } from './diagnostics.ts';
 import type { RegistryEnv } from './env.ts';
 import { createRegistryMailer } from './mailer.ts';
+import { createRegistryObservability } from './observability/runtime.ts';
 import { RegistryStore } from './store.ts';
 
 /** Own these resources after entry, including when startup refuses to proceed. */
@@ -32,6 +33,11 @@ export async function initializeRegistry({
   let worker: ReturnType<typeof startRegistryCleanup> | undefined;
   let accepting = false;
   let closing: Promise<void> | undefined;
+  const observability = createRegistryObservability({
+    pool,
+    operatorPool,
+    monitorProcess: true,
+  });
   const stopAdmission = () => {
     accepting = false;
   };
@@ -42,6 +48,7 @@ export async function initializeRegistry({
       mailer?.close();
       // Abort private-store work; an uncommitted cleanup remains retryable.
       blobs.close();
+      observability.stop();
       await stopped;
       await Promise.all([pool.end(), operatorPool.end()]);
     })();
@@ -93,6 +100,9 @@ export async function initializeRegistry({
         ]);
         return accepting && currentIdentity === identity;
       },
+      metricsToken: configuration.metricsToken,
+      trustedProxies: configuration.trustedProxies,
+      observability,
       onDiagnostic,
     });
     worker = startRegistryCleanup({
@@ -100,7 +110,7 @@ export async function initializeRegistry({
       onFailure: () => onDiagnostic('REGISTRY_CLEANUP_FAILED'),
     });
     accepting = true;
-    return { app, stopAdmission, close };
+    return { app, stopAdmission, close, observability };
   } catch {
     await close();
     throw new Error('REGISTRY_STARTUP_FAILED');
