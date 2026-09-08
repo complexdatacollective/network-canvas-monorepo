@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -57,12 +58,18 @@ const messages = defineMessages({
       'The credential could not be verified. Check it in the Registry and try again.',
     description: 'Registry link error.',
   },
+  linkSucceeded: {
+    id: 'studio.accountRegistry.linkSucceeded',
+    defaultMessage: 'The Registry publisher identity was linked.',
+    description: 'Registry link success announcement.',
+  },
 });
 
 export default function AccountRegistry() {
   const intl = useAppIntl();
   const queryClient = useQueryClient();
   const status = useQuery(orpc.account.registry.queryOptions());
+  const [linkedNotice, setLinkedNotice] = useState(false);
   return (
     <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-3xl flex-col gap-6 p-4">
       <div>
@@ -90,15 +97,22 @@ export default function AccountRegistry() {
             })}
           </Alert>
         )}
+        {linkedNotice && (
+          <div role="status" aria-live="polite">
+            <Alert>{intl.formatMessage(messages.linkSucceeded)}</Alert>
+          </div>
+        )}
         {status.data?.origin && (
           <Form
             onSubmit={async ({ credential }) => {
               if (typeof credential !== 'string') return { success: false };
+              setLinkedNotice(false);
               try {
                 await rpcClient.account.linkRegistry({ credential });
                 await queryClient.invalidateQueries({
                   queryKey: orpc.account.registry.key(),
                 });
+                setLinkedNotice(true);
                 return { success: true };
               } catch {
                 return {

@@ -31,6 +31,10 @@
     "defaultMessage": "The credential could not be verified. Check it in the Registry and try again.",
     "description": "Registry link error."
   },
+  "studio.accountRegistry.linkSucceeded": {
+    "defaultMessage": "The Registry publisher identity was linked.",
+    "description": "Registry link success announcement."
+  },
   "studio.accountRegistry.linked": {
     "defaultMessage": "Linked as {name} on {origin}.",
     "description": "Linked Registry publisher identity."
@@ -2111,17 +2115,37 @@
     "defaultMessage": "Import template",
     "description": "Import submit label."
   },
+  "studio.templates.imported": {
+    "defaultMessage": "The Registry template was imported.",
+    "description": "Registry import success announcement."
+  },
   "studio.templates.intro": {
     "defaultMessage": "Import a verified Registry entry into a team, or publish an immutable local template version.",
     "description": "Template workspace explanation."
+  },
+  "studio.templates.origin": {
+    "defaultMessage": "Configured Registry: {origin}",
+    "description": "Operator-configured Registry origin."
   },
   "studio.templates.publish": {
     "defaultMessage": "Publish version",
     "description": "Publish submit label."
   },
+  "studio.templates.published": {
+    "defaultMessage": "The template version was published.",
+    "description": "Registry publication success announcement."
+  },
   "studio.templates.team": {
     "defaultMessage": "Team",
     "description": "Team selector label."
+  },
+  "studio.templates.unavailable": {
+    "defaultMessage": "This Studio instance has no Template Registry configured.",
+    "description": "Registry unavailable message."
+  },
+  "studio.templates.unsupported": {
+    "defaultMessage": "This Registry template uses a newer protocol schema than this Studio supports.",
+    "description": "Registry import schema-version refusal."
   },
   "studio.templates.version": {
     "defaultMessage": "{name}, version {version}",

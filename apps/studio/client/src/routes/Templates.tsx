@@ -64,6 +64,32 @@ const messages = defineMessages({
       'The Registry operation could not be completed. Check the values and try again.',
     description: 'Registry operation failure.',
   },
+  unsupported: {
+    id: 'studio.templates.unsupported',
+    defaultMessage:
+      'This Registry template uses a newer protocol schema than this Studio supports.',
+    description: 'Registry import schema-version refusal.',
+  },
+  origin: {
+    id: 'studio.templates.origin',
+    defaultMessage: 'Configured Registry: {origin}',
+    description: 'Operator-configured Registry origin.',
+  },
+  unavailable: {
+    id: 'studio.templates.unavailable',
+    defaultMessage: 'This Studio instance has no Template Registry configured.',
+    description: 'Registry unavailable message.',
+  },
+  imported: {
+    id: 'studio.templates.imported',
+    defaultMessage: 'The Registry template was imported.',
+    description: 'Registry import success announcement.',
+  },
+  published: {
+    id: 'studio.templates.published',
+    defaultMessage: 'The template version was published.',
+    description: 'Registry publication success announcement.',
+  },
   version: {
     id: 'studio.templates.version',
     defaultMessage: '{name}, version {version}',
@@ -75,7 +101,9 @@ export default function Templates() {
   const intl = useAppIntl();
   const queryClient = useQueryClient();
   const me = useQuery(orpc.me.queryOptions());
+  const registry = useQuery(orpc.account.registry.queryOptions());
   const [teamId, setTeamId] = useState<string>('');
+  const [notice, setNotice] = useState<string | null>(null);
   const selectedTeam = teamId || me.data?.teams[0]?.teamId || '';
   const templates = useQuery({
     ...orpc.templates.list.queryOptions({ input: { teamId: selectedTeam } }),
@@ -96,6 +124,20 @@ export default function Templates() {
         </Paragraph>
       </div>
       <Surface spacing="lg">
+        {registry.data?.origin ? (
+          <Paragraph margin="none">
+            {intl.formatMessage(messages.origin, {
+              origin: registry.data.origin,
+            })}
+          </Paragraph>
+        ) : (
+          <Alert>{intl.formatMessage(messages.unavailable)}</Alert>
+        )}
+        {notice && (
+          <div role="status" aria-live="polite">
+            <Alert>{notice}</Alert>
+          </div>
+        )}
         <label className="flex flex-col gap-2 font-medium">
           {intl.formatMessage(messages.team)}
           <NativeSelectField
@@ -113,17 +155,24 @@ export default function Templates() {
         <Form
           onSubmit={async ({ entryId }) => {
             if (typeof entryId !== 'string') return { success: false };
+            setNotice(null);
             try {
               await rpcClient.templates.import({
                 teamId: selectedTeam,
                 entryId,
               });
               await refresh();
+              setNotice(intl.formatMessage(messages.imported));
               return { success: true };
-            } catch {
+            } catch (error) {
               return {
                 success: false,
-                formErrors: [intl.formatMessage(messages.failed)],
+                formErrors: [
+                  error instanceof Error &&
+                  error.message.includes('TEMPLATE_SCHEMA_UNSUPPORTED')
+                    ? intl.formatMessage(messages.unsupported)
+                    : intl.formatMessage(messages.failed),
+                ],
               };
             }
           }}
@@ -134,7 +183,7 @@ export default function Templates() {
             component={InputField}
             required
           />
-          <SubmitButton disabled={!selectedTeam}>
+          <SubmitButton disabled={!selectedTeam || !registry.data?.origin}>
             {intl.formatMessage(messages.import)}
           </SubmitButton>
         </Form>
@@ -153,6 +202,7 @@ export default function Templates() {
           <Form
             onSubmit={async ({ credential }) => {
               if (typeof credential !== 'string') return { success: false };
+              setNotice(null);
               try {
                 await rpcClient.templates.publish({
                   teamId: selectedTeam,
@@ -160,6 +210,7 @@ export default function Templates() {
                   credential,
                 });
                 await refresh();
+                setNotice(intl.formatMessage(messages.published));
                 return { success: true };
               } catch {
                 return {
@@ -177,7 +228,9 @@ export default function Templates() {
               autoComplete="off"
               required
             />
-            <SubmitButton>{intl.formatMessage(messages.publish)}</SubmitButton>
+            <SubmitButton disabled={!registry.data?.origin}>
+              {intl.formatMessage(messages.publish)}
+            </SubmitButton>
           </Form>
         </Surface>
       ))}
