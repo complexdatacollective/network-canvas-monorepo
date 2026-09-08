@@ -2590,14 +2590,19 @@ describe('a codebook editor open over a row when the stage is repointed', () => 
    * the pedigree stages, which own the roles they fill, so a form may collect
    * none of them.
    */
-  const giveFamilyMembersSomethingToCollect = (
+  const familyMemberDocument = (
     harness: ReturnType<typeof renderStageEditor>,
-  ) => {
-    const document = asRecord(
+  ) =>
+    asRecord(
       harness.host.getSnapshot().protocolSections[
         sectionId({ kind: 'codebookNode', typeId: 'family_member' })
       ],
     );
+
+  const giveFamilyMembersSomethingToCollect = (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    const document = familyMemberDocument(harness);
     harness.receiveCodebookUpdate({
       node: {
         family_member: {
@@ -2779,6 +2784,48 @@ describe('a codebook editor open over a row when the stage is repointed', () => 
     expect(
       screen.getByRole('button', { name: 'Create attribute' }),
     ).toBeDisabled();
+  });
+
+  /**
+   * The row's OWN answer about how the attribute is collected, when the type
+   * under it changes.
+   *
+   * The control a row shows is written back to the CODEBOOK when the row is
+   * saved, so a control still standing after the stage has moved to another
+   * type would be a control written onto whatever that type keeps under the
+   * same key. It cannot be: a key belongs to one type, so the type the stage
+   * moved to holds nothing under the row's, there is no control to offer for
+   * an attribute that is not there, and the dialog says so and refuses.
+   */
+  it('cannot write the control the researcher chose onto the type the stage moved to', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    giveFamilyMembersSomethingToCollect(harness);
+
+    const dialog = await startARowCollecting(harness, 'name');
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'TextArea',
+    );
+
+    repointTheStage(harness);
+
+    expect(
+      dialog.queryByRole('combobox', { name: 'Input control' }),
+    ).toBeNull();
+    expect(await dialog.findByText(NO_WAY_TO_ANSWER)).toBeInTheDocument();
+    const add = dialog.getByRole('button', { name: 'Add' });
+    expect(add).toHaveAttribute('aria-disabled', 'true');
+
+    // Pressed anyway, because `aria-disabled` announces a refusal rather than
+    // preventing one — and nothing of the researcher's control reaches the
+    // codebook of the type the stage moved to.
+    await harness.user.click(add);
+    const variables = asRecord(familyMemberDocument(harness).variables);
+    expect(variables.name).toBeUndefined();
+    expect(asRecord(variables.fm_notes).component).toBe('Text');
   });
 
   /** And the other half, the same as the lease's: nothing new may be started. */
