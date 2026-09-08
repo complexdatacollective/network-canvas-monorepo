@@ -24,7 +24,11 @@ through without handling messages.
   one exact `*.fly.dev` backend origin. Placeholder, HTTP, credential-bearing,
   port-bearing, or path-bearing origins make every request fail with 503.
 - Static requests allow only GET and HEAD and receive a small public header
-  allowlist. Static responses cannot set cookies or redirect to a foreign host.
+  allowlist. Their query strings stay in the browser URL but are not sent to
+  Netlify: the production build uses hashed asset paths, and the only current
+  client route queries carry sign-in errors or invitation IDs that the static
+  origin does not need. Static responses cannot set cookies or redirect to a
+  foreign host.
 - Server surfaces preserve cookie, authorization, Origin, `Sec-Fetch-Site`, and
   WebSocket handshake headers. Untrusted forwarding headers are replaced with
   the approved public host and HTTPS scheme. The Node server still performs its

@@ -143,19 +143,22 @@ test('sends only an explicit public header allowlist to the Netlify static origi
     });
   });
   const response = await router.fetch(
-    new Request(`${PUBLIC_ORIGIN}/studies/example?view=grid`, {
-      headers: {
-        'accept': 'text/html',
-        'authorization': 'Bearer private',
-        'cookie': 'studio.session=secret',
-        'origin': 'https://foreign.example',
-        'referer': `${PUBLIC_ORIGIN}/private/team`,
-        'x-csrf-token': 'private-csrf',
+    new Request(
+      `${PUBLIC_ORIGIN}/sign-in?invitationId=private-invitation&error=access_denied`,
+      {
+        headers: {
+          'accept': 'text/html',
+          'authorization': 'Bearer private',
+          'cookie': 'studio.session=secret',
+          'origin': 'https://foreign.example',
+          'referer': `${PUBLIC_ORIGIN}/private/team`,
+          'x-csrf-token': 'private-csrf',
+        },
       },
-    }),
+    ),
   );
 
-  assert.equal(captured.url, `${STATIC_ORIGIN}/studies/example?view=grid`);
+  assert.equal(captured.url, `${STATIC_ORIGIN}/sign-in`);
   assert.equal(captured.headers.get('accept'), 'text/html');
   for (const header of [
     'authorization',
@@ -351,6 +354,27 @@ test('returns a same-host HTTPS redirect without forwarding HTTP credentials', a
     response.headers.get('location'),
     `${PUBLIC_ORIGIN}/rpc/status?fresh=true`,
   );
+  assert.equal(calls, 0);
+});
+
+test('keeps network-path and encoded separator redirects on the approved host', async () => {
+  let calls = 0;
+  const router = ingress(async () => {
+    calls += 1;
+    return new Response(null);
+  });
+  const duplicate = await router.fetch(
+    new Request('http://networkcanvas.studio//evil.example/path?next=1'),
+  );
+  assert.equal(duplicate.status, 308);
+  assert.equal(
+    duplicate.headers.get('location'),
+    `${PUBLIC_ORIGIN}/evil.example/path?next=1`,
+  );
+  const encoded = await router.fetch(
+    new Request('http://networkcanvas.studio/%2f%2fevil.example/path'),
+  );
+  assert.equal(encoded.status, 400);
   assert.equal(calls, 0);
 });
 
