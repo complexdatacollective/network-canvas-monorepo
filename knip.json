@@ -178,6 +178,9 @@
       "project": ["src/**/*.{ts,tsx}"]
     },
     "apps/studio/server": {
+      // The local distribution qualifier locates Docker with the host's Unix
+      // `which` command, not an npm package.
+      "ignoreBinaries": ["which"],
       "entry": [
         "scripts/auth-cli-config.ts!",
         // Resolved by vite.netlify.config.ts as a build input string, never
