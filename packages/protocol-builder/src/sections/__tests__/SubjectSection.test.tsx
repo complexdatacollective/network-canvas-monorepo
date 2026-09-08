@@ -29,12 +29,15 @@ const draftString = (draft: unknown, ...keys: readonly string[]): string => {
   return typeof current === 'string' ? current : '';
 };
 
-const codebookNodeNames = (
-  sections: Readonly<Record<string, Record<string, unknown>>>,
-): unknown[] =>
-  Object.entries(sections)
-    .filter(([id]) => id.startsWith('codebook:node:'))
-    .map(([, document]) => document.name);
+const codebookNamesOf =
+  (prefix: string) =>
+  (sections: Readonly<Record<string, Record<string, unknown>>>): unknown[] =>
+    Object.entries(sections)
+      .filter(([id]) => id.startsWith(prefix))
+      .map(([, document]) => document.name);
+
+const codebookNodeNames = codebookNamesOf('codebook:node:');
+const codebookEdgeNames = codebookNamesOf('codebook:edge:');
 
 describe('the section that says what a stage is about', () => {
   it('offers the protocol’s own node types, and nothing else', () => {
@@ -713,5 +716,73 @@ describe('dismissing the create dialog while it is submitting', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
+  });
+});
+
+/**
+ * Node and edge types share one namespace, which is what Architect has always
+ * enforced (`TypeEditor` validates a new name against both codebook maps).
+ *
+ * A node named like an edge is two different things a researcher cannot tell
+ * apart afterwards: the codebook lists them by name, every export names them,
+ * and a rule or a form naming one of them reads as naming the other. The
+ * confusable pair is the worse half — an exact duplicate at least looks wrong
+ * on sight, while a name differing only in case or in a Unicode form the
+ * comparison folds together looks like the type the researcher meant.
+ */
+describe('naming a new type', () => {
+  const edgeSubjectSection = <SubjectSection entity="edge" filter />;
+
+  it('refuses a node name an edge type already uses', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new node type' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+      'knows',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+
+    expect(
+      await screen.findByText('A type named "knows" already exists.'),
+    ).toBeInTheDocument();
+    expect(
+      codebookNodeNames(harness.host.getSnapshot().protocolSections),
+    ).toEqual(['person', 'family member']);
+  });
+
+  it('refuses an edge name a node type already uses, whatever the case', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-edge-form-1',
+      sections: edgeSubjectSection,
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new edge type' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Edge type name' }),
+      'Person',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+
+    // The editor folds case and Unicode form together on purpose, so this is
+    // the pair that would otherwise have been committed: two types nobody
+    // reading the codebook could tell apart.
+    expect(
+      await screen.findByText('A type named "Person" already exists.'),
+    ).toBeInTheDocument();
+    expect(
+      codebookEdgeNames(harness.host.getSnapshot().protocolSections),
+    ).toEqual(['family_edge', 'knows']);
   });
 });
