@@ -1,0 +1,56 @@
+# Studio #1243 pause and resume
+
+Paused on 2026-09-08 at the user's request to preserve weekly AI usage. All three implementation agents have stopped. No new implementation, test, review, merge, or provisioning round should start until the user resumes. Existing GitHub jobs may finish independently. This is a preservation checkpoint, not epic completion or a release-readiness verdict.
+
+## Durable state
+
+Implementation worktrees are under `.claude/worktrees/studio-1243/` in the persistent `afe1/network-canvas-monorepo` workspace. They share the Git repository at `/Users/jmh629/Projects/network-canvas-monorepo/.git`. Keep these worktrees, `evidence/`, `rescued-metadata/`, restored commit records, fixture containers and exact-source image archives. Never use temporary directories for long-lived implementation. Use one committer per worktree, named branches and remote checkpoints; do not merge the preserved `combined` tree wholesale or reintroduce its obsolete PostgreSQL security modules.
+
+All implementation checkpoints below have been pushed. The Registry specification worktree is clean at its parent checkpoint and contains no new work. SHA values are full commit identities, even where branch names are shortened for readability.
+
+| Worktree                       | Commit                                     | Remote branch / PR                                                  | Status at pause                                                                                                                                                      |
+| ------------------------------ | ------------------------------------------ | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| migration-integration          | `1f54697812c0f02cbc0afc6fadedaccdb8bda9b5` | `feat/studio-shared-postgres-migrations`, PR #1740                  | 97 relevant PostgreSQL tests and Sync types pass; three new review findings remain unfixed.                                                                          |
+| inventory-integration          | `b5bc2f61569aba1353263c0cf0f774a83222689b` | `codex/studio-1243-inventory-integration`, PR #1741                 | 302 estate/inventory/CI checks pass; known findings fixed and resolved; newest current-head review and CI still need inspection.                                     |
+| registry-integration           | `f8c000f81d7bf5bcd93db08bd6918df19f1b2e72` | `checkpoint/studio-1243-registry-review-round1`                     | Lead HTTP, metadata and moderation fixes verified locally; PR #1745 still has older head `74ee60bc94d3129c5579dd0d8517e1ea4e956a0b`.                                 |
+| registry-recovery-review-fixes | `59be9d1a8f6228eb0812567c1653d194e0c3d1e3` | `checkpoint/studio-1243-registry-recovery-review-fixes`             | Recovery TLS, readiness, transaction liveness and verified publisher identity fixes tested; integration and lead review pending.                                     |
+| registry-storage-review-fixes  | `50bfab54c453ff22aefd3984f01d54de998a0681` | `checkpoint/studio-1243-registry-storage-review-fixes`              | Configuration custody and versioned-object deletion plus explicit S3/R2 contracts; 72 focused tests and static checks pass; integration and lead review pending.     |
+| recovery-integration           | `ad6e95c84211f6bdd7d9e1027f1fadddb5e11a3a` | `feat/studio-recovery-authorization`, PR #1746                      | 297 prior PostgreSQL and 70 final focused checks pass; current review and parent integration pending. Verify the PR's actual remote branch before pushing.           |
+| registry-studio-flow           | `3aad784e5507985e579b94e1a70322be41527be6` | `checkpoint/studio-1243-registry-studio-flow`                       | WIP UI checkpoint: seven new interaction tests and client types pass; staged lint/format hook passed. Full checks and browser/adversarial review pending; no PR yet. |
+| installer-integration          | `be2e879847d20f4e9a12a80d9ef47937a53ac897` | `checkpoint/studio-1243-installer-integration`                      | WIP imported dependency graph; Docker/Compose/workflow reconciliation and verification incomplete.                                                                   |
+| observability-integration      | `60453ca685a8ebde919d931e9a887905951dce58` | `checkpoint/studio-1243-observability-integration`                  | Local focused tests/types/static checks pass; integration, independent review and live qualification remain.                                                         |
+| telemetry-qualification        | `24bb0755cf7fbdf6fcbf792882f950b9d24ddf8e` | `checkpoint/studio-1243-telemetry-qualification`                    | Populated Docker recovery passed in 194.10s with kernel TCP/UDP and native-child controls. Browser runtime evidence and canonical integration remain.                |
+| registry-spec-integration      | `f8c000f81d7bf5bcd93db08bd6918df19f1b2e72` | Parent preserved in `checkpoint/studio-1243-registry-review-round1` | Clean; no specification generation, tests or implementation started.                                                                                                 |
+
+The root UI checkpoint includes named-team selection, role-appropriate controls, bounded loading/errors, credential clearing with focus preserved, publication receipts and provenance. Its tests cover account linking, publish/retry behavior, team changes, errors and provenance. Existing flow checkpoint `c9dcdb84e0a2c9056f10f302ce2e2c4e34553bbf` separately verifies imported metadata before assets or SQL. Full UI validation remains pending; focused passing checks do not establish release readiness.
+
+## Landed work and open review gates
+
+Cost model #1734, Fly preparation #1735, ingress #1736, PII/canonical alerts #1718 and KMS/backup custody #1723 are merged with ancestry previously verified. KMS merge commit is `5441c68f2cd097f944bc86f81c9eca3ede72e163`; reviewed head `65f3925fe35f60f82abae9463db74aebe7731514`. These do not establish live hosting or live recovery qualification.
+
+Resume by inspecting fresh GitHub state, then:
+
+1. Fix the three #1740 findings in the clean `migration-review-fixes` tree: snapshot and validate migration artifacts before the first await; snapshot authoring sidecar statements before await; prevent extra caller properties from overriding Studio-owned authoring options. Details: `evidence/migration-main-current-review.json`. Obtain current-head review and required checks, merge, and verify ancestry.
+2. Independently review and integrate the three Registry fixes into #1745, refresh PostgreSQL/static/image evidence, then reply to and resolve the ten first-round findings. Inspect configuration ancestor ownership and symlink custody, version deletion pagination/errors/late writes and the explicit R2 no-versioning contract carefully. Details: `evidence/registry-review-round1-current.json`. Retarget after #1740 lands, and repeat current-head review.
+3. Integrate the corrected parents into #1746 and Studio flow. Complete the WIP UI's full checks, browser/keyboard review and independent review before opening its PR. Preserve migration identities 0001–0008; recovery is additive 0009 and Registry flow additive 0010.
+4. Finish installer, observability and telemetry integration against canonical dependency heads. Build immutable archives of exact commits. Execute the Linux Chromium namespace CI gate; local harness code is not runtime evidence. Complete signed distributable images, checkout-free install, predecessor upgrade, database/key/object recovery, safe restart and recovery timing.
+5. Complete the public CC0 Registry specification, OpenAPI 3.1/3.0 artifacts and pinned Python-client localhost compatibility gate. No dedicated public specification repository has been created.
+6. Finish live managed deployment, independent backups/retention, rollback, DNS/TLS, measured cost and delivered operator alerts. Provider access was not available at pause. Do not close #1243 from configuration, pricing estimates or unit tests alone.
+
+No agent is mid-flight. Installer work is substantial rather than a nearly finished deliverable. The newest inventory and recovery reviews may finish while paused; inspect them once on resume instead of starting duplicate reviews.
+
+## Evidence and execution notes
+
+Raw evidence is in the persistent sibling `evidence/` directory. Relevant files include `studio-registry-ui-tests.log`, `studio-registry-ui-types.log`, `studio-registry-ui-i18n.log`, `studio-flow-master-review.md`, `migration-main-current-review.json`, `registry-review-round1-current.json`, `recovery-review-round1-current.json` and inventory endpoint before/after logs. The older flow review note predates the final UI WIP; reconcile it against the checkpoint.
+
+Telemetry's populated recovery used earlier images and does not qualify final canonical delivery. The Linux Chromium path remains an Ubuntu CI gate because an internal Docker Desktop network cannot reach the macOS-hosted built server without a broader boundary. One terminated diagnostic Chromium invocation accidentally used Docker's default network and emitted background Google GCM authentication/registration requests; it carried no project credentials or application payload. Qualification runs were isolated. Preserve this limit when describing the evidence.
+
+Use Node 24.18.0 from `/Users/jmh629/.local/share/fnm/node-versions/v24.18.0/installation/bin`, package-local Vitest/TypeScript binaries and existing fixtures. Studio tests require `DATABASE_URL`; Registry/Sync PostgreSQL tests use their existing fixture settings. Read owned container credentials programmatically without printing them. Do not run shared fixed-port fixtures concurrently or prune fixtures to resume. The common Git directory and localhost/Docker operations may require sandbox escalation.
+
+## Standing decisions
+
+The user authorizes implementation of prerequisites and merging PRs deemed ready after review and required checks. The $100/month limit applies only to hosting, not Codex or other AI usage. Approved domains: production `networkcanvas.studio` (alternative `studio.networkcanvas.com`) and staging `studio.networkcanvas.dev`; Netlify is authorized for the static client. Persistent services require their separate hosting.
+
+Proposed operator destination: `info@networkcanvas.com`, the existing security contact, with independent New Relic delivery; it is not yet live. Migration window: Tuesday 15:00–16:00 UTC. These choices avoid coupling operator alerts to Studio's notification path and provide a staffed weekday window. Billing #1253 is deferred; required encryption/key recovery, Registry and notification prerequisites are included.
+
+Commit only as Joshua Melville <joshua@northwestern.edu>, without assistant attribution. On resume, use independent worktrees and efficient models for bounded parallel tasks, retaining lead integration and adversarial review ownership. Pause remains in effect until the user resumes.

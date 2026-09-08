@@ -1,5 +1,7 @@
 # Studio platform foundation delivery checkpoint
 
+**Paused at user request.** The [pause and resume checkpoint](2026-09-08-studio-1243-pause-and-resume.md) supersedes the status and ownership below. All agents have stopped.
+
 Epic #1243 remains incomplete. This ledger records verified delivery and durable work ownership as of 2026-09-08.
 
 ## Durable workflow
