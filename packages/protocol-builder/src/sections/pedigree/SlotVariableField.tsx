@@ -90,7 +90,7 @@ export default function SlotVariableField({
 }: SlotVariableFieldProps) {
   const intl = useAppIntl();
   const { committedFields, protocolContext, storeApi } = useStageEditorForm();
-  const { roleMap, slotMap } = usePedigreeVariableIndexes();
+  const { roleMap, slotMap, draftSlotMap } = usePedigreeVariableIndexes();
   const draftValue = useStageValue(name);
   const currentValue = typeof draftValue === 'string' ? draftValue : undefined;
   const committedValue: unknown = get(committedFields, name);
@@ -119,10 +119,12 @@ export default function SlotVariableField({
         ...(ownSlot === undefined ? {} : { ownSlot }),
         writerClass,
         ...(draftConflicting === undefined ? {} : { draftConflicting }),
+        draftSlotMap,
       }),
     [
       currentValue,
       draftConflicting,
+      draftSlotMap,
       options,
       ownSlot,
       roleMap,
@@ -147,6 +149,7 @@ export default function SlotVariableField({
   const judgeAgainst = useRef({
     roleMap,
     slotMap,
+    draftSlotMap,
     subject,
     committedValue,
     ownSlot,
@@ -157,6 +160,7 @@ export default function SlotVariableField({
   judgeAgainst.current = {
     roleMap,
     slotMap,
+    draftSlotMap,
     subject,
     committedValue,
     ownSlot,
