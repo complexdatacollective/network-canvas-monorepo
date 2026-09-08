@@ -93,8 +93,10 @@ that follows from how Fresco ships: the image installs the published
 the hotfix branch would never reach the image on its own. The lane therefore
 mirrors the branch with every workspace package in Fresco's dependency closure
 whose built artifact would differ from the release tag's — its own source
-changed, a catalog entry it consumes was re-pinned, or a shared build input
-such as a tsconfig changed — and every closure package that depends on one,
+changed, a catalog entry it consumes was re-pinned, a shared build input
+such as a tsconfig changed, or anything its resolution reaches in the root
+lockfile moved, a compiler's own dependency included — and every closure
+package that depends on one,
 packed into `vendor/` as tarballs, with pnpm overrides that
 resolve every range onto them (`scripts/mirror-app.mjs --vendor-changed-since`,
 built on `scripts/vendor-workspace-packages.mjs`, the same mechanism the

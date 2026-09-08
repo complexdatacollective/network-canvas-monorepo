@@ -908,3 +908,53 @@ test('a package whose importer resolved a build input differently is vendored ag
     );
   });
 });
+
+// The build input is the graph beneath the tool, not the tool's own edge: a
+// dependency of the compiler moved in the root lockfile while the compiler's
+// version — the importer's direct edge — stayed put, and the published
+// artifact was still made with the old one.
+test('a build input that moved beneath an unchanged direct edge is vendored again', () => {
+  inWorkspace(() => {
+    const closure = collectClosure(wsPackages, 'apps/app');
+    const graph = (unpluginVersion) =>
+      lock({
+        devImporters: { 'packages/ui': { 'vite-plugin-dts': '4.0.0' } },
+        snapshots: {
+          'vite-plugin-dts@4.0.0': { 'unplugin-dts': unpluginVersion },
+          [`unplugin-dts@${unpluginVersion}`]: {},
+        },
+      });
+    assert.deepEqual(
+      packagesChangedSince('app@4.0.0', closure, wsPackages, {
+        refLock: graph('1.0.0'),
+        headLock: graph('1.0.1'),
+      }),
+      ['@x/ui'],
+    );
+    assert.deepEqual(
+      packagesChangedSince('app@4.0.0', closure, wsPackages, {
+        refLock: graph('1.0.0'),
+        headLock: graph('1.0.0'),
+      }),
+      [],
+    );
+    // Another importer's graph moving is not this package's build input.
+    assert.deepEqual(
+      packagesChangedSince('app@4.0.0', closure, wsPackages, {
+        refLock: graph('1.0.0'),
+        headLock: lock({
+          devImporters: {
+            'packages/ui': { 'vite-plugin-dts': '4.0.0' },
+            'apps/app': { esbuild: '0.21.0' },
+          },
+          snapshots: {
+            'vite-plugin-dts@4.0.0': { 'unplugin-dts': '1.0.0' },
+            'unplugin-dts@1.0.0': {},
+            'esbuild@0.21.0': {},
+          },
+        }),
+      }),
+      [],
+    );
+  });
+});

@@ -169,14 +169,19 @@ jobs:
 
       - name: Resolve the released commit
         id: commit
-        # Compares commits, not strings: `refs/heads/main` and a raw SHA both
-        # slip past a literal 'main' check and would start a second release path
-        # for the very tree the normal lane owns. `.hotfix-lane` is checked out
-        # at the dispatching main commit, so its HEAD is main's tip.
+        # Compares commits, not strings: `refs/heads/main`, a raw SHA, or an
+        # older commit of main all slip past a literal 'main' check and would
+        # start a second release path for a tree the normal lane owns. Any
+        # commit main already contains is refused — not only the dispatching
+        # one, which main may have moved past since. A hotfix branch is never
+        # such a commit: it is cut from a release tag and carries commits main
+        # does not have until the merge-back lands, by which time its tag
+        # exists and the version check refuses it anyway. `origin/main` is the
+        # tip the full checkout above fetched.
         run: |
           sha=$(git rev-parse HEAD)
-          if [[ "$sha" == "$(git -C .hotfix-lane rev-parse HEAD)" ]]; then
-            echo "::error::source_ref '$SOURCE_REF' resolves to main. main releases through apps-release-<app> in ci-and-release.yml." >&2
+          if git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::source_ref '$SOURCE_REF' ($sha) is a commit of main. main releases through apps-release-<app> in ci-and-release.yml." >&2
             exit 1
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"

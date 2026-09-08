@@ -129,12 +129,34 @@ function catalogEntriesChangedSince(ref) {
   return changed;
 }
 
+// Every resolution an importer reaches, by full snapshot key: its own edges
+// and, through the lockfile's snapshots, everything those resolve to. Two
+// importers with identical direct edges still built with different tools if
+// a dependency of a tool moved — the graph beneath the edge is the build
+// input, not the edge alone. Edges to workspace packages (`link:`) and to
+// local tarballs have no snapshot to follow and are compared as they are.
+export function reachableResolutions(edges, importer) {
+  const seen = new Set();
+  const queue = [...(edges.importers.get(importer) ?? new Map())].map(
+    ([dep, version]) => `${dep}@${version}`,
+  );
+  while (queue.length) {
+    const key = queue.pop();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    for (const [dep, version] of edges.snapshots.get(key) ?? new Map()) {
+      queue.push(`${dep}@${version}`);
+    }
+  }
+  return seen;
+}
+
 // The members of `names` whose built artifact would differ from the one
 // `ref` produced: the package's own directory changed, a default catalog
 // entry it consumes (in any field) was re-pinned, a workspace package it
 // is built with — a devDependency such as a shared tsconfig — changed, or
-// (given both root lockfiles) its importer resolved anything differently. A
-// hotfix that only re-pins a catalog entry used by one closure
+// (given both root lockfiles) anything its resolution reaches resolved
+// differently. A hotfix that only re-pins a catalog entry used by one closure
 // package must still vendor that package: the verify step builds it against
 // the new pin, and an image installing the published artifact would not
 // carry the change at all. Committed state only — a hotfix lane releases a
@@ -148,18 +170,21 @@ export function packagesChangedSince(
   { refLock, headLock } = {},
 ) {
   const changedCatalog = catalogEntriesChangedSince(ref);
-  // With both root lockfiles, a package whose importer resolved ANY of its
-  // dependencies differently since the release — a build tool bumped in the
-  // lockfile alone, with no manifest or catalog edit — is rebuilt too: its
-  // published artifact was made with the old resolution.
+  // With both root lockfiles, a package whose resolution reaches ANY package
+  // resolved differently since the release — a build tool bumped in the
+  // lockfile alone, with no manifest or catalog edit, or a dependency of that
+  // tool moved beneath an unchanged direct edge — is rebuilt too: its
+  // published artifact was made with the old graph.
+  const refEdges = refLock && headLock ? lockfileEdges(refLock) : null;
+  const headEdges = refLock && headLock ? lockfileEdges(headLock) : null;
   const importerResolutionChanged = (name) => {
-    if (!refLock || !headLock) return false;
+    if (!refEdges || !headEdges) return false;
     const dir = wsPackages[name].dir;
-    const before = lockfileEdges(refLock).importers.get(dir) ?? new Map();
-    const after = lockfileEdges(headLock).importers.get(dir) ?? new Map();
+    const before = reachableResolutions(refEdges, dir);
+    const after = reachableResolutions(headEdges, dir);
     if (before.size !== after.size) return true;
-    for (const [dep, version] of after) {
-      if (before.get(dep) !== version) return true;
+    for (const key of after) {
+      if (!before.has(key)) return true;
     }
     return false;
   };
