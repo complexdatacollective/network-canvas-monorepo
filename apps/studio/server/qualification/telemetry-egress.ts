@@ -24,7 +24,7 @@ export const TELEMETRY_KERNEL_SERVICES = [
   'registry',
 ] as const;
 
-export function telemetryKernelEndpoints(
+function telemetryKernelEndpoints(
   service: (typeof TELEMETRY_KERNEL_SERVICES)[number],
 ) {
   const controlHost =
@@ -194,23 +194,6 @@ const main = async () => {
   }
 };
 main().catch(() => { process.stderr.write('Kernel qualification observer failed.\\n'); process.exit(1); });
-`;
-
-export const TELEMETRY_KERNEL_CANARY_SOURCE = `
-const net = require('node:net');
-const dgram = require('node:dgram');
-const tcp = net.connect(8443, 'telemetry-detector');
-tcp.once('error', () => {});
-const udp = dgram.createSocket('udp4');
-const interval = setInterval(() => {
-  udp.send(Buffer.from('kernel qualification'), 8443, 'telemetry-detector', () => {});
-}, 50);
-setTimeout(() => {
-  clearInterval(interval);
-  tcp.destroy();
-  udp.close();
-  process.exit(0);
-}, 750);
 `;
 
 export function telemetryKernelComposeServices(image: string) {
