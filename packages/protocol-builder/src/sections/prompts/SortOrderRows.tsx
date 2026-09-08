@@ -214,10 +214,46 @@ export default function SortOrderRows({
       ),
     [dangling, sortRuleColumns],
   );
-  // One rule per property at most: every rule after that could only repeat a
-  // property the getter has already disabled. A value no rule may be pointed at
-  // counts, because the rule naming it is one of the rows this limit counts.
-  const maxItems = options('property', undefined, []).length;
+  /**
+   * How many rules this prompt can hold.
+   *
+   * One per property a rule may be pointed AT, and a permanently disabled
+   * option is not one of those. Point a dangling rule somewhere else and its
+   * old property stays on offer disabled forever — that is the whole point of
+   * it — so the option list is one longer than the capacity. Counted as
+   * capacity, the add action survives every selectable property being used,
+   * and the row it then adds has no enabled choice in its property column: a
+   * required cell the researcher cannot fill, holding the dialog shut until
+   * they delete the row they were just offered.
+   *
+   * The rows still NAMING an unusable property are added back on top, because
+   * each of them is a row this limit counts and none of them is spending a
+   * selectable option — a prompt opened on one dangling rule can hold it and
+   * every property besides.
+   *
+   * Counted from the rules on screen, which is where a repoint shows up, and
+   * from the rules the prompt was opened on for the render before the field
+   * has registered — the same two sources `unusable` reads, each answering the
+   * half it can.
+   */
+  const rows = Array.isArray(liveRules)
+    ? liveRules
+    : Array.isArray(committedRules)
+      ? committedRules
+      : [];
+  const unusableValues = useMemo(
+    () => new Set(unusable.map(({ option }) => option.value)),
+    [unusable],
+  );
+  const namesUnusableProperty = (rule: unknown): boolean => {
+    if (typeof rule !== 'object' || rule === null) return false;
+    const property = Reflect.get(rule, 'property');
+    return typeof property === 'string' && unusableValues.has(property);
+  };
+  const maxItems =
+    options('property', undefined, []).filter(
+      (option) => option.disabled !== true,
+    ).length + rows.filter(namesUnusableProperty).length;
   const configured = Array.isArray(committedRules) && committedRules.length > 0;
 
   return (

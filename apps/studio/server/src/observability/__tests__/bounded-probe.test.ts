@@ -83,6 +83,19 @@ describe('bounded operational probes', () => {
     expect(release.mock.calls).toEqual([[true]]);
   });
 
+  it('discards a client when a transaction check or its cleanup fails', async () => {
+    const release = vi.fn();
+    const client = { release } as unknown as pg.PoolClient;
+    const pool = { connect: async () => client } as unknown as pg.Pool;
+    const error = new Error('synthetic transaction cleanup failure');
+    await expect(
+      withProbeClient(pool, new AbortController().signal, async () => {
+        throw error;
+      }),
+    ).rejects.toBe(error);
+    expect(release.mock.calls).toEqual([[true]]);
+  });
+
   it('shares cached observations but rechecks after expiry', async () => {
     vi.useFakeTimers();
     const run = vi.fn(() => Promise.resolve(true));

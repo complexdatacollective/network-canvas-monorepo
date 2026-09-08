@@ -98,6 +98,14 @@ vi.mock('../../lib/auth.ts', () => ({
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    setup: {
+      status: {
+        queryOptions: () => ({
+          queryKey: ['setup'],
+          queryFn: () => ({ state: 'complete' }),
+        }),
+      },
+    },
     me: {
       queryOptions: () => ({
         queryKey: ['me'],
@@ -190,6 +198,33 @@ vi.mock('../../lib/api.ts', () => ({
     // `NavItem` renders no count for a zero, and each row's accessible name
     // stays the label these cases look it up by.
     audit: {
+      alerts: {
+        settings: {
+          queryOptions: () => ({
+            queryKey: ['audit-alert-settings'],
+            queryFn: () => ({
+              revision: null,
+              recipients: [],
+              eligibleMembers: [],
+              eligibleMembersTruncated: false,
+              emailAvailable: true,
+            }),
+          }),
+        },
+        list: {
+          infiniteOptions: (options: {
+            initialPageParam: string | undefined;
+            getNextPageParam: (page: {
+              nextCursor: string | null;
+            }) => string | undefined;
+          }) => ({
+            queryKey: ['audit-alert-list'],
+            queryFn: () => ({ items: [], nextCursor: null }),
+            initialPageParam: options.initialPageParam,
+            getNextPageParam: options.getNextPageParam,
+          }),
+        },
+      },
       list: {
         infiniteOptions: (options: {
           initialPageParam: string | undefined;
@@ -628,6 +663,8 @@ describe('every destination in §5.2', () => {
   it.each(DESTINATIONS)(
     'renders $path with exactly one main landmark',
     async ({ url, heading, signedOut, teamless }) => {
+      if (url === '/setup')
+        fixtures.deployment = { mode: 'self-hosted', billing: false };
       if (signedOut) {
         fixtures.getSession.mockResolvedValue({ data: null, error: null });
       }

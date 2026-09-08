@@ -14,10 +14,28 @@
 //   node scripts/resolve-manifest.mjs <appDir> [--out <path>]
 //   (omit --out to print the resolved manifest to stdout)
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+// The repository root is the WORKING DIRECTORY, not this file's location. The
+// hotfix lane (.github/workflows/hotfix-release.yml) runs main's copy of this
+// tooling, checked out under `.hotfix-lane/`, against a hotfix branch's tree,
+// so every path has to resolve against the tree being released rather than
+// the tree the script came from. Every caller — the release jobs, the
+// release-test harness, the script tests — already runs from the root.
+const repoRoot = process.cwd();
+
+// Checked when the workspace is read rather than at import: the mirror's
+// publish phase imports this module from a checkout that holds only the
+// tooling, and never touches the workspace.
+function requireWorkspaceRoot() {
+  if (!existsSync(join(repoRoot, 'pnpm-workspace.yaml'))) {
+    throw new Error(
+      `resolve-manifest: run from the monorepo root (no pnpm-workspace.yaml in ${repoRoot}).`,
+    );
+  }
+  return repoRoot;
+}
 
 const DEP_FIELDS = [
   'dependencies',
@@ -48,14 +66,17 @@ export function parseCatalog(workspaceYaml) {
   return catalog;
 }
 
-// Map of every workspace package name -> { version, private } by scanning the
-// directories that hold publishable/app packages. `tooling` is included because
-// @codaco/tailwind-config lives there and is a real runtime dependency of the
-// apps (Fresco depends on it directly).
+// Map of every workspace package name -> { version, private, dir } by scanning
+// the directories that hold publishable/app packages. `tooling` is included
+// because @codaco/tailwind-config lives there and is a real runtime dependency
+// of the apps (Fresco depends on it directly). `dir` is the package directory
+// relative to the repository root, for callers that need to read the package's
+// own manifest or ask git what changed under it.
 export function readWorkspacePackages() {
+  const root = requireWorkspaceRoot();
   const map = {};
   for (const group of ['packages', 'apps', 'tooling']) {
-    const base = join(repoRoot, group);
+    const base = join(root, group);
     if (!existsSync(base)) continue;
     for (const entry of readdirSync(base)) {
       const pkgPath = join(base, entry, 'package.json');
@@ -65,6 +86,7 @@ export function readWorkspacePackages() {
         map[json.name] = {
           version: json.version,
           private: Boolean(json.private),
+          dir: `${group}/${entry}`,
         };
       }
     }
@@ -103,7 +125,9 @@ function resolveSpec(name, spec, { catalog, wsPackages, appName }) {
 export function resolveManifest(appDir, { catalog, wsPackages } = {}) {
   const resolvedCatalog =
     catalog ??
-    parseCatalog(readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8'));
+    parseCatalog(
+      readFileSync(join(requireWorkspaceRoot(), 'pnpm-workspace.yaml'), 'utf8'),
+    );
   const resolvedWs = wsPackages ?? readWorkspacePackages();
   const manifest = JSON.parse(
     readFileSync(join(appDir, 'package.json'), 'utf8'),

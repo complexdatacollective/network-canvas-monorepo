@@ -1,0 +1,92 @@
+{
+  "region": "iad",
+  "monthlyHours": 744,
+  "services": {
+    "studio-production": {
+      "cpu_kind": "shared",
+      "cpus": 1,
+      "memory_mb": 512
+    },
+    "studio-staging": {
+      "cpu_kind": "shared",
+      "cpus": 1,
+      "memory_mb": 512
+    },
+    "registry-production": {
+      "cpu_kind": "shared",
+      "cpus": 1,
+      "memory_mb": 512
+    },
+    "registry-staging": {
+      "cpu_kind": "shared",
+      "cpus": 1,
+      "memory_mb": 512
+    }
+  },
+  "recovery": {
+    "backupIntervalMinutes": 30,
+    "objectReconciliationIntervalMinutes": 1,
+    "retentionDays": 31,
+    "requestsPerBackup": 3,
+    "requestsPerValidation": 2,
+    "objectScrubIntervalDays": 30,
+    "backupRequestsPerObjectCopy": 2,
+    "backupRequestsPerObjectValidation": 1,
+    "validatorRequestsPerObjectValidation": 1,
+    "validatorRequestsPerObjectCopy": 1,
+    "validatorRequestsPerObjectReconciliation": 1,
+    "restoreDrillIntervalMonths": 3
+  },
+  "postgres": {
+    "planId": "hobby-2",
+    "planName": "Hobby-2",
+    "cpu": 1,
+    "memoryGb": 2,
+    "storageGb": 20
+  },
+  "monitoring": {
+    "collector": {
+      "provider": "fly",
+      "region": "iad",
+      "count": 1,
+      "monthlyHours": 744,
+      "resources": {
+        "cpu_kind": "shared",
+        "cpus": 1,
+        "memory_mb": 512
+      },
+      "minimumPersistentVolumeGb": 1
+    },
+    "anchor": {
+      "provider": "aws",
+      "region": "us-east-1",
+      "administration": "independent-of-collector",
+      "http": {
+        "service": "api-gateway-http-api",
+        "authentication": "separate-forwarder-and-operator-authorities"
+      },
+      "compute": {
+        "service": "lambda",
+        "memoryMb": 128,
+        "timeoutSeconds": 30
+      },
+      "database": {
+        "service": "dynamodb",
+        "billingMode": "PAY_PER_REQUEST",
+        "partitionKey": {
+          "name": "account",
+          "type": "S"
+        },
+        "sortKey": {
+          "name": "record",
+          "type": "S"
+        },
+        "permanentEnrollmentRecord": "ENROLLMENT",
+        "mutableStateRecord": "STATE",
+        "ttlEnabled": false,
+        "pointInTimeRecoveryRequired": true,
+        "deletionProtectionRequired": true
+      }
+    }
+  }
+}
