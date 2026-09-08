@@ -6,11 +6,11 @@ import Section from '@codaco/fresco-ui/Section';
 
 import {
   getSortOrderOptionGetter,
-  MISSING_SORT_PROPERTY_MESSAGE,
-  orphanedSortProperties,
   type SortableProperty,
+  unusableSortProperties,
 } from '../../fields/sortOrderOptions.ts';
 import {
+  type DanglingCells,
   makeMultiSelectValidation,
   type PropertyField,
 } from '../../form/arrayFields/MultiSelect.tsx';
@@ -106,13 +106,14 @@ export default function SortOrderRows({
   committedRules,
 }: SortOrderRowsProps) {
   /**
-   * Attributes these rules name that the codebook has lost.
+   * Values these rules name that they cannot be pointed at — an attribute the
+   * codebook has lost, or one it still holds that nothing can be ordered by.
    *
-   * Handled here rather than by each family, because a rule outliving its
-   * attribute is a property of sort rules and not of any one interface: the
-   * schema keeps such a rule on purpose (deleting an attribute must not make
-   * a collaborator's stage unopenable), so every family that holds a sort
-   * order inherits the same dangling reference and the same two ways out.
+   * Handled here rather than by each family, because a rule outliving what it
+   * names is a property of sort rules and not of any one interface: the schema
+   * keeps such a rule on purpose (deleting an attribute must not make a
+   * collaborator's stage unopenable), so every family that holds a sort order
+   * inherits the same dangling reference and the same two ways out.
    */
   const intl = useAppIntl();
   /** A sort rule is one property and one direction, in that order. */
@@ -129,13 +130,17 @@ export default function SortOrderRows({
     ],
     [intl],
   );
-  const orphans = useMemo(
-    () => orphanedSortProperties(committedRules, properties, intl),
+  const unusable = useMemo(
+    () => unusableSortProperties(committedRules, properties, intl),
     [committedRules, intl, properties],
   );
   const options = useMemo(
-    () => getSortOrderOptionGetter([...(properties ?? []), ...orphans], intl),
-    [intl, orphans, properties],
+    () =>
+      getSortOrderOptionGetter(
+        [...(properties ?? []), ...unusable.map(({ option }) => option)],
+        intl,
+      ),
+    [intl, properties, unusable],
   );
   /**
    * The rule that can actually refuse the save. A row's own cells only display
@@ -143,31 +148,41 @@ export default function SortOrderRows({
    * protocol's `SortRuleSchema` against a path rather than against the control
    * the researcher left half-filled.
    *
-   * A row naming an orphan is refused by the same rule, because it is the same
-   * kind of failure: the id is there, so nothing about the row LOOKS
-   * unfinished, and the cell that should display it is blank because no live
-   * option carries it. Left to the schema it would save, since
-   * `SortRuleSchema.property` is `existence: 'unchecked'`.
+   * A row naming a value it cannot be pointed at is refused by the same rule,
+   * because it is the same kind of failure: the id is there, so nothing about
+   * the row LOOKS unfinished, and the cell that should display it is blank
+   * because no offered option carries it. Left to the schema it would save,
+   * since `SortRuleSchema.property` is `existence: 'unchecked'`.
+   *
+   * One entry per SENTENCE rather than one for all of them: a deleted
+   * attribute and an attribute nothing can be ordered by are refused in
+   * different words, and `completeRows` answers with the message of the first
+   * entry a row matches.
    */
+  const dangling = useMemo<DanglingCells[]>(() => {
+    const byMessage = new Map<string, string[]>();
+    for (const { option, message } of unusable) {
+      const values = byMessage.get(message) ?? [];
+      values.push(option.value);
+      byMessage.set(message, values);
+    }
+    return [...byMessage].map(([message, values]) => ({
+      fieldName: 'property',
+      values,
+      message,
+    }));
+  }, [unusable]);
   const validation = useMemo(
     () =>
       makeMultiSelectValidation(
         sortRuleColumns,
-        orphans.length === 0
-          ? undefined
-          : [
-              {
-                fieldName: 'property',
-                values: orphans.map(({ value }) => value),
-                message: MISSING_SORT_PROPERTY_MESSAGE,
-              },
-            ],
+        dangling.length === 0 ? undefined : dangling,
       ),
-    [orphans, sortRuleColumns],
+    [dangling, sortRuleColumns],
   );
   // One rule per property at most: every rule after that could only repeat a
-  // property the getter has already disabled. An orphan counts, because the
-  // rule naming it is one of the rows this limit is counting.
+  // property the getter has already disabled. A value no rule may be pointed at
+  // counts, because the rule naming it is one of the rows this limit counts.
   const maxItems = options('property', undefined, []).length;
   const configured = Array.isArray(committedRules) && committedRules.length > 0;
 
@@ -182,9 +197,9 @@ export default function SortOrderRows({
       {/*
         `OptionalList` rather than `MultiSelect`: deleting the last rule is the
         same decision as closing the group — this prompt sorts by nothing in
-        particular — and `MISSING_SORT_PROPERTY_MESSAGE` offers it as one of the
-        two ways out of a dangling rule, so both routes have to leave the prompt
-        in the state the schema recognises.
+        particular — and both refusals a dangling rule can carry offer it as one
+        of their two ways out, so both routes have to leave the prompt in the
+        state the schema recognises.
       */}
       <DialogFormField<typeof OptionalList>
         name={name}

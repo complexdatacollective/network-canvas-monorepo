@@ -35,6 +35,19 @@ const messages = defineMessages({
     description:
       'Shown above a prompt’s sort rules when one of them names an attribute that has been deleted from the codebook — the protocol’s definition of what an interview records. Names both ways out, because the rule looks complete and is not.',
   },
+  unsortableProperty: {
+    id: 'protocolBuilder.sortOrder.unsortableProperty',
+    defaultMessage: '{property} — this attribute cannot be used to sort',
+    description:
+      'Label of the only choice left standing for a sort rule that names an attribute nothing can be put in order by — a node’s position on the canvas, say. property is the attribute’s name as the codebook gives it. Rendered inside a plain dropdown option, which can carry no styling, so the explanation is part of the label.',
+  },
+  unsortablePropertyRefusal: {
+    id: 'protocolBuilder.sortOrder.unsortablePropertyRefusal',
+    defaultMessage:
+      'This rule points at an attribute that cannot be used to sort. Choose another or delete the rule.',
+    description:
+      'Shown above a prompt’s sort rules when one of them names an attribute that is still in the codebook but holds nothing one network member can be put ahead of another by. Names both ways out, because the rule looks complete and is not.',
+  },
 });
 
 /**
@@ -48,11 +61,12 @@ const messages = defineMessages({
  * position, not a value a sort can compare) the option is excluded.
  *
  * `disabled` marks a property that has to be SHOWN without being selectable —
- * an attribute a rule still names after it has been deleted from the codebook
- * (see `orphanedSortProperties`). It is a property of the property, not of the
+ * a value a rule still names that it cannot be pointed at, whether because the
+ * attribute has been deleted or because nothing can be ordered by it (see
+ * `unusableSortProperties`). It is a property of the property, not of the
  * rules using it: the getter disables an option a rule already names, but that
- * disabling ends the moment the rule points somewhere else, and an orphan must
- * never become choosable again.
+ * disabling ends the moment the rule points somewhere else, and one of these
+ * must never become choosable again.
  */
 export type SortableProperty = Readonly<{
   value: string;
@@ -62,6 +76,23 @@ export type SortableProperty = Readonly<{
 }>;
 
 const NON_SORTABLE_TYPES = ['layout'];
+
+/**
+ * Whether one node can be put ahead of another by this property at all.
+ *
+ * The one place the question is answered, because two readers ask it and they
+ * have to agree: the option getter, which decides what a rule may be pointed
+ * at, and `unusableSortProperties`, which decides what a rule already pointing
+ * somewhere is refused for. While they disagreed, an attribute the getter
+ * filtered out counted as a property in good standing — so a rule naming it
+ * was offered nothing to render, went blank, raised no refusal, and saved the
+ * hidden rule straight back.
+ *
+ * A property carrying no `type` at all is sortable: external-data columns come
+ * with none, and a roster orders its participants by them.
+ */
+const isSortable = ({ type }: SortableProperty): boolean =>
+  !NON_SORTABLE_TYPES.includes(type ?? '');
 
 /**
  * The fixed "preserve the source order" choice every sort rule offers
@@ -121,6 +152,19 @@ export const missingSortPropertyLabel = (
 ): string => intl.formatMessage(messages.missingProperty, { property });
 
 /**
+ * The same, for an attribute that is still in the codebook and still cannot
+ * order anything.
+ *
+ * Named by the codebook's own word for it rather than by its record id: unlike
+ * a deleted attribute, this one is still there to be named, and telling a
+ * researcher that `d4e1…` cannot sort would leave them hunting for it.
+ */
+export const unsortableSortPropertyLabel = (
+  property: string,
+  intl: IntlShape,
+): string => intl.formatMessage(messages.unsortableProperty, { property });
+
+/**
  * What a researcher is told about a rule left pointing at a deleted attribute.
  *
  * The rule is not half-filled — it holds an id, and the id is exactly the
@@ -135,6 +179,17 @@ export const MISSING_SORT_PROPERTY_MESSAGE = createMessageError(
   messages.missingPropertyRefusal,
 );
 
+/**
+ * And what they are told about a rule pointing at one that cannot sort.
+ *
+ * Its own sentence rather than the one above: the attribute has not gone
+ * anywhere, and being sent to look for something that is still there is worse
+ * than being told nothing.
+ */
+export const UNSORTABLE_SORT_PROPERTY_MESSAGE = createMessageError(
+  messages.unsortablePropertyRefusal,
+);
+
 const ruleProperty = (rule: unknown): string | undefined => {
   if (typeof rule !== 'object' || rule === null) return undefined;
   const property = Reflect.get(rule, 'property');
@@ -142,19 +197,43 @@ const ruleProperty = (rule: unknown): string | undefined => {
 };
 
 /**
- * Sort keys these rules name that the property list no longer describes.
+ * A property a rule names that it cannot be pointed at, with the option that
+ * shows the researcher what it is and the sentence a row holding it is refused
+ * with.
+ *
+ * The two travel together because they are the two halves of one answer: the
+ * option says what the cell is showing, and the message says why it cannot
+ * stay. Split apart, a caller could offer the option and refuse with the other
+ * reason's words.
+ */
+export type UnusableSortProperty = Readonly<{
+  option: SortableProperty;
+  message: string;
+}>;
+
+/**
+ * Sort keys these rules name that they cannot be pointed at — because the
+ * property list no longer describes them, or because it describes them as
+ * something nothing can be ordered by.
  *
  * `SortRuleSchema.property` is `existence: 'unchecked'`, so a rule whose
  * attribute a collaborator deleted still validates and still saves — which is
  * right, because deleting an attribute must not make somebody else's stage
- * unopenable. But a cell renders from the option list, so an id no option
- * carries leaves the control BLANK while the value behind it is untouched: the
- * researcher sees an empty required cell, cannot find out what it points at,
- * and saves the dangling reference straight back.
+ * unopenable. But a cell renders from the option list, so a value no OFFERED
+ * option carries leaves the control BLANK while the value behind it is
+ * untouched: the researcher sees an empty required cell, cannot find out what
+ * it points at, and saves the dangling reference straight back.
  *
- * So the id is offered back as its own option, labelled for what it is and
+ * So the value is offered back as its own option, labelled for what it is and
  * permanently `disabled` — readable as the current choice, never choosable
  * afresh, and never choosable again once the rule has been pointed elsewhere.
+ *
+ * Judged against what the option getter actually OFFERS rather than against
+ * everything the caller passed, because those are two different sets: an
+ * attribute of a non-sortable type is filtered out of the offer, and counting
+ * it as known left exactly the blank control this exists to prevent, with no
+ * refusal behind it. Which of the two it is decides the words, and only the
+ * words: an attribute that is still there must not be described as missing.
  *
  * `undefined` is "the caller does not know yet" and reports nothing. That is
  * the state every caller passes through: a prompt whose stage has not been
@@ -164,35 +243,52 @@ const ruleProperty = (rule: unknown): string | undefined => {
  * An EMPTY list is not that state. A subject with nothing to sort by is a real
  * answer — a node type whose every attribute has been deleted, an external
  * data file with one column — and reading it as "not known yet" took the
- * orphan option, the refusal and the label away all at once, exactly where a
- * rule is most certainly dangling: the control went blank and the researcher
- * saved the dangling rule straight back. So a caller that does not know says
- * so with `undefined`, and nothing else means it.
+ * option, the refusal and the label away all at once, exactly where a rule is
+ * most certainly dangling: the control went blank and the researcher saved the
+ * dangling rule straight back. So a caller that does not know says so with
+ * `undefined`, and nothing else means it.
  */
-export const orphanedSortProperties = (
+export const unusableSortProperties = (
   rules: unknown,
   sortableProperties: readonly SortableProperty[] | undefined,
   intl: IntlShape,
-): SortableProperty[] => {
+): UnusableSortProperty[] => {
   if (!Array.isArray(rules) || sortableProperties === undefined) return [];
-  const known = new Set(sortableProperties.map(({ value }) => value));
-  const orphans = new Map<string, SortableProperty>();
+  const offered = new Set(
+    sortableProperties.filter(isSortable).map(({ value }) => value),
+  );
+  const filteredOut = new Map(
+    sortableProperties
+      .filter((property) => !isSortable(property))
+      .map((property) => [property.value, property]),
+  );
+  const unusable = new Map<string, UnusableSortProperty>();
   for (const rule of rules) {
     const property = ruleProperty(rule);
     if (
       property === undefined ||
       property === ORIGINAL_ORDER_VALUE ||
-      known.has(property)
+      offered.has(property)
     ) {
       continue;
     }
-    orphans.set(property, {
-      value: property,
-      label: missingSortPropertyLabel(property, intl),
-      disabled: true,
+    const unsortable = filteredOut.get(property);
+    unusable.set(property, {
+      option: {
+        value: property,
+        label:
+          unsortable === undefined
+            ? missingSortPropertyLabel(property, intl)
+            : unsortableSortPropertyLabel(unsortable.label, intl),
+        disabled: true,
+      },
+      message:
+        unsortable === undefined
+          ? MISSING_SORT_PROPERTY_MESSAGE
+          : UNSORTABLE_SORT_PROPERTY_MESSAGE,
     });
   }
-  return [...orphans.values()];
+  return [...unusable.values()];
 };
 
 /**
@@ -220,7 +316,7 @@ export const getSortOrderOptionGetter =
           : [];
 
         return [originalOrderOption(intl), ...sortableProperties]
-          .filter((option) => !NON_SORTABLE_TYPES.includes(option.type ?? ''))
+          .filter(isSortable)
           .map((option) =>
             used.includes(option.value)
               ? { ...toOption(option), disabled: true }
