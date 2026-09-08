@@ -298,17 +298,15 @@ cleanup_restore_validation() {
 }
 trap cleanup_restore_validation EXIT
 trap 'exit 1' HUP INT TERM
-# Restore exits with every writer NOLOGIN. Open only the maintenance identity
-# for the offline proof check. The proxy and workers remain stopped and the
-# quarantine overlay still removes every external network path.
+# Restore exits with every writer NOLOGIN. Ordinary schema admission checks
+# every enrolled login, so open all three restricted identities within this
+# fail-closing validation window. The proxy and workers remain stopped and
+# the quarantine overlay still removes every external network path. No
+# migration process is started and the web process receives no migrator secret.
 docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
-  -c 'ALTER ROLE studio_maintenance_runtime LOGIN;'
+  -c 'BEGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; ALTER ROLE studio_migrator LOGIN; COMMIT;'
 docker compose run --rm --no-deps encryption-verify
-# The private web validation requires both restricted runtime identities. Keep
-# the migrator NOLOGIN. If either command fails, close both identities again
-# before investigating under quarantine.
-docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
-  -c 'ALTER ROLE studio_runtime LOGIN;'
+# Any failure closes and drains every enrolled identity before investigation.
 docker compose up -d studio
 docker compose run --rm --no-deps studio diagnostics
 trap - EXIT HUP INT TERM
