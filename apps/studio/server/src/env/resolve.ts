@@ -52,6 +52,7 @@ export type StudioEnv = {
   telemetry: boolean;
   port: number;
   metricsToken: string | undefined;
+  managedIngressSecret?: string;
   trustedProxies: string[];
   host: string;
   clientDist: string | undefined;
@@ -327,11 +328,23 @@ export function resolve(raw: RawEnv): StudioEnv {
         databaseAllowedLogins,
       )
     : [];
+  const deploymentMode = raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE;
+  if (
+    deploymentMode === 'managed' &&
+    db &&
+    Boolean(raw.TRUSTED_PROXIES?.length) !==
+      Boolean(raw.STUDIO_MANAGED_INGRESS_SECRET)
+  ) {
+    throw new Error(
+      'STUDIO_MANAGED_INGRESS_SECRET and managed TRUSTED_PROXIES must be configured together',
+    );
+  }
   return {
     role: raw.STUDIO_ROLE ?? 'both',
     telemetry: raw.STUDIO_TELEMETRY ?? true,
     port: raw.PORT ?? DEFAULT_PORT,
     metricsToken: raw.STUDIO_METRICS_TOKEN,
+    managedIngressSecret: raw.STUDIO_MANAGED_INGRESS_SECRET,
     trustedProxies: raw.TRUSTED_PROXIES ?? [],
     host: raw.HOST ?? DEFAULT_HOST,
     clientDist: raw.CLIENT_DIST,
@@ -343,7 +356,7 @@ export function resolve(raw: RawEnv): StudioEnv {
     databaseAllowedLogins,
     databaseAdministrativeLogins,
     devDefaults,
-    deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,
+    deploymentMode,
     bootstrapToken: raw.STUDIO_BOOTSTRAP_TOKEN,
     seedAdminPassword: raw.STUDIO_SEED_ADMIN_PASSWORD,
   };

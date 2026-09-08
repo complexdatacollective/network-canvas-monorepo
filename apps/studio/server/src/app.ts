@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'node:crypto';
+
 import { upgradeWebSocket } from '@hono/node-server';
 import { COMMON_ERROR_STATUS_MAP, onError, ORPCError } from '@orpc/server';
 import { RPCHandler } from '@orpc/server/fetch';
@@ -42,6 +44,7 @@ const WS_PATH = '/ws';
 // Hono matches `/storage/*` against the children of /storage but not the bare
 // prefix, so anything covering the whole surface has to name both.
 const STORAGE_PATHS = ['/storage', '/storage/*'];
+const MANAGED_INGRESS_PROOF_HEADER = 'x-studio-managed-ingress-proof';
 const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
   string,
@@ -90,6 +93,27 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     deps.logger,
     deps.telemetry,
   );
+  if (env.managedIngressSecret) {
+    const expectedProof = Buffer.from(env.managedIngressSecret);
+    app.use('*', async (c, next) => {
+      // Fly's liveness probe cannot read a runtime secret into a configured
+      // header. This route makes no identity or readiness decision and never
+      // reaches Better Auth, so keep that one direct-origin probe available.
+      if (c.req.path === '/healthz') return next();
+      const supplied = c.req.header(MANAGED_INGRESS_PROOF_HEADER);
+      const receivedProof = supplied ? Buffer.from(supplied) : undefined;
+      if (
+        !receivedProof ||
+        receivedProof.length !== expectedProof.length ||
+        !timingSafeEqual(receivedProof, expectedProof)
+      ) {
+        return c.json({ title: 'Not Found', status: 404 }, 404, {
+          'Cache-Control': 'no-store',
+        });
+      }
+      await next();
+    });
+  }
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
     enabled,
