@@ -4,6 +4,7 @@ import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
+import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
@@ -16,7 +17,6 @@ import { ProtocolCitation } from '~/components/protocol-gallery/ProtocolCitation
 import { ProtocolDetailFacts } from '~/components/protocol-gallery/ProtocolDetailFacts';
 import { ProtocolDownloads } from '~/components/protocol-gallery/ProtocolDownloads';
 import { StageSequenceRail } from '~/components/protocol-gallery/StageSequenceRail';
-import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
 import { routing } from '~/lib/i18n/routing';
 import { getProtocolBySlug, loadProtocolGallery } from '~/lib/protocolGallery';
@@ -91,15 +91,14 @@ export default async function ProtocolDetailPage({
       <div className="type-scale-product">
         <Container maxWidth="full" margin="none" className="mt-12">
           <div id={SITE_NAVIGATION_SKIP_TARGET_ID}>
-            <ButtonLink
-              native
-              href={protocolGalleryHref(locale)}
+            <Button
+              asChild
               color="default"
               size="sm"
+              icon={<ArrowLeft aria-hidden />}
             >
-              <ArrowLeft aria-hidden />
-              {t('detail.back')}
-            </ButtonLink>
+              <a href={protocolGalleryHref(locale)}>{t('detail.back')}</a>
+            </Button>
           </div>
 
           <div className="tablet-landscape:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] mt-8 grid grid-cols-1 gap-8">

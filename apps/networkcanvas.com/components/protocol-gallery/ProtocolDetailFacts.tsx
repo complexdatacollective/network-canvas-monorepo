@@ -4,9 +4,9 @@ import type { ReactNode } from 'react';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
 import { OverlineHeading } from '~/components/protocol-gallery/OverlineHeading';
-import { NativeLink } from '~/components/ui/NativeLink';
 import type { GalleryProtocol } from '~/lib/protocolGallery';
 
 function DetailItem({
