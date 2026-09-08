@@ -135,22 +135,38 @@ because it does not tell you _what_ to change, and taking the finding's own
 scope as the answer is what turns one defect into six rounds of narrow fixes.
 So, before touching code: write one paragraph stating the general rule this
 finding is an instance of, in the terms the code actually works in rather than
-the one case the reviewer happened to reach; enumerate the other instances of
-that rule across the PR's diff (`git diff <base>...HEAD`); write a failing test
-for each instance; then satisfy the rule once, so all of them pass. One test
-per finding is the reviewer doing the enumeration for you, a round at a time.
-If the paragraph is hard to write, that is the finding telling you the rule is
-not yet understood — and a narrow fix will not be the last one.
+the one case the reviewer happened to reach; enumerate the rule's other
+instances; give each one an oracle that can fail; then satisfy the rule once,
+so every oracle passes. One instance per reviewer-supplied finding is the
+reviewer doing the enumeration for you, a round at a time. If the paragraph is
+hard to write, that is the finding telling you the rule is not yet understood
+— and a narrow fix will not be the last one.
+
+Two words in that step do real work. **Oracle**, not test: a failing test where
+the instance is executable, and a runnable probe or a named check where it is
+not — a false claim in a doc or changeset is checkable against the thing it
+asserts, and this repo would rather have that check than a vacuous assertion
+written to satisfy the letter of this rule (Claude Code: invoke
+`writing-an-oracle-that-can-fail`). **Instances**, not hunks: start from
+`git diff <base>...HEAD`, but a helper you edited has callers the diff never
+prints, and an enumeration bounded by changed lines can come back complete with
+the defect still reachable — search for the rule's shape across the repo. What
+stays inside the diff is the _remedy_: an instance outside it is a scope
+question for the user (Claude Code: `finishing-a-refactor` owns the repo-wide
+call-site sweep), to raise rather than to fix silently or drop.
 
 **A second finding on the same mechanism means stop fixing instances.** The
 trigger is the second finding, not several flat rounds; flat rounds are the
 same signal noticed several rounds too late. Recognise it from the reviewer's
-opening, which usually says so outright — "Fresh evidence after the earlier
-devDependency fix is that…", "the earlier fix does not cover…" — or from two
-findings landing on the same function, guard or helper in consecutive rounds.
-From there, every further narrow fix is a bet that the reviewer has run out of
-instances, and that bet has already lost once. Stop, write the paragraph above,
-and fix the rule.
+opening, which usually asserts the link outright — "Fresh evidence after the
+earlier devDependency fix is that…", "the earlier fix does not cover…". Two
+findings landing on the same function, guard or helper in consecutive rounds
+is the weaker signal: co-location is a prompt to check, not the answer, since
+one large function collects unrelated defects. They are the same mechanism when
+both violate the same invariant, and if you cannot name the invariant they
+share they are two mechanisms — state each. From there, every further narrow
+fix is a bet that the reviewer has run out of instances, and that bet has
+already lost once. Stop, write the paragraph above, and fix the rule.
 
 **Do not triage on the severity badge alone.** A badge is the reviewer's
 confidence, not your severity assessment. Findings badged P2 have included a
@@ -173,7 +189,7 @@ by whether each push leaves the reviewer less to find than it had before.
   push per finding is a round per finding.
 - **Look for the sibling before pushing.** The triage step above, applied to
   the round as a whole: every fix in the push should be a rule you can state,
-  whose other instances in the diff you have already covered. The reviewer
+  whose other instances you have already enumerated and covered. The reviewer
   reads your fix and probes around it — "after the X fix, Y still…" is how it
   opens — so a fix scoped to the one guard, screen or call site a finding
   names reliably draws the same defect in the next round. Stay inside the
@@ -204,7 +220,7 @@ going. Flat rounds in which most findings trace back to your own fixes mean
 the fixes are the problem — but by then the second finding on that mechanism
 is several rounds behind you, so the trigger that governs is the one in
 _Triaging a finding_, not this one. If you are already here, stop patching:
-state the rule, test every instance of it in the diff, fix it once, push once.
+state the rule, give every instance of it an oracle, fix it once, push once.
 Do not end the loop by deferring real defects to follow-up issues — this
 repository's standing rule is that what you discover lands in the same PR. When
 it ends, say so, listing what you resolved without code changes.
@@ -247,19 +263,19 @@ for the same reason.
 
 ## Common mistakes
 
-| Mistake                                                              | Do instead                                                                                      |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Opening the PR then ending the turn                                  | Move straight into Phase 2 monitoring — that's the point of this skill.                         |
-| Busy-polling with `sleep` in a loop                                  | Use available wakeup/automation tooling when present, or report pending state.                  |
-| Applying every review comment verbatim                               | Verify the feedback before implementing.                                                        |
-| Triaging by severity badge instead of mechanism                      | Read what actually breaks; badges are confidence, not severity.                                 |
-| Leaving a thread unresolved because it needed no fix                 | Reply with the evidence and resolve it — unresolved threads hold `BLOCKED`.                     |
-| Force-pushing to satisfy a check                                     | Fix root cause and push a normal commit; don't rewrite history reflexively.                     |
-| Generating PNG baselines locally (native or Docker)                  | Dispatch the CI regeneration workflow against the pushed branch and adopt from its artifact.    |
-| Merging once checks go green                                         | Merging is the user's call — report readiness, don't merge automatically.                       |
-| Re-guessing the same fix after two failed attempts                   | Stop and hand back to the user with the failure history.                                        |
-| Pushing after each individual fix                                    | Fix everything a round raised, then push once — each push is a round.                           |
-| Fixing only the instance a finding names                             | State the rule it instances, cover the rule's other instances in the diff, test each, fix once. |
-| Treating no new review as a clean round                              | Look for the reviewer's thumbs-up on the PR, dated after your last push.                        |
-| Fixing another instance after a second finding on the same mechanism | The second finding is the trigger, not the fifth — specify the mechanism and fix the rule.      |
-| Deferring real defects to end the loop                               | Fix them here; flat rounds mean the fixes need rethinking, not a lower bar.                     |
+| Mistake                                                              | Do instead                                                                                        |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Opening the PR then ending the turn                                  | Move straight into Phase 2 monitoring — that's the point of this skill.                           |
+| Busy-polling with `sleep` in a loop                                  | Use available wakeup/automation tooling when present, or report pending state.                    |
+| Applying every review comment verbatim                               | Verify the feedback before implementing.                                                          |
+| Triaging by severity badge instead of mechanism                      | Read what actually breaks; badges are confidence, not severity.                                   |
+| Leaving a thread unresolved because it needed no fix                 | Reply with the evidence and resolve it — unresolved threads hold `BLOCKED`.                       |
+| Force-pushing to satisfy a check                                     | Fix root cause and push a normal commit; don't rewrite history reflexively.                       |
+| Generating PNG baselines locally (native or Docker)                  | Dispatch the CI regeneration workflow against the pushed branch and adopt from its artifact.      |
+| Merging once checks go green                                         | Merging is the user's call — report readiness, don't merge automatically.                         |
+| Re-guessing the same fix after two failed attempts                   | Stop and hand back to the user with the failure history.                                          |
+| Pushing after each individual fix                                    | Fix everything a round raised, then push once — each push is a round.                             |
+| Fixing only the instance a finding names                             | State the rule it instances, enumerate the rule's other instances, give each an oracle, fix once. |
+| Treating no new review as a clean round                              | Look for the reviewer's thumbs-up on the PR, dated after your last push.                          |
+| Fixing another instance after a second finding on the same mechanism | The second finding is the trigger, not the fifth — specify the mechanism and fix the rule.        |
+| Deferring real defects to end the loop                               | Fix them here; flat rounds mean the fixes need rethinking, not a lower bar.                       |
