@@ -3,157 +3,6 @@
   "minimumHeadroomUsd": 10,
   "freeCreditsUsd": 0,
   "flySingletonCount": 4,
-  "logicalDatabaseCount": 4,
-  "postgresStorageGb": 20,
-  "kmsBillableKeyVersions": 6,
-  "kmsRequestCount": 100000,
-  "postgresSharedBuffersBytes": 1073741824,
-  "postgresAppRoleWorkMemBytes": 268435456,
-  "monitoringRetentionDays": 30,
-  "newRelicPaidUpgradeAllowed": false,
-  "newRelicHardStopConfigured": true,
-  "newRelicMonthlyIngestGb": 50,
-  "newRelicFreeIngestLimitGb": 100,
-  "primaryIngressGb": 0,
-  "primaryObjectStoredGb": 20,
-  "primaryObjectClassARequests": 1000000,
-  "primaryObjectClassBRequests": 10000000,
-  "primaryObjectEgressGb": 50,
-  "databaseTransferGb": 10,
-  "validatorRequestCount": 11904,
-  "validatorRunCount": 5952,
-  "validatorTransferGb": 595.2,
-  "backupStoredGb": 615.2,
-  "backupRequestCount": 11904,
-  "backupEgressGb": 1190.4,
-  "lineItems": [
-    {
-      "category": "compute",
-      "quantity": 2976,
-      "unitPriceUsd": 0.004428,
-      "evidence": "illustrative per-machine-hour price for the candidate-sizing.json shared CPU and memory, 744 hours"
-    },
-    {
-      "category": "database-plan",
-      "quantity": 1,
-      "unitPriceUsd": 35,
-      "evidence": "Crunchy Hobby-2 public list price"
-    },
-    {
-      "category": "database-storage",
-      "quantity": 20,
-      "unitPriceUsd": 0.1,
-      "evidence": "candidate 20 GB"
-    },
-    {
-      "category": "database-transfer",
-      "quantity": 10,
-      "unitPriceUsd": 0,
-      "evidence": "placeholder requiring a current quote"
-    },
-    {
-      "category": "primary-object-storage",
-      "quantity": 20,
-      "unitPriceUsd": 0.015,
-      "evidence": "R2 Standard candidate"
-    },
-    {
-      "category": "primary-object-class-a",
-      "quantity": 1,
-      "unitPriceUsd": 4.5,
-      "evidence": "one million operations"
-    },
-    {
-      "category": "primary-object-class-b",
-      "quantity": 10,
-      "unitPriceUsd": 0.36,
-      "evidence": "ten million operations"
-    },
-    {
-      "category": "primary-object-egress",
-      "quantity": 50,
-      "unitPriceUsd": 0,
-      "evidence": "explicit candidate, verify limits and destination"
-    },
-    {
-      "category": "kms-keys",
-      "quantity": 6,
-      "unitPriceUsd": 1,
-      "evidence": "two logical keys after two retained annual rotations"
-    },
-    {
-      "category": "kms-requests",
-      "quantity": 100000,
-      "unitPriceUsd": 3e-6,
-      "evidence": "illustrative request volume"
-    },
-    {
-      "category": "backup-storage",
-      "quantity": 0.6152000000000001,
-      "unitPriceUsd": 6.95,
-      "evidence": "illustrative B2 storage, all 31 days of immutable points plus live assets"
-    },
-    {
-      "category": "backup-requests",
-      "quantity": 11904,
-      "unitPriceUsd": 0,
-      "evidence": "placeholder requiring request quote"
-    },
-    {
-      "category": "backup-egress",
-      "quantity": 1190.4,
-      "unitPriceUsd": 0,
-      "evidence": "explicit estimate; free-egress eligibility must be proven"
-    },
-    {
-      "category": "validator-compute",
-      "quantity": 357120,
-      "unitPriceUsd": 1.6666666666666667e-5,
-      "evidence": "illustrative GB-second price; independent 2 GB, 30-second execution requires a measured quote"
-    },
-    {
-      "category": "validator-requests",
-      "quantity": 11904,
-      "unitPriceUsd": 2e-7,
-      "evidence": "illustrative Lambda invocation charge; independent execution location still requires qualification"
-    },
-    {
-      "category": "validator-transfer",
-      "quantity": 595.2,
-      "unitPriceUsd": 0,
-      "evidence": "illustrative full dump validation transfer; current provider quote required"
-    },
-    {
-      "category": "mail",
-      "quantity": 1,
-      "unitPriceUsd": 15,
-      "evidence": "Postmark candidate"
-    },
-    {
-      "category": "monitoring",
-      "quantity": 1,
-      "unitPriceUsd": 0,
-      "evidence": "New Relic Free candidate; hard stop required"
-    },
-    {
-      "category": "dns",
-      "quantity": 1,
-      "unitPriceUsd": 0,
-      "evidence": "placeholder for fixed DNS charges"
-    },
-    {
-      "category": "reserve",
-      "quantity": 1,
-      "unitPriceUsd": 0,
-      "evidence": "must be raised from zero before qualification"
-    },
-    {
-      "category": "primary-ingress",
-      "quantity": 0,
-      "unitPriceUsd": 0,
-      "evidence": "placeholder for primary ingress per GB; account quote and traffic measurement required"
-    }
-  ],
   "flyServiceResources": {
     "studio-production": {
       "cpu_kind": "shared",
@@ -177,13 +26,207 @@
     }
   },
   "flyMonthlyHours": 744,
-  "validatorMemoryGb": 2,
-  "validatorDurationSeconds": 30,
+  "flyApplicationEgressGb": 50,
+  "logicalDatabaseCount": 4,
   "postgresPlanId": "hobby-2",
+  "postgresStorageGb": 20,
+  "postgresSharedBuffersBytes": 1073741824,
+  "postgresAppRoleWorkMemBytes": 268435456,
   "databaseDumpSizesGb": {
     "studio-production": 0.1,
     "studio-staging": 0.1,
     "registry-production": 0.1,
     "registry-staging": 0.1
-  }
+  },
+  "databaseTransferGb": 595.2,
+  "kmsBillableKeyVersions": 6,
+  "kmsRequestCount": 100000,
+  "primaryObjectStoredGb": 20,
+  "primaryObjectCurrentCount": 10000,
+  "primaryObjectMonthlyVersionChurnGb": 5,
+  "primaryObjectMonthlyVersionChurnCount": 2500,
+  "primaryObjectRetainedVersionGb": 25,
+  "primaryObjectRetainedVersionCount": 12500,
+  "primaryObjectApplicationEgressGb": 50,
+  "primaryObjectClassARequests": 1000000,
+  "primaryObjectClassBRequests": 10000000,
+  "primaryObjectEgressGb": 55,
+  "validatorRunCount": 5952,
+  "validatorMemoryGb": 2,
+  "validatorDurationSeconds": 30,
+  "validatorRequestCount": 36904,
+  "validatorTransferGb": 645.2,
+  "backupStoredGb": 620.2,
+  "backupRequestCount": 39404,
+  "backupEgressGb": 645.2,
+  "postmarkPlanRef": "basic-10k-historical-comparison",
+  "postmarkMessageCount": 12000,
+  "postmarkIncludedMessages": 10000,
+  "monitoringRetentionDays": 30,
+  "newRelicPaidUpgradeAllowed": false,
+  "newRelicHardStopConfigured": true,
+  "newRelicMonthlyIngestGb": 50,
+  "newRelicFreeIngestLimitGb": 100,
+  "workerTierId": "unselected",
+  "workerMonthlyRequestCount": 1000000,
+  "workerMonthlyCpuMilliseconds": 10000000,
+  "workerMonthlyWebSocketMinutes": 100000,
+  "lineItems": [
+    {
+      "category": "compute",
+      "quantity": 2976,
+      "unitPriceUsd": 0.004428,
+      "evidence": "illustrative per-machine-hour price for the candidate-sizing.json shared CPU and memory, 744 hours"
+    },
+    {
+      "category": "fly-egress",
+      "quantity": 50,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring a current Fly application egress quote"
+    },
+    {
+      "category": "database-plan",
+      "quantity": 1,
+      "unitPriceUsd": 35,
+      "evidence": "Crunchy Hobby-2 public list price"
+    },
+    {
+      "category": "database-storage",
+      "quantity": 20,
+      "unitPriceUsd": 0.1,
+      "evidence": "candidate 20 GB"
+    },
+    {
+      "category": "database-transfer",
+      "quantity": 595.2,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring a current quote"
+    },
+    {
+      "category": "primary-object-storage",
+      "quantity": 25,
+      "unitPriceUsd": 0.015,
+      "evidence": "illustrative R2 retained current and historical version inventory"
+    },
+    {
+      "category": "primary-object-class-a",
+      "quantity": 1,
+      "unitPriceUsd": 4.5,
+      "evidence": "one million operations"
+    },
+    {
+      "category": "primary-object-class-b",
+      "quantity": 10,
+      "unitPriceUsd": 0.36,
+      "evidence": "ten million operations"
+    },
+    {
+      "category": "primary-object-egress",
+      "quantity": 55,
+      "unitPriceUsd": 0,
+      "evidence": "explicit candidate, verify limits and destination"
+    },
+    {
+      "category": "kms-keys",
+      "quantity": 6,
+      "unitPriceUsd": 1,
+      "evidence": "two logical keys after two retained annual rotations"
+    },
+    {
+      "category": "kms-requests",
+      "quantity": 100000,
+      "unitPriceUsd": 3e-6,
+      "evidence": "illustrative request volume"
+    },
+    {
+      "category": "backup-storage",
+      "quantity": 0.6202000000000001,
+      "unitPriceUsd": 6.95,
+      "evidence": "illustrative B2 storage, all 31 days of immutable points plus live assets"
+    },
+    {
+      "category": "backup-requests",
+      "quantity": 39404,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring request quote"
+    },
+    {
+      "category": "backup-egress",
+      "quantity": 645.2,
+      "unitPriceUsd": 0,
+      "evidence": "explicit estimate; free-egress eligibility must be proven"
+    },
+    {
+      "category": "validator-compute",
+      "quantity": 357120,
+      "unitPriceUsd": 1.6666666666666667e-5,
+      "evidence": "illustrative GB-second price; independent 2 GB, 30-second execution requires a measured quote"
+    },
+    {
+      "category": "validator-requests",
+      "quantity": 36904,
+      "unitPriceUsd": 2e-7,
+      "evidence": "illustrative Lambda invocation charge; independent execution location still requires qualification"
+    },
+    {
+      "category": "validator-transfer",
+      "quantity": 645.2,
+      "unitPriceUsd": 0,
+      "evidence": "illustrative full dump validation transfer; current provider quote required"
+    },
+    {
+      "category": "mail",
+      "quantity": 1,
+      "unitPriceUsd": 15,
+      "evidence": "illustrative Postmark Basic subscription; current plan quote required"
+    },
+    {
+      "category": "mail-overage",
+      "quantity": 2000,
+      "unitPriceUsd": 0.001,
+      "evidence": "illustrative arithmetic only; current Postmark overage quote required"
+    },
+    {
+      "category": "monitoring",
+      "quantity": 1,
+      "unitPriceUsd": 0,
+      "evidence": "New Relic Free candidate; hard stop required"
+    },
+    {
+      "category": "dns",
+      "quantity": 1,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder for fixed DNS charges"
+    },
+    {
+      "category": "reserve",
+      "quantity": 1,
+      "unitPriceUsd": 0,
+      "evidence": "must be raised from zero before qualification"
+    },
+    {
+      "category": "primary-ingress",
+      "quantity": 1,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring a current Cloudflare Workers tier quote"
+    },
+    {
+      "category": "primary-ingress-requests",
+      "quantity": 1000000,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring measured requests and a current account-tier quote"
+    },
+    {
+      "category": "primary-ingress-cpu",
+      "quantity": 10000000,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring measured CPU milliseconds and a current account-tier quote"
+    },
+    {
+      "category": "primary-ingress-websocket",
+      "quantity": 100000,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder requiring measured WebSocket usage and a current account-tier quote"
+    }
+  ]
 }

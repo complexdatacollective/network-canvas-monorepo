@@ -6,6 +6,7 @@ const sizing = JSON.parse(
 
 const REQUIRED_CATEGORIES = new Set([
   'compute',
+  'fly-egress',
   'database-plan',
   'database-storage',
   'database-transfer',
@@ -22,9 +23,13 @@ const REQUIRED_CATEGORIES = new Set([
   'validator-requests',
   'validator-transfer',
   'mail',
+  'mail-overage',
   'monitoring',
   'dns',
   'primary-ingress',
+  'primary-ingress-requests',
+  'primary-ingress-cpu',
+  'primary-ingress-websocket',
   'reserve',
 ]);
 
@@ -39,7 +44,30 @@ function finiteNonNegative(value, path) {
   return value;
 }
 
-function verifyPricingDeclaration(item, now) {
+function nonNegativeSafeInteger(value, path) {
+  finiteNonNegative(value, path);
+  if (!Number.isSafeInteger(value)) fail(`${path} must be a safe integer`);
+  return value;
+}
+
+function boundedIdentifier(value, path) {
+  if (typeof value !== 'string' || !/^[a-z0-9][a-z0-9._-]{0,127}$/i.test(value))
+    fail(`${path} must be a bounded provider identifier`);
+  return value;
+}
+
+function requireSelectedIdentifier(value, path) {
+  if (
+    /placeholder|illustrative|unverified|pending|unselected|unknown|historical/i.test(
+      value,
+    )
+  )
+    fail(
+      `${path} must identify a selected provider product for a budget check`,
+    );
+}
+
+function verifyPricingDeclaration(item, now, usage) {
   const quote = item.pricing;
   if (
     !quote ||
@@ -72,6 +100,21 @@ function verifyPricingDeclaration(item, now) {
       fail('reserve requires an operator allocation');
     return;
   }
+  if (
+    (item.category === 'mail' || item.category === 'mail-overage') &&
+    (quote.planRef !== usage.postmarkPlanRef ||
+      quote.includedQuantity !== usage.postmarkIncludedMessages)
+  )
+    fail(
+      `category ${item.category} pricing must identify the selected mail plan and included message allowance`,
+    );
+  if (
+    item.category.startsWith('primary-ingress') &&
+    quote.tierId !== usage.workerTierId
+  )
+    fail(
+      `category ${item.category} pricing must identify the selected Worker tier`,
+    );
   let source;
   try {
     source = new URL(quote.sourceUrl);
@@ -178,8 +221,11 @@ export function evaluateManagedEstateCost(
     'postgresStorageGb',
     'kmsBillableKeyVersions',
     'kmsRequestCount',
-    'primaryIngressGb',
+    'flyApplicationEgressGb',
+    'primaryObjectApplicationEgressGb',
     'primaryObjectStoredGb',
+    'primaryObjectMonthlyVersionChurnGb',
+    'primaryObjectRetainedVersionGb',
     'primaryObjectClassARequests',
     'primaryObjectClassBRequests',
     'primaryObjectEgressGb',
@@ -192,8 +238,43 @@ export function evaluateManagedEstateCost(
     'backupStoredGb',
     'backupRequestCount',
     'backupEgressGb',
+    'workerMonthlyCpuMilliseconds',
+    'workerMonthlyWebSocketMinutes',
   ])
     finiteNonNegative(input[field], field);
+
+  for (const field of [
+    'primaryObjectCurrentCount',
+    'primaryObjectMonthlyVersionChurnCount',
+    'primaryObjectRetainedVersionCount',
+    'postmarkMessageCount',
+    'postmarkIncludedMessages',
+    'workerMonthlyRequestCount',
+  ])
+    nonNegativeSafeInteger(input[field], field);
+  const postmarkPlanRef = boundedIdentifier(
+    input.postmarkPlanRef,
+    'postmarkPlanRef',
+  );
+  const workerTierId = boundedIdentifier(input.workerTierId, 'workerTierId');
+  if (
+    (input.primaryObjectStoredGb > 0 &&
+      input.primaryObjectCurrentCount === 0) ||
+    (input.primaryObjectRetainedVersionGb > 0 &&
+      input.primaryObjectRetainedVersionCount === 0) ||
+    (input.primaryObjectMonthlyVersionChurnGb === 0) !==
+      (input.primaryObjectMonthlyVersionChurnCount === 0)
+  )
+    fail(
+      'object byte and object-count measurements must describe the same inventory',
+    );
+  if (
+    input.workerMonthlyRequestCount === 0 ||
+    input.workerMonthlyCpuMilliseconds === 0
+  )
+    fail('Worker requests and CPU usage must measure the active ingress');
+  if (input.flyApplicationEgressGb === 0)
+    fail('Fly application egress must measure the active services');
 
   if (input.validatorMemoryGb === 0 || input.validatorDurationSeconds === 0)
     fail('validator memory and duration must be positive');
@@ -221,6 +302,9 @@ export function evaluateManagedEstateCost(
   const monthlyPoints =
     (sizing.monthlyHours * 60) / sizing.recovery.backupIntervalMinutes;
   const requiredValidations = monthlyPoints * databaseNames.length;
+  const requiredObjectScrubRuns = Math.ceil(
+    sizing.recovery.retentionDays / sizing.recovery.objectScrubIntervalDays,
+  );
   if (
     !Number.isSafeInteger(input.validatorRunCount) ||
     input.validatorRunCount < requiredValidations
@@ -229,26 +313,64 @@ export function evaluateManagedEstateCost(
       `validatorRunCount must cover at least ${requiredValidations} scheduled database validations`,
     );
   const recoveryMinimums = {
-    backupRequestCount: requiredValidations * sizing.recovery.requestsPerBackup,
+    databaseTransferGb: monthlyPoints * dumpTotalGb,
+    backupRequestCount:
+      requiredValidations * sizing.recovery.requestsPerBackup +
+      input.primaryObjectMonthlyVersionChurnCount *
+        sizing.recovery.backupRequestsPerObjectCopy +
+      requiredObjectScrubRuns *
+        input.primaryObjectRetainedVersionCount *
+        sizing.recovery.backupRequestsPerObjectValidation,
     validatorRequestCount:
-      input.validatorRunCount * sizing.recovery.requestsPerValidation,
+      input.validatorRunCount * sizing.recovery.requestsPerValidation +
+      requiredObjectScrubRuns *
+        input.primaryObjectRetainedVersionCount *
+        sizing.recovery.validatorRequestsPerObjectValidation,
     // Every immutable archive remains locked for 31 days, including frequent
     // points older than the seven-day operational retention target.
     backupStoredGb:
       ((sizing.recovery.retentionDays * 24 * 60) /
         sizing.recovery.backupIntervalMinutes) *
         dumpTotalGb +
-      input.primaryObjectStoredGb,
-    backupEgressGb: monthlyPoints * dumpTotalGb,
-    validatorTransferGb: monthlyPoints * dumpTotalGb,
+      input.primaryObjectRetainedVersionGb,
+    backupEgressGb:
+      monthlyPoints * dumpTotalGb +
+      requiredObjectScrubRuns * input.primaryObjectRetainedVersionGb,
+    validatorTransferGb:
+      monthlyPoints * dumpTotalGb +
+      requiredObjectScrubRuns * input.primaryObjectRetainedVersionGb,
   };
   for (const [field, minimum] of Object.entries(recoveryMinimums)) {
     finiteNonNegative(minimum, `minimum ${field}`);
     if (input[field] < minimum)
       fail(
-        `${field} is below the required recovery cadence and measured dump sizes`,
+        `${field} is below the required recovery cadence, scrub cadence, or measured inventory`,
       );
   }
+
+  if (
+    input.primaryObjectRetainedVersionGb <
+      input.primaryObjectStoredGb + input.primaryObjectMonthlyVersionChurnGb ||
+    input.primaryObjectRetainedVersionCount <
+      input.primaryObjectCurrentCount +
+        input.primaryObjectMonthlyVersionChurnCount
+  )
+    fail(
+      'retained object version inventory must cover current objects and measured monthly churn',
+    );
+  if (
+    input.primaryObjectClassBRequests <
+    input.primaryObjectMonthlyVersionChurnCount
+  )
+    fail('primary object read requests must cover every recovery copy');
+  if (
+    input.primaryObjectEgressGb <
+    input.primaryObjectApplicationEgressGb +
+      input.primaryObjectMonthlyVersionChurnGb
+  )
+    fail(
+      'primaryObjectEgressGb must cover measured application delivery and recovery copies',
+    );
 
   if (
     input.postgresStorageGb !== sizing.postgres.storageGb ||
@@ -265,10 +387,11 @@ export function evaluateManagedEstateCost(
   // claim zero compute cost or price only a fraction of its recovery traffic.
   const quantities = {
     'compute': input.flySingletonCount * input.flyMonthlyHours,
+    'fly-egress': input.flyApplicationEgressGb,
     'database-plan': 1,
     'database-storage': input.postgresStorageGb,
     'database-transfer': input.databaseTransferGb,
-    'primary-object-storage': input.primaryObjectStoredGb,
+    'primary-object-storage': input.primaryObjectRetainedVersionGb,
     'primary-object-class-a': input.primaryObjectClassARequests / 1_000_000,
     'primary-object-class-b': input.primaryObjectClassBRequests / 1_000_000,
     'primary-object-egress': input.primaryObjectEgressGb,
@@ -284,9 +407,16 @@ export function evaluateManagedEstateCost(
     'validator-requests': input.validatorRequestCount,
     'validator-transfer': input.validatorTransferGb,
     'mail': 1,
+    'mail-overage': Math.max(
+      0,
+      input.postmarkMessageCount - input.postmarkIncludedMessages,
+    ),
     'monitoring': 1,
     'dns': 1,
-    'primary-ingress': input.primaryIngressGb,
+    'primary-ingress': 1,
+    'primary-ingress-requests': input.workerMonthlyRequestCount,
+    'primary-ingress-cpu': input.workerMonthlyCpuMilliseconds,
+    'primary-ingress-websocket': input.workerMonthlyWebSocketMinutes,
     'reserve': 1,
   };
 
@@ -340,7 +470,15 @@ export function evaluateManagedEstateCost(
     );
   if (requireBudget) {
     if (!Number.isFinite(now)) fail('pricing review time is invalid');
-    for (const item of input.lineItems) verifyPricingDeclaration(item, now);
+    requireSelectedIdentifier(postmarkPlanRef, 'postmarkPlanRef');
+    requireSelectedIdentifier(workerTierId, 'workerTierId');
+    const usage = {
+      postmarkPlanRef,
+      postmarkIncludedMessages: input.postmarkIncludedMessages,
+      workerTierId,
+    };
+    for (const item of input.lineItems)
+      verifyPricingDeclaration(item, now, usage);
   }
 
   return {
