@@ -47,7 +47,7 @@ vi.mock('~/lib/auth/twoFactorPolicy', () => ({
   requiresTwoFactorSetup: mockRequiresTwoFactorSetup,
 }));
 
-import { requireApiAuth, requirePageAuth } from '../guards';
+import { getAdmittedSession, requireApiAuth, requirePageAuth } from '../guards';
 import { TWO_FACTOR_SETUP_PATH } from '../paths';
 
 const USER_ID = 'user-1';
@@ -148,5 +148,28 @@ describe('requireApiAuth', () => {
     mockRequiresTwoFactorSetup.mockResolvedValue(false);
 
     await expect(requireApiAuth()).resolves.toEqual(expectedSession);
+  });
+});
+
+describe('getAdmittedSession', () => {
+  it('is null for a visitor with no session', async () => {
+    signedOut();
+
+    await expect(getAdmittedSession()).resolves.toBeNull();
+  });
+
+  it('does not count an account held at the two-factor gate as a researcher', async () => {
+    signedIn();
+    mockRequiresTwoFactorSetup.mockResolvedValue(true);
+
+    await expect(getAdmittedSession()).resolves.toBeNull();
+    expect(mockRequiresTwoFactorSetup).toHaveBeenCalledWith(USER_ID);
+  });
+
+  it('returns the session once the gate is lifted', async () => {
+    signedIn();
+    mockRequiresTwoFactorSetup.mockResolvedValue(false);
+
+    await expect(getAdmittedSession()).resolves.toEqual(expectedSession);
   });
 });

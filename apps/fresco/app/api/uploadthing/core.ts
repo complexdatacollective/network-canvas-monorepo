@@ -1,7 +1,6 @@
 import { createUploadthing } from 'uploadthing/next';
 
-import { getServerSession } from '~/lib/auth/guards';
-import { requiresTwoFactorSetup } from '~/lib/auth/twoFactorPolicy';
+import { getAdmittedSession } from '~/lib/auth/guards';
 
 const f = createUploadthing();
 
@@ -17,14 +16,11 @@ export const ourFileRouter = {
     blob: { maxFileSize: '256MB', maxFileCount: 50 },
   })
     .middleware(async () => {
-      const session = await getServerSession();
+      // An account still held at the mandatory two-factor gate is not
+      // admitted here either.
+      const session = await getAdmittedSession();
       if (!session) {
         throw new Error('You must be logged in to upload assets.');
-      }
-      // The same gate the Server Actions apply: an account that still has to
-      // set up mandatory two-factor authentication can reach nothing else.
-      if (await requiresTwoFactorSetup(session.user.userId)) {
-        throw new Error('Two-factor authentication setup required.');
       }
       return {};
     })

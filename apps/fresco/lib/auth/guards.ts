@@ -40,6 +40,21 @@ export const getServerSession = cache(async () => {
 });
 
 /**
+ * The session, unless it is still held at the mandatory two-factor gate. For
+ * code that merely notices a signed-in researcher rather than requiring one —
+ * the interview page, which lets a researcher past the participant-only
+ * restrictions, and the upload middleware. A gated session must not count as
+ * a researcher anywhere, so those callers read it through this rather than
+ * `getServerSession`.
+ */
+export async function getAdmittedSession() {
+  const session = await getServerSession();
+  if (!session) return null;
+  if (await requiresTwoFactorSetup(session.user.userId)) return null;
+  return session;
+}
+
+/**
  * Page guard. A signed-in account that still has to set up mandatory
  * two-factor authentication is sent to the setup page instead of the page it
  * asked for, so no dashboard route renders for it.
