@@ -3,6 +3,7 @@ import { lstat, open } from 'node:fs/promises';
 
 import { z } from 'zod';
 
+import { normalizeMailbox } from '@codaco/studio-sync/email-sender';
 import { templateBytesHash } from '@codaco/studio-sync/template-exchange';
 
 const userId = z
@@ -18,6 +19,8 @@ const reconciliationSchema = z
     users: z.array(
       z.strictObject({
         id: userId,
+        email: z.email().max(254).transform(normalizeMailbox),
+        emailVerified: z.literal(true),
         publisher: z.enum(['none', 'active', 'suspended']),
         operator: z.boolean(),
       }),

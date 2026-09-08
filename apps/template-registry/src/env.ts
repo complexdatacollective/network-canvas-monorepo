@@ -31,6 +31,24 @@ const serviceOrigin = networkUrl(['http:', 'https:']).refine((value) => {
     url.pathname === '/'
   );
 });
+const privateNetworkOptIn = z.boolean();
+const objectStorageSchema = z
+  .strictObject({
+    endpoint: serviceOrigin,
+    insecurePrivateNetwork: privateNetworkOptIn,
+    region: nonblank,
+    bucket: nonblank,
+    accessKeyId: nonblank,
+    secretAccessKey: nonblank,
+  })
+  .refine(({ endpoint, insecurePrivateNetwork }) => {
+    const url = new URL(endpoint);
+    return (
+      url.protocol === 'https:' ||
+      localHost(url.hostname) ||
+      insecurePrivateNetwork
+    );
+  });
 const originUrl = serviceOrigin.refine((value) => {
   const url = new URL(value);
   return url.protocol === 'https:' || localHost(url.hostname);
@@ -66,13 +84,7 @@ const recoverySchema = z.strictObject({
   backupDatabaseUrl: databaseUrl,
   reconciliationPath: z.string().min(1),
   reconciliationSha256: z.string().regex(/^[0-9a-f]{64}$/),
-  s3: z.strictObject({
-    endpoint: serviceOrigin,
-    region: nonblank,
-    bucket: nonblank,
-    accessKeyId: nonblank,
-    secretAccessKey: nonblank,
-  }),
+  s3: objectStorageSchema,
   ...enrollmentSchema.shape,
 });
 const readDatabaseAdmission = (raw: RawEnv) => {
@@ -112,23 +124,7 @@ const schema = z.strictObject({
     }),
   ]),
   magicLinksPerDay: z.number().int().min(1).max(10_000),
-  s3: z
-    .strictObject({
-      endpoint: serviceOrigin,
-      insecurePrivateNetwork: z.boolean(),
-      region: nonblank,
-      bucket: nonblank,
-      accessKeyId: nonblank,
-      secretAccessKey: nonblank,
-    })
-    .refine(({ endpoint, insecurePrivateNetwork }) => {
-      const url = new URL(endpoint);
-      return (
-        url.protocol === 'https:' ||
-        localHost(url.hostname) ||
-        insecurePrivateNetwork
-      );
-    }),
+  s3: objectStorageSchema,
   limits: RegistryLimitsSchema,
 });
 export type RegistryEnv = z.infer<typeof schema>;
@@ -250,6 +246,11 @@ export function readRegistryRecoveryEnv(raw: RawEnv = process.env) {
       ...readDatabaseAdmission(raw),
       s3: {
         endpoint: raw.REGISTRY_S3_ENDPOINT,
+        insecurePrivateNetwork:
+          z
+            .enum(['true', 'false'])
+            .parse(raw.REGISTRY_S3_INSECURE_PRIVATE_NETWORK ?? 'false') ===
+          'true',
         region: raw.REGISTRY_S3_REGION,
         bucket: raw.REGISTRY_S3_BUCKET,
         accessKeyId: raw.REGISTRY_S3_ACCESS_KEY_ID,

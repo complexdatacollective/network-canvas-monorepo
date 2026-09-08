@@ -4,6 +4,7 @@ import {
   readRegistryBackupEnv,
   readRegistryEnv,
   readRegistryMigrationEnv,
+  readRegistryRecoveryEnv,
 } from './env.ts';
 
 const valid = {
@@ -176,6 +177,47 @@ it('requires an explicit owner URL and exact allowed-login JSON for migrations',
       REGISTRY_DATABASE_ALLOWED_LOGINS: '["runtime"]',
     }),
   ).toThrow('REGISTRY_MIGRATION_CONFIGURATION_INVALID');
+});
+
+it('applies the runtime TLS policy to recovery object storage', () => {
+  const recovery = {
+    REGISTRY_RECOVERY_DATABASE_URL:
+      'postgres://owner:synthetic@localhost/registry',
+    REGISTRY_BACKUP_DATABASE_URL:
+      'postgres://backup:synthetic@localhost/registry',
+    REGISTRY_DATABASE_ALLOWED_LOGINS: '["owner","backup"]',
+    REGISTRY_RECOVERY_RECONCILIATION_PATH: '/private/current.json',
+    REGISTRY_RECOVERY_RECONCILIATION_SHA256: 'a'.repeat(64),
+    REGISTRY_S3_ENDPOINT: 'http://objects.example.test',
+    REGISTRY_S3_REGION: 'auto',
+    REGISTRY_S3_BUCKET: 'registry',
+    REGISTRY_S3_ACCESS_KEY_ID: 'synthetic-access-id',
+    REGISTRY_S3_SECRET_ACCESS_KEY: 'synthetic-storage-secret',
+  };
+  expect(() => readRegistryRecoveryEnv(recovery)).toThrow(
+    'REGISTRY_RECOVERY_CONFIGURATION_INVALID',
+  );
+  expect(() =>
+    readRegistryRecoveryEnv({
+      ...recovery,
+      REGISTRY_S3_INSECURE_PRIVATE_NETWORK: '1',
+    }),
+  ).toThrow('REGISTRY_RECOVERY_CONFIGURATION_INVALID');
+  expect(
+    readRegistryRecoveryEnv({
+      ...recovery,
+      REGISTRY_S3_INSECURE_PRIVATE_NETWORK: 'true',
+    }).s3,
+  ).toMatchObject({
+    endpoint: recovery.REGISTRY_S3_ENDPOINT,
+    insecurePrivateNetwork: true,
+  });
+  expect(
+    readRegistryRecoveryEnv({
+      ...recovery,
+      REGISTRY_S3_ENDPOINT: 'https://objects.example.test',
+    }).s3.insecurePrivateNetwork,
+  ).toBe(false);
 });
 
 it('shares complete enrollment and explicit administrator parsing across runtime, migrations and backup', () => {

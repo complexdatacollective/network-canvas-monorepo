@@ -2,6 +2,7 @@ import { deepStrictEqual } from 'node:assert';
 
 import type pg from 'pg';
 
+import { normalizeMailbox } from '@codaco/studio-sync/email-sender';
 import { assertPostgresRecoveryQuarantine } from '@codaco/studio-sync/postgres-recovery-quarantine';
 import { readTemplateArtifact } from '@codaco/studio-sync/template-exchange';
 
@@ -35,19 +36,40 @@ function sameUserIds(actual: readonly string[], expected: readonly string[]) {
   );
 }
 
+type RecoveredUser = { id: string; email: string; email_verified: boolean };
+
 function assertReconciliationUsers(
-  actual: readonly string[],
+  actual: readonly RecoveredUser[],
   reconciliation: RegistryRecoveryReconciliation,
 ) {
-  const expected = reconciliation.users.map((user) => user.id).toSorted();
-  if (!sameUserIds(actual.toSorted(), expected))
+  const expected = new Map(reconciliation.users.map((user) => [user.id, user]));
+  if (
+    actual.length !== expected.size ||
+    actual.some((user) => {
+      const evidence = expected.get(user.id);
+      return (
+        !evidence ||
+        normalizeMailbox(user.email) !== evidence.email ||
+        user.email_verified !== evidence.emailVerified
+      );
+    })
+  )
     throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
 }
 
-async function verifyArtifacts(
+async function keepRecoveryTransactionsAlive(
   client: pg.PoolClient,
+  backup: pg.PoolClient,
+) {
+  await Promise.all([client.query('SELECT 1'), backup.query('SELECT 1')]);
+}
+
+export async function verifyRegistryRecoveryArtifacts(
+  client: pg.PoolClient,
+  backup: pg.PoolClient,
   blobs: RegistryBlobStore,
 ) {
+  await blobs.ready();
   const artifacts = await client.query<Artifact>(
     `SELECT artifact.root, artifact.raw_hash, artifact.byte_size,
       content.template, content.metadata, content.license
@@ -73,6 +95,7 @@ async function verifyArtifacts(
     } catch {
       throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
     }
+    await keepRecoveryTransactionsAlive(client, backup);
   }
 }
 
@@ -142,14 +165,11 @@ export async function reconcileRegistryRecovery({
       registry_auth_verification, registry_publishers, registry_operators,
       registry_credentials, registry_artifacts, registry_artifact_content
       IN SHARE ROW EXCLUSIVE MODE`);
-    const users = await client.query<{ id: string }>(
-      'SELECT id FROM registry_auth_user ORDER BY id',
+    const users = await client.query<RecoveredUser>(
+      'SELECT id, email, email_verified FROM registry_auth_user ORDER BY id',
     );
-    assertReconciliationUsers(
-      users.rows.map((user) => user.id),
-      evidence,
-    );
-    await verifyArtifacts(client, blobs);
+    assertReconciliationUsers(users.rows, evidence);
+    await verifyRegistryRecoveryArtifacts(client, backup, blobs);
     const publisherIds = evidence.users
       .filter((user) => user.publisher !== 'none')
       .map((user) => user.id);

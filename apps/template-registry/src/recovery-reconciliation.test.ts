@@ -41,6 +41,47 @@ it('verifies the exact private evidence bytes before parsing', async () => {
   }
 });
 
+it('normalizes evidence email domains and requires verified authority', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'registry-evidence-user-'));
+  const path = join(directory, 'current.json');
+  try {
+    const input = {
+      ...evidence,
+      users: [
+        {
+          id: 'publisher',
+          email: 'Researcher@EXAMPLE.TEST',
+          emailVerified: true,
+          publisher: 'active',
+          operator: true,
+        },
+      ],
+    };
+    const userBytes = Buffer.from(JSON.stringify(input));
+    await writeFile(path, userBytes, { mode: 0o600 });
+    await expect(
+      readRegistryRecoveryReconciliation(path, templateBytesHash(userBytes)),
+    ).resolves.toMatchObject({
+      users: [{ email: 'Researcher@example.test', emailVerified: true }],
+    });
+    const unverifiedBytes = Buffer.from(
+      JSON.stringify({
+        ...input,
+        users: [{ ...input.users[0], emailVerified: false }],
+      }),
+    );
+    await writeFile(path, unverifiedBytes, { mode: 0o600 });
+    await expect(
+      readRegistryRecoveryReconciliation(
+        path,
+        templateBytesHash(unverifiedBytes),
+      ),
+    ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 it.each(['symlink', 'readable-by-others', 'oversized', 'empty', 'malformed'])(
   'refuses %s evidence without accepting the expected hash alone',
   async (kind) => {

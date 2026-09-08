@@ -133,8 +133,11 @@ settings and the complete login inventory. `REGISTRY_RECOVERY_RECONCILIATION_PAT
 names a private regular JSON file of at most 16 MiB; its exact-byte SHA-256 is
 supplied separately as `REGISTRY_RECOVERY_RECONCILIATION_SHA256`. This is an
 operator-approved inventory, not a signature or evidence of who approved it.
-Its users must exactly match the restored users, with current publisher and
-operator permissions independently reconciled before running the command.
+Its users must exactly match the restored users by ID, normalized email and
+verified-email state, with current publisher and operator permissions
+independently reconciled before running the command. Recovery object storage
+uses the runtime HTTPS policy; a non-loopback HTTP endpoint requires the same
+explicit `REGISTRY_S3_INSECURE_PRIVATE_NETWORK=true` operator opt-in.
 
 All serving logins and other enrolled administrators remain NOLOGIN, except
 the connecting recovery operator; surviving target sessions and prepared
