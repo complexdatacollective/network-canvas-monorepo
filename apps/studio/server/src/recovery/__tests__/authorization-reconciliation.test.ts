@@ -1,14 +1,24 @@
-import { createHash } from 'node:crypto';
+import {
+  createHash,
+  generateKeyPairSync,
+  sign as signBytes,
+} from 'node:crypto';
 import { chmod, mkdtemp, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import type pg from 'pg';
 import { describe, expect, it } from 'vitest';
+
+import { canonicalize } from '@codaco/studio-sync/apply';
 
 import {
   copyStudioRecoveryAuthorizationReconciliation,
   readStudioRecoveryAuthorizationReconciliation,
+  type VerifiedStudioRecoveryAuthorizationEvidence,
+  verifyStudioRecoveryAuthorizationEvidence,
 } from '../authorization-reconciliation.ts';
+import { authorizeCurrentStudioRecovery } from '../authorization.ts';
 
 const sha = '1'.repeat(64);
 
@@ -25,6 +35,7 @@ function evidence() {
       completedAt: '2026-09-08T00:00:00.000Z',
     },
     users: [{ id: 'owner', email: 'owner@example.com', emailVerified: true }],
+    eligibleUserIds: ['owner'],
     accounts: [
       {
         id: 'account',
@@ -47,6 +58,86 @@ function evidence() {
 }
 
 describe('Studio recovery authorization reconciliation evidence', () => {
+  it('verifies exact canonical bytes with an independently identified Ed25519 key', () => {
+    const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+    const bytes = Buffer.from(canonicalize(evidence()));
+    const signature = signBytes(null, bytes, privateKey).toString('base64url');
+    const publicKeyBytes = publicKey.export({ format: 'jwk' }).x!;
+    const verified = verifyStudioRecoveryAuthorizationEvidence({
+      bytes,
+      expectedSha256: createHash('sha256').update(bytes).digest('hex'),
+      signature,
+      authorityKeyId: 'offline-recovery-2026',
+      authorityPublicKey: publicKeyBytes,
+    });
+    expect(verified).toMatchObject({
+      reconciliation: { eligibleUserIds: ['owner'] },
+      authority: { keyId: 'offline-recovery-2026' },
+    });
+    expect(Object.isFrozen(verified.reconciliation.eligibleUserIds)).toBe(true);
+  });
+
+  it('refuses tampered, noncanonical and over-depth evidence without echoing it', () => {
+    const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+    const publicKeyBytes = publicKey.export({ format: 'jwk' }).x!;
+    const verify = (bytes: Buffer, signatureBytes = bytes) => () =>
+      verifyStudioRecoveryAuthorizationEvidence({
+        bytes,
+        expectedSha256: createHash('sha256').update(bytes).digest('hex'),
+        signature: signBytes(null, signatureBytes, privateKey).toString(
+          'base64url',
+        ),
+        authorityKeyId: 'offline-recovery-2026',
+        authorityPublicKey: publicKeyBytes,
+      });
+    const canonical = Buffer.from(canonicalize(evidence()));
+    const tampered = Buffer.from(canonical);
+    tampered[tampered.length - 2] ^= 1;
+    expect(verify(tampered, canonical)).toThrow(
+      'STUDIO_RECOVERY_RECONCILIATION_INVALID',
+    );
+    const pretty = Buffer.from(JSON.stringify(evidence(), null, 2));
+    expect(verify(pretty)).toThrow(
+      'STUDIO_RECOVERY_RECONCILIATION_INVALID',
+    );
+    const tooDeep = Buffer.from(`${'['.repeat(65)}0${']'.repeat(65)}`);
+    expect(verify(tooDeep)).toThrow(
+      'STUDIO_RECOVERY_RECONCILIATION_INVALID',
+    );
+    expect(() =>
+      verifyStudioRecoveryAuthorizationEvidence({
+        bytes: { byteLength: 64 * 1024 * 1024 + 1 } as Uint8Array,
+        expectedSha256: sha,
+        signature: 'tainted-signature',
+        authorityKeyId: 'offline-recovery-2026',
+        authorityPublicKey: publicKeyBytes,
+      }),
+    ).toThrow('STUDIO_RECOVERY_RECONCILIATION_INVALID');
+  });
+
+  it('rejects a fabricated verification result before database I/O', async () => {
+    let connections = 0;
+    const pool = {
+      connect: () => {
+        connections += 1;
+        throw new Error('must not connect');
+      },
+    } as unknown as pg.Pool;
+    await expect(
+      authorizeCurrentStudioRecovery({
+        pool,
+        backupPool: pool,
+        policy: { allowedLogins: [], administrativeLogins: [] },
+        evidence: {
+          reconciliation: evidence(),
+          sha256: sha,
+          authority: { keyId: 'forged', publicKeySha256: sha },
+        } as VerifiedStudioRecoveryAuthorizationEvidence,
+      }),
+    ).rejects.toThrow('STUDIO_RECOVERY_RECONCILIATION_INVALID');
+    expect(connections).toBe(0);
+  });
+
   it('takes an immutable strict snapshot', () => {
     const source = evidence();
     const copy = copyStudioRecoveryAuthorizationReconciliation(source);

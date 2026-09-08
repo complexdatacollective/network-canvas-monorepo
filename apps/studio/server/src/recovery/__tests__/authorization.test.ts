@@ -1,10 +1,17 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import {
+  createHash,
+  generateKeyPairSync,
+  randomBytes,
+  randomUUID,
+  sign as signBytes,
+} from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import pg from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
+import { canonicalize } from '@codaco/studio-sync/apply';
 import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 import {
   revokeLargeObjectPrivilegesSql,
@@ -21,14 +28,20 @@ import {
   createPool,
 } from '../../db/pool.ts';
 import type { DbEnv } from '../../env.ts';
-import type { StudioRecoveryAuthorizationReconciliation } from '../authorization-reconciliation.ts';
 import {
+  type StudioRecoveryAuthorizationReconciliation,
+  verifyStudioRecoveryAuthorizationEvidence,
+} from '../authorization-reconciliation.ts';
+import {
+  authorizeCurrentStudioRecovery,
   reconcileStudioRecoveryAuthorization,
   studioRecoveryAccountCredentialHash,
 } from '../authorization.ts';
 
 const database = await reachableDb();
 const FAILURE = 'STUDIO_RECOVERY_AUTHORIZATION_FAILED';
+const authority = generateKeyPairSync('ed25519');
+const authorityPublicKey = authority.publicKey.export({ format: 'jwk' }).x!;
 
 type Fixture = {
   databaseName: string;
@@ -93,6 +106,44 @@ async function run(reconciliation: StudioRecoveryAuthorizationReconciliation) {
   }
 }
 
+function signEvidence(reconciliation: StudioRecoveryAuthorizationReconciliation) {
+  const bytes = Buffer.from(canonicalize(reconciliation));
+  return verifyStudioRecoveryAuthorizationEvidence({
+    bytes,
+    expectedSha256: createHash('sha256').update(bytes).digest('hex'),
+    signature: signBytes(null, bytes, authority.privateKey).toString(
+      'base64url',
+    ),
+    authorityKeyId: 'offline-recovery-2026',
+    authorityPublicKey,
+  });
+}
+
+async function authorize(
+  reconciliation: StudioRecoveryAuthorizationReconciliation,
+) {
+  const f = requireFixture();
+  const evidence = signEvidence(reconciliation);
+  await f.administrator.query(
+    `ALTER ROLE ${pg.escapeIdentifier(f.ownerLogin)} LOGIN`,
+  );
+  const owner = createOwnerPool(f.target);
+  try {
+    return await authorizeCurrentStudioRecovery({
+      pool: owner,
+      backupPool: f.backup,
+      policy: {
+        allowedLogins: f.allowedLogins,
+        administrativeLogins: [f.ownerLogin],
+      },
+      evidence,
+    });
+  } finally {
+    await owner.end();
+    await closeWriters();
+  }
+}
+
 async function currentEvidence(): Promise<StudioRecoveryAuthorizationReconciliation> {
   return withTargetAdministrator(async (pool) => {
     const instance = (
@@ -136,6 +187,7 @@ async function currentEvidence(): Promise<StudioRecoveryAuthorizationReconciliat
           emailVerified: true,
         },
       ],
+      eligibleUserIds: ['current-user'],
       accounts: [
         {
           id: account.id,
@@ -366,6 +418,139 @@ afterAll(async () => {
 });
 
 describe.skipIf(!database)('Studio recovery authorization', () => {
+  it('enables only signed current identities and is idempotent under quarantine', async () => {
+    const evidence = await currentEvidence();
+    await run(evidence);
+    const first = await authorize(evidence);
+    expect(first).toMatchObject({
+      format: 'studio-recovery-current-authorization-receipt',
+      authority: { keyId: 'offline-recovery-2026' },
+      destination: { database: requireFixture().databaseName },
+      eligibleUserIds: ['current-user'],
+    });
+    await expect(authorize(evidence)).resolves.toMatchObject({
+      evidence: { sha256: first.evidence.sha256 },
+      eligibleUserIds: ['current-user'],
+    });
+    await withTargetAdministrator(async (pool) => {
+      const state = await pool.query<{
+        id: string;
+        recovery_disabled: boolean;
+      }>('SELECT id, recovery_disabled FROM "user" ORDER BY id');
+      expect(state.rows).toEqual([
+        { id: 'current-user', recovery_disabled: false },
+        { id: 'stale-user', recovery_disabled: true },
+      ]);
+      await expect(
+        pool.query(
+          `SELECT rolname, rolcanlogin FROM pg_roles
+           WHERE rolname = ANY($1::text[]) ORDER BY rolname`,
+          [
+            requireFixture().ownerLogin,
+            requireFixture().runtimeLogin,
+            requireFixture().maintenanceLogin,
+          ],
+        ),
+      ).resolves.toHaveProperty(
+        'rows',
+        [
+          requireFixture().maintenanceLogin,
+          requireFixture().ownerLogin,
+          requireFixture().runtimeLogin,
+        ]
+          .toSorted()
+          .map((rolname) => ({ rolname, rolcanlogin: false })),
+      );
+      await expect(
+        pool.query("SELECT count(*)::int AS count FROM teams WHERE id = 'stale-team'"),
+      ).resolves.toHaveProperty('rows', [{ count: 1 }]);
+    });
+  });
+
+  it('refuses changed authority after revocation without enabling a user', async () => {
+    const evidence = await currentEvidence();
+    await run(evidence);
+    await withTargetAdministrator((pool) =>
+      pool.query(
+        `INSERT INTO team_members (id, team_id, user_id, role)
+         VALUES ('late-membership', 'stale-team', 'stale-user', 'admin')`,
+      ),
+    );
+    await expect(authorize(evidence)).rejects.toThrow(FAILURE);
+    await withTargetAdministrator(async (pool) => {
+      await expect(
+        pool.query(
+          'SELECT count(*)::int AS count FROM "user" WHERE NOT recovery_disabled',
+        ),
+      ).resolves.toHaveProperty('rows', [{ count: 0 }]);
+      await expect(
+        pool.query(
+          "SELECT count(*)::int AS count FROM team_members WHERE id = 'late-membership'",
+        ),
+      ).resolves.toHaveProperty('rows', [{ count: 1 }]);
+    });
+  });
+
+  it('refuses a surviving runtime session before current-user authorization', async () => {
+    const f = requireFixture();
+    const evidence = await currentEvidence();
+    await run(evidence);
+    await f.administrator.query(
+      `ALTER ROLE ${pg.escapeIdentifier(f.runtimeLogin)} LOGIN`,
+    );
+    const url = new URL(f.target.url);
+    url.username = f.runtimeLogin;
+    url.password = new URL(f.target.url).password;
+    const writer = createPool({ url: url.toString() });
+    const connection = await writer.connect();
+    await f.administrator.query(
+      `ALTER ROLE ${pg.escapeIdentifier(f.runtimeLogin)} NOLOGIN`,
+    );
+    try {
+      await expect(authorize(evidence)).rejects.toThrow(FAILURE);
+    } finally {
+      connection.release();
+      await writer.end();
+    }
+    await withTargetAdministrator(async (pool) => {
+      await expect(
+        pool.query(
+          'SELECT count(*)::int AS count FROM "user" WHERE NOT recovery_disabled',
+        ),
+      ).resolves.toHaveProperty('rows', [{ count: 0 }]);
+    });
+  });
+
+  it('refuses expired, wrong-instance and extra-enabled evidence atomically', async () => {
+    const evidence = await currentEvidence();
+    await run(evidence);
+    const expired = {
+      ...evidence,
+      issuedAt: '2026-09-07T00:00:00.000Z',
+      expiresAt: '2026-09-07T01:00:00.000Z',
+    };
+    await expect(authorize(expired)).rejects.toThrow(FAILURE);
+    await expect(
+      authorize({
+        ...evidence,
+        instance: { ...evidence.instance, name: 'Another Studio' },
+      }),
+    ).rejects.toThrow(FAILURE);
+    await withTargetAdministrator((pool) =>
+      pool.query(
+        "UPDATE \"user\" SET recovery_disabled = false WHERE id = 'stale-user'",
+      ),
+    );
+    await expect(authorize(evidence)).rejects.toThrow(FAILURE);
+    await withTargetAdministrator(async (pool) => {
+      await expect(
+        pool.query(
+          'SELECT id FROM "user" WHERE NOT recovery_disabled ORDER BY id',
+        ),
+      ).resolves.toHaveProperty('rows', [{ id: 'stale-user' }]);
+    });
+  });
+
   it('atomically revokes stale authority and holds restored credentials and delivery', async () => {
     const evidence = await currentEvidence();
     const receipt = await run(evidence);

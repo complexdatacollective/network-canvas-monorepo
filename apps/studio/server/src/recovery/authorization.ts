@@ -10,8 +10,10 @@ import { assertBackupAccess } from '../db/backup.ts';
 import { checkSchema } from '../db/schema.ts';
 import { tryParseRoles } from '../team/roles.ts';
 import {
+  assertVerifiedStudioRecoveryAuthorizationEvidence,
   copyStudioRecoveryAuthorizationReconciliation,
   type StudioRecoveryAuthorizationReconciliation,
+  type VerifiedStudioRecoveryAuthorizationEvidence,
 } from './authorization-reconciliation.ts';
 import { assertStudioRecoveryQuarantine } from './quarantine.ts';
 
@@ -144,6 +146,7 @@ async function asMaintenance<T>(
 async function reconcileInventories(
   client: pg.PoolClient,
   evidence: StudioRecoveryAuthorizationReconciliation,
+  mode: 'revoke-stale' | 'require-exact',
 ) {
   const freshness = await client.query<{ current: boolean }>(
     `SELECT statement_timestamp() >= $1::timestamptz - interval '5 minutes'
@@ -220,6 +223,8 @@ async function reconcileInventories(
   const staleAccountIds = accounts.rows
     .filter(({ id }) => !expectedAccounts.has(id))
     .map(({ id }) => id);
+  if (staleAccountIds.length && mode === 'require-exact')
+    throw new Error(MISMATCH);
   if (staleAccountIds.length)
     await client.query('DELETE FROM account WHERE id = ANY($1::text[])', [
       staleAccountIds,
@@ -252,6 +257,8 @@ async function reconcileInventories(
     const staleMembershipIds = memberships.rows
       .filter(({ id }) => !expectedMemberships.has(id))
       .map(({ id }) => id);
+    if (staleMembershipIds.length && mode === 'require-exact')
+      throw new Error(MISMATCH);
     if (staleMembershipIds.length)
       await client.query(
         'DELETE FROM team_members WHERE id = ANY($1::text[])',
@@ -287,6 +294,8 @@ async function reconcileInventories(
     const staleGrantIds = grants.rows
       .filter(({ id }) => !expectedGrants.has(id))
       .map(({ id }) => id);
+    if (staleGrantIds.length && mode === 'require-exact')
+      throw new Error(MISMATCH);
     if (staleGrantIds.length)
       await client.query(
         'DELETE FROM study_role_grants WHERE id = ANY($1::uuid[])',
@@ -315,6 +324,8 @@ async function reconcileInventories(
     const staleWebhookIds = webhooks.rows
       .filter(({ id }) => !expectedWebhooks.has(id))
       .map(({ id }) => id);
+    if (staleWebhookIds.length && mode === 'require-exact')
+      throw new Error(MISMATCH);
     if (staleWebhookIds.length)
       await client.query(
         `UPDATE webhook_subscriptions
@@ -331,6 +342,11 @@ async function reconcileInventories(
     ).rows.map(({ id }) => id);
     for (const id of evidence.activeScheduleIds)
       if (!activeSchedules.includes(id)) throw new Error(MISMATCH);
+    if (
+      mode === 'require-exact' &&
+      activeSchedules.length !== evidence.activeScheduleIds.length
+    )
+      throw new Error(MISMATCH);
     await client.query(
       `UPDATE study_schedules SET state = 'paused', updated_at = statement_timestamp()
        WHERE state = 'active' AND NOT (id = ANY($1::uuid[]))`,
@@ -344,6 +360,11 @@ async function reconcileInventories(
     ).rows.map(({ id }) => id);
     for (const id of evidence.publishedMessageTemplateIds)
       if (!publishedTemplates.includes(id)) throw new Error(MISMATCH);
+    if (
+      mode === 'require-exact' &&
+      publishedTemplates.length !== evidence.publishedMessageTemplateIds.length
+    )
+      throw new Error(MISMATCH);
     await client.query(
       `UPDATE message_templates SET state = 'retired', updated_at = statement_timestamp()
        WHERE state = 'published' AND NOT (id = ANY($1::uuid[]))`,
@@ -401,6 +422,55 @@ async function holdRestoredDeliveries(client: pg.PoolClient) {
       lease_owner = NULL, lease_expires_at = NULL
     WHERE delivered_at IS NULL AND failed_at IS NULL
       AND suppressed_at IS NULL AND uncertain_at IS NULL`);
+  });
+}
+
+async function lockRecoveryAuthorizationState(client: pg.PoolClient) {
+  await client.query(`LOCK TABLE "schemaFingerprint", "studio_migrations".history,
+    studio_instance, "user", session, account, verification, teams,
+    team_members, team_invitations, team_invitation_deliveries,
+    study_role_grants, api_tokens, interview_links, webhook_subscriptions,
+    webhook_deliveries, study_schedules, message_templates, message_deliveries,
+    audit_events, credential_audit_events, audit_alert_outbox,
+    audit_alert_deliveries, leases IN SHARE ROW EXCLUSIVE MODE`);
+}
+
+async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
+  const remainingAdmission = await client.query<{
+    sessions: number;
+    verifications: number;
+    invitations: number;
+  }>(`SELECT
+    (SELECT count(*)::int FROM session) sessions,
+    (SELECT count(*)::int FROM verification) verifications,
+    (SELECT count(*)::int FROM team_invitations WHERE status = 'pending') invitations`);
+  assertRows(remainingAdmission.rows[0], {
+    sessions: 0,
+    verifications: 0,
+    invitations: 0,
+  });
+  const ownerClient = client;
+  const remainingTenantState = await asMaintenance(ownerClient, async () =>
+    ownerClient.query<{
+      tokens: number;
+      links: number;
+      live_leases: number;
+      deliveries: number;
+    }>(`SELECT
+    (SELECT count(*)::int FROM api_tokens WHERE revoked_at IS NULL) tokens,
+    (SELECT count(*)::int FROM interview_links WHERE revoked_at IS NULL) links,
+    (SELECT count(*)::int FROM leases WHERE expires_at > statement_timestamp()) live_leases,
+    ((SELECT count(*) FROM message_deliveries WHERE sent_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL)
+     + (SELECT count(*) FROM team_invitation_deliveries WHERE sent_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL)
+     + (SELECT count(*) FROM webhook_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND uncertain_at IS NULL)
+     + (SELECT count(*) FROM audit_alert_outbox WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL)
+     + (SELECT count(*) FROM audit_alert_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL))::int deliveries`),
+  );
+  assertRows(remainingTenantState.rows[0], {
+    tokens: 0,
+    links: 0,
+    live_leases: 0,
+    deliveries: 0,
   });
 }
 
@@ -465,55 +535,16 @@ export async function reconcileStudioRecoveryAuthorization(options: {
       allowedClientPids: [backupPid],
       transaction: { isolation: 'serializable', readOnly: false },
     });
-    await client.query(`LOCK TABLE "user", session, account, verification,
-      teams, team_members, team_invitations, team_invitation_deliveries,
-      study_role_grants, api_tokens, interview_links, webhook_subscriptions,
-      webhook_deliveries, study_schedules, message_templates, message_deliveries,
-      audit_alert_outbox, audit_alert_deliveries, leases
-      IN SHARE ROW EXCLUSIVE MODE`);
-    await reconcileInventories(client, evidence);
+    await lockRecoveryAuthorizationState(client);
+    await reconcileInventories(client, evidence, 'revoke-stale');
     await invalidateRestoredAdmission(client);
     await holdRestoredDeliveries(client);
-    const remainingAdmission = await client.query<{
-      sessions: number;
-      verifications: number;
-      users_enabled: number;
-      invitations: number;
-    }>(`SELECT
-      (SELECT count(*)::int FROM session) sessions,
-      (SELECT count(*)::int FROM verification) verifications,
-      (SELECT count(*)::int FROM "user" WHERE NOT recovery_disabled) users_enabled,
-      (SELECT count(*)::int FROM team_invitations WHERE status = 'pending') invitations`);
-    assertRows(remainingAdmission.rows[0], {
-      sessions: 0,
-      verifications: 0,
-      users_enabled: 0,
-      invitations: 0,
-    });
-    const ownerClient = client;
-    const remainingTenantState = await asMaintenance(ownerClient, async () =>
-      ownerClient.query<{
-        tokens: number;
-        links: number;
-        live_leases: number;
-        deliveries: number;
-      }>(`SELECT
-      (SELECT count(*)::int FROM api_tokens WHERE revoked_at IS NULL) tokens,
-      (SELECT count(*)::int FROM interview_links WHERE revoked_at IS NULL) links,
-      (SELECT count(*)::int FROM leases WHERE expires_at > statement_timestamp()) live_leases,
-      ((SELECT count(*) FROM message_deliveries WHERE sent_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL)
-       + (SELECT count(*) FROM team_invitation_deliveries WHERE sent_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL)
-       + (SELECT count(*) FROM webhook_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND uncertain_at IS NULL)
-       + (SELECT count(*) FROM audit_alert_outbox WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL)
-       + (SELECT count(*) FROM audit_alert_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL))::int deliveries`),
+    await assertRestoredAdmissionInvalidated(client);
+    const enabled = await client.query<{ count: number }>(
+      'SELECT count(*)::int AS count FROM "user" WHERE NOT recovery_disabled',
     );
-    assertRows(remainingTenantState.rows[0], {
-      tokens: 0,
-      links: 0,
-      live_leases: 0,
-      deliveries: 0,
-    });
-    await reconcileInventories(client, evidence);
+    assertRows(enabled.rows, [{ count: 0 }]);
+    await reconcileInventories(client, evidence, 'revoke-stale');
     await assertStudioRecoveryQuarantine(client, {
       ...policy,
       allowedClientPids: [backupPid],
@@ -539,6 +570,141 @@ export async function reconcileStudioRecoveryAuthorization(options: {
         schemaFingerprint: destination.fingerprint,
       },
       instance: evidence.instance,
+    };
+  } catch {
+    discard = true;
+    throw new Error(FAILURE);
+  } finally {
+    if (client && !committed)
+      await client.query('ROLLBACK').catch(() => {
+        discard = true;
+      });
+    if (!backupCompleted)
+      await backup?.query('ROLLBACK').catch(() => {
+        backupDiscard = true;
+      });
+    client?.release(discard);
+    backup?.release(backupDiscard);
+  }
+}
+
+export type StudioRecoveryCurrentAuthorizationReceipt = {
+  format: 'studio-recovery-current-authorization-receipt';
+  version: 1;
+  evidence: { sha256: string; issuedAt: string; expiresAt: string };
+  authority: { keyId: string; publicKeySha256: string };
+  destination: { database: string; schemaFingerprint: string };
+  instance: StudioRecoveryAuthorizationReconciliation['instance'];
+  eligibleUserIds: string[];
+};
+
+/** Enable only the explicitly signed current identities after the destructive
+ * reconciliation command has completed. Database roles and services remain
+ * quarantined; reopening them is a separate operator action. */
+export async function authorizeCurrentStudioRecovery(options: {
+  pool: pg.Pool;
+  backupPool: pg.Pool;
+  policy: Policy;
+  evidence: VerifiedStudioRecoveryAuthorizationEvidence;
+}): Promise<StudioRecoveryCurrentAuthorizationReceipt> {
+  assertVerifiedStudioRecoveryAuthorizationEvidence(options.evidence);
+  const evidence = options.evidence.reconciliation;
+  const eligibleUserIds = [...evidence.eligibleUserIds].toSorted();
+  const policy = {
+    allowedLogins: [...options.policy.allowedLogins],
+    administrativeLogins: [...options.policy.administrativeLogins],
+  };
+  let client: pg.PoolClient | undefined;
+  let backup: pg.PoolClient | undefined;
+  let committed = false;
+  let backupCompleted = false;
+  let discard = false;
+  let backupDiscard = false;
+  try {
+    client = await options.pool.connect();
+    backup = await options.backupPool.connect();
+    await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+    await backup.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    await client.query(`SET LOCAL lock_timeout = '10s';
+      SET LOCAL statement_timeout = '5min';
+      SET LOCAL idle_in_transaction_session_timeout = '5min'`);
+    await backup.query(`SET LOCAL statement_timeout = '5min';
+      SET LOCAL idle_in_transaction_session_timeout = '5min'`);
+    const backupPid = (
+      await backup.query<{ pid: number }>(
+        'SELECT pg_catalog.pg_backend_pid() AS pid',
+      )
+    ).rows[0]?.pid;
+    if (!backupPid) throw new Error(FAILURE);
+    await assertOperator(client, policy);
+    await assertCurrentSchema(client, policy);
+    await assertBackupAccess(backup, (checked) =>
+      assertCurrentSchema(checked, policy),
+    );
+    await assertSamePostgresDatabase(client, backup).catch(() => {
+      throw new Error(FAILURE);
+    });
+    await assertStudioRecoveryQuarantine(client, {
+      ...policy,
+      allowedClientPids: [backupPid],
+      transaction: { isolation: 'serializable', readOnly: false },
+    });
+    await lockRecoveryAuthorizationState(client);
+    await reconcileInventories(client, evidence, 'require-exact');
+    await assertRestoredAdmissionInvalidated(client);
+    const enabledBefore = (
+      await client.query<{ id: string }>(
+        'SELECT id FROM "user" WHERE NOT recovery_disabled ORDER BY id',
+      )
+    ).rows.map(({ id }) => id);
+    if (enabledBefore.length !== 0) assertRows(enabledBefore, eligibleUserIds);
+    const enabled = (
+      await client.query<{ id: string }>(
+        `UPDATE "user" SET recovery_disabled = false
+         WHERE id = ANY($1::text[]) RETURNING id`,
+        [eligibleUserIds],
+      )
+    ).rows.map(({ id }) => id).toSorted();
+    assertRows(enabled, eligibleUserIds);
+    const finalEnabled = (
+      await client.query<{ id: string }>(
+        'SELECT id FROM "user" WHERE NOT recovery_disabled ORDER BY id',
+      )
+    ).rows.map(({ id }) => id);
+    assertRows(finalEnabled, eligibleUserIds);
+    await reconcileInventories(client, evidence, 'require-exact');
+    await assertRestoredAdmissionInvalidated(client);
+    await assertStudioRecoveryQuarantine(client, {
+      ...policy,
+      allowedClientPids: [backupPid],
+      transaction: { isolation: 'serializable', readOnly: false },
+    });
+    const destination = (
+      await client.query<{ database: string; fingerprint: string }>(
+        `SELECT current_database() AS database, fingerprint
+         FROM "schemaFingerprint"`,
+      )
+    ).rows[0];
+    if (!destination) throw new Error(FAILURE);
+    await backup.query('ROLLBACK');
+    backupCompleted = true;
+    await client.query('COMMIT');
+    committed = true;
+    return {
+      format: 'studio-recovery-current-authorization-receipt',
+      version: 1,
+      evidence: {
+        sha256: options.evidence.sha256,
+        issuedAt: evidence.issuedAt,
+        expiresAt: evidence.expiresAt,
+      },
+      authority: { ...options.evidence.authority },
+      destination: {
+        database: destination.database,
+        schemaFingerprint: destination.fingerprint,
+      },
+      instance: evidence.instance,
+      eligibleUserIds,
     };
   } catch {
     discard = true;

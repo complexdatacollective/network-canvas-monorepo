@@ -1,13 +1,22 @@
+import {
+  createHash,
+  createPublicKey,
+  verify as verifySignature,
+} from 'node:crypto';
 import { constants } from 'node:fs';
 import { lstat, open } from 'node:fs/promises';
+import { TextDecoder } from 'node:util';
 
 import { z } from 'zod';
 
+import { canonicalize } from '@codaco/studio-sync/apply';
 import { templateBytesHash } from '@codaco/studio-sync/template-exchange';
 
 const FAILURE = 'STUDIO_RECOVERY_RECONCILIATION_INVALID';
 const MAX_EVIDENCE_BYTES = 64 * 1024 * 1024;
 const MAX_IDENTITIES = 250_000;
+const MAX_JSON_DEPTH = 64;
+const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 const boundedId = z
   .string()
   .min(1)
@@ -37,6 +46,7 @@ const reconciliationSchema = z
         }),
       )
       .max(MAX_IDENTITIES),
+    eligibleUserIds: z.array(boundedId).min(1).max(MAX_IDENTITIES),
     accounts: z
       .array(
         z.strictObject({
@@ -122,6 +132,11 @@ const reconciliationSchema = z
       'Repeated user email.',
     );
     unique(
+      value.eligibleUserIds,
+      'eligibleUserIds',
+      'Repeated eligible user identity.',
+    );
+    unique(
       value.accounts.map(({ id }) => id),
       'accounts',
       'Repeated account identity.',
@@ -189,6 +204,12 @@ const reconciliationSchema = z
         'accounts',
         'Account refers to an absent user.',
       );
+    for (const id of value.eligibleUserIds)
+      requireReference(
+        users.has(id),
+        'eligibleUserIds',
+        'Eligible identity is absent from the current user inventory.',
+      );
     for (const membership of value.memberships) {
       requireReference(
         users.has(membership.userId),
@@ -228,7 +249,116 @@ export type StudioRecoveryAuthorizationReconciliation = z.infer<
 export type StudioRecoveryReconciliationEvidence = {
   reconciliation: StudioRecoveryAuthorizationReconciliation;
   sha256: string;
+  bytes: Buffer;
 };
+
+const verifiedEvidence = new WeakSet<object>();
+
+export type VerifiedStudioRecoveryAuthorizationEvidence = Readonly<{
+  reconciliation: StudioRecoveryAuthorizationReconciliation;
+  sha256: string;
+  authority: Readonly<{ keyId: string; publicKeySha256: string }>;
+}>;
+
+function decodeCanonicalBase64Url(value: string, bytes: number): Buffer {
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new Error();
+  const decoded = Buffer.from(value, 'base64url');
+  if (decoded.byteLength !== bytes || decoded.toString('base64url') !== value)
+    throw new Error();
+  return decoded;
+}
+
+function assertBoundedJsonDepth(bytes: Uint8Array): void {
+  let depth = 0;
+  let quoted = false;
+  let escaped = false;
+  for (const byte of bytes) {
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (byte === 0x5c) escaped = true;
+      else if (byte === 0x22) quoted = false;
+      continue;
+    }
+    if (byte === 0x22) quoted = true;
+    else if (byte === 0x7b || byte === 0x5b) {
+      depth += 1;
+      if (depth > MAX_JSON_DEPTH) throw new Error();
+    } else if (byte === 0x7d || byte === 0x5d) {
+      depth -= 1;
+      if (depth < 0) throw new Error();
+    }
+  }
+  if (quoted || escaped || depth !== 0) throw new Error();
+}
+
+function freezeEvidence(value: unknown): void {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return;
+  for (const child of Object.values(value)) freezeEvidence(child);
+  Object.freeze(value);
+}
+
+/** Verify exact canonical evidence bytes against an independently configured
+ * Ed25519 authority before any database connection or restored-state write. */
+export function verifyStudioRecoveryAuthorizationEvidence(options: {
+  bytes: Uint8Array;
+  expectedSha256: string;
+  signature: string;
+  authorityKeyId: string;
+  authorityPublicKey: string;
+}): VerifiedStudioRecoveryAuthorizationEvidence {
+  try {
+    if (
+      options.bytes.byteLength <= 0 ||
+      options.bytes.byteLength > MAX_EVIDENCE_BYTES ||
+      !/^[0-9a-f]{64}$/.test(options.expectedSha256) ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(options.authorityKeyId)
+    )
+      throw new Error();
+    const signature = decodeCanonicalBase64Url(options.signature, 64);
+    const rawPublicKey = decodeCanonicalBase64Url(
+      options.authorityPublicKey,
+      32,
+    );
+    const key = createPublicKey({
+      key: Buffer.concat([ED25519_SPKI_PREFIX, rawPublicKey]),
+      format: 'der',
+      type: 'spki',
+    });
+    if (!verifySignature(null, options.bytes, key, signature))
+      throw new Error();
+    if (templateBytesHash(options.bytes) !== options.expectedSha256)
+      throw new Error();
+    assertBoundedJsonDepth(options.bytes);
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(
+      options.bytes,
+    );
+    const parsed = copyStudioRecoveryAuthorizationReconciliation(
+      JSON.parse(text),
+    );
+    if (canonicalize(parsed) !== text) throw new Error();
+    freezeEvidence(parsed);
+    const result: VerifiedStudioRecoveryAuthorizationEvidence = Object.freeze({
+      reconciliation: parsed,
+      sha256: options.expectedSha256,
+      authority: Object.freeze({
+        keyId: options.authorityKeyId,
+        publicKeySha256: createHash('sha256')
+          .update(rawPublicKey)
+          .digest('hex'),
+      }),
+    });
+    verifiedEvidence.add(result);
+    return result;
+  } catch {
+    throw new Error(FAILURE);
+  }
+}
+
+export function assertVerifiedStudioRecoveryAuthorizationEvidence(
+  value: VerifiedStudioRecoveryAuthorizationEvidence,
+): void {
+  if (!verifiedEvidence.has(value)) throw new Error(FAILURE);
+}
 
 /** Snapshot untrusted caller-owned evidence before any database I/O. */
 export function copyStudioRecoveryAuthorizationReconciliation(
@@ -280,6 +410,7 @@ export async function readStudioRecoveryAuthorizationReconciliation(
         JSON.parse(bytes.toString('utf8')),
       ),
       sha256: expectedSha256,
+      bytes,
     };
   } catch {
     throw new Error(FAILURE);

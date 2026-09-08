@@ -202,3 +202,36 @@ export function readRecoveryAuthorizationEnv(): {
     reconciliationSha256,
   };
 }
+
+/** Current-user recovery authorization adds an independently configured
+ * Ed25519 trust anchor and detached signature to the restore-only sockets. */
+export function readRecoveryCurrentAuthorizationEnv(): ReturnType<
+  typeof readRecoveryAuthorizationEnv
+> & {
+  authorityKeyId: string;
+  authorityPublicKey: string;
+  reconciliationSignature: string;
+} {
+  const base = readRecoveryAuthorizationEnv();
+  /* oxlint-disable node/no-process-env -- the environment boundary */
+  const authorityKeyId = process.env.STUDIO_RECOVERY_AUTHORITY_KEY_ID;
+  const authorityPublicKey = process.env.STUDIO_RECOVERY_AUTHORITY_PUBLIC_KEY;
+  const reconciliationSignature =
+    process.env.STUDIO_RECOVERY_RECONCILIATION_SIGNATURE;
+  /* oxlint-enable node/no-process-env */
+  if (
+    !authorityKeyId ||
+    authorityKeyId.length > 64 ||
+    !authorityPublicKey ||
+    authorityPublicKey.length > 64 ||
+    !reconciliationSignature ||
+    reconciliationSignature.length > 128
+  )
+    throw new Error('STUDIO_RECOVERY_AUTHORIZATION_CONFIGURATION_INVALID');
+  return {
+    ...base,
+    authorityKeyId,
+    authorityPublicKey,
+    reconciliationSignature,
+  };
+}
