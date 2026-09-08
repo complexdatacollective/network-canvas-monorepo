@@ -55,7 +55,7 @@ function declaredBudget() {
       ...(item.category.startsWith('primary-ingress')
         ? { tierId: input.workerTierId }
         : {}),
-      ...(sourceProvider ? { providerId: sourceProvider } : {}),
+      providerId: sourceProvider ?? monitoringProvider ?? 'synthetic-provider',
       ...(monitoringProvider ? { providerId: monitoringProvider } : {}),
       ...(item.category.startsWith('monitoring-collector-')
         ? { region: input.monitoringCollectorRegion }
@@ -72,8 +72,16 @@ function declaredBudget() {
         : {}),
       ...(item.unitPriceUsd === 0
         ? {
-            coveredQuantity: item.quantity,
+            coveredQuantity: 1_000_000_000,
             coverage: 'Synthetic included allowance',
+            allowance: {
+              billingScopeId: 'synthetic-billing-scope',
+              productId: 'synthetic-product',
+              allowanceId: item.category,
+              unit: 'synthetic-units',
+              period: 'month',
+              limitQuantity: 1_000_000_000,
+            },
           }
         : {}),
     };
@@ -1412,5 +1420,161 @@ test('annual re-encryption binds measured KMS and compute and raises peak month'
   assert.throws(
     () => evaluateManagedEstateCost(peakBreach, budgetOptions),
     /peak monthly total .* exceeds the \$100\.00 cap/,
+  );
+});
+
+test('object drill sources include each bucket discovery read even with internally consistent quotes', () => {
+  for (const mode of ['pitr', 'independent']) {
+    const input = structuredClone(fixture);
+    const drill = input.restoreDrills[mode];
+    drill.objectSourceRequestCount = Object.values(drill.services).reduce(
+      (sum, service) => sum + service.objectRestoreCount,
+      0,
+    );
+    input.lineItems.find(
+      (row) => row.category === `${mode}-drill-object-source-requests`,
+    ).quantity = drill.objectSourceRequestCount * (1 / 3);
+    assert.throws(
+      () => evaluateManagedEstateCost(input),
+      /complete recovery inventory/,
+    );
+  }
+});
+
+function includeTogether(
+  input,
+  categories,
+  limitQuantity,
+  unit = 'gb-seconds',
+) {
+  for (const category of categories) {
+    const item = input.lineItems.find((row) => row.category === category);
+    item.unitPriceUsd = 0;
+    Object.assign(item.pricing, {
+      kind: 'included',
+      unitPriceUsd: 0,
+      providerId: 'aws',
+      coveredQuantity: limitQuantity,
+      coverage: 'Synthetic shared allowance',
+      allowance: {
+        billingScopeId: 'fixture-aws-payer',
+        productId: 'lambda',
+        allowanceId: 'monthly-compute',
+        unit,
+        period: 'month',
+        limitQuantity,
+      },
+    });
+  }
+}
+
+test('aggregates recurring, quarterly and annual included usage in the execution month', () => {
+  const input = declaredBudget();
+  includeTogether(
+    input,
+    [
+      'validator-compute',
+      'pitr-drill-compute',
+      'independent-drill-compute',
+      'annual-reencryption-compute',
+      'monitoring-anchor-compute',
+    ],
+    400_000,
+  );
+  assert.throws(
+    () => evaluateManagedEstateCost(input, budgetOptions),
+    /shared allowance .* peak usage .* exceeds/,
+  );
+  includeTogether(
+    input,
+    [
+      'validator-compute',
+      'pitr-drill-compute',
+      'independent-drill-compute',
+      'annual-reencryption-compute',
+      'monitoring-anchor-compute',
+    ],
+    430_000,
+  );
+  assert.equal(
+    evaluateManagedEstateCost(input, budgetOptions).budgetAccepted,
+    true,
+  );
+});
+
+test('case-only allowance identity variations cannot split shared capacity', () => {
+  for (const field of ['billingScopeId', 'productId', 'allowanceId', 'unit']) {
+    const input = declaredBudget();
+    includeTogether(
+      input,
+      ['validator-compute', 'monitoring-anchor-compute'],
+      362_380,
+    );
+    const allowance = input.lineItems.find(
+      (row) => row.category === 'monitoring-anchor-compute',
+    ).pricing.allowance;
+    allowance[field] = allowance[field].toUpperCase();
+    assert.throws(
+      () => evaluateManagedEstateCost(input, budgetOptions),
+      /shared allowance .* peak usage .* exceeds/,
+    );
+  }
+});
+
+test('shared allowances cannot reset through a different unit, limit or period', () => {
+  for (const changes of [
+    { unit: 'milliseconds' },
+    { limitQuantity: 999_999 },
+    { period: 'quarter' },
+  ]) {
+    const input = declaredBudget();
+    includeTogether(
+      input,
+      ['validator-compute', 'monitoring-anchor-compute'],
+      1_000_000,
+    );
+    const quote = input.lineItems.find(
+      (row) => row.category === 'monitoring-anchor-compute',
+    ).pricing;
+    Object.assign(quote.allowance, changes);
+    if (changes.limitQuantity) quote.coveredQuantity = changes.limitQuantity;
+    assert.throws(
+      () => evaluateManagedEstateCost(input, budgetOptions),
+      /shared allowance|execution month/,
+    );
+  }
+  const missing = declaredBudget();
+  delete missing.lineItems.find((row) => row.category === 'monitoring').pricing
+    .allowance;
+  assert.throws(
+    () => evaluateManagedEstateCost(missing, budgetOptions),
+    /shared allowance declaration/,
+  );
+});
+
+test('accounts for quarterly receipt usage inside a shared recurring B2 allowance', () => {
+  const input = declaredBudget();
+  const recurring = input.lineItems.find(
+    (row) => row.category === 'backup-egress',
+  );
+  const extra = input.lineItems.find(
+    (row) => row.category === 'independent-drill-object-source-transfer',
+  );
+  const monthlyTotal = recurring.quantity + extra.quantity;
+  for (const item of [recurring, extra]) {
+    item.pricing.providerId = 'backblaze-b2';
+    item.pricing.coveredQuantity = monthlyTotal;
+    item.pricing.allowance = {
+      billingScopeId: 'fixture-b2-account',
+      productId: 'b2',
+      allowanceId: 'egress',
+      unit: 'gigabytes',
+      period: 'month',
+      limitQuantity: monthlyTotal,
+    };
+  }
+  assert.throws(
+    () => evaluateManagedEstateCost(input, budgetOptions),
+    /shared allowance .* peak usage .* exceeds/,
   );
 });

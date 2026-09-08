@@ -112,6 +112,18 @@ configuration archive, and their account-recovery paths.
    Replace every one with bounded measurement evidence before supplying current
    pricing declarations.
 
+   Included-price declarations also name an `allowance` with `billingScopeId`,
+   `productId`, `allowanceId`, `unit`, `period: "month"` and `limitQuantity`.
+   The pricing row names `providerId`; `coveredQuantity` equals the shared limit.
+   Every row using that provider/billing-scope/product/allowance consumes the same
+   allowance. Identities and unit labels are compared without case differences;
+   units and limits must agree. The estimator sums the full execution
+   month, including annual maintenance, quarterly drills and their receipt I/O,
+   before checking the shared limit. Distinct rows cannot each spend an entire
+   Lambda or B2 allowance. An overage requires paid pricing rather than another
+   copy of the free declaration; operator quotes must identify the actual billing
+   scope and allowance, not invented subdivisions.
+
    Quantities must match measured usage. Compute prices all four candidate
    Machines for 744 hours. `flyApplicationEgressGb` measures their API,
    WebSocket, Registry, and other outbound delivery; `flyRecoveryUploadGb`
@@ -138,6 +150,17 @@ configuration archive, and their account-recovery paths.
    storage rows bound to `us-east-1`. These measured dimensions must include
    retries and reconciliation. Free allowances need explicit complete coverage;
    they cannot be represented by the unrelated New Relic Free declaration.
+
+   Both monitoring workloads also appear in `candidate_inventory.monitoring`.
+   Their shared sizing contract names the private always-on Fly collector, its
+   at-least-1-GB checkpoint volume, and the independently administered US AWS
+   HTTP/Lambda/DynamoDB anchor. The anchor handoff fixes the `account`/`record`
+   string key schema and permanent `ENROLLMENT` record, disables TTL, requires
+   deletion protection and PITR, and separates collector, service and enrollment
+   authorities. These are requirements for the remaining deployment module;
+   neither workload is provisioned by these outputs. DynamoDB transaction IAM
+   permissions apply to the [underlying item operations](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis-iam.html)
+   and are restricted by the enclosing transaction operation.
 
    `databaseDumpSizesGb` must measure each of the four compressed archives.
    `databaseExpandedSizesGb` separately measures each restored database after
@@ -220,8 +243,9 @@ configuration archive, and their account-recovery paths.
    shared three-month interval. Restore transfer includes archive/envelope and
    metadata overhead; paged discovery, object fetches, failed attempts, cleanup,
    and receipt publication must be included in the measured resource totals.
-   Source request floors include every object, all four database archives, and
-   proof discovery. PITR database source usage is declared against Crunchy
+   Source request floors include every object and at least one proof/checkpoint
+   discovery read per object bucket on the object provider, plus all four database
+   archives and their discovery reads on the database provider. PITR database source usage is declared against Crunchy
    Bridge while PITR object source usage is declared against Cloudflare R2.
    Independent database and object source usage remain separate categories even
    though both are declared against B2. A budget declaration must identify the

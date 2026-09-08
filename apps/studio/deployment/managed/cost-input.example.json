@@ -212,7 +212,7 @@
     },
     {
       "category": "monitoring-collector-storage",
-      "quantity": 0.001,
+      "quantity": 1,
       "unitPriceUsd": 0,
       "evidence": "placeholder requiring measured persistent checkpoint storage and current Fly quote"
     },
@@ -308,7 +308,7 @@
     },
     {
       "category": "pitr-drill-object-source-requests",
-      "quantity": 4166.666666666666,
+      "quantity": 4168.0,
       "unitPriceUsd": 0,
       "evidence": "illustrative pitr quarterly object source requests; replace with measured provider-specific execution and quote"
     },
@@ -368,7 +368,7 @@
     },
     {
       "category": "independent-drill-object-source-requests",
-      "quantity": 4166.666666666666,
+      "quantity": 4168.0,
       "unitPriceUsd": 0,
       "evidence": "illustrative independent quarterly object source requests; replace with measured provider-specific execution and quote"
     },
@@ -477,7 +477,7 @@
       "receiptRequestCount": 2,
       "databaseSourceRequestCount": 8,
       "databaseSourceTransferGb": 0.5,
-      "objectSourceRequestCount": 12500,
+      "objectSourceRequestCount": 12504,
       "objectSourceTransferGb": 25
     },
     "independent": {
@@ -513,7 +513,7 @@
       "receiptRequestCount": 2,
       "databaseSourceRequestCount": 8,
       "databaseSourceTransferGb": 0.5,
-      "objectSourceRequestCount": 12500,
+      "objectSourceRequestCount": 12504,
       "objectSourceTransferGb": 25
     }
   },
@@ -528,7 +528,7 @@
   "monitoringCollectorCpus": 1,
   "monitoringCollectorMemoryMb": 512,
   "monitoringCollectorMonthlyHours": 744,
-  "monitoringCollectorStorageGb": 0.001,
+  "monitoringCollectorStorageGb": 1,
   "monitoringCollectorEgressGb": 1,
   "monitoringAnchorRegion": "us-east-1",
   "monitoringAnchorHttpRequestCount": 100000,
