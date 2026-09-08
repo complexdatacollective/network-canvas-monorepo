@@ -1,6 +1,7 @@
 import { createUploadthing } from 'uploadthing/next';
 
 import { getServerSession } from '~/lib/auth/guards';
+import { requiresTwoFactorSetup } from '~/lib/auth/twoFactorPolicy';
 
 const f = createUploadthing();
 
@@ -19,6 +20,11 @@ export const ourFileRouter = {
       const session = await getServerSession();
       if (!session) {
         throw new Error('You must be logged in to upload assets.');
+      }
+      // The same gate the Server Actions apply: an account that still has to
+      // set up mandatory two-factor authentication can reach nothing else.
+      if (await requiresTwoFactorSetup(session.user.userId)) {
+        throw new Error('Two-factor authentication setup required.');
       }
       return {};
     })

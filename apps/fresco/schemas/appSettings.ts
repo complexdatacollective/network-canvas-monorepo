@@ -19,6 +19,7 @@ const appSettingsSchema = z
     disableSmallScreenOverlay: z.boolean(),
     freezeInterviewsAfterCompletion: z.boolean(),
     enableInterviewDataApi: z.boolean(),
+    requireTwoFactor: z.boolean(),
     storageProvider: z.enum(['uploadthing', 's3']),
     s3Endpoint: z.string(),
     s3PublicUrl: z.url(),
@@ -64,6 +65,7 @@ export const appSettingPreprocessedSchema = appSettingsSchema.extend({
     parseBoolean,
     z.boolean().default(false),
   ),
+  requireTwoFactor: z.preprocess(parseBoolean, z.boolean().default(false)),
   storageProvider: z.preprocess(
     (val) => (typeof val === 'string' ? val : undefined),
     z.enum(['uploadthing', 's3']).optional(),

@@ -463,6 +463,8 @@ type UserManagementProps = {
   passkeysPromise: Promise<Passkey[]>;
   hasPasswordPromise: Promise<boolean>;
   sandboxMode: boolean;
+  /** The installation-wide "Require Two-Factor Authentication" setting. */
+  twoFactorRequired: boolean;
 };
 
 function makeUserColumns(
@@ -593,6 +595,7 @@ export default function UserManagement({
   passkeysPromise,
   hasPasswordPromise,
   sandboxMode,
+  twoFactorRequired,
 }: UserManagementProps) {
   'use no memo';
 
@@ -1020,6 +1023,7 @@ export default function UserManagement({
               hasTwoFactor={hasTwoFactor}
               userCount={users.length}
               sandboxMode={sandboxMode}
+              twoFactorRequired={twoFactorRequired}
             />
             {!sandboxMode && (
               <SettingsField

@@ -3,12 +3,13 @@
 import { createId } from '@paralleldrive/cuid2';
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
-import { type z } from 'zod';
+import { z } from 'zod';
 import { z as zm } from 'zod/mini';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
+import { getTwoFactorStatus } from '~/lib/auth/twoFactorPolicy';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import {
@@ -87,6 +88,19 @@ const messages = defineMessages({
     defaultMessage: 'Token verification failed. Check the token and try again.',
     description:
       'Researcher-facing actions / appSettings: Token verification failed: value',
+  },
+  setUpYourOwnTwoFactorFirst: {
+    id: 'fresco.actions.appSettings.setUpYourOwnTwoFactorFirst',
+    defaultMessage:
+      'Set up two-factor authentication for your own account before requiring it for everyone.',
+    description:
+      'Error returned when a researcher whose password account has no two-factor authentication tries to turn on the Require Two-Factor Authentication setting.',
+  },
+  invalidRequireTwoFactorValue: {
+    id: 'fresco.actions.appSettings.invalidRequireTwoFactorValue',
+    defaultMessage: 'Invalid value for the two-factor requirement.',
+    description:
+      'Error returned when the Require Two-Factor Authentication setting is sent something other than on or off.',
   },
 });
 
@@ -285,6 +299,41 @@ async function verifyUploadThingToken(token: string): Promise<string | null> {
     await captureException(error);
     return createMessageError(messages.copyTokenVerificationFailed);
   }
+}
+
+/**
+ * Turns the "Require Two-Factor Authentication" policy on or off. Turning it
+ * on is refused while the caller's own password account has no authenticator:
+ * the policy would hold that very session at the setup gate the moment it
+ * saved, so the researcher enrols first and requires it for everyone second.
+ */
+export async function setRequireTwoFactor(data: unknown) {
+  const session = await requireApiAuth();
+
+  const parsed = z.boolean().safeParse(data);
+  if (!parsed.success) {
+    return {
+      error: createMessageError(messages.invalidRequireTwoFactorValue),
+      data: null,
+    };
+  }
+  const enabled = parsed.data;
+
+  if (enabled) {
+    const { passwordMode, totpEnabled } = await getTwoFactorStatus(
+      session.user.userId,
+    );
+    if (passwordMode && !totpEnabled) {
+      return {
+        error: createMessageError(messages.setUpYourOwnTwoFactorFirst),
+        data: null,
+      };
+    }
+  }
+
+  await setAppSetting('requireTwoFactor', enabled);
+
+  return { error: null, data: { enabled } };
 }
 
 export async function regenerateInstallationId() {

@@ -13,8 +13,10 @@ import {
   hashRecoveryCode,
   verifyTotpCode,
 } from '~/lib/auth/totp';
+import { getTwoFactorStatus } from '~/lib/auth/twoFactorPolicy';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
+import { getAppSetting } from '~/queries/appSettings';
 import { createTotpSchemas } from '~/schemas/totp';
 import { getBaseUrl } from '~/utils/getBaseUrl';
 
@@ -62,11 +64,20 @@ const messages = defineMessages({
     description:
       'Researcher-facing actions / totp: Cannot reset your own two-factor authentication',
   },
+  twoFactorRequiredByInstallation: {
+    id: 'fresco.actions.totp.twoFactorRequiredByInstallation',
+    defaultMessage:
+      'This installation of Fresco requires two-factor authentication for every account that signs in with a password, so it cannot be turned off.',
+    description:
+      'Error returned when a researcher tries to disable two-factor authentication while the Require Two-Factor Authentication setting is on.',
+  },
 });
 
 export async function enableTotp() {
   try {
-    const session = await requireApiAuth();
+    // Setting up two-factor authentication is the one thing an account the
+    // "Require Two-Factor Authentication" gate holds is allowed to do.
+    const session = await requireApiAuth({ allowPendingTwoFactorSetup: true });
 
     const secret = generateTotpSecret();
 
@@ -104,7 +115,7 @@ export async function enableTotp() {
 export async function verifyTotpSetup(data: unknown) {
   const { verifyTotpSetupSchema } = createTotpSchemas(createMessageError);
 
-  const session = await requireApiAuth();
+  const session = await requireApiAuth({ allowPendingTwoFactorSetup: true });
 
   const parsed = verifyTotpSetupSchema.safeParse(data);
   if (!parsed.success) {
@@ -235,6 +246,18 @@ export async function disableTotp(data: unknown) {
       error: createMessageError(
         messages.copyTwoFactorAuthenticationIsNotEnabled,
       ),
+      data: null,
+    };
+  }
+
+  // Refused before the code is checked, so a recovery code is not consumed by
+  // an attempt that could never succeed.
+  if (
+    (await getAppSetting('requireTwoFactor')) &&
+    (await getTwoFactorStatus(session.user.userId)).passwordMode
+  ) {
+    return {
+      error: createMessageError(messages.twoFactorRequiredByInstallation),
       data: null,
     };
   }

@@ -5,7 +5,9 @@ import 'server-only';
 
 import { prisma } from '~/lib/db';
 
+import { TWO_FACTOR_SETUP_PATH } from './paths';
 import { SESSION_COOKIE_NAME } from './session';
+import { requiresTwoFactorSetup } from './twoFactorPolicy';
 
 export const getServerSession = cache(async () => {
   const cookieStore = await cookies();
@@ -37,20 +39,48 @@ export const getServerSession = cache(async () => {
   };
 });
 
+/**
+ * Page guard. A signed-in account that still has to set up mandatory
+ * two-factor authentication is sent to the setup page instead of the page it
+ * asked for, so no dashboard route renders for it.
+ */
 export async function requirePageAuth() {
   const session = await getServerSession();
 
   if (!session) {
     redirect('/signin');
   }
+
+  if (await requiresTwoFactorSetup(session.user.userId)) {
+    redirect(TWO_FACTOR_SETUP_PATH);
+  }
+
   return session;
 }
 
-export async function requireApiAuth() {
+type ApiAuthOptions = {
+  /**
+   * Admit an account that still has to set up mandatory two-factor
+   * authentication. Only the actions that perform that setup pass this;
+   * everything else the session could reach stays closed until it is done.
+   */
+  allowPendingTwoFactorSetup?: boolean;
+};
+
+export async function requireApiAuth({
+  allowPendingTwoFactorSetup = false,
+}: ApiAuthOptions = {}) {
   const session = await getServerSession();
 
   if (!session) {
     throw new Error('Unauthorized');
+  }
+
+  if (
+    !allowPendingTwoFactorSetup &&
+    (await requiresTwoFactorSetup(session.user.userId))
+  ) {
+    throw new Error('Two-factor authentication setup required');
   }
 
   return session;

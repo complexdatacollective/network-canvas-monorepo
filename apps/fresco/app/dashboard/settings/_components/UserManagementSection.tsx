@@ -3,8 +3,10 @@ import SettingsCard from '~/components/settings/SettingsCard';
 import { env } from '~/env';
 import { getServerIntl } from '~/i18n/server';
 import { prisma } from '~/lib/db';
+import { getAppSetting } from '~/queries/appSettings';
 import { getUsers } from '~/queries/users';
 
+import RequireTwoFactorField from './RequireTwoFactorField';
 import UserManagement from './UserManagement';
 
 const messages = defineMessages({
@@ -62,6 +64,8 @@ export default async function UserManagementSection({
   const hasTwoFactorPromise = getHasTwoFactor(userId);
   const passkeysPromise = getPasskeys(userId);
   const hasPasswordPromise = getHasPassword(userId);
+  const requireTwoFactor = await getAppSetting('requireTwoFactor');
+  const sandboxMode = !!env.SANDBOX_MODE;
 
   return (
     <SettingsCard
@@ -75,8 +79,15 @@ export default async function UserManagementSection({
         currentUsername={username}
         passkeysPromise={passkeysPromise}
         hasPasswordPromise={hasPasswordPromise}
-        sandboxMode={!!env.SANDBOX_MODE}
+        sandboxMode={sandboxMode}
+        twoFactorRequired={requireTwoFactor}
       />
+      <div className="mt-6 border-t border-current/10 pt-4">
+        <RequireTwoFactorField
+          initialValue={requireTwoFactor}
+          readOnly={sandboxMode}
+        />
+      </div>
     </SettingsCard>
   );
 }

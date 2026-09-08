@@ -1123,6 +1123,14 @@
     "defaultMessage": "You are the only user account. If you lose access to your authenticator app and recovery codes, there will be no way to recover your account. Consider creating a second user account first.",
     "description": "Researcher-facing TwoFactorSetup: You are the only user account. If you lose access to your authenticator app and recovery codes, there will be no way to "
   },
+  "fresco.TwoFactorSetupPrompt.setUpTwoFactorAuthentication": {
+    "defaultMessage": "Set up two-factor authentication",
+    "description": "Button that opens the two-factor authentication setup wizard on the mandatory setup page."
+  },
+  "fresco.TwoFactorSetupPrompt.signedInAs": {
+    "defaultMessage": "Signed in as {username}",
+    "description": "Names the account that is being asked to set up two-factor authentication. The username is literal data, not translated copy."
+  },
   "fresco.TwoFactorVerify.0123456789abcdef0123": {
     "defaultMessage": "0123456789abcdef0123",
     "description": "Researcher-facing TwoFactorVerify: 0123456789abcdef0123"
@@ -1359,6 +1367,14 @@
     "defaultMessage": "Token verification failed. Check the token and try again.",
     "description": "Researcher-facing actions / appSettings: Token verification failed: value"
   },
+  "fresco.actions.appSettings.invalidRequireTwoFactorValue": {
+    "defaultMessage": "Invalid value for the two-factor requirement.",
+    "description": "Error returned when the Require Two-Factor Authentication setting is sent something other than on or off."
+  },
+  "fresco.actions.appSettings.setUpYourOwnTwoFactorFirst": {
+    "defaultMessage": "Set up two-factor authentication for your own account before requiring it for everyone.",
+    "description": "Error returned when a researcher whose password account has no two-factor authentication tries to turn on the Require Two-Factor Authentication setting."
+  },
   "fresco.actions.auth.copyIncorrectUsernameOrPassword": {
     "defaultMessage": "Incorrect username or password",
     "description": "Researcher-facing actions / auth: Incorrect username or password"
@@ -1518,6 +1534,10 @@
   "fresco.actions.totp.copyTwoFactorAuthenticationIsNotEnabled": {
     "defaultMessage": "Two-factor authentication is not enabled",
     "description": "Researcher-facing actions / totp: Two-factor authentication is not enabled"
+  },
+  "fresco.actions.totp.twoFactorRequiredByInstallation": {
+    "defaultMessage": "This installation of Fresco requires two-factor authentication for every account that signs in with a password, so it cannot be turned off.",
+    "description": "Error returned when a researcher tries to disable two-factor authentication while the Require Two-Factor Authentication setting is on."
   },
   "fresco.actions.twoFactor.copyInvalidCodeFormat": {
     "defaultMessage": "Invalid code format",
@@ -2595,6 +2615,22 @@
     "defaultMessage": "This setting is controlled by your <tag1>.env</tag1> file, and so can only be changed by modifying that file.",
     "description": "Researcher-facing settings / ReadOnlyEnvAlert: This setting is controlled by your .env file, and so can only be changed by modifying that file."
   },
+  "fresco.settings.RequireTwoFactorField.failedToSaveSetting": {
+    "defaultMessage": "Failed to save setting",
+    "description": "Error shown when the Require Two-Factor Authentication setting could not be saved for an unexpected reason."
+  },
+  "fresco.settings.RequireTwoFactorField.requireTwoFactorAuthentication": {
+    "defaultMessage": "Require Two-Factor Authentication",
+    "description": "Label of the installation-wide setting that makes two-factor authentication mandatory for every password account."
+  },
+  "fresco.settings.RequireTwoFactorField.toggleRequireTwoFactorAuthentication": {
+    "defaultMessage": "Toggle whether two-factor authentication is required",
+    "description": "Accessible name of the switch for the Require Two-Factor Authentication setting."
+  },
+  "fresco.settings.RequireTwoFactorField.whenEnabledEveryAccountThatSignsIn": {
+    "defaultMessage": "When enabled, every account that signs in with a password must set up two-factor authentication before it can use the dashboard, and cannot turn it off. Accounts that sign in with a passkey are not affected.",
+    "description": "Explains what the Require Two-Factor Authentication setting does and that passkey accounts are exempt."
+  },
   "fresco.settings.SettingsNavigation.onThisPage": {
     "defaultMessage": "On this page",
     "description": "Researcher-facing settings / SettingsNavigation: On this page"
@@ -2734,6 +2770,10 @@
   "fresco.settings.TwoFactorSettings.regenerateRecoveryCodes": {
     "defaultMessage": "Regenerate Recovery Codes",
     "description": "Researcher-facing settings / TwoFactorSettings: Regenerate Recovery Codes"
+  },
+  "fresco.settings.TwoFactorSettings.requiredOnThisInstallation": {
+    "defaultMessage": "Two-factor authentication is required on this installation for every account that signs in with a password, so it cannot be turned off here.",
+    "description": "Shown beside the per-account two-factor switch when the installation-wide Require Two-Factor Authentication setting is on."
   },
   "fresco.settings.TwoFactorSettings.toggleTwoFactorAuthentication": {
     "defaultMessage": "Toggle two-factor authentication",
@@ -3142,6 +3182,26 @@
   "fresco.signin.page.signInToFresco": {
     "defaultMessage": "Sign In To Fresco",
     "description": "Researcher-facing signin / page: Sign In To Fresco"
+  },
+  "fresco.signin.twoFactorSetup.metadata.pageDescription": {
+    "defaultMessage": "Set up two-factor authentication to continue to Fresco.",
+    "description": "Browser metadata description for the page that makes a researcher set up mandatory two-factor authentication after signing in."
+  },
+  "fresco.signin.twoFactorSetup.metadata.pageTitle": {
+    "defaultMessage": "Fresco - Set Up Two-Factor Authentication",
+    "description": "Browser tab title for the page that makes a researcher set up mandatory two-factor authentication after signing in."
+  },
+  "fresco.signin.twoFactorSetup.page.setItUpNowToContinue": {
+    "defaultMessage": "Set it up now with an authenticator app to continue to the dashboard. You will be given recovery codes to keep somewhere safe in case you lose the app.",
+    "description": "Tells the researcher what setting up two-factor authentication involves and that the dashboard opens once it is done."
+  },
+  "fresco.signin.twoFactorSetup.page.setUpTwoFactorAuthentication": {
+    "defaultMessage": "Set Up Two-Factor Authentication",
+    "description": "Heading of the page that makes a researcher set up mandatory two-factor authentication after signing in."
+  },
+  "fresco.signin.twoFactorSetup.page.thisInstallationRequiresTwoFactor": {
+    "defaultMessage": "This installation of Fresco requires two-factor authentication for every account that signs in with a password.",
+    "description": "Explains why the researcher is being asked to set up two-factor authentication before they can reach the dashboard."
   },
   "fresco.storage.s3Label": {
     "defaultMessage": "S3 / S3-Compatible",
