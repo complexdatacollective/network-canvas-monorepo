@@ -417,7 +417,48 @@ describe('the form-fields section, read in Spanish', () => {
       'Botones de sí o no',
       'Interruptor',
     ]);
-    expect(await controlsFor('scalar')).toEqual(['Escala analógica visual']);
+
+    // A scale is not invented from a name and a kind — its two end labels are
+    // part of it — so choosing that kind offers the codebook editor instead of
+    // a control to pick, and both sentences that say so are read here.
+    await harness.user.selectOptions(kind, 'scalar');
+    expect(
+      await dialog.findByRole('button', {
+        name: 'Crear este atributo y lo que acepta',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      dialog.getByText(
+        'Un atributo que se responde en una escala necesita una etiqueta en cada extremo, así que se crea junto con ellas.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      dialog.queryByRole('combobox', { name: 'Control de entrada' }),
+    ).toBeNull();
+
+    // The control a scale IS collected with still has to be named, so it is
+    // read from a scale the codebook already holds — which is the only place
+    // that list appears now.
+    seedPersonVariables(harness, {
+      closeness: {
+        name: 'closeness',
+        type: 'scalar',
+        parameters: { minLabel: 'Nada cerca', maxLabel: 'Muy cerca' },
+      },
+    });
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Atributo' }),
+      'closeness',
+    );
+    const scaleControls = await dialog.findByRole('combobox', {
+      name: 'Control de entrada',
+    });
+    expect(
+      within(scaleControls)
+        .getAllByRole('option')
+        .map((option) => option.textContent)
+        .filter((label) => label !== 'Selecciona una opción…'),
+    ).toEqual(['Escala analógica visual']);
   });
 });
 /**
