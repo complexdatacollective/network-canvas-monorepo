@@ -59,10 +59,12 @@ import {
   type BooleanAnswer,
   type BooleanAnswerIssues,
   hasBooleanAnswerIssues,
+  holdsEditableBooleanAnswers,
   optionsForShape,
   optionsShapeFor,
   type OptionsShape,
   readBooleanAnswers,
+  readHeldBooleanAnswers,
   validateBooleanAnswers,
 } from '../variableOptions.ts';
 import {
@@ -195,6 +197,19 @@ const messages = defineMessages({
       'Write what the participant chooses between. Left empty, they are offered Yes and No. A negative answer is shown in red when it is selected.',
     description:
       'Guidance under the heading over a yes/no attribute’s two answers. Naming neither is a real answer: the interview offers its own translated Yes and No when the protocol names none.',
+  },
+  heldAnswersLegend: {
+    id: 'protocolBuilder.codebookVariable.heldAnswersLegend',
+    defaultMessage: 'The answers this attribute offers',
+    description:
+      'Heading over the read-only list of answers a yes/no attribute puts in front of a participant. Shown in place of the two answer fields when the attribute holds some other number of answers.',
+  },
+  heldAnswersCaption: {
+    id: 'protocolBuilder.codebookVariable.heldAnswersCaption',
+    defaultMessage:
+      'A yes/no attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.',
+    description:
+      'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds some number of answers other than the two this editor writes. It says that saving the attribute does not alter them.',
   },
   parametersLegend: {
     id: 'protocolBuilder.codebookVariable.parametersLegend',
@@ -494,7 +509,14 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           optionsShape,
         );
   const hasOptions = optionsShape === 'choice';
+  // Whether the two-answer fieldset is the right editor for what this
+  // attribute holds, or whether its answers are a list to be shown and left
+  // alone — see `holdsEditableBooleanAnswers`.
+  const booleanAnswersEditable = holdsEditableBooleanAnswers(
+    snapshot.draft.options,
+  );
   const booleanAnswers = readBooleanAnswers(snapshot.draft.options);
+  const heldBooleanAnswers = readHeldBooleanAnswers(snapshot.draft.options);
   const optionsLocked =
     lockedOptions !== null || snapshot.draft.readOnly === true;
   const interactionDisabled = readOnly || snapshot.status !== 'editing';
@@ -876,7 +898,10 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                 {intl.formatMessage(messages.optionsHint)}
               </p>
               {optionsLocked ? (
-                <LockedOptions options={options} />
+                <LockedOptions
+                  options={options}
+                  caption={intl.formatMessage(messages.lockedOptionsCaption)}
+                />
               ) : (
                 <div className="flex flex-col gap-4">
                   {options.map((option, index) => (
@@ -995,7 +1020,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               )}
             </fieldset>
           )}
-          {optionsShape === 'boolean' && (
+          {optionsShape === 'boolean' && booleanAnswersEditable && (
             <fieldset className="mb-8 min-w-0">
               <legend className="font-heading mb-2 font-bold">
                 {intl.formatMessage(messages.answersLegend)}
@@ -1008,6 +1033,17 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                 onChange={replaceAnswer}
                 issues={answerIssues}
                 readOnly={interactionDisabled || optionsLocked}
+              />
+            </fieldset>
+          )}
+          {optionsShape === 'boolean' && !booleanAnswersEditable && (
+            <fieldset className="mb-8 min-w-0">
+              <legend className="font-heading mb-2 font-bold">
+                {intl.formatMessage(messages.heldAnswersLegend)}
+              </legend>
+              <LockedOptions
+                options={heldBooleanAnswers}
+                caption={intl.formatMessage(messages.heldAnswersCaption)}
               />
             </fieldset>
           )}
@@ -1423,15 +1459,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function LockedOptions({ options }: { options: readonly EditableOption[] }) {
+/**
+ * A list of answers as they stand, with the reason they cannot be edited here.
+ *
+ * Two things read it: an option list one kind of interview step owns, and the
+ * answers of a boolean this editor's two-answer fieldset cannot show. Both are
+ * the same thing to the researcher — what a participant will be offered, and
+ * an editor saying it is not theirs to change — so the caption is what differs
+ * between them, and it is passed in rather than chosen from a flag.
+ */
+function LockedOptions({
+  options,
+  caption,
+}: {
+  options: readonly Readonly<{
+    label: string;
+    value: string | number | boolean;
+  }>[];
+  caption: string;
+}) {
   const intl = useAppIntl();
   return (
     <div className="bg-surface-2 text-surface-2-contrast relative rounded p-4">
       <Lock aria-hidden="true" className="absolute top-4 right-4 size-4" />
       <table className="w-full text-sm">
-        <caption className="pr-8 pb-2 text-left">
-          {intl.formatMessage(messages.lockedOptionsCaption)}
-        </caption>
+        <caption className="pr-8 pb-2 text-left">{caption}</caption>
         <thead>
           <tr className="text-left">
             <th className="pb-2 font-bold">

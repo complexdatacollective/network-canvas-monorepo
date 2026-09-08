@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -1803,6 +1804,105 @@ describe('the two answers a boolean offers', () => {
         { label: 'Yes, always', value: true },
         { label: 'No, never', value: false, negative: true },
       ],
+    });
+  });
+
+  it('keeps the answers of a boolean that holds more than two, through an edit that only renames it', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false },
+        { label: 'Prefer not to say', value: false, negative: true },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'starred');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      ...committed,
+      name: 'starred',
+    });
+  });
+
+  it('shows the answers of a boolean it cannot edit rather than two of them', () => {
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false },
+        { label: 'Prefer not to say', value: false, negative: true },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, vi.fn())} />);
+
+    // The fieldset writes two answers. Shown as the pair, this attribute would
+    // lose the third the moment it was saved.
+    expect(
+      screen.queryByRole('textbox', { name: 'Label for “true”' }),
+    ).toBeNull();
+    expect(
+      screen.getByText(
+        'A yes/no attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.',
+      ),
+    ).toBeVisible();
+    // All three, with the boolean each one records — which is what the
+    // researcher needs to see, since it is what the participant meets.
+    const answers = within(screen.getByRole('table'));
+    expect(answers.getByRole('cell', { name: 'Yes' })).toBeVisible();
+    expect(answers.getByRole('cell', { name: 'No' })).toBeVisible();
+    expect(
+      answers.getByRole('cell', { name: 'Prefer not to say' }),
+    ).toBeVisible();
+    expect(answers.getAllByRole('cell', { name: 'false' })).toHaveLength(2);
+  });
+
+  /**
+   * The other end of the same rule. A single answer is valid — the schema
+   * takes an `options` array exposing only one of the two booleans — and
+   * showing it as the pair would put a second, blank answer beside it: one the
+   * researcher never wrote, and one the pair's own rule then refuses to save
+   * until they name it. An attribute they can no longer rename.
+   */
+  it('keeps a boolean that offers a single answer, and asks for no second one', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [{ label: 'Agreed', value: true }],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    expect(
+      screen.queryByRole('textbox', { name: 'Label for “false”' }),
+    ).toBeNull();
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'starred');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      ...committed,
+      name: 'starred',
     });
   });
 
