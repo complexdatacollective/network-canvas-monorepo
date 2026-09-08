@@ -47,6 +47,7 @@ test('routes server surfaces to Fly with same-origin auth and CSRF headers intac
         'content-type': 'application/json',
         'origin': PUBLIC_ORIGIN,
         'sec-fetch-site': 'same-origin',
+        'x-request-id': '123e4567-e89b-42d3-a456-426614174000',
         'x-forwarded-for': '203.0.113.90',
         'x-forwarded-host': 'attacker.invalid',
         'x-forwarded-proto': 'http',
@@ -67,6 +68,14 @@ test('routes server surfaces to Fly with same-origin auth and CSRF headers intac
   );
   assert.equal(captured[0].headers.get('x-forwarded-proto'), 'https');
   assert.equal(captured[0].headers.get('x-forwarded-for'), null);
+  assert.notEqual(
+    captured[0].headers.get('x-request-id'),
+    '123e4567-e89b-42d3-a456-426614174000',
+  );
+  assert.match(
+    captured[0].headers.get('x-request-id'),
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  );
   assert.deepEqual(await captured[0].json(), { name: 'Research' });
   assert.equal(response.status, 404);
   assert.equal(response.headers.get('cache-control'), 'no-store');
