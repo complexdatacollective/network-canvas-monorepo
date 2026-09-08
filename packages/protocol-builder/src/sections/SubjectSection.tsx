@@ -12,6 +12,7 @@ import type { CodebookEntityDraft } from '../codebook/editing.ts';
 import SubjectSelectField, {
   type EntitySubject,
   type SubjectChangeConfirmation,
+  useConfirmSubjectChange,
 } from '../fields/SubjectSelectField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
@@ -281,7 +282,12 @@ export default function SubjectSection({
           hint={intl.formatMessage(words.fieldHint)}
           required
         />
-        <CreateSubjectType entity={entity} words={words} intl={intl} />
+        <CreateSubjectType
+          entity={entity}
+          words={words}
+          intl={intl}
+          confirmChange={confirmChange}
+        />
       </BuilderSection>
       {filter && <NetworkFilterSection subject={entity} />}
     </>
@@ -301,15 +307,25 @@ export default function SubjectSection({
  * any interface whose schema requires the configuration the change throws
  * away, which is all of them. So the type lands in the codebook, the stage
  * points at it locally, and the researcher configures it before saving.
+ *
+ * Which is why the SELECTION is asked about, and separately from the create.
+ * It moves the stage's subject exactly as the picker does, and costs the stage
+ * exactly what the picker costs it, so it asks the picker's own question — a
+ * researcher who created a type to use somewhere else, or who realises what it
+ * would cost while reading the question, keeps the stage they had and the type
+ * they made.
  */
 function CreateSubjectType({
   entity,
   words,
   intl,
+  confirmChange,
 }: Readonly<{
   entity: SubjectEntity;
   words: SubjectWords;
   intl: IntlShape;
+  /** The picker's own question, asked before this selects the new type. */
+  confirmChange: () => SubjectChangeConfirmation | undefined;
 }>) {
   const { controller, readOnly, storeApi } = useStageEditorForm();
   const codebook = controller.snapshot.protocolContext.codebook;
@@ -350,22 +366,44 @@ function CreateSubjectType({
     [codebook],
   );
 
+  const confirmSubjectChange = useConfirmSubjectChange();
+
   const selectCreatedType = useCallback(
     (typeId: string) => {
       // Written into the form rather than dispatched, so it is the researcher's
       // own unsaved change — which is what lets the subject-change reset run
       // over it and clear the configuration that belonged to the old type.
-      storeApi
-        .getState()
-        .setFieldValue(
-          'subject',
-          entity === 'node'
-            ? { entity: 'node', type: typeId }
-            : { entity: 'edge', type: typeId },
-        );
-      setSession(null);
+      const select = () =>
+        storeApi
+          .getState()
+          .setFieldValue(
+            'subject',
+            entity === 'node'
+              ? { entity: 'node', type: typeId }
+              : { entity: 'edge', type: typeId },
+          );
+
+      // Read BEFORE anything moves, like the picker reads it: it is a question
+      // about what the stage is carrying now.
+      const question = confirmChange();
+      if (question === undefined) {
+        select();
+        setSession(null);
+        return;
+      }
+
+      void (async () => {
+        // Asked while the create dialog is still open, and it closes on either
+        // answer: the type has been created and there is nothing left to do in
+        // there, and the dialog outliving the question is what keeps focus on
+        // a live control — the confirm returns focus to the Save it was raised
+        // from, and the dialog then returns it to its own trigger.
+        const confirmed = await confirmSubjectChange(question);
+        if (confirmed) select();
+        setSession(null);
+      })();
     },
-    [entity, storeApi],
+    [confirmChange, confirmSubjectChange, entity, storeApi],
   );
 
   return (
