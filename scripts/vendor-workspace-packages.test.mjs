@@ -327,8 +327,14 @@ test('a lockfile-only change since the release is refused', () => {
     git(root, 'add', '.');
     git(root, 'commit', '-qm', 'bump a transitive');
     assert.throws(
-      () => assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages),
-      /lockfile-only dependency change cannot reach the image/,
+      () =>
+        assertSpecifierDrivenChanges(
+          'app@4.0.0',
+          'apps/app',
+          collectClosure(wsPackages, 'apps/app'),
+          wsPackages,
+        ),
+      /cannot reach the image, whose resolution starts from the released mirror/,
     );
   });
 });
@@ -345,13 +351,23 @@ test('a lockfile change explained by a specifier change passes', () => {
     );
     git(root, 'add', '.');
     git(root, 'commit', '-qm', 'bump redux');
-    assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages);
+    assertSpecifierDrivenChanges(
+      'app@4.0.0',
+      'apps/app',
+      collectClosure(wsPackages, 'apps/app'),
+      wsPackages,
+    );
   });
 });
 
 test('an unchanged lockfile needs no explanation', () => {
   inWorkspace(() => {
-    assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages);
+    assertSpecifierDrivenChanges(
+      'app@4.0.0',
+      'apps/app',
+      collectClosure(wsPackages, 'apps/app'),
+      wsPackages,
+    );
   });
 });
 
@@ -382,8 +398,14 @@ test('a lockfile change beside only a version bump is still lockfile-only', () =
     git(root, 'add', '.');
     git(root, 'commit', '-qm', 'bump the app and a transitive');
     assert.throws(
-      () => assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages),
-      /lockfile-only dependency change cannot reach the image/,
+      () =>
+        assertSpecifierDrivenChanges(
+          'app@4.0.0',
+          'apps/app',
+          collectClosure(wsPackages, 'apps/app'),
+          wsPackages,
+        ),
+      /cannot reach the image, whose resolution starts from the released mirror/,
     );
   });
 });
@@ -408,7 +430,12 @@ test('a lockfile change beside a dependency change in a manifest passes', () => 
     );
     git(root, 'add', '.');
     git(root, 'commit', '-qm', 'pin left');
-    assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages);
+    assertSpecifierDrivenChanges(
+      'app@4.0.0',
+      'apps/app',
+      collectClosure(wsPackages, 'apps/app'),
+      wsPackages,
+    );
   });
 });
 
@@ -454,7 +481,13 @@ test('a lockfile change explained only by a root override is refused', () => {
     git(root, 'add', '.');
     git(root, 'commit', '-qm', 'override left');
     assert.throws(
-      () => assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages),
+      () =>
+        assertSpecifierDrivenChanges(
+          'app@4.0.0',
+          'apps/app',
+          collectClosure(wsPackages, 'apps/app'),
+          wsPackages,
+        ),
       /root pnpm-workspace\.yaml override or policy change does not reach the image/,
     );
   });
@@ -473,8 +506,51 @@ test('a lockfile change beside a re-pin nothing consumes is refused', () => {
     git(root, 'add', '.');
     git(root, 'commit', '-qm', 'bump lodash, which nothing uses');
     assert.throws(
-      () => assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages),
-      /lockfile-only dependency change cannot reach the image/,
+      () =>
+        assertSpecifierDrivenChanges(
+          'app@4.0.0',
+          'apps/app',
+          collectClosure(wsPackages, 'apps/app'),
+          wsPackages,
+        ),
+      /cannot reach the image, whose resolution starts from the released mirror/,
+    );
+  });
+});
+
+// Only what the mirror carries can explain a lockfile change: a dependency
+// edit in a private build input — or any other manifest outside the app and
+// its closure — resolves nothing in the image.
+test('a lockfile change explained only by a manifest outside the closure is refused', () => {
+  inWorkspace((root) => {
+    writeFileSync(
+      join(root, 'pnpm-lock.yaml'),
+      "lockfileVersion: '9.0'\n# transitive patch\n",
+    );
+    writeFileSync(
+      join(root, 'tooling/config/package.json'),
+      `${JSON.stringify(
+        {
+          name: '@x/config',
+          version: '0.0.1',
+          private: true,
+          dependencies: { left: '1.0.1' },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'pin left in a build input');
+    assert.throws(
+      () =>
+        assertSpecifierDrivenChanges(
+          'app@4.0.0',
+          'apps/app',
+          collectClosure(wsPackages, 'apps/app'),
+          wsPackages,
+        ),
+      /outside the app and its closure/,
     );
   });
 });

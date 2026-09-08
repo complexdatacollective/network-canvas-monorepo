@@ -101,8 +101,10 @@ built on `scripts/vendor-workspace-packages.mjs`, the same mechanism the
 release test uses). Nothing is published to npm. The packages the hotfix did
 not touch install at the exact registry versions the released image used: the
 lane seeds the mirror's lockfile and its generated workspace policy from the
-ones the Fresco repository holds at that release before resolving, so only the
-vendored packages and the bumped app version are re-resolved, and neither a
+ones the Fresco repository holds at that release before resolving (bringing
+only the policy's catalog-backed overrides, such as `postcss`, to the branch's
+catalog), so only the vendored packages and the bumped app version are
+re-resolved, and neither a
 library or third-party version published after the release nor a dependency
 policy change that exists only on main can slip in. The corollary: a
 dependency fix that lives only in the branch's own `pnpm-lock.yaml`, or only

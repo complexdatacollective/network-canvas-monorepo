@@ -228,12 +228,13 @@ function workspacePolicyOutsideCatalog(ref) {
 // `pnpm` block) of a workspace manifest, or a re-pin of a default catalog
 // entry some workspace manifest consumes. What it does not carry: a version
 // bump (every hotfix makes one and it resolves nothing), a catalog entry
-// nothing consumes, and everything in pnpm-workspace.yaml outside the
+// nothing in the closure consumes, a manifest outside the app and its
+// closure, and everything in pnpm-workspace.yaml outside the
 // catalog — root overrides included — since the mirror's policy is seeded
 // from the released mirror's own. A branch whose only dependency change is
 // one of those is refused with the way to make it a change the mirror
 // carries.
-export function assertSpecifierDrivenChanges(ref, appDir, wsPackages) {
+export function assertSpecifierDrivenChanges(ref, appDir, closure, wsPackages) {
   const changed = (paths) => {
     const result = spawnSync(
       'git',
@@ -258,9 +259,12 @@ export function assertSpecifierDrivenChanges(ref, appDir, wsPackages) {
   }
   if (!changed(['pnpm-lock.yaml'])) return;
 
+  // Only the app's manifest and its closure packages' reach the mirror; a
+  // manifest outside them (another app, a private build input) resolves
+  // nothing in the image and so explains nothing.
   const manifests = [
     join(appDir, 'package.json'),
-    ...Object.values(wsPackages).map(({ dir }) => join(dir, 'package.json')),
+    ...closure.map((name) => join(wsPackages[name].dir, 'package.json')),
   ];
   for (const path of manifests) {
     if (specifiersAt(ref, path) !== specifiersAt('HEAD', path)) return;
@@ -287,8 +291,8 @@ export function assertSpecifierDrivenChanges(ref, appDir, wsPackages) {
     `The tree changes pnpm-lock.yaml since ${ref} without changing any dependency specifier the mirror carries — a manifest's dependency fields, or a catalog entry a workspace manifest consumes. ` +
       (policyChanged
         ? 'A root pnpm-workspace.yaml override or policy change does not reach the image, whose policy is seeded from the released mirror. '
-        : "A lockfile-only dependency change cannot reach the image, whose resolution starts from the released mirror's lockfile. ") +
-      'Pin the version in the affected package.json, or re-pin a catalog entry that package consumes, so the mirror re-resolves it.',
+        : "A lockfile-only dependency change, or one made in a manifest outside the app and its closure, cannot reach the image, whose resolution starts from the released mirror's lockfile. ") +
+      'Pin the version in the affected package.json of the app or a closure package, or re-pin a catalog entry one of them consumes, so the mirror re-resolves it.',
   );
 }
 

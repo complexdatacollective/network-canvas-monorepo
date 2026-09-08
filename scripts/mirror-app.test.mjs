@@ -19,7 +19,9 @@ import {
   assertCommitPinnedActionUses,
   assertFrescoPublisherContract,
   seedMirror,
+  withCatalogOverrides,
 } from './mirror-app.mjs';
+import { parseCatalog } from './resolve-manifest.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = join(REPO_ROOT, 'scripts', 'mirror-app.mjs');
@@ -458,4 +460,30 @@ test('seeding a stage copies the released lockfile and workspace policy', (t) =>
     () => seedMirror({ staging: stage, cloneUrl: remote, ref: 'v1.0.0' }),
     /has no pnpm-workspace\.yaml to seed/,
   );
+});
+
+// A released policy's catalog-backed overrides must follow the branch's
+// catalog, or a re-pinned direct specifier loses to the release's override;
+// keys the release did not carry are not added.
+test('seeding brings catalog-backed overrides to the current catalog and adds none', () => {
+  const catalog = parseCatalog(
+    readFileSync(join(REPO_ROOT, 'pnpm-workspace.yaml'), 'utf8'),
+  );
+  const released = [
+    'overrides:',
+    "  'effect@3.17.7': '^0.0.1'",
+    "  fast-uri: '^3.1.4'",
+    '  # Next pins an exact PostCSS version; this is resolved from the root catalog.',
+    "  postcss: '^0.0.1'",
+    "  sharp: '^0.35.3'",
+    '',
+  ].join('\n');
+  const current = withCatalogOverrides(released);
+  assert.ok(current.includes(`  'effect@3.17.7': '${catalog.effect}'\n`));
+  assert.ok(current.includes(`  postcss: '${catalog.postcss}'\n`));
+  assert.ok(current.includes("  fast-uri: '^3.1.4'\n"));
+  assert.ok(current.includes("  sharp: '^0.35.3'\n"));
+
+  const older = "overrides:\n  sharp: '^0.35.3'\n";
+  assert.equal(withCatalogOverrides(older), older);
 });

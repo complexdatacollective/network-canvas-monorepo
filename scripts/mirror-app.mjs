@@ -273,6 +273,33 @@ function stageSource(appDir, staging, extraExcludes = []) {
   ]);
 }
 
+// The generated policy's overrides whose values come from the root catalog:
+// yaml key → catalog entry. Listed once so the template below and the
+// hotfix seeding agree on which lines the catalog owns.
+const CATALOG_BACKED_OVERRIDES = [
+  ['effect@3.17.7', 'effect'],
+  ['postcss', 'postcss'],
+];
+
+// A seeded (released) policy with its catalog-backed override values brought
+// to THIS tree's catalog. pnpm applies an override over a direct specifier,
+// so without this a hotfix that re-pins, say, postcss in the catalog would
+// resolve the manifest's new specifier and then have the release's concrete
+// override put the old version back. Only keys the seeded policy already
+// carries are touched: a key the release lacked stays absent, so the policy
+// gains nothing main's generator added since.
+export function withCatalogOverrides(workspaceYaml) {
+  let updated = workspaceYaml;
+  for (const [key, catalogEntry] of CATALOG_BACKED_OVERRIDES) {
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    updated = updated.replace(
+      new RegExp(`^(\\s+'?${escaped}'?:\\s*)'[^']*'\\s*$`, 'm'),
+      `$1'${requireCatalogVersion(catalogEntry)}'`,
+    );
+  }
+  return updated;
+}
+
 // The mirrored tree is a single-package pnpm workspace. Its manifest carries
 // only the settings that affect a standalone install of the app — the catalog
 // is deliberately absent because resolve-manifest has already replaced every
@@ -612,6 +639,17 @@ function stage({
       cloneUrl: process.env.MIRROR_REPO_URL ?? `https://github.com/${repo}.git`,
       ref: seedMirrorFrom,
     });
+    if (appName === 'fresco') {
+      const policyPath = join(staging, 'pnpm-workspace.yaml');
+      const seeded = readFileSync(policyPath, 'utf8');
+      const current = withCatalogOverrides(seeded);
+      if (current !== seeded) {
+        writeFileSync(policyPath, current);
+        console.error(
+          "[mirror] brought the seeded policy's catalog-backed overrides to this tree's catalog",
+        );
+      }
+    }
   }
 
   let vendorManifest = null;
@@ -629,8 +667,8 @@ function stage({
       throw new Error('--vendor-changed-since requires --with-lockfile.');
     }
     const wsPackages = readWorkspacePackages();
-    assertSpecifierDrivenChanges(vendorChangedSince, app, wsPackages);
     const closure = collectClosure(wsPackages, app);
+    assertSpecifierDrivenChanges(vendorChangedSince, app, closure, wsPackages);
     const changed = packagesChangedSince(
       vendorChangedSince,
       closure,
