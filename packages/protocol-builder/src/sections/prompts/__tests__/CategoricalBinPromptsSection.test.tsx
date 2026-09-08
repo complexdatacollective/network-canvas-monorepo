@@ -839,6 +839,79 @@ describe('a bin prompt open when editing is taken away', () => {
     // controls that would write another section of the protocol.
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
+
+  /**
+   * And an editor ALREADY open keeps the draft the researcher made in this
+   * session — the row dialog around it does the same — while refusing to write
+   * it. Losing the lease is the only way a read-only session ever gets inside
+   * one, so this is the case that tells a live `readOnly` apart from a launch
+   * control that was never rendered.
+   */
+  it('keeps an open create editor, with its draft, and refuses the save', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new attribute' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+      'Closeness',
+    );
+
+    harness.setReadOnly();
+
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'Closeness',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    ).toBeDisabled();
+  });
+
+  it('keeps an open values editor, with its draft, and refuses the save', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+    await harness.user.click(
+      screen.getByRole('button', { name: "Change this attribute's values" }),
+    );
+    const firstOption = await screen.findByRole('textbox', {
+      name: 'Option 1 label',
+    });
+    await harness.user.clear(firstOption);
+    await harness.user.type(firstOption, 'Close friend');
+
+    harness.setReadOnly();
+
+    expect(screen.getByRole('textbox', { name: 'Option 1 label' })).toHaveValue(
+      'Close friend',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    ).toBeDisabled();
+  });
+
+  it('keeps an open rules editor, with its draft, and refuses the save', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Set rules for what the participant types',
+      }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Required' }),
+    );
+
+    harness.setReadOnly();
+
+    expect(screen.getByRole('checkbox', { name: 'Required' })).toBeChecked();
+    expect(
+      screen.getByRole('button', { name: 'Save validation' }),
+    ).toBeDisabled();
+  });
 });
 
 /**

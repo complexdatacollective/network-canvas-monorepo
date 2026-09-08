@@ -207,6 +207,36 @@ describe('a dyad prompt open when editing is taken away', () => {
     // codebook is gone.
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
+
+  /**
+   * And an editor already OPEN keeps what the researcher had typed while
+   * refusing to write it, exactly as the prompt dialog around it does: the
+   * draft is theirs, and unmounting it would throw away more work than losing
+   * the lease actually costs.
+   */
+  it('keeps an open connection-type editor, with its draft, and refuses the save', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create a new connection type',
+      }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Edge type name' }),
+      'worksWith',
+    );
+
+    harness.setReadOnly();
+
+    expect(screen.getByRole('textbox', { name: 'Edge type name' })).toHaveValue(
+      'worksWith',
+    );
+    expect(screen.getByRole('button', { name: 'Save entity' })).toBeDisabled();
+  });
 });
 
 describe('a codebook that changes while a dyad prompt is open', () => {

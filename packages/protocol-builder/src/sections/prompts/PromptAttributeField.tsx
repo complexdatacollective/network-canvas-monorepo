@@ -323,6 +323,12 @@ export default function PromptAttributeField({
           <AlertDescription>{optionLimitDescription}</AlertDescription>
         </Alert>
       )}
+      {/* An editor already open survives editing being taken away, and is
+          refused instead. The launch controls above go — a spectator may not
+          START another one — but the draft inside this dialog was made in this
+          session, and unmounting it would throw away work to say something
+          `readOnly` says for itself, with the save disabled. The same rule the
+          row editors follow (`AttributeCodebookControls`, `SubjectSection`). */}
       {editing !== null && codebookDocument !== null && subject !== null && (
         <Dialog
           open
@@ -345,6 +351,7 @@ export default function PromptAttributeField({
               variableId={editing.variableId}
               initialDraft={newVariableDraft(createType)}
               allowedVariableTypes={types}
+              readOnly={readOnly}
               description={createLabel}
               title={createLabel}
               createRequestId={() => uuid()}
@@ -368,6 +375,7 @@ export default function PromptAttributeField({
                 createType,
               )}
               allowedVariableTypes={types}
+              readOnly={readOnly}
               description={editingTitle}
               title={editingTitle}
               createRequestId={() => uuid()}
@@ -400,6 +408,7 @@ export default function PromptAttributeField({
                 createId: () => uuid(),
                 description: validationLabel,
               }}
+              readOnly={readOnly}
               onSubmitRequest={(request) =>
                 controller.requestCompoundEdit(request)
               }

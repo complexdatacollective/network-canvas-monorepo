@@ -96,6 +96,10 @@ export default function CreateEdgeField({
           </Button>
         </div>
       )}
+      {/* Open already, and so kept when editing is taken away: what the
+          researcher has typed is theirs, and the editor refuses its own save
+          under `readOnly` rather than being torn down to say the same thing.
+          What a spectator loses is the control above, which STARTS one. */}
       {session !== null && (
         <Dialog
           open
@@ -112,6 +116,7 @@ export default function CreateEdgeField({
             subject={{ entity: 'edge', type: session.typeId }}
             initialDraft={NEW_EDGE_DRAFT}
             existingEntityNames={existingEntityNames}
+            readOnly={readOnly}
             onSubmit={(request) => controller.requestCompoundEdit(request)}
             onApplied={() => {
               setFieldValue('createEdge', session.typeId);
