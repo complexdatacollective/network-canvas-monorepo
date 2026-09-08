@@ -203,9 +203,25 @@
     "defaultMessage": "Create or select an attribute",
     "description": "Label of the control that picks (or adds) the codebook attribute this row stamps onto every node the prompt creates."
   },
+  "protocolBuilder.attributeCodebookControls.attributeDeletedDescription": {
+    "defaultMessage": "This attribute is no longer in the codebook, so these changes cannot be saved.",
+    "description": "Shown over an open attribute editor when someone else deleted the attribute it was opened on. The draft stays on screen; what it says is that there is nothing left to write it to."
+  },
+  "protocolBuilder.attributeCodebookControls.attributeDeletedTitle": {
+    "defaultMessage": "Attribute deleted",
+    "description": "Heading of the warning shown over an open attribute editor when someone else deleted the attribute it was opened on."
+  },
+  "protocolBuilder.attributeCodebookControls.createNeedsSettings": {
+    "defaultMessage": "An attribute answered on a scale needs a label at each end, so it is created together with them.",
+    "description": "The same explanation for a scale: shown above the buttons when the researcher is inventing one, saying why they are sent to the codebook editor rather than being asked for a name here."
+  },
   "protocolBuilder.attributeCodebookControls.createNeedsValues": {
     "defaultMessage": "An attribute participants choose an answer from needs at least two values, so it is created together with them.",
     "description": "Shown above the buttons when the researcher is inventing an attribute whose answers come from a list, explaining why they are sent to the codebook editor rather than being asked for a name here."
+  },
+  "protocolBuilder.attributeCodebookControls.createWithSettings": {
+    "defaultMessage": "Create this attribute and what it accepts",
+    "description": "The same button for inventing an attribute whose answer is not chosen from a list but still needs something a name cannot carry — a scale, whose two end labels say what each end means. Also the title of the dialog it opens."
   },
   "protocolBuilder.attributeCodebookControls.createWithValues": {
     "defaultMessage": "Create this attribute and its values",
@@ -1210,6 +1226,10 @@
   "protocolBuilder.formFields.createNewOption": {
     "defaultMessage": "Create a new attribute…",
     "description": "The last choice in the attribute list, which stands for an attribute that does not exist yet and asks the researcher to name one. The trailing character is an ellipsis."
+  },
+  "protocolBuilder.formFields.createWithSettingsFirst": {
+    "defaultMessage": "Create this attribute and what it accepts before adding the field that collects it.",
+    "description": "The same refusal for an attribute whose answer is not chosen from a list but still needs something the researcher has not been asked for — a scale, whose two end labels tell the participant what each end means."
   },
   "protocolBuilder.formFields.createWithValuesFirst": {
     "defaultMessage": "Create this attribute and the values it offers before adding the field that collects it.",
@@ -3870,6 +3890,10 @@
   "protocolBuilder.variablePicker.createPlaceholder": {
     "defaultMessage": "nominated_early",
     "description": "Example attribute name shown in the empty box. A name the codebook would accept: letters, digits and the symbols . _ - : only, so it deliberately has no space in it. Translate it to an equally valid example if that reads better."
+  },
+  "protocolBuilder.variablePicker.createdUnassigned": {
+    "defaultMessage": "“{variableName}” was added to the codebook, but it has not been selected here.",
+    "description": "Notice under the create button, shown when the attribute the researcher named was added to the codebook — the protocol’s definition of what an interview records — but whatever they were creating it for did not take it. variableName is the name they typed and is not translated."
   },
   "protocolBuilder.variablePicker.emptyState": {
     "defaultMessage": "No attributes are available to choose from.",
