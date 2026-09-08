@@ -82,6 +82,35 @@ const SURFACES = {
       ],
     },
   },
+  /**
+   * A yes/no attribute offering more answers than the two this editor writes.
+   * Valid — `booleanOptionsSchema` sets no length and the interview's boolean
+   * control renders every entry — so the list is shown and left alone rather
+   * than edited down to a pair.
+   */
+  heldAnswers: {
+    variableId: 'consent',
+    committed: {
+      name: 'consent',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'I agree', value: true },
+        { label: 'I do not agree', value: false, negative: true },
+        { label: 'I would rather not say', value: false },
+      ],
+    },
+    draft: {
+      name: 'consent',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'I agree', value: true },
+        { label: 'I do not agree', value: false, negative: true },
+        { label: 'I would rather not say', value: false },
+      ],
+    },
+  },
   /** A date field's resolution and the two dates it is bounded by, reversed. */
   dateSettings: {
     variableId: 'met',
@@ -308,6 +337,31 @@ export const BooleanAnswers: Story = {
         'Write what this answer says, or clear both to offer Yes and No.',
       ),
     ).toBeVisible();
+  },
+};
+
+/**
+ * A yes/no attribute that offers more answers than the two this editor writes.
+ *
+ * The pair of fields is not offered for it: shown as the pair, the third
+ * answer — a button a participant can already press — would be gone the moment
+ * the attribute was saved for any other reason. The answers are shown as they
+ * stand, and everything else about the attribute stays editable.
+ */
+export const HeldAnswers: Story = {
+  args: { mode: 'update', surface: 'heldAnswers' },
+  ...inEnglish,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.queryByRole('textbox', { name: 'Label for “true”' }),
+    ).toBeNull();
+    await expect(
+      canvas.getByRole('cell', { name: 'I would rather not say' }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole('textbox', { name: /attribute name/i }),
+    ).toHaveValue('consent');
   },
 };
 
