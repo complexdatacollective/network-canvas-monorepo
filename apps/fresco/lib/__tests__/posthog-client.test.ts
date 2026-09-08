@@ -423,25 +423,139 @@ describe('Fresco PostHog client', () => {
       expect(beforeSend(null)).toBeNull();
     });
 
-    // Replay writes the page's own URL into its payload, where before_send
-    // cannot reach it — and a recording of someone answering interview
-    // questions is research data, not telemetry.
-    it('never records a session that starts on a participant page', async () => {
-      window.history.pushState({}, '', `/interview/${INTERVIEW_ID}`);
-      const { startPostHog } = await loadModule();
+    // Autocapture attaches the clicked element's text to each event. On a
+    // participant's page that text is their answers — a node's name is a
+    // response — and on the dashboard it is what the tables show: participant
+    // identifiers and labels. Rageclick and dead-click capture are built on
+    // the same element data. Interviewer and Architect run with all of it off;
+    // Fresco does too.
+    it('keeps autocapture and element capture off on every page', async () => {
+      for (const path of [
+        `/interview/${INTERVIEW_ID}`,
+        '/dashboard/interviews',
+      ]) {
+        vi.resetModules();
+        init.mockClear();
+        window.history.pushState({}, '', path);
+        const { startPostHog } = await loadModule();
 
-      await startPostHog('install-123');
+        await startPostHog('install-123');
 
-      expect(initConfig().disable_session_recording).toBe(true);
+        expect(initConfig()).toEqual(
+          expect.objectContaining({
+            autocapture: false,
+            rageclick: false,
+            capture_dead_clicks: false,
+          }),
+        );
+      }
     });
 
-    it('leaves recording alone on researcher pages', async () => {
+    // Heatmaps key their payload by the full page URL, and the dashboard's
+    // participant and interview tables put the researcher's search text
+    // there as a query parameter — a leak before_send cannot reach, since it
+    // only walks object values. Heatmaps stay off on every page, not only
+    // participant ones.
+    it('keeps heatmaps off on every page', async () => {
+      for (const path of [
+        `/interview/${INTERVIEW_ID}`,
+        '/dashboard/interviews',
+      ]) {
+        vi.resetModules();
+        init.mockClear();
+        window.history.pushState({}, '', path);
+        const mod = await loadModule();
+        await mod.startPostHog('install-123');
+        expect(initConfig().capture_heatmaps).toBe(false);
+      }
+    });
+
+    // Init settings are the first line; the send path is the second, so that
+    // element data cannot leave however an event acquired it.
+    it('drops element-bearing events on every page', async () => {
       window.history.pushState({}, '', '/dashboard/interviews');
       const { startPostHog } = await loadModule();
-
       await startPostHog('install-123');
 
-      expect(initConfig().disable_session_recording).toBe(false);
+      const beforeSend = initConfig().before_send;
+      if (typeof beforeSend !== 'function') {
+        throw new TypeError('before_send was not configured');
+      }
+
+      const autocapture = () => ({
+        event: '$autocapture',
+        properties: {
+          $event_type: 'click',
+          $el_text: 'Alice',
+          $elements: [{ tag_name: 'button', $el_text: 'Alice' }],
+        },
+      });
+
+      for (const path of [
+        '/dashboard/interviews',
+        `/interview/${INTERVIEW_ID}`,
+      ]) {
+        window.history.pushState({}, '', path);
+        expect(beforeSend(autocapture())).toBeNull();
+        expect(beforeSend({ event: '$rageclick', properties: {} })).toBeNull();
+        expect(beforeSend({ event: '$dead_click', properties: {} })).toBeNull();
+        // $$heatmap keys its payload by the full page URL, which puts a
+        // researcher's dashboard search text (pt_q, iv_q) in scope — a leak
+        // before_send cannot reach by walking object properties.
+        expect(beforeSend({ event: '$$heatmap', properties: {} })).toBeNull();
+      }
+    });
+
+    it('strips element data from other events on every page', async () => {
+      window.history.pushState({}, '', '/dashboard/participants');
+      const { startPostHog } = await loadModule();
+      await startPostHog('install-123');
+
+      const beforeSend = initConfig().before_send;
+      if (typeof beforeSend !== 'function') {
+        throw new TypeError('before_send was not configured');
+      }
+
+      const sent = beforeSend({
+        event: '$exception',
+        properties: {
+          $exception_list: [{ type: 'Error', value: 'boom' }],
+          $el_text: 'Alice',
+          $elements: [{ tag_name: 'button', $el_text: 'Alice' }],
+          $elements_chain: 'button:text="Alice"',
+        },
+      });
+
+      expect(sent).toEqual(
+        expect.objectContaining({
+          event: '$exception',
+          properties: { $exception_list: [{ type: 'Error', value: 'boom' }] },
+        }),
+      );
+    });
+
+    // Replay writes the page's own URL and DOM content into its payload,
+    // where before_send cannot reach either — a recording of someone
+    // answering interview questions is research data, not telemetry, and
+    // outside the interview a recording can capture whatever a researcher's
+    // page renders, including the TOTP secret on the two-factor setup page
+    // and recovery codes or freshly created API tokens on Settings. The
+    // recorder's default masking targets form inputs, not text or images, so
+    // recording is off on every page rather than only participant ones.
+    it('never records a session, on any page', async () => {
+      for (const path of [
+        `/interview/${INTERVIEW_ID}`,
+        '/dashboard/interviews',
+      ]) {
+        vi.resetModules();
+        init.mockClear();
+        window.history.pushState({}, '', path);
+        const { startPostHog } = await loadModule();
+
+        await startPostHog('install-123');
+
+        expect(initConfig().disable_session_recording).toBe(true);
+      }
     });
 
     // A researcher opening an interview from the dashboard gets there by

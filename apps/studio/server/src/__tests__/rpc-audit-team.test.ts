@@ -2,10 +2,10 @@ import { safe } from '@orpc/client';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createApp } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
+import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,

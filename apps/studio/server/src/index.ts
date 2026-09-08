@@ -1,8 +1,14 @@
+import { setTimeout as delay } from 'node:timers/promises';
+
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
 import { createApp } from './app.ts';
 import { createAssetStore } from './assets.ts';
+import {
+  startAuditAlertWorker,
+  type AuditAlertWorker,
+} from './audit/alert-delivery.ts';
 import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
 import { createMailer } from './auth/email.ts';
 import { mountClient } from './client-assets.ts';
@@ -11,16 +17,20 @@ import {
   createPool,
   isMissingRoleError,
 } from './db/pool.ts';
-import {
-  checkSchema,
-  type SchemaProblem,
-  type SchemaState,
-} from './db/schema.ts';
-import { readEnv } from './env.ts';
+import { checkSchema, type SchemaState } from './db/schema.ts';
+import { readEncryptionEnv, readEnv } from './env.ts';
 import { installFatalErrorHandlers } from './fatal-errors.ts';
+import { getSetupStatus } from './instance/bootstrap.ts';
 import { logOperational } from './observability/logger.ts';
+import { createOperationalApp } from './observability/operational-app.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
 import { createObservability } from './observability/runtime.ts';
+import type { EncryptionKeys } from './pii/keys.ts';
+import {
+  DatabaseRuntimeAdmissionError,
+  initializeServingEncryption,
+} from './pii/serving-admission.ts';
+import { acquireWebLease } from './runtime/web-lease.ts';
 import {
   type InvitationDeliveryWorker,
   startInvitationDeliveryWorker,
@@ -46,6 +56,13 @@ installFatalErrorHandlers({
 const { env, mailer } = (() => {
   try {
     const resolvedEnv = readEnv();
+    if (
+      resolvedEnv.db &&
+      !resolvedEnv.devDefaults &&
+      !resolvedEnv.maintenanceDb
+    ) {
+      throw new Error('Missing maintenance database configuration.');
+    }
     // One owned transport serves authentication and the invitation worker.
     // Validate it before database work or request admission.
     return {
@@ -59,45 +76,46 @@ const { env, mailer } = (() => {
     return process.exit(1);
   }
 })();
+const servesWeb = env.role !== 'worker';
 if (env.telemetry) {
   try {
     telemetry = await createServerTelemetry(true, {
       mode: env.deploymentMode,
-      runtime: 'both',
+      runtime: env.role,
       version: STUDIO_VERSION,
     });
   } catch {
     /* SDK availability cannot prevent Studio from starting. */
   }
 }
-const pool = env.db ? createPool(env.db) : undefined;
-const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
+const pool = env.db && servesWeb ? createPool(env.db) : undefined;
+const maintenancePool = env.maintenanceDb
+  ? createMaintenancePool(env.maintenanceDb)
+  : undefined;
+const schemaPool = pool ?? maintenancePool;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
-const observability = createObservability({
-  pool,
-  maintenancePool,
-  assetStore,
-  monitorProcess: true,
-});
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
+let auditAlertWorker: AuditAlertWorker | undefined;
 
 function startDatabaseWorkers(): void {
-  if (
-    invitationDeliveryWorker ||
-    !maintenancePool ||
-    !env.auth ||
-    !mailer ||
-    env.auth.mailer.kind === 'refuse'
-  ) {
-    return;
-  }
-  invitationDeliveryWorker = startInvitationDeliveryWorker({
+  if (env.role === 'web' || !maintenancePool || !env.auth) return;
+  const emailMailer = env.auth.mailer.kind === 'refuse' ? undefined : mailer;
+  auditAlertWorker ??= startAuditAlertWorker({
     pool: maintenancePool,
     observer: observability.metrics.observer,
     reportError: (error) => telemetry?.capture('server_worker', error),
-    mailer,
+    mailer: emailMailer,
     publicBaseUrl: env.auth.baseUrl,
   });
+  if (!invitationDeliveryWorker && emailMailer) {
+    invitationDeliveryWorker = startInvitationDeliveryWorker({
+      pool: maintenancePool,
+      observer: observability.metrics.observer,
+      reportError: (error) => telemetry?.capture('server_worker', error),
+      mailer: emailMailer,
+      publicBaseUrl: env.auth.baseUrl,
+    });
+  }
 }
 
 // Outside development a stale or absent schema is a resolved answer, not a
@@ -116,88 +134,117 @@ function exitIfFatal(state: SchemaState): void {
   }
 }
 
-// A configured database that cannot be reached is a deployment mistake and
-// fails the boot; only the development lane comes up anyway. Keyed on the
-// development marker rather than `NODE_ENV`, so a deployment that forgot
-// `NODE_ENV=production` does not inherit the retry and boot green with no
-// database.
-if (pool) {
-  // One attempt at a time: an attempt against an unreachable host can
-  // outlive its tick, and stacking them would exhaust the pool. A mismatch
-  // found mid-retry still takes the process down.
-  const waitUntilCurrent = () => {
-    let attempting = false;
-    const retry = setInterval(() => {
-      if (attempting) return;
-      attempting = true;
-      void checkSchema(pool)
-        .then((state) => {
-          exitIfFatal(state);
-          if (state.kind === 'current') {
-            clearInterval(retry);
-            startDatabaseWorkers();
-            logOperational('STUDIO_SCHEMA_CURRENT');
-          }
-          return undefined;
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          attempting = false;
-        });
-    }, 3000);
-    retry.unref();
-  };
-
-  const waitForSchema = (state: SchemaProblem) => {
-    exitIfFatal(state);
-    logOperational(
-      state.kind === 'absent' ? 'STUDIO_SCHEMA_ABSENT' : 'STUDIO_SCHEMA_STALE',
-    );
-    waitUntilCurrent();
-  };
-
-  try {
-    const state = await checkSchema(pool);
-    if (state.kind === 'current') {
-      startDatabaseWorkers();
-    } else {
-      waitForSchema(state);
-    }
-  } catch (error) {
-    // The pool runs as a role the schema apply creates, so a never-applied
-    // database refuses the connection before the fingerprint can be read.
-    if (isMissingRoleError(error)) {
-      waitForSchema({ kind: 'absent' });
-    } else {
-      logOperational('STUDIO_DATABASE_UNREACHABLE');
+// A configured database must be current before keys can be verified. Local
+// development waits for its explicit reset, but does not start authentication,
+// workers or the listener while the database or its keys are unavailable.
+if (schemaPool) {
+  for (;;) {
+    try {
+      const state = await checkSchema(schemaPool, {
+        allowUnversioned: env.devDefaults,
+        allowedLogins: env.databaseAllowedLogins,
+        administrativeLogins: env.databaseAdministrativeLogins,
+      });
+      if (state.kind === 'current') break;
+      exitIfFatal(state);
+      logOperational(
+        state.kind === 'absent'
+          ? 'STUDIO_SCHEMA_ABSENT'
+          : 'STUDIO_SCHEMA_STALE',
+      );
+    } catch (error) {
+      logOperational(
+        isMissingRoleError(error)
+          ? 'STUDIO_SCHEMA_ABSENT'
+          : 'STUDIO_DATABASE_UNREACHABLE',
+      );
       if (!env.devDefaults) process.exit(1);
-      waitUntilCurrent();
     }
+    await delay(3000);
   }
 }
 
-const app = createApp(env, {
-  telemetry,
-  mailer,
-  assetStore,
-  observability,
-  invitationDeliveryAvailable: Boolean(
-    env.auth && env.auth.mailer.kind !== 'refuse',
-  ),
+let encryptionKeys: EncryptionKeys | undefined;
+if (maintenancePool) {
+  try {
+    encryptionKeys = await initializeServingEncryption({
+      pool,
+      maintenancePool,
+      allowUnversioned: env.devDefaults,
+      allowedLogins: env.databaseAllowedLogins,
+      administrativeLogins: env.databaseAdministrativeLogins,
+      ...readEncryptionEnv(env),
+    });
+  } catch (error) {
+    logOperational(
+      error instanceof DatabaseRuntimeAdmissionError
+        ? 'STUDIO_DATABASE_IDENTITY_UNSAFE'
+        : 'STUDIO_ENCRYPTION_INVALID',
+    );
+    process.exit(1);
+  }
+}
+
+const webLease = pool
+  ? await acquireWebLease(pool, () => {
+      logOperational('STUDIO_WEB_LEASE_LOST');
+      process.exit(1);
+    }).catch(() => {
+      logOperational('STUDIO_WEB_REPLICA_REFUSED');
+      return process.exit(1);
+    })
+  : undefined;
+
+const observability = createObservability({
+  encryptionKeys,
   pool,
+  maintenancePool,
+  assetStore,
+  monitorProcess: true,
+  allowUnversionedSchema: env.devDefaults,
+  allowedLogins: env.databaseAllowedLogins,
+  administrativeLogins: env.databaseAdministrativeLogins,
 });
+startDatabaseWorkers();
 
-mountClient(app, env);
+// Worker-only processes have no user routes and expose their operational
+// endpoints directly to internal probes; metrics retains its own bearer gate.
+// Managed web processes install ingress authorization through createApp.
+const app = servesWeb
+  ? createApp(env, {
+      mailer,
+      encryptionKeys,
+      telemetry,
+      assetStore,
+      observability,
+      invitationDeliveryAvailable: Boolean(
+        env.auth && env.auth.mailer.kind !== 'refuse',
+      ),
+      pool,
+    })
+  : createOperationalApp(env, observability, undefined, (error) =>
+      telemetry?.capture('server_request', error),
+    );
 
-const wsServer = new WebSocketServer({ noServer: true });
-observeWebSocketServer(wsServer);
+if (servesWeb)
+  mountClient(
+    app,
+    env,
+    async () =>
+      (await getSetupStatus(pool, env.bootstrapToken)).state === 'complete',
+  );
+
+const wsServer = servesWeb
+  ? new WebSocketServer({ noServer: true })
+  : undefined;
+if (wsServer) observeWebSocketServer(wsServer);
 
 const server = serve(
   {
     fetch: app.fetch,
     port: env.port,
     hostname: env.host,
-    websocket: { server: wsServer },
+    ...(wsServer ? { websocket: { server: wsServer } } : {}),
   },
   () => logOperational('STUDIO_SERVER_STARTED'),
 );
@@ -205,8 +252,9 @@ const server = serve(
 stopServing = () => {
   server.close();
   if ('closeAllConnections' in server) server.closeAllConnections();
-  for (const socket of wsServer.clients) socket.terminate();
+  for (const socket of wsServer?.clients ?? []) socket.terminate();
   void invitationDeliveryWorker?.stop();
+  void auditAlertWorker?.stop();
   mailer?.close();
   observability.stop();
 };
@@ -223,29 +271,37 @@ function shutdown() {
   shuttingDown = true;
   observability.stop();
   setTimeout(() => process.exit(1), 10_000).unref();
-  const workerStopped = invitationDeliveryWorker?.stop();
+  // Stop queue claims and accepting HTTP work immediately, before waiting
+  // for active WebSocket close handshakes or an in-flight delivery attempt.
+  const workersStopped = Promise.all([
+    invitationDeliveryWorker?.stop(),
+    auditAlertWorker?.stop(),
+  ]);
   mailer?.close();
   const httpClosed = new Promise<void>((resolve, reject) => {
     server.close((error) => (error ? reject(error) : resolve()));
   });
-  const closing = [...wsServer.clients].map(
+  const closing = [...(wsServer?.clients ?? [])].map(
     (client) =>
       new Promise<void>((done) => {
         client.once('close', () => done());
         client.close(1001, 'Server shutting down');
       }),
   );
-  wsServer.close();
+  wsServer?.close();
   void (async () => {
     let exitCode = 0;
     try {
-      await Promise.all([httpClosed, workerStopped, ...closing]);
+      await Promise.all([httpClosed, workersStopped, ...closing]);
+      // Requests may append suppression summaries until HTTP has drained.
+      // Keep the application pool open until that final bounded flush ends.
       if (!(await flushDeniedAuditSummaries()))
         throw new Error('Audit summaries did not flush.');
     } catch {
       logOperational('STUDIO_SHUTDOWN_FAILED');
       exitCode = 1;
     } finally {
+      webLease?.stop();
       const ended = await Promise.allSettled([
         pool?.end(),
         maintenancePool?.end(),
