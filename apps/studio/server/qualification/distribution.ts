@@ -30,6 +30,12 @@ import { sha256 } from '../../deployment/installer/release.mjs';
 import { createMaintenancePool, createPool } from '../src/db/pool.ts';
 import recoveryFixture from './combined-recovery.fixture.json' with { type: 'json' };
 import { owner, populate, rpc } from './data.ts';
+import {
+  assertNoTelemetryEgress,
+  assertTelemetryDetectorPositive,
+  TELEMETRY_CANARY_SOURCE,
+  TELEMETRY_DETECTOR_SOURCE,
+} from './telemetry-egress.ts';
 
 const DEADLINE = 300_000;
 
@@ -261,6 +267,14 @@ async function scenario(label: string, cosign: string) {
   const webPort = await localPort();
   const databasePort = await localPort();
   const registryDatabasePort = await localPort();
+  // Every distribution scenario owns a private edge subnet. The detector
+  // shares that network with the real image, so reusing the production
+  // default here could resolve another concurrent qualification's relay.
+  const subnetIdentity = randomBytes(2);
+  const subnetSecondOctet = 128 + (subnetIdentity[0]! % 64);
+  const subnetThirdOctet = subnetIdentity[1]! & 0xfe;
+  const edgeSubnet = `10.${subnetSecondOctet}.${subnetThirdOctet + 1}.0/24`;
+  const proxyIp = `10.${subnetSecondOctet}.${subnetThirdOctet + 1}.2`;
   const origin = `http://127.0.0.1:${webPort}`;
   const overlay = join(root, 'qualification.yml');
   writeFileSync(
@@ -273,19 +287,48 @@ async function scenario(label: string, cosign: string) {
       STUDIO_TELEMETRY: 'off'
       GOOGLE_CLIENT_ID: synthetic-qualification-client
       GOOGLE_CLIENT_SECRET: synthetic-qualification-secret
+    depends_on:
+      telemetry-detector:
+        condition: service_started
   worker:
     environment:
       STUDIO_TELEMETRY: 'off'
+    depends_on:
+      telemetry-detector:
+        condition: service_started
+  telemetry-detector:
+    image: \${STUDIO_IMAGE:?Select the signed Studio image digest}
+    entrypoint: [node, -e]
+    command: [${JSON.stringify(TELEMETRY_DETECTOR_SOURCE)}]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp:size=1m,mode=1777]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    networks:
+      edge:
+        aliases: [ph-relay.networkcanvas.com]
   postgres:
     ports: !override ["127.0.0.1:${databasePort}:5432"]
   registry-postgres:
     ports: !override ["127.0.0.1:${registryDatabasePort}:5432"]
   traefik:
     ports: !reset []
+networks:
+  edge: !override
+    ipam:
+      config: [{ subnet: ${edgeSubnet} }]
+  registry-data:
+    ipam:
+      config: [{ subnet: 10.${subnetSecondOctet}.${subnetThirdOctet}.0/24 }]
 `,
     { flag: 'wx', mode: 0o600 },
   );
-  const environment = dockerEnvironment(root, overlay);
+  const environment = {
+    ...dockerEnvironment(root, overlay),
+    STUDIO_PROXY_SUBNET: edgeSubnet,
+    STUDIO_PROXY_IP: proxyIp,
+  };
   const extraCleanup: (() => void)[] = [];
   const configurations = new Set<string>();
   const execute = (
@@ -334,6 +377,31 @@ async function scenario(label: string, cosign: string) {
       ],
       options,
     );
+  function telemetryLogs(configuration: string) {
+    return compose(configuration, [
+      'logs',
+      '--no-color',
+      '--no-log-prefix',
+      'telemetry-detector',
+    ]);
+  }
+  function assertTelemetryQuiet(configuration: string) {
+    assertNoTelemetryEgress(telemetryLogs(configuration));
+  }
+  function proveTelemetryDetector(configuration: string) {
+    compose(configuration, [
+      'exec',
+      '-T',
+      'studio',
+      'node',
+      '-e',
+      TELEMETRY_CANARY_SOURCE,
+    ]);
+    assertTelemetryDetectorPositive(telemetryLogs(configuration));
+    compose(configuration, ['rm', '--stop', '--force', 'telemetry-detector']);
+    compose(configuration, ['up', '-d', 'telemetry-detector']);
+    assertNoTelemetryEgress(telemetryLogs(configuration));
+  }
   const operationOptions = (bundleDirectory: string, digest: string) => ({
     directory: installation,
     bundleDirectory,
@@ -417,6 +485,8 @@ async function scenario(label: string, cosign: string) {
     registerConfiguration: (configuration: string) =>
       configurations.add(configuration),
     registerCleanup: (cleanup: () => void) => extraCleanup.push(cleanup),
+    assertTelemetryQuiet,
+    proveTelemetryDetector,
     dispose: () => {
       for (const cleanup of extraCleanup.toReversed()) {
         try {
@@ -470,6 +540,8 @@ async function exerciseInstall(
     );
     fixture.registerConfiguration(first.configuration);
     await fixture.setup(first);
+    fixture.assertTelemetryQuiet(first.configuration);
+    fixture.proveTelemetryDetector(first.configuration);
     const response = await fetch(`${fixture.origin}/api/auth/sign-in/email`, {
       method: 'POST',
       headers: {
@@ -495,6 +567,7 @@ async function exerciseInstall(
         asset: Buffer.from(recoveryFixture.studio.object.bytesBase64, 'base64'),
       },
     );
+    fixture.assertTelemetryQuiet(first.configuration);
     if (populateCandidate) {
       // Combined recovery is deliberately a separate helper below; reaching
       // this point proves the source estate contains database and object data.
@@ -519,6 +592,7 @@ async function exerciseInstall(
         populated.participantId,
         populated.assetHash,
       );
+      fixture.assertTelemetryQuiet(updated.configuration);
     }
   } finally {
     fixture.dispose();

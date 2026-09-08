@@ -723,6 +723,8 @@ it('installs an immutable built image, drains a populated backup and restores al
     ]);
     await source.compose(['up', '-d', 'studio', 'probe']);
     await source.ready();
+    await source.assertTelemetryQuiet();
+    await source.proveTelemetryDetector();
     const initialPools = await source.pools();
     try {
       expect(
@@ -830,6 +832,7 @@ it('installs an immutable built image, drains a populated backup and restores al
     await source.compose(['up', '-d', 'studio']);
     await source.ready();
     const data = await populate(source, cookie);
+    await source.assertTelemetryQuiet();
     const historical = await appendCurrentKeys(source);
     const baseline = await counts(source);
     expect(baseline.instance).toBe(1);

@@ -6,6 +6,11 @@ import {
   assertRecoveredDistributionEvidence,
   executeDistributionRestore,
 } from './distribution.ts';
+import {
+  assertNoTelemetryEgress,
+  assertTelemetryDetectorPositive,
+  TELEMETRY_EGRESS_MARKER,
+} from './telemetry-egress.ts';
 
 const registryEvidence = {
   entries: 1,
@@ -22,6 +27,23 @@ const recovered = {
 };
 
 describe('local distribution recovery boundary', () => {
+  it('fails closed for a wrong-off mutant after a singular positive canary', () => {
+    expect(() => assertNoTelemetryEgress('detector booted\n')).not.toThrow();
+    expect(() =>
+      assertNoTelemetryEgress(`detector\n${TELEMETRY_EGRESS_MARKER}\n`),
+    ).toThrow('detected egress');
+    expect(() =>
+      assertTelemetryDetectorPositive(`${TELEMETRY_EGRESS_MARKER}\n`),
+    ).not.toThrow();
+    expect(() => assertTelemetryDetectorPositive('detector booted\n')).toThrow(
+      'control failed',
+    );
+    expect(() =>
+      assertTelemetryDetectorPositive(
+        `${TELEMETRY_EGRESS_MARKER}\n${TELEMETRY_EGRESS_MARKER}\n`,
+      ),
+    ).toThrow('control failed');
+  });
   it('requires owner, team, research and object canaries after each historical upgrade', () => {
     const bytes = Buffer.from(
       recoveryFixture.studio.object.bytesBase64,

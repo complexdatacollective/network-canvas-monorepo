@@ -18,6 +18,12 @@ import { parseEnv, promisify } from 'node:util';
 import { Pool } from 'pg';
 
 import { createMaintenancePool, createPool } from '../src/db/pool.ts';
+import {
+  assertNoTelemetryEgress,
+  assertTelemetryDetectorPositive,
+  TELEMETRY_CANARY_SOURCE,
+  TELEMETRY_DETECTOR_SOURCE,
+} from './telemetry-egress.ts';
 
 const execFileAsync = promisify(execFile);
 
@@ -95,13 +101,19 @@ export async function localDeployment(label: string) {
   await mkdir(directory, { mode: 0o700 });
   const log = join(root, 'commands.log');
   const ports = { web: await port(), db: await port(), s3: await port() };
+  const subnetIdentity = randomBytes(2);
+  const subnetSecondOctet = 128 + (subnetIdentity[0]! % 64);
+  const subnetThirdOctet = subnetIdentity[1]! & 0xfe;
+  const dataSubnet = `10.${subnetSecondOctet}.${subnetThirdOctet}.0/24`;
+  const edgeSubnet = `10.${subnetSecondOctet}.${subnetThirdOctet + 1}.0/24`;
+  const proxyIp = `10.${subnetSecondOctet}.${subnetThirdOctet + 1}.2`;
   const dockerEnvironment = await localDockerEnvironment(root);
   const environment = {
     ...dockerEnvironment,
     STUDIO_IMAGE: image,
     MINIO_IMAGE: minioImage,
-    STUDIO_PROXY_SUBNET: '172.30.240.0/24',
-    STUDIO_PROXY_IP: '172.30.240.2',
+    STUDIO_PROXY_SUBNET: edgeSubnet,
+    STUDIO_PROXY_IP: proxyIp,
     COMPOSE_PROJECT_NAME: project,
     COMPOSE_FILE: [
       join(directory, 'docker-compose.yml'),
@@ -247,6 +259,13 @@ export async function localDeployment(label: string) {
       STUDIO_TELEMETRY: 'off'
       GOOGLE_CLIENT_ID: synthetic-qualification-client
       GOOGLE_CLIENT_SECRET: synthetic-qualification-secret
+    depends_on:
+      telemetry-detector:
+        condition: service_started
+  worker:
+    depends_on:
+      telemetry-detector:
+        condition: service_started
   postgres:
     ports: ["127.0.0.1:${ports.db}:5432"]
     networks: [data, edge]
@@ -259,6 +278,18 @@ export async function localDeployment(label: string) {
     ports: ["127.0.0.1:${ports.web}:3000"]
     volumes: [./probe.yml:/probe.yml:ro]
     networks: [data, edge]
+  telemetry-detector:
+    image: \${STUDIO_IMAGE:?Select the signed Studio image digest}
+    entrypoint: [node, -e]
+    command: [${JSON.stringify(TELEMETRY_DETECTOR_SOURCE)}]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp:size=1m,mode=1777]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    networks:
+      edge:
+        aliases: [ph-relay.networkcanvas.com]
   traefik:
     ports: !reset []
     networks: !override
@@ -266,6 +297,11 @@ export async function localDeployment(label: string) {
 networks:
   edge: !override
     name: ${project}-edge
+    ipam:
+      config: [{ subnet: ${edgeSubnet} }]
+  data:
+    ipam:
+      config: [{ subnet: ${dataSubnet} }]
 `,
     );
   }
@@ -309,6 +345,33 @@ networks:
       `Built image never became ready (last status ${lastStatus}); evidence: ${log}`,
     );
   }
+  async function telemetryLogs() {
+    return (
+      await compose([
+        'logs',
+        '--no-color',
+        '--no-log-prefix',
+        'telemetry-detector',
+      ])
+    ).stdout.toString();
+  }
+  async function assertTelemetryQuiet() {
+    assertNoTelemetryEgress(await telemetryLogs());
+  }
+  async function proveTelemetryDetector() {
+    await compose([
+      'exec',
+      '-T',
+      'studio',
+      'node',
+      '-e',
+      TELEMETRY_CANARY_SOURCE,
+    ]);
+    assertTelemetryDetectorPositive(await telemetryLogs());
+    await compose(['rm', '--stop', '--force', 'telemetry-detector']);
+    await compose(['up', '-d', 'telemetry-detector']);
+    assertNoTelemetryEgress(await telemetryLogs());
+  }
   async function dispose() {
     // This project name is generated above; never select a pre-existing stack.
     await compose(['down', '--volumes', '--remove-orphans'], {
@@ -332,6 +395,8 @@ networks:
     overlay,
     pools,
     ready,
+    assertTelemetryQuiet,
+    proveTelemetryDetector,
     dispose,
   };
 }
