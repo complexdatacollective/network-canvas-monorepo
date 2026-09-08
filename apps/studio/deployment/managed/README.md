@@ -158,8 +158,11 @@ Run `terraform fmt -check -recursive`, `terraform init -backend=false
 cost-model.test.mjs`. The required repository support check runs the estimator
 controls and, when this module or its CI wiring changes, validates and tests
 Terraform with mocked providers and no deployment credentials. Terraform 1.14.5
-and its Linux executable checksum are pinned in that job. Initialization downloads the
-four pinned providers and writes a lock file; review and commit its checksums.
+and its Linux executable checksum are pinned in that job. Initialization downloads
+the four pinned providers and verifies their committed checksums without changing
+the lock file. When deliberately updating provider pins, run `terraform providers
+lock -platform=linux_amd64 -platform=darwin_arm64` to retain the package hashes
+needed by both CI and macOS, then review the registry signatures and lockfile diff.
 Do not run `plan` or `apply` without live-account authorization and a remote-state
 design. Official capability references:
 

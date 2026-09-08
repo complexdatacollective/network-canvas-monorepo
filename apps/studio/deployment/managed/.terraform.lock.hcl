@@ -5,6 +5,7 @@ provider "registry.terraform.io/backblaze/b2" {
   version     = "0.13.2"
   constraints = "0.13.2"
   hashes = [
+    "h1:CvSGLZjfK6nBmUwWAttzVd/Yl43efMBP6k8MTYcfKSo=",
     "h1:SLAIwqv4rdVsM2PaAZbUzAU0GLv+4VqYnjE8/MadR9w=",
     "zh:18200e500f82b6a017f65e59675be44c95c37fe75f95366a5e1f2cd5bed83d43",
     "zh:702b2f81c76d36113be91aba7f99703e5993ccdb655b81b707379655f4aee7c9",
@@ -19,6 +20,7 @@ provider "registry.terraform.io/cloudflare/cloudflare" {
   constraints = "5.24.0"
   hashes = [
     "h1:F3V4hF42Y/Usl9OhzNFQHwUL8oNXTzbY5x6dQaDaASc=",
+    "h1:NxZYEFjCgaI7lGi3L8mn0KZcWPfbqUdmt5Bo4yqWMFE=",
     "zh:2390fc5df95addfd47d3f638964a1f9f6192a8c84ad3b1eab554ef88e0ac4091",
     "zh:2b09c0afbebeb3139a3094e3debda1ba5ff3d73b6eca536549bdc903284b6798",
     "zh:3241ce471f20745b1dc93baea73a716e1db4637ff41acc134114b7a8c9684714",
@@ -35,6 +37,7 @@ provider "registry.terraform.io/crunchydata/crunchybridge" {
   version     = "0.3.0"
   constraints = "0.3.0"
   hashes = [
+    "h1:9NYOvqbI7jU0etmo7KmIhiCTir/RRQAe/X2P5trnxcA=",
     "h1:u48MAwxNQ1GSSNL3ocnxnP11PjCVvx9nMs+YA5xdAy0=",
     "zh:00ad99394682e6ada34a4d039ab09263964c2c4e55d59819fcb172b8ffbbaa1b",
     "zh:5b9fdfc0671257daace4ecdd8c542094e0ce437afb97af10e19098760f425ff0",
@@ -50,6 +53,7 @@ provider "registry.terraform.io/hashicorp/aws" {
   version     = "6.62.0"
   constraints = "6.62.0"
   hashes = [
+    "h1:lTKd2c1EunGxt2XROLgEeSXA2Jk+WiiG9BTcp+L/0xY=",
     "h1:nWSI/kgPk9aieiY01TEKOGXRX3+L889GSkEq0SMCL6E=",
     "zh:35a9e4bc6fd622c5a99561b882025f2745f1256bbf1a8da8d6b39319b75ae0b5",
     "zh:405927d470ff16201e40aa0fa2d0ab1de477360a0926d20719cd029179682ecd",
