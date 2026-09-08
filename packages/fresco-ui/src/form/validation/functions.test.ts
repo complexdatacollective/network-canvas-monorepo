@@ -778,6 +778,86 @@ describe('Validation Functions', () => {
       const result = validator.safeParse('Jane');
       expect(result.success).toBe(false);
     });
+
+    it("matches a number field's raw string against the number other entities store", () => {
+      // An `<input type="number">` holds its value as a string, and the
+      // interview coerces it to a real number only at submit — so the rule is
+      // asked about '12' while the alters already added hold 12.
+      const mockNetwork = {
+        nodes: [
+          {
+            _uid: 'node1',
+            type: 'person',
+            [entityAttributesProperty]: { numberAttribute: 12 },
+          },
+        ],
+        edges: [],
+        ego: {
+          _uid: 'ego',
+          [entityAttributesProperty]: {},
+        },
+      } as NcNetwork;
+
+      const validator = validations.unique(
+        'numberAttribute',
+        createMockContext({ network: mockNetwork }),
+      )({});
+
+      expect(validator.safeParse('12').success).toBe(false);
+      expect(validator.safeParse(12).success).toBe(false);
+      expect(validator.safeParse('13').success).toBe(true);
+    });
+
+    it('reads a number an older session stored as a string as that number', () => {
+      const mockNetwork = {
+        nodes: [
+          {
+            _uid: 'node1',
+            type: 'person',
+            [entityAttributesProperty]: { numberAttribute: '12' },
+          },
+        ],
+        edges: [],
+        ego: {
+          _uid: 'ego',
+          [entityAttributesProperty]: {},
+        },
+      } as NcNetwork;
+
+      const validator = validations.unique(
+        'numberAttribute',
+        createMockContext({ network: mockNetwork }),
+      )({});
+
+      expect(validator.safeParse(12).success).toBe(false);
+      expect(validator.safeParse('12').success).toBe(false);
+      expect(validator.safeParse(13).success).toBe(true);
+    });
+
+    it('keeps a text value literal even when it looks numeric', () => {
+      const mockNetwork = {
+        nodes: [
+          {
+            _uid: 'node1',
+            type: 'person',
+            [entityAttributesProperty]: { testAttribute: '012' },
+          },
+        ],
+        edges: [],
+        ego: {
+          _uid: 'ego',
+          [entityAttributesProperty]: {},
+        },
+      } as NcNetwork;
+
+      const validator = validations.unique(
+        'testAttribute',
+        createMockContext({ network: mockNetwork }),
+      )({});
+
+      expect(validator.safeParse('12').success).toBe(true);
+      expect(validator.safeParse('012').success).toBe(false);
+    });
   });
 
   describe('differentFrom', () => {
@@ -1461,6 +1541,32 @@ describe('Validation Functions', () => {
 
       expect(validator.safeParse('taken').success).toBe(false);
       expect(validator.safeParse('fresh').success).toBe(true);
+    });
+
+    it("sameAs matches a number field's raw string against the persisted number", () => {
+      const validator = validations.sameAs(
+        'numberAttribute',
+        createMockContext({
+          network: networkWithNode,
+          currentEntityId: 'node1',
+        }),
+      )({});
+
+      expect(validator.safeParse('10').success).toBe(true);
+      expect(validator.safeParse('11').success).toBe(false);
+    });
+
+    it("differentFrom matches a number field's raw string against the persisted number", () => {
+      const validator = validations.differentFrom(
+        'numberAttribute',
+        createMockContext({
+          network: networkWithNode,
+          currentEntityId: 'node1',
+        }),
+      )({});
+
+      expect(validator.safeParse('10').success).toBe(false);
+      expect(validator.safeParse('11').success).toBe(true);
     });
 
     it('still no-ops when the variable is absent from both form and attributes', () => {
