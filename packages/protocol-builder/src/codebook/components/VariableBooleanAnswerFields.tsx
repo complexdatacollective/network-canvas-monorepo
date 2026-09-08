@@ -83,41 +83,51 @@ export default function VariableBooleanAnswerFields({
             series="accent"
             className="w-full overflow-visible!"
           >
-            <UnconnectedField
-              name={`boolean-answer-${records}-label`}
-              label={intl.formatMessage(messages.answerLabel, { records })}
-              component={InputControl}
-              // What the interview will actually show for an answer nobody has
-              // named: the participant reads fresco-ui's own boolean control,
-              // which supplies its translated Yes/No when the protocol carries
-              // no `options` at all — and this editor writes no `options` key
-              // while both labels are blank. `booleanPlaceholdersMatchFresco`
-              // holds the two wordings together.
-              placeholder={intl.formatMessage(messages.answerPlaceholder, {
-                records,
-              })}
-              value={answer.label}
-              onChange={(value: unknown) =>
-                onChange(index, {
-                  ...answer,
-                  label: typeof value === 'string' ? value : '',
-                })
-              }
-              readOnly={readOnly}
-              errors={errors}
-              showErrors={errors.length > 0}
-            />
-            <UnconnectedField
-              name={`boolean-answer-${records}-negative`}
-              label={intl.formatMessage(messages.negativeLabel, { records })}
-              component={ToggleControl}
-              inline
-              value={answer.negative === true}
-              onChange={(value: unknown) =>
-                onChange(index, { ...answer, negative: value === true })
-              }
-              readOnly={readOnly}
-            />
+            {/* The strong destructive ink is opted into on the fields, not on
+                the Surface, for the reason `VariableEditor` states where its
+                option rows do the same: `--destructive` is the ink of a field's
+                error AND the fill of any destructive control, and only the ink
+                wants lifting off this tinted background. Scoped here, a
+                destructive button added to this row later keeps the
+                fill/foreground pair its own contrast was measured on. */}
+            <div className="[--destructive:var(--destructive-strong)]">
+              <UnconnectedField
+                name={`boolean-answer-${records}-label`}
+                label={intl.formatMessage(messages.answerLabel, { records })}
+                component={InputControl}
+                // What the interview will actually show for an answer nobody
+                // has named: the participant reads fresco-ui's own boolean
+                // control, which supplies its translated Yes/No when the
+                // protocol carries no `options` at all — and this editor writes
+                // no `options` key while both labels are blank.
+                // `booleanPlaceholdersMatchFresco` holds the two wordings
+                // together.
+                placeholder={intl.formatMessage(messages.answerPlaceholder, {
+                  records,
+                })}
+                value={answer.label}
+                onChange={(value: unknown) =>
+                  onChange(index, {
+                    ...answer,
+                    label: typeof value === 'string' ? value : '',
+                  })
+                }
+                readOnly={readOnly}
+                errors={errors}
+                showErrors={errors.length > 0}
+              />
+              <UnconnectedField
+                name={`boolean-answer-${records}-negative`}
+                label={intl.formatMessage(messages.negativeLabel, { records })}
+                component={ToggleControl}
+                inline
+                value={answer.negative === true}
+                onChange={(value: unknown) =>
+                  onChange(index, { ...answer, negative: value === true })
+                }
+                readOnly={readOnly}
+              />
+            </div>
           </Surface>
         );
       })}

@@ -1,5 +1,4 @@
-import { defineMessages } from '@codaco/app-i18n/messages';
-import type { IntlShape } from '@codaco/app-i18n/messages';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { ComponentTypes, VariableTypes } from '@codaco/protocol-validation';
 
 const messages = defineMessages({
@@ -25,10 +24,12 @@ const messages = defineMessages({
  * Two different lists live under the same `options` key. A categorical or
  * ordinal attribute holds as many answers as the researcher writes, each with a
  * stored value of its own and at least two of them
- * (`categoricalOptionsSchema`). A boolean holds exactly two, and their values
+ * (`categoricalOptionsSchema`). A boolean is written as two, and their values
  * are the two booleans rather than anything the researcher chooses
  * (`booleanOptionsSchema`) — what is authored is the words on them, and which
- * of the two is shown as the negative answer.
+ * of the two is shown as the negative answer. A pair recording one of each is
+ * the shape this editor writes rather than one the schema holds it to, and
+ * `heldBooleanAnswersReason` is where the difference is dealt with.
  *
  * So the shape is not a property of the key: it is decided by the attribute,
  * the way a `ParameterShape` is decided by the control — and the two lists are
@@ -90,6 +91,83 @@ const readBooleanAnswer = (
 };
 
 /**
+ * Why the answers this attribute holds are not the pair the fieldset writes.
+ *
+ * `count` is a list of some other length. `values` is two answers that do not
+ * record one `true` and one `false` — both recording the same boolean, or one
+ * recording something that is not a boolean at all.
+ *
+ * Read by the editor, which says which of the two it is: a researcher told a
+ * pair of answers "offers a different number of them" is being sent to look
+ * for an answer that is not on the screen.
+ */
+export type HeldBooleanAnswersReason = 'count' | 'values';
+
+/** Whether these two answers record one `true` and one `false`. */
+const recordsBothBooleans = (options: readonly unknown[]): boolean => {
+  const values = options.map((option) =>
+    isRecord(option) && typeof option.value === 'boolean' ? option.value : null,
+  );
+  return values.includes(true) && values.includes(false);
+};
+
+/**
+ * Why the fieldset is not the editor for the answers this attribute holds, or
+ * `null` where it is.
+ *
+ * The fieldset is exactly two answers, keyed and labelled by the boolean each
+ * one records, and it writes exactly two. `booleanOptionsSchema` holds a
+ * boolean's answers to neither of those things: it is a plain array with no
+ * length of its own and no rule relating one entry's `value` to the other's,
+ * and `BooleanField` renders every entry it is given — falling back to Yes and
+ * No only where the protocol carries no `options` key at all. So a protocol
+ * may hold one answer, or four, or two that both record `true`, and each of
+ * them is a button a participant meets.
+ *
+ * Those are lists this editor cannot show. Shown as the pair, one answer would
+ * gain a second the researcher never wrote and four would lose two; two
+ * recording the same boolean would arrive at a fieldset that tells its two
+ * fields apart by exactly the thing they share, and could only be drawn by
+ * imposing `true` and `false` on them — which is a rewrite of what every
+ * answer already given to the second button MEANS. None of that is the
+ * researcher's to be given without asking, so the fieldset is not offered and
+ * the list is written back exactly as it was authored — an attribute whose
+ * answers this editor cannot edit can still be renamed, retyped and given a
+ * validation rule.
+ *
+ * An attribute naming NO answers is the pair: it is what a boolean starts as,
+ * and the two blank fields are how the researcher names them. So is an empty
+ * array, which the schema refuses for a `Boolean` control and which clearing
+ * both fields takes away.
+ */
+export const heldBooleanAnswersReason = (
+  options: unknown,
+): HeldBooleanAnswersReason | null => {
+  if (!Array.isArray(options) || options.length === 0) return null;
+  if (options.length !== 2) return 'count';
+  return recordsBothBooleans(options) ? null : 'values';
+};
+
+/** Whether the fieldset is the editor for them, on the same terms. */
+const holdsEditableBooleanAnswers = (options: unknown): boolean =>
+  heldBooleanAnswersReason(options) === null;
+
+/**
+ * Every answer this attribute holds, for an editor that can only show them.
+ *
+ * Read the way the pair is read — a label of nothing where none was written,
+ * the recorded boolean as the protocol holds it — but positionally faithful
+ * and never repaired: this is what the participant meets, not something being
+ * edited.
+ */
+export const readHeldBooleanAnswers = (
+  options: unknown,
+): readonly BooleanAnswer[] =>
+  Array.isArray(options)
+    ? options.map((option) => readBooleanAnswer(option, false))
+    : [];
+
+/**
  * The two answers as the editor holds them, from whatever the draft carries.
  *
  * The value each answer records is read from the protocol rather than imposed
@@ -98,35 +176,74 @@ const readBooleanAnswer = (
  * said when they were given — so reversing them would quietly rewrite what
  * every stored answer means.
  *
- * The one thing that IS imposed is that the two record different values. A
- * pair recording the same boolean twice offers the participant a choice that
- * changes nothing, and leaves this editor with two answers it cannot tell
- * apart; the words the researcher wrote are kept, and the values are taken
- * positionally.
+ * Nothing is imposed at all, and nothing needs to be: this is read only for a
+ * pair `heldBooleanAnswersReason` has already found to record one `true` and
+ * one `false`. A pair recording anything else is not shown as the fieldset,
+ * because repairing it into one is the same rewrite by another name.
+ *
+ * The positional fallbacks are for the answers that are not THERE — a boolean
+ * that names none carries no entries, and the two blank fields it opens as are
+ * the true one and the false one.
  */
 export const readBooleanAnswers = (options: unknown): BooleanAnswers => {
   const held = Array.isArray(options) ? options : [];
-  const first = readBooleanAnswer(held[0], true);
-  const second = readBooleanAnswer(held[1], false);
-  if (first.value === second.value) {
-    return [
-      { ...first, value: true },
-      { ...second, value: false },
-    ];
-  }
-  return [first, second];
+  return [readBooleanAnswer(held[0], true), readBooleanAnswer(held[1], false)];
+};
+
+/** Whether neither of these two answers has been given any words. */
+const namesNoAnswer = (answers: BooleanAnswers): boolean =>
+  answers.every((answer) => answer.label.trim() === '');
+
+/**
+ * Whether these two answers are, entry for entry, the pair already stored.
+ *
+ * Asked of the protocol as it was found rather than of a reading of it, so
+ * that only a pair of TWO counts: an attribute holding an empty list is read
+ * as two blank fields the same way one holding no list at all is, and writing
+ * the fields back over the empty list would put two answers into a protocol
+ * that stored none.
+ *
+ * Everything the fieldset can change is compared, `negative` included — a
+ * switch flicked beside two blank labels is an answer field the researcher
+ * touched, and whitespace is compared as typed because the label is stored as
+ * typed.
+ */
+const isThePairAlreadyStored = (
+  answers: BooleanAnswers,
+  stored: unknown,
+): boolean => {
+  if (!Array.isArray(stored) || stored.length !== 2) return false;
+  if (!recordsBothBooleans(stored)) return false;
+  const held = readBooleanAnswers(stored);
+  return answers.every((answer, index) => {
+    const other = held[index];
+    return (
+      other !== undefined &&
+      answer.label === other.label &&
+      answer.value === other.value &&
+      answer.negative === other.negative
+    );
+  });
 };
 
 /**
  * The `options` block these two answers would be written as, or `undefined`
- * when neither of them has been named.
+ * when neither of them has been named and the attribute did not already store
+ * a pair saying so.
  *
- * Absent is not the same as empty here, and the difference is the
- * participant's: the boolean control offers Yes and No when the protocol names
- * no options at all, and offers nothing at all when it names an empty list —
- * which the schema refuses for exactly that reason. So an attribute nobody has
- * written words for carries no `options` key, and clearing both labels takes
- * the key away again rather than leaving two blank buttons behind.
+ * Absent is not the same as empty here, and neither is the same as a pair
+ * nobody has written words for — all three are things a participant meets
+ * differently. The boolean control offers Yes and No when the protocol names
+ * no options at all, offers nothing at all when it names an empty list (which
+ * the schema refuses for exactly that reason), and renders whatever entries it
+ * IS given: a stored pair of blank labels is two buttons with nothing on them.
+ *
+ * So an attribute nobody has written words for carries no `options` key, and
+ * clearing both labels takes the key away again rather than leaving two blank
+ * buttons behind — but a blank pair the protocol already stored is written
+ * back untouched. Which of those two a participant meets is the researcher's
+ * to settle by clearing the fields, and a save that only renamed the attribute
+ * never asked them.
  *
  * Whether there is an answer is judged after trimming, the way every other
  * unanswered-or-not question in this package is judged: a label of nothing but
@@ -138,10 +255,11 @@ export const readBooleanAnswers = (options: unknown): BooleanAnswers => {
  */
 const booleanOptionsFrom = (
   options: unknown,
+  storedOptions: unknown,
 ): readonly BooleanAnswer[] | undefined => {
   const answers = readBooleanAnswers(options);
-  if (answers.every((answer) => answer.label.trim() === '')) return undefined;
-  return answers;
+  if (!namesNoAnswer(answers)) return answers;
+  return isThePairAlreadyStored(answers, storedOptions) ? answers : undefined;
 };
 
 /**
@@ -156,14 +274,25 @@ const booleanOptionsFrom = (
  * row at a time by controls that already hold the schema's shape, and anything
  * wrong with it is the request builder's to refuse against the row it belongs
  * to.
+ *
+ * A boolean's answers are passed through on the same terms wherever they are
+ * not the pair the fieldset writes — see `heldBooleanAnswersReason`. Only
+ * what the researcher was shown is rewritten.
+ *
+ * `storedOptions` is the list the editor opened on, and it settles the one
+ * question the draft alone cannot answer: two blank fields are what a
+ * researcher who has written nothing sees AND what one who has just cleared
+ * both sees, and those two save differently — see `booleanOptionsFrom`.
  */
 export const optionsForShape = (
   shape: OptionsShape | null,
   options: unknown,
+  storedOptions: unknown,
 ): unknown => {
   if (shape === null) return undefined;
   if (shape === 'choice') return options;
-  return booleanOptionsFrom(options);
+  if (!holdsEditableBooleanAnswers(options)) return options;
+  return booleanOptionsFrom(options, storedOptions);
 };
 
 export type BooleanAnswerIssues = Readonly<Record<number, readonly string[]>>;
@@ -191,28 +320,35 @@ export type BooleanAnswerIssues = Readonly<Record<number, readonly string[]>>;
  * one button written twice. A categorical option's label is compared
  * case-insensitively because its VALUE becomes a key.
  *
- * Naming neither is not a refusal — see `booleanOptionsFrom`.
+ * Naming neither is not a refusal: it is the answer that offers Yes and No,
+ * and it is the state an attribute already storing a blank pair opens in —
+ * see `booleanOptionsFrom`, which is what decides between the two. Nor is
+ * anything
+ * about a list the fieldset never offered: answers the researcher was not
+ * shown are answers they cannot be asked to fix, and they are saved as they
+ * were authored either way.
+ *
+ * Encoded rather than formatted, and so taking no formatter: this is asked
+ * while a form is being judged, where there is no reader and no language, and
+ * its answer is held in the editor's state until the next submission.
+ * `FieldErrors` decodes it where it renders it, so a refusal already on screen
+ * follows a change of language while it waits.
  */
 export const validateBooleanAnswers = (
   options: unknown,
-  intl: IntlShape,
 ): BooleanAnswerIssues => {
-  const written = booleanOptionsFrom(options);
-  if (written === undefined) return {};
+  if (!holdsEditableBooleanAnswers(options)) return {};
+  const written = readBooleanAnswers(options);
+  if (namesNoAnswer(written)) return {};
   const issues: Record<number, string[]> = {};
   written.forEach((answer, index) => {
     if (answer.label.trim() === '') {
-      issues[index] = [intl.formatMessage(messages.unnamedAnswer)];
+      issues[index] = [createMessageError(messages.unnamedAnswer)];
     }
   });
   const [first, second] = written;
-  if (
-    first !== undefined &&
-    second !== undefined &&
-    issues[1] === undefined &&
-    first.label.trim() === second.label.trim()
-  ) {
-    issues[1] = [intl.formatMessage(messages.repeatedAnswer)];
+  if (issues[1] === undefined && first.label.trim() === second.label.trim()) {
+    issues[1] = [createMessageError(messages.repeatedAnswer)];
   }
   return issues;
 };
