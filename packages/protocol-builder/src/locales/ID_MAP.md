@@ -157,7 +157,7 @@ from `codebook/variableValidation.ts` rather than declaring
 `arrayField.*ElsewhereRefusal` twins of them. The array field and the codebook
 editor report the same conflict, so a translator answers once.
 
-### Three rules the guards hold
+### Four rules the guards hold
 
 **No component takes its words from a host.** A `copy?: Partial<…Copy>` prop of
 plain strings is a hole a host drops English into: nothing extracts it, so it
@@ -183,9 +183,24 @@ back. Template literals are included because that is the form an author reaches
 for the moment a sentence needs a name in it — and the form that also loses the
 sentence's word order to whatever English happens to do.
 
-Both scans read the whole package rather than a list of converted directories,
-and `src/__tests__/packageSource.ts` holds the one exclusion list they share. It
-is empty: every directory this package has is inside the guards.
+**Copy is never a bare sentence between two tags either.**
+`src/__tests__/copyInJsxChildren.test.ts` reads the other half of the same
+defect. The attribute scan above says `formatjs/no-literal-string-in-jsx` reads
+children — and this package does not have that rule turned on, so for a while
+nothing read them at all: four researcher-facing sentences shipped as the
+`<legend>` and `<p>` of the attribute editor's yes/no and settings fieldsets,
+invisible to every guard there was. The sweeps could not have found them either,
+because a sweep indexes English BY ID and these had none. So this asks a
+question that needs no catalog: with comments and string literals blanked out,
+is there a run of prose between a `>` and the next `<`? Three words and a
+capital letter to start, which is blunt on purpose — the tighter readings it
+replaced reported ordinary TypeScript closing one type parameter and opening
+the next.
+
+All three scans read the whole package rather than a list of converted
+directories, and `src/__tests__/packageSource.ts` holds the one exclusion list
+they share. It is empty: every directory this package has is inside the
+guards.
 
 **A named descriptor prop is formatted with no values.** The sentences a family
 hands `PromptsSection`, `FormFieldsSection`, `PageContentSection`,

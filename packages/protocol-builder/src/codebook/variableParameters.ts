@@ -1,9 +1,10 @@
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   ComponentTypes,
-  type DATE_RESOLUTION,
+  DATE_RESOLUTION,
   datePickerParametersSchema,
+  isValidDateAtResolution,
   relativeDatePickerParametersSchema,
   VariableTypes,
 } from '@codaco/protocol-validation';
@@ -38,6 +39,38 @@ const messages = defineMessages({
     defaultMessage: 'Write what the high end of the scale means.',
     description:
       'Refusal shown under the field naming the high end of a sliding scale when the researcher has left it empty.',
+  },
+  dateNotAtResolution: {
+    id: 'protocolBuilder.variableParameters.dateNotAtResolution',
+    defaultMessage:
+      'Write this date as {pattern}, to match the resolution chosen above.',
+    description:
+      'Refusal shown under one of the two bounding dates of a date field when it is not written at the precision the field collects. pattern is the literal format the protocol stores — YYYY-MM-DD, YYYY-MM or YYYY — and is not translated.',
+  },
+  datesOutOfOrder: {
+    id: 'protocolBuilder.variableParameters.datesOutOfOrder',
+    defaultMessage: 'The latest date cannot be earlier than the earliest date.',
+    description:
+      'Refusal shown under the latest-date field when the researcher has set it before the earliest date, which would leave the participant no date to choose.',
+  },
+  anchorNotADate: {
+    id: 'protocolBuilder.variableParameters.anchorNotADate',
+    defaultMessage: 'Write the anchor date as YYYY-MM-DD.',
+    description:
+      'Refusal shown under the anchor-date field when what is written there is not a whole calendar date. YYYY-MM-DD is the literal format the protocol stores and is not translated.',
+  },
+  daysNotWhole: {
+    id: 'protocolBuilder.variableParameters.daysNotWhole',
+    defaultMessage: 'Write a whole number of days, zero or more.',
+    description:
+      'Refusal shown under one of the two day-count fields of a relative date field when it holds something other than a whole number of days that is not negative.',
+  },
+  settingsRefused: {
+    id: 'protocolBuilder.variableParameters.settingsRefused',
+    defaultMessage:
+      'These settings cannot be saved as they are written. Check the values below.',
+    description:
+      'Refusal shown over the whole block of settings an input control takes, when the protocol refuses them for a reason the editor has no wording of its own for. The settings themselves are listed underneath it.',
   },
 });
 
@@ -266,39 +299,123 @@ export const PARAMETERS_BLOCK = '';
 
 export type ParameterIssues = Readonly<Record<string, readonly string[]>>;
 
+/** Files one refusal under the control it belongs to. */
+type AddIssue = (key: string, message: string) => void;
+
+/**
+ * What a date picker's own bounds are wrong about, in this editor's words.
+ *
+ * The same three questions `datePickerParametersSchema` asks about the pair a
+ * researcher can actually see and change: is each bound a real date at the
+ * precision this field collects, and does the range run forwards. Asked here
+ * rather than left to the parse because the schema answers in sentences
+ * written for whoever reads a log — `DatePicker "min" must not be after "max"`
+ * names a control and two keys, neither of which is on screen, and is
+ * hard-coded English that no catalog can translate.
+ *
+ * The literal format is passed in as a value rather than written into the
+ * sentence: it is what the protocol stores, so it is the same in every
+ * language, and it changes with the resolution the researcher chose.
+ */
+const addDatePickerIssues = (
+  written: Readonly<Record<string, unknown>>,
+  add: AddIssue,
+): void => {
+  const resolution = dateResolutionOf(written);
+  const { label: pattern } = DATE_RESOLUTION[resolution];
+  const bounds = ['min', 'max'] as const;
+  const readable = (value: unknown): value is string =>
+    typeof value === 'string' && isValidDateAtResolution(value, resolution);
+
+  for (const bound of bounds) {
+    const value = written[bound];
+    if (value === undefined) continue;
+    if (!readable(value)) {
+      add(bound, createMessageError(messages.dateNotAtResolution, { pattern }));
+    }
+  }
+  const [min, max] = [written.min, written.max];
+  // Compared as text, the way the schema does: every resolution stores a date
+  // whose lexical order is its calendar order.
+  if (readable(min) && readable(max) && min > max) {
+    add('max', createMessageError(messages.datesOutOfOrder));
+  }
+};
+
+/**
+ * What a relative date picker's window is wrong about.
+ *
+ * A negative day offset is the reachable case: the fields carry `min={0}`,
+ * which is a browser hint the researcher can type past, and `asWholeDays`
+ * hands `-3` through as a number the schema then refuses.
+ */
+const addRelativeDatePickerIssues = (
+  written: Readonly<Record<string, unknown>>,
+  add: AddIssue,
+): void => {
+  const anchor = written.anchor;
+  if (
+    anchor !== undefined &&
+    !(typeof anchor === 'string' && isValidDateAtResolution(anchor, 'full'))
+  ) {
+    add('anchor', createMessageError(messages.anchorNotADate));
+  }
+  for (const key of ['before', 'after'] as const) {
+    const value = written[key];
+    if (value === undefined) continue;
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+      add(key, createMessageError(messages.daysNotWhole));
+    }
+  }
+};
+
 /**
  * What is wrong with these settings, per control.
  *
  * Reported before the request is built so a bad bound lands on the control
  * that holds it rather than in the "not saved" alert, where the researcher
  * cannot tell which of the two dates the schema is complaining about.
+ *
+ * Encoded rather than formatted, and so taking no formatter: this is asked
+ * while a form is being judged, where there is no reader and no language, and
+ * its answer is held in the editor's state until the next submission.
+ * `FieldErrors` decodes it where it renders it, so a refusal already on screen
+ * follows a change of language while it waits — which a sentence formatted
+ * here could not.
+ *
+ * The protocol's own schema is asked LAST, and only when nothing above it has
+ * a complaint: it is the belt and braces for what this editor has no wording
+ * of its own for — a year the interview's own date control could never select
+ * — and what it refuses is reported against the block rather than in its
+ * words. Asking it alongside the authored checks would report the same
+ * reversed range twice, once usefully and once as "these settings cannot be
+ * saved".
  */
 export const validateParameters = (
   shape: ParameterShape,
   parameters: unknown,
-  intl: IntlShape,
 ): ParameterIssues => {
   const written = parametersForShape(shape, parameters) ?? {};
   const issues: Record<string, string[]> = {};
-  const add = (key: string, message: string) => {
+  const add: AddIssue = (key, message) => {
     (issues[key] ??= []).push(message);
   };
 
   for (const key of REQUIRED_PARAMETERS[shape]) {
     if (written[key] === undefined) {
-      add(key, intl.formatMessage(REQUIRED_MESSAGES[key]));
+      add(key, createMessageError(REQUIRED_MESSAGES[key]));
     }
   }
+  if (shape === 'datePicker') addDatePickerIssues(written, add);
+  if (shape === 'relativeDatePicker') addRelativeDatePickerIssues(written, add);
 
   const schema = SHAPE_SCHEMAS[shape];
-  if (schema !== null) {
-    const result = schema.safeParse(written);
-    if (!result.success) {
-      for (const issue of result.error.issues) {
-        const [key] = issue.path;
-        add(typeof key === 'string' ? key : PARAMETERS_BLOCK, issue.message);
-      }
-    }
+  if (
+    schema !== null &&
+    !hasParameterIssues(issues) &&
+    !schema.safeParse(written).success
+  ) {
+    add(PARAMETERS_BLOCK, createMessageError(messages.settingsRefused));
   }
 
   return issues;

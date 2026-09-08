@@ -300,10 +300,18 @@ export default function VariableParameterFields({
       />
       {/* Always mounted, so a screen reader is watching this region before the
           notice appears: a live region added to the page at the same moment as
-          its own content is not reliably announced. */}
+          its own content is not reliably announced.
+
+          The `Alert` inside it is presentational for exactly that reason. Its
+          `info` variant is a `role="status"` of its own — a second polite
+          region, inserted into this one at the moment its content appears,
+          which is the double (or, on some assistive technology, dropped)
+          announcement this wrapper exists to avoid. The words are announced
+          once, by the region that was already being watched, and the alert
+          keeps the treatment a sighted reader recognises. */}
       <div role="status" aria-live="polite">
         {clearedBounds && (
-          <Alert variant="info" className="my-7">
+          <Alert variant="info" role="presentation" className="my-7">
             <AlertDescription>
               {intl.formatMessage(messages.boundsCleared)}
             </AlertDescription>
