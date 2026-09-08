@@ -46,6 +46,8 @@ describe('audit event registry', () => {
       'team.member.role_change_denied@1',
       'team.member.role_change_failed@1',
       'team.member.role_changed@1',
+      'template.registry_imported@1',
+      'template.registry_published@1',
       'webhook.secret.read@1',
       'webhook.secret.rotated@1',
       'webhook.secret.updated@1',

@@ -41,15 +41,21 @@ import {
   CreateStudyInputSchema,
   CreateStudyResultSchema,
   ManifestRevisionSchema,
+  ImportRegistryTemplateInputSchema,
+  ImportRegistryTemplateResultSchema,
+  LinkRegistryAccountInputSchema,
   MeSchema,
   MoveStageInputSchema,
   ProtocolDraftInputSchema,
   ProtocolDraftSchema,
   ProtocolSummarySchema,
+  PublishTemplateInputSchema,
+  PublishTemplateResultSchema,
   ReleaseSectionInputSchema,
   RenewSectionInputSchema,
   RenewSectionResultSchema,
   StatusSchema,
+  RegistryAccountStatusSchema,
   SetupStatusSchema,
   StudyCountsInputSchema,
   StudyCountsSchema,
@@ -57,6 +63,7 @@ import {
   StudyGetInputSchema,
   StudySummarySchema,
   TeamScopedSchema,
+  TemplateVersionSummarySchema,
   UpdateAccountLocaleInputSchema,
   UpdateAccountLocaleResultSchema,
   UpdateTeamMemberRoleInputSchema,
@@ -141,6 +148,10 @@ export const contract = {
    * research-data significance.
    */
   account: {
+    registry: oc.output(RegistryAccountStatusSchema),
+    linkRegistry: oc
+      .input(LinkRegistryAccountInputSchema)
+      .output(RegistryAccountStatusSchema),
     /**
      * Stores the caller's UI-language preference; null reverts to browser
      * negotiation ("Automatic"). `me` reports the stored value.
@@ -148,6 +159,17 @@ export const contract = {
     updateLocale: oc
       .input(UpdateAccountLocaleInputSchema)
       .output(UpdateAccountLocaleResultSchema),
+  },
+  templates: {
+    list: oc
+      .input(TeamScopedSchema)
+      .output(z.array(TemplateVersionSummarySchema)),
+    publish: oc
+      .input(PublishTemplateInputSchema)
+      .output(PublishTemplateResultSchema),
+    import: oc
+      .input(ImportRegistryTemplateInputSchema)
+      .output(ImportRegistryTemplateResultSchema),
   },
   team: {
     acceptInvitation: oc

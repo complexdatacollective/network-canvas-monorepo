@@ -19,6 +19,13 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
     reason:
       'A personal presentation preference has no tenant and no research-data significance; the audit log is study/team-scoped by design (2026-09-04 localization design §5.2, decision 7).',
   },
+  'account.linkRegistry': {
+    kind: 'none',
+    reason:
+      'A personal external-account identity has no authoritative team scope; credentials are verified but never stored.',
+  },
+  'templates.publish': { kind: 'required' },
+  'templates.import': { kind: 'required' },
   'team.acceptInvitation': { kind: 'required' },
   'team.updateMemberRole': { kind: 'required' },
   'team.createInvitation': { kind: 'required' },

@@ -293,6 +293,38 @@ const ProtocolDraftCommittedV1EventSchema =
     }),
   }).strict();
 
+const CommonTemplateRegistryV1EventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  category: z.literal('integration'),
+  outcome: z.literal('succeeded'),
+  subjectType: z.null(),
+  subjectId: z.null(),
+  subjectLabel: z.null(),
+  resourceType: z.literal('template'),
+  resourceId: z.uuid(),
+  resourceLabel: LabelSchema,
+}).strict();
+
+const TemplateRegistryPublishedV1EventSchema =
+  CommonTemplateRegistryV1EventSchema.extend({
+    eventType: z.literal('template.registry_published'),
+    details: z.strictObject({
+      versionId: z.uuid(),
+      registryEntryId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+    }),
+  }).strict();
+
+const TemplateRegistryImportedV1EventSchema =
+  CommonTemplateRegistryV1EventSchema.extend({
+    eventType: z.literal('template.registry_imported'),
+    details: z.strictObject({
+      versionId: z.uuid(),
+      registryEntryId: z.uuid(),
+      registryRoot: z.string().regex(/^[0-9a-f]{64}$/),
+    }),
+  }).strict();
+
 // The study tier (#1262). Creating a study is a role-gated action (#1257), so
 // both outcomes are recorded: the creation itself, and a refusal, which is
 // what tells a team Admin that somebody without the role tried.
@@ -477,6 +509,8 @@ export const AuditEventInputSchema = z.union([
   TeamInvitationAcceptanceFailedV1EventSchema,
   ProtocolCreatedV1EventSchema,
   ProtocolDraftCommittedV1EventSchema,
+  TemplateRegistryPublishedV1EventSchema,
+  TemplateRegistryImportedV1EventSchema,
   StudyCreatedV1EventSchema,
   StudyCreationDeniedV1EventSchema,
   ParticipantPiiReadV1EventSchema,
@@ -543,6 +577,19 @@ const FIXTURE_PROTOCOL_V1_COMMON = {
   resourceType: 'protocol',
   resourceId: 'fixture-protocol',
   resourceLabel: 'Fixture protocol',
+} as const;
+
+const FIXTURE_TEMPLATE_REGISTRY_V1_COMMON = {
+  ...FIXTURE_USER_COMMON,
+  eventVersion: 1,
+  category: 'integration',
+  outcome: 'succeeded',
+  subjectType: null,
+  subjectId: null,
+  subjectLabel: null,
+  resourceType: 'template',
+  resourceId: '00000000-0000-4000-8000-000000000010',
+  resourceLabel: 'Fixture template',
 } as const;
 
 const FIXTURE_STUDY_V1_COMMON = {
@@ -1040,6 +1087,38 @@ export const AUDIT_EVENT_REGISTRY = {
         affectedSectionIds: ['stage:fixture-stage'],
         operationTypes: ['set'],
         operationCount: 1,
+      },
+    },
+  },
+  'template.registry_published@1': {
+    inputSchema: TemplateRegistryPublishedV1EventSchema,
+    title: 'Template published to Registry',
+    detailFields: ['versionId', 'registryEntryId', 'registryRoot'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      eventType: 'template.registry_published',
+      details: {
+        versionId: '00000000-0000-4000-8000-000000000011',
+        registryEntryId: '00000000-0000-4000-8000-000000000012',
+        registryRoot: 'a'.repeat(64),
+      },
+    },
+  },
+  'template.registry_imported@1': {
+    inputSchema: TemplateRegistryImportedV1EventSchema,
+    title: 'Template imported from Registry',
+    detailFields: ['versionId', 'registryEntryId', 'registryRoot'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      eventType: 'template.registry_imported',
+      details: {
+        versionId: '00000000-0000-4000-8000-000000000011',
+        registryEntryId: '00000000-0000-4000-8000-000000000012',
+        registryRoot: 'a'.repeat(64),
       },
     },
   },

@@ -141,11 +141,87 @@ export const UpdateAccountLocaleResultSchema = z.object({
   locale: z.string().nullable(),
 });
 
+export const RegistryPublisherSchema = z.strictObject({
+  id: z.uuid(),
+  name: z.string().min(1).max(200).regex(/\S/),
+  orcid: z
+    .string()
+    .regex(/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/)
+    .nullable(),
+});
+
+export const RegistryAccountLinkSchema = z.strictObject({
+  origin: z.url({ protocol: /^https$/ }),
+  publisher: RegistryPublisherSchema,
+  linkedAt: z.date(),
+});
+
+export const RegistryAccountStatusSchema = z.strictObject({
+  origin: z.url({ protocol: /^https$/ }).nullable(),
+  link: RegistryAccountLinkSchema.nullable(),
+});
+
+export const LinkRegistryAccountInputSchema = z.strictObject({
+  credential: z.string().regex(/^ncr1_[A-Za-z0-9_-]{43}$/),
+});
+
 // Every team-scoped procedure names its team explicitly — the authz input is
 // never the session's active team (#1248: every route is team-scoped by
 // construction).
 export const TeamScopedSchema = z.object({
   teamId: z.string().min(1),
+});
+
+export const TemplateVersionSummarySchema = z.strictObject({
+  templateId: z.uuid(),
+  versionId: z.uuid(),
+  name: z.string().min(1).max(200),
+  kind: z.enum([
+    'protocol',
+    'stage',
+    'entity_definition',
+    'variable_set',
+    'generator_prompt_set',
+  ]),
+  version: z.number().int().positive(),
+  publishedAt: z.date(),
+  registryOrigin: z
+    .strictObject({
+      registry_url: z.url({ protocol: /^https$/ }),
+      entry_id: z.uuid(),
+      source_version_hash: z.string().regex(/^[0-9a-f]{64}$/),
+      fetched_at: z.iso.datetime(),
+    })
+    .nullable(),
+  publications: z.array(
+    z.strictObject({
+      entryId: z.uuid(),
+      registryUrl: z.url({ protocol: /^https$/ }),
+      root: z.string().regex(/^[0-9a-f]{64}$/),
+      publisher: RegistryPublisherSchema,
+      publishedAt: z.date(),
+    }),
+  ),
+});
+
+export const PublishTemplateInputSchema = TeamScopedSchema.extend({
+  versionId: z.uuid(),
+  credential: LinkRegistryAccountInputSchema.shape.credential,
+});
+
+export const PublishTemplateResultSchema = z.strictObject({
+  publication: TemplateVersionSummarySchema.shape.publications.element,
+  replayed: z.boolean(),
+});
+
+export const ImportRegistryTemplateInputSchema = TeamScopedSchema.extend({
+  entryId: z.uuid(),
+});
+
+export const ImportRegistryTemplateResultSchema = z.strictObject({
+  templateId: z.uuid(),
+  versionId: z.uuid(),
+  replayed: z.boolean(),
 });
 
 export const UpdateTeamMemberRoleInputSchema = TeamScopedSchema.extend({

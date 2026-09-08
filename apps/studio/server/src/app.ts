@@ -162,6 +162,8 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
         deps.invitationDeliveryAvailable && authCaps.magicLink,
       ),
       pool,
+      assetStore,
+      templateRegistryOrigin: env.templateRegistryOrigin,
     }),
     {
       interceptors: [

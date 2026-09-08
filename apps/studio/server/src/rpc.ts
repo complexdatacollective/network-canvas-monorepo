@@ -5,6 +5,7 @@ import { AUDIT_FACET_LIMIT, contract } from '@codaco/studio-rpc';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { updateUserLocale } from './account/commands.ts';
+import type { AssetStore } from './assets.ts';
 import {
   acknowledgeAuditAlert,
   AuditAlertError,
@@ -72,6 +73,14 @@ import {
   updateTeamMemberRole,
 } from './team/commands.ts';
 import { roleGrantsTeamAdministration } from './team/roles.ts';
+import {
+  importRegistryTemplate,
+  linkRegistryAccount,
+  listTemplateVersions,
+  publishTemplateVersion,
+  readRegistryAccount,
+  TemplateRegistryCommandError,
+} from './template/registry.ts';
 
 // The SPA's internal surface: unpublished and free-moving within the
 // deploy-compatibility rules on #1245 — its only client is the Studio SPA.
@@ -337,6 +346,8 @@ export function createRpcRouter(
     invitationDeliveryAvailable: boolean;
     bootstrapToken?: string;
     pool?: pg.Pool;
+    assetStore?: AssetStore;
+    templateRegistryOrigin?: string;
   },
 ) {
   const {
@@ -345,6 +356,8 @@ export function createRpcRouter(
     invitationDeliveryAvailable,
     bootstrapToken,
     pool,
+    assetStore,
+    templateRegistryOrigin,
   } = deps;
   // Tenancy is checked per request against an explicit teamId in the
   // procedure input — never the session's active team. A non-member and a
@@ -495,6 +508,33 @@ export function createRpcRouter(
       teams: await auth.listMemberships(context.principal.userId),
     })),
     account: {
+      registry: os.account.registry
+        .use(requireUser)
+        .handler(async ({ context }) => {
+          if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
+          return await readRegistryAccount(
+            pool,
+            templateRegistryOrigin,
+            context.principal.userId,
+          );
+        }),
+      linkRegistry: os.account.linkRegistry
+        .use(requireUser)
+        .handler(async ({ context, input }) => {
+          if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
+          try {
+            return await linkRegistryAccount(
+              pool,
+              templateRegistryOrigin,
+              context.principal.userId,
+              input.credential,
+            );
+          } catch (error) {
+            if (error instanceof TemplateRegistryCommandError)
+              throw new ORPCError('SERVICE_UNAVAILABLE');
+            throw error;
+          }
+        }),
       updateLocale: os.account.updateLocale
         .use(requireUser)
         .handler(async ({ context, input }) => {
@@ -511,6 +551,54 @@ export function createRpcRouter(
           // there is nothing left to store a preference on.
           if (!updated) throw new ORPCError('NOT_FOUND');
           return updated;
+        }),
+    },
+    templates: {
+      list: os.templates.list
+        .use(requireTeam)
+        .handler(({ context }) =>
+          listTemplateVersions(auditedContextFor(context)),
+        ),
+      publish: os.templates.publish
+        .use(requireTeamAdministration)
+        .handler(async ({ context, input }) => {
+          if (!templateRegistryOrigin || !assetStore)
+            throw new ORPCError('SERVICE_UNAVAILABLE');
+          try {
+            return await publishTemplateVersion(
+              auditedContextFor(context),
+              {
+                origin: templateRegistryOrigin,
+                assetStore,
+              },
+              input,
+            );
+          } catch (error) {
+            if (!(error instanceof TemplateRegistryCommandError)) throw error;
+            if (error.code === 'FORBIDDEN') throw new ORPCError('FORBIDDEN');
+            if (error.code === 'NOT_FOUND') throw new ORPCError('NOT_FOUND');
+            if (error.code === 'PUBLISHER_MISMATCH')
+              throw new ORPCError('FORBIDDEN');
+            throw new ORPCError('SERVICE_UNAVAILABLE');
+          }
+        }),
+      import: os.templates.import
+        .use(requireTeamAdministration)
+        .handler(async ({ context, input }) => {
+          if (!templateRegistryOrigin || !assetStore)
+            throw new ORPCError('SERVICE_UNAVAILABLE');
+          try {
+            return await importRegistryTemplate(
+              auditedContextFor(context),
+              { origin: templateRegistryOrigin, assetStore },
+              input.entryId,
+            );
+          } catch (error) {
+            if (!(error instanceof TemplateRegistryCommandError)) throw error;
+            if (error.code === 'FORBIDDEN') throw new ORPCError('FORBIDDEN');
+            if (error.code === 'NOT_FOUND') throw new ORPCError('NOT_FOUND');
+            throw new ORPCError('SERVICE_UNAVAILABLE');
+          }
         }),
     },
     team: {

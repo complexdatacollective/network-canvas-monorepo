@@ -274,11 +274,13 @@ describe('audit mutation policy', () => {
       'status',
       'setup.status',
       'me',
+      'account.registry',
       'protocols.draft',
       'protocols.list',
       'studies.counts',
       'studies.get',
       'studies.list',
+      'templates.list',
       'audit.list',
       'audit.get',
       'audit.filterOptions',
@@ -419,6 +421,7 @@ describe('audit mutation policy', () => {
       'apps/studio/server/src/protocol/commands.ts',
       'apps/studio/server/src/study/commands.ts',
       'apps/studio/server/src/team/commands.ts',
+      'apps/studio/server/src/template/registry.ts',
     ]);
   });
 
