@@ -89,6 +89,8 @@ export {
   type AuditEventSummary,
   type AuditFilterOptions,
   type AuditOutcome,
+  type AuditAlertPreferencesInput,
+  type AuditAlertPreferencesOutput,
   type SocialProvider,
   type StudyCounts,
   type StudyParticipationMode,

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import ButtonComponent from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
@@ -36,6 +36,21 @@ const messages = defineMessages({
     id: 'studio.teamAlertSettings.saved',
     defaultMessage: 'Recipient settings saved.',
     description: 'Saved audit alert settings.',
+  },
+  loadFailed: {
+    id: 'studio.teamAlertSettings.loadFailed',
+    defaultMessage: 'Unable to load recipient settings.',
+    description: 'Load error.',
+  },
+  email: {
+    id: 'studio.teamAlertSettings.email',
+    defaultMessage: 'Email',
+    description: 'Email channel.',
+  },
+  inApp: {
+    id: 'studio.teamAlertSettings.inApp',
+    defaultMessage: 'In Studio',
+    description: 'In-app channel.',
   },
 });
 type Selection = {
@@ -94,7 +109,7 @@ export function TeamAlertSettings() {
         {preferences.isPending && <Spinner size="sm" />}
         {preferences.isError && (
           <Alert variant="destructive">
-            Unable to load recipient settings.
+            {intl.formatMessage(messages.loadFailed)}
           </Alert>
         )}
         {preferences.data && (
@@ -130,7 +145,7 @@ export function TeamAlertSettings() {
                       <div>{recipient.email}</div>
                     </div>
                     <div className="flex gap-4">
-                      <label>
+                      <label className="flex items-center gap-2">
                         <input
                           type="checkbox"
                           checked={current?.emailEnabled ?? false}
@@ -147,10 +162,10 @@ export function TeamAlertSettings() {
                               ),
                             )
                           }
-                        />{' '}
-                        Email
+                        />
+                        {intl.formatMessage(messages.email)}
                       </label>
-                      <label>
+                      <label className="flex items-center gap-2">
                         <input
                           type="checkbox"
                           checked={current?.inAppEnabled ?? false}
@@ -167,8 +182,8 @@ export function TeamAlertSettings() {
                               ),
                             )
                           }
-                        />{' '}
-                        In Studio
+                        />
+                        {intl.formatMessage(messages.inApp)}
                       </label>
                     </div>
                   </div>
@@ -176,9 +191,9 @@ export function TeamAlertSettings() {
               })}
             </div>
             {saved && <Alert>{intl.formatMessage(messages.saved)}</Alert>}
-            <Button type="submit" disabled={update.isPending}>
+            <ButtonComponent type="submit" disabled={update.isPending}>
               {intl.formatMessage(messages.save)}
-            </Button>
+            </ButtonComponent>
           </form>
         )}
       </Surface>

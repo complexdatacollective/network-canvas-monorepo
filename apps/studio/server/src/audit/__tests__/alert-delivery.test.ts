@@ -16,14 +16,11 @@ import {
   AuditAlertDeliveryDispatcher,
   AuditAlertDeliveryRoleError,
 } from '../alert-delivery-dispatcher.ts';
+import { saveAuditAlertPreferences } from '../alert-preferences.ts';
 import {
   listInAppAuditAlerts,
   markInAppAuditAlertRead,
 } from '../alert-store.ts';
-import {
-  loadAuditAlertPreferences,
-  saveAuditAlertPreferences,
-} from '../alert-preferences.ts';
 import type { AuditEventInput } from '../events.ts';
 import { AuditStore } from '../store.ts';
 
@@ -144,23 +141,45 @@ describe.skipIf(!db)('researcher audit-alert delivery', () => {
       await expect(
         saveAuditAlertPreferences(
           client,
-          { teamId: TEAM, recipients: [{ userId: MEMBER, emailEnabled: true, inAppEnabled: true }] },
+          {
+            teamId: TEAM,
+            recipients: [
+              { userId: MEMBER, emailEnabled: true, inAppEnabled: true },
+            ],
+          },
           OWNER,
         ),
       ).rejects.toThrow('recipient is not deliverable');
-      await scratch.pool.query('UPDATE "user" SET recovery_disabled = true WHERE id = $1', [ADMIN]);
+      await scratch.pool.query(
+        'UPDATE "user" SET recovery_disabled = true WHERE id = $1',
+        [ADMIN],
+      );
       await expect(
         saveAuditAlertPreferences(
           client,
-          { teamId: TEAM, recipients: [{ userId: ADMIN, emailEnabled: true, inAppEnabled: true }] },
+          {
+            teamId: TEAM,
+            recipients: [
+              { userId: ADMIN, emailEnabled: true, inAppEnabled: true },
+            ],
+          },
           OWNER,
         ),
       ).rejects.toThrow('recipient is not deliverable');
-      await scratch.pool.query('UPDATE "user" SET recovery_disabled = false WHERE id = $1', [ADMIN]);
+      await scratch.pool.query(
+        'UPDATE "user" SET recovery_disabled = false WHERE id = $1',
+        [ADMIN],
+      );
       await client.query('BEGIN');
       const preferences = await saveAuditAlertPreferences(
         client,
-        { teamId: TEAM, recipients: [{ userId: OWNER, emailEnabled: false, inAppEnabled: true }, { userId: ADMIN, emailEnabled: true, inAppEnabled: false }] },
+        {
+          teamId: TEAM,
+          recipients: [
+            { userId: OWNER, emailEnabled: false, inAppEnabled: true },
+            { userId: ADMIN, emailEnabled: true, inAppEnabled: false },
+          ],
+        },
         OWNER,
       );
       await client.query('COMMIT');
