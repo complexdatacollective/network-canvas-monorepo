@@ -485,7 +485,8 @@ export function isKnipRelevant(rel) {
     /\.(m?[jt]sx?|c[jt]s)$/.test(rel) ||
     /(^|\/)(package\.json|tsconfig[^/]*\.json|knip\.(json|jsonc)|knip\.config\.[cm]?[jt]s)$/.test(
       rel,
-    )
+    ) ||
+    ['pnpm-workspace.yaml', 'pnpm-lock.yaml', 'turbo.json'].includes(rel)
   );
 }
 
@@ -695,7 +696,7 @@ export function nodeModulesDirs(root, manifestPaths) {
 // turbo.json makes `//#knip` depend on (fresco#codegen today). A temporary
 // checkout of a pushed revision lacks them, so pre-push borrows them from the
 // current tree. turbo.json carries full-line // comments only.
-export function knipCodegenOutputs(root) {
+function knipDependencyTasks(root) {
   let config;
   try {
     const text = readFileSync(path.join(root, 'turbo.json'), 'utf8')
@@ -704,11 +705,16 @@ export function knipCodegenOutputs(root) {
       .join('\n');
     config = JSON.parse(text);
   } catch {
-    return [];
+    return { tasks: {}, dependencies: [] };
   }
   const tasks = config.tasks ?? {};
+  return { tasks, dependencies: tasks['//#knip']?.dependsOn ?? [] };
+}
+
+export function knipCodegenOutputs(root) {
+  const { tasks, dependencies } = knipDependencyTasks(root);
   const outputs = [];
-  for (const dep of tasks['//#knip']?.dependsOn ?? []) {
+  for (const dep of dependencies) {
     const [pkg, task] = dep.split('#');
     if (!pkg || !task) continue;
     const dir = workspacePackages(root).get(pkg)?.dir;
@@ -719,6 +725,33 @@ export function knipCodegenOutputs(root) {
     }
   }
   return outputs;
+}
+
+// A fresh checkout, or one whose ignored outputs were cleaned, lacks the
+// generated inputs; run the tasks `//#knip` depends on (turbo-cached) in the
+// real tree before knip is enforced. Returns false when they cannot be made.
+export function ensureKnipInputs(root) {
+  if (knipCodegenOutputs(root).every((absolute) => existsSync(absolute))) {
+    return true;
+  }
+  const turbo = binPath(root, 'turbo');
+  const { dependencies } = knipDependencyTasks(root);
+  if (!turbo || dependencies.length === 0) return false;
+  const result = run(
+    turbo,
+    ['run', ...dependencies, '--output-logs=errors-only'],
+    {
+      cwd: root,
+      env: {
+        TURBO_UI: 'stream',
+        TURBO_TELEMETRY_DISABLED: '1',
+        TURBO_NO_UPDATE_NOTIFIER: '1',
+      },
+      timeoutMs: 180_000,
+    },
+  );
+  if (result.status !== 0) return false;
+  return knipCodegenOutputs(root).every((absolute) => existsSync(absolute));
 }
 
 export function emit(payload) {

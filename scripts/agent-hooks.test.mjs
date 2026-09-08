@@ -16,6 +16,7 @@ import {
   changeFingerprint,
   changedFiles,
   classifyGateCommand,
+  ensureKnipInputs,
   extractEditedFiles,
   isKnipRelevant,
   knipCodegenOutputs,
@@ -474,6 +475,9 @@ test('knip relevance covers its configuration as well as code and manifests', ()
     'packages/x/package.json',
     'packages/x/tsconfig.build.json',
     'src/a.ts',
+    'pnpm-workspace.yaml',
+    'pnpm-lock.yaml',
+    'turbo.json',
   ]) {
     assert.equal(isKnipRelevant(file), true, file);
   }
@@ -752,4 +756,8 @@ test('previousPackageNames returns the base revision name of a renamed manifest'
     '@x/old',
   ]);
   rmSync(root, { recursive: true, force: true });
+});
+
+test('ensureKnipInputs reports the generated inputs present in this tree', () => {
+  assert.equal(ensureKnipInputs(repoRoot), true);
 });

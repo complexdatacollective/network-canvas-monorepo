@@ -27,6 +27,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import {
+  ensureKnipInputs,
   git,
   knipCodegenOutputs,
   knipTargetForPush,
@@ -42,6 +43,16 @@ if (shas.length === 0) process.exit(0);
 // Entries left by a removal that was still running when a previous hook
 // exited.
 git(['worktree', 'prune'], root);
+
+// The generated inputs knip depends on (fresco#codegen outputs) must exist
+// in the real tree: both the in-place check and the temporary checkout,
+// which links them from here, read them.
+if (!ensureKnipInputs(root)) {
+  console.log(
+    'knip: could not generate the inputs knip depends on (see turbo.json, //#knip dependsOn); run `pnpm install` and retry.',
+  );
+  process.exit(1);
+}
 
 const head = git(['rev-parse', 'HEAD'], root) ?? '';
 const porcelain = run(
@@ -149,6 +160,18 @@ function linkCodegenOutputs(temp) {
   }
 }
 
+function scheduleRemoval(temp) {
+  // Removing a full checkout takes tens of seconds; do not hold the push.
+  spawn(
+    'sh',
+    [
+      '-c',
+      `git -C "${root}" worktree remove --force "${temp}" || rm -rf "${temp}"`,
+    ],
+    { detached: true, stdio: 'ignore' },
+  ).unref();
+}
+
 let ok = true;
 for (const sha of shas) {
   const short = sha.slice(0, 10);
@@ -167,24 +190,21 @@ for (const sha of shas) {
     ok = false;
     continue;
   }
-  if (!prepareCheckout(temp, sha)) {
-    ok = false;
-    continue;
+  // Every exit path after a successful add removes the checkout.
+  try {
+    if (!prepareCheckout(temp, sha)) {
+      ok = false;
+      continue;
+    }
+    const reason =
+      sha === head
+        ? 'working tree has uncommitted changes'
+        : 'not the checked-out HEAD';
+    if (!knipIn(temp, `${short} in a temporary worktree (${reason})`))
+      ok = false;
+  } finally {
+    scheduleRemoval(temp);
   }
-  const reason =
-    sha === head
-      ? 'working tree has uncommitted changes'
-      : 'not the checked-out HEAD';
-  if (!knipIn(temp, `${short} in a temporary worktree (${reason})`)) ok = false;
-  // Removing a full checkout takes tens of seconds; do not hold the push.
-  spawn(
-    'sh',
-    [
-      '-c',
-      `git -C "${root}" worktree remove --force "${temp}" || rm -rf "${temp}"`,
-    ],
-    { detached: true, stdio: 'ignore' },
-  ).unref();
 }
 
 if (!ok) {

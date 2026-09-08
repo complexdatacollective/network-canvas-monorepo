@@ -93,9 +93,13 @@ if (reformatted.length > 0) {
       'Re-read before an edit that depends on exact surrounding text.',
   );
 }
-if (format.status !== 0 && format.stderr.trim()) {
+if (format.error) {
   parts.push(
-    `oxfmt could not format:\n${truncateLines(format.stderr.trim(), 15)}`,
+    `oxfmt did not finish: ${format.error.message}; the file may be unformatted.`,
+  );
+} else if (format.status !== 0) {
+  parts.push(
+    `oxfmt exited with status ${format.status}:\n${truncateLines(format.stderr.trim() || '(no output)', 15)}`,
   );
 }
 if (lintReport) {
