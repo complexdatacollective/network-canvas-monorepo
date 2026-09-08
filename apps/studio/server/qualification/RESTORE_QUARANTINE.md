@@ -74,3 +74,21 @@ encryption-verification service. These fixes do not perform authorization
 reconciliation or session invalidation, so this evidence remains a quarantined
 restore qualification rather than a production reactivation or published
 multi-platform image qualification.
+
+The follow-up verified-reference migration was qualified on the same date from
+commit `54a1155f47e448d14bca9bb870ba0a13011b761d`. Migrations 0001 through 0007
+remain byte-identical; 0008 adds write-time guards for every stored encryption
+key reference. Recurring readiness authenticates the bounded immutable proof
+registry while startup retains the exhaustive stored-data scan.
+
+The rebuilt local Linux/arm64 image
+`sha256:0894dc7927d2edb6777e789fff8d8051c861a3801d28eed02f7371d1eb92b50f`
+(`studio-pii-restore:verified-key-references-54a1155`) passed both Compose
+qualification cases. The populated backup/restore case took 98.20 seconds and
+ran all eight migrations, preserved historical-key refusal behavior, and
+verified restored database counts and referenced objects in fresh volumes.
+Separately, all 195 PII tests and all 195 migration tests passed against an
+isolated PostgreSQL 18 fixture with missing-database skips disabled. Server
+typecheck and repository Knip passed. The restore validation instructions now
+explicitly open only the required restricted identities and, on failure, commit
+NOLOGIN before bounded session termination and container shutdown.
