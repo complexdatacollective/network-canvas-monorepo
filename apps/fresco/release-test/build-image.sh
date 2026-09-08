@@ -38,7 +38,7 @@ if [ -n "${VENDOR_CHANGED_SINCE:-}" ]; then
     --version "$VERSION" \
     --with-lockfile \
     --vendor-changed-since "$VENDOR_CHANGED_SINCE" \
-    --seed-lockfile-from "v${VENDOR_CHANGED_SINCE#fresco@}" \
+    --seed-mirror-from "v${VENDOR_CHANGED_SINCE#fresco@}" \
     --stage-only
 else
   echo "[release-test] staging mirror tree -> $STAGE_DIR"

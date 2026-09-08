@@ -182,6 +182,41 @@ export function packagesChangedSince(ref, names, wsPackages) {
   });
 }
 
+// A hotfix whose dependency change lives only in the root lockfile — a
+// transitive patch inside an unchanged range — cannot reach the image: the
+// mirror's resolution starts from the released mirror's own lockfile and
+// re-resolves only the specifiers that changed, and nothing in the branch's
+// lockfile is consulted. Refuse, rather than ship a release that silently
+// lacks the fix it was verified with. Pinning the version in the catalog or
+// in the affected manifest turns it into a specifier change the mirror
+// carries. Any manifest in the workspace counts as a specifier file, since a
+// build input's manifest shapes artifacts too.
+export function assertSpecifierDrivenChanges(ref, appDir, wsPackages) {
+  const changed = (paths) => {
+    const result = spawnSync(
+      'git',
+      ['diff', '--quiet', ref, 'HEAD', '--', ...paths],
+      { cwd: repoRoot(), encoding: 'utf8' },
+    );
+    if (result.status !== 0 && result.status !== 1) {
+      throw new Error(
+        `git diff --quiet ${ref} HEAD -- ${paths.join(' ')} exited with ${result.status}: ${result.stderr}`,
+      );
+    }
+    return result.status === 1;
+  };
+  if (!changed(['pnpm-lock.yaml'])) return;
+  const specifierFiles = [
+    'pnpm-workspace.yaml',
+    join(appDir, 'package.json'),
+    ...Object.values(wsPackages).map(({ dir }) => join(dir, 'package.json')),
+  ];
+  if (changed(specifierFiles)) return;
+  throw new Error(
+    `The tree changes pnpm-lock.yaml since ${ref} without changing any specifier — a lockfile-only dependency change cannot reach the image, whose resolution starts from the released mirror's lockfile. Pin the version in pnpm-workspace.yaml's catalog or in the affected package.json so the mirror re-resolves it.`,
+  );
+}
+
 // `names` plus every closure package that depends on one of them, directly or
 // through other closure packages, in closure order. A dependent's published
 // build is what the image would otherwise install, and that build was made

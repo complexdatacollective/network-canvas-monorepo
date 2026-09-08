@@ -15,8 +15,8 @@
 // point at it, so the standalone repo is self-consistent.
 //
 // Usage:
-//   node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile] [--vendor-changed-since <ref>] [--seed-lockfile-from <mirror-ref>] [--publisher-workflow <path>] [--stage-only]
-//   node scripts/mirror-app.mjs --publish-from <stage-dir> --repo <owner/name> --version <version> [--branch <name>]
+//   node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile] [--vendor-changed-since <ref>] [--seed-mirror-from <mirror-ref>] [--publisher-workflow <path>] [--stage-only]
+//   node scripts/mirror-app.mjs --publish-from <stage-dir> --expect-app <package-name> --repo <owner/name> --version <version> [--branch <name>]
 //
 // The mirror is two phases. `stage` builds the tree the external repository
 // will be given, and RUNS code from the tree being mirrored while doing so
@@ -27,10 +27,12 @@
 // (`--stage-only` with MIRROR_STAGE_DIR, then `--publish-from`) so the job
 // that holds the push token never runs code from the branch it releases.
 //
-// `--seed-lockfile-from <mirror-ref>` (requires --with-lockfile) starts the
-// lockfile from the one the external repository holds at that ref — the
-// release the hotfix was cut from — so everything the hotfix did not change
-// keeps the exact version that release installed.
+// `--seed-mirror-from <mirror-ref>` (requires --with-lockfile) starts the
+// lockfile and the workspace policy from the ones the external repository
+// holds at that ref — the release the hotfix was cut from — so everything the
+// hotfix did not change keeps the exact version and policy that release
+// installed. A change that lives only in the branch's own lockfile cannot be
+// carried this way and is refused.
 //
 // `--publisher-workflow <path>` (Fresco only) stages that copy of the GHCR
 // publisher workflow instead of the app's own, and verifies at once that the
@@ -77,6 +79,7 @@ import {
   resolveManifest,
 } from './resolve-manifest.mjs';
 import {
+  assertSpecifierDrivenChanges,
   assertVendoredLockfile,
   collectClosure,
   packagesChangedSince,
@@ -453,17 +456,20 @@ function vendorInterviewerPreview(appDir, staging) {
   writeFileSync(configPath, config);
 }
 
-// Copies the lockfile the external repository holds at `ref` into the staged
-// tree, so the resolution that follows keeps every package the hotfix did not
-// change at the exact version the released image installed. A fresh
+// Copies the lockfile AND the generated workspace policy the external
+// repository holds at `ref` into the staged tree. The lockfile makes the
+// resolution that follows keep every package the hotfix did not change at the
+// exact version the released image installed: a fresh
 // `pnpm install --lockfile-only` would instead take the newest version each
 // range admits — a library published after the release, a third-party patch
 // — and a hotfix cut from the release tag would silently ship work that tag
-// never saw. Only the specifiers the stage changed (the vendored overrides,
-// the bumped app version) are re-resolved. Anonymous: the ref is public and
-// nothing is pushed.
-export function seedLockfile({ staging, cloneUrl, ref }) {
-  const source = mkdtempSync(join(tmpdir(), 'mirror-lock-'));
+// never saw. The workspace policy (overrides, allowed builds, the cooldown)
+// is likewise the release's rather than whatever main's generator says now,
+// for the same reason; only the vendored overrides are added to it. Only the
+// specifiers the stage changed are re-resolved. Anonymous: the ref is public
+// and nothing is pushed.
+export function seedMirror({ staging, cloneUrl, ref }) {
+  const source = mkdtempSync(join(tmpdir(), 'mirror-seed-'));
   run('git', [
     'clone',
     '--quiet',
@@ -475,14 +481,17 @@ export function seedLockfile({ staging, cloneUrl, ref }) {
     cloneUrl,
     source,
   ]);
-  const lockfile = join(source, 'pnpm-lock.yaml');
-  if (!existsSync(lockfile)) {
-    throw new Error(
-      `${ref} of the mirror has no pnpm-lock.yaml to seed the resolution from.`,
-    );
+  for (const file of ['pnpm-lock.yaml', 'pnpm-workspace.yaml']) {
+    if (!existsSync(join(source, file))) {
+      throw new Error(
+        `${ref} of the mirror has no ${file} to seed the stage from.`,
+      );
+    }
+    cpSync(join(source, file), join(staging, file));
   }
-  cpSync(lockfile, join(staging, 'pnpm-lock.yaml'));
-  console.error(`[mirror] seeded pnpm-lock.yaml from the mirror at ${ref}`);
+  console.error(
+    `[mirror] seeded pnpm-lock.yaml and pnpm-workspace.yaml from the mirror at ${ref}`,
+  );
 }
 
 // Everything up to a tree the external repository can be handed: the source
@@ -498,7 +507,7 @@ function stage({
   branch,
   withLockfile,
   vendorChangedSince,
-  seedLockfileFrom,
+  seedMirrorFrom,
   publisherWorkflow,
 }) {
   const appDir = resolve(app);
@@ -592,14 +601,14 @@ function stage({
     writeFileSync(join(staging, 'pnpm-workspace.yaml'), frescoWorkspaceYaml());
   }
 
-  if (seedLockfileFrom) {
+  if (seedMirrorFrom) {
     if (!withLockfile) {
-      throw new Error('--seed-lockfile-from requires --with-lockfile.');
+      throw new Error('--seed-mirror-from requires --with-lockfile.');
     }
-    seedLockfile({
+    seedMirror({
       staging,
       cloneUrl: process.env.MIRROR_REPO_URL ?? `https://github.com/${repo}.git`,
-      ref: seedLockfileFrom,
+      ref: seedMirrorFrom,
     });
   }
 
@@ -618,6 +627,7 @@ function stage({
       throw new Error('--vendor-changed-since requires --with-lockfile.');
     }
     const wsPackages = readWorkspacePackages();
+    assertSpecifierDrivenChanges(vendorChangedSince, app, wsPackages);
     const closure = collectClosure(wsPackages, app);
     const names = withDependents(
       packagesChangedSince(vendorChangedSince, closure, wsPackages),
@@ -762,7 +772,20 @@ function pushTarget(repo) {
 // compared as text, and a fresh clone has no hooks. That is what lets the
 // hotfix lane run this phase in a job that holds the push token and has never
 // checked out the branch being released.
-function publish({ staging, appName, repo, branch, version }) {
+function publish({ staging, expectApp, repo, branch, version }) {
+  // The staged manifest is content the tree being mirrored could have
+  // rewritten (its lifecycle scripts ran during staging), so it decides
+  // nothing: the caller names the app it is publishing, the stage must agree,
+  // and the Fresco checks below key off that name.
+  const { name: stagedName } = JSON.parse(
+    readFileSync(join(staging, 'package.json'), 'utf8'),
+  );
+  if (stagedName !== expectApp) {
+    throw new Error(
+      `Staged tree names package "${stagedName}", not the "${expectApp}" this publish is for.`,
+    );
+  }
+  const appName = expectApp;
   const { dryRun, cloneUrl } = pushTarget(repo);
   const checkout = mkdtempSync(join(tmpdir(), 'mirror-repo-'));
   run('git', [
@@ -830,8 +853,8 @@ function publish({ staging, appName, repo, branch, version }) {
 }
 
 const USAGE =
-  'Usage: node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile] [--vendor-changed-since <ref>] [--seed-lockfile-from <mirror-ref>] [--publisher-workflow <path>] [--stage-only]\n' +
-  '       node scripts/mirror-app.mjs --publish-from <stage-dir> --repo <owner/name> --version <version> [--branch <name>]';
+  'Usage: node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile] [--vendor-changed-since <ref>] [--seed-mirror-from <mirror-ref>] [--publisher-workflow <path>] [--stage-only]\n' +
+  '       node scripts/mirror-app.mjs --publish-from <stage-dir> --expect-app <package-name> --repo <owner/name> --version <version> [--branch <name>]';
 
 function main() {
   const {
@@ -842,9 +865,10 @@ function main() {
     stageOnly,
     branch = 'master',
     'vendor-changed-since': vendorChangedSince,
-    'seed-lockfile-from': seedLockfileFrom,
+    'seed-mirror-from': seedMirrorFrom,
     'publisher-workflow': publisherWorkflow,
     'publish-from': publishFrom,
+    'expect-app': expectApp,
   } = parseArgs(process.argv.slice(2));
 
   if (publishFrom) {
@@ -852,11 +876,17 @@ function main() {
       console.error(USAGE);
       process.exit(1);
     }
-    const staging = resolve(publishFrom);
-    const { name: appName } = JSON.parse(
-      readFileSync(join(staging, 'package.json'), 'utf8'),
-    );
-    publish({ staging, appName, repo, branch, version });
+    if (!expectApp) {
+      console.error(USAGE);
+      process.exit(1);
+    }
+    publish({
+      staging: resolve(publishFrom),
+      expectApp,
+      repo,
+      branch,
+      version,
+    });
     return;
   }
 
@@ -878,14 +908,14 @@ function main() {
     branch,
     withLockfile,
     vendorChangedSince,
-    seedLockfileFrom,
+    seedMirrorFrom,
     publisherWorkflow,
   });
   if (stageOnly) {
     console.error(`[mirror] --stage-only: ${appName} staged at ${staging}`);
     return;
   }
-  publish({ staging, appName, repo, branch, version });
+  publish({ staging, expectApp: appName, repo, branch, version });
 }
 
 if (

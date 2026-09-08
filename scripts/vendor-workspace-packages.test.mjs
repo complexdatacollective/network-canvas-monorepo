@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 
 import {
+  assertSpecifierDrivenChanges,
   assertVendoredLockfile,
   collectClosure,
   packagesChangedSince,
@@ -59,6 +60,7 @@ function workspace() {
     },
     devDependencies: { '@x/config': 'workspace:^' },
   });
+  writeFileSync(join(root, 'pnpm-lock.yaml'), "lockfileVersion: '9.0'\n");
   git(root, 'init', '-q');
   git(root, 'config', 'user.email', 'ci@example.com');
   git(root, 'config', 'user.name', 'ci');
@@ -313,4 +315,41 @@ test('a Dockerfile without the expected anchor fails loudly', () => {
       }),
     /deps-stage dependency COPY anchor/,
   );
+});
+
+test('a lockfile-only change since the release is refused', () => {
+  inWorkspace((root) => {
+    writeFileSync(
+      join(root, 'pnpm-lock.yaml'),
+      "lockfileVersion: '9.0'\n# transitive patch\n",
+    );
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'bump a transitive');
+    assert.throws(
+      () => assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages),
+      /lockfile-only dependency change cannot reach the image/,
+    );
+  });
+});
+
+test('a lockfile change explained by a specifier change passes', () => {
+  inWorkspace((root) => {
+    writeFileSync(
+      join(root, 'pnpm-lock.yaml'),
+      "lockfileVersion: '9.0'\n# re-pin\n",
+    );
+    writeFileSync(
+      join(root, 'pnpm-workspace.yaml'),
+      "packages:\n  - 'packages/*'\ncatalog:\n  redux: 2.1.0\n  lodash: 4.0.0\n",
+    );
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'bump redux');
+    assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages);
+  });
+});
+
+test('an unchanged lockfile needs no explanation', () => {
+  inWorkspace(() => {
+    assertSpecifierDrivenChanges('app@4.0.0', 'apps/app', wsPackages);
+  });
 });

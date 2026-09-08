@@ -220,9 +220,10 @@ jobs:
       # so every workspace package the hotfix changed goes into the image from
       # this tree, and everything it did not touch installs at the registry
       # versions the released image already used: the resolution starts from
-      # the lockfile the Fresco repository holds at that release (`v<newest>`
-      # there), so unchanged packages keep their exact released versions
-      # rather than the newest their ranges admit. The mirror script's own
+      # the lockfile and workspace policy the Fresco repository holds at that
+      # release (`v<newest>` there), so unchanged packages keep their exact
+      # released versions rather than the newest their ranges admit, and a
+      # change that lives only in the branch's lockfile is refused outright. The mirror script's own
       # lockfile guard fails the step if a vendored package still resolves
       # from the registry. The GHCR publisher workflow staged is MAIN's copy,
       # not the branch's — a branch cut from an older tag carries the
@@ -250,7 +251,7 @@ jobs:
             --version "$VERSION" \
             --with-lockfile \
             --vendor-changed-since "$NEWEST_TAG" \
-            --seed-lockfile-from "v$NEWEST" \
+            --seed-mirror-from "v$NEWEST" \
             --publisher-workflow .hotfix-lane/apps/fresco/.github/workflows/docker-publish.yml \
             --stage-only
 
@@ -471,6 +472,7 @@ jobs:
         run: >-
           node .hotfix-lane/scripts/mirror-app.mjs
           --publish-from "${RUNNER_TEMP}/fresco-mirror/stage"
+          --expect-app fresco
           --repo complexdatacollective/Fresco
           --branch main
           --version "$VERSION"

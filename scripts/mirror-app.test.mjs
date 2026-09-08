@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import {
   assertCommitPinnedActionUses,
   assertFrescoPublisherContract,
+  seedMirror,
 } from './mirror-app.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -292,6 +293,8 @@ test('a staged tree can be published later, from a checkout that never staged it
     SCRIPT,
     '--publish-from',
     stage,
+    '--expect-app',
+    'fresco',
     '--repo',
     'unused/local-mirror',
     '--version',
@@ -323,6 +326,19 @@ test('a staged tree can be published later, from a checkout that never staged it
     /must carry exactly \.github\/workflows\/docker-publish\.yml.*stray\.yml/,
   );
   rmSync(stray);
+
+  // The staged manifest is content the branch could have rewritten; the
+  // caller says which app it is publishing, and a stage that disagrees is
+  // refused before anything is cloned.
+  assert.throws(
+    () =>
+      execFileSync(
+        'node',
+        publishArgs.map((arg) => (arg === 'fresco' ? 'not-fresco' : arg)),
+        { cwd: directory, env: publishEnv, stdio: 'pipe' },
+      ),
+    /names package "fresco", not the "not-fresco"/,
+  );
 
   execFileSync('node', publishArgs, {
     cwd: directory,
@@ -357,5 +373,50 @@ test('a staged tree can be published later, from a checkout that never staged it
   assert.equal(
     readFileSync(outputPath, 'utf8').trim(),
     `mirror_sha=${mirrorSha}`,
+  );
+});
+
+// The seed is what keeps a hotfix's unchanged dependencies at the versions
+// the release installed: both the lockfile and the generated workspace policy
+// come from the mirror at the release, and a ref that lacks either is refused.
+test('seeding a stage copies the released lockfile and workspace policy', (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'fresco-seed-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const remote = join(directory, 'remote.git');
+  const seed = join(directory, 'seed');
+  const stage = join(directory, 'stage');
+  mkdirSync(stage);
+  mkdirSync(seed);
+  git(directory, 'init', '--bare', '--initial-branch=main', remote);
+  git(seed, 'init', '--initial-branch=main');
+  git(seed, 'config', 'user.email', 'ci@example.com');
+  git(seed, 'config', 'user.name', 'ci');
+  writeFileSync(join(seed, 'pnpm-lock.yaml'), "lockfileVersion: '9.0'\n");
+  git(seed, 'add', '.');
+  git(seed, 'commit', '-m', 'lock only');
+  git(seed, 'tag', 'v1.0.0');
+  writeFileSync(
+    join(seed, 'pnpm-workspace.yaml'),
+    "packages:\n  - '.'\noverrides:\n",
+  );
+  git(seed, 'add', '.');
+  git(seed, 'commit', '-m', 'release');
+  git(seed, 'tag', 'v1.0.1');
+  git(seed, 'remote', 'add', 'origin', remote);
+  git(seed, 'push', '-q', '--tags', 'origin', 'main');
+
+  seedMirror({ staging: stage, cloneUrl: remote, ref: 'v1.0.1' });
+  assert.equal(
+    readFileSync(join(stage, 'pnpm-lock.yaml'), 'utf8'),
+    "lockfileVersion: '9.0'\n",
+  );
+  assert.equal(
+    readFileSync(join(stage, 'pnpm-workspace.yaml'), 'utf8'),
+    "packages:\n  - '.'\noverrides:\n",
+  );
+
+  assert.throws(
+    () => seedMirror({ staging: stage, cloneUrl: remote, ref: 'v1.0.0' }),
+    /has no pnpm-workspace\.yaml to seed/,
   );
 });
