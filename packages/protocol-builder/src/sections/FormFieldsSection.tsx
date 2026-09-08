@@ -59,6 +59,7 @@ import {
   controlsForType,
   isCollectableType,
   isOptionType,
+  needsCodebookEditorToCreate,
   TYPE_OPTIONS,
 } from './collectableTypes.ts';
 import {
@@ -148,6 +149,13 @@ const messages = defineMessages({
       'Create this attribute and the values it offers before adding the field that collects it.',
     description:
       'Refusal shown under the kind-of-answer control when a researcher tries to invent an attribute whose answers come from a list, which cannot be made from a name and a kind alone.',
+  },
+  createWithSettingsFirst: {
+    id: 'protocolBuilder.formFields.createWithSettingsFirst',
+    defaultMessage:
+      'Create this attribute and what it accepts before adding the field that collects it.',
+    description:
+      'The same refusal for an attribute whose answer is not chosen from a list but still needs something the researcher has not been asked for — a scale, whose two end labels tell the participant what each end means.',
   },
   scopeMissing: {
     id: 'protocolBuilder.formFields.scopeMissing',
@@ -438,6 +446,10 @@ const DUPLICATE_FIELD = createMessageError(messages.duplicateField);
 
 const CREATE_WITH_VALUES_FIRST = createMessageError(
   messages.createWithValuesFirst,
+);
+
+const CREATE_WITH_SETTINGS_FIRST = createMessageError(
+  messages.createWithSettingsFirst,
 );
 
 const NO_INPUT_CONTROL = createMessageError(messages.noInputControl);
@@ -842,17 +854,24 @@ function useCommitFormField(
   return useCallback(
     async (value: unknown) => {
       if (!isRecord(value)) return value;
-      // An attribute that IS a list of answers is only ever made by the editor
-      // that authors the list, so nothing here can create one from a name and
-      // a type. Said in its own words rather than left to the schema, which
-      // would answer with a count of a list the researcher never saw.
+      // An attribute the codebook editor has to author is only ever made
+      // there, so nothing here can create one from a name and a type. Said in
+      // its own words rather than left to the schema, which would answer a
+      // list of answers with a count of a list the researcher never saw — and
+      // a scale not at all, because a scale with no end labels is a protocol
+      // the schema accepts and a participant cannot read.
+      const inventedType = asString(value[NEW_VARIABLE_TYPE]) ?? '';
       if (
         value.variable === NEW_VARIABLE &&
-        isOptionType(asString(value[NEW_VARIABLE_TYPE]) ?? '')
+        needsCodebookEditorToCreate(inventedType)
       ) {
         return {
           success: false,
-          fieldErrors: { [NEW_VARIABLE_TYPE]: CREATE_WITH_VALUES_FIRST },
+          fieldErrors: {
+            [NEW_VARIABLE_TYPE]: isOptionType(inventedType)
+              ? CREATE_WITH_VALUES_FIRST
+              : CREATE_WITH_SETTINGS_FIRST,
+          },
         };
       }
       // The belt for a row that reaches a commit with no control on it at all.
@@ -1088,10 +1107,12 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
       })),
     [intl],
   );
-  // An attribute that IS a list of answers cannot be invented from a name: the
-  // list is part of it, and the codebook refuses one without at least two
-  // values. So the name box gives way to the editor that authors both.
-  const inventingWithValues = inventing && isOptionType(newType);
+  // Some attributes cannot be invented from a name: a list of answers IS its
+  // values, and a scale IS the two labels that say which end is which. So the
+  // name box gives way to the editor that authors the attribute and the part
+  // of it a name cannot carry.
+  const inventingInTheEditor =
+    inventing && needsCodebookEditorToCreate(newType);
 
   return (
     <>
@@ -1113,7 +1134,7 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
             required={intl.formatMessage(messages.newTypeRequired)}
           />
         )}
-        {inventing && !inventingWithValues && (
+        {inventing && !inventingInTheEditor && (
           <Field<typeof InputField>
             name={NEW_VARIABLE_NAME}
             component={InputField}
@@ -1125,14 +1146,14 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
           />
         )}
         {/* The input control belongs to an attribute that exists. While one
-            is still being invented with its values, there is nothing yet for
-            a control to be chosen for. */}
-        {!inventingWithValues && <InputControlField item={item} />}
+            is still being invented in the codebook editor, there is nothing
+            yet for a control to be chosen for. */}
+        {!inventingInTheEditor && <InputControlField item={item} />}
         <AttributeCodebookControls
           subject={subject}
           committedVariable={item.variable}
           componentField={INPUT_CONTROL}
-          {...(inventingWithValues ? { inventingType: newType } : {})}
+          {...(inventingInTheEditor ? { inventingType: newType } : {})}
         />
         {subject === undefined && (
           <p className="text-sm text-current/70">
