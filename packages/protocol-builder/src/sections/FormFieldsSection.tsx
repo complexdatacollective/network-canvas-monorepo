@@ -84,12 +84,21 @@ const TITLE = 'form.title';
  * A sentinel rather than a second control, because "which attribute does this
  * field collect?" is one question however it is answered — and a researcher
  * who has just looked through the list for a name and not found it is already
- * looking at the place to say so. Spelled so that it cannot be mistaken for a
- * record id: those are minted as uuids, and this is never written to the
- * protocol — `useCommitFormField` replaces it with the created attribute's own
- * id before the row is committed.
+ * looking at the place to say so. It is never written to the protocol:
+ * `useCommitFormField` replaces it with the created attribute's own id before
+ * the row is committed.
+ *
+ * Spelled with a `#`, which is the whole of why this value and not another
+ * one. An attribute's record key is the researcher's — `VariableNameSchema` is
+ * `/^[a-zA-Z0-9._:-]+$/`, and the uuids this section mints are only what IT
+ * creates, so an imported or hand-written protocol may key an attribute
+ * anything that regex allows. A sentinel inside that alphabet is a name the
+ * codebook may legally hold: the picker would then offer the real attribute
+ * and this option under one value, choosing the attribute would read as a
+ * request to invent one, and saving would create a second attribute beside it.
+ * `#` is outside the alphabet, so no attribute can ever be called this.
  */
-const NEW_VARIABLE = '__create_new_attribute__';
+const NEW_VARIABLE = '#create-new-attribute';
 
 /**
  * Row keys that describe the CODEBOOK rather than the field.
