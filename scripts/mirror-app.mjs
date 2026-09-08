@@ -254,7 +254,9 @@ allowBuilds:
 # manifests still pin vulnerable releases.
 overrides:
   'effect@3.17.7': '${effectVersion}'
-  fast-uri: '^3.1.4'
+  # 3.1.6 closes the fast-uri host-confusion / SSRF family (GHSA-5jgf-p345-68v8,
+  # GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp, GHSA-f65p-4m7j-42xc).
+  fast-uri: '^3.1.6'
   find-my-way: '^9.7.0'
   # Next pins an exact PostCSS version; this is resolved from the root catalog.
   postcss: '${postcssVersion}'

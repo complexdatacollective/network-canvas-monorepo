@@ -28,7 +28,15 @@
       "entry": [
         "scripts/interviewer-*-walker.mjs",
         // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
-        "scripts/posthog-cli-upload-stub.mjs"
+        "scripts/posthog-cli-upload-stub.mjs",
+        // Agent hooks are invoked by Claude Code (.claude/settings.json),
+        // Codex (.codex/hooks.json) and .husky/pre-push, which knip cannot
+        // parse. Only the executables are entries, so the shared library's
+        // exports stay subject to the unused-export check.
+        "scripts/agent-hooks/post-edit.mjs",
+        "scripts/agent-hooks/pre-bash.mjs",
+        "scripts/agent-hooks/stop-check.mjs",
+        "scripts/agent-hooks/pre-push-knip.mjs"
       ],
       "ignoreDependencies": [
         "@playwright/test",
