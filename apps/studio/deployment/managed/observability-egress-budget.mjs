@@ -392,23 +392,20 @@ function validateCheckpoint(value, expected) {
 const sameCheckpoint = (left, right) =>
   JSON.stringify(left) === JSON.stringify(right);
 
-function requiredAnchor(anchor) {
+function requiredAnchor(anchor, methods) {
   if (
     anchor === null ||
     typeof anchor !== 'object' ||
-    typeof anchor.read !== 'function' ||
-    typeof anchor.initialize !== 'function' ||
-    typeof anchor.advance !== 'function' ||
-    typeof anchor.advanceMonth !== 'function'
+    methods.some((method) => typeof anchor[method] !== 'function')
   )
     refuse('EGRESS_BUDGET_ANCHOR_REQUIRED');
   return anchor;
 }
 
-function readAnchor(anchor, expected) {
+async function readAnchor(anchor, expected) {
   let observed;
   try {
-    observed = anchor.read(expected.accountIdentitySha256);
+    observed = await anchor.read(expected.accountIdentitySha256);
   } catch {
     refuse('EGRESS_BUDGET_ANCHOR_UPDATE_FAILED');
   }
@@ -417,15 +414,15 @@ function readAnchor(anchor, expected) {
     refuse('EGRESS_BUDGET_ANCHOR_MISMATCH');
 }
 
-function updateAnchor(anchor, method, previous, next, authorization) {
+async function updateAnchor(anchor, method, previous, next, authorization) {
   try {
     if (method === 'advanceMonth')
-      anchor.advanceMonth(previous, next, authorization);
-    else anchor[method](previous, next);
+      await anchor.advanceMonth(previous, next, authorization);
+    else await anchor[method](previous, next);
   } catch {
     refuse('EGRESS_BUDGET_ANCHOR_UPDATE_FAILED');
   }
-  readAnchor(anchor, next);
+  await readAnchor(anchor, next);
 }
 
 function acquireLock(directory, launch) {
@@ -557,9 +554,9 @@ function readBoundState(paths, options) {
   return state;
 }
 
-function asPublicOperation(operation) {
+async function asPublicOperation(operation) {
   try {
-    return operation();
+    return await operation();
   } catch (error) {
     if (error instanceof EgressBudgetError) throw error;
     return refuse('EGRESS_BUDGET_IO_FAILED');
@@ -586,8 +583,11 @@ class MonthlyEgressBudget {
   #lock;
   #now;
   #options;
+  #pending = Promise.resolve();
   #paths;
   #state;
+  #closing = false;
+  #closePromise;
 
   constructor(options, paths, directory, lock, state, now, anchor) {
     this.#options = options;
@@ -618,7 +618,20 @@ class MonthlyEgressBudget {
     throw error;
   }
 
-  #persist(state) {
+  #enqueue(operation) {
+    if (this.#closing || this.#closed)
+      return Promise.reject(new EgressBudgetError('EGRESS_BUDGET_CLOSED'));
+    const result = this.#pending.then(() =>
+      asPublicOperation(async () => {
+        this.#requireOpen();
+        return operation();
+      }),
+    );
+    this.#pending = result.catch(() => undefined);
+    return result;
+  }
+
+  async #persist(state) {
     const previous = checkpoint(this.#state, this.#options);
     const next = checkpoint(state, this.#options);
     try {
@@ -627,7 +640,8 @@ class MonthlyEgressBudget {
         envelope(state),
         this.#lock.assertHeldPaths,
       );
-      updateAnchor(this.#anchor, 'advance', previous, next);
+      if (sameCheckpoint(previous, next)) await readAnchor(this.#anchor, next);
+      else await updateAnchor(this.#anchor, 'advance', previous, next);
       this.#state = state;
     } catch (error) {
       // The rename may have completed even if the directory fsync failed. Do
@@ -637,13 +651,12 @@ class MonthlyEgressBudget {
   }
 
   reserveEstimatedIngest(estimatedIngestBytes) {
-    return asPublicOperation(() => {
-      this.#requireOpen();
+    return this.#enqueue(async () => {
       if (!safeInteger(estimatedIngestBytes, 1))
         refuse('EGRESS_BUDGET_INPUT_INVALID');
       let state = observeState(this.#state, canonicalInstant(this.#now));
       if (state.exhausted) {
-        this.#persist(state);
+        await this.#persist(state);
         refuse('EGRESS_BUDGET_EXHAUSTED');
       }
       const next = state.payloadAttemptedBytes + estimatedIngestBytes;
@@ -652,7 +665,7 @@ class MonthlyEgressBudget {
         next > this.#options.payloadLimitBytes
       ) {
         state = { ...state, exhausted: true };
-        this.#persist(state);
+        await this.#persist(state);
         refuse('EGRESS_BUDGET_EXHAUSTED');
       }
       state = {
@@ -661,7 +674,7 @@ class MonthlyEgressBudget {
         payloadAttemptedBytes: next,
         reservationSequence: state.reservationSequence + 1,
       };
-      this.#persist(state);
+      await this.#persist(state);
       return receipt(
         state,
         'estimated-ingest',
@@ -672,8 +685,7 @@ class MonthlyEgressBudget {
   }
 
   reserveFinalExhaustionSignal(estimatedIngestBytes) {
-    return asPublicOperation(() => {
-      this.#requireOpen();
+    return this.#enqueue(async () => {
       if (!safeInteger(estimatedIngestBytes, 1))
         refuse('EGRESS_BUDGET_INPUT_INVALID');
       let state = observeState(this.#state, canonicalInstant(this.#now));
@@ -682,7 +694,7 @@ class MonthlyEgressBudget {
         state.finalSignalAttemptedBytes !== 0 ||
         estimatedIngestBytes > this.#options.finalSignalReserveBytes
       ) {
-        this.#persist(state);
+        await this.#persist(state);
         refuse('EGRESS_BUDGET_FINAL_SIGNAL_UNAVAILABLE');
       }
       state = {
@@ -690,7 +702,7 @@ class MonthlyEgressBudget {
         finalSignalAttemptedBytes: estimatedIngestBytes,
         reservationSequence: state.reservationSequence + 1,
       };
-      this.#persist(state);
+      await this.#persist(state);
       return receipt(
         state,
         'final-exhaustion-signal',
@@ -701,28 +713,36 @@ class MonthlyEgressBudget {
   }
 
   close() {
-    return asPublicOperation(() => {
-      if (this.#closed) return;
-      this.#closed = true;
-      closeCustody(this.#directory, this.#lock);
-    });
+    if (this.#closePromise) return this.#closePromise;
+    this.#closing = true;
+    this.#closePromise = this.#pending.then(() =>
+      asPublicOperation(() => {
+        if (this.#closed) return;
+        this.#closed = true;
+        closeCustody(this.#directory, this.#lock);
+      }),
+    );
+    return this.#closePromise;
   }
 }
 
 export function createEgressBudgetOperations({
   anchor,
+  operatorAnchor = anchor,
+  runtimeAnchor = anchor,
   launch = spawnSync,
   now = () => new Date(),
 } = {}) {
-  const durableAnchor = requiredAnchor(anchor);
+  if (!operatorAnchor && !runtimeAnchor)
+    refuse('EGRESS_BUDGET_ANCHOR_REQUIRED');
 
-  function withCustody(options, create, operation) {
+  async function withCustody(options, create, operation) {
     const validated = validatedOptions(options);
     const directory = privateDirectory(validated.directory, create);
     let lock;
     try {
       lock = acquireLock(directory, launch);
-      return operation(validated, directory, lock);
+      return await operation(validated, directory, lock);
     } catch (error) {
       try {
         closeCustody(directory, lock);
@@ -734,9 +754,13 @@ export function createEgressBudgetOperations({
   }
 
   return Object.freeze({
-    bootstrap(options) {
+    async bootstrap(options) {
+      const durableAnchor = requiredAnchor(operatorAnchor, [
+        'initialize',
+        'read',
+      ]);
       return asPublicOperation(() =>
-        withCustody(options, true, (validated, directory, lock) => {
+        withCustody(options, true, async (validated, directory, lock) => {
           const paths = statePaths(directory.path);
           if (entryExists(paths.identity) || entryExists(paths.state))
             refuse('EGRESS_BUDGET_ALREADY_BOOTSTRAPPED');
@@ -754,11 +778,11 @@ export function createEgressBudgetOperations({
           writePrivateFile(paths.state, envelope(state), lock.assertHeldPaths);
           const next = checkpoint(state, validated);
           try {
-            durableAnchor.initialize(next);
+            await durableAnchor.initialize(next);
           } catch {
             refuse('EGRESS_BUDGET_ANCHOR_UPDATE_FAILED');
           }
-          readAnchor(durableAnchor, next);
+          await readAnchor(durableAnchor, next);
           closeCustody(directory, lock);
           return Object.freeze({
             bindingSha256: validated.bindingSha256,
@@ -769,13 +793,14 @@ export function createEgressBudgetOperations({
       );
     },
 
-    open(options) {
+    async open(options) {
+      const durableAnchor = requiredAnchor(runtimeAnchor, ['advance', 'read']);
       return asPublicOperation(() =>
-        withCustody(options, false, (validated, directory, lock) => {
+        withCustody(options, false, async (validated, directory, lock) => {
           const paths = statePaths(directory.path);
           const state = readBoundState(paths, validated);
           const previous = checkpoint(state, validated);
-          readAnchor(durableAnchor, previous);
+          await readAnchor(durableAnchor, previous);
           const observedState = observeState(state, canonicalInstant(now));
           if (observedState.lastObservedAt !== state.lastObservedAt) {
             const next = checkpoint(observedState, validated);
@@ -784,7 +809,7 @@ export function createEgressBudgetOperations({
               envelope(observedState),
               lock.assertHeldPaths,
             );
-            updateAnchor(durableAnchor, 'advance', previous, next);
+            await updateAnchor(durableAnchor, 'advance', previous, next);
           }
           return new MonthlyEgressBudget(
             validated,
@@ -799,13 +824,17 @@ export function createEgressBudgetOperations({
       );
     },
 
-    transitionMonth(options, transition) {
+    async transitionMonth(options, transition) {
+      const durableAnchor = requiredAnchor(operatorAnchor, [
+        'advanceMonth',
+        'read',
+      ]);
       return asPublicOperation(() =>
-        withCustody(options, false, (validated, directory, lock) => {
+        withCustody(options, false, async (validated, directory, lock) => {
           const paths = statePaths(directory.path);
           const state = readBoundState(paths, validated);
           const previous = checkpoint(state, validated);
-          readAnchor(durableAnchor, previous);
+          await readAnchor(durableAnchor, previous);
           const nextState = transitionedState(state, transition);
           const next = checkpoint(nextState, validated);
           writePrivateFile(
@@ -813,7 +842,7 @@ export function createEgressBudgetOperations({
             envelope(nextState),
             lock.assertHeldPaths,
           );
-          updateAnchor(
+          await updateAnchor(
             durableAnchor,
             'advanceMonth',
             previous,

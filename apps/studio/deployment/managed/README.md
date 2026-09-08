@@ -392,9 +392,10 @@ must be confirmed before publication.
 
 `observability-egress-budget.mjs` is the admission primitive for the planned
 private collector. It deliberately has no same-directory rollback marker. Its
-operations require an `anchor` port backed by an independently durable,
-monotonic store. That port must provide atomic compare-and-set `initialize`,
-`advance`, and `advanceMonth` operations plus authoritative `read` access.
+operations require separate `runtimeAnchor` and `operatorAnchor` ports backed by
+one independently durable, monotonic store. The runtime port provides `read` and
+atomic compare-and-set `advance`; the operator port provides `read`, create-once
+`initialize`, and authenticated `advanceMonth`.
 Each format-2 checkpoint exposes the fixed account hash, reviewed policy
 binding, payload and final-signal limits, both attempted-byte counters,
 exhaustion state, last observed time, UTC month, month and reservation
@@ -409,9 +410,9 @@ or ambiguous anchor operation refuses forwarding. A failure after the local
 rename can leave local state ahead; this conservatively requires operator
 reconciliation and never refunds an attempted reservation.
 
-An operator calls `bootstrapMonthlyEgressBudget(options, { anchor })` once in a
-private mode-0700 directory. Normal collector startup calls
-`openMonthlyEgressBudget(options, { anchor })`; it refuses missing, partial,
+An operator awaits `bootstrapMonthlyEgressBudget(options, { operatorAnchor })`
+once in a private mode-0700 directory. Normal collector startup awaits
+`openMonthlyEgressBudget(options, { runtimeAnchor })`; it refuses missing, partial,
 corrupt, differently bound, permissive, linked, concurrently locked,
 clock-regressed, or anchor-mismatched state. Changing the dedicated New Relic
 account, the externally reviewed schema/usage policy digest, the monthly limit,
@@ -430,7 +431,11 @@ advance its checkpoint. Arbitrary future-month jumps and locally invented
 freshness booleans are not accepted.
 
 The collector must hold the returned budget open for its complete process
-lifetime and close it during orderly shutdown. The inherited-descriptor
+lifetime and await `close()` during orderly shutdown. Reservations and close are
+serialized on each instance: close drains already admitted operations and
+immediately refuses new ones. Every reservation is asynchronous and returns only
+after the local state is fsynced, the remote compare-and-set is acknowledged, and
+the exact checkpoint is read back. The inherited-descriptor
 `flock` is a kernel lease: a second process is refused, orderly close releases
 it, and process death releases it. Linux uses the native util-linux `flock`;
 the Perl implementation is only a macOS test fallback. Lock acquisition has a
@@ -479,6 +484,27 @@ marker recreation. Deployment administration is disjoint from all three. The
 adapter and mocked request-shape tests do not provision or qualify the table,
 IAM policy, recovery account, or a live network path.
 
+`observability-anchor-client.mjs` is the server-side HTTPS adapter for that
+boundary. A forwarder client exposes only `read` and `advance`; an operator
+client exposes only `read`, `initialize`, and `advanceMonth`. The fixed account,
+HTTPS origin, and bearer token are snapshotted at construction. The token is
+accepted only as explicit process input and never appears in returned state or
+errors. Requests refuse redirects, cap JSON request and response bodies at 16
+KiB, enforce a 100–30,000 ms deadline with an abort signal, and validate the
+complete returned checkpoint and state digest. The injected request adapter is
+for tests; production still requires an independently authenticated HTTPS
+service and separately held operator and forwarder credentials.
+
+The complete local path can be exercised without cloud calls against an
+explicit loopback DynamoDB Local endpoint:
+
+```sh
+DYNAMODB_LOCAL_ENDPOINT=http://127.0.0.1:58000 node --test apps/studio/deployment/managed/observability-anchor-client.test.mjs
+```
+
+Without that variable the real-service case is skipped; the client never falls
+back to a cloud endpoint.
+
 No production anchor adapter or forwarding integration is qualified here. An
 adapter stored on the same filesystem or administered through the same rollback
 boundary does not satisfy the independent monotonic-store requirement. The
@@ -493,7 +519,7 @@ the private directory remains an operator-owned custody boundary.
 Run `terraform fmt -check -recursive`, `terraform init -backend=false
 -lockfile=readonly`, `terraform validate`, `terraform test`, and `node --test
 cost-model.test.mjs` plus `node --test
-observability-egress-budget.test.mjs`. The required repository support check
+observability-egress-budget.test.mjs observability-anchor-client.test.mjs`. The required repository support check
 runs the estimator controls and, when this module or its CI wiring changes,
 validates and tests Terraform with mocked providers and no deployment
 credentials. Terraform 1.14.5 and its Linux executable checksum are pinned in

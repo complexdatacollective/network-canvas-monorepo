@@ -97,8 +97,8 @@ const operationsFor = (budgetFixture, overrides = {}) =>
     ...overrides,
   });
 
-function expectCode(operation, code) {
-  assert.throws(operation, (error) => {
+async function expectCode(operation, code) {
+  await assert.rejects(operation, (error) => {
     assert.ok(error instanceof EgressBudgetError);
     assert.equal(error.code, code);
     assert.equal(error.message, code);
@@ -110,14 +110,25 @@ function readPayload(path) {
   return JSON.parse(readFileSync(path)).payload;
 }
 
-test('explicit bootstrap creates private bound state and reservations survive restart', (t) => {
+function deferred() {
+  let resolve;
+  const promise = new Promise((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
+}
+
+test('explicit bootstrap creates private bound state and reservations survive restart', async (t) => {
   const f = fixture(t);
   const operations = operationsFor(f, {
     now: () => new Date('2026-09-08T12:00:00.000Z'),
   });
   mkdirSync(f.directory, { mode: 0o700 });
-  expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_STATE_MISSING');
-  const initialized = operations.bootstrap(f.options);
+  await expectCode(
+    () => operations.open(f.options),
+    'EGRESS_BUDGET_STATE_MISSING',
+  );
+  const initialized = await operations.bootstrap(f.options);
   assert.deepEqual(initialized, {
     bindingSha256: initialized.bindingSha256,
     monthUtc: '2026-09',
@@ -139,8 +150,8 @@ test('explicit bootstrap creates private bound state and reservations survive re
   assert.equal(serialized.includes(f.options.accountIdentity), false);
   assert.equal(serialized.includes(f.options.configurationIdentity), false);
 
-  const first = operations.open(f.options);
-  assert.deepEqual(first.reserveEstimatedIngest(400), {
+  const first = await operations.open(f.options);
+  assert.deepEqual(await first.reserveEstimatedIngest(400), {
     attemptedEstimatedBytes: 400,
     bindingSha256: initialized.bindingSha256,
     exhausted: false,
@@ -150,45 +161,54 @@ test('explicit bootstrap creates private bound state and reservations survive re
     payloadRemainingBytes: 500,
     reservationSequence: 1,
   });
-  first.close();
-  expectCode(() => first.reserveEstimatedIngest(1), 'EGRESS_BUDGET_CLOSED');
+  await first.close();
+  await expectCode(
+    () => first.reserveEstimatedIngest(1),
+    'EGRESS_BUDGET_CLOSED',
+  );
 
-  const restarted = operations.open(f.options);
-  const second = restarted.reserveEstimatedIngest(500);
+  const restarted = await operations.open(f.options);
+  const second = await restarted.reserveEstimatedIngest(500);
   assert.equal(second.payloadRemainingBytes, 0);
   assert.equal(second.exhausted, true);
   assert.equal(second.reservationSequence, 2);
-  const signal = restarted.reserveFinalExhaustionSignal(80);
+  const signal = await restarted.reserveFinalExhaustionSignal(80);
   assert.equal(signal.kind, 'final-exhaustion-signal');
   assert.equal(signal.reservationSequence, 3);
-  expectCode(
+  await expectCode(
     () => restarted.reserveFinalExhaustionSignal(1),
     'EGRESS_BUDGET_FINAL_SIGNAL_UNAVAILABLE',
   );
-  restarted.close();
+  await restarted.close();
 
   const state = readPayload(join(f.directory, 'egress-budget-state.json'));
   assert.equal(state.payloadAttemptedBytes, 900);
   assert.equal(state.finalSignalAttemptedBytes, 80);
 });
 
-test('exhaustion is durable and reserves the final signal outside payload capacity', (t) => {
+test('exhaustion is durable and reserves the final signal outside payload capacity', async (t) => {
   const f = fixture(t);
   const operations = operationsFor(f, {
     now: () => new Date('2026-09-08T12:00:00.000Z'),
   });
-  operations.bootstrap(f.options);
-  const budget = operations.open(f.options);
-  budget.reserveEstimatedIngest(899);
-  expectCode(() => budget.reserveEstimatedIngest(2), 'EGRESS_BUDGET_EXHAUSTED');
-  expectCode(() => budget.reserveEstimatedIngest(1), 'EGRESS_BUDGET_EXHAUSTED');
-  expectCode(
+  await operations.bootstrap(f.options);
+  const budget = await operations.open(f.options);
+  await budget.reserveEstimatedIngest(899);
+  await expectCode(
+    () => budget.reserveEstimatedIngest(2),
+    'EGRESS_BUDGET_EXHAUSTED',
+  );
+  await expectCode(
+    () => budget.reserveEstimatedIngest(1),
+    'EGRESS_BUDGET_EXHAUSTED',
+  );
+  await expectCode(
     () => budget.reserveFinalExhaustionSignal(101),
     'EGRESS_BUDGET_FINAL_SIGNAL_UNAVAILABLE',
   );
-  const signal = budget.reserveFinalExhaustionSignal(100);
+  const signal = await budget.reserveFinalExhaustionSignal(100);
   assert.equal(signal.attemptedEstimatedBytes, 100);
-  budget.close();
+  await budget.close();
 
   const state = readPayload(join(f.directory, 'egress-budget-state.json'));
   assert.equal(state.exhausted, true);
@@ -196,10 +216,10 @@ test('exhaustion is durable and reserves the final signal outside payload capaci
   assert.equal(state.finalSignalAttemptedBytes, 100);
 });
 
-test('configuration cannot raise the local gate above the measured 50 GB forecast bound', (t) => {
+test('configuration cannot raise the local gate above the measured 50 GB forecast bound', async (t) => {
   const f = fixture(t);
   const operations = operationsFor(f);
-  expectCode(
+  await expectCode(
     () =>
       operations.bootstrap({
         ...f.options,
@@ -209,109 +229,191 @@ test('configuration cannot raise the local gate above the measured 50 GB forecas
   );
 });
 
-test('an independent anchor is mandatory and detects a valid older-state rollback', (t) => {
+test('an independent anchor is mandatory and detects a valid older-state rollback', async (t) => {
   const f = fixture(t);
-  expectCode(
-    () => createEgressBudgetOperations(),
+  await expectCode(
+    async () => createEgressBudgetOperations(),
     'EGRESS_BUDGET_ANCHOR_REQUIRED',
   );
   const operations = operationsFor(f);
-  operations.bootstrap(f.options);
+  await operations.bootstrap(f.options);
   const statePath = join(f.directory, 'egress-budget-state.json');
   const olderState = join(f.root, 'older-state.json');
   copyFileSync(statePath, olderState);
-  const budget = operations.open(f.options);
-  budget.reserveEstimatedIngest(400);
-  budget.close();
+  const budget = await operations.open(f.options);
+  await budget.reserveEstimatedIngest(400);
+  await budget.close();
   copyFileSync(olderState, statePath);
-  expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_ANCHOR_MISMATCH');
+  await expectCode(
+    () => operations.open(f.options),
+    'EGRESS_BUDGET_ANCHOR_MISMATCH',
+  );
 });
 
 test('a missing checkpoint and a mismatched update readback both fail closed', async (t) => {
-  await t.test('checkpoint disappearance refuses open', (context) => {
+  await t.test('checkpoint disappearance refuses open', async (context) => {
     const f = fixture(context);
     const operations = operationsFor(f);
-    operations.bootstrap(f.options);
+    await operations.bootstrap(f.options);
     unlinkSync(f.anchorPath);
-    expectCode(
+    await expectCode(
       () => operations.open(f.options),
       'EGRESS_BUDGET_ANCHOR_UPDATE_FAILED',
     );
   });
 
-  await t.test('wrong readback poisons a completed local write', (context) => {
-    const f = fixture(context);
-    const operations = operationsFor(f);
-    operations.bootstrap(f.options);
-    const budget = operations.open(f.options);
-    f.anchor.advance = () => {};
-    expectCode(
-      () => budget.reserveEstimatedIngest(100),
-      'EGRESS_BUDGET_ANCHOR_MISMATCH',
-    );
-    expectCode(() => budget.reserveEstimatedIngest(1), 'EGRESS_BUDGET_CLOSED');
-  });
+  await t.test(
+    'wrong readback poisons a completed local write',
+    async (context) => {
+      const f = fixture(context);
+      const operations = operationsFor(f);
+      await operations.bootstrap(f.options);
+      const budget = await operations.open(f.options);
+      f.anchor.advance = () => {};
+      await expectCode(
+        () => budget.reserveEstimatedIngest(100),
+        'EGRESS_BUDGET_ANCHOR_MISMATCH',
+      );
+      await expectCode(
+        () => budget.reserveEstimatedIngest(1),
+        'EGRESS_BUDGET_CLOSED',
+      );
+    },
+  );
 });
 
-test('an ambiguous anchor advance closes the budget before forwarding', (t) => {
+test('an ambiguous anchor advance closes the budget before forwarding', async (t) => {
   const f = fixture(t);
   const operations = operationsFor(f);
-  operations.bootstrap(f.options);
-  const budget = operations.open(f.options);
+  await operations.bootstrap(f.options);
+  const budget = await operations.open(f.options);
   f.anchor.advance = () => {
     throw new Error('synthetic timeout after an unknown commit point');
   };
-  expectCode(
+  await expectCode(
     () => budget.reserveEstimatedIngest(100),
     'EGRESS_BUDGET_ANCHOR_UPDATE_FAILED',
   );
-  expectCode(() => budget.reserveEstimatedIngest(1), 'EGRESS_BUDGET_CLOSED');
-  expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_ANCHOR_MISMATCH');
+  await expectCode(
+    () => budget.reserveEstimatedIngest(1),
+    'EGRESS_BUDGET_CLOSED',
+  );
+  await expectCode(
+    () => operations.open(f.options),
+    'EGRESS_BUDGET_ANCHOR_MISMATCH',
+  );
 });
 
-test('an anchor commit followed by a transport error still refuses that call and retains the debit', (t) => {
+test('an anchor commit followed by a transport error still refuses that call and retains the debit', async (t) => {
   const f = fixture(t);
   const operations = operationsFor(f);
-  operations.bootstrap(f.options);
-  const budget = operations.open(f.options);
+  await operations.bootstrap(f.options);
+  const budget = await operations.open(f.options);
   f.anchor.advance = function advanceThenLoseResponse(previous, next) {
     assert.deepEqual(this.read(), previous);
     writeFileSync(f.anchorPath, JSON.stringify(next));
     throw new Error('synthetic lost response after commit');
   };
-  expectCode(
+  await expectCode(
     () => budget.reserveEstimatedIngest(100),
     'EGRESS_BUDGET_ANCHOR_UPDATE_FAILED',
   );
-  expectCode(() => budget.reserveEstimatedIngest(1), 'EGRESS_BUDGET_CLOSED');
+  await expectCode(
+    () => budget.reserveEstimatedIngest(1),
+    'EGRESS_BUDGET_CLOSED',
+  );
 
   f.anchor.advance = function advance(previous, next) {
     assert.deepEqual(this.read(), previous);
     writeFileSync(f.anchorPath, JSON.stringify(next));
   };
-  const restarted = operations.open(f.options);
-  const receipt = restarted.reserveEstimatedIngest(1);
+  const restarted = await operations.open(f.options);
+  const receipt = await restarted.reserveEstimatedIngest(1);
   assert.equal(receipt.reservationSequence, 2);
   assert.equal(receipt.payloadRemainingBytes, 799);
-  restarted.close();
+  await restarted.close();
 });
 
-test('month rollover requires an independently authorized transition', (t) => {
+test('a reservation is serialized and withheld until durable CAS acknowledgement', async (t) => {
+  const f = fixture(t);
+  const operations = operationsFor(f);
+  await operations.bootstrap(f.options);
+  const budget = await operations.open(f.options);
+  const acknowledgement = deferred();
+  let calls = 0;
+  f.anchor.advance = async function delayedAdvance(previous, next) {
+    calls += 1;
+    assert.deepEqual(this.read(), previous);
+    writeFileSync(f.anchorPath, JSON.stringify(next));
+    await acknowledgement.promise;
+  };
+  let granted = false;
+  const first = budget.reserveEstimatedIngest(100).then((value) => {
+    granted = true;
+    return value;
+  });
+  const second = budget.reserveEstimatedIngest(200);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(granted, false);
+  assert.equal(calls, 1);
+  assert.equal(
+    readPayload(join(f.directory, 'egress-budget-state.json'))
+      .payloadAttemptedBytes,
+    100,
+  );
+  acknowledgement.resolve();
+  assert.equal((await first).reservationSequence, 1);
+  assert.equal((await second).reservationSequence, 2);
+  assert.equal(calls, 2);
+  await budget.close();
+});
+
+test('close drains admitted work and immediately refuses new reservations', async (t) => {
+  const f = fixture(t);
+  const operations = operationsFor(f);
+  await operations.bootstrap(f.options);
+  const budget = await operations.open(f.options);
+  const acknowledgement = deferred();
+  f.anchor.advance = async function delayedAdvance(previous, next) {
+    assert.deepEqual(this.read(), previous);
+    writeFileSync(f.anchorPath, JSON.stringify(next));
+    await acknowledgement.promise;
+  };
+  const reservation = budget.reserveEstimatedIngest(100);
+  const closing = budget.close();
+  await expectCode(
+    () => budget.reserveEstimatedIngest(1),
+    'EGRESS_BUDGET_CLOSED',
+  );
+  let closed = false;
+  void closing.then(() => {
+    closed = true;
+    return undefined;
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(closed, false);
+  acknowledgement.resolve();
+  assert.equal((await reservation).reservationSequence, 1);
+  await closing;
+  assert.equal(closed, true);
+});
+
+test('month rollover requires an independently authorized transition', async (t) => {
   const f = fixture(t);
   let instant = new Date('2026-09-30T23:59:59.000Z');
   const operations = operationsFor(f, {
     now: () => instant,
   });
-  operations.bootstrap(f.options);
-  const budget = operations.open(f.options);
-  budget.reserveEstimatedIngest(300);
-  budget.close();
+  await operations.bootstrap(f.options);
+  const budget = await operations.open(f.options);
+  await budget.reserveEstimatedIngest(300);
+  await budget.close();
   instant = new Date('2026-10-01T00:00:01.000Z');
-  expectCode(
+  await expectCode(
     () => operations.open(f.options),
     'EGRESS_BUDGET_MONTH_TRANSITION_REQUIRED',
   );
-  expectCode(
+  await expectCode(
     () =>
       operations.transitionMonth(f.options, {
         authorization: 'invented-local-approval',
@@ -321,119 +423,134 @@ test('month rollover requires an independently authorized transition', (t) => {
   );
   // The failed authorization leaves local state ahead of the independent
   // checkpoint, so an operator must reconcile the ambiguous attempt.
-  expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_ANCHOR_MISMATCH');
+  await expectCode(
+    () => operations.open(f.options),
+    'EGRESS_BUDGET_ANCHOR_MISMATCH',
+  );
 });
 
-test('an authorized next-month transition resets capacity once', (t) => {
+test('an authorized next-month transition resets capacity once', async (t) => {
   const f = fixture(t);
   let instant = new Date('2026-09-30T23:59:59.000Z');
   const operations = operationsFor(f, { now: () => instant });
-  operations.bootstrap(f.options);
-  const September = operations.open(f.options);
-  September.reserveEstimatedIngest(300);
-  September.close();
+  await operations.bootstrap(f.options);
+  const September = await operations.open(f.options);
+  await September.reserveEstimatedIngest(300);
+  await September.close();
   instant = new Date('2026-10-01T00:00:01.000Z');
-  operations.transitionMonth(f.options, {
+  await operations.transitionMonth(f.options, {
     authorization: f.monthAuthorization,
     observedAt: instant.toISOString(),
   });
-  const budget = operations.open(f.options);
-  const October = budget.reserveEstimatedIngest(100);
+  const budget = await operations.open(f.options);
+  const October = await budget.reserveEstimatedIngest(100);
   assert.equal(October.monthUtc, '2026-10');
   assert.equal(October.monthSequence, 2);
   assert.equal(October.payloadRemainingBytes, 800);
   instant = new Date('2026-09-30T23:59:58.000Z');
-  expectCode(
+  await expectCode(
     () => budget.reserveEstimatedIngest(1),
     'EGRESS_BUDGET_CLOCK_ROLLBACK',
   );
-  budget.close();
+  await budget.close();
 });
 
-test('opening advances the anchored clock observation before returning', (t) => {
+test('opening advances the anchored clock observation before returning', async (t) => {
   const f = fixture(t);
   let instant = new Date('2026-09-08T12:00:00.000Z');
   const operations = operationsFor(f, { now: () => instant });
-  operations.bootstrap(f.options);
+  await operations.bootstrap(f.options);
   instant = new Date('2026-09-08T13:00:00.000Z');
-  operations.open(f.options).close();
+  await (await operations.open(f.options)).close();
   instant = new Date('2026-09-08T12:30:00.000Z');
-  expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_CLOCK_ROLLBACK');
+  await expectCode(
+    () => operations.open(f.options),
+    'EGRESS_BUDGET_CLOCK_ROLLBACK',
+  );
 });
 
-test('a state-write refusal poisons the held view before it can overwrite uncertainty', (t) => {
+test('a state-write refusal poisons the held view before it can overwrite uncertainty', async (t) => {
   const f = fixture(t);
   const operations = operationsFor(f);
-  operations.bootstrap(f.options);
-  const budget = operations.open(f.options);
+  await operations.bootstrap(f.options);
+  const budget = await operations.open(f.options);
   const statePath = join(f.directory, 'egress-budget-state.json');
   chmodSync(statePath, 0o644);
-  expectCode(
+  await expectCode(
     () => budget.reserveEstimatedIngest(100),
     'EGRESS_BUDGET_PRIVATE_PATH_REQUIRED',
   );
-  expectCode(() => budget.reserveEstimatedIngest(1), 'EGRESS_BUDGET_CLOSED');
+  await expectCode(
+    () => budget.reserveEstimatedIngest(1),
+    'EGRESS_BUDGET_CLOSED',
+  );
   chmodSync(statePath, 0o600);
-  const recovered = operations.open(f.options);
-  assert.equal(recovered.reserveEstimatedIngest(1).payloadRemainingBytes, 899);
-  recovered.close();
+  const recovered = await operations.open(f.options);
+  assert.equal(
+    (await recovered.reserveEstimatedIngest(1)).payloadRemainingBytes,
+    899,
+  );
+  await recovered.close();
 });
 
 test('hard-linked files and replaced held lock or directory inodes are refused', async (t) => {
-  await t.test('state and lock hard links are refused', (context) => {
+  await t.test('state and lock hard links are refused', async (context) => {
     const f = fixture(context);
     const operations = operationsFor(f);
-    operations.bootstrap(f.options);
+    await operations.bootstrap(f.options);
     const state = join(f.directory, 'egress-budget-state.json');
     linkSync(state, join(f.root, 'state-hard-link.json'));
-    expectCode(
+    await expectCode(
       () => operations.open(f.options),
       'EGRESS_BUDGET_PRIVATE_PATH_REQUIRED',
     );
     unlinkSync(join(f.root, 'state-hard-link.json'));
     const lock = join(f.directory, 'egress-budget.lock');
     linkSync(lock, join(f.root, 'lock-hard-link'));
-    expectCode(
+    await expectCode(
       () => operations.open(f.options),
       'EGRESS_BUDGET_PRIVATE_PATH_REQUIRED',
     );
   });
 
-  await t.test('a replaced lock inode poisons the held budget', (context) => {
-    const f = fixture(context);
-    const operations = operationsFor(f);
-    operations.bootstrap(f.options);
-    const budget = operations.open(f.options);
-    const lock = join(f.directory, 'egress-budget.lock');
-    unlinkSync(lock);
-    writeFileSync(lock, '', { mode: 0o600 });
-    expectCode(
-      () => budget.reserveEstimatedIngest(1),
-      'EGRESS_BUDGET_PRIVATE_PATH_REQUIRED',
-    );
-    budget.close();
-  });
-
   await t.test(
-    'a replaced directory inode poisons the held budget',
-    (context) => {
+    'a replaced lock inode poisons the held budget',
+    async (context) => {
       const f = fixture(context);
       const operations = operationsFor(f);
-      operations.bootstrap(f.options);
-      const budget = operations.open(f.options);
-      const moved = join(f.root, 'old-state-directory');
-      renameSync(f.directory, moved);
-      mkdirSync(f.directory, { mode: 0o700 });
-      expectCode(
+      await operations.bootstrap(f.options);
+      const budget = await operations.open(f.options);
+      const lock = join(f.directory, 'egress-budget.lock');
+      unlinkSync(lock);
+      writeFileSync(lock, '', { mode: 0o600 });
+      await expectCode(
         () => budget.reserveEstimatedIngest(1),
         'EGRESS_BUDGET_PRIVATE_PATH_REQUIRED',
       );
-      budget.close();
+      await budget.close();
+    },
+  );
+
+  await t.test(
+    'a replaced directory inode poisons the held budget',
+    async (context) => {
+      const f = fixture(context);
+      const operations = operationsFor(f);
+      await operations.bootstrap(f.options);
+      const budget = await operations.open(f.options);
+      const moved = join(f.root, 'old-state-directory');
+      renameSync(f.directory, moved);
+      mkdirSync(f.directory, { mode: 0o700 });
+      await expectCode(
+        () => budget.reserveEstimatedIngest(1),
+        'EGRESS_BUDGET_PRIVATE_PATH_REQUIRED',
+      );
+      await budget.close();
     },
   );
 });
 
-test('flock is bounded and only its explicit conflict exit means contention', (t) => {
+test('flock is bounded and only its explicit conflict exit means contention', async (t) => {
   const f = fixture(t);
   let invocation;
   const operations = operationsFor(f, {
@@ -442,7 +559,10 @@ test('flock is bounded and only its explicit conflict exit means contention', (t
       return { error: new Error('ETIMEDOUT'), signal: 'SIGKILL', status: null };
     },
   });
-  expectCode(() => operations.bootstrap(f.options), 'EGRESS_BUDGET_IO_FAILED');
+  await expectCode(
+    () => operations.bootstrap(f.options),
+    'EGRESS_BUDGET_IO_FAILED',
+  );
   assert.equal(invocation.program, 'flock');
   assert.deepEqual(invocation.args, [
     '--exclusive',
@@ -455,7 +575,7 @@ test('flock is bounded and only its explicit conflict exit means contention', (t
   assert.equal(invocation.options.killSignal, 'SIGKILL');
 });
 
-test('a real hanging lock helper is killed at the configured deadline', (t) => {
+test('a real hanging lock helper is killed at the configured deadline', async (t) => {
   const f = fixture(t);
   const hangingFlock = join(f.root, 'hanging-flock.mjs');
   writeFileSync(hangingFlock, 'setInterval(() => {}, 30_000);\n', {
@@ -467,37 +587,46 @@ test('a real hanging lock helper is killed at the configured deadline', (t) => {
     },
   });
   const started = Date.now();
-  expectCode(() => operations.bootstrap(f.options), 'EGRESS_BUDGET_IO_FAILED');
+  await expectCode(
+    () => operations.bootstrap(f.options),
+    'EGRESS_BUDGET_IO_FAILED',
+  );
   const elapsed = Date.now() - started;
   assert.ok(elapsed >= 4_500, `helper exited too early after ${elapsed}ms`);
   assert.ok(elapsed < 8_000, `helper was not bounded: ${elapsed}ms`);
 });
 
 test('missing, corrupt, unbound and replaced private state all fail closed', async (t) => {
-  await t.test('lost state cannot be bootstrapped back to zero', (context) => {
-    const f = fixture(context);
-    const operations = operationsFor(f);
-    operations.bootstrap(f.options);
-    unlinkSync(join(f.directory, 'egress-budget-state.json'));
-    expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_STATE_CORRUPT');
-    expectCode(
-      () => operations.bootstrap(f.options),
-      'EGRESS_BUDGET_ALREADY_BOOTSTRAPPED',
-    );
-  });
+  await t.test(
+    'lost state cannot be bootstrapped back to zero',
+    async (context) => {
+      const f = fixture(context);
+      const operations = operationsFor(f);
+      await operations.bootstrap(f.options);
+      unlinkSync(join(f.directory, 'egress-budget-state.json'));
+      await expectCode(
+        () => operations.open(f.options),
+        'EGRESS_BUDGET_STATE_CORRUPT',
+      );
+      await expectCode(
+        () => operations.bootstrap(f.options),
+        'EGRESS_BUDGET_ALREADY_BOOTSTRAPPED',
+      );
+    },
+  );
 
   await t.test(
     'truncated, digest-invalid and impossible state is refused',
-    (context) => {
+    async (context) => {
       const f = fixture(context);
       const operations = operationsFor(f);
-      operations.bootstrap(f.options);
+      await operations.bootstrap(f.options);
       const statePath = join(f.directory, 'egress-budget-state.json');
       const original = JSON.parse(readFileSync(statePath));
       writeFileSync(statePath, '{', {
         mode: 0o600,
       });
-      expectCode(
+      await expectCode(
         () => operations.open(f.options),
         'EGRESS_BUDGET_STATE_CORRUPT',
       );
@@ -505,7 +634,7 @@ test('missing, corrupt, unbound and replaced private state all fail closed', asy
         statePath,
         JSON.stringify({ ...original, sha256: '0'.repeat(64) }),
       );
-      expectCode(
+      await expectCode(
         () => operations.open(f.options),
         'EGRESS_BUDGET_STATE_CORRUPT',
       );
@@ -525,7 +654,7 @@ test('missing, corrupt, unbound and replaced private state all fail closed', asy
             .digest('hex'),
         }),
       );
-      expectCode(
+      await expectCode(
         () => operations.open(f.options),
         'EGRESS_BUDGET_STATE_CORRUPT',
       );
@@ -534,40 +663,46 @@ test('missing, corrupt, unbound and replaced private state all fail closed', asy
 
   await t.test(
     'a different account, policy or limit cannot reuse state',
-    (context) => {
+    async (context) => {
       const f = fixture(context);
       const operations = operationsFor(f);
-      operations.bootstrap(f.options);
+      await operations.bootstrap(f.options);
       for (const changed of [
         { accountIdentity: 'different-free-account' },
         { configurationIdentity: 'd'.repeat(64) },
         { monthlyLimitBytes: 999 },
         { finalSignalReserveBytes: 99 },
       ])
-        expectCode(
+        await expectCode(
           () => operations.open({ ...f.options, ...changed }),
           'EGRESS_BUDGET_STATE_UNBOUND',
         );
     },
   );
 
-  await t.test('state links and permissive modes are refused', (context) => {
-    const f = fixture(context);
-    const operations = operationsFor(f);
-    operations.bootstrap(f.options);
-    const state = join(f.directory, 'egress-budget-state.json');
-    const moved = join(f.directory, 'moved-state.json');
-    renameSync(state, moved);
-    symlinkSync(moved, state);
-    expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_STATE_CORRUPT');
-    unlinkSync(state);
-    renameSync(moved, state);
-    chmodSync(state, 0o644);
-    expectCode(
-      () => operations.open(f.options),
-      'EGRESS_BUDGET_PRIVATE_PATH_REQUIRED',
-    );
-  });
+  await t.test(
+    'state links and permissive modes are refused',
+    async (context) => {
+      const f = fixture(context);
+      const operations = operationsFor(f);
+      await operations.bootstrap(f.options);
+      const state = join(f.directory, 'egress-budget-state.json');
+      const moved = join(f.directory, 'moved-state.json');
+      renameSync(state, moved);
+      symlinkSync(moved, state);
+      await expectCode(
+        () => operations.open(f.options),
+        'EGRESS_BUDGET_STATE_CORRUPT',
+      );
+      unlinkSync(state);
+      renameSync(moved, state);
+      chmodSync(state, 0o644);
+      await expectCode(
+        () => operations.open(f.options),
+        'EGRESS_BUDGET_PRIVATE_PATH_REQUIRED',
+      );
+    },
+  );
 });
 
 function childProgram(f) {
@@ -594,12 +729,12 @@ const anchor = {
   advanceMonth() { throw new Error('not used'); },
 };
 try {
-  const budget = createEgressBudgetOperations({ anchor }).open(options);
-  if (mode === 'reserve') budget.reserveEstimatedIngest(123);
+  const budget = await createEgressBudgetOperations({ anchor }).open(options);
+  if (mode === 'reserve') await budget.reserveEstimatedIngest(123);
   process.stdout.write(mode === 'reserve' ? 'RESERVED\\n' : 'LOCKED\\n');
   process.stdin.resume();
-  process.stdin.once('end', () => {
-    budget.close();
+  process.stdin.once('end', async () => {
+    await budget.close();
   });
 } catch (error) {
   process.stdout.write(\`ERROR:\${error?.code ?? 'UNKNOWN'}\\n\`);
@@ -659,7 +794,7 @@ function waitForExit(child) {
 test('the inherited kernel lock refuses a concurrent process and releases cleanly', async (t) => {
   const f = fixture(t);
   const operations = operationsFor(f);
-  operations.bootstrap(f.options);
+  await operations.bootstrap(f.options);
   const child = spawn(
     process.execPath,
     [childProgram(f), JSON.stringify(f.options), 'hold', f.anchorPath],
@@ -670,18 +805,18 @@ test('the inherited kernel lock refuses a concurrent process and releases cleanl
   );
   t.after(() => child.kill('SIGKILL'));
   assert.equal(await waitForLine(child), 'LOCKED');
-  expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_LOCKED');
+  await expectCode(() => operations.open(f.options), 'EGRESS_BUDGET_LOCKED');
   const exitPromise = waitForExit(child);
   child.stdin.end();
   assert.deepEqual(await exitPromise, { signal: null, status: 0 });
-  const reopened = operations.open(f.options);
-  reopened.close();
+  const reopened = await operations.open(f.options);
+  await reopened.close();
 });
 
 test('a crash after reservation cannot refund an ambiguous attempted send', async (t) => {
   const f = fixture(t);
   const operations = operationsFor(f);
-  operations.bootstrap(f.options);
+  await operations.bootstrap(f.options);
   const child = spawn(
     process.execPath,
     [childProgram(f), JSON.stringify(f.options), 'reserve', f.anchorPath],
@@ -696,9 +831,9 @@ test('a crash after reservation cannot refund an ambiguous attempted send', asyn
   const exit = await exitPromise;
   assert.equal(exit.signal, 'SIGKILL');
 
-  const restarted = operations.open(f.options);
-  const next = restarted.reserveEstimatedIngest(1);
+  const restarted = await operations.open(f.options);
+  const next = await restarted.reserveEstimatedIngest(1);
   assert.equal(next.reservationSequence, 2);
   assert.equal(next.payloadRemainingBytes, 776);
-  restarted.close();
+  await restarted.close();
 });
