@@ -1,0 +1,48 @@
+# Offline custody verification has no application login or outbound network.
+# It accepts only direct roots, never KMS ciphertext or provider credentials.
+services:
+  encryption-verify:
+    image: ${STUDIO_IMAGE:?Run configure with the released image digest}
+    env_file: ['${STUDIO_ENCRYPTION_FILE:-./deployment/encryption.env}']
+    command: [encryption, verify]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    environment:
+      DATABASE_URL: postgresql://studio_maintenance_runtime:${STUDIO_MAINTENANCE_DATABASE_PASSWORD:?Missing maintenance password}@postgres:5432/studio
+      STUDIO_DATABASE_ALLOWED_LOGINS: '${STUDIO_DATABASE_ALLOWED_LOGINS:?Missing explicit database login enrollment}'
+      STUDIO_ENCRYPTION_OFFLINE_CUSTODY: required
+    networks: [data]
+
+  # Post-drain custody verification uses the SELECT-only backup identity.
+  # Explicit compose run activates this operator profile without a writer.
+  encryption-verify-backup:
+    image: ${STUDIO_IMAGE:?Run configure with the released image digest}
+    profiles: [operator]
+    env_file: ['${STUDIO_ENCRYPTION_FILE:-./deployment/encryption.env}']
+    entrypoint: [node, dist/backup.js]
+    command: [--verify-encryption]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    environment:
+      DATABASE_URL: postgresql://studio_backup_login:${STUDIO_BACKUP_PASSWORD:?Missing backup password}@postgres:5432/studio
+      STUDIO_DATABASE_ALLOWED_LOGINS: '${STUDIO_DATABASE_ALLOWED_LOGINS:?Missing explicit database login enrollment}'
+      STUDIO_ENCRYPTION_OFFLINE_CUSTODY: required
+    networks: [data]
+
+  # Operational KMS verification is an explicit online action. The loader
+  # derives the exact regional kms.<region>.amazonaws.com HTTPS endpoint from
+  # the pinned key ARN and ignores ambient endpoint overrides.
+  encryption-verify-online:
+    image: ${STUDIO_IMAGE:?Run configure with the released image digest}
+    profiles: [operator]
+    env_file: ['${STUDIO_ENCRYPTION_FILE:-./deployment/encryption.env}']
+    command: [encryption, verify]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    environment:
+      DATABASE_URL: postgresql://studio_maintenance_runtime:${STUDIO_MAINTENANCE_DATABASE_PASSWORD:?Missing maintenance password}@postgres:5432/studio
+      STUDIO_DATABASE_ALLOWED_LOGINS: '${STUDIO_DATABASE_ALLOWED_LOGINS:?Missing explicit database login enrollment}'
+    networks: [data, edge]

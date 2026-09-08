@@ -1,14 +1,16 @@
+import { createMessageError } from '@codaco/app-i18n/messages';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import type { BiologicalSex } from '@codaco/protocol-validation';
 import { type VariableValue, VariableValueSchema } from '@codaco/shared-consts';
 
+import { runtimeMessages } from '../../../../../i18n/runtimeMessages';
 import { writeOwnAttribute } from '../../../utils/writeOwnAttributes';
 
 const KNOWN_PERSON_KEYS = new Set(['name', 'biologicalSex']);
 type FormSubmissionFailure = Extract<FormSubmissionResult, { success: false }>;
 const invalidSubmissionResult: FormSubmissionFailure = {
   success: false,
-  formErrors: ['An error occurred while submitting the form.'],
+  formErrors: [createMessageError(runtimeMessages.submissionFailed)],
 };
 
 class InvalidCustomAttributeValueError extends Error {}

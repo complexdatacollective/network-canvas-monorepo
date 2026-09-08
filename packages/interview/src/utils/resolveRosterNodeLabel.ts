@@ -1,6 +1,9 @@
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import type { NodeDefinition } from '@codaco/protocol-validation';
 import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
+import { resolveInterviewIntl } from '../i18n/resolveIntl';
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { getNodeLabelAttribute } from './getNodeLabelAttribute';
 
 type ResolveRosterNodeLabelArgs = {
@@ -8,6 +11,7 @@ type ResolveRosterNodeLabelArgs = {
   node: NcNode;
   subjectLabel: string;
   sequentialNumber: number;
+  intl?: IntlShape;
 };
 
 // Only string/number values produce a meaningful title; everything else
@@ -31,6 +35,7 @@ export const resolveRosterNodeLabel = ({
   node,
   subjectLabel,
   sequentialNumber,
+  intl,
 }: ResolveRosterNodeLabelArgs): string => {
   const attributes = node[entityAttributesProperty];
 
@@ -49,5 +54,8 @@ export const resolveRosterNodeLabel = ({
     }
   }
 
-  return `Unnamed ${subjectLabel} ${sequentialNumber}`;
+  return resolveInterviewIntl(intl).formatMessage(messages.unnamedRosterItem, {
+    subject: subjectLabel,
+    number: sequentialNumber,
+  });
 };

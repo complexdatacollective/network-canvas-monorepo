@@ -1,3 +1,4 @@
+import { AppMessage } from '@codaco/app-i18n/react';
 import type { FramingId } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -6,6 +7,7 @@ import {
 } from '@codaco/shared-consts';
 
 import type { OpenPedigreeDialog } from '../../familyPedigreeDialog';
+import { messages } from '../../messages';
 import type { CommitBatch, VariableConfig } from '../../store';
 import { buildNodeOptions } from './buildNodeOptions';
 import { derivePreselection } from './derivePreselection';
@@ -22,19 +24,26 @@ import NewParentPartnershipsStep, {
 import { defineParentsTransform } from './transforms/defineParentsTransform';
 import { runFamilyPedigreeTransform } from './transforms/personAttributes';
 
-function getNodeDisplayName(
-  nodeId: string,
-  nodes: Map<string, NcNode>,
-  variableConfig: VariableConfig,
-): string {
+function BiologicalParentsTitle({
+  nodeId,
+  nodes,
+  variableConfig,
+}: {
+  nodeId: string;
+  nodes: Map<string, NcNode>;
+  variableConfig: VariableConfig;
+}) {
   const node = nodes.get(nodeId);
-  if (!node) return "This Person's";
-  if (node[entityAttributesProperty][variableConfig.egoVariable] === true)
-    return 'Your';
-  const name = node[entityAttributesProperty][variableConfig.nodeLabelVariable];
-  return typeof name === 'string' && name.length > 0
-    ? `${name}'s`
-    : "This Person's";
+  if (node?.[entityAttributesProperty][variableConfig.egoVariable] === true) {
+    return <AppMessage message={messages.yourBiologicalParents} />;
+  }
+  const name =
+    node?.[entityAttributesProperty][variableConfig.nodeLabelVariable];
+  return typeof name === 'string' && name.length > 0 ? (
+    <AppMessage message={messages.namedBiologicalParents} values={{ name }} />
+  ) : (
+    <AppMessage message={messages.personBiologicalParents} />
+  );
 }
 
 export async function openDefineParentsWizard(
@@ -45,8 +54,13 @@ export async function openDefineParentsWizard(
   variableConfig: VariableConfig,
   framing: FramingId,
 ): Promise<CommitBatch | null> {
-  const displayName = getNodeDisplayName(focalNodeId, nodes, variableConfig);
-  const title = `${displayName} Biological Parents`;
+  const title = (
+    <BiologicalParentsTitle
+      nodeId={focalNodeId}
+      nodes={nodes}
+      variableConfig={variableConfig}
+    />
+  );
 
   const preselection = derivePreselection(focalNodeId, edges, variableConfig);
   const candidateIds = geneticParentCandidates(
@@ -91,20 +105,20 @@ export async function openDefineParentsWizard(
     progress: null,
     steps: [
       {
-        title: 'Biological parents',
+        title: <AppMessage message={messages.biologicalParents} />,
         content: BioTriadConfigStep,
       },
       {
-        title: 'Other parents',
+        title: <AppMessage message={messages.otherParents} />,
         content: GenericOtherParentsStep,
       },
       {
-        title: 'Additional parents',
+        title: <AppMessage message={messages.additionalParents} />,
         content: GenericAdditionalParentsStep,
         skip: ({ getFieldValue }) => getFieldValue('hasOtherParents') !== true,
       },
       {
-        title: 'Parent partnerships',
+        title: <AppMessage message={messages.parentPartnerships} />,
         content: PartnershipsStep,
         skip: shouldSkipNewParentPartnerships,
       },

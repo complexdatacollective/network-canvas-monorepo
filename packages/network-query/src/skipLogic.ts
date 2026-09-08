@@ -4,7 +4,7 @@ import type {
 } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
-import getQuery from './query';
+import getQuery from './query.ts';
 
 type StageReference = { id: string };
 

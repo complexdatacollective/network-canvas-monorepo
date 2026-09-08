@@ -23,6 +23,7 @@
     - button "Scroll to see more questions":
       - heading "Scroll to see more questions" [level=4]
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

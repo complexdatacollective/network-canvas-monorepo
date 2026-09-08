@@ -3,6 +3,8 @@
 import { parseAsInteger, useQueryState } from 'nuqs';
 import { useEffect } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { containerClasses } from '~/components/ContainerClasses';
@@ -14,16 +16,41 @@ import UploadProtocol from '../_components/OnboardSteps/UploadProtocol';
 import OnboardSteps from '../_components/Sidebar';
 import type { SetupData } from './page';
 
+const messages = defineMessages({
+  createAccount: {
+    id: 'fresco.setup.Setup.createAccount',
+    defaultMessage: 'Create Account',
+    description: 'Researcher-facing setup / Setup: Create Account',
+  },
+  configureStorage: {
+    id: 'fresco.setup.Setup.configureStorage',
+    defaultMessage: 'Configure Storage',
+    description: 'Researcher-facing setup / Setup: Configure Storage',
+  },
+  uploadProtocol: {
+    id: 'fresco.setup.Setup.uploadProtocol',
+    defaultMessage: 'Upload Protocol',
+    description: 'Researcher-facing setup / Setup: Upload Protocol',
+  },
+  documentation: {
+    id: 'fresco.setup.Setup.documentation',
+    defaultMessage: 'Documentation',
+    description: 'Researcher-facing setup / Setup: Documentation',
+  },
+});
+
 export default function Setup({ setupData }: { setupData: SetupData }) {
+  const intl = useAppIntl();
+
   const [step, setStep] = useQueryState('step', parseAsInteger.withDefault(1));
 
   const steps = [
     {
-      label: 'Create Account',
+      label: intl.formatMessage(messages.createAccount),
       content: <CreateAccount />,
     },
     {
-      label: 'Configure Storage',
+      label: intl.formatMessage(messages.configureStorage),
       content: (
         <ConfigureStorage
           storageEnv={setupData.storageEnv}
@@ -32,11 +59,11 @@ export default function Setup({ setupData }: { setupData: SetupData }) {
       ),
     },
     {
-      label: 'Upload Protocol',
+      label: intl.formatMessage(messages.uploadProtocol),
       content: <UploadProtocol />,
     },
     {
-      label: 'Documentation',
+      label: intl.formatMessage(messages.documentation),
       content: <Documentation />,
     },
   ];

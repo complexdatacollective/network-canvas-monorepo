@@ -4,6 +4,13 @@ import { type Row } from '@tanstack/react-table';
 import { Clipboard } from 'lucide-react';
 import { use, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
@@ -23,6 +30,138 @@ import {
 import { useClientDataTable } from '~/hooks/useClientDataTable';
 import { type GetApiTokensReturnType } from '~/queries/apiTokens';
 
+const messages = defineMessages({
+  activeToken: {
+    id: 'fresco.apiToken.activeToken',
+    defaultMessage: 'Active token: {name}',
+    description:
+      'Accessible label for an API token activation switch. Name is its description, never its secret.',
+  },
+  copyNever: {
+    id: 'fresco.ApiTokenManagement.copyNever',
+    defaultMessage: 'Never',
+    description: 'Researcher-facing ApiTokenManagement: Never',
+  },
+  copyCreating: {
+    id: 'fresco.ApiTokenManagement.copyCreating',
+    defaultMessage: 'Creating...',
+    description: 'Researcher-facing ApiTokenManagement: Creating...',
+  },
+  copyCreateToken: {
+    id: 'fresco.ApiTokenManagement.copyCreateToken',
+    defaultMessage: 'Create Token',
+    description: 'Researcher-facing ApiTokenManagement: Create Token',
+  },
+  copyDeleting: {
+    id: 'fresco.ApiTokenManagement.copyDeleting',
+    defaultMessage: 'Deleting...',
+    description: 'Researcher-facing ApiTokenManagement: Deleting...',
+  },
+  copyDeleteToken: {
+    id: 'fresco.ApiTokenManagement.copyDeleteToken',
+    defaultMessage: 'Delete Token',
+    description: 'Researcher-facing ApiTokenManagement: Delete Token',
+  },
+  description: {
+    id: 'fresco.ApiTokenManagement.description',
+    defaultMessage: 'Description',
+    description: 'Researcher-facing ApiTokenManagement: Description',
+  },
+  untitled: {
+    id: 'fresco.ApiTokenManagement.untitled',
+    defaultMessage: 'Untitled',
+    description: 'Researcher-facing ApiTokenManagement: Untitled',
+  },
+  created: {
+    id: 'fresco.ApiTokenManagement.created',
+    defaultMessage: 'Created',
+    description: 'Researcher-facing ApiTokenManagement: Created',
+  },
+  lastUsed: {
+    id: 'fresco.ApiTokenManagement.lastUsed',
+    defaultMessage: 'Last Used',
+    description: 'Researcher-facing ApiTokenManagement: Last Used',
+  },
+  status: {
+    id: 'fresco.ApiTokenManagement.status',
+    defaultMessage: 'Status',
+    description: 'Researcher-facing ApiTokenManagement: Status',
+  },
+  createNewToken: {
+    id: 'fresco.ApiTokenManagement.createNewToken',
+    defaultMessage: 'Create New Token',
+    description: 'Researcher-facing ApiTokenManagement: Create New Token',
+  },
+  noAPITokensCreatedYet: {
+    id: 'fresco.ApiTokenManagement.noAPITokensCreatedYet',
+    defaultMessage: 'No API tokens created yet.',
+    description:
+      'Researcher-facing ApiTokenManagement: No API tokens created yet.',
+  },
+  createAPIToken: {
+    id: 'fresco.ApiTokenManagement.createAPIToken',
+    defaultMessage: 'Create API Token',
+    description: 'Researcher-facing ApiTokenManagement: Create API Token',
+  },
+  createANewAPITokenForAuthenticating: {
+    id: 'fresco.ApiTokenManagement.createANewAPITokenForAuthenticating',
+    defaultMessage:
+      'Create a new API token for authenticating Interview Data API requests.',
+    description:
+      'Researcher-facing ApiTokenManagement: Create a new API token for authenticating Interview Data API requests.',
+  },
+  descriptionOptional: {
+    id: 'fresco.ApiTokenManagement.descriptionOptional',
+    defaultMessage: 'Description (optional)',
+    description: 'Researcher-facing ApiTokenManagement: Description (optional)',
+  },
+  eGDevelopmentToken: {
+    id: 'fresco.ApiTokenManagement.eGDevelopmentToken',
+    defaultMessage: 'e.g., Development token',
+    description:
+      'Researcher-facing ApiTokenManagement: e.g., Development token',
+  },
+  aPITokenCreated: {
+    id: 'fresco.ApiTokenManagement.aPITokenCreated',
+    defaultMessage: 'API Token Created',
+    description: 'Researcher-facing ApiTokenManagement: API Token Created',
+  },
+  yourTokenHasBeenCreatedAndIs: {
+    id: 'fresco.ApiTokenManagement.yourTokenHasBeenCreatedAndIs',
+    defaultMessage:
+      "Your token has been created and is displayed below. Save this token somewhere safe now - you won't be able to see it again after you close this dialog.",
+    description:
+      "Researcher-facing ApiTokenManagement: Your token has been created and is displayed below. Save this token somewhere safe now - you won't be able to see it aga",
+  },
+  copyToClipboard: {
+    id: 'fresco.ApiTokenManagement.copyToClipboard',
+    defaultMessage: 'Copy to Clipboard',
+    description: 'Researcher-facing ApiTokenManagement: Copy to Clipboard',
+  },
+  copiedToClipboard: {
+    id: 'fresco.ApiTokenManagement.copiedToClipboard',
+    defaultMessage: 'Copied to clipboard',
+    description: 'Researcher-facing ApiTokenManagement: Copied to clipboard',
+  },
+  yourAPIToken: {
+    id: 'fresco.ApiTokenManagement.yourAPIToken',
+    defaultMessage: 'Your API Token',
+    description: 'Researcher-facing ApiTokenManagement: Your API Token',
+  },
+  deleteAPIToken: {
+    id: 'fresco.ApiTokenManagement.deleteAPIToken',
+    defaultMessage: 'Delete API Token',
+    description: 'Researcher-facing ApiTokenManagement: Delete API Token',
+  },
+  areYouSureYouWantToDelete: {
+    id: 'fresco.ApiTokenManagement.areYouSureYouWantToDelete',
+    defaultMessage:
+      'Are you sure you want to delete this API token? Any applications using this token will no longer be able to authenticate.',
+    description:
+      'Researcher-facing ApiTokenManagement: Are you sure you want to delete this API token? Any applications using this token will no longer be able to authenticate',
+  },
+});
+
 type ApiToken = GetApiTokensReturnType[number];
 
 type ApiTokenManagementProps = {
@@ -34,8 +173,12 @@ export default function ApiTokenManagement({
   tokensPromise,
   disabled,
 }: ApiTokenManagementProps) {
-  // TanStack Table: consumers must also opt out so React Compiler doesn't memoize JSX that depends on the table ref.
   'use no memo';
+
+  const intl = useAppIntl();
+
+  // TanStack Table: consumers must also opt out so React Compiler doesn't memoize JSX that depends on the table ref.
+
   const initialTokens = use(tokensPromise);
   const [tokens, setTokens] = useState<ApiToken[]>(initialTokens);
   const [isCreating, setIsCreating] = useState(false);
@@ -54,7 +197,10 @@ export default function ApiTokenManagement({
     });
 
     if (result.error) {
-      alert(result.error);
+      add({
+        title: <AppErrorMessage error={result.error} />,
+        variant: 'destructive',
+      });
     } else if (result.data) {
       setTokens([
         {
@@ -78,7 +224,10 @@ export default function ApiTokenManagement({
     const result = await updateApiToken({ id, isActive: !isActive });
 
     if (result.error) {
-      alert(result.error);
+      add({
+        title: <AppErrorMessage error={result.error} />,
+        variant: 'destructive',
+      });
     } else if (result.data) {
       setTokens(
         tokens.map((token) =>
@@ -93,7 +242,10 @@ export default function ApiTokenManagement({
     const result = await deleteApiToken({ id: token.id });
 
     if (result.error) {
-      add({ title: result.error, variant: 'destructive' });
+      add({
+        title: <AppErrorMessage error={result.error} />,
+        variant: 'destructive',
+      });
     } else {
       setTokens(tokens.filter((t) => t.id !== token.id));
       setTokenToDelete(null);
@@ -105,13 +257,18 @@ export default function ApiTokenManagement({
     {
       accessorKey: 'description',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Description" />
+        <DataTableColumnHeader
+          column={column}
+          title={intl.formatMessage(messages.description)}
+        />
       ),
       cell: ({ row }) => (
         <span
           data-testid={`token-row-${row.original.description ?? 'Untitled'}`}
         >
-          {row.original.description ?? <em>Untitled</em>}
+          {row.original.description ?? (
+            <em>{intl.formatMessage(messages.untitled)}</em>
+          )}
         </span>
       ),
       enableSorting: false,
@@ -121,7 +278,10 @@ export default function ApiTokenManagement({
       accessorKey: 'createdAt',
       sortingFn: 'datetime',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Created" />
+        <DataTableColumnHeader
+          column={column}
+          title={intl.formatMessage(messages.created)}
+        />
       ),
       cell: ({ row }) => (
         <TimeAgo
@@ -134,11 +294,14 @@ export default function ApiTokenManagement({
       accessorKey: 'lastUsedAt',
       sortingFn: 'datetime',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Last Used" />
+        <DataTableColumnHeader
+          column={column}
+          title={intl.formatMessage(messages.lastUsed)}
+        />
       ),
       cell: ({ row }) => {
         if (!row.original.lastUsedAt) {
-          return 'Never';
+          return intl.formatMessage(messages.copyNever);
         }
 
         return (
@@ -153,10 +316,17 @@ export default function ApiTokenManagement({
       accessorKey: 'isActive',
       sortingFn: 'basic',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
+        <DataTableColumnHeader
+          column={column}
+          title={intl.formatMessage(messages.status)}
+        />
       ),
       cell: ({ row }) => (
         <ToggleField
+          aria-label={intl.formatMessage(messages.activeToken, {
+            name:
+              row.original.description ?? intl.formatMessage(messages.untitled),
+          })}
           value={row.original.isActive}
           disabled={disabled}
           onChange={() =>
@@ -176,7 +346,7 @@ export default function ApiTokenManagement({
           disabled={disabled}
           data-testid={`delete-token-${row.original.description ?? 'Untitled'}`}
         >
-          Delete
+          {intl.formatMessage(commonMessages.delete)}
         </Button>
       ),
     },
@@ -197,11 +367,11 @@ export default function ApiTokenManagement({
         disabled={disabled}
         data-testid="create-token-button"
       >
-        Create New Token
+        {intl.formatMessage(messages.createNewToken)}
       </Button>
       <DataTable
         table={table}
-        emptyText="No API tokens created yet."
+        emptyText={intl.formatMessage(messages.noAPITokensCreatedYet)}
         showPagination={false}
       />
 
@@ -209,8 +379,10 @@ export default function ApiTokenManagement({
       <Dialog
         open={isCreating}
         closeDialog={() => setIsCreating(false)}
-        title="Create API Token"
-        description="Create a new API token for authenticating Interview Data API requests."
+        title={intl.formatMessage(messages.createAPIToken)}
+        description={intl.formatMessage(
+          messages.createANewAPITokenForAuthenticating,
+        )}
         footer={
           <>
             <Button
@@ -219,7 +391,7 @@ export default function ApiTokenManagement({
                 setNewTokenDescription('');
               }}
             >
-              Cancel
+              {intl.formatMessage(commonMessages.cancel)}
             </Button>
             <Button
               onClick={handleCreateToken}
@@ -227,16 +399,20 @@ export default function ApiTokenManagement({
               color="primary"
               data-testid="confirm-create-token-button"
             >
-              {isLoading ? 'Creating...' : 'Create Token'}
+              {isLoading
+                ? intl.formatMessage(messages.copyCreating)
+                : intl.formatMessage(messages.copyCreateToken)}
             </Button>
           </>
         }
       >
         <div data-field-name="description">
-          <Label htmlFor="description">Description (optional)</Label>
+          <Label htmlFor="description">
+            {intl.formatMessage(messages.descriptionOptional)}
+          </Label>
           <InputField
             id="description"
-            placeholder="e.g., Development token"
+            placeholder={intl.formatMessage(messages.eGDevelopmentToken)}
             value={newTokenDescription}
             onChange={(value) => setNewTokenDescription(value ?? '')}
           />
@@ -248,31 +424,34 @@ export default function ApiTokenManagement({
         accent="success"
         open={!!createdToken}
         closeDialog={() => setCreatedToken(null)}
-        title="API Token Created"
-        description="Your token has been created and is displayed below. Save this token somewhere safe now - you won't be able to see it again after you close this dialog."
+        title={intl.formatMessage(messages.aPITokenCreated)}
+        description={intl.formatMessage(messages.yourTokenHasBeenCreatedAndIs)}
         footer={
           <>
             <Button
               onClick={() => setCreatedToken(null)}
               data-testid="close-token-dialog-button"
             >
-              Close
+              {intl.formatMessage(commonMessages.close)}
             </Button>
             <Button
               onClick={() => {
                 void navigator.clipboard.writeText(createdToken!);
-                add({ title: 'Copied to clipboard', variant: 'success' });
+                add({
+                  title: <AppMessage message={messages.copiedToClipboard} />,
+                  variant: 'success',
+                });
               }}
               icon={<Clipboard />}
               color="primary"
             >
-              Copy to Clipboard
+              {intl.formatMessage(messages.copyToClipboard)}
             </Button>
           </>
         }
       >
         <Alert variant="success" data-testid="created-token-alert">
-          <AlertTitle>Your API Token</AlertTitle>
+          <AlertTitle>{intl.formatMessage(messages.yourAPIToken)}</AlertTitle>
           <AlertDescription>
             <code className="font-monospace relative rounded px-1.5 py-0.5 text-sm">
               {createdToken}
@@ -285,15 +464,15 @@ export default function ApiTokenManagement({
         accent="destructive"
         open={!!tokenToDelete}
         closeDialog={() => setTokenToDelete(null)}
-        title="Delete API Token"
-        description="Are you sure you want to delete this API token? Any applications using this token will no longer be able to authenticate."
+        title={intl.formatMessage(messages.deleteAPIToken)}
+        description={intl.formatMessage(messages.areYouSureYouWantToDelete)}
         footer={
           <>
             <Button
               onClick={() => setTokenToDelete(null)}
               disabled={isDeleting}
             >
-              Cancel
+              {intl.formatMessage(commonMessages.cancel)}
             </Button>
             <Button
               onClick={() => tokenToDelete && handleDeleteToken(tokenToDelete)}
@@ -301,7 +480,9 @@ export default function ApiTokenManagement({
               color="primary"
               data-testid="confirm-delete-token-button"
             >
-              {isDeleting ? 'Deleting...' : 'Delete Token'}
+              {isDeleting
+                ? intl.formatMessage(messages.copyDeleting)
+                : intl.formatMessage(messages.copyDeleteToken)}
             </Button>
           </>
         }

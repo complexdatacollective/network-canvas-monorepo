@@ -446,13 +446,29 @@ export const collectEntityAttributeReferences = (
  * `collectEntityAttributeReferences`. Covers stage subjects (including the
  * NetworkComposer's per-edge-type entries), edge creation/display prompt
  * settings, the FamilyPedigree node/edge configs, and filter rules.
+ *
+ * Stated once, over any fragment of the schema and any value shaped like it,
+ * so a caller holding one STAGE rather than a whole protocol — a stage editor,
+ * which never has one — can ask the same question of what it has. Consumers
+ * that need to know which types a stage names must derive it this way rather
+ * than reading the two or three paths they happen to know: a stage type that
+ * names an edge somewhere else (`createEdge` on the census interfaces, beside
+ * the Sociogram's `edges.create`) is then covered the moment its schema is
+ * tagged, instead of being silently invisible.
  */
+export const collectEntityTypeReferencesFromSchema = (
+  schema: z.ZodType,
+  value: unknown,
+): EntityTypeReferenceHit[] =>
+  walk(schema, value, [], rootContext(value))
+    .filter(isTypeHit)
+    .map(({ kind: _kind, ...hit }) => hit);
+
+/** The same question asked of a whole protocol. */
 export const collectEntityTypeReferences = (
   protocol: unknown,
 ): EntityTypeReferenceHit[] =>
-  walk(CurrentProtocolSchema, protocol, [], rootContext(protocol))
-    .filter(isTypeHit)
-    .map(({ kind: _kind, ...hit }) => hit);
+  collectEntityTypeReferencesFromSchema(CurrentProtocolSchema, protocol);
 
 /**
  * Every `assetManifest` entry referenced by a protocol, discovered from the

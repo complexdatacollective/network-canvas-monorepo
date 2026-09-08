@@ -1,6 +1,6 @@
 import type { Stage } from '@codaco/protocol-validation';
 
-import type { StageOfType } from './context';
+import type { StageOfType } from './context.ts';
 
 /**
  * The stage types `generateNetwork`'s dispatch deliberately runs no handler

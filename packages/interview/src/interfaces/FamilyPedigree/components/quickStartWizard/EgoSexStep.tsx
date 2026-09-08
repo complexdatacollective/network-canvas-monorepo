@@ -1,5 +1,6 @@
 'use client';
 
+import { AppMessage } from '@codaco/app-i18n/react';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { BIOLOGICAL_SEX_LEAD_IN } from '../../biologicalSexCopy';
@@ -13,7 +14,9 @@ import BiologicalSexField from '../BiologicalSexField';
 export default function EgoSexStep() {
   return (
     <>
-      <Paragraph>{BIOLOGICAL_SEX_LEAD_IN}</Paragraph>
+      <Paragraph>
+        <AppMessage message={BIOLOGICAL_SEX_LEAD_IN} />
+      </Paragraph>
       <BiologicalSexField subject="self" />
     </>
   );

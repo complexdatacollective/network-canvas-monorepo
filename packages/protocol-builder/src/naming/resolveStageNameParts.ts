@@ -1,0 +1,176 @@
+import type {
+  Item,
+  Panel,
+  StageSubject,
+  StageType,
+} from '@codaco/protocol-validation';
+
+import type { Qualifier } from './generateStageLabel.ts';
+
+type EntityNameResolver = (
+  entity: 'node' | 'edge',
+  type: string,
+) => string | null;
+
+type QualifierResolvers = {
+  resolveAssetType: (assetId: string) => string | null;
+  resolveVariableName: (variableId: string) => string | null;
+};
+
+/**
+ * Only the data source distinguishes the panel qualifiers, so the caller can
+ * pass panels assembled from just that leaf — which is what
+ * `usePanelsForAutoName` does, rather than reading the whole `panels` value.
+ */
+type PanelQualifierInput = Pick<Panel, 'dataSource'>;
+
+type QualifierStageFields = {
+  type?: StageType;
+  panels?: PanelQualifierInput[];
+  items?: Item[];
+  nominationPrompts?: { variable: string }[];
+};
+
+/**
+ * The English fragments below are English on purpose, and stay English.
+ *
+ * Every one of them is a part of the SEEDED stage label `generateStageLabel`
+ * assembles and `useAutoStageName` writes into the protocol's stored
+ * `stage.label` — not copy anybody reads on its own. That is the case
+ * `INTERFACE_NAMES` in `interfaces/interfaceNames.ts` is the precedent for:
+ * names are localized where they are DISPLAYED, and left English where they
+ * seed a stored value. The reasoning, and what breaks if the proposal is
+ * localized, is written out over `STAGE_TYPE_NAMES` in `generateStageLabel.ts`.
+ *
+ * It also means `joinList` below stays a hand-rolled join rather than becoming
+ * `intl.formatList`: it is building part of a stored string, so the separators
+ * have to be the same ones every host writes, in every language.
+ */
+
+export function resolveStageSubjectName(
+  subject: StageSubject | undefined,
+  resolveEntityName: EntityNameResolver,
+): string | null {
+  if (!subject || subject.entity === 'ego' || !subject.type) {
+    return null;
+  }
+  return resolveEntityName(subject.entity, subject.type) || null;
+}
+
+function joinList(values: string[]): string {
+  if (values.length === 1) {
+    return values[0]!;
+  }
+  if (values.length === 2) {
+    return `${values[0]} & ${values[1]}`;
+  }
+  return `${values.slice(0, -1).join(', ')} & ${values[values.length - 1]}`;
+}
+
+export function buildListQualifier(
+  rawValues: string[],
+  options: { singularNoun?: string; pluralNoun?: string; summaryNoun: string },
+): Qualifier | null {
+  const values = [
+    ...new Set(rawValues.filter((value) => value && value.trim())),
+  ];
+  if (values.length === 0) {
+    return null;
+  }
+  const summary = `with ${options.summaryNoun}`;
+  if (values.length > 3) {
+    return { full: summary, summary };
+  }
+  const noun =
+    options.singularNoun && options.pluralNoun
+      ? ` ${values.length === 1 ? options.singularNoun : options.pluralNoun}`
+      : '';
+  return { full: `with ${joinList(values)}${noun}`, summary };
+}
+
+const MEDIA_LABELS: Record<string, string> = {
+  image: 'Image',
+  video: 'Video',
+  audio: 'Audio',
+};
+
+// Canonical order so the same set of media always yields the same name,
+// regardless of the order the Information items happen to be in.
+const MEDIA_LABEL_ORDER = ['Image', 'Video', 'Audio'];
+
+function resolvePanelQualifier(
+  panels: PanelQualifierInput[] | undefined,
+): Qualifier | null {
+  if (!panels || panels.length === 0) {
+    return null;
+  }
+  const hasExisting = panels.some((panel) => panel.dataSource === 'existing');
+  const hasRoster = panels.some((panel) => panel.dataSource !== 'existing');
+  let text = 'with Network Panels';
+  if (hasExisting && hasRoster) {
+    text = 'with Panels';
+  } else if (hasRoster) {
+    text = 'with Roster Panels';
+  }
+  return { full: text, summary: text };
+}
+
+function resolveInformationQualifier(
+  items: Item[] | undefined,
+  resolveAssetType: (assetId: string) => string | null,
+): Qualifier | null {
+  if (!items) {
+    return null;
+  }
+  const presentLabels = new Set(
+    items
+      .filter((item) => item.type === 'asset')
+      .map((item) => resolveAssetType(item.content))
+      .map((type) => (type ? (MEDIA_LABELS[type] ?? null) : null))
+      .filter((label): label is string => Boolean(label)),
+  );
+  const mediaLabels = MEDIA_LABEL_ORDER.filter((label) =>
+    presentLabels.has(label),
+  );
+  return buildListQualifier(mediaLabels, { summaryNoun: 'Media' });
+}
+
+function resolveNominationQualifier(
+  prompts: { variable: string }[] | undefined,
+  resolveVariableName: (variableId: string) => string | null,
+): Qualifier | null {
+  if (!prompts) {
+    return null;
+  }
+  const names = prompts
+    .map((prompt) => resolveVariableName(prompt.variable))
+    .filter((name): name is string => Boolean(name));
+  return buildListQualifier(names, {
+    singularNoun: 'Nomination',
+    pluralNoun: 'Nominations',
+    summaryNoun: 'Nominations',
+  });
+}
+
+export function resolveStageQualifier(
+  stage: QualifierStageFields,
+  resolvers: QualifierResolvers,
+): Qualifier | null {
+  switch (stage.type) {
+    case 'NameGenerator':
+    case 'NameGeneratorQuickAdd':
+      return resolvePanelQualifier(stage.panels);
+    case 'Information':
+      return resolveInformationQualifier(
+        stage.items,
+        resolvers.resolveAssetType,
+      );
+    case 'FamilyPedigree':
+      return resolveNominationQualifier(
+        stage.nominationPrompts,
+        resolvers.resolveVariableName,
+      );
+    default:
+      return null;
+  }
+}

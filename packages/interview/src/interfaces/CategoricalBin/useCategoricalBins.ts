@@ -1,3 +1,5 @@
+'use client';
+
 import { isNil } from 'es-toolkit';
 import { get } from 'es-toolkit/compat';
 import { useSelector } from 'react-redux';

@@ -11,21 +11,21 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import type { GenerationConfig } from '../config';
-import type { StageOfType } from '../context';
+import type { GenerationConfig } from '../config.ts';
+import type { StageOfType } from '../context.ts';
 import {
   attainableFamilyPedigreeNodeCeiling,
   canAttainFamilyPedigreeEgoChildBranch,
-} from '../familyPedigree/generateFamilyPedigree';
-import type { ResolvedFamilyPedigreeGenerationOptions } from '../familyPedigree/types';
+} from '../familyPedigree/generateFamilyPedigree.ts';
+import type { ResolvedFamilyPedigreeGenerationOptions } from '../familyPedigree/types.ts';
 import {
   fabricatedPromptNodeCeiling,
   getNodeCountBounds,
   type NodeCreationStage,
   ruleBrokenByFixedValues,
-} from '../nodes';
-import { getSubjectType } from '../subject';
-import { completionCheckFor } from './generateEntityAttributes';
+} from '../nodes.ts';
+import { getSubjectType } from '../subject.ts';
+import { completionCheckFor } from './generateEntityAttributes.ts';
 import {
   declaresNodeCollection,
   lastExistingWriterByType,
@@ -35,9 +35,9 @@ import {
   stageWritesExistingNodeVariable,
   withRuleTiedVariables,
   type NodeVariablesFor,
-} from './stageWrites';
-import type { EntityConstraints } from './types';
-import { valueKey } from './uniqueRegistry';
+} from './stageWrites.ts';
+import type { EntityConstraints } from './types.ts';
+import { valueKey } from './uniqueRegistry.ts';
 
 type WorstCaseCounts = {
   node: NodeCounts;

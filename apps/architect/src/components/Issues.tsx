@@ -3,6 +3,8 @@ import { TriangleAlert } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { resolveFieldErrorTarget } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import {
@@ -13,6 +15,19 @@ import {
 import { candidateIdsFor, flattenIssues, getFieldId } from '../utils/issues';
 import scrollTo from '../utils/scrollTo';
 import { useStageFormContext } from './StageEditor/stageFormContext';
+const messages = defineMessages({
+  issueDetail: {
+    id: 'architect.presentation.issueDetail',
+    defaultMessage: '<fieldLabel>{field}</fieldLabel> - {issue}',
+    description:
+      'Complete presentation message. Preserve authored values; the translator controls spacing and punctuation.',
+  },
+  issues: {
+    id: 'architect.issues.issues',
+    defaultMessage: 'Issues ({issueCount, number})',
+    description: 'Visible text in components / Issues.',
+  },
+});
 
 type UseIssuesToolbarControlResult = {
   control: React.ReactNode;
@@ -31,6 +46,7 @@ const resolveTarget = (field: string): HTMLElement | null => {
 };
 
 export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
+  const intl = useAppIntl();
   // The stage form's field errors are already flat and keyed by field name;
   // `submitFailed` is tracked by the stage form bridge because the panel only
   // surfaces issues once a save has been attempted.
@@ -163,7 +179,7 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
             color="warning"
             className="aria-expanded:border-warning! aria-expanded:bg-warning! aria-expanded:text-warning-contrast!"
           >
-            Issues ({issueCount})
+            {intl.formatMessage(messages.issues, { issueCount: issueCount })}
           </ToolbarButton>
         }
       >
@@ -171,7 +187,7 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
           <div className="flex items-center gap-4 px-5 py-2.5">
             <TriangleAlert className="size-4 shrink-0" aria-hidden />
             <span className="text-sm font-semibold tracking-wider uppercase">
-              Issues ({issueCount})
+              {intl.formatMessage(messages.issues, { issueCount: issueCount })}
             </span>
           </div>
           <hr className="my-0" />
@@ -192,10 +208,15 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
                     onClick={(e) => handleClickIssue(e, field)}
                     className="block w-full px-5 py-2.5 no-underline before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
                   >
-                    <span ref={(el) => setIssueRef(el, id, field)}>
-                      {field}
-                    </span>{' '}
-                    - {issue}
+                    {intl.formatMessage(messages.issueDetail, {
+                      field,
+                      issue,
+                      fieldLabel: (children) => (
+                        <span ref={(el) => setIssueRef(el, id, field)}>
+                          {children}
+                        </span>
+                      ),
+                    })}
                   </a>
                 </li>
               );
@@ -213,6 +234,7 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
     setIssueRef,
     setPanelOpen,
     submitFailed,
+    intl,
   ]);
 
   return { control, openIssues, hasIssues };

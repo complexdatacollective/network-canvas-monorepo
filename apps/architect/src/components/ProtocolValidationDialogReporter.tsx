@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -12,10 +14,50 @@ import {
   subscribeProtocolValidationDialogEvents,
   takeProtocolValidationDialogEvents,
 } from '~/utils/protocolValidationDialogQueue';
+const messages = defineMessages({
+  misconfiguredProtocol: {
+    id: 'architect.protocolValidationDialogReporter.misconfiguredProtocol',
+    defaultMessage: 'Misconfigured Protocol',
+    description:
+      'The title text in components / ProtocolValidationDialogReporter.',
+  },
+  theLatestChangeMadeThisProtocol: {
+    id: 'architect.protocolValidationDialogReporter.theLatestChangeMadeThisProtocol',
+    defaultMessage:
+      'The latest change made this protocol invalid. Revert to the last valid state to continue editing, or return to the start screen.',
+    description:
+      'The description text in components / ProtocolValidationDialogReporter.',
+  },
+  returnToStartScreen: {
+    id: 'architect.protocolValidationDialogReporter.returnToStartScreen',
+    defaultMessage: 'Return to Start Screen',
+    description:
+      'Visible text in components / ProtocolValidationDialogReporter.',
+  },
+  revertToLastValidState: {
+    id: 'architect.protocolValidationDialogReporter.revertToLastValidState',
+    defaultMessage: 'Revert to Last Valid State',
+    description:
+      'Visible text in components / ProtocolValidationDialogReporter.',
+  },
+  theProtocolContainsValidationErrors: {
+    id: 'architect.protocolValidationDialogReporter.theProtocolContainsValidationErrors',
+    defaultMessage: 'Technical details (English):',
+    description:
+      'Visible text in components / ProtocolValidationDialogReporter.',
+  },
+  protocolValidationErrors: {
+    id: 'architect.protocolValidationDialogReporter.protocolValidationErrors',
+    defaultMessage: 'Protocol validation errors',
+    description:
+      'The aria-label text in components / ProtocolValidationDialogReporter.',
+  },
+});
 
 type OpenEvent = Extract<ProtocolValidationDialogEvent, { type: 'open' }>;
 
 const ProtocolValidationDialogReporter = () => {
+  const intl = useAppIntl();
   const [currentEvent, setCurrentEvent] = useState<OpenEvent | null>(null);
   const currentEventRef = useRef<OpenEvent | null>(null);
 
@@ -73,26 +115,32 @@ const ProtocolValidationDialogReporter = () => {
       open
       dismissible={false}
       accent="destructive"
-      title="Misconfigured Protocol"
-      description="The latest change made this protocol invalid. Revert to the last valid state to continue editing, or return to the start screen."
+      title={intl.formatMessage(messages.misconfiguredProtocol)}
+      description={intl.formatMessage(messages.theLatestChangeMadeThisProtocol)}
       footer={
         <>
-          <Button onClick={returnToStart}>Return to Start Screen</Button>
+          <Button onClick={returnToStart}>
+            {intl.formatMessage(messages.returnToStartScreen)}
+          </Button>
           <Button
             autoFocus
             color="destructive"
             onClick={() => finish(currentEvent.onRevert)}
           >
-            Revert to Last Valid State
+            {intl.formatMessage(messages.revertToLastValidState)}
           </Button>
         </>
       }
     >
-      <Paragraph>The protocol contains validation errors:</Paragraph>
+      <Paragraph>
+        {intl.formatMessage(messages.theProtocolContainsValidationErrors)}
+      </Paragraph>
       <pre
+        lang="en"
+        dir="ltr"
         tabIndex={0}
         role="region"
-        aria-label="Protocol validation errors"
+        aria-label={intl.formatMessage(messages.protocolValidationErrors)}
         className="bg-surface-1 max-h-64 overflow-auto rounded-sm p-4 text-sm whitespace-pre-wrap"
       >
         {currentEvent.errorMessage}

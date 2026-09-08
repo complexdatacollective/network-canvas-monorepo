@@ -1,7 +1,12 @@
 import { useId, useMemo, useSyncExternalStore } from 'react';
 
-import type { Command } from '@codaco/studio-sync/apply';
+import type { Command, CommandTarget } from '@codaco/studio-sync/apply';
 
+import type { ResourceResult } from './resources/gateway.ts';
+import type {
+  SessionResourceGateway,
+  StagedResourceCancelReport,
+} from './resources/lifecycle.ts';
 import {
   commandsFromDraftChange,
   type CompoundEditRequest,
@@ -26,12 +31,31 @@ export type StageFormDraftChange = (current: StageFormDraft) => StageFormDraft;
 export type StageEditorController = Readonly<{
   formId: string;
   snapshot: ProtocolBuilderSnapshot;
+  /**
+   * The session's resource gateway, or `undefined` when the host opened the
+   * session without one. The shell provides it to the editor's resource
+   * pickers; they reach it through `useResourceGateway`, never through this.
+   */
+  resourceGateway: SessionResourceGateway | undefined;
   changeFields(next: StageFormDraftChange): void;
-  setField(key: string, value: unknown): void;
-  unsetField(key: string): void;
-  insertItem(key: string, index: number, item: unknown): void;
-  removeItem(key: string, index: number): void;
-  moveItem(key: string, from: number, to: number): void;
+  setField(key: CommandTarget, value: unknown): void;
+  unsetField(key: CommandTarget): void;
+  insertItem(key: CommandTarget, index: number, item: unknown): void;
+  removeItem(key: CommandTarget, index: number): void;
+  moveItem(key: CommandTarget, from: number, to: number): void;
+  /**
+   * Issues commands a list editor has already decided on, and answers with the
+   * draft they produced.
+   *
+   * `changeFields` diffs a whole draft, so everything it can say about a list
+   * is `set` — which loses WHICH row was inserted, removed or moved, the one
+   * thing a collaborator's client needs to replay the edit onto a list that has
+   * since changed. A list editor therefore says what it did. It is handed the
+   * resulting draft because it also owns a control bound to that list, and
+   * reading the value back out of a snapshot it was memoised on would leave the
+   * control a revision behind its own edit.
+   */
+  applyCommands(commands: readonly Command[]): StageFormDraft;
   undo(): void;
   redo(): void;
   validate(): Promise<ProtocolBuilderValidation>;
@@ -39,6 +63,11 @@ export type StageEditorController = Readonly<{
     request: CompoundEditRequest,
   ): Promise<CompoundEditResult>;
   finish(): Promise<void>;
+  /**
+   * Closes the editor without finishing: staged resources are discarded,
+   * except anything a promotion left undecided, which the report names.
+   */
+  cancel(): Promise<ResourceResult<StagedResourceCancelReport>>;
 }>;
 
 export function useStageEditorController(
@@ -57,6 +86,7 @@ export function useStageEditorController(
     () => ({
       formId,
       snapshot,
+      resourceGateway: session.getResourceGateway(),
       changeFields(update: StageFormDraftChange) {
         // Both the draft handed out and the diff baseline are what the session
         // holds NOW, not the snapshot this controller was memoised on, so a
@@ -65,24 +95,31 @@ export function useStageEditorController(
         const current = session.getSnapshot().editedSection.fields;
         session.dispatch(commandsFromDraftChange(current, update(current)));
       },
-      setField(key: string, value: unknown) {
+      setField(key: CommandTarget, value: unknown) {
         const command: Command =
           value === undefined
             ? { op: 'unset', key }
             : { op: 'set', key, value };
         session.dispatch([command]);
       },
-      unsetField(key: string) {
+      unsetField(key: CommandTarget) {
         session.dispatch([{ op: 'unset', key }]);
       },
-      insertItem(key: string, index: number, item: unknown) {
+      insertItem(key: CommandTarget, index: number, item: unknown) {
         session.dispatch([{ op: 'insertItem', key, index, item }]);
       },
-      removeItem(key: string, index: number) {
+      removeItem(key: CommandTarget, index: number) {
         session.dispatch([{ op: 'removeItem', key, index }]);
       },
-      moveItem(key: string, from: number, to: number) {
+      moveItem(key: CommandTarget, from: number, to: number) {
         session.dispatch([{ op: 'moveItem', key, from, to }]);
+      },
+      applyCommands(commands: readonly Command[]) {
+        if (commands.length > 0) session.dispatch(commands);
+        // Read from the session rather than from `snapshot`, for the same
+        // reason `changeFields` does: what this controller was memoised on is
+        // a revision behind anything that arrived since.
+        return session.getSnapshot().editedSection.fields;
       },
       undo: () => session.undo(),
       redo: () => session.redo(),
@@ -90,6 +127,7 @@ export function useStageEditorController(
       requestCompoundEdit: (request: CompoundEditRequest) =>
         session.requestCompoundEdit(request),
       finish: () => session.finish(),
+      cancel: () => session.cancel(),
     }),
     [formId, session, snapshot],
   );

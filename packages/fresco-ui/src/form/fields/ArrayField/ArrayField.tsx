@@ -1,3 +1,5 @@
+'use client';
+
 import { GripVerticalIcon, PlusIcon } from 'lucide-react';
 import {
   AnimatePresence,
@@ -6,6 +8,7 @@ import {
   motion,
   Reorder,
   useDragControls,
+  useIsPresent,
 } from 'motion/react';
 import {
   type ComponentType,
@@ -17,6 +20,10 @@ import {
   useMemo,
   useRef,
 } from 'react';
+
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
@@ -35,6 +42,7 @@ import {
 import { compose, cva, cx } from '../../../utils/cva';
 import type { CreateFormFieldProps } from '../../Field/types';
 import { getInputState } from '../../utils/getInputState';
+import { omitWidgetOnlyAria } from '../../utils/omitWidgetOnlyAria';
 import {
   useArrayFieldItems,
   type ArrayFieldOperation,
@@ -49,6 +57,49 @@ export type {
 // ArrayField: an item reaching a consumer carries the managed properties, so
 // the consumer needs the same strip the hook uses rather than its own copy.
 export { stripManagedProperties } from './useArrayFieldItems';
+
+const messages = defineMessages({
+  reorderHandle: {
+    id: 'frescoUi.arrayField.reorderHandle',
+    defaultMessage: 'Reorder item {index, number} of {count, number}',
+    description: 'Default accessible name of the drag handle on one list item.',
+  },
+  reorderInstructions: {
+    id: 'frescoUi.arrayField.reorderInstructions',
+    defaultMessage:
+      'Drag to reorder. Use the up and down arrow keys with the handle focused.',
+    description: 'Tooltip explaining how to operate the reorder drag handle.',
+  },
+  movedItem: {
+    id: 'frescoUi.arrayField.movedItem',
+    defaultMessage:
+      'Moved item {from, number} to position {to, number} of {count, number}.',
+    description: 'Screen-reader announcement after a list item is reordered.',
+  },
+  addedItem: {
+    id: 'frescoUi.arrayField.addedItem',
+    defaultMessage:
+      'Added item at position {position, number} of {count, number}.',
+    description: 'Screen-reader announcement after a new list item is added.',
+  },
+  removedItem: {
+    id: 'frescoUi.arrayField.removedItem',
+    defaultMessage:
+      'Removed item {position, number}. {count, plural, one {# item remaining} other {# items remaining}}.',
+    description: 'Screen-reader announcement after a list item is deleted.',
+  },
+  addItem: {
+    id: 'frescoUi.arrayField.addItem',
+    defaultMessage: 'Add Item',
+    description: 'Default label of the button that adds a list item.',
+  },
+  emptyState: {
+    id: 'frescoUi.arrayField.emptyState',
+    defaultMessage: 'No items added yet. Click "Add Item" to get started.',
+    description:
+      'Default empty state of the list field; mention the add button by its default label.',
+  },
+});
 
 // Stable empty array to prevent infinite re-renders when value is undefined
 const EMPTY_ARRAY: never[] = [];
@@ -130,8 +181,16 @@ export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
    * pattern. Undefined when the field is disabled or read-only — an
    * ItemComponent that renders its edit affordance from handler presence
    * should omit it then.
+   *
+   * Answers `false` when this row is no longer one of the list's — it was
+   * removed while the item component was holding on to the handler, which is
+   * what an update made after an `await` does. An item component that only
+   * ever updates from an event has nothing to read: the row it is rendered
+   * from is there by definition. One that updates when a round trip through
+   * its host finishes has to check, because the row can go while that runs and
+   * an unanswered write is one the researcher is never told about.
    */
-  onUpdate?: (value: Partial<T>) => void;
+  onUpdate?: (value: Partial<T>) => void | boolean;
   onCancel: () => void;
   /**
    * Undefined when the field is disabled or read-only — an ItemComponent
@@ -279,8 +338,18 @@ type ArrayFieldCustomProps<T extends Record<string, unknown>> = {
    * Receive one semantic descriptor for each committed mutation. When this is
    * provided, it replaces the value-level onChange callback so array-aware
    * form stores can preserve index-based metadata.
+   *
+   * Return `false` when the operation did NOT reach whatever this consumer
+   * commits to — a document that refused the write, a row it could not resolve
+   * — and the list puts its rows back to `value`. Returning nothing means the
+   * operation was taken, which is what a consumer whose own `value` is the only
+   * place a row can go always does. The answer matters because this list draws
+   * every mutation out of its own state before reporting it and re-reads
+   * `value` only when `value` changes: a consumer committing somewhere else can
+   * refuse without its value changing at all, and the row would then stay on
+   * screen belonging to no list.
    */
-  onOperation?: (operation: ArrayFieldOperation<T>) => void;
+  onOperation?: (operation: ArrayFieldOperation<T>) => void | boolean;
 };
 
 export type ArrayFieldProps<T extends Record<string, unknown>> =
@@ -343,10 +412,17 @@ export function ArrayFieldDragHandle({
   itemCount,
   onMove,
   disabled = false,
-  label = `Reorder item ${index + 1} of ${itemCount}`,
+  label,
   className,
   size = 'md',
 }: ArrayFieldDragHandleProps) {
+  const intl = useAppIntl();
+  const resolvedLabel =
+    label ??
+    intl.formatMessage(messages.reorderHandle, {
+      index: index + 1,
+      count: itemCount,
+    });
   const { ref, ...keyboardReorder } = useKeyboardReorder({
     index,
     itemCount,
@@ -357,8 +433,8 @@ export function ArrayFieldDragHandle({
     <button
       ref={ref}
       type="button"
-      aria-label={label}
-      title="Drag to reorder. Use the up and down arrow keys with the handle focused."
+      aria-label={resolvedLabel}
+      title={intl.formatMessage(messages.reorderInstructions)}
       // A disabled or read-only list is not reorderable. Four call sites have
       // always passed this; the handle used to drop it on the floor, leaving
       // both the pointer drag and the arrow keys live in a form nobody was
@@ -403,7 +479,10 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   hasMounted: boolean;
   onCancel: () => void;
   onChange?: (value: T) => void;
-  onUpdateItem?: (internalId: string, value: Partial<T>) => void;
+  // Answers the same way `onMoveItem` below does, and for the same reason: a
+  // `=> void` hop anywhere along the way type-erases the answer before it
+  // reaches the item component, and still typechecks.
+  onUpdateItem?: (internalId: string, value: Partial<T>) => void | boolean;
   onDeleteItem?: (internalId: string) => void;
   onEditItem?: (internalId: string) => void;
   // Carries the refusal channel through the wrapper too, for the reason given
@@ -457,6 +536,13 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   ref: Ref<HTMLLIElement>,
 ) {
   const dragControls = useDragControls();
+  // A removed row stays mounted for as long as its exit animation runs. It is
+  // not part of the list any more: leaving it in the accessibility tree and in
+  // the tab ring means "the row at this index", "the last row" and every query
+  // for one of its controls can answer with a node that is about to be
+  // destroyed — and focus moved onto one of them falls back to `<body>` when
+  // it goes.
+  const isPresent = useIsPresent();
 
   const resolvedItemClasses =
     typeof itemClasses === 'function'
@@ -503,6 +589,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       onDragStart={() => onDragStartItem(item._internalId)}
       onDragEnd={onDragEndItem}
       className={cx(itemVariants(), resolvedItemClasses)}
+      aria-hidden={isPresent ? undefined : true}
+      inert={!isPresent}
       custom={hasMounted}
       layout
       layoutId={item._internalId}
@@ -552,8 +640,8 @@ export default function ArrayField<T extends Record<string, unknown>>({
   itemComponent: ItemComponent,
   editorComponent: EditorComponent,
   itemTemplate,
-  addButtonLabel = 'Add Item',
-  emptyStateMessage = 'No items added yet. Click "Add Item" to get started.',
+  addButtonLabel,
+  emptyStateMessage,
   confirmDelete = true,
   immediateAdd = false,
   itemClasses,
@@ -562,6 +650,11 @@ export default function ArrayField<T extends Record<string, unknown>>({
   className,
   ...ariaProps
 }: ArrayFieldProps<T>) {
+  const intl = useAppIntl();
+  const resolvedAddButtonLabel =
+    addButtonLabel ?? intl.formatMessage(messages.addItem);
+  const resolvedEmptyStateMessage =
+    emptyStateMessage ?? intl.formatMessage(messages.emptyState);
   // Props for getInputState - combines disabled/readOnly with aria props
   const inputStateProps = { disabled, readOnly, ...ariaProps };
 
@@ -583,11 +676,12 @@ export default function ArrayField<T extends Record<string, unknown>>({
   const isInteractionDisabled = (disabled ?? false) || (readOnly ?? false);
 
   const handleCommittedChange = useCallback(
-    (nextValue: T[], operation: ArrayFieldOperation<T>) => {
-      if (onOperation) {
-        onOperation(operation);
-        return;
-      }
+    (nextValue: T[], operation: ArrayFieldOperation<T>): void | boolean => {
+      // Answered straight through, refusal included: this list's rows go back
+      // to `value` when the consumer says the operation reached nothing.
+      if (onOperation) return onOperation(operation);
+      // The value-level route cannot refuse — the value it is handed IS where
+      // the rows live, so reporting the change is the write.
       onChange?.(nextValue);
     },
     [onChange, onOperation],
@@ -732,9 +826,13 @@ export default function ArrayField<T extends Record<string, unknown>>({
 
     setItems(previewItems, { type: 'move', from: drag.from, to });
     announce(
-      `Moved item ${drag.from + 1} to position ${to + 1} of ${previewItems.length}.`,
+      intl.formatMessage(messages.movedItem, {
+        from: drag.from + 1,
+        to: to + 1,
+        count: previewItems.length,
+      }),
     );
-  }, [announce, isInteractionDisabled, setItems]);
+  }, [announce, intl, isInteractionDisabled, setItems]);
 
   // Answers `false` on every path that leaves the item where it was, so the
   // drag handle disarms rather than waiting to reclaim focus after a move that
@@ -769,10 +867,14 @@ export default function ArrayField<T extends Record<string, unknown>>({
         setItems(reorderedItems, { type: 'move', from, to });
       }
       announce(
-        `Moved item ${currentIndex + 1} to position ${boundedIndex + 1} of ${items.length}.`,
+        intl.formatMessage(messages.movedItem, {
+          from: currentIndex + 1,
+          to: boundedIndex + 1,
+          count: items.length,
+        }),
       );
     },
-    [announce, isInteractionDisabled, items, setItems],
+    [announce, intl, isInteractionDisabled, items, setItems],
   );
 
   const commitEditing = useCallback(
@@ -786,7 +888,10 @@ export default function ArrayField<T extends Record<string, unknown>>({
       saveEditing(data);
       if (newItemPosition !== null) {
         announce(
-          `Added item at position ${newItemPosition} of ${confirmedItemCount + 1}.`,
+          intl.formatMessage(messages.addedItem, {
+            position: newItemPosition,
+            count: confirmedItemCount + 1,
+          }),
         );
       }
     },
@@ -795,6 +900,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
       confirmedItemCount,
       editingIndex,
       editingItem?._draft,
+      intl,
       items,
       saveEditing,
     ],
@@ -817,13 +923,16 @@ export default function ArrayField<T extends Record<string, unknown>>({
       const removeAndAnnounce = () => {
         removeItem(internalId);
         announce(
-          `Removed item ${position}. ${Math.max(0, confirmedItemCount - 1)} items remaining.`,
+          intl.formatMessage(messages.removedItem, {
+            position,
+            count: Math.max(0, confirmedItemCount - 1),
+          }),
         );
       };
 
       if (confirmDelete) {
         await confirm({
-          confirmLabel: 'Delete',
+          confirmLabel: intl.formatMessage(commonMessages.delete),
           onConfirm: removeAndAnnounce,
           // On confirm the row — and the Delete control that opened this — is
           // gone, so focus has nowhere to return to. The add button is the
@@ -840,6 +949,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
       confirm,
       confirmedItemCount,
       confirmDelete,
+      intl,
       isDraft,
       isInteractionDisabled,
       items,
@@ -859,7 +969,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
     maxItems !== undefined && confirmedItemCount >= Math.max(0, maxItems);
   const effectiveSortable = sortable && !isInteractionDisabled;
 
-  // Extract conflicting event handlers and ref before spreading to motion component
+  // Extract conflicting event handlers and ref before spreading to motion
+  // component. `aria-readonly` and `aria-required` are dropped separately, at
+  // the element they would land on — see `omitWidgetOnlyAria` below.
   const {
     onAnimationStart,
     onAnimationEnd,
@@ -903,7 +1015,12 @@ export default function ArrayField<T extends Record<string, unknown>>({
           style={{ borderRadius: 28 }}
           role="list"
           layout
-          {...safeAriaProps}
+          // `role="list"` allows neither `aria-readonly` nor `aria-required`,
+          // and this field has no widget to move them onto. The read-only
+          // state shows in the suppressed add, edit and delete affordances;
+          // required-ness in the label's marker and the visually hidden
+          // "Required" element this list already names in `aria-describedby`.
+          {...omitWidgetOnlyAria(safeAriaProps)}
         >
           <AnimatePresence mode="popLayout">
             {renderableItems.length === 0 && (
@@ -917,7 +1034,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                 animate="animate"
                 exit="exit"
               >
-                {emptyStateMessage}
+                {resolvedEmptyStateMessage}
               </motion.li>
             )}
             {renderableItems.map((item) => {
@@ -968,7 +1085,10 @@ export default function ArrayField<T extends Record<string, unknown>>({
               if (immediateAdd) {
                 addItem(itemTemplate() as T);
                 announce(
-                  `Added item at position ${confirmedItemCount + 1} of ${confirmedItemCount + 1}.`,
+                  intl.formatMessage(messages.addedItem, {
+                    position: confirmedItemCount + 1,
+                    count: confirmedItemCount + 1,
+                  }),
                 );
                 return;
               }
@@ -977,7 +1097,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
             icon={<PlusIcon />}
             disabled={isInteractionDisabled || (!immediateAdd && !!editingItem)}
           >
-            {addButtonLabel}
+            {resolvedAddButtonLabel}
           </MotionButton>
         )}
         {EditorComponent && (

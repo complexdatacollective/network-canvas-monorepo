@@ -348,8 +348,10 @@ function SoftwareCard({
   link: SoftwareLink;
   renderLink: (props: SiteNavigationLinkRenderProps) => ReactElement;
 }) {
+  // No `transition-colors`: the hover tint is a 10% wash on the popup surface,
+  // and easing it in over 150ms reads as the highlight lagging the pointer.
   const className = cx(
-    'focusable flex h-full w-[23rem] items-start gap-4 rounded p-5 transition-colors',
+    'focusable flex h-full w-[23rem] items-start gap-4 rounded p-5',
     hoverAccentClasses[link.id],
   );
   const content = (
@@ -528,7 +530,7 @@ function MobileLinkGroup({
             'children': link.label,
             'className': cx(
               linkClasses,
-              'pl-3',
+              'ps-3',
               link.active && 'text-neon-coral',
             ),
             'onClick': closeMenu,
@@ -764,7 +766,7 @@ export default function SiteNavigation({
       className={cx('@container relative z-50', className)}
       style={style}
     >
-      <div className="absolute top-2 left-2 z-50">
+      <div className="absolute inset-s-2 top-2 z-50">
         <a
           href={`#${skipToId}`}
           onClick={handleSkipLinkClick}
@@ -804,7 +806,7 @@ export default function SiteNavigation({
         <div
           className={cx(
             'flex items-center gap-1',
-            mobileAccessory ? 'ml-4 min-w-0 flex-1' : undefined,
+            mobileAccessory ? 'ms-4 min-w-0 flex-1' : undefined,
             breakpointClasses.mobile,
           )}
         >

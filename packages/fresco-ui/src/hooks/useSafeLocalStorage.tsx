@@ -1,3 +1,5 @@
+'use client';
+
 import { useLocalStorage } from 'usehooks-ts';
 import type { z } from 'zod/mini';
 

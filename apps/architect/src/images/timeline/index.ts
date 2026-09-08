@@ -1,13 +1,5 @@
 import manifest from '@codaco/interface-images/manifest';
-
-import Default from './stage--Default.webp';
-
-/**
- * Placeholder for stage types that have no generated screenshot in
- * @codaco/interface-images (e.g. types not yet implemented in the
- * interview package). Dimensions must match the file.
- */
-export const defaultStageImage = { src: Default, width: 448, height: 307 };
+import { defaultStageImage } from '@codaco/protocol-builder/interfaces/StageTypeImage';
 
 /** The timeline renders stage thumbnails at w-56 (224px), i.e. 448px at 2x. */
 const PRELOAD_TARGET_WIDTH = 448;

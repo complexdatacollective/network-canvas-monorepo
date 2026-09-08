@@ -4,6 +4,7 @@ import { has } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import type { Form } from '@codaco/protocol-validation';
 import {
@@ -40,6 +41,7 @@ import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { decryptData } from '../Anonymisation/utils';
+import { interfaceMessages } from '../messages';
 import NodeForm from './components/NodeForm';
 import NodePanels from './components/NodePanels';
 import QuickNodeForm from './components/QuickNodeForm';
@@ -53,6 +55,7 @@ function isNumberArray(value: unknown): value is number[] {
 type NameGeneratorProps = StageProps<'NameGeneratorQuickAdd' | 'NameGenerator'>;
 
 const NameGenerator = (props: NameGeneratorProps) => {
+  const intl = useAppIntl();
   const { stage } = props;
 
   const { behaviours, type, panels } = stage;
@@ -68,7 +71,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
     form = stage.form;
   }
 
-  const interfaceRef = useRef(null);
+  const interfaceRef = useRef<HTMLDivElement>(null);
 
   const { isLastPrompt, promptIndex } = usePrompts();
   const { requirePassphrase, passphrase, isEnabled } = usePassphrase();
@@ -221,13 +224,16 @@ const NameGenerator = (props: NameGeneratorProps) => {
               if (codebookForNodeType[variableId]?.encrypted) {
                 const secureAttributes = node[entitySecureAttributesMeta];
                 if (!secureAttributes?.[variableId]) {
+                  // The node id stays out of the message: errors are
+                  // reported to analytics, and a node id is a participant
+                  // network identifier the runtime otherwise pseudonymises.
                   throw new Error(
-                    `Secure attributes missing for ${variableId} on node ${node[entityPrimaryKeyProperty]}`,
+                    `Secure attributes missing for encrypted variable ${variableId}`,
                   );
                 }
                 if (!isNumberArray(value)) {
                   throw new Error(
-                    `Encrypted value missing for ${variableId} on node ${node[entityPrimaryKeyProperty]}`,
+                    `Encrypted value missing for encrypted variable ${variableId}`,
                   );
                 }
 
@@ -282,7 +288,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
   // toggle role — for something that does nothing.
   const onNodeTapped = form ? handleSelectNode : undefined;
 
-  const stageElement = usePortalTarget('stage');
+  const stageElement = usePortalTarget('stage', interfaceRef);
   const isSmallScreen = useMediaQuery('(max-aspect-ratio: 3/4)');
   const isWideScreen = useMediaQuery('(min-aspect-ratio: 3/2)');
 
@@ -309,13 +315,22 @@ const NameGenerator = (props: NameGeneratorProps) => {
             }
             defaultBasis={defaultBasis()}
             breakpoints={[
-              { value: 25, label: '25% panels' },
-              { value: 33, label: 'One-third panels' },
-              { value: 50, label: 'Equal split' },
+              {
+                value: 25,
+                label: intl.formatMessage(interfaceMessages.quarterPanels),
+              },
+              {
+                value: 33,
+                label: intl.formatMessage(interfaceMessages.oneThirdPanels),
+              },
+              {
+                value: 50,
+                label: intl.formatMessage(interfaceMessages.equalSplit),
+              },
             ]}
             overrideBasis={isPanelsOpen ? undefined : 0}
             className="min-h-0 w-full flex-1 basis-full"
-            aria-label="Resize panel and node list areas"
+            aria-label={intl.formatMessage(interfaceMessages.resizePanels)}
             orientation={isSmallScreen ? 'vertical' : 'horizontal'}
           >
             <NodePanels
@@ -332,7 +347,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
               onItemClick={onNodeTapped}
               animationKey={promptIndex}
               className="flex flex-1 rounded"
-              announcedName="Added Nodes"
+              announcedName={intl.formatMessage(interfaceMessages.addedNodes)}
               testId="node-list"
             />
           </ResizableFlexPanel>
@@ -347,7 +362,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
               onItemClick={onNodeTapped}
               animationKey={promptIndex}
               className="flex flex-1 rounded"
-              announcedName="Added Nodes"
+              announcedName={intl.formatMessage(interfaceMessages.addedNodes)}
               testId="node-list"
             />
           </div>

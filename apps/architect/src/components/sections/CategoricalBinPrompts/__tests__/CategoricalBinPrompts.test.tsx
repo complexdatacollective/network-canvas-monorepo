@@ -233,7 +233,11 @@ describe('CategoricalBinPrompts', () => {
   it('renders the prompts array field for a node subject', () => {
     renderSection({ subject: { entity: 'node', type: 'person' } });
     const prompts = screen.getByRole('list', { name: 'Prompts' });
-    expect(prompts).toHaveAttribute('aria-required', 'true');
+    // `role="list"` does not support `aria-required` — axe reports it as a
+    // critical `aria-allowed-attr` failure — so the list must NOT carry it.
+    // The requirement reaches assistive technology through the visually hidden
+    // "Required" marker the field names in `aria-describedby` instead.
+    expect(prompts).not.toHaveAttribute('aria-required');
     expect(prompts).toHaveAccessibleDescription(/Required/);
     expect(
       screen.getByRole('button', { name: 'Create new prompt' }),

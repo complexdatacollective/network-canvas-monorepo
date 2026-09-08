@@ -3,6 +3,9 @@
 import { motion } from 'motion/react';
 import { useCallback, useRef } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import Button from '../../Button';
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
@@ -18,6 +21,24 @@ import { compose, cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
+const messages = defineMessages({
+  yes: {
+    id: 'frescoUi.booleanField.yes',
+    defaultMessage: 'Yes',
+    description: 'Default affirmative option of a yes/no field.',
+  },
+  no: {
+    id: 'frescoUi.booleanField.no',
+    defaultMessage: 'No',
+    description: 'Default negative option of a yes/no field.',
+  },
+  resetAnswer: {
+    id: 'frescoUi.booleanField.resetAnswer',
+    defaultMessage: 'Reset answer',
+    description: 'Action that clears the answer to a yes/no field.',
+  },
+});
+
 type BooleanOption = {
   label: string;
   value: boolean;
@@ -31,7 +52,7 @@ const optionCardVariants = compose(
     base: cx(
       'grid cursor-pointer grid-cols-[auto_1fr] content-start items-start gap-x-4! gap-y-2!',
       'overflow-hidden rounded border-2 border-current/20',
-      'bg-input text-input-contrast text-left text-wrap',
+      'bg-input text-input-contrast text-start text-wrap',
       'transition-colors duration-200',
       'focusable',
     ),
@@ -144,6 +165,7 @@ function BooleanIndicator({
 }
 
 export default function BooleanField(props: BooleanFieldProps) {
+  const intl = useAppIntl();
   const {
     id,
     className,
@@ -152,8 +174,8 @@ export default function BooleanField(props: BooleanFieldProps) {
     noReset = true,
     label,
     options = [
-      { label: 'Yes', value: true },
-      { label: 'No', value: false },
+      { label: intl.formatMessage(messages.yes), value: true },
+      { label: intl.formatMessage(messages.no), value: false },
     ],
     disabled,
     readOnly,
@@ -285,7 +307,7 @@ export default function BooleanField(props: BooleanFieldProps) {
           onClick={() => onChange?.(undefined)}
           disabled={Boolean(disabled) || Boolean(readOnly)}
         >
-          Reset answer
+          {intl.formatMessage(messages.resetAnswer)}
         </Button>
       )}
     </div>

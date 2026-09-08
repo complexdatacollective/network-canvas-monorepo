@@ -36,6 +36,22 @@ directly on the PR. Production is no longer deployed on every push to `main`—i
 is deployed only when the Version Packages PR containing an Interviewer version
 bump merges.
 
+Merge the Version Packages PR through the merge queue while it is current. If
+main gains a normal-lane changeset after the PR head was generated, the merged
+tree carries both the bumped versions and that changeset, and
+`changesets/action` regenerates the PR instead of publishing the libraries —
+the app lane still deploys (it is tag-driven), but the library versions this
+release depends on never reach npm and the next release PR bumps past them.
+The `version-packages-freshness` job refuses such a merge; wait for the bot to
+regenerate the head and queue that. Pushes to main also run concurrently, so a
+`release` job whose commit is no longer main's tip stops before
+`changesets/action` runs (`.github/scripts/superseded-push-guard.sh`) rather
+than regenerating a release PR that has already merged; release jobs run one
+at a time, and a tip run with nothing left to version closes any release PR a
+superseded run still managed to open. The app lane needs no
+such check: `app-release-guard.sh` below already makes a superseded tree
+harmless, and it skips with a warning that needs no follow-up.
+
 ## Hotfix releases (when main is ahead)
 
 The changeset lane always builds main, so it can only ship a patch together

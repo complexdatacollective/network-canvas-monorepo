@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import AssignAttributes, {
@@ -24,6 +26,34 @@ import {
   excludeValidatedUses,
   hasValidatedUse,
 } from '~/selectors/roleFilters';
+const messages = defineMessages({
+  additionalAttributes: {
+    id: 'architect.sections.nameGeneratorPrompts.promptFields.additionalAttributes',
+    defaultMessage: 'Additional attributes',
+    description:
+      'The title text in components / sections / NameGeneratorPrompts / PromptFields.',
+  },
+  assignFixedAttributeValuesToNodes: {
+    id: 'architect.sections.nameGeneratorPrompts.promptFields.assignFixedAttributeValuesToNodes',
+    defaultMessage:
+      'Assign fixed attribute values to nodes created from this prompt.',
+    description:
+      'The description text in components / sections / NameGeneratorPrompts / PromptFields.',
+  },
+  attributeAssignments: {
+    id: 'architect.sections.nameGeneratorPrompts.promptFields.attributeAssignments',
+    defaultMessage: 'Attribute assignments',
+    description:
+      'The label text in components / sections / NameGeneratorPrompts / PromptFields.',
+  },
+  optionUseAssignedValuesInSkipLogic: {
+    id: 'architect.sections.nameGeneratorPrompts.promptFields.useAssignedValuesInSkipLogic',
+    defaultMessage:
+      'Use assigned values in skip logic or stage filtering rules.',
+    description:
+      'The hint text in components / sections / NameGeneratorPrompts / PromptFields.',
+  },
+});
 
 /**
  * Stable identities for the empty cases. `EMPTY_ATTRIBUTES` feeds
@@ -88,6 +118,7 @@ const PromptFields = ({
   additionalAttributes = EMPTY_ATTRIBUTES,
   currentStageIndex,
 }: PromptFieldsProps) => {
+  const intl = useAppIntl();
   // ONE committed-pick set, shared by all three layers that need the same
   // escape: the picker pool below, the row's displayed cross-class error, and
   // the array field's blocking rule. Membership, never a row's position — see
@@ -181,8 +212,10 @@ const PromptFields = ({
     <>
       <PromptText initialValue={text} />
       <Section
-        title="Additional attributes"
-        description="Assign fixed attribute values to nodes created from this prompt."
+        title={intl.formatMessage(messages.additionalAttributes)}
+        description={intl.formatMessage(
+          messages.assignFixedAttributeValuesToNodes,
+        )}
       >
         {/*
           The field only mounts once a node type is chosen: with no subject
@@ -194,8 +227,10 @@ const PromptFields = ({
         {subject && (
           <ArchitectArrayField
             name="additionalAttributes"
-            label="Attribute assignments"
-            hint="Use assigned values in skip logic or stage filtering rules."
+            label={intl.formatMessage(messages.attributeAssignments)}
+            hint={intl.formatMessage(
+              messages.optionUseAssignedValuesInSkipLogic,
+            )}
             component={AssignAttributes}
             initialValue={additionalAttributes}
             entity={subject.entity}

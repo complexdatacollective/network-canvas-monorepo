@@ -13,12 +13,26 @@
   "exports": {
     "./apply": "./src/apply.ts",
     "./client": "./src/client.ts",
+    "./postgres-pool": "./src/postgres-pool.ts",
     "./protocol-document": "./src/protocol-document.ts",
     "./server": "./src/server.ts",
     "./rls": "./src/rls.ts",
     "./schema": "./src/schema.ts",
     "./taxonomy": "./src/taxonomy.ts",
-    "./tenant": "./src/tenant.ts"
+    "./tenant": "./src/tenant.ts",
+    "./role-bootstrap": "./src/role-bootstrap.ts",
+    "./email-sender": "./src/email-sender.ts",
+    "./postmark-email-sender": "./src/postmark-email-sender.ts",
+    "./section-validation": "./src/section-validation.ts",
+    "./template-metadata": "./src/template-metadata.ts",
+    "./template-exchange": "./src/template-exchange.ts",
+    "./postgres-catalog-privileges": "./src/postgres-catalog-privileges.ts",
+    "./postgres-migration-evidence": "./src/postgres-migration-evidence.ts",
+    "./postgres-database-enrollment": "./src/postgres-database-enrollment.ts",
+    "./postgres-database-identity": "./src/postgres-database-identity.ts",
+    "./postgres-runtime-identity": "./src/postgres-runtime-identity.ts",
+    "./postgres-restricted-identities": "./src/postgres-restricted-identities.ts",
+    "./postgres-backup": "./src/postgres-backup.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -26,12 +40,20 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@codaco/protocol-validation": "workspace:^",
     "@noble/hashes": "^2.3.0",
+    "crc-32": "^1.2.2",
     "drizzle-orm": "catalog:",
-    "pg": "^8.22.0"
+    "fflate": "^0.8.3",
+    "file-type": "^22.0.2",
+    "nodemailer": "9.0.5",
+    "pg": "^8.22.0",
+    "pg-connection-string": "^2.14.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
+    "@types/nodemailer": "8.0.1",
     "@types/pg": "^8.20.4",
     "drizzle-kit": "catalog:",
     "fast-check": "^4.9.0",

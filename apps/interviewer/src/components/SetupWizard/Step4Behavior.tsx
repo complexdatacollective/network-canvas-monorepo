@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import SecurityBehaviorControls, {
   type Behavior,
@@ -43,14 +45,15 @@ function asBehavior(value: unknown): Behavior {
 }
 
 export default function Step4Behavior() {
+  const intl = useAppIntl();
   const wizard = useWizard();
   const behavior = asBehavior(wizard.data.behavior);
 
   useEffect(() => {
     wizard.setNextEnabled(true);
-    wizard.setNextLabel('Continue');
+    wizard.setNextLabel(intl.formatMessage(commonMessages.continue));
     wizard.setBeforeNext(null);
-  }, [wizard]);
+  }, [intl, wizard]);
 
   return (
     <SecurityBehaviorControls

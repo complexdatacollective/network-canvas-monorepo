@@ -10,7 +10,7 @@ export const paragraphVariants = cva({
   variants: {
     intent: {
       default: '',
-      blockquote: 'mt-4 border-l-2 pl-6 italic',
+      blockquote: 'mt-4 border-s-2 ps-6 italic',
       inlineCode:
         'bg-background/50 font-monospace relative rounded px-1.5 py-0.5 font-semibold',
       lead: 'text-lg',

@@ -8,6 +8,8 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { ArrayFieldItemProps } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
@@ -20,12 +22,53 @@ import {
   variableDisplayName,
 } from '~/components/Validations/contradictions';
 import type { RootState } from '~/ducks/modules/root';
+import { formatConfig } from '~/i18n/formatConfig';
 import { getVariablesForSubject } from '~/selectors/codebook';
 import { getVariableRoleMapOutsideStage } from '~/selectors/indexes';
 import { hasValidatedUse } from '~/selectors/roleFilters';
 
 import RowField from './RowField';
 import { useCreateVariable } from './useCreateVariable';
+const configMessages = defineMessages({
+  true: {
+    id: 'architect.form.arrayFields.attribute.config.true',
+    defaultMessage: 'True',
+    description:
+      'Presentation label or description in components/Form/arrayFields/Attribute.tsx. Identifiers are not translated.',
+  },
+  false: {
+    id: 'architect.form.arrayFields.attribute.config.false',
+    defaultMessage: 'False',
+    description:
+      'Presentation label or description in components/Form/arrayFields/Attribute.tsx. Identifiers are not translated.',
+  },
+});
+const messages = defineMessages({
+  createOrSelectAnAttribute: {
+    id: 'architect.form.arrayFields.attribute.createOrSelectAnAttribute',
+    defaultMessage: 'Create or select an attribute',
+    description:
+      'The label text in components / Form / arrayFields / Attribute.',
+  },
+  valueToAssign: {
+    id: 'architect.form.arrayFields.attribute.valueToAssign',
+    defaultMessage: 'Value to assign',
+    description:
+      'The label text in components / Form / arrayFields / Attribute.',
+  },
+  everyNodeCreatedOnThisPrompt: {
+    id: 'architect.form.arrayFields.attribute.everyNodeCreatedOnThisPrompt',
+    defaultMessage: 'Every node created on this prompt is given this value.',
+    description:
+      'The hint text in components / Form / arrayFields / Attribute.',
+  },
+  deleteAttribute: {
+    id: 'architect.form.arrayFields.attribute.deleteAttribute',
+    defaultMessage: 'Delete attribute',
+    description:
+      'The aria-label text in components / Form / arrayFields / Attribute.',
+  },
+});
 
 const FrescoBooleanControl = FrescoBooleanField as ComponentType<
   Record<string, unknown>
@@ -83,8 +126,8 @@ const useAssignAttributesContext = () => {
 };
 
 const BOOLEAN_OPTIONS = [
-  { label: 'True', value: true },
-  { label: 'False', value: false },
+  { label: configMessages.true, value: true },
+  { label: configMessages.false, value: false },
 ];
 
 /**
@@ -178,6 +221,7 @@ const Attribute = ({
   disabled,
   readOnly,
 }: ArrayFieldItemProps<AttributeValue>) => {
+  const intl = useAppIntl();
   const {
     arrayName,
     entity,
@@ -239,7 +283,7 @@ const Attribute = ({
       <div>
         <RowField
           name={`${rowFieldName}.variable`}
-          label="Create or select an attribute"
+          label={intl.formatMessage(messages.createOrSelectAnAttribute)}
           component={FrescoVariablePicker}
           value={variable}
           onChange={(value: unknown) =>
@@ -258,8 +302,8 @@ const Attribute = ({
         {variable && (
           <RowField
             name={`${rowFieldName}.value`}
-            label="Value to assign"
-            hint="Every node created on this prompt is given this value."
+            label={intl.formatMessage(messages.valueToAssign)}
+            hint={intl.formatMessage(messages.everyNodeCreatedOnThisPrompt)}
             component={FrescoBooleanControl}
             value={item.value}
             onChange={(value: unknown) =>
@@ -269,7 +313,7 @@ const Attribute = ({
             }
             validation={{ required: true }}
             forceShowErrors={forceShowErrors}
-            options={BOOLEAN_OPTIONS}
+            options={formatConfig(BOOLEAN_OPTIONS, intl)}
             noReset
             disabled={disabled || readOnly}
           />
@@ -277,7 +321,7 @@ const Attribute = ({
       </div>
       <IconButton
         icon={<Trash2 />}
-        aria-label="Delete attribute"
+        aria-label={intl.formatMessage(messages.deleteAttribute)}
         color="destructive"
         disabled={disabled || readOnly}
         onClick={onDelete}

@@ -19,6 +19,7 @@
   ],
   "exports": {
     "./fresco.css": "./fresco/fresco.css",
+    "./studio.css": "./fresco/studio.css",
     "./colors.css": "./shared/colors.css",
     "./fonts/inclusive-sans.css": "./shared/fonts/inclusive-sans.css",
     "./fonts/nunito.css": "./shared/fonts/nunito.css"

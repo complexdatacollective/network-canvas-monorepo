@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { type ReactNode, createElement, useEffect, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
@@ -10,12 +12,47 @@ import * as authApi from '~/lib/auth/api';
 
 import NoRecoveryNotice from './NoRecoveryNotice';
 
+const messages = defineMessages({
+  passphraseSetupFailed: {
+    id: 'interviewer.step3PassphraseConfigure.passphraseSetupFailed',
+    defaultMessage: 'Passphrase setup failed.',
+    description:
+      'User-facing message in Interviewer Step3Passphrase Configure.',
+  },
+  enterPassphrase: {
+    id: 'interviewer.step3PassphraseConfigure.enterPassphrase',
+    defaultMessage: 'Enter passphrase',
+    description: 'The label label in Interviewer Step3Passphrase Configure.',
+  },
+  aPasswordOfAtLeast12Characters: {
+    id: 'interviewer.step3PassphraseConfigure.aPasswordOfAtLeast12Characters',
+    defaultMessage:
+      'A password of at least 12 characters that combines uppercase, lowercase, numbers, and symbols.',
+    description: 'The hint label in Interviewer Step3Passphrase Configure.',
+  },
+  confirmPassphrase: {
+    id: 'interviewer.step3PassphraseConfigure.confirmPassphrase',
+    defaultMessage: 'Confirm passphrase',
+    description: 'The label label in Interviewer Step3Passphrase Configure.',
+  },
+  passphrasesDoNotMatch: {
+    id: 'interviewer.step3PassphraseConfigure.passphrasesDoNotMatch',
+    defaultMessage: 'Passphrases do not match.',
+    description: 'Visible copy in Interviewer Step3Passphrase Configure.',
+  },
+  iUnderstandThereIsNoRecovery: {
+    id: 'interviewer.step3PassphraseConfigure.iUnderstandThereIsNoRecovery',
+    defaultMessage: 'I understand there is no recovery.',
+    description: 'The label label in Interviewer Step3Passphrase Configure.',
+  },
+});
+
 export default function Step3PassphraseConfigure() {
   const wizard = useWizard();
   const [phrase, setPhrase] = useState('');
   const [confirm, setConfirm] = useState('');
   const [affirmed, setAffirmed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReactNode>(null);
 
   const strength = getPasswordStrength(phrase);
   const isValid =
@@ -44,7 +81,14 @@ export default function Step3PassphraseConfigure() {
       const result = await authApi.enrolWithPassphrase(phrase);
 
       if (!result.ok) {
-        setError(result.message ?? 'Passphrase setup failed.');
+        setError(
+          createElement(AppMessage, {
+            message:
+              result.localizedMessage?.descriptor ??
+              messages.passphraseSetupFailed,
+            values: result.localizedMessage?.values,
+          }),
+        );
         return false;
       }
 
@@ -78,37 +122,38 @@ export function Step3PassphraseConfigureView({
   phrase: string;
   confirmValue: string;
   affirmed: boolean;
-  error: string | null;
+  error: ReactNode;
   onPhraseChange: (value: string) => void;
   onConfirmChange: (value: string) => void;
   onAffirmChange: (value: boolean) => void;
 }) {
+  const intl = useAppIntl();
   return (
     <>
       <UnconnectedField
         name="passphrase"
-        label="Enter passphrase"
-        hint="A password of at least 12 characters that combines uppercase, lowercase, numbers, and symbols."
+        label={intl.formatMessage(messages.enterPassphrase)}
+        hint={intl.formatMessage(messages.aPasswordOfAtLeast12Characters)}
         component={PasswordField}
         value={phrase}
         onChange={(v) => onPhraseChange(v ?? '')}
         suppressPasswordManager
         showStrengthMeter
-        placeholder="Enter passphrase"
+        placeholder={intl.formatMessage(messages.enterPassphrase)}
       />
       <UnconnectedField
         name="passphrase-confirm"
-        label="Confirm passphrase"
+        label={intl.formatMessage(messages.confirmPassphrase)}
         component={PasswordField}
         value={confirmValue}
         onChange={(v) => onConfirmChange(v ?? '')}
         suppressPasswordManager
         showStrengthMeter={false}
-        placeholder="Confirm passphrase"
+        placeholder={intl.formatMessage(messages.confirmPassphrase)}
       />
       {confirmValue.length > 0 && phrase !== confirmValue && (
         <Paragraph margin="none" className="text-destructive text-sm">
-          Passphrases do not match.
+          {intl.formatMessage(messages.passphrasesDoNotMatch)}
         </Paragraph>
       )}
       {error && (
@@ -122,7 +167,7 @@ export function Step3PassphraseConfigureView({
       <NoRecoveryNotice method="passphrase" />
       <UnconnectedField
         name="passphrase-affirmation"
-        label="I understand there is no recovery."
+        label={intl.formatMessage(messages.iUnderstandThereIsNoRecovery)}
         component={Checkbox}
         value={affirmed}
         onChange={(v) => onAffirmChange(v ?? false)}

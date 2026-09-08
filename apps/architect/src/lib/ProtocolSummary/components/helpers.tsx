@@ -1,11 +1,25 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import type { IndexEntry } from './SummaryContext';
+const messages = defineMessages({
+  boolean: {
+    id: 'architect.summary.boolean',
+    defaultMessage: '{value, select, true {TRUE} other {FALSE}}',
+    description:
+      'Display of a boolean value in the printable summary. Stored values are unchanged.',
+  },
+});
 
-export const renderValue = (value: string | number | boolean | unknown) => {
-  if (typeof value === 'boolean') {
-    return value ? <em>TRUE</em> : <em>FALSE</em>;
-  }
-
-  return String(value);
+export const SummaryValue = ({ value }: { value: unknown }) => {
+  const intl = useAppIntl();
+  return typeof value === 'boolean' ? (
+    <em>{intl.formatMessage(messages.boolean, { value: String(value) })}</em>
+  ) : typeof value === 'number' ? (
+    intl.formatNumber(value)
+  ) : (
+    String(value)
+  );
 };
 
 export const getVariableName = (

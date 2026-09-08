@@ -3,6 +3,9 @@ import { enableMapSet } from 'immer';
 import { immer } from 'zustand/middleware/immer';
 import { createStore, type Mutate, type StoreApi } from 'zustand/vanilla';
 
+import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
+
+import { resolveIntl } from '../../utils/resolveIntl';
 import type { FieldValue } from '../Field/types';
 import {
   createObjectPathWriter,
@@ -22,6 +25,27 @@ import type {
   FormConfig,
   FormSubmitHandler,
 } from './types';
+
+const storeMessages = defineMessages({
+  validationFailed: {
+    id: 'frescoUi.formStore.validationFailed',
+    defaultMessage: 'Something went wrong during validation',
+    description:
+      'Error attached to a field whose own validation rule threw, so the rule produced no message of its own.',
+  },
+});
+
+/**
+ * How the store reaches the host's formatter. The store is plain Zustand, not
+ * a component, and it outlives any one render — so it takes a getter rather
+ * than a formatter, and `FormStoreProvider` points that getter at whatever
+ * `useAppIntl` last returned. A language switch is then already reflected the
+ * next time a rule throws, without the store being rebuilt underneath a form
+ * that is mid-edit.
+ */
+export type FormStoreOptions = {
+  getIntl?: () => IntlShape | undefined;
+};
 
 // Enable Map/Set support in Immer
 enableMapSet();
@@ -530,7 +554,9 @@ export type FormStoreApi = Mutate<
   [['zustand/immer', never]]
 >;
 
-export const createFormStore = (): FormStoreApi => {
+export const createFormStore = (
+  storeOptions: FormStoreOptions = {},
+): FormStoreApi => {
   // Validation tokens are unique by identity, so resetting the form can never
   // make an old request current again (an ABA race). Authoritative state
   // transitions clear all field tokens because a field schema may depend on
@@ -1362,7 +1388,11 @@ export const createFormStore = (): FormStoreApi => {
                 formErrors: form.errors.formErrors,
                 fieldErrors: {
                   ...form.errors.fieldErrors,
-                  [fieldName]: ['Something went wrong during validation'],
+                  [fieldName]: [
+                    resolveIntl(storeOptions.getIntl?.()).formatMessage(
+                      storeMessages.validationFailed,
+                    ),
+                  ],
                 },
               };
 

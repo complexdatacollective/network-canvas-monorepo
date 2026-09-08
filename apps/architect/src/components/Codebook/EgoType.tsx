@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
 
+import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
@@ -9,6 +11,24 @@ import type { RootState } from '~/ducks/store';
 
 import { getEntityProperties } from './helpers';
 import Variables from './Variables';
+const messages = defineMessages({
+  addAttribute: {
+    id: 'architect.codebook.egoType.addAttribute',
+    defaultMessage: 'Add attribute',
+    description: 'Visible text in components / Codebook / EgoType.',
+  },
+  noEgoAttributesYet: {
+    id: 'architect.codebook.egoType.noEgoAttributesYet',
+    defaultMessage: 'No ego attributes yet.',
+    description: 'Visible text in components / Codebook / EgoType.',
+  },
+  noEgoAttributesMatchTheCurrent: {
+    id: 'architect.codebook.egoType.noEgoAttributesMatchTheCurrent',
+    defaultMessage: 'No ego attributes match the current filter.',
+    description: 'Visible text in components / Codebook / EgoType.',
+  },
+});
+
 type UsageItem = {
   label: string;
   id?: string;
@@ -35,6 +55,7 @@ const EgoType = ({
   search = '',
   unusedOnly = false,
 }: EgoTypeProps) => {
+  const intl = useAppIntl();
   const [showAddVariable, setShowAddVariable] = useState(false);
   const variableArray = Object.values(variables);
   const term = search.trim().toLowerCase();
@@ -57,7 +78,7 @@ const EgoType = ({
           size="sm"
           onClick={() => setShowAddVariable(true)}
         >
-          Add attribute
+          {intl.formatMessage(messages.addAttribute)}
         </Button>
       </div>
       {filteredVariables.length > 0 ? (
@@ -65,8 +86,8 @@ const EgoType = ({
       ) : (
         <Paragraph className="mt-5 text-current/70">
           {variableArray.length === 0
-            ? 'No ego attributes yet.'
-            : 'No ego attributes match the current filter.'}
+            ? intl.formatMessage(messages.noEgoAttributesYet)
+            : intl.formatMessage(messages.noEgoAttributesMatchTheCurrent)}
         </Paragraph>
       )}
       <NewVariableWindow
@@ -79,8 +100,8 @@ const EgoType = ({
     </div>
   );
 };
-const mapStateToProps = (state: RootState) => {
-  const entityProperties = getEntityProperties(state, { entity: 'ego' });
+const mapStateToProps = (state: RootState, { intl }: { intl: IntlShape }) => {
+  const entityProperties = getEntityProperties(state, { entity: 'ego' }, intl);
   return entityProperties;
 };
 // Props passed in by the parent; `variables` is injected by `connect`.
@@ -88,6 +109,12 @@ type EgoOwnProps = {
   search?: string;
   unusedOnly?: boolean;
 };
-export default compose<EgoTypeProps, EgoOwnProps>(connect(mapStateToProps))(
-  EgoType,
-);
+const ConnectedEgoType = compose<
+  EgoTypeProps,
+  EgoOwnProps & { intl: IntlShape }
+>(connect(mapStateToProps))(EgoType);
+
+export default function LocalizedEgoType(props: EgoOwnProps) {
+  const intl = useAppIntl();
+  return <ConnectedEgoType {...props} intl={intl} />;
+}

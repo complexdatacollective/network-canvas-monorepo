@@ -1,17 +1,24 @@
 'use client';
 
+import { useEffect, useState, type ReactNode } from 'react';
+
+import { commonMessages } from '@codaco/app-i18n/common';
+import { createMessageError } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import RadioMatrixField from '@codaco/fresco-ui/form/fields/RadioMatrixField';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import Node from '@codaco/fresco-ui/Node';
+import type { FramingId } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 
 import { formValuesToAttributePatch } from '../../../../forms/formValuesToAttributePatch';
 import { useNodeMeasurement } from '../../../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../../../hooks/useStageSelector';
+import { runtimeMessages } from '../../../../i18n/runtimeMessages';
 import AddPersonFields from '../../components/AddPersonForm';
 import PersonFields from '../../components/quickStartWizard/PersonFields';
 import { openAddChildWizard } from '../../components/wizards/AddChildWizard';
@@ -25,6 +32,7 @@ import {
 import { readBiologicalSex } from '../../components/wizards/transforms/personAttributes';
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
 import { useFamilyPedigreeDialog } from '../../familyPedigreeDialog';
+import { messages } from '../../messages';
 import type { VariableConfig } from '../../store';
 import {
   getEdgeRelationshipType,
@@ -47,6 +55,10 @@ import NodeContextMenu, { type NodeContextMenuAction } from './NodeContextMenu';
 import PedigreeLayout from './PedigreeLayout';
 import PedigreeNode, { computeNodeDisplayLabels } from './PedigreeNode';
 
+function emphasize(chunks: ReactNode) {
+  return <strong>{chunks}</strong>;
+}
+
 type PedigreeViewProps = {
   overrideNodes?: Map<string, NcNode>;
   overrideEdges?: Map<string, NcEdge>;
@@ -64,6 +76,7 @@ export default function PedigreeView({
   onToggleAttribute,
   isFinalized = false,
 }: PedigreeViewProps = {}) {
+  const intl = useAppIntl();
   const storeNodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const storeEdges = useFamilyPedigreeStore((s) => s.network.edges);
   const storeActiveNominationVariable = useFamilyPedigreeStore(
@@ -119,6 +132,22 @@ export default function PedigreeView({
   // without altering the member count the stage's own live region reports, so
   // a screen-reader participant would otherwise get no confirmation at all.
   const { announce } = useAccessibilityAnnouncements();
+  const [updatedPerson, setUpdatedPerson] = useState<{ name: string } | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!updatedPerson) return;
+    // Consume this submission, not its name: another successful save of the
+    // same person still needs feedback, while a locale-only render does not.
+    setUpdatedPerson(null);
+    announce(
+      updatedPerson.name
+        ? intl.formatMessage(messages.detailsUpdatedFor, {
+            name: updatedPerson.name,
+          })
+        : intl.formatMessage(messages.detailsUpdated),
+    );
+  }, [updatedPerson, intl, announce]);
 
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
     component: <Node size="sm" />,
@@ -131,6 +160,8 @@ export default function PedigreeView({
     edges,
     variableConfig,
     storeFraming ?? 'gamete',
+    undefined,
+    intl,
   );
 
   const handleAddPerson = async (
@@ -138,9 +169,9 @@ export default function PedigreeView({
   ): Promise<FormSubmissionResult | undefined> => {
     const result = await openDialog({
       type: 'form',
-      title: 'Add partner',
-      submitLabel: 'Add',
-      cancelLabel: 'Cancel',
+      title: <AppMessage message={messages.addPartner} />,
+      submitLabel: <AppMessage message={messages.add} />,
+      cancelLabel: <AppMessage message={commonMessages.cancel} />,
       children: (
         <AddPersonFields
           anchorNodeId={nodeId}
@@ -177,7 +208,7 @@ export default function PedigreeView({
     if (!formPatchResult.success) {
       return {
         success: false,
-        formErrors: ['An error occurred while submitting the form.'],
+        formErrors: [createMessageError(runtimeMessages.submissionFailed)],
       };
     }
 
@@ -254,7 +285,7 @@ export default function PedigreeView({
       return [
         {
           edgeId,
-          partnerLabel: displayLabels.get(partnerId) ?? 'Unnamed person',
+          partnerId,
           status:
             edge[entityAttributesProperty][isActiveVariable] === false
               ? 'ex'
@@ -262,48 +293,23 @@ export default function PedigreeView({
         },
       ];
     });
-    const displayName =
-      currentName || displayLabels.get(nodeId) || 'this person';
 
     const result = await openDialog({
       type: 'form',
-      title: 'Edit',
-      submitLabel: 'Done',
-      cancelLabel: 'Cancel',
+      title: <AppMessage message={messages.edit} />,
+      submitLabel: <AppMessage message={commonMessages.done} />,
+      cancelLabel: <AppMessage message={commonMessages.cancel} />,
       children: (
-        <>
-          <PersonFields
-            currentEntityId={nodeId}
-            initial={{
-              name: currentName,
-              biologicalSex: readBiologicalSex(
-                currentNode[entityAttributesProperty][biologicalSexVariable],
-              ),
-              attributes: currentNode[entityAttributesProperty],
-            }}
-          />
-          {partnerships.length > 0 && (
-            <FieldNamespace prefix={INTERNAL_EDIT_NAMESPACE}>
-              <Field
-                name="partnerships"
-                label={`Are these people current or ex-partners of **${displayName}**?`}
-                component={RadioMatrixField}
-                rows={partnerships.map(({ edgeId, partnerLabel }) => ({
-                  id: edgeId,
-                  label: partnerLabel,
-                }))}
-                options={[
-                  { value: 'current', label: 'Current partner' },
-                  { value: 'ex', label: 'Ex-partner' },
-                ]}
-                initialValue={partnerships.map(({ edgeId, status }) => ({
-                  id: edgeId,
-                  value: status,
-                }))}
-              />
-            </FieldNamespace>
-          )}
-        </>
+        <EditPersonDetails
+          nodeId={nodeId}
+          currentName={currentName}
+          currentNode={currentNode}
+          nodes={nodes}
+          edges={edges}
+          variableConfig={variableConfig}
+          framing={storeFraming ?? 'gamete'}
+          partnerships={partnerships}
+        />
       ),
     });
 
@@ -318,7 +324,7 @@ export default function PedigreeView({
     if (!formPatchResult.success) {
       return {
         success: false,
-        formErrors: ['An error occurred while submitting the form.'],
+        formErrors: [createMessageError(runtimeMessages.submissionFailed)],
       };
     }
 
@@ -368,7 +374,7 @@ export default function PedigreeView({
     // The submitted name, never the one this dialog opened with: a participant
     // is free to clear the name (it is explicitly optional), and naming the
     // person they just erased would be worse than not naming them at all.
-    announce(name ? `Details updated for ${name}.` : 'Details updated.');
+    setUpdatedPerson({ name });
     return { success: true };
   };
 
@@ -433,18 +439,20 @@ export default function PedigreeView({
   const handleDeleteNode = async (nodeId: string) => {
     const node = nodes.get(nodeId);
     if (!node) return;
-    const rawName = node[entityAttributesProperty][nodeLabelVariable];
-    const name =
-      typeof rawName === 'string' && rawName.length > 0
-        ? rawName
-        : displayLabels.get(nodeId) || 'this person';
 
     await confirm({
-      title: `Delete ${name}?`,
-      description:
-        'This will delete this person and all of their relationships from the family pedigree. This action cannot be undone.',
-      confirmLabel: 'Delete person',
-      cancelLabel: 'Cancel',
+      title: (
+        <DeletePersonTitle
+          nodeId={nodeId}
+          nodes={nodes}
+          edges={edges}
+          variableConfig={variableConfig}
+          framing={storeFraming ?? 'gamete'}
+        />
+      ),
+      description: <AppMessage message={messages.deletePersonDescription} />,
+      confirmLabel: <AppMessage message={messages.deletePerson} />,
+      cancelLabel: <AppMessage message={commonMessages.cancel} />,
       intent: 'destructive',
       onConfirm: () => {
         removeNode(nodeId);
@@ -538,5 +546,112 @@ export default function PedigreeView({
         />
       </div>
     </div>
+  );
+}
+
+type PersonDisplayProps = {
+  nodeId: string;
+  nodes: Map<string, NcNode>;
+  edges: Map<string, NcEdge>;
+  variableConfig: VariableConfig;
+  framing: FramingId;
+};
+
+function DeletePersonTitle({
+  nodeId,
+  nodes,
+  edges,
+  variableConfig,
+  framing,
+}: PersonDisplayProps) {
+  const intl = useAppIntl();
+  const labels = computeNodeDisplayLabels(
+    nodes,
+    edges,
+    variableConfig,
+    framing,
+    undefined,
+    intl,
+  );
+  const name = labels.get(nodeId) || intl.formatMessage(messages.thisPerson);
+  return <AppMessage message={messages.deleteNamedPerson} values={{ name }} />;
+}
+
+function EditPersonDetails({
+  nodeId,
+  currentName,
+  currentNode,
+  nodes,
+  edges,
+  variableConfig,
+  framing,
+  partnerships,
+}: PersonDisplayProps & {
+  currentName: string;
+  currentNode: NcNode;
+  partnerships: { edgeId: string; partnerId: string; status: string }[];
+}) {
+  const intl = useAppIntl();
+  const labels = computeNodeDisplayLabels(
+    nodes,
+    edges,
+    variableConfig,
+    framing,
+    undefined,
+    intl,
+  );
+  const displayName =
+    currentName ||
+    labels.get(nodeId) ||
+    intl.formatMessage(messages.thisPerson);
+  return (
+    <>
+      <PersonFields
+        currentEntityId={nodeId}
+        initial={{
+          name: currentName,
+          biologicalSex: readBiologicalSex(
+            currentNode[entityAttributesProperty][
+              variableConfig.biologicalSexVariable
+            ],
+          ),
+          attributes: currentNode[entityAttributesProperty],
+        }}
+      />
+      {partnerships.length > 0 && (
+        <FieldNamespace prefix={INTERNAL_EDIT_NAMESPACE}>
+          <Field
+            name="partnerships"
+            label={
+              <AppMessage
+                message={messages.editPartnerships}
+                values={{
+                  name: displayName,
+                  strong: emphasize,
+                }}
+              />
+            }
+            component={RadioMatrixField}
+            rows={partnerships.map(({ edgeId, partnerId }) => ({
+              id: edgeId,
+              label:
+                labels.get(partnerId) ??
+                intl.formatMessage(messages.unnamedPerson),
+            }))}
+            options={[
+              {
+                value: 'current',
+                label: intl.formatMessage(messages.currentPartner),
+              },
+              { value: 'ex', label: intl.formatMessage(messages.exPartner) },
+            ]}
+            initialValue={partnerships.map(({ edgeId, status }) => ({
+              id: edgeId,
+              value: status,
+            }))}
+          />
+        </FieldNamespace>
+      )}
+    </>
   );
 }

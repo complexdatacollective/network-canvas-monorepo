@@ -1,0 +1,45 @@
+/*
+ * @codaco/tailwind-config/studio — the Studio product's CSS entry
+ *
+ * The same foundation `fresco.css` bundles — Tailwind, the colour triplets,
+ * the token surface, the shared utilities and plugins, and the default theme
+ * every semantic variable falls back to — plus the studio theme, and NOT the
+ * interview theme, which Studio has no region for.
+ *
+ * The studio theme scopes its overrides to `[data-theme-studio]`, so the
+ * attribute belongs on Studio's `<html>` (see `index.html`). Keeping the
+ * scoping rather than re-declaring the theme at `:root` is deliberate: it is
+ * one theme definition, used the same way here as it is by a studio-themed
+ * region inside another app, so the two cannot drift.
+ *
+ * Consumers that import this file MUST NOT also `@import "tailwindcss"`
+ * themselves; doing so loads Tailwind's runtime twice and produces duplicate
+ * and conflicting utilities.
+ */
+
+@import 'tailwindcss';
+
+/* NC palette channel triplets (oklch L C H), referenced by relative-color
+   values in theme.css via var(--neon-coral), var(--sea-green), etc. */
+@import '../shared/colors.css';
+
+/* Tailwind v4 @theme block defining the Fresco design system token surface. */
+@import './theme.css';
+
+/* Foundational @utility / @custom-variant definitions used across packages. */
+@import './utilities.css';
+
+/* The default theme writes the `:root` values every semantic variable falls
+   back to; the studio theme layers its light/dark pair over them under
+   `[data-theme-studio]`, with dark keyed off the same `[data-theme='dark']`
+   attribute the default theme uses. */
+@import './themes/default.css';
+@import './themes/studio.css';
+
+/* Custom Tailwind plugins, loaded from TypeScript source. Tailwind compiles
+   `@plugin` modules through jiti, which handles TS directly and registers the
+   files for watching — so plugin edits hot-reload in consumers without a
+   precompile step. Paths are relative to this file. */
+@plugin '../shared/plugins/elevation/index.ts';
+@plugin '../shared/plugins/inset-surface/index.ts';
+@plugin '../shared/plugins/motion-spring.ts';

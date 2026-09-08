@@ -5,9 +5,11 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
   VariablePickerControl: ({
@@ -176,8 +178,8 @@ const chooseOption = (label: RegExp, value: string) =>
  * not by markup it never renders here.
  */
 const discardConfirmations = () =>
-  globalThis.__architectDialogMocks.openDialog.mock.calls.map(
-    (call) => (call[0] as { title?: unknown }).title,
+  globalThis.__architectDialogMocks.openDialog.mock.calls.map((call) =>
+    renderQueuedMessage((call[0] as { title?: ReactNode }).title),
   );
 
 /** The rules committed by the most recent change, if any. */

@@ -1,27 +1,41 @@
-import { randomUUID } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 
 import { upgradeWebSocket } from '@hono/node-server';
+import { COMMON_ERROR_STATUS_MAP, onError, ORPCError } from '@orpc/server';
 import { RPCHandler } from '@orpc/server/fetch';
-import { type Context, Hono } from 'hono';
+import type { Context } from 'hono';
 import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
 import { createApiV1 } from './api.ts';
-import { createAssetRoutes, createAssetStore } from './assets.ts';
+import {
+  createAssetRoutes,
+  createAssetStore,
+  type AssetStore,
+} from './assets.ts';
 import { BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES } from './audit/better-auth-policy.ts';
 import { createAuthService } from './auth/create.ts';
 import { requireSameOrigin, requireWsOrigin } from './auth/csrf.ts';
+import type { StudioMailer } from './auth/email.ts';
 import {
   createPrincipalMiddleware,
-  type PrincipalVariables,
   requirePrincipal,
 } from './auth/principal.ts';
 import type { AuthService } from './auth/service.ts';
 import { createPool } from './db/pool.ts';
-import type { AuthCapabilities } from './domain.ts';
+import { type AuthCapabilities, getDeploymentStatus } from './domain.ts';
 import { readEnv } from './env.ts';
+import {
+  logOperational,
+  type OperationalLogger,
+} from './observability/logger.ts';
+import { createOperationalApp } from './observability/operational-app.ts';
+import { isProxyAddress } from './observability/proxy.ts';
+import { createObservability } from './observability/runtime.ts';
+import type { EncryptionKeys } from './pii/keys.ts';
 import { createRpcRouter } from './rpc.ts';
+import type { ServerTelemetry } from './telemetry.ts';
 
 // The app WebSocket endpoint. In development the Vite dev server proxies this
 // path (with `ws: true`) alongside /api and /rpc, so the browser sees one
@@ -31,6 +45,7 @@ const WS_PATH = '/ws';
 // Hono matches `/storage/*` against the children of /storage but not the bare
 // prefix, so anything covering the whole surface has to name both.
 const STORAGE_PATHS = ['/storage', '/storage/*'];
+const MANAGED_INGRESS_PROOF_HEADER = 'x-studio-managed-ingress-proof';
 const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
   string,
@@ -42,31 +57,84 @@ const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
 );
 
 type CreateAppDeps = {
+  encryptionKeys?: EncryptionKeys;
+  telemetry?: ServerTelemetry;
+  mailer?: StudioMailer;
   auth?: AuthService;
-  /** True only for an entrypoint that starts a supported outbox dispatcher. */
+  assetStore?: AssetStore;
+  observability?: ReturnType<typeof createObservability>;
+  logger?: OperationalLogger;
+  /** A supported dispatcher is configured, locally or in a separate worker. */
   invitationDeliveryAvailable?: boolean;
   pool?: pg.Pool;
 };
 
 export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
-  const app = new Hono<PrincipalVariables>();
-
-  // Unexpected failures on the machine surfaces (e.g. the database down
-  // during a session lookup) must still leave as problem JSON, not Hono's
-  // text/plain default.
-  app.onError((error, c) => {
-    // oxlint-disable-next-line no-console -- server-side failure diagnostics
-    console.error(error);
-    return c.json({ title: 'Internal Server Error', status: 500 }, 500, {
-      'Content-Type': 'application/problem+json',
-    });
-  });
+  if (
+    env.deploymentMode === 'managed' &&
+    env.db &&
+    (!env.managedIngressSecret ||
+      env.trustedProxies.length === 0 ||
+      env.trustedProxies.some((proxy) => !isProxyAddress(proxy)))
+  ) {
+    throw new Error(
+      'Managed Studio HTTP with a database requires STUDIO_MANAGED_INGRESS_SECRET and TRUSTED_PROXIES',
+    );
+  }
   const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
-  const auth = deps.auth ?? createAuthService(env, pool);
+  const auth =
+    deps.auth ??
+    createAuthService(env, pool, {
+      encryptionKeys: deps.encryptionKeys,
+      mailer: deps.mailer,
+    });
+  const assetStore =
+    deps.assetStore ?? (env.s3 ? createAssetStore(env.s3) : undefined);
+  const observability =
+    deps.observability ??
+    createObservability({
+      pool,
+      assetStore,
+      allowUnversionedSchema: env.devDefaults,
+      allowedLogins: env.databaseAllowedLogins,
+      administrativeLogins: env.databaseAdministrativeLogins,
+    });
+  const expectedProof = env.managedIngressSecret
+    ? Buffer.from(env.managedIngressSecret)
+    : undefined;
+  const app = createOperationalApp(
+    env,
+    observability,
+    deps.logger,
+    (error) => deps.telemetry?.capture('server_request', error),
+    expectedProof
+      ? async (c, next) => {
+          // Only exact liveness and independently authenticated metrics bypass
+          // ingress proof. Install this gate before operational route handlers.
+          if (c.req.path === '/healthz' || c.req.path === '/metrics')
+            return next();
+          const supplied = c.req.header(MANAGED_INGRESS_PROOF_HEADER);
+          const receivedProof = supplied ? Buffer.from(supplied) : undefined;
+          if (
+            !receivedProof ||
+            receivedProof.length !== expectedProof.length ||
+            !timingSafeEqual(receivedProof, expectedProof)
+          ) {
+            return c.json({ title: 'Not Found', status: 404 }, 404, {
+              'Cache-Control': 'no-store',
+            });
+          }
+          await next();
+        }
+      : undefined,
+  );
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
     enabled,
     magicLink: Boolean(env.db && env.auth && env.auth.mailer.kind !== 'refuse'),
+    // Unlike magicLink, not gated on the mailer: better-auth.ts enables
+    // emailAndPassword unconditionally whenever auth itself is configured.
+    emailAndPassword: enabled,
     socialProviders: enabled
       ? SOCIAL_PROVIDERS.filter(
           (provider) => env.auth?.socialProviders[provider],
@@ -74,7 +142,9 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       : [],
   };
 
-  app.get('/healthz', (c) => c.json({ status: 'ok' }));
+  // Which topology this deployment is. The client reads it from `status`;
+  // src/client-assets.ts enforces the same classification at the HTTP layer.
+  const deployment = getDeploymentStatus(env.deploymentMode);
 
   // Registered before the problem-JSON catch-alls below, which would
   // otherwise swallow the /api prefix.
@@ -100,7 +170,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
 
   // The public data API — a separate surface from the SPA's RPC below, per
   // the 2026-08-11 decision on #1248.
-  app.route('/api/v1', createApiV1(authCaps));
+  app.route('/api/v1', createApiV1(authCaps, deployment));
 
   // /storage, not /assets, which the client build claims for its hashed
   // chunks. Reading stays open: a session lookup per byte range would put the
@@ -115,7 +185,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     createPrincipalMiddleware(auth),
     requirePrincipal(),
   );
-  app.route('/storage', createAssetRoutes(env.s3 && createAssetStore(env.s3)));
+  app.route('/storage', createAssetRoutes(assetStore));
 
   // The SPA's typed procedures (oRPC v2, decision recorded on #1244),
   // implementing the @codaco/studio-rpc boundary contract.
@@ -126,16 +196,33 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   const rpcHandler = new RPCHandler(
     createRpcRouter(authCaps, {
       auth,
+      deployment,
+      bootstrapToken: env.bootstrapToken,
+      telemetry: env.telemetry,
       invitationDeliveryAvailable: Boolean(
         deps.invitationDeliveryAvailable && authCaps.magicLink,
       ),
       pool,
     }),
+    {
+      interceptors: [
+        onError((error) => {
+          if (
+            !(error instanceof ORPCError) ||
+            !Object.hasOwn(COMMON_ERROR_STATUS_MAP, error.code) ||
+            COMMON_ERROR_STATUS_MAP[
+              error.code as keyof typeof COMMON_ERROR_STATUS_MAP
+            ] >= 500
+          )
+            deps.telemetry?.capture('server_rpc', error);
+        }),
+      ],
+    },
   );
   app.use('/rpc/*', async (c, next) => {
     const { matched, response } = await rpcHandler.handle(c.req.raw, {
       prefix: '/rpc',
-      context: { principal: c.get('principal'), requestId: randomUUID() },
+      context: { principal: c.get('principal'), requestId: c.get('requestId') },
     });
     if (matched) return c.newResponse(response.body, response);
     await next();
@@ -149,7 +236,14 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     c.json({ title: 'Not Found', status: 404 }, 404, {
       'Content-Type': 'application/problem+json',
     });
-  for (const prefix of ['/api', '/rpc', '/storage']) {
+  for (const prefix of [
+    '/api',
+    '/rpc',
+    '/storage',
+    '/healthz',
+    '/readyz',
+    '/metrics',
+  ]) {
     app.all(prefix, notFound);
     app.all(`${prefix}/*`, notFound);
   }
@@ -164,11 +258,23 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   app.use(WS_PATH, requirePrincipal());
   app.get(
     WS_PATH,
-    upgradeWebSocket(() => ({
-      onMessage(event, ws) {
-        ws.send(String(event.data));
-      },
-    })),
+    upgradeWebSocket(
+      () => ({
+        onOpen() {
+          observability.metrics.socketOpened();
+        },
+        onClose() {
+          observability.metrics.socketClosed();
+        },
+        onError() {
+          logOperational('STUDIO_WEBSOCKET_ERROR');
+        },
+        onMessage(event, ws) {
+          ws.send(String(event.data));
+        },
+      }),
+      { onError: () => logOperational('STUDIO_WEBSOCKET_ERROR') },
+    ),
   );
 
   return app;

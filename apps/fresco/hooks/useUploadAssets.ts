@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { PresignedUploadUrl } from '~/lib/storage/services/AssetStorage';
 import {
   type UploadedFile,
@@ -23,7 +24,9 @@ async function fetchPresignResponse(
 
   if (!response.ok) {
     const error = (await response.json()) as { error?: string };
-    throw new Error(error.error ?? 'Failed to prepare upload');
+    throw new Error(createMessageError(messages.prepare), {
+      cause: error.error,
+    });
   }
 
   return (await response.json()) as PresignResponse;
@@ -48,12 +51,18 @@ async function uploadFileToUrl(
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve();
       } else {
-        reject(new Error(`Upload failed with status ${String(xhr.status)}`));
+        reject(
+          new Error(
+            createMessageError(messages.httpStatus, {
+              status: String(xhr.status),
+            }),
+          ),
+        );
       }
     });
 
     xhr.addEventListener('error', () => {
-      reject(new Error('Upload failed'));
+      reject(new Error(createMessageError(messages.failed)));
     });
 
     xhr.send(file);
@@ -71,7 +80,9 @@ async function uploadViaS3(
   const uploadPromises = files.map(async (file, index) => {
     const presigned = urls[index];
     if (!presigned) {
-      throw new Error(`No presigned URL for file: ${file.name}`);
+      throw new Error(
+        createMessageError(messages.missingUrl, { name: file.name }),
+      );
     }
 
     await uploadFileToUrl(file, presigned.uploadUrl, (fileLoaded) => {
@@ -154,7 +165,13 @@ export function useUploadAssets() {
       const presign = await fetchPresignResponse(fileMeta);
 
       if (presign.provider === 'uploadthing') {
-        return uploadViaUploadThing(files, onProgress);
+        try {
+          return await uploadViaUploadThing(files, onProgress);
+        } catch (error) {
+          throw new Error(createMessageError(messages.failed), {
+            cause: error,
+          });
+        }
       }
 
       return uploadViaS3(files, presign.urls, onProgress);
@@ -164,3 +181,30 @@ export function useUploadAssets() {
 
   return { uploadAssets };
 }
+
+const messages = defineMessages({
+  missingUrl: {
+    id: 'fresco.upload.missingUrl',
+    defaultMessage: 'No upload URL was returned for {name}.',
+    description:
+      'Researcher-facing upload: No upload URL was returned for name.',
+  },
+
+  failed: {
+    id: 'fresco.upload.failed',
+    defaultMessage: 'Upload failed.',
+    description: 'Researcher-facing upload: Upload failed.',
+  },
+
+  httpStatus: {
+    id: 'fresco.upload.httpStatus',
+    defaultMessage: 'Upload failed with status {status}.',
+    description: 'Researcher-facing upload: Upload failed with status status.',
+  },
+
+  prepare: {
+    id: 'fresco.upload.prepare',
+    defaultMessage: 'Failed to prepare upload.',
+    description: 'Researcher-facing upload: Failed to prepare upload.',
+  },
+});

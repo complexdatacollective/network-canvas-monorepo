@@ -1,17 +1,38 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import DatePickerField from '@codaco/fresco-ui/form/fields/DatePicker';
+const configMessages = defineMessages({
+  full: {
+    id: 'architect.form.fields.datePicker.config.full',
+    defaultMessage: 'Full',
+    description:
+      'Presentation label or description in components/Form/Fields/DatePicker.tsx. Identifiers are not translated.',
+  },
+  month: {
+    id: 'architect.form.fields.datePicker.config.month',
+    defaultMessage: 'Month',
+    description:
+      'Presentation label or description in components/Form/Fields/DatePicker.tsx. Identifiers are not translated.',
+  },
+  year: {
+    id: 'architect.form.fields.datePicker.config.year',
+    defaultMessage: 'Year',
+    description:
+      'Presentation label or description in components/Form/Fields/DatePicker.tsx. Identifiers are not translated.',
+  },
+});
 
 export const DATE_TYPES = [
   {
-    label: 'Full',
+    label: configMessages.full,
     value: 'full',
   },
   {
-    label: 'Month',
+    label: configMessages.month,
     value: 'month',
   },
   {
-    label: 'Year',
+    label: configMessages.year,
     value: 'year',
   },
 ] as const;

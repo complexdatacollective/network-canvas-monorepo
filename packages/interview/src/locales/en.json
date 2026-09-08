@@ -1,0 +1,1786 @@
+{
+  "interview.familyPedigree.aboutYou": {
+    "defaultMessage": "About you",
+    "description": "Wizard step title for recording the participant's own birth-recorded sex, before asking about relatives."
+  },
+  "interview.familyPedigree.add": {
+    "defaultMessage": "Add",
+    "description": "Submit action in the add-partner form; creates the selected relationship after the person details are entered."
+  },
+  "interview.familyPedigree.addChild": {
+    "defaultMessage": "Add child",
+    "description": "Person-context-menu action and wizard title for adding this relative of the selected person, who may be someone other than the participant."
+  },
+  "interview.familyPedigree.addChildren": {
+    "defaultMessage": "Add children",
+    "description": "Checklist task to record the participant's children, shown once at least one child is already present."
+  },
+  "interview.familyPedigree.addNewPersonOption": {
+    "defaultMessage": "No — add a new person",
+    "description": "Partner-addition option creating a new person because they are not already in the tree. Preserve the negative answer and the resulting action."
+  },
+  "interview.familyPedigree.addOneParent": {
+    "defaultMessage": "Add 1 more parent for {name}",
+    "description": "Optional checklist nudge when exactly one more parent is needed for a named person. name is participant-entered text and remains unchanged."
+  },
+  "interview.familyPedigree.addOrConfirmChildren": {
+    "defaultMessage": "Add children (or confirm none)",
+    "description": "Checklist task that can be satisfied either by recording children or explicitly confirming that there are none."
+  },
+  "interview.familyPedigree.addParent": {
+    "defaultMessage": "Add parent",
+    "description": "Person-context-menu action and wizard title for adding this relative of the selected person, who may be someone other than the participant."
+  },
+  "interview.familyPedigree.addParentFirst": {
+    "defaultMessage": "Add a parent first",
+    "description": "Disabled-menu explanation: a parent must be recorded for the selected person before a sibling can be added through this action."
+  },
+  "interview.familyPedigree.addParentSiblings": {
+    "defaultMessage": "Add parent's siblings",
+    "description": "Optional checklist task to add siblings of the participant's parents: the participant's aunts and uncles, not their own siblings."
+  },
+  "interview.familyPedigree.addParentsFor": {
+    "defaultMessage": "Add parents for {name}",
+    "description": "Optional checklist item asking for the parents of a named person. name is participant-entered text; this wording also remains visible when the item is checked."
+  },
+  "interview.familyPedigree.addPartner": {
+    "defaultMessage": "Add partner",
+    "description": "Person-context-menu action and wizard title for adding this relative of the selected person, who may be someone other than the participant."
+  },
+  "interview.familyPedigree.addPartners": {
+    "defaultMessage": "Add partners",
+    "description": "Optional checklist task to record the participant's partners, including former relationships where applicable."
+  },
+  "interview.familyPedigree.addSibling": {
+    "defaultMessage": "Add sibling",
+    "description": "Person-context-menu action and wizard title for adding this relative of the selected person, who may be someone other than the participant."
+  },
+  "interview.familyPedigree.addSiblings": {
+    "defaultMessage": "Add siblings",
+    "description": "Optional checklist task to add the participant's siblings. Checking it manually also allows the participant to mark it as not applicable."
+  },
+  "interview.familyPedigree.additionalParentNumber": {
+    "defaultMessage": "Additional Parent {number, number}",
+    "description": "Repeated form heading for an additional non-biological parent. number is the one-based form position, not the person's name or generation."
+  },
+  "interview.familyPedigree.additionalParents": {
+    "defaultMessage": "Additional parents",
+    "description": "Wizard step title for non-biological parental figures, separate from the two genetic contributors."
+  },
+  "interview.familyPedigree.additionalParentsCount": {
+    "defaultMessage": "How many additional parents do you have?",
+    "description": "Initial wizard question about the participant's additional non-biological parents. The count controls how many subsequent person forms are shown."
+  },
+  "interview.familyPedigree.additionalParentsHint": {
+    "defaultMessage": "This includes adoptive parents, stepparents, or any other parents who are not your biological parents.",
+    "description": "Explains the additional-parents part of the participant's family setup, including adoptive parents, stepparents and other parental figures, separately from genetic contributors."
+  },
+  "interview.familyPedigree.additionalParentsIntro": {
+    "defaultMessage": "Please tell us about each of your additional parents. This includes step-parents, adoptive parents, or other people who played a parental role in your life.",
+    "description": "Explains the additional-parents part of the participant's family setup, including adoptive parents, stepparents and other parental figures, separately from genetic contributors."
+  },
+  "interview.familyPedigree.adopted": {
+    "defaultMessage": "Adopted",
+    "description": "Accessible description of adoption brackets drawn around a person's diagram symbol. Do not infer that person's sex."
+  },
+  "interview.familyPedigree.adoptiveParentRole": {
+    "defaultMessage": "Adoptive parent",
+    "description": "Option describing a non-biological parent's social role in the family. Translate only the display label; the role identifier is stored unchanged."
+  },
+  "interview.familyPedigree.alreadyInTree": {
+    "defaultMessage": "Yes — already in the family tree",
+    "description": "Partner-addition option reusing a person already recorded in the family tree. It must not imply that a duplicate person will be created."
+  },
+  "interview.familyPedigree.alsoParentOf": {
+    "defaultMessage": "Is this person also a parent of <strong>{name}</strong>?",
+    "description": "Question asking whether the partner being added is also a parent of an existing child. name identifies that child; preserve the strong emphasis and do not translate the name. strong emphasizes the literal person name; render it as rich text without interpreting markup in the name."
+  },
+  "interview.familyPedigree.anyAdditionalParents": {
+    "defaultMessage": "Do you have any additional parents?",
+    "description": "Initial wizard question about the participant's additional non-biological parents. The count controls how many subsequent person forms are shown."
+  },
+  "interview.familyPedigree.arePartners": {
+    "defaultMessage": "Are {people} partners?",
+    "description": "Whole question about a current or former romantic relationship. people is the current locale’s formatted list of two literal entered names or localized role fallbacks; do not add a conjunction or infer a gender."
+  },
+  "interview.familyPedigree.auntUncle": {
+    "defaultMessage": "Aunt/Uncle",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.biologicalKey": {
+    "defaultMessage": "Biological parent (incl. donor, surrogate)",
+    "description": "Legend label for solid parent-child connectors in the current pedigree notation, including the donor and surrogate relationship categories represented by that line style."
+  },
+  "interview.familyPedigree.biologicalParent": {
+    "defaultMessage": "Biological Parent",
+    "description": "Parent-type choice for a genetic contributor to the person being added. Keep distinct from social parenthood and gestation without a genetic contribution."
+  },
+  "interview.familyPedigree.biologicalParentDescription": {
+    "defaultMessage": "A parent who is genetically related to this person",
+    "description": "Parent-type choice for a genetic contributor to the person being added. Keep distinct from social parenthood and gestation without a genetic contribution."
+  },
+  "interview.familyPedigree.biologicalParents": {
+    "defaultMessage": "Biological parents",
+    "description": "Wizard step title identifying the genetic contributors to the person being added or edited. Gestation and social parents are captured separately."
+  },
+  "interview.familyPedigree.buildAccessible": {
+    "defaultMessage": "Build family pedigree",
+    "description": "Accessible name of the icon button that launches the initial family setup wizard from the welcome screen."
+  },
+  "interview.familyPedigree.buildComplete": {
+    "defaultMessage": "All tasks are complete. You can now finalize your family pedigree.",
+    "description": "Live screen-reader announcement when all checklist tasks become complete. It says finalization is now available, not that finalization has already happened."
+  },
+  "interview.familyPedigree.buildDefinition": {
+    "defaultMessage": "A family pedigree is a diagram of your relatives and how they are connected to you.",
+    "description": "Plain-language explanation of the diagram before the participant starts entering their family. Avoid technical graph terminology."
+  },
+  "interview.familyPedigree.buildGetStarted": {
+    "defaultMessage": "Click the button below to get started.",
+    "description": "Instruction pointing to the initial family-wizard action below the welcome text."
+  },
+  "interview.familyPedigree.buildHelpCaption": {
+    "defaultMessage": "Select a person to see this menu",
+    "description": "Caption below the context-menu illustration explaining that the menu appears when a person is selected."
+  },
+  "interview.familyPedigree.buildHelpChecklist": {
+    "defaultMessage": "Please try to be as thorough as possible. Use the checklist to keep track of your progress.",
+    "description": "Encourages thorough family recording and points to the checklist as a progress aid, without implying unknown answers should be guessed."
+  },
+  "interview.familyPedigree.buildHelpContinue": {
+    "defaultMessage": "When you are finished, click the next button to continue.",
+    "description": "Final instruction in the construction-help dialog, pointing to the interview navigation control after family entry is complete."
+  },
+  "interview.familyPedigree.buildHelpImage": {
+    "defaultMessage": "Example of the context menu showing options to add parent, child, partner, sibling, edit, or delete",
+    "description": "Alternative text for an illustration of the person context menu. Name its add-relative, edit and delete functions without relying on text embedded in the image."
+  },
+  "interview.familyPedigree.buildHelpLead": {
+    "defaultMessage": "You now need to add family members to build out your pedigree.",
+    "description": "Opening explanation that more relatives can be added after the initial immediate family has been created."
+  },
+  "interview.familyPedigree.buildHelpMenu": {
+    "defaultMessage": "Select any person in the diagram to open a menu where you can add parents, children, partners, and siblings. Not all options are available for every person — the menu will show the actions relevant to that family member.",
+    "description": "Explains how selecting a person opens actions for adding relatives and that available actions depend on that person's relationships."
+  },
+  "interview.familyPedigree.buildHelpTitle": {
+    "defaultMessage": "Building the rest of your pedigree",
+    "description": "Title of guidance shown after the immediate-family wizard, explaining how to extend the family tree."
+  },
+  "interview.familyPedigree.buildInstructions": {
+    "defaultMessage": "To begin, we will ask a few quick questions and sketch out your immediate family for you. From there, you can click on any person to add more relatives and fill in their details.",
+    "description": "Introduction explaining that initial questions draw an immediate family, then selecting people lets the participant add relatives and edit details."
+  },
+  "interview.familyPedigree.buildTitle": {
+    "defaultMessage": "Build your family pedigree",
+    "description": "Welcome heading shown before any relatives have been entered in the family pedigree interface."
+  },
+  "interview.familyPedigree.carrierGameteIntro": {
+    "defaultMessage": "Please answer the following questions about your gestational carrier. This is the person who carried you during pregnancy but did not contribute the egg, including gestational surrogates.",
+    "description": "Introduction to questions about the person who carried the participant's pregnancy but did not contribute the egg. Uses gamete framing and explicitly includes gestational surrogacy."
+  },
+  "interview.familyPedigree.carrierGenderedIntro": {
+    "defaultMessage": "Please answer the following questions about your gestational carrier. This is the person who carried you during pregnancy but is not your biological mother, including gestational surrogates.",
+    "description": "Introduction to questions about the person who carried the participant's pregnancy but is not their biological mother. Uses mother/father framing and includes gestational surrogacy."
+  },
+  "interview.familyPedigree.checklistInstructions": {
+    "defaultMessage": "Complete the following tasks before continuing. If a task doesn't apply you can click it to mark it as done.",
+    "description": "Instructions for completing checklist tasks, including marking a non-applicable task as done by selecting it."
+  },
+  "interview.familyPedigree.checklistTitle": {
+    "defaultMessage": "Pedigree Checklist",
+    "description": "Heading of the floating checklist that tracks completeness of the family tree while it is being built."
+  },
+  "interview.familyPedigree.child": {
+    "defaultMessage": "Child",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.childDetails": {
+    "defaultMessage": "Child details",
+    "description": "Wizard step title collecting details for the new relative. The family relationship is relative to the person whose context menu opened the wizard."
+  },
+  "interview.familyPedigree.childNumber": {
+    "defaultMessage": "Child {number, number}",
+    "description": "Heading for a repeated child-details form. number is the one-based form position; leave the child's sex unspecified."
+  },
+  "interview.familyPedigree.childPartner": {
+    "defaultMessage": "Child's Partner",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.childrenDetails": {
+    "defaultMessage": "Children details",
+    "description": "Wizard step title collecting each child's details and biological parentage."
+  },
+  "interview.familyPedigree.childrenIntro": {
+    "defaultMessage": "Please tell us about each of your children with your current partner, and confirm who their biological parents are.",
+    "description": "Instructions before collecting each child of the participant and current partner, including confirmation of genetic parentage rather than assuming it from the partnership."
+  },
+  "interview.familyPedigree.childrenWithPartnerCount": {
+    "defaultMessage": "How many children do you have with this partner?",
+    "description": "Numeric question counting only children the participant has with the current partner identified above, not all children in the family."
+  },
+  "interview.familyPedigree.closeLoseProgress": {
+    "defaultMessage": "Close and lose progress",
+    "description": "Destructive confirmation action that abandons the initial family wizard and discards its unfinished entries."
+  },
+  "interview.familyPedigree.closeSetupDescription": {
+    "defaultMessage": "If you continue, all information you have entered in this family pedigree will be lost. You will need to start again.",
+    "description": "Warning that closing the unfinished family wizard discards all information entered there and requires starting the wizard again."
+  },
+  "interview.familyPedigree.closeSetupQuestion": {
+    "defaultMessage": "Close family pedigree setup?",
+    "description": "Confirmation title when attempting to abandon the unfinished initial family wizard."
+  },
+  "interview.familyPedigree.continueSetup": {
+    "defaultMessage": "Continue setup",
+    "description": "Cancel-abandonment action that keeps the initial family wizard open and preserves the participant's progress."
+  },
+  "interview.familyPedigree.contributorsRequired": {
+    "defaultMessage": "Each of your children's other parents needs their own parents and grandparents recorded.",
+    "description": "Completeness warning requiring the other genetic parents of the participant's children to have their own parents and grandparents recorded. Preserve both generations."
+  },
+  "interview.familyPedigree.copied": {
+    "defaultMessage": "Copied to clipboard!",
+    "description": "Temporary feedback on the development-only network-data copy button after JSON has reached the clipboard."
+  },
+  "interview.familyPedigree.cousin": {
+    "defaultMessage": "Cousin",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.createNewPerson": {
+    "defaultMessage": "Create a new person",
+    "description": "Person-selection option creating a new relative instead of reusing an existing graph person. The stored option key remains new."
+  },
+  "interview.familyPedigree.current": {
+    "defaultMessage": "Current",
+    "description": "Short radio option for whether a romantic relationship is current or former. The question above supplies the person and relationship context."
+  },
+  "interview.familyPedigree.currentOrExPartner": {
+    "defaultMessage": "Are they a current or ex partner?",
+    "description": "Question classifying the selected partner relationship as current or former. It appears for both newly entered and reused people."
+  },
+  "interview.familyPedigree.currentPartner": {
+    "defaultMessage": "Current partner",
+    "description": "Partnership-status option for a named person: currently romantically involved versus a former romantic relationship. These are not co-parenting statuses."
+  },
+  "interview.familyPedigree.currentPartnerQuestion": {
+    "defaultMessage": "Do you have a current partner?",
+    "description": "Yes/no question about whether the participant currently has a romantic partner. A yes answer reveals that partner's details and shared children."
+  },
+  "interview.familyPedigree.currentPartners": {
+    "defaultMessage": "Current partners",
+    "description": "Radio answer describing the romantic relationship between two named people: ongoing, former, or never romantically involved. These options do not describe co-parenting."
+  },
+  "interview.familyPedigree.deceasedPartnerHint": {
+    "defaultMessage": "If either person is deceased, please answer based on whether they were partners while both were alive.",
+    "description": "Help for partnership questions when one or both people have died: answer about their relationship while both were alive."
+  },
+  "interview.familyPedigree.deleteNamedPerson": {
+    "defaultMessage": "Delete {name}?",
+    "description": "Whole destructive confirmation title for removing a relative. name is an entered name or a live localized relationship fallback and remains a separate value."
+  },
+  "interview.familyPedigree.deletePerson": {
+    "defaultMessage": "Delete person",
+    "description": "Action confirming removal of the person and their relationships after the destructive warning has been read."
+  },
+  "interview.familyPedigree.deletePersonDescription": {
+    "defaultMessage": "This will delete this person and all of their relationships from the family pedigree. This action cannot be undone.",
+    "description": "Destructive confirmation explaining that removing a person also removes every relationship involving them from this family tree and cannot be undone."
+  },
+  "interview.familyPedigree.detailsUpdated": {
+    "defaultMessage": "Details updated.",
+    "description": "Live screen-reader confirmation after saving a person editor when no name remains. Do not invent or expose an earlier name."
+  },
+  "interview.familyPedigree.detailsUpdatedFor": {
+    "defaultMessage": "Details updated for {name}.",
+    "description": "Live screen-reader confirmation after saving a person editor. name is the newly submitted name, not the name the dialog originally opened with."
+  },
+  "interview.familyPedigree.donor": {
+    "defaultMessage": "Donor",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.donorDescription": {
+    "defaultMessage": "Someone who donated sperm or an egg for this person's conception",
+    "description": "Description of the donor parent-type choice: a donated gamete contributed to this person's conception. It does not imply a social parental relationship."
+  },
+  "interview.familyPedigree.dump": {
+    "defaultMessage": "Dump",
+    "description": "Development-only button copying the current family graph as JSON for debugging. It is not a participant data-export workflow."
+  },
+  "interview.familyPedigree.duplicateSelf": {
+    "defaultMessage": "More than one person in this family tree is marked as you. Please ask the person running this interview for help.",
+    "description": "Blocking validation error when several people are marked as the participant. Direct them to the person running the interview, without exposing stored identifiers."
+  },
+  "interview.familyPedigree.edit": {
+    "defaultMessage": "Edit",
+    "description": "Context-menu action and dialog title for editing a recorded family member's details without replacing their graph identity."
+  },
+  "interview.familyPedigree.editPartnerships": {
+    "defaultMessage": "Are these people current or ex-partners of <strong>{name}</strong>?",
+    "description": "Matrix question editing existing romantic relationships of a recorded person. name is an entered name or localized role; keep its strong emphasis. strong emphasizes the literal person name; render it as rich text without interpreting markup in the name."
+  },
+  "interview.familyPedigree.eggDonor": {
+    "defaultMessage": "Egg Donor",
+    "description": "Unnamed-person label for someone whose donated egg contributed to conception. Donation is distinct from having a social parental role; used in both framings."
+  },
+  "interview.familyPedigree.eggDonorQuestion": {
+    "defaultMessage": "Was this person an egg donor?",
+    "description": "Yes/no question recording whether the selected egg contributor was a donor. The same wording is used in both pedigree framings."
+  },
+  "interview.familyPedigree.eggIntro": {
+    "defaultMessage": "Please answer the following questions about your egg parent. This is the person who contributed the egg that you were conceived with, which may be different from the person who carried you during pregnancy.",
+    "description": "Introduction to questions about the participant's egg contributor in gamete framing. Preserve the distinction from the person who carried the pregnancy."
+  },
+  "interview.familyPedigree.eggParent": {
+    "defaultMessage": "Egg Parent",
+    "description": "Heading and unnamed-person label in the gamete framing: the person who contributed the egg at conception, regardless of sex or parental gender. Distinct from the person who carried the pregnancy."
+  },
+  "interview.familyPedigree.eggProviderHint": {
+    "defaultMessage": "Select the person who provided the egg. If they were an egg donor, you can indicate that below.",
+    "description": "Help for selecting an egg contributor from existing people or creating a person. A separate question below records whether this contribution was a donation."
+  },
+  "interview.familyPedigree.eggProviderQuestion": {
+    "defaultMessage": "Who provided the egg?",
+    "description": "Question selecting the person who contributed the egg to a child. Used only in the gamete framing, without inferring their gender."
+  },
+  "interview.familyPedigree.enterName": {
+    "defaultMessage": "Enter name",
+    "description": "Placeholder for entering a relative's name in the pedigree wizard or editor. It is not an example name and is never stored as a response."
+  },
+  "interview.familyPedigree.ex": {
+    "defaultMessage": "Ex",
+    "description": "Short radio option for whether a romantic relationship is current or former. The question above supplies the person and relationship context."
+  },
+  "interview.familyPedigree.exPartner": {
+    "defaultMessage": "Ex-partner",
+    "description": "Partnership-status option for a named person: currently romantically involved versus a former romantic relationship. These are not co-parenting statuses."
+  },
+  "interview.familyPedigree.exPartners": {
+    "defaultMessage": "Ex-partners",
+    "description": "Radio answer describing the romantic relationship between two named people: ongoing, former, or never romantically involved. These options do not describe co-parenting."
+  },
+  "interview.familyPedigree.familyMember": {
+    "defaultMessage": "Family Member",
+    "description": "Generic display label when no entered name or relationship path is available for a person in the family tree. Does not alter stored research attributes."
+  },
+  "interview.familyPedigree.father": {
+    "defaultMessage": "Father",
+    "description": "Heading and unnamed-person label in the mother/father framing. Refers specifically to a biological parent, not a gestational carrier or a social/adoptive parent."
+  },
+  "interview.familyPedigree.fatherHint": {
+    "defaultMessage": "Select the biological father. If he was a sperm donor, you can indicate that below.",
+    "description": "Help accompanying the biological-parent selection in mother/father framing. The separate donor question below records whether that parent contributed a donated gamete."
+  },
+  "interview.familyPedigree.fatherIntro": {
+    "defaultMessage": "Please answer the following questions about your father. This is your biological father.",
+    "description": "Introduction to questions about the participant's biological father in mother/father framing, distinct from a social or adoptive father."
+  },
+  "interview.familyPedigree.fatherQuestion": {
+    "defaultMessage": "Who is the biological father?",
+    "description": "Person-selection question in the mother/father framing. Identifies the child's biological parent; the selected person may have been a gamete donor."
+  },
+  "interview.familyPedigree.finalize": {
+    "defaultMessage": "Finalize",
+    "description": "Action committing the family tree and ending structural editing. People can still have their details edited, but relatives cannot be added or removed afterward."
+  },
+  "interview.familyPedigree.finalizeDescription": {
+    "defaultMessage": "Once you continue, you will not be able to add or remove family members. You can still edit their details.",
+    "description": "Consequence of finalizing the tree: adding and removing people will be disabled, but editing their details remains available. Preserve both parts."
+  },
+  "interview.familyPedigree.finalizePedigree": {
+    "defaultMessage": "Finalize family pedigree",
+    "description": "Action committing the family tree and ending structural editing. People can still have their details edited, but relatives cannot be added or removed afterward."
+  },
+  "interview.familyPedigree.finalizeQuestion": {
+    "defaultMessage": "Finalize your family pedigree?",
+    "description": "Confirmation title before permanently ending the add/remove phase of this family tree. Finalization is different from finishing the entire interview."
+  },
+  "interview.familyPedigree.finalized": {
+    "defaultMessage": "Your family pedigree has been finalized.",
+    "description": "Status shown when revisiting a committed family tree whose structure can no longer be edited without resetting it."
+  },
+  "interview.familyPedigree.framingGamete": {
+    "defaultMessage": "Egg parent & sperm parent",
+    "description": "Label for choosing terminology based on contribution of the egg and sperm. Both roles must remain explicit and distinct from gestation."
+  },
+  "interview.familyPedigree.framingGameteDescription": {
+    "defaultMessage": "We'll talk about the person whose egg you came from and the person whose sperm you came from.",
+    "description": "Description of the gamete terminology option. Identifies the two people by their contributions to conception, without assigning gender."
+  },
+  "interview.familyPedigree.framingMotherFather": {
+    "defaultMessage": "Mother & father",
+    "description": "Label for choosing mother/father terminology for biological parents. This changes displayed wording, not how reproductive roles are stored."
+  },
+  "interview.familyPedigree.framingMotherFatherDescription": {
+    "defaultMessage": "We'll talk about your biological mother and biological father.",
+    "description": "Description of the mother/father terminology option. Make clear that the biological parents, rather than adoptive or other social parents, use these terms."
+  },
+  "interview.familyPedigree.framingQuestion": {
+    "defaultMessage": "How would you like us to refer to the people you're biologically related to?",
+    "description": "Accessible prompt for the participant's choice between mother/father and egg/sperm terminology. It asks for a language preference, not new biological information."
+  },
+  "interview.familyPedigree.gestationalCarrier": {
+    "defaultMessage": "Gestational Carrier",
+    "description": "Heading for the person who carried a pregnancy but did not contribute the egg. This term is identical in both the gamete and mother/father framings."
+  },
+  "interview.familyPedigree.gotIt": {
+    "defaultMessage": "Got it",
+    "description": "Acknowledgment action dismissing the construction-help dialog so the participant can continue building the tree."
+  },
+  "interview.familyPedigree.grandchild": {
+    "defaultMessage": "Grandchild",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.grandparent": {
+    "defaultMessage": "Grandparent",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.grandparentPartner": {
+    "defaultMessage": "Grandparent's Partner",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.grandparentsRequired": {
+    "defaultMessage": "Each of your parents needs at least two parents recorded.",
+    "description": "Completeness warning when a biological parent of the participant has fewer than two genetic parents recorded. May be a required block or recommended checklist nudge."
+  },
+  "interview.familyPedigree.greatGrandchild": {
+    "defaultMessage": "Great-Grandchild",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.greatGrandparent": {
+    "defaultMessage": "Great-Grandparent",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.help": {
+    "defaultMessage": "Help",
+    "description": "Short visible action opening family-tree construction guidance from the floating checklist."
+  },
+  "interview.familyPedigree.helpName": {
+    "defaultMessage": "How to build your pedigree",
+    "description": "Accessible name for opening the explanatory dialog about adding relatives through the pedigree context menu."
+  },
+  "interview.familyPedigree.incompleteIssues": {
+    "defaultMessage": "It looks like you haven't completed all the required tasks for your family pedigree. The following issues must be resolved before you can continue:",
+    "description": "Introduction to a list of required family-tree validation problems. These must be resolved before the participant can continue."
+  },
+  "interview.familyPedigree.incompleteNoFamily": {
+    "defaultMessage": "You have not created your family pedigree yet. Please complete the pedigree wizard to create your pedigree before continuing. Click the button in the bottom right to get started.",
+    "description": "Blocking guidance when the initial family wizard has not been completed. Direct the participant to the existing start button in the lower-right corner."
+  },
+  "interview.familyPedigree.incompleteTitle": {
+    "defaultMessage": "Pedigree is incomplete",
+    "description": "Heading of a blocking dialog shown when the family tree cannot yet be finalized."
+  },
+  "interview.familyPedigree.introduction": {
+    "defaultMessage": "Introduction",
+    "description": "Wizard step heading above the protocol-author's introduction. Only this generic heading is translated; the authored content below is not."
+  },
+  "interview.familyPedigree.keepEditing": {
+    "defaultMessage": "Keep editing",
+    "description": "Action dismissing a completeness or finalization dialog and preserving the editable family tree."
+  },
+  "interview.familyPedigree.load": {
+    "defaultMessage": "Load",
+    "description": "Development-only action and browser prompt for loading family-graph JSON from the clipboard. Keep JSON as the technical format name."
+  },
+  "interview.familyPedigree.memberAdded": {
+    "defaultMessage": "Family member added. Your family pedigree now has {count, plural, one {# member} other {# members}}.",
+    "description": "Live screen-reader announcement after a relative is added or removed. count is the remaining number of family members excluding the participant; use locale plural rules."
+  },
+  "interview.familyPedigree.memberRemoved": {
+    "defaultMessage": "Family member removed. Your family pedigree now has {count, plural, one {# member} other {# members}}.",
+    "description": "Live screen-reader announcement after a relative is added or removed. count is the remaining number of family members excluding the participant; use locale plural rules."
+  },
+  "interview.familyPedigree.missingSelf": {
+    "defaultMessage": "Your own place in this family tree could not be found. Please ask the person running this interview for help.",
+    "description": "Blocking validation error when the participant's own person is missing from the tree. Direct them to the person running the interview; this cannot be repaired by ignoring the checklist."
+  },
+  "interview.familyPedigree.mother": {
+    "defaultMessage": "Mother",
+    "description": "Heading and unnamed-person label in the mother/father framing. Refers specifically to a biological parent, not a gestational carrier or a social/adoptive parent."
+  },
+  "interview.familyPedigree.motherHint": {
+    "defaultMessage": "Select the biological mother. If she was an egg donor, you can indicate that below.",
+    "description": "Help accompanying the biological-parent selection in mother/father framing. The separate donor question below records whether that parent contributed a donated gamete."
+  },
+  "interview.familyPedigree.motherIntro": {
+    "defaultMessage": "Please answer the following questions about your mother. This is your biological mother, who may be different from the person who carried you during pregnancy.",
+    "description": "Introduction to questions about the participant's biological mother in mother/father framing. Preserve that she may be different from the person who carried the pregnancy."
+  },
+  "interview.familyPedigree.motherQuestion": {
+    "defaultMessage": "Who is the biological mother?",
+    "description": "Person-selection question in the mother/father framing. Identifies the child's biological parent; the selected person may have been a gamete donor."
+  },
+  "interview.familyPedigree.name": {
+    "defaultMessage": "Name",
+    "description": "Caption for the built-in person-name field. The entered name is research data and is never translated; unknown names may be left blank unless the protocol requires them."
+  },
+  "interview.familyPedigree.namedBiologicalParents": {
+    "defaultMessage": "{name}'s Biological Parents",
+    "description": "Whole wizard title for the biological parents of a named relative. name is the unchanged entered name; translate the possessive grammar."
+  },
+  "interview.familyPedigree.namedChild": {
+    "defaultMessage": "{name}'s Child",
+    "description": "Whole display label for an unnamed child reached through a named relative. name is that relative's entered name; the child's sex is unspecified."
+  },
+  "interview.familyPedigree.namedParent": {
+    "defaultMessage": "{name}'s Parent",
+    "description": "Whole display label for an unnamed parent reached through a named relative. name is that relative's entered name; translate the possessive grammar without changing the name."
+  },
+  "interview.familyPedigree.namedPartner": {
+    "defaultMessage": "{name}'s Partner",
+    "description": "Whole display label for an unnamed partner of a named relative. name is that relative's entered name, which remains verbatim."
+  },
+  "interview.familyPedigree.namedRelative": {
+    "defaultMessage": "{name}'s Relative",
+    "description": "Whole generic label for an unnamed relative reached through a named person. name is the entered intermediary name, which remains verbatim."
+  },
+  "interview.familyPedigree.neverPartners": {
+    "defaultMessage": "Never partners",
+    "description": "Radio answer describing the romantic relationship between two named people: ongoing, former, or never romantically involved. These options do not describe co-parenting."
+  },
+  "interview.familyPedigree.newCarrier": {
+    "defaultMessage": "New gestational carrier",
+    "description": "Fallback reference to a newly entered, unnamed person who carried the pregnancy. New means entered in the current wizard, not a new pregnancy."
+  },
+  "interview.familyPedigree.newEggParent": {
+    "defaultMessage": "New egg parent",
+    "description": "Fallback name in a partnership question for a newly added, unnamed egg contributor. New means added in the current wizard, not a newborn or new biological relationship."
+  },
+  "interview.familyPedigree.newFather": {
+    "defaultMessage": "New father",
+    "description": "Fallback reference to a newly entered, unnamed biological parent in a partnership question. New means added in this wizard; used in mother/father framing."
+  },
+  "interview.familyPedigree.newMother": {
+    "defaultMessage": "New mother",
+    "description": "Fallback reference to a newly entered, unnamed biological parent in a partnership question. New means added in this wizard; used in mother/father framing."
+  },
+  "interview.familyPedigree.newParentAndPartner": {
+    "defaultMessage": "Is {name} a current or former partner of the new parent?",
+    "description": "Whole question about a current or former romantic relationship between an existing parent and the newly added parent. name is the existing person’s literal entered name or localized fallback. The answer options distinguish current, former and never partners."
+  },
+  "interview.familyPedigree.newPartnershipIntro": {
+    "defaultMessage": "We now want to ask about relationships between the parents you named. This includes current and past romantic partnerships, but <strong>not co-parenting partnerships</strong> where the parents were never romantically involved.",
+    "description": "Explains romantic partnerships among a relative's recorded parents. strong emphasizes the exclusion of non-romantic co-parenting; preserve the complete distinction."
+  },
+  "interview.familyPedigree.newSpermParent": {
+    "defaultMessage": "New sperm parent",
+    "description": "Fallback name in a partnership question for a newly added, unnamed sperm contributor. New means added in the current wizard, not a newborn or new biological relationship."
+  },
+  "interview.familyPedigree.nieceNephew": {
+    "defaultMessage": "Niece/Nephew",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.noChildrenConfirmed": {
+    "defaultMessage": "No children (confirmed)",
+    "description": "Completed checklist state recording the participant's explicit affirmation that they have no children; this is distinct from simply leaving the task unfinished."
+  },
+  "interview.familyPedigree.notParent": {
+    "defaultMessage": "Not a parent",
+    "description": "Parent-type option indicating that the newly added partner is not a parent of the particular existing child named in the question."
+  },
+  "interview.familyPedigree.notParentDescription": {
+    "defaultMessage": "Select this if not a parent of this child",
+    "description": "Parent-type option indicating that the newly added partner is not a parent of the particular existing child named in the question."
+  },
+  "interview.familyPedigree.notPartnerUnknown": {
+    "defaultMessage": "Not a partner or Don't know",
+    "description": "Partnership matrix option combining no romantic relationship with unknown relationship status. Preserve both alternatives."
+  },
+  "interview.familyPedigree.numberedRelative": {
+    "defaultMessage": "{role} #{number, number}",
+    "description": "Disambiguates several unnamed people with the same relationship label. role is an already localized kinship label; number is a stable one-based position, not a count of relatives."
+  },
+  "interview.familyPedigree.okay": {
+    "defaultMessage": "OK",
+    "description": "Acknowledgment action closing the incomplete-tree explanation without advancing to another interview screen."
+  },
+  "interview.familyPedigree.otherAdditionalParents": {
+    "defaultMessage": "Did this person have any additional parents?",
+    "description": "Questions determining whether a relative has additional social parents and how many repeated parent forms to show."
+  },
+  "interview.familyPedigree.otherAdditionalParentsCount": {
+    "defaultMessage": "How many additional parents did they have?",
+    "description": "Questions determining whether a relative has additional social parents and how many repeated parent forms to show."
+  },
+  "interview.familyPedigree.otherAdditionalParentsHint": {
+    "defaultMessage": "This includes adoptive parents, stepparents, or any other parents who are not biological parents.",
+    "description": "Instructions about additional non-biological parents of the relative currently being entered. This is about that person's upbringing, not the participant's own upbringing."
+  },
+  "interview.familyPedigree.otherAdditionalParentsIntro": {
+    "defaultMessage": "Please tell us about each of this person's additional parents. This includes step-parents, adoptive parents, or other people who played a parental role in their life.",
+    "description": "Instructions about additional non-biological parents of the relative currently being entered. This is about that person's upbringing, not the participant's own upbringing."
+  },
+  "interview.familyPedigree.otherCarrierHint": {
+    "defaultMessage": "If someone else carried the pregnancy (e.g. a gestational carrier or surrogate), select 'No'.",
+    "description": "Help explaining when to answer no to whether the egg contributor carried the pregnancy; a no answer enables selecting a separate gestational carrier."
+  },
+  "interview.familyPedigree.otherParents": {
+    "defaultMessage": "Other parents",
+    "description": "Wizard step title for non-biological parental figures, separate from the two genetic contributors."
+  },
+  "interview.familyPedigree.parent": {
+    "defaultMessage": "Parent",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.parentCarriedYou": {
+    "defaultMessage": "Did this parent carry you during pregnancy?",
+    "description": "Yes/no question asking whether the selected biological parent also carried the pregnancy that produced the participant. A no answer opens separate gestational-carrier questions."
+  },
+  "interview.familyPedigree.parentDetails": {
+    "defaultMessage": "Parent details",
+    "description": "Wizard step title collecting details for the new relative. The family relationship is relative to the person whose context menu opened the wizard."
+  },
+  "interview.familyPedigree.parentPartnerships": {
+    "defaultMessage": "Parent partnerships",
+    "description": "Wizard step title for romantic relationships among the recorded parents, not for the parent-child relationships."
+  },
+  "interview.familyPedigree.parentRole": {
+    "defaultMessage": "What role did this parent have?",
+    "description": "Question selecting the social role of an additional parent, such as stepparent, adoptive parent or the person who raised the subject."
+  },
+  "interview.familyPedigree.parentType": {
+    "defaultMessage": "Parent type",
+    "description": "Caption for choosing the new parent relationship type: biological, social, donor or surrogate. The displayed label does not change the stored type identifier."
+  },
+  "interview.familyPedigree.parentsRequired": {
+    "defaultMessage": "You must have at least two parents defined.",
+    "description": "Minimum completeness requirement before finalizing: the participant must have at least two parent relationships recorded. This does not require exactly two."
+  },
+  "interview.familyPedigree.partner": {
+    "defaultMessage": "Partner",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.partnerChildren": {
+    "defaultMessage": "Partner and children",
+    "description": "Wizard step title asking about the participant's current partner and the children they have with that partner."
+  },
+  "interview.familyPedigree.partnersOf": {
+    "defaultMessage": "Please indicate which of these people are partners of <strong>{name}</strong>.",
+    "description": "Matrix question about romantic partners of one recorded parent. name is an entered name or localized role fallback; strong emphasis surrounds it and must be preserved. strong emphasizes the literal person name; render it as rich text without interpreting markup in the name."
+  },
+  "interview.familyPedigree.partnershipDefinition": {
+    "defaultMessage": "Partnership means current and past romantic relationships, but <strong>not co-parenting</strong> (where two people raised a child together but were never romantically involved).",
+    "description": "Explains that partnership includes current and past romantic relationships but excludes raising a child together without romance. strong emphasizes this exclusion; keep the whole explanation together."
+  },
+  "interview.familyPedigree.partnershipIntro": {
+    "defaultMessage": "We now want to ask about partnerships between the parents you named.",
+    "description": "Introduction to the matrix asking about romantic relationships among the participant's recorded parents."
+  },
+  "interview.familyPedigree.partnerships": {
+    "defaultMessage": "Partnerships",
+    "description": "Wizard step heading for romantic relationships involving the newly added parent and existing parents."
+  },
+  "interview.familyPedigree.pasteJson": {
+    "defaultMessage": "Paste network JSON:",
+    "description": "Development-only action and browser prompt for loading family-graph JSON from the clipboard. Keep JSON as the technical format name."
+  },
+  "interview.familyPedigree.pendingUniqueError": {
+    "defaultMessage": "This value is used elsewhere. It must be unique.",
+    "description": "Field-owned error when a value duplicates another entry in the pending family wizard. Do not include the duplicated value in the message."
+  },
+  "interview.familyPedigree.pendingUniqueHint": {
+    "defaultMessage": "Must also be unique within this family setup.",
+    "description": "Additional validation hint when the protocol requires a unique name: uniqueness also includes people still being entered in the unfinished pedigree wizard."
+  },
+  "interview.familyPedigree.personAlreadyRelated": {
+    "defaultMessage": "Is this person already in your family tree / related to you?",
+    "description": "Question deciding whether a partner should reuse an existing relative/person in the tree. Allows relationships between people already in the recorded family."
+  },
+  "interview.familyPedigree.personBiologicalParents": {
+    "defaultMessage": "This Person's Biological Parents",
+    "description": "Wizard title for biological parents when the selected person has no entered name. Keep the complete generic-subject phrase together."
+  },
+  "interview.familyPedigree.personCarried": {
+    "defaultMessage": "Did this person carry the pregnancy?",
+    "description": "Yes/no question asking whether the selected egg contributor also carried the pregnancy. It does not infer gestation from sex or parental title."
+  },
+  "interview.familyPedigree.raisedMeRole": {
+    "defaultMessage": "Parent who raised me",
+    "description": "Social-parent role option for someone who raised the participant, distinct from the explicitly adoptive and stepparent options."
+  },
+  "interview.familyPedigree.raisedThemRole": {
+    "defaultMessage": "Parent who raised them",
+    "description": "Social-parent role option for someone who raised the relative currently being added, rather than the participant."
+  },
+  "interview.familyPedigree.recordCoParents": {
+    "defaultMessage": "Record children's co-parents and their parents",
+    "description": "Checklist boundary requirement to record the other genetic parents of the participant's children and those co-parents' parents."
+  },
+  "interview.familyPedigree.recordGrandparents": {
+    "defaultMessage": "Record each parent's two parents",
+    "description": "Checklist boundary requirement to record two parents for each of the participant's genetic parents, completing the grandparent generation."
+  },
+  "interview.familyPedigree.referToParents": {
+    "defaultMessage": "How we’ll refer to your parents",
+    "description": "Wizard step title for choosing between gamete and mother/father terminology before parent details are collected."
+  },
+  "interview.familyPedigree.reset": {
+    "defaultMessage": "Reset",
+    "description": "Short confirmation action that executes the family-tree reset described in the dialog."
+  },
+  "interview.familyPedigree.resetDescription": {
+    "defaultMessage": "This will delete all family members and relationships. This action cannot be undone.",
+    "description": "Destructive confirmation explaining that all family members and their relationships will be removed and that this reset cannot be undone."
+  },
+  "interview.familyPedigree.resetPedigree": {
+    "defaultMessage": "Reset family pedigree",
+    "description": "Destructive reset action for an already finalized family tree, returning it to an empty setup state."
+  },
+  "interview.familyPedigree.resetQuestion": {
+    "defaultMessage": "Reset family pedigree?",
+    "description": "Destructive reset action for an already finalized family tree, returning it to an empty setup state."
+  },
+  "interview.familyPedigree.returnToEditing": {
+    "defaultMessage": "Return to editing",
+    "description": "Action dismissing a completeness or finalization dialog and preserving the editable family tree."
+  },
+  "interview.familyPedigree.selectCarrier": {
+    "defaultMessage": "Select the person who carried the pregnancy, or create a new person.",
+    "description": "Question and help identifying the person who carried a child's pregnancy, separately from the egg and sperm contributors. An existing person can be reused or a new one created."
+  },
+  "interview.familyPedigree.selectExistingPerson": {
+    "defaultMessage": "Select an existing person or create a new one.",
+    "description": "Caption and help for reusing an existing person as a parent or creating a new person, avoiding duplicate relatives in the graph."
+  },
+  "interview.familyPedigree.selectPerson": {
+    "defaultMessage": "Select the person",
+    "description": "Caption for the list of existing people that can be reused when adding a partner or parent. Names are entered research data."
+  },
+  "interview.familyPedigree.sexFemale": {
+    "defaultMessage": "Female",
+    "description": "Option for sex recorded at birth. Translate only the label; the corresponding schema value remains a stable English identifier."
+  },
+  "interview.familyPedigree.sexHint": {
+    "defaultMessage": "If you’re not sure, choose “Don’t know” — please don’t guess.",
+    "description": "Help under the birth-recorded-sex question. Use the same translation of the unknown option as sexUnknown and explicitly discourage guessing."
+  },
+  "interview.familyPedigree.sexIntersex": {
+    "defaultMessage": "Intersex or a variation in sex characteristics",
+    "description": "Birth-recorded-sex option covering intersex and variations in sex characteristics. Preserve both parts rather than shortening it to one category."
+  },
+  "interview.familyPedigree.sexLeadIn": {
+    "defaultMessage": "To understand how conditions can be passed down a family, we need the sex each person was recorded as at birth — not how they describe their gender.",
+    "description": "One-time explanation before the participant's birth-recorded-sex question, distinguishing the inheritance information being collected from gender identity."
+  },
+  "interview.familyPedigree.sexMale": {
+    "defaultMessage": "Male",
+    "description": "Option for sex recorded at birth. Translate only the label; the corresponding schema value remains a stable English identifier."
+  },
+  "interview.familyPedigree.sexOther": {
+    "defaultMessage": "What sex was this person recorded as at birth?",
+    "description": "Required question about a relative's sex recorded at birth, used for inheritance modelling. This asks about the birth record, not current gender identity."
+  },
+  "interview.familyPedigree.sexPreferNotToSay": {
+    "defaultMessage": "Prefer not to say",
+    "description": "Birth-recorded-sex answer declining disclosure. Keep distinct from the unknown answer; the two choices are stored separately."
+  },
+  "interview.familyPedigree.sexSelf": {
+    "defaultMessage": "What sex were you recorded as at birth?",
+    "description": "Required question about the participant's own sex recorded at birth, used for inheritance modelling. This asks about the birth record, not current gender identity."
+  },
+  "interview.familyPedigree.sexUnknown": {
+    "defaultMessage": "Don’t know",
+    "description": "Birth-recorded-sex answer when the participant does not know. It is distinct from choosing not to disclose, and must match the option quoted in sexHint."
+  },
+  "interview.familyPedigree.sibling": {
+    "defaultMessage": "Sibling",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.siblingDetails": {
+    "defaultMessage": "Sibling details",
+    "description": "Wizard step title collecting details for the new relative. The family relationship is relative to the person whose context menu opened the wizard."
+  },
+  "interview.familyPedigree.siblingPartner": {
+    "defaultMessage": "Sibling's Partner",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.socialKey": {
+    "defaultMessage": "Social parent (adoptive, step)",
+    "description": "Legend label for dashed parent-child connectors representing social parents, including adoptive parents and stepparents."
+  },
+  "interview.familyPedigree.socialParent": {
+    "defaultMessage": "Social Parent",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.socialParentDescription": {
+    "defaultMessage": "An adoptive, step, or foster parent",
+    "description": "Description of the non-genetic social-parent choice, including adoption, step-parenthood and foster care."
+  },
+  "interview.familyPedigree.spermDonor": {
+    "defaultMessage": "Sperm Donor",
+    "description": "Unnamed-person label for someone whose donated sperm contributed to conception. Donation is distinct from having a social parental role; used in both framings."
+  },
+  "interview.familyPedigree.spermDonorQuestion": {
+    "defaultMessage": "Was this person a sperm donor?",
+    "description": "Yes/no question recording whether the selected sperm contributor was a donor. The same wording is used in both pedigree framings."
+  },
+  "interview.familyPedigree.spermIntro": {
+    "defaultMessage": "Please answer the following questions about your sperm parent. This is the person who contributed the sperm that you were conceived with.",
+    "description": "Introduction to questions about the participant's sperm contributor in gamete framing. Refers to conception and does not assume parental gender."
+  },
+  "interview.familyPedigree.spermParent": {
+    "defaultMessage": "Sperm Parent",
+    "description": "Heading and unnamed-person label in the gamete framing: the person who contributed the sperm at conception, regardless of sex or parental gender."
+  },
+  "interview.familyPedigree.spermProviderHint": {
+    "defaultMessage": "Select the person who provided the sperm. If they were a sperm donor, you can indicate that below.",
+    "description": "Help for selecting a sperm contributor from existing people or creating a person. A separate question below records whether this contribution was a donation."
+  },
+  "interview.familyPedigree.spermProviderQuestion": {
+    "defaultMessage": "Who provided the sperm?",
+    "description": "Question selecting the person who contributed the sperm to a child. Used only in the gamete framing, without inferring their gender."
+  },
+  "interview.familyPedigree.stepChild": {
+    "defaultMessage": "Step-Child",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.stepParent": {
+    "defaultMessage": "Step-Parent",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.stepParentRole": {
+    "defaultMessage": "Step-parent",
+    "description": "Option describing a non-biological parent's social role in the family. Translate only the display label; the role identifier is stored unchanged."
+  },
+  "interview.familyPedigree.surrogate": {
+    "defaultMessage": "Surrogate",
+    "description": "Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged."
+  },
+  "interview.familyPedigree.surrogateDescription": {
+    "defaultMessage": "Someone who carried this person during pregnancy",
+    "description": "Description of the gestational parent-type choice: the person who carried the pregnancy. Do not imply that they also contributed a gamete."
+  },
+  "interview.familyPedigree.thisPerson": {
+    "defaultMessage": "this person",
+    "description": "Generic person reference used in an edit or delete question only when neither entered name nor generated relationship label is available."
+  },
+  "interview.familyPedigree.unknownCarrier": {
+    "defaultMessage": "Unknown gestational carrier",
+    "description": "Fallback reference to the person who carried the pregnancy when their identity is unknown."
+  },
+  "interview.familyPedigree.unknownEggParent": {
+    "defaultMessage": "Unknown egg parent",
+    "description": "Fallback reference to an unidentified egg contributor in a partnership question. It is the person's identity, not their reproductive role, that is unknown."
+  },
+  "interview.familyPedigree.unknownFather": {
+    "defaultMessage": "Unknown father",
+    "description": "Fallback reference to a biological parent whose identity is unknown. Used in partnership questions under mother/father framing."
+  },
+  "interview.familyPedigree.unknownMother": {
+    "defaultMessage": "Unknown mother",
+    "description": "Fallback reference to a biological parent whose identity is unknown. Used in partnership questions under mother/father framing."
+  },
+  "interview.familyPedigree.unknownNameHint": {
+    "defaultMessage": "Leave blank if the name is not known",
+    "description": "Hint for an optional person-name field. Protocol-required names suppress this hint, so it must not imply that all fields can be skipped."
+  },
+  "interview.familyPedigree.unknownPerson": {
+    "defaultMessage": "Unknown person",
+    "description": "Fallback label in a person-selection list when neither a name nor a relationship label can be resolved."
+  },
+  "interview.familyPedigree.unknownSpermParent": {
+    "defaultMessage": "Unknown sperm parent",
+    "description": "Fallback reference to an unidentified sperm contributor in a partnership question. It is the person's identity, not their reproductive role, that is unknown."
+  },
+  "interview.familyPedigree.unnamedPerson": {
+    "defaultMessage": "Unnamed person",
+    "description": "Fallback row label in the editor's partnership matrix when the related person has no usable name or computed relationship label."
+  },
+  "interview.familyPedigree.whatName": {
+    "defaultMessage": "What is their name?",
+    "description": "Caption for the built-in person-name field. The entered name is research data and is never translated; unknown names may be left blank unless the protocol requires them."
+  },
+  "interview.familyPedigree.whoCarried": {
+    "defaultMessage": "Who carried the pregnancy?",
+    "description": "Question and help identifying the person who carried a child's pregnancy, separately from the egg and sperm contributors. An existing person can be reused or a new one created."
+  },
+  "interview.familyPedigree.whoParent": {
+    "defaultMessage": "Who is this parent?",
+    "description": "Caption and help for reusing an existing person as a parent or creating a new person, avoiding duplicate relatives in the graph."
+  },
+  "interview.familyPedigree.you": {
+    "defaultMessage": "You",
+    "description": "Display and accessible label for the participant's own position in the family tree and person-selection lists. This label is never written as their name."
+  },
+  "interview.familyPedigree.yourAdditionalParent": {
+    "defaultMessage": "your additional parent",
+    "description": "Complete fallback reference to one of the participant's additional social parents when no name is available. Includes the possessive."
+  },
+  "interview.familyPedigree.yourBiologicalParents": {
+    "defaultMessage": "Your Biological Parents",
+    "description": "Wizard title when recording the participant's own genetic parents. Keep the complete possessive phrase together."
+  },
+  "interview.familyPedigree.yourCarrier": {
+    "defaultMessage": "your gestational carrier",
+    "description": "Complete fallback reference to the person who carried the participant's pregnancy when their name is unknown. Includes the possessive for use in a whole partnership question."
+  },
+  "interview.familyPedigree.yourEggParent": {
+    "defaultMessage": "your egg parent",
+    "description": "Complete fallback person reference used in questions about the participant's parents when the egg contributor has no entered name. Includes the possessive; do not assume gender."
+  },
+  "interview.familyPedigree.yourFather": {
+    "defaultMessage": "your father",
+    "description": "Complete possessive reference to an unnamed biological parent of the participant, used inside partnership questions in mother/father framing."
+  },
+  "interview.familyPedigree.yourMother": {
+    "defaultMessage": "your mother",
+    "description": "Complete possessive reference to an unnamed biological parent of the participant, used inside partnership questions in mother/father framing."
+  },
+  "interview.familyPedigree.yourPartner": {
+    "defaultMessage": "Your partner",
+    "description": "Fallback person reference for the participant's current partner when no name was entered. Used in biological-parent candidate lists for their children."
+  },
+  "interview.familyPedigree.yourSpermParent": {
+    "defaultMessage": "your sperm parent",
+    "description": "Complete fallback person reference used in questions about the participant's parents when the sperm contributor has no entered name. Includes the possessive; do not assume gender."
+  },
+  "interview.interfaces.addNamePlaceholder": {
+    "defaultMessage": "Type a name, then press Enter",
+    "description": "Placeholder in the network-composer name field; pressing Enter adds the named item."
+  },
+  "interview.interfaces.addNode": {
+    "defaultMessage": "Add node",
+    "description": "Accessible name of the network-composer tool that opens a field to add a new network item."
+  },
+  "interview.interfaces.addedNodes": {
+    "defaultMessage": "Added Nodes",
+    "description": "Accessible name used by drag-and-drop announcements for the list of people already added to the network."
+  },
+  "interview.interfaces.attributes": {
+    "defaultMessage": "Attributes",
+    "description": "Narrative legend heading for attributes used to highlight people. Individual attribute labels come unchanged from the protocol."
+  },
+  "interview.interfaces.automaticLayout": {
+    "defaultMessage": "Automatic layout",
+    "description": "Toggle that automatically positions people in the network composer."
+  },
+  "interview.interfaces.availableItems": {
+    "defaultMessage": "List of available items to add",
+    "description": "Accessible name of the collection containing external roster entries that can be added."
+  },
+  "interview.interfaces.availableRosterNodes": {
+    "defaultMessage": "Available Roster Nodes",
+    "description": "Accessible name used by drag-and-drop announcements for the external roster entries that can still be added."
+  },
+  "interview.interfaces.availableToAdd": {
+    "defaultMessage": "Available to add",
+    "description": "Heading above the external roster entries that the participant can add to their network."
+  },
+  "interview.interfaces.binSummary": {
+    "defaultMessage": "{otherCount, plural, =0 {<label>{name}</label>} one {<label>{name}</label> <count>and # other</count>} other {<label>{name}</label> <count>and # others</count>}}",
+    "description": "Whole categorical-bin summary. name is the first item’s unchanged display name; otherCount excludes that item. label and count tags keep the name and remaining-item count in separate visual spans."
+  },
+  "interview.interfaces.categoryContents": {
+    "defaultMessage": "Category {label}, {count, plural, one {# item} other {# items}}",
+    "description": "Accessible name of a collapsed category container. label is its authored category label; count is the number of items currently in the container."
+  },
+  "interview.interfaces.categoryContentsExpanded": {
+    "defaultMessage": "Category {label}, {count, plural, one {# item} other {# items}}, expanded",
+    "description": "Accessible name of an expanded category container. label is its authored label; count is the number of items currently in it."
+  },
+  "interview.interfaces.categoryDrop": {
+    "defaultMessage": "Category: {label}",
+    "description": "Drag target announcement for a categorical response. label is the unchanged researcher-authored category label."
+  },
+  "interview.interfaces.categoryList": {
+    "defaultMessage": "{label} category",
+    "description": "Accessible name of the item list inside an expanded category. label is the unchanged researcher-authored category label."
+  },
+  "interview.interfaces.clearSearch": {
+    "defaultMessage": "Clear search",
+    "description": "Accessible action that clears the current geospatial search query."
+  },
+  "interview.interfaces.closeSearch": {
+    "defaultMessage": "Close search",
+    "description": "Accessible name of the toggle while the geospatial place-search panel is open."
+  },
+  "interview.interfaces.composerTools": {
+    "defaultMessage": "Network composer tools",
+    "description": "Accessible name of the vertical toolbar used to create and edit a network."
+  },
+  "interview.interfaces.confirmPassphrase": {
+    "defaultMessage": "Confirm Passphrase",
+    "description": "Label of the second anonymisation password field; this is confirmation of the passphrase, not a separate password."
+  },
+  "interview.interfaces.deselect": {
+    "defaultMessage": "Deselect",
+    "description": "Action that clears the current outside-map-area selection so the participant can choose another location."
+  },
+  "interview.interfaces.disableDrawing": {
+    "defaultMessage": "Disable drawing",
+    "description": "Toggle action that turns off freehand drawing on the narrative canvas."
+  },
+  "interview.interfaces.discardChanges": {
+    "defaultMessage": "Discard changes",
+    "description": "Confirmation action that leaves an invalid form and discards its unsaved changes."
+  },
+  "interview.interfaces.discardChangesDescription": {
+    "defaultMessage": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?",
+    "description": "Warning when leaving a form with invalid unsaved answers. Continuing resets the form, so its unsaved changes will be lost."
+  },
+  "interview.interfaces.discardChangesTitle": {
+    "defaultMessage": "Discard changes?",
+    "description": "Title of the warning shown when a participant tries to leave a form containing invalid unsaved answers."
+  },
+  "interview.interfaces.dragToReposition": {
+    "defaultMessage": "Drag to reposition",
+    "description": "Accessible name of the handle that moves the floating narrative preset toolbar."
+  },
+  "interview.interfaces.drawEdge": {
+    "defaultMessage": "Draw edge",
+    "description": "Accessible name of the network-composer tool that creates a connection between two items."
+  },
+  "interview.interfaces.drawingControls": {
+    "defaultMessage": "Drawing controls",
+    "description": "Accessible name of the narrative toolbar group for freehand annotations."
+  },
+  "interview.interfaces.editingTools": {
+    "defaultMessage": "Editing tools",
+    "description": "Accessible name of the toolbar group for selection, adding people, creating connections, and group membership."
+  },
+  "interview.interfaces.emptyRoster": {
+    "defaultMessage": "There is nothing to add from this list.",
+    "description": "Empty state after an external roster has loaded successfully but contains no entries."
+  },
+  "interview.interfaces.enableDrawing": {
+    "defaultMessage": "Enable drawing",
+    "description": "Toggle action that turns on freehand drawing on the narrative canvas."
+  },
+  "interview.interfaces.entityName": {
+    "defaultMessage": "{entityLabel} name",
+    "description": "Accessible name for a new-item name field. entityLabel is the unchanged, researcher-authored label for the network entity type."
+  },
+  "interview.interfaces.equalSplit": {
+    "defaultMessage": "Equal split",
+    "description": "Divider preset that gives equal space to the source panels and the added-people list in the name generator."
+  },
+  "interview.interfaces.errorHeading": {
+    "defaultMessage": "Something went wrong",
+    "description": "Short heading above an external-list loading error. This heading intentionally has no final period."
+  },
+  "interview.interfaces.externalDataUnavailable": {
+    "defaultMessage": "External data could not be loaded.",
+    "description": "Explanation shown when a configured external list of people could not be loaded."
+  },
+  "interview.interfaces.finish": {
+    "defaultMessage": "Finish",
+    "description": "Button on the final interview screen that opens the finish confirmation dialog."
+  },
+  "interview.interfaces.finishConfirmation": {
+    "defaultMessage": "Are you sure you want to finish the interview?",
+    "description": "Title of the confirmation dialog opened by the finish button at the end of an interview."
+  },
+  "interview.interfaces.finishDescription": {
+    "defaultMessage": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.",
+    "description": "Guidance on the final interview screen before the participant opens the finish confirmation dialog."
+  },
+  "interview.interfaces.finishInterview": {
+    "defaultMessage": "Finish Interview",
+    "description": "End-of-interview page heading and confirmation action that finishes the current interview."
+  },
+  "interview.interfaces.finished": {
+    "defaultMessage": "Finished",
+    "description": "Button that submits and closes the form for adding or editing a person; it does not finish the whole interview."
+  },
+  "interview.interfaces.formDisabled": {
+    "defaultMessage": "Form is disabled",
+    "description": "Form-level error when a quick-add submission is attempted while that form is disabled."
+  },
+  "interview.interfaces.freezeAnnotations": {
+    "defaultMessage": "Freeze annotations",
+    "description": "Toggle action that locks existing narrative annotations in place."
+  },
+  "interview.interfaces.groupMembershipOptions": {
+    "defaultMessage": "Group membership options",
+    "description": "Accessible name of the popover containing group membership choices in the network composer."
+  },
+  "interview.interfaces.groupMembershipPeople": {
+    "defaultMessage": "Group membership for selected people",
+    "description": "Accessible name of the controls that set group membership for the currently selected people."
+  },
+  "interview.interfaces.groups": {
+    "defaultMessage": "Groups",
+    "description": "Network-composer tool label and narrative legend heading for groups of people."
+  },
+  "interview.interfaces.hideInstructions": {
+    "defaultMessage": "Hide instructions",
+    "description": "Accessible action that collapses the floating instructions panel above a network view."
+  },
+  "interview.interfaces.historyTools": {
+    "defaultMessage": "History tools",
+    "description": "Accessible name of the toolbar group containing undo and redo actions."
+  },
+  "interview.interfaces.keepChanges": {
+    "defaultMessage": "Keep changes",
+    "description": "Cancellation action in the discard-changes warning; the participant stays on the current form to continue editing."
+  },
+  "interview.interfaces.layoutAndDrawing": {
+    "defaultMessage": "Layout and drawing tools",
+    "description": "Accessible name of the narrative toolbar for automatic positioning and freehand annotations."
+  },
+  "interview.interfaces.layoutControls": {
+    "defaultMessage": "Layout controls",
+    "description": "Accessible name of the narrative toolbar group that pauses or resumes automatic positioning."
+  },
+  "interview.interfaces.layoutTools": {
+    "defaultMessage": "Layout tools",
+    "description": "Accessible name of the network-composer toolbar group that controls automatic positioning."
+  },
+  "interview.interfaces.links": {
+    "defaultMessage": "Links",
+    "description": "Narrative legend heading for displayed connection types. Individual connection labels come unchanged from the protocol."
+  },
+  "interview.interfaces.loading": {
+    "defaultMessage": "Loading...",
+    "description": "Loading indicator while an external list of people is being read. Keeps the existing three-dot punctuation of this interface."
+  },
+  "interview.interfaces.mapMoved": {
+    "defaultMessage": "Map moved to {place}.",
+    "description": "Screen-reader announcement after a selected search result moves the map. place is the unchanged place name returned by the map service."
+  },
+  "interview.interfaces.mapTitle": {
+    "defaultMessage": "Map",
+    "description": "Accessible region name of the native Mapbox canvas in the geospatial interface."
+  },
+  "interview.interfaces.mapUnavailable": {
+    "defaultMessage": "The map could not be displayed",
+    "description": "Heading when the participant’s device or browser cannot initialize the map."
+  },
+  "interview.interfaces.mapUnavailableDescription": {
+    "defaultMessage": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
+    "description": "Recovery guidance after map initialization fails. The next arrow refers to the interview navigation control, not a map control."
+  },
+  "interview.interfaces.mapboxHomepage": {
+    "defaultMessage": "Mapbox homepage",
+    "description": "Accessible name of the native map logo link that opens the Mapbox homepage; preserve the Mapbox brand name."
+  },
+  "interview.interfaces.missingInterface": {
+    "defaultMessage": "No \"{interfaceType}\" interface found.",
+    "description": "Fallback error when the runtime cannot render a configured interface type. interfaceType is the unchanged technical type identifier for diagnosing the unsupported configuration."
+  },
+  "interview.interfaces.namedReturnedToDrawer": {
+    "defaultMessage": "{name} returned to the drawer.",
+    "description": "Screen-reader announcement after an item is returned to the unplaced-items panel. name is its unchanged participant-entered or authored display name."
+  },
+  "interview.interfaces.nextPreset": {
+    "defaultMessage": "Next preset",
+    "description": "Action that selects the next researcher-configured narrative view."
+  },
+  "interview.interfaces.no": {
+    "defaultMessage": "No",
+    "description": "Negative built-in binary response in pair comparisons and human-readable display of false roster values. The stored boolean remains false."
+  },
+  "interview.interfaces.noAttributes": {
+    "defaultMessage": "No attributes to edit",
+    "description": "Empty state in the network-composer editing panel when the selected item has no configured form fields."
+  },
+  "interview.interfaces.noNodes": {
+    "defaultMessage": "No nodes to display.",
+    "description": "Empty state when a one-to-many relationship question has no people to display."
+  },
+  "interview.interfaces.noNodesAvailable": {
+    "defaultMessage": "No nodes available to display.",
+    "description": "Empty state when the current one-to-many question has no available people for its focal position."
+  },
+  "interview.interfaces.noSearchResults": {
+    "defaultMessage": "Nothing matched your search.",
+    "description": "Outcome of a completed geospatial search with no matching places. Do not use this for network failures."
+  },
+  "interview.interfaces.node": {
+    "defaultMessage": "Node",
+    "description": "Capitalized fallback label when a displayed network item has no authored type name or usable participant-entered name."
+  },
+  "interview.interfaces.nodeSubject": {
+    "defaultMessage": "node",
+    "description": "Lowercase fallback subject noun in the generated unnamed-roster-entry label when the protocol supplies no type name."
+  },
+  "interview.interfaces.oneThirdPanels": {
+    "defaultMessage": "One-third panels",
+    "description": "Divider preset that assigns one third of the available area to the source panels in the name generator."
+  },
+  "interview.interfaces.ordinalContainer": {
+    "defaultMessage": "Container for the value ''{label}''",
+    "description": "Drag-and-drop name of a rating container. label is the unchanged researcher-authored ordinal response label; keep it as a value, not a translation key."
+  },
+  "interview.interfaces.outsideMapDescription": {
+    "defaultMessage": "You have indicated an area outside of the selectable map. If this is correct, please select the next arrow to proceed.",
+    "description": "Confirmation guidance when the participant indicates a location outside the selectable map areas. The next arrow advances the interview."
+  },
+  "interview.interfaces.outsideSelectableAreas": {
+    "defaultMessage": "Outside Selectable Areas",
+    "description": "Button used to indicate that the participant’s location lies outside the selectable map areas. The stored selection identifier is never translated."
+  },
+  "interview.interfaces.passphraseSet": {
+    "defaultMessage": "Passphrase set successfully! Click \"Next\" to continue.",
+    "description": "Success message after the participant sets the anonymisation passphrase. Next refers to the interview navigation arrow."
+  },
+  "interview.interfaces.pauseAutoLayout": {
+    "defaultMessage": "Pause Auto Layout",
+    "description": "Visible sociogram button that pauses automatic positioning. Its capitalization differs from the narrative icon tooltip."
+  },
+  "interview.interfaces.pauseAutomaticLayout": {
+    "defaultMessage": "Pause automatic layout",
+    "description": "Accessible action that pauses automatic movement of the displayed people in a narrative view."
+  },
+  "interview.interfaces.placeUnavailable": {
+    "defaultMessage": "That place could not be loaded. Try another search.",
+    "description": "Recoverable error when a chosen geospatial search suggestion could not be retrieved and the map could not move to it."
+  },
+  "interview.interfaces.presetNavigation": {
+    "defaultMessage": "Preset navigation",
+    "description": "Accessible name of the toolbar group that switches between researcher-configured narrative views."
+  },
+  "interview.interfaces.presets": {
+    "defaultMessage": "Presets",
+    "description": "Accessible name of the narrative toolbar for switching between researcher-configured network views."
+  },
+  "interview.interfaces.previousPreset": {
+    "defaultMessage": "Previous preset",
+    "description": "Action that selects the previous researcher-configured narrative view."
+  },
+  "interview.interfaces.quarterPanels": {
+    "defaultMessage": "25% panels",
+    "description": "Divider preset that assigns 25 percent of the available area to the source panels in the name generator."
+  },
+  "interview.interfaces.quickAddInput": {
+    "defaultMessage": "Quick add input",
+    "description": "Accessible name of the active quick-add toggle while its name-entry field is open."
+  },
+  "interview.interfaces.quickAddInstructions": {
+    "defaultMessage": "Press <kbd>Enter</kbd> when you are finished.",
+    "description": "Tooltip beside the quick-add name field. The kbd tag marks the Enter key and must be preserved."
+  },
+  "interview.interfaces.quickAddMultipleInstructions": {
+    "defaultMessage": "Press <kbd>Enter</kbd> when you are finished. The box will stay open so you can quickly enter multiple names in a row.",
+    "description": "Tooltip when quick-add supports consecutive entries. The field stays open after each submission. The kbd tag marks the Enter key."
+  },
+  "interview.interfaces.quickLabelPlaceholder": {
+    "defaultMessage": "Type a label and press enter...",
+    "description": "Placeholder in the quick-add field for entering the label of a new network item; Enter submits the value."
+  },
+  "interview.interfaces.recenterMap": {
+    "defaultMessage": "Recenter Map",
+    "description": "Accessible name of the map button that restores the researcher-configured starting center and zoom."
+  },
+  "interview.interfaces.redo": {
+    "defaultMessage": "Redo",
+    "description": "Toolbar action that reapplies an edit that was undone in the network composer."
+  },
+  "interview.interfaces.reenterPassphrase": {
+    "defaultMessage": "Re-enter your passphrase...",
+    "description": "Placeholder in the second anonymisation password field, where the participant repeats their new passphrase for confirmation."
+  },
+  "interview.interfaces.resetAnnotations": {
+    "defaultMessage": "Reset annotations",
+    "description": "Action that clears the freehand annotations from the narrative canvas."
+  },
+  "interview.interfaces.resizePanel": {
+    "defaultMessage": "Resize panel",
+    "description": "Accessible name of the draggable divider that changes the width of the network-composer editing panel."
+  },
+  "interview.interfaces.resizePanels": {
+    "defaultMessage": "Resize panel and node list areas",
+    "description": "Accessible name of the divider between the source panel and the list of added people; dragging or keyboard controls resize the two areas."
+  },
+  "interview.interfaces.responsePlaceholder": {
+    "defaultMessage": "Enter your response here...",
+    "description": "Placeholder in the explanation field of the categorical Other dialog. The visible question label remains researcher-authored."
+  },
+  "interview.interfaces.resumeAutoLayout": {
+    "defaultMessage": "Resume Auto Layout",
+    "description": "Visible sociogram button that resumes automatic positioning. Its capitalization differs from the narrative icon tooltip."
+  },
+  "interview.interfaces.resumeAutomaticLayout": {
+    "defaultMessage": "Resume automatic layout",
+    "description": "Accessible action that resumes automatic movement of the displayed people in a narrative view."
+  },
+  "interview.interfaces.returnedToDrawer": {
+    "defaultMessage": "Returned to the drawer.",
+    "description": "Screen-reader announcement after an item without a usable name is removed from the canvas and returned to the unplaced-items panel."
+  },
+  "interview.interfaces.rosterAlreadyAdded": {
+    "defaultMessage": "Everything from this list has already been added.",
+    "description": "Empty state when every entry from an external roster has already been added to the interview network."
+  },
+  "interview.interfaces.scrollForQuestions": {
+    "defaultMessage": "Scroll to see more questions",
+    "description": "Hint at the bottom of a long personal-information form indicating that more questions are below the visible area."
+  },
+  "interview.interfaces.searchFailed": {
+    "defaultMessage": "Search could not be completed. Try again in a moment.",
+    "description": "Recoverable error when geospatial search could not run; it does not mean the place does not exist."
+  },
+  "interview.interfaces.searchLocation": {
+    "defaultMessage": "Search location",
+    "description": "Accessible name of the toggle that opens the geospatial place-search panel."
+  },
+  "interview.interfaces.searchPlace": {
+    "defaultMessage": "Search for a place...",
+    "description": "Placeholder in the geospatial search field where the participant enters a place name."
+  },
+  "interview.interfaces.searchSuggestions": {
+    "defaultMessage": "Search suggestions",
+    "description": "Accessible name of the list of places returned by geospatial search, including its loading and empty states."
+  },
+  "interview.interfaces.searchTerm": {
+    "defaultMessage": "Enter a search term...",
+    "description": "Placeholder in the filter field above an external roster; it searches the available roster entries."
+  },
+  "interview.interfaces.searching": {
+    "defaultMessage": "Searching...",
+    "description": "Status shown in the geospatial search results panel while a search request is pending."
+  },
+  "interview.interfaces.select": {
+    "defaultMessage": "Select",
+    "description": "Network-composer tool that selects existing people or connections for editing."
+  },
+  "interview.interfaces.selectAllThenNext": {
+    "defaultMessage": "Select all that apply, then click next",
+    "description": "Heading above a one-to-many relationship question. The participant may select multiple people before using the next navigation arrow."
+  },
+  "interview.interfaces.selectResponse": {
+    "defaultMessage": "Please select a response before continuing.",
+    "description": "Warning shown when the participant tries to advance a pair-comparison question without choosing a response."
+  },
+  "interview.interfaces.showInstructions": {
+    "defaultMessage": "Show instructions",
+    "description": "Accessible action that expands the floating instructions panel above a network view."
+  },
+  "interview.interfaces.specifyOther": {
+    "defaultMessage": "Specify other",
+    "description": "Title of the dialog opened when an item is placed in a categorical Other response and a written explanation is required."
+  },
+  "interview.interfaces.stubMap": {
+    "defaultMessage": "Stubbed map (click to select test feature)",
+    "description": "Accessible name of the test-only map placeholder used by automated interface tests; clicking it selects a fixture feature."
+  },
+  "interview.interfaces.submit": {
+    "defaultMessage": "Submit",
+    "description": "Accessible name of icon-only or visually hidden form submit buttons in anonymisation and slide forms."
+  },
+  "interview.interfaces.targetNodes": {
+    "defaultMessage": "Target nodes",
+    "description": "Accessible name of the collection of people that can be selected in a one-to-many relationship question."
+  },
+  "interview.interfaces.toggleAttribution": {
+    "defaultMessage": "Toggle attribution",
+    "description": "Accessible name and tooltip of the native map control that expands or collapses map source credits; source credit text remains unchanged."
+  },
+  "interview.interfaces.undo": {
+    "defaultMessage": "Undo",
+    "description": "Toolbar action that reverses the most recent edit in the network composer."
+  },
+  "interview.interfaces.unfreezeAnnotations": {
+    "defaultMessage": "Unfreeze annotations",
+    "description": "Toggle action that allows existing narrative annotations to be edited again."
+  },
+  "interview.interfaces.yes": {
+    "defaultMessage": "Yes",
+    "description": "Affirmative built-in binary response in pair comparisons and human-readable display of true roster values. The stored boolean remains true."
+  },
+  "interview.interfaces.zoomIn": {
+    "defaultMessage": "Zoom In",
+    "description": "Accessible name of the geospatial map button that increases magnification. Keeps the existing title capitalization."
+  },
+  "interview.interfaces.zoomOut": {
+    "defaultMessage": "Zoom Out",
+    "description": "Accessible name of the geospatial map button that decreases magnification. Keeps the existing title capitalization."
+  },
+  "interview.narrativePedigree.affected": {
+    "defaultMessage": "Affected",
+    "description": "Clinical status tooltip and screen-reader label for a person recorded as affected by the condition; the stable model key remains affected."
+  },
+  "interview.narrativePedigree.atRiskAffected": {
+    "defaultMessage": "At risk (affected)",
+    "description": "Clinical status label for uncertain risk of being affected or developing the condition; shown only when probabilistic statuses are enabled."
+  },
+  "interview.narrativePedigree.atRiskCarrier": {
+    "defaultMessage": "At risk (carrier)",
+    "description": "Clinical status label for uncertain carrier status, distinct from uncertain risk of developing the condition."
+  },
+  "interview.narrativePedigree.carries": {
+    "defaultMessage": "Carries this condition",
+    "description": "Plain-language legend meaning of an obligate carrier: the person carries the relevant inherited variant, distinct from being affected."
+  },
+  "interview.narrativePedigree.clearFocus": {
+    "defaultMessage": "Clear focus",
+    "description": "Action removing the selected focal person and their contributor highlight, while keeping the selected condition."
+  },
+  "interview.narrativePedigree.conditionKey": {
+    "defaultMessage": "Condition key",
+    "description": "Accessible name of the side panel listing protocol-authored conditions and explaining the pedigree status symbols."
+  },
+  "interview.narrativePedigree.conditions": {
+    "defaultMessage": "Conditions",
+    "description": "Subheading above protocol-authored condition names. Only this generic heading is translated, not the names of conditions."
+  },
+  "interview.narrativePedigree.diseaseStatus": {
+    "defaultMessage": "{condition}: {status}",
+    "description": "One entry in a locale-formatted screen-reader list of conditions and statuses. condition is an authored condition name; status is an already localized clinical status label."
+  },
+  "interview.narrativePedigree.familyPedigree": {
+    "defaultMessage": "Family pedigree",
+    "description": "Snapshot title fallback used only when the protocol has no stage label. An authored stage label always takes precedence and stays unchanged."
+  },
+  "interview.narrativePedigree.focusOn": {
+    "defaultMessage": "Focus on {name}",
+    "description": "Accessible action focusing the inheritance view on a person. name is entered research text or a localized relationship fallback; do not alter it."
+  },
+  "interview.narrativePedigree.hasCondition": {
+    "defaultMessage": "Has this condition",
+    "description": "Plain-language legend meaning of the filled affected-status symbol: the person is recorded as having the condition."
+  },
+  "interview.narrativePedigree.key": {
+    "defaultMessage": "Key",
+    "description": "Heading for the symbol legend, shared by the on-screen condition panel and the printable snapshot document."
+  },
+  "interview.narrativePedigree.mayCarry": {
+    "defaultMessage": "May carry this condition",
+    "description": "Plain-language legend meaning of uncertain carrier status. Preserve the uncertainty and distinguish carrying from developing the condition."
+  },
+  "interview.narrativePedigree.mayDevelop": {
+    "defaultMessage": "May develop this condition",
+    "description": "Plain-language legend meaning of uncertain risk of developing the condition. Preserve the uncertainty and do not claim a diagnosis."
+  },
+  "interview.narrativePedigree.notKnown": {
+    "defaultMessage": "Not known",
+    "description": "Plain-language legend meaning when genetic status is unknown or the protocol hides probabilistic status markers."
+  },
+  "interview.narrativePedigree.obligateAffected": {
+    "defaultMessage": "Obligate affected",
+    "description": "Clinical status label for a person inferred to be necessarily affected, including presymptomatic disease. This is stronger than an at-risk status."
+  },
+  "interview.narrativePedigree.obligateCarrier": {
+    "defaultMessage": "Obligate carrier",
+    "description": "Clinical status label for a person inferred to necessarily carry the inherited variant. It does not itself say that they have symptoms."
+  },
+  "interview.narrativePedigree.resetZoom": {
+    "defaultMessage": "Reset zoom",
+    "description": "Accessible action restoring default diagram magnification and recentering the scroll position."
+  },
+  "interview.narrativePedigree.resizeKey": {
+    "defaultMessage": "Resize the condition key panel",
+    "description": "Accessible name for the splitter resizing the condition-legend panel beside the diagram."
+  },
+  "interview.narrativePedigree.saveSnapshot": {
+    "defaultMessage": "Save snapshot",
+    "description": "Action saving the current family tree, selected condition, focus and notation legend as a printable PNG image."
+  },
+  "interview.narrativePedigree.selectCondition": {
+    "defaultMessage": "Select a condition to see who it affects.",
+    "description": "Instruction for choosing one condition to show its inheritance notation and enable focusing on a family member."
+  },
+  "interview.narrativePedigree.showingAll": {
+    "defaultMessage": "Showing all conditions",
+    "description": "Live announcement when no single condition is selected and the interface shows all protocol conditions."
+  },
+  "interview.narrativePedigree.showingAllFocused": {
+    "defaultMessage": "Showing all conditions. Focused on {name}. Showing who contributes to their inheritance.",
+    "description": "Whole live announcement for an all-conditions view with a focused person. name is entered text or a localized fallback; preserve the explanation of contributor highlighting."
+  },
+  "interview.narrativePedigree.showingCondition": {
+    "defaultMessage": "Showing {condition}",
+    "description": "Live announcement after selecting a condition. condition is its unchanged protocol-authored name."
+  },
+  "interview.narrativePedigree.showingFocused": {
+    "defaultMessage": "Showing {condition}. Focused on {name}. Showing who contributes to their inheritance.",
+    "description": "Whole live announcement naming the selected condition and focused person, then explaining the inheritance-contributor highlight. condition and name remain separate, unchanged values."
+  },
+  "interview.narrativePedigree.snapshotCondition": {
+    "defaultMessage": "{title}: {condition}",
+    "description": "Whole snapshot heading combining the authored stage title and condition name. title and condition remain verbatim; the punctuation can follow locale conventions."
+  },
+  "interview.narrativePedigree.snapshotInheritance": {
+    "defaultMessage": "{title}: {condition} — inheritance for {name}",
+    "description": "Whole snapshot heading for a condition focused on a person. title and condition are authored text; name is entered text or a localized fallback. Translate only the surrounding inheritance phrase."
+  },
+  "interview.narrativePedigree.sourceMissing": {
+    "defaultMessage": "This stage references a family pedigree that could not be found.",
+    "description": "Empty-state error when the protocol references a family-tree source that cannot be found. Uses participant language rather than exposing the internal stage identifier."
+  },
+  "interview.narrativePedigree.statusUnknown": {
+    "defaultMessage": "Status unknown",
+    "description": "Clinical status tooltip and screen-reader label when the inheritance information does not establish a displayed genetic status."
+  },
+  "interview.narrativePedigree.symbols": {
+    "defaultMessage": "What the symbols mean",
+    "description": "Subheading explaining the visual genetic-status glyphs, including uncertain statuses only when enabled by the protocol."
+  },
+  "interview.narrativePedigree.viewportControls": {
+    "defaultMessage": "Viewport controls",
+    "description": "Accessible group name for controls that reset the diagram view rather than change family data."
+  },
+  "interview.narrativePedigree.willDevelop": {
+    "defaultMessage": "Will develop this condition",
+    "description": "Plain-language legend meaning of the obligate/presymptomatic affected symbol: development is modelled as certain, unlike the may-develop status."
+  },
+  "interview.narrativePedigree.zoomControls": {
+    "defaultMessage": "Zoom controls",
+    "description": "Accessible name for the toolbar or button group that enlarges and reduces the family-tree view."
+  },
+  "interview.narrativePedigree.zoomIn": {
+    "defaultMessage": "Zoom in",
+    "description": "Accessible action increasing the diagram magnification while preserving the view centre."
+  },
+  "interview.narrativePedigree.zoomOut": {
+    "defaultMessage": "Zoom out",
+    "description": "Accessible action reducing the diagram magnification while preserving the view centre."
+  },
+  "interview.navigation.automaticLanguage": {
+    "defaultMessage": "Automatic",
+    "description": "Language option that follows the host's requested interface language."
+  },
+  "interview.navigation.currentTextSize": {
+    "defaultMessage": "Current text size: {size, number, ::percent}",
+    "description": "Screen-reader announcement after the participant changes text size; size is a multiplier."
+  },
+  "interview.navigation.decreaseTextSize": {
+    "defaultMessage": "Decrease text size",
+    "description": "Accessible action that decreases interview text size."
+  },
+  "interview.navigation.exitInterview": {
+    "defaultMessage": "Exit interview",
+    "description": "Action to leave an unfinished interview while preserving answers."
+  },
+  "interview.navigation.exitInterviewDescription": {
+    "defaultMessage": "Your answers so far will be saved and you can continue later.",
+    "description": "Reassures the participant that exiting preserves their answers for resuming."
+  },
+  "interview.navigation.exitInterviewTitle": {
+    "defaultMessage": "Exit this interview?",
+    "description": "Confirmation title before leaving an unfinished interview."
+  },
+  "interview.navigation.exitReview": {
+    "defaultMessage": "Exit review",
+    "description": "Action to leave the temporary interview review."
+  },
+  "interview.navigation.exitReviewDescription": {
+    "defaultMessage": "Changes made during this review will not be saved.",
+    "description": "Explains the temporary nature of answers changed in review mode."
+  },
+  "interview.navigation.exitReviewTitle": {
+    "defaultMessage": "Exit this review?",
+    "description": "Confirmation title before leaving an interview review."
+  },
+  "interview.navigation.goToScreen": {
+    "defaultMessage": "Go to another screen",
+    "description": "Accessible name for opening the interview screen navigation drawer."
+  },
+  "interview.navigation.hiddenScreen": {
+    "defaultMessage": "This screen is hidden based on the answers given so far. Do you want to show it anyway?",
+    "description": "Explains why an interview screen is hidden before overriding that navigation rule."
+  },
+  "interview.navigation.increaseTextSize": {
+    "defaultMessage": "Increase text size",
+    "description": "Accessible action that increases interview text size."
+  },
+  "interview.navigation.interfaceLanguage": {
+    "defaultMessage": "Interface language",
+    "description": "Label for the language of the interview package's built-in controls; protocol text is separate."
+  },
+  "interview.navigation.interviewSettings": {
+    "defaultMessage": "Interview settings",
+    "description": "Accessible name of the settings popover inside a running interview."
+  },
+  "interview.navigation.nextStep": {
+    "defaultMessage": "Next Step",
+    "description": "Accessible name of the arrow that moves to the next interview screen."
+  },
+  "interview.navigation.outsidePath": {
+    "defaultMessage": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?",
+    "description": "Explains that a screen is outside the current answer-dependent path before opening it."
+  },
+  "interview.navigation.previousStep": {
+    "defaultMessage": "Previous Step",
+    "description": "Accessible name of the arrow that moves to the previous interview screen."
+  },
+  "interview.navigation.settings": {
+    "defaultMessage": "Settings",
+    "description": "Accessible name of the interview settings button."
+  },
+  "interview.navigation.showScreen": {
+    "defaultMessage": "Show screen",
+    "description": "Action that opens an otherwise unavailable interview screen."
+  },
+  "interview.navigation.showTitle": {
+    "defaultMessage": "Show this screen?",
+    "description": "Confirmation title before opening an interview screen hidden by earlier answers."
+  },
+  "interview.navigation.textSize": {
+    "defaultMessage": "Text size<hidden> percentage</hidden>",
+    "description": "Legend for the text-size input; hidden adds the percentage unit for screen readers."
+  },
+  "interview.runtime.addPerson": {
+    "defaultMessage": "Add a person",
+    "description": "Accessible action that adds a person to the current interview task."
+  },
+  "interview.runtime.canvas": {
+    "defaultMessage": "Placement area",
+    "description": "Announced name of the area where items can be positioned."
+  },
+  "interview.runtime.collapseDrawer": {
+    "defaultMessage": "Collapse drawer",
+    "description": "Accessible action that folds the item tray closed."
+  },
+  "interview.runtime.copied": {
+    "defaultMessage": "Copied!",
+    "description": "Confirmation that interview diagnostic information was copied."
+  },
+  "interview.runtime.copyClipboard": {
+    "defaultMessage": "Copy to clipboard",
+    "description": "Tooltip for copying diagnostic information about an interview error."
+  },
+  "interview.runtime.copyDebugInfo": {
+    "defaultMessage": "Copy Debug Info",
+    "description": "Button that copies interview error details for the study organizer."
+  },
+  "interview.runtime.decryptFailed": {
+    "defaultMessage": "There was an error decrypting the data with the passphrase entered. Please try again.",
+    "description": "Error after the entered passphrase could not decrypt the data."
+  },
+  "interview.runtime.decryptRetry": {
+    "defaultMessage": "There was a problem decrypting the data. Please re-enter your passphrase.",
+    "description": "Message asking for another passphrase after decryption fails."
+  },
+  "interview.runtime.deleteBin": {
+    "defaultMessage": "Delete bin",
+    "description": "Announced name of the drop target that deletes an item."
+  },
+  "interview.runtime.drawer": {
+    "defaultMessage": "Drawer",
+    "description": "Announced name of the tray containing items that can be placed."
+  },
+  "interview.runtime.dropToRemove": {
+    "defaultMessage": "Drop here to remove",
+    "description": "Hint shown on the tray when dropping an item removes its position."
+  },
+  "interview.runtime.enterPassphrase": {
+    "defaultMessage": "Enter your Passphrase",
+    "description": "Title of the dialog for revealing encrypted interview data."
+  },
+  "interview.runtime.expandDrawer": {
+    "defaultMessage": "Expand drawer",
+    "description": "Accessible action that expands the item tray."
+  },
+  "interview.runtime.filter": {
+    "defaultMessage": "Filter...",
+    "description": "Placeholder for filtering the interview screen navigation list."
+  },
+  "interview.runtime.finishConfirmationDescription": {
+    "defaultMessage": "Finish this interview only when you are satisfied with your responses.",
+    "description": "Default finish confirmation; the host may supply its own context-specific explanation."
+  },
+  "interview.runtime.finishFailed": {
+    "defaultMessage": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer.",
+    "description": "Recoverable finish-dialog error after saving pending answers or the host finish request fails; no claim is made that all responses have been submitted."
+  },
+  "interview.runtime.firstNode": {
+    "defaultMessage": "First item",
+    "description": "Fallback accessible name for the first item when its name is missing."
+  },
+  "interview.runtime.hiddenByAnswers": {
+    "defaultMessage": "Hidden by answers",
+    "description": "Status on a screen unavailable because of answers given so far."
+  },
+  "interview.runtime.interviewScreens": {
+    "defaultMessage": "Interview screens",
+    "description": "Accessible name of the interview screen navigation list."
+  },
+  "interview.runtime.itemUnavailable": {
+    "defaultMessage": "This item could not be displayed.",
+    "description": "Fallback when protocol-provided media cannot be displayed."
+  },
+  "interview.runtime.loadingVideo": {
+    "defaultMessage": "Loading video...",
+    "description": "Status while a protocol-provided video is loading."
+  },
+  "interview.runtime.minimumItems": {
+    "defaultMessage": "You must create at least <strong>{count, number}</strong> {count, plural, one {item} other {items}} before you can continue.",
+    "description": "Blocking message when too few items have been created; emphasize the minimum count."
+  },
+  "interview.runtime.noSearchMatch": {
+    "defaultMessage": "Nothing matched your search term.",
+    "description": "Empty result after searching the interview screen list."
+  },
+  "interview.runtime.nodeList": {
+    "defaultMessage": "Item list",
+    "description": "Accessible name for a list of people or other items."
+  },
+  "interview.runtime.notifications": {
+    "defaultMessage": "Interview notifications",
+    "description": "Accessible name of the interview notification region."
+  },
+  "interview.runtime.offlineMap": {
+    "defaultMessage": "You are offline — the map will not load until you reconnect.",
+    "description": "Persistent message while a map screen cannot load offline."
+  },
+  "interview.runtime.offlineTaskDescription": {
+    "defaultMessage": "You appear to be offline, and this task could not be displayed. Some tasks (such as maps) need a connection. Check your connection and refresh the page. You may be able to continue by selecting the next arrow. If the problem persists once you are back online, please contact the study organizer and provide the debug information below.",
+    "description": "Recovery instructions when an interview task cannot be displayed without a network connection."
+  },
+  "interview.runtime.offlineTaskTitle": {
+    "defaultMessage": "This task needs an internet connection",
+    "description": "Error heading when an interview task cannot run offline."
+  },
+  "interview.runtime.outsideCurrentPath": {
+    "defaultMessage": "Outside current path",
+    "description": "Status on a screen outside the currently selected interview path."
+  },
+  "interview.runtime.passphrase": {
+    "defaultMessage": "Passphrase",
+    "description": "Label of the secret phrase input used to decrypt interview data."
+  },
+  "interview.runtime.passphraseHelp": {
+    "defaultMessage": "Enter your passphrase in order to unlock the data on this screen. If you cannot remember your passphrase, please contact the person who recruited you to this study.",
+    "description": "Instructions for unlocking encrypted data and finding help if the passphrase is forgotten."
+  },
+  "interview.runtime.passphraseNeeded": {
+    "defaultMessage": "Your passphrase is needed to show data on this screen. Click here to enter it.",
+    "description": "Explains why a passphrase is needed to reveal data on the current screen."
+  },
+  "interview.runtime.passphrasePlaceholder": {
+    "defaultMessage": "Enter your passphrase...",
+    "description": "Placeholder for the interview decryption passphrase input."
+  },
+  "interview.runtime.secondNode": {
+    "defaultMessage": "second item",
+    "description": "Fallback accessible name for the second item when its name is missing."
+  },
+  "interview.runtime.submissionFailed": {
+    "defaultMessage": "An error occurred while submitting the form.",
+    "description": "Generic form error when no submit handler exists or it throws unexpectedly."
+  },
+  "interview.runtime.submitPassphrase": {
+    "defaultMessage": "Submit passphrase",
+    "description": "Action that submits a passphrase to decrypt interview data."
+  },
+  "interview.runtime.taskComplete": {
+    "defaultMessage": "You have completed this task. Click the next arrow to continue.",
+    "description": "Notification that the maximum item count is reached and the participant can continue."
+  },
+  "interview.runtime.taskErrorDescription": {
+    "defaultMessage": "There was an error with the interview software, and this task could not be displayed. Try refreshing the page. If the problem persists, please contact the study organizer and provide the debug information below. You may be able to continue your interview by clicking the next button.",
+    "description": "Recovery instructions for an unexpected interview screen failure."
+  },
+  "interview.runtime.taskErrorTitle": {
+    "defaultMessage": "A problem occurred!",
+    "description": "Heading when an interview screen cannot be rendered."
+  },
+  "interview.runtime.unnamedRosterItem": {
+    "defaultMessage": "Unnamed {subject} {number, number}",
+    "description": "Fallback label for an external-roster item with no usable name; subject is protocol-authored and number is a stable position."
+  },
+  "interview.runtime.unplacedCount": {
+    "defaultMessage": "{count, number} unplaced",
+    "description": "Number of items in the tray that have not yet been placed on the canvas."
+  },
+  "interview.runtime.untitledStage": {
+    "defaultMessage": "Untitled stage",
+    "description": "Fallback for an interview screen with no authored label."
+  },
+  "interview.runtime.videoUnavailable": {
+    "defaultMessage": "Video could not be loaded.",
+    "description": "Error when a protocol-provided video cannot load."
+  }
+}

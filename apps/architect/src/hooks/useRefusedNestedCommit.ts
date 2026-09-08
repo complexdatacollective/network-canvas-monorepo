@@ -4,7 +4,7 @@ import { ReactReduxContext } from 'react-redux';
 import { getProtocolLockState } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/store';
 import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDraft';
-import { refusedCommitMessage } from '~/utils/protocolLockMessages';
+import { refusedCommitError } from '~/utils/protocolLockMessages';
 
 /**
  * Asks, at the moment a nested editor is submitted, whether this tab may accept
@@ -35,6 +35,6 @@ export const useRefusedNestedCommit = (): (() => string | null) => {
     const state = (reduxContext?.store.getState() ?? null) as RootState | null;
     if (!state) return null;
     if (getStageEditorCodebookTransactionOpen(state)) return null;
-    return refusedCommitMessage(getProtocolLockState(state), 'nested-editor');
+    return refusedCommitError(getProtocolLockState(state), 'nested-editor');
   }, [reduxContext]);
 };

@@ -8,6 +8,7 @@ import {
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
+import { readMessage } from '../../testing/i18n.ts';
 import {
   AuxiliaryCodebookDraftSession,
   buildCreateEntityRequest,
@@ -25,6 +26,7 @@ import {
 const SUBJECT = { entity: 'node', type: 'person:adult' } as const;
 const EMPTY_CONTEXT = {
   codebook: { node: {}, edge: {} },
+  assets: {},
   orderedStages: [],
   issues: [],
 } as const;
@@ -243,6 +245,7 @@ describe('codebook variable requests', () => {
               },
             },
           },
+          assets: {},
           orderedStages: [],
           issues: [],
         },
@@ -363,7 +366,14 @@ describe('codebook variable requests', () => {
       if (!(error instanceof InvalidCodebookDraftError)) {
         throw new Error('expected an invalid codebook draft');
       }
-      expect(error.issues).toContainEqual({
+      // The issue crossed a string-only contract, so it is read back the way
+      // the variable editor renders it.
+      expect(
+        error.issues.map(({ path, message }) => ({
+          path,
+          message: readMessage(message),
+        })),
+      ).toContainEqual({
         path: ['options'],
         message: expectedIssue,
       });

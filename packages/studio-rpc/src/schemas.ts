@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+import { SUPPORTED_STUDIO_LOCALES } from './locales.ts';
+import { DEPLOYMENT_MODES } from './surfaces.ts';
+
 // Schemas for the internal RPC boundary, shared source-first between server
 // validation and the client's types (type-only on the client). This surface
 // is unpublished (#1248, 2026-08-11): no OpenAPI metadata, no registry ids.
@@ -20,14 +23,50 @@ export const TeamInvitationIdSchema = z
   .max(255)
   .regex(/^[A-Za-z0-9_-]+$/);
 
+/** Canonical base64url encoding of 32 cryptographically random bytes. */
+export const BootstrapTokenSchema = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/);
+export const CompleteSetupInputSchema = z.strictObject({
+  token: BootstrapTokenSchema,
+  instanceName: z.string().min(1).max(120).regex(/\S/),
+  ownerName: z.string().min(1).max(120).regex(/\S/),
+  ownerEmail: z.email().max(254),
+  ownerPassword: z.string().min(12).max(128),
+});
+export type CompleteSetupInput = z.infer<typeof CompleteSetupInputSchema>;
+export const SetupStatusSchema = z.strictObject({
+  state: z.enum(['ready', 'complete', 'unavailable']),
+});
+export type SetupStatus = z.infer<typeof SetupStatusSchema>;
+export const CompleteSetupResultSchema = z.strictObject({
+  state: z.literal('complete'),
+});
+
+// Read through `StatusSchema`; the server's `DeploymentStatus` and the
+// client's view of it are both inferred from that one output type.
+const DeploymentSchema = z.object({
+  /** Which topology this deployment serves; see `./surfaces.ts`. */
+  mode: z.enum(DEPLOYMENT_MODES),
+  /**
+   * Whether the deployment offers billing. Not implied by `managed`: billing
+   * (#1253) is separate configuration, and the shell has to render correctly
+   * where it is absent.
+   */
+  billing: z.boolean(),
+});
+
 export const StatusSchema = z.object({
   name: z.string(),
   version: z.string(),
   auth: z.object({
     enabled: z.boolean(),
     magicLink: z.boolean(),
+    emailAndPassword: z.boolean(),
     socialProviders: z.array(z.enum(SOCIAL_PROVIDERS)),
   }),
+  deployment: DeploymentSchema,
+  telemetry: z.boolean(),
 });
 
 export const MeSchema = z.object({
@@ -35,6 +74,71 @@ export const MeSchema = z.object({
   email: z.string(),
   emailVerified: z.boolean(),
   name: z.string(),
+  /*
+    The stored UI-language preference (2026-09-04 localization design §5.2);
+    null until the researcher chooses one. A plain string, NOT the
+    supported-locale enum, for the same reason `role` below is: the supported
+    list can narrow between releases, and a stored tag this build no longer
+    offers must fall back on the client rather than fail the whole of `me`.
+  */
+  locale: z.string().nullable(),
+  /**
+   * Every team the caller belongs to, and their role in it.
+   *
+   * Here rather than in a procedure of its own because it answers the same
+   * question `me` does — who is this, and what may they do — and because
+   * nothing else can answer it: Better Auth's `listOrganizations` joins the
+   * member table and then returns only the organization, dropping the role.
+   * The team NAMES still come from that list; this supplies what it drops.
+   */
+  teams: z.array(
+    z.object({
+      teamId: z.string().min(1).max(255),
+      /*
+        A plain string, NOT `TeamRoleSchema`. Better Auth stores a member's
+        roles as one comma-separated value, so a legacy row reads
+        "owner,admin" — and the enum would reject it, failing the whole of
+        `me` for that researcher rather than the one field. The client splits
+        it; that is what `teamRoles` is for.
+      */
+      role: z.string(),
+    }),
+  ),
+});
+
+/**
+ * A non-null preference must be a tag this build supports — unknown tags are
+ * a validation error, not a silent store (client and server ship together, so
+ * the list is always current). Null clears the preference back to browser
+ * negotiation ("Automatic").
+ *
+ * The enum, and not a canonicalising transform that would accept spellings
+ * like `EN-gb`: BCP 47 tags are case-insensitive, but this is not a public
+ * API. It is a contract typed end to end whose only caller is the generated
+ * client, which sends tags from its own registry — so the narrow
+ * `SupportedStudioLocale | null` input type is worth more than tolerating a
+ * spelling no real caller produces. Widening the input to `string` to admit
+ * one would give the client back the ability to send anything, and it is the
+ * compile-time refusal that keeps the supported list and what can be stored
+ * the same question.
+ *
+ * Where a tag genuinely is uncontrolled the repository is lenient about
+ * exactly this: `@codaco/app-i18n`'s `resolveAppLocale` runs
+ * `canonicalizeAppLocale` over the browser's requested list, and over the
+ * stored preference on its way back out, so a case variant that reached the
+ * column some other way still resolves. Lenient where the input is
+ * uncontrolled, strict where it is typed — and the design's requirement that
+ * this command canonicalise is satisfied for the tags it declares,
+ * canonicalisation being the identity on every one of them.
+ */
+export const UpdateAccountLocaleInputSchema = z.object({
+  locale: z.enum(SUPPORTED_STUDIO_LOCALES).nullable(),
+});
+
+// A plain string on the way out, like `MeSchema.locale`: what came back from
+// the row, not what this build's registry admits.
+export const UpdateAccountLocaleResultSchema = z.object({
+  locale: z.string().nullable(),
 });
 
 // Every team-scoped procedure names its team explicitly — the authz input is
@@ -108,6 +212,90 @@ export const ProtocolNameSchema = z
     error: 'Protocol name must contain a non-whitespace character',
   });
 
+// The study tier (#1262). A study is the team-scoped object a researcher
+// works in; the protocol line it points at describes only the interview.
+// Both enums mirror the `studies_state_check` and
+// `studies_participation_mode_check` constraints, so a value the database
+// refuses cannot reach it, and a value it gains needs a migration this
+// boundary is versioned alongside.
+export const STUDY_STATES = ['draft', 'live', 'paused', 'closed'] as const;
+export const StudyStateSchema = z.enum(STUDY_STATES);
+export type StudyState = z.infer<typeof StudyStateSchema>;
+
+export const STUDY_PARTICIPATION_MODES = ['managed', 'anonymous'] as const;
+export const StudyParticipationModeSchema = z.enum(STUDY_PARTICIPATION_MODES);
+export type StudyParticipationMode = z.infer<
+  typeof StudyParticipationModeSchema
+>;
+
+// The same bound as `studies_name_nonblank_check`, refused here so a blank
+// name is a field error rather than a constraint violation.
+export const StudyNameSchema = z
+  .string()
+  .min(1)
+  .max(320)
+  .refine((name) => name.trim().length > 0, {
+    error: 'Study name must contain a non-whitespace character',
+  });
+
+/**
+ * One study as its team's list reports it. `protocolId` is nullable because
+ * the column is: a Draft study may retarget its protocol line, and the
+ * schema keeps the pin optional until go-live (#1262).
+ *
+ * The two counts come from the same row as the study, so the picker can say
+ * how much work a study holds without a request per study. They are
+ * decoration — a study with neither still lists — and they are not the study
+ * sidebar's counts, which are per-destination and answered elsewhere.
+ */
+export const StudySummarySchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  state: StudyStateSchema,
+  participationMode: StudyParticipationModeSchema,
+  protocolId: z.uuid().nullable(),
+  createdAt: z.date(),
+  waveCount: z.number().int().nonnegative(),
+  participantCount: z.number().int().nonnegative(),
+});
+
+// No teamId, deliberately, and the same rule `AcceptTeamInvitationInputSchema`
+// records above: a cold direct navigation to `/study/$studyId` carries no
+// team, so the server resolves the tenant from the caller's own memberships
+// (app-shell design §6.3) rather than trusting one chosen by the browser.
+export const StudyGetInputSchema = z.object({
+  studyId: z.uuid(),
+});
+
+export const StudyDetailSchema = z.object({
+  /** The owning team, which only the server could say (§6.3). */
+  teamId: z.string().min(1).max(255),
+  study: StudySummarySchema,
+  /**
+   * The current editable draft of the study's protocol line, which is what
+   * the protocol editor is addressed by. Null when the study has no protocol
+   * line yet, or its line has no draft — two states the editor reports
+   * differently from a study it cannot reach at all.
+   */
+  protocolDraftId: z.uuid().nullable(),
+});
+
+// Creation mints every identifier client-side for the same reason protocol
+// creation does: a retry after a lost response repeats the same request
+// rather than leaving a second study behind.
+export const CreateStudyInputSchema = TeamScopedSchema.extend({
+  name: StudyNameSchema,
+  studyId: z.uuid(),
+  protocolId: z.uuid(),
+  draftId: z.uuid(),
+});
+
+export const CreateStudyResultSchema = z.object({
+  studyId: z.uuid(),
+  protocolId: z.uuid(),
+  draftId: z.uuid(),
+});
+
 export const CreateProtocolInputSchema = TeamScopedSchema.extend({
   name: ProtocolNameSchema,
   protocolId: z.uuid(),
@@ -167,23 +355,67 @@ export const AcquireSectionResultSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('readOnly') }),
 ]);
 
+/**
+ * Where a command applies: a top-level key, or a path of object keys reaching a
+ * value nested inside the section document (`@codaco/studio-sync/apply`'s
+ * `CommandTarget`).
+ *
+ * The path form is an array rather than a dotted string so that a server which
+ * predates nested addressing refuses it here instead of reading it as a
+ * top-level key that happens to contain a dot and writing the value somewhere
+ * the document does not keep one. Depth is bounded for the same reason the
+ * command count is: the commit work this describes has to stay predictable.
+ * A prototype name is refused outright — the apply engine will not follow one,
+ * and a command is better rejected at the boundary than part-way through a
+ * transaction.
+ *
+ * Both rules — a segment must name something, and must not name a prototype —
+ * apply to EVERY segment, and the bare string is a one-segment path rather
+ * than a form of its own: `commandTarget` writes a one-segment path as the
+ * plain string, so `""` and `"__proto__"` reach this schema in that shape and
+ * in no other. Bounding only the array form let them through to `targetPath`,
+ * which throws on them inside the commit — after the draft head is locked, and
+ * as an unclassified server fault instead of the bad request it is.
+ */
+const UNSAFE_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
+const PathSegmentSchema = z
+  .string()
+  .min(1)
+  .refine((segment) => !UNSAFE_PATH_SEGMENTS.has(segment), {
+    message: 'must not name a prototype',
+  });
+const CommandTargetSchema = z.union([
+  PathSegmentSchema,
+  z
+    .array(PathSegmentSchema)
+    .min(1)
+    .max(16)
+    // Readonly to match the apply engine's own `CommandTarget`: nothing
+    // downstream may rewrite an address after it has been validated.
+    .readonly(),
+]);
+
 const CommandSchema = z.discriminatedUnion('op', [
-  z.object({ op: z.literal('set'), key: z.string(), value: z.unknown() }),
-  z.object({ op: z.literal('unset'), key: z.string() }),
+  z.object({
+    op: z.literal('set'),
+    key: CommandTargetSchema,
+    value: z.unknown(),
+  }),
+  z.object({ op: z.literal('unset'), key: CommandTargetSchema }),
   z.object({
     op: z.literal('insertItem'),
-    key: z.string(),
+    key: CommandTargetSchema,
     index: z.number().int().nonnegative(),
     item: z.unknown(),
   }),
   z.object({
     op: z.literal('removeItem'),
-    key: z.string(),
+    key: CommandTargetSchema,
     index: z.number().int().nonnegative(),
   }),
   z.object({
     op: z.literal('moveItem'),
-    key: z.string(),
+    key: CommandTargetSchema,
     from: z.number().int().nonnegative(),
     to: z.number().int().nonnegative(),
   }),
@@ -220,6 +452,28 @@ export const MoveStageInputSchema = ProtocolDraftInputSchema.extend({
   toIndex: z.number().int().nonnegative(),
   expectedRevision: DecimalSequenceSchema,
 });
+
+// The four countable study destinations the app shell's sidebar carries
+// (app-shell design §5.5). Deliberately one procedure rather than a count field
+// on each destination's own list query: the sidebar needs all four on every
+// study screen, including the screens that list none of them, and four
+// separately-keyed queries would be four round trips whose answers could
+// disagree with each other.
+// Study id alone, like `StudyGetInputSchema`: the server resolves the team.
+export const StudyCountsInputSchema = z.object({
+  studyId: z.uuid(),
+});
+
+// Plain counts, not a rendered string: `NavItem` formats them in the runtime's
+// locale, and it is the one that decides a zero is left off entirely.
+export const StudyCountsSchema = z.object({
+  /** Published versions of the study's protocol line; 0 while it has none. */
+  versions: z.number().int().nonnegative(),
+  participants: z.number().int().nonnegative(),
+  waves: z.number().int().nonnegative(),
+  sessions: z.number().int().nonnegative(),
+});
+export type StudyCounts = z.infer<typeof StudyCountsSchema>;
 
 // Mirrors the audit_events category/outcome/actor-kind CHECK constraints; a
 // new value requires a schema migration, which the fingerprint pipeline keeps

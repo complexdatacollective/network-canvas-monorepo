@@ -6,20 +6,20 @@ import {
   VARIABLE_REFERENCE_VALIDATIONS,
 } from '@codaco/protocol-validation';
 
-import { ValueGenerator } from '../../../ValueGenerator';
-import { resolveGenerationConfig } from '../../config';
+import { ValueGenerator } from '../../../ValueGenerator.ts';
+import { resolveGenerationConfig } from '../../config.ts';
 import {
   buildEntityConstraints,
   buildVariableConstraints,
-} from '../buildConstraints';
+} from '../buildConstraints.ts';
 import {
   addSteps,
   EARLIEST_OFFERED_DATE,
   LATEST_OFFERED_DATE,
   stepsBetween,
-} from '../dateWindow';
-import { analyseFeasibility } from '../feasibility';
-import { valueSpaceSize } from '../valueSpace';
+} from '../dateWindow.ts';
+import { analyseFeasibility } from '../feasibility.ts';
+import { valueSpaceSize } from '../valueSpace.ts';
 
 const TODAY = '2026-07-27';
 

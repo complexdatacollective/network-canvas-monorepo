@@ -1,20 +1,40 @@
 import { Suspense } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { DataTableSkeleton } from '@codaco/fresco-ui/DataTable/DataTableSkeleton';
 import ResponsiveContainer from '@codaco/fresco-ui/layout/ResponsiveContainer';
 import PageHeader from '@codaco/fresco-ui/typography/PageHeader';
+import { getServerIntl } from '~/i18n/server';
 import { requirePageAuth } from '~/lib/auth/guards';
 import { requireAppNotExpired } from '~/queries/appSettings';
 
 import ProtocolsTable from '../_components/ProtocolsTable/ProtocolsTable';
 import UpdateUploadThingTokenAlert from '../_components/UpdateUploadThingTokenAlert';
 
-export default function ProtocolsPage() {
+const messages = defineMessages({
+  protocols: {
+    id: 'fresco.protocols.page.protocols',
+    defaultMessage: 'Protocols',
+    description: 'Researcher-facing protocols / page: Protocols',
+  },
+  uploadAndManageYourInterviewProtocols: {
+    id: 'fresco.protocols.page.uploadAndManageYourInterviewProtocols',
+    defaultMessage: 'Upload and manage your interview protocols.',
+    description:
+      'Researcher-facing protocols / page: Upload and manage your interview protocols.',
+  },
+});
+
+export default async function ProtocolsPage() {
+  const intl = await getServerIntl();
+
   return (
     <>
       <PageHeader
-        headerText="Protocols"
-        subHeaderText="Upload and manage your interview protocols."
+        headerText={intl.formatMessage(messages.protocols)}
+        subHeaderText={intl.formatMessage(
+          messages.uploadAndManageYourInterviewProtocols,
+        )}
         data-testid="protocols-page-header"
       />
       <Suspense

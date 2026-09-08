@@ -6,6 +6,7 @@ import {
 import { omit } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
 import type { ExtractedAsset } from '@codaco/protocol-validation';
 import { hasOpenNestedEditor } from '~/components/DialogForm/nestedDraftRegistry';
 import {
@@ -13,8 +14,11 @@ import {
   setStorageUnavailable,
 } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/modules/root';
+import { getArchitectIntl } from '~/i18n/imperative';
 import { saveAssetWithFallback } from '~/utils/assetUtils';
+import type { LocalizedText } from '~/utils/protocolImportErrors';
 import {
+  refusedCommitDescriptor,
   assetImportSurface,
   refusedCommitMessage,
   type RefusalMessage,
@@ -58,11 +62,15 @@ type AddApiKeyAssetPayload = {
 export type ImportAssetErrorInfo =
   | {
       filename: string;
+      localizedMessage?: LocalizedText;
+      detail?: string;
       message: string;
       code?: string;
     }
   | {
       filename: string;
+      localizedMessage?: LocalizedText;
+      detail?: string;
       /**
        * This tab no longer holds the saved copy. The sentence has to come from
        * `protocolLockMessages` — `RefusalMessage` is producible nowhere else,
@@ -90,13 +98,22 @@ const getImportAssetErrorInfo = (
     error instanceof Error ? error : null;
   const rawCode = codedError?.code;
   const code = typeof rawCode === 'string' ? rawCode : undefined;
+  const message =
+    code === 'NETWORK_EMPTY'
+      ? errorMessages.empty
+      : code === 'VARIABLE_NAME'
+        ? errorMessages.names
+        : code === 'COLUMN_MISMATCHED'
+          ? errorMessages.columns
+          : code === 'UNSUPPORTED_TYPE'
+            ? errorMessages.unsupported
+            : errorMessages.generic;
   return {
     filename,
-    // A code is only ever set on errors whose message was written for a
-    // researcher; everything else is internal and is replaced.
-    message:
-      codedError && code ? codedError.message : GENERIC_IMPORT_FAILURE_MESSAGE,
     code,
+    message: getArchitectIntl().formatMessage(message),
+    localizedMessage: { message },
+    detail: codedError?.message,
   };
 };
 
@@ -136,12 +153,19 @@ export const importAssetAsync = createAsyncThunk<
       const refusal = refusedCommitMessage(
         getProtocolLockState(getState()),
         assetImportSurface(hasOpenNestedEditor()),
+        getArchitectIntl(),
       );
       return refusal
         ? ({
             filename: name,
             code: 'PROTOCOL_NOT_OWNED_HERE',
             message: refusal,
+            localizedMessage: {
+              message: refusedCommitDescriptor(
+                getProtocolLockState(getState()),
+                assetImportSurface(hasOpenNestedEditor()),
+              )!,
+            },
           } satisfies ImportAssetErrorInfo)
         : null;
     };
@@ -307,3 +331,33 @@ export type { Asset };
 
 // Export the reducer as default
 export default assetManifestSlice.reducer;
+
+const errorMessages = defineMessages({
+  empty: {
+    id: 'architect.resourceImport.empty',
+    defaultMessage: "This network file doesn't contain any nodes or edges.",
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  names: {
+    id: 'architect.resourceImport.names',
+    defaultMessage:
+      'Some attribute names in this file are invalid. Use only letters, numbers, and the symbols ._-: in column headers, then import the file again.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  columns: {
+    id: 'architect.resourceImport.columns',
+    defaultMessage:
+      'Some rows have a different number of columns. Make each row match the column headers, then import the file again.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  unsupported: {
+    id: 'architect.resourceImport.unsupported',
+    defaultMessage: 'That file type is not supported as a resource.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  generic: {
+    id: 'architect.resourceImport.generic',
+    defaultMessage: 'Check that it is a supported file type, and try again.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});

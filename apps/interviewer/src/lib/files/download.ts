@@ -50,6 +50,7 @@ export function saveAction(blob: Blob, suggestedName: string): SaveAction {
 export async function saveBlob(
   blob: Blob,
   suggestedName: string,
+  fileTypeDescription: string,
 ): Promise<DownloadResult> {
   const showSaveFilePicker = getSavePicker();
   if (showSaveFilePicker) {
@@ -59,7 +60,7 @@ export async function saveBlob(
         suggestedName,
         types: [
           {
-            description: 'ZIP archive',
+            description: fileTypeDescription,
             accept: { 'application/zip': ['.zip'] },
           },
         ],

@@ -1,3 +1,33 @@
+export type ConstraintReasonCode =
+  | 'requiredEmptySelection'
+  | 'requiredEmptyText'
+  | 'invertedBounds'
+  | 'minSelectedExceedsOptions'
+  | 'conflictingReferencePair'
+  | 'strictComparatorCycle'
+  | 'sameAsGroupConflict'
+  | 'disjointBounds'
+  | 'oddDifferentFromCycle'
+  | 'pinnedEqualDifferentFrom'
+  | 'pinnedDifferentFromParity'
+  | 'sharedBounds'
+  | 'disjointOptions'
+  | 'noSolution'
+  | 'fixedValueRejected'
+  | 'textGenerationLimit'
+  | 'negativeTextMaximum'
+  | 'negativeSelectionMaximum'
+  | 'emptyDateRange'
+  | 'uniqueEgo'
+  | 'insufficientUniqueValues'
+  | 'duplicateFixedValues'
+  | 'numberDateComparison'
+  | 'fixedCompletion'
+  | 'drawExhausted'
+  | 'incompatibleDateControls'
+  | 'inheritancePatterns'
+  | 'pedigreeFixedValue';
+
 export type ConstraintConflict = {
   entity: 'ego' | 'node' | 'edge';
   /** The codebook key, which a programmatic consumer needs to locate the type. */
@@ -7,7 +37,10 @@ export type ConstraintConflict = {
   variableIds: string[];
   variableNames: string[];
   rules: string[];
+  /** English diagnostic retained for logs and optional technical details. */
   reason: string;
+  /** Stable localized-presentation reason. Absent only for legacy caller-created conflicts. */
+  reasonCode?: ConstraintReasonCode;
 };
 
 const NO_VALUE_CAN_SATISFY =

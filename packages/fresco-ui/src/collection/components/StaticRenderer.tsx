@@ -1,3 +1,5 @@
+'use client';
+
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import { memo } from 'react';
 

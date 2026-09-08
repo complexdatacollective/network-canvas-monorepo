@@ -11,6 +11,7 @@ import {
   runAuditedCommand,
 } from '../audit/command.ts';
 import type { AuditEventInput } from '../audit/events.ts';
+import { roleGrantsTeamAdministration } from '../team/roles.ts';
 import { TeamStore } from '../team/store.ts';
 import { addStage, moveStage } from './draft-structure.ts';
 import { emptyProtocol } from './sectionize.ts';
@@ -22,7 +23,7 @@ export type CreatedProtocol = { protocolId: string; draftId: string };
 
 export class ProtocolCommandAuthorizationError extends Error {
   constructor() {
-    super('protocol command actor is no longer a team member');
+    super('protocol command actor no longer holds the role it requires');
     this.name = 'ProtocolCommandAuthorizationError';
   }
 }
@@ -45,6 +46,28 @@ async function lockProtocolActorMembership(
     context.principal.userId,
   );
   if (!actor) throw new ProtocolCommandAuthorizationError();
+}
+
+/**
+ * Creating a protocol line that no study owns is a team Admin or Owner action
+ * — the rule `createAuditedStudy` applies to the study that would otherwise
+ * own one, and the same rule that makes such a line reachable by nobody else
+ * (#1257, `protocol/store.ts`). Read from the LOCKED membership row, because
+ * the middleware's answer is already stale by the time this transaction opens:
+ * a role revoked in that window refuses the creation instead of committing it.
+ */
+async function lockProtocolCreationActor(
+  client: pg.PoolClient,
+  context: AuditedCommandContext,
+): Promise<void> {
+  const actor = await teamStore.lockActor(
+    client,
+    context.tenantDb.teamId,
+    context.principal.userId,
+  );
+  if (!actor || !roleGrantsTeamAdministration(actor.role)) {
+    throw new ProtocolCommandAuthorizationError();
+  }
 }
 
 async function lockProtocolDraft(
@@ -116,7 +139,7 @@ export function createAuditedProtocol(
 ): Promise<CreatedProtocol> {
   const protocolName = ProtocolNameSchema.parse(input.name).trim();
   return runAuditedCommand(context, async (client, auditContext) => {
-    await lockProtocolActorMembership(client, context);
+    await lockProtocolCreationActor(client, context);
     const result = await new ProtocolStore(context.tenantDb).createProtocol(
       {
         protocol: emptyProtocol(protocolName),

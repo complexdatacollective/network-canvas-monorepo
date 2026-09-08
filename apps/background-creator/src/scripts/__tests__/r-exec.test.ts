@@ -69,7 +69,7 @@ describe.skipIf(rscriptMissing)('generated R script executes', () => {
     expect(result.stderr).toBe('');
     expect(result.status).toBe(0);
     const { header } = toRecords(parseCsv(readFileSync(outputPath, 'utf-8')));
-    // The first header is a clean "id", not "﻿id".
+    // The first header is a clean "id", not one still carrying the U+FEFF.
     expect(header[0]).toBe('id');
     expect(header).toContain('zone');
   });

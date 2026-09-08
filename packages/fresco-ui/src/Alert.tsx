@@ -4,8 +4,19 @@ import type { LucideIcon } from 'lucide-react';
 import { motion, useAnimation, useReducedMotion } from 'motion/react';
 import * as React from 'react';
 
+import {
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import Icon from './Icon';
 import Surface from './layout/Surface';
+import {
+  headingTagBelow,
+  type HeadingTag,
+  useEnclosingHeadingLevel,
+} from './typography/EnclosingHeadingLevel';
 import Heading from './typography/Heading';
 import { paragraphVariants } from './typography/Paragraph';
 import { cva, cx, type VariantProps } from './utils/cva';
@@ -112,13 +123,52 @@ const variantRoles: Record<Variant, 'alert' | 'status'> = {
  * users get from color + icon. Prepended inside the content block to
  * avoid adding a flex slot (which would inherit the parent gap).
  */
-const variantContextLabels: Record<Variant, string> = {
-  default: 'Notice',
-  info: 'Information',
-  success: 'Success',
-  warning: 'Warning',
-  destructive: 'Error',
-  accent: 'Note',
+const messages = defineMessages({
+  contextDefault: {
+    id: 'frescoUi.alert.contextDefault',
+    defaultMessage: 'Notice',
+    description:
+      'Announced before a plain alert’s content, standing in for the colour and icon a sighted reader sees.',
+  },
+  contextInfo: {
+    id: 'frescoUi.alert.contextInfo',
+    defaultMessage: 'Information',
+    description:
+      'Announced before an informational alert’s content, standing in for the colour and icon a sighted reader sees.',
+  },
+  contextSuccess: {
+    id: 'frescoUi.alert.contextSuccess',
+    defaultMessage: 'Success',
+    description:
+      'Announced before a success alert’s content, standing in for the colour and icon a sighted reader sees.',
+  },
+  contextWarning: {
+    id: 'frescoUi.alert.contextWarning',
+    defaultMessage: 'Warning',
+    description:
+      'Announced before a warning alert’s content, standing in for the colour and icon a sighted reader sees.',
+  },
+  contextDestructive: {
+    id: 'frescoUi.alert.contextDestructive',
+    defaultMessage: 'Error',
+    description:
+      'Announced before an error alert’s content, standing in for the colour and icon a sighted reader sees.',
+  },
+  contextAccent: {
+    id: 'frescoUi.alert.contextAccent',
+    defaultMessage: 'Note',
+    description:
+      'Announced before a key-concept alert’s content, standing in for the colour and icon a sighted reader sees.',
+  },
+});
+
+const variantContextMessages: Record<Variant, MessageDescriptor> = {
+  default: messages.contextDefault,
+  info: messages.contextInfo,
+  success: messages.contextSuccess,
+  warning: messages.contextWarning,
+  destructive: messages.contextDestructive,
+  accent: messages.contextAccent,
 };
 
 const alertIconVariants = cva({
@@ -166,12 +216,15 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
     },
     ref,
   ) => {
+    const intl = useAppIntl();
     const animation = useAnimation();
     const shouldReduceMotion = useReducedMotion();
     const IconComponent =
       icon === false ? null : (icon ?? variantIcons[variant]);
     const iconStyle = icon == null ? variantIconStyles[variant] : undefined;
     const resolvedDensity: Density = density ?? 'default';
+    const announcedContext =
+      contextLabel ?? intl.formatMessage(variantContextMessages[variant]);
 
     return (
       <Surface
@@ -212,9 +265,7 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
           </motion.span>
         )}
         <div className="min-w-0 flex-1">
-          <span className="sr-only">
-            {contextLabel ?? variantContextLabels[variant]}:{' '}
-          </span>
+          <span className="sr-only">{announcedContext}: </span>
           {children}
         </div>
       </Surface>
@@ -223,18 +274,50 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
 );
 Alert.displayName = 'Alert';
 
-const AlertTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <Heading
-    level="h4"
-    variant="all-caps"
-    ref={ref}
-    className={cx('mt-0!', className)}
-    {...props}
-  />
-));
+export type AlertTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
+  /**
+   * Where this title sits in the page's heading outline, when the surrounding
+   * outline does not already say.
+   *
+   * An alert can be raised anywhere — beside a page title, inside a section,
+   * within a dialog — and a heading level is only correct relative to the
+   * heading above it. Fixed at `h4`, an alert raised under an `h2` skips a
+   * level, which is a `heading-order` failure and, for anyone navigating by
+   * headings, a title that reads as belonging to a subsection that does not
+   * exist. A dialog, and a section within it, each state the level they
+   * enclose, so a title inside one lands one below the NEAREST of them
+   * without being told; with no heading above it at all the level stays `h4`.
+   *
+   * Changes the element only. The title keeps the small all-caps treatment
+   * that makes it read as an alert's title at every level, because that is
+   * about what the thing IS rather than about how deep in the page it sits.
+   */
+  headingLevel?: HeadingTag;
+};
+
+const AlertTitle = React.forwardRef<HTMLParagraphElement, AlertTitleProps>(
+  ({ className, headingLevel, ...props }, ref) => {
+    // Derived rather than declared: an opt-in level is a level nobody opts
+    // into. Every alert in the codebase was raised without one, so each dialog
+    // that warns before deleting a participant's interviews put its `h4` under
+    // its own `h2` title — the failure the prop was there to fix.
+    const enclosingLevel = useEnclosingHeadingLevel();
+    const tag =
+      headingLevel ??
+      (enclosingLevel === null ? 'h4' : headingTagBelow(enclosingLevel));
+
+    return (
+      <Heading
+        level="h4"
+        variant="all-caps"
+        {...(tag === 'h4' ? {} : { render: React.createElement(tag) })}
+        ref={ref}
+        className={cx('mt-0!', className)}
+        {...props}
+      />
+    );
+  },
+);
 AlertTitle.displayName = 'AlertTitle';
 
 const AlertDescription = React.forwardRef<

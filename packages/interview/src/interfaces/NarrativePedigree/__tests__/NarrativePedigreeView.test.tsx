@@ -15,6 +15,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import type { StageProps } from '../../../types';
@@ -241,7 +242,7 @@ function makeStore(narrativeStage = makeNarrativeStage()) {
   });
 }
 
-function renderView(stage = makeNarrativeStage()) {
+function renderView(stage = makeNarrativeStage(), locale = 'en') {
   const store = makeStore(stage);
 
   function Wrapper({ children }: { children: ReactNode }) {
@@ -254,9 +255,20 @@ function renderView(stage = makeNarrativeStage()) {
     );
   }
 
-  return render(<NarrativePedigreeView stage={stage} />, {
+  const view = (requestedLocale: string) => (
+    <InterviewI18nProvider requestedLocale={requestedLocale}>
+      <NarrativePedigreeView stage={stage} />
+    </InterviewI18nProvider>
+  );
+  const rendered = render(view(locale), {
     wrapper: Wrapper,
   });
+  return {
+    ...rendered,
+    store,
+    changeLocale: (requestedLocale: string) =>
+      rendered.rerender(view(requestedLocale)),
+  };
 }
 
 // Selects (or, when already selected, clears) a condition by clicking its row in
@@ -277,6 +289,63 @@ function viewMarker(selector: string): Element | null {
 }
 
 describe('NarrativePedigreeView — node mode selection', () => {
+  it('reformats selected condition, status, focus and snapshot in place while preserving authored copy and network data', async () => {
+    const stage = makeNarrativeStage();
+    stage.label = 'Árbol **del estudio**';
+    const firstDisease = stage.diseases[0];
+    if (!firstDisease) throw new Error('The condition fixture is missing');
+    firstDisease.label = 'Condition <b>A</b>';
+    const rendered = renderView(stage);
+    const before = JSON.stringify(rendered.store.getState().session.network);
+    await selectCondition('Condition <b>A</b>');
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Focus on You' }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Focus on Mother' }),
+    ).toHaveAccessibleDescription('Condition <b>A</b>: Affected');
+
+    rendered.changeLocale('es');
+    expect(
+      await screen.findByRole('button', { name: 'Centrar en Tú' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Centrar en Mother' }),
+    ).toHaveAccessibleDescription('Condition <b>A</b>: Afectado/a');
+    expect(
+      screen.getByRole('button', { name: 'Condition <b>A</b>' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Quitar el foco' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('Tiene esta afección').length).toBeGreaterThan(
+      0,
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Guardar imagen' }),
+    );
+    await waitFor(() => expect(exportSnapshotMock).toHaveBeenCalledTimes(1));
+    const snapshot = exportSnapshotMock.mock.calls[0]?.[0];
+    expect(snapshot?.querySelector('h2')).toHaveTextContent(
+      'Árbol **del estudio**: Condition <b>A</b> — herencia de Tú',
+    );
+    expect(snapshot?.querySelector('h3')).toHaveTextContent('Leyenda');
+
+    rendered.changeLocale('en-GB');
+    expect(
+      await screen.findByRole('button', { name: 'Focus on You' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Clear focus' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Focus on Mother' }),
+    ).toHaveAccessibleDescription('Condition <b>A</b>: Affected');
+    expect(JSON.stringify(rendered.store.getState().session.network)).toBe(
+      before,
+    );
+  });
+
   it('renders plain nodes with no status symbol by default', async () => {
     renderView();
 

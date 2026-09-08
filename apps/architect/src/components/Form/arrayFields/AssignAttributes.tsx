@@ -1,5 +1,7 @@
 import { useCallback, useMemo } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
@@ -11,6 +13,27 @@ import Attribute, {
   type AttributeValue,
   type VariableOption,
 } from './Attribute';
+const additionalMessages = defineMessages({
+  completeAttributes: {
+    id: 'architect.assignAttributes.complete',
+    defaultMessage:
+      'Every additional attribute needs both an attribute and a value.',
+    description:
+      'Validation error for an incomplete fixed attribute assignment.',
+  },
+  addNewAttributeToAssign: {
+    id: 'architect.additional.form.arrayFields.assignAttributes.addNewAttributeToAssign',
+    defaultMessage: 'Add new attribute to assign',
+    description:
+      'The addButtonLabel text in components / Form / arrayFields / AssignAttributes.',
+  },
+  noAdditionalAttributesAssigned: {
+    id: 'architect.additional.form.arrayFields.assignAttributes.noAdditionalAttributesAssigned',
+    defaultMessage: 'No additional attributes assigned.',
+    description:
+      'The emptyStateMessage text in components / Form / arrayFields / AssignAttributes.',
+  },
+});
 
 // Re-exported so a call site configuring this editor needs only this module:
 // the committed-pick set feeds the row context AND the array-level rule below,
@@ -71,7 +94,7 @@ export const completeAttributes = (value: unknown) =>
       row.variable !== '' &&
       typeof row.value === 'boolean',
   )
-    ? 'Every additional attribute needs both an attribute and a value.'
+    ? createMessageError(additionalMessages.completeAttributes)
     : undefined;
 
 /**
@@ -183,6 +206,7 @@ const AssignAttributes = ({
   'aria-invalid': ariaInvalid,
   ...arrayFieldProps
 }: AssignAttributesProps) => {
+  const intl = useAppIntl();
   const context = useMemo(
     () => ({
       arrayName: name,
@@ -234,8 +258,12 @@ const AssignAttributes = ({
         // The row renders its own Surface, so ArrayField's wrapper stays bare
         // rather than nesting two levels of padded, shadowed surface.
         itemClasses="p-0! shadow-none bg-transparent"
-        addButtonLabel="Add new attribute to assign"
-        emptyStateMessage="No additional attributes assigned."
+        addButtonLabel={intl.formatMessage(
+          additionalMessages.addNewAttributeToAssign,
+        )}
+        emptyStateMessage={intl.formatMessage(
+          additionalMessages.noAdditionalAttributesAssigned,
+        )}
         immediateAdd
         confirmDelete={false}
       />

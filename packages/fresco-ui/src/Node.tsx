@@ -14,6 +14,9 @@ import {
 } from 'react';
 import { useMergeRefs } from 'react-best-merge-refs';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { useFitText } from './hooks/useFitText';
 import {
   type ActivationSource,
@@ -33,6 +36,15 @@ import { cva, type VariantProps } from './utils/cva';
 export type NodeShape = 'circle' | 'square' | 'diamond';
 
 export type { ActivationSource, NodeDragEndInfo };
+
+const nodeMessages = defineMessages({
+  defaultLabel: {
+    id: 'frescoUi.node.defaultLabel',
+    defaultMessage: 'Node',
+    description:
+      'Default label rendered inside a network node when the host supplies none.',
+  },
+});
 
 // TODO: should be part of protocol-validation
 export const NodeColors = [
@@ -358,8 +370,9 @@ type UINodeProps = {
  *   animations would otherwise compose incorrectly with the rotation.
  */
 export default function Node(props: UINodeProps) {
+  const intl = useAppIntl();
   const {
-    label = 'Node',
+    label = intl.formatMessage(nodeMessages.defaultLabel),
     ariaLabel,
     color,
     shape,

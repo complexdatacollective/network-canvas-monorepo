@@ -22,7 +22,6 @@ allowBuilds:
   unrs-resolver: true
   electron: false
   electron-winstaller: false
-  phantomjs-prebuilt: false
   protobufjs: false
   workerd: false
   '@posthog/cli': false
@@ -45,9 +44,21 @@ catalog:
   '@faker-js/faker': ^10.5.0
   '@fontsource-variable/inclusive-sans': ^5.2.8
   '@fontsource-variable/nunito': ^5.2.7
+  # App-i18n tooling: programmatic message extraction (guards + extract
+  # scripts) and build-time ICU-to-AST compilation for catalog JSON.
+  '@formatjs/cli-lib': ^9.0.9
+  '@formatjs/icu-messageformat-parser': ^3.5.17
+  # oxc-based build transform (no babel) compiling defineMessages
+  # defaultMessage strings to pre-parsed AST in @codaco/app-i18n's vite
+  # integration, keeping the ICU parser out of production bundles.
+  '@formatjs/unplugin': ^1.2.7
+  # BCP 47 best-fit matching for app locale negotiation (@codaco/app-i18n);
+  # the protocol localization design (§7.1) adopts this same entry when
+  # protocol-validation's locale helpers land.
+  '@formatjs/intl-localematcher': ^0.8.13
   '@microsoft/api-extractor': ^7.58.12
-  '@next/bundle-analyzer': ^16.3.2
-  '@next/third-parties': ^16.3.2
+  '@next/bundle-analyzer': ^16.3.4
+  '@next/third-parties': ^16.3.4
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
   '@playwright/test': ^1.62.1
@@ -101,13 +112,23 @@ catalog:
   electron: ^43.0.0
   electron-builder: ^26.15.2
   electron-vite: ^6.0.0-beta.1
+  # ICU/localisation linting, run under oxlint's jsPlugins (descriptor
+  # hygiene, ICU validity, call-site placeholder checking).
+  eslint-plugin-formatjs: ^6.6.1
   es-toolkit: ^1.50.0
   fuse.js: ^7.5.0
   jsdom: ^30.0.0
   jszip: ^3.10.1
   lucide-react: ^1.27.0
   motion: ^13.1.0
-  next: ^16.3.2
+  next: ^16.3.4
+  # Catalogued so the root's formatter and Architect's cannot drift apart.
+  # Architect's E2E helper formats stage snapshots in-process (see
+  # `apps/architect/e2e/helpers/normalize-stage.ts`) and depends on producing
+  # bytes identical to what the pre-commit hook writes with the root's copy;
+  # two versions means the hook can rewrite a generated baseline that the
+  # subsequent comparison then rejects.
+  oxfmt: ^0.66.0
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.62.1
@@ -116,6 +137,9 @@ catalog:
   react: ^19.2.8
   react-dom: ^19.2.8
   react-dropzone: ^15.0.0
+  # ICU MessageFormat runtime for app UI catalogs; consumed only through
+  # @codaco/app-i18n's curated API, never imported directly.
+  react-intl: ^10.1.26
   react-redux: ^9.3.0
   redux-form: ^8.3.10
   redux-logger: ^3.0.6
@@ -157,14 +181,25 @@ overrides:
   'slate-history>immer': '^5.3.0'
   # Keep security-sensitive transitives on patched versions when upstream
   # manifests still pin vulnerable releases (inherited from fresco).
+  # @prisma/config pins deepmerge-ts to an exact 7.x release; 8.x fixes the
+  # recursive-graph stack exhaustion (GHSA-ggr8-5vv4-36mx) and keeps the
+  # variadic deepmerge() API Prisma's config loader calls.
+  deepmerge-ts: '^8.0.2'
   'effect@3.17.7': 'catalog:'
-  fast-uri: '^3.1.4'
+  # ajv (build and dev tooling only) resolves fast-uri; 3.1.6 closes the
+  # URI-normalisation host-confusion / SSRF family (GHSA-5jgf-p345-68v8,
+  # GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp, GHSA-f65p-4m7j-42xc).
+  fast-uri: '^3.1.6'
   find-my-way: '^9.7.0'
   'immutable@4.3.8': '4.3.9'
+  # prisma pins mysql2 to an exact release below the auth-plugin downgrade fix
+  # (GHSA-3f6p-5ww8-9rcr); nothing here talks to MySQL, so the driver only
+  # needs to resolve to a patched version.
+  mysql2: '^3.22.0'
   # Next pins an exact PostCSS version, so keep transitives on the patched
   # catalog version rather than duplicating the version here.
   postcss: 'catalog:'
-  sharp: '^0.35.3'
+  sharp: '^0.35.4'
   valibot: '^1.4.2'
 autoInstallPeers: true
 linkWorkspacePackages: false
@@ -204,3 +239,14 @@ minimumReleaseAgeExclude:
   - '@changesets/should-skip-package@1.0.0'
   - '@changesets/types@7.0.0'
   - '@changesets/write@1.0.0'
+  - '@formatjs/cli-lib@9.0.9'
+  - '@formatjs/cli-native-darwin-arm64@1.1.17'
+  - '@formatjs/cli-native-linux-arm64-musl@1.0.15'
+  - '@formatjs/cli-native-linux-arm64@1.2.17'
+  - '@formatjs/cli-native-linux-x64-musl@1.0.15'
+  - '@formatjs/cli-native-linux-x64@1.1.17'
+  - '@formatjs/cli-native-win32-x64@1.1.18'
+  - babel-plugin-formatjs@13.0.3
+  - react-intl@10.1.26
+patchedDependencies:
+  drizzle-kit@1.0.0-rc.4: patches/drizzle-kit@1.0.0-rc.4.patch

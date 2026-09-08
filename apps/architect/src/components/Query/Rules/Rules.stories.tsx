@@ -370,7 +370,7 @@ export const AllRuleTypes: Story = {
 
     const multiValueRule = canvas.getAllByRole('listitem').find((item) =>
       within(item).queryByRole('button', {
-        name: /^Edit rule: Ego has categorical attribute Selected groups that includes Family,/,
+        name: /^Edit rule: Ego has categorical attribute Selected groups that includes Family and /,
       }),
     );
 

@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
+import { createElement, useEffect } from 'react';
 import { useLocation } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { AppUpdateProvider } from '~/components/AppUpdate/AppUpdateProvider';
@@ -36,6 +38,50 @@ import {
   subscribeStartupProtocolFailures,
   takeStartupProtocolFailures,
 } from '~/utils/startupProtocolFailureQueue';
+const messages = defineMessages({
+  couldNotOpenFile: {
+    id: 'architect.viewManager.views.app.couldNotOpenFile',
+    defaultMessage: 'Could not open file',
+    description: 'The title text in components / ViewManager / views / App.',
+  },
+  launchedCouldNotBeRead: {
+    id: 'architect.viewManager.views.app.launchedCouldNotBeRead',
+    defaultMessage:
+      '{failedCount, plural, one {The launched file could not be read. It may have been moved, deleted, or become unavailable since it was opened.} other {# launched files could not be read. They may have been moved, deleted, or become unavailable since they were opened.}}',
+    description:
+      'The description text in components / ViewManager / views / App.',
+  },
+  oK: {
+    id: 'architect.viewManager.views.app.oK',
+    defaultMessage: 'OK',
+    description: 'The label text in components / ViewManager / views / App.',
+  },
+  autosaveFailed: {
+    id: 'architect.viewManager.views.app.autosaveFailed',
+    defaultMessage: 'Autosave failed',
+    description: 'The title text in components / ViewManager / views / App.',
+  },
+  protocolUpdated: {
+    id: 'architect.viewManager.views.app.protocolUpdated',
+    defaultMessage: 'Protocol updated',
+    description: 'The title text in components / ViewManager / views / App.',
+  },
+  wasMadeWithAn: {
+    id: 'architect.viewManager.views.app.wasMadeWithAn',
+    defaultMessage:
+      '"{name}" was made with an older version of Architect. It has been updated to open here, and the copy in your library has been replaced.',
+    description:
+      'The description text in components / ViewManager / views / App.',
+  },
+});
+const finalMessages = defineMessages({
+  storageFailure: {
+    id: 'architect.app.storageFailure',
+    defaultMessage:
+      'Your recent changes could not be saved to this device, which can happen if local storage is full or unavailable. To avoid losing work, download a copy of your protocol.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 const FileLaunchFailureReporter = () => {
   const { openDialog } = useDialog();
@@ -44,13 +90,24 @@ const FileLaunchFailureReporter = () => {
     const reportFailures = () => {
       const failures = takeLaunchReadFailures();
       for (const failedCount of failures) {
-        const noun = failedCount === 1 ? 'file' : 'files';
         void openDialog({
           type: 'acknowledge',
           intent: 'destructive',
-          title: 'Could not open file',
-          description: `${failedCount} launched ${noun} could not be read. The ${noun} may have been moved, deleted, or become unavailable since ${failedCount === 1 ? 'it was' : 'they were'} opened.`,
-          actions: { primary: { label: 'OK', value: true } },
+          title: createElement(AppMessage, {
+            message: messages.couldNotOpenFile,
+          }),
+          description: createElement(AppMessage, {
+            message: messages.launchedCouldNotBeRead,
+            values: {
+              failedCount: failedCount,
+            },
+          }),
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
         });
       }
     };
@@ -72,12 +129,16 @@ const AutosaveFailureReporter = () => {
       void openDialog({
         type: 'acknowledge',
         intent: 'destructive',
-        title: 'Autosave failed',
-        description:
-          'Your recent changes could not be saved to this device, which ' +
-          'can happen if local storage is full or unavailable. To ' +
-          'avoid losing work, download a copy of your protocol.',
-        actions: { primary: { label: 'OK', value: true } },
+        title: createElement(AppMessage, { message: messages.autosaveFailed }),
+        description: createElement(AppMessage, {
+          message: finalMessages.storageFailure,
+        }),
+        actions: {
+          primary: {
+            label: createElement(AppMessage, { message: messages.oK }),
+            value: true,
+          },
+        },
       });
     };
 
@@ -94,7 +155,10 @@ const StartupProtocolFailureReporter = () => {
   useEffect(() => {
     const reportFailures = () => {
       for (const refusal of takeStartupProtocolFailures()) {
-        void showProtocolOpenResultDialog({ result: refusal, openDialog });
+        void showProtocolOpenResultDialog({
+          result: refusal,
+          openDialog,
+        });
       }
     };
 
@@ -121,8 +185,10 @@ const ProtocolUpgradeToaster = () => {
       for (const { name } of takeProtocolUpgrades()) {
         toast({
           variant: 'info',
-          title: 'Protocol updated',
-          description: `"${name}" was made with an older version of Architect. It has been updated to open here, and the copy in your library has been replaced.`,
+          title: <AppMessage message={messages.protocolUpdated} />,
+          description: (
+            <AppMessage message={messages.wasMadeWithAn} values={{ name }} />
+          ),
         });
       }
     };

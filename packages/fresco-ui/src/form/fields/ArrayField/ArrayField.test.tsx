@@ -6,8 +6,11 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MotionConfig } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+
+import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
 import DialogProvider from '../../../dialogs/DialogProvider';
 import Surface from '../../../layout/Surface';
@@ -167,6 +170,41 @@ const renderField = (props: Partial<ArrayFieldProps<Item>> = {}) =>
   );
 
 describe('ArrayField', () => {
+  /**
+   * The element that holds the items is a list, and a list supports neither
+   * `aria-readonly` nor `aria-required`.
+   *
+   * Every field's props carry both — `useField` sets `aria-readonly` on all of
+   * them, even when false — and this field spreads what it is given onto the
+   * list. An attribute a role does not support is not something a screen
+   * reader ignores; it is undefined behaviour, and axe reports it as a
+   * critical `aria-allowed-attr` violation on every story that renders one.
+   *
+   * Nothing is lost by leaving them off: each item's own controls carry their
+   * readonly and required state, and `aria-disabled` — which a list does
+   * support — still says the whole field is unavailable. Checked with
+   * `required` and `readOnly` BOTH set, because `aria-required="false"` is
+   * tolerated where `aria-required="true"` is not, so the false case alone
+   * would pass with the bug still in place.
+   */
+  it('leaves attributes a list does not support off the list', () => {
+    renderField({
+      'value': [{ id: 'one', label: 'one' }],
+      'readOnly': true,
+      'aria-readonly': true,
+      'aria-required': true,
+      'aria-disabled': true,
+      'aria-label': 'Content blocks',
+    });
+
+    const list = screen.getByRole('list', { name: 'Content blocks' });
+    expect(list).not.toHaveAttribute('aria-readonly');
+    expect(list).not.toHaveAttribute('aria-required');
+    // The one that IS supported, so the omission above is a rule about which
+    // attributes a list may carry rather than the field dropping its state.
+    expect(list).toHaveAttribute('aria-disabled', 'true');
+  });
+
   it('renders each item as an accent Surface boundary', () => {
     renderField({
       value: [{ id: 'one', label: 'one' }],
@@ -239,8 +277,10 @@ describe('ArrayField', () => {
       type: 'remove',
       index: 0,
     });
+    // Singular: the announcement is an ICU `plural`, where the template
+    // literal it replaced said "1 items remaining".
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Removed item 1. 1 items remaining.',
+      'Removed item 1. 1 item remaining.',
     );
   });
 
@@ -286,6 +326,59 @@ describe('ArrayField', () => {
     await user.click(deleteButtons[0]!);
 
     expect(onChange).toHaveBeenCalledWith([{ id: 'two', label: 'two' }]);
+  });
+
+  /**
+   * A deleted row stays mounted for as long as its exit animation runs. For
+   * that window the document holds a row that is no longer in the value, with
+   * every one of its controls still in the accessibility tree and still
+   * tabbable — so "the second row" and "the row at this index" answer with a
+   * node that is about to be destroyed. What follows is focus on a removed
+   * element, which falls back to `<body>`.
+   *
+   * Real Motion timing is the point of the test: with the suite's usual
+   * instant animations the window does not exist, and a ten-second transition
+   * makes it wide enough that the assertions do not race the exit.
+   */
+  it('drops a deleted row out of the list while it animates away', async () => {
+    await withAnimationsEnabled(async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <DialogProvider>
+          <MotionConfig transition={{ duration: 10 }}>
+            <ArrayField<Item>
+              value={[
+                { id: 'one', label: 'one' },
+                { id: 'two', label: 'two' },
+              ]}
+              getId={(item) => item.id}
+              onChange={onChange}
+              itemTemplate={() => ({ label: 'new' })}
+              itemComponent={TestItem}
+              confirmDelete={false}
+            />
+          </MotionConfig>
+        </DialogProvider>,
+      );
+
+      const [firstDelete, secondDelete] = screen.getAllByRole('button', {
+        name: 'Delete',
+      });
+      if (!firstDelete || !secondDelete) throw new Error('expected two rows');
+
+      await user.click(firstDelete);
+      expect(onChange).toHaveBeenCalledWith([{ id: 'two', label: 'two' }]);
+
+      // The removed row is still mounted — that window is what the assertions
+      // below are about, and they say nothing without it.
+      expect(firstDelete.isConnected).toBe(true);
+      expect(screen.getAllByRole('button', { name: 'Delete' })).toEqual([
+        secondDelete,
+      ]);
+      expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    });
   });
 
   it('passes the current item index to an external editor', async () => {
@@ -440,6 +533,7 @@ describe('ArrayField', () => {
       type: 'move',
       from: 1,
       to: 0,
+      item: { id: 'two', label: 'two' },
     });
   });
 

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import Dialog from './dialogs/Dialog';
 import Field from './form/Field/Field';
 import InputField from './form/fields/InputField';
 import Form from './form/Form';
@@ -394,5 +395,61 @@ describe('Section', () => {
 
     expect(parentHeading).toHaveClass('text-xl');
     expect(nestedHeading).toHaveClass('text-lg');
+  });
+
+  /**
+   * A section's level is only correct relative to the heading above it, and
+   * inside a dialog that heading is the dialog's own `h2` title.
+   *
+   * Surface depth is the right proxy on a page — a section nested inside
+   * another section is one Surface deeper — and the wrong one here:
+   * `DialogPopup` restarts the ladder at depth 1 so nested surfaces derive
+   * from the overlay base rather than from wherever the dialog was opened,
+   * which made a first-level section in a dialog an `h4` under an `h2`. That
+   * is an axe `heading-order` failure, and for anyone navigating by headings
+   * it reads as a subsection that is not there.
+   *
+   * Only the element changes. The section keeps the type treatment its Surface
+   * depth gives it, because that is about how deeply nested it looks rather
+   * than where it sits in the outline — and because a section in a dialog that
+   * suddenly grew is a change to every screenshot of one.
+   */
+  it('places its title one level below a dialog title', () => {
+    render(
+      <Dialog open title="Edit prompt">
+        <Section title="Prompt text">
+          <div>Dialog section content</div>
+          <Section title="Advanced">
+            <div>Nested dialog section content</div>
+          </Section>
+        </Section>
+      </Dialog>,
+    );
+
+    screen.getByRole('heading', { name: 'Edit prompt', level: 2 });
+    const heading = screen.getByRole('heading', {
+      name: 'Prompt text',
+      level: 3,
+    });
+    screen.getByRole('heading', { name: 'Advanced', level: 4 });
+    // The tag moved; the typography did not.
+    expect(heading).toHaveClass('text-lg');
+    expect(heading).not.toHaveClass('text-xl');
+  });
+
+  it('leaves a section outside a dialog at the level its nesting gives it', () => {
+    render(
+      <div>
+        <Section title="Page section">
+          <div>Page content</div>
+        </Section>
+      </div>,
+    );
+
+    const heading = screen.getByRole('heading', {
+      name: 'Page section',
+      level: 3,
+    });
+    expect(heading).toHaveClass('text-xl');
   });
 });

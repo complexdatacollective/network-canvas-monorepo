@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -9,6 +11,30 @@ import * as authApi from '~/lib/auth/api';
 import Step3BiometricConfigure from './Step3BiometricConfigure';
 import Step3PassphraseConfigure from './Step3PassphraseConfigure';
 import Step3PinConfigure from './Step3PinConfigure';
+
+const messages = defineMessages({
+  biometricConfigured: {
+    id: 'interviewer.step3Configure.biometricConfigured',
+    defaultMessage: 'Biometric configured.',
+    description: 'User-facing message in Interviewer Step3Configure.',
+  },
+  pINConfigured: {
+    id: 'interviewer.step3Configure.pINConfigured',
+    defaultMessage: 'PIN configured.',
+    description: 'User-facing message in Interviewer Step3Configure.',
+  },
+  passphraseConfigured: {
+    id: 'interviewer.step3Configure.passphraseConfigured',
+    defaultMessage: 'Passphrase configured.',
+    description: 'User-facing message in Interviewer Step3Configure.',
+  },
+  change: {
+    id: 'interviewer.step3Configure.change',
+    defaultMessage: 'Change',
+    description:
+      'Action that goes back to choose a different authentication method during setup.',
+  },
+});
 
 const WIZARD_METHODS: WizardSelectedMethod[] = [
   'biometric',
@@ -72,6 +98,7 @@ function ReadOnlySummary({
   allowChange: boolean;
   onChange: () => void;
 }) {
+  const intl = useAppIntl();
   const wizard = useWizard();
   const [reconciled, setReconciled] = useState(false);
 
@@ -118,17 +145,17 @@ function ReadOnlySummary({
 
   const label =
     method === 'biometric'
-      ? 'Biometric configured.'
+      ? intl.formatMessage(messages.biometricConfigured)
       : method === 'pin'
-        ? 'PIN configured.'
-        : 'Passphrase configured.';
+        ? intl.formatMessage(messages.pINConfigured)
+        : intl.formatMessage(messages.passphraseConfigured);
 
   return (
     <>
       <Paragraph>{label}</Paragraph>
       {allowChange ? (
         <Button type="button" color="primary" onClick={onChange}>
-          Change
+          {intl.formatMessage(messages.change)}
         </Button>
       ) : null}
     </>

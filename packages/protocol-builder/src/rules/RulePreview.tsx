@@ -1,0 +1,301 @@
+import { Fragment, type CSSProperties } from 'react';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import Icon from '@codaco/fresco-ui/Icon';
+import Node, {
+  NodeColors,
+  type NodeColorSequence,
+} from '@codaco/fresco-ui/Node';
+import Pill from '@codaco/fresco-ui/Pill';
+import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import { cx } from '@codaco/fresco-ui/utils/cva';
+import type { ColorReference } from '@codaco/protocol-validation';
+
+import { protocolColor } from '../protocolColor.ts';
+import type {
+  RuleDescription,
+  RuleDescriptionAttribute,
+  RuleDescriptionEntity,
+  RuleDescriptionOperand,
+} from './ruleDescription.ts';
+import { ruleSubjectMessages } from './ruleMessages.ts';
+
+const messages = defineMessages({
+  attribute: {
+    id: 'protocolBuilder.rulePreview.attribute',
+    defaultMessage: '{label} (attribute type: {type})',
+    description:
+      'Read out in place of the attribute chip in a rule preview, so assistive technology says what kind of attribute it is as well as its name. label is the researcher’s own name for the attribute; type is the schema’s own word for the kind of value it holds — text, number, boolean, ordinal, categorical, datetime, scalar, location or layout — and is not translated.',
+  },
+  attributeMissing: {
+    id: 'protocolBuilder.rulePreview.attributeMissing',
+    defaultMessage: '{label} (attribute is no longer in the codebook)',
+    description:
+      'Read out in place of the attribute chip in a rule preview when the protocol’s codebook no longer describes that attribute, so its kind cannot be named. label is the researcher’s own name for the attribute.',
+  },
+});
+
+type ProtocolIconStyle = CSSProperties & {
+  '--icon-tone-primary'?: string;
+  '--icon-tone-secondary'?: string;
+};
+
+const asNodeColor = (color: ColorReference): NodeColorSequence =>
+  NodeColors.find((candidate) => candidate === color) ?? 'node-color-seq-1';
+
+/**
+ * The entity a rule is about, drawn the way the rest of the builder draws it:
+ * a node as a node, an edge as its link glyph, the ego as a word.
+ *
+ * Presentational throughout — this is a preview of a rule, not another set of
+ * controls inside the row that opens the editor.
+ */
+function RuleEntity({ entity }: { entity: RuleDescriptionEntity }) {
+  if (entity.kind === 'ego') {
+    return (
+      <strong data-rule-entity="ego" className="font-bold">
+        {entity.label}
+      </strong>
+    );
+  }
+
+  const iconStyle: ProtocolIconStyle = {
+    '--icon-tone-primary': protocolColor(entity.color, { dark: true }),
+    '--icon-tone-secondary': protocolColor(entity.color),
+  };
+
+  return (
+    <span className="inline" data-rule-entity={entity.kind}>
+      <span
+        className="mr-2 inline-flex size-8 items-center justify-center align-middle"
+        data-rule-entity-glyph={entity.kind}
+        aria-hidden
+      >
+        {entity.kind === 'edge' ? (
+          <Icon name="links" className="size-7" style={iconStyle} />
+        ) : (
+          <Node
+            label=""
+            color={asNodeColor(entity.color)}
+            shape={entity.shape}
+            size="xxs"
+            presentational
+          />
+        )}
+      </span>
+      <strong className="font-bold wrap-break-word">{entity.label}</strong>
+    </span>
+  );
+}
+
+/**
+ * The attribute a rule compares.
+ *
+ * The pill conveys the attribute's kind visually; the wrapper says it in
+ * words, so assistive technology reads "categorical attribute Age" rather than
+ * a bare name. An attribute the codebook no longer has says so instead of
+ * naming a type it cannot know.
+ */
+function RuleAttribute({ attribute }: { attribute: RuleDescriptionAttribute }) {
+  const intl = useAppIntl();
+  // A name followed by a labelled value, rather than a sentence assembled
+  // around the type: nothing here has to agree grammatically with a type name.
+  const description = attribute.missing
+    ? intl.formatMessage(messages.attributeMissing, { label: attribute.label })
+    : intl.formatMessage(messages.attribute, {
+        label: attribute.label,
+        type: attribute.type ?? 'text',
+      });
+
+  return (
+    <span
+      className="inline-flex max-w-full align-middle"
+      aria-label={description}
+    >
+      <Pill
+        variant="outline"
+        className={cx(
+          'variable-pill max-w-full min-w-0',
+          attribute.missing && 'border-destructive text-destructive',
+        )}
+        data-rule-part="attribute"
+        data-attribute-type={attribute.type}
+        data-attribute-missing={attribute.missing ? '' : undefined}
+      >
+        <span className="min-w-0 overflow-hidden text-ellipsis">
+          {attribute.label}
+        </span>
+      </Pill>
+    </span>
+  );
+}
+
+const operandClassName = (plain: boolean) =>
+  plain
+    ? 'max-w-full min-w-0 wrap-break-word whitespace-normal'
+    : 'border-sea-green max-w-full min-w-0 rounded-sm border-2 border-dashed box-decoration-clone px-2 py-1 wrap-break-word whitespace-normal';
+
+function OperandToken({
+  value,
+  plain,
+  markdown,
+}: {
+  value: string | number;
+  plain: boolean;
+  markdown: boolean;
+}) {
+  const text = String(value);
+
+  if (!markdown) {
+    return (
+      <span className={operandClassName(plain)} data-rule-part="value">
+        {text}
+      </span>
+    );
+  }
+
+  return (
+    <RenderMarkdown
+      render={
+        <span className={operandClassName(plain)} data-rule-part="value" />
+      }
+    >
+      {text}
+    </RenderMarkdown>
+  );
+}
+
+function RuleOperand({
+  operand,
+  plain,
+}: {
+  operand: RuleDescriptionOperand;
+  plain: boolean;
+}) {
+  return operand.items.map((item, index) => (
+    <Fragment key={`${typeof item}-${String(item)}-${index}`}>
+      {index > 0 && ', '}
+      <OperandToken
+        value={item}
+        plain={plain}
+        markdown={operand.authoredLabels}
+      />
+    </Fragment>
+  ));
+}
+
+export type RulePreviewProps = Readonly<{
+  id?: string;
+  description: RuleDescription;
+  /**
+   * `summary` lays a rule out in three aligned columns for a printable
+   * protocol summary; `default` reads it as one flowing sentence in the
+   * editable list.
+   */
+  variant?: 'default' | 'summary';
+}>;
+
+/**
+ * A rule, read back as one sentence.
+ *
+ * Takes an already-resolved description rather than a rule and a codebook, so
+ * the resolution has exactly one implementation (`describeRule`) and the
+ * editor's list and a host's printable summary cannot drift apart — which is
+ * how the summary's attribute chip previously lost the words saying what kind
+ * of attribute it was.
+ */
+export default function RulePreview({
+  id,
+  description,
+  variant = 'default',
+}: RulePreviewProps) {
+  const intl = useAppIntl();
+  const { entity, attribute, operator, operand, columns } = description;
+  const isSummary = variant === 'summary';
+  const isEgo = description.target === 'ego';
+  // A rule about whether the attribute has been answered at all reads
+  // "Person without Age": its operator introduces the attribute rather than
+  // following it, so the attribute takes the place the operand would have had
+  // and no connector is written before it.
+  const { attributePresence } = description;
+
+  // The connecting word and the two things it connects are ONE message, with
+  // the entity and the attribute passed in as the markup they are: a node
+  // glyph beside its type name, and the attribute's own chip. Written as
+  // markup with the word between them, a translator could not move it.
+  const subject =
+    attribute !== undefined && !attributePresence ? (
+      intl.formatMessage(
+        entity === undefined
+          ? isEgo
+            ? ruleSubjectMessages.egoAttributeUnknownEntity
+            : ruleSubjectMessages.alterAttributeUnknownEntity
+          : isEgo
+            ? ruleSubjectMessages.egoAttribute
+            : ruleSubjectMessages.alterAttribute,
+        {
+          ...(entity === undefined
+            ? {}
+            : { entity: <RuleEntity key="entity" entity={entity} /> }),
+          attribute: <RuleAttribute key="attribute" attribute={attribute} />,
+        },
+      )
+    ) : entity === undefined ? null : (
+      <RuleEntity entity={entity} />
+    );
+  const predicate = <span data-rule-part="operator">{operator.text}</span>;
+  const value =
+    attributePresence && attribute !== undefined ? (
+      <RuleAttribute attribute={attribute} />
+    ) : operand === undefined ? null : (
+      <RuleOperand operand={operand} plain={isSummary} />
+    );
+
+  if (isSummary) {
+    // A three-part rule takes the summary's three columns; a two-part rule has
+    // nothing to put in the third and reads better as a run of phrases.
+    return columns ? (
+      <div
+        id={id}
+        className="grid w-full grid-cols-[minmax(16rem,2fr)_minmax(8rem,1fr)_minmax(0,2fr)] items-center gap-6"
+      >
+        <div className="flex min-w-0 items-center gap-3">{subject}</div>
+        {predicate}
+        {/*
+          One cell, however many operands are in it. As direct grid children a
+          multi-select rule's tokens — the bare ", " separators included — each
+          became a grid item and wrapped the tail of the list under the entity
+          column.
+        */}
+        <div className="min-w-0">{value}</div>
+      </div>
+    ) : (
+      <span id={id}>
+        {subject} {predicate} {value}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      id={id}
+      className="block w-full min-w-0 leading-[2.5] text-wrap [&_.variable-pill]:zoom-[0.8]"
+    >
+      {value === null ? (
+        <span data-rule-part="subject" className="inline whitespace-nowrap">
+          {subject} {predicate}
+        </span>
+      ) : (
+        <>
+          <span data-rule-part="subject" className="inline">
+            {subject}
+          </span>{' '}
+          <span data-rule-part="predicate" className="inline">
+            {predicate} {value}
+          </span>
+        </>
+      )}
+    </span>
+  );
+}

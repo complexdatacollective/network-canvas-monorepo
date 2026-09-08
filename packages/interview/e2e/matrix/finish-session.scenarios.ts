@@ -198,10 +198,18 @@ export const finishSessionScenarios: InterfaceScenarios = {
         const primary = dialog.getByTestId('dialog-primary');
         await primary.click();
 
-        // Rejection keeps the dialog open with the error message, primary
-        // re-enabled for retry.
+        // Rejection keeps the dialog open with actionable interface-language
+        // guidance, without exposing raw host diagnostics; primary can retry.
         await expect(dialog).toBeVisible();
-        await expect(dialog.getByText('finish failed')).toBeVisible();
+        await expect(
+          dialog.getByText(
+            'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+            { exact: true },
+          ),
+        ).toBeVisible();
+        await expect(
+          dialog.getByText('finish failed', { exact: true }),
+        ).toHaveCount(0);
         await expect(primary).toBeEnabled();
 
         await page.evaluate(() =>

@@ -1,9 +1,13 @@
+'use client';
+
 import { PlusIcon } from 'lucide-react';
 import { forwardRef } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
 import { cva, cx, type VariantProps } from '@codaco/fresco-ui/utils/cva';
 
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import {
   actionCircleVariants,
   actionIconClass,
@@ -64,9 +68,10 @@ type ActionButtonProps = Omit<React.ComponentProps<'button'>, 'ref' | 'color'> &
 
 const ActionButton = forwardRef<HTMLButtonElement, ActionButtonProps>(
   ({ iconName = 'add-a-person', className, disabled, ...rest }, ref) => {
+    const intl = useAppIntl();
     return (
       <button
-        aria-label="Add a person"
+        aria-label={intl.formatMessage(messages.addPerson)}
         ref={ref}
         {...rest}
         className={cx(actionButtonVariants({ disabled }), className)}
