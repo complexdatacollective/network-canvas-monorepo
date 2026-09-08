@@ -6,7 +6,7 @@ import { getUTApi } from '~/lib/uploadthing/server-helpers';
 
 export const UploadThingAssetStorage = Layer.succeed(AssetStorage, {
   // UploadThing's ingest protocol is not a plain presigned-PUT; clients must
-  // use the UploadThing SDK's uploader directly (which hits /api/uploadthing).
+  // use the UploadThing SDK's uploader directly (which hits /api/public/uploadthing).
   // Callers should check the storage provider and route around this method.
   generatePresignedUploadUrls: () =>
     Effect.fail(

@@ -5,6 +5,10 @@ import { connection } from 'next/server';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+// Imported rather than referenced at /images/…: the participant surface must
+// need nothing outside the public URL prefixes (see SECURITY.md), and a static
+// import is served from /_next/static/.
+import tooSmall from '~/public/images/too-small.svg';
 import { getAppSetting } from '~/queries/appSettings';
 
 const SmallScreenOverlay = async () => {
@@ -19,12 +23,7 @@ const SmallScreenOverlay = async () => {
   return (
     <div className="laptop:hidden bg-background fixed inset-0 z-50 flex items-center justify-center">
       <div className="flex max-w-[72ch] flex-col items-center justify-center p-6 text-center">
-        <Image
-          src="/images/too-small.svg"
-          width={300}
-          height={300}
-          alt="Screen too small"
-        />
+        <Image src={tooSmall} width={300} height={300} alt="Screen too small" />
         <Heading level="h1">Screen Size Too Small</Heading>
         <Paragraph intent="lead">
           To complete this interview, please use a device with a larger screen,

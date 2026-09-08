@@ -16,7 +16,7 @@ flowchart TB
     exports["Interview exports stream<br/>Postgres → app → browser<br/>(never stored)"]
 
     admin -->|"dashboard +<br/>asset upload (presigned PUT,<br/>signed for app domain)"| proxy
-    participant -->|"interview +<br/>asset download (/api/assets/key<br/>→ 307 to presigned GET)"| proxy
+    participant -->|"interview +<br/>asset download (/api/public/assets/key<br/>→ 307 to presigned GET)"| proxy
     proxy --> fresco
     proxy -->|"/assets/*"| minio
     fresco -->|"Prisma"| postgres

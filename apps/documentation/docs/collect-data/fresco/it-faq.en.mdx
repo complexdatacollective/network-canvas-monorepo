@@ -1,6 +1,6 @@
 ---
 title: FAQ for IT Departments
-date: 22nd July 2026
+date: 8th September 2026
 navOrder: 9
 ---
 
@@ -26,7 +26,7 @@ Fresco is a Next.js application (Node.js 24) backed by a PostgreSQL database and
   - **UploadThing** — a hosted S3 wrapper. Easiest to set up; the free tier is US-only, paid tiers offer EU regions.
   - **Any S3-compatible endpoint** — AWS S3, MinIO (self-hosted), Cloudflare R2, Backblaze B2, etc. Configured with endpoint URL, bucket, region, and access key/secret.
 - **A domain name with HTTPS**. Fresco requires TLS. Free certificates from Let's Encrypt are sufficient.
-- **Inbound HTTPS on port 443**. If using UploadThing, the `/api/uploadthing` endpoint must additionally be reachable from the public Internet, because it is the callback target for UploadThing uploads. A directly-configured S3-compatible backend does not require this external callback.
+- **Inbound HTTPS on port 443**. If using UploadThing, the `/api/public/uploadthing` endpoint must additionally be reachable from the public Internet, because it is the callback target for UploadThing uploads. A directly-configured S3-compatible backend does not require this external callback.
 
 For step-by-step storage setup, see [Configure storage](./guide#configure-storage) in the deployment guide. For full details on self-hosted deployments, see the [Advanced Deployment](./advanced) guide. For the recommended cloud-based path, see the [Deployment Guide](./guide).
 
@@ -70,6 +70,19 @@ There is still **no email-based "forgot password" flow**. Password changes are p
 
 Participant-facing URLs do not require authentication; access is controlled by the unguessability of the per-participant URL. If your IRB requires stronger participant authentication, that should be layered externally (e.g. via SSO/IdP-protected URLs).
 
+## Does Fresco support single sign-on with our institutional identity provider?
+
+Not yet. Fresco's researcher accounts are local to the instance, and there is currently no SAML, OIDC, or Shibboleth integration, so researchers cannot sign in with an institutional username. Native single sign-on is something the project intends to add. If it is a condition of use at your institution, please contact [info@networkcanvas.com](mailto:info@networkcanvas.com) with your requirements (SAML or OIDC, and which identity provider) so that the implementation matches what institutions actually need.
+
+Until then, institutions whose policy requires institutional identity for internal applications have used a network-level mitigation. Because participants never sign in, the researcher-facing and participant-facing parts of Fresco live under different URL prefixes, and that split is a documented contract of the application (see [`SECURITY.md`](https://github.com/complexdatacollective/Fresco/blob/main/SECURITY.md) in the Fresco repository): exactly four prefixes must stay reachable from the public Internet, and everything else is researcher-only.
+
+- **Allow from anywhere:** `/interview/` (the interview pages, and the interview's own save and finish endpoints beneath them), `/onboard/` (the participant onboarding links), `/api/public/` (protocol media, the liveness endpoint, and the UploadThing upload callback if you use that storage backend), and `/_next/` (the application's static assets). If you use the bundled MinIO storage, the bucket path on the same domain (`/assets/` by default) must stay public too, because participants' media downloads are redirected there.
+- **Restrict to your institutional network or VPN:** everything else — the site root, `/signin`, `/setup`, `/reset`, `/dashboard` and everything beneath it, and every other path under `/api/`. That last rule is what puts the researcher data endpoints behind the boundary: the session-authenticated routes the dashboard calls (interview export, asset upload, synthetic data) and the read-only [Interview Data API](/en/analyze-data/fresco-api) under `/api/v1/`, which returns participant identifiers and complete interview records to any bearer-token holder. Each of those checks a Fresco credential, not the network, so a researcher with a valid session or token could otherwise reach them from anywhere.
+
+Write the rule as an allow list of those four prefixes with everything else restricted. The split is enforced by a test in Fresco's source tree, so an upgrade cannot quietly add a participant route outside them; the only thing a participant's browser requests outside the four is `/favicon.ico`, and refusing that only hides the tab icon. The [Advanced Deployment guide](./advanced#restricting-the-researcher-surfaces-to-your-network) has worked examples for the bundled Traefik proxy and for nginx.
+
+Fresco is designed to run behind a reverse proxy, so this is a supported topology, but test it with a real participant link from outside your network, through to the interview's completion screen, before collecting data. Combine it with two-factor authentication on every account rather than using it as a substitute.
+
 ## Does Fresco send data to third parties?
 
 Fresco itself does not transmit participant data to third parties. The following outbound calls do occur:
@@ -94,7 +107,7 @@ If you do not want this API exposed, leave it disabled. There is no other authen
 
 At a minimum:
 
-- **Inbound HTTPS (port 443)** to the application server, so participants and researchers can reach the dashboard and interview URLs. If you are using UploadThing for asset storage, the `/api/uploadthing` endpoint must additionally be reachable from the public Internet to receive upload callbacks; this requirement does **not** apply when using a directly-configured S3-compatible backend.
+- **Inbound HTTPS (port 443)** to the application server, so participants and researchers can reach the dashboard and interview URLs. If you are using UploadThing for asset storage, the `/api/public/uploadthing` endpoint must additionally be reachable from the public Internet to receive upload callbacks; this requirement does **not** apply when using a directly-configured S3-compatible backend.
 - **Outbound HTTPS** from the application server to the PostgreSQL host, the configured object-store endpoint, and (optionally) the GitHub API and the analytics endpoint.
 
 Fresco can run behind an institutional firewall or reverse proxy.

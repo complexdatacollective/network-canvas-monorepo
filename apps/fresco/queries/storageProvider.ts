@@ -15,7 +15,7 @@ export async function hasProtocols(): Promise<boolean> {
   // Counts protocols, not assets: a protocol with no manifest assets still
   // stores its original .netcanvas file (Protocol.originalFileKey) in the
   // configured provider, so changing provider after any import would leave
-  // /api/assets/{key} pointing at the wrong storage backend.
+  // /api/public/assets/{key} pointing at the wrong storage backend.
   const count = await prisma.protocol.count({ take: 1 });
   return count > 0;
 }

@@ -601,7 +601,7 @@ const REPORT_SCHEMA = {
 const expectedChecks = {
   seed: 9,
   capture: 5,
-  integrity: 8,
+  integrity: 9,
   crud: 8,
   apiSettings: 5,
   freshSetup: 11,
@@ -927,8 +927,9 @@ Record one check per numbered item:
 6. Settings values set during seeding are unchanged.
 7. A persisted interview still RESUMES on the upgraded build — open one seeded incomplete interview at its /interview/<id> URL (id from the interviews table or psql per AGENT_NOTES) and verify the interview shell renders its current stage without an error screen.
 8. A sync round-trip still succeeds: the sync middleware only fires on a session STATE CHANGE, so an untouched stage sends nothing — use the shell's forward/back navigation control (shell chrome, not stage content) to advance or step the stage, and confirm a request to /interview/<id>/sync succeeds in the network log. THIS ITEM MAY BE SKIPPED, and only when stage validation blocks navigation in both directions so no state change can be produced; say so in notes.
+9. Protocol media still resolves on the upgraded build, at the URL the upgrade wrote. Via psql (per AGENT_NOTES) run: SELECT url FROM "Asset" WHERE url LIKE '/api/%' LIMIT 1; and SELECT "originalFileUrl" FROM "Protocol" LIMIT 1; — both values must start with /api/public/assets/ (a value still starting with /api/assets/ is a FAILURE: the upgrade migration did not rewrite it). Then curl -sSI "${UPGRADE_URL}<asset url>" must answer 307 with a Location header, and curl -sS -o /dev/null -w '%{http_code}' -L "${UPGRADE_URL}<asset url>" must print 200 (the presigned MinIO GET is served). Quote the two stored values and the two status codes in notes.
 Do NOT interact with stage content; items 7 and 8 exercise Fresco's payload mapping and schema-version compatibility gate, not interview behaviour (the interview package covers that).
-Then, separately from the checks: the participant-facing interview route starts analytics by a different path from the dashboard, so it needs its own reading. Open that same /interview/<id> URL in a FRESH tab (an interview needs no sign-in). The tab must be one you opened yourself just now: this instance ran the released image until the swap, and a log carrying its traffic would describe the wrong build. Wait until the interview shell has rendered its stage AND the tab's network log contains that page's own document request — that is what tells you the log is recording; do not read it before then. Then read the FULL log and report two things. networkLogEntries: how many requests it holds in total, of any host. externalHosts: the distinct hostnames among them that are NOT localhost or 127.0.0.1, as bare hostnames with no scheme or port (an empty array if there are none; everything this deployment needs, MinIO included, is served from localhost). Report what the log shows and nothing else — do not filter for what looks like analytics, and do not report an empty log as an empty host list. The workflow decides what they mean. Do not turn either into a ninth check.
+Then, separately from the checks: the participant-facing interview route starts analytics by a different path from the dashboard, so it needs its own reading. Open that same /interview/<id> URL in a FRESH tab (an interview needs no sign-in). The tab must be one you opened yourself just now: this instance ran the released image until the swap, and a log carrying its traffic would describe the wrong build. Wait until the interview shell has rendered its stage AND the tab's network log contains that page's own document request — that is what tells you the log is recording; do not read it before then. Then read the FULL log and report two things. networkLogEntries: how many requests it holds in total, of any host. externalHosts: the distinct hostnames among them that are NOT localhost or 127.0.0.1, as bare hostnames with no scheme or port (an empty array if there are none; everything this deployment needs, MinIO included, is served from localhost). Report what the log shows and nothing else — do not filter for what looks like analytics, and do not report an empty log as an empty host list. The workflow decides what they mean. Do not turn either into a tenth check.
 ${CHECK_DISCIPLINE}
 Set area="integrity".`,
     {
@@ -963,7 +964,7 @@ Set area="crud".`,
     `Exercise Fresco's API and settings on the upgraded instance at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD} for browser steps. API token: ${apiToken ?? '<no usable token was recorded — create a new one in settings and note that in your result>'}.
 ${BROWSER_HOWTO}
 Record one check per numbered item:
-1. curl ${UPGRADE_URL}/api/health returns 200 healthy.
+1. curl ${UPGRADE_URL}/api/public/health returns 200 healthy.
 2. The pre-upgrade API token still authenticates: one documented interview-data endpoint returns well-formed JSON (curl with the Bearer token).
 3. An invalid token gets 401/403.
 4. Toggle one interview setting (e.g. limit interviews) off/on in settings and confirm it persists across a page reload.

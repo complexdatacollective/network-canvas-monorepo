@@ -14,7 +14,7 @@ import {
 import { AssetStorage } from '~/lib/storage/services/AssetStorage';
 
 function generateS3Key(fileName: string): string {
-  // The key is embedded in /api/assets/{key} URLs, so strip any
+  // The key is embedded in /api/public/assets/{key} URLs, so strip any
   // URL-significant characters (#, ?, etc.) the user's filename may carry.
   const ext = extname(fileName)
     .toLowerCase()
@@ -56,7 +56,7 @@ export const S3AssetStorage = Layer.succeed(AssetStorage, {
           return {
             uploadUrl,
             fileKey,
-            publicUrl: `/api/assets/${fileKey}`,
+            publicUrl: `/api/public/assets/${fileKey}`,
           };
         }),
       );

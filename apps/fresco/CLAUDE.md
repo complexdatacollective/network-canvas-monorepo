@@ -206,7 +206,7 @@ including the early one taken when the build never completes.
 
 `expectedVersion` is the version the Version Packages PR bumps Fresco to —
 the one `bundle-pending-packages.mjs` bakes into the staged tree, and the one
-both stacks must report from `/api/health`. Other args:
+both stacks must report from `/api/public/health`. Other args:
 `skipBuild` (reuse the previous image, revalidated against its stamp),
 `keepStack` (leave both stacks up), `releasedImage` (substitute the upgrade
 baseline; never certifying), `allowDirty` (accept an irreproducible image
@@ -272,6 +272,7 @@ app/                 # App Router
 ├── (interview)/    # Participant interview surface
 ├── dashboard/      # Researcher dashboard
 ├── api/            # Route handlers
+│   └── public/     # The only /api/ routes reachable from the public Internet
 └── reset/          # Password reset
 
 actions/            # Server Actions

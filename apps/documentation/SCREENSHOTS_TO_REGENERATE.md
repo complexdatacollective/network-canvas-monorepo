@@ -184,7 +184,7 @@ Sources: `docs/collect-data/fresco/guide.en.mdx` and `docs/collect-data/fresco/g
 
 ### When to choose which (for a "choosing a backend" callout)
 
-- **UploadThing** — easiest: paste one token, no infra. Free tier is US-only (2 GB); EU regions require a paid plan. Requires the `/api/uploadthing` endpoint to be reachable from the public Internet (upload callback).
+- **UploadThing** — easiest: paste one token, no infra. Free tier is US-only (2 GB); EU regions require a paid plan. Requires the `/api/public/uploadthing` endpoint to be reachable from the public Internet (upload callback).
 - **S3-compatible** — full control over region/data residency, self-hostable (MinIO), low lock-in. No public callback endpoint required. More setup (6 fields + bucket/CORS prep).
 
 ## Documentation changes needed, by article
@@ -205,7 +205,7 @@ Sources: `docs/collect-data/fresco/guide.en.mdx` and `docs/collect-data/fresco/g
 
 - Replaced outdated `UPLOADTHING_SECRET` / `UPLOADTHING_APP_ID` with `UPLOADTHING_TOKEN`.
 - Added a `### Storage Configuration` section documenting both providers: `UPLOADTHING_TOKEN`, or `STORAGE_PROVIDER=s3` + all six `S3_*` vars (with a reference table), the endpoint-vs-public-URL nuance, CORS, and the bucket prep. Added storage hints to the Docker Compose example.
-- Noted that self-hosting with MinIO removes the public `/api/uploadthing` callback requirement.
+- Noted that self-hosting with MinIO removes the public `/api/public/uploadthing` callback requirement.
 
 ### 3. `deployment/it-faq.en.mdx`
 

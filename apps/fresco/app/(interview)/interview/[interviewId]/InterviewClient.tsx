@@ -80,7 +80,7 @@ export default function InterviewClient({
 
   const onFinish = useCallback<FinishHandler>(
     async (id, signal) => {
-      const response = await fetch(`/api/interviews/${id}/finish`, {
+      const response = await fetch(`/interview/${id}/finish`, {
         method: 'POST',
         signal,
         keepalive: true,

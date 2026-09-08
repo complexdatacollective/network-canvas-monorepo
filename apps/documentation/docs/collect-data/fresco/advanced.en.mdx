@@ -1,6 +1,6 @@
 ---
 title: Advanced Deployment
-date: 15th June 2026
+date: 8th September 2026
 navOrder: 7
 ---
 
@@ -167,7 +167,7 @@ STORAGE_PROVIDER=uploadthing
 UPLOADTHING_TOKEN=    # from https://uploadthing.com/dashboard (API Keys)
 ```
 
-If you intend to run your instance on a LAN or private network, at least the `api/uploadthing` endpoint must be accessible from the Internet. This is used as a callback for uploads to Amazon S3.
+If you intend to run your instance on a LAN or private network, at least the `/api/public/uploadthing` endpoint must be accessible from the Internet. This is used as a callback for uploads to Amazon S3.
 
 ## Running Fresco
 
@@ -196,6 +196,82 @@ The compose files use the `ghcr.io/complexdatacollective/fresco:latest` image, w
 Once the stack is running, visit `https://<FRESCO_DOMAIN>`. You should be greeted with the onboarding wizard, which guides you through setting up Fresco — including configuring storage, unless you have already set your storage provider via environment variables.
 
 For details on this process, refer to the [configuration and setup](./guide#configuration-and-setup) section of the basic deployment guide.
+
+## Restricting the researcher surfaces to your network
+
+Institutions that require an institutional login for internal applications can put Fresco's researcher surfaces behind their own network boundary while leaving participant traffic public — see [Does Fresco support single sign-on?](./it-faq#does-fresco-support-single-sign-on-with-our-institutional-identity-provider) in the FAQ for IT departments for the reasoning. Fresco's URL space is split so that this is one rule at the reverse proxy:
+
+- **Allow from anywhere:** `/interview/`, `/onboard/`, `/api/public/`, and `/_next/`.
+- **Restrict to your institutional network or VPN:** everything else.
+
+Fresco does not enforce this itself; the rule belongs in the proxy in front of it, and the split of URLs is a documented contract that Fresco's own test suite keeps true across releases (see [`SECURITY.md`](https://github.com/complexdatacollective/Fresco/blob/main/SECURITY.md) in the Fresco repository).
+
+### With the bundled Traefik proxy
+
+Replace the `labels:` block of the `fresco` service in your compose file with the following. It defines two routers on the same service: one for the public prefixes, and one for everything else that carries an [`ipAllowList`](https://doc.traefik.io/traefik/middlewares/http/ipallowlist/) middleware. The explicit priorities make the public router win for its prefixes regardless of rule length. Put your institution's address ranges in `sourcerange`.
+
+```yaml
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.middlewares.fresco-hsts.headers.stsseconds=63072000'
+      - 'traefik.http.middlewares.fresco-hsts.headers.stsincludesubdomains=true'
+      - 'traefik.http.services.fresco.loadbalancer.server.port=3000'
+      # Participant-facing prefixes: reachable from anywhere.
+      - 'traefik.http.routers.fresco-public.rule=Host(`${FRESCO_DOMAIN}`) && (PathPrefix(`/interview/`) || PathPrefix(`/onboard/`) || PathPrefix(`/api/public/`) || PathPrefix(`/_next/`))'
+      - 'traefik.http.routers.fresco-public.priority=20'
+      - 'traefik.http.routers.fresco-public.entrypoints=websecure'
+      - 'traefik.http.routers.fresco-public.tls.certresolver=letsencrypt'
+      # Everything else is researcher-only: restricted to the institutional network.
+      - 'traefik.http.routers.fresco.rule=Host(`${FRESCO_DOMAIN}`)'
+      - 'traefik.http.routers.fresco.priority=10'
+      - 'traefik.http.routers.fresco.entrypoints=websecure'
+      - 'traefik.http.routers.fresco.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.fresco.middlewares=fresco-institution@docker'
+      - 'traefik.http.middlewares.fresco-institution.ipallowlist.sourcerange=10.0.0.0/8,192.0.2.0/24'
+```
+
+With `docker-compose.prod.yml`, the `minio` service keeps its own router for the bucket path (`/assets/` by default), which stays public: participants' media downloads are redirected there.
+
+If another proxy or load balancer sits in front of Traefik, Traefik sees that proxy's address rather than the client's. In that case add `traefik.http.middlewares.fresco-institution.ipallowlist.ipstrategy.depth=1` so the client address is taken from the `X-Forwarded-For` header, and make sure only that proxy can reach Traefik, since the header is otherwise forgeable.
+
+### With nginx
+
+The equivalent for an nginx reverse proxy in front of the app container. A regex `location` takes precedence over the prefix `location /`, so the public prefixes are matched first and everything else is subject to the `allow`/`deny` list.
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name study.example.com;
+    # TLS certificate configuration omitted.
+
+    # Participant-facing prefixes: reachable from anywhere.
+    location ~ ^/(interview|onboard|api/public|_next)/ {
+        proxy_pass http://fresco:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # If you run the bundled MinIO, its bucket path stays public as well.
+    location /assets/ {
+        proxy_pass http://minio:9000;
+        proxy_set_header Host $host;
+    }
+
+    # Everything else is researcher-only: restricted to the institutional network.
+    location / {
+        allow 10.0.0.0/8;
+        allow 192.0.2.0/24;
+        deny  all;
+        proxy_pass http://fresco:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+Whichever proxy you use, test the result with a real participant link from outside your network, through to the interview's completion screen, and confirm the dashboard is refused from outside before collecting data.
 
 ## Updating Fresco
 

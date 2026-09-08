@@ -13,6 +13,10 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import Link from '~/components/Link';
 import RecoveryI18nProvider from '~/i18n/RecoveryI18nProvider';
 import { captureClientException } from '~/lib/posthog-client';
+// Imported rather than referenced at /images/…: this boundary can render on the
+// participant surface, which must need nothing outside the public URL prefixes
+// (see SECURITY.md); a static import is served from /_next/static/.
+import robot from '~/public/images/robot.svg';
 
 const messages = defineMessages({
   copyCopied: {
@@ -90,7 +94,7 @@ ${error.stack}`;
       <Surface>
         <div className="mb-6 flex flex-col items-center justify-center gap-2">
           <Image
-            src="/images/robot.svg"
+            src={robot}
             width={80}
             height={80}
             alt={intl.formatMessage(messages.errorRobot)}

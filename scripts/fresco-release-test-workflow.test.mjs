@@ -96,7 +96,7 @@ const happyPath = () => ({
   'verify-data-integrity': {
     area: 'integrity',
     pass: true,
-    checks: passing(8),
+    checks: passing(9),
     externalHosts: [],
     networkLogEntries: 24,
   },

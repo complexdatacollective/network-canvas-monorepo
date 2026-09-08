@@ -107,7 +107,7 @@ async function uploadViaS3(
 }
 
 // The `assetRouter` route accepts at most 50 files per upload (see
-// app/api/uploadthing/core.ts), and one huge request also risks timeouts, so
+// app/api/public/uploadthing/core.ts), and one huge request also risks timeouts, so
 // larger imports are sent as sequential batches rather than rejected.
 const UPLOADTHING_MAX_FILES_PER_UPLOAD = 50;
 

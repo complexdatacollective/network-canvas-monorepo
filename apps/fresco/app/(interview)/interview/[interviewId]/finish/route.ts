@@ -7,6 +7,13 @@ import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
 
+/**
+ * Records that the participant finished the interview. Unauthenticated, like
+ * `../sync`: the interview id in the URL is the participant's capability, and
+ * the route lives under the public `/interview/` prefix so a deployment that
+ * restricts `/api/` to the researchers' network keeps it reachable — see
+ * app/README.md.
+ */
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ interviewId: string }> },

@@ -73,6 +73,10 @@ compose up -d --wait --wait-timeout 300 || {
 }
 
 BASE_URL="http://localhost:$FRESCO_PORT"
-HEALTH="$(curl -fsS "$BASE_URL/api/health")"
+# The health route lives under the public API prefix. The upgrade lane first
+# boots the RELEASED image, which may predate that move (Fresco < 4.2 served it
+# at /api/health), so fall back to the old path for that image only. Drop the
+# fallback once the released baseline serves /api/public/health.
+HEALTH="$(curl -fsS "$BASE_URL/api/public/health" || curl -fsS "$BASE_URL/api/health")"
 printf '{"lane":"%s","project":"%s","baseUrl":"%s","image":"%s","health":%s}\n' \
   "$LANE" "$PROJECT" "$BASE_URL" "$IMAGE" "$HEALTH"

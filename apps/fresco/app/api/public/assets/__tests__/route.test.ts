@@ -30,10 +30,10 @@ vi.mock('~/lib/db', () => ({
   },
 }));
 
-import { GET } from '~/app/api/assets/[key]/route';
+import { GET } from '~/app/api/public/assets/[key]/route';
 
 const call = (key: string) =>
-  GET(new Request(`http://localhost/api/assets/${key}`), {
+  GET(new Request(`http://localhost/api/public/assets/${key}`), {
     params: Promise.resolve({ key }),
   });
 
@@ -49,7 +49,7 @@ beforeEach(() => {
   mockProtocolFindFirst.mockResolvedValue(null);
 });
 
-describe('GET /api/assets/[key]', () => {
+describe('GET /api/public/assets/[key]', () => {
   it('redirects to a presigned GET URL with cache + nosniff headers for a known asset', async () => {
     const response = await call('abc.png');
 
@@ -104,7 +104,7 @@ describe('GET /api/assets/[key]', () => {
   });
 
   it('returns 400 for a malformed key without touching storage', async () => {
-    const response = await GET(new Request('http://localhost/api/assets/x'), {
+    const response = await GET(new Request('http://localhost/api/public/assets/x'), {
       params: Promise.resolve({ key: '../secret' }),
     });
     expect(response.status).toBe(400);
