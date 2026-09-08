@@ -51,6 +51,7 @@ function workspace() {
     '@codaco/studio-rpc': 'packages/studio-rpc',
     '@codaco/studio-server': 'apps/studio/server',
     '@codaco/studio-sync': 'packages/studio-sync',
+    '@codaco/template-registry': 'apps/template-registry',
   };
   for (const [name, dir] of Object.entries(studioPackages)) {
     mkdirSync(join(cwd, dir), { recursive: true });
@@ -170,8 +171,15 @@ test('validateTargetPackages requires one complete lane', () => {
     '@codaco/studio-rpc',
     '@codaco/studio-server',
     '@codaco/studio-sync',
+    '@codaco/template-registry',
   ];
   assert.deepEqual(validateTargetPackages(studioLane), studioLane);
+  assert.equal(
+    validateTargetPackages(
+      studioLane.filter((name) => name !== '@codaco/template-registry'),
+    ),
+    null,
+  );
   assert.equal(validateTargetPackages(['@codaco/studio-server']), null);
   assert.equal(
     validateTargetPackages([...studioLane, '@codaco/documentation']),
@@ -195,6 +203,7 @@ test('versions the studio lane packages that have changesets and consumes only s
     '@codaco/studio-rpc',
     '@codaco/studio-server',
     '@codaco/studio-sync',
+    '@codaco/template-registry',
   ];
   const { plans, consumed } = planProductReleases(cwd, studioLane);
   applyProductReleases(cwd, plans, consumed);
@@ -218,6 +227,45 @@ test('versions the studio lane packages that have changesets and consumes only s
   assert.match(body, /versions `@codaco\/studio-server`/);
   assert.match(body, /no automated production deploy lane yet/);
   assert.doesNotMatch(body, /Netlify \*\*production\*\*/);
+});
+
+test('a registry-only release consumes its changeset without bumping Studio deployables', () => {
+  const cwd = workspace();
+  writeFileSync(
+    join(cwd, '.changeset/registry.md'),
+    '---\n"@codaco/template-registry": minor\n---\n\nPublish templates.\n',
+  );
+  writeFileSync(
+    join(cwd, '.changeset/library.md'),
+    '---\n"@codaco/shared-consts": patch\n---\n\nLibrary release.\n',
+  );
+  const { plans, consumed } = planProductReleases(cwd, [
+    '@codaco/studio-client',
+    '@codaco/studio-rpc',
+    '@codaco/studio-server',
+    '@codaco/studio-sync',
+    '@codaco/template-registry',
+  ]);
+  assert.deepEqual(
+    plans.map(({ pkg, from, to }) => ({ pkg, from, to })),
+    [{ pkg: '@codaco/template-registry', from: '0.1.0', to: '0.2.0' }],
+  );
+  applyProductReleases(cwd, plans, consumed);
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(cwd, 'apps/template-registry/package.json'), 'utf8'),
+    ).version,
+    '0.2.0',
+  );
+  for (const dir of ['apps/studio/client', 'apps/studio/server']) {
+    assert.equal(
+      JSON.parse(readFileSync(join(cwd, dir, 'package.json'), 'utf8')).version,
+      '0.1.0',
+    );
+  }
+  assert.equal(existsSync(join(cwd, '.changeset/registry.md')), false);
+  assert.equal(existsSync(join(cwd, '.changeset/library.md')), true);
+  assert.match(renderPrBody(plans), /@codaco\/template-registry/);
 });
 
 test('creates a normal semver documentation release and changelog', () => {

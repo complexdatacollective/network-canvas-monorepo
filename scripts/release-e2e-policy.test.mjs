@@ -162,6 +162,7 @@ test('release lane suites match the workspace dependency graph', () => {
       '@codaco/studio-rpc',
       '@codaco/studio-server',
       '@codaco/studio-sync',
+      '@codaco/template-registry',
     ],
     'changeset-release/website': ['networkcanvas.com'],
   };
