@@ -768,13 +768,15 @@ export class RegistryStore {
       const result = await client.query<{
         artifact_root: string;
         deleted_at: Date | null;
+        blocked_at: Date | null;
       }>(
-        'SELECT e.artifact_root, a.deleted_at FROM registry_entries e JOIN registry_artifacts a ON a.root = e.artifact_root WHERE e.id = $1',
+        'SELECT e.artifact_root, a.deleted_at, a.blocked_at FROM registry_entries e JOIN registry_artifacts a ON a.root = e.artifact_root WHERE e.id = $1',
         [id],
       );
       const row = result.rows[0];
       if (!row) throw new RegistryError('NOT_FOUND');
       if (row.deleted_at) throw new RegistryError('CONTENT_REMOVED');
+      if ((row.blocked_at !== null) === removed) return;
       await client.query(
         `UPDATE registry_artifacts SET blocked_at = ${removed ? 'statement_timestamp()' : 'NULL'} WHERE root = $1`,
         [row.artifact_root],
@@ -796,6 +798,13 @@ export class RegistryStore {
     requestId: string,
   ): Promise<void> {
     await this.#moderate(credential, async (client, actor) => {
+      const current = await client.query<{ suspended_at: Date | null }>(
+        'SELECT suspended_at FROM registry_publishers WHERE id = $1',
+        [id],
+      );
+      const publisher = current.rows[0];
+      if (!publisher) throw new RegistryError('NOT_FOUND');
+      if ((publisher.suspended_at !== null) === suspended) return;
       const result = await client.query(
         `UPDATE registry_publishers SET suspended_at = ${suspended ? 'statement_timestamp()' : 'NULL'} WHERE id = $1 RETURNING id`,
         [id],
@@ -819,6 +828,7 @@ export class RegistryStore {
   ): Promise<void> {
     await this.#moderate(credential, async (client, actor) => {
       const entry = await this.#readEntry(client, id);
+      if (entry.curated === curated) return;
       if (
         curated &&
         (entry.yanked ||

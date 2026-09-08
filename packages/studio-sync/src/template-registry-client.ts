@@ -1,3 +1,4 @@
+import { canonicalJsonBytes } from './template-archive.ts';
 import {
   readTemplateArtifact,
   templateBytesHash,
@@ -203,6 +204,29 @@ function assertEntryUrls(origin: string, entry: RegistryEntry): void {
     entry.artifact_url !== pathUrl(origin, `/api/v1/artifacts/${entry.root}`) ||
     entry.report_url !== pathUrl(origin, `/api/v1/entries/${entry.id}/reports`)
   )
+    failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
+}
+
+/** Compare every artifact-committed field; publisher and moderation state belong to the Registry. */
+export function assertRegistryEntryArtifact(
+  entry: RegistryEntry,
+  artifact: VerifiedTemplateArtifact,
+): void {
+  const committed = templateBytesHash(
+    canonicalJsonBytes({
+      template: entry.template,
+      metadata: entry.metadata,
+      license: entry.license,
+    }),
+  );
+  const verified = templateBytesHash(
+    canonicalJsonBytes({
+      template: artifact.manifest.template,
+      metadata: artifact.metadata,
+      license: artifact.license,
+    }),
+  );
+  if (entry.root !== artifact.manifest.merkle_root || committed !== verified)
     failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
 }
 
@@ -446,8 +470,7 @@ export class TemplateRegistryClient {
       let complete = false;
       try {
         const entry = await parseEntry(response, 201, this.#origin, context);
-        if (entry.root !== artifact.manifest.merkle_root)
-          failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
+        assertRegistryEntryArtifact(entry, artifact);
         complete = true;
         return entry;
       } finally {

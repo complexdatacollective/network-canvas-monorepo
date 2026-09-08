@@ -74,7 +74,7 @@ function entry(root: string, overrides: Record<string, unknown> = {}) {
     curated: false,
     yanked: false,
     published_at: '2026-09-08T00:00:00.000Z',
-    metadata: { schema_version: 1 },
+    metadata: { schema_version: 1, authors: [{ name: 'Example researcher' }] },
     artifact_url: `${ORIGIN}/api/v1/artifacts/${root}`,
     report_url: `${ORIGIN}/api/v1/entries/${ENTRY_ID}/reports`,
     ...overrides,
@@ -214,6 +214,30 @@ describe('TemplateRegistryClient', () => {
     });
     expect(String(error)).not.toContain(secret);
   });
+
+  it.each([
+    { template: { name: 'Altered', kind: 'protocol', version: 1 } },
+    { metadata: { schema_version: 1, authors: [{ name: 'Altered' }] } },
+    { license: 'CC0-1.0' },
+  ])(
+    'refuses publish metadata that disagrees with the verified artifact: %j',
+    async (overrides) => {
+      const built = await createTemplateArtifact(fixture());
+      const client = new TemplateRegistryClient({
+        origin: ORIGIN,
+        fetch: async () =>
+          jsonResponse(
+            entry(built.artifact.manifest.merkle_root, overrides),
+            201,
+          ),
+      });
+      await expect(
+        client.publish(built.bytes, CREDENTIAL),
+      ).rejects.toMatchObject({
+        code: 'TEMPLATE_REGISTRY_RESPONSE_INVALID',
+      });
+    },
+  );
 
   it('does not follow a foreign redirect or forward the write credential', async () => {
     const built = await createTemplateArtifact(fixture());
