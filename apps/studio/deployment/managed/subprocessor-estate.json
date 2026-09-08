@@ -80,10 +80,7 @@
       "role": "Operational logs, metrics, queries, and alerts",
       "dataCategories": ["sanitized operational logs", "aggregate metrics"],
       "status": "cost-candidate",
-      "sourcePaths": [
-        "README.md",
-        "cost-input.example.json"
-      ],
+      "sourcePaths": ["README.md", "cost-input.example.json"],
       "estateProvider": null
     },
     {
