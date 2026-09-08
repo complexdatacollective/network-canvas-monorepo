@@ -22,7 +22,8 @@ assets in the composite image. There is no managed product fork.
   database/service boundary. `location` is deliberately omitted because it is a
   best-effort hint rather than a jurisdiction guarantee.
 - One non-HA Crunchy Bridge cluster candidate with AWS/`us-east-1`, the
-  account-resolved Hobby-2 plan id, PostgreSQL 18, and at least 20 GB storage.
+  catalogue-verified Hobby-2 plan, PostgreSQL 18, and the shared candidate's 20 GB storage. The data source must report the exact plan identity, CPU,
+  memory, and AWS region; missing or changed catalogue entries refuse planning.
 - Two regional AWS KMS keys, one per environment, with annual automatic
   rotation. Runtime principals can only decrypt with Studio's actual
   `studio-deployment`, `studio-purpose=root-key.v1`, and
@@ -30,7 +31,10 @@ assets in the composite image. There is no managed product fork.
   principals can encrypt/generate data keys with the same context. Input
   validation requires complete IAM user/role ARNs, disjoint production/staging
   runtime principals, no runtime overlap with wrappers or administrators, and
-  distinct valid deployment context ids.
+  distinct valid deployment context ids. Wrappers are distinct across
+  environments and from administrators. KMS administrators retain full `kms:*`
+  authority and are fully trusted cryptographic principals; disjoint runtime
+  and wrapper identities do not restrict an administrator's key access.
 - One private B2 bucket with SSE-B2/AES256, Object Lock, and 31-day compliance
   retention. The recovery pipeline must additionally encrypt and authenticate
   every archive client-side using a private key held outside B2 and the primary
@@ -90,7 +94,9 @@ configuration archive, and their account-recovery paths.
    separately from fixed DNS, and validator compute prices run count times
    measured memory GB times billed seconds (GB-seconds), with requests and
    transfer separate. A changed resource size is refused unless the shared
-   candidate and price review are updated together. Measure database transfer,
+   candidate and price review are updated together. PostgreSQL storage and
+   plan identity are also bound to that same candidate; an independent tfvars
+   storage increase or plan substitution refuses validation. Measure database transfer,
    R2 storage/Class A/Class B/egress, KMS requests, B2 storage/requests/egress,
    mail, and monitoring. Total recurring cost including a non-zero recovery
    reserve must be at most $100/month and preserve the selected dollar headroom.
@@ -147,8 +153,12 @@ must be confirmed before publication.
 
 ## Offline review
 
-Run `terraform fmt -check`, `terraform init -backend=false`, `terraform
-validate`, and `node --test cost-model.test.mjs`. Initialization downloads the
+Run `terraform fmt -check -recursive`, `terraform init -backend=false
+-lockfile=readonly`, `terraform validate`, `terraform test`, and `node --test
+cost-model.test.mjs`. The required repository support check runs the estimator
+controls and, when this module or its CI wiring changes, validates and tests
+Terraform with mocked providers and no deployment credentials. Terraform 1.14.5
+and its Linux executable checksum are pinned in that job. Initialization downloads the
 four pinned providers and writes a lock file; review and commit its checksums.
 Do not run `plan` or `apply` without live-account authorization and a remote-state
 design. Official capability references:
@@ -162,3 +172,5 @@ design. Official capability references:
 - <https://registry.terraform.io/providers/hashicorp/aws/6.62.0/docs/resources/kms_key>
 - <https://registry.terraform.io/providers/Backblaze/b2/0.13.2/docs/resources/bucket>
 - <https://docs.newrelic.com/docs/data-apis/manage-data/manage-data-retention/>
+
+The catalogue mapping is documented by the [official provider API](https://docs.crunchybridge.com/api/provider) and the [pinned Terraform provider](https://github.com/CrunchyData/terraform-provider-crunchybridge/blob/v0.3.0/internal/provider/data_source_cloudprovider.go). Plan CPU and memory fields describe capacity, not measured performance or an authenticated billing quote.

@@ -128,8 +128,11 @@ export function evaluateManagedEstateCost(
   if (input.validatorMemoryGb === 0 || input.validatorDurationSeconds === 0)
     fail('validator memory and duration must be positive');
 
-  if (input.postgresStorageGb < 20)
-    fail('postgresStorageGb must price at least the 20 GB resource minimum');
+  if (
+    input.postgresStorageGb !== sizing.postgres.storageGb ||
+    input.postgresPlanId !== sizing.postgres.planId
+  )
+    fail('PostgreSQL storage and plan must match candidate-sizing.json');
   if (input.kmsBillableKeyVersions < 6)
     fail(
       'kmsBillableKeyVersions must price both keys and two annual rotations',

@@ -1,7 +1,7 @@
 estate_name                        = "networkcanvas-studio"
 cloudflare_account_id              = "00000000000000000000000000000000"
 crunchybridge_team_id              = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
-crunchybridge_hobby_2_plan_id       = "REPLACE_FROM_ACCOUNT_PLAN_INVENTORY"
+crunchybridge_hobby_2_plan_id       = "hobby-2"
 postgres_storage_gb                 = 20
 b2_endpoint                         = "https://api.backblazeb2.com"
 b2_bucket_name                      = "REPLACE-GLOBALLY-UNIQUE-INDEPENDENT-RECOVERY"
@@ -16,8 +16,8 @@ kms_wrapping_principal_arns = {
   staging    = ["arn:aws:iam::000000000000:role/REPLACE-STAGING-WRAPPER"]
 }
 deployment_ids = {
-  production = "REPLACE-STABLE-PRODUCTION-ID"
-  staging    = "REPLACE-STABLE-STAGING-ID"
+  production = "studio-production"
+  staging    = "studio-staging"
 }
 signed_image_references = {
   studio   = "ghcr.io/complexdatacollective/studio@sha256:0000000000000000000000000000000000000000000000000000000000000000"

@@ -775,6 +775,22 @@ test('every quality-support check is consulted by the step that fails the job', 
       new RegExp(`=\\$${escapeRegExp(outcome[0])}"`),
       `${id}'s outcome is checked, not just passed in`,
     );
+    const outcomes = Object.fromEntries(
+      Object.keys(verify.env).map((key) => [key, 'success']),
+    );
+    for (const state of ['failure', 'cancelled', 'skipped', '']) {
+      const result = spawnSync('bash', ['-c', verify.run], {
+        encoding: 'utf8',
+        timeout: 3_000,
+        env: { PATH: process.env.PATH, ...outcomes, [outcome[0]]: state },
+      });
+      assert.equal(result.error, undefined);
+      assert.equal(
+        result.status,
+        1,
+        `${id}=${state} must fail the actual support job: ${result.stdout}`,
+      );
+    }
   }
 });
 

@@ -214,3 +214,15 @@ test('does not round away a breach of the minimum budget headroom', () => {
     /below the explicit minimum/,
   );
 });
+
+test('refuses database storage and plan drift from the shared Terraform candidate', () => {
+  const storage = structuredClone(fixture);
+  storage.postgresStorageGb = 1000;
+  storage.lineItems.find(
+    ({ category }) => category === 'database-storage',
+  ).quantity = 1000;
+  assert.throws(() => evaluateManagedEstateCost(storage), /candidate-sizing/);
+  const plan = structuredClone(fixture);
+  plan.postgresPlanId = 'standard-64';
+  assert.throws(() => evaluateManagedEstateCost(plan), /candidate-sizing/);
+});

@@ -22,5 +22,12 @@
       "cpus": 1,
       "memory_mb": 512
     }
+  },
+  "postgres": {
+    "planId": "hobby-2",
+    "planName": "Hobby-2",
+    "cpu": 1,
+    "memoryGb": 2,
+    "storageGb": 20
   }
 }

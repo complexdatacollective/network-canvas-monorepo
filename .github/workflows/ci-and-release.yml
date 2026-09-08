@@ -565,6 +565,44 @@ jobs:
         id: scripts
         continue-on-error: true
         run: pnpm test:scripts
+      - name: Validate managed Studio infrastructure without provider credentials
+        id: studio-managed
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          TF_IN_AUTOMATION: 'true'
+          AWS_EC2_METADATA_DISABLED: 'true'
+        run: |
+          # Check the cumulative PR diff. An unreadable comparison is a failure,
+          # never a reason to skip the infrastructure controls.
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+            set +e
+            git diff --quiet "$BASE_SHA" "$GITHUB_SHA" -- \
+              apps/studio/deployment/managed \
+              scripts/studio-managed-estate.test.mjs \
+              .github/workflows/ci-and-release.yml
+            infra_diff_exit=$?
+            set -e
+            if [[ "$infra_diff_exit" == 0 ]]; then exit 0; fi
+            if [[ "$infra_diff_exit" != 1 ]]; then exit "$infra_diff_exit"; fi
+          fi
+          terraform_tools=$(mktemp -d "$RUNNER_TEMP/studio-terraform.XXXXXX")
+          trap 'rm -rf "$terraform_tools"' EXIT
+          # Pin the executable bytes as well as the version. Provider binaries
+          # are independently checked against the committed Terraform lockfile.
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+            --retry 3 --connect-timeout 15 --max-time 180 \
+            https://releases.hashicorp.com/terraform/1.14.5/terraform_1.14.5_linux_amd64.zip \
+            --output "$terraform_tools/terraform.zip"
+          echo "ac21c2b9dcd115711f540cbd27ead0596bb4288a917cb56dfa9b25edb3eb6280  $terraform_tools/terraform.zip" | sha256sum --check
+          unzip -q "$terraform_tools/terraform.zip" -d "$terraform_tools/bin"
+          export TF_DATA_DIR="$terraform_tools/providers"
+          "$terraform_tools/bin/terraform" -chdir=apps/studio/deployment/managed fmt -check -recursive
+          "$terraform_tools/bin/terraform" -chdir=apps/studio/deployment/managed init -backend=false -input=false -lockfile=readonly
+          "$terraform_tools/bin/terraform" -chdir=apps/studio/deployment/managed validate -no-color
+          "$terraform_tools/bin/terraform" -chdir=apps/studio/deployment/managed test -no-color
       - name: Build shared packages and release-sensitive apps
         id: build
         continue-on-error: true
@@ -606,6 +644,7 @@ jobs:
           STUDIO_SCHEMA_DOCS_OUTCOME: ${{ steps.studio-schema-docs.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
+          STUDIO_MANAGED_OUTCOME: ${{ steps.studio-managed.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           STUDIO_TELEMETRY_OUTCOME: ${{ steps.studio-telemetry.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
@@ -619,6 +658,7 @@ jobs:
             "studio-schema-docs=$STUDIO_SCHEMA_DOCS_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
+            "studio-managed=$STUDIO_MANAGED_OUTCOME" \
             "build=$BUILD_OUTCOME" \
             "studio-telemetry=$STUDIO_TELEMETRY_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
