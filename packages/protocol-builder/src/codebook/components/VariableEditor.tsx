@@ -507,9 +507,15 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   );
   const submittedDraft =
     props.mode === 'create'
-      ? draftWithOwnedBlocks(snapshot.draft, parameterShape, optionsShape)
+      ? draftWithOwnedBlocks(
+          snapshot.draft,
+          seededDraft.options,
+          parameterShape,
+          optionsShape,
+        )
       : draftOwnedByVariableEditor(
           snapshot.draft,
+          seededDraft.options,
           lockedOptions !== null,
           typeChanged,
           parameterShape,
@@ -1136,6 +1142,7 @@ function draftWithLockedOptions(
 
 function draftOwnedByVariableEditor(
   draft: Readonly<SectionDoc>,
+  storedOptions: unknown,
   persistLockedOptions: boolean,
   includeTypeMetadata: boolean,
   parameterShape: ParameterShape | null,
@@ -1148,7 +1155,7 @@ function draftOwnedByVariableEditor(
   for (const property of properties) {
     if (Object.hasOwn(draft, property)) owned[property] = draft[property];
   }
-  const options = optionsForShape(optionsShape, draft.options);
+  const options = optionsForShape(optionsShape, draft.options, storedOptions);
   if (options === undefined) delete owned.options;
   else owned.options = options;
   // Written with them, for the reason the parameters block writes it: the pair
@@ -1190,6 +1197,7 @@ function draftOwnedByVariableEditor(
  */
 function draftWithOwnedBlocks(
   draft: CodebookVariableDraft,
+  storedOptions: unknown,
   parameterShape: ParameterShape | null,
   optionsShape: OptionsShape | null,
 ): CodebookVariableDraft {
@@ -1202,7 +1210,7 @@ function draftWithOwnedBlocks(
   // A choice list is passed through as authored, so an unauthored one still
   // reaches the request builder to be refused there — see `optionsForShape`.
   if (optionsShape === 'boolean') {
-    const options = optionsForShape(optionsShape, draft.options);
+    const options = optionsForShape(optionsShape, draft.options, storedOptions);
     if (options === undefined) delete next.options;
     else next.options = options;
   }

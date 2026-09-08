@@ -2447,6 +2447,82 @@ describe('the two answers a boolean offers', () => {
     });
   });
 
+  /**
+   * A stored pair with nothing written on either answer is not the same
+   * protocol as an attribute holding no `options` key at all. `BooleanField`
+   * renders every entry it is given, and falls back to Yes and No only where
+   * the key is absent — so the pair is two blank buttons and the absent key is
+   * Yes and No, and which of the two a participant meets is the researcher's
+   * to settle by clearing the fields. An edit that only renamed the attribute
+   * never asked that question, so the pair is written back as it was found.
+   */
+  it('keeps a stored pair whose two answers are blank, through an edit that only renames it', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: '', value: true },
+        // Whitespace and all: an answer nobody touched is written back as it
+        // was authored, and trimming decides only whether it has been named.
+        { label: ' ', value: false },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'starred');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      ...committed,
+      name: 'starred',
+    });
+  });
+
+  /**
+   * The other side of it: those two blank fields are still the editor for that
+   * pair, and naming both of them writes what was named.
+   */
+  it('writes the answers a researcher names onto a stored pair that was blank', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: '', value: true },
+        { label: '', value: false },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+      'Always',
+    );
+    await user.type(
+      screen.getByRole('textbox', { name: 'Label for “false”' }),
+      'Never',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).options).toEqual([
+      { label: 'Always', value: true },
+      { label: 'Never', value: false },
+    ]);
+  });
+
   it('creates a boolean together with the answers it offers', async () => {
     const user = userEvent.setup();
     const onSubmitRequest = vi.fn(
