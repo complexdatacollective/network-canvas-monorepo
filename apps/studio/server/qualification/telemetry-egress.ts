@@ -18,6 +18,37 @@ export const TELEMETRY_PROCESS_APIS = [
   'dns.lookup',
   'dgram.send',
 ] as const;
+export const TELEMETRY_KERNEL_SERVICES = [
+  'studio',
+  'worker',
+  'registry',
+] as const;
+
+export function telemetryKernelEndpoints(
+  service: (typeof TELEMETRY_KERNEL_SERVICES)[number],
+) {
+  const controlHost =
+    service === 'registry'
+      ? 'telemetry-control-registry'
+      : 'telemetry-control-data';
+  const allowed =
+    service === 'registry'
+      ? [
+          { protocol: 'tcp', host: 'registry-postgres', port: 5432 },
+          { protocol: 'tcp', host: 'registry-minio', port: 9000 },
+        ]
+      : [
+          { protocol: 'tcp', host: 'postgres', port: 5432 },
+          { protocol: 'tcp', host: 'minio', port: 9000 },
+        ];
+  return JSON.stringify({
+    allowed,
+    controls: [
+      { protocol: 'tcp', host: controlHost, port: 8443 },
+      { protocol: 'udp', host: controlHost, port: 8443 },
+    ],
+  });
+}
 
 export const TELEMETRY_DETECTOR_SOURCE = `
 const { createServer } = require('node:net');
@@ -26,7 +57,7 @@ createServer((socket) => {
   process.stdout.write(${JSON.stringify(TELEMETRY_EGRESS_MARKER)} + '\\n');
   socket.destroy();
 }).listen(443, '0.0.0.0');
-createServer((socket) => socket.destroy()).listen(8443, '0.0.0.0');
+createServer((socket) => setTimeout(() => socket.destroy(), 500)).listen(8443, '0.0.0.0');
 createSocket('udp4').bind(8443, '0.0.0.0');
 `;
 
@@ -71,6 +102,8 @@ export function parseConntrackFlow(line: string): KernelFlow | undefined {
 export const TELEMETRY_KERNEL_OBSERVER_SOURCE = `
 const fs = require('node:fs');
 const dns = require('node:dns').promises;
+const dgram = require('node:dgram');
+const net = require('node:net');
 const os = require('node:os');
 const ready = ${JSON.stringify(TELEMETRY_KERNEL_READY_MARKER)};
 const liveness = ${JSON.stringify(TELEMETRY_KERNEL_LIVENESS_MARKER)};
@@ -112,6 +145,10 @@ const main = async () => {
   const [allowed, controls] = await Promise.all([
     resolveEndpoints(input.allowed), resolveEndpoints(input.controls),
   ]);
+  allowed.add('udp|127.0.0.11|53');
+  allowed.add('tcp|127.0.0.11|53');
+  allowed.add('tcp|127.0.0.1|3000');
+  allowed.add('tcp|::1|3000');
   const local = new Set(Object.values(os.networkInterfaces()).flat().filter(Boolean).map(({ address }) => address));
   const seen = new Set();
   let sequence = 0;
@@ -134,12 +171,66 @@ const main = async () => {
     }
   };
   scan();
+  fs.writeFileSync('/tmp/kernel-ready', '', { mode: 0o600 });
   process.stdout.write(ready + '\\n');
   setInterval(() => { scan(); }, 25);
   setInterval(() => { process.stdout.write(liveness + ' ' + (++sequence) + '\\n'); }, 500);
+  for (const endpoint of input.controls) {
+    if (endpoint.protocol === 'tcp') {
+      const socket = net.connect(endpoint.port, endpoint.host);
+      socket.once('error', () => {});
+      setTimeout(() => socket.destroy(), 750);
+    } else {
+      const socket = dgram.createSocket('udp4');
+      const interval = setInterval(() => socket.send(Buffer.from('kernel qualification'), endpoint.port, endpoint.host, () => {}), 50);
+      setTimeout(() => { clearInterval(interval); socket.close(); }, 750);
+    }
+  }
 };
 main().catch(() => { process.stderr.write('Kernel qualification observer failed.\\n'); process.exit(1); });
 `;
+
+export const TELEMETRY_KERNEL_CANARY_SOURCE = `
+const net = require('node:net');
+const dgram = require('node:dgram');
+const tcp = net.connect(8443, 'telemetry-detector');
+tcp.once('error', () => {});
+const udp = dgram.createSocket('udp4');
+const interval = setInterval(() => {
+  udp.send(Buffer.from('kernel qualification'), 8443, 'telemetry-detector', () => {});
+}, 50);
+setTimeout(() => {
+  clearInterval(interval);
+  tcp.destroy();
+  udp.close();
+  process.exit(0);
+}, 750);
+`;
+
+export function telemetryKernelComposeServices(image: string) {
+  return TELEMETRY_KERNEL_SERVICES.map(
+    (service) => `  telemetry-kernel-${service}:
+    image: ${image}
+    user: '0:0'
+    entrypoint: [node, -e]
+    command: [${JSON.stringify(TELEMETRY_KERNEL_OBSERVER_SOURCE)}]
+    environment:
+      STUDIO_QUALIFICATION_KERNEL_ENDPOINTS: '${telemetryKernelEndpoints(service)}'
+    network_mode: service:${service}
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp:size=1m,mode=1777"]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID]
+    healthcheck:
+      test: [CMD, node, -e, "require('node:fs').accessSync('/tmp/kernel-ready')"]
+      interval: 100ms
+      timeout: 1s
+      retries: 100
+`,
+  ).join('');
+}
 
 export const TELEMETRY_CANARY_SOURCE = `
 const { connect } = require('node:net');
@@ -337,4 +428,16 @@ export function assertKernelTelemetryControls(logs: string) {
       )
     )
       throw new Error(`Kernel egress observer missed ${protocol} control.`);
+}
+
+export function kernelTelemetryControlCount(logs: string) {
+  return logs.split(TELEMETRY_KERNEL_CONTROL_MARKER).length - 1;
+}
+
+export function assertNativeChildTelemetryControl(
+  before: number,
+  logs: string,
+) {
+  if (kernelTelemetryControlCount(logs) <= before)
+    throw new Error('Kernel egress observer missed the native child control.');
 }
