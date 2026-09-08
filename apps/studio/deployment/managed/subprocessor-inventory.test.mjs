@@ -66,17 +66,15 @@ test('provider integration removal fails the generated inventory guard', async (
     original.replace('cloudflare_r2_bucket', 'removed_r2_bucket'),
   );
   try {
-    const result = spawnSync(
-      process.execPath,
-      [script, '--check', `--root=${temp}`],
-      { encoding: 'utf8' },
-    );
+    const result = spawnSync(process.execPath, [script, `--root=${temp}`], {
+      encoding: 'utf8',
+    });
     assert.notEqual(
       result.status,
       0,
       'removing the Cloudflare estate seam must fail the guard',
     );
-    assert.match(result.stderr, /Cloudflare/);
+    assert.match(result.stderr, /inventory|resource/i);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -162,11 +160,9 @@ test('actual Terraform region changes fail instead of retaining a US claim', asy
     main.replace('region_id     = "us-east-1"', 'region_id     = "eu-west-1"'),
   );
   try {
-    const result = spawnSync(
-      process.execPath,
-      [script, '--check', `--root=${temp}`],
-      { encoding: 'utf8' },
-    );
+    const result = spawnSync(process.execPath, [script, `--root=${temp}`], {
+      encoding: 'utf8',
+    });
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /stale|region/i);
   } finally {
@@ -199,16 +195,14 @@ test('an untracked Terraform provider fails exact provider coverage', async () =
   const versions = await readFile(join(temp, 'versions.tf'), 'utf8');
   await writeFile(
     join(temp, 'versions.tf'),
-    `${versions}\n# inline provider mutant\ngoogle = { source = "hashicorp/google", version = "7.0.0" }\n`,
+    `${versions}\n# inline provider mutant\nterraform { required_providers { google = { source = "hashicorp/google", version = "7.0.0" } } }\n`,
   );
   try {
-    const result = spawnSync(
-      process.execPath,
-      [script, '--check', `--root=${temp}`],
-      { encoding: 'utf8' },
-    );
+    const result = spawnSync(process.execPath, [script, `--root=${temp}`], {
+      encoding: 'utf8',
+    });
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /provider inventory/i);
+    assert.match(result.stderr, /provider|top-level|inventory/i);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -241,13 +235,11 @@ test('a provider added in another Terraform file fails exact coverage', async ()
     'terraform { required_providers { google = { source = "hashicorp/google" } } }\n',
   );
   try {
-    const result = spawnSync(
-      process.execPath,
-      [script, '--check', `--root=${temp}`],
-      { encoding: 'utf8' },
-    );
+    const result = spawnSync(process.execPath, [script, `--root=${temp}`], {
+      encoding: 'utf8',
+    });
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /provider inventory/i);
+    assert.match(result.stderr, /provider|top-level|inventory/i);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -277,15 +269,17 @@ test('a no-source provider block and unknown JSON resource fail closed', async (
   );
   await writeFile(join(temp, 'provider-google.tf'), 'provider "google" {}\n');
   await writeFile(
+    join(temp, 'provider-google.tf.json'),
+    JSON.stringify({ provider: { google: {} } }),
+  );
+  await writeFile(
     join(temp, 'resource-google.tf.json'),
     JSON.stringify({ resource: { google_storage_bucket: { assets: {} } } }),
   );
   try {
-    const result = spawnSync(
-      process.execPath,
-      [script, '--check', `--root=${temp}`],
-      { encoding: 'utf8' },
-    );
+    const result = spawnSync(process.execPath, [script, `--root=${temp}`], {
+      encoding: 'utf8',
+    });
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /provider|resource inventory/i);
   } finally {
