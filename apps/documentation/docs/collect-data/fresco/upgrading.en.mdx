@@ -22,7 +22,9 @@ Fresco now encrypts the secrets behind two-factor authentication (TOTP) codes be
 - **Netlify deployments:** add the variable under your project's environment variables, as described for the database variables in the [Deployment Guide](./guide#add-a-two-factor-authentication-key), then upgrade.
 - **Docker deployments:** add it to the `.env` file next to your compose file, as described in the [Advanced Deployment guide](./advanced#environment-variables), then pull and recreate the stack.
 
-On its first start with the key present, Fresco seals every existing secret in place. Authenticator apps and recovery codes keep working, and nobody has to enrol again. Instances with no two-factor accounts upgrade without the variable, but no account can enable two-factor authentication until it is set.
+On its first start with the key present, Fresco seals every existing secret in place. Authenticator apps and recovery codes keep working, and nobody has to enrol again. Instances with no two-factor accounts upgrade without the variable (an enrolment that was started but never confirmed is discarded and can simply be started again), but no account can enable two-factor authentication until it is set.
+
+On the Netlify path the sealing happens while the new version is being built, and the previous version keeps serving until the build finishes a few minutes later. During that window, and until a failed build is fixed and redeployed, the previous version cannot read the sealed secrets, so accounts with two-factor authentication should sign in with a recovery code rather than an authenticator code, or wait for the new deploy. Participants are unaffected. Docker deployments have no such window: the container is replaced in one step.
 
 ## Upgrade Process
 
