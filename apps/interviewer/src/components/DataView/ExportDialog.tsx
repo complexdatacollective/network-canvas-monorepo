@@ -398,7 +398,7 @@ export function ExportDialog({
       description={description}
       accent={accent}
       dismissible={dismissible}
-      closeDialog={dismissible ? onDismiss : undefined}
+      closeDialog={onDismiss}
       footer={footer}
     >
       {children}

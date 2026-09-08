@@ -4,7 +4,10 @@ import { v4 as uuid } from 'uuid';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import type { VariableType } from '@codaco/protocol-validation';
+import {
+  VARIABLE_TYPE_COMPONENTS,
+  type VariableType,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
@@ -143,15 +146,65 @@ const messages = defineMessages({
  * is decided here, by what the issue is ANCHORED at — the same reading
  * `VariableEditor` does of the same issues, and the same words the row cell,
  * the entity editor and the request builder use for the name rule.
+ *
+ * A refusal anchored at NOTHING is read against the draft instead; see the
+ * union below.
  */
+/** Narrows a value read back out of an unknown document. */
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+/**
+ * As much of the refused draft as reading its refusal needs: which kind of
+ * answer it was to hold, and which control it was to be collected with.
+ */
+type RefusedDraft = Readonly<{ type: unknown; component: unknown }>;
+
+const isVariableType = (value: unknown): value is VariableType =>
+  typeof value === 'string' && Object.hasOwn(VARIABLE_TYPE_COMPONENTS, value);
+
+/**
+ * Whether the draft asks for a control its kind of answer is never collected
+ * with.
+ *
+ * `VARIABLE_TYPE_COMPONENTS` is the schema's own table — the same one the
+ * form-field dialog fills its list of controls from — so this asks the
+ * question the schema asked, rather than keeping a second opinion about it.
+ * A draft naming no control at all is not asking it.
+ */
+const controlIsNotOffered = ({ type, component }: RefusedDraft): boolean => {
+  if (component === undefined || !isVariableType(type)) return false;
+  const offered: readonly string[] = VARIABLE_TYPE_COMPONENTS[type];
+  return typeof component !== 'string' || !offered.includes(component);
+};
+
 const draftIssueMessage = (
   issue: CodebookDraftIssue,
+  draft: RefusedDraft,
   intl: IntlShape,
 ): string | undefined => {
   if (issue.path[0] === 'name') {
     return intl.formatMessage(messages.nameInvalid);
   }
   if (issue.path[0] === 'component') {
+    return intl.formatMessage(messages.unsupportedControl);
+  }
+  /**
+   * `VariableSchema` is a plain union of eleven whole variable shapes, so a
+   * control the kind of answer cannot take fails every branch — its own at
+   * `component`, all the others at `type` — and zod hoists nothing: what
+   * arrives is ONE issue at the empty path saying that this is not any kind of
+   * attribute, not which part of it is wrong. Anchored at nothing, it has no
+   * sentence of its own.
+   *
+   * The draft it judged is what settles it. A control that is not one this
+   * kind of answer is ever collected with is a refusal on its own, whatever
+   * else the draft may also be wrong about — and it is the one the researcher
+   * just made and can undo. Every other unanchored refusal (a categorical
+   * attribute with no list of answers, which is the case beside this one) is
+   * left to the caller's own fallback, exactly as before.
+   */
+  if (issue.path.length === 0 && controlIsNotOffered(draft)) {
     return intl.formatMessage(messages.unsupportedControl);
   }
   return undefined;
@@ -173,6 +226,7 @@ const draftIssueMessage = (
  */
 const refusalMessage = (
   error: unknown,
+  draft: RefusedDraft,
   fallback: string,
   intl: IntlShape,
 ): string => {
@@ -181,7 +235,7 @@ const refusalMessage = (
   }
   if (error instanceof InvalidCodebookDraftError) {
     for (const issue of error.issues) {
-      const message = draftIssueMessage(issue, intl);
+      const message = draftIssueMessage(issue, draft, intl);
       if (message !== undefined) return message;
     }
   }
@@ -269,6 +323,7 @@ export function useCreateCodebookVariable(
           status: 'refused',
           message: refusalMessage(
             error,
+            { type: variable.type, component: variable.component },
             intl.formatMessage(messages.refusedUnchanged),
             intl,
           ),
@@ -374,7 +429,13 @@ export function useSetVariableComponent(
         request = buildUpdateVariableRequest({
           requestId: uuid(),
           description: intl.formatMessage(messages.setComponentDescription, {
-            name: Reflect.get(current, 'name') as string,
+            // A variable with no name is one the same function has already
+            // prepared for — it re-reads `current` defensively above — and
+            // asserting a `string` out of `Reflect.get` would write `Set the
+            // input control for "undefined"` into whatever record the host
+            // keeps of protocol edits. The id is the only other thing that
+            // identifies it.
+            name: asString(Reflect.get(current, 'name')) ?? variableId,
           }),
           subject,
           authoritativeDocument: document,
@@ -395,6 +456,7 @@ export function useSetVariableComponent(
           status: 'refused',
           message: refusalMessage(
             error,
+            { type, component },
             intl.formatMessage(messages.refusedControlUnchanged),
             intl,
           ),

@@ -1,13 +1,26 @@
-import { get } from 'es-toolkit/compat';
+import { get, isEqual } from 'es-toolkit/compat';
+import { useCallback, useRef } from 'react';
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import type { Command } from '@codaco/studio-sync/apply';
 
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
-import { useClearStageValue } from '../form/stageFormHooks.ts';
+import {
+  type StageFormStoreApi,
+  useStageEditorForm,
+} from '../form/stageEditorContext.ts';
+import {
+  stageDraftValue,
+  useAskStageHasAnyValue,
+  useClearStageValue,
+} from '../form/stageFormHooks.ts';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
+import type { StageFormDraft } from '../session.ts';
 import { useOnResearcherChange } from './researcherChange.ts';
-import { subjectDependentResets } from './subjectReset.ts';
+import {
+  SUBJECT_INDEPENDENT_FIELDS,
+  subjectDependentResets,
+} from './subjectReset.ts';
 
 /**
  * Narrows a value read back out of a template by a dynamic path.
@@ -40,6 +53,80 @@ function asFieldValue(value: unknown): FieldValue {
 }
 
 /**
+ * The stage key a parked field name belongs to.
+ *
+ * A value the researcher answered into a control that has since unmounted is
+ * held under that control's own name, which may be a path: a control named
+ * `behaviours.freeDraw` parks under that whole name, while the key a reset
+ * addresses is `behaviours`. Parsed rather than split on `.`, because a
+ * protocol-authored key may contain one — `["prompt text"]` is a single
+ * segment.
+ *
+ * `undefined` for a name that will not parse, which is a name no reset could
+ * address anyway.
+ */
+const parkedStageKey = (name: string): string | undefined => {
+  try {
+    const [first] = resolveFieldPath([], name, 'path');
+    return typeof first === 'string' ? first : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Every stage key the form or the draft is holding, from all three places one
+ * can be hiding.
+ *
+ * `getFormValues()` is built from REGISTERED fields, so a control the
+ * researcher answered and then unmounted contributes nothing to it, and an
+ * answer that has not been saved is not in `committedFields` either. That key
+ * is in neither place and is still on its way into the saved stage —
+ * `stageDraftFromSubmission` replays parked values on purpose — so the names
+ * the store is parking are read as well.
+ */
+const heldStageKeys = (
+  storeApi: StageFormStoreApi,
+  committedFields: StageFormDraft,
+): string[] => [
+  ...Object.keys(storeApi.getState().getFormValues()),
+  ...Object.keys(committedFields),
+  ...[...storeApi.getState().dormantValues.keys()]
+    .map(parkedStageKey)
+    .filter((key) => key !== undefined),
+];
+
+/**
+ * Whether changing the subject would actually cost the researcher anything.
+ *
+ * Asked before the change rather than after it — see `SubjectSelectField`,
+ * which holds the pick back until it is answered — so it reads what the stage
+ * is carrying NOW rather than what a reset would write. A key the template
+ * supplies and the stage does not is no loss, which is why this is not the
+ * reset's own list; and a key that is only a registered field holding nothing
+ * — an empty prompt list a section has mounted — is no loss either, which is
+ * why it asks the same "holds something" a capability's switch-off asks rather
+ * than counting keys.
+ *
+ * A function rather than a value: it reads the form's values, and a section
+ * re-rendering on every keystroke to keep an answer current is one
+ * re-rendering for a question nobody has asked yet.
+ */
+export function useSubjectChangeDiscards(): () => boolean {
+  const { storeApi, committedFields } = useStageEditorForm();
+  const hasAnyValue = useAskStageHasAnyValue();
+  return useCallback(
+    () =>
+      hasAnyValue(
+        heldStageKeys(storeApi, committedFields).filter(
+          (key) => !SUBJECT_INDEPENDENT_FIELDS.includes(key),
+        ),
+      ),
+    [committedFields, hasAnyValue, storeApi],
+  );
+}
+
+/**
  * Throws away everything that described the previous subject when the stage's
  * subject changes.
  *
@@ -69,13 +156,30 @@ export function useResetStageOnSubjectChange(): void {
     useStageEditorForm();
   const clearStageValue = useClearStageValue();
 
+  /**
+   * The subject this hook has just written back into the picker after a
+   * refusal, held until the observation it causes has been read.
+   *
+   * Putting the picker back moves the value this hook is watching, and
+   * `useOnResearcherChange` has no way to tell that from the researcher
+   * picking the old type on purpose — it would call the reset again, this time
+   * to throw away the configuration that describes the subject just restored.
+   * A box rather than the value itself, because `undefined` is a subject a
+   * stage really has, and cleared by whichever observation arrives next
+   * whether or not it matches: a foreign arrival landing in that gap is the
+   * researcher's own change again as far as anything here can tell, and
+   * `useOnResearcherChange` already resolves that ambiguity the same way.
+   */
+  const putBack = useRef<{ value: unknown } | null>(null);
+
   useOnResearcherChange('subject', (subject) => {
+    const restored = putBack.current;
+    putBack.current = null;
+    if (restored !== null && isEqual(restored.value, subject)) return;
+
     const template = getInterfaceTemplate(identity.type);
     const resets = subjectDependentResets(
-      [
-        ...Object.keys(storeApi.getState().getFormValues()),
-        ...Object.keys(committedFields),
-      ],
+      heldStageKeys(storeApi, committedFields),
       template,
     );
 
@@ -84,7 +188,7 @@ export function useResetStageOnSubjectChange(): void {
     // draft it is editing. `applyOwnCommands` also marks the write as this
     // form's own, so the draft moving here does not re-seed the controls the
     // loop below is about to set.
-    applyOwnCommands([
+    const { draft, refused } = applyOwnCommands([
       subject === undefined
         ? { op: 'unset', key: 'subject' }
         : { op: 'set', key: 'subject', value: subject },
@@ -94,6 +198,42 @@ export function useResetStageOnSubjectChange(): void {
           : { op: 'set', key: reset.key, value: reset.value },
       ),
     ]);
+    // A refusal means nothing was thrown away, so nothing may be emptied
+    // either — the rule `useDiscardStageValues` follows, for the same reason.
+    // Editing can be taken away between the render that observed the
+    // researcher's choice and this effect, and the session then refuses the
+    // whole batch: the configuration it holds is the only copy of itself, and
+    // a form emptied here would leave the stage looking unconfigured with
+    // nothing left to fill it back in — and the next save writing that
+    // emptiness into a stage the session never agreed to. `applyOwnCommands`
+    // has already said so on screen.
+    //
+    // The PICK goes back too. The refusal is of the whole batch, subject
+    // included, so the session still holds the old type and everything left
+    // standing here still describes it; a picker left showing the new one is
+    // the only part of the stage saying otherwise. Left there it would be a
+    // choice the researcher could not make again — the control already shows
+    // it, so re-picking it moves nothing and no reset could follow — while
+    // picking the type the stage actually has would read as a fresh change and
+    // throw away the configuration that belongs to it. The session is the
+    // account of what this stage is about, and this is the form catching up
+    // with it.
+    if (refused) {
+      const agreed = stageDraftValue(draft, 'subject');
+      putBack.current = { value: agreed };
+      // A subject the picker cannot show — a stage being filled in for the
+      // first time, which the session holds none for, or a draft whose
+      // `subject` is not the object one is — puts it back to holding nothing.
+      // Cleared rather than set to `undefined`, for the reason the reset loop
+      // below gives: a tombstone would outlive the refusal and delete the key
+      // again on the next save.
+      if (agreed !== undefined && isFieldValue(agreed)) {
+        storeApi.getState().setFieldValue('subject', agreed);
+      } else {
+        clearStageValue('subject');
+      }
+      return;
+    }
 
     for (const reset of resets) {
       // Clears the path itself, everything beneath it, and every registered or

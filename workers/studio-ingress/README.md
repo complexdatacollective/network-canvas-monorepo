@@ -1,0 +1,138 @@
+# Managed Studio ingress
+
+This Cloudflare Worker is routing-layer plumbing for the managed Studio single
+origin. It owns no product handler, authentication decision, database access,
+WebSocket message, durable state, or scheduled work. The persistent Studio
+server on Fly remains the origin for `/api`, `/rpc`, `/storage`, `/ws`, and the
+operational endpoints. Netlify remains the origin for the SPA and its static
+assets.
+
+A Worker is necessary for this split on the selected plan. Cloudflare Origin
+Rules are available on every plan, but changing the Host header, SNI, or DNS
+origin is Enterprise-only. Those overrides are required to select two external
+TLS origins. A whole-host Worker Custom Domain can select the origin and also
+ensure cookies, authorization, CSRF headers, and referrers never reach the
+Netlify origin. Cloudflare supports proxied WebSockets and Workers subrequests
+with `Upgrade: websocket`; this Worker passes the accepted `/ws` response
+through without handling messages.
+
+## Boundary
+
+- Only the approved public origins `https://networkcanvas.studio` and
+  `https://studio.networkcanvas.dev` are accepted.
+- Each deployed environment names one exact `*.netlify.app` static origin and
+  one exact `*.fly.dev` backend origin. Placeholder, HTTP, credential-bearing,
+  port-bearing, or path-bearing origins make every request fail with 503.
+- Static requests allow only GET and HEAD and receive a small public header
+  allowlist. Their query strings stay in the browser URL but are not sent to
+  Netlify: the production build uses hashed asset paths, and the only current
+  client route queries carry sign-in errors or invitation IDs that the static
+  origin does not need. Static responses cannot set cookies or redirect to a
+  foreign host.
+- Server surfaces preserve cookie, authorization, Origin, `Sec-Fetch-Site`, and
+  WebSocket handshake headers. Untrusted forwarding headers are replaced with
+  the approved public host, HTTPS scheme, and a single validated
+  primary `CF-Connecting-IP` address, and the ingress replaces incoming request IDs
+  with fresh UUIDs. A shared ingress proof, stored only as a Worker secret and
+  Fly runtime secret, makes that client address unusable on direct origin
+  requests. The Node server still performs its
+  existing cookie principal, CSRF, and WebSocket-Origin checks.
+- Backend responses receive browser and CDN `no-store` directives unless they
+  are a successful public `GET` or `HEAD` of an exact lowercase SHA-256
+  `/storage/:hash` path and carry the backend's matching ETag, canonical
+  one-year immutable policy, and no `Set-Cookie`. A missing or malformed asset,
+  upload, API route, authentication response, redirect, and every failed cache
+  proof remain `no-store`; an API failure can never fall through to Netlify's
+  SPA fallback.
+- Proved immutable GETs are admitted explicitly to Cloudflare's Cache API
+  under their canonical public hash URL, without query, cookie, or
+  authorization data. Cache hits are rechecked against the path hash and
+  immutable headers; conditional and range variants remain Cache API
+  operations. HEAD and every unproved response bypass cache admission. Cache
+  requests carrying `If-Range` bypass cache lookup so the origin decides
+  whether to return a full or partial representation. Cache failures do not
+  replace or buffer the streamed origin response. Cache API
+  entries are local to a Cloudflare data center and do not provide tiered
+  replication.
+- Ordinary origin connection/header waits are bounded at 10 seconds. The
+  supported 100 MiB `/storage` upload has a separate 15-minute total deadline:
+  100 MiB takes about 14 minutes at 1 Mbit/s before the backend completes its
+  object-store write. A stalled upload is therefore bounded, while normal
+  uploads are not forced through the ordinary deadline. Response bodies remain
+  streamed, so large asset downloads and long-lived WebSockets are not
+  buffered or cut off by those request deadlines.
+
+This is pure ingress despite running in a Worker: it classifies a fixed path
+table, sanitizes the static boundary, and streams one of two upstream responses.
+It does not move Studio request handling or coordination to edge compute.
+
+## IaC inputs and offline checks
+
+`wrangler.example.jsonc` records the two authorized Custom Domains and the
+non-secret inputs required for each environment:
+
+| Input            | Production example                                | Requirement                                      |
+| ---------------- | ------------------------------------------------- | ------------------------------------------------ |
+| `PUBLIC_ORIGIN`  | `https://networkcanvas.studio`                    | One of the two compiled approved browser origins |
+| `STATIC_ORIGIN`  | `https://networkcanvas-studio.netlify.app`        | Exact reviewed Netlify site origin               |
+| `BACKEND_ORIGIN` | `https://networkcanvas-studio-production.fly.dev` | Exact reviewed Fly app origin                    |
+
+Set `STUDIO_MANAGED_INGRESS_SECRET` with `wrangler secret put` and place the
+same independent random value in the Fly runtime environment. It is
+deliberately absent from `wrangler.example.jsonc`; a missing, short, or
+malformed secret makes the Worker refuse every request with 503. The Fly server
+must configure the proof and a nonempty managed `TRUSTED_PROXIES` list together;
+a managed database HTTP process refuses to start without both and refuses
+requests without proof before authentication. Direct `/healthz` liveness and
+exact `/metrics` are the only exceptions. Liveness makes no identity or
+readiness decision. Metrics has its own constant-time bearer-token gate;
+variants such as `/metrics/` still require ingress proof. Fly health checks and
+private operator scrapers can therefore reach those exact routes without
+storing the ingress secret in their configuration.
+
+The Worker trusts only Cloudflare's primary `CF-Connecting-IP` header. Prefer
+Pseudo IPv4 Off. Cloudflare documents `CF-Connecting-IPv6` as a supplemental
+header for Pseudo IPv4 overwrite mode, so Studio does not use it as a separate
+trust source when the primary address is a native IPv4 or IPv6 value.
+
+The checked-in template deliberately contains invalid `replace-with-*`
+upstreams and is not Wrangler's default config filename. Copy the relevant
+environment to an operator-owned `wrangler.production.jsonc` or
+`wrangler.staging.jsonc`, replace both upstreams with inventory-qualified exact
+values, and review the Custom Domain before any deployment. Those local config
+filenames are ignored. The package exposes only a dry-run bundle check; it has
+no deploy script.
+
+Run the offline controls with:
+
+```sh
+pnpm --filter studio-managed-ingress-worker test
+pnpm --filter studio-managed-ingress-worker check:bundle
+```
+
+Deployment remains pending the managed-estate qualification workflow. Before a
+domain change, verify the Netlify deploy receipt and Fly image/Machine receipt,
+set the Fly server's `PUBLIC_URL` to the matching public origin, configure `TRUSTED_PROXIES` only after verifying the immediate Fly transport
+peers seen by the Node process. Forwarded headers and Cloudflare
+CIDRs alone cannot establish that trust; leave it empty until verified so the
+server generates its own request IDs. Enable Cloudflare
+WebSockets, and test HTTP, authentication mutation, and a real `/ws` reconnect.
+The same release artifact and server configuration contract serve managed and
+self-hosted installations.
+
+The account's actual Workers tier, request allowance, CPU billing, limits, and
+WebSocket accounting are unresolved. Measure and quote them for the expected
+request mix, then include them in the existing primary-ingress budget category
+or add reviewed request/CPU categories. The current zero per-GB ingress
+placeholder does not price this Worker and cannot establish that it is free or
+within the $100 cap.
+
+Official capability references:
+
+- [Cloudflare Worker Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
+- [Cloudflare WebSockets](https://developers.cloudflare.com/network/websockets/)
+- [Cloudflare Workers WebSocket forwarding](https://developers.cloudflare.com/workers/examples/websockets/)
+- [Cloudflare Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/)
+- [Cloudflare request headers](https://developers.cloudflare.com/fundamentals/reference/http-headers/)
+- [Cloudflare Origin Rules availability](https://developers.cloudflare.com/rules/origin-rules/)
+- [Netlify external DNS](https://docs.netlify.com/manage/domains/configure-domains/configure-external-dns/)

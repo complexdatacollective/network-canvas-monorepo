@@ -44,8 +44,14 @@ export type DialogProps = {
   size?: DialogSize;
   /**
    * When false, the dialog cannot be dismissed: the close button is hidden,
-   * and clicks outside / Escape no longer trigger `closeDialog`. Use this for
-   * forced flows like a lock screen that the user must complete.
+   * and an outside press or Escape neither closes it nor calls `closeDialog`.
+   * Use this for forced flows like a lock screen that the user must complete,
+   * and for a dialog whose work must finish before it may go — a submit in
+   * flight, an export being built.
+   *
+   * A dialog held open this way must still offer a way out that a keyboard
+   * user can reach, unless there is genuinely none: with Escape refused and
+   * the close button gone, a footer action is the only route left.
    * @default true
    */
   dismissible?: boolean;
@@ -74,7 +80,8 @@ export type DialogProps = {
  * - Uses Base UI Dialog for accessibility and state management
  * - ModalPopup with ModalPopupAnimation for consistent animations
  * - Surface styling applied via className for proper elevation and spacing
- * - Backdrop click-to-close is handled by Base UI's dismissible behavior
+ * - Backdrop click-to-close is handled by Base UI's dismissible behavior,
+ *   which `Modal` refuses on this dialog's behalf when `dismissible` is false
  */
 export default function Dialog({
   title,
@@ -96,6 +103,7 @@ export default function Dialog({
   return (
     <Modal
       open={open}
+      dismissible={dismissible}
       onOpenChange={(isOpen) => {
         if (!isOpen && closeDialog) {
           closeDialog();

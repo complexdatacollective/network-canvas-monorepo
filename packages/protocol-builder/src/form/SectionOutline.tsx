@@ -149,22 +149,41 @@ function SectionOutlineItem({ section }: { section: OutlineSection }) {
       getFieldErrors: (name) => state.getFieldErrors(name),
     }),
   );
-  // Asked separately, and as a boolean, because a selector answering with an
-  // object would hand the store a new value on every read.
-  const hasFieldError = useFormStore((state) =>
-    section.fields.some(
-      (field) => (state.getFieldErrors(field.name)?.length ?? 0) > 0,
-    ),
+  /**
+   * Which of this section's session problems the control that owns each one is
+   * already reporting, in the order `section.issues` lists them.
+   *
+   * One character per problem rather than the problems themselves, because a
+   * selector answering with an array or an object hands the store a new value
+   * on every read; and a signature rather than a joined list of names, because
+   * a field name may legally contain whatever separator a join would pick.
+   *
+   * Asked per PROBLEM, not per section. A section can be wrong in two ways at
+   * once — a required control left empty and a reference to a resource the
+   * protocol does not have — and the second is exactly the kind nothing on the
+   * page can explain. Suppressing every sentence because some other field of
+   * the same section is unhappy left a screen-reader user with "Has a problem"
+   * and no way to find out what it was.
+   */
+  const alreadySaid = useFormStore((state) =>
+    section.issues
+      .map((issue) =>
+        (state.getFieldErrors(issue.fieldName)?.length ?? 0) > 0 ? '!' : '.',
+      )
+      .join(''),
+  );
+  const unexplained = section.issues.filter(
+    (_, index) => alreadySaid[index] !== '!',
   );
   const presentation = STATUS_PRESENTATION[status];
   const StatusIcon = presentation.icon;
-  // The section's own words come first. A control showing a message beside
-  // itself has already said what is wrong in the vocabulary of the thing being
-  // edited, and repeating the schema's version of it underneath would be two
-  // accounts of one fault. The session's words are added only when nothing
-  // else on the page can explain the state — a reference to a resource the
-  // protocol does not have, a type a collaborator deleted — because then this
-  // is the only place it is written down.
+  // The control's own words come first, one problem at a time. A control
+  // showing a message beside itself has already said what is wrong in the
+  // vocabulary of the thing being edited, and repeating the schema's version
+  // of THAT underneath would be two accounts of one fault. Every other
+  // problem is still read out — a reference to a resource the protocol does
+  // not have, a type a collaborator deleted — because for those this is the
+  // only place it is written down.
   //
   // The problems are DECODED here rather than read as they were stored: the
   // outline store has no reader, so each one arrives as an encoded descriptor
@@ -172,14 +191,16 @@ function SectionOutlineItem({ section }: { section: OutlineSection }) {
   // schema wrote, which the same call passes through untouched.
   const statusLabel = intl.formatMessage(presentation.label);
   const announced =
-    status === 'error' && !hasFieldError && section.issues.length > 0
+    status === 'error' && unexplained.length > 0
       ? intl.formatMessage(messages.statusWithProblems, {
           status: statusLabel,
           // Joined with a space rather than through `formatList`: these are
           // whole sentences in sequence, not the members of a list, and "a, b
           // and c" would read them as one thing that is three ways wrong.
-          problems: section.issues
-            .map((issue) => formatMessageError(issue, intl) ?? issue)
+          problems: unexplained
+            .map(
+              ({ sentence }) => formatMessageError(sentence, intl) ?? sentence,
+            )
             .join(' '),
         })
       : statusLabel;
