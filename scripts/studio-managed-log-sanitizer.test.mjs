@@ -45,7 +45,7 @@ const registryRequest = (changes = {}) => ({
 test('publishes a pinned exact output schema over the emitter-owned catalogs', () => {
   assert.equal(
     MANAGED_OPERATIONAL_LOG_SCHEMA_IDENTITY,
-    'sha256:bafeabbe5b6c90ddc908b0ae45a88eeabd8a69f88db6bd77a48029845f8f685e',
+    'sha256:a62a6b61d288c57874bb7fef3a8c1991010ec70b66b15d7f48a42d12f339b0db',
   );
   assert.deepEqual(
     MANAGED_OPERATIONAL_LOG_SCHEMA.services.map(({ service }) => service),

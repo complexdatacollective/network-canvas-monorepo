@@ -622,6 +622,24 @@ no live account query or production qualification is claimed.
 The query follows the [official usage query guidance](https://docs.newrelic.com/docs/accounts/accounts-billing/new-relic-one-pricing-billing/usage-queries-alerts/)
 and [NrMTDConsumption attribute definitions](https://docs.newrelic.com/attribute-dictionary/).
 
+## Operator alert and migration runbook
+
+Operator-facing alerts route to `info@networkcanvas.com`, the project-owned
+address published in `SECURITY.md`. The monitoring system's own authenticated
+transport sends these alerts independently of Studio's researcher mail
+dispatcher and Postmark configuration; no tenant or participant recipient is
+used. Before enabling the destination, an operator must confirm mailbox
+ownership and prove delivery with a synthetic receiver while Studio's
+dispatcher and mail provider are unavailable. This repository contains no
+provider credential, provisioning step, or live delivery qualification.
+
+The announced managed migration window is Tuesday 15:00–16:00 UTC. Routine
+compatible releases may occur outside that window; schema changes and the
+associated rollback or restore checks use the announced window. The complete
+estate remains bounded by the reviewed $100/month hosting cap, with New Relic
+Free's 30-day retention and hard ingest stop treated as unqualified candidate
+claims until account evidence is captured.
+
 ## Offline review
 
 Run `terraform fmt -check -recursive`, `terraform init -backend=false
@@ -636,6 +654,21 @@ lock -platform=linux_amd64 -platform=darwin_arm64` to retain the package hashes
 needed by both CI and macOS, then review the registry signatures and lockfile diff.
 Do not run `plan` or `apply` without live-account authorization and a remote-state
 design. Official capability references:
+
+The local observability qualification suite is provider-free:
+
+```sh
+node --test \
+  apps/studio/deployment/managed/observability-egress-budget.test.mjs \
+  scripts/studio-managed-fly-log-envelope.test.mjs \
+  scripts/studio-managed-log-sanitizer.test.mjs \
+  scripts/studio-managed-new-relic-logs.test.mjs \
+  scripts/studio-managed-new-relic-usage.test.mjs
+```
+
+These tests use injected transports and local custody fixtures. They do not
+send logs, usage queries, alerts, or credentials to a provider and do not
+qualify retention, account limits, mailbox routing, or live operator delivery.
 
 - <https://fly.io/docs/blueprints/infra-automation-without-terraform/>
 - <https://registry.terraform.io/providers/CrunchyData/crunchybridge/0.3.0/docs/resources/cluster>
