@@ -60,6 +60,15 @@ const HOST_WORDS =
   'Expected object, received undefined at codebook.node.person';
 
 /**
+ * The one thing a thrown refusal says that a researcher can act on.
+ *
+ * `codebookEditing.duplicateVariableName`, written out here for the reason
+ * `REFUSED` is: read from the descriptor it would still pass if the editor
+ * stopped decoding it and showed the raw encoded payload instead.
+ */
+const DUPLICATE_NAME = 'Attribute with name "Age" already exists';
+
+/**
  * What a surface that refused the draft itself says, in the shape
  * `findDraftContradictions` writes. This one DOES reach the researcher.
  */
@@ -130,6 +139,30 @@ function submittedVariables(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Every polite or assertive region this element sits inside, itself included.
+ *
+ * Counted rather than asserted about globally: the editor mounts one live
+ * region per field by design (`FieldErrors` does, so an error that arrives
+ * later is announced at all), and what must never happen is that one
+ * announcement is inside another.
+ */
+function liveRegionsAround(element: HTMLElement): Element[] {
+  const isLive = (node: Element) =>
+    node.getAttribute('aria-live') !== null ||
+    node.getAttribute('role') === 'status' ||
+    node.getAttribute('role') === 'alert';
+  const regions: Element[] = [];
+  for (
+    let node: Element | null = element;
+    node !== null;
+    node = node.parentElement
+  ) {
+    if (isLive(node)) regions.push(node);
+  }
+  return regions;
 }
 
 function createProps(
@@ -873,6 +906,84 @@ describe('VariableEditor', () => {
   });
 
   /**
+   * The name that collided, said where the researcher can change it.
+   *
+   * `DuplicateVariableNameError` crosses a string-only contract as an
+   * `Error.message`, which is why `editing.ts` encodes it with
+   * `createMessageError` rather than writing a sentence — the promise being
+   * that it is decoded where it is rendered. A reading that answered every
+   * throw with the generic "wait a moment and try again" would send the
+   * researcher to retry a save that cannot succeed until they rename the
+   * attribute, and would never tell them which name they collided with.
+   */
+  it('names the attribute a duplicate name collides with, and says so at the field', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+
+    render(
+      <VariableEditor
+        {...createProps({
+          authoritativeDocument: personDocument({
+            age: { name: 'Age', type: 'number' },
+          }),
+          initialDraft: { name: 'Age', type: 'text' },
+          onSubmitRequest,
+        })}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Create attribute' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(DUPLICATE_NAME);
+    expect(alert).not.toHaveTextContent(REFUSED.threw);
+    // And again under the field holding the name that has to change, because
+    // the alert is at the top of a form the researcher has to scroll.
+    expect(screen.getByTestId('variable-name-field-error')).toHaveTextContent(
+      DUPLICATE_NAME,
+    );
+    expect(onSubmitRequest).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A reason nobody has written words for still has to read as a refusal.
+   *
+   * `CompoundEditFailureReason` is a TypeScript union, but a host is external
+   * code and the reason crosses the wire as a plain string. An unlisted one
+   * indexing into the copy table hands `formatMessage` nothing, which throws
+   * during render — so the researcher loses the whole editor and the unsaved
+   * draft it was holding rather than being told the save was refused.
+   */
+  it('refuses rather than throwing when a host names a reason this package has never heard of', async () => {
+    const user = userEvent.setup();
+    const fromAnUnknownHost = {
+      status: 'failed',
+      reason: 'quota-exceeded',
+      message: HOST_WORDS,
+    } as unknown as CompoundEditResult;
+
+    render(
+      <VariableEditor
+        {...createProps({
+          initialDraft: { name: 'quota', type: 'text' },
+          onSubmitRequest: () => fromAnUnknownHost,
+        })}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Create attribute' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(REFUSED.threw);
+    expect(alert).not.toHaveTextContent(HOST_WORDS);
+    expect(
+      screen.getByRole('textbox', { name: /attribute name/i }),
+    ).toHaveValue('quota');
+  });
+
+  /**
    * The rule the researcher has to change, named.
    *
    * Removing an option can leave a committed validation rule unsatisfiable —
@@ -1329,10 +1440,69 @@ describe('the settings the chosen input control takes', () => {
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
     expect(
-      await screen.findByText('DatePicker "min" must not be after "max"'),
+      await screen.findByText(
+        'The latest date cannot be earlier than the earliest date.',
+      ),
     ).toBeVisible();
+    // In this package's own words, not the protocol schema's. Zod's sentence
+    // names a control and two keys — neither of which is on screen — and is
+    // hard-coded English, so a Spanish researcher would read it as it stands.
+    expect(
+      screen.queryByText('DatePicker "min" must not be after "max"'),
+    ).toBeNull();
     expect(onSubmitRequest).not.toHaveBeenCalled();
     expect(screen.queryByText('Attribute not saved')).toBeNull();
+  });
+
+  /**
+   * A refusal that belongs to no one control still has somewhere to be read,
+   * and the fieldset says where.
+   *
+   * The authored refusals above cover what this editor knows to ask about; the
+   * protocol's own parameter schema is asked afterwards, and anything it still
+   * refuses — a year the interview's own date control could never select, say
+   * — is reported against the block rather than in the schema's words. A
+   * screen reader landing on the controls hears it only if the fieldset points
+   * at it, which is what the options fieldset thirty lines above already does.
+   */
+  it('associates a refusal about the whole settings block with the fieldset', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+
+    render(
+      <VariableEditor
+        {...createProps({
+          variableId: 'met',
+          initialDraft: {
+            name: 'met',
+            type: 'datetime',
+            component: 'DatePicker',
+            // A real month at a resolution the interview renders unpadded, so
+            // the schema refuses it and the editor's own checks do not.
+            parameters: { type: 'month', min: '0099-01' },
+          },
+          onSubmitRequest,
+        })}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Create attribute' }));
+
+    const fieldset = await screen.findByRole('group', {
+      name: 'What this control accepts',
+    });
+    expect(fieldset).toHaveAttribute('aria-invalid', 'true');
+    const describedBy = fieldset.getAttribute('aria-describedby') ?? '';
+    const described = document.getElementById(describedBy);
+    expect(described).not.toBeNull();
+    expect(described).toHaveTextContent(
+      'These settings cannot be saved as they are written.',
+    );
+    // Never the schema's own account of the path it refused.
+    expect(fieldset).not.toHaveTextContent('DatePicker "min"');
+    expect(onSubmitRequest).not.toHaveBeenCalled();
   });
 
   /**
@@ -1400,11 +1570,15 @@ describe('the settings the chosen input control takes', () => {
 
     // A full date is not a year, and re-deriving one would quietly widen a
     // window the researcher chose. So they go — and are said to have gone.
-    expect(
-      await screen.findByText(
-        'The earliest and latest dates were cleared, because they were set at the previous resolution. Set them again if you still need them.',
-      ),
-    ).toBeVisible();
+    const notice = await screen.findByText(
+      'The earliest and latest dates were cleared, because they were set at the previous resolution. Set them again if you still need them.',
+    );
+    expect(notice).toBeVisible();
+    // Said ONCE. The region is mounted before the notice arrives, because a
+    // screen reader only announces changes to a region it was already
+    // watching — and a live region inside that one is the double (or, on some
+    // assistive technology, dropped) announcement the wrapper exists to avoid.
+    expect(liveRegionsAround(notice)).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
     await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
@@ -1640,7 +1814,7 @@ describe('the two answers a boolean offers', () => {
    * moving to cannot show, and a variable carrying both is one the schema will
    * not take.
    */
-  it('drops the answers when the control that showed them is left behind', async () => {
+  it('drops the answers and records the control that cannot show them', async () => {
     const user = userEvent.setup();
     const onSubmitRequest = vi.fn(
       (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
@@ -1669,12 +1843,15 @@ describe('the two answers a boolean offers', () => {
     await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
     const saved = savedVariable(onSubmitRequest);
     expect(Object.hasOwn(saved, 'options')).toBe(false);
-    // The control itself stays the row's to commit — this editor writes it
-    // only where it writes answers that depend on it.
+    // Both, or neither. The words the researcher wrote are removed because the
+    // control they were written for is being left behind, so that control has
+    // to be left behind in the same save — a variable still recording
+    // `Boolean` with its two answers deleted is one the participant meets as
+    // an unlabelled Yes/No question.
     expect(saved).toEqual({
       name: 'flagged',
       type: 'boolean',
-      component: 'Boolean',
+      component: 'Toggle',
     });
   });
 

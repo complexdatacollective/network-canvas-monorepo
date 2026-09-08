@@ -47,6 +47,7 @@ import {
   AuxiliaryCodebookDraftSession,
   buildCreateVariableRequest,
   buildUpdateVariableRequest,
+  DuplicateVariableNameError,
   InvalidCodebookDraftError,
   type AuxiliaryCodebookDraftFailure,
   type AuxiliaryCodebookSubmitResult,
@@ -260,6 +261,32 @@ const messages = defineMessages({
       'Add at least two participant-facing labels and their stored values.',
     description:
       'Guidance under the allowed values heading. A label is what a participant reads; its stored value is what the export records.',
+  },
+  answersLegend: {
+    id: 'protocolBuilder.codebookVariable.answersLegend',
+    defaultMessage: 'The two answers',
+    description:
+      'Heading over the words on the two answers a yes/no attribute puts in front of a participant.',
+  },
+  answersHint: {
+    id: 'protocolBuilder.codebookVariable.answersHint',
+    defaultMessage:
+      'Write what the participant chooses between. Left empty, they are offered Yes and No. A negative answer is shown in red when it is selected.',
+    description:
+      'Guidance under the heading over a yes/no attribute’s two answers. Naming neither is a real answer: the interview offers its own translated Yes and No when the protocol names none.',
+  },
+  parametersLegend: {
+    id: 'protocolBuilder.codebookVariable.parametersLegend',
+    defaultMessage: 'What this control accepts',
+    description:
+      'Heading over the settings the input control an attribute is collected with takes — the bounds of a date, the words at each end of a sliding scale.',
+  },
+  parametersHint: {
+    id: 'protocolBuilder.codebookVariable.parametersHint',
+    defaultMessage:
+      'These settings belong to the input control this attribute is collected with, so they apply wherever it is asked for.',
+    description:
+      'Guidance under the heading over an input control’s settings, saying that they follow the attribute into every interview step that asks for it.',
   },
   optionLabelField: {
     id: 'protocolBuilder.codebookVariable.optionLabelField',
@@ -704,7 +731,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     // schema takes any string as a label, so nothing downstream refuses an
     // answer with no words on it.
     if (optionsShape === 'boolean') {
-      const answerIssues = validateBooleanAnswers(snapshot.draft.options, intl);
+      const answerIssues = validateBooleanAnswers(snapshot.draft.options);
       if (hasBooleanAnswerIssues(answerIssues)) {
         activeRequestId.current = null;
         setIssues(
@@ -726,7 +753,6 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       const parameterIssues = validateParameters(
         parameterShape,
         snapshot.draft.parameters,
-        intl,
       );
       if (hasParameterIssues(parameterIssues)) {
         activeRequestId.current = null;
@@ -789,6 +815,13 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       if (error instanceof InvalidCodebookDraftError) {
         setIssues(error.issues);
       }
+      // The one refused save the researcher fixes in a FIELD rather than by
+      // reading the alert. The message is already encoded — `editing.ts` writes
+      // it that way so it can be decoded where it is rendered — and the alert
+      // shows it too, at the top of a form they may have scrolled past.
+      if (error instanceof DuplicateVariableNameError) {
+        setIssues([{ path: ['name'], message: error.message }]);
+      }
       // AuxiliaryCodebookDraftSession stores and announces the failure. The
       // form deliberately remains mounted with the exact rejected draft.
     }
@@ -799,6 +832,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const optionErrors = messagesAt(issues, 'options');
   const answerIssues = booleanAnswerMessages(issues);
   const parameterIssues = parameterMessages(issues);
+  const blockParameterErrors = parameterIssues[PARAMETERS_BLOCK] ?? [];
   const contradictions = contradictionMessages(issues);
   const failurePresentation = failureFrom(
     snapshot.lastFailure,
@@ -1043,12 +1077,10 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           {optionsShape === 'boolean' && (
             <fieldset className="mb-8 min-w-0">
               <legend className="font-heading mb-2 font-bold">
-                The two answers
+                {intl.formatMessage(messages.answersLegend)}
               </legend>
               <p className="text-muted mb-4 text-sm">
-                Write what the participant chooses between. Left empty, they are
-                offered Yes and No. A negative answer is shown in red when it is
-                selected.
+                {intl.formatMessage(messages.answersHint)}
               </p>
               <VariableBooleanAnswerFields
                 answers={booleanAnswers}
@@ -1062,25 +1094,33 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           {parameterShape !== null && (
             <fieldset
               className="mb-8 min-w-0"
-              aria-invalid={
-                (parameterIssues[PARAMETERS_BLOCK]?.length ?? 0) > 0 ||
-                undefined
+              aria-invalid={blockParameterErrors.length > 0 || undefined}
+              aria-describedby={
+                blockParameterErrors.length > 0
+                  ? `${statusId}-parameter-errors`
+                  : undefined
               }
             >
               <legend className="font-heading mb-2 font-bold">
-                What this control accepts
+                {intl.formatMessage(messages.parametersLegend)}
               </legend>
               <p className="text-muted mb-4 text-sm">
-                These settings belong to the input control this attribute is
-                collected with, so they apply wherever it is asked for.
+                {intl.formatMessage(messages.parametersHint)}
               </p>
-              {(parameterIssues[PARAMETERS_BLOCK]?.length ?? 0) > 0 && (
+              {blockParameterErrors.length > 0 && (
                 <ul
                   id={`${statusId}-parameter-errors`}
                   className="text-destructive mb-3 list-disc pl-5"
                 >
-                  {parameterIssues[PARAMETERS_BLOCK]?.map((message) => (
-                    <li key={message}>{message}</li>
+                  {/* Decoded here for the reason the option list above is: a
+                      refusal about the whole block is held as an encoded
+                      descriptor so it follows a change of language, and this
+                      list is our own markup rather than a field's error
+                      region, which decodes its own. */}
+                  {blockParameterErrors.map((message) => (
+                    <li key={message}>
+                      {formatMessageError(message, intl) ?? message}
+                    </li>
                   ))}
                 </ul>
               )}
@@ -1147,7 +1187,18 @@ function draftOwnedByVariableEditor(
   // and the control that shows them cannot be committed out of step, and a
   // host opens this editor on the control the researcher has just chosen
   // rather than the one the codebook still records.
-  if (optionsShape === 'boolean' && Object.hasOwn(draft, 'component')) {
+  //
+  // Asked of the TYPE rather than of the answer `optionsShapeFor` gives,
+  // because boolean is the one type whose control decides whether the pair
+  // exists at all — so both directions have to land the control with the
+  // answers that depend on it. Written only in the direction that ADDS the
+  // pair, the other direction deletes the words the researcher wrote and
+  // commits a variable still recording the control that showed them: a
+  // participant then meets the default Yes/No where those words used to be.
+  if (
+    draft.type === VariableTypes.boolean &&
+    Object.hasOwn(draft, 'component')
+  ) {
     owned.component = draft.component;
   }
   if (parameterShape !== null) {
