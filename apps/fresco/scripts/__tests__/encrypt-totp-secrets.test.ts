@@ -247,7 +247,7 @@ describe('encryptStoredTotpSecrets', () => {
     expect(update).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith(
       expect.stringContaining(
-        'Discarded 1 unfinished two-factor enrolment(s); they were sealed under a different TOTP_ENCRYPTION_KEY',
+        'Discarded 1 unfinished two-factor enrolment(s); they could not be read with the configured TOTP_ENCRYPTION_KEY',
       ),
     );
   });
@@ -268,6 +268,30 @@ describe('encryptStoredTotpSecrets', () => {
 
     await expect(encryptStoredTotpSecrets(tx, KEY)).rejects.toThrow(
       /TOTP_ENCRYPTION_KEY does not match/,
+    );
+    expect(deleteMany).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('discards an unfinished enrolment whose envelope is malformed', async () => {
+    const { tx, store, update, deleteMany } = makeTx([
+      { id: ABANDONED_ROW.id, secret: 'v1:truncated', verified: false },
+    ]);
+
+    await expect(encryptStoredTotpSecrets(tx, KEY)).resolves.toBeUndefined();
+
+    expect(deleteMany).toHaveBeenCalledTimes(1);
+    expect(store.has(ABANDONED_ROW.id)).toBe(false);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('still fails the deploy when a verified row has a malformed envelope', async () => {
+    const { tx, deleteMany, update } = makeTx([
+      { id: LEGACY_ROW.id, secret: 'v1:truncated', verified: true },
+    ]);
+
+    await expect(encryptStoredTotpSecrets(tx, KEY)).rejects.toThrow(
+      /not a valid encrypted envelope/,
     );
     expect(deleteMany).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();

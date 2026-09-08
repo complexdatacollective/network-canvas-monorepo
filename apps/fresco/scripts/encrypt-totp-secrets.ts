@@ -76,17 +76,18 @@ export async function encryptStoredTotpSecrets(
       try {
         decryptTotpSecret(row.secret, keyMaterial);
       } catch (error) {
-        if (
-          error instanceof TotpSecretDecryptError &&
-          error.reason === 'wrong-key'
-        ) {
-          // An unfinished enrolment sealed under an earlier key holds a seed
-          // nobody can use; discarding it is safe and must not block the
-          // deploy. A verified account's row is a lockout, so that still fails.
-          if (!row.verified) {
-            unreadableUnfinished.push(row.id);
-            continue;
-          }
+        if (!(error instanceof TotpSecretDecryptError)) {
+          throw error;
+        }
+        // An unfinished enrolment that cannot be read, whatever the reason,
+        // holds a seed nobody can use; discarding it is safe and must not
+        // block the deploy. A verified account's row is a lockout, so that
+        // still fails.
+        if (!row.verified) {
+          unreadableUnfinished.push(row.id);
+          continue;
+        }
+        if (error.reason === 'wrong-key') {
           throw new Error(
             `${ENV_VAR} does not match the key that encrypted the stored TOTP secrets, so no account with two-factor authentication could sign in. Restore the original key. If it is lost, delete the affected TotpCredential and RecoveryCode rows so those accounts can enrol again.`,
             { cause: error },
@@ -108,7 +109,7 @@ export async function encryptStoredTotpSecrets(
   await discardUnfinishedEnrolments(
     prisma,
     unreadableUnfinished,
-    `they were sealed under a different ${ENV_VAR}. Enrolment can be started again.`,
+    `they could not be read with the configured ${ENV_VAR}. Enrolment can be started again.`,
   );
 
   console.log(
