@@ -60,6 +60,7 @@ import { isStageType } from './stage-types.ts';
 import {
   attributeValidationIssues,
   type AttributedProtocolValidationIssue,
+  type CreatedStagePlacement,
 } from './validationAttribution.ts';
 
 /**
@@ -1238,6 +1239,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         stageIndex: stageIndexForValidation(
           this.snapshot.protocolSections,
           this.snapshot.editedSection.identity.id,
+          this.options.creation,
         ),
         staged: promotion.staged,
         secretHandle: (resourceId) => resources.secretHandle(resourceId),
@@ -1263,6 +1265,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
           this.snapshot.protocolSections,
           this.snapshot.attribution,
           this.snapshot.manifestRevision,
+          this.createdStagePlacement(),
         ),
       );
     }
@@ -2294,6 +2297,22 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     }
   }
 
+  /**
+   * Where this session's stage sits in the protocol its draft is judged
+   * against, for a stage that does not exist yet.
+   *
+   * `undefined` for an ordinary edit, which the authoritative stage order
+   * already lists. See {@link CreatedStagePlacement}.
+   */
+  private createdStagePlacement(): CreatedStagePlacement | undefined {
+    const creation = this.options.creation;
+    if (creation === undefined) return undefined;
+    return {
+      stageId: this.snapshot.editedSection.identity.id,
+      position: creation.position,
+    };
+  }
+
   private async runValidation(): Promise<ProtocolBuilderValidation> {
     const version = ++this.validationVersion;
     const draft = stageDocument(
@@ -2308,6 +2327,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       stageIndex: stageIndexForValidation(
         this.snapshot.protocolSections,
         this.snapshot.editedSection.identity.id,
+        this.options.creation,
       ),
     });
     const candidate = this.options.buildCandidate({
@@ -2342,6 +2362,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         this.snapshot.protocolSections,
         this.snapshot.attribution,
         this.snapshot.manifestRevision,
+        this.createdStagePlacement(),
       ),
     });
     this.replaceSnapshot({ validation, validatedProtocol: null });
