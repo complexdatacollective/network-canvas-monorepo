@@ -6,7 +6,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import type { MessageRule } from '@codaco/fresco-ui/form/validation/helpers';
 
 import {
-  orphanedSortProperties,
+  unusableSortProperties,
   type SortableProperty,
 } from '../fields/sortOrderOptions.ts';
 import type {
@@ -54,7 +54,7 @@ export type RosterColumns = Readonly<{
    * `undefined` is the state that says nothing at all — no file chosen yet, the
    * bytes still being read, or a file that could not be read — where judging a
    * row would report every one of them as dangling. See
-   * `orphanedSortProperties`, which draws the same line for the same reason.
+   * `unusableSortProperties`, which draws the same line for the same reason.
    */
   names: readonly string[] | undefined;
   /** No data file is chosen, so there is nothing to configure against. */
@@ -234,11 +234,11 @@ function useOrphanedColumnNames(
     // does not know the columns yet" guard, and its skipping of the
     // source-order sentinel, none of which differ here. `undefined` is handed
     // straight through, because it means the same thing on both sides.
-    const found = orphanedSortProperties(
+    const found = unusableSortProperties(
       named?.map((column) => ({ property: column })),
       names?.map((name) => ({ value: name, label: name })),
       intl,
-    ).map(({ value }) => value);
+    ).map(({ option }) => option.value);
     return found.length === 0 ? NO_COLUMNS : found;
   }, [intl, named, names]);
 }
