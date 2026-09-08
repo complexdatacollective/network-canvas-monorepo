@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isPossibleServerActionRequest,
-  isPublicParticipantPath,
+  isResearcherActionPath,
   proxy,
 } from '~/proxy';
 
@@ -47,18 +47,33 @@ const SERVER_ACTION_REQUEST_SHAPES: Record<
 };
 
 /**
- * Routes that bind no Server Action of their own — the ones a participant
- * reaches without signing in (verified by searching the interview and
- * onboard trees for 'use server' imports reachable from a client component),
- * plus the bare site root, which is a real page (`app/page.tsx`) whose only
- * job is a redirect to `/dashboard` that Server Action dispatch runs ahead
- * of. A request naming an action here, whatever URL it targets, is never
- * legitimate traffic and always denotes an attempt to reach a researcher-only
- * action through a route an institutional reverse proxy would otherwise
- * leave open.
+ * Every route that actually binds a Server Action, per
+ * `.next/server/server-reference-manifest.json` after `pnpm build` — the
+ * setup wizard, sign-in (including two-factor setup), the not-yet-configured
+ * page, and the dashboard. A genuine Server Action here must keep working.
  */
-const PUBLIC_SERVER_ACTION_ROUTES = [
+const RESEARCHER_ACTION_ROUTES = [
+  '/signin',
+  '/signin/two-factor-setup',
+  '/setup',
+  '/expired',
+  '/dashboard',
+  '/dashboard/settings',
+];
+
+/**
+ * Everything else, none of which the manifest lists as binding a Server
+ * Action: the participant routes and their infrastructure exceptions, the
+ * site root (a real page — `app/page.tsx` — whose only job is a redirect
+ * that Server Action dispatch runs ahead of), `/reset` (a GET-only route
+ * handler), researcher-only API routes (route handlers parse their own
+ * body; none expects a Server Action), and — the case a finite list of
+ * "known public paths" can never cover — arbitrary paths nobody defined,
+ * which Next's dispatcher still reaches before failing to resolve them.
+ */
+const OTHER_ROUTES = [
   '/',
+  '/reset',
   '/interview/clzq3n5p40000356m1a2b3c4d',
   '/interview/clzq3n5p40000356m1a2b3c4d/sync',
   '/interview/finished',
@@ -68,37 +83,25 @@ const PUBLIC_SERVER_ACTION_ROUTES = [
   '/api/uploadthing',
   '/api/health',
   '/api/interviews/clzq3n5p40000356m1a2b3c4d/finish',
-];
-
-/**
- * Researcher and infrastructure routes. The dashboard is reachable from the
- * public Internet by default — the network restriction in the IT FAQ is an
- * optional deployment choice, not something Fresco enforces itself — so a
- * genuine dashboard Server Action must keep working unmodified here.
- * `/expired` binds a real (dev-only) Server Action on its reset control, so
- * it belongs here rather than in the public list even though the FAQ's
- * network restriction must separately cover it.
- */
-const RESEARCHER_ROUTES = [
-  '/signin',
-  '/setup',
-  '/reset',
-  '/expired',
-  '/dashboard',
-  '/dashboard/settings',
   '/api/export-interviews/batch',
   '/api/storage/presign',
   '/api/generate-test-interviews',
   '/api/v1/interview',
+  '/this-path-does-not-exist',
+  '/dashboardish',
+  '/setupwizard',
 ];
 
-describe('isPublicParticipantPath', () => {
-  it.each(PUBLIC_SERVER_ACTION_ROUTES)('treats %s as public', (path) => {
-    expect(isPublicParticipantPath(path)).toBe(true);
-  });
+describe('isResearcherActionPath', () => {
+  it.each(RESEARCHER_ACTION_ROUTES)(
+    'treats %s as a researcher-action path',
+    (path) => {
+      expect(isResearcherActionPath(path)).toBe(true);
+    },
+  );
 
-  it.each(RESEARCHER_ROUTES)('treats %s as researcher-only', (path) => {
-    expect(isPublicParticipantPath(path)).toBe(false);
+  it.each(OTHER_ROUTES)('treats %s as everything else', (path) => {
+    expect(isResearcherActionPath(path)).toBe(false);
   });
 });
 
@@ -138,28 +141,25 @@ describe('isPossibleServerActionRequest', () => {
   });
 });
 
-describe('Server Action requests to public participant routes', () => {
+describe('Server Action requests to every route without a bound action', () => {
   for (const [label, build] of Object.entries(SERVER_ACTION_REQUEST_SHAPES)) {
     describe(label, () => {
-      it.each(PUBLIC_SERVER_ACTION_ROUTES)(
-        'refuses a request to %s',
-        async (path) => {
-          const response = await proxy(build(path));
+      it.each(OTHER_ROUTES)('refuses a request to %s', async (path) => {
+        const response = await proxy(build(path));
 
-          expect(response.status).toBe(403);
-          const body: unknown = await response.json();
-          expect(body).toMatchObject({ error: expect.any(String) });
-          expect((body as { error: string }).error.length).toBeGreaterThan(0);
-        },
-      );
+        expect(response.status).toBe(403);
+        const body: unknown = await response.json();
+        expect(body).toMatchObject({ error: expect.any(String) });
+        expect((body as { error: string }).error.length).toBeGreaterThan(0);
+      });
     });
   }
 });
 
-describe('Server Action requests to researcher routes', () => {
+describe('Server Action requests to routes with a bound action', () => {
   for (const [label, build] of Object.entries(SERVER_ACTION_REQUEST_SHAPES)) {
     describe(label, () => {
-      it.each(RESEARCHER_ROUTES)(
+      it.each(RESEARCHER_ACTION_ROUTES)(
         'lets a request to %s through',
         async (path) => {
           const response = await proxy(build(path));
@@ -174,7 +174,7 @@ describe('Server Action requests to researcher routes', () => {
 });
 
 describe('requests that are not a possible Server Action', () => {
-  it.each([...PUBLIC_SERVER_ACTION_ROUTES, ...RESEARCHER_ROUTES])(
+  it.each([...RESEARCHER_ACTION_ROUTES, ...OTHER_ROUTES])(
     'always passes a plain GET to %s through',
     async (path) => {
       const response = await proxy(

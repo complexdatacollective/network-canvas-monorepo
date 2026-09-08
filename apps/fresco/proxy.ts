@@ -9,30 +9,32 @@ import { frescoCatalogs } from '~/src/locales/catalogs';
 
 /**
  * Next.js dispatches a Server Action by the function a request names,
- * independent of the URL the request is sent to — so an institutional reverse
- * proxy that restricts researcher paths and leaves these public ones open
- * does not by itself stop a request carrying a valid session cookie and an
- * action ID lifted from the public `/_next/` bundle from reaching a
- * researcher-only action (export, deletion, settings) through one of these
- * routes. None of them binds a Server Action today, so a request naming one
- * here is never legitimate traffic and is refused outright. The bare site
- * root is included: `app/page.tsx` is a real page (a redirect to
- * `/dashboard`), and Server Action dispatch happens before that redirect
- * runs, so it needs the same treatment even though it renders no participant
- * content of its own.
+ * independent of the URL it is sent to and of whether that URL matches any
+ * route at all — a request for a path nobody defined still reaches the
+ * dispatcher, it just fails to find the action afterwards. So an
+ * institutional reverse proxy that restricts researcher paths and leaves
+ * everything else open does not by itself stop a request carrying a valid
+ * session cookie and an action id lifted from the public `/_next/` bundle
+ * from reaching a researcher-only action (export, deletion, settings)
+ * through any path the proxy does not happen to block, known or not.
+ *
+ * A blocklist of "public" paths can therefore never be complete — it would
+ * have to enumerate every path nobody has thought to restrict, including
+ * every typo, removed route, and future addition. This is an allowlist
+ * instead: only the pages that `server-reference-manifest.json` (checked
+ * with `pnpm build`) actually shows binding a Server Action get to receive
+ * one; every other path, whatever it is, is refused. `/reset` is a GET-only
+ * route handler with no bound action, so it is deliberately left out.
  */
-const PUBLIC_PARTICIPANT_PATHS: readonly RegExp[] = [
-  /^\/$/,
-  /^\/interview\//,
-  /^\/onboard\//,
-  /^\/api\/assets\//,
-  /^\/api\/uploadthing(?:\/|$)/,
-  /^\/api\/health(?:\/|$)/,
-  /^\/api\/interviews\/[^/]+\/finish\/?$/,
+const RESEARCHER_ACTION_PATHS: readonly RegExp[] = [
+  /^\/signin(?:\/|$)/,
+  /^\/setup(?:\/|$)/,
+  /^\/expired(?:\/|$)/,
+  /^\/dashboard(?:\/|$)/,
 ];
 
-export function isPublicParticipantPath(pathname: string): boolean {
-  return PUBLIC_PARTICIPANT_PATHS.some((pattern) => pattern.test(pathname));
+export function isResearcherActionPath(pathname: string): boolean {
+  return RESEARCHER_ACTION_PATHS.some((pattern) => pattern.test(pathname));
 }
 
 /**
@@ -63,7 +65,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!isPublicParticipantPath(request.nextUrl.pathname)) {
+  if (isResearcherActionPath(request.nextUrl.pathname)) {
     return NextResponse.next();
   }
 
