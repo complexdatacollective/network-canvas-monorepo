@@ -510,18 +510,12 @@ export async function reconcileStudioRecoveryAuthorization(options: {
     client = await options.pool.connect();
     backup = await options.backupPool.connect();
     await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-    await backup.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    await backup.query('BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY');
     await client.query(`SET LOCAL lock_timeout = '10s';
       SET LOCAL statement_timeout = '5min';
       SET LOCAL idle_in_transaction_session_timeout = '5min'`);
     await backup.query(`SET LOCAL statement_timeout = '5min';
       SET LOCAL idle_in_transaction_session_timeout = '5min'`);
-    const backupPid = (
-      await backup.query<{ pid: number }>(
-        'SELECT pg_catalog.pg_backend_pid() AS pid',
-      )
-    ).rows[0]?.pid;
-    if (!backupPid) throw new Error(FAILURE);
     await assertOperator(client, policy);
     await assertCurrentSchema(client, policy);
     await assertBackupAccess(backup, (checked) =>
@@ -530,9 +524,8 @@ export async function reconcileStudioRecoveryAuthorization(options: {
     await assertSamePostgresDatabase(client, backup).catch(() => {
       throw new Error(FAILURE);
     });
-    await assertStudioRecoveryQuarantine(client, {
+    await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
-      allowedClientPids: [backupPid],
       transaction: { isolation: 'serializable', readOnly: false },
     });
     await lockRecoveryAuthorizationState(client);
@@ -545,9 +538,8 @@ export async function reconcileStudioRecoveryAuthorization(options: {
     );
     assertRows(enabled.rows, [{ count: 0 }]);
     await reconcileInventories(client, evidence, 'revoke-stale');
-    await assertStudioRecoveryQuarantine(client, {
+    await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
-      allowedClientPids: [backupPid],
       transaction: { isolation: 'serializable', readOnly: false },
     });
     const destination = (
@@ -624,18 +616,12 @@ export async function authorizeCurrentStudioRecovery(options: {
     client = await options.pool.connect();
     backup = await options.backupPool.connect();
     await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-    await backup.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    await backup.query('BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY');
     await client.query(`SET LOCAL lock_timeout = '10s';
       SET LOCAL statement_timeout = '5min';
       SET LOCAL idle_in_transaction_session_timeout = '5min'`);
     await backup.query(`SET LOCAL statement_timeout = '5min';
       SET LOCAL idle_in_transaction_session_timeout = '5min'`);
-    const backupPid = (
-      await backup.query<{ pid: number }>(
-        'SELECT pg_catalog.pg_backend_pid() AS pid',
-      )
-    ).rows[0]?.pid;
-    if (!backupPid) throw new Error(FAILURE);
     await assertOperator(client, policy);
     await assertCurrentSchema(client, policy);
     await assertBackupAccess(backup, (checked) =>
@@ -644,9 +630,8 @@ export async function authorizeCurrentStudioRecovery(options: {
     await assertSamePostgresDatabase(client, backup).catch(() => {
       throw new Error(FAILURE);
     });
-    await assertStudioRecoveryQuarantine(client, {
+    await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
-      allowedClientPids: [backupPid],
       transaction: { isolation: 'serializable', readOnly: false },
     });
     await lockRecoveryAuthorizationState(client);
@@ -676,9 +661,8 @@ export async function authorizeCurrentStudioRecovery(options: {
     assertRows(finalEnabled, eligibleUserIds);
     await reconcileInventories(client, evidence, 'require-exact');
     await assertRestoredAdmissionInvalidated(client);
-    await assertStudioRecoveryQuarantine(client, {
+    await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
-      allowedClientPids: [backupPid],
       transaction: { isolation: 'serializable', readOnly: false },
     });
     const destination = (

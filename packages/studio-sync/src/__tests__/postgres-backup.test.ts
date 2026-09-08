@@ -40,6 +40,10 @@ it.each([
   { completeSchemas: ['registry_data', 'registry_data'] },
   { completeSchemas: ['registry_data'] },
   { expectedTables: [] },
+  { timeoutMs: 0 },
+  { timeoutMs: Number.NaN },
+  { timeoutMs: Number.POSITIVE_INFINITY },
+  { timeoutMs: 2_147_483_648 },
   { expectedTables: [{ schema: 'registry_data', name: '' }] },
   { expectedTables: [{ schema: 'registry_data', name: 'x'.repeat(64) }] },
   {
@@ -750,7 +754,13 @@ it('preserves a caller-owned backup transaction while running its capture guard'
 
 it('returns at the bounded deadline and prevents a late guard from committing', async () => {
   const f = await fixture();
+  const timerSpy = vi.spyOn(globalThis, 'setTimeout');
   try {
+    const configuredTimeoutMs = 60_000;
+    const timeoutVerifier = createPostgresBackupVerifier({
+      ...f.config,
+      timeoutMs: configuredTimeoutMs,
+    });
     const started = Promise.withResolvers<void>();
     const release = Promise.withResolvers<void>();
     const finished = Promise.withResolvers<void>();
@@ -760,13 +770,32 @@ it('returns at the bounded deadline and prevents a late guard from committing', 
           mockRestore: () => void;
         }
       | undefined;
-    const verification = f.verify(f.backup, async (client) => {
+    const verification = timeoutVerifier(f.backup, async (client) => {
       querySpy = vi.spyOn(client, 'query');
       started.resolve();
       await release.promise;
       finished.resolve();
     });
-    await started.promise;
+    // If the structural scan rejects before reaching the guard, fail at that
+    // point instead of waiting for an unbounded start promise.
+    await Promise.race([
+      started.promise,
+      verification.then(
+        () => {
+          throw new Error('Backup verification unexpectedly succeeded');
+        },
+        (error: unknown) => {
+          throw error;
+        },
+      ),
+    ]);
+    const timeoutCall = timerSpy.mock.calls.find(
+      ([, delay]) => delay === configuredTimeoutMs,
+    );
+    expect(timeoutCall).toBeDefined();
+    const timeoutCallback = timeoutCall?.[0];
+    expect(typeof timeoutCallback).toBe('function');
+    (timeoutCallback as () => void)();
     await expect(verification).rejects.toThrow(configuration.failureCode);
     release.resolve();
     await finished.promise;
@@ -781,6 +810,7 @@ it('returns at the bounded deadline and prevents a late guard from committing', 
     querySpy!.mockRestore();
     await expect(f.verify(f.backup)).resolves.toBeUndefined();
   } finally {
+    timerSpy.mockRestore();
     await f.dispose();
   }
 }, 15_000);

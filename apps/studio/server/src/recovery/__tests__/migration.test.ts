@@ -31,12 +31,9 @@ it.skipIf(!database)(
       const through0008 = migrations.slice(0, 8);
       const fingerprint0008 = through0008.at(-1)?.manifest.fingerprint;
       if (!fingerprint0008) throw new Error('Migration 0008 is required.');
-      await migrateDatabase(
-        scratch.pool,
-        through0008,
-        fingerprint0008,
-        [login],
-      );
+      await migrateDatabase(scratch.pool, through0008, fingerprint0008, [
+        login,
+      ]);
       await seedTestEncryptionKeyVerifications(scratch.pool, [
         { purpose: 'integration-enc', keyId: 'recovery-migration-key' },
       ]);
@@ -59,12 +56,9 @@ it.skipIf(!database)(
             'study.updated', '{}'::jsonb);
       `);
 
-      await migrateDatabase(
-        scratch.pool,
-        migrations,
-        SCHEMA_FINGERPRINT,
-        [login],
-      );
+      await migrateDatabase(scratch.pool, migrations, SCHEMA_FINGERPRINT, [
+        login,
+      ]);
 
       const retained = await scratch.pool.query<{
         id: string;

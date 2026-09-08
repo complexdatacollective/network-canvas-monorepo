@@ -583,9 +583,12 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "has_more": {
+                      "type": "boolean"
                     }
                   },
-                  "required": ["data", "next_cursor"],
+                  "required": ["data", "next_cursor", "has_more"],
                   "additionalProperties": false
                 }
               }
@@ -3670,9 +3673,12 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "has_more": {
+                      "type": "boolean"
                     }
                   },
-                  "required": ["data", "next_cursor"],
+                  "required": ["data", "next_cursor", "has_more"],
                   "additionalProperties": false
                 }
               }
@@ -4782,9 +4788,12 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "has_more": {
+                      "type": "boolean"
                     }
                   },
-                  "required": ["data", "next_cursor"],
+                  "required": ["data", "next_cursor", "has_more"],
                   "additionalProperties": false
                 }
               }

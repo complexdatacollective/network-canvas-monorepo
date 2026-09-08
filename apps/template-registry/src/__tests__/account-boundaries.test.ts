@@ -117,6 +117,7 @@ it('binds every private operator command to its actual session and immutable ope
       },
     ],
     next_cursor: null,
+    has_more: false,
   });
   for (const [method, path, body] of [
     ['PUT', `/entries/${published.entry.id}/curation`, { curated: true }],

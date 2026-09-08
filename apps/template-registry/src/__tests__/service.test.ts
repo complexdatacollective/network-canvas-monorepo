@@ -21,6 +21,7 @@ import {
 const list = z.strictObject({
   data: z.array(EntrySummarySchema),
   next_cursor: z.string().nullable(),
+  has_more: z.boolean(),
 });
 async function problem(response: Response, status: number, code: string) {
   expect(response.status).toBe(status);
@@ -49,7 +50,7 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
   it('publishes frozen metadata and verified bytes with a registry credential, then reads them anonymously', async () => {
     expect(
       list.parse(await (await fixture.request('GET', '/entries')).json()),
-    ).toEqual({ data: [], next_cursor: null });
+    ).toEqual({ data: [], next_cursor: null, has_more: false });
     const account = await fixture.account();
     const created = await fixture.published(account.token);
     expect(created.entry).toMatchObject({
@@ -339,6 +340,7 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
         },
       ],
       next_cursor: null,
+      has_more: false,
     });
     expect(
       JSON.stringify(
@@ -439,12 +441,22 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     const page = list.parse(await (await fixture.request('GET', query)).json());
     expect(page.data.map((entry) => entry.id)).toEqual([third.entry.id]);
     expect(page.next_cursor).toBeTruthy();
+    expect(page.has_more).toBe(true);
     const next = list.parse(
       await (
         await fixture.request('GET', `${query}&cursor=${page.next_cursor}`)
       ).json(),
     );
     expect(next.data.map((entry) => entry.id)).toEqual([second.entry.id]);
+    expect(next.has_more).toBe(true);
+    const last = list.parse(
+      await (
+        await fixture.request('GET', `${query}&cursor=${next.next_cursor}`)
+      ).json(),
+    );
+    expect(last.data.map((entry) => entry.id)).toEqual([first.entry.id]);
+    expect(last.next_cursor).toBeNull();
+    expect(last.has_more).toBe(false);
     await problem(
       await fixture.request('GET', `/entries?cursor=${page.next_cursor}`),
       400,

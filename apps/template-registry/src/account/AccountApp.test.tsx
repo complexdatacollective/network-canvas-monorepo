@@ -66,7 +66,7 @@ function clientFixture() {
       .mockResolvedValue({ ok: true }),
     reports: vi
       .fn<RegistryAccountClient['reports']>()
-      .mockResolvedValue({ data: [], next_cursor: null }),
+      .mockResolvedValue({ data: [], next_cursor: null, has_more: false }),
     curate: vi
       .fn<RegistryAccountClient['curate']>()
       .mockResolvedValue({ ok: true }),

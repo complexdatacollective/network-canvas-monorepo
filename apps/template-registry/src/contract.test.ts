@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+
 import { OpenAPIHandler } from '@orpc/openapi/fetch';
 import { implement, ORPCError } from '@orpc/server';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -569,6 +571,13 @@ describe('generated registry OpenAPI', () => {
   let document: Awaited<ReturnType<typeof generateRegistryOpenApi>>;
   beforeAll(async () => {
     document = await generateRegistryOpenApi();
+  });
+
+  it('keeps the published specification equal to the runtime Zod contract', async () => {
+    const published = JSON.parse(
+      await readFile(new URL('../spec/openapi.json', import.meta.url), 'utf8'),
+    );
+    expect(published).toEqual(document);
   });
 
   it('covers every operation, path target and public problem code', () => {
