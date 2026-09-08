@@ -1,8 +1,9 @@
 # Managed Studio observability implementation
 
-Status: Registry operational metrics and the collector's durable budget primitive
-are implemented and locally verified on the integration branch. The collector,
-independent budget anchor adapter and live account qualification remain unfinished.
+Status: Registry operational metrics, strict Fly log framing, the durable budget,
+independent anchor state machine, DynamoDB adapter and bounded HTTP client are
+implemented and locally verified on the integration branch. The running
+collector and live account qualification remain unfinished.
 
 Use a dedicated New Relic Free organization for operational logs and raw dimensional metrics, with Original Data retention of 30 days. Keep PostHog as the sole application exception destination. Do not install New Relic APM, browser, trace or exception instrumentation. Operator alerts go independently through New Relic email to `info@networkcanvas.com`, the existing repository security contact. This avoids dependence on Studio, its database, Postmark or a delivery queue during an incident. The destination must be verified and tested before qualification.
 
@@ -48,3 +49,21 @@ Sources checked on 2026-09-08:
 - [NRQL lost signal](https://docs.newrelic.com/docs/alerts/create-alert/create-alert-condition/create-nrql-alert-conditions/), [email notifications](https://docs.newrelic.com/docs/alerts/get-notified/notification-integrations/) and [usage alerts](https://docs.newrelic.com/docs/accounts/accounts-billing/new-relic-one-pricing-billing/usage-queries-alerts/).
 - [Data Budget prerequisites](https://docs.newrelic.com/docs/data-apis/manage-data/data-ingest-budgets/overview/) and [Pipeline Control costs](https://docs.newrelic.com/docs/new-relic-control/pipeline-control/costs/).
 - [Remote-write sent versus billed bytes](https://docs.newrelic.com/docs/infrastructure/prometheus-integrations/troubleshooting/compare-rw-data-sent-billed-bytes/).
+
+## Integrated local evidence: 2026-09-08
+
+All 53 budget, HTTP anchor, bounded client and DynamoDB adapter controls pass
+in the combined branch, with the real DynamoDB Local cases enabled and no
+skips. The end-to-end path covers premature final-signal refusal followed by
+valid spend, exact exhaustion, repeated refusal without losing the final signal,
+and authoritative readback. Concurrent reservations serialize; uncertain remote
+commits poison the local instance and cannot grant bytes. Body/deadline and
+account-binding controls passed deliberate mutations. Repository Knip passes
+with its required synthetic database environment.
+
+The Fly envelope and standalone sanitizer pass 23 integrated controls. The
+shared parser refuses duplicate members, including Unicode-equivalent names;
+subject length is bounded before splitting and provenance bytes count toward
+the batch cap. Deliberate removal of each guard fails its corresponding oracle.
+These fixtures do not authenticate a real Fly subscription or qualify provider
+storage expansion, retention, account limits or operator email delivery.
