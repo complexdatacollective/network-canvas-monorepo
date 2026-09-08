@@ -54,7 +54,7 @@ export async function POST(
     const error = ensureError(e);
 
     after(async () => {
-      await captureException(error, { interviewId });
+      await captureException(error, { context: 'interview.finish' });
       await flushPostHog();
     });
 

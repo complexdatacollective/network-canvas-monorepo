@@ -2,6 +2,7 @@
 
 import type { PostHog } from 'posthog-js';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { v4 as uuid } from 'uuid';
 
 import type {
   InterviewAnalyticsMetadata,
@@ -39,26 +40,37 @@ export function AnalyticsProvider({
     () => computeSuperProperties(analytics, payload),
     [analytics, payload],
   );
-  const distinctId = payload.session.id;
+  const sessionId = payload.session.id;
 
-  // One entity-id pseudonym mapping per interview session, held in memory only
-  // (see ./entityIds). It outlives the tracker deliberately: a tracker rebuilt
-  // mid-session — a new super-property object, a client resolving late — must
-  // keep reporting the same pseudonym for a node, or one node's events split in
-  // two. Keyed on the session id so a different session can never reuse a
-  // mapping, in a ref rather than a memo because a discarded memo would silently
-  // renumber a live session's nodes.
-  const pseudonymiserRef = useRef<{
+  // One analytics identity per interview session, held in memory only. It
+  // carries two things that must both outlive the tracker: the entity-id
+  // pseudonym mapping (see ./entityIds), and the `distinct_id` the tracker
+  // stamps on every event. A tracker rebuilt mid-session — a new
+  // super-property object, a client resolving late — must keep reporting the
+  // same pseudonym for a node and the same distinct id, or one session's
+  // events split in two. Keyed on the session id so a different session can
+  // never reuse a mapping, in a ref rather than a memo because a discarded
+  // memo would silently renumber a live session.
+  //
+  // The distinct id is a random value rather than the session id itself. In a
+  // remote deployment the session id is the participant's unauthenticated
+  // access link, and analytics leave the deployment's infrastructure; a
+  // pseudonym keeps events grouped per session without carrying that link.
+  const identityRef = useRef<{
     sessionId: string;
+    distinctId: string;
     pseudonymise: EntityIdPseudonymiser;
   } | null>(null);
-  if (pseudonymiserRef.current?.sessionId !== distinctId) {
-    pseudonymiserRef.current = {
-      sessionId: distinctId,
+  let identity = identityRef.current;
+  if (identity?.sessionId !== sessionId) {
+    identity = {
+      sessionId,
+      distinctId: uuid(),
       pseudonymise: createEntityIdPseudonymiser(),
     };
+    identityRef.current = identity;
   }
-  const pseudonymiseEntityId = pseudonymiserRef.current.pseudonymise;
+  const { distinctId, pseudonymise: pseudonymiseEntityId } = identity;
 
   useEffect(() => {
     if (disableAnalytics) {
