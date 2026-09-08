@@ -171,11 +171,12 @@ has to have exactly one:
 - `compound-edit/compoundRequestMessages.ts` — the refusals the session writes
   before sending a compound edit and a host writes again on receiving one,
   which is why `compoundEdit.request*` lives in neither module.
-- `codebook/codebookMessages.ts` — the blocked-section and saving copy the
-  entity editor and the validation editor both show, and the missing-comparison
-  refusal both validation editors produce. It declares ids in two areas, which
-  is allowed: an area names the copy's subject, and a file is only obliged to
-  be the single home of each id.
+- `codebook/codebookMessages.ts` — the saving copy the entity editor and the
+  validation editor both show, and the missing-comparison refusal both
+  validation editors produce. It declares ids in two areas, which is allowed:
+  an area names the copy's subject, and a file is only obliged to be the single
+  home of each id. A blocked save is NOT here: every refused codebook change,
+  blocked included, is read once by `codebook/compoundFailureCopy.ts`.
 - `form/arrayFields/arrayMessages.ts` — the generic row noun every array-field
   sentence is built around.
   `sections/sectionMessages.ts` was a sixth. It held the few words family D's
