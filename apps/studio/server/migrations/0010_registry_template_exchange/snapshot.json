@@ -1,6 +1,6 @@
 {
   "dialect": "postgres",
-  "id": "ab117e89-dbaa-4a5f-98db-6f5d5ae6e182",
+  "id": "0449f921-2712-4a10-b113-c585df4995c1",
   "prevIds": ["3cf01286-4ea1-4c6f-9d59-6bd56a69b87f"],
   "version": "8",
   "ddl": [
@@ -11043,6 +11043,41 @@
           "opclass": null
         },
         {
+          "value": "(\"registry_origin\"->>'registry_url')",
+          "isExpression": true,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "(\"registry_origin\"->>'entry_id')",
+          "isExpression": true,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": "\"registry_origin\" IS NOT NULL",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "template_versions_registry_entry_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "template_versions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "team_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
           "value": "section_hash",
           "isExpression": false,
           "asc": true,
@@ -14600,7 +14635,7 @@
       "table": "template_versions"
     },
     {
-      "value": "\"registry_origin\" IS NULL OR (\n        jsonb_typeof(\"registry_origin\") = 'object'\n        AND \"registry_origin\" ?& ARRAY['registry_url','entry_id','source_version_hash','fetched_at']\n        AND jsonb_object_length(\"registry_origin\") = 4\n        AND (\"registry_origin\"->>'registry_url') ~ '^https://[^@/?#]+$'\n        AND (\"registry_origin\"->>'entry_id') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'\n        AND (\"registry_origin\"->>'source_version_hash') ~ '^[0-9a-f]{64}$'\n        AND (\"registry_origin\"->>'fetched_at') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$'\n      )",
+      "value": "\"registry_origin\" IS NULL OR (\n        jsonb_typeof(\"registry_origin\") = 'object'\n        AND \"registry_origin\" ?& ARRAY['registry_url','entry_id','source_version_hash','fetched_at']\n        AND (\"registry_origin\" - ARRAY['registry_url','entry_id','source_version_hash','fetched_at']) = '{}'::jsonb\n        AND (\"registry_origin\"->>'registry_url') ~ '^https://[^@/?#]+$'\n        AND (\"registry_origin\"->>'entry_id') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'\n        AND (\"registry_origin\"->>'source_version_hash') ~ '^[0-9a-f]{64}$'\n        AND (\"registry_origin\"->>'fetched_at') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$'\n      )",
       "name": "template_versions_registry_origin_check",
       "entityType": "checks",
       "schema": "public",

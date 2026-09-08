@@ -1639,10 +1639,6 @@ CREATE OR REPLACE TRIGGER template_registry_publications_immutable
   BEFORE UPDATE OR DELETE ON template_registry_publications
   FOR EACH ROW EXECUTE FUNCTION template_versions_are_immutable();
 
-CREATE UNIQUE INDEX IF NOT EXISTS template_versions_registry_entry_idx
-  ON template_versions (team_id, (registry_origin->>'registry_url'), (registry_origin->>'entry_id'))
-  WHERE registry_origin IS NOT NULL;
-
 -- Adding a pin after publication would change what the version resolves to
 -- while its frozen manifest and hash stayed unchanged (version_sections).
 CREATE OR REPLACE FUNCTION template_version_sections_pins_are_frozen() RETURNS trigger AS $$

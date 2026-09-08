@@ -2,8 +2,8 @@
   "format": 1,
   "id": "0010_registry_template_exchange",
   "previous": "0009_recovery_authorization",
-  "fingerprint": "383cadccb711e5d29c8a63994313325e16e6f11074087d4995ff359f6469c4b1",
-  "snapshotHash": "0385150dd94ae5eb0f0c41e467599df4b004a01f6733d8122bca2751c405f04f",
-  "sqlHash": "981404ab422778f344f247eceafbc363c966e61ebf1a385029adff8f3eb57769",
-  "sidecarsHash": "38bb80c923cf9343cb0448cc0d0fd971d38cbbba53f3de026288c6fccf7442bc"
+  "fingerprint": "6cbf38fd1d802cc3a723c65e5d65d53ce568d0f4116d898d23ae8f305e0b439a",
+  "snapshotHash": "4570145c3fb7f5fb40e815e58ea004cf7c00debda93b14b73febf18616399177",
+  "sqlHash": "fc4998b8a4f1bedf1563d2bcebf57d65b66e68ef5003d9104384a77d3093a03f",
+  "sidecarsHash": "004885a39c0f7f8fa2245215ab8122c2f9c279b356238b4bc5ca7f2917cedb93"
 }

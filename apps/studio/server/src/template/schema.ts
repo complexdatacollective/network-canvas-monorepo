@@ -21,6 +21,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -135,13 +136,20 @@ const templateVersions = pgTable(
       sql`${table.registryOrigin} IS NULL OR (
         jsonb_typeof(${table.registryOrigin}) = 'object'
         AND ${table.registryOrigin} ?& ARRAY['registry_url','entry_id','source_version_hash','fetched_at']
-        AND jsonb_object_length(${table.registryOrigin}) = 4
+        AND (${table.registryOrigin} - ARRAY['registry_url','entry_id','source_version_hash','fetched_at']) = '{}'::jsonb
         AND (${table.registryOrigin}->>'registry_url') ~ '^https://[^@/?#]+$'
         AND (${table.registryOrigin}->>'entry_id') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
         AND (${table.registryOrigin}->>'source_version_hash') ~ '^[0-9a-f]{64}$'
         AND (${table.registryOrigin}->>'fetched_at') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$'
       )`,
     ),
+    uniqueIndex('template_versions_registry_entry_idx')
+      .on(
+        table.teamId,
+        sql`(${table.registryOrigin}->>'registry_url')`,
+        sql`(${table.registryOrigin}->>'entry_id')`,
+      )
+      .where(sql`${table.registryOrigin} IS NOT NULL`),
     ...teamIsolationPolicies(),
   ],
 );
@@ -282,10 +290,6 @@ CREATE OR REPLACE TRIGGER template_version_sections_immutable
 CREATE OR REPLACE TRIGGER template_registry_publications_immutable
   BEFORE UPDATE OR DELETE ON template_registry_publications
   FOR EACH ROW EXECUTE FUNCTION template_versions_are_immutable();
-
-CREATE UNIQUE INDEX IF NOT EXISTS template_versions_registry_entry_idx
-  ON template_versions (team_id, (registry_origin->>'registry_url'), (registry_origin->>'entry_id'))
-  WHERE registry_origin IS NOT NULL;
 
 -- Adding a pin after publication would change what the version resolves to
 -- while its frozen manifest and hash stayed unchanged (version_sections).

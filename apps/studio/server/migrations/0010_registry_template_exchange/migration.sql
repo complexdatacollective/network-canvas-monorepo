@@ -32,13 +32,14 @@ CREATE TABLE "template_registry_publications" (
 
 ALTER TABLE "template_registry_publications" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "template_versions" ADD COLUMN "registry_origin" jsonb;
+CREATE UNIQUE INDEX "template_versions_registry_entry_idx" ON "template_versions" ("team_id",("registry_origin"->>'registry_url'),("registry_origin"->>'entry_id')) WHERE "registry_origin" IS NOT NULL;
 CREATE INDEX "template_registry_publications_team_version_idx" ON "template_registry_publications" ("team_id","template_version_id");
 ALTER TABLE "template_registry_accounts" ADD CONSTRAINT "template_registry_accounts_user_id_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;
 ALTER TABLE "template_registry_publications" ADD CONSTRAINT "template_registry_publications_version_fk" FOREIGN KEY ("template_version_id","team_id") REFERENCES "template_versions"("id","team_id");
 ALTER TABLE "template_versions" ADD CONSTRAINT "template_versions_registry_origin_check" CHECK ("registry_origin" IS NULL OR (
         jsonb_typeof("registry_origin") = 'object'
         AND "registry_origin" ?& ARRAY['registry_url','entry_id','source_version_hash','fetched_at']
-        AND jsonb_object_length("registry_origin") = 4
+        AND ("registry_origin" - ARRAY['registry_url','entry_id','source_version_hash','fetched_at']) = '{}'::jsonb
         AND ("registry_origin"->>'registry_url') ~ '^https://[^@/?#]+$'
         AND ("registry_origin"->>'entry_id') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
         AND ("registry_origin"->>'source_version_hash') ~ '^[0-9a-f]{64}$'

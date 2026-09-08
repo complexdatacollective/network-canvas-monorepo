@@ -29,6 +29,12 @@ const TEAM_B = 'team-b';
 type Row = Record<string, unknown>;
 
 const hex64 = () => randomBytes(32).toString('hex');
+const registryOrigin = (entryId = randomUUID()) => ({
+  registry_url: 'https://registry.example',
+  entry_id: entryId,
+  source_version_hash: hex64(),
+  fetched_at: new Date().toISOString(),
+});
 
 describe.skipIf(!db)('template schema', () => {
   let pool: pg.Pool;
@@ -316,6 +322,64 @@ describe.skipIf(!db)('template schema', () => {
       });
     });
 
+    it('accepts only the exact machine Registry origin stamp', async () => {
+      const templateId = await newTemplate();
+      await expect(
+        insert(
+          'template_versions',
+          versionRow(templateId, { registry_origin: registryOrigin() }),
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+
+      await expect(
+        insert(
+          'template_versions',
+          versionRow(templateId, {
+            version_number: 2,
+            registry_origin: {
+              ...registryOrigin(),
+              registry_url: 'http://localhost:4000',
+            },
+          }),
+        ),
+      ).rejects.toMatchObject({
+        constraint: 'template_versions_registry_origin_check',
+      });
+      await expect(
+        insert(
+          'template_versions',
+          versionRow(templateId, {
+            version_number: 3,
+            registry_origin: { ...registryOrigin(), user_supplied: true },
+          }),
+        ),
+      ).rejects.toMatchObject({
+        constraint: 'template_versions_registry_origin_check',
+      });
+    });
+
+    it('imports one Registry entry at most once per team', async () => {
+      const entryId = randomUUID();
+      await newVersion(await newTemplate(), {
+        registry_origin: registryOrigin(entryId),
+      });
+
+      await expect(
+        newVersion(await newTemplate(), {
+          registry_origin: registryOrigin(entryId),
+        }),
+      ).rejects.toMatchObject({
+        code: '23505',
+        constraint: 'template_versions_registry_entry_idx',
+      });
+      await expect(
+        newVersion(await newTemplate({ team_id: TEAM_B }), {
+          team_id: TEAM_B,
+          registry_origin: registryOrigin(entryId),
+        }),
+      ).resolves.toEqual(expect.any(String));
+    });
+
     it.each([
       ['the manifest', `manifest = '{"intro":"other"}'::jsonb`],
       ['the manifest hash', `manifest_hash = '${'a'.repeat(64)}'`],
@@ -342,6 +406,60 @@ describe.skipIf(!db)('template schema', () => {
       await expect(
         pool.query(`DELETE FROM template_versions WHERE id = $1`, [versionId]),
       ).rejects.toThrow('published template versions are immutable');
+    });
+  });
+
+  describe('Registry identity and publication history', () => {
+    it('has no column in which a Registry credential can be stored', async () => {
+      const columns = await pool.query<{ column_name: string }>(
+        `SELECT column_name FROM information_schema.columns
+          WHERE table_schema = current_schema()
+            AND table_name IN ('template_registry_accounts', 'template_registry_publications')`,
+      );
+      expect(columns.rows.map(({ column_name }) => column_name)).not.toContain(
+        'credential',
+      );
+    });
+
+    it('keeps the publisher snapshot immutable and tenant-isolated', async () => {
+      const versionId = await newVersion(await newTemplate());
+      const publicationId = randomUUID();
+      await insert('template_registry_publications', {
+        id: publicationId,
+        team_id: TEAM_A,
+        template_version_id: versionId,
+        registry_url: 'https://registry.example',
+        registry_entry_id: randomUUID(),
+        registry_root: hex64(),
+        publisher_id: randomUUID(),
+        publisher_name: 'Original Publisher',
+        published_at: new Date(),
+      });
+
+      await expect(
+        pool.query(
+          `UPDATE template_registry_publications SET publisher_name = 'Replacement'
+            WHERE id = $1`,
+          [publicationId],
+        ),
+      ).rejects.toThrow('published template versions are immutable');
+      await expect(
+        pool.query(`DELETE FROM template_registry_publications WHERE id = $1`, [
+          publicationId,
+        ]),
+      ).rejects.toThrow('published template versions are immutable');
+      const visible = await tenantA.query<{ id: string }>(
+        `SELECT id FROM template_registry_publications WHERE id = $1`,
+        [publicationId],
+      );
+      expect(visible.rows).toEqual([{ id: publicationId }]);
+
+      const tenantB = createTenantDb(app, TEAM_B);
+      const hidden = await tenantB.query<{ id: string }>(
+        `SELECT id FROM template_registry_publications WHERE id = $1`,
+        [publicationId],
+      );
+      expect(hidden.rows).toEqual([]);
     });
   });
 
