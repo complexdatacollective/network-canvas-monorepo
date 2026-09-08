@@ -7,11 +7,20 @@ import {
   executeDistributionRestore,
 } from './distribution.ts';
 import {
+  assertKernelTelemetryControls,
+  assertKernelTelemetryReady,
+  assertNoKernelTelemetryEgress,
   assertNoProcessTelemetryEgress,
   assertNoTelemetryEgress,
   assertProcessTelemetryInstrumentationPositive,
   assertTelemetryDetectorPositive,
+  parseConntrackFlow,
   TELEMETRY_EGRESS_MARKER,
+  TELEMETRY_KERNEL_CONTROL_MARKER,
+  TELEMETRY_KERNEL_EGRESS_MARKER,
+  TELEMETRY_KERNEL_LIVENESS_MARKER,
+  TELEMETRY_KERNEL_OBSERVER_SOURCE,
+  TELEMETRY_KERNEL_READY_MARKER,
   TELEMETRY_PROCESS_APIS,
   TELEMETRY_PROCESS_EGRESS_MARKER,
 } from './telemetry-egress.ts';
@@ -31,6 +40,52 @@ const recovered = {
 };
 
 describe('local distribution recovery boundary', () => {
+  it('parses only the original TCP or UDP conntrack tuple', () => {
+    expect(
+      parseConntrackFlow(
+        'ipv4 2 tcp 6 431999 ESTABLISHED src=172.18.0.3 dst=172.18.0.2 sport=45122 dport=8443 src=172.18.0.2 dst=172.18.0.3 sport=8443 dport=45122 [ASSURED] mark=0 use=1',
+      ),
+    ).toEqual({
+      protocol: 'tcp',
+      source: '172.18.0.3',
+      destination: '172.18.0.2',
+      sourcePort: 45_122,
+      destinationPort: 8443,
+    });
+    expect(
+      parseConntrackFlow(
+        'ipv4 2 udp 17 29 src=172.18.0.3 dst=172.18.0.2 sport=53214 dport=8443 src=172.18.0.2 dst=172.18.0.3 sport=8443 dport=53214 mark=0 use=1',
+      )?.protocol,
+    ).toBe('udp');
+    expect(parseConntrackFlow('ipv4 2 icmp 1 29 src=1.2.3.4')).toBeUndefined();
+    expect(parseConntrackFlow('malformed tcp')).toBeUndefined();
+  });
+
+  it('requires a live kernel sensor and both transport controls', () => {
+    const logs = `${TELEMETRY_KERNEL_READY_MARKER}\n${TELEMETRY_KERNEL_LIVENESS_MARKER} 1\n${TELEMETRY_KERNEL_LIVENESS_MARKER} 2\n${TELEMETRY_KERNEL_CONTROL_MARKER} {"protocol":"tcp","destination":"172.18.0.2","port":8443}\n${TELEMETRY_KERNEL_CONTROL_MARKER} {"protocol":"udp","destination":"172.18.0.2","port":8443}\n`;
+    expect(() => assertKernelTelemetryReady(logs)).not.toThrow();
+    expect(() => assertKernelTelemetryControls(logs)).not.toThrow();
+    expect(() => assertNoKernelTelemetryEgress(logs)).not.toThrow();
+    expect(() =>
+      assertKernelTelemetryReady(
+        logs.replace(`${TELEMETRY_KERNEL_LIVENESS_MARKER} 2`, 'missing'),
+      ),
+    ).toThrow('remain live');
+    expect(() =>
+      assertKernelTelemetryControls(
+        logs.replace('"protocol":"udp"', '"protocol":"missing"'),
+      ),
+    ).toThrow('udp');
+    expect(() =>
+      assertNoKernelTelemetryEgress(
+        `${logs}${TELEMETRY_KERNEL_EGRESS_MARKER}\n`,
+      ),
+    ).toThrow('detected egress');
+  });
+
+  it('ships a syntactically valid kernel observer', () => {
+    expect(() => new Function(TELEMETRY_KERNEL_OBSERVER_SOURCE)).not.toThrow();
+  });
   it('fails closed for a wrong-off mutant after a singular positive canary', () => {
     expect(() => assertNoTelemetryEgress('detector booted\n')).not.toThrow();
     expect(() =>
