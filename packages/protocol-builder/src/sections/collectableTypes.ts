@@ -1,11 +1,16 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
-  ComponentTypes,
+  type ComponentTypes,
   VARIABLE_TYPE_COMPONENTS,
   type VariableType,
 } from '@codaco/protocol-validation';
 
+import {
+  hasParameterIssues,
+  parameterShapeFor,
+  validateParameters,
+} from '../codebook/variableParameters.ts';
 import { VARIABLE_TYPE_OPTIONS } from '../codebook/variableTypeLabels.ts';
 
 /**
@@ -151,3 +156,33 @@ const OPTION_TYPES: readonly string[] = Object.freeze([
 
 export const isOptionType = (type: string): boolean =>
   OPTION_TYPES.includes(type);
+
+/**
+ * Whether a name and a kind of answer are enough to make this attribute.
+ *
+ * False for most of them: a text box or a number is finished the moment it is
+ * named, and asking the researcher to visit the codebook editor for one would
+ * be a trip that decides nothing. True where the kind itself carries something
+ * the researcher has not been asked for yet, and where an attribute created
+ * without it would reach a participant meaning nothing:
+ *
+ * - a list of answers, which the schema refuses fewer than two of; and
+ * - a scale, whose two end labels are what tell a participant which way along
+ *   the line is which. The protocol schema takes a scale with no `parameters`
+ *   at all — an unlabelled slider is a legal protocol and a useless question —
+ *   so the rule that catches it is the codebook editor's own.
+ *
+ * The second half is ASKED of that editor rather than listed here, so the two
+ * cannot drift: a shape whose settings become required is one this refuses to
+ * quick-create from that moment, and a control that stops requiring them is
+ * quick-created again with nothing to change. Asked of every control the kind
+ * can be collected with, because the control is chosen after the kind is —
+ * there is nothing yet to narrow it by, and a kind with one demanding control
+ * is one a bare create cannot finish.
+ */
+export const needsCodebookEditorToCreate = (type: string): boolean =>
+  isOptionType(type) ||
+  controlsForType(type).some(({ value }) => {
+    const shape = parameterShapeFor(type, value);
+    return shape !== null && hasParameterIssues(validateParameters(shape, {}));
+  });
