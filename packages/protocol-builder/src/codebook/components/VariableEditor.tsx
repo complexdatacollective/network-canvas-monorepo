@@ -924,10 +924,23 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                       spacing="sm"
                       shadow="xs"
                       series="accent"
-                      className="w-full overflow-visible! [--destructive:var(--destructive-strong)]"
+                      className="w-full overflow-visible!"
                     >
                       <div className="flex items-start gap-4">
-                        <div className="min-w-0 flex-1">
+                        {/* The strong destructive ink is opted into HERE, on the
+                            field column, and not on the Surface: it is meant for
+                            destructive TEXT drawn on this tinted background —
+                            the required marker and a field's error — and
+                            `--destructive` is also the fill of the destructive
+                            remove button beside it, whose foreground stays
+                            `--destructive-contrast`. Tinting the whole surface
+                            repaints that fill without repainting the icon on
+                            it, which on the default dark theme lands at 2.85:1
+                            against white where the untouched pair reaches
+                            3.85:1 — under the 3:1 WCAG asks of a control. The
+                            button is outside this element, so it keeps its own
+                            pair. */}
+                        <div className="min-w-0 flex-1 [--destructive:var(--destructive-strong)]">
                           <UnconnectedField
                             name={`option-${index + 1}-label`}
                             label={intl.formatMessage(

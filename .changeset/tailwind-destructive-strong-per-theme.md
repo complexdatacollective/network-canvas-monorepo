@@ -10,8 +10,12 @@ own white (4.9:1) and fails on `--surface-accent` (3.8:1) — a field error
 inside an accent surface goes illegible at exactly the moment it has something
 to say. The new variable is that colour moved toward the reader's own `--text`
 until it is legible on the tint, and a surface opts into it by setting
-`[--destructive:var(--destructive-strong)]` on the element that draws the tint,
-so the colour every button, badge and page-level error uses does not move.
+`[--destructive:var(--destructive-strong)]` on the destructive TEXT it holds,
+so the colour every button, badge and page-level error uses does not move. On
+the text and not on the tinted element itself, because a redeclaration is
+inherited by the whole subtree below it: a destructive button there would have
+its fill repainted while the icon on top of it, drawn with
+`--destructive-contrast`, stayed where it was.
 
 Both halves of the mixture are per-theme, so the mixture is declared in each
 theme scope beside the pair it reads — default light and dark, studio light and
