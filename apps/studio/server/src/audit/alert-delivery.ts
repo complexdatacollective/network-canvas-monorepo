@@ -242,58 +242,56 @@ export class AuditAlertDeliveryAdapter implements OutboxAdapter<ClaimedAuditAler
   }
 
   async deliver(claim: ClaimedAuditAlert): Promise<void | 'suppressed'> {
-    const client = await this.pool.connect();
+    let client: pg.PoolClient | undefined;
+    let handedOff = false;
     try {
+      client = await this.pool.connect();
       await client.query('BEGIN');
       await client.query(`SELECT set_config($1, $2, true)`, [
         TEAM_GUC,
         claim.teamId,
       ]);
-      let email: string | null;
-      let event: { occurred_at: Date } | undefined;
-      let policy: ReturnType<typeof AuditAlertPolicySchema.safeParse>;
-      try {
-        await lockAuditTeam(client, claim.teamId);
-        email = await eligibleRecipient(client, claim);
-        if (!email) return 'suppressed';
-        // Read the linked immutable event only with an explicit tenant scope.
-        const eventResult = await client.query<{ occurred_at: Date }>(
-          'SELECT occurred_at FROM audit_events WHERE id = $1 AND team_id = $2',
-          [claim.eventId, claim.teamId],
-        );
-        event = eventResult.rows[0];
-        policy = AuditAlertPolicySchema.safeParse(claim.policy);
-      } catch (error) {
-        // The provider handoff has not started yet. Database, lock, recipient,
-        // or event lookup failures are therefore safe to retry and must not
-        // turn the linked in-app delivery terminally uncertain.
-        if (error instanceof EmailDeliveryError) throw error;
-        throw new EmailDeliveryError('retryable');
-      }
-      if (!event || !policy.success) return 'suppressed';
+      await lockAuditTeam(client, claim.teamId);
+      const email = await eligibleRecipient(client, claim);
+      if (!email) return 'suppressed';
+      // Read the linked immutable event only with an explicit tenant scope.
+      const event = await client.query<{ occurred_at: Date }>(
+        'SELECT occurred_at FROM audit_events WHERE id = $1 AND team_id = $2',
+        [claim.eventId, claim.teamId],
+      );
+      const policy = AuditAlertPolicySchema.safeParse(claim.policy);
+      if (!event.rows[0] || !policy.success) return 'suppressed';
       if (claim.channel === 'email') {
-        const handoff = await this.pool.query(
-          `UPDATE audit_alert_deliveries SET send_started_at = clock_timestamp() WHERE id = $1 AND lease_owner = $2 AND ${PENDING} AND send_started_at IS NULL AND lease_expires_at > clock_timestamp()`,
-          [claim.id, claim.leaseOwner],
-        );
-        if (handoff.rowCount !== 1) return 'suppressed';
         const mailer = this.options.mailer;
         if (!mailer) throw new EmailDeliveryError('retryable');
-        await mailer.sendAuditAlert({
+        const message = {
           email,
           policy: policy.data,
-          occurredAt: event.occurred_at,
+          occurredAt: event.rows[0].occurred_at,
           alertUrl: new URL(
             `/team/${encodeURIComponent(claim.teamId)}/settings?alerts=1`,
             this.options.publicBaseUrl,
           ).href,
           messageId: `<audit-alert-${claim.id}@studio.networkcanvas.com>`,
-        });
+        };
+        const handoff = await this.pool.query(
+          `UPDATE audit_alert_deliveries SET send_started_at = clock_timestamp() WHERE id = $1 AND lease_owner = $2 AND ${PENDING} AND send_started_at IS NULL AND lease_expires_at > clock_timestamp()`,
+          [claim.id, claim.leaseOwner],
+        );
+        if (handoff.rowCount !== 1) return 'suppressed';
+        handedOff = true;
+        await mailer.sendAuditAlert(message);
       }
       await client.query('COMMIT');
+    } catch (error) {
+      // Before external handoff, even a lost connection or uncertain database
+      // COMMIT cannot have sent an email. In-app delivery only validates here;
+      // its durable completion is an idempotent update of the existing row.
+      if (error instanceof EmailDeliveryError) throw error;
+      throw new EmailDeliveryError(handedOff ? 'uncertain' : 'retryable');
     } finally {
-      await client.query('ROLLBACK').catch(() => undefined);
-      client.release();
+      await client?.query('ROLLBACK').catch(() => undefined);
+      client?.release();
     }
   }
 
