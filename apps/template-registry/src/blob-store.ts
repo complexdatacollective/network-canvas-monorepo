@@ -1,7 +1,9 @@
 import {
+  DeleteObjectsCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
+  ListObjectVersionsCommand,
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
@@ -41,6 +43,71 @@ const objectKey = (hash: string) => {
 const isAbsent = (error: unknown) =>
   error instanceof Error &&
   (error.name === 'NoSuchKey' || error.name === 'NotFound');
+const versionPageSize = 1_000;
+
+type ObjectVersion = { Key?: string; VersionId?: string };
+
+async function deleteObjectVersions(
+  client: S3Client,
+  bucket: string,
+  key: string,
+  signal: AbortSignal,
+): Promise<void> {
+  let keyMarker: string | undefined;
+  let versionIdMarker: string | undefined;
+  let foundVersion = false;
+  let truncated = true;
+  while (truncated) {
+    const page = await client.send(
+      new ListObjectVersionsCommand({
+        Bucket: bucket,
+        Prefix: key,
+        KeyMarker: keyMarker,
+        VersionIdMarker: versionIdMarker,
+        MaxKeys: versionPageSize,
+      }),
+      { abortSignal: signal },
+    );
+    const versions: ObjectVersion[] = [
+      ...(page.Versions ?? []),
+      ...(page.DeleteMarkers ?? []),
+    ].filter((version) => version.Key === key);
+    if (versions.length > 0) foundVersion = true;
+    if (versions.some((version) => typeof version.VersionId !== 'string'))
+      throw new Error('REGISTRY_STORAGE_VERSION_ID_MISSING');
+    if (versions.length > 0) {
+      const deleted = await client.send(
+        new DeleteObjectsCommand({
+          Bucket: bucket,
+          Delete: {
+            Objects: versions.map((version) => ({
+              Key: key,
+              VersionId: version.VersionId,
+            })),
+            Quiet: true,
+          },
+        }),
+        { abortSignal: signal },
+      );
+      if ((deleted.Errors?.length ?? 0) > 0)
+        throw new Error('REGISTRY_STORAGE_VERSION_DELETE_FAILED');
+    }
+    truncated = page.IsTruncated === true;
+    if (!truncated) continue;
+    if (!page.NextKeyMarker && !page.NextVersionIdMarker)
+      throw new Error('REGISTRY_STORAGE_VERSION_PAGINATION_INVALID');
+    keyMarker = page.NextKeyMarker;
+    versionIdMarker = page.NextVersionIdMarker;
+  }
+
+  // An unversioned bucket has no version records. Only in that case is the
+  // ordinary delete safe; on a versioned or suspended bucket every byte and
+  // delete marker was removed by DeleteObjects above.
+  if (!foundVersion)
+    await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }), {
+      abortSignal: signal,
+    });
+}
 
 /** The bucket remains private; every download passes the live moderation gate. */
 export function createRegistryBlobStore(
@@ -110,12 +177,12 @@ export function createRegistryBlobStore(
     },
     async delete(rawHash) {
       try {
-        await client.send(
-          new DeleteObjectCommand({
-            Bucket: configuration.bucket,
-            Key: objectKey(rawHash),
-          }),
-          { abortSignal: AbortSignal.timeout(10_000) },
+        const signal = AbortSignal.timeout(10_000);
+        await deleteObjectVersions(
+          client,
+          configuration.bucket,
+          objectKey(rawHash),
+          signal,
         );
       } catch {
         throw new RegistryError('SERVICE_UNAVAILABLE');
