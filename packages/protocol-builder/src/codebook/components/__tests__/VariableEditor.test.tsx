@@ -1326,6 +1326,31 @@ describe('the settings the chosen input control takes', () => {
     });
   });
 
+  it('offers years a date bound can be authored at, past the window the interview offers by default', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const variable = {
+      name: 'met',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year' },
+    };
+    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+
+    await user.selectOptions(screen.getByLabelText('Earliest date'), '1900');
+    await user.selectOptions(screen.getByLabelText('Latest date'), '2030');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+      type: 'year',
+      min: '1900',
+      max: '2030',
+    });
+  });
+
   it('saves the window a relative date attribute offers around its anchor', async () => {
     const user = userEvent.setup();
     const onSubmitRequest = vi.fn(
