@@ -4,7 +4,22 @@ const sizing = JSON.parse(
   await readFile(new URL('./candidate-sizing.json', import.meta.url), 'utf8'),
 );
 
+const DRILL_MODES = ['pitr', 'independent'];
+const DRILL_UNITS = [
+  'compute',
+  'requests',
+  'source-requests',
+  'source-transfer',
+  'runner-transfer',
+  'database-hours',
+  'database-storage',
+  'scratch-storage',
+];
+
 const REQUIRED_CATEGORIES = new Set([
+  ...DRILL_MODES.flatMap((mode) =>
+    DRILL_UNITS.map((unit) => `${mode}-drill-${unit}`),
+  ),
   'compute',
   'fly-egress',
   'database-plan',
@@ -226,6 +241,8 @@ export function evaluateManagedEstateCost(
     'kmsBillableKeyVersions',
     'kmsRequestCount',
     'flyApplicationEgressGb',
+    'flyRecoveryUploadGb',
+    'flyEgressGb',
     'primaryObjectApplicationEgressGb',
     'primaryObjectStoredGb',
     'primaryObjectMonthlyVersionChurnGb',
@@ -260,6 +277,9 @@ export function evaluateManagedEstateCost(
     'objectScrubRunCount',
     'databaseCheckpointSizeBytes',
     'objectCheckpointSizeBytes',
+    'objectScrubResultSizeBytes',
+    'objectScrubResultRequestsPerVersion',
+    'objectScrubPublicationRequestsPerBucket',
     'recoveryObjectRequestsPerReconciliation',
     'recoveryObjectRequestsPerScrubStart',
     'postmarkMessageCount',
@@ -315,6 +335,15 @@ export function evaluateManagedEstateCost(
       'recovery object I/O must include checkpoint discovery, full proof-index reads, and reconciliation checkpoint writes',
     );
 
+  if (
+    input.objectScrubResultSizeBytes === 0 ||
+    input.objectScrubResultRequestsPerVersion < 1 ||
+    input.objectScrubPublicationRequestsPerBucket < 1
+  )
+    fail(
+      'object scrub results require durable per-version records and per-bucket proof publication',
+    );
+
   const dumpSizes = input.databaseDumpSizesGb;
   const databaseNames = Object.keys(sizing.services);
   if (
@@ -367,9 +396,21 @@ export function evaluateManagedEstateCost(
     fail(
       `validatorRunCount must cover at least ${requiredValidations} scheduled database validations`,
     );
+  const scrubResultBytesPerRun =
+    input.primaryObjectRetainedVersionCount * input.objectScrubResultSizeBytes +
+    databaseNames.length * input.objectCheckpointSizeBytes;
+  const scrubResultRequests =
+    input.objectScrubRunCount *
+    (input.primaryObjectRetainedVersionCount *
+      input.objectScrubResultRequestsPerVersion +
+      databaseNames.length * input.objectScrubPublicationRequestsPerBucket);
   const recoveryMinimums = {
+    flyRecoveryUploadGb:
+      monthlyPoints * dumpTotalGb + input.primaryObjectMonthlyVersionChurnGb,
+    flyEgressGb: input.flyApplicationEgressGb + input.flyRecoveryUploadGb,
     databaseTransferGb: monthlyPoints * dumpTotalGb,
     backupRequestCount:
+      scrubResultRequests +
       requiredValidations * sizing.recovery.requestsPerBackup +
       input.primaryObjectMonthlyVersionChurnCount *
         sizing.recovery.backupRequestsPerObjectCopy +
@@ -396,7 +437,8 @@ export function evaluateManagedEstateCost(
         sizing.recovery.backupIntervalMinutes) *
         dumpTotalGb +
       input.primaryObjectRetainedVersionGb +
-      (retainedDatabasePoints * input.databaseCheckpointSizeBytes +
+      (input.objectScrubRunCount * scrubResultBytesPerRun +
+        retainedDatabasePoints * input.databaseCheckpointSizeBytes +
         retainedObjectCheckpoints * input.objectCheckpointSizeBytes) /
         1_000_000_000,
     backupEgressGb:
@@ -411,9 +453,10 @@ export function evaluateManagedEstateCost(
       monthlyPoints * dumpTotalGb +
       input.primaryObjectMonthlyVersionChurnGb +
       input.objectScrubRunCount * input.primaryObjectRetainedVersionGb +
-      ((2 * objectReconciliations +
-        input.objectScrubRunCount * databaseNames.length) *
-        input.objectCheckpointSizeBytes +
+      (input.objectScrubRunCount * scrubResultBytesPerRun +
+        (2 * objectReconciliations +
+          input.objectScrubRunCount * databaseNames.length) *
+          input.objectCheckpointSizeBytes +
         requiredValidations * input.databaseCheckpointSizeBytes) /
         1_000_000_000,
   };
@@ -510,12 +553,141 @@ export function evaluateManagedEstateCost(
       'kmsBillableKeyVersions must price both keys and two annual rotations',
     );
 
+  const drillQuantities = {};
+  let monthlyDrillReceiptRequests = 0;
+  let monthlyDrillReceiptReadGb = 0;
+  let retainedDrillReceiptGb = 0;
+  if (
+    !input.restoreDrills ||
+    Object.keys(input.restoreDrills).length !== DRILL_MODES.length
+  )
+    fail(
+      'restoreDrills must measure both PITR and independent quarterly recovery',
+    );
+  for (const mode of DRILL_MODES) {
+    const drill = input.restoreDrills[mode];
+    if (
+      !drill ||
+      !drill.services ||
+      Object.keys(drill.services).length !== databaseNames.length ||
+      !databaseNames.every((name) => Object.hasOwn(drill.services, name))
+    )
+      fail(`${mode} drill must restore all four databases and object stores`);
+    for (const field of [
+      'runsPerQuarter',
+      'durationHours',
+      'computeGbSeconds',
+      'requestCount',
+      'sourceRequestCount',
+      'sourceTransferGb',
+      'runnerTransferGb',
+      'scratchStorageGb',
+      'receiptSizeBytes',
+      'receiptRequestCount',
+    ]) {
+      if (finiteNonNegative(drill[field], `${mode} drill ${field}`) === 0)
+        fail(`${mode} drill ${field} must be a positive measurement`);
+    }
+    if (!Number.isSafeInteger(drill.runsPerQuarter))
+      fail(`${mode} drill runsPerQuarter must be an integer`);
+    let databaseStorageGb = 0;
+    let objectGb = 0;
+    let objectCount = 0;
+    for (const name of databaseNames) {
+      const service = drill.services[name];
+      const databaseGb = finiteNonNegative(
+        service?.databaseStorageGb,
+        `${mode} drill ${name} databaseStorageGb`,
+      );
+      const restoredGb = finiteNonNegative(
+        service?.objectRestoreGb,
+        `${mode} drill ${name} objectRestoreGb`,
+      );
+      const count = nonNegativeSafeInteger(
+        service?.objectRestoreCount,
+        `${mode} drill ${name} objectRestoreCount`,
+      );
+      if (
+        databaseGb < dumpSizes[name] ||
+        count < buckets[name].retainedVersionCount ||
+        (count > 0 && restoredGb === 0)
+      )
+        fail(
+          `${mode} drill ${name} must cover its database and retained object inventory`,
+        );
+      databaseStorageGb += databaseGb;
+      objectGb += restoredGb;
+      objectCount += count;
+    }
+    const payloadGb = dumpTotalGb + objectGb;
+    // Includes four database archives, every retained object, and at least one
+    // proof/checkpoint discovery read per logical store. Paged reads and retries
+    // increase these measured totals; encrypted-envelope bytes must be measured.
+    if (
+      objectGb < input.primaryObjectRetainedVersionGb ||
+      drill.sourceRequestCount < objectCount + 2 * databaseNames.length ||
+      drill.sourceTransferGb < payloadGb ||
+      drill.runnerTransferGb <
+        drill.sourceTransferGb + (2 * drill.receiptSizeBytes) / 1_000_000_000 ||
+      drill.scratchStorageGb < payloadGb
+    )
+      fail(
+        `${mode} drill transfer, requests, and scratch storage must cover the complete recovery inventory`,
+      );
+    const monthlyRuns =
+      drill.runsPerQuarter / sizing.recovery.restoreDrillIntervalMonths;
+    if (
+      !Number.isSafeInteger(drill.receiptSizeBytes) ||
+      !Number.isSafeInteger(drill.receiptRequestCount) ||
+      drill.receiptRequestCount < 2
+    )
+      fail(
+        `${mode} drill receipt requires immutable publication and independent readback`,
+      );
+    monthlyDrillReceiptRequests += monthlyRuns * drill.receiptRequestCount;
+    monthlyDrillReceiptReadGb +=
+      (monthlyRuns * drill.receiptSizeBytes) / 1_000_000_000;
+    retainedDrillReceiptGb +=
+      (Math.ceil(
+        sizing.recovery.retentionDays /
+          (sizing.recovery.restoreDrillIntervalMonths * 28),
+      ) *
+        drill.runsPerQuarter *
+        drill.receiptSizeBytes) /
+      1_000_000_000;
+    const perDrill = {
+      'compute': drill.computeGbSeconds,
+      'requests': drill.requestCount,
+      'source-requests': drill.sourceRequestCount,
+      'source-transfer': drill.sourceTransferGb,
+      'runner-transfer': drill.runnerTransferGb,
+      'database-hours': databaseNames.length * drill.durationHours,
+      'database-storage': databaseStorageGb * drill.durationHours,
+      'scratch-storage': drill.scratchStorageGb * drill.durationHours,
+    };
+    for (const [unit, quantity] of Object.entries(perDrill)) {
+      drillQuantities[`${mode}-drill-${unit}`] = quantity * monthlyRuns;
+    }
+  }
+
+  for (const [field, extra] of Object.entries({
+    backupRequestCount: monthlyDrillReceiptRequests,
+    backupEgressGb: monthlyDrillReceiptReadGb,
+    backupStoredGb: retainedDrillReceiptGb,
+  })) {
+    if (input[field] < recoveryMinimums[field] + extra)
+      fail(
+        `${field} must also cover quarterly drill receipt publication, readback, and locked retention`,
+      );
+  }
+
   // Bind the quote's billing units to the declared estate and measured usage.
   // Keeping an independent editable quantity would let a four-service estate
   // claim zero compute cost or price only a fraction of its recovery traffic.
   const quantities = {
+    ...drillQuantities,
     'compute': input.flySingletonCount * input.flyMonthlyHours,
-    'fly-egress': input.flyApplicationEgressGb,
+    'fly-egress': input.flyEgressGb,
     'database-plan': 1,
     'database-storage': input.postgresStorageGb,
     'database-transfer': input.databaseTransferGb,
@@ -590,18 +762,42 @@ export function evaluateManagedEstateCost(
   );
   if (missing.length > 0) fail(`missing categories: ${missing.join(', ')}`);
 
+  // Accrue quarterly work monthly, but also enforce the cash cost of the
+  // month when both mandatory drill paths run. An average cannot hide a breach.
+  const monthlyReceiptUsd =
+    monthlyDrillReceiptRequests *
+      input.lineItems.find((row) => row.category === 'backup-requests')
+        .unitPriceUsd +
+    monthlyDrillReceiptReadGb *
+      input.lineItems.find((row) => row.category === 'backup-egress')
+        .unitPriceUsd;
+  const monthlyDrillUsd =
+    monthlyReceiptUsd +
+    [...subtotals]
+      .filter(([category]) => category.includes('-drill-'))
+      .reduce((sum, [, amount]) => sum + amount, 0);
+  const peakSubtotalUsd =
+    subtotalUsd +
+    monthlyDrillUsd * (sizing.recovery.restoreDrillIntervalMonths - 1);
+  const peakMonthUsd = Math.round(peakSubtotalUsd * 100) / 100;
   const totalUsd = Math.round(subtotalUsd * 100) / 100;
-  const headroomUsd = Math.round((input.monthlyCapUsd - totalUsd) * 100) / 100;
+  const headroomUsd =
+    Math.round((input.monthlyCapUsd - peakSubtotalUsd) * 100) / 100;
   const minimumHeadroomUsd = finiteNonNegative(
     input.minimumHeadroomUsd,
     'minimumHeadroomUsd',
   );
-  const withinCap = subtotalUsd <= input.monthlyCapUsd;
+  const withinCap = peakSubtotalUsd <= input.monthlyCapUsd;
   if (requireBudget && subtotals.get('reserve') === 0)
     fail('the budget check must price a non-zero recovery reserve');
   if (requireBudget && !withinCap)
-    fail(`monthly total $${totalUsd.toFixed(2)} exceeds the $100.00 cap`);
-  if (requireBudget && input.monthlyCapUsd - subtotalUsd < minimumHeadroomUsd)
+    fail(
+      `peak monthly total $${peakMonthUsd.toFixed(2)} exceeds the $100.00 cap`,
+    );
+  if (
+    requireBudget &&
+    input.monthlyCapUsd - peakSubtotalUsd < minimumHeadroomUsd
+  )
     fail(
       `monthly headroom $${headroomUsd.toFixed(2)} is below the explicit minimum`,
     );
@@ -620,6 +816,7 @@ export function evaluateManagedEstateCost(
 
   return {
     totalUsd,
+    peakMonthUsd,
     headroomUsd,
     withinCap,
     qualificationComplete: false,
