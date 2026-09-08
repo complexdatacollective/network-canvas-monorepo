@@ -40,11 +40,21 @@ name: Architect Archive Release
 # and uploads nothing. Re-uploading maps for an already-released version would
 # duplicate them against that release in PostHog.
 #
-# NOTE(human-setup-required): needs the repository secret CLOUDFLARE_API_TOKEN,
-# scoped to the networkcanvas.com zone with DNS:Edit, Zone:Read and Workers
-# Routes:Edit, plus account-level Workers Scripts:Edit. Set the repository
-# variable CLOUDFLARE_ACCOUNT_ID as well when the token can see more than one
-# account; with a single-account token Wrangler resolves it on its own.
+# NOTE(human-setup-required): the deploy job declares the `architect-archive`
+# environment, but a workflow file cannot enforce its own protection — GitHub
+# runs whichever copy of the YAML lives on the ref a dispatch selects, so a
+# branch copy with the `environment:` line deleted would run instead. Only
+# repository configuration closes that, and it is what makes this lane safe to
+# have. Create the environment, restrict its **deployment branches** to `main`
+# so a job reaching for it from another ref is refused, and hold
+# CLOUDFLARE_API_TOKEN as an **environment** secret rather than a repository
+# secret — a repository secret is readable by any branch that can rewrite the
+# scripts this workflow runs, and this token can edit DNS across the zone and
+# deploy Workers to the account. Scope it to the networkcanvas.com zone with
+# DNS:Edit, Zone:Read and Workers Routes:Edit, plus account-level Workers
+# Scripts:Edit. Set the repository variable CLOUDFLARE_ACCOUNT_ID as well when
+# the token can see more than one account; with a single-account token Wrangler
+# resolves it on its own. See apps/architect/RELEASING.md.
 
 on:
   workflow_dispatch:
@@ -133,6 +143,14 @@ jobs:
     needs: resolve
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # The Cloudflare token can edit DNS across the whole zone and deploy Workers
+    # to the account, and GitHub runs whichever copy of a workflow lives on the
+    # ref a dispatch selects — so held as a repository secret it would be
+    # readable by any branch that can rewrite the scripts below. Holding it as an
+    # ENVIRONMENT secret instead means a workflow copy that drops this line gets
+    # nothing. See the setup note at the top of this file; the hotfix lane makes
+    # the same argument for the same reason.
+    environment: architect-archive
     concurrency:
       group: architect-archive-v${{ needs.resolve.outputs.major }}
       cancel-in-progress: false
@@ -265,17 +283,36 @@ jobs:
             *) fail "asset is not immutable: $asset_cc" ;;
           esac
 
-          # The PWA entry points must not be stored, per RELEASING.md. This host
-          # is replaced by later releases on the line, so a visitor holding the
-          # previous shell has to revalidate to reach the newer one. Named
-          # `entry` rather than `path`, which some shells bind to $PATH.
+          # The PWA entry points must never be reused without revalidating: this
+          # host is replaced by later releases on the line, so a visitor holding
+          # the previous shell has to notice the newer one.
+          #
+          # That property, not a literal string, is what gets asserted. Releases
+          # from before the no-store policy express it as
+          # `max-age=0, must-revalidate`, and a pre-policy entry point with no
+          # rule of its own inherits exactly that from Cloudflare's default —
+          # both are compliant, and demanding `no-store` would deploy those
+          # versions and then fail them here.
+          revalidates() {
+            case "$1" in
+              *no-store*) return 0 ;;
+            esac
+            case "$1" in
+              *max-age=0*)
+                case "$1" in
+                  *must-revalidate*) return 0 ;;
+                esac
+                ;;
+            esac
+            return 1
+          }
+
+          # Named `entry` rather than `path`, which some shells bind to $PATH.
           for entry in / /sw.js /manifest.webmanifest; do
             cc="$(header "$base$entry")"
             echo "$entry: $cc"
-            case "$cc" in
-              *no-store*) ;;
-              *) fail "$entry must be no-store, got: $cc" ;;
-            esac
+            revalidates "$cc" \
+              || fail "$entry must revalidate before reuse, got: $cc"
           done
 
           # The SPA fallback replaces Netlify's _redirects rule. Without it a

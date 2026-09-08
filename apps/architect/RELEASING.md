@@ -199,10 +199,28 @@ editing `public/_headers`**, whose shape is asserted for Netlify in
 The workflow asserts the resulting contract against the live host after
 deploying and fails the run if it does not hold.
 
-**Setup:** the repository secret `CLOUDFLARE_API_TOKEN` needs the
-networkcanvas.com zone's DNS:Edit, Zone:Read and Workers Routes:Edit, plus
-account-level Workers Scripts:Edit. Set the repository variable
-`CLOUDFLARE_ACCOUNT_ID` too when the token can see more than one account.
+**Setup (one-time, and load-bearing).** The deploy job declares the
+`architect-archive` environment, but — exactly as for the hotfix lane above — a
+workflow file cannot enforce its own protection: GitHub runs whichever copy of
+the YAML lives on the ref a dispatch selects, so a branch copy with the
+`environment:` line deleted would run instead. Only repository configuration
+closes that:
+
+1. Create the `architect-archive` environment.
+2. Restrict its **deployment branches** to `main`, so a job reaching for it from
+   any other ref is refused.
+3. Hold `CLOUDFLARE_API_TOKEN` as an **environment** secret, not a repository
+   secret. A repository secret is readable by any branch that can rewrite the
+   scripts this workflow runs, and this token can edit DNS across the whole
+   networkcanvas.com zone and deploy Workers to the account. Scope it to that
+   zone with DNS:Edit, Zone:Read and Workers Routes:Edit, plus account-level
+   Workers Scripts:Edit.
+4. Optionally set the repository variable `CLOUDFLARE_ACCOUNT_ID`; a
+   single-account token lets Wrangler resolve it on its own.
+
+Required reviewers are worth considering but are not the load-bearing part
+here: unlike the hotfix lane this one cannot change what production serves, so
+the branch restriction and the environment-scoped secret are what matter.
 
 ## Developer site
 

@@ -54,15 +54,46 @@ case "$major" in
 esac
 
 # One host per major line means a later archive run overwrites an earlier one.
-# `sort -V` orders plain x.y.z releases; a prerelease on the line needs FORCE.
-newest="$(git tag --list "${PKG}@${major}.*" | sed "s|^${PKG}@||" | sort -V | tail -1)"
-if [ -n "$newest" ] && [ "$newest" != "$version" ]; then
-  if [ "$FORCE" != 'true' ]; then
-    echo "::error::$version is not the newest release on the ${major}.x line ($newest). Archive that instead, or re-run with force."
-    exit 1
-  fi
-  echo "::warning::forcing $version over newer ${major}.x release $newest"
-fi
+#
+# Only plain x.y.z releases are candidates for "newest on the line". `sort -V`
+# orders a prerelease AFTER its stable release — verified on both GNU and BSD
+# sort, `8.3.0-beta.1` sorts after `8.3.0` — which is the opposite of semver.
+# Left unfiltered, dispatching a beta would sail past this check as the newest
+# tag while the stable release it precedes was refused, quietly replacing a
+# line's stable archive with a prerelease.
+# `|| true` because a line with no stable release yet — a brand-new major whose
+# only tags are prereleases — makes grep exit 1, and under `pipefail` that would
+# kill the script with no message rather than leaving `newest` empty for the
+# check below to handle.
+newest="$(
+  git tag --list "${PKG}@${major}.*" \
+    | sed "s|^${PKG}@||" \
+    | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+    | sort -V \
+    | tail -1 \
+    || true
+)"
+
+case "$version" in
+  *-*)
+    # A prerelease is never the newest release on a line, so putting one on the
+    # shared host is always a deliberate act rather than a routine archive.
+    if [ "$FORCE" != 'true' ]; then
+      echo "::error::$version is a prerelease; archiving one onto the ${major}.x host needs force."
+      exit 1
+    fi
+    echo "::warning::forcing prerelease $version onto the ${major}.x host"
+    ;;
+  *)
+    if [ -n "$newest" ] && [ "$newest" != "$version" ]; then
+      if [ "$FORCE" != 'true' ]; then
+        echo "::error::$version is not the newest release on the ${major}.x line ($newest). Archive that instead, or re-run with force."
+        exit 1
+      fi
+      echo "::warning::forcing $version over newer ${major}.x release $newest"
+    fi
+    ;;
+esac
 
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
   {
