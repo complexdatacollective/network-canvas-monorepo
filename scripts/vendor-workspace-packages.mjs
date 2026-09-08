@@ -298,8 +298,10 @@ export function assertSpecifierDrivenChanges(ref, appDir, closure, wsPackages) {
 
 // A pnpm v9 lockfile's resolution graph as EDGES: for every importer (a
 // workspace package, by its path) and every snapshot (a resolved package, by
-// `name@version`, its peer suffix dropped), the dependency name → resolved
-// version (peer suffix dropped) it was locked to. Edges, not a flat set of
+// its full key — `name@version` PLUS its peer suffix, since one version
+// resolved against two peer contexts is two graphs, and merging them would
+// let one context's edge answer for the other's), the dependency name →
+// resolved version (peer suffix dropped) it was locked to. Edges, not a flat set of
 // versions: a move from `foo@1` to `foo@2` where some other workspace already
 // used `foo@2` changes no version set, but it changes an edge.
 const withoutPeerSuffix = (spec) => {
@@ -340,8 +342,8 @@ export function lockfileEdges(lockfile) {
       }
     } else if (section === 'snapshots') {
       if (indent === 2) {
-        key = base(unquote(text.replace(/:$/, '')));
-        if (!snapshots.has(key)) snapshots.set(key, new Map());
+        key = unquote(text.replace(/:$/, ''));
+        snapshots.set(key, new Map());
       } else if (indent === 4) {
         field = text.replace(/:$/, '');
       } else if (
@@ -366,9 +368,9 @@ export function lockfileEdges(lockfile) {
 // change actually arrived — a manifest edit for one dependency must not mask
 // a lockfile-only patch to another, which the seeded resolution would leave
 // at the released version. The app's importer corresponds to the mirror's
-// root importer; a closure package's importer to its snapshot in the mirror
-// (a tarball or a registry version, either way keyed by the package name);
-// every other snapshot to the same `name@version` snapshot. An edge the
+// root importer; a closure package's importer to every snapshot the mirror
+// has for it (a tarball or a registry version, in each peer context); every
+// other snapshot to the mirror's snapshot with the same full key. An edge the
 // mirror does not have cannot be checked and is not; edges to workspace
 // packages are the vendoring's business.
 export function assertBranchResolutionsCarried({
@@ -395,10 +397,10 @@ export function assertBranchResolutionsCarried({
       );
     }
   };
-  const mirrorSnapshotFor = (name) =>
-    [...mirror.snapshots.entries()].find(([key]) =>
+  const mirrorSnapshotsFor = (name) =>
+    [...mirror.snapshots.entries()].filter(([key]) =>
       key.startsWith(`${name}@`),
-    )?.[1];
+    );
 
   check(
     appImporter,
@@ -407,12 +409,14 @@ export function assertBranchResolutionsCarried({
     mirror.importers.get('.'),
   );
   for (const [importer, name] of Object.entries(closureImporters)) {
-    check(
-      name,
-      ref.importers.get(importer),
-      head.importers.get(importer) ?? new Map(),
-      mirrorSnapshotFor(name),
-    );
+    for (const [key, edges] of mirrorSnapshotsFor(name)) {
+      check(
+        key,
+        ref.importers.get(importer),
+        head.importers.get(importer) ?? new Map(),
+        edges,
+      );
+    }
   }
   for (const [parent, edges] of head.snapshots) {
     check(

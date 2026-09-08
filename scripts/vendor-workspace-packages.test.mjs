@@ -610,7 +610,12 @@ test('lockfile edges parse importers and snapshots, dropping peer suffixes', () 
     importers.get('apps/app').get('@x/ui'),
     'link:../../packages/ui',
   );
-  assert.equal(snapshots.get('next@15.5.0').get('@next/env'), '15.5.0');
+  // Snapshot identity keeps the peer context; only the values drop it.
+  assert.equal(
+    snapshots.get('next@15.5.0(react@19.2.8)').get('@next/env'),
+    '15.5.0',
+  );
+  assert.ok(!snapshots.has('next@15.5.0'));
   assert.ok(snapshots.has('@adobe/css-tools@4.5.0'));
 });
 
@@ -679,7 +684,7 @@ test('a closure package edge moving to a version another workspace already had i
           snapshots: { "'@x/ui@file:vendor/x-ui-1.0.0.tgz'": { foo: '1.0.0' } },
         }),
       }),
-    /@x\/ui → foo: the branch resolves 2\.0\.0; the image would keep 1\.0\.0/,
+    /@x\/ui@file:vendor\/x-ui-1\.0\.0\.tgz → foo: the branch resolves 2\.0\.0; the image would keep 1\.0\.0/,
   );
   assertBranchResolutionsCarried({
     ...graphArgs,
@@ -708,4 +713,76 @@ test('edges to workspace packages and edges the mirror carries pass', () => {
       },
     }),
   });
+});
+
+// One version resolved in two peer contexts is two graphs. A branch edge
+// changed in the context the image uses must be carried there; an edge that
+// changed only in another context must neither satisfy nor fail the check.
+test('peer contexts are compared one to one, never merged', () => {
+  const react19 = 'foo@1.0.0(react@19.2.8)';
+  const react16 = 'foo@1.0.0(react@16.14.0)';
+  // Both contexts move bar in the branch; the image (React 19) kept the old one.
+  assert.throws(
+    () =>
+      assertBranchResolutionsCarried({
+        ...graphArgs,
+        refLock: lock({
+          snapshots: {
+            [react16]: { bar: '1.0.0' },
+            [react19]: { bar: '1.0.0' },
+          },
+        }),
+        headLock: lock({
+          snapshots: {
+            [react16]: { bar: '1.0.1' },
+            [react19]: { bar: '1.0.1' },
+          },
+        }),
+        mirrorLock: lock({ snapshots: { [react19]: { bar: '1.0.0' } } }),
+      }),
+    /foo@1\.0\.0\(react@19\.2\.8\) → bar: the branch resolves 1\.0\.1; the image would keep 1\.0\.0/,
+  );
+  // Only the other context moved: the image's context is unchanged, so the
+  // edge it carries is still the branch's — whichever order the contexts
+  // appear in.
+  for (const order of [
+    [react16, react19],
+    [react19, react16],
+  ]) {
+    const snaps = (a, b) =>
+      Object.fromEntries([
+        [order[0], a],
+        [order[1], b],
+      ]);
+    assertBranchResolutionsCarried({
+      ...graphArgs,
+      refLock: lock({ snapshots: snaps({ bar: '1.0.0' }, { bar: '1.0.0' }) }),
+      headLock: lock({ snapshots: snaps({ bar: '1.0.1' }, { bar: '1.0.0' }) }),
+      mirrorLock: lock({ snapshots: { [order[1]]: { bar: '1.0.0' } } }),
+    });
+  }
+});
+
+test('a closure package is checked in every peer context the mirror holds it in', () => {
+  const refLock = lock({ importers: { 'packages/ui': { foo: '1.0.0' } } });
+  const headLock = lock({ importers: { 'packages/ui': { foo: '1.0.1' } } });
+  assert.throws(
+    () =>
+      assertBranchResolutionsCarried({
+        ...graphArgs,
+        refLock,
+        headLock,
+        mirrorLock: lock({
+          snapshots: {
+            "'@x/ui@file:vendor/x-ui-1.0.0.tgz(react@19.2.8)'": {
+              foo: '1.0.1',
+            },
+            "'@x/ui@file:vendor/x-ui-1.0.0.tgz(react@16.14.0)'": {
+              foo: '1.0.0',
+            },
+          },
+        }),
+      }),
+    /@x\/ui@file:vendor\/x-ui-1\.0\.0\.tgz\(react@16\.14\.0\) → foo/,
+  );
 });
