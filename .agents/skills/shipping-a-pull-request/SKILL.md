@@ -151,9 +151,13 @@ written to satisfy the letter of this rule (Claude Code: invoke
 `git diff <base>...HEAD`, but a helper you edited has callers the diff never
 prints, and an enumeration bounded by changed lines can come back complete with
 the defect still reachable — search for the rule's shape across the repo. What
-stays inside the diff is the _remedy_: an instance outside it is a scope
-question for the user (Claude Code: `finishing-a-refactor` owns the repo-wide
-call-site sweep), to raise rather than to fix silently or drop.
+stays inside the diff is the _remedy_, and that is a question about what your
+fix edits, not about where you found an instance: correcting the helper you
+already changed covers its untouched callers without expanding anything, and
+escalates nothing. Escalate when satisfying the rule would need an edit to a
+file this PR never touched — say what you found and where, and let the user
+set the scope (Claude Code: `finishing-a-refactor` owns the repo-wide
+call-site sweep).
 
 **A second finding on the same mechanism means stop fixing instances.** The
 trigger is the second finding, not several flat rounds; flat rounds are the
@@ -201,11 +205,16 @@ by whether each push leaves the reviewer less to find than it had before.
   open. After changing any guard, re-read every guard on that path together
   and ask what their combination does.
 - **Prefer the fix that leaves fewer surfaces — not fewer lines.** "Less to
-  review" counts the distinct places a rule is enforced, not the size of the
-  diff. A three-line guard bolted beside an existing one is the cheap change
-  and the wrong one: it is a new surface carrying the same hole one step over,
-  which the reviewer reaches next round. One rule replacing several call sites
-  is more lines and less to review, and is the fix to prefer.
+  review" counts the places one rule is enforced redundantly along a single
+  path, not the size of the diff. A three-line guard bolted beside an existing
+  one is the cheap change and usually the wrong one: it is a new surface
+  carrying the same hole one step over, which the reviewer reaches next round,
+  and one rule replacing several such call sites is more lines and less to
+  review. What counts is what the second check catches that the first cannot:
+  a guard enforcing the invariant at its own trust boundary — a route check
+  and a service-layer check reached by different callers — is defence in
+  depth, not a duplicate surface. Merging those removes a boundary rather than
+  a surface, so ask that question before you collapse anything.
 
 **Terminating.** A clean round leaves no review and no thread — the reviewer
 reacts with a thumbs-up on the PR instead — so before concluding anything,
