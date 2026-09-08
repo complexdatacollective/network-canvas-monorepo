@@ -4,6 +4,7 @@
   "protocolBuilder.alterLimits.clearTitle": "Se borrarán los límites de nominación",
   "protocolBuilder.alterLimits.description": "Limita cuántas personas puede nombrar esta etapa, contando toda la etapa en conjunto.",
   "protocolBuilder.alterLimits.maxBelowMin": "El máximo no puede ser menor que el mínimo.",
+  "protocolBuilder.alterLimits.maxBelowZero": "El máximo más pequeño posible es 1.",
   "protocolBuilder.alterLimits.maxHint": "Deja el campo vacío para no establecer un máximo.",
   "protocolBuilder.alterLimits.maxIsZero": "Un máximo de 0 haría que la etapa no pudiera nombrar a nadie.",
   "protocolBuilder.alterLimits.maxLabel": "Número máximo de personas",

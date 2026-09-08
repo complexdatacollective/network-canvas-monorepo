@@ -95,6 +95,12 @@ const messages = defineMessages({
     description:
       'Refusal shown against the minimum box when it holds more people than the maximum beside it, which no stage could satisfy.',
   },
+  maxBelowZero: {
+    id: 'protocolBuilder.alterLimits.maxBelowZero',
+    defaultMessage: 'The smallest a maximum can be is 1.',
+    description:
+      'Refusal shown against the maximum box when the researcher entered a negative number of people. It names the smallest maximum a stage may have rather than repeating the number entered, and is a separate sentence from the one about a maximum of 0, which is about a cap the researcher really did type.',
+  },
   maxIsZero: {
     id: 'protocolBuilder.alterLimits.maxIsZero',
     defaultMessage: 'A maximum of 0 would let the stage name nobody.',
@@ -201,6 +207,14 @@ const NO_END_ANSWERED = createMessageError(messages.noEndAnswered);
  * could not read as a count holds no count for anything below to compare — and
  * because it is the only thing standing between that text and a save.
  *
+ * A refusal that names a number names one the researcher would recognise. A
+ * single `max < 1` branch answered `-5` with "a maximum of 0", a number the
+ * box has never held, and reporting an entry back as something else is how a
+ * researcher comes to believe the box is not reading what they typed. So each
+ * end states its floor for anything below it — the minimum's is 0, the
+ * maximum's is 1 — and the maximum's own 0 keeps the sentence that says what
+ * capping a stage at nobody would do, because that one IS the number entered.
+ *
  * Every refusal here is encoded rather than formatted: a `MessageRule` hands
  * the form a plain string, and `FieldErrors` decodes it in the reader's own
  * language where it is shown. A module-level formatter reached for instead
@@ -225,7 +239,8 @@ const maxValidation = messageRuleValidation([
   (value, values) => {
     const max = asCount(value);
     if (Number.isNaN(max)) return undefined;
-    if (max < 1) return createMessageError(messages.maxIsZero);
+    if (max < 0) return createMessageError(messages.maxBelowZero);
+    if (max === 0) return createMessageError(messages.maxIsZero);
     const min = countAt(values, 'minNodes');
     return Number.isNaN(min) || max >= min
       ? undefined
