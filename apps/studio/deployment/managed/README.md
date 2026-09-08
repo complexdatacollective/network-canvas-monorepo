@@ -122,6 +122,34 @@ subject provenance when it supplies the binding, call this sanitizer before
 queueing any bytes for egress, and treat an empty result as a dropped batch. No
 provider call or account configuration is exercised by its repository tests.
 
+`scripts/studio-managed-fly-log-envelope.mjs` supplies the preceding portable
+Fly-envelope boundary. Fly's official log stream uses the NATS subject
+`logs.<app_name>.<region>.<instance_id>` and sends a structured JSON envelope;
+Fly's maintained Log Shipper first parses the NATS message as JSON, while the
+maintained Fly Telemetry configuration separately parses the resulting inner
+`.message`. The adapter therefore accepts the authenticated NATS subject only
+as caller-owned transport provenance, matches it to one configured exact app
+and the fixed `iad` region, verifies the redundant Fly envelope metadata, then
+passes only the inner application-message bytes to the sanitizer. Envelope
+fields can refuse a record but can never select its service or environment.
+
+The adapter accepts current Fly application envelopes for both stdout and
+stderr (`log.level` is checked and discarded). It validates and discards Fly's
+nanosecond-capable envelope timestamp; the forwarded timestamp remains the
+application logger's strict timestamp. Unknown or duplicate envelope members,
+platform/non-application events, malformed UTF-8, malformed subjects and
+unconfigured apps are dropped. Outer input is bounded at 8 KiB per event, 256
+events and 256 KiB per batch before JSON parsing. Every outer byte counts toward
+the batch limit even when that event is later dropped. These choices follow the
+[Fly Logs API description](https://fly.io/docs/monitoring/logs-api-options/),
+[official Log Shipper transform](https://github.com/superfly/fly-log-shipper/blob/main/vector-configs/vector.toml),
+and [official Fly Telemetry transform](https://github.com/superfly/fly-telemetry/blob/main/vector.yaml).
+The future network collector must still authenticate the read-only Fly NATS
+connection, take the subject from the subscription callback rather than the
+message, configure the four deployed app names, handle reconnect/backpressure,
+and preserve the egress-budget and delivery guarantees. Repository tests do not
+qualify that network boundary.
+
 ## Required credentials and custody
 
 Terraform provider credentials are `TF_VAR_cloudflare_api_token`,

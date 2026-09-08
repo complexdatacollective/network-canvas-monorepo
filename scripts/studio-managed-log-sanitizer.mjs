@@ -12,7 +12,7 @@ export const MANAGED_LOG_MAX_BATCH_RECORDS = 256;
 export const MANAGED_LOG_MAX_BATCH_INPUT_BYTES = 262_144;
 const MANAGED_LOG_MAX_BATCH_OUTPUT_BYTES = 262_144;
 
-const MANAGED_LOG_SERVICE_BINDINGS = Object.freeze({
+export const MANAGED_LOG_SERVICE_BINDINGS = Object.freeze({
   'studio-production': Object.freeze({
     product: 'studio',
     environment: 'production',
