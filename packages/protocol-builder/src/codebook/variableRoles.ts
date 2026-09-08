@@ -12,6 +12,7 @@ import {
   type InterfaceOwnedOptionSetKey,
   optionsMatchInterfaceOwnedSet,
   type VariableRoleConflict,
+  type Variables,
 } from '@codaco/protocol-validation';
 
 import type {
@@ -300,6 +301,54 @@ export const interfaceOwnedPickIssue = (
   return createMessageError(messages.interfaceOwnedPick, {
     owner: claim.owner,
   });
+};
+
+/**
+ * An option list an editor must render read-only. Widened over a variable's
+ * own `options` because an interface-owned canonical set is `readonly`, and
+ * both are rendered by the same control.
+ */
+export type LockedOptionList = readonly Readonly<{
+  label: string;
+  value: string | number | boolean;
+}>[];
+
+/**
+ * The options a prompt editor must show read-only for the attribute it binds,
+ * or `undefined` when the researcher may edit them.
+ *
+ * Two independent reasons a list is fixed:
+ *
+ * - an interface both writes the attribute and branches on its exact values,
+ *   so the option set belongs to that interface however the attribute is
+ *   reached. The CANONICAL set is returned rather than the codebook's own
+ *   list, because the canonical set is what the protocol rule enforces — an
+ *   imported protocol whose list has drifted from it must not be shown its
+ *   drift as if it were authoritative.
+ * - the variable carries `readOnly`, which older Architect protocols stamp on
+ *   an attribute created from inside a stage. Absent from most authored
+ *   protocols, so it can never be the only check.
+ *
+ * The literal type comparison (rather than a type guard) is what narrows the
+ * variable union far enough for `options` to exist on it.
+ */
+export const lockedVariableOptions = (
+  variables: Readonly<Variables> | undefined,
+  variableId: string | undefined,
+  interfaceOwnedOptionSet?: InterfaceOwnedOptionSetKey,
+): LockedOptionList | undefined => {
+  if (interfaceOwnedOptionSet !== undefined) {
+    return INTERFACE_OWNED_OPTION_SETS[interfaceOwnedOptionSet].options;
+  }
+  if (variableId === undefined || variableId === '') return undefined;
+  const variable = variables?.[variableId];
+  if (
+    variable === undefined ||
+    (variable.type !== 'categorical' && variable.type !== 'ordinal')
+  ) {
+    return undefined;
+  }
+  return variable.readOnly === true ? variable.options : undefined;
 };
 
 const asOptionList = (

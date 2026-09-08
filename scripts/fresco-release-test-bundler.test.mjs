@@ -7,11 +7,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  collectClosure,
   partitionClosure,
   unpublishedAtCurrentVersion,
 } from '../apps/fresco/release-test/scripts/bundle-pending-packages.mjs';
 import { readWorkspacePackages } from './resolve-manifest.mjs';
+import { collectClosure } from './vendor-workspace-packages.mjs';
 
 const WS = {
   '@codaco/app-i18n': { version: '0.1.0', private: false },
@@ -30,7 +30,7 @@ function stubFetch(statusByUrl, calls = []) {
 }
 
 test("Fresco's closure reaches @codaco/app-i18n, directly and through the interview runtime", () => {
-  const closure = collectClosure(readWorkspacePackages());
+  const closure = collectClosure(readWorkspacePackages(), 'apps/fresco');
   assert.ok(closure.includes('@codaco/app-i18n'), closure.join(', '));
   assert.ok(closure.includes('@codaco/interview'), closure.join(', '));
 });

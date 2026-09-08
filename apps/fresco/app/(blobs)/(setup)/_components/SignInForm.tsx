@@ -26,6 +26,7 @@ import {
   generateAuthenticationOptions,
   verifyAuthentication,
 } from '~/actions/webauthn';
+import { describePasskeyCeremonyError } from '~/i18n/passkeyCeremony';
 import { TWO_FACTOR_SETUP_PATH } from '~/lib/auth/paths';
 import { createAuthSchemas } from '~/schemas/auth';
 
@@ -341,11 +342,12 @@ export const SignInForm = () => {
 
       router.push('/dashboard');
     } catch (e) {
-      if (e instanceof Error && e.name === 'NotAllowedError') {
-        return;
-      }
       setPasskeyError(
-        createMessageError(messages.copyPasskeyAuthenticationFailed),
+        describePasskeyCeremonyError(
+          e,
+          'signIn',
+          messages.copyPasskeyAuthenticationFailed,
+        ),
       );
     } finally {
       setPasskeyLoading(false);

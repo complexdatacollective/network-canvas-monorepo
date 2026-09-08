@@ -1,6 +1,6 @@
 ---
 title: Accounts & Security
-date: 19th June 2026
+date: 8th September 2026
 navOrder: 3
 ---
 
@@ -24,9 +24,9 @@ Each account uses one of two **mutually exclusive** primary sign-in methods:
 - **Passkey mode** — you sign in with one or more registered passkeys (device biometrics
   such as Touch ID or Windows Hello, or a hardware security key) and have **no password**.
   Passkey mode does not use two-factor authentication: the passkey replaces the password
-  rather than adding to it. Fresco asks the authenticator to verify the user with a biometric
-  or PIN but does not require it, so do not assume a passkey counts as multi-factor
-  authentication where your institution mandates it.
+  rather than adding to it, and Fresco requires the authenticator to verify you with a
+  biometric or PIN every time, so a passkey sign-in always proves both possession of the
+  device and your identity.
 
 An account is always in exactly one of these modes. A passkey is therefore never a _second_
 factor alongside a password — it is a complete, password-free sign-in method in its own
@@ -109,15 +109,26 @@ it is in force. While it is:
   again the next time it signs in.
 
 Passkey-mode accounts are not affected: a passkey replaces the password entirely, and Fresco
-treats it as satisfying the requirement. Fresco does not currently insist that the passkey's
-device verify the person using it (with a PIN or biometric), so if your policy requires two
-separate factors for every account, keep every account in password mode.
+treats it as satisfying the requirement. Fresco requires every passkey to verify you with a
+PIN or biometric (see [Passkeys](#passkeys) below), so it already combines two distinct
+factors — possession of the authenticator and that check — without a separate TOTP step.
 
 ## Passkeys
 
 A passkey lets you sign in using your device's biometrics (Touch ID, Windows Hello) or a
 hardware security key, with no password at all. Passkeys are an account's _primary_ sign-in
 method — not a second factor on top of a password.
+
+Fresco requires every passkey to verify you with a biometric or PIN (WebAuthn _user
+verification_), both when it is registered and each time you sign in, and rejects a
+response where the authenticator skipped that check. A hardware security key therefore
+needs a PIN — your browser will ask you to set one if the key supports it — and a key that
+cannot verify you cannot be registered. A passkey that an earlier version of Fresco
+registered on such a key no longer signs in; Fresco tells you what to check rather than
+reporting a generic failure. If that happens, sign in with another of your passkeys, or
+ask another administrator to **Reset Auth** for your account (see
+[Recovering access](#recovering-access)). If you are still signed in, use **Add passkey**
+to register one that verifies you before you sign out.
 
 From the **User Management** card in **Settings**, an account in passkey mode can use **Add
 passkey** to register additional passkeys (you can register more than one, and each is given

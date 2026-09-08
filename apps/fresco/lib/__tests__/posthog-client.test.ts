@@ -451,20 +451,23 @@ describe('Fresco PostHog client', () => {
       }
     });
 
-    // Heatmaps carry element selectors, not text, so they stay on for the
-    // dashboard and off where the page is a participant's.
-    it('turns heatmaps off only on participant pages', async () => {
-      window.history.pushState({}, '', `/interview/${INTERVIEW_ID}`);
-      let mod = await loadModule();
-      await mod.startPostHog('install-123');
-      expect(initConfig().capture_heatmaps).toBe(false);
-
-      vi.resetModules();
-      init.mockClear();
-      window.history.pushState({}, '', '/dashboard/interviews');
-      mod = await loadModule();
-      await mod.startPostHog('install-123');
-      expect(initConfig().capture_heatmaps).toBe(true);
+    // Heatmaps key their payload by the full page URL, and the dashboard's
+    // participant and interview tables put the researcher's search text
+    // there as a query parameter — a leak before_send cannot reach, since it
+    // only walks object values. Heatmaps stay off on every page, not only
+    // participant ones.
+    it('keeps heatmaps off on every page', async () => {
+      for (const path of [
+        `/interview/${INTERVIEW_ID}`,
+        '/dashboard/interviews',
+      ]) {
+        vi.resetModules();
+        init.mockClear();
+        window.history.pushState({}, '', path);
+        const mod = await loadModule();
+        await mod.startPostHog('install-123');
+        expect(initConfig().capture_heatmaps).toBe(false);
+      }
     });
 
     // Init settings are the first line; the send path is the second, so that
@@ -496,30 +499,11 @@ describe('Fresco PostHog client', () => {
         expect(beforeSend(autocapture())).toBeNull();
         expect(beforeSend({ event: '$rageclick', properties: {} })).toBeNull();
         expect(beforeSend({ event: '$dead_click', properties: {} })).toBeNull();
+        // $$heatmap keys its payload by the full page URL, which puts a
+        // researcher's dashboard search text (pt_q, iv_q) in scope — a leak
+        // before_send cannot reach by walking object properties.
+        expect(beforeSend({ event: '$$heatmap', properties: {} })).toBeNull();
       }
-    });
-
-    // $$heatmap carries element selectors rather than text, so — unlike the
-    // always-off events above — it is dropped only where capture_heatmaps is
-    // itself off: participant pages. Dropping it everywhere would silence the
-    // dashboard heatmaps init deliberately leaves on.
-    it('drops $$heatmap flushes only on participant pages', async () => {
-      window.history.pushState({}, '', '/dashboard/interviews');
-      const { startPostHog } = await loadModule();
-      await startPostHog('install-123');
-
-      const beforeSend = initConfig().before_send;
-      if (typeof beforeSend !== 'function') {
-        throw new TypeError('before_send was not configured');
-      }
-
-      window.history.pushState({}, '', '/dashboard/interviews');
-      expect(beforeSend({ event: '$$heatmap', properties: {} })).toEqual(
-        expect.objectContaining({ event: '$$heatmap' }),
-      );
-
-      window.history.pushState({}, '', `/interview/${INTERVIEW_ID}`);
-      expect(beforeSend({ event: '$$heatmap', properties: {} })).toBeNull();
     });
 
     it('strips element data from other events on every page', async () => {
@@ -550,25 +534,28 @@ describe('Fresco PostHog client', () => {
       );
     });
 
-    // Replay writes the page's own URL into its payload, where before_send
-    // cannot reach it — and a recording of someone answering interview
-    // questions is research data, not telemetry.
-    it('never records a session that starts on a participant page', async () => {
-      window.history.pushState({}, '', `/interview/${INTERVIEW_ID}`);
-      const { startPostHog } = await loadModule();
+    // Replay writes the page's own URL and DOM content into its payload,
+    // where before_send cannot reach either — a recording of someone
+    // answering interview questions is research data, not telemetry, and
+    // outside the interview a recording can capture whatever a researcher's
+    // page renders, including the TOTP secret on the two-factor setup page
+    // and recovery codes or freshly created API tokens on Settings. The
+    // recorder's default masking targets form inputs, not text or images, so
+    // recording is off on every page rather than only participant ones.
+    it('never records a session, on any page', async () => {
+      for (const path of [
+        `/interview/${INTERVIEW_ID}`,
+        '/dashboard/interviews',
+      ]) {
+        vi.resetModules();
+        init.mockClear();
+        window.history.pushState({}, '', path);
+        const { startPostHog } = await loadModule();
 
-      await startPostHog('install-123');
+        await startPostHog('install-123');
 
-      expect(initConfig().disable_session_recording).toBe(true);
-    });
-
-    it('leaves recording alone on researcher pages', async () => {
-      window.history.pushState({}, '', '/dashboard/interviews');
-      const { startPostHog } = await loadModule();
-
-      await startPostHog('install-123');
-
-      expect(initConfig().disable_session_recording).toBe(false);
+        expect(initConfig().disable_session_recording).toBe(true);
+      }
     });
 
     // A researcher opening an interview from the dashboard gets there by
