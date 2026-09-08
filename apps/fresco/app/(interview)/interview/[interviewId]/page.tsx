@@ -111,7 +111,12 @@ async function InterviewContent({
 
       safeRevalidateTag('activityFeed');
 
-      await captureEvent('Interview Opened', { message });
+      // The analytics copy of this event carries only who opened it. The feed
+      // message above names the interview, and an interview id is the
+      // participant's access link, so it must not leave the deployment.
+      await captureEvent('Interview Opened', {
+        actor: session ? 'researcher' : 'participant',
+      });
       await flushPostHog();
     } catch {
       // Non-critical — don't block the interview

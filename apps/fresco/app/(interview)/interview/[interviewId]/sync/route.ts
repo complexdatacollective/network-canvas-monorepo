@@ -27,6 +27,21 @@ import { getAppSetting } from '~/queries/appSettings';
 const MAX_REVISION_ADVANCE = 10_000;
 
 /**
+ * Report a malformed sync request and answer with a 400. The error report
+ * deliberately carries no interview id: the id is the participant's
+ * unauthenticated access capability, and the optional analytics leave the
+ * deployment's infrastructure.
+ */
+const invalidRequest = (error: unknown) => {
+  after(async () => {
+    await captureException(error, { context: 'interview.sync' });
+    await flushPostHog();
+  });
+
+  return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+};
+
+/**
  * Handle post requests from the client to store the current interview state.
  */
 const routeHandler = async (
@@ -34,18 +49,6 @@ const routeHandler = async (
   { params }: { params: Promise<{ interviewId: string }> },
 ) => {
   const { interviewId } = await params;
-
-  const invalidRequest = (error: unknown) => {
-    after(async () => {
-      await captureException(error, { interviewId });
-      await flushPostHog();
-    });
-
-    return NextResponse.json(
-      { error: 'Invalid request body' },
-      { status: 400 },
-    );
-  };
 
   let rawPayload: unknown;
   try {
