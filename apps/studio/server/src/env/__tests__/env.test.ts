@@ -93,6 +93,36 @@ describe('operational configuration', () => {
       expect(() => readEnv()).toThrow('Invalid environment variables');
     },
   );
+
+  it('requires an authenticated ingress boundary before managed proxy trust', () => {
+    vi.stubEnv('STUDIO_DEPLOYMENT_MODE', 'managed');
+    vi.stubEnv('TRUSTED_PROXIES', 'fdaa::/16');
+    vi.stubEnv('STUDIO_MANAGED_INGRESS_SECRET', '');
+    expect(() => readEnv()).toThrow(
+      'STUDIO_MANAGED_INGRESS_SECRET and managed TRUSTED_PROXIES must be configured together',
+    );
+
+    vi.stubEnv(
+      'STUDIO_MANAGED_INGRESS_SECRET',
+      'synthetic-managed-ingress-secret-at-least-32-characters',
+    );
+    expect(readEnv().managedIngressSecret).toBe(
+      'synthetic-managed-ingress-secret-at-least-32-characters',
+    );
+
+    vi.stubEnv('TRUSTED_PROXIES', '');
+    expect(() => readEnv()).toThrow(
+      'STUDIO_MANAGED_INGRESS_SECRET and managed TRUSTED_PROXIES must be configured together',
+    );
+  });
+
+  it.each(['short', ' '.repeat(32), 'a'.repeat(31) + '\n'])(
+    'refuses unusable managed ingress credentials',
+    (secret) => {
+      vi.stubEnv('STUDIO_MANAGED_INGRESS_SECRET', secret);
+      expect(() => readEnv()).toThrow('Invalid environment variables');
+    },
+  );
 });
 
 describe('development defaults', () => {
@@ -503,6 +533,10 @@ describe('database and auth', () => {
 
   it('splits TRUSTED_PROXIES and drops blank entries', () => {
     vi.stubEnv('TRUSTED_PROXIES', ' 10.0.0.0/8 , ,192.168.0.1 ');
+    vi.stubEnv(
+      'STUDIO_MANAGED_INGRESS_SECRET',
+      'synthetic-managed-ingress-secret-at-least-32-characters',
+    );
     expect(readEnv().auth?.trustedProxies).toEqual([
       '10.0.0.0/8',
       '192.168.0.1',
@@ -511,6 +545,7 @@ describe('database and auth', () => {
 
   it('treats an all-blank TRUSTED_PROXIES as unset', () => {
     vi.stubEnv('TRUSTED_PROXIES', ' , ');
+    vi.stubEnv('STUDIO_MANAGED_INGRESS_SECRET', '');
     expect(readEnv().auth?.trustedProxies).toBeUndefined();
   });
 });

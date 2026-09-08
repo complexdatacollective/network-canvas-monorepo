@@ -99,10 +99,19 @@ export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
     },
   });
 
+  // Proxy admission and Better Auth both consume an address array. Tooling's
+  // validation-skip mode must not pass the raw comma-separated string through
+  // or allow an invalid trust boundary to reach either consumer.
+  const trustedProxies = serverSchemas.TRUSTED_PROXIES.safeParse(
+    runtimeEnv.TRUSTED_PROXIES || undefined,
+  );
+  if (!trustedProxies.success) throw new Error('Invalid environment variables');
+
   // This privacy switch is always parsed, even in tooling's validation-skip
   // mode. A raw 'false' must never become a truthy telemetry decision.
   return resolve({
     ...raw,
+    TRUSTED_PROXIES: trustedProxies.data,
     STUDIO_TELEMETRY: serverSchemas.STUDIO_TELEMETRY.parse(
       runtimeEnv.STUDIO_TELEMETRY || undefined,
     ),

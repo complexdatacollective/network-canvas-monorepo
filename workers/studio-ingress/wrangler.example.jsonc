@@ -1,0 +1,38 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "studio-managed-ingress",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-06-02",
+  "workers_dev": false,
+  "preview_urls": false,
+  "env": {
+    "production": {
+      "name": "studio-managed-ingress-production",
+      "routes": [
+        {
+          "pattern": "networkcanvas.studio",
+          "custom_domain": true,
+        },
+      ],
+      "vars": {
+        "PUBLIC_ORIGIN": "https://networkcanvas.studio",
+        "STATIC_ORIGIN": "https://networkcanvas-studio.netlify.app",
+        "BACKEND_ORIGIN": "https://replace-with-production-app.fly.dev",
+      },
+    },
+    "staging": {
+      "name": "studio-managed-ingress-staging",
+      "routes": [
+        {
+          "pattern": "studio.networkcanvas.dev",
+          "custom_domain": true,
+        },
+      ],
+      "vars": {
+        "PUBLIC_ORIGIN": "https://studio.networkcanvas.dev",
+        "STATIC_ORIGIN": "https://replace-with-staging-site.netlify.app",
+        "BACKEND_ORIGIN": "https://replace-with-staging-app.fly.dev",
+      },
+    },
+  },
+}
