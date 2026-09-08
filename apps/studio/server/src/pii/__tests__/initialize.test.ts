@@ -38,6 +38,25 @@ async function withDatabase(
   }
 }
 
+async function insertRestoredRow(
+  pool: pg.Pool,
+  sql: string,
+  values: unknown[],
+) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("SET LOCAL session_replication_role = 'replica'");
+    await client.query(sql, values);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 function input(
   maintenancePool: pg.Pool,
   config: KeysetConfiguration = configuration(),
@@ -172,7 +191,10 @@ describe('durable encryption startup verification', () => {
           'INSERT INTO studies (id, team_id, protocol_id, name) VALUES ($1, $2, $3, $4)',
           [studyId, teamId, protocolId, 'Synthetic study'],
         );
-        await pool.query(
+        // Model a row restored from a pre-guard archive. Ordinary writes are
+        // rejected by the new trigger; startup must still scan old bytes.
+        await insertRestoredRow(
+          pool,
           `INSERT INTO participants (id, team_id, study_id, participant_code, name_ciphertext, pii_key_id, pii_algorithm) VALUES ($1, $2, $3, 'P-1', $4, $5, 'aes-256-gcm.v1')`,
           [randomUUID(), teamId, studyId, Buffer.alloc(32), keyId],
         );
@@ -269,6 +291,7 @@ describe('durable encryption startup verification', () => {
 
   it('keeps suppression global while denying app enumeration', async () => {
     await withDatabase(async ({ app, maintenance }) => {
+      await initializeEncryption(input(maintenance));
       const index = Buffer.alloc(32, 42);
       await maintenance.query(
         `INSERT INTO participant_contact_optouts (channel, blind_index_key_id, recipient_blind_index, source) VALUES ('email', 'index-1', $1, 'provider')`,

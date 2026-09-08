@@ -258,9 +258,61 @@ rewrite immutable history or triggers.
 export COMPOSE_PROJECT_NAME=studio-restore
 sh deployment/restore.sh "$BACKUP_DIR" "$KEY_CUSTODY"
 export COMPOSE_FILE=docker-compose.yml:deployment/recovery-images.yml:deployment/quarantine.yml:deployment/encryption.yml
+# Keep the login transition in a fail-closing shell. A failed proof check,
+# startup, diagnostic, interrupt or hangup commits NOLOGIN, terminates every
+# writer session and then attempts to stop the private web process. Teardown
+# returns nonzero unless both the database boundary and service stop succeed.
+(
+set -eu
+close_restore_validation() {
+  close_failed=0
+  if ! docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -c 'BEGIN; ALTER ROLE studio_runtime NOLOGIN; ALTER ROLE studio_maintenance_runtime NOLOGIN; ALTER ROLE studio_migrator NOLOGIN; COMMIT;'
+  then close_failed=1
+  fi
+  if ! docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
+SELECT pg_catalog.pg_terminate_backend(activity.pid, 5000)
+FROM pg_catalog.pg_stat_activity activity
+JOIN pg_catalog.pg_roles login ON login.oid = activity.usesysid
+WHERE login.rolname = ANY(ARRAY['studio_runtime', 'studio_maintenance_runtime', 'studio_migrator'])
+  AND activity.pid <> pg_catalog.pg_backend_pid();
+SELECT pg_catalog.pg_stat_clear_snapshot();
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_activity activity
+    JOIN pg_catalog.pg_roles login ON login.oid = activity.usesysid
+    WHERE login.rolname = ANY(ARRAY['studio_runtime', 'studio_maintenance_runtime', 'studio_migrator'])
+  ) THEN RAISE EXCEPTION 'Studio writer session survived recovery quarantine'; END IF;
+END $$;
+SQL
+  then close_failed=1
+  fi
+  docker compose stop studio >/dev/null 2>&1 || close_failed=1
+  return "$close_failed"
+}
+cleanup_restore_validation() {
+  validation_exit_code=$?
+  trap - EXIT HUP INT TERM
+  if ! close_restore_validation; then validation_exit_code=1; fi
+  exit "$validation_exit_code"
+}
+trap cleanup_restore_validation EXIT
+trap 'exit 1' HUP INT TERM
+# Restore exits with every writer NOLOGIN. Open only the maintenance identity
+# for the offline proof check. The proxy and workers remain stopped and the
+# quarantine overlay still removes every external network path.
+docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+  -c 'ALTER ROLE studio_maintenance_runtime LOGIN;'
 docker compose run --rm --no-deps encryption-verify
+# The private web validation requires both restricted runtime identities. Keep
+# the migrator NOLOGIN. If either command fails, close both identities again
+# before investigating under quarantine.
+docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+  -c 'ALTER ROLE studio_runtime LOGIN;'
 docker compose up -d studio
 docker compose run --rm --no-deps studio diagnostics
+trap - EXIT HUP INT TERM
+)
 ```
 
 Restore refuses missing or incorrectly bound key custody before starting

@@ -74,12 +74,13 @@ async function verifyExistingProofs(
 }
 
 /** Read-only readiness gate for the keys already loaded by this process. A
- * restored backend cannot acquire new proofs or be blessed by a health probe. */
+ * restored backend cannot acquire new proofs or be blessed by a health probe.
+ * Startup performs the exhaustive row scan; database triggers prevent a
+ * subsequently written reference from naming an unverified key. */
 export async function verifyEncryptionReadiness(
   client: pg.PoolClient,
   keys: EncryptionKeys,
 ): Promise<void> {
-  await verifyLegacyIndexRemediationTransaction(client);
   const proofs = await verifyExistingProofs(client, keys);
   for (const purpose of PURPOSES) {
     for (const keyId of keys.ids(purpose)) {
@@ -87,22 +88,6 @@ export async function verifyEncryptionReadiness(
         throw new EncryptionStartupError();
     }
   }
-  const references = await client.query<KeyReference>(
-    STORED_KEY_REFERENCES_SQL,
-  );
-  for (const { purpose, keyId } of references.rows) {
-    if (purpose === 'pii-index' && keyId === CLASSIFIED_LEGACY_CONTACT_INDEX_ID)
-      continue;
-    if (
-      !keys.has(purpose, keyId) ||
-      !proofs.has(JSON.stringify([purpose, keyId]))
-    )
-      throw new EncryptionStartupError();
-  }
-  const legacy = await client.query<{ exists: boolean }>(
-    'SELECT EXISTS (SELECT 1 FROM account WHERE legacy_tokens_present) AS exists',
-  );
-  if (legacy.rows[0]?.exists !== false) throw new EncryptionStartupError();
 }
 
 /** Internal transaction seam shared by startup and the explicit demo seeder. */

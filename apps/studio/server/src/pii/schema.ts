@@ -13,7 +13,10 @@ import {
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import { AUTH_RUNTIME_TABLES } from '../db/auth-schema.ts';
-import { LEGACY_INDEX_REMEDIATION_GUARD_SQL } from './legacy-indexes.ts';
+import {
+  CLASSIFIED_LEGACY_CONTACT_INDEX_ID,
+  LEGACY_INDEX_REMEDIATION_GUARD_SQL,
+} from './legacy-indexes.ts';
 
 // A non-PII proof of every key the database has depended on. Keeping proofs
 // after live rotation makes dropping a historical restore key fail at boot.
@@ -149,6 +152,64 @@ CREATE OR REPLACE TRIGGER encryption_key_verifications_immutable
 CREATE OR REPLACE TRIGGER encryption_key_verifications_no_truncate
   BEFORE TRUNCATE ON encryption_key_verifications
   FOR EACH STATEMENT EXECUTE FUNCTION encryption_evidence_is_immutable();
+
+-- Startup exhaustively authenticates every stored key reference. Thereafter,
+-- require each changed reference to name immutable proof evidence so a cheap
+-- readiness probe cannot miss drift without rescanning the data corpus.
+CREATE OR REPLACE FUNCTION encryption_key_reference_is_verified() RETURNS trigger AS $$
+DECLARE
+  argument_index integer;
+  purpose_name text := TG_ARGV[0];
+  column_name text;
+  old_key_id text;
+  new_key_id text;
+  proof_ready boolean;
+BEGIN
+  FOR argument_index IN 1..TG_NARGS - 1 LOOP
+    column_name := TG_ARGV[argument_index];
+    new_key_id := pg_catalog.to_jsonb(NEW) ->> column_name;
+    IF TG_OP = 'UPDATE' THEN
+      old_key_id := pg_catalog.to_jsonb(OLD) ->> column_name;
+      IF new_key_id IS NOT DISTINCT FROM old_key_id THEN CONTINUE; END IF;
+    END IF;
+    IF new_key_id IS NULL THEN CONTINUE; END IF;
+    -- This identifier describes deliberately retained public legacy HMACs,
+    -- not deployment key material. Its separate guard forbids new writes and
+    -- permits only the classified migration transition.
+    IF purpose_name = 'pii-index'
+       AND new_key_id = '${CLASSIFIED_LEGACY_CONTACT_INDEX_ID}' THEN CONTINUE; END IF;
+    EXECUTE pg_catalog.format(
+      'SELECT EXISTS (SELECT 1 FROM %I.encryption_key_verifications WHERE purpose = $1 AND key_id = $2)',
+      TG_TABLE_SCHEMA
+    ) INTO proof_ready USING purpose_name, new_key_id;
+    IF NOT proof_ready THEN
+      RAISE EXCEPTION 'encrypted data may reference only a verified key';
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = pg_catalog;
+
+CREATE OR REPLACE TRIGGER participants_verified_pii_key_reference_guard
+  BEFORE INSERT OR UPDATE OF pii_key_id ON participants
+  FOR EACH ROW EXECUTE FUNCTION encryption_key_reference_is_verified('pii-enc', 'pii_key_id');
+CREATE OR REPLACE TRIGGER participants_verified_index_key_reference_guard
+  BEFORE INSERT OR UPDATE OF blind_index_key_id ON participants
+  FOR EACH ROW EXECUTE FUNCTION encryption_key_reference_is_verified('pii-index', 'blind_index_key_id');
+CREATE OR REPLACE TRIGGER message_deliveries_verified_key_reference_guard
+  BEFORE INSERT OR UPDATE OF blind_index_key_id ON message_deliveries
+  FOR EACH ROW EXECUTE FUNCTION encryption_key_reference_is_verified('pii-index', 'blind_index_key_id');
+CREATE OR REPLACE TRIGGER participant_contact_optouts_verified_key_reference_guard
+  BEFORE INSERT OR UPDATE OF blind_index_key_id ON participant_contact_optouts
+  FOR EACH ROW EXECUTE FUNCTION encryption_key_reference_is_verified('pii-index', 'blind_index_key_id');
+CREATE OR REPLACE TRIGGER webhook_subscriptions_verified_key_reference_guard
+  BEFORE INSERT OR UPDATE OF secret_key_id ON webhook_subscriptions
+  FOR EACH ROW EXECUTE FUNCTION encryption_key_reference_is_verified('integration-enc', 'secret_key_id');
+CREATE OR REPLACE TRIGGER account_verified_key_reference_guard
+  BEFORE INSERT OR UPDATE OF access_token_key_id, refresh_token_key_id, id_token_key_id ON account
+  FOR EACH ROW EXECUTE FUNCTION encryption_key_reference_is_verified(
+    'integration-enc', 'access_token_key_id', 'refresh_token_key_id', 'id_token_key_id'
+  );
 CREATE OR REPLACE TRIGGER credential_audit_events_immutable
   BEFORE UPDATE OR DELETE ON credential_audit_events
   FOR EACH ROW EXECUTE FUNCTION encryption_evidence_is_immutable();
@@ -157,6 +218,7 @@ CREATE OR REPLACE TRIGGER credential_audit_events_no_truncate
   FOR EACH STATEMENT EXECUTE FUNCTION encryption_evidence_is_immutable();
 
 REVOKE SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON encryption_key_verifications FROM ${TENANT_ROLES.app};
+GRANT SELECT (purpose, key_id) ON encryption_key_verifications TO ${TENANT_ROLES.app};
 REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON encryption_key_verifications FROM ${TENANT_ROLES.maintenance};
 GRANT SELECT, INSERT ON encryption_key_verifications TO ${TENANT_ROLES.maintenance};
 REVOKE SELECT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON credential_audit_events FROM ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance};
