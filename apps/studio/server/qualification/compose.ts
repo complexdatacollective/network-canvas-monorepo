@@ -288,6 +288,18 @@ export async function localDeployment(label: string) {
     ports: ["127.0.0.1:${ports.web}:3000"]
     volumes: [./probe.yml:/probe.yml:ro]
     networks: [data, edge]
+  telemetry-detector:
+    image: \${STUDIO_IMAGE:?Select the signed Studio image digest}
+    entrypoint: [node, -e]
+    command: [${JSON.stringify(TELEMETRY_DETECTOR_SOURCE)}]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp:size=1m,mode=1777"]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    networks:
+      edge:
+        aliases: [ph-relay.networkcanvas.com]
   traefik:
     ports: !reset []
 networks:
