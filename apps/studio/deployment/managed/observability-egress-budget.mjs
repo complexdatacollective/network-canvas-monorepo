@@ -102,6 +102,7 @@ function validatedOptions(options) {
     }),
   );
   return {
+    accountIdentitySha256: digest(options.accountIdentity),
     bindingSha256,
     directory: resolve(options.directory),
     finalSignalReserveBytes: options.finalSignalReserveBytes,
@@ -332,31 +333,55 @@ function validateState(state, options) {
   return state;
 }
 
-function checkpoint(state) {
+function checkpoint(state, options) {
   return Object.freeze({
+    accountIdentitySha256: options.accountIdentitySha256,
     bindingSha256: state.bindingSha256,
-    format: 1,
+    exhausted: state.exhausted,
+    finalSignalAttemptedBytes: state.finalSignalAttemptedBytes,
+    finalSignalReserveBytes: options.finalSignalReserveBytes,
+    format: 2,
+    lastObservedAt: state.lastObservedAt,
     monthSequence: state.monthSequence,
     monthUtc: state.monthUtc,
+    payloadAttemptedBytes: state.payloadAttemptedBytes,
+    payloadLimitBytes: options.payloadLimitBytes,
     reservationSequence: state.reservationSequence,
     stateSha256: digest(JSON.stringify(state)),
   });
 }
 
-function validateCheckpoint(value, bindingSha256) {
+function validateCheckpoint(value, expected) {
   if (
     !exactKeys(value, [
+      'accountIdentitySha256',
       'bindingSha256',
+      'exhausted',
+      'finalSignalAttemptedBytes',
+      'finalSignalReserveBytes',
       'format',
+      'lastObservedAt',
       'monthSequence',
       'monthUtc',
+      'payloadAttemptedBytes',
+      'payloadLimitBytes',
       'reservationSequence',
       'stateSha256',
     ]) ||
-    value.format !== 1 ||
-    value.bindingSha256 !== bindingSha256 ||
+    value.format !== 2 ||
+    value.accountIdentitySha256 !== expected.accountIdentitySha256 ||
+    value.bindingSha256 !== expected.bindingSha256 ||
+    value.finalSignalReserveBytes !== expected.finalSignalReserveBytes ||
+    value.payloadLimitBytes !== expected.payloadLimitBytes ||
+    typeof value.exhausted !== 'boolean' ||
+    canonicalStoredInstant(value.lastObservedAt) === null ||
     !safeInteger(value.monthSequence, 1) ||
     !MONTH_UTC.test(value.monthUtc) ||
+    monthUtc(value.lastObservedAt) !== value.monthUtc ||
+    !safeInteger(value.payloadAttemptedBytes) ||
+    value.payloadAttemptedBytes > value.payloadLimitBytes ||
+    !safeInteger(value.finalSignalAttemptedBytes) ||
+    value.finalSignalAttemptedBytes > value.finalSignalReserveBytes ||
     !safeInteger(value.reservationSequence) ||
     !CONFIGURATION_DIGEST.test(value.stateSha256)
   )
@@ -383,11 +408,11 @@ function requiredAnchor(anchor) {
 function readAnchor(anchor, expected) {
   let observed;
   try {
-    observed = anchor.read(expected.bindingSha256);
+    observed = anchor.read(expected.accountIdentitySha256);
   } catch {
     refuse('EGRESS_BUDGET_ANCHOR_UPDATE_FAILED');
   }
-  validateCheckpoint(observed, expected.bindingSha256);
+  validateCheckpoint(observed, expected);
   if (!sameCheckpoint(observed, expected))
     refuse('EGRESS_BUDGET_ANCHOR_MISMATCH');
 }
@@ -594,8 +619,8 @@ class MonthlyEgressBudget {
   }
 
   #persist(state) {
-    const previous = checkpoint(this.#state);
-    const next = checkpoint(state);
+    const previous = checkpoint(this.#state, this.#options);
+    const next = checkpoint(state, this.#options);
     try {
       writePrivateFile(
         this.#paths.state,
@@ -727,7 +752,7 @@ export function createEgressBudgetOperations({
             lock.assertHeldPaths,
           );
           writePrivateFile(paths.state, envelope(state), lock.assertHeldPaths);
-          const next = checkpoint(state);
+          const next = checkpoint(state, validated);
           try {
             durableAnchor.initialize(next);
           } catch {
@@ -749,11 +774,11 @@ export function createEgressBudgetOperations({
         withCustody(options, false, (validated, directory, lock) => {
           const paths = statePaths(directory.path);
           const state = readBoundState(paths, validated);
-          const previous = checkpoint(state);
+          const previous = checkpoint(state, validated);
           readAnchor(durableAnchor, previous);
           const observedState = observeState(state, canonicalInstant(now));
           if (observedState.lastObservedAt !== state.lastObservedAt) {
-            const next = checkpoint(observedState);
+            const next = checkpoint(observedState, validated);
             writePrivateFile(
               paths.state,
               envelope(observedState),
@@ -779,10 +804,10 @@ export function createEgressBudgetOperations({
         withCustody(options, false, (validated, directory, lock) => {
           const paths = statePaths(directory.path);
           const state = readBoundState(paths, validated);
-          const previous = checkpoint(state);
+          const previous = checkpoint(state, validated);
           readAnchor(durableAnchor, previous);
           const nextState = transitionedState(state, transition);
-          const next = checkpoint(nextState);
+          const next = checkpoint(nextState, validated);
           writePrivateFile(
             paths.state,
             envelope(nextState),

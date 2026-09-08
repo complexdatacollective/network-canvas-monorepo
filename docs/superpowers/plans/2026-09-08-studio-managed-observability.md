@@ -27,8 +27,16 @@ status causes its regression oracle to fail. The budget primitive requires an
 independent monotonic anchor, pins its directory/lock descriptors, bounds native
 `flock` acquisition and refuses automatic clock-based month resets. Its 26
 controls passed within 141 composed managed-estate/CI controls before the later
-recovery-cost additions. Neither a passing local counter nor an unimplemented
-anchor port establishes production budget enforcement.
+recovery-cost additions. Neither a passing local counter nor an unqualified
+remote anchor establishes production budget enforcement.
+
+The local checkpoint carries its attempted-byte counters and limits to an
+account-scoped monotonic HTTP state machine. That service admits one
+create-once lineage, full-checkpoint CAS advances, and an operator-authorized
+exact next UTC month. Forwarding and operator authorities are distinct. A
+production adapter must bind the fixed account partition to independently
+administered storage whose forwarder cannot delete, initialize, or advance
+months; no local directory or changed configuration creates another allowance.
 
 The local byte counter is not by itself a proof of New Relic account ingestion. New Relic documents decompression and enrichment increasing stored remote-write size, including an illustrative 15-times ratio to compressed input. Its account consumption view is approximate and can lag by about three hours. Qualification must therefore measure stored-byte expansion for the exact bounded metric/log schemas, bound the maximum outstanding traffic during that reporting lag, and reserve that allowance before forwarding. An assumed universal multiplier or a polled usage alert alone cannot establish the pre-limit stop. Missing, stale or inconsistent provider usage evidence must close forwarding; the dedicated Free account remains the independent spending ceiling.
 

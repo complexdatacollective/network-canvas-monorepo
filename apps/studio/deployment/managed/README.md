@@ -395,8 +395,12 @@ private collector. It deliberately has no same-directory rollback marker. Its
 operations require an `anchor` port backed by an independently durable,
 monotonic store. That port must provide atomic compare-and-set `initialize`,
 `advance`, and `advanceMonth` operations plus authoritative `read` access.
-Each checkpoint binds the configuration, UTC month, month and reservation
-sequences, and exact local-state digest. `advanceMonth(previous, next,
+Each format-2 checkpoint exposes the fixed account hash, reviewed policy
+binding, payload and final-signal limits, both attempted-byte counters,
+exhaustion state, last observed time, UTC month, month and reservation
+sequences, and exact local-state digest. The remote state machine enforces the
+visible counters and independently recomputes the digest; it does not treat an
+opaque hash as evidence of spend. `advanceMonth(previous, next,
 authorization)` receives the target UTC month in `next`, so its authorization
 decision can bind the requested transition rather than accept generic freshness.
 The primitive writes and fsyncs local state first, updates the anchor second,
@@ -411,8 +415,10 @@ private mode-0700 directory. Normal collector startup calls
 corrupt, differently bound, permissive, linked, concurrently locked,
 clock-regressed, or anchor-mismatched state. Changing the dedicated New Relic
 account, the externally reviewed schema/usage policy digest, the monthly limit,
-or the final-signal reserve requires a separately reviewed state transition or
-a new operator-controlled directory. The primitive refuses a monthly limit
+or the final-signal reserve is refused by the active remote lineage. A new
+operator-controlled directory does not create another allowance for the same
+account. A future policy transition must conservatively preserve attempted
+bytes; none is implemented here. The primitive refuses a monthly limit
 above the plan's measured 50 GB forecast bound.
 
 Crossing a UTC month never resets capacity from the host clock. Open and reserve
@@ -448,6 +454,17 @@ rules into `configurationIdentity`. Missing or stale provider evidence must
 close forwarding outside this primitive. The counter does not establish New
 Relic qualification, retention, queryability, alerts, or the provider's hard
 account limit.
+
+`observability-monotonic-anchor.mjs` defines bounded JSON POST routes
+`/v1/read`, `/v1/initialize`, `/v1/advance`, and `/v1/advance-month` for one
+fixed account. Authentication resolves a forwarding or operator authority.
+Only the operator initializes the permanent lineage and authorizes an exact
+next-month transition; only the forwarder advances ordinary spend. The durable
+store must make initialization create-once even after active-record loss and
+compare-and-set the complete checkpoint atomically. Its account partition and
+permanent enrollment marker must be outside collector filesystem and deletion
+authority. Handler timeouts are ambiguous failures: a late commit remains
+charged and the next read discovers it.
 
 No production anchor adapter or forwarding integration is qualified here. An
 adapter stored on the same filesystem or administered through the same rollback
