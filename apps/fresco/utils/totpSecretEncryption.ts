@@ -98,6 +98,13 @@ export type TotpKeyMaterials = [primary: string, ...fallbacks: string[]];
  * the first one; the rest are tried when opening, so that a deployment which
  * starts setting `TOTP_ENCRYPTION_KEY` can still read rows sealed under the
  * database password until the startup step has re-sealed them.
+ *
+ * A connection URL without a password (peer or token authentication) offers
+ * nothing secret to derive from — host, user and database names are exactly
+ * what a database dump reveals — so such a deployment must set
+ * `TOTP_ENCRYPTION_KEY`. This throws rather than deriving from public
+ * metadata; the deploy-time script resolves materials before it writes
+ * anything, so the message reaches the operator with nothing sealed.
  */
 export function resolveTotpKeyMaterials({
   overrideKey,
@@ -115,26 +122,33 @@ export function resolveTotpKeyMaterials({
     );
   }
 
-  const fromDatabaseUrl = databasePassword(databaseUrl);
-  return overrideKey ? [overrideKey, fromDatabaseUrl] : [fromDatabaseUrl];
+  const password = databasePassword(databaseUrl);
+
+  if (overrideKey) {
+    return password ? [overrideKey, password] : [overrideKey];
+  }
+  if (!password) {
+    throw new Error(
+      'DATABASE_URL carries no password to derive the two-factor authentication encryption key from, so TOTP_ENCRYPTION_KEY is required: set it to a long random string of at least 32 characters, for example the output of `openssl rand -base64 32`.',
+    );
+  }
+  return [password];
 }
 
-/**
- * The password component of a connection URL, decoded. A URL with no password
- * (peer or IAM authentication) still has to yield something held outside the
- * database, and the whole connection string is the best available.
- */
+/** The password component of a connection URL, decoded; empty when absent. */
 function databasePassword(databaseUrl: string): string {
-  let password = '';
+  let password: string;
   try {
     password = new URL(databaseUrl).password;
-    password = decodeURIComponent(password);
   } catch {
-    // An unparsable URL, or a password with a stray percent sign: keep what
-    // we have. Whatever the value, it only has to be stable and outside the
-    // database.
+    return '';
   }
-  return password.length > 0 ? password : databaseUrl;
+  try {
+    return decodeURIComponent(password);
+  } catch {
+    // A stray percent sign: the raw value is still stable and secret.
+    return password;
+  }
 }
 
 export function deriveTotpEncryptionKey(keyMaterial: string): Buffer {

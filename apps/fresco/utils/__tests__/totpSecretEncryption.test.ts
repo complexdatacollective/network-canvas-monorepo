@@ -214,20 +214,33 @@ describe('resolveTotpKeyMaterials', () => {
     expect(a).not.toBe(b);
   });
 
-  it('falls back to the whole connection string when the URL has no password', () => {
+  it('requires the override when the URL has no password, never deriving from public metadata', () => {
     const url = 'postgres://postgres@postgres:5432/postgres';
-    expect(
+
+    expect(() =>
       resolveTotpKeyMaterials({ overrideKey: undefined, databaseUrl: url }),
-    ).toEqual([url]);
+    ).toThrow(/TOTP_ENCRYPTION_KEY is required/);
+    expect(
+      resolveTotpKeyMaterials({ overrideKey: KEY, databaseUrl: url }),
+    ).toEqual([KEY]);
   });
 
-  it('falls back to the raw value when the URL does not parse', () => {
-    expect(
+  it('requires the override when the URL does not parse', () => {
+    expect(() =>
       resolveTotpKeyMaterials({
         overrideKey: undefined,
         databaseUrl: 'not a url',
       }),
-    ).toEqual(['not a url']);
+    ).toThrow(/TOTP_ENCRYPTION_KEY is required/);
+  });
+
+  it('keeps a password with a stray percent sign rather than discarding it', () => {
+    expect(
+      resolveTotpKeyMaterials({
+        overrideKey: undefined,
+        databaseUrl: 'postgres://postgres:100%sure@postgres:5432/postgres',
+      }),
+    ).toEqual(['100%sure']);
   });
 });
 
