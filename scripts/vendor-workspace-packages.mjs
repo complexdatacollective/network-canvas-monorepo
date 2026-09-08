@@ -224,6 +224,67 @@ function patchOnce(content, anchor, replacement, description) {
   return content.replace(anchor, replacement);
 }
 
+// The staged Dockerfile with the edits the vendored `tarballs` require. Pure,
+// so the exact install lines can be asserted; `vendorPackages` writes it back.
+export function patchDockerfileForVendor(dockerfile, tarballs) {
+  // deps stage: pnpm resolves the file: overrides relative to /app, so the
+  // tarballs must be in place before `pnpm i --frozen-lockfile`.
+  dockerfile = patchOnce(
+    dockerfile,
+    'COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml prisma.config.ts env.js ./',
+    'COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml prisma.config.ts env.js ./\nCOPY vendor ./vendor',
+    'deps-stage dependency COPY',
+  );
+
+  // runner stage: make the vendored tarballs available to the runtime-deps
+  // install (the builder stage has them via `COPY . .`).
+  dockerfile = patchOnce(
+    dockerfile,
+    'COPY --from=builder /app/pnpm-lock.yaml /tmp/pnpm-lock.yaml',
+    'COPY --from=builder /app/pnpm-lock.yaml /tmp/pnpm-lock.yaml\nCOPY --from=builder /app/vendor /tmp/vendor',
+    'runner-stage lockfile COPY',
+  );
+
+  // runner stage: a vendored package's lockfile pin reads `file:vendor/...`
+  // (a path that does not exist under /tmp/runtime), so its install must point
+  // at the tarball; a registry-resolved package keeps the original LV() pin.
+  const pvVendored = tarballs['@codaco/protocol-validation'];
+  const scVendored = tarballs['@codaco/shared-consts'];
+  if (pvVendored || scVendored) {
+    const pvArg = pvVendored
+      ? `      "/tmp/vendor/${pvVendored}"`
+      : '      "@codaco/protocol-validation@$(LV @codaco/protocol-validation)"';
+    // shared-consts is protocol-validation's dependency. Vendored, its tarball
+    // is installed explicitly and dedupes against the caret range. Not
+    // vendored while protocol-validation is, it still has to be named, at
+    // the version the pnpm lock resolved: this is a fresh `npm install` with
+    // no lockfile, and the vendored tarball's caret range would otherwise let
+    // npm take whatever newer version the registry holds — different shared
+    // constants for the startup scripts than for the bundle that was built
+    // and certified.
+    const scArg = scVendored
+      ? ` \\\n      "/tmp/vendor/${scVendored}"`
+      : pvVendored
+        ? ' \\\n      "@codaco/shared-consts@$(LV @codaco/shared-consts)"'
+        : '';
+    dockerfile = patchOnce(
+      dockerfile,
+      '      "@codaco/protocol-validation@$(LV @codaco/protocol-validation)"; \\',
+      `${pvArg}${scArg}; \\`,
+      'runner-stage protocol-validation install',
+    );
+  }
+  if (tarballs['@codaco/interview']) {
+    dockerfile = patchOnce(
+      dockerfile,
+      '    npm pack --silent --pack-destination /tmp "@codaco/interview@$(LV @codaco/interview)"; \\',
+      `    cp /tmp/vendor/${tarballs['@codaco/interview']} /tmp/codaco-interview-vendored.tgz; \\`,
+      'runner-stage interview pack',
+    );
+  }
+  return dockerfile;
+}
+
 // Vendors `names` (a subset of `closure`) into the staged tree and returns
 // the bundle manifest: { vendored: { name: tarball }, registry: [names] }.
 // With no names the tree is left untouched — the pure pipeline tree already
@@ -277,54 +338,10 @@ export function vendorPackages({ stageDir, names, closure, wsPackages, note }) {
   // 3. Dockerfile patches — only where a vendored package requires them; the
   //    registry-resolved remainder keeps the original Dockerfile lines.
   const dockerfilePath = join(stageDir, 'Dockerfile');
-  let dockerfile = readFileSync(dockerfilePath, 'utf8');
-
-  // deps stage: pnpm resolves the file: overrides relative to /app, so the
-  // tarballs must be in place before `pnpm i --frozen-lockfile`.
-  dockerfile = patchOnce(
-    dockerfile,
-    'COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml prisma.config.ts env.js ./',
-    'COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml prisma.config.ts env.js ./\nCOPY vendor ./vendor',
-    'deps-stage dependency COPY',
+  writeFileSync(
+    dockerfilePath,
+    patchDockerfileForVendor(readFileSync(dockerfilePath, 'utf8'), tarballs),
   );
-
-  // runner stage: make the vendored tarballs available to the runtime-deps
-  // install (the builder stage has them via `COPY . .`).
-  dockerfile = patchOnce(
-    dockerfile,
-    'COPY --from=builder /app/pnpm-lock.yaml /tmp/pnpm-lock.yaml',
-    'COPY --from=builder /app/pnpm-lock.yaml /tmp/pnpm-lock.yaml\nCOPY --from=builder /app/vendor /tmp/vendor',
-    'runner-stage lockfile COPY',
-  );
-
-  // runner stage: a vendored package's lockfile pin reads `file:vendor/...`
-  // (a path that does not exist under /tmp/runtime), so its install must point
-  // at the tarball; a registry-resolved package keeps the original LV() pin.
-  const pvVendored = tarballs['@codaco/protocol-validation'];
-  const scVendored = tarballs['@codaco/shared-consts'];
-  if (pvVendored || scVendored) {
-    const pvArg = pvVendored
-      ? `      "/tmp/vendor/${pvVendored}"`
-      : '      "@codaco/protocol-validation@$(LV @codaco/protocol-validation)"';
-    // An explicitly installed shared-consts tarball dedupes against
-    // protocol-validation's caret range, keeping the vendored build in place.
-    const scArg = scVendored ? ` \\\n      "/tmp/vendor/${scVendored}"` : '';
-    dockerfile = patchOnce(
-      dockerfile,
-      '      "@codaco/protocol-validation@$(LV @codaco/protocol-validation)"; \\',
-      `${pvArg}${scArg}; \\`,
-      'runner-stage protocol-validation install',
-    );
-  }
-  if (tarballs['@codaco/interview']) {
-    dockerfile = patchOnce(
-      dockerfile,
-      '    npm pack --silent --pack-destination /tmp "@codaco/interview@$(LV @codaco/interview)"; \\',
-      `    cp /tmp/vendor/${tarballs['@codaco/interview']} /tmp/codaco-interview-vendored.tgz; \\`,
-      'runner-stage interview pack',
-    );
-  }
-  writeFileSync(dockerfilePath, dockerfile);
 
   return manifest;
 }

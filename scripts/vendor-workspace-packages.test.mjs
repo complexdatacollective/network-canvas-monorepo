@@ -9,6 +9,7 @@ import {
   assertVendoredLockfile,
   collectClosure,
   packagesChangedSince,
+  patchDockerfileForVendor,
   tarballName,
   withDependents,
 } from './vendor-workspace-packages.mjs';
@@ -250,5 +251,66 @@ test('the lockfile guard fails on a registry resolution of a vendored package', 
   assert.throws(
     () => assertVendoredLockfile(stage, manifest),
     /no file:vendor\/x-ui-1\.0\.0\.tgz resolution/,
+  );
+});
+
+// The lines of apps/fresco/Dockerfile the patches anchor on, in order.
+const DOCKERFILE = [
+  'COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml prisma.config.ts env.js ./',
+  'COPY --from=builder /app/pnpm-lock.yaml /tmp/pnpm-lock.yaml',
+  '      "@codaco/protocol-validation@$(LV @codaco/protocol-validation)"; \\',
+  '    npm pack --silent --pack-destination /tmp "@codaco/interview@$(LV @codaco/interview)"; \\',
+].join('\n');
+
+test('a vendored protocol-validation pins shared-consts to the lock when it is not vendored', () => {
+  const patched = patchDockerfileForVendor(DOCKERFILE, {
+    '@codaco/protocol-validation': 'codaco-protocol-validation-13.0.1.tgz',
+  });
+  assert.match(
+    patched,
+    /"\/tmp\/vendor\/codaco-protocol-validation-13\.0\.1\.tgz" \\\n\s+"@codaco\/shared-consts@\$\(LV @codaco\/shared-consts\)"; \\/,
+  );
+  // The interview line is untouched: it is not vendored here.
+  assert.match(
+    patched,
+    /npm pack --silent .*@codaco\/interview@\$\(LV @codaco\/interview\)/,
+  );
+});
+
+test('vendored shared-consts installs from its tarball beside a registry protocol-validation', () => {
+  const patched = patchDockerfileForVendor(DOCKERFILE, {
+    '@codaco/shared-consts': 'codaco-shared-consts-6.0.0.tgz',
+  });
+  assert.match(
+    patched,
+    /"@codaco\/protocol-validation@\$\(LV @codaco\/protocol-validation\)" \\\n\s+"\/tmp\/vendor\/codaco-shared-consts-6\.0\.0\.tgz"; \\/,
+  );
+});
+
+test('packages outside the runner stage leave its install lines alone', () => {
+  const patched = patchDockerfileForVendor(DOCKERFILE, {
+    '@codaco/fresco-ui': 'codaco-fresco-ui-6.4.0.tgz',
+    '@codaco/interview': 'codaco-interview-9.0.1.tgz',
+  });
+  assert.match(
+    patched,
+    /"@codaco\/protocol-validation@\$\(LV @codaco\/protocol-validation\)"; \\/,
+  );
+  assert.doesNotMatch(patched, /shared-consts/);
+  assert.match(
+    patched,
+    /cp \/tmp\/vendor\/codaco-interview-9\.0\.1\.tgz \/tmp\/codaco-interview-vendored\.tgz; \\/,
+  );
+  assert.match(patched, /^COPY vendor \.\/vendor$/m);
+  assert.match(patched, /^COPY --from=builder \/app\/vendor \/tmp\/vendor$/m);
+});
+
+test('a Dockerfile without the expected anchor fails loudly', () => {
+  assert.throws(
+    () =>
+      patchDockerfileForVendor('FROM scratch\n', {
+        '@codaco/interview': 'x.tgz',
+      }),
+    /deps-stage dependency COPY anchor/,
   );
 });
