@@ -139,6 +139,37 @@ describe('loadProtocolGallery', () => {
     );
   });
 
+  it('rejects a slug that collides with the gallery route prefix', async () => {
+    await expect(
+      loadProtocolGallery(
+        await patchedDataset('"uk-jcoin-i",', '"protocol-gallery",'),
+      ),
+    ).rejects.toThrow(
+      'protocol-gallery.csv: row 2: Slug: must not be the reserved gallery path',
+    );
+  });
+
+  it('rejects a list column that normalises to no values', async () => {
+    await expect(
+      loadProtocolGallery(
+        await patchedDataset(
+          '"Sociology, Substance use, Public health"',
+          '" , , "',
+        ),
+      ),
+    ).rejects.toThrow(
+      'protocol-gallery.csv: row 2: Field(s): must list at least one value',
+    );
+
+    await expect(
+      loadProtocolGallery(
+        await patchedDataset('"sociogram, tie-strength dyad census"', '",,"'),
+      ),
+    ).rejects.toThrow(
+      'protocol-gallery.csv: row 4: Edge Generation Methodology: must list at least one value',
+    );
+  });
+
   it('rejects well-formed but impossible dates', async () => {
     const source = await readFile(
       join(process.cwd(), 'content', 'protocol-gallery.csv'),

@@ -18,6 +18,7 @@ import {
   SYNC_COMMAND,
   WAVES_COLUMN,
 } from '~/lib/protocolGalleryColumns';
+import { protocolGalleryPathPrefix } from '~/lib/protocolGalleryHosting';
 import type { ProtocolStage } from '~/lib/protocolStages';
 import { summarizeStages } from '~/lib/stageTypes';
 
@@ -65,10 +66,18 @@ export type GalleryProtocol = {
 };
 
 const requiredText = z.string().trim().min(1);
+const listText = requiredText.refine(
+  (value) => splitList(value).length > 0,
+  'must list at least one value',
+);
 const slug = z
   .string()
   .trim()
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'must be a URL-safe slug');
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'must be a URL-safe slug')
+  .refine(
+    (value) => `/${value}` !== protocolGalleryPathPrefix,
+    'must not be the reserved gallery path',
+  );
 const httpsUrl = z
   .string()
   .trim()
@@ -112,9 +121,9 @@ const authoredRowShape = {
   'Publication URL': httpsUrl,
   'Grant Number': requiredText,
   'Clinical Trials Registration': requiredText,
-  'Field(s)': requiredText,
+  'Field(s)': listText,
   'Population': requiredText,
-  'Edge Generation Methodology': requiredText,
+  'Edge Generation Methodology': listText,
   'Uses Rosters': yesNo,
   'Qualitative Summary': requiredText,
   'Descriptive Sentence': requiredText,
