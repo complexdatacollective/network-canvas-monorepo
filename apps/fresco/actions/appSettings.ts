@@ -3,13 +3,12 @@
 import { createId } from '@paralleldrive/cuid2';
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
-import { z } from 'zod';
+import { type z } from 'zod';
 import { z as zm } from 'zod/mini';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
-import { getTwoFactorStatus } from '~/lib/auth/twoFactorPolicy';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import {
@@ -89,19 +88,6 @@ const messages = defineMessages({
     description:
       'Researcher-facing actions / appSettings: Token verification failed: value',
   },
-  setUpYourOwnTwoFactorFirst: {
-    id: 'fresco.actions.appSettings.setUpYourOwnTwoFactorFirst',
-    defaultMessage:
-      'Set up two-factor authentication for your own account before requiring it for everyone.',
-    description:
-      'Error returned when a researcher whose password account has no two-factor authentication tries to turn on the Require Two-Factor Authentication setting.',
-  },
-  invalidRequireTwoFactorValue: {
-    id: 'fresco.actions.appSettings.invalidRequireTwoFactorValue',
-    defaultMessage: 'Invalid value for the two-factor requirement.',
-    description:
-      'Error returned when the Require Two-Factor Authentication setting is sent something other than on or off.',
-  },
 });
 
 const S3_SETTING_KEYS: AppSetting[] = [
@@ -123,21 +109,6 @@ function isStorageSettingEnvManaged(key: AppSetting): boolean {
   if (S3_SETTING_KEYS.includes(key)) return status.s3EnvManaged;
   if (key === 'uploadThingToken') return status.uploadThingEnvManaged;
   return false;
-}
-
-/**
- * The one precondition on requiring two-factor authentication: the caller's
- * own password account must already have it, or the write would hold the
- * caller's session at the setup gate the moment it saved. Returns the error to
- * report, or null when the caller complies.
- */
-async function twoFactorRequirementRefusal(
-  userId: string,
-): Promise<string | null> {
-  const { passwordMode, totpEnabled } = await getTwoFactorStatus(userId);
-  return passwordMode && !totpEnabled
-    ? createMessageError(messages.setUpYourOwnTwoFactorFirst)
-    : null;
 }
 
 export async function setAppSetting<
@@ -188,17 +159,6 @@ export async function setAppSetting<
           value1: key,
         }),
       );
-    }
-
-    // Enforced here, on the only write path, because this function is itself
-    // an exported Server Action: a check that lived only in
-    // `setRequireTwoFactor` could be skipped by calling this one directly. Read
-    // from the validated value so the serialised form ('true') is judged too.
-    if (key === 'requireTwoFactor' && validated.data === true) {
-      const refusal = await twoFactorRequirementRefusal(session.user.userId);
-      if (refusal) {
-        throw new Error(refusal);
-      }
     }
 
     await prisma.appSettings.upsert({
@@ -325,36 +285,6 @@ async function verifyUploadThingToken(token: string): Promise<string | null> {
     await captureException(error);
     return createMessageError(messages.copyTokenVerificationFailed);
   }
-}
-
-/**
- * Turns the "Require Two-Factor Authentication" policy on or off, returning
- * the refusal as a value the settings card can show. `setAppSetting` applies
- * the same precondition on the write itself; the check here only exists to
- * hand the researcher the reason instead of a generic failure.
- */
-export async function setRequireTwoFactor(data: unknown) {
-  const session = await requireApiAuth();
-
-  const parsed = z.boolean().safeParse(data);
-  if (!parsed.success) {
-    return {
-      error: createMessageError(messages.invalidRequireTwoFactorValue),
-      data: null,
-    };
-  }
-  const enabled = parsed.data;
-
-  if (enabled) {
-    const refusal = await twoFactorRequirementRefusal(session.user.userId);
-    if (refusal) {
-      return { error: refusal, data: null };
-    }
-  }
-
-  await setAppSetting('requireTwoFactor', enabled);
-
-  return { error: null, data: { enabled } };
 }
 
 export async function regenerateInstallationId() {

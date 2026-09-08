@@ -463,7 +463,7 @@ type UserManagementProps = {
   passkeysPromise: Promise<Passkey[]>;
   hasPasswordPromise: Promise<boolean>;
   sandboxMode: boolean;
-  /** The installation-wide "Require Two-Factor Authentication" setting. */
+  /** Whether the installation requires two-factor authentication (`REQUIRE_TWO_FACTOR`). */
   twoFactorRequired: boolean;
 };
 

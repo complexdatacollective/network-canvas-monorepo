@@ -12,13 +12,15 @@ vi.mock('react', async (importOriginal) => {
   };
 });
 
-const { mockKeyFindFirst, mockTotpFindFirst, mockGetAppSetting } = vi.hoisted(
-  () => ({
+const { mockEnv, mockKeyFindFirst, mockTotpFindFirst, mockIsAppConfigured } =
+  vi.hoisted(() => ({
+    mockEnv: { REQUIRE_TWO_FACTOR: undefined as boolean | undefined },
     mockKeyFindFirst: vi.fn(),
     mockTotpFindFirst: vi.fn(),
-    mockGetAppSetting: vi.fn(),
-  }),
-);
+    mockIsAppConfigured: vi.fn(),
+  }));
+
+vi.mock('~/env', () => ({ env: mockEnv }));
 
 vi.mock('~/lib/db', () => ({
   prisma: {
@@ -28,10 +30,14 @@ vi.mock('~/lib/db', () => ({
 }));
 
 vi.mock('~/queries/appSettings', () => ({
-  getAppSetting: mockGetAppSetting,
+  isAppConfigured: mockIsAppConfigured,
 }));
 
-import { getTwoFactorStatus, requiresTwoFactorSetup } from '../twoFactorPolicy';
+import {
+  getTwoFactorStatus,
+  isTwoFactorRequired,
+  requiresTwoFactorSetup,
+} from '../twoFactorPolicy';
 
 const USER_ID = 'user-1';
 
@@ -43,11 +49,23 @@ const withAuthenticator = () =>
   mockTotpFindFirst.mockResolvedValue({ id: 'totp-1' });
 const withoutAuthenticator = () => mockTotpFindFirst.mockResolvedValue(null);
 
-describe('getTwoFactorStatus', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockEnv.REQUIRE_TWO_FACTOR = undefined;
+  mockIsAppConfigured.mockResolvedValue(true);
+});
 
+describe('isTwoFactorRequired', () => {
+  it('is off unless REQUIRE_TWO_FACTOR is set to true', () => {
+    expect(isTwoFactorRequired()).toBe(false);
+    mockEnv.REQUIRE_TWO_FACTOR = false;
+    expect(isTwoFactorRequired()).toBe(false);
+    mockEnv.REQUIRE_TWO_FACTOR = true;
+    expect(isTwoFactorRequired()).toBe(true);
+  });
+});
+
+describe('getTwoFactorStatus', () => {
   it('reports a password account with a verified authenticator', async () => {
     passwordAccount();
     withAuthenticator();
@@ -83,29 +101,34 @@ describe('getTwoFactorStatus', () => {
 });
 
 describe('requiresTwoFactorSetup', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('holds a password account with no authenticator while the installation requires two-factor', async () => {
-    mockGetAppSetting.mockResolvedValue(true);
+    mockEnv.REQUIRE_TWO_FACTOR = true;
     passwordAccount();
     withoutAuthenticator();
 
     await expect(requiresTwoFactorSetup(USER_ID)).resolves.toBe(true);
-    expect(mockGetAppSetting).toHaveBeenCalledWith('requireTwoFactor');
   });
 
-  it('lets the same account through once the setting is off', async () => {
-    mockGetAppSetting.mockResolvedValue(false);
+  it('lets the same account through when the variable is not set', async () => {
     passwordAccount();
     withoutAuthenticator();
 
     await expect(requiresTwoFactorSetup(USER_ID)).resolves.toBe(false);
+    expect(mockKeyFindFirst).not.toHaveBeenCalled();
+  });
+
+  it('waits until setup is complete, so the setup wizard can finish under the first session', async () => {
+    mockEnv.REQUIRE_TWO_FACTOR = true;
+    mockIsAppConfigured.mockResolvedValue(false);
+    passwordAccount();
+    withoutAuthenticator();
+
+    await expect(requiresTwoFactorSetup(USER_ID)).resolves.toBe(false);
+    expect(mockKeyFindFirst).not.toHaveBeenCalled();
   });
 
   it('is satisfied by a verified authenticator', async () => {
-    mockGetAppSetting.mockResolvedValue(true);
+    mockEnv.REQUIRE_TWO_FACTOR = true;
     passwordAccount();
     withAuthenticator();
 
@@ -113,7 +136,7 @@ describe('requiresTwoFactorSetup', () => {
   });
 
   it('exempts a passkey-mode account', async () => {
-    mockGetAppSetting.mockResolvedValue(true);
+    mockEnv.REQUIRE_TWO_FACTOR = true;
     passkeyAccount();
     withoutAuthenticator();
 

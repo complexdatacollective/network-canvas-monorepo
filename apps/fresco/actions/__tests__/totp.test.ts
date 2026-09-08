@@ -68,7 +68,7 @@ const {
   mockAddEvent,
   mockVerifyTotpSetupSchemaSafeParse,
   mockDisableTotpSchemaSafeParse,
-  mockGetAppSetting,
+  mockIsTwoFactorRequired,
   mockGetTwoFactorStatus,
 } = vi.hoisted(() => ({
   mockPrismaTotpCredentialUpsert: vi.fn(),
@@ -90,7 +90,7 @@ const {
   mockAddEvent: vi.fn(),
   mockVerifyTotpSetupSchemaSafeParse: vi.fn(),
   mockDisableTotpSchemaSafeParse: vi.fn(),
-  mockGetAppSetting: vi.fn(),
+  mockIsTwoFactorRequired: vi.fn(),
   mockGetTwoFactorStatus: vi.fn(),
 }));
 
@@ -148,10 +148,7 @@ vi.mock('~/lib/auth/guards', () => ({
 
 vi.mock('~/lib/auth/twoFactorPolicy', () => ({
   getTwoFactorStatus: mockGetTwoFactorStatus,
-}));
-
-vi.mock('~/queries/appSettings', () => ({
-  getAppSetting: mockGetAppSetting,
+  isTwoFactorRequired: mockIsTwoFactorRequired,
 }));
 
 vi.mock('~/utils/getBaseUrl', () => ({
@@ -408,7 +405,7 @@ describe('disableTotp', () => {
     vi.clearAllMocks();
     mockRequireApiAuth.mockResolvedValue(mockSession);
     mockPrismaTransaction.mockResolvedValue([{}, {}]);
-    mockGetAppSetting.mockResolvedValue(false);
+    mockIsTwoFactorRequired.mockReturnValue(false);
     mockGetTwoFactorStatus.mockResolvedValue({
       passwordMode: true,
       totpEnabled: true,
@@ -438,7 +435,7 @@ describe('disableTotp', () => {
   });
 
   it('refuses while the installation requires two-factor for password accounts, before checking the code', async () => {
-    mockGetAppSetting.mockResolvedValue(true);
+    mockIsTwoFactorRequired.mockReturnValue(true);
     mockDisableTotpSchemaSafeParse.mockReturnValue({
       success: true,
       data: { code: VALID_TOTP_CODE },
@@ -450,14 +447,14 @@ describe('disableTotp', () => {
 
     expect(formatActionError(result.error)).toBe(TWO_FACTOR_REQUIRED_MESSAGE);
     expect(result.data).toBeNull();
-    expect(mockGetAppSetting).toHaveBeenCalledWith('requireTwoFactor');
+    expect(mockIsTwoFactorRequired).toHaveBeenCalled();
     expect(mockVerifyTotpCode).not.toHaveBeenCalled();
     expect(mockPrismaTransaction).not.toHaveBeenCalled();
     expect(mockAddEvent).not.toHaveBeenCalled();
   });
 
   it('does not consume a recovery code on a refused attempt', async () => {
-    mockGetAppSetting.mockResolvedValue(true);
+    mockIsTwoFactorRequired.mockReturnValue(true);
     const recoveryCode = '0123456789abcdef0123';
     mockDisableTotpSchemaSafeParse.mockReturnValue({
       success: true,
@@ -474,7 +471,7 @@ describe('disableTotp', () => {
   });
 
   it('still lets a passkey-mode account remove a stray authenticator while the setting is on', async () => {
-    mockGetAppSetting.mockResolvedValue(true);
+    mockIsTwoFactorRequired.mockReturnValue(true);
     mockGetTwoFactorStatus.mockResolvedValue({
       passwordMode: false,
       totpEnabled: true,
@@ -492,7 +489,7 @@ describe('disableTotp', () => {
     expect(mockPrismaTransaction).toHaveBeenCalled();
   });
 
-  it('disables again once the installation stops requiring two-factor', async () => {
+  it('disables again once the variable is unset', async () => {
     mockDisableTotpSchemaSafeParse.mockReturnValue({
       success: true,
       data: { code: VALID_TOTP_CODE },
@@ -500,12 +497,12 @@ describe('disableTotp', () => {
     mockPrismaTotpCredentialFindUnique.mockResolvedValue(verifiedCredential);
     mockVerifyTotpCode.mockReturnValue(true);
 
-    mockGetAppSetting.mockResolvedValue(true);
+    mockIsTwoFactorRequired.mockReturnValue(true);
     const refused = await disableTotp({ code: VALID_TOTP_CODE });
     expect(formatActionError(refused.error)).toBe(TWO_FACTOR_REQUIRED_MESSAGE);
     expect(mockPrismaTransaction).not.toHaveBeenCalled();
 
-    mockGetAppSetting.mockResolvedValue(false);
+    mockIsTwoFactorRequired.mockReturnValue(false);
     const allowed = await disableTotp({ code: VALID_TOTP_CODE });
     expect(formatActionError(allowed.error)).toBeNull();
     expect(mockPrismaTransaction).toHaveBeenCalledTimes(1);

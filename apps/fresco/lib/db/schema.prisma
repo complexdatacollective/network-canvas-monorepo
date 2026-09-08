@@ -135,7 +135,6 @@ enum AppSetting {
   uploadThingToken
   freezeInterviewsAfterCompletion
   enableInterviewDataApi
-  requireTwoFactor
   storageProvider
   s3Endpoint
   s3PublicUrl

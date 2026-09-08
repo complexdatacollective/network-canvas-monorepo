@@ -13,10 +13,12 @@ import {
   hashRecoveryCode,
   verifyTotpCode,
 } from '~/lib/auth/totp';
-import { getTwoFactorStatus } from '~/lib/auth/twoFactorPolicy';
+import {
+  getTwoFactorStatus,
+  isTwoFactorRequired,
+} from '~/lib/auth/twoFactorPolicy';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
-import { getAppSetting } from '~/queries/appSettings';
 import { createTotpSchemas } from '~/schemas/totp';
 import { getBaseUrl } from '~/utils/getBaseUrl';
 
@@ -69,7 +71,7 @@ const messages = defineMessages({
     defaultMessage:
       'This installation of Fresco requires two-factor authentication for every account that signs in with a password, so it cannot be turned off.',
     description:
-      'Error returned when a researcher tries to disable two-factor authentication while the Require Two-Factor Authentication setting is on.',
+      'Error returned when a researcher tries to disable two-factor authentication while the REQUIRE_TWO_FACTOR environment variable is set.',
   },
 });
 
@@ -253,7 +255,7 @@ export async function disableTotp(data: unknown) {
   // Refused before the code is checked, so a recovery code is not consumed by
   // an attempt that could never succeed.
   if (
-    (await getAppSetting('requireTwoFactor')) &&
+    isTwoFactorRequired() &&
     (await getTwoFactorStatus(session.user.userId)).passwordMode
   ) {
     return {

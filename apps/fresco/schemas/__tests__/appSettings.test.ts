@@ -73,7 +73,6 @@ describe('App Settings Schema Validators', () => {
         disableSmallScreenOverlay: false,
         freezeInterviewsAfterCompletion: true,
         enableInterviewDataApi: false,
-        requireTwoFactor: false,
       });
     });
 
@@ -97,7 +96,6 @@ describe('App Settings Schema Validators', () => {
         disableSmallScreenOverlay: false,
         freezeInterviewsAfterCompletion: true,
         enableInterviewDataApi: false,
-        requireTwoFactor: false,
       });
     });
   });

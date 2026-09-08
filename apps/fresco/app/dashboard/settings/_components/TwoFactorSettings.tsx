@@ -118,7 +118,7 @@ const messages = defineMessages({
     defaultMessage:
       'Two-factor authentication is required on this installation for every account that signs in with a password, so it cannot be turned off here.',
     description:
-      'Shown beside the per-account two-factor switch when the installation-wide Require Two-Factor Authentication setting is on.',
+      'Shown beside the per-account two-factor switch when the REQUIRE_TWO_FACTOR environment variable is set.',
   },
 });
 
@@ -126,7 +126,7 @@ type TwoFactorSettingsProps = {
   hasTwoFactor: boolean;
   userCount: number;
   sandboxMode?: boolean;
-  /** The installation-wide "Require Two-Factor Authentication" setting. */
+  /** Whether the installation requires two-factor authentication (`REQUIRE_TWO_FACTOR`). */
   twoFactorRequired?: boolean;
 };
 
