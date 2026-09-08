@@ -1,4 +1,3 @@
-import { isEqual } from 'es-toolkit/compat';
 import { useEffect, useMemo, useRef } from 'react';
 
 import {
@@ -17,6 +16,7 @@ import {
   useStageValue,
 } from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
+import { useOnResearcherChange } from '../researcherChange.ts';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
 import { resolveSourceStages, type SourceStageProblem } from './sourceStage.ts';
 
@@ -71,7 +71,7 @@ const PROBLEM_MESSAGES: Readonly<
  */
 export default function SourceStageSection() {
   const intl = useAppIntl();
-  const { committedFields, creation, identity, protocolContext, storeApi } =
+  const { creation, identity, protocolContext, storeApi } =
     useStageEditorForm();
   const sourceStageId = useStageValue(SOURCE_FIELD);
   const discardStageValues = useDiscardStageValues();
@@ -157,38 +157,17 @@ export default function SourceStageSection() {
     void state.validateField(SOURCE_FIELD);
   }, [problem, storeApi]);
 
-  const committedSource: unknown = committedFields[SOURCE_FIELD];
-  const seenSource = useRef(sourceStageId);
-  const seenCommittedSource = useRef(committedSource);
-  const awaitingReseedTo = useRef<{ value: unknown } | null>(null);
-
-  useEffect(() => {
-    const previousSource = seenSource.current;
-    seenSource.current = sourceStageId;
-    const previousCommitted = seenCommittedSource.current;
-    seenCommittedSource.current = committedSource;
-
-    if (!isEqual(previousCommitted, committedSource)) {
-      awaitingReseedTo.current = { value: committedSource };
-    }
-
-    // The first source a stage is given has nothing to invalidate.
-    if (previousSource === undefined || previousSource === sourceStageId) {
-      return;
-    }
-
-    // An undo, a redo or a collaborator's change arrives carrying the diseases
-    // that belong to the source it brings with it, so clearing here would wipe
-    // the half of the change the researcher was reaching for.
-    const expected = awaitingReseedTo.current;
-    awaitingReseedTo.current = null;
-    if (expected !== null && isEqual(expected.value, sourceStageId)) return;
-
-    discardStageValues([DISEASES_FIELD], {
-      path: SOURCE_FIELD,
-      value: sourceStageId,
-    });
-  }, [committedSource, discardStageValues, sourceStageId]);
+  // Told apart from the draft moving beneath the form — an undo, a redo, a
+  // collaborator's change — by `useOnResearcherChange`, which is the one place
+  // that distinction is made. The rule it applies is that the FIRST reading is
+  // not a change and every reading after it is, the transition out of
+  // `undefined` included: a stage whose source has never been set is exactly
+  // the stage whose first real choice invalidates the diseases sitting beside
+  // it, and the hand-written observer here read that first choice as another
+  // initial observation and kept them.
+  useOnResearcherChange(SOURCE_FIELD, (value) => {
+    discardStageValues([DISEASES_FIELD], { path: SOURCE_FIELD, value });
+  });
 
   return (
     <BuilderSection

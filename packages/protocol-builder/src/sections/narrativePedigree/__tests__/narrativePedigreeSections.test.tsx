@@ -564,6 +564,44 @@ describe('a source stage that is no longer usable', () => {
     );
   });
 
+  /**
+   * The first REAL choice is a choice like any other.
+   *
+   * A stage whose source is absent — a hand edit, a merge, an import that
+   * dropped the key — still carries the diseases that described whatever it
+   * used to read, and they name attributes of a node type the new pedigree may
+   * not have. `useOnResearcherChange` is the one place the rule is stated: the
+   * first OBSERVATION is not a change, and every reading after it is, the
+   * transition out of `undefined` included. Reading that first choice as
+   * another initial observation instead kept the stale rows, and they went to
+   * the host with the save.
+   */
+  it('drops the diseases beside a source that had never been set', async () => {
+    const seeded = loadFixtureStage('narrative-pedigree-1');
+    const { sourceStageId: _neverSet, ...withoutSource } = seeded.fields;
+    const harness = renderStageEditor({
+      stage: {
+        id: seeded.id,
+        type: 'NarrativePedigree',
+        fields: withoutSource,
+      },
+      sections: narrativePedigreeSections,
+    });
+    expect(screen.getByText('Condition X')).toBeInTheDocument();
+
+    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+
+    await waitFor(() =>
+      expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
+    );
+    expect(
+      harness.pendingCommands().flatMap((batch) => [...batch.commands]),
+    ).toEqual([
+      { op: 'set', key: 'sourceStageId', value: 'family-pedigree-1' },
+      { op: 'unset', key: 'diseases' },
+    ]);
+  });
+
   it('waits for a source before asking about diseases', async () => {
     const harness = renderStageEditor(withMissingSource());
 
