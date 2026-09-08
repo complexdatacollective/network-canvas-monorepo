@@ -1627,6 +1627,59 @@ const createContactSetting = async (
   });
 };
 
+/** The id the seeded categorical attribute below is filed under. */
+const SEEDED_CONTACT_SETTING = 'seeded-contact-setting';
+
+/**
+ * The same categorical attribute, already in the protocol.
+ *
+ * `createContactSetting` above authors one through the create dialog, which is
+ * a journey of its own — roughly fifteen simulated interactions and forty
+ * keystrokes, each one a render of the open dialog. That journey is the
+ * SUBJECT of the test that asserts it, and only setup for a test about an
+ * attribute that already offers values: paid for twice, it was the slowest
+ * test in this file and the one that exceeded the 20s timeout on CI, where a
+ * runner is tens of times slower than a developer's machine.
+ *
+ * Seeded through the host rather than written onto the fixture, so the
+ * revision the session is holding is one the host issued — see
+ * `receiveCodebookUpdate` — and the compound edit that changes these values is
+ * judged against a base the host recognises rather than refused as stale.
+ *
+ * It is unused by any stage, which is what makes it collectable: the fixture's
+ * own categorical and ordinal attributes are written unvalidated by a bin
+ * stage, so the picker offers neither.
+ */
+const seedContactSetting = (
+  harness: ReturnType<typeof renderStageEditor>,
+): string => {
+  harness.receiveCodebookUpdate({
+    node: {
+      person: {
+        ...personDocument(harness),
+        variables: {
+          ...personVariables(harness),
+          [SEEDED_CONTACT_SETTING]: {
+            name: 'contact_setting',
+            type: 'categorical',
+            // One of the two controls the schema lets a categorical be
+            // collected with. A control belonging to another type — `RadioGroup`
+            // is the ordinal one — makes this variable invalid, and an entity
+            // definition is parsed whole, so the picker would then offer NONE of
+            // the person's attributes rather than complain about this one.
+            component: 'CheckboxGroup',
+            options: [
+              { label: 'At home', value: 'home' },
+              { label: 'At work', value: 'work' },
+            ],
+          },
+        },
+      },
+    },
+  });
+  return SEEDED_CONTACT_SETTING;
+};
+
 /**
  * Everything about a form field that lives on the codebook attribute rather
  * than on the field.
@@ -1714,9 +1767,13 @@ describe('the codebook an attribute a form field collects lives in', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await openField(harness, 'Create new form field');
-    const [variableId] = await createContactSetting(harness, dialog);
+    const variableId = seedContactSetting(harness);
 
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      variableId,
+    );
     await harness.user.click(
       await dialog.findByRole('button', {
         name: 'Change this attribute’s values',
