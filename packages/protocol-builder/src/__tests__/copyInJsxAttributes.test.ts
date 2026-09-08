@@ -33,7 +33,35 @@ import { sourceFiles, sourcePath } from './packageSource.ts';
  * backstop, and finds anything this list has not learned about yet.
  */
 const COPY_PROP =
-  /^(?:aria-label|aria-description|aria-placeholder|aria-roledescription|aria-valuetext|label|placeholder|hint|title|description|term|alt|caption|summary|.*Label|.*Message|.*Text|.*Description|.*Placeholder|emptyState.*|addButton.*)$/;
+  /^(?:aria-label|aria-description|aria-placeholder|aria-roledescription|aria-valuetext|label|placeholder|hint|title|description|term|alt|caption|summary|.*Label|.*Message|.*Text|.*Description|.*Placeholder|.*Title|.*Hint|.*Noun|.*Sentence|.*Prompt|.*Copy|.*Caption|.*Summary|.*Heading|.*Legend|emptyState.*|addButton.*)$/;
+
+/**
+ * Every prop name in this package's own source whose value the list above has
+ * to be able to see.
+ *
+ * The suffixed families are here because the single names are not enough:
+ * `DialogArrayField` takes `addTitle` and `editorTitle` for the two dialog
+ * headings, `PromptsSection` takes `itemNoun` and `optionNoun` for the word
+ * spliced into "Edit {noun}", and `fieldHint`, `regExpHint`, `ruleRowSentence`,
+ * `openPrompt` and `sizingCopy` are sentences under other names. `.*Name` is
+ * deliberately NOT a family: `className`, `tagName`, `rowFieldName` and
+ * `registeredName` are tokens, and a rule that reported them would be turned
+ * off rather than fixed.
+ */
+const KNOWN_COPY_PROPS = [
+  'addTitle',
+  'editorTitle',
+  'pageContentTitle',
+  'typedTitle',
+  'itemNoun',
+  'optionNoun',
+  'rowNoun',
+  'fieldHint',
+  'regExpHint',
+  'ruleRowSentence',
+  'openPrompt',
+  'sizingCopy',
+] as const;
 
 /**
  * `prop="…"`, `prop={`…`}` and `prop={'…'}`, which is the same defect written
@@ -145,5 +173,40 @@ describe('copy written into a JSX attribute', () => {
       'aria-roledescription',
       'summary',
     ]);
+  });
+
+  /**
+   * The list has learned about every copy-bearing prop this package passes.
+   *
+   * The two dialog titles are why this case exists: `addTitle` and
+   * `editorTitle` reached production source in the sections split and matched
+   * nothing, because `title` is anchored and there was no `.*Title` family. A
+   * new name added to the source without being added here fails this, which is
+   * the deliberate step the closed list is for.
+   */
+  it('sees every copy-bearing prop name this package uses', () => {
+    const unseen = KNOWN_COPY_PROPS.filter(
+      (name) => copyInLine(`        ${name}="Create prompt"`).length === 0,
+    );
+
+    expect(unseen).toEqual([]);
+  });
+
+  /** The names that look like copy and are tokens stay out. */
+  it('still ignores the token-shaped names that share those suffixes', () => {
+    const tokens = [
+      'className',
+      'tagName',
+      'rowFieldName',
+      'registeredName',
+      'storageKey',
+      'layoutId',
+    ];
+
+    const seen = tokens.filter(
+      (name) => copyInLine(`        ${name}="two words"`).length > 0,
+    );
+
+    expect(seen).toEqual([]);
   });
 });

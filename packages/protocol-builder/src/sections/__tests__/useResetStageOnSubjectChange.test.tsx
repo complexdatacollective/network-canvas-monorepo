@@ -1,4 +1,5 @@
 import { act, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
@@ -158,5 +159,109 @@ describe('resetting a key the researcher has never looked at', () => {
       title: 'Add a person',
       fields: [{ variable: 'name', prompt: "What is this person's name?" }],
     });
+  });
+});
+
+/**
+ * A key the form is PARKING is in neither of the two places the reset used to
+ * read.
+ *
+ * `getFormValues()` is built from registered fields, so a control the
+ * researcher answered and then unmounted contributes nothing; and an answer
+ * that has not been saved has never reached the committed draft. The
+ * submission replays parked values on purpose — without that, a value hidden
+ * behind a collapsed group would look identical to one deliberately thrown
+ * away — so a key that escapes the reset is written into the saved stage
+ * alongside the NEW subject: configuration describing a type the stage no
+ * longer collects.
+ */
+describe('resetting a key the form is holding parked', () => {
+  /**
+   * Stands in for any family control whose presence depends on another
+   * control's value — the content block editor's per-kind slots are that
+   * pattern one store down.
+   */
+  function ParkableSection() {
+    const [mounted, setMounted] = useState(true);
+    return (
+      <BuilderSection title="Existing nodes" description="A parkable field.">
+        <button type="button" onClick={() => setMounted((on) => !on)}>
+          Toggle the field
+        </button>
+        {mounted && (
+          <ProtocolField<typeof ToggleField>
+            name="showExistingNodes"
+            component={ToggleField}
+            label="Show existing nodes"
+          />
+        )}
+      </BuilderSection>
+    );
+  }
+
+  it('throws away a value whose control has since unmounted', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: (
+        <>
+          {nodeSubjectAndPrompts}
+          <ParkableSection />
+        </>
+      ),
+      applyLive: true,
+    });
+
+    // 1. The researcher answers the parkable field…
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Show existing nodes' }),
+    );
+    // 2. …and it unmounts, so the store parks what they answered.
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Toggle the field' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('switch', { name: 'Show existing nodes' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // 3. The researcher changes what the stage collects.
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family member' }),
+    );
+    await waitFor(() =>
+      expect(
+        harness.session.getSnapshot().editedSection.fields.subject,
+      ).toEqual({ entity: 'node', type: 'family_member' }),
+    );
+
+    // The reset reached the parked key, in the same batch as the subject.
+    expect(harness.liveCommands()).toContainEqual({
+      op: 'unset',
+      key: 'showExistingNodes',
+    });
+
+    // The reset took the prompts with it, so the stage needs one again to get
+    // as far as being judged against the schema at all.
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'Who in your family?',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    // And end to end: what the save carries no longer mentions it. A name
+    // generator that has lost its `form` to the same reset cannot be saved,
+    // so the save produces a refusal — and the refusal is where the surviving
+    // key showed up, named against a schema that has never heard of it. The
+    // wait is on that refusal, so this cannot pass by never getting there.
+    await harness.submit();
+    await screen.findByText(/expected object, received undefined/u);
+    expect(document.body.textContent).not.toContain('showExistingNodes');
   });
 });

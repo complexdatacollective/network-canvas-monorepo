@@ -1647,18 +1647,6 @@
     "defaultMessage": "Create content block",
     "description": "Title of the dialog a researcher fills in to add one more piece to a page."
   },
-  "protocolBuilder.pageContent.pageClearConfirm": {
-    "defaultMessage": "Clear the page",
-    "description": "Action that confirms switching a page off and discarding its blocks."
-  },
-  "protocolBuilder.pageContent.pageClearDescription": {
-    "defaultMessage": "This will remove every block on this page. Do you want to continue?",
-    "description": "Body of the confirmation asked before switching a page off, which throws every block on it away."
-  },
-  "protocolBuilder.pageContent.pageClearTitle": {
-    "defaultMessage": "This will clear the page",
-    "description": "Title of the confirmation asked before switching a page off, which throws every block on it away."
-  },
   "protocolBuilder.pageContent.pageDescription": {
     "defaultMessage": "Write the page heading and build the sequence of blocks the participant reads.",
     "description": "Description of the page-content section."
