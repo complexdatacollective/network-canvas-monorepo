@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import type { CompleteSetupInput } from '@codaco/studio-rpc';
 
 import { stubAuthService } from '../../__tests__/support/auth.ts';
+import { createHttpTestApp } from '../../__tests__/support/http-app.ts';
 import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
@@ -110,7 +111,7 @@ it('does not expose setup RPCs on managed deployments, even without a database',
   await expect(rpc().setup.complete(input)).rejects.toMatchObject({
     code: 'SERVICE_UNAVAILABLE',
   });
-  const app = createApp(
+  const app = createHttpTestApp(
     { ...readEnv(), deploymentMode: 'managed' },
     { auth: stubAuthService() },
   );
@@ -138,7 +139,15 @@ describe.skipIf(!db)('self-hosted first-run bootstrap', () => {
     const scratch = await fixture();
     try {
       const app = createApp(
-        { ...readEnv(), deploymentMode: 'self-hosted', bootstrapToken: token },
+        {
+          ...readEnv(),
+          deploymentMode: 'self-hosted',
+          bootstrapToken: token,
+          // Self-host provisioning has no managed ingress; do not inherit
+          // the committed managed development proxy settings into this host.
+          managedIngressSecret: undefined,
+          trustedProxies: [],
+        },
         { pool: scratch.app, auth: stubAuthService() },
       );
       const client = createRpcClient(app);
