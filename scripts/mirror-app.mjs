@@ -80,6 +80,7 @@ import {
   resolveManifest,
 } from './resolve-manifest.mjs';
 import {
+  assertBranchResolutionsCarried,
   assertSpecifierDrivenChanges,
   assertVendoredLockfile,
   collectClosure,
@@ -713,6 +714,19 @@ function stage({
       if (vendorManifest) {
         console.error(
           `[mirror] vendoring guard OK: ${assertVendoredLockfile(staging, vendorManifest)}`,
+        );
+      }
+      if (vendorChangedSince) {
+        assertBranchResolutionsCarried({
+          refLock: capture('git', [
+            'show',
+            `${vendorChangedSince}:pnpm-lock.yaml`,
+          ]),
+          headLock: readFileSync(join(repoRoot, 'pnpm-lock.yaml'), 'utf8'),
+          mirrorLock: readFileSync(join(staging, 'pnpm-lock.yaml'), 'utf8'),
+        });
+        console.error(
+          '[mirror] every resolution the branch changed is carried by the mirror',
         );
       }
     } else {

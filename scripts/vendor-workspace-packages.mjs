@@ -296,6 +296,68 @@ export function assertSpecifierDrivenChanges(ref, appDir, closure, wsPackages) {
   );
 }
 
+// name → Set(versions) from a pnpm lockfile's `packages:` section. Keys are
+// `name@version`, quoted when scoped, with any peer-dependency suffix in
+// parentheses; a `file:` version is kept verbatim.
+export function lockfilePackageVersions(lockfile) {
+  const versions = new Map();
+  let inPackages = false;
+  for (const line of lockfile.split('\n')) {
+    if (/^\S/.test(line)) {
+      inPackages = line.startsWith('packages:');
+      continue;
+    }
+    if (!inPackages) continue;
+    const match = /^  '?([^'\s][^']*?)'?:\s*$/.exec(line);
+    if (!match) continue;
+    let key = match[1];
+    const paren = key.indexOf('(');
+    if (paren !== -1) key = key.slice(0, paren);
+    const at = key.lastIndexOf('@');
+    if (at <= 0) continue;
+    const name = key.slice(0, at);
+    if (!versions.has(name)) versions.set(name, new Set());
+    versions.get(name).add(key.slice(at + 1));
+  }
+  return versions;
+}
+
+// After the mirror has resolved: every package whose resolved versions the
+// branch changed since the release (in the root lockfile) and which the
+// image installs must resolve in the mirror to one of the branch's new
+// versions. The specifier guard above says whether a lockfile change is
+// explained at all; this says whether each change actually arrived — a
+// manifest edit for one dependency must not mask a lockfile-only patch to
+// another, which the seeded resolution would leave at the released version.
+// A package the mirror does not install cannot be checked and is not; the
+// vendored workspace packages resolve to tarballs and are outside this too.
+export function assertBranchResolutionsCarried({
+  refLock,
+  headLock,
+  mirrorLock,
+}) {
+  const before = lockfilePackageVersions(refLock);
+  const after = lockfilePackageVersions(headLock);
+  const mirror = lockfilePackageVersions(mirrorLock);
+  const missing = [];
+  for (const [name, versions] of after) {
+    const previous = before.get(name) ?? new Set();
+    const added = [...versions].filter((version) => !previous.has(version));
+    if (added.length === 0) continue;
+    const inMirror = mirror.get(name);
+    if (!inMirror) continue;
+    if (added.some((version) => inMirror.has(version))) continue;
+    missing.push(
+      `${name}: the branch resolves ${added.join(', ')}; the image would keep ${[...inMirror].join(', ')}`,
+    );
+  }
+  if (missing.length) {
+    throw new Error(
+      `The branch changed resolutions the mirror does not carry:\n  ${missing.join('\n  ')}\nA transitive fix reaches the image only through a specifier the mirror resolves: pin it in the affected package.json of the app or a closure package, or in a catalog entry one of them consumes.`,
+    );
+  }
+}
+
 // The packages a seeded workspace policy still resolves to local tarballs —
 // the ones the PREVIOUS hotfix vendored, which no release has published
 // since. Their source is unchanged since that release's tag, so change

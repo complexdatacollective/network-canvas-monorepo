@@ -6,9 +6,11 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 
 import {
+  assertBranchResolutionsCarried,
   assertSpecifierDrivenChanges,
   assertVendoredLockfile,
   collectClosure,
+  lockfilePackageVersions,
   packagesChangedSince,
   patchDockerfileForVendor,
   previouslyVendoredPackages,
@@ -552,5 +554,57 @@ test('a lockfile change explained only by a manifest outside the closure is refu
         ),
       /outside the app and its closure/,
     );
+  });
+});
+
+const lock = (entries) =>
+  `lockfileVersion: '9.0'\n\nimporters:\n  .:\n    dependencies: {}\n\npackages:\n${entries.map((e) => `  ${e}:\n    resolution: {}\n`).join('')}\nsnapshots:\n  ${entries[0] ?? 'x@0.0.0'}: {}\n`;
+
+test('lockfile package keys parse across scopes, peer suffixes and tarballs', () => {
+  const versions = lockfilePackageVersions(
+    lock([
+      "'@adobe/css-tools@4.5.0'",
+      'left@1.0.0',
+      "'@codaco/fresco-ui@file:vendor/codaco-fresco-ui-6.4.0.tgz(react@19.2.8)'",
+      "'@x/ui@1.0.0(react@19.0.0)'",
+    ]),
+  );
+  assert.deepEqual([...versions.get('@adobe/css-tools')], ['4.5.0']);
+  assert.deepEqual([...versions.get('left')], ['1.0.0']);
+  assert.deepEqual(
+    [...versions.get('@codaco/fresco-ui')],
+    ['file:vendor/codaco-fresco-ui-6.4.0.tgz'],
+  );
+  assert.deepEqual([...versions.get('@x/ui')], ['1.0.0']);
+  // The snapshots section is not read.
+  assert.equal(versions.size, 4);
+});
+
+// A manifest edit for one dependency must not mask a lockfile-only patch to
+// another: the seeded resolution would leave the second at its released
+// version, so the check compares what the branch changed with what arrived.
+test('a resolution the branch changed but the mirror kept is refused', () => {
+  assert.throws(
+    () =>
+      assertBranchResolutionsCarried({
+        refLock: lock(['left@1.0.0', 'right@2.0.0']),
+        headLock: lock(['left@1.0.1', 'right@2.0.0']),
+        mirrorLock: lock(['left@1.0.0', 'right@2.0.0']),
+      }),
+    /left: the branch resolves 1\.0\.1; the image would keep 1\.0\.0/,
+  );
+});
+
+test('a resolution the mirror carries, or does not install, passes', () => {
+  assertBranchResolutionsCarried({
+    refLock: lock(['left@1.0.0', 'only-here@1.0.0']),
+    headLock: lock(['left@1.0.1', 'only-here@1.0.1']),
+    mirrorLock: lock(['left@1.0.1', 'right@2.0.0']),
+  });
+  // A version the branch dropped without adding one is not a change to carry.
+  assertBranchResolutionsCarried({
+    refLock: lock(['left@1.0.0', 'left@1.0.1']),
+    headLock: lock(['left@1.0.1']),
+    mirrorLock: lock(['left@1.0.0']),
   });
 });

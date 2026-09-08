@@ -111,7 +111,10 @@ dependency fix that lives only in the branch's own `pnpm-lock.yaml`, or only
 in the root `pnpm-workspace.yaml` outside its catalog (an `overrides` entry,
 say), cannot reach the image, and the lane refuses such a branch — pin the
 fixed version in the affected manifest, or re-pin a catalog entry that package
-consumes, so it becomes a specifier change the mirror carries.
+consumes, so it becomes a specifier change the mirror carries. After resolving,
+the lane also checks that every resolution the branch changed for a package the
+image installs is present in the mirror's lockfile, so one legitimate
+dependency change cannot mask another that only the branch's lockfile carried.
 
 1. Cut the branch from the released tag and cherry-pick the fix:
 
