@@ -337,17 +337,38 @@ function defaultReadPackage(manifestPath) {
 export function packageForFile(
   file,
   root,
-  { readPackage = defaultReadPackage, cache = new Map() } = {},
+  {
+    readPackage = defaultReadPackage,
+    cache = new Map(),
+    isWorkspaceDir = defaultIsWorkspaceDir(root, readPackage),
+  } = {},
 ) {
   let dir = path.dirname(file);
   while (dir !== root && isUnderRepo(dir, root)) {
     if (!cache.has(dir))
       cache.set(dir, readPackage(path.join(dir, 'package.json')));
     const pkg = cache.get(dir);
-    if (pkg) return { dir, manifest: pkg };
+    if (pkg && isWorkspaceDir(dir)) return { dir, manifest: pkg };
     dir = path.dirname(dir);
   }
   return null;
+}
+
+// Nested manifests that are not workspace packages (packages/interview/e2e/
+// package.json, for example) are climbed past: a turbo filter seeded from
+// them matches nothing ("No package found").
+const workspaceDirCache = new Map();
+function defaultIsWorkspaceDir(root, readPackage) {
+  return (dir) => {
+    if (!workspaceDirCache.has(root)) {
+      const dirs = new Set();
+      for (const entry of workspacePackages(root, { readPackage }).values()) {
+        dirs.add(entry.dir);
+      }
+      workspaceDirCache.set(root, dirs);
+    }
+    return workspaceDirCache.get(root).has(dir);
+  };
 }
 
 // Maps changed files to workspace packages. `seeds` is every named package
@@ -358,14 +379,20 @@ export function packageForFile(
 export function packagesForFiles(
   files,
   root,
-  { readPackage = defaultReadPackage, script = 'typecheck' } = {},
+  {
+    readPackage = defaultReadPackage,
+    script = 'typecheck',
+    isWorkspaceDir,
+  } = {},
 ) {
   const seeds = new Set();
   const names = new Set();
   let all = false;
   const cache = new Map();
+  const lookup = { readPackage, cache };
+  if (isWorkspaceDir) lookup.isWorkspaceDir = isWorkspaceDir;
   for (const file of files) {
-    const found = packageForFile(file, root, { readPackage, cache });
+    const found = packageForFile(file, root, lookup);
     if (!found) {
       if (isGlobalInput(path.relative(root, file))) all = true;
       continue;
@@ -490,6 +517,40 @@ function defaultMtime(file) {
   }
 }
 
+// The pre-command hook records when each shell command started (keyed by
+// tool_use_id, pruned after an hour) so the post-command hook can find the
+// files that command wrote, however long it ran.
+export function recordCommandStart(root, toolUseId, now = Date.now()) {
+  const state = readState(root);
+  const starts = state.commandStarts ?? {};
+  for (const [id, at] of Object.entries(starts)) {
+    if (now - at > 60 * 60 * 1000) delete starts[id];
+  }
+  starts[toolUseId ?? `anon-${now}`] = now;
+  state.commandStarts = starts;
+  writeState(root, state);
+}
+
+// When did the command that just finished start? Its own record when the
+// id is known, otherwise the earliest outstanding record, otherwise the
+// previous post-edit run, otherwise a minute ago.
+export function takeCommandStart(state, toolUseId, now = Date.now()) {
+  const starts = state.commandStarts ?? {};
+  let since;
+  if (toolUseId && starts[toolUseId] !== undefined) {
+    since = starts[toolUseId];
+    delete starts[toolUseId];
+  } else {
+    const outstanding = Object.values(starts);
+    since =
+      outstanding.length > 0
+        ? Math.min(...outstanding)
+        : (state.lastPostEdit ?? now - 60_000);
+  }
+  state.commandStarts = starts;
+  return since;
+}
+
 function stateFile(root) {
   const dir = path.join(root, 'node_modules', '.cache', 'agent-hooks');
   mkdirSync(dir, { recursive: true });
@@ -559,13 +620,26 @@ function bareTargets(args) {
   return targets;
 }
 
+// The escape hatch counts only as a shell assignment: a prefix on the gated
+// command (`AGENT_GATES=1 pnpm lint`) or an earlier `export AGENT_GATES=1`.
+// The text appearing elsewhere (echoed, or inside a heredoc) does not.
+const GATE_BYPASS_PREFIX = /^(\w+=\S*\s+)*AGENT_GATES=1(\s|$)/;
+const GATE_BYPASS_EXPORT = /^(export\s+)?AGENT_GATES=1\s*$/;
+
 export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
-  if (!command || /(^|\s)AGENT_GATES=1(\s|$)/.test(command)) return null;
+  if (!command) return null;
   const inPackage = (dir) =>
     Boolean(dir && root && (packageDir ?? isPackageDir)(dir, root));
   let currentDir = cwd ?? root ?? null;
+  let exported = false;
   const segments = stripEmbeddedText(command).split(/\n|&&|\|\||;|\|/);
   for (const raw of segments) {
+    const trimmed = raw.trim();
+    if (GATE_BYPASS_EXPORT.test(trimmed)) {
+      exported = true;
+      continue;
+    }
+    if (exported || GATE_BYPASS_PREFIX.test(trimmed)) continue;
     const segment = stripPrefixes(raw);
     if (!segment) continue;
     const tokens = segment.split(/\s+/);
@@ -587,7 +661,7 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
       rest[0] === 'commit' &&
       rest.some((t) => t === '--no-verify' || t === '-n')
     ) {
-      return { kind: 'no-verify', segment: raw.trim() };
+      return { kind: 'no-verify', segment: trimmed };
     }
 
     if (/^(pnpm|npm|yarn|bun)$/.test(head)) {
@@ -600,7 +674,7 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
           script ?? '',
         )
       ) {
-        return { kind: 'whole-tree-gate', segment: raw.trim() };
+        return { kind: 'whole-tree-gate', segment: trimmed };
       }
       continue;
     }
@@ -610,20 +684,20 @@ export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
       if (
         rest.some((t) => /^(typecheck|lint|\/\/#lint|\/\/#knip|knip)$/.test(t))
       ) {
-        return { kind: 'whole-tree-gate', segment: raw.trim() };
+        return { kind: 'whole-tree-gate', segment: trimmed };
       }
       continue;
     }
 
     if (head === 'oxlint' || head === 'oxfmt') {
       if (bareTargets(rest).length === 0 && !inPackage(currentDir)) {
-        return { kind: 'whole-tree-gate', segment: raw.trim() };
+        return { kind: 'whole-tree-gate', segment: trimmed };
       }
       continue;
     }
 
     if (head === 'knip' && !inPackage(currentDir)) {
-      return { kind: 'whole-tree-gate', segment: raw.trim() };
+      return { kind: 'whole-tree-gate', segment: trimmed };
     }
   }
   return null;

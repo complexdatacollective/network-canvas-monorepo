@@ -10,6 +10,7 @@ import {
   classifyGateCommand,
   emit,
   readHookInput,
+  recordCommandStart,
   resolveRepoRoot,
 } from './lib.mjs';
 
@@ -23,6 +24,9 @@ const command =
       : (toolInput.cmd ?? '');
 
 const root = resolveRepoRoot(input);
+// The post-edit hook formats files a shell command wrote; it needs to know
+// when the command started, not when it finished.
+recordCommandStart(root, input.tool_use_id ?? input.toolUseId);
 const verdict = classifyGateCommand(String(command), {
   cwd: toolInput.workdir ?? toolInput.cwd ?? input.cwd,
   root,

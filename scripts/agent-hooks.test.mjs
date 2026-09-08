@@ -13,10 +13,12 @@ import {
   packagesForFiles,
   parseApplyPatchPaths,
   parseApplyPatchResponse,
+  packageForFile,
   parsePorcelainZ,
   parseTypecheckOutput,
   resolveRepoRoot,
   stripEmbeddedText,
+  takeCommandStart,
   workspacePackages,
 } from './agent-hooks/lib.mjs';
 
@@ -479,4 +481,71 @@ test('workspacePackages reads every named package from the workspace globs', () 
   assert.ok(map.has('@codaco/protocols'));
   assert.equal(map.get('@codaco/protocols').manifest.scripts?.test, undefined);
   assert.ok(map.get('@codaco/interview').manifest.scripts.test);
+});
+
+test('nested manifests that are not workspace packages are climbed past', () => {
+  const manifests = {
+    '/repo/packages/interview/package.json': {
+      name: '@codaco/interview',
+      scripts: { typecheck: 'tsc' },
+    },
+    '/repo/packages/interview/e2e/package.json': {
+      name: '@codaco/interview-e2e',
+    },
+  };
+  const readPackage = (manifestPath) => manifests[manifestPath] ?? null;
+  const isWorkspaceDir = (dir) => dir === '/repo/packages/interview';
+  const found = packageForFile(
+    '/repo/packages/interview/e2e/specs/x.spec.ts',
+    '/repo',
+    { readPackage, isWorkspaceDir },
+  );
+  assert.equal(found?.manifest.name, '@codaco/interview');
+  const result = packagesForFiles(
+    ['/repo/packages/interview/e2e/specs/x.spec.ts'],
+    '/repo',
+    { readPackage, isWorkspaceDir },
+  );
+  assert.deepEqual(result.seeds, ['@codaco/interview']);
+});
+
+test('real nested e2e manifests map to their workspace package', () => {
+  const result = packagesForFiles(
+    [path.join(repoRoot, 'packages/interview/e2e/specs/probe.spec.ts')],
+    repoRoot,
+  );
+  assert.deepEqual(result.seeds, ['@codaco/interview']);
+});
+
+test('the gate bypass must be an assignment on the gated command or an earlier export', () => {
+  assert.equal(classifyGateCommand('AGENT_GATES=1 pnpm lint'), null);
+  assert.equal(
+    classifyGateCommand('FOO=bar AGENT_GATES=1 pnpm typecheck'),
+    null,
+  );
+  assert.equal(classifyGateCommand('export AGENT_GATES=1\npnpm lint'), null);
+  assert.equal(classifyGateCommand('export AGENT_GATES=1 && pnpm knip'), null);
+  assert.equal(
+    classifyGateCommand('echo AGENT_GATES=1 && pnpm lint')?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand(
+      "cat > x.md <<'EOF'\nAGENT_GATES=1\nEOF\npnpm typecheck",
+    )?.kind,
+    'whole-tree-gate',
+  );
+  assert.equal(
+    classifyGateCommand('pnpm lint # AGENT_GATES=1')?.kind,
+    'whole-tree-gate',
+  );
+});
+
+test("takeCommandStart prefers the command's own start, then the earliest outstanding one", () => {
+  const state = { commandStarts: { a: 1_000, b: 5_000 }, lastPostEdit: 7_000 };
+  assert.equal(takeCommandStart(state, 'b', 10_000), 5_000);
+  assert.deepEqual(state.commandStarts, { a: 1_000 });
+  assert.equal(takeCommandStart(state, 'unknown', 10_000), 1_000);
+  assert.equal(takeCommandStart({ lastPostEdit: 7_000 }, 'x', 10_000), 7_000);
+  assert.equal(takeCommandStart({}, undefined, 100_000), 40_000);
 });

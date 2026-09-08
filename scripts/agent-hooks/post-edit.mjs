@@ -21,6 +21,7 @@ import {
   resolveRepoRoot,
   run,
   shouldSkip,
+  takeCommandStart,
   truncateLines,
   writeState,
 } from './lib.mjs';
@@ -42,8 +43,13 @@ if (
   files.length === 0 &&
   /^(Bash|shell|exec_command|local_shell)$/i.test(toolName)
 ) {
-  // No explicit path: fall back to what changed on disk since the last run.
-  const since = state.lastPostEdit ?? startedAt - 60_000;
+  // No explicit path: fall back to what changed on disk since the command
+  // started (recorded by the pre-command hook).
+  const since = takeCommandStart(
+    state,
+    input.tool_use_id ?? input.toolUseId,
+    startedAt,
+  );
   files = modifiedSince(changedFiles(root).filter(eligible), since);
 }
 state.lastPostEdit = startedAt;
