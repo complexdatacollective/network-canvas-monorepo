@@ -748,3 +748,30 @@ test('rejects header control characters while accepting documented FlyV1 token s
   );
   assert.equal(invalid.calls.length, 0);
 });
+
+test('expiry during lifecycle polling does not start an already-aborted request', async () => {
+  const fixture = new FlyFixture();
+  let polled = false;
+  let afterExpiry = false;
+  fixture.override = (call, init) => {
+    if (init.signal.aborted) {
+      afterExpiry = true;
+      return Promise.reject(new Error('transport was invoked after expiry'));
+    }
+    if (call.method === 'GET' && /\/machines\/machine[0-9]+$/.test(call.path)) {
+      polled = true;
+      return json({ state: 'creating' });
+    }
+    return null;
+  };
+  await assert.rejects(
+    prepareFlyMachines(input(fixture, { operationTimeoutMs: 50 })),
+    /failed or timed out/,
+  );
+  assert.equal(polled, true, 'the operation expired between lifecycle polls');
+  assert.equal(
+    afterExpiry,
+    false,
+    'no transport request may begin after the operation expires',
+  );
+});
