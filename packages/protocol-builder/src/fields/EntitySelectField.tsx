@@ -14,6 +14,7 @@ import Node, {
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { ColorReference } from '@codaco/protocol-validation';
 
+import { READ_ONLY_MESSAGE } from '../form/readOnlyRefusal.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { protocolColor } from '../protocolColor.ts';
 import {
@@ -190,6 +191,44 @@ const DELETED_TARGET_TITLES = defineMessages({
 }) satisfies Record<RuleEntityTarget, MessageDescriptor>;
 
 /**
+ * Whether this stage may still be written to, read at the moment the write
+ * would happen — and the one place that says so when it may not.
+ *
+ * Every type change here is applied by a closure from the render that asked
+ * about it, and editing can be taken away while the question stands: the
+ * session then refuses the reset the change causes, and a picker showing the
+ * new type over the old type's attributes is a pedigree nobody authored and
+ * one no save could produce. So the lease is read back through a ref, exactly
+ * as the codebook and the refusal are, and a change answered after it has gone
+ * applies nothing.
+ *
+ * It is SAID, in the form's own error region and in the shell's own words: a
+ * researcher who has just answered a question is owed an answer, and this is
+ * the same sentence a refused save or a refused list write gives them, cleared
+ * by the same thing — editing being handed back.
+ *
+ * `controlUneditable` is the caller's own reading of itself, for the one part
+ * of this the session cannot see: a picker whose props have stopped accepting
+ * input. Everything a control derives that from — `ProtocolField` disabling
+ * every field of a read-only session, the control's own `readOnly` — is a
+ * render away from the closure that resumes, so it is read live too.
+ */
+function useRefuseUneditableChange(): (controlUneditable?: boolean) => boolean {
+  const { readOnly, reportRefusedWrite } = useStageEditorForm();
+  const liveReadOnly = useRef(readOnly);
+  liveReadOnly.current = readOnly;
+
+  return useCallback(
+    (controlUneditable = false) => {
+      if (!liveReadOnly.current && !controlUneditable) return false;
+      reportRefusedWrite(READ_ONLY_MESSAGE);
+      return true;
+    },
+    [reportRefusedWrite],
+  );
+}
+
+/**
  * Asks the question a type change raises, and answers whether the change may
  * go ahead.
  *
@@ -213,6 +252,11 @@ const DELETED_TARGET_TITLES = defineMessages({
  * the codebook no longer describes, which is a protocol the host refuses to
  * save. So it is refused here, once, for every way a confirmed type change is
  * applied.
+ *
+ * And on the LEASE as it stands when the answer is given, for the same reason
+ * and in the same place: editing taken away while the question was open makes
+ * the change one the session will not take, and every way a confirmed type
+ * change is applied goes through here.
  */
 export function useConfirmEntityTypeChange(): (
   question: EntityTypeChangeConfirmation | undefined,
@@ -221,6 +265,7 @@ export function useConfirmEntityTypeChange(): (
   const { confirm, openDialog } = useDialog();
   const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
+  const refuseUneditableChange = useRefuseUneditableChange();
   /**
    * The codebook the answer is judged against, kept live.
    *
@@ -244,6 +289,12 @@ export function useConfirmEntityTypeChange(): (
       });
       if (confirmed !== true) return false;
 
+      // The lease first. Whether the type the change lands on is still in the
+      // codebook is a question about a write that may happen at all, and this
+      // one is not: the session takes nothing from a lease it no longer holds,
+      // so there is nothing to judge a target against.
+      if (refuseUneditableChange()) return false;
+
       const stillDefined = ruleEntityTypeOptions(
         liveCodebook.current,
         target.entityType,
@@ -264,7 +315,7 @@ export function useConfirmEntityTypeChange(): (
       });
       return false;
     },
-    [confirm, intl, openDialog],
+    [confirm, intl, openDialog, refuseUneditableChange],
   );
 }
 
@@ -407,6 +458,7 @@ export function EntitySelectControl({
   const intl = useAppIntl();
   const { openDialog } = useDialog();
   const confirmEntityTypeChange = useConfirmEntityTypeChange();
+  const refuseUneditableChange = useRefuseUneditableChange();
   const readOnly = readOnlyProp || sessionReadOnly;
   const generatedGroupName = useId();
   const groupName = name ?? generatedGroupName;
@@ -437,9 +489,16 @@ export function EntitySelectControl({
    * pointed at this stage, say — would be invisible, and the confirmed change
    * would go through against a refusal the latest render is already showing.
    * The same seam the pedigree's own slot gate reads its live inputs through.
+   *
+   * Whether this control accepts input at all is read the same way and for the
+   * same reason. A field of a read-only session arrives `disabled`
+   * (`ProtocolField` decides that for every field, so no section has to), and
+   * a lease can go while the question stands: the chips the researcher is
+   * answering about are already out of reach behind the dialog, and the
+   * closure resuming under them must not write what they can no longer choose.
    */
-  const judgeAgainst = useRef({ blockChangeReason, value });
-  judgeAgainst.current = { blockChangeReason, value };
+  const judgeAgainst = useRef({ blockChangeReason, value, readOnly, disabled });
+  judgeAgainst.current = { blockChangeReason, value, readOnly, disabled };
 
   const refuseBlockedChange = (nextType: string): boolean => {
     const { blockChangeReason: reason, value: current } = judgeAgainst.current;
@@ -488,6 +547,12 @@ export function EntitySelectControl({
         }))
       )
         return;
+      // And on this control as it stands now. The session's own read-only is
+      // answered inside the confirm above, for every caller of it; what is
+      // left here is this picker's reading of itself, which a section can
+      // withdraw without the lease moving.
+      const live = judgeAgainst.current;
+      if (refuseUneditableChange(live.readOnly || live.disabled)) return;
       // Asked AGAIN, on the protocol as it stands now. The researcher has
       // agreed to what this change costs their stage, which is a different
       // question from whether it may happen at all — and the answer to the
