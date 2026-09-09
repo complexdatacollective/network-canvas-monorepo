@@ -94,6 +94,22 @@ export default function CreateVariableButton({
    */
   const [submitting, setSubmitting] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  /**
+   * Whether the open editor may be written, readable when an ANSWER lands
+   * rather than as it stood when the request left.
+   *
+   * The editor's submit handler awaits the host and then calls the
+   * `onComplete` it captured before the await, so the completion below is a
+   * closure from an earlier render. Read from that closure, `editorReadOnly`
+   * says what was true when the researcher pressed Create — and a slot
+   * repointed at another type in the meantime, by this researcher, by an undo
+   * or by a collaborator, would be bound to an attribute of the type the
+   * editor opened against: a cross-type reference nothing on screen explains
+   * and the stage save then refuses. The ref is the same seam
+   * `SlotVariableField`'s gate and `useResetOnEntityTypeChange` read their own
+   * live values through.
+   */
+  const writable = useRef(false);
 
   const authoritativeDocument =
     subject === null
@@ -156,6 +172,7 @@ export default function CreateVariableButton({
     session === null ||
     sectionIdForCodebookSubject(subject) !==
       sectionIdForCodebookSubject(session.subject);
+  writable.current = !editorReadOnly;
 
   /**
    * The compound edit the editor submits, with the dialog held shut while it
@@ -234,7 +251,12 @@ export default function CreateVariableButton({
               // the attribute was created on. An answer that arrives after the
               // type has moved would otherwise put a reference to the old
               // type's attribute into a slot the type change has just cleared.
-              if (!editorReadOnly) onCreated(variableId);
+              //
+              // Asked of the LIVE answer rather than of this closure's own
+              // `editorReadOnly`: the editor calls the callback it captured
+              // before it awaited the host, so a closure read would answer for
+              // the render that started the request. See `writable`.
+              if (writable.current) onCreated(variableId);
               setSession(null);
             }}
           />

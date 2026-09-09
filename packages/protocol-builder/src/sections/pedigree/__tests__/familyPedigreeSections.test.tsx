@@ -111,11 +111,16 @@ const outlineStateOf = (
 ): string | undefined =>
   harness.outline().find((section) => section.title === title)?.state;
 
-/** The family member form as the session holds it right now. */
-const formRows = (harness: StageEditorHarness): unknown[] => {
+/** The node configuration as the session holds it right now. */
+const nodeConfigOf = (harness: StageEditorHarness): Record<string, unknown> => {
   const nodeConfig =
     harness.session.getSnapshot().editedSection.fields.nodeConfig;
-  const form = isRecord(nodeConfig) ? nodeConfig.form : undefined;
+  return isRecord(nodeConfig) ? nodeConfig : {};
+};
+
+/** The family member form as the session holds it right now. */
+const formRows = (harness: StageEditorHarness): unknown[] => {
+  const form = nodeConfigOf(harness).form;
   return Array.isArray(form) ? form : [];
 };
 
@@ -1164,6 +1169,85 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     ).toBeDisabled();
   });
 
+  /**
+   * The slot repointed at another type while the codebook was answering.
+   *
+   * The submit handler inside the editor captured this dialog's `onComplete`
+   * before it awaited the host, so the answer is applied by a closure that
+   * still believes what was true when the request left: the slot named
+   * attributes of the type the attribute is being created on. Repointed since
+   * — by this researcher, by an undo, by a collaborator — the slot now names
+   * another type's attributes, and binding the new attribute to it writes a
+   * reference to the OLD type's codebook into the new type's slot, which
+   * nothing on screen explains and whole-protocol validation refuses.
+   *
+   * The undo is what moves the type here: it is the one route that moves the
+   * draft underneath a dialog the researcher cannot dismiss while the request
+   * is in flight.
+   */
+  it('binds nothing when the slot moves to another type while the codebook answers', async () => {
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Change the node type' }),
+    );
+    await waitFor(() => expect(nodeConfigOf(harness).type).toBe('person'));
+
+    const release = holdTheCompoundEdit(harness);
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create a new display label attribute',
+      }),
+    );
+    const creator = within(await screen.findByRole('dialog'));
+    await harness.user.type(
+      creator.getByRole('textbox', { name: 'Attribute name' }),
+      'nickname',
+    );
+    await harness.user.click(
+      creator.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    // The type moves back while the host is still holding the request, so the
+    // attribute in flight belongs to a type this slot no longer names.
+    act(() => {
+      harness.session.undo();
+    });
+    await waitFor(() =>
+      expect(nodeConfigOf(harness).type).toBe('family_member'),
+    );
+
+    release();
+    // The attribute itself is created — the researcher asked for it, and the
+    // codebook edit was already with the host — and the dialog closes.
+    await waitFor(() =>
+      expect(
+        Object.values(harness.hostCodebook().node.person?.variables ?? {}).map(
+          (variable) => variable.name,
+        ),
+      ).toContain('nickname'),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    // But nothing is bound to it: the slot is left holding what the undo
+    // restored, rather than a "person" attribute under "family_member".
+    //
+    // Read from the CONTROL rather than from the session, because an ordinary
+    // field change waits for the submit that flushes it: the session would go
+    // on reporting the undone value while the form the researcher is about to
+    // save already held the dangling one.
+    expect(screen.getByRole('combobox', { name: 'Display label' })).toHaveValue(
+      'fm_name',
+    );
+    // And the stage still saves, which is what the dangling reference cost:
+    // an attribute of "person" under "family_member" is refused at the gate,
+    // leaving the researcher unable to finish a stage they never changed.
+    const request = await harness.submit();
+    expect(request?.stageDocument.nodeConfig).toEqual(FIXTURE_NODE_CONFIG);
+  });
+
   it('is not offered to a spectator', () => {
     renderStageEditor({ ...openFixture(), readOnly: true });
 
@@ -1472,14 +1556,6 @@ describe('a pedigree whose node type changes', () => {
     await harness.user.click(
       await screen.findByRole('button', { name: 'Change the node type' }),
     );
-  };
-
-  const nodeConfigOf = (
-    harness: StageEditorHarness,
-  ): Record<string, unknown> => {
-    const nodeConfig =
-      harness.session.getSnapshot().editedSection.fields.nodeConfig;
-    return isRecord(nodeConfig) ? nodeConfig : {};
   };
 
   /**
