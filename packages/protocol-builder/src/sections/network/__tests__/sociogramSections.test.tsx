@@ -7,6 +7,7 @@ import {
   MISSING_SORT_PROPERTY_MESSAGE,
   missingSortPropertyLabel,
 } from '../../../fields/sortOrderOptions.ts';
+import { validatedElsewhereMessage } from '../../../form/arrayFields/crossClassPick.ts';
 import type { ManifestRevision } from '../../../session.ts';
 import { enIntl, readMessage } from '../../../testing/i18n.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
@@ -331,6 +332,108 @@ const personVariables = (
   }
   return Object.entries(variables) as [string, { type?: unknown }][];
 };
+
+/**
+ * A form somewhere else in the protocol, started while this dialog is open.
+ *
+ * The arrival is the collaborator's, through the host and back under the
+ * revision it issued, exactly as `deleteLayoutVariable` above: a stage the
+ * host does not hold is a base every later compound edit is refused against.
+ */
+const collectInAForm = (
+  harness: StageEditorHarness,
+  variableId: string,
+): void => {
+  const id = sectionId({ kind: 'stage', stageId: 'alter-form-1' });
+  const stage = harness.host.getSnapshot().protocolSections[id];
+  if (stage === undefined) throw new Error('the fixture has no alter form');
+  const form = stage.form;
+  const fields =
+    typeof form === 'object' &&
+    form !== null &&
+    Array.isArray((form as Record<string, unknown>).fields)
+      ? ((form as Record<string, unknown>).fields as unknown[])
+      : [];
+  const applied = harness.host.receiveAuthoritativeSections({
+    [id]: {
+      ...stage,
+      form: {
+        fields: [...fields, { variable: variableId, prompt: 'Is this so?' }],
+      },
+    },
+  });
+  act(() => {
+    harness.session.receiveAuthoritativeUpdate({
+      protocolSections: applied.protocolSections,
+      manifestRevision: applied.manifestRevision,
+      attribution: {
+        [id]: {
+          sessionId: 'other-tab',
+          displayName: 'Dana',
+          revision: applied.manifestRevision,
+        },
+      },
+    });
+  });
+};
+
+/**
+ * Tapping a node WRITES the attribute it marks, without the codebook's
+ * validation rules running — so a prompt may not mark one a form collects.
+ *
+ * The picker enforces that by never offering such an attribute, and the
+ * codebook reaches this editor live: a collaborator adding the form field
+ * while the dialog is open drops the attribute from the option list and leaves
+ * the pick sitting in the form. Nothing then refused the row, so Save
+ * committed a prompt the protocol reports as a writer conflict.
+ */
+describe('a highlight attribute a form starts collecting mid-edit', () => {
+  it('refuses the row rather than closing on the conflict', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const prompt = await openPrompt(harness);
+    await harness.user.click(
+      prompt.getByRole('option', { name: /Mark the node/ }),
+    );
+    await harness.user.selectOptions(
+      await prompt.findByRole('combobox', { name: 'Attribute marked' }),
+      'highlighted',
+    );
+
+    collectInAForm(harness, 'highlighted');
+
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+
+    // The dialog staying open IS the refusal, and the reason is the one the
+    // codebook editor gives for the same conflict — read back through the same
+    // decode the render site uses, because it travels encoded on a
+    // plain-string contract.
+    await prompt.findByText(
+      readMessage(validatedElsewhereMessage('highlighted')),
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * And the other half: a conflict the protocol ALREADY holds does not make
+   * the prompt that holds it unsaveable. The researcher cannot be asked to fix
+   * a stage by editing a form in another one they may not even be able to
+   * reach.
+   */
+  it('still saves a prompt whose attribute the protocol already collects', async () => {
+    const harness = renderStageEditor(openEditor());
+    // The prompt that already marks `highlighted`, and the form field that
+    // conflicts with it, arriving before anything is edited.
+    collectInAForm(harness, 'highlighted');
+
+    const prompt = await openPrompt(harness, 1);
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+  });
+});
 
 /**
  * A prompt naming an edge type this protocol does not define.

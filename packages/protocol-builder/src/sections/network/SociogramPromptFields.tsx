@@ -42,7 +42,11 @@ const LAYOUT_VARIABLE_FIELD = 'layout.layoutVariable';
 const SORT_ORDER_FIELD = 'sortOrder';
 const DISPLAY_EDGES_FIELD = 'edges.display';
 const CREATE_EDGE_FIELD = 'edges.create';
-const HIGHLIGHT_VARIABLE_FIELD = 'highlight.variable';
+/**
+ * Where a prompt keeps the attribute a tap marks, exported so the list around
+ * this dialog can refuse a pick against the same path the control writes.
+ */
+export const HIGHLIGHT_VARIABLE_FIELD = 'highlight.variable';
 const ALLOW_HIGHLIGHTING_FIELD = 'highlight.allowHighlighting';
 
 /**
