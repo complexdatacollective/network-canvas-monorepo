@@ -303,6 +303,87 @@ describe('the quick-add name generator editor', () => {
     await waitFor(() => expect(dispatch).toHaveBeenCalled());
   });
 
+  /**
+   * Quick add and a prompt's assignments write the same node with opposite
+   * validation — one honours the attribute's rules as the participant types,
+   * the other stamps a fixed value with nobody to check it — and the interview
+   * applies the assignments before the typed value, so one attribute claimed
+   * by both would have the typing overwrite the stamp.
+   *
+   * They cannot collide, and the reason is structural rather than a check
+   * either section performs: quick add can only offer TEXT (one box, and the
+   * schema's own rule 3e refuses anything else), and an assignment can only
+   * offer BOOLEAN (the interview sets the value with nobody to answer). The
+   * shared prompts section's role map deliberately omits the stage being
+   * edited, so neither section can see the other's unsaved pick — which is
+   * exactly why this has to be pinned: widening either pool by a type would
+   * make the two reachable from each other with nothing in between.
+   *
+   * Both picks are made in THIS session, unsaved, which is the case a role map
+   * built from the saved protocol cannot answer for.
+   */
+  it('never offers one attribute to both quick add and a prompt assignment', async () => {
+    const harness = mountFixture();
+    // Invented here, so nothing else in the protocol writes it: an attribute
+    // some other stage already collects would be kept out of the assignment
+    // list by the ordinary cross-class rule, and this test would pass without
+    // saying anything about the two pools.
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: /Create a new attribute/ }),
+      'nickname',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create the attribute' }),
+    );
+    const invented = await waitFor(() => {
+      const value = (
+        screen.getByRole('combobox', {
+          name: /Attribute filled in/,
+        }) as HTMLSelectElement
+      ).value;
+      if (value === 'name') throw new Error('the create has not landed yet');
+      return value;
+    });
+
+    // Read before the dialog opens: it is modal, so the stage behind it is
+    // hidden from the accessibility tree while it is up.
+    const fillable = quickAddOptions().filter((value) => value !== '');
+
+    const [editPrompt] = screen.getAllByRole('button', { name: 'Edit prompt' });
+    await harness.user.click(editPrompt as HTMLElement);
+    const dialog = within(await screen.findByRole('dialog'));
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Add new attribute to assign' }),
+    );
+
+    const assignable = within(
+      dialog.getByRole('combobox', { name: /Create or select an attribute/ }),
+    )
+      .getAllByRole('option')
+      .map((option) => (option as HTMLOptionElement).value)
+      .filter((value) => value !== '');
+
+    // Neither list may be empty, or the disjointness below would hold for the
+    // wrong reason.
+    expect(assignable.length).toBeGreaterThan(0);
+    expect(fillable).toContain(invented);
+    // The live quick-add pick, named outright: it is what the reviewer's
+    // failure would have to reach, and nothing but the type of the pool keeps
+    // it out.
+    expect(assignable).not.toContain(invented);
+    expect(assignable.filter((value) => fillable.includes(value))).toEqual([]);
+    // The structural reason, stated as itself: one box can only be typed into,
+    // and a stamp set with nobody to answer can only be a flag.
+    const typeOf = (variableId: string) =>
+      (
+        harness.hostCodebook().node?.person?.variables?.[variableId] as
+          | { type?: string }
+          | undefined
+      )?.type;
+    expect(fillable.map(typeOf)).toEqual(fillable.map(() => 'text'));
+    expect(assignable.map(typeOf)).toEqual(assignable.map(() => 'boolean'));
+  });
+
   it('refuses to save while someone else holds the stage', async () => {
     const harness = mountFixture();
     await screen.findByRole('combobox', { name: /Attribute filled in/ });

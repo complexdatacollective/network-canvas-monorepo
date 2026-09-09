@@ -251,3 +251,75 @@ describe('what a participant who cannot see a media item is told', () => {
     expect(await named('video')).toBe('Intro Clip');
   });
 });
+
+/**
+ * A description that is only whitespace.
+ *
+ * The schema accepts any optional string, so an imported or hand-authored
+ * protocol can carry `""` or `"   "`, and an item nobody has reopened in the
+ * builder is never rewritten. Read literally, such a description names the
+ * player nothing at all — an empty accessible name, which is strictly worse
+ * than the file's own name — so blank and absent have to be the same answer.
+ */
+describe('a media item described with nothing but whitespace', () => {
+  const blank = '   ';
+
+  const named = async (selector: string) => {
+    await waitFor(() => expect(document.querySelector(selector)).toBeTruthy());
+    return document.querySelector(selector)?.getAttribute('aria-label');
+  };
+
+  it('names a video player after the file', async () => {
+    const stage = makeStage([
+      { id: 'i1', type: 'asset', content: 'vid-1', description: blank },
+    ]);
+
+    renderInformation(stage, [
+      {
+        assetId: 'vid-1',
+        name: 'Intro Clip',
+        type: 'video',
+        source: 'intro.mp4',
+      },
+    ]);
+
+    expect(await named('video')).toBe('Intro Clip');
+  });
+
+  it('names an audio player after the file', async () => {
+    const stage = makeStage([
+      { id: 'i1', type: 'asset', content: 'aud-1', description: blank },
+    ]);
+
+    renderInformation(stage, [
+      {
+        assetId: 'aud-1',
+        name: 'Intro Clip',
+        type: 'audio',
+        source: 'clip.mp3',
+      },
+    ]);
+
+    expect(await named('audio')).toBe('Intro Clip');
+  });
+
+  /**
+   * A picture is the one case where saying nothing is right: an empty `alt` is
+   * how a decorative image is declared, and a researcher who left the
+   * description blank described nothing. What must not survive is the blank
+   * itself — an `alt` of spaces is announced as a run of whitespace rather
+   * than skipped.
+   */
+  it('leaves a picture decorative rather than alt-texting the blank', async () => {
+    const stage = makeStage([
+      { id: 'i1', type: 'asset', content: 'img-1', description: blank },
+    ]);
+
+    renderInformation(stage, [
+      { assetId: 'img-1', name: 'Photo', type: 'image', source: 'photo.png' },
+    ]);
+
+    await waitFor(() => expect(document.querySelector('img')).toBeTruthy());
+    expect(document.querySelector('img')?.getAttribute('alt')).toBe('');
+  });
+});

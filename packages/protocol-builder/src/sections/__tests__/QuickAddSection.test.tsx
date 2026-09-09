@@ -1,10 +1,12 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import QuickAddSection from '../QuickAddSection.tsx';
+import SubjectSection from '../SubjectSection.tsx';
+import { changeSubjectTo } from './changeSubject.ts';
 
 const quickAdd = <QuickAddSection />;
 
@@ -12,6 +14,70 @@ const offered = () =>
   within(screen.getByRole('combobox', { name: /Attribute filled in/ }))
     .getAllByRole('option')
     .map((option) => (option as HTMLOptionElement).value);
+
+/**
+ * Holds the host's answer to the next compound edits until the returned
+ * function is called, so a test can do something else while one is in flight.
+ *
+ * The real host still decides — this only delays when it is asked, which is
+ * the one thing a request that answers within the click cannot be made to do.
+ * Answering is what the returned function waits for, so an assertion after it
+ * is about a settled editor.
+ */
+const holdTheHost = (
+  harness: ReturnType<typeof renderStageEditor>,
+): (() => Promise<void>) => {
+  const { host } = harness;
+  const answer = host.submit.bind(host);
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  // The host answers synchronously; the session accepts a promise from
+  // `onCompoundEdit` and awaits it, which is what makes holding the answer
+  // possible at all — so the replacement is written to the contract the
+  // session has and cast through it.
+  const deferred = async (...request: Parameters<typeof answer>) => {
+    await held;
+    return answer(...request);
+  };
+  host.submit = deferred as unknown as typeof host.submit;
+
+  return async () => {
+    host.submit = answer;
+    release();
+    await act(async () => {
+      await held;
+    });
+  };
+};
+
+/**
+ * A control pressed in the window between the host taking editing away and
+ * React drawing that fact.
+ *
+ * Access arrives as a message from the host, and the section is not redrawn
+ * until React gets to the update — so the control the researcher is looking at
+ * is still the enabled one, and the click that was already on its way reaches
+ * a handler the session is about to refuse by throwing. The harness's own
+ * `setReadOnly` flushes that render before it returns, which is the one state
+ * this scenario is not about, so the access change is made straight on the
+ * session and the click is dispatched before anything is flushed. React warns
+ * that the update was not wrapped in `act`, which is the point: wrapping it
+ * would draw the disabled control this window exists to be in front of.
+ */
+const clickAsEditingIsRevoked = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  control: HTMLElement,
+): Promise<void> => {
+  harness.session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+  control.dispatchEvent(
+    new MouseEvent('click', { bubbles: true, cancelable: true }),
+  );
+  await act(async () => {
+    await Promise.resolve();
+  });
+};
 
 describe('what a quick-add name generator records', () => {
   it('shows the attribute the stage fills in, and saves it unchanged', async () => {
@@ -159,6 +225,211 @@ describe('what a quick-add name generator records', () => {
   });
 
   /**
+   * This box is inside the stage's own form, and the form's default button is
+   * the host's Save — associated by `form=`, which makes it the default button
+   * wherever the host renders it. So Enter, which is what anyone typing a name
+   * into a box beside a Create button presses, ran the browser's implicit
+   * submission: the stage saved and closed, the attribute was never created,
+   * and the name went with the editor.
+   *
+   * Driven as a real key press rather than through `userEvent`, which looks
+   * for a submit button INSIDE the form and so never performs the submission
+   * this is about — the assertion is that the event is answered here and does
+   * not go on to the form.
+   */
+  it('creates the attribute when Enter is pressed in the name box', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+    });
+
+    const box = await screen.findByRole('textbox', {
+      name: /Create a new attribute/,
+    });
+    await harness.user.type(box, 'nickname');
+    const enter = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    });
+    await act(async () => {
+      box.dispatchEvent(enter);
+    });
+
+    expect(enter.defaultPrevented).toBe(true);
+    await waitFor(() =>
+      expect(
+        Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+          (variable) => variable.name,
+        ),
+      ).toContain('nickname'),
+    );
+    expect(
+      screen.getByRole('combobox', { name: /Attribute filled in/ }),
+    ).not.toHaveValue('name');
+  });
+
+  /**
+   * The create submits the name as it was when the button was pressed, so a
+   * name typed while the answer was on its way is not the one the answer is
+   * about: the success erased it and a refusal would have contradicted it. The
+   * button was held for that whole window and the box was not.
+   */
+  it('holds the name box while the write is in flight', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+    });
+    const settle = holdTheHost(harness);
+
+    const box = await screen.findByRole('textbox', {
+      name: /Create a new attribute/,
+    });
+    await harness.user.type(box, 'nickname');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create the attribute' }),
+    );
+
+    expect(box).toBeDisabled();
+    await settle();
+    // Back, and empty: the codebook holds "nickname" now, and asking for it a
+    // second time is refused for a duplicate the researcher did not ask for.
+    expect(box).toBeEnabled();
+    expect(box).toHaveValue('');
+  });
+
+  /**
+   * A codebook write is a round trip to the host, and the researcher can
+   * change the stage's node type while it is on its way. The attribute lands
+   * on the type the request names — the one that was current when they asked —
+   * so filling the picker in with it afterwards left `quickAdd` naming an
+   * attribute the new type does not have: a reference nothing can save,
+   * against a stage they had already moved on from.
+   */
+  it('does not select an attribute created onto the type the stage has left', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: (
+        <>
+          <SubjectSection entity="node" />
+          <QuickAddSection />
+        </>
+      ),
+    });
+    const settle = holdTheHost(harness);
+
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: /Create a new attribute/ }),
+      'nickname',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create the attribute' }),
+    );
+    await changeSubjectTo(harness.user, 'family member');
+    await settle();
+
+    // The write landed where it was addressed, and the researcher is told so
+    // rather than left to find an attribute they cannot see from here.
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).toContain('nickname');
+    expect(
+      screen
+        .getByText(
+          '“nickname” was added to the type this stage was about when you asked for it. This stage is about a different type now, so it has not been selected here.',
+        )
+        .closest('[role="status"]'),
+    ).not.toBeNull();
+    // Nothing the family-member type does not have was written into the stage.
+    expect(
+      screen.getByRole('combobox', { name: /Attribute filled in/ }),
+    ).toHaveValue('');
+    expect(offered()).toEqual(['', 'fm_name']);
+  });
+
+  /**
+   * The Create button is disabled while the codebook write is in flight, so a
+   * write that never answers is a control that never comes back: the
+   * researcher is left with a dead button and the name they typed, and taking
+   * editing back does not revive it.
+   *
+   * The session refuses a request it cannot carry by throwing rather than by
+   * answering, and that is the one answer the create did not have a path for.
+   */
+  it('gives the Create button back when the session refuses the write outright', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+    });
+
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: /Create a new attribute/ }),
+      'nickname',
+    );
+    await clickAsEditingIsRevoked(
+      harness,
+      screen.getByRole('button', { name: 'Create the attribute' }),
+    );
+
+    harness.setReadOnly(false);
+    expect(
+      screen.getByRole('button', { name: 'Create the attribute' }),
+    ).toBeEnabled();
+    // Nothing was written, and the name is still there to try again with.
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).not.toContain('nickname');
+    expect(
+      screen.getByRole('textbox', { name: /Create a new attribute/ }),
+    ).toHaveValue('nickname');
+  });
+
+  /**
+   * A quick-add name generator adds whatever node type its stage is about —
+   * the repository's own development protocol uses this interface for a venue
+   * — so copy calling what the participant adds "someone", and the attribute
+   * "a person's name", was wrong for every study that is not about people.
+   * Every sentence naming what the stage adds now says it in the researcher's
+   * own word for the type.
+   */
+  it('names what the stage adds in the researcher’s own words', async () => {
+    renderStageEditor({
+      stage: {
+        id: 'quick-add-family-members',
+        type: 'NameGeneratorQuickAdd',
+        fields: {
+          label: 'Quick add',
+          subject: { entity: 'node', type: 'family_member' },
+          quickAdd: 'fm_name',
+          prompts: [{ id: 'prompt-1', text: 'Add your relatives' }],
+        },
+      },
+      sections: quickAdd,
+    });
+
+    expect(
+      await screen.findByText(
+        'Choose the attribute the participant fills in when they add a “family member” with a single box.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'What the participant types here is the only thing they gave, so a “family member” added without it has no name. Requiring an answer changes the attribute everywhere the protocol uses it.',
+      ),
+    ).toBeInTheDocument();
+    // Shown before a type has been chosen as well, so this one names nothing.
+    expect(
+      screen.getByText(
+        'What the participant types goes here. Use the attribute holding the name unless you have a reason not to — the interview labels what it creates by it.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
    * A collaborator adding an attribute is not this session's edit. It has to
    * reach the picker, and it must not be echoed back as a command of ours.
    */
@@ -272,9 +543,47 @@ describe('a quick-add attribute that need not be answered', () => {
     expect(screen.getByRole('combobox', { name: /Attribute filled in/ })).toBe(
       document.activeElement,
     );
+    // Reached through the sentence rather than through the region, because the
+    // create beside this one keeps a live region of its own mounted whether it
+    // is saying anything or not. Still a claim about the region: this is what
+    // makes the sentence reach a screen reader at all.
     expect(
-      within(await screen.findByRole('status')).getByText(
-        'This attribute now has to be answered, everywhere the protocol uses it.',
+      (
+        await screen.findByText(
+          'This attribute now has to be answered, everywhere the protocol uses it.',
+        )
+      ).closest('[role="status"]'),
+    ).not.toBeNull();
+  });
+
+  /**
+   * The offer's own button carries the same guard as the create beside it, and
+   * for the same reason: it is disabled while the codebook write is in flight,
+   * so a write that throws instead of answering leaves the offer on screen
+   * with no way to accept it.
+   */
+  it('gives the offer back when the session refuses the write outright', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+    });
+
+    await screen.findByText('This attribute can be left empty');
+    await clickAsEditingIsRevoked(
+      harness,
+      screen.getByRole('button', { name: 'Require an answer' }),
+    );
+
+    harness.setReadOnly(false);
+    expect(
+      screen.getByRole('button', { name: 'Require an answer' }),
+    ).toBeEnabled();
+    expect(personVariable(harness, 'name')).not.toMatchObject({
+      validation: { required: true },
+    });
+    expect(
+      screen.getByText(
+        'This attribute could not be changed, so nothing was changed. Try again.',
       ),
     ).toBeInTheDocument();
   });

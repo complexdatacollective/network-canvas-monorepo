@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { v4 as uuid } from 'uuid';
@@ -62,13 +63,14 @@ const messages = defineMessages({
     id: 'protocolBuilder.quickAdd.title',
     defaultMessage: 'Quick add',
     description:
-      'Heading of the section choosing which attribute a participant fills in when they add someone with a single box. An attribute is one field the protocol records about a person.',
+      'Heading of the section choosing which attribute a participant fills in when they add a network member with a single box. An attribute is one field the protocol records about that member, which may be a person, an organisation, a place, or anything else the study is about.',
   },
   description: {
     id: 'protocolBuilder.quickAdd.description',
     defaultMessage:
-      'Choose the attribute the participant fills in when they add someone with a single box.',
-    description: 'Description of the quick-add section.',
+      'Choose the attribute the participant fills in when they add a “{typeName}” with a single box.',
+    description:
+      'Description of the quick-add section. typeName is the researcher’s own name for the node type this stage adds — a person, an organisation, a place — and is not translated.',
   },
   waitingDescription: {
     id: 'protocolBuilder.quickAdd.waitingDescription',
@@ -86,14 +88,15 @@ const messages = defineMessages({
   fieldHint: {
     id: 'protocolBuilder.quickAdd.fieldHint',
     defaultMessage:
-      'What the participant types goes here. Use the attribute holding a person’s name unless you have a reason not to — the interview labels people by it.',
-    description: 'Guidance under the quick-add attribute control.',
+      'What the participant types goes here. Use the attribute holding the name unless you have a reason not to — the interview labels what it creates by it.',
+    description:
+      'Guidance under the quick-add attribute control. Said without naming what is created, because this interface can add any kind of network member and the control is shown before the researcher has chosen which.',
   },
   fieldRequired: {
     id: 'protocolBuilder.quickAdd.fieldRequired',
     defaultMessage: 'Choose the attribute quick add fills in.',
     description:
-      'Refusal shown when a researcher saves a quick-add stage without saying which attribute receives what the participant types, which would create people with no name at all.',
+      'Refusal shown when a researcher saves a quick-add stage without saying which attribute receives what the participant types, which would create network members with no name at all.',
   },
   noTextAttribute: {
     id: 'protocolBuilder.quickAdd.noTextAttribute',
@@ -106,14 +109,14 @@ const messages = defineMessages({
     id: 'protocolBuilder.quickAdd.canBeEmptyTitle',
     defaultMessage: 'This attribute can be left empty',
     description:
-      'Warning heading shown when the attribute quick add fills in does not have to be answered, so a person could be created with no name.',
+      'Warning heading shown when the attribute quick add fills in does not have to be answered, so a network member could be created with no name.',
   },
   canBeEmptyDescription: {
     id: 'protocolBuilder.quickAdd.canBeEmptyDescription',
     defaultMessage:
-      'What the participant types here is the only thing they gave, so a person added without it has no name. Requiring an answer changes the attribute everywhere the protocol uses it.',
+      'What the participant types here is the only thing they gave, so a “{typeName}” added without it has no name. Requiring an answer changes the attribute everywhere the protocol uses it.',
     description:
-      'Warning body offering to make the quick-add attribute one that has to be answered, and saying that the change reaches every other stage using the same attribute.',
+      'Warning body offering to make the quick-add attribute one that has to be answered, and saying that the change reaches every other stage using the same attribute. typeName is the researcher’s own name for the node type this stage adds and is not translated.',
   },
   requireAnswer: {
     id: 'protocolBuilder.quickAdd.requireAnswer',
@@ -179,6 +182,13 @@ const messages = defineMessages({
     description:
       'Refusal shown when a researcher asks to create a quick-add attribute without typing a name for it.',
   },
+  createdOnAnotherType: {
+    id: 'protocolBuilder.quickAdd.createdOnAnotherType',
+    defaultMessage:
+      '“{variableName}” was added to the type this stage was about when you asked for it. This stage is about a different type now, so it has not been selected here.',
+    description:
+      'Notice shown when an attribute the researcher asked for was added to the codebook — the protocol’s definition of what an interview records — but the node type the stage works with was changed while it was being added, so the new attribute belongs to the old type and nothing here uses it. variableName is the name they typed and is not translated.',
+  },
 });
 
 const CHOOSE_AN_ATTRIBUTE = createMessageError(messages.fieldRequired);
@@ -202,6 +212,39 @@ const validationOf = (variable: unknown): Record<string, unknown> => {
     ? (validation as Record<string, unknown>)
     : {};
 };
+
+/**
+ * What this stage adds, in the researcher's own words.
+ *
+ * Every sentence here that names what quick add creates says it with this
+ * rather than with "someone": the interface adds whatever node type the stage
+ * is about, and the repository's own development protocol uses it for a venue.
+ * The codebook's name for the type is the only accurate word for it, and it is
+ * the researcher's own — so it falls back to the type id rather than to a noun
+ * this section chose.
+ */
+const typeNameOf = (
+  protocolContext: ProtocolBuilderProtocolContext,
+  subject: CodebookSubject,
+): string => {
+  // Read off the node or edge definition rather than through the shared
+  // subject reader, because ego has no name to read and the union says so.
+  const definition =
+    subject.entity === 'ego'
+      ? undefined
+      : protocolContext.codebook[subject.entity]?.[subject.type];
+  return definition?.name ?? subjectType(subject) ?? '';
+};
+
+/**
+ * The node or edge type a subject names, for comparing one reading of the
+ * stage's subject against a later one. Ego has no type and this section never
+ * sees one.
+ */
+const subjectType = (
+  subject: CodebookSubject | undefined,
+): string | undefined =>
+  subject === undefined || subject.entity === 'ego' ? undefined : subject.type;
 
 /** The authoritative section document this subject's attributes live in. */
 const codebookDocumentFor = (
@@ -256,9 +299,13 @@ export default function QuickAddSection() {
   return (
     <BuilderSection
       title={intl.formatMessage(messages.title)}
-      description={intl.formatMessage(
-        waiting ? messages.waitingDescription : messages.description,
-      )}
+      description={
+        subject === undefined
+          ? intl.formatMessage(messages.waitingDescription)
+          : intl.formatMessage(messages.description, {
+              typeName: typeNameOf(protocolContext, subject),
+            })
+      }
       disabled={waiting}
     >
       <ProtocolField<typeof VariablePicker>
@@ -332,8 +379,15 @@ function QuickAddAnswerRequirement({
 
   // A dangling reference has its own message on the picker above, and a
   // requirement offered against an attribute that is not there would be a
-  // second, worse explanation of the same thing.
-  if (variable === undefined || variableId === undefined) return null;
+  // second, worse explanation of the same thing. With no type chosen there is
+  // no attribute to be offered anything about either.
+  if (
+    subject === undefined ||
+    variable === undefined ||
+    variableId === undefined
+  ) {
+    return null;
+  }
 
   if (alreadyRequired) {
     // Said only to the researcher who just asked for it. Focus has moved to a
@@ -351,14 +405,21 @@ function QuickAddAnswerRequirement({
 
   const accept = async () => {
     setBusy(true);
-    const outcome = await requireAnswer(variableId);
-    setBusy(false);
-    if (outcome.status === 'refused') {
-      setProblem(outcome.message);
-      return;
+    try {
+      const outcome = await requireAnswer(variableId);
+      if (outcome.status === 'refused') {
+        setProblem(outcome.message);
+        return;
+      }
+      setProblem(undefined);
+      setRequiredHere(variableId);
+    } finally {
+      // In a `finally` because the button is disabled while this is true: an
+      // offer that ended in a throw would otherwise leave the researcher
+      // looking at a control that never comes back, with no way to try again.
+      // Same guard, and the same reason, as `CreatableVariablePickerControl`.
+      setBusy(false);
     }
-    setProblem(undefined);
-    setRequiredHere(variableId);
   };
 
   return (
@@ -366,7 +427,9 @@ function QuickAddAnswerRequirement({
       <AlertTitle>{intl.formatMessage(messages.canBeEmptyTitle)}</AlertTitle>
       <AlertDescription>
         <p className="m-0">
-          {intl.formatMessage(messages.canBeEmptyDescription)}
+          {intl.formatMessage(messages.canBeEmptyDescription, {
+            typeName: typeNameOf(protocolContext, subject),
+          })}
         </p>
         <Button
           // Never a submit: this control sits inside the stage's own form.
@@ -438,7 +501,19 @@ function useRequireCodebookAnswer(subject: CodebookSubject | undefined) {
         };
       }
 
-      const result = await controller.requestCompoundEdit(request);
+      // Awaited inside a `try` for the reason `useCreateCodebookVariable`
+      // gives: a session that has stopped accepting changes refuses the
+      // request by throwing rather than answering, and this hook promises an
+      // outcome. A rejection escaping it left the caller marked busy for good.
+      let result;
+      try {
+        result = await controller.requestCompoundEdit(request);
+      } catch {
+        return {
+          status: 'refused',
+          message: intl.formatMessage(messages.refusedUnchanged),
+        };
+      }
       return result.status === 'applied'
         ? { status: 'required' }
         : {
@@ -458,6 +533,17 @@ function useRequireCodebookAnswer(subject: CodebookSubject | undefined) {
  * compound edit — the codebook write and the stage that references it must land
  * together or not at all. Selecting the result is the point: a researcher who
  * has just said what they want it called should not then have to find it.
+ *
+ * Selected only if the stage is still about the type it was created on. A
+ * compound edit is a round trip to the host, and the researcher can change the
+ * node type while it is in flight — the attribute lands on the type that was
+ * current when they asked, because that is the codebook section the request
+ * names, and filling the picker in with it afterwards left `quickAdd` naming an
+ * attribute the new type does not have: a reference that cannot be saved,
+ * against a stage the researcher has just moved on from. So the type is read
+ * again when the codebook answers, and where it has moved the attribute is
+ * reported rather than selected — it exists, and where it went is the only
+ * thing left to say.
  */
 function NewQuickAddAttribute() {
   const intl = useAppIntl();
@@ -467,6 +553,26 @@ function NewQuickAddAttribute() {
   const [name, setName] = useState('');
   const [problem, setProblem] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  /**
+   * The name of an attribute that was created onto a type this stage is no
+   * longer about, held for as long as the notice about it is on screen.
+   *
+   * The submitted name rather than whatever the box holds now: the notice is
+   * about the attribute that was created, and the box is empty by the time it
+   * appears. Same shape as `CreatableVariablePickerControl`'s
+   * "created but not selected" notice, which answers the same question.
+   */
+  const [strandedName, setStrandedName] = useState<string | undefined>(
+    undefined,
+  );
+
+  // In a ref, so `create` reads the type as it is when the codebook ANSWERS
+  // rather than the one closed over when it was asked.
+  const typeNow = subjectType(subject);
+  const typeNowRef = useRef(typeNow);
+  useEffect(() => {
+    typeNowRef.current = typeNow;
+  }, [typeNow]);
 
   const create = useCallback(async () => {
     const trimmed = name.trim();
@@ -474,24 +580,42 @@ function NewQuickAddAttribute() {
       setProblem(intl.formatMessage(messages.nameTheAttribute));
       return;
     }
+    const askedFor = typeNowRef.current;
     setBusy(true);
-    const outcome = await createVariable({
-      name: trimmed,
-      type: QUICK_ADD_TYPE,
-      component: 'Text',
-      validation: QUICK_ADD_VALIDATION,
-    });
-    setBusy(false);
-    if (outcome.status === 'refused') {
-      setProblem(outcome.message);
-      return;
+    try {
+      const outcome = await createVariable({
+        name: trimmed,
+        type: QUICK_ADD_TYPE,
+        component: 'Text',
+        validation: QUICK_ADD_VALIDATION,
+      });
+      if (outcome.status === 'refused') {
+        setProblem(outcome.message);
+        return;
+      }
+      setProblem(undefined);
+      // The codebook holds it now, whatever becomes of it here, and asking for
+      // the same name a second time is refused for a duplicate the researcher
+      // did not choose to ask for — so the box empties on both answers below.
+      setName('');
+      if (typeNowRef.current !== askedFor) {
+        setStrandedName(trimmed);
+        return;
+      }
+      setStrandedName(undefined);
+      // Written into the form rather than dispatched to the session: the
+      // picker above is a registered field, and a command that went round it
+      // would be overwritten by whatever the control still held when the
+      // stage saved.
+      storeApi.getState().setFieldValue(QUICK_ADD, outcome.variableId);
+    } finally {
+      // In a `finally` because the button is disabled while this is true: a
+      // create that ended in a throw would otherwise leave the researcher
+      // looking at a Create button that never comes back, with no way to try
+      // again. Same guard, and the same reason, as
+      // `CreatableVariablePickerControl`.
+      setBusy(false);
     }
-    setProblem(undefined);
-    setName('');
-    // Written into the form rather than dispatched to the session: the picker
-    // above is a registered field, and a command that went round it would be
-    // overwritten by whatever the control still held when the stage saved.
-    storeApi.getState().setFieldValue(QUICK_ADD, outcome.variableId);
   }, [createVariable, intl, name, storeApi]);
 
   if (subject === undefined) return null;
@@ -511,13 +635,53 @@ function NewQuickAddAttribute() {
         hint={intl.formatMessage(messages.newAttributeHint)}
         placeholder={intl.formatMessage(messages.newAttributePlaceholder)}
         value={name}
-        onChange={(next: unknown) =>
-          setName(typeof next === 'string' ? next : '')
-        }
+        // Held with the button while the write is in flight. The create
+        // submits the name as it was when it was pressed, so a name typed
+        // while the answer was on its way was erased by a success and
+        // contradicted by a refusal — every sentence here is about the
+        // submitted name, and held, the box is always exactly what the answer
+        // is about. `CreatableVariablePickerControl` holds its own for the
+        // same reason.
+        disabled={busy}
+        // Enter here means "create the attribute", and it has to be said so.
+        // This box is inside the stage's own `<form>`, whose default button is
+        // the host's Save — associated by `form=` and therefore the form's
+        // default button wherever the host renders it — so the browser's
+        // implicit submission saved and closed the editor instead, creating
+        // nothing and taking the typed name with it.
+        onKeyDown={(event) => {
+          // A key pressed to compose a character is not a key press.
+          if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+          event.preventDefault();
+          void create();
+        }}
+        onChange={(next: unknown) => {
+          // The notice is about the create that has just happened; naming
+          // another attribute is the start of a different one.
+          setStrandedName(undefined);
+          setName(typeof next === 'string' ? next : '');
+        }}
       />
       <Button type="button" onClick={() => void create()} disabled={busy}>
         {intl.formatMessage(messages.createAttribute)}
       </Button>
+      {/* Always mounted, so a screen reader is watching this region before the
+          notice appears: a live region added to the page at the same moment as
+          its own content is not reliably announced. The `Alert` inside it is
+          presentational for the same reason — its `info` variant is a
+          `role="status"` of its own, and a second polite region inserted into
+          this one is the double announcement this wrapper exists to avoid. */}
+      <div role="status" aria-live="polite">
+        {strandedName !== undefined && (
+          <Alert variant="info" role="presentation" className="my-7">
+            <AlertDescription>
+              {intl.formatMessage(messages.createdOnAnotherType, {
+                variableName: strandedName,
+              })}
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
       {problem !== undefined && (
         <Alert variant="destructive" className="my-7">
           <AlertDescription>{problem}</AlertDescription>
