@@ -199,6 +199,10 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
     initialData: {},
   });
 
+  // Giving a lock back is best effort, which is why every one of them goes
+  // through `safe`: a host that will not take it — the section has gone, the
+  // socket dropped — leaves the editor nothing to do and the researcher nothing
+  // to act on, and a bare promise would make it an unhandled rejection instead.
   useEffect(() => {
     const mine = (acquisition.current += 1);
     wanted.current = id;
@@ -224,14 +228,14 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           // cleanup's release went out before the host granted this one, so
           // nothing else will ever give it back.
           if (wanted.current !== id && result.lock === 'held') {
-            void client.releaseLock({ protocolId, sectionId: id });
+            void safe(client.releaseLock({ protocolId, sectionId: id }));
           }
           return;
         }
         if (released.current) {
           // Acquired after unmount: hand it straight back rather than holding a
           // lock no editor is behind.
-          void client.releaseLock({ protocolId, sectionId: id });
+          void safe(client.releaseLock({ protocolId, sectionId: id }));
           return;
         }
         setAccess(result.lock === 'readOnly' ? 'readOnly' : 'editing');
@@ -257,7 +261,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
     released.current = false;
     return () => {
       released.current = true;
-      void client.releaseLock({ protocolId, sectionId: id });
+      void safe(client.releaseLock({ protocolId, sectionId: id }));
     };
   }, [client, protocolId, id, queryClient, utils]);
 
@@ -311,7 +315,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   );
 
   const release = useCallback(() => {
-    void client.releaseLock({ protocolId, sectionId: id });
+    void safe(client.releaseLock({ protocolId, sectionId: id }));
   }, [client, protocolId, id]);
 
   return {
