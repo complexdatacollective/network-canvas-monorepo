@@ -14,7 +14,10 @@ import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import FormFieldsSection from '../FormFieldsSection.tsx';
-import { useResetOnEntityTypeChange } from './entityTypeReset.ts';
+import {
+  useEntityTypeChangeConfirmation,
+  useResetOnEntityTypeChange,
+} from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
 import SlotVariableField from './SlotVariableField.tsx';
 import {
@@ -33,6 +36,16 @@ const EGO_SLOT = PEDIGREE_EXCLUSIVE_SLOTS.egoVariable;
 const RELATIONSHIP_SLOT = PEDIGREE_EXCLUSIVE_SLOTS.relationshipVariable;
 const BIOLOGICAL_SEX_FIELD = 'nodeConfig.biologicalSexVariable';
 const FORM_FIELD = 'nodeConfig.form';
+/**
+ * The attribute id the pedigree's own name control writes through.
+ *
+ * The interview submits each relative's name on its internal `name` path and
+ * filters a form field collecting `name` out for that reason
+ * (`interview/src/interfaces/FamilyPedigree/utils/nodeUtils.ts`), so a field
+ * bound to it is a question nobody is ever asked. Written down here because
+ * the runtime spells it as a literal too, and the two have to agree.
+ */
+const RESERVED_NAME_VARIABLE = 'name';
 const NOMINATION_PROMPTS_FIELD = 'nominationPrompts';
 
 /**
@@ -63,6 +76,20 @@ const NODE_TYPE_DEPENDENT_FIELDS: readonly string[] = Object.freeze([
   FORM_FIELD,
   'nominationPrompts',
 ]);
+
+/**
+ * What a node type change costs, in the pedigree's own words.
+ *
+ * The list above says which paths go; this says it in a sentence, because the
+ * researcher is asked before the reset runs rather than told afterwards. The
+ * two are declared together so a path added to one is visibly missing from the
+ * other.
+ */
+const NODE_TYPE_CHANGE_WORDS = Object.freeze({
+  title: pedigreeMessages.nodeTypeChangeTitle,
+  description: pedigreeMessages.nodeTypeChangeDescription,
+  confirmLabel: pedigreeMessages.nodeTypeChangeConfirm,
+});
 
 /**
  * What switching the family member form off means, in the pedigree's words.
@@ -96,10 +123,15 @@ export default function PedigreeNodeConfigurationSection() {
   const nodeType = useStageValue(TYPE_FIELD);
   const formRows = useStageValue(FORM_FIELD);
   const nominationRows = useStageValue(NOMINATION_PROMPTS_FIELD);
+  const labelDraft = useStageValue(LABEL_FIELD);
   const egoDraft = useStageValue(EGO_SLOT.path);
   const relationshipDraft = useStageValue(RELATIONSHIP_SLOT.path);
   const biologicalSexDraft = useStageValue(BIOLOGICAL_SEX_FIELD);
   useResetOnEntityTypeChange(TYPE_FIELD, NODE_TYPE_DEPENDENT_FIELDS);
+  const confirmTypeChange = useEntityTypeChangeConfirmation(
+    NODE_TYPE_DEPENDENT_FIELDS,
+    NODE_TYPE_CHANGE_WORDS,
+  );
 
   const subject: CodebookSubject | null = useMemo(
     () =>
@@ -165,6 +197,41 @@ export default function PedigreeNodeConfigurationSection() {
     [biologicalSexDraft, egoDraft, nominationRows, relationshipDraft],
   );
 
+  /**
+   * The attribute the display label names right now, which no structural slot
+   * may also write.
+   *
+   * The label is a VALIDATED writer whose value the participant types, and the
+   * three slots below are derived from the tree they draw — so a slot bound to
+   * the same attribute overwrites that typed name at finalization. The label
+   * already refuses what the slots claim (`draftUnvalidatedVariables`); this is
+   * the same rule read from the other end, which was missing: both controls
+   * accepted the pick, and the researcher was told nothing until an export
+   * showed "parent" where a person's name should have been.
+   */
+  const draftLabelVariable =
+    typeof labelDraft === 'string' && labelDraft !== ''
+      ? labelDraft
+      : undefined;
+
+  /**
+   * What the member form may not collect, because the pedigree collects it
+   * itself.
+   *
+   * Interviewer's `getNodeForm` filters both out of the form it renders — the
+   * display label, whose value the dedicated name control writes, and any
+   * attribute whose id is literally `name`, which that control submits through
+   * — so a field bound to either is a question the researcher wrote, saw
+   * accepted, and no participant is ever asked.
+   */
+  const reservedFormVariables = useMemo(
+    () =>
+      draftLabelVariable === undefined
+        ? [RESERVED_NAME_VARIABLE]
+        : [draftLabelVariable, RESERVED_NAME_VARIABLE],
+    [draftLabelVariable],
+  );
+
   const dependentNarrativeStages = useMemo(
     () =>
       protocolContext.orderedStages.filter(
@@ -174,6 +241,37 @@ export default function PedigreeNodeConfigurationSection() {
       ),
     [identity.id, protocolContext.orderedStages],
   );
+
+  /*
+    The stage names reach both sentences as ONE value, joined by the reader's
+    own list formatter rather than by a comma this file chose: which separator
+    a list of names takes, and whether the last one is introduced by a word at
+    all, is a fact about the reader's language.
+  */
+  const dependentStageNames = intl.formatList(
+    dependentNarrativeStages.map((stage) => `"${stage.label}"`),
+    { type: 'conjunction' },
+  );
+
+  /**
+   * Why the node type may not be changed while another stage reads this
+   * pedigree.
+   *
+   * The warning above says what such a change would cost; this refuses it.
+   * A narrative pedigree resolves every disease it draws through THIS stage's
+   * `nodeConfig.type`, so a change here leaves it naming attributes the new
+   * type does not have — a protocol whole-protocol validation refuses, and one
+   * this editor cannot repair, because the stage that has to be remapped is
+   * not the stage it is editing. Architect refuses the same transition for the
+   * same reason.
+   */
+  const blockChangeReason =
+    dependentNarrativeStages.length === 0
+      ? undefined
+      : intl.formatMessage(pedigreeMessages.dependentStagesBlockReason, {
+          stageCount: dependentNarrativeStages.length,
+          stageNames: dependentStageNames,
+        });
 
   return (
     <BuilderSection
@@ -186,18 +284,8 @@ export default function PedigreeNodeConfigurationSection() {
             {intl.formatMessage(pedigreeMessages.dependentStagesTitle)}
           </AlertTitle>
           <AlertDescription>
-            {/*
-              The stage names reach the sentence as ONE value, joined by the
-              reader's own list formatter rather than by a comma this file
-              chose: which separator a list of names takes, and whether the
-              last one is introduced by a word at all, is a fact about the
-              reader's language.
-            */}
             {intl.formatMessage(pedigreeMessages.dependentStagesDescription, {
-              stageNames: intl.formatList(
-                dependentNarrativeStages.map((stage) => `"${stage.label}"`),
-                { type: 'conjunction' },
-              ),
+              stageNames: dependentStageNames,
             })}
           </AlertDescription>
         </Alert>
@@ -206,6 +294,8 @@ export default function PedigreeNodeConfigurationSection() {
         name={TYPE_FIELD}
         component={EntitySelectControl}
         entityType="node"
+        confirmChange={confirmTypeChange}
+        {...(blockChangeReason === undefined ? {} : { blockChangeReason })}
         label={intl.formatMessage(pedigreeMessages.nodeTypeLabel)}
         hint={intl.formatMessage(pedigreeMessages.nodeTypeHint)}
         required
@@ -235,6 +325,9 @@ export default function PedigreeNodeConfigurationSection() {
             writerClass="unvalidated"
             ownSlot={EGO_SLOT.slot}
             draftConflicting={draftFormVariables}
+            {...(draftLabelVariable === undefined
+              ? {}
+              : { draftLabelVariable })}
             variableType="boolean"
             createLabel={pedigreeMessages.nodeEgoCreateLabel}
             createDescription={pedigreeMessages.nodeEgoCreateDescription}
@@ -249,6 +342,9 @@ export default function PedigreeNodeConfigurationSection() {
             writerClass="unvalidated"
             ownSlot={RELATIONSHIP_SLOT.slot}
             draftConflicting={draftFormVariables}
+            {...(draftLabelVariable === undefined
+              ? {}
+              : { draftLabelVariable })}
             variableType="text"
             createLabel={pedigreeMessages.nodeRelationshipCreateLabel}
             createDescription={
@@ -264,6 +360,9 @@ export default function PedigreeNodeConfigurationSection() {
             options={biologicalSexVariables}
             writerClass="unvalidated"
             draftConflicting={draftFormVariables}
+            {...(draftLabelVariable === undefined
+              ? {}
+              : { draftLabelVariable })}
             variableType="categorical"
             lockedOptions={INTERFACE_OWNED_OPTION_SETS.biologicalSex.options}
             createLabel={pedigreeMessages.nodeBiologicalSexCreateLabel}
@@ -294,6 +393,8 @@ export default function PedigreeNodeConfigurationSection() {
             optional
             capability={FORM_CAPABILITY}
             draftUnvalidatedVariables={draftUnvalidatedVariables}
+            reservedVariables={reservedFormVariables}
+            reservedVariableRefusal={pedigreeMessages.memberFormReservedRefusal}
             /*
               The shared section is worded for a form that stands on its own.
               This one is hung off the node configuration of a stage the

@@ -186,7 +186,7 @@ export default function SourceStageSection() {
           </AlertDescription>
         </Alert>
       )}
-      {selectOptions.length === 0 ? (
+      {selectOptions.length === 0 && (
         <Alert variant="warning">
           <AlertTitle>
             {intl.formatMessage(narrativePedigreeMessages.sourceEmptyTitle)}
@@ -195,20 +195,28 @@ export default function SourceStageSection() {
             {intl.formatMessage(narrativePedigreeMessages.sourceEmptyMessage)}
           </AlertDescription>
         </Alert>
-      ) : (
-        <ProtocolField<typeof StyledSelectField>
-          name={SOURCE_FIELD}
-          component={StyledSelectField}
-          label={intl.formatMessage(narrativePedigreeMessages.sourceLabel)}
-          hint={intl.formatMessage(narrativePedigreeMessages.sourceHint)}
-          placeholder={intl.formatMessage(
-            narrativePedigreeMessages.sourcePlaceholder,
-          )}
-          options={selectOptions}
-          required
-          custom={sourceValidation}
-        />
       )}
+      {/* The control is disabled when there is nothing to choose rather than
+          replaced by the alert above it. `ProtocolField` is also what tells
+          the outline this section owns a required field: rendered instead of
+          the control, the alert left the section with no fields at all, which
+          reads as "Finished" beside a stage the save refuses — and left the
+          session's own complaint about the missing source with no field to
+          attribute it to. Mounted and empty, the section reports the
+          prerequisite nobody has met yet. */}
+      <ProtocolField<typeof StyledSelectField>
+        name={SOURCE_FIELD}
+        component={StyledSelectField}
+        label={intl.formatMessage(narrativePedigreeMessages.sourceLabel)}
+        hint={intl.formatMessage(narrativePedigreeMessages.sourceHint)}
+        placeholder={intl.formatMessage(
+          narrativePedigreeMessages.sourcePlaceholder,
+        )}
+        options={selectOptions}
+        disabled={selectOptions.length === 0}
+        required
+        custom={sourceValidation}
+      />
     </BuilderSection>
   );
 }

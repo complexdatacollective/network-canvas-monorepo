@@ -13,7 +13,10 @@ import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import BuilderSection from '../BuilderSection.tsx';
-import { useResetOnEntityTypeChange } from './entityTypeReset.ts';
+import {
+  useEntityTypeChangeConfirmation,
+  useResetOnEntityTypeChange,
+} from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
 import SlotVariableField from './SlotVariableField.tsx';
 import {
@@ -44,6 +47,13 @@ const EDGE_TYPE_DEPENDENT_FIELDS: readonly string[] = Object.freeze([
   GAMETE_ROLE_SLOT.path,
 ]);
 
+/** What an edge type change costs, in the pedigree's own words. */
+const EDGE_TYPE_CHANGE_WORDS = Object.freeze({
+  title: pedigreeMessages.edgeTypeChangeTitle,
+  description: pedigreeMessages.edgeTypeChangeDescription,
+  confirmLabel: pedigreeMessages.edgeTypeChangeConfirm,
+});
+
 /**
  * The edge type the pedigree records relationships as, and the attributes it
  * writes on them.
@@ -59,6 +69,10 @@ export default function PedigreeEdgeConfigurationSection() {
   const { protocolContext } = useStageEditorForm();
   const edgeType = useStageValue(TYPE_FIELD);
   useResetOnEntityTypeChange(TYPE_FIELD, EDGE_TYPE_DEPENDENT_FIELDS);
+  const confirmTypeChange = useEntityTypeChangeConfirmation(
+    EDGE_TYPE_DEPENDENT_FIELDS,
+    EDGE_TYPE_CHANGE_WORDS,
+  );
 
   const subject: CodebookSubject | null = useMemo(
     () =>
@@ -109,6 +123,7 @@ export default function PedigreeEdgeConfigurationSection() {
         name={TYPE_FIELD}
         component={EntitySelectControl}
         entityType="edge"
+        confirmChange={confirmTypeChange}
         label={intl.formatMessage(pedigreeMessages.edgeTypeLabel)}
         hint={intl.formatMessage(pedigreeMessages.edgeTypeHint)}
         required

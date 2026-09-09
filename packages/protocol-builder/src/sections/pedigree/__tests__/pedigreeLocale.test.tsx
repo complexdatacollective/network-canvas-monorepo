@@ -7,10 +7,7 @@ import BoundaryOptionsSection from '../BoundaryOptionsSection.tsx';
 import FramingConfigSection from '../FramingConfigSection.tsx';
 import NominationPromptsSection from '../NominationPromptsSection.tsx';
 import PedigreeNodeConfigurationSection from '../PedigreeNodeConfigurationSection.tsx';
-import {
-  addFamilyMemberVariable,
-  familyPedigreeStageWith,
-} from './pedigreeFixtures.tsx';
+import { familyPedigreeStageWith } from './pedigreeFixtures.tsx';
 
 shimMarkdownEditorMeasurement();
 
@@ -153,35 +150,32 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
   /**
    * The one sentence in this area that leaves React before it is read.
    *
-   * `slotCrossClassIssue` has no formatter, so it encodes its refusal and
-   * hands it to the field as a plain string; `FieldErrors` decodes it where it
-   * renders. A refusal frozen into English at the moment the pick was judged
-   * would pass every other test in this file and fail here.
+   * A pedigree's refusals have no formatter where they are decided, so they
+   * are encoded and handed to the field as plain strings; `FieldErrors`
+   * decodes them where they render. A refusal frozen into English at the
+   * moment the save was judged would pass every other test in this file and
+   * fail here.
+   *
+   * Read through the nomination prompts, whose switch-on-and-leave-empty is
+   * the refusal a researcher can still reach: every slot refusal is now
+   * withheld by the picker before a pick can earn it — see
+   * `slotWiring.test.ts`, which asks the gate for those sentences directly.
    */
-  it('reads a refused slot pick back in Spanish, with the attribute in it', async () => {
+  it('reads a refused save back in Spanish', async () => {
     const harness = renderStageEditor({
       stageId: 'family-pedigree-1',
       locale: 'es',
-      sections: <PedigreeNodeConfigurationSection />,
-    });
-    addFamilyMemberVariable(harness, 'preferred_name', {
-      name: 'preferred_name',
-      type: 'text',
+      sections: <NominationPromptsSection />,
     });
 
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Etiqueta visible' }),
-      'preferred_name',
-    );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Relación con el participante' }),
-      'preferred_name',
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Preguntas de nominación' }),
     );
 
     expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
-        '«preferred_name» lo escribe sin validación otra ranura de esta etapa, así que tampoco puede recogerse aquí (los valores que escribe esa ranura se saltan la validación de este atributo)',
+        'Añade al menos una pregunta de nominación, o desactiva esta sección.',
       ),
     ).toBeInTheDocument();
   });
