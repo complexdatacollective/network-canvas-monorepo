@@ -897,7 +897,8 @@ describe('the way a family member form reaches the document', () => {
 
 /**
  * Nomination prompts are the pedigree's optional list, edited through a row
- * dialog. The fixture protocol has none, so the rows are seeded here.
+ * dialog. The rows are seeded here rather than read off the fixture, so the
+ * tests say exactly what they open.
  */
 describe('the pedigree’s nomination prompts', () => {
   it('saves a list it opened, unchanged', async () => {
