@@ -774,9 +774,13 @@ jobs:
           # (#1796) had nine in flight at once, every protocol-builder file
           # took 4–5× as long as in a lightly loaded run (including one that
           # renders nothing), and ten tests timed out at 20s. Serialising the
-          # suites cannot cost wall time — the runner is saturated either way
-          # — and it hands each suite the whole machine, so per-test budgets
-          # measure the test again rather than the queue. MEASUREMENTS_TBD
+          # suites costs no wall time, because the runner is saturated either
+          # way, and hands each suite the whole machine, so per-test budgets
+          # measure the test rather than the queue. Measured on the same
+          # thirteen tasks (#1801): 25m53s at --concurrency=1 and 25m49s at 2
+          # against 26m08s at the default, with no timeouts at either cap. Not
+          # 2: a protocol-builder file that took 9.5s alone took 20s beside
+          # one other suite, which is the headroom the 20s budgets need.
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
             && [[ -n "$DIFF_BASE_SHA" ]] \
             && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
