@@ -1,10 +1,13 @@
-import { isEqual } from 'es-toolkit/compat';
 import { useEffect, useMemo, useRef } from 'react';
 
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
+import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
@@ -13,6 +16,7 @@ import {
   useStageValue,
 } from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
+import { useOnResearcherChange } from '../researcherChange.ts';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
 import { resolveSourceStages, type SourceStageProblem } from './sourceStage.ts';
 
@@ -27,6 +31,15 @@ const DISEASES_FIELD = 'diseases';
  *
  * Keyed on the resolver's own problem token, so a case added there is a case
  * this record does not compile without.
+ *
+ * Said twice, from the two places that can say it. The notice states it on
+ * arrival, which is the only way the researcher hears about a source a
+ * collaborator broke while they were reading something else: a field shows its
+ * errors once it is dirty, and a stage nobody has touched never is. The
+ * FIELD's copy is what refuses the save, and it is encoded rather than
+ * formatted because it is stated by a rule the field registers, which runs
+ * outside React and can see no formatter — the form's own error region decodes
+ * it (see `formatMessageError`), so it too follows a change of language.
  */
 const PROBLEM_MESSAGES: Readonly<
   Record<SourceStageProblem, MessageDescriptor>
@@ -58,13 +71,24 @@ const PROBLEM_MESSAGES: Readonly<
  */
 export default function SourceStageSection() {
   const intl = useAppIntl();
-  const { committedFields, identity, protocolContext } = useStageEditorForm();
+  const { creation, identity, protocolContext, storeApi } =
+    useStageEditorForm();
   const sourceStageId = useStageValue(SOURCE_FIELD);
   const discardStageValues = useDiscardStageValues();
 
+  // Where the stage runs decides which pedigrees precede it, and a stage being
+  // created is not in the order to be found in: the session carries the
+  // position the host is about to insert it at, so a new stage placed at the
+  // top of an interview is not offered the pedigrees it will run before.
   const { options, problem } = useMemo(
-    () => resolveSourceStages(protocolContext, identity.id, sourceStageId),
-    [identity.id, protocolContext, sourceStageId],
+    () =>
+      resolveSourceStages(
+        protocolContext,
+        identity.id,
+        sourceStageId,
+        creation?.position,
+      ),
+    [creation?.position, identity.id, protocolContext, sourceStageId],
   );
 
   // A stored choice the list no longer contains is still offered, as the
@@ -88,38 +112,62 @@ export default function SourceStageSection() {
     [intl, options, problem, sourceStageId],
   );
 
-  const committedSource: unknown = committedFields[SOURCE_FIELD];
-  const seenSource = useRef(sourceStageId);
-  const seenCommittedSource = useRef(committedSource);
-  const awaitingReseedTo = useRef<{ value: unknown } | null>(null);
+  /**
+   * The resolver's verdict, expressed as the control's own validation.
+   *
+   * A source that has been deleted, re-typed or moved below this stage is not
+   * a warning to read past: the stage cannot run, so the save has to stop, and
+   * it has to stop for THIS reason — a stage whose source has moved still
+   * resolves a node type, so every disease beside it still validates and the
+   * whole stage saved with an order the interview cannot execute. Stating it
+   * as the field's validation is what marks the control invalid, blocks the
+   * submit, and lets the section outline say this section has a problem rather
+   * than that it is finished.
+   *
+   * The verdict is read through a ref because `useField` memoises its
+   * validation on a JSON of its props, which drops functions: a rule rebuilt
+   * each render would serialise identically and pin the first closure — and
+   * its first protocol — forever. One entry for the field's lifetime, reading
+   * the current verdict, keeps it live without ever re-registering the field.
+   */
+  const problemRef = useRef(problem);
+  problemRef.current = problem;
+  const sourceValidation = useMemo(
+    () =>
+      messageRuleValidation([
+        () =>
+          problemRef.current === null
+            ? undefined
+            : createMessageError(PROBLEM_MESSAGES[problemRef.current]),
+      ]),
+    [],
+  );
 
+  // Field validation runs when the researcher touches a control, and on
+  // submit. Neither covers how this problem appears: a collaborator deletes,
+  // re-types or moves the source stage while the editor sits untouched.
+  // Re-running the field's validation whenever the verdict changes is what
+  // reports it the moment it appears rather than at the next save — and only
+  // when there is a verdict, or an error already standing that it would now
+  // clear, so an untouched empty control is not given the "required" error
+  // nobody has earned yet.
   useEffect(() => {
-    const previousSource = seenSource.current;
-    seenSource.current = sourceStageId;
-    const previousCommitted = seenCommittedSource.current;
-    seenCommittedSource.current = committedSource;
+    const state = storeApi.getState();
+    if (problem === null && state.getFieldErrors(SOURCE_FIELD) === null) return;
+    void state.validateField(SOURCE_FIELD);
+  }, [problem, storeApi]);
 
-    if (!isEqual(previousCommitted, committedSource)) {
-      awaitingReseedTo.current = { value: committedSource };
-    }
-
-    // The first source a stage is given has nothing to invalidate.
-    if (previousSource === undefined || previousSource === sourceStageId) {
-      return;
-    }
-
-    // An undo, a redo or a collaborator's change arrives carrying the diseases
-    // that belong to the source it brings with it, so clearing here would wipe
-    // the half of the change the researcher was reaching for.
-    const expected = awaitingReseedTo.current;
-    awaitingReseedTo.current = null;
-    if (expected !== null && isEqual(expected.value, sourceStageId)) return;
-
-    discardStageValues([DISEASES_FIELD], {
-      path: SOURCE_FIELD,
-      value: sourceStageId,
-    });
-  }, [committedSource, discardStageValues, sourceStageId]);
+  // Told apart from the draft moving beneath the form — an undo, a redo, a
+  // collaborator's change — by `useOnResearcherChange`, which is the one place
+  // that distinction is made. The rule it applies is that the FIRST reading is
+  // not a change and every reading after it is, the transition out of
+  // `undefined` included: a stage whose source has never been set is exactly
+  // the stage whose first real choice invalidates the diseases sitting beside
+  // it, and the hand-written observer here read that first choice as another
+  // initial observation and kept them.
+  useOnResearcherChange(SOURCE_FIELD, (value) => {
+    discardStageValues([DISEASES_FIELD], { path: SOURCE_FIELD, value });
+  });
 
   return (
     <BuilderSection
@@ -158,6 +206,7 @@ export default function SourceStageSection() {
           )}
           options={selectOptions}
           required
+          custom={sourceValidation}
         />
       )}
     </BuilderSection>

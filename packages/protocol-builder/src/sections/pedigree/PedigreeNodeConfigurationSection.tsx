@@ -3,7 +3,6 @@ import { useMemo } from 'react';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import {
-  FAMILY_PEDIGREE_SLOTS,
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
 } from '@codaco/protocol-validation';
@@ -19,16 +18,22 @@ import { useResetOnEntityTypeChange } from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
 import SlotVariableField from './SlotVariableField.tsx';
 import {
-  draftFormFieldVariables,
+  draftRowVariables,
+  PEDIGREE_EXCLUSIVE_SLOTS,
   subjectVariableOptions,
 } from './slotWiring.ts';
 
 const TYPE_FIELD = 'nodeConfig.type';
 const LABEL_FIELD = 'nodeConfig.nodeLabelVariable';
-const EGO_FIELD = 'nodeConfig.egoVariable';
-const RELATIONSHIP_FIELD = 'nodeConfig.relationshipVariable';
+// Path AND slot id together, from the table the live slot index reads: a
+// section that spelled its own paths could be renamed out of that index
+// without anything failing until two slots collided at a save. The display
+// label and the biological sex slot are not exclusive, so they are not in it.
+const EGO_SLOT = PEDIGREE_EXCLUSIVE_SLOTS.egoVariable;
+const RELATIONSHIP_SLOT = PEDIGREE_EXCLUSIVE_SLOTS.relationshipVariable;
 const BIOLOGICAL_SEX_FIELD = 'nodeConfig.biologicalSexVariable';
 const FORM_FIELD = 'nodeConfig.form';
+const NOMINATION_PROMPTS_FIELD = 'nominationPrompts';
 
 /**
  * Everything a node-type change invalidates.
@@ -52,8 +57,8 @@ const FORM_FIELD = 'nodeConfig.form';
  */
 const NODE_TYPE_DEPENDENT_FIELDS: readonly string[] = Object.freeze([
   LABEL_FIELD,
-  EGO_FIELD,
-  RELATIONSHIP_FIELD,
+  EGO_SLOT.path,
+  RELATIONSHIP_SLOT.path,
   BIOLOGICAL_SEX_FIELD,
   FORM_FIELD,
   'nominationPrompts',
@@ -90,8 +95,9 @@ export default function PedigreeNodeConfigurationSection() {
   const { identity, protocolContext } = useStageEditorForm();
   const nodeType = useStageValue(TYPE_FIELD);
   const formRows = useStageValue(FORM_FIELD);
-  const egoDraft = useStageValue(EGO_FIELD);
-  const relationshipDraft = useStageValue(RELATIONSHIP_FIELD);
+  const nominationRows = useStageValue(NOMINATION_PROMPTS_FIELD);
+  const egoDraft = useStageValue(EGO_SLOT.path);
+  const relationshipDraft = useStageValue(RELATIONSHIP_SLOT.path);
   const biologicalSexDraft = useStageValue(BIOLOGICAL_SEX_FIELD);
   useResetOnEntityTypeChange(TYPE_FIELD, NODE_TYPE_DEPENDENT_FIELDS);
 
@@ -134,19 +140,29 @@ export default function PedigreeNodeConfigurationSection() {
   // A structural slot is an UNVALIDATED writer, so it may not take an
   // attribute this stage's own unsaved form already collects — and neither the
   // display label, which IS collected through a form field, nor the form
-  // itself may take one the structural slots claim. Both directions read from
-  // the live draft: a field or a binding made in this session is not saved
-  // yet, and one just cleared must free its attribute at once.
+  // itself may take one this stage writes unvalidated. Both directions read
+  // from the live draft: a field, a binding or a nomination prompt made in
+  // this session is not saved yet, and one just cleared must free its
+  // attribute at once.
   const draftFormVariables = useMemo(
-    () => draftFormFieldVariables(formRows),
+    () => draftRowVariables(formRows),
     [formRows],
   );
-  const draftStructuralVariables = useMemo(
-    () =>
-      [egoDraft, relationshipDraft, biologicalSexDraft].filter(
+  // Every unvalidated writer this stage's draft holds: the three slots, and
+  // each nomination toggle — which the participant operates without anything
+  // checking the answer, exactly as the slots are written from the tree they
+  // draw. The prompts belong here because the shared form-fields section is
+  // told to stop reading the OPEN stage out of the saved protocol as soon as
+  // it is handed a live list, so a writer missing from this one is a writer
+  // nothing accounts for at all.
+  const draftUnvalidatedVariables = useMemo(
+    () => [
+      ...[egoDraft, relationshipDraft, biologicalSexDraft].filter(
         (value): value is string => typeof value === 'string',
       ),
-    [biologicalSexDraft, egoDraft, relationshipDraft],
+      ...draftRowVariables(nominationRows),
+    ],
+    [biologicalSexDraft, egoDraft, nominationRows, relationshipDraft],
   );
 
   const dependentNarrativeStages = useMemo(
@@ -204,20 +220,20 @@ export default function PedigreeNodeConfigurationSection() {
             subject={subject}
             options={textVariables}
             writerClass="validated"
-            draftConflicting={draftStructuralVariables}
+            draftConflicting={draftUnvalidatedVariables}
             variableType="text"
             createLabel={pedigreeMessages.nodeLabelCreateLabel}
             createDescription={pedigreeMessages.nodeLabelCreateDescription}
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
-            name={EGO_FIELD}
+            name={EGO_SLOT.path}
             label={pedigreeMessages.nodeEgoLabel}
             hint={pedigreeMessages.nodeEgoHint}
             subject={subject}
             options={booleanVariables}
             writerClass="unvalidated"
-            ownSlot={FAMILY_PEDIGREE_SLOTS.egoVariable}
+            ownSlot={EGO_SLOT.slot}
             draftConflicting={draftFormVariables}
             variableType="boolean"
             createLabel={pedigreeMessages.nodeEgoCreateLabel}
@@ -225,13 +241,13 @@ export default function PedigreeNodeConfigurationSection() {
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
-            name={RELATIONSHIP_FIELD}
+            name={RELATIONSHIP_SLOT.path}
             label={pedigreeMessages.nodeRelationshipLabel}
             hint={pedigreeMessages.nodeRelationshipHint}
             subject={subject}
             options={textVariables}
             writerClass="unvalidated"
-            ownSlot={FAMILY_PEDIGREE_SLOTS.relationshipVariable}
+            ownSlot={RELATIONSHIP_SLOT.slot}
             draftConflicting={draftFormVariables}
             variableType="text"
             createLabel={pedigreeMessages.nodeRelationshipCreateLabel}
@@ -266,10 +282,10 @@ export default function PedigreeNodeConfigurationSection() {
             is where the list lives (`nodeConfig.form`), which type it
             collects into (`nodeConfig.type` rather than a stage `subject`),
             that the form may be left out altogether, what is lost by switching
-            it off, and which of its own slots are writing unvalidated right
-            now — the three below are the pedigree's unvalidated writers, and
-            the shared section cannot find them because they are this session's
-            draft rather than anything the saved protocol holds.
+            it off, and what it is writing unvalidated right now — its three
+            slots and its nomination toggles, which the shared section cannot
+            find because they are this session's draft rather than anything
+            the saved protocol holds.
           */}
           <FormFieldsSection
             subject="node"
@@ -277,7 +293,7 @@ export default function PedigreeNodeConfigurationSection() {
             fieldsPath={FORM_FIELD}
             optional
             capability={FORM_CAPABILITY}
-            draftUnvalidatedVariables={draftStructuralVariables}
+            draftUnvalidatedVariables={draftUnvalidatedVariables}
             /*
               The shared section is worded for a form that stands on its own.
               This one is hung off the node configuration of a stage the
