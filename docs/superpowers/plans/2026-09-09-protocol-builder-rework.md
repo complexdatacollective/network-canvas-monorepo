@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-09
 **Last updated:** 2026-09-09
-**Status:** Draft for discussion
+**Status:** Agreed 2026-09-09; implementation not started
 **Scope:** the `@codaco/protocol-builder` package: its host contract, state
 and subscriptions, form primitives, and the nineteen named stage editors; the
 Studio proof host; the Architect and Studio hosts as far as the contract
@@ -12,7 +12,8 @@ requires
 from the family editors onward, and that document's command-buffering and
 compound-edit model for stage editors. Its section identities, host-supplied
 locks and presence, live cross-section updates, and staged resources stand.
-**Tracking:** to be decided (see "Decisions for Josh")
+**Tracking:** [epic #1483](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1483),
+whose body is to be replaced by this plan's sequence; #1491 and #1492 return to scope
 
 ## Summary
 
@@ -385,10 +386,26 @@ read whole.
    are all the same shape and that is only reviewable whole. Includes the
    proof-host stories (#1493) and the release gates (#1494).
 
-Architect adoption (#1491, #1492) is decided after PR 3, when the package's
-size makes the cost of adopting it visible. Its host is small under this
-contract: locks always granted, `watchProtocol` a store subscription,
-`submit` a reducer.
+4. **Architect adopts the package (#1491).** `StageEditor`, `StageForm`, and
+   `StageFormBridge` are replaced by `<ProtocolBuilder>` over Architect's
+   in-process router: locks always granted, `watchProtocol` a store
+   subscription, `submit` a reducer into the persistent store. All nineteen
+   create and edit flows switch in this one PR; routing, tab ownership,
+   navigation guards, toolbar, preview, persistence, and recovery stay in
+   Architect. Minor `@codaco/architect` changeset. Interface e2e locators and
+   page objects are updated, assertions never loosened; the visual-baseline
+   classifier decides whether CI regenerates PNGs.
+5. **Architect removes the app-local editors (#1492).** The Redux draft
+   slice, selectors, form bridge, codebook transaction metadata, history
+   hooks, middleware, migrated editors, sections, dialogs, validation helpers,
+   pickers, templates, and duplicated rule semantics go; Redux stays for the
+   committed protocol and app state; `pnpm knip` clean; no compatibility
+   wrapper survives.
+
+Studio's adapter tracks PR 1 as it lands: `@codaco/studio-client` implements
+the contract against PR 1's head, and the contract types move from
+`@codaco/studio-rpc` to the package (or `studio-rpc` re-exports them) in the
+same PR, so there is one definition.
 
 ## Review rules for this work
 
@@ -448,17 +465,25 @@ They apply from the first PR here:
 - Comments only where the code cannot say it.
 - Package layout: one directory per editor with its own sections; shared
   sections at the top level.
+- Architect adoption (#1491) and removal of the app-local editors (#1492)
+  are in scope, as PRs 4 and 5.
+- Studio's adapter tracks PR 1 directly.
 
 ## Decisions for Josh
 
-- Close the eight open family PRs now, or leave them open as the reference
-  while PR 1 is written.
-- Start the rework from `main` as it is (four editors, the shared sections,
-  S7's rounds) or from the package as it was before the family work landed.
-- Whether Architect adoption comes back into this plan's scope once the
-  package is small, or stays a separate decision.
-- Whether Studio's adapter work should track PR 1 directly, since the
-  contract is what it implements.
+Two remain, with the recommended default recorded so work can start:
+
+- **The eight open family PRs are closed now** (recommended). They are built
+  on the removed model, keep Codex and CI busy on every push, and only get
+  dirtier against main. Each is closed with one comment naming this plan; the
+  branches stay for salvage until PR 3 has taken their tests and copy, then
+  the worktrees are removed.
+- **The rework starts from `main` as it is** (recommended). Reverting the
+  package to its pre-family state would revert four merged PRs and the S
+  splits while Architect imports leaf primitives from the package
+  (`RichTextField`, `StageTypeImage`, the naming helpers, templates). PR 1
+  re-points the four merged editors and PR 2 deletes the array layer: the
+  same deletion, reviewable, with Architect's imports working throughout.
 
 ## Assumptions
 
