@@ -37,6 +37,7 @@ import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document'
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { orpc, rpcClient } from '../lib/api.ts';
+import { clientSessionId } from '../lib/clientSession.ts';
 import { createUuid } from '../lib/createUuid.ts';
 
 // The route id carries the area layout it sits under (§5.3), so it moved with
@@ -52,16 +53,28 @@ type StudioHostClient = ContractRouterClient<{
   protocolBuilder: typeof protocolBuilderContract;
 }>;
 
+/**
+ * The upgrade URL this tab's socket is opened at.
+ *
+ * The tab names itself on the query string because a browser cannot put a
+ * header on a WebSocket handshake, and the server derives the protocol
+ * builder's lock owner from it: a tab that reconnects has to still be the
+ * holder of the section it has open, and two tabs of one researcher have to be
+ * two editors (#1275). The parameter's name is `CLIENT_SESSION_PARAM` in
+ * `@codaco/studio-rpc` once the hosts PR lands; until then this spells it.
+ */
+export function hostSocketUrl(): string {
+  const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = new URL(`${scheme}//${window.location.host}/ws`);
+  url.searchParams.set('clientSession', clientSessionId());
+  return url.toString();
+}
+
 // Nothing answers this half of `/ws` yet — the host router lands in a later
 // PR, so every call over this link is expected to hang until it does.
 const hostClient: StudioHostClient = createORPCClient(
   new RPCLink({
-    connect: () =>
-      new WebSocket(
-        `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${
-          window.location.host
-        }/ws`,
-      ),
+    connect: () => new WebSocket(hostSocketUrl()),
   }),
 );
 

@@ -714,3 +714,19 @@ describe('Studio editor shell', () => {
     await waitFor(() => expect(moveUp).toBeEnabled());
   });
 });
+
+describe('the socket the editor opens', () => {
+  it('names this tab on the upgrade URL, so its locks survive a reconnect', async () => {
+    const { hostSocketUrl } = await import('../Editor.tsx');
+    const { clientSessionId } = await import('../../lib/clientSession.ts');
+
+    const url = new URL(hostSocketUrl());
+
+    expect(url.pathname).toBe('/ws');
+    // The id this tab presents everywhere else, not one minted for the socket:
+    // a second id would be a second lock owner, and the section this tab is
+    // holding would be somebody else's the moment it reconnected.
+    expect(url.searchParams.get('clientSession')).toBe(clientSessionId());
+    expect(clientSessionId()).not.toBe('');
+  });
+});
