@@ -5,11 +5,11 @@ import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId, type SectionRef } from '@codaco/studio-sync/taxonomy';
 
-import type { StageEditorComponent } from '../../../stage-editor-contract.ts';
+import type { StageEditorComponent } from '../../stage-editor-contract.ts';
 import type {
   CodebookPatch,
   renderStageEditor,
-} from '../../../testing/renderStageEditor.tsx';
+} from '../../testing/renderStageEditor.tsx';
 
 type Harness = ReturnType<typeof renderStageEditor>;
 

@@ -1,16 +1,20 @@
 /**
- * Where every editor family is wired in, and the only file a family has to
- * change to be wired in.
+ * Where every editor is wired in, and the only file an editor has to change to
+ * be wired in.
  *
- * ADDING A FAMILY IS TWO LINES:
+ * ADDING AN EDITOR IS TWO LINES:
  *
  * 1. Import its part and add it to `REGISTRY_PARTS`.
  * 2. Delete the stage types it claims from `AWAITING_STAGE_EDITORS`.
  *
+ * A part is what `defineStageEditor` answers with — one editor, one interface
+ * — or, for the families still to be rewritten as section lists, the set of
+ * interfaces they claim between them.
+ *
  * Nothing else — `stageEditorRegistry` and every check below are derived from
  * those two lists, and both are checked in both directions at compile time, so
- * a family that adds a part and forgets to remove its types (or removes a type
- * no family covers) fails `typecheck` rather than a review.
+ * a part added without its types being removed (or a type removed that no part
+ * covers) fails `typecheck` rather than a review.
  *
  * Both lists are written to be merged rather than to be read: one entry per
  * line, in alphabetical order, each with a trailing comma, so that families
@@ -30,7 +34,10 @@
  */
 import type { StageType } from '@codaco/protocol-validation';
 
-import { formStageEditors } from './editors/formStageEditors.ts';
+import { alterEdgeFormStageEditor } from './editors/alter-edge-form/AlterEdgeFormStageEditor.ts';
+import { alterFormStageEditor } from './editors/alter-form/AlterFormStageEditor.ts';
+import { egoFormStageEditor } from './editors/ego-form/EgoFormStageEditor.ts';
+import { informationStageEditor } from './editors/information/InformationStageEditor.ts';
 import { nameGeneratorStageEditors } from './editors/nameGeneratorStageEditors.ts';
 import { pedigreeAndAnonymisationStageEditors } from './editors/pedigreeAndAnonymisationStageEditors.ts';
 import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
@@ -95,17 +102,20 @@ export function composeStageEditorRegistry(
 }
 
 /**
- * Every family, listed once.
+ * Every part, listed once.
  *
  * Written as a tuple rather than as a spread of imports so that the exact key
  * set of each part survives into the type system — which is what makes the
  * checks below compile-time facts rather than comments. Each entry must come
- * from `defineStageEditorPart`, for the reason that function's own comment
- * gives.
+ * from `defineStageEditor` or `defineStageEditorPart`, for the reason the
+ * latter's own comment gives.
  */
 const REGISTRY_PARTS = [
   // One imported part per line, alphabetically, each with a trailing comma.
-  formStageEditors,
+  alterEdgeFormStageEditor,
+  alterFormStageEditor,
+  egoFormStageEditor,
+  informationStageEditor,
   nameGeneratorStageEditors,
   pedigreeAndAnonymisationStageEditors,
 ] as const satisfies readonly StageEditorRegistryPart[];

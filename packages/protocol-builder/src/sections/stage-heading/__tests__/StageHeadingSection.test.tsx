@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest';
 import { interfaceDocumentationUrl } from '../../../interfaces/documentation.ts';
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import StageHeading from '../StageHeading.tsx';
+import StageHeadingSection from '../StageHeadingSection.tsx';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('information');
 
-const heading = <StageHeading documentationUrl={DOCUMENTATION_URL} />;
+const heading = <StageHeadingSection documentationUrl={DOCUMENTATION_URL} />;
 
 describe('the stage heading', () => {
   /**
@@ -86,7 +86,7 @@ describe('the stage heading', () => {
         fields: { label: '', title: 'Welcome', items: [] },
       },
       sections: (
-        <StageHeading
+        <StageHeadingSection
           documentationUrl={DOCUMENTATION_URL}
           autoName={{ propose: true }}
         />

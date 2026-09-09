@@ -5,7 +5,7 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import StageEditor from '../../StageEditor.tsx';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
-import { formStageEditors } from '../formStageEditors.ts';
+import { alterFormStageEditor } from './AlterFormStageEditor.ts';
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Per alter form',
@@ -13,7 +13,11 @@ const meta = {
   args: {
     stageId: 'alter-form-1',
     renderEditor: ({ actions, ...editor }) => (
-      <StageEditor {...editor} registry={formStageEditors} actions={actions} />
+      <StageEditor
+        {...editor}
+        registry={alterFormStageEditor}
+        actions={actions}
+      />
     ),
   },
   parameters: {

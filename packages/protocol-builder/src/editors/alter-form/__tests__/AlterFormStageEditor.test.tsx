@@ -1,10 +1,11 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  loadFixtureStage,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { writeInto } from '../../__tests__/writeInto.ts';
-import { EgoFormStageEditor } from '../EgoFormStageEditor.tsx';
 import {
   expectStageUntouched,
   fieldsOf,
@@ -12,9 +13,12 @@ import {
   authorsDateSettingsFromField,
   authorsValuesFromField,
   openField,
+  personDefinition,
   removeRow,
   stageNameInput,
-} from './formEditorHarness.tsx';
+} from '../../__tests__/formEditorHarness.tsx';
+import { writeInto } from '../../__tests__/writeInto.ts';
+import { alterFormStageEditor } from '../AlterFormStageEditor.ts';
 
 /** See `formEditorHarness.tsx` for why the rich-text editor is stood in for. */
 vi.mock('../../../fields/RichTextField.tsx', () => ({
@@ -39,96 +43,116 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
 }));
 
 const openFixture = () => ({
-  stageId: 'ego-form-1',
-  editor: mountedAs(EgoFormStageEditor),
+  stageId: 'alter-form-1',
+  editor: mountedAs(alterFormStageEditor.AlterForm),
 });
 
-/** Where a host would insert a new ego form: over the one the fixture holds. */
-const EGO_FORM_INDEX = fixtureStageIds().indexOf('ego-form-1');
+/** Where a host would insert a new one: over the form the fixture holds. */
+const ALTER_FORM_INDEX = fixtureStageIds().indexOf('alter-form-1');
 
 const createFixture = () => ({
-  create: { type: 'EgoForm' as const, position: EGO_FORM_INDEX },
-  editor: mountedAs(EgoFormStageEditor),
+  create: { type: 'AlterForm' as const, position: ALTER_FORM_INDEX },
+  editor: mountedAs(alterFormStageEditor.AlterForm),
 });
 
-describe('the editor for a form about the participant', () => {
-  it('composes the stage in the order the plan sets out', async () => {
-    const harness = renderStageEditor(openFixture());
-
-    await waitFor(() => expect(harness.outline()).toHaveLength(5));
-    expect(harness.outline().map((section) => section.title)).toEqual([
-      'Stage name',
-      'Task introduction',
-      'Form fields',
-      'Skip logic',
-      'Interviewer guidance',
-    ]);
-  });
-
+describe('the editor for a form about each person', () => {
   it('opens on the stage the protocol holds', async () => {
     renderStageEditor(openFixture());
 
     expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
-      'Ego Form',
+      'Alter Form',
     );
+    expect(screen.getByRole('radio', { name: 'person' })).toBeChecked();
     expect(
       screen.getByRole('textbox', { name: 'Introduction heading' }),
-    ).toHaveValue('Introduction');
+    ).toHaveValue('Introduction to the alter form');
     expect(
-      await screen.findByText('What is your name?', { exact: false }),
+      await screen.findByText("What is this person's relationship to you?", {
+        exact: false,
+      }),
     ).toBeInTheDocument();
-    // An ego form has no subject to choose: the schema fixes it as the
-    // interview's ego, so there is no type picker on this stage at all.
-    expect(
-      screen.queryByRole('radio', { name: 'person' }),
-    ).not.toBeInTheDocument();
   });
 
-  it('saves the stage it opened, losing nothing', async () => {
-    const harness = renderStageEditor(openFixture());
+  /**
+   * The stage's own filter is the one key the fixture stage does not carry,
+   * and it is a capability: a stage that arrives with one opens with it
+   * switched on, and a save must give it back exactly as it was.
+   */
+  it('keeps a filter the stage already has', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'alter-form-filtered',
+        type: 'AlterForm',
+        fields: {
+          ...loadFixtureStage('alter-form-1').fields,
+          filter: {
+            rules: [
+              {
+                id: 'rule-a',
+                type: 'node',
+                options: { type: 'person', operator: 'EXISTS' },
+              },
+            ],
+          },
+        },
+      },
+      editor: mountedAs(alterFormStageEditor.AlterForm),
+    });
 
-    expect(harness.ownedKeys()).toEqual(['form', 'introductionPanel', 'label']);
+    await waitFor(() =>
+      expect(
+        harness.outline().find((section) => section.title === 'Stage filter')
+          ?.state,
+      ).not.toBe('Switched off'),
+    );
+    expect(harness.ownedKeys()).toContain('filter');
     await harness.roundTrip({ unowned: [] });
   });
 
   it('opens a new stage on the interface template', async () => {
-    renderStageEditor(createFixture());
+    const harness = renderStageEditor(createFixture());
 
-    // An ego form has no authored defaults, so a new one arrives empty and
-    // every required part of it is the researcher's to write — except the
-    // name, which is proposed because the stage is being created.
+    // A per-alter form has no authored defaults, so a new one has no type
+    // chosen — and its form cannot be written until one is, because there is
+    // no codebook for its fields to collect into. Only the name arrives
+    // filled in, proposed because the stage is being created.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
-    expect(stageNameInput().value).toMatch(/^Ego Form/);
-    expect(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
-    ).toHaveValue('');
+    expect(stageNameInput().value).toMatch(/^Per Alter Form/);
+    expect(screen.getByRole('radio', { name: 'person' })).not.toBeChecked();
+    await waitFor(() =>
+      expect(
+        harness.outline().find((section) => section.title === 'Form fields')
+          ?.state,
+      ).toBe('Not available yet'),
+    );
   });
 
   it('saves a new stage once the researcher has written it', async () => {
     const harness = renderStageEditor(createFixture());
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
 
-    await writeInto(harness, stageNameInput(), 'About you');
+    await writeInto(harness, stageNameInput(), 'About each person');
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
     await writeInto(
       harness,
       screen.getByRole('textbox', { name: 'Introduction heading' }),
-      'About you',
+      'About each person',
     );
     await writeInto(
       harness,
       screen.getByRole('textbox', { name: 'Introduction text' }),
-      'A few questions about you before we begin.',
+      'A few more questions about each person.',
     );
 
     const dialog = await openField(harness, 'Create new form field');
     await harness.user.selectOptions(
       dialog.getByRole('combobox', { name: 'Attribute' }),
-      'ego_name',
+      'relationship_to_ego',
     );
     await writeInto(
       harness,
       dialog.getByRole('textbox', { name: 'Question text' }),
-      'What is your name?',
+      'How do you know this person?',
     );
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
@@ -136,18 +160,20 @@ describe('the editor for a form about the participant', () => {
     );
 
     const request = await harness.submit();
-    expect(request?.stageDocument.label).toBe('About you');
-    expect(request?.stageDocument.introductionPanel).toEqual({
-      title: 'About you',
-      text: 'A few questions about you before we begin.',
+    expect(request?.stageDocument.label).toBe('About each person');
+    expect(request?.stageDocument.subject).toEqual({
+      entity: 'node',
+      type: 'person',
     });
-    // The id is the row's own identity, minted on add so a reorder or a
-    // removal is committed as the operation it was.
+    expect(request?.stageDocument.introductionPanel).toEqual({
+      title: 'About each person',
+      text: 'A few more questions about each person.',
+    });
     expect(fieldsOf(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
-        variable: 'ego_name',
-        prompt: 'What is your name?',
+        variable: 'relationship_to_ego',
+        prompt: 'How do you know this person?',
       },
     ]);
   });
@@ -156,9 +182,12 @@ describe('the editor for a form about the participant', () => {
     const harness = renderStageEditor(openFixture());
 
     await removeRow(harness, 'field');
+    await removeRow(harness, 'field');
     await waitFor(() =>
       expect(
-        screen.queryByText('What is your name?', { exact: false }),
+        screen.queryByText("What is this person's relationship to you?", {
+          exact: false,
+        }),
       ).not.toBeInTheDocument(),
     );
 
@@ -192,26 +221,36 @@ describe('the editor for a form about the participant', () => {
   });
 
   /**
-   * A collaborator deleting an attribute this form collects is their edit, not
-   * this researcher's. The editor has to show what happened — otherwise the form
-   * goes on claiming to collect something the codebook no longer has — and
-   * must not emit a command of its own, which would save their deletion as
-   * ours.
+   * A collaborator renaming an attribute this form collects is their edit, not
+   * this researcher's: the field now asks for something called something else,
+   * which the researcher has to be able to see, and echoing the rename back
+   * would save it as ours.
    */
-  it('follows an attribute deleted elsewhere without echoing it back', async () => {
+  it('follows an attribute renamed elsewhere without echoing it back', async () => {
     const harness = renderStageEditor(openFixture());
     expect(
-      await screen.findByText('Collects "ego_name" as text.'),
+      await screen.findByText('Collects "relationship_to_ego" as text.'),
     ).toBeInTheDocument();
 
-    harness.receiveCodebookUpdate({ ego: { variables: {} } });
+    harness.receiveCodebookUpdate({
+      node: {
+        person: personDefinition({
+          relationship_to_ego: {
+            name: 'how_they_know_each_other',
+            type: 'text',
+            component: 'Text',
+          },
+          flagged: { name: 'flagged', type: 'boolean', component: 'Boolean' },
+        }),
+      },
+    });
 
     expect(
-      await screen.findByText('This attribute is no longer in the codebook.'),
+      await screen.findByText('Collects "how_they_know_each_other" as text.'),
     ).toBeInTheDocument();
-    // Their deletion is theirs. The field the researcher authored is still on
-    // the stage, still pointing where they pointed it: an editor that quietly
-    // dropped it would be saving somebody else's edit as this one.
+    // Their rename is theirs. The stage still holds the field the researcher
+    // authored, pointing at the attribute it always did — so a save carries
+    // their change nowhere.
     expectStageUntouched(harness);
     await harness.roundTrip({ unowned: [] });
   });
@@ -241,18 +280,24 @@ describe('the editor for a form about the participant', () => {
   /**
    * The section's own tests prove these controls; these prove the wiring —
    * that this editor's form fields reach the codebook for the subject IT is
-   * about, and write what the researcher authored into the participant’s codebook
+   * about, and write what the researcher authored into the person codebook
    * rather than into the editor's own stage document.
    */
-  it('changes, in the participant’s codebook, the values a field offers', async () => {
+  it('changes, in the person codebook, the values a field offers', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await authorsValuesFromField(harness, { kind: 'codebookEgo' });
+    await authorsValuesFromField(harness, {
+      kind: 'codebookNode',
+      typeId: 'person',
+    });
   });
 
-  it('sets, in the participant’s codebook, what a date field accepts', async () => {
+  it('sets, in the person codebook, what a date field accepts', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await authorsDateSettingsFromField(harness, { kind: 'codebookEgo' });
+    await authorsDateSettingsFromField(harness, {
+      kind: 'codebookNode',
+      typeId: 'person',
+    });
   });
 });

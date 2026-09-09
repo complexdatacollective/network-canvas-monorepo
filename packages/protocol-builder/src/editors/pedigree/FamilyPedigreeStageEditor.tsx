@@ -12,7 +12,7 @@ import NominationPromptsSection from '../../sections/pedigree/NominationPromptsS
 import PedigreeEdgeConfigurationSection from '../../sections/pedigree/PedigreeEdgeConfigurationSection.tsx';
 import PedigreeNodeConfigurationSection from '../../sections/pedigree/PedigreeNodeConfigurationSection.tsx';
 import SkipLogicSection from '../../sections/skip-logic/SkipLogicSection.tsx';
-import StageHeading from '../../sections/stage-heading/StageHeading.tsx';
+import StageHeadingSection from '../../sections/stage-heading/StageHeadingSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('family-pedigree');
@@ -40,7 +40,7 @@ export function FamilyPedigreeStageEditor({
 }: StageEditorProps<'FamilyPedigree'>) {
   return (
     <StageEditorShell {...(actions === undefined ? {} : { actions })}>
-      <StageHeading documentationUrl={DOCUMENTATION_URL} />
+      <StageHeadingSection documentationUrl={DOCUMENTATION_URL} />
       <FramingConfigSection />
       <BoundaryOptionsSection />
       <PedigreeNodeConfigurationSection />

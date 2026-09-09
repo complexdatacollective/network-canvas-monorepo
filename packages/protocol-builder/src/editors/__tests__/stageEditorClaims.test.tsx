@@ -4,10 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
 import { fixtureStageIds } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { AlterEdgeFormStageEditor } from '../forms/AlterEdgeFormStageEditor.tsx';
-import { AlterFormStageEditor } from '../forms/AlterFormStageEditor.tsx';
-import { EgoFormStageEditor } from '../forms/EgoFormStageEditor.tsx';
-import { InformationStageEditor } from '../forms/InformationStageEditor.tsx';
+import { alterEdgeFormStageEditor } from '../alter-edge-form/AlterEdgeFormStageEditor.ts';
+import { alterFormStageEditor } from '../alter-form/AlterFormStageEditor.ts';
+import { egoFormStageEditor } from '../ego-form/EgoFormStageEditor.ts';
+import { informationStageEditor } from '../information/InformationStageEditor.ts';
 import { NameGeneratorStageEditor } from '../nameGenerators/NameGeneratorStageEditor.tsx';
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
@@ -33,39 +33,39 @@ vi.mock('../../fields/RichTextField.tsx', () => ({
 }));
 
 /**
- * Every interface these two families claim, the editor that claims it, and the
+ * Every interface these five parts claim, the editor that claims it, and the
  * fixture stage a host would open on it.
  *
  * Written out rather than derived from the parts, because the parts are what
- * is under test: a table read out of `formStageEditors` would agree with it
- * whatever it said, including after a family registered an editor under the
- * wrong interface. Which interfaces each part claims is its own test, in
- * `familyPartsLoadAlone.test.ts`.
+ * is under test: a table read out of a part would agree with it whatever it
+ * said, including after an editor was registered under the wrong interface.
+ * Which interfaces each part claims is its own test, in
+ * `partsLoadAlone.test.ts`.
  */
 const CLAIMS = [
   {
     stageType: 'AlterEdgeForm',
     stageId: 'alter-edge-form-1',
     label: 'Alter Edge Form',
-    editor: AlterEdgeFormStageEditor,
+    editor: alterEdgeFormStageEditor.AlterEdgeForm,
   },
   {
     stageType: 'AlterForm',
     stageId: 'alter-form-1',
     label: 'Alter Form',
-    editor: AlterFormStageEditor,
+    editor: alterFormStageEditor.AlterForm,
   },
   {
     stageType: 'EgoForm',
     stageId: 'ego-form-1',
     label: 'Ego Form',
-    editor: EgoFormStageEditor,
+    editor: egoFormStageEditor.EgoForm,
   },
   {
     stageType: 'Information',
     stageId: 'information-1',
     label: 'Information',
-    editor: InformationStageEditor,
+    editor: informationStageEditor.Information,
   },
   {
     stageType: 'NameGenerator',
@@ -84,9 +84,9 @@ const CLAIMS = [
  * interface, has editors that all pass their own tests and a researcher who
  * opens the wrong one — or none at all.
  */
-describe('the interfaces the form and name-generator families claim', () => {
+describe('the interfaces the form and name-generator editors claim', () => {
   it.each(CLAIMS)(
-    'resolves $stageType to this family’s editor',
+    'resolves $stageType to that editor',
     ({ stageType, editor }) => {
       expect(stageEditorRegistry[stageType]).toBe(editor);
     },

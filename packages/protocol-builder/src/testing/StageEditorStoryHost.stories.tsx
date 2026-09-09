@@ -10,7 +10,7 @@ import ContentBlockEditor from '../sections/content-blocks/ContentBlockEditor.ts
 import ContentBlockPreview from '../sections/content-blocks/ContentBlockPreview.tsx';
 import { contentBlockSlots } from '../sections/content-blocks/contentBlockTypes.ts';
 import PageContentSection from '../sections/page-content/PageContentSection.tsx';
-import StageHeading from '../sections/stage-heading/StageHeading.tsx';
+import StageHeadingSection from '../sections/stage-heading/StageHeadingSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import { fixtureStageIds } from './protocolFixture.ts';
 import { StageEditorStoryHost } from './StageEditorStoryHost.tsx';
@@ -24,7 +24,7 @@ const meta = {
       <ResourceClientProvider>
         <StageEditSession target={target} formId={formId} onSaved={onSaved}>
           <StageEditorShell actions={actions}>
-            <StageHeading
+            <StageHeadingSection
               documentationUrl={interfaceDocumentationUrl('information')}
             />
             <PageContentSection

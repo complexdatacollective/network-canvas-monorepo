@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import InterviewerGuidanceSection from '../../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../../sections/skip-logic/SkipLogicSection.tsx';
-import StageHeading from '../../sections/stage-heading/StageHeading.tsx';
+import StageHeadingSection from '../../sections/stage-heading/StageHeadingSection.tsx';
 import type { StageEditorActions } from '../../stage-editor-contract.ts';
 import { saveStageAction } from '../saveStageAction.tsx';
 import { usePanelsForAutoName } from './usePanelsForAutoName.ts';
@@ -49,7 +49,7 @@ export type NameGeneratorFrameProps = Readonly<{
  * the first family to land. The moment a second family needs it, it moves up —
  * there is nothing about it that is specific to naming people. The heading has
  * already made that move: every interface says where its stage sits, so
- * `StageHeading` sits with the sections rather than inside this frame.
+ * `StageHeadingSection` sits with the sections rather than inside this frame.
  */
 export default function NameGeneratorFrame({
   documentationUrl,
@@ -67,7 +67,7 @@ export default function NameGeneratorFrame({
       {hasSidePanels ? (
         <PanelledStageHeading documentationUrl={documentationUrl} />
       ) : (
-        <StageHeading documentationUrl={documentationUrl} />
+        <StageHeadingSection documentationUrl={documentationUrl} />
       )}
       {children}
       <SkipLogicSection />
@@ -89,7 +89,7 @@ function PanelledStageHeading({
   const panels = usePanelsForAutoName();
 
   return (
-    <StageHeading
+    <StageHeadingSection
       documentationUrl={documentationUrl}
       {...(panels === undefined ? {} : { autoName: { panels } })}
     />

@@ -4,7 +4,7 @@ import StageNameSection, {
   type StageNameSectionProps,
 } from './StageNameSection.tsx';
 
-export type StageHeadingProps = Readonly<{
+export type StageHeadingSectionProps = Readonly<{
   /** Where this interface is documented. */
   documentationUrl: string;
   /**
@@ -30,10 +30,10 @@ export type StageHeadingProps = Readonly<{
  * disagrees with. A stage the order does not contain yet — one being created —
  * simply has no position to state.
  */
-export default function StageHeading({
+export default function StageHeadingSection({
   documentationUrl,
   autoName,
-}: StageHeadingProps) {
+}: StageHeadingSectionProps) {
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const index = protocolContext.orderedStages.findIndex(

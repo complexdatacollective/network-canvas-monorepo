@@ -5,15 +5,19 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import StageEditor from '../../StageEditor.tsx';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
-import { formStageEditors } from '../formStageEditors.ts';
+import { alterEdgeFormStageEditor } from './AlterEdgeFormStageEditor.ts';
 
 const meta = {
-  title: 'Protocol Builder/Stage editors/Ego form',
+  title: 'Protocol Builder/Stage editors/Per alter edge form',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'ego-form-1',
+    stageId: 'alter-edge-form-1',
     renderEditor: ({ actions, ...editor }) => (
-      <StageEditor {...editor} registry={formStageEditors} actions={actions} />
+      <StageEditor
+        {...editor}
+        registry={alterEdgeFormStageEditor}
+        actions={actions}
+      />
     ),
   },
   parameters: {
@@ -21,7 +25,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The editor for a form the participant fills in about themselves. It has no subject section: the schema fixes an ego form against the interview’s ego, so there is no type to choose and nothing to filter.',
+          'The editor for a form the participant fills in once for each relationship in their network. Identical in shape to the per-alter form, and different in what it is about: its subject is an edge type, so its fields collect against the codebook of a relationship.',
       },
     },
   },
@@ -39,17 +43,17 @@ export const Editing: Story = {
 
     const name = canvas.getByRole('textbox', { name: 'Stage name' });
     await userEvent.clear(name);
-    await userEvent.type(name, 'About you');
+    await userEvent.type(name, 'About each relationship');
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
 
     await waitFor(async () => {
       await expect(
         canvas.getByRole('status', { name: 'Save status' }),
-      ).toHaveTextContent('Saved “About you”.');
+      ).toHaveTextContent('Saved “About each relationship”.');
     });
     await expect(
       canvas.getByRole('region', { name: 'What the host was asked to commit' }),
-    ).toHaveTextContent('"label": "About you"');
+    ).toHaveTextContent('"label": "About each relationship"');
   },
 };
 

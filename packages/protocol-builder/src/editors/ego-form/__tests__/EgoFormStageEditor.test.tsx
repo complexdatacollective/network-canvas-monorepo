@@ -3,19 +3,18 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { writeInto } from '../../__tests__/writeInto.ts';
-import { AlterEdgeFormStageEditor } from '../AlterEdgeFormStageEditor.tsx';
 import {
   expectStageUntouched,
   fieldsOf,
-  knowsDefinition,
   mountedAs,
   authorsDateSettingsFromField,
   authorsValuesFromField,
   openField,
   removeRow,
   stageNameInput,
-} from './formEditorHarness.tsx';
+} from '../../__tests__/formEditorHarness.tsx';
+import { writeInto } from '../../__tests__/writeInto.ts';
+import { egoFormStageEditor } from '../EgoFormStageEditor.ts';
 
 /** See `formEditorHarness.tsx` for why the rich-text editor is stood in for. */
 vi.mock('../../../fields/RichTextField.tsx', () => ({
@@ -40,111 +39,76 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
 }));
 
 const openFixture = () => ({
-  stageId: 'alter-edge-form-1',
-  editor: mountedAs(AlterEdgeFormStageEditor),
+  stageId: 'ego-form-1',
+  editor: mountedAs(egoFormStageEditor.EgoForm),
 });
 
-/** Where a host would insert a new one: over the form the fixture holds. */
-const ALTER_EDGE_FORM_INDEX = fixtureStageIds().indexOf('alter-edge-form-1');
+/** Where a host would insert a new ego form: over the one the fixture holds. */
+const EGO_FORM_INDEX = fixtureStageIds().indexOf('ego-form-1');
 
 const createFixture = () => ({
-  create: { type: 'AlterEdgeForm' as const, position: ALTER_EDGE_FORM_INDEX },
-  editor: mountedAs(AlterEdgeFormStageEditor),
+  create: { type: 'EgoForm' as const, position: EGO_FORM_INDEX },
+  editor: mountedAs(egoFormStageEditor.EgoForm),
 });
 
-describe('the editor for a form about each relationship', () => {
-  it('composes the stage in the order the plan sets out', async () => {
-    const harness = renderStageEditor(openFixture());
-
-    await waitFor(() => expect(harness.outline()).toHaveLength(7));
-    expect(harness.outline().map((section) => section.title)).toEqual([
-      'Stage name',
-      'Edge type',
-      'Stage filter',
-      'Task introduction',
-      'Form fields',
-      'Skip logic',
-      'Interviewer guidance',
-    ]);
-  });
-
-  it('opens on the stage the protocol holds, asking about edges', async () => {
+describe('the editor for a form about the participant', () => {
+  it('opens on the stage the protocol holds', async () => {
     renderStageEditor(openFixture());
 
     expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
-      'Alter Edge Form',
+      'Ego Form',
     );
-    expect(screen.getByRole('radio', { name: 'knows' })).toBeChecked();
-    // The section says what it is for, and it is edges rather than nodes: an
-    // edge stage told the researcher it filtered nodes would be describing a
-    // different network.
     expect(
-      screen.getByText(
-        'Create rules that limit which edges are available on this stage.',
-      ),
-    ).toBeInTheDocument();
+      screen.getByRole('textbox', { name: 'Introduction heading' }),
+    ).toHaveValue('Introduction');
     expect(
-      await screen.findByText('Add any notes about this relationship', {
-        exact: false,
-      }),
+      await screen.findByText('What is your name?', { exact: false }),
     ).toBeInTheDocument();
-  });
-
-  it('saves the stage it opened, losing nothing', async () => {
-    const harness = renderStageEditor(openFixture());
-
-    expect(harness.ownedKeys()).toEqual([
-      'form',
-      'introductionPanel',
-      'label',
-      'subject',
-    ]);
-    await harness.roundTrip({ unowned: [] });
+    // An ego form has no subject to choose: the schema fixes it as the
+    // interview's ego, so there is no type picker on this stage at all.
+    expect(
+      screen.queryByRole('radio', { name: 'person' }),
+    ).not.toBeInTheDocument();
   });
 
   it('opens a new stage on the interface template', async () => {
-    const harness = renderStageEditor(createFixture());
+    renderStageEditor(createFixture());
 
-    // A per-alter-edge form has no authored defaults, so a new one has no type
-    // chosen, and its form waits on one. Only the name arrives filled in,
-    // proposed because the stage is being created.
+    // An ego form has no authored defaults, so a new one arrives empty and
+    // every required part of it is the researcher's to write — except the
+    // name, which is proposed because the stage is being created.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
-    expect(stageNameInput().value).toMatch(/^Per Alter Edge Form/);
-    expect(screen.getByRole('radio', { name: 'knows' })).not.toBeChecked();
-    await waitFor(() =>
-      expect(
-        harness.outline().find((section) => section.title === 'Form fields')
-          ?.state,
-      ).toBe('Not available yet'),
-    );
+    expect(stageNameInput().value).toMatch(/^Ego Form/);
+    expect(
+      screen.getByRole('textbox', { name: 'Introduction heading' }),
+    ).toHaveValue('');
   });
 
   it('saves a new stage once the researcher has written it', async () => {
     const harness = renderStageEditor(createFixture());
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
 
-    await writeInto(harness, stageNameInput(), 'About each relationship');
-    await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
+    await writeInto(harness, stageNameInput(), 'About you');
     await writeInto(
       harness,
       screen.getByRole('textbox', { name: 'Introduction heading' }),
-      'About each relationship',
+      'About you',
     );
     await writeInto(
       harness,
       screen.getByRole('textbox', { name: 'Introduction text' }),
-      'A few questions about each relationship.',
+      'A few questions about you before we begin.',
     );
 
     const dialog = await openField(harness, 'Create new form field');
     await harness.user.selectOptions(
       dialog.getByRole('combobox', { name: 'Attribute' }),
-      'edgeNotes',
+      'ego_name',
     );
     await writeInto(
       harness,
       dialog.getByRole('textbox', { name: 'Question text' }),
-      'What do you want to record about this?',
+      'What is your name?',
     );
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
@@ -152,20 +116,18 @@ describe('the editor for a form about each relationship', () => {
     );
 
     const request = await harness.submit();
-    expect(request?.stageDocument.label).toBe('About each relationship');
-    expect(request?.stageDocument.subject).toEqual({
-      entity: 'edge',
-      type: 'knows',
-    });
+    expect(request?.stageDocument.label).toBe('About you');
     expect(request?.stageDocument.introductionPanel).toEqual({
-      title: 'About each relationship',
-      text: 'A few questions about each relationship.',
+      title: 'About you',
+      text: 'A few questions about you before we begin.',
     });
+    // The id is the row's own identity, minted on add so a reorder or a
+    // removal is committed as the operation it was.
     expect(fieldsOf(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
-        variable: 'edgeNotes',
-        prompt: 'What do you want to record about this?',
+        variable: 'ego_name',
+        prompt: 'What is your name?',
       },
     ]);
   });
@@ -176,9 +138,7 @@ describe('the editor for a form about each relationship', () => {
     await removeRow(harness, 'field');
     await waitFor(() =>
       expect(
-        screen.queryByText('Add any notes about this relationship', {
-          exact: false,
-        }),
+        screen.queryByText('What is your name?', { exact: false }),
       ).not.toBeInTheDocument(),
     );
 
@@ -211,27 +171,20 @@ describe('the editor for a form about each relationship', () => {
     expectStageUntouched(harness);
   });
 
+  /**
+   * A collaborator deleting an attribute this form collects is their edit, not
+   * this researcher's. The editor has to show what happened — otherwise the form
+   * goes on claiming to collect something the codebook no longer has — and
+   * must not emit a command of its own, which would save their deletion as
+   * ours.
+   */
   it('follows an attribute deleted elsewhere without echoing it back', async () => {
     const harness = renderStageEditor(openFixture());
     expect(
-      await screen.findByText('Collects "edgeNotes" as text.'),
+      await screen.findByText('Collects "ego_name" as text.'),
     ).toBeInTheDocument();
 
-    harness.receiveCodebookUpdate({
-      edge: {
-        knows: knowsDefinition({
-          closeness: {
-            name: 'closeness',
-            type: 'ordinal',
-            options: [
-              { label: 'Very close', value: 3 },
-              { label: 'Somewhat close', value: 2 },
-              { label: 'Not close', value: 1 },
-            ],
-          },
-        }),
-      },
-    });
+    harness.receiveCodebookUpdate({ ego: { variables: {} } });
 
     expect(
       await screen.findByText('This attribute is no longer in the codebook.'),
@@ -268,24 +221,18 @@ describe('the editor for a form about each relationship', () => {
   /**
    * The section's own tests prove these controls; these prove the wiring —
    * that this editor's form fields reach the codebook for the subject IT is
-   * about, and write what the researcher authored into the edge codebook
+   * about, and write what the researcher authored into the participant’s codebook
    * rather than into the editor's own stage document.
    */
-  it('changes, in the edge codebook, the values a field offers', async () => {
+  it('changes, in the participant’s codebook, the values a field offers', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await authorsValuesFromField(harness, {
-      kind: 'codebookEdge',
-      typeId: 'knows',
-    });
+    await authorsValuesFromField(harness, { kind: 'codebookEgo' });
   });
 
-  it('sets, in the edge codebook, what a date field accepts', async () => {
+  it('sets, in the participant’s codebook, what a date field accepts', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await authorsDateSettingsFromField(harness, {
-      kind: 'codebookEdge',
-      typeId: 'knows',
-    });
+    await authorsDateSettingsFromField(harness, { kind: 'codebookEgo' });
   });
 });

@@ -5,13 +5,13 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { writeInto } from '../../__tests__/writeInto.ts';
-import { InformationStageEditor } from '../InformationStageEditor.tsx';
 import {
   expectStageUntouched,
   mountedAs,
   stageNameInput,
-} from './formEditorHarness.tsx';
+} from '../../__tests__/formEditorHarness.tsx';
+import { writeInto } from '../../__tests__/writeInto.ts';
+import { informationStageEditor } from '../InformationStageEditor.ts';
 
 /**
  * The block editor's text control is a rich-text editor, and ProseMirror
@@ -44,7 +44,7 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
 
 const openFixture = () => ({
   stageId: 'information-1',
-  editor: mountedAs(InformationStageEditor),
+  editor: mountedAs(informationStageEditor.Information),
 });
 
 /** Where a host would insert a new page: over the one the fixture holds. */
@@ -52,7 +52,7 @@ const INFORMATION_INDEX = fixtureStageIds().indexOf('information-1');
 
 const createFixture = () => ({
   create: { type: 'Information' as const, position: INFORMATION_INDEX },
-  editor: mountedAs(InformationStageEditor),
+  editor: mountedAs(informationStageEditor.Information),
 });
 
 const itemsOf = (document: SectionDoc): Record<string, unknown>[] => {
@@ -61,18 +61,6 @@ const itemsOf = (document: SectionDoc): Record<string, unknown>[] => {
 };
 
 describe('the editor for a page of content', () => {
-  it('composes the page in the order the plan sets out', async () => {
-    const harness = renderStageEditor(openFixture());
-
-    await waitFor(() => expect(harness.outline()).toHaveLength(4));
-    expect(harness.outline().map((section) => section.title)).toEqual([
-      'Stage name',
-      'Page content',
-      'Skip logic',
-      'Interviewer guidance',
-    ]);
-  });
-
   it('opens on the stage the protocol holds', async () => {
     renderStageEditor(openFixture());
 
@@ -85,18 +73,6 @@ describe('the editor for a page of content', () => {
     expect(
       await screen.findByText('Welcome to this interview.'),
     ).toBeInTheDocument();
-  });
-
-  /**
-   * Every key the fixture stage holds is owned by a section this editor
-   * mounts. `unowned` is empty deliberately: an Information stage is its name,
-   * its heading and its blocks, and all three are on screen.
-   */
-  it('saves the stage it opened, losing nothing', async () => {
-    const harness = renderStageEditor(openFixture());
-
-    expect(harness.ownedKeys()).toEqual(['items', 'label', 'title']);
-    await harness.roundTrip({ unowned: [] });
   });
 
   it('opens a new stage on the interface template', async () => {
