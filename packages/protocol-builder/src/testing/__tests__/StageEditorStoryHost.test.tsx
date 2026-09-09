@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest';
 
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { ResourceClientProvider } from '../../resources/client.tsx';
-import ContentBlockEditor from '../../sections/contentBlocks/ContentBlockEditor.tsx';
-import ContentBlockPreview from '../../sections/contentBlocks/ContentBlockPreview.tsx';
-import { contentBlockSlots } from '../../sections/contentBlocks/contentBlockTypes.ts';
-import PageContentSection from '../../sections/PageContentSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import ContentBlockEditor from '../../sections/content-blocks/ContentBlockEditor.tsx';
+import ContentBlockPreview from '../../sections/content-blocks/ContentBlockPreview.tsx';
+import { contentBlockSlots } from '../../sections/content-blocks/contentBlockTypes.ts';
+import PageContentSection from '../../sections/page-content/PageContentSection.tsx';
+import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import { STAGE_TYPES } from '../../stage-types.ts';
 import { StageEditSession } from '../../stageEdit.tsx';
 import { fixtureStageIds, loadFixtureStage } from '../protocolFixture.ts';

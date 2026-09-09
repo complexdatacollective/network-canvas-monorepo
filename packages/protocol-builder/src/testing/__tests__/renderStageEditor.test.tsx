@@ -11,10 +11,10 @@ import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useResourceClient } from '../../resources/client.tsx';
 import type { ResourceDescriptor } from '../../resources/types.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
-import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
-import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
-import SubjectSection from '../../sections/SubjectSection.tsx';
+import InterviewerGuidanceSection from '../../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
+import SkipLogicSection from '../../sections/skip-logic/SkipLogicSection.tsx';
+import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
+import SubjectSection from '../../sections/subject-picker/SubjectSection.tsx';
 import type {
   StageEditorComponent,
   StageEditorProps,

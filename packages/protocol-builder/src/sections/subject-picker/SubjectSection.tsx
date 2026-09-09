@@ -9,21 +9,21 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
-import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.tsx';
-import type { CodebookEntityDraft } from '../codebook/editing.ts';
-import { useCreateCodebookEntity } from '../codebook/writes.ts';
+import CodebookEntityEditor from '../../codebook/components/CodebookEntityEditor.tsx';
+import type { CodebookEntityDraft } from '../../codebook/editing.ts';
+import { useCreateCodebookEntity } from '../../codebook/writes.ts';
 import {
   type EntitySubject,
   EntitySubjectPickerField,
   type EntityTypeChangeConfirmation,
   useConfirmEntityTypeChange,
-} from '../fields/EntityTypePickerField.tsx';
-import { REQUIRED } from '../form/requiredField.ts';
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
-import { useAskStageHasAnyValue } from '../form/stageFormHooks.ts';
-import { useProtocolContext } from '../state/protocolContext.ts';
-import BuilderSection from './BuilderSection.tsx';
-import NetworkFilterSection from './NetworkFilterSection.tsx';
+} from '../../fields/EntityTypePickerField.tsx';
+import { REQUIRED } from '../../form/requiredField.ts';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { useAskStageHasAnyValue } from '../../form/stageFormHooks.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
+import BuilderSection from '../BuilderSection.tsx';
+import NetworkFilterSection from '../network-filter/NetworkFilterSection.tsx';
 import {
   useResetStageOnSubjectChange,
   useSubjectChangeDiscards,

@@ -5,7 +5,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { createStageDraftProbe } from './stageDraftProbe.tsx';
 

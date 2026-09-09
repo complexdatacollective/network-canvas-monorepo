@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 
 import StageEditorShell from '../../form/StageEditorShell.tsx';
-import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
-import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageHeading from '../../sections/StageHeading.tsx';
+import InterviewerGuidanceSection from '../../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
+import SkipLogicSection from '../../sections/skip-logic/SkipLogicSection.tsx';
+import StageHeading from '../../sections/stage-heading/StageHeading.tsx';
 import type { StageEditorActions } from '../../stage-editor-contract.ts';
 import { saveStageAction } from '../saveStageAction.tsx';
 import { usePanelsForAutoName } from './usePanelsForAutoName.ts';

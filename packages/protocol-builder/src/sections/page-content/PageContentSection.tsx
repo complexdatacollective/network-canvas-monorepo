@@ -9,8 +9,8 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import type { StageType } from '@codaco/protocol-validation';
 
-import { withoutAbsentValues } from '../form/absentValues.ts';
-import { REQUIRED } from '../form/requiredField.ts';
+import { withoutAbsentValues } from '../../form/absentValues.ts';
+import { REQUIRED } from '../../form/requiredField.ts';
 import {
   RowDialog,
   RowList,
@@ -21,11 +21,11 @@ import {
   type RowListConfig,
   type RowPreviewComponent,
   type RowValues,
-} from '../form/rowDialog.tsx';
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
-import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
-import { useProtocolContext } from '../state/protocolContext.ts';
-import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
+} from '../../form/rowDialog.tsx';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
+import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 
 /**
  * What a page of content IS to the stage around it.

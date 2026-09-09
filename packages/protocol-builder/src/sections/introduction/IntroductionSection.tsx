@@ -3,9 +3,9 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
-import RichTextField from '../fields/RichTextField.tsx';
-import { REQUIRED } from '../form/requiredField.ts';
-import BuilderSection from './BuilderSection.tsx';
+import RichTextField from '../../fields/RichTextField.tsx';
+import { REQUIRED } from '../../form/requiredField.ts';
+import BuilderSection from '../BuilderSection.tsx';
 
 /** The schema keeps a stage's introduction in one object with two parts. */
 const TITLE_FIELD = 'introductionPanel.title';

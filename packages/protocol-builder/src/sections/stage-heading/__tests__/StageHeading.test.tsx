@@ -1,9 +1,9 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
-import { fixtureStageIds } from '../../testing/protocolFixture.ts';
-import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { interfaceDocumentationUrl } from '../../../interfaces/documentation.ts';
+import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import StageHeading from '../StageHeading.tsx';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('information');

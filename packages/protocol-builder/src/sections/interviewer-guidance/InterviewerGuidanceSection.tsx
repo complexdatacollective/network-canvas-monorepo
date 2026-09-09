@@ -2,8 +2,8 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
-import RichTextField from '../fields/RichTextField.tsx';
-import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
+import RichTextField from '../../fields/RichTextField.tsx';
+import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 
 const messages = defineMessages({
   title: {

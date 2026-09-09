@@ -5,8 +5,8 @@ import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
 import { fixtureStageIds } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import SkipLogicSection from '../SkipLogicSection.tsx';
-import StageNameSection from '../StageNameSection.tsx';
+import SkipLogicSection from '../skip-logic/SkipLogicSection.tsx';
+import StageNameSection from '../stage-heading/StageNameSection.tsx';
 
 const destinations = () =>
   within(screen.getByRole('combobox', { name: /When this stage is skipped/ }))

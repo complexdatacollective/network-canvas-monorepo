@@ -9,14 +9,14 @@ import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
   variableRoleConflicts,
-} from '../../codebook/variableRoles.ts';
-import { draftAdditionalAttributeVariableIds } from '../../codebook/variableValidation.ts';
-import { useStageValue } from '../../form/stageFormHooks.ts';
-import { protocolContextFromSections } from '../../protocol-context.ts';
-import { fixtureMessage } from '../../testing/i18n.ts';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
-import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import type { SectionCapability } from '../BuilderSection.tsx';
+} from '../../../codebook/variableRoles.ts';
+import { draftAdditionalAttributeVariableIds } from '../../../codebook/variableValidation.ts';
+import { useStageValue } from '../../../form/stageFormHooks.ts';
+import { protocolContextFromSections } from '../../../protocol-context.ts';
+import { fixtureMessage } from '../../../testing/i18n.ts';
+import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import type { SectionCapability } from '../../BuilderSection.tsx';
 import FormFieldsSection from '../FormFieldsSection.tsx';
 
 /**

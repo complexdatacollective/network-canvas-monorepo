@@ -1,18 +1,18 @@
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
-import ContentBlockEditor from '../../sections/contentBlocks/ContentBlockEditor.tsx';
-import ContentBlockPreview from '../../sections/contentBlocks/ContentBlockPreview.tsx';
-import { contentBlockSlots } from '../../sections/contentBlocks/contentBlockTypes.ts';
-import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
-import PageContentSection from '../../sections/PageContentSection.tsx';
+import ContentBlockEditor from '../../sections/content-blocks/ContentBlockEditor.tsx';
+import ContentBlockPreview from '../../sections/content-blocks/ContentBlockPreview.tsx';
+import { contentBlockSlots } from '../../sections/content-blocks/contentBlockTypes.ts';
+import InterviewerGuidanceSection from '../../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
+import PageContentSection from '../../sections/page-content/PageContentSection.tsx';
 import BoundaryOptionsSection from '../../sections/pedigree/BoundaryOptionsSection.tsx';
 import CensusPromptSection from '../../sections/pedigree/CensusPromptSection.tsx';
 import FramingConfigSection from '../../sections/pedigree/FramingConfigSection.tsx';
 import NominationPromptsSection from '../../sections/pedigree/NominationPromptsSection.tsx';
 import PedigreeEdgeConfigurationSection from '../../sections/pedigree/PedigreeEdgeConfigurationSection.tsx';
 import PedigreeNodeConfigurationSection from '../../sections/pedigree/PedigreeNodeConfigurationSection.tsx';
-import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageHeading from '../../sections/StageHeading.tsx';
+import SkipLogicSection from '../../sections/skip-logic/SkipLogicSection.tsx';
+import StageHeading from '../../sections/stage-heading/StageHeading.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('family-pedigree');

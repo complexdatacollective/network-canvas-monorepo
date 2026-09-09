@@ -10,7 +10,7 @@ import {
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
 import BuilderSection from '../BuilderSection.tsx';
-import FormFieldsSection from '../FormFieldsSection.tsx';
+import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
 

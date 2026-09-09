@@ -9,15 +9,15 @@ import { useEnclosingHeadingLevel } from '@codaco/fresco-ui/typography/Enclosing
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import StageNameInput from '../fields/StageNameInput.tsx';
-import { REQUIRED } from '../form/requiredField.ts';
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
-import { useOutlineSection } from '../form/useOutlineSection.ts';
-import { interfaceDisplayName } from '../interfaces/interfaceNames.ts';
+import StageNameInput from '../../fields/StageNameInput.tsx';
+import { REQUIRED } from '../../form/requiredField.ts';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { useOutlineSection } from '../../form/useOutlineSection.ts';
+import { interfaceDisplayName } from '../../interfaces/interfaceNames.ts';
 import {
   type AutoStageNamePanel,
   useAutoStageName,
-} from '../naming/useAutoStageName.ts';
+} from '../../naming/useAutoStageName.ts';
 
 /** The character limit is the control's own; it is not a validation rule. */
 const STAGE_NAME_LIMIT = 50;

@@ -1,16 +1,16 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import PageContentSection from '../PageContentSection.tsx';
-import StageNameSection from '../StageNameSection.tsx';
+import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   mediaItemSlots,
   TestItemEditor,
   TestItemPreview,
   TestMediaItemEditor,
   TestMediaItemPreview,
-} from './rowFixtures.tsx';
+} from '../../__tests__/rowFixtures.tsx';
+import StageNameSection from '../../stage-heading/StageNameSection.tsx';
+import PageContentSection from '../PageContentSection.tsx';
 
 const pageContent = (
   <>

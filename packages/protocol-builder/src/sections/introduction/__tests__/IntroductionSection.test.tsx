@@ -1,9 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import StageNameSection from '../../stage-heading/StageNameSection.tsx';
 import IntroductionSection from '../IntroductionSection.tsx';
-import StageNameSection from '../StageNameSection.tsx';
 
 const introduction = (
   <>

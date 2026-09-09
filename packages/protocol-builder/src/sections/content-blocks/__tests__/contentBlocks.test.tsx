@@ -8,7 +8,7 @@ import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import PageContentSection, {
   type PageContentVariant,
-} from '../../PageContentSection.tsx';
+} from '../../page-content/PageContentSection.tsx';
 import ContentBlockEditor from '../ContentBlockEditor.tsx';
 import ContentBlockPreview from '../ContentBlockPreview.tsx';
 import {

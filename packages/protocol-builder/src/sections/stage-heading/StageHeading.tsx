@@ -1,5 +1,5 @@
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
-import { useProtocolContext } from '../state/protocolContext.ts';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import StageNameSection, {
   type StageNameSectionProps,
 } from './StageNameSection.tsx';

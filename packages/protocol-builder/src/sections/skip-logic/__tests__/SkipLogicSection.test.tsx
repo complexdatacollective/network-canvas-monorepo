@@ -6,17 +6,17 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import type { RuleDraft } from '../../rules/rule.ts';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
+import type { RuleDraft } from '../../../rules/rule.ts';
+import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import {
   type CodebookPatch,
   renderStageEditor,
   type StageEditorHarness,
-} from '../../testing/renderStageEditor.tsx';
-import BuilderSection from '../BuilderSection.tsx';
-import InterviewerGuidanceSection from '../InterviewerGuidanceSection.tsx';
+} from '../../../testing/renderStageEditor.tsx';
+import BuilderSection from '../../BuilderSection.tsx';
+import InterviewerGuidanceSection from '../../interviewer-guidance/InterviewerGuidanceSection.tsx';
+import StageNameSection from '../../stage-heading/StageNameSection.tsx';
 import SkipLogicSection from '../SkipLogicSection.tsx';
-import StageNameSection from '../StageNameSection.tsx';
 
 /**
  * The stage most of these open: the third of the fixture's nineteen, and the

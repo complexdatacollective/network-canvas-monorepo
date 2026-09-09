@@ -6,11 +6,11 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { interfaceDocumentationUrl } from '../interfaces/documentation.ts';
 import { ResourceClientProvider } from '../resources/client.tsx';
-import ContentBlockEditor from '../sections/contentBlocks/ContentBlockEditor.tsx';
-import ContentBlockPreview from '../sections/contentBlocks/ContentBlockPreview.tsx';
-import { contentBlockSlots } from '../sections/contentBlocks/contentBlockTypes.ts';
-import PageContentSection from '../sections/PageContentSection.tsx';
-import StageHeading from '../sections/StageHeading.tsx';
+import ContentBlockEditor from '../sections/content-blocks/ContentBlockEditor.tsx';
+import ContentBlockPreview from '../sections/content-blocks/ContentBlockPreview.tsx';
+import { contentBlockSlots } from '../sections/content-blocks/contentBlockTypes.ts';
+import PageContentSection from '../sections/page-content/PageContentSection.tsx';
+import StageHeading from '../sections/stage-heading/StageHeading.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import { fixtureStageIds } from './protocolFixture.ts';
 import { StageEditorStoryHost } from './StageEditorStoryHost.tsx';

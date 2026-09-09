@@ -8,14 +8,14 @@ import type { Command } from '@codaco/studio-sync/apply';
 import {
   type StageFormStoreApi,
   useStageEditorForm,
-} from '../form/stageEditorContext.ts';
+} from '../../form/stageEditorContext.ts';
 import {
   useAskStageHasAnyValue,
   useClearStageValue,
-} from '../form/stageFormHooks.ts';
-import { getInterfaceTemplate } from '../interfaces/templates.ts';
-import type { StageFormDraft } from '../stageDocument.ts';
-import { useOnResearcherChange } from './researcherChange.ts';
+} from '../../form/stageFormHooks.ts';
+import { getInterfaceTemplate } from '../../interfaces/templates.ts';
+import type { StageFormDraft } from '../../stageDocument.ts';
+import { useOnResearcherChange } from '../researcherChange.ts';
 import {
   SUBJECT_INDEPENDENT_FIELDS,
   subjectDependentResets,

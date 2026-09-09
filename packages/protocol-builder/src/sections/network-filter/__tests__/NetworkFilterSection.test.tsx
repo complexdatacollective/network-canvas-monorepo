@@ -5,12 +5,12 @@ import type { Codebook } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { ruleSetIssues, ruleSetTargets } from '../../rules/ruleSet.ts';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
+import { ruleSetIssues, ruleSetTargets } from '../../../rules/ruleSet.ts';
+import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
-} from '../../testing/renderStageEditor.tsx';
+} from '../../../testing/renderStageEditor.tsx';
 import NetworkFilterSection from '../NetworkFilterSection.tsx';
 
 /** An `AlterForm` is the least-configured stage the schema gives a filter. */

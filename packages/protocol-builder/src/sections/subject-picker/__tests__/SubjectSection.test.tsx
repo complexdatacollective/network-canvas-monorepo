@@ -4,12 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import IntroductionSection from '../IntroductionSection.tsx';
-import PromptsSection from '../PromptsSection.tsx';
+import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import {
+  TestPromptEditor,
+  TestPromptPreview,
+} from '../../__tests__/rowFixtures.tsx';
+import IntroductionSection from '../../introduction/IntroductionSection.tsx';
+import PromptsSection from '../../PromptsSection.tsx';
 import SubjectSection, { NEW_ENTITY_DRAFT } from '../SubjectSection.tsx';
 import { changeSubjectTo } from './changeSubject.ts';
-import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
 
 type Harness = ReturnType<typeof renderStageEditor>;
 

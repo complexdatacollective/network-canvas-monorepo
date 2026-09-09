@@ -29,24 +29,24 @@ import {
   useCreateCodebookVariable,
   useSetVariableComponent,
   useWhereTheAnswerLands,
-} from '../codebook/useCodebookVariableEdits.ts';
+} from '../../codebook/useCodebookVariableEdits.ts';
 import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
-} from '../codebook/variableRoles.ts';
+} from '../../codebook/variableRoles.ts';
 import {
   draftUnvalidatedElsewhereMessage,
   makeFieldEditorValidate,
   unvalidatedElsewhereMessage,
   variableDisplayName,
-} from '../codebook/variableValidation.ts';
-import RichTextField from '../fields/RichTextField.tsx';
+} from '../../codebook/variableValidation.ts';
+import RichTextField from '../../fields/RichTextField.tsx';
 import VariablePickerField, {
   type VariablePickerOption,
   createdUnassigned,
-} from '../fields/VariablePickerField.tsx';
-import { withoutAbsentValues } from '../form/absentValues.ts';
-import { useDialogFormSubmissionBlock } from '../form/DialogForm.tsx';
+} from '../../fields/VariablePickerField.tsx';
+import { withoutAbsentValues } from '../../form/absentValues.ts';
+import { useDialogFormSubmissionBlock } from '../../form/DialogForm.tsx';
 import {
   RowDialog,
   RowList,
@@ -60,24 +60,24 @@ import {
   type RowSaveContext,
   type RowSaveOutcome,
   type RowValues,
-} from '../form/rowDialog.tsx';
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
-import { useStageValue } from '../form/stageFormHooks.ts';
-import type { CodebookSubject } from '../protocol-context.ts';
-import { variablesForSubject } from '../protocol-context.ts';
-import { useProtocolContext } from '../state/protocolContext.ts';
+} from '../../form/rowDialog.tsx';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { useStageValue } from '../../form/stageFormHooks.ts';
+import type { CodebookSubject } from '../../protocol-context.ts';
+import { variablesForSubject } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import AttributeCodebookControls, {
   useRowValue,
-} from './AttributeCodebookControls.tsx';
-import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
+} from '../AttributeCodebookControls.tsx';
+import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 import {
   controlsForType,
   isCollectableType,
   isOptionType,
   needsCodebookEditorToCreate,
   TYPE_OPTIONS,
-} from './collectableTypes.ts';
-import { type SubjectEntity, useStageSubject } from './useStageSubject.ts';
+} from '../collectableTypes.ts';
+import { type SubjectEntity, useStageSubject } from '../useStageSubject.ts';
 
 /**
  * Where an interface that holds a whole form keeps it.

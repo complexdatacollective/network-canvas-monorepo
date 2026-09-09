@@ -14,15 +14,15 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import ContentBlockEditor from '../contentBlocks/ContentBlockEditor.tsx';
-import ContentBlockPreview from '../contentBlocks/ContentBlockPreview.tsx';
-import { contentBlockSlots } from '../contentBlocks/contentBlockTypes.ts';
-import IntroductionSection from '../IntroductionSection.tsx';
-import PageContentSection from '../PageContentSection.tsx';
+import ContentBlockEditor from '../content-blocks/ContentBlockEditor.tsx';
+import ContentBlockPreview from '../content-blocks/ContentBlockPreview.tsx';
+import { contentBlockSlots } from '../content-blocks/contentBlockTypes.ts';
+import IntroductionSection from '../introduction/IntroductionSection.tsx';
+import PageContentSection from '../page-content/PageContentSection.tsx';
 import SortOrderRows from '../prompts/SortOrderRows.tsx';
 import PromptsSection from '../PromptsSection.tsx';
-import StageNameSection from '../StageNameSection.tsx';
-import SubjectSection from '../SubjectSection.tsx';
+import StageNameSection from '../stage-heading/StageNameSection.tsx';
+import SubjectSection from '../subject-picker/SubjectSection.tsx';
 import {
   TestItemEditor,
   TestItemPreview,

@@ -12,7 +12,7 @@ import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import BuilderSection from '../BuilderSection.tsx';
-import FormFieldsSection from '../FormFieldsSection.tsx';
+import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 import {
   useEntityTypeChangeConfirmation,
   useResetOnEntityTypeChange,

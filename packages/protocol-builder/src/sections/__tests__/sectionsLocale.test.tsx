@@ -14,10 +14,10 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import FormFieldsSection from '../FormFieldsSection.tsx';
-import InterviewerGuidanceSection from '../InterviewerGuidanceSection.tsx';
-import NetworkFilterSection from '../NetworkFilterSection.tsx';
-import SkipLogicSection from '../SkipLogicSection.tsx';
+import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
+import InterviewerGuidanceSection from '../interviewer-guidance/InterviewerGuidanceSection.tsx';
+import NetworkFilterSection from '../network-filter/NetworkFilterSection.tsx';
+import SkipLogicSection from '../skip-logic/SkipLogicSection.tsx';
 
 /**
  * The three sections every stage editor composes, read in Spanish.

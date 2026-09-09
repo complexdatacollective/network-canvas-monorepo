@@ -11,17 +11,17 @@ import {
   type StageType,
 } from '@codaco/protocol-validation';
 
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
-import { useStageValue } from '../form/stageFormHooks.ts';
-import { type RuleDraftOptions, ruleDraftOptions } from '../rules/rule.ts';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { useStageValue } from '../../form/stageFormHooks.ts';
+import { type RuleDraftOptions, ruleDraftOptions } from '../../rules/rule.ts';
 import {
   asRuleSetValue,
   NO_RULES_MESSAGE,
   ruleSetRules,
-} from '../rules/ruleSet.ts';
-import { FilterRuleSetField } from '../rules/RuleSetField.tsx';
-import { useRuleSetValidation } from '../rules/useRuleSetValidation.ts';
-import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
+} from '../../rules/ruleSet.ts';
+import { FilterRuleSetField } from '../../rules/RuleSetField.tsx';
+import { useRuleSetValidation } from '../../rules/useRuleSetValidation.ts';
+import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 
 /** The stage's own filter. Every stage in the schema holds it here. */
 const FILTER_FIELD = 'filter';

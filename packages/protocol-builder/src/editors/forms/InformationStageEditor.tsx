@@ -1,12 +1,12 @@
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
-import ContentBlockEditor from '../../sections/contentBlocks/ContentBlockEditor.tsx';
-import ContentBlockPreview from '../../sections/contentBlocks/ContentBlockPreview.tsx';
-import { contentBlockSlots } from '../../sections/contentBlocks/contentBlockTypes.ts';
-import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
-import PageContentSection from '../../sections/PageContentSection.tsx';
-import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageHeading from '../../sections/StageHeading.tsx';
+import ContentBlockEditor from '../../sections/content-blocks/ContentBlockEditor.tsx';
+import ContentBlockPreview from '../../sections/content-blocks/ContentBlockPreview.tsx';
+import { contentBlockSlots } from '../../sections/content-blocks/contentBlockTypes.ts';
+import InterviewerGuidanceSection from '../../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
+import PageContentSection from '../../sections/page-content/PageContentSection.tsx';
+import SkipLogicSection from '../../sections/skip-logic/SkipLogicSection.tsx';
+import StageHeading from '../../sections/stage-heading/StageHeading.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
 import { saveStageAction } from '../saveStageAction.tsx';
 

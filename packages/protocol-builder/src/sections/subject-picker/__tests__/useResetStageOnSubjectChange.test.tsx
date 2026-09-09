@@ -8,10 +8,10 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type { RowPreviewProps } from '../../form/rowDialog.tsx';
-import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import BuilderSection from '../BuilderSection.tsx';
-import PromptsSection from '../PromptsSection.tsx';
+import type { RowPreviewProps } from '../../../form/rowDialog.tsx';
+import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import BuilderSection from '../../BuilderSection.tsx';
+import PromptsSection from '../../PromptsSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
 import { changeSubjectTo } from './changeSubject.ts';
 

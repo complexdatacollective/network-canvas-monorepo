@@ -1,10 +1,10 @@
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
-import FormFieldsSection from '../../sections/FormFieldsSection.tsx';
-import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
-import IntroductionSection from '../../sections/IntroductionSection.tsx';
-import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageHeading from '../../sections/StageHeading.tsx';
+import FormFieldsSection from '../../sections/form-fields/FormFieldsSection.tsx';
+import InterviewerGuidanceSection from '../../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
+import IntroductionSection from '../../sections/introduction/IntroductionSection.tsx';
+import SkipLogicSection from '../../sections/skip-logic/SkipLogicSection.tsx';
+import StageHeading from '../../sections/stage-heading/StageHeading.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
 import { saveStageAction } from '../saveStageAction.tsx';
 

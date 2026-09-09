@@ -9,7 +9,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { REQUIRED } from '../requiredField.ts';
