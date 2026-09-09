@@ -234,6 +234,36 @@ const readNarrativePedigreeFrom = (
   });
 };
 
+/**
+ * One attribute of the family member type, REDEFINED by a collaborator.
+ *
+ * The third thing that can happen to an attribute a control is holding, beside
+ * `addFamilyMemberVariable` and `removeFamilyMemberVariable`: it stays, under
+ * the same id, describing something else.
+ */
+const redefineFamilyMemberVariable = (
+  harness: StageEditorHarness,
+  variableId: string,
+  variable: Readonly<Record<string, unknown>>,
+): void => {
+  const section =
+    harness.session.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+  const variables = isRecord(section?.variables) ? section.variables : {};
+  if (!Object.hasOwn(variables, variableId)) {
+    throw new Error(
+      `"family_member" has no "${variableId}" attribute, so redefining one proves nothing.`,
+    );
+  }
+  harness.receiveCodebookUpdate({
+    node: {
+      family_member: {
+        ...section,
+        variables: { ...variables, [variableId]: variable },
+      },
+    },
+  });
+};
+
 /** The id the seeded boolean below is filed under. */
 const SEEDED_UNWELL = 'seeded-unwell';
 
@@ -960,6 +990,52 @@ describe('a codebook that changes while the pedigree is open', () => {
     expect(
       await screen.findByText(
         '"fm_name" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * Three of the pedigree's slots need an EXACT value set, not merely a list
+   * of answers: the interview and the genetics engine branch on those values,
+   * and the protocol refuses an attribute bound to one of them whose options
+   * differ.
+   *
+   * A collaborator editing those values leaves the attribute in the codebook,
+   * still categorical, so the deleted-or-retyped gate had nothing to say about
+   * it — while the picker, which asks the schema's own comparison, drops it at
+   * once. The stage was still refused, but by whole-protocol validation,
+   * against a path: the researcher was stopped from finishing with nothing on
+   * screen naming the control that had to change.
+   */
+  it('refuses to save a slot whose canonical values a collaborator changed', async () => {
+    const harness = renderStageEditor(openFixture());
+    expect(
+      screen.getByRole('combobox', { name: 'Biological sex' }),
+    ).toHaveValue('biologicalSex');
+
+    redefineFamilyMemberVariable(harness, 'biologicalSex', {
+      name: 'biologicalSex',
+      type: 'categorical',
+      options: [
+        { value: 'female', label: 'Female' },
+        { value: 'male', label: 'Male' },
+      ],
+    });
+
+    // The control goes on holding it — which is the gap this gate closes: the
+    // attribute is still there and still categorical, so nothing else refuses
+    // it until whole-protocol validation does.
+    expect(
+      screen.getByRole('combobox', { name: 'Biological sex' }),
+    ).toHaveValue('biologicalSex');
+
+    // The refusal is the point rather than the save: the stage was refused
+    // before this gate too, by the whole protocol. What is asserted is WHERE
+    // the researcher reads it — under the control they have to change.
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        '"biologicalSex" no longer offers the exact values this control needs, because they were changed somewhere else. Choose another attribute.',
       ),
     ).toBeInTheDocument();
   });
