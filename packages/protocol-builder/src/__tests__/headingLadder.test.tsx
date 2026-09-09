@@ -15,6 +15,10 @@ import * as variableEditorStories from '../codebook/components/VariableEditor.st
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import * as validationEditorStories from '../codebook/validation/CodebookVariableValidationEditor.stories.tsx';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
+import * as alterEdgeFormStories from '../editors/forms/AlterEdgeFormStageEditor.stories.tsx';
+import * as alterFormStories from '../editors/forms/AlterFormStageEditor.stories.tsx';
+import * as egoFormStories from '../editors/forms/EgoFormStageEditor.stories.tsx';
+import * as informationStories from '../editors/forms/InformationStageEditor.stories.tsx';
 import { harnessEditor } from '../editors/network/__tests__/editorFixtures.tsx';
 import * as composerEditorStories from '../editors/network/NetworkComposerStageEditor.stories.tsx';
 import { NetworkComposerStageEditor } from '../editors/network/NetworkComposerStageEditor.tsx';
@@ -392,23 +396,31 @@ describe('every story of a surface that writes its own heading', () => {
     ),
     ...from('StageEditorShell', composeStories(shellStories)),
     ...from('StageEditorStoryHost', composeStories(storyHostStories)),
-    // The named editors, which are where a section actually sits inside
-    // another one: a heading written at a fixed level is right at the depth
-    // its author happened to be looking at and wrong one rung down, and only
-    // a whole editor puts both depths on screen at once.
-    ...from('SociogramStageEditor', composeStories(sociogramEditorStories)),
-    ...from(
-      'NetworkComposerStageEditor',
-      composeStories(composerEditorStories),
-    ),
+    // Every stage editor that has landed. An editor writes no heading of its
+    // own — it composes the shared name heading and shared sections — so what
+    // is asked of each is that the sections IT chose, and the alerts they
+    // raise, land where the composition says they do. A whole editor is also
+    // the only surface that puts both depths on screen at once, which is where
+    // a section actually sits inside another one: a heading written at a fixed
+    // level is right at the depth its author happened to be looking at and
+    // wrong one rung down.
+    ...from('AlterEdgeFormStageEditor', composeStories(alterEdgeFormStories)),
+    ...from('AlterFormStageEditor', composeStories(alterFormStories)),
+    ...from('EgoFormStageEditor', composeStories(egoFormStories)),
     ...from(
       'FamilyPedigreeStageEditor',
       composeStories(familyPedigreeEditorStories),
     ),
+    ...from('InformationStageEditor', composeStories(informationStories)),
     ...from(
       'NarrativePedigreeStageEditor',
       composeStories(narrativePedigreeEditorStories),
     ),
+    ...from(
+      'NetworkComposerStageEditor',
+      composeStories(composerEditorStories),
+    ),
+    ...from('SociogramStageEditor', composeStories(sociogramEditorStories)),
   ];
 
   it.each(stories)('has no heading skip in %s', async (_name, Story) => {
