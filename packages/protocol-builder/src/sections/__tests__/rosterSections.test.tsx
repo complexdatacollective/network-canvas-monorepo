@@ -226,6 +226,57 @@ describe("a roster stage's data file", () => {
   });
 
   /**
+   * Every roster section reads the file through an inspection of its own, and
+   * the picker's is the only one with a retry on screen. A retry that
+   * refreshed the control it sits in alone would leave this summary saying the
+   * file could not be read — and every list built from its columns empty —
+   * until the editor was reopened.
+   */
+  it('reads the file again everywhere when the picker’s retry succeeds', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({ dataSource: 'roster_data' }),
+      sections: <ExternalDataSourceSection />,
+    });
+
+    await screen.findByText(
+      'The people in it carry these attributes: age and name.',
+    );
+
+    // One transient failure, answering the one question every consumer joined:
+    // the picker and the summary are both left holding it.
+    harness.gateway.failNext('inspect', {
+      reason: 'unavailable',
+      retryable: true,
+    });
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove this resource' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Select a data file' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Roster' }),
+    );
+    expect(
+      await screen.findByText('This data file could not be read'),
+    ).toBeInTheDocument();
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Try loading this resource again' }),
+    );
+
+    // The picker recovers — the retry did succeed...
+    expect(await screen.findByText('age, name')).toBeVisible();
+    // ...and so does everything else reading the same file.
+    expect(
+      await screen.findByText(
+        'The people in it carry these attributes: age and name.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('This data file could not be read')).toBeNull();
+  });
+
+  /**
    * Every other roster section names a column of the file. A new file makes
    * each of those a reference to something that may not be there, and a stage
    * half-describing the old roster is one the schema accepts and the interview

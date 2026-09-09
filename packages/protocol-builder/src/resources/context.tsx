@@ -39,6 +39,29 @@ export type SharedInspect = (
 ) => Promise<ResourceResult<ResourceInspection>>;
 
 /**
+ * The shared inspection: the question every consumer asks, and the way any one
+ * of them asks it again on behalf of all of them.
+ *
+ * The answer is deliberately not shared (see {@link useSharedInspect}), so
+ * each consumer holds its own — which makes "ask again" a thing that has to
+ * reach every one of them rather than only the control the researcher clicked
+ * in. The picker is the only place a retry is offered, and a retry that
+ * refreshed the picker alone would leave every section reading the same file
+ * still holding the failure: the summary saying it could not be read, and
+ * every list built from its columns empty, until the editor was reopened.
+ */
+export type SharedInspection = Readonly<{
+  inspect: SharedInspect;
+  /**
+   * Asks every consumer holding an answer about this resource to read it
+   * again. Their calls are made in the same tick, so they join as one.
+   */
+  refresh: (resourceId: string) => void;
+  /** Registers a consumer to be asked again, and answers with the way off. */
+  subscribe: (resourceId: string, reload: () => void) => () => void;
+}>;
+
+/**
  * One inspection per resource, however many controls are waiting on it.
  *
  * A roster stage asks what is inside its data file from five places at once —
@@ -53,8 +76,15 @@ export type SharedInspect = (
  * joined; one that has settled is asked afresh, because nothing here knows when
  * a host's answer stops being true — a resource can be replaced, promoted or
  * discarded, and a cache would go on describing the file that was there. Each
- * caller keeps its own busy state, its own failure and its own retry, and reads
- * the shared answer exactly as it read its own.
+ * caller keeps its own busy state and its own failure, and reads the shared
+ * answer exactly as it read its own.
+ *
+ * Asking AGAIN is shared too, and has to be: an answer each caller holds
+ * separately is one each caller has to be told to replace. `refresh` is what
+ * one caller's retry does to all of them, and because they all ask in the same
+ * tick their calls join as one — so the retry offered on the picker costs the
+ * same single read the first question did, and leaves nothing behind still
+ * describing a file the host has since read perfectly well.
  *
  * Safe to share because `inspect` is idempotent and carries nothing — see the
  * gateway's own note on retryable reads. Nothing else here may be shared this
@@ -63,14 +93,15 @@ export type SharedInspect = (
  */
 function useSharedInspect(
   gateway: ProvidedResourceGateway | undefined,
-): SharedInspect | undefined {
+): SharedInspection | undefined {
   return useMemo(() => {
     if (gateway === undefined) return undefined;
     const inFlight = new Map<
       string,
       Promise<ResourceResult<ResourceInspection>>
     >();
-    return (resourceId: string) => {
+    const consumers = new Map<string, Set<() => void>>();
+    const inspect = (resourceId: string) => {
       const joined = inFlight.get(resourceId);
       if (joined !== undefined) return joined;
       // Dropped as it settles, both ways: a rejection is the caller's to
@@ -89,10 +120,34 @@ function useSharedInspect(
       inFlight.set(resourceId, asked);
       return asked;
     };
+
+    const subscribe = (resourceId: string, reload: () => void) => {
+      const registered = consumers.get(resourceId) ?? new Set<() => void>();
+      registered.add(reload);
+      consumers.set(resourceId, registered);
+      return () => {
+        registered.delete(reload);
+        // The set itself goes with the last consumer of that resource: a
+        // session that swaps files all afternoon would otherwise keep one
+        // empty set per file it has ever held.
+        if (registered.size === 0) consumers.delete(resourceId);
+      };
+    };
+
+    const refresh = (resourceId: string) => {
+      const registered = consumers.get(resourceId);
+      if (registered === undefined) return;
+      // Taken before it is walked: a consumer that goes away — or arrives —
+      // while the others are being asked must not decide whether the rest are.
+      const asking = Array.from(registered);
+      for (const reload of asking) reload();
+    };
+
+    return Object.freeze({ inspect, refresh, subscribe });
   }, [gateway]);
 }
 
-const ResourceInspectContext = createContext<SharedInspect | undefined>(
+const ResourceInspectContext = createContext<SharedInspection | undefined>(
   undefined,
 );
 
@@ -100,7 +155,7 @@ const ResourceInspectContext = createContext<SharedInspect | undefined>(
  * The shared inspection, for the one hook that reads a resource
  * (`useResourceInspection`). Everything else reaches the gateway directly.
  */
-export function useResourceInspect(): SharedInspect {
+export function useResourceInspect(): SharedInspection {
   const inspect = useContext(ResourceInspectContext);
   if (inspect === undefined) {
     throw new Error(

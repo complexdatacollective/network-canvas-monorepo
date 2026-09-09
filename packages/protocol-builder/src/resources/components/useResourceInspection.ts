@@ -31,15 +31,15 @@ export function useResourceInspection(
 ): ResourceInspectionState {
   // Shared, so the five controls a roster stage asks from — the picker, and
   // every section naming one of the file's columns — are one question rather
-  // than five parses of the same file. Each keeps its own busy state, failure
-  // and retry; see `useSharedInspect`.
-  const inspect = useResourceInspect();
+  // than five parses of the same file. Each keeps its own busy state and its
+  // own failure; see `useSharedInspect`.
+  const { inspect, refresh, subscribe } = useResourceInspect();
   const { busy, failure, retry, run, clear } = useResourceAttempt();
   const [inspection, setInspection] = useState<ResourceInspection | undefined>(
     undefined,
   );
 
-  const reload = useCallback(() => {
+  const load = useCallback(() => {
     if (resourceId === undefined) {
       setInspection(undefined);
       clear();
@@ -52,14 +52,44 @@ export function useResourceInspection(
     // Dropped before the new one is asked for, so a picker never shows the
     // previous resource's name over the newly chosen one.
     setInspection(undefined);
-    reload();
-  }, [reload]);
+    load();
+  }, [load]);
+
+  // Asked again whenever anything else reading the same resource asks again.
+  // Registered rather than left to the effect above: the answer this hook
+  // holds is its own, so nothing about another consumer's successful retry
+  // reaches it unless it is told.
+  useEffect(() => {
+    if (resourceId === undefined) return undefined;
+    return subscribe(resourceId, load);
+  }, [load, resourceId, subscribe]);
+
+  /**
+   * Reads the resource again, here and everywhere else reading it.
+   *
+   * A retry is offered on one control and the file it re-reads is the same
+   * file every other consumer is describing, so refreshing this hook alone
+   * would answer the researcher's "try again" with a summary that recovered
+   * and four column lists that stayed empty. The call is identical either way
+   * — `inspect` is a read, and the consumers all make it in this same tick, so
+   * they join as one — and the state each of them is holding is replaced by
+   * what it answers.
+   */
+  const reload = useCallback(() => {
+    if (resourceId === undefined) {
+      load();
+      return;
+    }
+    refresh(resourceId);
+  }, [load, refresh, resourceId]);
 
   return {
     ...(inspection === undefined ? {} : { inspection }),
     busy,
     ...(failure === undefined ? {} : { failure }),
-    ...(retry === undefined ? {} : { retry }),
+    // Offered exactly when the attempt says repeating the call may still
+    // succeed, and doing the same read — but on everyone's behalf.
+    ...(retry === undefined ? {} : { retry: reload }),
     reload,
   };
 }
