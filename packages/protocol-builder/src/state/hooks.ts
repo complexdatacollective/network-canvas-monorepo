@@ -17,6 +17,8 @@ import {
 
 import type {
   Presence,
+  ResourceGatewayFailureSchema,
+  ResourcePromotionRequestSchema,
   Revision,
   SectionIssueSchema,
 } from '../contract/schemas.ts';
@@ -32,6 +34,8 @@ export type SectionAtRevision = Readonly<{
 }>;
 
 export type SectionIssue = z.output<typeof SectionIssueSchema>;
+export type ResourcePromotion = z.output<typeof ResourcePromotionRequestSchema>;
+export type ResourceFailure = z.output<typeof ResourceGatewayFailureSchema>;
 
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
@@ -123,12 +127,21 @@ export function useStageIndex(): readonly StageSummary[] {
 export type SubmitResult =
   | Readonly<{ status: 'written'; revision: Revision }>
   | Readonly<{ status: 'notLockHolder'; holder?: Presence }>
-  | Readonly<{ status: 'invalidShape'; issues: readonly SectionIssue[] }>;
+  | Readonly<{ status: 'invalidShape'; issues: readonly SectionIssue[] }>
+  | Readonly<{ status: 'promotionFailed'; failure: ResourceFailure }>;
+
+/**
+ * Whether this editor may write: `pending` until the host has answered the
+ * acquire, since a section a collaborator holds is indistinguishable from one
+ * nobody holds while the answer is on its way, and an editable form the host
+ * will refuse to take is a draft the researcher loses.
+ */
+export type SectionAccess = 'pending' | 'editing' | 'readOnly';
 
 export type SectionMutation = Readonly<{
   document: SectionDoc | undefined;
   revision: Revision | undefined;
-  readOnly: boolean;
+  access: SectionAccess;
   holder: Presence | undefined;
   /**
    * The host would not open this section at all: it is gone, or it could not
@@ -140,7 +153,10 @@ export type SectionMutation = Readonly<{
    * that never resolves.
    */
   unavailable: boolean;
-  submit(document: SectionDoc): Promise<SubmitResult>;
+  submit(
+    document: SectionDoc,
+    promote?: ResourcePromotion,
+  ): Promise<SubmitResult>;
   release(): void;
 }>;
 
@@ -155,7 +171,7 @@ export type SectionMutation = Readonly<{
 export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   const { client, protocolId, utils } = useProtocolBuilderContext();
   const queryClient = useQueryClient();
-  const [readOnly, setReadOnly] = useState(false);
+  const [access, setAccess] = useState<SectionAccess>('pending');
   const [unavailable, setUnavailable] = useState(false);
   // Which acquire is this editor's. An acquire that settles after its own
   // effect has been cleaned up must not touch the lock, because the next
@@ -173,6 +189,9 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
 
   useEffect(() => {
     const mine = (acquisition.current += 1);
+    // Nothing has been answered for this section yet, whatever the last one
+    // this editor was pointed at said.
+    setAccess('pending');
     released.current = false;
     // Through `safe`, because an acquire the host refuses is an ordinary thing
     // for it to answer — a section a collaborator deleted while it was still
@@ -207,7 +226,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           void safe(client.releaseLock({ protocolId, sectionId: id }));
           return;
         }
-        setReadOnly(result.lock === 'readOnly');
+        setAccess(result.lock === 'readOnly' ? 'readOnly' : 'editing');
         if (result.lock === 'readOnly') {
           // The refusal already names the holder. Waiting for the channel to
           // say it again leaves a read-only editor unable to say whose section
@@ -226,7 +245,10 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   }, [client, protocolId, id, queryClient, utils]);
 
   const submit = useCallback(
-    async (document: SectionDoc): Promise<SubmitResult> => {
+    async (
+      document: SectionDoc,
+      promote?: ResourcePromotion,
+    ): Promise<SubmitResult> => {
       if (section === undefined) {
         throw new Error(`section ${id} was submitted before it was read`);
       }
@@ -236,6 +258,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           sectionId: id,
           document,
           revision: section.revision,
+          ...(promote === undefined ? {} : { promote }),
         }),
       );
       if (isSuccess) return { status: 'written', revision: data.revision };
@@ -250,6 +273,12 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       if (definedError?.code === 'INVALID_SHAPE') {
         return { status: 'invalidShape', issues: definedError.data.issues };
       }
+      if (definedError?.code === 'PROMOTION_FAILED') {
+        return {
+          status: 'promotionFailed',
+          failure: definedError.data.failure,
+        };
+      }
       throw definedError ?? new Error(`submit of ${id} failed`);
     },
     [client, protocolId, id, section],
@@ -262,7 +291,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   return {
     document: section?.document,
     revision: section?.revision,
-    readOnly,
+    access,
     holder: lock?.holder,
     unavailable,
     submit,

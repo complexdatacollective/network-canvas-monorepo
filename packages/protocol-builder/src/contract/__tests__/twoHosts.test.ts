@@ -202,7 +202,38 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     );
   });
 
-  it('stages a file, promotes it into the manifest, and hands its bytes back', async () => {
+  it('removes a stage and its place in the stage order in one revision', async () => {
+    const { host, client } = await open();
+    const before = await client.getSection({
+      protocolId: host.protocolId,
+      sectionId: STAGE_ORDER,
+    });
+
+    const deleted = await client.delete({
+      protocolId: host.protocolId,
+      sectionId: INFORMATION,
+    });
+
+    const order = await client.getSection({
+      protocolId: host.protocolId,
+      sectionId: STAGE_ORDER,
+    });
+    expect(deleted.changedSections).toEqual([INFORMATION, STAGE_ORDER]);
+    expect(order.document.stages).not.toContain('information-1');
+    expect(
+      Array.isArray(before.document.stages) && before.document.stages,
+    ).toContain('information-1');
+    expect(order.revision.sequence).toBe(deleted.revision.sequence);
+    const { definedError } = await safe(
+      client.getSection({
+        protocolId: host.protocolId,
+        sectionId: INFORMATION,
+      }),
+    );
+    expect(definedError?.code).toBe('SECTION_NOT_FOUND');
+  });
+
+  it('stages a file, promotes it with the section that names it, and hands its bytes back', async () => {
     const { host, client } = await open();
     const bytes = new Blob(
       [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])],
@@ -241,23 +272,35 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       'Nook',
     );
 
-    const promoted = await client.resources.promote({
+    // The section naming the resource and the resource itself are one
+    // revision: promotion happens as part of the submit that references it.
+    const held = await client.acquireLock({
       protocolId: host.protocolId,
-      promotionId: 'promotion-1',
-      resourceIds: [resourceId],
+      sectionId: INFORMATION,
     });
-    if (promoted.status !== 'ok') throw new Error(promoted.failure.message);
-    expect(promoted.data.promoted).toHaveLength(1);
-    expect(promoted.data.revision.sequence).toBeGreaterThan(0n);
+    const written = await client.submit({
+      protocolId: host.protocolId,
+      sectionId: INFORMATION,
+      document: held.document,
+      revision: held.revision,
+      promote: { promotionId: 'promotion-1', resourceIds: [resourceId] },
+    });
+    expect(written.promoted).toHaveLength(1);
+    expect(written.revision.sequence).toBeGreaterThan(0n);
 
     const listed = await client.resources.list({ protocolId: host.protocolId });
     if (listed.status !== 'ok') throw new Error(listed.failure.message);
+    // The manifest records a name, a type and a source; what the researcher
+    // imported it as is the host's to keep, and a committed image a media
+    // element is handed as `application/octet-stream` can be refused.
     expect(listed.data.resources).toContainEqual(
       expect.objectContaining({
         id: resourceId,
         name: 'Nook',
         status: 'committed',
         source: 'nook.png',
+        contentType: 'image/png',
+        byteLength: bytes.size,
       }),
     );
     const manifest = await client.getSection({
@@ -269,6 +312,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       type: 'image',
       source: 'nook.png',
     });
+    expect(manifest.revision.sequence).toBe(written.revision.sequence);
 
     // The whole point of the wire leg: the bytes the researcher imported are
     // the bytes the host committed, having crossed a real socket.
@@ -278,6 +322,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     });
     if (preview.status !== 'ok') throw new Error(preview.failure.message);
     expect(preview.data.url.endsWith(await base64Of(bytes))).toBe(true);
+    expect(preview.data.url.startsWith('data:image/png;base64,')).toBe(true);
   });
 
   it('forgets a staged resource that is discarded', async () => {
@@ -301,7 +346,24 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
       resourceId,
     });
-    expect(discarded.status).toBe('ok');
+    // The whole answer is the status: a `data` key whose only value is
+    // `undefined` is one a transport may drop and a schema then rejects,
+    // leaving a result no branch of the union matches.
+    expect(discarded).toStrictEqual({ status: 'ok' });
+
+    const again = await client.resources.discard({
+      protocolId: host.protocolId,
+      resourceId,
+    });
+    expect(again).toStrictEqual({
+      status: 'failed',
+      failure: {
+        reason: 'not-found',
+        message: 'no such staged resource',
+        retryable: false,
+        resourceId,
+      },
+    });
 
     const listed = await client.resources.list({
       protocolId: host.protocolId,
@@ -330,15 +392,23 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     expect(staged.data.handle).toBeDefined();
     expect(wholeAnswer(staged)).not.toContain(value);
 
-    const promoted = await client.resources.promote({
+    const held = await client.acquireLock({
       protocolId: host.protocolId,
-      promotionId: 'promotion-1',
-      resourceIds: [staged.data.descriptor.id],
-      ...(staged.data.handle === undefined
-        ? {}
-        : { secretHandles: [staged.data.handle] }),
+      sectionId: INFORMATION,
     });
-    if (promoted.status !== 'ok') throw new Error(promoted.failure.message);
+    const promoted = await client.submit({
+      protocolId: host.protocolId,
+      sectionId: INFORMATION,
+      document: held.document,
+      revision: held.revision,
+      promote: {
+        promotionId: 'promotion-1',
+        resourceIds: [staged.data.descriptor.id],
+        ...(staged.data.handle === undefined
+          ? {}
+          : { secretHandles: [staged.data.handle] }),
+      },
+    });
     expect(wholeAnswer(promoted)).not.toContain(value);
 
     const listed = await client.resources.list({ protocolId: host.protocolId });

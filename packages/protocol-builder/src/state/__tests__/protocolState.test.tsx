@@ -352,6 +352,43 @@ describe('the protocol state layer', () => {
     expect(screen.getByLabelText('lock').textContent).toBe('yours');
   });
 
+  it('does not open a cached section for editing before the acquire answers', async () => {
+    const host = newHost();
+    await host.asCollaborator(COLLABORATOR).acquireLock({
+      protocolId: host.protocolId,
+      sectionId: INFORMATION,
+    });
+    const gated = gatedAcquire(silentChannel(host.client), INFORMATION);
+    const counts: Counts = { information: 0, egoForm: 0 };
+
+    render(
+      <ProtocolBuilder client={gated.client} protocolId={host.protocolId}>
+        <Label
+          name="information"
+          id={INFORMATION}
+          counts={counts}
+          field="information"
+        />
+        <Lock id={INFORMATION} />
+      </ProtocolBuilder>,
+    );
+    await waitFor(() => {
+      expect(gated.waiting()).toBe(1);
+      expect(screen.getByLabelText('information').textContent).not.toBe(
+        'loading',
+      );
+    });
+
+    // The document is read and the acquire is still in flight. Offering it as
+    // this editor's is offering a draft the host is about to refuse.
+    expect(screen.getByLabelText('lock').textContent).toBe('acquiring');
+
+    gated.release();
+    await waitFor(() => {
+      expect(screen.getByLabelText('lock').textContent).toBe('Grace');
+    });
+  });
+
   it('names the holder from the acquire, without waiting for a lock event', async () => {
     const host = newHost();
     await host.asCollaborator(COLLABORATOR).acquireLock({
@@ -469,10 +506,14 @@ function gatedSectionList(client: ProtocolBuilderClient) {
 }
 
 function Lock({ id }: Readonly<{ id: ProtocolSectionId }>) {
-  const { readOnly, holder } = useSectionMutation(id);
+  const { access, holder } = useSectionMutation(id);
   return (
     <output aria-label="lock">
-      {readOnly ? (holder?.displayName ?? 'someone') : 'yours'}
+      {access === 'editing'
+        ? 'yours'
+        : access === 'pending'
+          ? 'acquiring'
+          : (holder?.displayName ?? 'someone')}
     </output>
   );
 }

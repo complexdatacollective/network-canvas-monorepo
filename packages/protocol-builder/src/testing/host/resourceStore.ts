@@ -7,7 +7,6 @@ import type {
   ResourceGatewayFailureSchema,
   ResourceInspectionSchema,
   ResourcePreviewSchema,
-  ResourcePromotionSchema,
   ResourceSecretStorageSchema,
   StageResourceInputSchema,
 } from '../../contract/schemas.ts';
@@ -16,12 +15,16 @@ type Descriptor = z.output<typeof ResourceDescriptorSchema>;
 type Failure = z.output<typeof ResourceGatewayFailureSchema>;
 type Inspection = z.output<typeof ResourceInspectionSchema>;
 type Preview = z.output<typeof ResourcePreviewSchema>;
-type Promotion = z.output<typeof ResourcePromotionSchema>;
 type SecretStorage = z.output<typeof ResourceSecretStorageSchema>;
 type StageRequest = z.output<typeof StageResourceInputSchema>['request'];
 
 export type ResourceOutcome<TData> =
   | Readonly<{ status: 'ok'; data: TData }>
+  | Readonly<{ status: 'failed'; failure: Failure }>;
+
+/** A discard has nothing to answer with, so its success is the status alone. */
+export type DiscardOutcome =
+  | Readonly<{ status: 'ok' }>
   | Readonly<{ status: 'failed'; failure: Failure }>;
 
 type StagedEntry = Readonly<{
@@ -97,7 +100,14 @@ export class InMemoryResourceStore {
   readonly secretStorage: SecretStorage = 'plaintext';
   readonly #staged = new Map<string, StagedEntry>();
   readonly #byRequest = new Map<string, string>();
-  readonly #promoted = new Map<string, Promotion>();
+  readonly #promoted = new Map<string, Descriptor[]>();
+  /**
+   * What staging knew about each promoted resource. The asset manifest records
+   * a name, a type and a source; the MIME type and the size are the host's to
+   * keep, and a committed image previewed as `application/octet-stream` is one
+   * a media element can refuse to play.
+   */
+  readonly #committed = new Map<string, Descriptor>();
   readonly #content: Map<string, Blob>;
   readonly #nextId: () => string;
 
@@ -114,7 +124,7 @@ export class InMemoryResourceStore {
     const descriptors: Descriptor[] = [];
     for (const [id, entry] of Object.entries(assets)) {
       if (!isRecord(entry)) continue;
-      const descriptor = descriptorFromManifestEntry(id, entry);
+      const descriptor = this.#committedDescriptor(id, entry);
       if (descriptor !== undefined) descriptors.push(descriptor);
     }
     return descriptors;
@@ -168,11 +178,11 @@ export class InMemoryResourceStore {
 
   /**
    * The manifest entries for a promotion, or the reason it cannot be made.
-   * Writing them into the `assets` section is the protocol store's half, so
-   * bytes and manifest land in one revision.
+   * Nothing here is committed: the protocol store writes these entries in the
+   * submitting section's own revision, and only then is the promotion
+   * completed, so a refused submit leaves staging as it was.
    */
   manifestFor(
-    promotionId: string,
     resourceIds: readonly string[],
     secretHandles: readonly string[] | undefined,
   ): ResourceOutcome<
@@ -226,15 +236,19 @@ export class InMemoryResourceStore {
    * rather than that the bytes and manifest entries it cannot see are somebody
    * else's problem.
    */
-  completedPromotion(promotionId: string): Promotion | undefined {
+  completedPromotion(promotionId: string): Descriptor[] | undefined {
     return this.#promoted.get(promotionId);
   }
 
   completePromotion(
-    promotion: Promotion,
+    promotionId: string,
+    promoted: readonly Descriptor[],
     resourceIds: readonly string[],
   ): void {
-    this.#promoted.set(promotion.id, promotion);
+    this.#promoted.set(promotionId, [...promoted]);
+    for (const descriptor of promoted) {
+      this.#committed.set(descriptor.id, descriptor);
+    }
     for (const resourceId of resourceIds) {
       const entry = this.#staged.get(resourceId);
       if (entry?.bytes !== undefined && entry.descriptor.source !== undefined) {
@@ -244,16 +258,16 @@ export class InMemoryResourceStore {
     }
   }
 
-  discard(resourceId: string | undefined): ResourceOutcome<undefined> {
+  discard(resourceId: string | undefined): DiscardOutcome {
     if (resourceId === undefined) {
       this.#staged.clear();
       this.#byRequest.clear();
-      return { status: 'ok', data: undefined };
+      return { status: 'ok' };
     }
     if (!this.#staged.delete(resourceId)) {
       return failure('not-found', 'no such staged resource', resourceId);
     }
-    return { status: 'ok', data: undefined };
+    return { status: 'ok' };
   }
 
   inspect(assets: SectionDoc, resourceId: string): ResourceOutcome<Inspection> {
@@ -302,7 +316,34 @@ export class InMemoryResourceStore {
     if (staged !== undefined) return staged.descriptor;
     const entry = assets[resourceId];
     return isRecord(entry)
-      ? descriptorFromManifestEntry(resourceId, entry)
+      ? this.#committedDescriptor(resourceId, entry)
       : undefined;
+  }
+
+  /**
+   * A committed resource as this host can describe it: what the manifest
+   * records, and what only the host knows — the MIME type and size staging
+   * supplied, or the bytes' own when they were seeded rather than staged.
+   */
+  #committedDescriptor(
+    resourceId: string,
+    entry: Record<string, unknown>,
+  ): Descriptor | undefined {
+    const descriptor = descriptorFromManifestEntry(resourceId, entry);
+    if (descriptor === undefined) return undefined;
+    const bytes =
+      descriptor.source === undefined
+        ? undefined
+        : this.#content.get(descriptor.source);
+    const promoted = this.#committed.get(resourceId);
+    const contentType =
+      promoted?.contentType ??
+      (bytes === undefined || bytes.type === '' ? undefined : bytes.type);
+    const byteLength = promoted?.byteLength ?? bytes?.size;
+    return {
+      ...descriptor,
+      ...(contentType === undefined ? {} : { contentType }),
+      ...(byteLength === undefined ? {} : { byteLength }),
+    };
   }
 }
