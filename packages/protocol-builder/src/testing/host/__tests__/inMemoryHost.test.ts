@@ -187,6 +187,30 @@ async function stagePortrait(subject: InMemoryHost): Promise<string> {
   return staged.data.descriptor.id;
 }
 
+/** A roster file an edit imported, whatever the bytes say. */
+async function stageRoster(
+  subject: InMemoryHost,
+  source: string,
+  contentType: string,
+  text: string,
+): Promise<string> {
+  const staged = await subject.client.resources.stage({
+    protocolId: subject.protocolId,
+    editId: EDIT,
+    requestId: 'request-1',
+    request: {
+      kind: 'content',
+      contentKind: 'network',
+      name: 'Roster',
+      source,
+      contentType,
+      bytes: new Blob([text], { type: contentType }),
+    },
+  });
+  if (staged.status !== 'ok') throw new Error(staged.failure.message);
+  return staged.data.descriptor.id;
+}
+
 /** An Information stage, without an id, whose body is that resource. */
 function informationNaming(
   subject: InMemoryHost,
@@ -646,7 +670,10 @@ describe('the in-memory host', () => {
             sectionId: INFORMATION,
             document: subject.store.read(INFORMATION).document,
             revision: subject.store.read(INFORMATION).revision,
-            promote: { editId: EDIT, resourceIds: [] },
+            // Names a resource rather than nothing, because a promotion of
+            // nothing is refused by the contract before any handler sees it,
+            // and what this asks is what the handler does with the protocol.
+            promote: { editId: EDIT, resourceIds: ['whatever'] },
           }),
         )
       ).definedError?.code,
@@ -1121,6 +1148,108 @@ describe('the in-memory host', () => {
       status: 'staged',
     });
     expect(listed.status === 'ok' && listed.data.resources).toEqual([]);
+  });
+
+  it('drops an import the edit cancelled while its bytes were being read', async () => {
+    const subject = host();
+
+    // The import is still being read when the edit is cancelled — the
+    // researcher closing the dialog they picked the file in. The discard
+    // answers `ok`, so a file inserted behind it is one no edit can ever
+    // discard again and no submit can ever promote.
+    const importing = subject.client.resources.stage({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Portrait',
+        source: 'portrait.png',
+        contentType: 'image/png',
+        bytes: PORTRAIT_BYTES(),
+      },
+    });
+    const cancelled = await subject.client.resources.discard({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+    });
+
+    expect(cancelled.status).toBe('ok');
+    expect(await importing).toMatchObject({ status: 'failed' });
+    const listed = await subject.client.resources.list({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      status: 'staged',
+    });
+    expect(listed.status === 'ok' && listed.data.resources).toEqual([]);
+  });
+
+  it('reads the network a staged roster holds', async () => {
+    const subject = host();
+    const roster = await stageRoster(
+      subject,
+      'roster.csv',
+      'text/csv',
+      'name,age\nAda,36\nGrace,45\n',
+    );
+
+    const inspected = await subject.client.resources.inspect({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      resourceId: roster,
+    });
+
+    // The names and counts are in the bytes and nowhere else: a picker showing
+    // a roster's summary, and a field offering its columns, have only what
+    // this answers.
+    expect(inspected).toMatchObject({
+      status: 'ok',
+      data: {
+        counts: { nodes: 2, edges: 0 },
+        variableNames: ['age', 'name'],
+      },
+    });
+  });
+
+  it('refuses a staged roster the interview could not read', async () => {
+    const subject = host();
+    const roster = await stageRoster(
+      subject,
+      'roster.csv',
+      'text/csv',
+      'name,age\nAda,36,unexpected\n',
+    );
+
+    const inspected = await subject.client.resources.inspect({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      resourceId: roster,
+    });
+
+    // Answered `ok`, this is a broken file the editor commits into the
+    // protocol, and an interview that fails on the roster weeks later.
+    expect(inspected).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'invalid-content', resourceId: roster },
+    });
+  });
+
+  it('refuses a promotion that names no resource', async () => {
+    const subject = host();
+    const assets = sectionId({ kind: 'assets' });
+    const before = subject.store.read(assets).revision;
+
+    const refused = await safe(
+      submitHeld(subject, INFORMATION, { editId: EDIT, resourceIds: [] }),
+    );
+
+    // A promotion of nothing is not a promotion: it makes an ordinary save
+    // touch the asset manifest, so a collaborator holding that section is
+    // enough to refuse the save, and a save that is not refused publishes a
+    // manifest revision with nothing in it changed.
+    expect(refused.isSuccess).toBe(false);
+    expect(subject.store.read(assets).revision).toEqual(before);
   });
 
   it('keeps a staged secret to the session that staged it', async () => {

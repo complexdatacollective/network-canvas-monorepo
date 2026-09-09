@@ -240,11 +240,19 @@ const RequestIdSchema = z.string().min(1);
  * names a resource whose promotion failed. The promotion carries no key of its
  * own: it is part of the write, and the write's `requestId` is what a retry
  * repeats.
+ *
+ * A promotion names at least one resource. A save with nothing staged omits
+ * `promote` — which is what the editors' own resource lifecycle already does —
+ * because an empty one is not a promotion that commits nothing: it makes the
+ * write touch the asset manifest, so a collaborator holding that section is
+ * enough to refuse an ordinary save, and a save that is not refused publishes
+ * a manifest revision with nothing in it changed. Refused here rather than
+ * ignored by each host, so no host can be the one that forgets.
  */
 export const ResourcePromotionRequestSchema = z.object({
   /** The edit these resources were staged for; only its own can be promoted. */
   editId: EditIdSchema,
-  resourceIds: z.array(z.string().min(1)),
+  resourceIds: z.array(z.string().min(1)).min(1),
   secretHandles: z.array(z.string().min(1)).optional(),
 });
 
