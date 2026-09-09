@@ -1,6 +1,12 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import BoundaryOptionsSection from '../editors/family-pedigree/sections/BoundaryOptionsSection.tsx';
+import CensusPromptSection from '../editors/family-pedigree/sections/CensusPromptSection.tsx';
+import FramingConfigSection from '../editors/family-pedigree/sections/FramingConfigSection.tsx';
+import NominationPromptsSection from '../editors/family-pedigree/sections/NominationPromptsSection.tsx';
+import PedigreeEdgeConfigurationSection from '../editors/family-pedigree/sections/PedigreeEdgeConfigurationSection.tsx';
+import PedigreeNodeConfigurationSection from '../editors/family-pedigree/sections/PedigreeNodeConfigurationSection.tsx';
 import {
   TestItemEditor,
   TestItemPreview,
@@ -12,12 +18,6 @@ import InterviewerGuidanceSection from '../sections/interviewer-guidance/Intervi
 import IntroductionSection from '../sections/introduction/IntroductionSection.tsx';
 import NetworkFilterSection from '../sections/network-filter/NetworkFilterSection.tsx';
 import PageContentSection from '../sections/page-content/PageContentSection.tsx';
-import BoundaryOptionsSection from '../sections/pedigree/BoundaryOptionsSection.tsx';
-import CensusPromptSection from '../sections/pedigree/CensusPromptSection.tsx';
-import FramingConfigSection from '../sections/pedigree/FramingConfigSection.tsx';
-import NominationPromptsSection from '../sections/pedigree/NominationPromptsSection.tsx';
-import PedigreeEdgeConfigurationSection from '../sections/pedigree/PedigreeEdgeConfigurationSection.tsx';
-import PedigreeNodeConfigurationSection from '../sections/pedigree/PedigreeNodeConfigurationSection.tsx';
 import PromptsSection from '../sections/PromptsSection.tsx';
 import SkipLogicSection from '../sections/skip-logic/SkipLogicSection.tsx';
 import StageNameSection from '../sections/stage-heading/StageNameSection.tsx';
@@ -316,7 +316,7 @@ describe('the row dialogs under es', () => {
 /**
  * The interface families this package edits, swept the same way.
  *
- * Each family owns a `sections/<family>/` directory and one `*Messages.ts`,
+ * Each family owns a directory of its own and one `*Messages.ts` in it,
  * and each is swept once because a family is the unit a leak belongs to: the
  * sentences one family writes for itself are declared together, translated
  * together, and are exactly the words no OTHER family's sweep would ever

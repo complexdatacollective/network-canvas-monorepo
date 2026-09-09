@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { type StageType, stageSchema } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { addFamilyMemberVariable } from '../../sections/pedigree/__tests__/pedigreeFixtures.tsx';
 import type { StageEditorComponent } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
   familyPedigreeEditor,
   shimMarkdownEditorMeasurement,
-} from '../pedigree/__tests__/editorFixtures.tsx';
+} from '../family-pedigree/__tests__/editorFixtures.tsx';
+import { addFamilyMemberVariable } from '../family-pedigree/sections/__tests__/pedigreeFixtures.tsx';
 
 shimMarkdownEditorMeasurement();
 

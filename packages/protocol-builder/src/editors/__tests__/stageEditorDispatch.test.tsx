@@ -8,8 +8,8 @@ import {
   loadFixtureStage,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { shimMarkdownEditorMeasurement } from '../pedigree/__tests__/editorFixtures.tsx';
-import { FamilyPedigreeStageEditor } from '../pedigree/FamilyPedigreeStageEditor.tsx';
+import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/editorFixtures.tsx';
+import { FamilyPedigreeStageEditor } from '../family-pedigree/FamilyPedigreeStageEditor.tsx';
 
 shimMarkdownEditorMeasurement();
 

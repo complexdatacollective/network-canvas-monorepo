@@ -30,8 +30,8 @@ const FIXTURE_DIRECTORIES = ['testing'];
  * until i18n-1b converted it — and every directory this package has is now
  * inside the copy guards rather than excused by them.
  *
- * The five interface families under `sections/` — `network`, `pedigree`,
- * `narrativePedigree`, `geospatial`, `anonymisation` — are not listed either,
+ * The five interface families — `network`, `pedigree`, `narrativePedigree`,
+ * `geospatial`, `anonymisation` — are not listed either,
  * and that holds whether or not the branch that owns them has been merged in
  * yet: an exclusion naming a directory this package does not have excuses
  * nothing and cannot be seen to rot, and the families arrive converted — every

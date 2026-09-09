@@ -8,7 +8,7 @@ import { alterEdgeFormStageEditor } from '../alter-edge-form/AlterEdgeFormStageE
 import { alterFormStageEditor } from '../alter-form/AlterFormStageEditor.ts';
 import { egoFormStageEditor } from '../ego-form/EgoFormStageEditor.ts';
 import { informationStageEditor } from '../information/InformationStageEditor.ts';
-import { NameGeneratorStageEditor } from '../nameGenerators/NameGeneratorStageEditor.tsx';
+import { NameGeneratorStageEditor } from '../name-generator/NameGeneratorStageEditor.tsx';
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
 vi.mock('../../fields/RichTextField.tsx', () => ({

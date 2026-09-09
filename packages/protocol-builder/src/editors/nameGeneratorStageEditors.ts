@@ -1,5 +1,5 @@
 import { defineStageEditorPart } from '../stage-editor-contract.ts';
-import { NameGeneratorStageEditor } from './nameGenerators/NameGeneratorStageEditor.tsx';
+import { NameGeneratorStageEditor } from './name-generator/NameGeneratorStageEditor.tsx';
 
 /**
  * The interfaces a participant names people with.

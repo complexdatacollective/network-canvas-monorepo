@@ -1,5 +1,5 @@
 import { defineStageEditorPart } from '../stage-editor-contract.ts';
-import { FamilyPedigreeStageEditor } from './pedigree/FamilyPedigreeStageEditor.tsx';
+import { FamilyPedigreeStageEditor } from './family-pedigree/FamilyPedigreeStageEditor.tsx';
 
 /**
  * The interfaces that write into the codebook as much as into their own stage.
