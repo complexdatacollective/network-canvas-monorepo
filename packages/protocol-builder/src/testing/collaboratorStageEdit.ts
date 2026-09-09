@@ -10,6 +10,8 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { FIXTURE_SESSION_OWNER } from './fixtureSession.ts';
 import type { StageEditorHarness } from './renderStageEditor.tsx';
 
+let requestsMade = 0;
+
 /**
  * Another session's edit to THE STAGE this harness is editing.
  *
@@ -36,7 +38,10 @@ export function receiveCollaboratorStageEdit(
   const stageSection = sectionId({ kind: 'stage', stageId: harness.seeded.id });
   const sections = harness.host.getSnapshot().protocolSections;
   const result = harness.host.submit({
-    id: `collaborator-${harness.seeded.id}`,
+    // A fresh request id per call: the host refuses a reused id that carries
+    // different edits, so a test making two collaborator edits in a row would
+    // otherwise be answered `requestIdReused` instead of the second edit.
+    id: `collaborator-${(requestsMade += 1)}`,
     description: edit.description,
     edits: [
       {

@@ -1,10 +1,9 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { contentHash } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { FIXTURE_SESSION_OWNER } from '../../testing/fixtureSession.ts';
+import { receiveCollaboratorStageEdit } from '../../testing/collaboratorStageEdit.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import FormFieldsSection from '../FormFieldsSection.tsx';
 
@@ -145,58 +144,6 @@ const seedSpareAttributes = (harness: Harness) => {
   });
 };
 
-/** One stage edit made somewhere else, told to this session as authoritative. */
-const collaboratorStageEdit = (
-  harness: Harness,
-  description: string,
-  changes: Readonly<Record<string, unknown>>,
-) => {
-  const stageSection = sectionId({ kind: 'stage', stageId: harness.seeded.id });
-  const sections = harness.host.getSnapshot().protocolSections;
-  const result = harness.host.submit({
-    id: `collaborator-${Object.keys(changes).join('-')}`,
-    description,
-    edits: [
-      {
-        kind: 'update',
-        sectionId: stageSection,
-        expectedContentHash: contentHash(sections[stageSection] ?? {}),
-        commands: Object.entries(changes).map(([key, value]) => ({
-          op: 'set' as const,
-          key,
-          value,
-        })),
-      },
-    ],
-    authority: {
-      sectionId: stageSection,
-      leaseOwner: FIXTURE_SESSION_OWNER,
-      leaseEpoch: 1n,
-    },
-  });
-  if (result.status !== 'applied') {
-    throw new Error(`${description} did not apply: ${JSON.stringify(result)}`);
-  }
-  const { protocolSections, manifestRevision } = harness.host.getSnapshot();
-  const stageDocument = asRecord(protocolSections[stageSection]);
-  act(() => {
-    harness.session.receiveAuthoritativeUpdate({
-      protocolSections,
-      manifestRevision,
-    });
-    harness.session.acknowledge({
-      // Which stage this is belongs to the session, not to a draft.
-      fields: Object.fromEntries(
-        Object.entries(stageDocument).filter(
-          ([key]) => key !== 'id' && key !== 'type',
-        ),
-      ),
-      throughBatchId: 0,
-      manifestRevision,
-    });
-  });
-};
-
 const stageForm = (harness: Harness): Record<string, unknown> => {
   const stageSection = sectionId({ kind: 'stage', stageId: harness.seeded.id });
   return asRecord(
@@ -213,17 +160,25 @@ const stageFields = (harness: Harness): Record<string, unknown>[] => {
 const rebindTheRow = (harness: Harness, variableId: string) => {
   const fields = stageFields(harness);
   fields[0] = { ...fields[0], variable: variableId };
-  collaboratorStageEdit(
-    harness,
-    'Collect a different attribute, from another session',
-    { form: { ...stageForm(harness), fields } },
-  );
+  receiveCollaboratorStageEdit(harness, {
+    description: 'Collect a different attribute, from another session',
+    commands: [
+      { op: 'set', key: 'form', value: { ...stageForm(harness), fields } },
+    ],
+  });
 };
 
 /** A collaborator takes the row out of the form. */
 const removeTheRow = (harness: Harness) => {
-  collaboratorStageEdit(harness, 'Take the field out, from another session', {
-    form: { ...stageForm(harness), fields: stageFields(harness).slice(1) },
+  receiveCollaboratorStageEdit(harness, {
+    description: 'Take the field out, from another session',
+    commands: [
+      {
+        op: 'set',
+        key: 'form',
+        value: { ...stageForm(harness), fields: stageFields(harness).slice(1) },
+      },
+    ],
   });
 };
 
@@ -233,14 +188,21 @@ const removeTheRow = (harness: Harness) => {
  * collects about does not have.
  */
 const repointTheStage = (harness: Harness) => {
-  collaboratorStageEdit(
-    harness,
-    'Collect about family members instead, from another session',
-    {
-      subject: { entity: 'node', type: 'family_member' },
-      form: { fields: [{ variable: 'fm_notes', prompt: 'Anything else?' }] },
-    },
-  );
+  receiveCollaboratorStageEdit(harness, {
+    description: 'Collect about family members instead, from another session',
+    commands: [
+      {
+        op: 'set',
+        key: 'subject',
+        value: { entity: 'node', type: 'family_member' },
+      },
+      {
+        op: 'set',
+        key: 'form',
+        value: { fields: [{ variable: 'fm_notes', prompt: 'Anything else?' }] },
+      },
+    ],
+  });
 };
 
 /** A collaborator deletes an attribute out of the person's codebook. */
