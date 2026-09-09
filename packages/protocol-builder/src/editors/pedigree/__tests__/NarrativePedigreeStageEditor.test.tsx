@@ -397,7 +397,7 @@ describe('a source pedigree that changes while the stage is open', () => {
     );
     expect(
       screen.getByRole('option', {
-        name: 'hasConditionX — this attribute is no longer in the codebook',
+        name: 'hasConditionX — this attribute is not available here',
       }),
     ).toBeInTheDocument();
     expect(dispatched).not.toHaveBeenCalled();

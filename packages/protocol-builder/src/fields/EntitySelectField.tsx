@@ -296,18 +296,19 @@ export function useConfirmEntityTypeChange(): (
         onConfirm: () => undefined,
       });
       if (confirmed !== true) return false;
+      // The lease first, before anything about the target: it is the question
+      // of whether this change may be written at all, and it is the same
+      // question whatever the change lands on. A caller that moves something
+      // other than a codebook type still moves the stage, and a session that
+      // has stopped accepting writes will not take that one either.
+      if (refuseUneditableChange()) return false;
+
       // A choice that is not a codebook type has nothing to recheck HERE. The
       // narrative pedigree's source stage is the one such caller, and what it
       // could lose while the question is open — the stage it names being
       // deleted, re-typed or moved — is already watched and reported on the
       // field itself.
       if (target === null) return true;
-
-      // The lease first. Whether the type the change lands on is still in the
-      // codebook is a question about a write that may happen at all, and this
-      // one is not: the session takes nothing from a lease it no longer holds,
-      // so there is nothing to judge a target against.
-      if (refuseUneditableChange()) return false;
 
       const stillDefined = ruleEntityTypeOptions(
         liveCodebook.current,

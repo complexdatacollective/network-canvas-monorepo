@@ -1435,6 +1435,46 @@ describe('the batch a source change makes', () => {
   });
 
   /**
+   * The lease, asked of this change too.
+   *
+   * The source select asks its question through the same hook the chip picker
+   * does, and answers it with `null` because what it moves is a stage id
+   * rather than a codebook type. That says there is no TARGET to recheck; it
+   * does not say the change may be written. Editing can be taken away while
+   * the researcher reads what a new pedigree costs, and the continuation that
+   * resumes holds an `onChange` captured while the select was still editable —
+   * so the source moved in the form while the session refused the batch,
+   * leaving a stage reading a pedigree nobody chose beside the diseases of one
+   * it no longer reads.
+   *
+   * Refused where every other confirmed change is refused, before the target
+   * is considered at all, and SAID in the words a refused save already uses.
+   */
+  it('refuses a confirmed source change once editing has been taken away', async () => {
+    const harness = renderStageEditor(withMissingSource());
+
+    await chooseOption(harness, 'Source stage', fixturePedigreeOption());
+    const confirm = await screen.findByRole('button', {
+      name: CONFIRM_SOURCE_CHANGE,
+    });
+
+    harness.setReadOnly();
+
+    await harness.user.click(confirm);
+
+    expect(
+      await screen.findByText(
+        'This stage is read-only, so your changes were not saved. Take over editing and try again.',
+      ),
+    ).toBeInTheDocument();
+    // Neither half moved. The session below still reads the pedigree it did,
+    // and the diseases that described it are still there to describe it.
+    expect(draftOf(harness).sourceStageId).toBe('a-pedigree-that-was-deleted');
+    expect(screen.getByText('Condition X')).toBeInTheDocument();
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  /**
    * The defect a form-only clear leaves behind. A bound list resolves every
    * insertion against the draft the SESSION holds, so rows the session was
    * never told about are still there to be resolved against — and the next
