@@ -3,6 +3,7 @@ import type userEvent from '@testing-library/user-event';
 import { type ComponentType, useMemo, useState } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -11,7 +12,6 @@ import type { CreateOptionOutcome } from '../../../sections/CreatableVariablePic
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
-import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import AssignAttributes, {
   committedAttributeVariableIds,
   makeAssignAttributesValidation,
@@ -127,7 +127,7 @@ function renderAttributeList(
     return (
       <BuilderSection title="Additional attributes">
         {probe}
-        <ProtocolArrayField
+        <Field
           name="additionalAttributes"
           label="Additional attributes"
           component={AssignAttributes}

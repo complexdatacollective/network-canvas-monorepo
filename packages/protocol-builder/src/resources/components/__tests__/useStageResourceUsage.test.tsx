@@ -3,10 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import ProtocolField from '../../../form/ProtocolField.tsx';
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import { useStageResourceUsage } from '../useStageResourceUsage.ts';
 import { flushPendingWork } from './asyncControls.ts';
@@ -52,14 +52,14 @@ const SHARED_ITEMS: SectionDoc = {
 function itemIdentityFields(index: number) {
   return (
     <>
-      <ProtocolField
+      <Field
         component={InputField}
         name={`items[${index}].id`}
         nameMode="path"
         label={`Item ${index + 1} id`}
         labelHidden
       />
-      <ProtocolField
+      <Field
         component={InputField}
         name={`items[${index}].type`}
         nameMode="path"
@@ -72,7 +72,7 @@ function itemIdentityFields(index: number) {
 
 function itemPicker(index: number, label: string) {
   return (
-    <ProtocolField
+    <Field
       component={ResourcePickerControl}
       name={`items[${index}].content`}
       nameMode="path"

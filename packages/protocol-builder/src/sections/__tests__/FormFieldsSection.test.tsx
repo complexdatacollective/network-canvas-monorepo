@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import { type ComponentProps, useEffect, useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
@@ -10,7 +11,6 @@ import {
   variableRoleConflicts,
 } from '../../codebook/variableRoles.ts';
 import { draftAdditionalAttributeVariableIds } from '../../codebook/variableValidation.ts';
-import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { protocolContextFromSections } from '../../protocol-context.ts';
 import { fixtureMessage } from '../../testing/i18n.ts';
@@ -932,7 +932,7 @@ function PromptsControl({
 
 function SlotBinder({ handle }: Readonly<{ handle: SlotBinder }>) {
   return (
-    <ProtocolField
+    <Field
       name="prompts"
       label="Prompts"
       labelHidden

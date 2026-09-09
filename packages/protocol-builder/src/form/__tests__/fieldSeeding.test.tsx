@@ -2,13 +2,13 @@ import { screen, waitFor } from '@testing-library/react';
 import { type ComponentType, type ReactNode, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import ProtocolField from '../ProtocolField.tsx';
 
 const renderField = (fields: SectionDoc, children: ReactNode) =>
   renderStageEditor({
@@ -16,16 +16,12 @@ const renderField = (fields: SectionDoc, children: ReactNode) =>
     sections: <BuilderSection title="Introduction">{children}</BuilderSection>,
   });
 
-describe('ProtocolField', () => {
+describe('a field seeded from the document the form was handed', () => {
   it('seeds a field from the path it is really registered under', async () => {
     renderField(
       { label: 'Welcome', introductionPanel: { title: 'Before we start' } },
       <FieldNamespace prefix="introductionPanel">
-        <ProtocolField
-          name="title"
-          label="Panel title"
-          component={InputField}
-        />
+        <Field name="title" label="Panel title" component={InputField} />
       </FieldNamespace>,
     );
 
@@ -48,7 +44,7 @@ describe('ProtocolField', () => {
         attributes: { 'person.age': 'seeded' },
       },
       <FieldNamespace prefix="attributes">
-        <ProtocolField
+        <Field
           name="person.age"
           nameMode="opaque"
           label="Age"
@@ -129,20 +125,12 @@ describe('a field mounting beneath overlapping fields', () => {
     const harness = renderField(
       { label: 'Welcome', settings: { bounds: { min: 'one' } } },
       <>
-        <ProtocolField
-          name="settings"
-          label="Settings"
-          component={ValueOutput}
-        />
+        <Field name="settings" label="Settings" component={ValueOutput} />
         <Collapsible label="bounds">
-          <ProtocolField
-            name="settings.bounds"
-            label="Bounds"
-            component={SetBounds}
-          />
+          <Field name="settings.bounds" label="Bounds" component={SetBounds} />
         </Collapsible>
         <Disclosure label="Show minimum">
-          <ProtocolField
+          <Field
             name="settings.bounds.min"
             label="Minimum"
             component={InputField}
@@ -207,9 +195,9 @@ const SEEDED_ITEMS: SectionDoc = {
 describe('a field mounting beneath a container holding an unsaved edit', () => {
   const overlappingItems = (
     <>
-      <ProtocolField name="items" label="Page items" component={SetItems} />
+      <Field name="items" label="Page items" component={SetItems} />
       <Disclosure label="Show the first item">
-        <ProtocolField
+        <Field
           name="items[0].content"
           nameMode="path"
           label="First item"

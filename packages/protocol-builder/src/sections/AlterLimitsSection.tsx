@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
@@ -10,7 +11,6 @@ import {
   IntegerFieldControl,
   wholeNumberRule,
 } from '../fields/IntegerField.tsx';
-import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
@@ -296,7 +296,7 @@ export default function AlterLimitsSection() {
           </AlertDescription>
         </Alert>
       )}
-      <ProtocolField<typeof IntegerFieldControl>
+      <Field<typeof IntegerFieldControl>
         name={MIN_FIELD}
         component={IntegerFieldControl}
         label={intl.formatMessage(messages.minLabel)}
@@ -308,7 +308,7 @@ export default function AlterLimitsSection() {
         validateOnChange
         validateOnChangeDelay={REFUSAL_DELAY}
       />
-      <ProtocolField<typeof IntegerFieldControl>
+      <Field<typeof IntegerFieldControl>
         name={MAX_FIELD}
         component={IntegerFieldControl}
         label={intl.formatMessage(messages.maxLabel)}

@@ -47,8 +47,6 @@ import {
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
 import { useDialogFormSubmissionBlock } from '../form/DialogForm.tsx';
-import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
-import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
@@ -889,7 +887,7 @@ export default function FormFieldsSection({
       {...(capability === undefined ? {} : { capability })}
     >
       {hasTitle && (
-        <ProtocolField<typeof InputField>
+        <Field<typeof InputField>
           name={TITLE}
           component={InputField}
           label={intl.formatMessage(messages.formTitleLabel)}
@@ -899,7 +897,7 @@ export default function FormFieldsSection({
         />
       )}
       <FormFieldsScopeContext value={scope}>
-        <ProtocolArrayField<typeof DialogArrayField>
+        <Field<typeof DialogArrayField>
           name={fieldsPath}
           label={intl.formatMessage(fieldLabel)}
           hint={intl.formatMessage(fieldHint)}

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -19,7 +20,6 @@ import {
   loadFixtureStage,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import ProtocolField from '../ProtocolField.tsx';
 import StageEditorShell from '../StageEditorShell.tsx';
 
 const STAGE_ID = 'information-1';
@@ -28,7 +28,7 @@ const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE_ID });
 /** One section owning one value, so a save can be compared key by key. */
 const nameSection = (
   <BuilderSection title="Stage name">
-    <ProtocolField name="label" label="Stage name" component={InputField} />
+    <Field name="label" label="Stage name" component={InputField} />
   </BuilderSection>
 );
 

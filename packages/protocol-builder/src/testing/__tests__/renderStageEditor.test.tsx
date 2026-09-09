@@ -2,11 +2,11 @@ import { act, screen, waitFor } from '@testing-library/react';
 import { useEffect, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import RichTextField from '../../fields/RichTextField.tsx';
-import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useResourceClient } from '../../resources/client.tsx';
 import type { ResourceDescriptor } from '../../resources/types.ts';
@@ -271,7 +271,7 @@ describe('the stage-editor test harness', () => {
 function SingleLineQuestion() {
   return (
     <BuilderSection title="Question">
-      <ProtocolField<typeof RichTextField>
+      <Field<typeof RichTextField>
         name="interviewScript"
         component={RichTextField}
         label="Question text"

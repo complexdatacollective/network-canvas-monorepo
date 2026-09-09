@@ -2,10 +2,11 @@ import { useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 
 import { EntitySelectControl } from '../../fields/EntitySelectField.tsx';
-import ProtocolField from '../../form/ProtocolField.tsx';
+import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
@@ -281,7 +282,7 @@ export default function PedigreeNodeConfigurationSection() {
           </AlertDescription>
         </Alert>
       )}
-      <ProtocolField<typeof EntitySelectControl>
+      <Field<typeof EntitySelectControl>
         name={TYPE_FIELD}
         component={EntitySelectControl}
         entityType="node"
@@ -289,7 +290,7 @@ export default function PedigreeNodeConfigurationSection() {
         {...(blockChangeReason === undefined ? {} : { blockChangeReason })}
         label={intl.formatMessage(pedigreeMessages.nodeTypeLabel)}
         hint={intl.formatMessage(pedigreeMessages.nodeTypeHint)}
-        required
+        required={REQUIRED}
       />
 
       {subject !== null && (

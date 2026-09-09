@@ -75,7 +75,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * Array-level completeness rule. It reaches the caller's `ProtocolArrayField`
+ * Array-level completeness rule. It reaches the caller's `<Field>`
  * through `makeAssignAttributesValidation`, which hands it the whole array.
  *
  * The rows run `required` on both cells too, but a row is not a registered
@@ -137,7 +137,7 @@ const makeCrossClassPicks =
 
 /**
  * Every array-level rule this editor needs, as one object to SPREAD onto the
- * owning `ProtocolArrayField` — the `Options.tsx` `optionsValidation` idiom,
+ * owning `<Field>` — the `Options.tsx` `optionsValidation` idiom,
  * so a call site cannot keep some and drop others.
  *
  * A factory rather than a constant because the cross-class rule has to close
@@ -201,7 +201,7 @@ export type AssignAttributesProps = Omit<
 /**
  * Rows of variable-picker plus boolean value, added straight into the list.
  *
- * Rendered as `<ProtocolArrayField component={AssignAttributes} … />`, so the
+ * Rendered as `<Field component={AssignAttributes} … />`, so the
  * whole list is ONE field value and no row registers
  * `additionalAttributes[0].variable` in the form store — a deleted stamp must
  * not be able to reappear through a dormant value.

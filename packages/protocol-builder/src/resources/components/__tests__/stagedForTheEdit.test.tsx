@@ -2,7 +2,8 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it } from 'vitest';
 
-import ProtocolField from '../../../form/ProtocolField.tsx';
+import Field from '@codaco/fresco-ui/form/Field/Field';
+
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
 import type { CommittedResource } from './resourceHost.ts';
@@ -17,7 +18,7 @@ const NEIGHBOURHOOD: CommittedResource = {
 
 function picker(name: string, label: string) {
   return (
-    <ProtocolField
+    <Field
       component={ResourcePickerControl}
       name={name}
       label={label}

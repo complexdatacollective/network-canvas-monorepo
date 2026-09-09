@@ -1,8 +1,8 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 
 import RichTextField from '../fields/RichTextField.tsx';
-import ProtocolField from '../form/ProtocolField.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 
 const messages = defineMessages({
@@ -77,7 +77,7 @@ export default function InterviewerGuidanceSection() {
       description={intl.formatMessage(messages.description)}
       capability={GUIDANCE_CAPABILITY}
     >
-      <ProtocolField
+      <Field
         name="interviewScript"
         component={RichTextField}
         label={intl.formatMessage(messages.fieldLabel)}

@@ -1,14 +1,13 @@
 import { act, cleanup, fireEvent } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
-import ProtocolArrayField from '../../ProtocolArrayField.tsx';
-import ProtocolField from '../../ProtocolField.tsx';
 import Options from '../Options.tsx';
 
 /**
@@ -52,14 +51,10 @@ function renderList(fields: SectionDoc) {
       <>
         <BuilderSection title="Page content">
           {probe}
-          <ProtocolField
-            name="title"
-            label="Page heading"
-            component={InputField}
-          />
+          <Field name="title" label="Page heading" component={InputField} />
         </BuilderSection>
         <BuilderSection title="Answer options">
-          <ProtocolArrayField
+          <Field
             name="options"
             label="Answer options"
             component={Options}

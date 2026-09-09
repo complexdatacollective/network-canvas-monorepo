@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
@@ -14,7 +15,6 @@ import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { DEFAULT_ITEM_LABEL } from '../arrayFields/arrayMessages.ts';
 import { readOnlyMessage } from '../arrayFields/arrayWriteRefusal.ts';
 import Options, { optionsValidation } from '../arrayFields/Options.tsx';
-import ProtocolArrayField from '../ProtocolArrayField.tsx';
 
 /**
  * An options list and the shell around it, read in Spanish.
@@ -48,7 +48,7 @@ const optionsFields: SectionDoc = {
 
 const optionsSection = (
   <BuilderSection title="Opciones de respuesta">
-    <ProtocolArrayField
+    <Field
       name="options"
       label="Opciones de respuesta"
       component={Options}

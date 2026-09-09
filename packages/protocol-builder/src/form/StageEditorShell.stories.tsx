@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { expect, within } from 'storybook/test';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
@@ -18,7 +19,6 @@ import StageNameSection from '../sections/StageNameSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import { createInMemoryHost } from '../testing/host/createInMemoryHost.ts';
 import { SeedProtocolCache } from '../testing/seedProtocolCache.tsx';
-import ProtocolField from './ProtocolField.tsx';
 import StageEditorShell from './StageEditorShell.tsx';
 
 const STAGE_ID = 'welcome-screen';
@@ -90,7 +90,7 @@ function StageEditorHost({
                     title="Page content"
                     description="What this screen shows the participant."
                   >
-                    <ProtocolField
+                    <Field
                       name="title"
                       label="Page heading"
                       component={InputField}

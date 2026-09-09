@@ -3,13 +3,12 @@ import { type ComponentType, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { Button } from '@codaco/fresco-ui/Button';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
 import SubjectSelectField from '../../fields/SubjectSelectField.tsx';
 import MultiSelect from '../../form/arrayFields/MultiSelect.tsx';
-import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
-import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
@@ -36,7 +35,7 @@ const RadioGroup = RadioGroupField as ComponentType<Record<string, unknown>>;
 function RosterSource() {
   return (
     <BuilderSection title="Roster source">
-      <ProtocolField<typeof RadioGroup>
+      <Field<typeof RadioGroup>
         name="dataSource"
         label="Roster data file"
         component={RadioGroup}
@@ -63,7 +62,7 @@ function SearchOptions() {
         capability={SEARCH}
         resetOn="dataSource"
       >
-        <ProtocolField
+        <Field
           name="searchOptions.fuzziness"
           label="Fuzziness"
           component={InputField}
@@ -83,7 +82,7 @@ function SearchOptionsAgainstASubject() {
   return (
     <>
       <BuilderSection title="Node type">
-        <ProtocolField<typeof SubjectSelectField>
+        <Field<typeof SubjectSelectField>
           name="subject"
           label="Node type"
           component={SubjectSelectField}
@@ -91,14 +90,14 @@ function SearchOptionsAgainstASubject() {
         />
       </BuilderSection>
       <BuilderSection title="Stage name">
-        <ProtocolField name="label" label="Stage name" component={InputField} />
+        <Field name="label" label="Stage name" component={InputField} />
       </BuilderSection>
       <BuilderSection
         title="Search options"
         capability={SEARCH}
         resetOn="subject"
       >
-        <ProtocolField
+        <Field
           name="searchOptions.fuzziness"
           label="Fuzziness"
           component={InputField}
@@ -168,7 +167,7 @@ function CardDetails() {
         resetOn="dataSource"
       >
         {showAttributes ? (
-          <ProtocolArrayField<typeof MultiSelect>
+          <Field<typeof MultiSelect>
             name="cardOptions.additionalProperties"
             label="Attributes shown on a card"
             component={MultiSelect}

@@ -139,8 +139,8 @@ export type DanglingCells = Readonly<{
 const NO_DANGLING_CELLS: readonly DanglingCells[] = Object.freeze([]);
 
 /**
- * The array-level rule every MultiSelect owner must put on its
- * `ProtocolArrayField` — the counterpart of the `required` the cells carry,
+ * The array-level rule every MultiSelect owner must put on its own
+ * `<Field>` — the counterpart of the `required` the cells carry,
  * which is DISPLAY ONLY because a row is not a registered field (see
  * RowField).
  *
@@ -179,7 +179,7 @@ const completeRows =
 
 /**
  * Every array-level rule a MultiSelect owner needs, as one object to SPREAD
- * onto the owning `ProtocolArrayField` — the `Options.tsx` `optionsValidation`
+ * onto the owning `<Field>` — the `Options.tsx` `optionsValidation`
  * idiom, so a call site cannot keep some and drop others.
  *
  * A factory because the rule has to know the columns, and — where a column
@@ -391,7 +391,7 @@ export type MultiSelectProps = Omit<
 /**
  * A sortable list of always-editing rows, each a fixed set of selects/inputs.
  *
- * Rendered as `<ProtocolArrayField component={…} … />`, so the whole list
+ * Rendered as `<Field component={…} … />`, so the whole list
  * arrives as ONE `value`/`onChange` pair; no row is ever registered as a form
  * field. Every section reaches it through `OptionalList`, which is where the
  * decision an EMPTY list records lives: this component renders whatever it is

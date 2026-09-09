@@ -3,13 +3,14 @@ import { createElement, useId } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { useEnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import StageNameInput from '../fields/StageNameInput.tsx';
-import ProtocolField from '../form/ProtocolField.tsx';
+import { REQUIRED } from '../form/requiredField.ts';
 import {
   SectionScopeContext,
   useStageEditorForm,
@@ -154,7 +155,7 @@ export default function StageNameSection({
         </Paragraph>
       )}
       <SectionScopeContext value={sectionId}>
-        <ProtocolField<typeof StageNameInput>
+        <Field<typeof StageNameInput>
           name="label"
           component={StageNameInput}
           // The hero input is the visible heading, so the label exists for
@@ -164,7 +165,7 @@ export default function StageNameSection({
           labelHidden
           placeholder={intl.formatMessage(messages.placeholder)}
           characterLimit={STAGE_NAME_LIMIT}
-          required
+          required={REQUIRED}
           autoFocus={autoFocus ?? isNewStage}
           onFieldBlur={onLabelBlur}
         />

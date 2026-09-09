@@ -1,9 +1,10 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
 import StageDestinationPickerField from '../fields/StageDestinationPickerField.tsx';
-import ProtocolField from '../form/ProtocolField.tsx';
+import { REQUIRED } from '../form/requiredField.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { NO_RULES_MESSAGE } from '../rules/ruleSet.ts';
 import { QueryRuleSetField } from '../rules/RuleSetField.tsx';
@@ -153,7 +154,7 @@ export default function SkipLogicSection({ position }: SkipLogicSectionProps) {
       description={intl.formatMessage(messages.description)}
       capability={SKIP_LOGIC_CAPABILITY}
     >
-      <ProtocolField<typeof RadioGroupField>
+      <Field<typeof RadioGroupField>
         name="skipLogic.action"
         label={intl.formatMessage(messages.actionLabel)}
         hint={intl.formatMessage(messages.actionHint)}
@@ -162,9 +163,9 @@ export default function SkipLogicSection({ position }: SkipLogicSectionProps) {
           { value: 'SHOW', label: intl.formatMessage(messages.showAction) },
           { value: 'SKIP', label: intl.formatMessage(messages.skipAction) },
         ]}
-        required
+        required={REQUIRED}
       />
-      <ProtocolField<typeof QueryRuleSetField>
+      <Field<typeof QueryRuleSetField>
         name={SKIP_LOGIC_RULES_FIELD}
         label={intl.formatMessage(messages.rulesLabel)}
         hint={intl.formatMessage(messages.rulesHint)}
@@ -175,7 +176,7 @@ export default function SkipLogicSection({ position }: SkipLogicSectionProps) {
         required={NO_RULES_MESSAGE}
         custom={rulesValidation}
       />
-      <ProtocolField<typeof StageDestinationPickerField>
+      <Field<typeof StageDestinationPickerField>
         name="skipLogic.destination"
         label={intl.formatMessage(messages.destinationLabel)}
         hint={intl.formatMessage(messages.destinationHint)}

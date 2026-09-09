@@ -2,12 +2,12 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
-import ProtocolField from '../../form/ProtocolField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import type { InMemoryProtocolStore } from '../../testing/host/protocolStore.ts';
 import type { RuleDraft } from '../rule.ts';
@@ -125,11 +125,7 @@ const probedRuleSet = (): RuleSetValue | null => {
  */
 const ruleSetSection = (
   <BuilderSection title="Skip logic">
-    <ProtocolField
-      name={RULE_SET_FIELD}
-      label="Rules"
-      component={QueryRuleSetField}
-    />
+    <Field name={RULE_SET_FIELD} label="Rules" component={QueryRuleSetField} />
     <RuleSetProbe />
   </BuilderSection>
 );

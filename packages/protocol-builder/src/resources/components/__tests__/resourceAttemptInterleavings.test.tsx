@@ -2,8 +2,9 @@ import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
+
 import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
-import ProtocolField from '../../../form/ProtocolField.tsx';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { enIntl } from '../../../testing/i18n.ts';
 import {
@@ -89,7 +90,7 @@ const bytesOf = (text: string): Uint8Array => new TextEncoder().encode(text);
 
 function imageField() {
   return (
-    <ProtocolField
+    <Field
       component={ResourcePickerControl}
       name="backgroundImage"
       label="Background image"
@@ -100,7 +101,7 @@ function imageField() {
 
 function rosterField() {
   return (
-    <ProtocolField
+    <Field
       component={ResourcePickerControl}
       name="dataSource"
       label="Roster"
@@ -111,7 +112,7 @@ function rosterField() {
 
 function mapLayerField() {
   return (
-    <ProtocolField
+    <Field
       component={ResourcePickerControl}
       name="mapLayer"
       label="Map layer"

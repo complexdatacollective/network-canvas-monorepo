@@ -3,6 +3,7 @@ import { MotionConfig, type Transition } from 'motion/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
@@ -11,7 +12,6 @@ import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
 import { DialogFormField } from '../../DialogForm.tsx';
-import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import DialogArrayField from '../DialogArrayField.tsx';
 import MultiSelect, {
   makeMultiSelectValidation,
@@ -156,7 +156,7 @@ describe('a row removal confirm', () => {
           { label: 'Charlie', value: 'charlie' },
         ],
       },
-      <ProtocolArrayField
+      <Field
         name="options"
         label="Answer options"
         component={Options}
@@ -188,7 +188,7 @@ describe('a row removal confirm', () => {
           { label: 'Bravo', value: 'bravo' },
         ],
       },
-      <ProtocolArrayField
+      <Field
         name="options"
         label="Answer options"
         component={Options}
@@ -212,7 +212,7 @@ describe('a row removal confirm', () => {
       {
         options: [{ label: 'Alpha', value: 'alpha' }],
       },
-      <ProtocolArrayField
+      <Field
         name="options"
         label="Answer options"
         component={Options}
@@ -244,7 +244,7 @@ describe('a row removal confirm', () => {
           { property: 'age', direction: 'desc' },
         ],
       },
-      <ProtocolArrayField
+      <Field
         name="sortOrder"
         label="Sort order"
         component={MultiSelect}
@@ -279,7 +279,7 @@ describe('a row removal confirm', () => {
           { id: 'c', text: 'Charlie' },
         ],
       },
-      <ProtocolArrayField
+      <Field
         name="prompts"
         label="Prompts"
         component={DialogArrayField}
@@ -323,7 +323,7 @@ describe('a row removal confirm', () => {
             { label: 'Charlie', value: 'charlie' },
           ],
         },
-        <ProtocolArrayField
+        <Field
           name="options"
           label="Answer options"
           component={Options}

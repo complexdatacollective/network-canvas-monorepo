@@ -10,8 +10,6 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
-import ProtocolArrayField from '../../ProtocolArrayField.tsx';
-import ProtocolField from '../../ProtocolField.tsx';
 import DialogArrayField from '../DialogArrayField.tsx';
 import Options, { optionsValidation } from '../Options.tsx';
 import { promptItemLabel } from './itemLabel.ts';
@@ -57,11 +55,7 @@ function renderList(
       <>
         <BuilderSection title="Page content">
           {probe}
-          <ProtocolField
-            name="title"
-            label="Page heading"
-            component={InputField}
-          />
+          <Field name="title" label="Page heading" component={InputField} />
         </BuilderSection>
         <BuilderSection title={title}>{list}</BuilderSection>
       </>
@@ -71,7 +65,7 @@ function renderList(
 }
 
 const promptList = (
-  <ProtocolArrayField
+  <Field
     name="prompts"
     label="Prompts"
     component={DialogArrayField}
@@ -187,7 +181,7 @@ describe('a list bound to a stage document key', () => {
  * and the only thing under test is where its edits land.
  */
 const nestedPromptList = (
-  <ProtocolArrayField
+  <Field
     name="nodeConfig.form"
     label="Prompts"
     component={DialogArrayField}
@@ -348,7 +342,7 @@ describe('array-level validation', () => {
     };
     const { harness } = renderList(
       seeded,
-      <ProtocolArrayField
+      <Field
         name="options"
         label="Options"
         component={Options}
@@ -403,7 +397,7 @@ describe('a list whose name is not a document key', () => {
     };
     const { harness, draft } = renderList(
       seeded,
-      <ProtocolArrayField
+      <Field
         name="prompts[0].tags"
         label="Tags"
         component={Options}
@@ -445,7 +439,7 @@ function PromptFieldsWithTags({ item }: Record<string, unknown>) {
       />
       {/* A name a document key COULD be spelled with, so the only thing that
           can tell this list it is not one is the store it was mounted in. */}
-      <ProtocolArrayField
+      <Field
         name="tags"
         label="Tags"
         component={Options}
@@ -465,7 +459,7 @@ describe('a list rendered inside a row dialog', () => {
     };
     const { harness, draft } = renderList(
       seeded,
-      <ProtocolArrayField
+      <Field
         name="prompts"
         label="Prompts"
         component={DialogArrayField}

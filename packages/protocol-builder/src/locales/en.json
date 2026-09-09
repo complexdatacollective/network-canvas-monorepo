@@ -951,6 +951,10 @@
     "defaultMessage": "Node type",
     "description": "Accessible name of the group of chips a researcher picks a node type from. A node type is a kind of network member the study records, such as a person or a place."
   },
+  "protocolBuilder.field.required": {
+    "defaultMessage": "This field is required.",
+    "description": "Shown under any unanswered required control in a stage editor when the researcher tries to save the stage. Addresses the researcher authoring the protocol, not a participant answering it."
+  },
   "protocolBuilder.formFields.addLabel": {
     "defaultMessage": "Create new form field",
     "description": "Button that opens the dialog for adding one more question to a form. Whole rather than a generic \"Add\", because a stage editor shows several lists at once."
@@ -2426,10 +2430,6 @@
   "protocolBuilder.protocolContext.variableIdReused": {
     "defaultMessage": "Attribute record key \"{variableId}\" is reused across entity types (first declared in {firstOwnerSectionId}).",
     "description": "Why part of the codebook could not be read: two entity types store an attribute under the same key. variableId is the key; firstOwnerSectionId identifies the part of the protocol that used it first."
-  },
-  "protocolBuilder.protocolField.required": {
-    "defaultMessage": "This field is required.",
-    "description": "Shown under any unanswered required control in a stage editor when the researcher tries to save the stage. Addresses the researcher authoring the protocol, not a participant answering it."
   },
   "protocolBuilder.resourceBrowser.emptyState": {
     "defaultMessage": "There are no resources to choose from yet.",

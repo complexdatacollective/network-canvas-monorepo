@@ -206,7 +206,7 @@ const DELETED_TARGET_TITLES = defineMessages({
  *
  * `controlUneditable` is the caller's own reading of itself, for the one part
  * of this the form cannot see: a picker whose props have stopped accepting
- * input. Everything a control derives that from — `ProtocolField` disabling
+ * input. Everything a control derives that from — `FieldsDisabled` closing
  * every field of a read-only editor, the control's own `readOnly` — is a
  * render away from the closure that resumes, so it is read live.
  */
@@ -488,7 +488,7 @@ export function EntitySelectControl({
    *
    * Whether this control accepts input at all is read the same way and for the
    * same reason. A field of a read-only editor arrives `disabled`
-   * (`ProtocolField` decides that for every field, so no section has to), and a
+   * (`FieldsDisabled` decides that for every field, so no section has to), and a
    * section can withdraw its own list while the question stands: the chips the
    * researcher is answering about are already out of reach behind the dialog,
    * and the closure resuming under them must not write what they can no longer

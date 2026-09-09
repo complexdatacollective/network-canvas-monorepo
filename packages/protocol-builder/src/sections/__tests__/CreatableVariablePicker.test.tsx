@@ -12,13 +12,13 @@ import { describe, expect, it } from 'vitest';
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { useCreateCodebookVariable } from '../../codebook/useCodebookVariableEdits.ts';
 import AssignAttributes from '../../form/arrayFields/AssignAttributes.tsx';
-import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import {
   type CodebookSubject,
@@ -118,7 +118,7 @@ function StampedAttributes({
 
   return (
     <Section title="Additional attributes">
-      <ProtocolArrayField
+      <Field
         name="additionalAttributes"
         label="Additional attributes"
         component={AssignAttributes}
@@ -155,7 +155,7 @@ function SelectableAttributes() {
 
   return (
     <Section title="Additional attributes">
-      <ProtocolArrayField
+      <Field
         name="additionalAttributes"
         label="Additional attributes"
         component={AssignAttributes}

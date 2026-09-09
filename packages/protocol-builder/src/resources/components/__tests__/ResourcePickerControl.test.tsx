@@ -2,12 +2,12 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
-import ProtocolField from '../../../form/ProtocolField.tsx';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import { deferred, flushPendingWork } from './asyncControls.ts';
@@ -86,7 +86,7 @@ const REFUSAL = {
 
 function imageField() {
   return (
-    <ProtocolField
+    <Field
       component={ResourcePickerControl}
       name="backgroundImage"
       label="Background image"
@@ -97,7 +97,7 @@ function imageField() {
 
 function rosterField() {
   return (
-    <ProtocolField
+    <Field
       component={ResourcePickerControl}
       name="dataSource"
       label="Roster"
@@ -197,7 +197,7 @@ describe('ResourcePickerControl', () => {
     const { fieldValue } = renderResourceEditor({
       resources: [videoSeed],
       children: (
-        <ProtocolField
+        <Field
           component={ResourcePickerControl}
           name="video"
           label="Stage video"
@@ -223,7 +223,7 @@ describe('ResourcePickerControl', () => {
     const { fieldValue } = renderResourceEditor({
       resources: [audioSeed],
       children: (
-        <ProtocolField
+        <Field
           component={ResourcePickerControl}
           name="audio"
           label="Stage audio"
@@ -249,7 +249,7 @@ describe('ResourcePickerControl', () => {
     const { fieldValue } = renderResourceEditor({
       resources: [imageSeed, networkSeed],
       children: (
-        <ProtocolField
+        <Field
           component={ResourcePickerControl}
           name="attachment"
           label="Attachment"
@@ -291,7 +291,7 @@ describe('ResourcePickerControl', () => {
             }),
         }),
       children: (
-        <ProtocolField
+        <Field
           component={ResourcePickerControl}
           name="apiKey"
           label="Map provider API key"
@@ -410,7 +410,7 @@ describe('ResourcePickerControl', () => {
       resources: [networkSeed],
       client: counted.wrap,
       children: (
-        <ProtocolField
+        <Field
           component={ResourcePickerControl}
           name="dataSource"
           label="Network data"
@@ -439,7 +439,7 @@ describe('ResourcePickerControl', () => {
     const { fieldValue } = renderResourceEditor({
       client: counted.wrap,
       children: (
-        <ProtocolField
+        <Field
           component={ResourcePickerControl}
           name="mapLayer"
           label="Map layer"
@@ -469,7 +469,7 @@ describe('ResourcePickerControl', () => {
     const user = userEvent.setup();
     const { fieldValue } = renderResourceEditor({
       children: (
-        <ProtocolField
+        <Field
           component={ResourcePickerControl}
           name="mapLayer"
           label="Map layer"
@@ -709,7 +709,7 @@ describe('ResourcePickerControl', () => {
     const user = userEvent.setup({ applyAccept: false });
     renderResourceEditor({
       children: (
-        <ProtocolField
+        <Field
           component={ResourcePickerControl}
           name="mapLayer"
           label="Map layer"
@@ -929,14 +929,14 @@ describe('a picker whose in-flight call is superseded', () => {
 function itemIdentityFields(index: number) {
   return (
     <>
-      <ProtocolField
+      <Field
         component={InputField}
         name={`items[${index}].id`}
         nameMode="path"
         label={`Item ${index + 1} id`}
         labelHidden
       />
-      <ProtocolField
+      <Field
         component={InputField}
         name={`items[${index}].type`}
         nameMode="path"
@@ -949,7 +949,7 @@ function itemIdentityFields(index: number) {
 
 function itemPicker(index: number, label: string) {
   return (
-    <ProtocolField
+    <Field
       component={ResourcePickerControl}
       name={`items[${index}].content`}
       nameMode="path"
@@ -1195,7 +1195,7 @@ describe('the validation state a picker exposes', () => {
       resources: [imageSeed],
       actions: ({ formId }) => <SubmitButton form={formId}>Save</SubmitButton>,
       children: (
-        <ProtocolField
+        <Field
           component={ResourcePickerControl}
           name="backgroundImage"
           label="Background image"
@@ -1236,7 +1236,7 @@ describe('the validation state a picker exposes', () => {
     renderResourceEditor({
       actions: ({ formId }) => <SubmitButton form={formId}>Save</SubmitButton>,
       children: (
-        <ProtocolField
+        <Field
           component={ResourcePickerControl}
           name="apiKey"
           label="Map provider API key"
@@ -1265,7 +1265,7 @@ describe('the validation state a picker exposes', () => {
       resources: [networkSeed],
       actions: ({ formId }) => <SubmitButton form={formId}>Save</SubmitButton>,
       children: (
-        <ProtocolField
+        <Field
           component={ResourcePickerControl}
           name="dataSource"
           label="Network data"
@@ -1351,7 +1351,7 @@ describe('a picker the researcher backs out of', () => {
         dataSource: 'existing',
       },
       children: (
-        <ProtocolField
+        <Field
           component={ResourcePickerControl}
           name="dataSource"
           label="Network data"

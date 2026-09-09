@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { formatMessageError } from '@codaco/app-i18n/messages';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 
-import ProtocolField from '../../form/ProtocolField.tsx';
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { enIntl, esIntl } from '../../testing/i18n.ts';
@@ -182,7 +182,7 @@ function LocaleSwitchingRuleList({ locale }: { locale: 'en' | 'es' }) {
     >
       <RuleEditorHost sections={ruleSections()}>
         <BuilderSection title="Skip logic">
-          <ProtocolField
+          <Field
             name="skipLogic.filter"
             label="Rules"
             component={QueryRuleSetField}

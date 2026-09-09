@@ -3,11 +3,11 @@ import { useState, type ReactNode } from 'react';
 import { expect, screen, userEvent, within } from 'storybook/test';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import ProtocolField from '../../form/ProtocolField.tsx';
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
@@ -48,14 +48,14 @@ type StageScenario = Readonly<{ stage: StoryStage; children: ReactNode }>;
 function itemIdentityFields(index: number): ReactNode {
   return (
     <div className="hidden">
-      <ProtocolField
+      <Field
         component={InputField}
         name={`items[${index}].id`}
         nameMode="path"
         label={`Item ${index + 1} id`}
         labelHidden
       />
-      <ProtocolField
+      <Field
         component={InputField}
         name={`items[${index}].type`}
         nameMode="path"
@@ -68,7 +68,7 @@ function itemIdentityFields(index: number): ReactNode {
 
 function imageItemPicker(index: number, label: string): ReactNode {
   return (
-    <ProtocolField
+    <Field
       component={ResourcePickerControl}
       name={`items[${index}].content`}
       nameMode="path"
@@ -137,7 +137,7 @@ const STAGE_SCENARIOS: Readonly<
       },
     },
     children: (
-      <ProtocolField
+      <Field
         component={ResourcePickerControl}
         name="dataSource"
         label="Roster data file"

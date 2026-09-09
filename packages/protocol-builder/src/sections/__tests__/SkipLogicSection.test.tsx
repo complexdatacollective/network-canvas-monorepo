@@ -1,11 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import ProtocolField from '../../form/ProtocolField.tsx';
 import type { RuleDraft } from '../../rules/rule.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import {
@@ -60,7 +60,7 @@ const editorSections = (
   <>
     <StageNameSection position={{ index: 3, total: 19 }} />
     <BuilderSection title="Page content">
-      <ProtocolField name="title" label="Page heading" component={InputField} />
+      <Field name="title" label="Page heading" component={InputField} />
     </BuilderSection>
     <SkipLogicSection />
     <InterviewerGuidanceSection />

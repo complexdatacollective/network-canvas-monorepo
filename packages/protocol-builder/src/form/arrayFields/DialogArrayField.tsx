@@ -61,6 +61,7 @@ import {
   writeRefusalMessage,
 } from './arrayWriteRefusal.ts';
 import { EditedRowContext, type EditedRowScope } from './editedRow.ts';
+import { ListBinding } from './ListBinding.tsx';
 import RowEditorBoundary from './RowEditorBoundary.tsx';
 import {
   ArrayFieldBindingContext,
@@ -75,13 +76,13 @@ import {
 
 /**
  * COMPOSITION: this is a *field component*, rendered as
- * `<ProtocolArrayField name="prompts" component={DialogArrayField} … />`.
+ * `<Field name="prompts" component={DialogArrayField} … />`.
  * It receives the whole array as one `value`/`onChange` pair and never
  * registers per-index leaves, which is the governing rule for every array in
  * the stage form: a deleted row's dormant value must not be able to resurrect
  * itself in the submitted values. Making it a field component rather than a
- * self-contained `name`-taking section keeps ONE owner of the field name, the
- * validation adapter and the problem-panel anchor (`ProtocolArrayField`).
+ * self-contained `name`-taking section keeps ONE owner of the field name and
+ * of the validation adapter.
  */
 
 type ArrayItem = Record<string, unknown>;
@@ -1179,8 +1180,8 @@ function DialogEditor({
           would commit its own insertions and reorderings against: adding a
           sort rule would insert a row into the array of prompts. It also must
           not commit anything at all until the dialog saves, which is the same
-          rule `ProtocolArrayField` states for a list that finds itself in a
-          nested form store.
+          rule `ListBinding` states for a list that finds itself in a nested
+          form store.
         */}
         <ArrayFieldBindingContext value={NESTED_IN_A_ROW}>
           <EditedRowContext value={editedRow}>
@@ -1205,7 +1206,20 @@ function DialogEditor({
  * stage document as the operation it actually was — addressed by the row's own
  * id, never by the index this render happened to draw it at.
  */
-export default function DialogArrayField<T extends ArrayItem>({
+export default function DialogArrayField<T extends ArrayItem>(
+  props: DialogArrayFieldProps<T>,
+) {
+  // Above the list rather than inside it: the commands the list issues are
+  // resolved against this binding, and a hook cannot read a context its own
+  // component provides.
+  return (
+    <ListBinding name={props.name ?? ''}>
+      <DialogArrayFieldList<T> {...props} />
+    </ListBinding>
+  );
+}
+
+function DialogArrayFieldList<T extends ArrayItem>({
   value,
   onChange,
   name = '',

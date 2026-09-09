@@ -3,12 +3,13 @@ import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { FRAMING_IDS, type FramingId } from '@codaco/protocol-validation';
 
-import ProtocolField from '../../form/ProtocolField.tsx';
+import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
   useDiscardStageValues,
@@ -139,7 +140,7 @@ export default function FramingConfigSection() {
       <Paragraph className="mb-5">
         {intl.formatMessage(pedigreeMessages.framingSharedWording)}
       </Paragraph>
-      <ProtocolField<typeof RadioGroupField>
+      <Field<typeof RadioGroupField>
         name={MODE_FIELD}
         component={RadioGroupField}
         label={intl.formatMessage(pedigreeMessages.framingModeLabel)}
@@ -147,10 +148,10 @@ export default function FramingConfigSection() {
           typeof committedMode === 'string' ? committedMode : 'fixed'
         }
         options={modeOptions}
-        required
+        required={REQUIRED}
       />
       {isFixed && (
-        <ProtocolField<typeof NativeSelectField>
+        <Field<typeof NativeSelectField>
           name={VALUE_FIELD}
           component={NativeSelectField}
           label={intl.formatMessage(pedigreeMessages.framingValueLabel)}
@@ -162,7 +163,7 @@ export default function FramingConfigSection() {
               : DEFAULT_FRAMING
           }
           options={framingOptions}
-          required
+          required={REQUIRED}
         />
       )}
     </BuilderSection>

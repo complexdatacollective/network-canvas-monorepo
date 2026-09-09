@@ -1,10 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import ProtocolField from '../../form/ProtocolField.tsx';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
@@ -78,7 +78,7 @@ const pickTheRosterFile = async (
 
 const rosterFileSection = (
   <BuilderSection title="Roster file">
-    <ProtocolField<typeof RosterFilePicker>
+    <Field<typeof RosterFilePicker>
       name="dataSource"
       label="Roster file"
       component={RosterFilePicker}

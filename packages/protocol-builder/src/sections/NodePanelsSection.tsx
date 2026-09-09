@@ -21,7 +21,6 @@ import type { Asset } from '@codaco/protocol-validation';
 
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
-import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import { useStagedResources } from '../resources/client.tsx';
 import { acceptsResourceKind } from '../resources/components/resourceKinds.ts';
 import ResourcePickerControl from '../resources/components/ResourcePickerControl.tsx';
@@ -514,7 +513,7 @@ export default function NodePanelsSection() {
       disabled={waiting}
       capability={PANELS_CAPABILITY}
     >
-      <ProtocolArrayField<typeof DialogArrayField>
+      <Field<typeof DialogArrayField>
         name={PANELS}
         label={intl.formatMessage(messages.fieldLabel)}
         hint={intl.formatMessage(messages.fieldHint)}

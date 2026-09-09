@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -11,7 +12,6 @@ import BuilderSection from '../../sections/BuilderSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import ProtocolField from '../ProtocolField.tsx';
 import { createStageDraftProbe } from './stageDraftProbe.tsx';
 
 const initialFields: SectionDoc = {
@@ -62,7 +62,7 @@ const threeSections = (pageContentTitle = 'Page content') => (
   <>
     <StageNameSection position={{ index: 1, total: 3 }} />
     <BuilderSection title={pageContentTitle}>
-      <ProtocolField
+      <Field
         name="title"
         label="Page heading"
         component={InputField}
@@ -70,7 +70,7 @@ const threeSections = (pageContentTitle = 'Page content') => (
       />
     </BuilderSection>
     <BuilderSection title="Interviewer guidance" capability={scriptCapability}>
-      <ProtocolField
+      <Field
         name="interviewScript"
         label="Interviewer script text"
         component={InputField}
@@ -291,7 +291,7 @@ describe('StageEditorShell', () => {
             Rename the section
           </button>
           <BuilderSection title={title}>
-            <ProtocolField
+            <Field
               name="title"
               label="Page heading"
               component={InputField}
@@ -360,13 +360,13 @@ describe('StageEditorShell', () => {
             fields: ['interviewScript', 'interviewScriptStyle'],
           }}
         >
-          <ProtocolField
+          <Field
             name="interviewScript"
             label="Interviewer script text"
             component={InputField}
           />
           <Toggleable label="Hide advanced options">
-            <ProtocolField
+            <Field
               name="interviewScriptStyle"
               label="Script style"
               component={InputField}
@@ -425,12 +425,12 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       sections: (
         <BuilderSection title="Skip logic" capability={skipLogicCapability}>
-          <ProtocolField
+          <Field
             name="skipLogic.action"
             label="What this stage does"
             component={InputField}
           />
-          <ProtocolField
+          <Field
             name="skipLogic.destination"
             label="Where the interview continues"
             component={InputField}
@@ -471,14 +471,14 @@ describe('StageEditorShell', () => {
         <WithHiddenPart label="Toggle advanced options">
           {({ shown, toggle }) => (
             <BuilderSection title="Skip logic" capability={skipLogicCapability}>
-              <ProtocolField
+              <Field
                 name="skipLogic.action"
                 label="What this stage does"
                 component={InputField}
               />
               {toggle}
               {shown && (
-                <ProtocolField
+                <Field
                   name="skipLogic.destination"
                   label="Where the interview continues"
                   component={InputField}
@@ -526,7 +526,7 @@ describe('StageEditorShell', () => {
       sections: (
         <BuilderSection title="Skip logic" capability={skipLogicCapability}>
           <Toggleable label="Toggle advanced options">
-            <ProtocolField
+            <Field
               name="skipLogic.destination"
               label="Where the interview continues"
               component={InputField}
@@ -583,7 +583,7 @@ describe('StageEditorShell', () => {
           </button>
           {shown.map((title) => (
             <BuilderSection key={title} title={title}>
-              <ProtocolField
+              <Field
                 name={title === 'Introduction' ? 'title' : 'label'}
                 label={`${title} text`}
                 component={InputField}
@@ -619,7 +619,7 @@ describe('StageEditorShell', () => {
       fields: { ...initialFields, skipLogic: { action: 'SKIP' } },
       sections: (
         <BuilderSection title="Skip logic" capability={skipLogicCapability}>
-          <ProtocolField
+          <Field
             name="skipLogic.action"
             label="What this stage does"
             component={InputField}
@@ -666,7 +666,7 @@ describe('StageEditorShell', () => {
           title="Advanced settings"
           capability={settingsCapability}
         >
-          <ProtocolField<typeof CompoundControl>
+          <Field<typeof CompoundControl>
             name="settings"
             label="Settings"
             component={CompoundControl}
@@ -704,7 +704,7 @@ describe('StageEditorShell', () => {
             >
               {toggle}
               {shown && (
-                <ProtocolField<typeof CompoundControl>
+                <Field<typeof CompoundControl>
                   name="settings"
                   label="Settings"
                   component={CompoundControl}
@@ -773,7 +773,7 @@ describe('StageEditorShell', () => {
             >
               {toggle}
               {shown && (
-                <ProtocolField
+                <Field
                   name="prompt text"
                   nameMode="opaque"
                   label="Prompt text"
@@ -824,7 +824,7 @@ describe('StageEditorShell', () => {
           capability={settingsCapability}
         >
           <Toggleable label="Toggle the control">
-            <ProtocolField<typeof CompoundControl>
+            <Field<typeof CompoundControl>
               name="settings"
               label="Settings"
               component={CompoundControl}
@@ -907,7 +907,7 @@ describe('StageEditorShell', () => {
         >
           {probe}
           <Toggleable label="Toggle the control">
-            <ProtocolField<typeof RowControl>
+            <Field<typeof RowControl>
               name="items[0]"
               label="First item"
               component={RowControl}
@@ -949,7 +949,7 @@ describe('StageEditorShell', () => {
       sections: (
         <>
           <BuilderSection title="Details">
-            <ProtocolField<typeof CompoundControl>
+            <Field<typeof CompoundControl>
               name="settings"
               label="Settings"
               component={CompoundControl}
@@ -959,7 +959,7 @@ describe('StageEditorShell', () => {
             title="Advanced settings"
             capability={settingsCapability}
           >
-            <ProtocolField
+            <Field
               name="interviewScript"
               label="Notes"
               component={InputField}
@@ -1008,7 +1008,7 @@ describe('StageEditorShell', () => {
           capability={scriptCapability}
         >
           <Toggleable label="Toggle the control">
-            <ProtocolField
+            <Field
               name="interviewScript"
               label="Interviewer script text"
               component={InputField}
@@ -1054,7 +1054,7 @@ describe('StageEditorShell', () => {
       sections: (
         <BuilderSection title="Page content">
           <MountCounter />
-          <ProtocolField
+          <Field
             name="title"
             label="Page heading"
             component={InputField}
@@ -1087,7 +1087,7 @@ describe('StageEditorShell', () => {
           disabled
           capability={scriptCapability}
         >
-          <ProtocolField
+          <Field
             name="interviewScript"
             label="Interviewer script text"
             component={InputField}

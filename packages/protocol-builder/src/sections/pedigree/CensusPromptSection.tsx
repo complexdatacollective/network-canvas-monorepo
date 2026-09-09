@@ -1,7 +1,8 @@
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 
 import RichTextField from '../../fields/RichTextField.tsx';
-import ProtocolField from '../../form/ProtocolField.tsx';
+import { REQUIRED } from '../../form/requiredField.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import { pedigreeMessages } from './pedigreeMessages.ts';
 
@@ -23,14 +24,14 @@ export default function CensusPromptSection() {
       title={intl.formatMessage(pedigreeMessages.censusTitle)}
       description={intl.formatMessage(pedigreeMessages.censusDescription)}
     >
-      <ProtocolField<typeof RichTextField>
+      <Field<typeof RichTextField>
         name={CENSUS_PROMPT_FIELD}
         component={RichTextField}
         singleLine
         label={intl.formatMessage(pedigreeMessages.censusFieldLabel)}
         hint={intl.formatMessage(pedigreeMessages.censusFieldHint)}
         placeholder={intl.formatMessage(pedigreeMessages.censusPlaceholder)}
-        required
+        required={REQUIRED}
       />
     </BuilderSection>
   );
