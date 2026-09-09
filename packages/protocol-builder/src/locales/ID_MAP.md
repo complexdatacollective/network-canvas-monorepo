@@ -99,7 +99,7 @@ after the fact is marked in place.
 | `codebookVariable`          | `codebook/variableTypeLabels.ts`, `codebook/components/VariableEditor.tsx`, `codebook/variableRoles.ts`, `codebook/variableOptions.ts`, `codebook/components/VariableBooleanAnswerFields.tsx` | i18n-2a   |
 | `variableValidation`        | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/codebookMessages.ts`              | i18n-2a   |
 | `codebookEditing`           | `codebook/editing.ts`, `codebook/codebookMessages.ts`, `codebook/useCodebookVariableEdits.ts` (added by `sections`)                                                                           | i18n-2a   |
-| `shell`                     | `form/StageEditorShell.tsx`, `editors/saveStageAction.tsx`                                                                                                                                    | i18n-2b   |
+| `shell`                     | `form/StageEditorShell.tsx`, `form/readOnlyRefusal.ts`, `editors/saveStageAction.tsx`                                                                                                         | i18n-2b   |
 | `outline`                   | `form/SectionOutline.tsx`                                                                                                                                                                     | i18n-2b   |
 | `dialogForm`                | `form/DialogForm.tsx`, `form/discardDraftGuard.ts`                                                                                                                                            | i18n-2b   |
 | `protocolField`             | `form/ProtocolField.tsx`                                                                                                                                                                      | i18n-2b   |
@@ -129,11 +129,17 @@ after the fact is marked in place.
 | `promptAttribute`           | `sections/prompts/PromptAttributeField.tsx`                                                                                                                                                   | family E  |
 | `removeAfterConsideration`  | `sections/RemoveAfterConsiderationSection.tsx`                                                                                                                                                | family E  |
 | `ordinalColor`              | `fields/OrdinalColorField.tsx`                                                                                                                                                                | family E  |
+| `pedigree`                  | `sections/pedigree/`                                                                                                                                                                          | family F  |
 
 `shell` covers `editors/saveStageAction.tsx` as well as the shell itself,
 rather than that control taking an area of its own: the fallback save button is
 the shell's action slot standing in for a host that rendered none, so its words
-are the shell's chrome like the refusals already declared there.
+are the shell's chrome like the refusals already declared there. It covers
+`form/readOnlyRefusal.ts` for the reason the `*Messages.ts` rule below gives:
+the read-only refusal is decided in more than one place — the shell, for a save
+or a structural write the session declines, and a control that finds the lease
+gone when the researcher answers a question about a change — and a shared
+sentence has exactly one declaration.
 
 The `*Messages.ts` files are the homes for copy more than one module renders —
 `extractMessages` throws when the same id is declared twice, so a shared string
@@ -167,6 +173,9 @@ has to have exactly one:
   a time, so they share the sentence rather than declaring a twin of it. What
   only one family says stays beside that family's markup, under the same
   `censusPrompts` area.
+- `sections/pedigree/pedigreeMessages.ts` — one file per interface family,
+  holding EVERYTHING that family says rather than only its shared strings. See
+  "One file per family", below.
 
 Two areas were added by family E rather than taken from the reserved list,
 because the reservation `censusPrompts` names the five interfaces and these two
@@ -274,19 +283,37 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `cardDisplay`          | `sections/CardDisplaySection`                | family D    |
 | `externalDataSource`   | `sections/ExternalDataSourceSection`         | family D    |
 | `networkCanvas`        | `sections/network/`                          | family F    |
-| `pedigree`             | `sections/pedigree/`                         | family F    |
 | `narrativePedigree`    | `sections/narrativePedigree/`                | family F    |
 | `geospatial`           | `sections/geospatial/`, geospatial `fields/` | family F    |
 | `anonymisation`        | `sections/anonymisation/`                    | family F    |
 
-Family F's five areas each declare their ids in one `*Messages.ts` beside the
-sections — `sections/network/networkCanvasMessages.ts` and its four siblings —
-rather than beside each section's markup, which is the rule for a converted
-module. The reason is the seam: every id there is rendered somewhere ELSE, in
-`BuilderSection`'s confirmation, in `DialogArrayField`'s refusals, and in the
-shared prompt and form sections — so a translator reading one of those files
-sees the whole of what a family says through other people's components, and
-the family's own copy joins it there when the rest is converted.
+### One file per family — the interface families
+
+| `<area>`   | Owns the copy in     | Declared in                             |
+| ---------- | -------------------- | --------------------------------------- |
+| `pedigree` | `sections/pedigree/` | `sections/pedigree/pedigreeMessages.ts` |
+
+The remaining four families of the same series — `narrativePedigree`,
+`networkCanvas`, `geospatial` and `anonymisation` — keep their reserved names
+above and add a row here as each lands.
+
+A `*Messages.ts` per family, holding every id the family declares — rather than
+descriptors beside each section's markup, which is the rule everywhere else in
+this package. The reason is the seam. Much of what these families say is
+rendered somewhere ELSE: in `BuilderSection`'s confirmation before a capability
+is switched off, in `DialogArrayField`'s row affordances and write refusals, in
+the sentences `PromptsSection` and `FormFieldsSection` say for one interface.
+Splitting a family's words between the file that renders them and the file that
+hands them to somebody else would leave a translator answering half a question
+in two places, so one file per family answers it once.
+
+A family that needs different words from a shared section names them one at a
+time as `MessageDescriptor` props — `PromptsSection`'s `description`,
+`FormFieldsSection`'s `title`, `SectionCapability.confirmClear` — never as
+strings and never as a `copy` bundle. `src/__tests__/hostCopyOverrides.test.ts`
+is the scan that keeps it that way, and it covers these directories the moment
+they exist: its `NOT_CONVERTED_YET` exclusion list is empty, so a section
+reintroducing a `copy?:` prop or a string-bearing `…Copy` type fails there.
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name

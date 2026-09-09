@@ -1,8 +1,10 @@
-import { type CSSProperties, useId, useMemo } from 'react';
+import { type CSSProperties, useCallback, useId, useMemo, useRef } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, {
@@ -12,6 +14,7 @@ import Node, {
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { ColorReference } from '@codaco/protocol-validation';
 
+import { READ_ONLY_MESSAGE } from '../form/readOnlyRefusal.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { protocolColor } from '../protocolColor.ts';
 import {
@@ -22,11 +25,58 @@ import {
   ruleEntityTypeOptions,
 } from '../rules/ruleCodebook.ts';
 
+/**
+ * What the researcher is asked before a change that costs them something.
+ *
+ * Whole strings rather than a noun dropped into a frame, like every other word
+ * a type picker uses: "the node type" and "the edge type" do not differ only in
+ * the noun in every language.
+ */
+export type EntityTypeChangeConfirmation = Readonly<{
+  title: string;
+  description: string;
+  confirmLabel: string;
+}>;
+
+/**
+ * The type a confirmed change would land on.
+ *
+ * Carried into the question rather than left with the caller, because it is
+ * what the answer has to be judged against: the confirmation is awaited, and
+ * the codebook the question was asked about is not necessarily the one the
+ * change lands in.
+ */
+export type EntityTypeChangeTarget = Readonly<{
+  entityType: RuleEntityTarget;
+  typeId: string;
+}>;
+
 export type EntitySelectFieldProps = CreateFormFieldProps<
   string,
   'div',
   {
     entityType: RuleEntityTarget;
+    /**
+     * What to ask before a pick that costs the stage what it is carrying, or
+     * `undefined` to let the pick through without asking.
+     *
+     * A function, because it is asked at the moment of the change: the answer
+     * depends on what the stage is carrying, and a control re-rendering on
+     * every keystroke to keep it current is one re-rendering for a question
+     * nobody has asked yet. The same reason `useDiscardDraftGuard` takes
+     * `hasDraft` as one.
+     */
+    confirmChange?: () => EntityTypeChangeConfirmation | undefined;
+    /**
+     * Why this stage's type may not be changed at all, or `undefined` while it
+     * may.
+     *
+     * A whole sentence, because it is the only thing the researcher is given
+     * to act on: what depends on this type, and what to do about it. Refusing
+     * is stronger than confirming and is asked first — a change nothing can
+     * undo the consequences of is not one to offer with a warning.
+     */
+    blockChangeReason?: string;
   }
 >;
 
@@ -75,6 +125,26 @@ const GROUP_LABELS = defineMessages({
   },
 }) satisfies Record<RuleEntityTarget, MessageDescriptor>;
 
+/**
+ * What a refused change is called, written out per entity kind for the reason
+ * `EMPTY_MESSAGES` gives: `entityType` is an internal token, never display
+ * copy.
+ */
+const BLOCKED_TITLES = defineMessages({
+  node: {
+    id: 'protocolBuilder.entitySelect.nodeChangeBlockedTitle',
+    defaultMessage: 'This node type cannot be changed',
+    description:
+      'Title of the message shown when a researcher tries to change the node type of a stage something else in the protocol depends on, and the change is refused. A node type is a kind of network member the study records, such as a person or a place.',
+  },
+  edge: {
+    id: 'protocolBuilder.entitySelect.edgeChangeBlockedTitle',
+    defaultMessage: 'This edge type cannot be changed',
+    description:
+      'Title of the message shown when a researcher tries to change the edge type of a stage something else in the protocol depends on, and the change is refused. An edge type is a kind of relationship between two network members, such as a friendship.',
+  },
+}) satisfies Record<RuleEntityTarget, MessageDescriptor>;
+
 const messages = defineMessages({
   /**
    * Names a type the researcher — or a collaborator — has since deleted.
@@ -96,9 +166,158 @@ const messages = defineMessages({
     defaultMessage:
       'This type is no longer in the codebook. Choose another one.',
     description:
-      'Shown under the chips when the node or edge type a researcher’s stored choice names has been deleted from the protocol’s codebook, so the choice has to be made again.',
+      'Shown when the node or edge type a researcher’s choice names has been deleted from the protocol’s codebook, so the choice has to be made again: under the chips when it is the stored choice, and in the message refusing a confirmed change whose target was deleted while the question was open.',
   },
 });
+
+/**
+ * What a change onto a type that has since been deleted is called, written out
+ * per entity kind for the reason `EMPTY_MESSAGES` gives: `entityType` is an
+ * internal token, never display copy.
+ */
+const DELETED_TARGET_TITLES = defineMessages({
+  node: {
+    id: 'protocolBuilder.entitySelect.nodeChangeTargetDeletedTitle',
+    defaultMessage: 'That node type has been deleted',
+    description:
+      'Title of the message shown when a researcher confirms a change of a stage’s node type and the type they chose has been deleted from the codebook in the meantime, so the change is refused. A node type is a kind of network member the study records, such as a person or a place.',
+  },
+  edge: {
+    id: 'protocolBuilder.entitySelect.edgeChangeTargetDeletedTitle',
+    defaultMessage: 'That edge type has been deleted',
+    description:
+      'Title of the message shown when a researcher confirms a change of a stage’s edge type and the type they chose has been deleted from the codebook in the meantime, so the change is refused. An edge type is a kind of relationship between two network members, such as a friendship.',
+  },
+}) satisfies Record<RuleEntityTarget, MessageDescriptor>;
+
+/**
+ * Whether this stage may still be written to, read at the moment the write
+ * would happen — and the one place that says so when it may not.
+ *
+ * Every type change here is applied by a closure from the render that asked
+ * about it, and editing can be taken away while the question stands: the
+ * session then refuses the reset the change causes, and a picker showing the
+ * new type over the old type's attributes is a pedigree nobody authored and
+ * one no save could produce. So the lease is read back through a ref, exactly
+ * as the codebook and the refusal are, and a change answered after it has gone
+ * applies nothing.
+ *
+ * It is SAID, in the form's own error region and in the shell's own words: a
+ * researcher who has just answered a question is owed an answer, and this is
+ * the same sentence a refused save or a refused list write gives them, cleared
+ * by the same thing — editing being handed back.
+ *
+ * `controlUneditable` is the caller's own reading of itself, for the one part
+ * of this the session cannot see: a picker whose props have stopped accepting
+ * input. Everything a control derives that from — `ProtocolField` disabling
+ * every field of a read-only session, the control's own `readOnly` — is a
+ * render away from the closure that resumes, so it is read live too.
+ */
+function useRefuseUneditableChange(): (controlUneditable?: boolean) => boolean {
+  const { readOnly, reportRefusedWrite } = useStageEditorForm();
+  const liveReadOnly = useRef(readOnly);
+  liveReadOnly.current = readOnly;
+
+  return useCallback(
+    (controlUneditable = false) => {
+      if (!liveReadOnly.current && !controlUneditable) return false;
+      reportRefusedWrite(READ_ONLY_MESSAGE);
+      return true;
+    },
+    [reportRefusedWrite],
+  );
+}
+
+/**
+ * Asks the question a type change raises, and answers whether the change may
+ * go ahead.
+ *
+ * Shared, because this control is not the only way a researcher moves a
+ * stage's type: creating a type from inside the stage and selecting it on it
+ * moves it too, and costs the stage exactly the same prompts, form, panels and
+ * filter. One definition of the question, so the two cannot ask different ones
+ * — or so that one of them cannot quietly stop asking.
+ *
+ * `undefined` is "nothing to lose", and goes ahead without a dialog: a
+ * question about nothing is one a researcher learns to dismiss without
+ * reading. The dismissal is the provider's own plain "Cancel", which is what
+ * this question wants — backing out of a change that has not happened yet
+ * needs no words of its own.
+ *
+ * A "yes" is answered on the codebook as it stands WHEN IT IS GIVEN, not the
+ * one the question was put against. The question is awaited, and a collaborator
+ * can delete the very type the researcher chose while they are reading it —
+ * the picker's latest render has already dropped that type from its chips, and
+ * applying the captured choice anyway would leave the stage pointed at a type
+ * the codebook no longer describes, which is a protocol the host refuses to
+ * save. So it is refused here, once, for every way a confirmed type change is
+ * applied.
+ *
+ * And on the LEASE as it stands when the answer is given, for the same reason
+ * and in the same place: editing taken away while the question was open makes
+ * the change one the session will not take, and every way a confirmed type
+ * change is applied goes through here.
+ */
+export function useConfirmEntityTypeChange(): (
+  question: EntityTypeChangeConfirmation | undefined,
+  target: EntityTypeChangeTarget,
+) => Promise<boolean> {
+  const { confirm, openDialog } = useDialog();
+  const intl = useAppIntl();
+  const { protocolContext } = useStageEditorForm();
+  const refuseUneditableChange = useRefuseUneditableChange();
+  /**
+   * The codebook the answer is judged against, kept live.
+   *
+   * A ref rather than the render's own value, for the reason the recheck
+   * exists at all: what resumes when the question is answered is a closure
+   * from the render that put it. The same seam the picker's refusal is read
+   * through.
+   */
+  const liveCodebook = useRef(protocolContext.codebook);
+  liveCodebook.current = protocolContext.codebook;
+
+  return useCallback(
+    async (question, target) => {
+      if (question === undefined) return true;
+      const confirmed = await confirm({
+        title: question.title,
+        description: question.description,
+        confirmLabel: question.confirmLabel,
+        intent: 'warning',
+        onConfirm: () => undefined,
+      });
+      if (confirmed !== true) return false;
+
+      // The lease first. Whether the type the change lands on is still in the
+      // codebook is a question about a write that may happen at all, and this
+      // one is not: the session takes nothing from a lease it no longer holds,
+      // so there is nothing to judge a target against.
+      if (refuseUneditableChange()) return false;
+
+      const stillDefined = ruleEntityTypeOptions(
+        liveCodebook.current,
+        target.entityType,
+      ).some((option) => option.value === target.typeId);
+      if (stillDefined) return true;
+
+      void openDialog({
+        type: 'acknowledge',
+        intent: 'warning',
+        title: intl.formatMessage(DELETED_TARGET_TITLES[target.entityType]),
+        description: intl.formatMessage(messages.missingType),
+        actions: {
+          primary: {
+            label: intl.formatMessage(commonMessages.continue),
+            value: true,
+          },
+        },
+      });
+      return false;
+    },
+    [confirm, intl, openDialog, refuseUneditableChange],
+  );
+}
 
 /** Custom properties the edge chip tints itself through. */
 type EdgeChipStyle = CSSProperties & {
@@ -225,6 +444,8 @@ export function EntitySelectControl({
   onChange,
   onBlur,
   onFocus,
+  confirmChange,
+  blockChangeReason,
   disabled = false,
   readOnly: readOnlyProp = false,
   className,
@@ -235,9 +456,111 @@ export function EntitySelectControl({
 }: EntitySelectFieldProps) {
   const { protocolContext, readOnly: sessionReadOnly } = useStageEditorForm();
   const intl = useAppIntl();
+  const { openDialog } = useDialog();
+  const confirmEntityTypeChange = useConfirmEntityTypeChange();
+  const refuseUneditableChange = useRefuseUneditableChange();
   const readOnly = readOnlyProp || sessionReadOnly;
   const generatedGroupName = useId();
   const groupName = name ?? generatedGroupName;
+
+  /**
+   * A pick, held back until the researcher has agreed to what it costs.
+   *
+   * Asked HERE, before the value moves, rather than by whatever watches it
+   * afterwards: a watcher would have to put the picker back, and would be
+   * asking about a change the researcher can already see on screen. The shape
+   * Architect has always used (`NodeType`'s `promptBeforeChange`).
+   *
+   * Asked whatever the picker is currently showing. "The stage has no type
+   * yet" is not the same as "the stage has nothing to lose": a filter written
+   * before the type was picked is thrown away by the first choice exactly as
+   * it is by a later change, and a guard keyed on the value would let that one
+   * through in silence. `confirmChange` is where the loss is judged, and it
+   * already returns nothing to ask when there is nothing to lose.
+   */
+  /**
+   * What a refusal is judged against, kept live.
+   *
+   * Asked once before the question is put and again after it is answered, and
+   * the second reading has to be the CURRENT one: a confirmation is awaited,
+   * so the handler that resumes is a closure from the render that put the
+   * question. Read from that closure, a dependency a collaborator created
+   * while the researcher was reading the question — a narrative pedigree
+   * pointed at this stage, say — would be invisible, and the confirmed change
+   * would go through against a refusal the latest render is already showing.
+   * The same seam the pedigree's own slot gate reads its live inputs through.
+   *
+   * Whether this control accepts input at all is read the same way and for the
+   * same reason. A field of a read-only session arrives `disabled`
+   * (`ProtocolField` decides that for every field, so no section has to), and
+   * a lease can go while the question stands: the chips the researcher is
+   * answering about are already out of reach behind the dialog, and the
+   * closure resuming under them must not write what they can no longer choose.
+   */
+  const judgeAgainst = useRef({ blockChangeReason, value, readOnly, disabled });
+  judgeAgainst.current = { blockChangeReason, value, readOnly, disabled };
+
+  const refuseBlockedChange = (nextType: string): boolean => {
+    const { blockChangeReason: reason, value: current } = judgeAgainst.current;
+    if (
+      reason === undefined ||
+      current === undefined ||
+      current === '' ||
+      nextType === current
+    ) {
+      return false;
+    }
+    void openDialog({
+      type: 'acknowledge',
+      intent: 'warning',
+      title: intl.formatMessage(BLOCKED_TITLES[entityType]),
+      description: reason,
+      actions: {
+        primary: {
+          label: intl.formatMessage(commonMessages.continue),
+          value: true,
+        },
+      },
+    });
+    return true;
+  };
+
+  const select = (nextType: string) => {
+    // Refused before it is confirmed: a change that may not happen at all is
+    // not one to ask about, and asking first would offer the researcher a
+    // choice the next dialog takes back.
+    if (refuseBlockedChange(nextType)) return;
+    const question = confirmChange?.();
+    if (question === undefined) {
+      onChange?.(nextType);
+      return;
+    }
+    void (async () => {
+      // The target is handed over with the question, so the shared confirm
+      // refuses a "yes" whose type a collaborator has deleted in the meantime
+      // — and refuses it wherever a confirmed type change is applied, not only
+      // here.
+      if (
+        !(await confirmEntityTypeChange(question, {
+          entityType,
+          typeId: nextType,
+        }))
+      )
+        return;
+      // And on this control as it stands now. The session's own read-only is
+      // answered inside the confirm above, for every caller of it; what is
+      // left here is this picker's reading of itself, which a section can
+      // withdraw without the lease moving.
+      const live = judgeAgainst.current;
+      if (refuseUneditableChange(live.readOnly || live.disabled)) return;
+      // Asked AGAIN, on the protocol as it stands now. The researcher has
+      // agreed to what this change costs their stage, which is a different
+      // question from whether it may happen at all — and the answer to the
+      // second one can have changed while they were reading the first.
+      if (refuseBlockedChange(nextType)) return;
+      onChange?.(nextType);
+    })();
+  };
 
   const codebookOptions = useMemo(
     () => ruleEntityTypeOptions(protocolContext.codebook, entityType),
@@ -312,7 +635,7 @@ export function EntitySelectControl({
                 // so it cannot be chosen again once it has been replaced.
                 disabled={disabled || (isMissing && value === option.value)}
                 readOnly={readOnly}
-                onSelect={() => onChange?.(option.value)}
+                onSelect={() => select(option.value)}
               />
             ))}
           </div>
