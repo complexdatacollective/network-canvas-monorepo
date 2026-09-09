@@ -1,5 +1,6 @@
 import { type CSSProperties, useCallback, useId, useMemo } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -88,6 +89,16 @@ export type EntitySelectFieldProps = CreateFormFieldProps<
      * `hasDraft` as one.
      */
     confirmChange?: () => EntityTypeChangeConfirmation | undefined;
+    /**
+     * Why this stage's type may not be changed at all, or `undefined` while it
+     * may.
+     *
+     * A whole sentence, because it is the only thing the researcher is given
+     * to act on: what depends on this type, and what to do about it. Refusing
+     * is stronger than confirming and is asked first — a change nothing can
+     * undo the consequences of is not one to offer with a warning.
+     */
+    blockChangeReason?: string;
   }
 >;
 
@@ -133,6 +144,26 @@ const GROUP_LABELS = defineMessages({
     defaultMessage: 'Edge type',
     description:
       'Accessible name of the group of chips a researcher picks an edge type from. An edge type is a kind of relationship between two network members, such as a friendship.',
+  },
+}) satisfies Record<RuleEntityTarget, MessageDescriptor>;
+
+/**
+ * What a refused change is called, written out per entity kind for the reason
+ * `EMPTY_MESSAGES` gives: `entityType` is an internal token, never display
+ * copy.
+ */
+const BLOCKED_TITLES = defineMessages({
+  node: {
+    id: 'protocolBuilder.entitySelect.nodeChangeBlockedTitle',
+    defaultMessage: 'This node type cannot be changed',
+    description:
+      'Title of the message shown when a researcher tries to change the node type of a stage something else in the protocol depends on, and the change is refused. A node type is a kind of network member the study records, such as a person or a place.',
+  },
+  edge: {
+    id: 'protocolBuilder.entitySelect.edgeChangeBlockedTitle',
+    defaultMessage: 'This edge type cannot be changed',
+    description:
+      'Title of the message shown when a researcher tries to change the edge type of a stage something else in the protocol depends on, and the change is refused. An edge type is a kind of relationship between two network members, such as a friendship.',
   },
 }) satisfies Record<RuleEntityTarget, MessageDescriptor>;
 
@@ -287,6 +318,7 @@ export function EntitySelectControl({
   onBlur,
   onFocus,
   confirmChange,
+  blockChangeReason,
   disabled = false,
   readOnly: readOnlyProp = false,
   className,
@@ -297,6 +329,7 @@ export function EntitySelectControl({
 }: EntitySelectFieldProps) {
   const { protocolContext, readOnly: sessionReadOnly } = useStageEditorForm();
   const intl = useAppIntl();
+  const { openDialog } = useDialog();
   const confirmEntityTypeChange = useConfirmEntityTypeChange();
   const readOnly = readOnlyProp || sessionReadOnly;
   const generatedGroupName = useId();
@@ -317,7 +350,35 @@ export function EntitySelectControl({
    * through in silence. `confirmChange` is where the loss is judged, and it
    * already returns nothing to ask when there is nothing to lose.
    */
+  const refuseBlockedChange = (nextType: string): boolean => {
+    if (
+      blockChangeReason === undefined ||
+      value === undefined ||
+      value === '' ||
+      nextType === value
+    ) {
+      return false;
+    }
+    void openDialog({
+      type: 'acknowledge',
+      intent: 'warning',
+      title: intl.formatMessage(BLOCKED_TITLES[entityType]),
+      description: blockChangeReason,
+      actions: {
+        primary: {
+          label: intl.formatMessage(commonMessages.continue),
+          value: true,
+        },
+      },
+    });
+    return true;
+  };
+
   const select = (nextType: string) => {
+    // Refused before it is confirmed: a change that may not happen at all is
+    // not one to ask about, and asking first would offer the researcher a
+    // choice the next dialog takes back.
+    if (refuseBlockedChange(nextType)) return;
     const question = confirmChange?.();
     if (question === undefined) {
       onChange?.(nextType);

@@ -1039,6 +1039,10 @@
     "defaultMessage": "Resize form and preview panes",
     "description": "Accessible name of the divider a researcher drags to give more room either to the fields of an editing dialog or to the live preview beside them."
   },
+  "protocolBuilder.entitySelect.edgeChangeBlockedTitle": {
+    "defaultMessage": "This edge type cannot be changed",
+    "description": "Title of the message shown when a researcher tries to change the edge type of a stage something else in the protocol depends on, and the change is refused. An edge type is a kind of relationship between two network members, such as a friendship."
+  },
   "protocolBuilder.entitySelect.edgeEmptyState": {
     "defaultMessage": "This protocol has no edge types yet.",
     "description": "Shown in place of the chips when a researcher is asked to choose an edge type and the protocol’s codebook defines none. An edge type is a kind of relationship between two network members, such as a friendship."
@@ -1054,6 +1058,10 @@
   "protocolBuilder.entitySelect.missingType": {
     "defaultMessage": "This type is no longer in the codebook. Choose another one.",
     "description": "Shown under the chips when the node or edge type a researcher’s stored choice names has been deleted from the protocol’s codebook, so the choice has to be made again."
+  },
+  "protocolBuilder.entitySelect.nodeChangeBlockedTitle": {
+    "defaultMessage": "This node type cannot be changed",
+    "description": "Title of the message shown when a researcher tries to change the node type of a stage something else in the protocol depends on, and the change is refused. A node type is a kind of network member the study records, such as a person or a place."
   },
   "protocolBuilder.entitySelect.nodeEmptyState": {
     "defaultMessage": "This protocol has no node types yet.",
@@ -1862,6 +1870,10 @@
   "protocolBuilder.pedigree.censusTitle": {
     "defaultMessage": "Family-building prompt",
     "description": "Heading of the section holding the single question shown while a participant is drawing their family."
+  },
+  "protocolBuilder.pedigree.dependentStagesBlockReason": {
+    "defaultMessage": "{stageCount, plural, one {{stageNames} reads this pedigree and maps its own attributes onto this node type, so the node type cannot be changed here. Change or remove that stage first.} other {{stageNames} read this pedigree and map their own attributes onto this node type, so the node type cannot be changed here. Change or remove those stages first.}}",
+    "description": "Shown when a researcher tries to change the node type of a pedigree that another stage of the protocol reads, and the change is refused. stageCount is how many such stages there are; stageNames is their names, each in quotation marks, already joined into one phrase in the reader’s language."
   },
   "protocolBuilder.pedigree.dependentStagesDescription": {
     "defaultMessage": "These stages visualize this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have.",

@@ -349,6 +349,13 @@ export const pedigreeMessages = defineMessages({
     description:
       'Body of the warning about other stages that read this pedigree. stageNames is the list of those stages’ names, each in quotation marks, already joined into one phrase in the reader’s language.',
   },
+  dependentStagesBlockReason: {
+    id: 'protocolBuilder.pedigree.dependentStagesBlockReason',
+    defaultMessage:
+      '{stageCount, plural, one {{stageNames} reads this pedigree and maps its own attributes onto this node type, so the node type cannot be changed here. Change or remove that stage first.} other {{stageNames} read this pedigree and map their own attributes onto this node type, so the node type cannot be changed here. Change or remove those stages first.}}',
+    description:
+      'Shown when a researcher tries to change the node type of a pedigree that another stage of the protocol reads, and the change is refused. stageCount is how many such stages there are; stageNames is their names, each in quotation marks, already joined into one phrase in the reader’s language.',
+  },
   nodeTypeChangeTitle: {
     id: 'protocolBuilder.pedigree.nodeTypeChangeTitle',
     defaultMessage: 'This will clear everything about family members',

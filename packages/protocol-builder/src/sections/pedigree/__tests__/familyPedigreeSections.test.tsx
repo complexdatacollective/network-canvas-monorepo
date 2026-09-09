@@ -57,6 +57,25 @@ const openWithNominationPrompts = () => ({
   sections: pedigreeSections,
 });
 
+/**
+ * The same configured pedigree, under an id no other stage reads.
+ *
+ * The fixture's `narrative-pedigree-1` draws its diseases through
+ * `family-pedigree-1`'s node type, and that dependency REFUSES a node type
+ * change — so every test below about what a type change costs has to be run
+ * over a pedigree nothing depends on, or it would be testing the refusal
+ * instead. The refusal has tests of its own, over the fixture's own pedigree.
+ */
+const UNREAD_PEDIGREE_ID = 'family-pedigree-nothing-reads';
+
+const openUnreadWithNominationPrompts = () => ({
+  stage: {
+    ...familyPedigreeStageWith({ nominationPrompts: NOMINATION_ROWS }),
+    id: UNREAD_PEDIGREE_ID,
+  },
+  sections: pedigreeSections,
+});
+
 const FIXTURE_NODE_CONFIG = {
   type: 'family_member',
   nodeLabelVariable: 'fm_name',
@@ -1180,6 +1199,55 @@ describe('a pedigree whose node type changes', () => {
   };
 
   /**
+   * A narrative pedigree resolves every disease it draws through its source
+   * pedigree's `nodeConfig.type`, so a type change under one leaves it naming
+   * attributes the new type does not have — a protocol whole-protocol
+   * validation refuses, and one this editor cannot repair: the stage that
+   * would have to be remapped is not the stage it is editing. Architect
+   * refuses the same transition, and the refusal names the stages so the
+   * researcher knows where to go.
+   */
+  it('refuses a node type change while another stage reads this pedigree', async () => {
+    // The fixture's own pedigree, which `narrative-pedigree-1` reads.
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    expect(
+      await screen.findByText('This node type cannot be changed'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/"Narrative Pedigree" reads this pedigree/),
+    ).toBeInTheDocument();
+    // Refused rather than confirmed: the question a change with something to
+    // lose would ask is never put, because there is no answer to it that lets
+    // the change through.
+    expect(
+      screen.queryByRole('button', { name: 'Change the node type' }),
+    ).not.toBeInTheDocument();
+    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  /**
+   * And the refusal is about the NODE type alone. A narrative pedigree reads
+   * its source's node type and says nothing about its edges, so the edge type
+   * is still the researcher's to change.
+   */
+  it('still lets the edge type change while another stage reads this pedigree', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Change the edge type' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'knows' })).toBeChecked(),
+    );
+  });
+
+  /**
    * The reset is destructive and a chip is one click away, so the researcher
    * is asked first.
    *
@@ -1192,7 +1260,7 @@ describe('a pedigree whose node type changes', () => {
    * that costs something.
    */
   it('asks before it discards what described the old node type', async () => {
-    const harness = renderStageEditor(openWithNominationPrompts());
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
 
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
 
@@ -1209,7 +1277,7 @@ describe('a pedigree whose node type changes', () => {
   });
 
   it('leaves the pedigree exactly as it was when the researcher says no', async () => {
-    const harness = renderStageEditor(openWithNominationPrompts());
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
 
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
     await harness.user.click(
@@ -1310,7 +1378,7 @@ describe('a pedigree whose node type changes', () => {
    * two steps of undo.
    */
   it('carries the chosen type and everything it invalidated in one batch', async () => {
-    const harness = renderStageEditor(openWithNominationPrompts());
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
 
     await chooseNodeType(harness, 'person');
 
@@ -1340,7 +1408,7 @@ describe('a pedigree whose node type changes', () => {
    * follow from that one fact rather than from three sections agreeing.
    */
   it('switches the nomination prompts off rather than calling an empty section finished', async () => {
-    const harness = renderStageEditor(openWithNominationPrompts());
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
     expect(
       await screen.findByRole('switch', { name: 'Nomination prompts' }),
     ).toBeChecked();
@@ -1366,7 +1434,7 @@ describe('a pedigree whose node type changes', () => {
    * to restore the type and never the prompts.
    */
   it('keeps the prompts an undo restores, and switches the section back on', async () => {
-    const harness = renderStageEditor(openWithNominationPrompts());
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
     await chooseNodeType(harness, 'person');
     await waitFor(() =>
       expect(
@@ -1397,7 +1465,7 @@ describe('a pedigree whose node type changes', () => {
    * left, asking for an attribute that type no longer has.
    */
   it('does not bring a prompt about the old type back with the next one added', async () => {
-    const harness = renderStageEditor(openWithNominationPrompts());
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
 
     await chooseNodeType(harness, 'person');
     await waitFor(() =>
@@ -1449,7 +1517,7 @@ describe('a pedigree whose node type changes', () => {
    * nothing bound to it. One batch is what makes that a single step.
    */
   it('comes back whole, type included, when the session undoes it', async () => {
-    const harness = renderStageEditor(openWithNominationPrompts());
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
     await chooseNodeType(harness, 'person');
     await waitFor(() => expect(nodeConfigOf(harness).type).toBe('person'));
 

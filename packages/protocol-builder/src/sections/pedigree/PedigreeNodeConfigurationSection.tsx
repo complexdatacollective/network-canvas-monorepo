@@ -196,6 +196,37 @@ export default function PedigreeNodeConfigurationSection() {
     [identity.id, protocolContext.orderedStages],
   );
 
+  /*
+    The stage names reach both sentences as ONE value, joined by the reader's
+    own list formatter rather than by a comma this file chose: which separator
+    a list of names takes, and whether the last one is introduced by a word at
+    all, is a fact about the reader's language.
+  */
+  const dependentStageNames = intl.formatList(
+    dependentNarrativeStages.map((stage) => `"${stage.label}"`),
+    { type: 'conjunction' },
+  );
+
+  /**
+   * Why the node type may not be changed while another stage reads this
+   * pedigree.
+   *
+   * The warning above says what such a change would cost; this refuses it.
+   * A narrative pedigree resolves every disease it draws through THIS stage's
+   * `nodeConfig.type`, so a change here leaves it naming attributes the new
+   * type does not have — a protocol whole-protocol validation refuses, and one
+   * this editor cannot repair, because the stage that has to be remapped is
+   * not the stage it is editing. Architect refuses the same transition for the
+   * same reason.
+   */
+  const blockChangeReason =
+    dependentNarrativeStages.length === 0
+      ? undefined
+      : intl.formatMessage(pedigreeMessages.dependentStagesBlockReason, {
+          stageCount: dependentNarrativeStages.length,
+          stageNames: dependentStageNames,
+        });
+
   return (
     <BuilderSection
       title={intl.formatMessage(pedigreeMessages.nodeTitle)}
@@ -207,18 +238,8 @@ export default function PedigreeNodeConfigurationSection() {
             {intl.formatMessage(pedigreeMessages.dependentStagesTitle)}
           </AlertTitle>
           <AlertDescription>
-            {/*
-              The stage names reach the sentence as ONE value, joined by the
-              reader's own list formatter rather than by a comma this file
-              chose: which separator a list of names takes, and whether the
-              last one is introduced by a word at all, is a fact about the
-              reader's language.
-            */}
             {intl.formatMessage(pedigreeMessages.dependentStagesDescription, {
-              stageNames: intl.formatList(
-                dependentNarrativeStages.map((stage) => `"${stage.label}"`),
-                { type: 'conjunction' },
-              ),
+              stageNames: dependentStageNames,
             })}
           </AlertDescription>
         </Alert>
@@ -228,6 +249,7 @@ export default function PedigreeNodeConfigurationSection() {
         component={EntitySelectControl}
         entityType="node"
         confirmChange={confirmTypeChange}
+        {...(blockChangeReason === undefined ? {} : { blockChangeReason })}
         label={intl.formatMessage(pedigreeMessages.nodeTypeLabel)}
         hint={intl.formatMessage(pedigreeMessages.nodeTypeHint)}
         required
