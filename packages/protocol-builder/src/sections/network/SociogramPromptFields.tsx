@@ -223,16 +223,40 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   }, [committedAllowHighlighting, setRowValue, tapBehaviour]);
 
   /**
-   * The connection being drawn is always among the connections shown.
+   * Whether the connection this prompt draws was chosen HERE, in this dialog.
    *
-   * Drawing a connection the participant cannot see is not something a
-   * researcher can have meant, and the interview draws it regardless.
+   * The two rules below hang on it, and both are about a choice the researcher
+   * has just made rather than about the prompt they opened. Held as state
+   * rather than a ref because it is rendered: the notice and the locked tick
+   * box are what the rule looks like on screen, and a ref set in an effect
+   * that writes nothing else leaves them a render behind.
+   */
+  const [drawChosenHere, setDrawChosenHere] = useState(false);
+  useEffect(() => {
+    if (createdEdge === undefined || createdEdge === committedCreate) return;
+    setDrawChosenHere(true);
+  }, [committedCreate, createdEdge]);
+
+  /**
+   * A connection the researcher has just said this prompt draws is shown too.
+   *
+   * Drawing a connection the participant cannot see is not what somebody
+   * picking a connection type here can have meant, and the interview draws it
+   * regardless of the tick list.
+   *
+   * Only that choice, though. A prompt STORED as `create` with an empty
+   * `display` is a real and deliberate configuration — the interview filters
+   * the ties it renders strictly by `edges.display`, and the
+   * `edges-full-matrix` end-to-end scenario collects a tie without showing it
+   * on exactly that shape — so an effect that ran on mount made merely opening
+   * a prompt and saving it change what the participant sees.
    */
   useEffect(() => {
+    if (!drawChosenHere) return;
     if (createdEdge === undefined) return;
     if (displayedEdges.includes(createdEdge)) return;
     setRowValue(DISPLAY_EDGES_FIELD, [...displayedEdges, createdEdge]);
-  }, [createdEdge, displayedEdges, setRowValue]);
+  }, [createdEdge, displayedEdges, drawChosenHere, setRowValue]);
 
   const chooseTapBehaviour = (next: TapBehaviour) => {
     if (next === tapBehaviour) return;
@@ -271,7 +295,9 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
    */
   const edgeChoices = useMemo(() => {
     const offered = checkboxOptions(edgeOptions).map((option) =>
-      option.value === createdEdge ? { ...option, disabled: true } : option,
+      drawChosenHere && option.value === createdEdge
+        ? { ...option, disabled: true }
+        : option,
     );
     const known = new Set(offered.map((option) => option.value));
     const lost = (committedDisplay ?? []).filter((id) => !known.has(id));
@@ -285,7 +311,7 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
         }),
       })),
     ];
-  }, [committedDisplay, createdEdge, edgeOptions, intl]);
+  }, [committedDisplay, createdEdge, drawChosenHere, edgeOptions, intl]);
 
   // Held for as long as the reader's language does not change: the control's
   // options are part of what it registers with, and a fresh array every render
@@ -487,7 +513,15 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
           networkCanvasMessages.promptEdgesDescription,
         )}
       >
-        {createdEdge !== undefined && (
+        {/*
+          Said only where it is TRUE: this prompt's connection type is locked
+          into the list because the researcher chose it a moment ago and the
+          effect above put it there. A prompt that arrived drawing a connection
+          it does not show is not locked and is not claimed to be — the tick
+          list is the whole answer, and the notice beside an unticked, untickable
+          box was a dead end as well as a false statement.
+        */}
+        {drawChosenHere && createdEdge !== undefined && (
           <Alert variant="info" className="my-7">
             <AlertDescription>
               {intl.formatMessage(

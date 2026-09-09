@@ -14,6 +14,7 @@ import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx'
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import AutomaticLayoutSection from '../AutomaticLayoutSection.tsx';
 import BackgroundSection from '../BackgroundSection.tsx';
+import { networkCanvasMessages } from '../networkCanvasMessages.ts';
 import SociogramPromptsSection from '../SociogramPromptsSection.tsx';
 
 const sections = (
@@ -848,6 +849,84 @@ const openAttributeCreator = async (
   );
   return attributeCreator();
 };
+
+/**
+ * A prompt that collects a connection without drawing it.
+ *
+ * `edges.create` and `edges.display` are independent: the interview's canvas
+ * selector filters the ties it renders strictly by `edges.display`, so a
+ * prompt naming a type to create and showing none collects that tie invisibly.
+ * It is a configuration researchers use — `edges-full-matrix`, the end-to-end
+ * scenario covering these two keys, has a prompt of exactly this shape and
+ * asserts the tie does not appear — so an editor that repaired it on sight
+ * changed what a participant experiences, silently, on a stage nobody meant to
+ * alter.
+ */
+describe('a prompt that draws a connection it does not show', () => {
+  const COLLECTS_WITHOUT_SHOWING = {
+    id: 'sociogram-prompt-1',
+    text: 'Place the people who know each other close together',
+    layout: { layoutVariable: 'layout' },
+    edges: { create: 'knows', display: [] },
+  };
+
+  it('saves it exactly as it arrived', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding(COLLECTS_WITHOUT_SHOWING),
+    );
+
+    const prompt = await openPrompt(harness);
+    expect(
+      prompt.getByRole('option', { name: /Create a connection/ }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]).toEqual(
+      COLLECTS_WITHOUT_SHOWING,
+    );
+  });
+
+  /**
+   * And the tick box for it is neither locked nor spoken for. The notice
+   * saying the created type is always shown belongs to the type the researcher
+   * has just chosen, which the editor does put in the list; said over a stored
+   * create-only prompt it was a false claim beside a box that was unticked and
+   * could not be ticked.
+   */
+  it('lets the researcher show that connection after all', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding(COLLECTS_WITHOUT_SHOWING),
+    );
+
+    const prompt = await openPrompt(harness);
+    expect(
+      prompt.queryByText(
+        enIntl.formatMessage(
+          networkCanvasMessages.promptCreatedEdgeAlwaysShown,
+        ),
+      ),
+    ).not.toBeInTheDocument();
+    const box = prompt.getByRole('checkbox', { name: /knows/ });
+    expect(box).not.toBeChecked();
+    expect(box).toBeEnabled();
+
+    await harness.user.click(box);
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]?.edges).toEqual({
+      create: 'knows',
+      display: ['knows'],
+    });
+  });
+});
 
 /**
  * What tapping a node does, and what the prompt saves for it.
