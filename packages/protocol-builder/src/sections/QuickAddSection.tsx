@@ -290,13 +290,20 @@ type QuickAddTarget = Readonly<{
 /** Where a round trip's answer belongs by the time it arrives. */
 type AnswerLands = 'here' | 'onAnotherType' | 'besideAnotherAttribute';
 
-/** An attribute that was created, and why it was not also selected. */
-type CreatedButNotSelected = Readonly<{
-  /** The name the researcher submitted, which is what the notice is about. */
-  name: string;
-  /** Anything but `here`, which is the case where it IS selected. */
-  because: Exclude<AnswerLands, 'here'>;
-}>;
+/**
+ * The one reading of "does this answer still belong where it was asked from?",
+ * written once because it is asked twice: when an answer ARRIVES, to decide
+ * what to do with it, and on every render afterwards, to decide whether what
+ * was said about it is still true of the draft on screen.
+ */
+const answerLandsIn = (
+  subjectStillCollected: boolean,
+  fillsInNow: string | undefined,
+  fillsInWhenAsked: string | undefined,
+): AnswerLands => {
+  if (!subjectStillCollected) return 'onAnotherType';
+  return fillsInNow === fillsInWhenAsked ? 'here' : 'besideAnotherAttribute';
+};
 
 /**
  * Reads, when a round trip ANSWERS, whether it still belongs where it was
@@ -325,12 +332,89 @@ function useWhereTheAnswerLands(
   const live = useRef(fillsIn);
   live.current = fillsIn;
   return useCallback(
-    (asked) => {
-      if (!subjectStillCollected(asked.subject)) return 'onAnotherType';
-      return live.current === asked.fillsIn ? 'here' : 'besideAnotherAttribute';
-    },
+    (asked) =>
+      answerLandsIn(
+        subjectStillCollected(asked.subject),
+        live.current,
+        asked.fillsIn,
+      ),
     [subjectStillCollected],
   );
+}
+
+/**
+ * A codebook write this section made, and what it has left to say about it.
+ *
+ * Both notices this section shows are about a write that LANDED and was not
+ * applied where it was asked from — an attribute created while the researcher
+ * was choosing another one, a rule added to an attribute the stage has since
+ * moved off. Each names the attribute it is about, under the name it had when
+ * it was asked about, because the picker is about something else now.
+ */
+type LandedAnswer = Readonly<{
+  /** The subject the request was addressed to. */
+  subject: CodebookSubject;
+  /** The attribute the answer is about. */
+  variableId: string;
+  /** Its name when it was asked about, which is what the notice says. */
+  variableName: string;
+  /** Where the answer belonged at the moment it arrived. */
+  landedAs: AnswerLands;
+}>;
+
+/**
+ * What this section still has to say about an answer that has landed, read
+ * against the draft on screen rather than against the one it was asked from.
+ *
+ * Held rather than derived from scratch, because the sentence names something
+ * the row no longer does. Re-read rather than merely held, because a sentence
+ * about where an answer went stops being true the moment the researcher moves
+ * the row: told that an attribute "is not the attribute this stage fills in
+ * any more", they select it, and the notice went on saying so against a picker
+ * showing that very attribute.
+ *
+ * Forgotten the first time that reading CHANGES, rather than re-worded. A
+ * researcher who has moved the row since the answer landed has answered the
+ * question the notice asked — the created attribute is selected, the required
+ * one is filled in again, the type is back — and this section has nothing left
+ * to add. It is also what stops a notice from RETURNING: re-worded, a row
+ * moved off the created attribute a second time would raise the same "not
+ * selected" sentence about a choice the researcher had already made twice.
+ */
+function useLandedAnswer(
+  subject: CodebookSubject | undefined,
+  fillsIn: string | undefined,
+): Readonly<{
+  /** The answer whose notice is still true, or nothing. */
+  standing: LandedAnswer | undefined;
+  record: (answer: LandedAnswer) => void;
+  forget: () => void;
+}> {
+  const subjectStillCollected = useSubjectStillCollected(subject);
+  const [landed, setLanded] = useState<LandedAnswer | undefined>(undefined);
+  const moved =
+    landed !== undefined &&
+    answerLandsIn(
+      subjectStillCollected(landed.subject),
+      fillsIn,
+      // The row named the attribute the answer is about exactly when the
+      // answer belongs `here`, whichever write asked for it: the create's
+      // answer IS its variable id, and the require's was asked about it.
+      landed.variableId,
+    ) !== landed.landedAs;
+  const forget = useCallback(() => {
+    setLanded(undefined);
+  }, []);
+  // Dropped for good rather than only hidden, so nothing can raise it again.
+  // The reading above is what the render below is guarded by, so no stale
+  // sentence is drawn in the frame before this runs.
+  useEffect(() => {
+    if (moved) forget();
+  }, [forget, moved]);
+  const record = useCallback((answer: LandedAnswer) => {
+    setLanded(answer);
+  }, []);
+  return { standing: moved ? undefined : landed, record, forget };
 }
 
 const VariablePicker = VariablePickerControl as ComponentType<
@@ -431,25 +515,17 @@ function QuickAddAnswerRequirement({
   const answerLands = useWhereTheAnswerLands(subject, variableId);
   const [problem, setProblem] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
-  // Which attribute this session made required, so the confirmation belongs to
-  // the researcher's own act rather than appearing against every attribute
-  // that happens to arrive already required.
-  const [requiredHere, setRequiredHere] = useState<string | undefined>(
-    undefined,
-  );
   /**
-   * The name of an attribute this session made required after the section had
-   * moved off it — the researcher chose another type, or another attribute,
-   * while the write was on its way.
+   * The requirement this session added, for as long as this section has
+   * anything to say about it.
    *
-   * The write is a change to the whole protocol and it landed, so it is said
-   * rather than swallowed. The name it had when it was asked about, because
-   * that is the attribute the sentence is about and this stage no longer names
-   * it — the same reason `NewQuickAddAttribute` holds the name it submitted.
+   * Held rather than read off the codebook, so the confirmation belongs to the
+   * researcher's own act rather than appearing against every attribute that
+   * happens to arrive already required — and re-read against the picker on
+   * every render, so which of the two things it says is decided by where the
+   * attribute stands now.
    */
-  const [requiredElsewhere, setRequiredElsewhere] = useState<
-    string | undefined
-  >(undefined);
+  const { standing, record } = useLandedAnswer(subject, variableId);
 
   // Accepting destroys the control that was pressed — the offer is about an
   // attribute that can be left empty, and it no longer can — so focus goes to
@@ -459,11 +535,13 @@ function QuickAddAnswerRequirement({
   // In an effect, so the field is asked for after the commit that removed the
   // button. Only where the answer landed here: a researcher who has moved the
   // picker on has chosen where they are, and taking focus back to it would
-  // undo their own gesture.
+  // undo their own gesture. Once per answer, because a record is a new object
+  // and a researcher returning to the attribute later forgets it rather than
+  // re-recording it.
   useEffect(() => {
-    if (requiredHere === undefined) return;
+    if (standing?.landedAs !== 'here') return;
     resolveFieldErrorTarget(QUICK_ADD)?.focus();
-  }, [requiredHere]);
+  }, [standing]);
 
   const variable =
     subject === undefined || variableId === undefined
@@ -484,16 +562,17 @@ function QuickAddAnswerRequirement({
         return;
       }
       setProblem(undefined);
-      if (answerLands(asked) === 'here') {
-        setRequiredElsewhere(undefined);
-        setRequiredHere(variableId);
-        return;
-      }
       // The rule was added to the attribute the request named, wherever this
-      // stage has got to since. Said against the name it was asked about,
-      // because the picker is about something else now.
-      setRequiredHere(undefined);
-      setRequiredElsewhere(variableName);
+      // stage has got to since. Recorded against the name it was asked about,
+      // because the picker may be about something else now — and read back
+      // against the picker on every render from here, because the researcher
+      // may come back to it.
+      record({
+        subject,
+        variableId,
+        variableName,
+        landedAs: answerLands(asked),
+      });
     } finally {
       // In a `finally` because the button is disabled while this is true: an
       // offer that ended in a throw would otherwise leave the researcher
@@ -508,16 +587,20 @@ function QuickAddAnswerRequirement({
    *
    * The in-place confirmation is said only to the researcher who just asked
    * for it, and only once the codebook shows it — it must not appear against
-   * every attribute that happens to arrive already required.
+   * every attribute that happens to arrive already required. The elsewhere
+   * confirmation is not gated the same way: it is about an attribute this
+   * picker is not showing, so the codebook cannot be read for it here.
    */
   const said =
-    requiredElsewhere !== undefined
-      ? intl.formatMessage(messages.nowRequiredElsewhere, {
-          variableName: requiredElsewhere,
-        })
-      : alreadyRequired && requiredHere === variableId
-        ? intl.formatMessage(messages.nowRequired)
-        : undefined;
+    standing === undefined
+      ? undefined
+      : standing.landedAs === 'here'
+        ? alreadyRequired
+          ? intl.formatMessage(messages.nowRequired)
+          : undefined
+        : intl.formatMessage(messages.nowRequiredElsewhere, {
+            variableName: standing.variableName,
+          });
 
   return (
     <>
@@ -692,17 +775,15 @@ function NewQuickAddAttribute({
   const [problem, setProblem] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   /**
-   * An attribute that was created and then not selected, and which of the two
-   * reasons it was not, held for as long as the notice about it is on screen.
+   * The attribute that was created and then not selected, held for as long as
+   * the notice about it is true of the picker.
    *
    * The submitted name rather than whatever the box holds now: the notice is
    * about the attribute that was created, and the box is empty by the time it
    * appears. Same shape as `CreatableVariablePickerControl`'s
    * "created but not selected" notice, which answers the same question.
    */
-  const [notSelected, setNotSelected] = useState<
-    CreatedButNotSelected | undefined
-  >(undefined);
+  const { standing, record, forget } = useLandedAnswer(subject, fillsIn);
 
   const create = useCallback(async () => {
     const trimmed = name.trim();
@@ -710,10 +791,13 @@ function NewQuickAddAttribute({
       setProblem(intl.formatMessage(messages.nameTheAttribute));
       return;
     }
-    // Read before the await and compared after it: `answerLands` holds the
-    // section's own reading of both halves.
-    const asked: QuickAddTarget | undefined =
-      subject === undefined ? undefined : { subject, fillsIn };
+    // Nothing below this component is rendered without a subject, and the
+    // create the hook makes refuses one anyway — so this is the shape of that
+    // fact rather than a case. Read before the await and compared after it:
+    // `answerLands` holds the section's own reading of both halves, and the
+    // notice is anchored to the same subject.
+    if (subject === undefined) return;
+    const asked: QuickAddTarget = { subject, fillsIn };
     setBusy(true);
     try {
       const outcome = await createVariable({
@@ -731,14 +815,17 @@ function NewQuickAddAttribute({
       // the same name a second time is refused for a duplicate the researcher
       // did not choose to ask for — so the box empties on both answers below.
       setName('');
-      // A subject that was already gone when this was asked for is a create
-      // the hook above refuses, so this reading is only ever reached with one.
-      const lands = asked === undefined ? 'onAnotherType' : answerLands(asked);
+      const lands = answerLands(asked);
       if (lands !== 'here') {
-        setNotSelected({ name: trimmed, because: lands });
+        record({
+          subject,
+          variableId: outcome.variableId,
+          variableName: trimmed,
+          landedAs: lands,
+        });
         return;
       }
-      setNotSelected(undefined);
+      forget();
       // Written into the form rather than dispatched to the session: the
       // picker above is a registered field, and a command that went round it
       // would be overwritten by whatever the control still held when the
@@ -752,7 +839,32 @@ function NewQuickAddAttribute({
       // `CreatableVariablePickerControl`.
       setBusy(false);
     }
-  }, [answerLands, createVariable, fillsIn, intl, name, storeApi, subject]);
+  }, [
+    answerLands,
+    createVariable,
+    fillsIn,
+    forget,
+    intl,
+    name,
+    record,
+    storeApi,
+    subject,
+  ]);
+
+  /**
+   * What this section still has to say about the attribute it created, or
+   * nothing. `here` is the case where it IS selected, and the picker showing
+   * it says that better than a sentence could.
+   */
+  const said =
+    standing === undefined || standing.landedAs === 'here'
+      ? undefined
+      : intl.formatMessage(
+          standing.landedAs === 'onAnotherType'
+            ? messages.createdOnAnotherType
+            : messages.createdNotSelected,
+          { variableName: standing.variableName },
+        );
 
   if (subject === undefined) return null;
 
@@ -794,7 +906,7 @@ function NewQuickAddAttribute({
         onChange={(next: unknown) => {
           // The notice is about the create that has just happened; naming
           // another attribute is the start of a different one.
-          setNotSelected(undefined);
+          forget();
           setName(typeof next === 'string' ? next : '');
         }}
       />
@@ -808,16 +920,9 @@ function NewQuickAddAttribute({
           `role="status"` of its own, and a second polite region inserted into
           this one is the double announcement this wrapper exists to avoid. */}
       <div role="status" aria-live="polite">
-        {notSelected !== undefined && (
+        {said !== undefined && (
           <Alert variant="info" role="presentation" className="my-7">
-            <AlertDescription>
-              {intl.formatMessage(
-                notSelected.because === 'onAnotherType'
-                  ? messages.createdOnAnotherType
-                  : messages.createdNotSelected,
-                { variableName: notSelected.name },
-              )}
-            </AlertDescription>
+            <AlertDescription>{said}</AlertDescription>
           </Alert>
         )}
       </div>
