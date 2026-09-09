@@ -50,8 +50,11 @@ import { collectStageResourceReferences } from '../references.ts';
  * reference is missing and a lone reference held by a SIBLING row reads as
  * "only this field uses it" — which let a picker in a second panel's dialog
  * discard bytes the first panel still names. The row a dialog has open is
- * therefore written where its save will write it
- * ({@link EditedRowContext}), through the same merge that save commits.
+ * therefore added to the list its save will write it into
+ * ({@link EditedRowContext}), through the same merge that save commits —
+ * ALONGSIDE the row's committed copy rather than over it, because the
+ * researcher can still cancel, and a reference a cancel restores is one the
+ * stage can still have. See {@link withEditedRow}.
  *
  * Zero outside a stage editor: the control is usable on its own, and on its
  * own there is no draft to consult.
@@ -87,13 +90,29 @@ export function useStageResourceUsage(): (resourceId: string) => number {
 }
 
 /**
- * The draft with the row a dialog has open written where its save will put it.
+ * The draft with the row a dialog has open added to the list its save will
+ * write it into, and every committed row left exactly where it is.
  *
- * Appended rather than replaced when the list has no such position: a new row
- * is not in the list yet, and a row whose index the list has since lost left it
- * while the dialog stayed open. Both are rows the researcher can still save,
- * and a reference either of them carries is one the stage can still come to
- * have — so both are counted rather than dropped.
+ * ADDED rather than written over the row's own committed copy, because both
+ * are references the stage can still come to have. The dialog's draft is what
+ * a save leaves; the committed row is what a CANCEL leaves, and cancelling is
+ * available for as long as the dialog is open. Written over, the count spoke
+ * for one of those two futures only — so a panel that already named a staged
+ * file could discard the bytes from its own dialog (the count saw a single
+ * reference, its own), have the field cleared, and then restore the reference
+ * by cancelling the row: a stage naming bytes the host has deleted, reached
+ * through an action the researcher was told had worked. Counting both is the
+ * question the discard actually asks — "if this field lets go, is anything
+ * still naming it?" — and the answer that refuses is the one that cannot leave
+ * a dangling reference. Nothing is lost by refusing: a staged resource no
+ * field names is dropped as abandoned at finish anyway.
+ *
+ * It also removes the last use of the row's index, which could not be trusted.
+ * The dialog outlives the row leaving the list — a collaborator removing it
+ * leaves the draft on screen until the researcher answers for it — and the
+ * index it was opened at then names whichever row shifted into that place.
+ * Writing over it replaced a surviving row's references with this dialog's,
+ * undercounting: the direction that deletes bytes something still names.
  */
 function withEditedRow(
   draft: SectionDoc,
@@ -103,12 +122,7 @@ function withEditedRow(
   const path = [...editedRow.listPath];
   const held: unknown = getValue(draft, path);
   const rows = Array.isArray(held) ? [...(held as unknown[])] : [];
-  const { index } = editedRow;
-  if (index === undefined || index < 0 || index >= rows.length) {
-    rows.push(editedRow.read());
-  } else {
-    rows[index] = editedRow.read();
-  }
+  rows.push(editedRow.read());
   // `setValue` copies every container it traverses, so this cannot write
   // through into the draft the submission assembled.
   const next: SectionDoc = { ...draft };

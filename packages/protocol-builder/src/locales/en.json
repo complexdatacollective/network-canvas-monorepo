@@ -2267,6 +2267,10 @@
     "defaultMessage": "Create the attribute",
     "description": "Action that adds the named text attribute to the codebook and selects it for quick add."
   },
+  "protocolBuilder.quickAdd.createdNotSelected": {
+    "defaultMessage": "“{variableName}” was added to the codebook. You have chosen a different attribute here since you asked for it, so it has not been selected.",
+    "description": "Notice shown when an attribute the researcher asked for was added to the codebook — the protocol’s definition of what an interview records — but they chose a different attribute for quick add to fill in while it was being added, so the newer choice is left standing. variableName is the name they typed and is not translated."
+  },
   "protocolBuilder.quickAdd.createdOnAnotherType": {
     "defaultMessage": "“{variableName}” was added to the type this stage was about when you asked for it. This stage is about a different type now, so it has not been selected here.",
     "description": "Notice shown when an attribute the researcher asked for was added to the codebook — the protocol’s definition of what an interview records — but the node type the stage works with was changed while it was being added, so the new attribute belongs to the old type and nothing here uses it. variableName is the name they typed and is not translated."
@@ -2314,6 +2318,10 @@
   "protocolBuilder.quickAdd.nowRequired": {
     "defaultMessage": "This attribute now has to be answered, everywhere the protocol uses it.",
     "description": "Confirmation shown to the researcher who just asked for the quick-add attribute to be required, because focus has moved to a control that says nothing about what changed."
+  },
+  "protocolBuilder.quickAdd.nowRequiredElsewhere": {
+    "defaultMessage": "“{variableName}” now has to be answered, everywhere the protocol uses it. It is not the attribute this stage fills in any more.",
+    "description": "Confirmation shown to a researcher who asked for the quick-add attribute to be required, when the stage moved off that attribute while the change was being made — they chose a different node type, or a different attribute. The change was still made, so it is said rather than swallowed. variableName is the attribute’s own name and is not translated."
   },
   "protocolBuilder.quickAdd.refusedUnchanged": {
     "defaultMessage": "This attribute could not be changed, so nothing was changed. Try again.",

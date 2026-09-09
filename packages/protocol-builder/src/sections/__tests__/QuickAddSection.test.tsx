@@ -630,3 +630,223 @@ describe('a quick-add attribute that need not be answered', () => {
     );
   });
 });
+
+/**
+ * Every codebook write this section asks for is a round trip to the host, and
+ * the researcher can act inside it: the attribute picker stays live while an
+ * answer is on its way, and so does the type picker above it. One rule covers
+ * every one of those interleavings — the write itself is never undone, but it
+ * is applied HERE only if the section is still pointed at what the request was
+ * asked about, and where it is not, what happened is SAID rather than silently
+ * done or silently dropped.
+ *
+ * Enumerated as a table because the failures were found one interleaving at a
+ * time: the type repointed, the picker re-answered, the attribute removed by a
+ * collaborator, editing taken away. They are the same defect, and a rule that
+ * held for one of them and not the others is not a rule.
+ */
+describe('an answer that arrives after the section has moved on', () => {
+  const picker = () =>
+    screen.getByRole('combobox', { name: /Attribute filled in/ });
+
+  /**
+   * The live regions on the page right now, as element identities.
+   *
+   * A screen reader announces a change to a region it was already watching; a
+   * region inserted with its content already in it is not reliably announced
+   * at all. So "was this said?" is two questions — is the sentence there, and
+   * was the region holding it on the page BEFORE the sentence arrived — and
+   * the identities are what answers the second.
+   */
+  const liveRegions = () => new Set(screen.queryAllByRole('status'));
+
+  /**
+   * The live region a sentence is being said in, which is the claim that it
+   * reaches a screen reader at all.
+   */
+  const said = (sentence: string): Element => {
+    const region = screen.getByText(sentence).closest('[role="status"]');
+    if (region === null) {
+      throw new Error(`“${sentence}” is not being said in a live region`);
+    }
+    return region;
+  };
+
+  const openEditor = () =>
+    renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: (
+        <>
+          <SubjectSection entity="node" />
+          <QuickAddSection />
+        </>
+      ),
+    });
+
+  /** The record key the codebook gave an attribute of the person type. */
+  const personVariableNamed = (
+    harness: ReturnType<typeof renderStageEditor>,
+    name: string,
+  ): string => {
+    const found = Object.entries(
+      harness.hostCodebook().node?.person?.variables ?? {},
+    ).find(([, variable]) => variable.name === name);
+    if (found === undefined) {
+      throw new Error(`the codebook holds no attribute called ${name}`);
+    }
+    return found[0];
+  };
+
+  type Interleaving = Readonly<{
+    /** What happens while the request is in flight. */
+    what: string;
+    happens: (harness: ReturnType<typeof renderStageEditor>) => Promise<void>;
+    /** What the section says once the answer has landed. */
+    says: string;
+    /**
+     * What the attribute picker holds afterwards — `'created'` for the
+     * attribute the request created, which has no id until it exists.
+     */
+    fillsIn: string;
+  }>;
+
+  const createInterleavings: readonly Interleaving[] = [
+    {
+      what: 'nothing moves underneath it',
+      happens: async () => undefined,
+      says: '',
+      fillsIn: 'created',
+    },
+    {
+      what: 'the researcher changes the node type',
+      happens: (harness) => changeSubjectTo(harness.user, 'family member'),
+      says: '“nickname” was added to the type this stage was about when you asked for it. This stage is about a different type now, so it has not been selected here.',
+      fillsIn: '',
+    },
+    {
+      what: 'the researcher chooses another attribute',
+      happens: (harness) =>
+        harness.user.selectOptions(picker(), 'relationship_to_ego'),
+      says: '“nickname” was added to the codebook. You have chosen a different attribute here since you asked for it, so it has not been selected.',
+      fillsIn: 'relationship_to_ego',
+    },
+  ];
+
+  it.each(createInterleavings)(
+    'adds the attribute, and selects it only if $what',
+    async ({ happens, says, fillsIn }) => {
+      const harness = openEditor();
+      const settle = holdTheHost(harness);
+
+      await harness.user.type(
+        await screen.findByRole('textbox', { name: /Create a new attribute/ }),
+        'nickname',
+      );
+      await harness.user.click(
+        screen.getByRole('button', { name: 'Create the attribute' }),
+      );
+      await happens(harness);
+      const watched = liveRegions();
+      await settle();
+
+      // The write landed where it was addressed, whatever became of it here.
+      expect(
+        Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+          (variable) => variable.name,
+        ),
+      ).toContain('nickname');
+      expect(picker()).toHaveValue(
+        fillsIn === 'created'
+          ? personVariableNamed(harness, 'nickname')
+          : fillsIn,
+      );
+      if (says === '') return;
+      expect(watched).toContain(said(says));
+    },
+  );
+
+  const requireInterleavings: readonly Interleaving[] = [
+    {
+      what: 'nothing moves underneath it',
+      happens: async () => undefined,
+      says: 'This attribute now has to be answered, everywhere the protocol uses it.',
+      fillsIn: 'name',
+    },
+    {
+      what: 'the researcher changes the node type',
+      happens: (harness) => changeSubjectTo(harness.user, 'family member'),
+      says: '“name” now has to be answered, everywhere the protocol uses it. It is not the attribute this stage fills in any more.',
+      fillsIn: '',
+    },
+    {
+      what: 'the researcher chooses another attribute',
+      happens: (harness) =>
+        harness.user.selectOptions(picker(), 'relationship_to_ego'),
+      says: '“name” now has to be answered, everywhere the protocol uses it. It is not the attribute this stage fills in any more.',
+      fillsIn: 'relationship_to_ego',
+    },
+  ];
+
+  it.each(requireInterleavings)(
+    'requires the answer, and says so where the researcher is looking when $what',
+    async ({ happens, says, fillsIn }) => {
+      const harness = openEditor();
+      const settle = holdTheHost(harness);
+
+      await screen.findByText('This attribute can be left empty');
+      await harness.user.click(
+        screen.getByRole('button', { name: 'Require an answer' }),
+      );
+      await happens(harness);
+      const watched = liveRegions();
+      await settle();
+
+      expect(
+        harness.hostCodebook().node?.person?.variables?.name,
+      ).toMatchObject({ validation: { required: true } });
+      expect(picker()).toHaveValue(fillsIn);
+      expect(watched).toContain(said(says));
+    },
+  );
+
+  /**
+   * A collaborator deleting the attribute under the request is the one
+   * interleaving where nothing is written at all. The refusal used to be shown
+   * inside the warning the offer sits in — and that warning is about an
+   * attribute that is no longer there, so it went with it, leaving a
+   * researcher who pressed a button with no account of what happened.
+   */
+  it('says a requirement was refused even when the attribute it was about is gone', async () => {
+    const harness = openEditor();
+    const settle = holdTheHost(harness);
+
+    await screen.findByText('This attribute can be left empty');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Require an answer' }),
+    );
+    harness.receiveCodebookUpdate({
+      node: {
+        person: {
+          name: 'person',
+          color: 'node-color-seq-1',
+          icon: 'add-a-person',
+          shape: { default: 'circle' },
+          variables: {
+            relationship_to_ego: {
+              name: 'relationship_to_ego',
+              type: 'text',
+              component: 'Text',
+            },
+          },
+        },
+      },
+    });
+    await settle();
+
+    expect(
+      screen.getByText(
+        'Someone else changed this while you were editing it, so nothing was saved. Close and reopen this editor to load their version, then make your change again.',
+      ),
+    ).toBeInTheDocument();
+  });
+});
