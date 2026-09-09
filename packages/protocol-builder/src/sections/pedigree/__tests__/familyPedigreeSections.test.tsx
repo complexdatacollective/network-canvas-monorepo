@@ -141,6 +141,9 @@ const FAMILY_MEMBER_SECTION = sectionId({
   typeId: 'family_member',
 });
 
+/** The other node type the fixture carries, which a pedigree can move to. */
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+
 /**
  * jsdom has no layout, and the markdown editor a nomination prompt is written
  * in measures the document on every change and every click: a Range, to scroll
@@ -299,9 +302,9 @@ async function addFormFieldCollecting(
 function variableIdByName(
   harness: StageEditorHarness,
   name: string,
+  section: typeof FAMILY_MEMBER_SECTION = FAMILY_MEMBER_SECTION,
 ): string | undefined {
-  const definition =
-    harness.host.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+  const definition = harness.host.getSnapshot().protocolSections[section];
   const variables = isRecord(definition) ? definition.variables : undefined;
   if (!isRecord(variables)) return undefined;
   return Object.entries(variables).find(
@@ -1263,11 +1266,9 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     // The attribute itself is created — the researcher asked for it, and the
     // codebook edit was already with the host — and the dialog closes.
     await waitFor(() =>
-      expect(
-        Object.values(harness.hostCodebook().node.person?.variables ?? {}).map(
-          (variable) => variable.name,
-        ),
-      ).toContain('nickname'),
+      expect(variableIdByName(harness, 'nickname', PERSON_SECTION)).toEqual(
+        expect.any(String),
+      ),
     );
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
