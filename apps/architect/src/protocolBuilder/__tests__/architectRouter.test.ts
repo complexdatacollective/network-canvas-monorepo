@@ -594,7 +594,12 @@ describe("Architect's in-process protocol-builder host", () => {
       client.create({
         protocolId: PROTOCOL_ID,
         kind: 'stage',
-        document: { type: 'Information', label: 'Refused', title: 'Refused' },
+        document: {
+          type: 'Information',
+          label: 'Refused',
+          title: 'Refused',
+          items: [],
+        },
       }),
     );
 
