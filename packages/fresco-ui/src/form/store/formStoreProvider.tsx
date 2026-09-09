@@ -5,7 +5,6 @@ import { type Context, createContext, type ReactNode, useRef } from 'react';
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import type { FieldValue } from '../Field/types';
 import { createFormStore, type FormStoreApi } from './formStore';
 
 // Re-exported through the provider because that is the entry consumers already
@@ -24,7 +23,7 @@ type FormStoreProviderProps = {
    * once instead of every field being handed its own starting value. A field
    * that passes `initialValue` still decides for itself.
    */
-  initialValues?: Record<string, FieldValue>;
+  initialValues?: Record<string, unknown>;
   children: ReactNode;
 };
 

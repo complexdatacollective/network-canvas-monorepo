@@ -4,7 +4,6 @@ import { LayoutGroup } from 'motion/react';
 import { type ComponentProps, useId, useRef } from 'react';
 
 import { cx } from '../utils/cva';
-import type { FieldValue } from './Field/types';
 import FormErrorsList from './FormErrors';
 import { useForm } from './hooks/useForm';
 import FormStoreProvider from './store/formStoreProvider';
@@ -82,7 +81,7 @@ export default function Form({
   ...props
 }: FormProps & {
   /** The document being edited; see `FormStoreProvider`. */
-  initialValues?: Record<string, FieldValue>;
+  initialValues?: Record<string, unknown>;
 }) {
   return (
     <FormStoreProvider initialValues={initialValues}>

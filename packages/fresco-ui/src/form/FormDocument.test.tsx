@@ -10,7 +10,11 @@ import { FieldsDisabled } from './FieldsDisabled';
 import Form from './Form';
 import SubmitButton from './SubmitButton';
 
-const submitted = () => vi.fn(async () => ({ success: true as const }));
+/** Records the values the form actually submitted. */
+const submitted = () =>
+  vi.fn<(values: Record<string, FieldValue>) => Promise<{ success: true }>>(
+    async () => ({ success: true }),
+  );
 
 describe('a form that is handed the document it edits', () => {
   it('starts every field holding what the document has at its own name', () => {

@@ -55,7 +55,7 @@ export type FormStoreOptions = {
    * mounting afterwards from the document as it stands then rather than as it
    * stood when the form opened.
    */
-  getInitialValues?: () => Record<string, FieldValue> | undefined;
+  getInitialValues?: () => Record<string, unknown> | undefined;
 };
 
 // Enable Map/Set support in Immer
