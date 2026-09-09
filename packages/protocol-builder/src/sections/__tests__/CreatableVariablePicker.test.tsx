@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   type ComponentType,
@@ -300,6 +300,56 @@ describe('the creatable attribute picker', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'This attribute cannot be collected with that input control.',
     );
+  });
+
+  /**
+   * The name box sits inside the stage's own `<form>`, whose default button is
+   * the host's Save — associated by `form=`, which makes it the form's default
+   * button wherever the host renders it. So Enter, which is what anyone typing
+   * a name into a box beside a Create button presses, ran the browser's
+   * implicit submission: on a stage that was already valid the editor saved
+   * and closed, no attribute was created, and the typed name went with it.
+   *
+   * The premise is asserted rather than assumed — the box's enclosing form is
+   * this harness's stage form, and that form has a submit control attached to
+   * it by `form=`.
+   *
+   * Driven as a real key press rather than through `userEvent`, which looks
+   * for a submit button INSIDE the form and so never performs the submission
+   * this is about: what is asserted is that the event is answered here and
+   * does not go on to the form, and that the attribute lands.
+   */
+  it('creates the attribute when Enter is pressed in the name box', async () => {
+    const harness = renderRows(<StampedAttributes />);
+    await addRow(harness);
+
+    const box = await screen.findByRole('textbox', {
+      name: 'Create a new attribute',
+    });
+    expect(box.closest('form')?.id).toBe(harness.formId);
+    expect(
+      document.querySelector(`button[type="submit"][form="${harness.formId}"]`),
+    ).not.toBeNull();
+
+    await harness.user.type(box, 'nominated_early');
+    const enter = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    });
+    await act(async () => {
+      box.dispatchEvent(enter);
+    });
+
+    expect(enter.defaultPrevented).toBe(true);
+    await waitFor(() =>
+      expect(
+        within(picker()).getByRole('option', { name: 'nominated_early' }),
+      ).toBeInTheDocument(),
+    );
+    expect(picker().value).not.toBe('');
+    // Emptied on the answer, exactly as the button's own create empties it.
+    expect(box).toHaveValue('');
   });
 
   /**
