@@ -5,6 +5,7 @@ import { AUDIT_FACET_LIMIT, contract } from '@codaco/studio-rpc';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { updateUserLocale } from './account/commands.ts';
+import type { AssetStore } from './assets.ts';
 import {
   acknowledgeAuditAlert,
   AuditAlertError,
@@ -51,6 +52,8 @@ import {
   correlateAuthorizedTeam,
   logOperational,
 } from './observability/logger.ts';
+import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
+import type { ProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import {
   addAuditedInformationStage,
   commitAuditedProtocolSection,
@@ -79,6 +82,12 @@ import { roleGrantsTeamAdministration } from './team/roles.ts';
 export type RpcContext = {
   principal: Principal | null;
   requestId: string;
+  /**
+   * The WebSocket this call arrived on, when it arrived on one. The
+   * protocol-builder host locks per connection rather than per person, so two
+   * tabs of one researcher are two lock owners.
+   */
+  connectionId?: string;
 };
 
 const os = implement(contract).$context<RpcContext>();
@@ -337,6 +346,8 @@ export function createRpcRouter(
     invitationDeliveryAvailable: boolean;
     bootstrapToken?: string;
     pool?: pg.Pool;
+    protocolBuilder: ProtocolBuilderRuntime;
+    assetStore?: AssetStore;
   },
 ) {
   const {
@@ -625,6 +636,12 @@ export function createRpcRouter(
     // exactly as `studies.get` refuses the study in front of them. Creating a
     // line answers to the same rule from the other side — a line no study owns
     // is reachable only by an Admin or Owner, so only they may make one.
+    protocolBuilder: createProtocolBuilderRouter({
+      auth,
+      runtime: deps.protocolBuilder,
+      ...(pool === undefined ? {} : { pool }),
+      ...(deps.assetStore === undefined ? {} : { assetStore: deps.assetStore }),
+    }),
     protocols: {
       create: os.protocols.create
         .use(requireTeamAdministration)

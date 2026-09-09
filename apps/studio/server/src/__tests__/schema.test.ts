@@ -524,6 +524,7 @@ describe.skipIf(!db)('schema verification', () => {
         'participant_contact_optouts',
         'participants',
         'protocol_drafts',
+        'protocol_events',
         'protocol_versions',
         'protocols',
         'rateLimit',
