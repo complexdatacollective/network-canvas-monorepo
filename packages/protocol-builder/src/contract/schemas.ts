@@ -283,8 +283,11 @@ export const StageResourceInputSchema = z.object({
       kind: z.literal('secret'),
       name: z.string().min(1),
       /**
-       * Consumed by the host: never returned by any procedure, never placed on
-       * a descriptor or an event, never logged.
+       * Consumed by the host: no resource procedure ever answers with it and
+       * no descriptor carries it, so a picker only ever holds the asset id.
+       * Where it goes at promotion is what `secretStorage` names — a
+       * `plaintext` host writes it into the asset manifest, which is part of
+       * the protocol the researcher then sends to other people.
        */
       value: z.string().min(1),
     }),

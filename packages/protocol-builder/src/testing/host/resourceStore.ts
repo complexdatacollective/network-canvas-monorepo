@@ -86,6 +86,10 @@ const KindSchema = z.enum([
 /**
  * Staged resources for the in-memory host: bytes and secrets an edit imported,
  * kept until its submit promotes them or its cancel drops them.
+ *
+ * One staging area per protocol rather than one per connection, which a host
+ * serving several editors would need: a `discard` with no id here drops
+ * everything staged, not everything this caller staged.
  */
 export class InMemoryResourceStore {
   readonly secretStorage: SecretStorage = 'plaintext';
