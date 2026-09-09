@@ -1,7 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -16,6 +15,7 @@ import BuilderSection from '../../sections/BuilderSection.tsx';
 import { StageEditSession } from '../../stageEdit.tsx';
 import {
   createInMemoryHost,
+  type InMemoryClient,
   type InMemoryHost,
 } from '../../testing/host/createInMemoryHost.ts';
 import {
@@ -58,20 +58,12 @@ describe('a stage somebody else is editing', () => {
 
 describe('a stage the protocol has not answered for yet', () => {
   it('is read but not typed into, and says nothing about a holder', async () => {
-    const host = createInMemoryHost({ sections: fixtureProtocolSections() });
-    const acquire = gatedAcquire(host.client);
-
-    render(
-      <DialogProvider>
-        <ProtocolBuilder client={acquire.client} protocolId={host.protocolId}>
-          <ResourceClientProvider>
-            <StageEditSession target={{ sectionId: STAGE_SECTION }}>
-              <StageEditorShell>{nameSection}</StageEditorShell>
-            </StageEditSession>
-          </ResourceClientProvider>
-        </ProtocolBuilder>
-      </DialogProvider>,
-    );
+    const gate = gatedAcquire();
+    renderStageEditor({
+      stageId: STAGE_ID,
+      sections: nameSection,
+      client: gate.client,
+    });
 
     const field = await screen.findByRole('textbox', { name: 'Stage name' });
     expect(field).toBeDisabled();
@@ -82,7 +74,7 @@ describe('a stage the protocol has not answered for yet', () => {
     ).not.toBeInTheDocument();
 
     await act(async () => {
-      acquire.answer();
+      gate.release();
     });
 
     await waitFor(() => {
@@ -491,33 +483,31 @@ describe('a file imported while a stage is being added', () => {
 });
 
 /**
- * The host's client with its answer to `acquireLock` held until the test lets
- * it through, which is every host for as long as it takes to answer.
+ * Holds every answer to `acquireLock` until the test lets it through, which is
+ * every host for as long as it takes to answer.
  *
  * Proxied rather than spread: a contract client's procedures are reached
  * through property access rather than held as own properties, so a spread copy
  * of one has no procedures on it at all.
  */
-function gatedAcquire(
-  client: ProtocolBuilderClient,
-): Readonly<{ client: ProtocolBuilderClient; answer: () => void }> {
+function gatedAcquire(): Readonly<{
+  client: (host: InMemoryHost) => ProtocolBuilderClient;
+  release: () => void;
+}> {
   const gates: (() => void)[] = [];
-  const acquireLock: ProtocolBuilderClient['acquireLock'] = async (
-    input,
-    options,
-  ) => {
-    const answer = await client.acquireLock(input, options);
-    await new Promise<void>((open) => gates.push(open));
-    return answer;
-  };
   return {
-    client: new Proxy(client, {
-      get: (target, property) =>
-        property === 'acquireLock'
-          ? acquireLock
-          : Reflect.get(target, property),
-    }),
-    answer: () => {
+    client: ({ client }) =>
+      new Proxy(client, {
+        get: (target, property) =>
+          property === 'acquireLock'
+            ? async (...args: Parameters<InMemoryClient['acquireLock']>) => {
+                const answer = await client.acquireLock(...args);
+                await new Promise<void>((open) => gates.push(open));
+                return answer;
+              }
+            : Reflect.get(target, property),
+      }),
+    release: () => {
       for (const open of gates.splice(0)) open();
     },
   };

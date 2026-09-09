@@ -25,6 +25,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import type { ProtocolBuilderClient } from '../contract/contract.ts';
 import { saveStageMessages } from '../editors/saveStageAction.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
@@ -435,6 +436,17 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
       sectionId: ProtocolSectionId;
       displayName: string;
     }>[];
+    /**
+     * Wraps the seeded host's own client, the way `renderResourceEditor` does,
+     * for a test about a host that holds its answer.
+     *
+     * Between the editor and the host rather than inside it: this host answers
+     * in a microtask, so a request that is still in flight is something only
+     * the transport can be. A stubbed store method would be answering for a
+     * write the host decides, and would go on compiling after the host stopped
+     * asking it the same question.
+     */
+    client?: (host: InMemoryHost) => ProtocolBuilderClient;
   }> &
     StageEditorMounting<T> &
     StageEditorSeeding<T>;
@@ -555,6 +567,7 @@ export function renderStageEditor<T extends StageType = StageType>(
     principal: HARNESS_PRINCIPAL,
   });
   const { protocolId, store } = host;
+  const editorClient = options.client?.(host) ?? host.client;
 
   // Locks taken before the editor opens, which is what a collaborator holding
   // a section IS: the acquire the editor is about to make comes back read-only
@@ -587,7 +600,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       {...(options.locale === undefined ? {} : { locale: options.locale })}
     >
       <DialogProvider>
-        <ProtocolBuilder client={host.client} protocolId={protocolId}>
+        <ProtocolBuilder client={editorClient} protocolId={protocolId}>
           <SeedProtocolCache store={store}>
             <HarnessEditor
               target={target}
