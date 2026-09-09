@@ -13,6 +13,7 @@ import { createMessageError } from '@codaco/app-i18n/messages';
 
 import type { ProtocolBuilderClient } from '../contract/contract.ts';
 import { useProtocolBuilderContext } from '../state/context.ts';
+import type { ResourcePromotion } from '../state/hooks.ts';
 import { resourceFailureMessages } from './resourceMessages.ts';
 import {
   resourceFailure,
@@ -86,11 +87,18 @@ export type ResourceClient = Readonly<{
 export type StagedResources = Readonly<{
   staged: readonly ResourceDescriptor[];
   /**
-   * Commits every staged resource and its manifest entry, in the host's own
-   * atomic operation. Answered before the stage's own submit, so a stage
-   * naming a file is never written without the file.
+   * What the stage's submit carries so the host commits these resources in the
+   * section's own revision, or `undefined` when the edit staged nothing.
+   *
+   * There is no promoting of its own: the submit is the only place the bytes
+   * and the section naming them become one revision, so a refused submit
+   * leaves the staging exactly as it was and the same request promotes it on
+   * the next attempt — the promotion id is minted once and held until a submit
+   * carrying it is written.
    */
-  promote(): Promise<ResourceResult<readonly ResourceDescriptor[]>>;
+  promotion(): ResourcePromotion | undefined;
+  /** Called when a submit carrying that promotion was written. */
+  promoted(): void;
   /** Drops everything staged in this edit — the cancel path. */
   discardAll(): Promise<ResourceResult<undefined>>;
 }>;
@@ -167,6 +175,10 @@ export function ResourceClientProvider({ children }: ProviderProps) {
   const handles = useRef(new Map<string, StagedSecretHandle>());
   const leaving = useRef(new Set<string>());
   const discarded = useRef(new Set<string>());
+  // The promotion this edit is asking for, kept across attempts: a submit
+  // whose answer was lost is retried with the id the host already knows, so a
+  // promotion it did commit is answered with rather than made twice.
+  const promotionId = useRef<string | undefined>(undefined);
 
   const editorClient = useMemo(
     () =>
@@ -190,6 +202,7 @@ export function ResourceClientProvider({ children }: ProviderProps) {
         staged,
         setStaged,
         handles: handles.current,
+        promotionId,
       }),
     [client, protocolId, staged],
   );
@@ -245,6 +258,7 @@ type StagedDeps = Readonly<{
   staged: readonly ResourceDescriptor[];
   setStaged: ClientDeps['setStaged'];
   handles: Map<string, StagedSecretHandle>;
+  promotionId: { current: string | undefined };
 }>;
 
 /** Drops a staged resource from the edit's bookkeeping, wherever it is held. */
@@ -389,30 +403,31 @@ function buildStagedResources(deps: StagedDeps): StagedResources {
 
   return {
     staged: deps.staged,
-    promote: () =>
-      called(async () => {
-        const resourceIds = deps.staged.map((descriptor) => descriptor.id);
-        if (resourceIds.length === 0) return resourceOk([]);
-        const secretHandles = resourceIds
-          .map((id) => deps.handles.get(id))
-          .filter(
-            (handle): handle is StagedSecretHandle => handle !== undefined,
-          );
-        const result = await resources.promote({
-          protocolId,
-          promotionId: uuid(),
-          resourceIds,
-          ...(secretHandles.length === 0 ? {} : { secretHandles }),
-        });
-        if (result.status !== 'ok') return result;
-        for (const id of resourceIds) forget(id);
-        return resourceOk(result.data.promoted);
-      }),
+    promotion: () => {
+      const resourceIds = deps.staged.map((descriptor) => descriptor.id);
+      if (resourceIds.length === 0) return undefined;
+      const secretHandles = resourceIds
+        .map((id) => deps.handles.get(id))
+        .filter((handle): handle is StagedSecretHandle => handle !== undefined);
+      deps.promotionId.current ??= uuid();
+      return {
+        promotionId: deps.promotionId.current,
+        resourceIds,
+        ...(secretHandles.length === 0 ? {} : { secretHandles }),
+      };
+    },
+    promoted: () => {
+      deps.promotionId.current = undefined;
+      for (const descriptor of deps.staged) forget(descriptor.id);
+    },
     discardAll: () =>
       called(async () => {
         if (deps.staged.length === 0) return resourceOk(undefined);
+        // A discard answers with its status and nothing else, so an `ok` is
+        // read from the status alone; there is no data key to unwrap.
         const result = await resources.discard({ protocolId });
         if (result.status !== 'ok') return result;
+        deps.promotionId.current = undefined;
         for (const descriptor of deps.staged) forget(descriptor.id);
         return resourceOk(undefined);
       }),

@@ -175,6 +175,18 @@ export type StageEditorHarness = RenderResult &
      */
     cancel(): Promise<void>;
     /**
+     * Waits for the host to answer the acquire, which is when the editor
+     * learns whether this researcher may write to the stage.
+     *
+     * Until then the stage is on screen but not theirs: its controls are
+     * disabled, and the ones a stage offers only to whoever holds it are not
+     * rendered at all. `user` waits for this before every action it takes, so
+     * a test needs it only where it reaches past the researcher's own actions
+     * — driving a list's commands directly, or reading a control before
+     * touching one.
+     */
+    opened(): Promise<void>;
+    /**
      * Applies a codebook change as if another editor had made it before this
      * one opened.
      *
@@ -616,7 +628,7 @@ export function renderStageEditor<T extends StageType = StageType>(
   // chain or a timer that a real typist's fingers would have let through
   // arrives here only after the whole string is in.
   const keyboard = userEvent.setup({ delay: null });
-  const user = withSafeTypingIntoRichText(keyboard);
+  const user = afterTheStageHasOpened(withSafeTypingIntoRichText(keyboard));
 
   /**
    * THIS harness's stage form, or `null` when what is mounted has none.
@@ -682,6 +694,12 @@ export function renderStageEditor<T extends StageType = StageType>(
       await act(async () => {
         view.unmount();
       });
+    },
+    opened: async () => {
+      // Everything the mount set in motion, settled: the acquire is a promise
+      // the effect made, so a turn of the microtask queue inside `act` is what
+      // its answer and the render that follows are waiting for.
+      await act(async () => {});
     },
     receiveCodebookUpdate: (patch) => {
       act(() => {
@@ -749,6 +767,36 @@ export function renderStageEditor<T extends StageType = StageType>(
 }
 
 type HarnessUser = ReturnType<typeof userEvent.setup>;
+
+/**
+ * The researcher's own actions, taken once the stage has finished opening.
+ *
+ * A stage is not editable until the host has answered its acquire: until then
+ * nobody has said whether this researcher may write to it, so the form renders
+ * with its controls disabled. A test's first keystroke is otherwise in the
+ * same turn as the render — earlier than any researcher could act, and into a
+ * form that is on screen but not yet theirs.
+ *
+ * Waited for here, in the one place every test's interaction goes through,
+ * rather than by each test: what a test is about is what it does to an open
+ * editor, and "await the acquire first" in three hundred tests would be the
+ * harness's own timing written out three hundred times.
+ */
+function afterTheStageHasOpened(keyboard: HarnessUser): HarnessUser {
+  return new Proxy(keyboard, {
+    get: (target, property, receiver) => {
+      const value: unknown = Reflect.get(target, property, receiver);
+      if (typeof value !== 'function') return value;
+      const action = value as (...args: unknown[]) => unknown;
+      return async (...args: unknown[]) => {
+        // Everything the mount set in motion, settled: the acquire above all,
+        // which is what takes the controls out of their disabled state.
+        await act(async () => {});
+        return action.apply(target, args);
+      };
+    },
+  });
+}
 
 // Read from the attribute rather than from `isContentEditable`, which jsdom
 // leaves undefined.

@@ -3,7 +3,7 @@ import { type ComponentProps, useEffect, useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
+import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   buildVariableRoleMap,
@@ -415,7 +415,9 @@ describe('the fields a form collects', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const handle = screen.getByRole('button', { name: 'Reorder field 1 of 2' });
+    const handle = await screen.findByRole('button', {
+      name: 'Reorder field 1 of 2',
+    });
     handle.focus();
     await harness.user.keyboard('{ArrowDown}');
 
@@ -3252,6 +3254,11 @@ describe('dismissing a codebook editor while its save is in flight', () => {
    * the only way to put anything in the window between the press and the
    * answer. Held at the store rather than at the client, which is a proxy and
    * has no property to replace.
+   *
+   * Only the codebook's own sections: the stage's acquire runs through the
+   * same method, and a stage whose acquire is never answered is an editor
+   * nobody may write to, which has no codebook dialog to open in the first
+   * place.
    */
   const holdCodebookWrites = (
     harness: ReturnType<typeof renderStageEditor>,
@@ -3263,6 +3270,10 @@ describe('dismissing a codebook editor while its save is in flight', () => {
       release = resolve;
     });
     const delayed = async (...args: Parameters<typeof acquire>) => {
+      const [id] = args;
+      if (!parseSectionId(id).kind.startsWith('codebook')) {
+        return acquire(...args);
+      }
       await held;
       return acquire(...args);
     };

@@ -20,6 +20,8 @@ export type CodebookRefusal =
   | Readonly<{ kind: 'referencesRemain'; references: number }>
   | Readonly<{ kind: 'invalidShape' }>
   | Readonly<{ kind: 'sectionGone' }>
+  /** A collaborator created the section this change would have created. */
+  | Readonly<{ kind: 'sectionCreatedElsewhere' }>
   | Readonly<{ kind: 'subjectGone' }>
   | Readonly<{ kind: 'protocolGone' }>
   | Readonly<{ kind: 'unreachable' }>
@@ -74,6 +76,13 @@ const messages = defineMessages({
       'This part of the codebook no longer exists, so nothing was saved. Close this editor and start again.',
     description:
       'Refusal shown in a codebook editor when the entity type being edited has been deleted from the protocol, usually by a collaborator, while the editor was open.',
+  },
+  sectionCreatedElsewhere: {
+    id: 'protocolBuilder.compoundFailure.sectionCreatedElsewhere',
+    defaultMessage:
+      'Somebody else has just added the participant’s first attribute, so nothing was saved. Try again to add yours to theirs.',
+    description:
+      'Refusal shown when the researcher added the first attribute asked of the participant themselves at the same moment as a collaborator, so the protocol already held the part of the codebook this change would have created.',
   },
   protocolGone: {
     id: 'protocolBuilder.compoundFailure.protocolGone',
@@ -135,6 +144,8 @@ export function codebookRefusalMessage(refusal: CodebookRefusal): string {
       return createMessageError(messages.invalidShape);
     case 'sectionGone':
       return createMessageError(messages.sectionGone);
+    case 'sectionCreatedElsewhere':
+      return createMessageError(messages.sectionCreatedElsewhere);
     case 'subjectGone':
       return createMessageError(messages.subjectGone);
     case 'protocolGone':

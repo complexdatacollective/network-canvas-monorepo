@@ -24,7 +24,11 @@ import {
   type StageIdentity,
 } from './stageDocument.ts';
 import { useProtocolBuilderContext } from './state/context.ts';
-import { useSectionMutation, type SubmitResult } from './state/hooks.ts';
+import {
+  useSectionMutation,
+  type SectionAccess,
+  type SubmitResult,
+} from './state/hooks.ts';
 
 /**
  * Which stage an editor is open on: one the protocol already holds, or one it
@@ -52,7 +56,16 @@ export type StageEdit = Readonly<{
   identity: StageIdentity | undefined;
   creation: StageCreation | undefined;
   committedFields: StageFormDraft | undefined;
-  readOnly: boolean;
+  /**
+   * Whether this editor may write yet.
+   *
+   * Three states rather than two, because "not editable" covers a stage
+   * somebody else holds AND one whose acquire has not been answered: they read
+   * differently — only the first has a holder to name — and a form that let
+   * the researcher type before the host had granted the lock would be a draft
+   * the first save loses.
+   */
+  access: SectionAccess;
   /** Who is editing this stage, when it is somebody else. */
   holder: Presence | undefined;
   /** The protocol would not open this stage: it is gone, or out of reach. */
@@ -135,7 +148,7 @@ function EditingStage({
   const formId = useFormId(requestedFormId);
   const section = useSectionMutation(sectionId);
   const staged = useStagedResources();
-  const { submit, readOnly, holder, unavailable } = section;
+  const { submit, access, holder, unavailable } = section;
 
   const opened = useMemo(
     () =>
@@ -151,14 +164,14 @@ function EditingStage({
       if (identity === undefined) {
         return { status: 'refused', message: NOT_READY_MESSAGE };
       }
-      // Before the stage that names them: a file promoted after a refused
-      // submit would be committed for a stage nobody saved.
-      const promoted = await staged.promote();
-      if (promoted.status === 'failed') {
-        return { status: 'refused', message: promoted.failure.message };
-      }
-      const result = await submit(stageDocument(identity, fields));
+      // Carried by the submit rather than committed before it: the section and
+      // the bytes it names are one revision, so a refused save leaves the
+      // files staged for the next attempt instead of committing them for a
+      // stage nobody saved.
+      const promotion = staged.promotion();
+      const result = await submit(stageDocument(identity, fields), promotion);
       if (result.status === 'written') {
+        staged.promoted();
         onSaved?.(sectionId);
         return { status: 'saved', sectionId };
       }
@@ -173,12 +186,12 @@ function EditingStage({
       identity,
       creation: undefined,
       committedFields: opened?.fields,
-      readOnly,
+      access,
       holder,
       unavailable,
       save,
     }),
-    [formId, holder, identity, opened, readOnly, save, unavailable],
+    [access, formId, holder, identity, opened, save, unavailable],
   );
 
   return <StageEditContext value={edit}>{children}</StageEditContext>;
@@ -222,9 +235,13 @@ function CreatingStage({
 
   const save = useCallback(
     async (fields: StageFormDraft): Promise<StageSaveOutcome> => {
-      const promoted = await staged.promote();
-      if (promoted.status === 'failed') {
-        return { status: 'refused', message: promoted.failure.message };
+      // A promotion rides a section's submit, and a stage that does not exist
+      // yet has none to ride: `create` mints the section and takes no
+      // promotion, so there is nowhere to commit these bytes in the revision
+      // that would name them. Refused rather than saved without them, which is
+      // a stage pointing at a file the protocol never took.
+      if (staged.promotion() !== undefined) {
+        return { status: 'refused', message: IMPORT_BEFORE_ADD_MESSAGE };
       }
       const { data, definedError, isSuccess } = await safe(
         client.create({
@@ -255,7 +272,9 @@ function CreatingStage({
       identity,
       creation,
       committedFields,
-      readOnly: false,
+      // No lock to wait for: the host mints the section and serialises the
+      // call, so a stage being added is editable from its first keystroke.
+      access: 'editing',
       holder: undefined,
       // A stage the protocol does not hold yet cannot have gone.
       unavailable: false,
@@ -267,7 +286,19 @@ function CreatingStage({
   return <StageEditContext value={edit}>{children}</StageEditContext>;
 }
 
+/**
+ * What a refused submit does to the draft on screen.
+ *
+ * A lost lock and a document the section cannot hold are both the end of this
+ * draft: the editor may not write, or what it wrote is not a stage. A refused
+ * promotion is not — the submit wrote nothing at all, the files are still
+ * staged, and saving again is a thing that can work — so the draft stays where
+ * the researcher left it.
+ */
 function refusalFromHost(result: SubmitResult): StageSaveOutcome {
+  if (result.status === 'promotionFailed') {
+    return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
+  }
   return result.status === 'notLockHolder'
     ? { status: 'lost', message: LOCK_LOST_MESSAGE }
     : { status: 'lost', message: INVALID_SHAPE_MESSAGE };
@@ -295,6 +326,20 @@ const messages = defineMessages({
     description:
       'Shown above a stage editor’s fields when the host refused the save because the stage was the wrong shape. A stage is one step of an interview.',
   },
+  promotionFailed: {
+    id: 'protocolBuilder.stageEdit.promotionFailed',
+    defaultMessage:
+      'The files you imported could not be saved with this stage, so nothing was saved and your changes are still here. Try saving again.',
+    description:
+      'Shown above a stage editor’s fields when the host would not take the files imported during this edit, so neither they nor the stage were saved. The researcher’s unsaved work is still on screen. A stage is one step of an interview.',
+  },
+  importBeforeAdd: {
+    id: 'protocolBuilder.stageEdit.importBeforeAdd',
+    defaultMessage:
+      'A file imported here cannot be saved with a stage that is being added for the first time. Discard the import and add the stage, then reopen it to import the file.',
+    description:
+      'Shown above a stage editor’s fields when the researcher imported a file while adding a brand new stage, which the protocol cannot yet take in one step. A stage is one step of an interview.',
+  },
   addFailed: {
     id: 'protocolBuilder.stageEdit.addFailed',
     defaultMessage:
@@ -304,7 +349,13 @@ const messages = defineMessages({
   },
 });
 
-const NOT_READY_MESSAGE = createMessageError(messages.notReady);
+/**
+ * Read by the shell too: a stage whose acquire has not been answered refuses a
+ * save in the same words, and the sentence has one declaration.
+ */
+export const NOT_READY_MESSAGE = createMessageError(messages.notReady);
 const LOCK_LOST_MESSAGE = createMessageError(messages.lockLost);
 const INVALID_SHAPE_MESSAGE = createMessageError(messages.invalidShape);
 const ADD_FAILED_MESSAGE = createMessageError(messages.addFailed);
+const PROMOTION_FAILED_MESSAGE = createMessageError(messages.promotionFailed);
+const IMPORT_BEFORE_ADD_MESSAGE = createMessageError(messages.importBeforeAdd);

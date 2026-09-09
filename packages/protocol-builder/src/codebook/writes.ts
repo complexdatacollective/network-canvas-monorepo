@@ -7,6 +7,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import type { ProtocolBuilderClient } from '../contract/contract.ts';
 import type { Presence, SectionReference } from '../contract/schemas.ts';
 import { useProtocolBuilderContext } from '../state/context.ts';
 import {
@@ -158,6 +159,18 @@ export function useCodebookSectionWrite(): (
         client.acquireLock({ protocolId, sectionId: id }),
       );
       if (!acquired.isSuccess) {
+        // The participant's own attributes are the one part of the codebook a
+        // protocol need not have yet: a researcher who has asked the
+        // participant nothing has no section to lock, and the first attribute
+        // is what brings it into being. `create` mints it and serialises the
+        // call, so the write that adds the attribute is also the write that
+        // creates the section — there is no empty section to write first.
+        if (
+          subject.entity === 'ego' &&
+          acquired.definedError?.code === 'SECTION_NOT_FOUND'
+        ) {
+          return createEgoCodebook(client, protocolId, next);
+        }
         return refused(protocolRefusal(acquired.definedError?.code));
       }
       if (acquired.data.lock === 'readOnly') {
@@ -195,6 +208,43 @@ export function useCodebookSectionWrite(): (
     },
     [client, protocolId],
   );
+}
+
+/**
+ * Adds the participant's first attribute, which is what creates the section
+ * holding them.
+ *
+ * The draft is laid over an empty codebook rather than over a document the
+ * host handed back, because there is none: `create` is atomic and takes no
+ * lock, so between deciding to create and creating, a collaborator adding the
+ * first attribute of their own is answered `SECTION_EXISTS` rather than
+ * overwritten.
+ */
+async function createEgoCodebook(
+  client: ProtocolBuilderClient,
+  protocolId: string,
+  next: (authoritativeDocument: SectionDoc) => SectionDoc,
+): Promise<CodebookWriteOutcome> {
+  let document: SectionDoc;
+  try {
+    document = next({});
+  } catch (error: unknown) {
+    return builderRefusal(error);
+  }
+  const created = await safe(
+    client.create({ protocolId, kind: 'codebookEgo', document }),
+  );
+  if (created.isSuccess) {
+    return { status: 'applied', sectionId: created.data.sectionId };
+  }
+  const { definedError } = created;
+  if (definedError?.code === 'INVALID_SHAPE') {
+    return refused({ kind: 'invalidShape' });
+  }
+  if (definedError?.code === 'SECTION_EXISTS') {
+    return refused({ kind: 'sectionCreatedElsewhere' });
+  }
+  return refused(protocolRefusal(definedError?.code));
 }
 
 /**

@@ -468,7 +468,7 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     const harness = openFixture();
 
     await harness.user.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: 'Create a new display label attribute',
       }),
     );

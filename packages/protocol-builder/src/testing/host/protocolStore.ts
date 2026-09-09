@@ -266,7 +266,7 @@ export class InMemoryProtocolStore {
         [orderId, { ...order, stages }],
       ],
       principal,
-      new Set(),
+      new Set<ProtocolSectionId>(),
     );
   }
 

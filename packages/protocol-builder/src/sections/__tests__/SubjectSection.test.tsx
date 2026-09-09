@@ -256,7 +256,7 @@ const createNodeTypeNamed = async (
   name: string,
 ): Promise<void> => {
   await harness.user.click(
-    screen.getByRole('button', { name: 'Create a new node type' }),
+    await screen.findByRole('button', { name: 'Create a new node type' }),
   );
   await harness.user.type(
     await screen.findByRole('textbox', { name: 'Node type name' }),
@@ -299,7 +299,7 @@ describe('creating the type a stage needs without leaving it', () => {
     });
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create a new node type' }),
+      await screen.findByRole('button', { name: 'Create a new node type' }),
     );
 
     const color = draftString(NEW_ENTITY_DRAFT.node, 'color');
@@ -508,7 +508,7 @@ describe('creating the type a stage needs without leaving it', () => {
     });
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create a new node type' }),
+      await screen.findByRole('button', { name: 'Create a new node type' }),
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Node type name' }),
@@ -636,7 +636,7 @@ describe('dismissing the create dialog while it is submitting', () => {
 
   const startTheCreate = async (harness: Harness) => {
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create a new node type' }),
+      await screen.findByRole('button', { name: 'Create a new node type' }),
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Node type name' }),
@@ -723,7 +723,7 @@ describe('naming a new type', () => {
     });
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create a new node type' }),
+      await screen.findByRole('button', { name: 'Create a new node type' }),
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Node type name' }),
@@ -746,7 +746,7 @@ describe('naming a new type', () => {
     });
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create a new edge type' }),
+      await screen.findByRole('button', { name: 'Create a new edge type' }),
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Edge type name' }),

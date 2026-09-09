@@ -907,7 +907,9 @@ describe('the subject section’s edge wording, read in Spanish', () => {
     expectNoLocaleLeaks('the edge subject section', researcherWords(harness));
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Crear un tipo de vínculo nuevo' }),
+      await screen.findByRole('button', {
+        name: 'Crear un tipo de vínculo nuevo',
+      }),
     );
 
     // The same words title the dialog the button opens, so a section that
