@@ -320,8 +320,6 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   const shouldDiscardOnUnmount = useShouldDiscardFieldOnUnmount();
   const fieldsDisabled = useFieldsDisabled();
 
-  // Disable fields while form is submitting, and for as long as the form
-  // around them says nothing in it may be edited.
   const isDisabled = isSubmitting || fieldsDisabled || config.disabled;
   const isReadOnly = config.readOnly;
 
