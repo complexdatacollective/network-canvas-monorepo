@@ -17,17 +17,21 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import Section from '@codaco/fresco-ui/Section';
+import type { Asset } from '@codaco/protocol-validation';
 
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { acceptsResourceKind } from '../resources/components/resourceKinds.ts';
 import ResourcePickerControl from '../resources/components/ResourcePickerControl.tsx';
+import type { ResourceDescriptor, ResourceKind } from '../resources/gateway.ts';
 import {
   ruleSetRules,
   ruleSetTargets,
   ruleSetValidationMessage,
   type RuleSetValue,
+  type RuleSetVariant,
 } from '../rules/ruleSet.ts';
 import { FilterRuleSetField } from '../rules/RuleSetField.tsx';
 import { useRowValue } from './AttributeCodebookControls.tsx';
@@ -183,6 +187,13 @@ const messages = defineMessages({
     description:
       'Guidance under the control choosing where one side panel’s people come from, naming the two kinds of source.',
   },
+  sourceNotNetwork: {
+    id: 'protocolBuilder.nodePanels.sourceNotNetwork',
+    defaultMessage:
+      'A panel is set to list something that is not network data. Open it and choose a data file, or the people named so far.',
+    description:
+      'Refusal shown above the side-panel list when a panel names an imported resource that is not participant data — a picture, a recording or a map layer — which the interview could not read as a list of people. Network data is imported participant data: a roster of people and the ties between them.',
+  },
   sourceRequired: {
     id: 'protocolBuilder.nodePanels.sourceRequired',
     defaultMessage: 'Choose where the people in this panel come from.',
@@ -232,24 +243,24 @@ const messages = defineMessages({
     description:
       'Action that confirms switching one side panel’s filter off and discarding its rules.',
   },
-  edgeRulesClearTitle: {
-    id: 'protocolBuilder.nodePanels.edgeRulesClearTitle',
-    defaultMessage: 'This will delete this panel’s connection rules',
+  unanswerableRulesClearTitle: {
+    id: 'protocolBuilder.nodePanels.unanswerableRulesClearTitle',
+    defaultMessage: 'This will delete rules an imported file cannot answer',
     description:
-      'Title of the dialog asked when a side panel stops listing the interview’s own network, because rules about connections between people cannot be answered by an imported file.',
+      'Title of the dialog asked when a side panel stops listing the interview’s own network, because rules about connections between people, or about the participant themselves, cannot be answered by an imported file.',
   },
-  edgeRulesClearDescription: {
-    id: 'protocolBuilder.nodePanels.edgeRulesClearDescription',
+  unanswerableRulesClearDescription: {
+    id: 'protocolBuilder.nodePanels.unanswerableRulesClearDescription',
     defaultMessage:
-      'Rules about connections ask about the network the participant is building, and an imported file has none — so they would match nobody. Delete them and use the file, or cancel to keep the rules and go on listing the people named so far.',
+      'Rules about connections between people, or about the participant themselves, ask about the interview the participant is doing — and an imported file is no part of it, so they would match nobody. Delete them and use the file, or cancel to keep the rules and go on listing the people named so far.',
     description:
-      'Body of the dialog asked when a side panel stops listing the interview’s own network, naming both answers: delete the connection rules, or cancel and keep reading the interview.',
+      'Body of the dialog asked when a side panel stops listing the interview’s own network, naming both answers: delete the rules an imported file cannot answer, or cancel and keep reading the interview.',
   },
-  edgeRulesClearConfirm: {
-    id: 'protocolBuilder.nodePanels.edgeRulesClearConfirm',
+  unanswerableRulesClearConfirm: {
+    id: 'protocolBuilder.nodePanels.unanswerableRulesClearConfirm',
     defaultMessage: 'Delete the rules',
     description:
-      'Action that confirms deleting a side panel’s connection rules so the panel can list an imported file instead.',
+      'Action that confirms deleting the side panel’s rules an imported file cannot answer, so the panel can list that file instead.',
   },
   clearTitle: {
     id: 'protocolBuilder.nodePanels.clearTitle',
@@ -315,10 +326,10 @@ const PANELS_CAPABILITY: SectionCapability = {
  * `confirm` takes the words themselves: a dialog is opened from an event
  * handler, and there is no descriptor seam between here and the screen.
  */
-const edgeRulesConfirm = (intl: IntlShape) => ({
-  title: intl.formatMessage(messages.edgeRulesClearTitle),
-  description: intl.formatMessage(messages.edgeRulesClearDescription),
-  confirmLabel: intl.formatMessage(messages.edgeRulesClearConfirm),
+const unanswerableRulesConfirm = (intl: IntlShape) => ({
+  title: intl.formatMessage(messages.unanswerableRulesClearTitle),
+  description: intl.formatMessage(messages.unanswerableRulesClearDescription),
+  confirmLabel: intl.formatMessage(messages.unanswerableRulesClearConfirm),
   cancelLabel: intl.formatMessage(commonMessages.cancel),
   intent: 'warning' as const,
   onConfirm: () => undefined,
@@ -353,31 +364,123 @@ const asString = (value: unknown): string | undefined =>
 const rowsOf = (value: unknown): Record<string, unknown>[] =>
   Array.isArray(value) ? value.filter(isRecord) : [];
 
+/** Which rules a panel's filter may be about, given where it reads from. */
+type PanelRuleSetVariant = Extract<
+  RuleSetVariant,
+  'interviewNetworkPanel' | 'externalDataPanel'
+>;
+
+const panelRuleSetVariant = (dataSource: string): PanelRuleSetVariant =>
+  dataSource === INTERVIEW_NETWORK
+    ? 'interviewNetworkPanel'
+    : 'externalDataPanel';
+
 /**
- * The rule that can actually refuse a save.
+ * What one resource a panel may name is, wherever the editor holds it.
+ *
+ * Both places a resource this panel may legally name exists are consulted. A
+ * network imported in this session is not in the manifest yet — it is promoted
+ * with the stage at finish — so a manifest-only lookup would call a file the
+ * researcher had just imported and saved one this protocol does not have.
+ * `undefined` is for an id in NEITHER: a resource a collaborator deleted, or
+ * one discarded here, which the session reports as the dangling reference it
+ * is rather than as anything about its kind.
+ *
+ * Both shapes are the gateway's own answer about a resource — the manifest
+ * entry it promotes and the descriptor it hands out for a staged one — so this
+ * reads the kind and the name off whichever of them holds this id.
+ */
+type PanelSource = Readonly<{ name: string; kind: ResourceKind }>;
+
+const panelSource = (
+  dataSource: string,
+  assets: Readonly<Record<string, Asset>>,
+  staged: readonly ResourceDescriptor[],
+): PanelSource | undefined => {
+  const committed = assets[dataSource];
+  if (committed !== undefined) {
+    return { name: committed.name, kind: committed.type };
+  }
+  const stagedResource = staged.find((resource) => resource.id === dataSource);
+  return stagedResource === undefined
+    ? undefined
+    : { name: stagedResource.name, kind: stagedResource.kind };
+};
+
+/**
+ * The rules that can actually refuse a save.
  *
  * A row cannot refuse anything (see `RowField`), and a panel missing its title
  * or its source reaches the schema as `stages.N.panels.0.title` — a path,
  * rather than the section the researcher is looking at. An EMPTY list passes:
  * a stage with no panels is the norm, and the capability switch is what says
  * so.
+ *
+ * The source's KIND is judged here for the same reason. The picker refuses a
+ * resource of the wrong kind when one is CHOSEN, but a stage authored
+ * elsewhere never went through the picker, and `ProtocolSchemaV8` says nothing
+ * about a panel's `dataSource` kind — it checks a `NameGeneratorRoster`'s and
+ * stops there. So a panel pointing at an image, a recording or a map layer
+ * saves, and the interview tells the participant the external data is
+ * unavailable. Held to the same rule the picker keeps
+ * (`acceptsResourceKind`), against the same kind the field is mounted with,
+ * so a researcher cannot be refused for something the picker would have
+ * offered.
  */
-const panelsValidation = {
-  custom: messageRuleValidation([
-    (value: unknown) =>
-      rowsOf(value).length > MAX_PANELS ? TOO_MANY_PANELS : undefined,
-    (value: unknown) =>
-      rowsOf(value).every(
-        (panel) =>
-          typeof panel.title === 'string' &&
-          panel.title.trim() !== '' &&
-          typeof panel.dataSource === 'string' &&
-          panel.dataSource !== '',
-      )
-        ? undefined
-        : INCOMPLETE_PANEL,
-  ]),
-};
+function usePanelsValidation() {
+  const { controller, protocolContext } = useStageEditorForm();
+  const resolve = useRef<(dataSource: string) => PanelSource | undefined>(
+    () => undefined,
+  );
+  resolve.current = (dataSource) =>
+    panelSource(
+      dataSource,
+      protocolContext.assets,
+      controller.snapshot.stagedResources,
+    );
+
+  return useMemo(
+    () => ({
+      custom: messageRuleValidation([
+        (value: unknown) =>
+          rowsOf(value).length > MAX_PANELS ? TOO_MANY_PANELS : undefined,
+        (value: unknown) =>
+          rowsOf(value).every(
+            (panel) =>
+              typeof panel.title === 'string' &&
+              panel.title.trim() !== '' &&
+              typeof panel.dataSource === 'string' &&
+              panel.dataSource !== '',
+          )
+            ? undefined
+            : INCOMPLETE_PANEL,
+        (value: unknown) =>
+          rowsOf(value).every((panel) => {
+            const dataSource = asString(panel.dataSource);
+            if (dataSource === undefined || dataSource === INTERVIEW_NETWORK) {
+              return true;
+            }
+            const source = resolve.current(dataSource);
+            return (
+              source === undefined ||
+              acceptsResourceKind(PANEL_SOURCE_KIND, source.kind)
+            );
+          })
+            ? undefined
+            : SOURCE_NOT_NETWORK,
+      ]),
+    }),
+    [],
+  );
+}
+
+/**
+ * What a panel's source is, in the one place the picker and the refusal both
+ * read it from, so the field cannot accept what the refusal rejects.
+ */
+const PANEL_SOURCE_KIND = 'network' as const;
+
+const SOURCE_NOT_NETWORK = createMessageError(messages.sourceNotNetwork);
 
 /**
  * The lists of people shown beside a name generator.
@@ -403,6 +506,7 @@ export default function NodePanelsSection() {
     PanelEditor,
     PanelPreview,
   );
+  const panelsValidation = usePanelsValidation();
 
   return (
     <BuilderSection
@@ -470,12 +574,15 @@ function PanelEditor({ item }: RowEditorProps) {
    * network — and for nothing else.
    */
   const openedDataSource = asString(item.dataSource) ?? INTERVIEW_NETWORK;
-  const usesInterviewNetwork = dataSource === INTERVIEW_NETWORK;
-  const filterValidation = usePanelFilterValidation();
+  // What this panel's filter is narrowing, which is what decides the rules it
+  // may offer and hold. Read from the LIVE source: switching to an imported
+  // file changes what the rules can ask about the moment it is switched.
+  const panelVariant = panelRuleSetVariant(dataSource);
+  const filterValidation = usePanelFilterValidation(panelVariant);
   const { hasRules, requestFilterOpenChange } = usePanelFilterCapability(
     item.filter,
   );
-  useEdgeRulesClearedWithSource(dataSource);
+  useUnanswerableRulesClearedWithSource(dataSource);
 
   return (
     <>
@@ -497,7 +604,7 @@ function PanelEditor({ item }: RowEditorProps) {
           component={ResourcePicker}
           label={intl.formatMessage(messages.sourceLabel)}
           hint={intl.formatMessage(messages.sourceHint)}
-          kind="network"
+          kind={PANEL_SOURCE_KIND}
           canUseExisting
           initialValue={openedDataSource}
           required={PANEL_SOURCE_REQUIRED}
@@ -520,7 +627,7 @@ function PanelEditor({ item }: RowEditorProps) {
           component={FilterRuleSetField}
           label={intl.formatMessage(messages.filterRulesLabel)}
           hint={intl.formatMessage(messages.filterRulesHint)}
-          allowEdgeRules={usesInterviewNetwork}
+          variant={panelVariant}
           initialValue={item.filter as RuleSetValue | undefined}
           {...filterValidation}
         />
@@ -597,11 +704,13 @@ function usePanelFilterCapability(committed: unknown) {
  * Asks about the rules an imported network cannot answer, the moment the panel
  * stops reading the interview.
  *
- * A rule about connections is a question about the network the participant is
- * building; a network file has none, so the rule can never match and the panel
- * silently shows nobody. The schema accepts it, the interview does not report
- * it, and the researcher finds out from an empty panel mid-study — so the
- * panel cannot be left in that state.
+ * A rule about connections, or about the participant themselves, is a question
+ * about the interview the participant is doing; an imported file is not part
+ * of it — the interview filters its rows with no edges and a stand-in ego — so
+ * such a rule can never match and the panel silently shows nobody. The schema
+ * accepts an ego rule there, the interview does not report either, and the
+ * researcher finds out from an empty panel mid-study — so the panel cannot be
+ * left in that state.
  *
  * Which leaves two answers, and the researcher picks: delete the rules, or
  * keep them and go on reading the interview. Confirmed rather than done —
@@ -613,7 +722,7 @@ function usePanelFilterCapability(committed: unknown) {
  * unregistered to its committed value on the field's first render, and asking
  * there would interrogate a panel that was merely opened.
  */
-function useEdgeRulesClearedWithSource(dataSource: string): void {
+function useUnanswerableRulesClearedWithSource(dataSource: string): void {
   const intl = useAppIntl();
   const storeApi = useContext(FormStoreContext);
   const { confirm } = useDialog();
@@ -629,14 +738,14 @@ function useEdgeRulesClearedWithSource(dataSource: string): void {
     const filter = state.hasValue('filter')
       ? state.getValue('filter')
       : undefined;
-    const remaining = withoutEdgeRules(filter);
+    const remaining = withoutUnanswerableRules(filter);
     if (remaining === filter) return;
 
     // Read afresh inside the answer: the dialog is open for as long as the
     // researcher takes, and the row's store is live behind it.
     let abandoned = false;
     void (async () => {
-      const confirmed = await confirm(edgeRulesConfirm(intl));
+      const confirmed = await confirm(unanswerableRulesConfirm(intl));
       if (abandoned) return;
       if (confirmed === true) {
         storeApi.getState().setFieldValue('filter', remaining as never);
@@ -654,11 +763,22 @@ function useEdgeRulesClearedWithSource(dataSource: string): void {
   }, [confirm, dataSource, intl, storeApi]);
 }
 
-/** The same rule set with every connection rule taken out of it. */
-function withoutEdgeRules(filter: unknown): unknown {
+/**
+ * The same rule set with every rule an imported file cannot answer taken out
+ * of it.
+ *
+ * Which those are is `RULE_SET_TARGETS`' answer for a panel over imported
+ * data, not a list repeated here: the one place that says what such a panel's
+ * rules may be about is also what decides which of the ones it holds have to
+ * go, so the two can never disagree.
+ */
+function withoutUnanswerableRules(filter: unknown): unknown {
   if (!isRecord(filter)) return filter;
+  const answerable = new Set<string>(ruleSetTargets('externalDataPanel'));
   const rules = ruleSetRules(filter);
-  const kept = rules.filter((rule) => rule.type !== 'edge');
+  const kept = rules.filter(
+    (rule) => typeof rule.type !== 'string' || answerable.has(rule.type),
+  );
   if (kept.length === rules.length) return filter;
   // An empty rule set is not a filter the schema accepts, so a panel left with
   // no rules has no filter at all.
@@ -678,14 +798,17 @@ function withoutEdgeRules(filter: unknown): unknown {
  * each render would be pinned to whichever codebook the first one closed over,
  * and a type a collaborator deleted would go on being legal.
  *
- * The targets are the `filter` set's, because `FilterRuleSetField` is what this
- * section mounts: an ego rule in a panel's filter either keeps every entity or
- * none, so it is reported here rather than saved and refused by the schema.
+ * The targets are the ones the panel's own SOURCE names, and the variant is
+ * read through a ref for the same reason the codebook is: the researcher can
+ * switch the source while the dialog is open, and a rule that was fine over
+ * the interview's own network is not fine over an imported file.
  */
-function usePanelFilterValidation() {
+function usePanelFilterValidation(variant: PanelRuleSetVariant) {
   const { protocolContext } = useStageEditorForm();
   const codebook = useRef(protocolContext.codebook);
   codebook.current = protocolContext.codebook;
+  const currentVariant = useRef(variant);
+  currentVariant.current = variant;
 
   return useMemo(
     () => ({
@@ -696,7 +819,7 @@ function usePanelFilterValidation() {
             : ruleSetValidationMessage(
                 value,
                 codebook.current,
-                ruleSetTargets('filter'),
+                ruleSetTargets(currentVariant.current),
               ),
       ]),
     }),
@@ -713,23 +836,16 @@ function PanelPreview({ item }: RowPreviewProps) {
   // The imported file's own name, which the researcher gave it, or one of two
   // phrases about it. All three are the same argument of one sentence, so the
   // sentence is a single message with a plural rather than three fragments
-  // joined in English word order.
-  //
-  // Looked for in BOTH places a resource this panel may legally name exists.
-  // A network imported in this session is not in the manifest yet — it is
-  // promoted with the stage at finish — so a manifest-only lookup told the
-  // researcher that the file they had just imported and saved was "no longer
-  // in this protocol", which is neither true nor anything they could act on.
-  // The missing phrase is left for an id that is in neither: a resource a
-  // collaborator deleted, or one discarded here.
+  // joined in English word order. `panelSource` is what looks the file up, and
+  // the missing phrase is what it having no answer reads as.
   const source =
     dataSource === INTERVIEW_NETWORK
       ? intl.formatMessage(messages.interviewSource)
-      : (protocolContext.assets[dataSource]?.name ??
-        controller.snapshot.stagedResources.find(
-          (resource) => resource.id === dataSource,
-        )?.name ??
-        intl.formatMessage(messages.missingSource));
+      : (panelSource(
+          dataSource,
+          protocolContext.assets,
+          controller.snapshot.stagedResources,
+        )?.name ?? intl.formatMessage(messages.missingSource));
 
   return (
     <div className="flex flex-col gap-2">
