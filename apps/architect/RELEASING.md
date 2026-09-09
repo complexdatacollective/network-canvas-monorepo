@@ -142,6 +142,86 @@ tag before re-dispatching:
 git push --delete origin '@codaco/architect@<version>'
 ```
 
+## Version archive
+
+Released versions stay reachable at a per-major-version host so researchers on
+an older protocol schema keep a working Architect after production moves on:
+
+```text
+@codaco/architect@8.2.5  ->  https://v8.architect.networkcanvas.com
+```
+
+The archive is keyed by **major version**, not by release, because major
+versions track protocol schema versions: only the newest release on each major
+line needs to stay reachable, so 8.3.0 replaces 8.2.5 at the same host. That
+holds the host count to one per schema generation, which matters because a
+Cloudflare zone allows 100 custom domains in total.
+
+Run the **Architect Archive Release** workflow
+(`.github/workflows/architect-archive-release.yml`) with the released tag. It is
+not yet wired into the release lane — do it by hand after a release, or call the
+workflow from another one. Integration is tracked in
+[#1767](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1767);
+note that the archive must run _after_ the release tag is pushed, because the
+newest-on-the-line guard reads tags.
+
+The lane refuses a version that is not the newest on its major line, so
+archiving an old patch cannot roll the host backwards; `force` overrides that
+for repairs. It never touches the production site, the tags, or the GitHub
+releases, so a failure here cannot block or undo a release.
+
+Each archived line is a Cloudflare Worker serving static assets, with
+`custom_domain: true` provisioning both the DNS record and the certificate.
+Static asset requests are free and unlimited on both Workers plans, so the
+archive costs nothing to run.
+
+**Netlify cannot host this.** It overrides `Cache-Control` on `/sw.js` and
+`/manifest.webmanifest` for any deploy that is not the site's production deploy,
+serving `public,max-age=0,must-revalidate` whatever `_headers` says — so an
+aliased Netlify deploy cannot satisfy the cache contract below. (The same
+override applies to Architect's deploy previews, and `assert-pwa-build.mjs`
+cannot catch it because it validates the emitted `_headers` file rather than
+what the origin serves.)
+
+Cloudflare honours those rules but differs in two other ways, both handled by
+`scripts/write-cloudflare-archive-config.mjs` at deploy time — **never by
+editing `public/_headers`**, whose shape is asserted for Netlify in
+`scripts/assert-pwa-cache-headers.mjs`:
+
+- **`_headers` rules append rather than replace.** Netlify lets `/assets/*`
+  override the blanket `/*` no-store; Cloudflare joins them into one header
+  where `no-store` wins and every content-hashed asset becomes uncacheable. The
+  transform strips `Cache-Control` from `/*` only.
+- **`_redirects` is rejected**, because Cloudflare's asset layer already strips
+  `/index` and `.html` and reads `/* /index.html 200` as an infinite loop. The
+  SPA fallback is expressed as `not_found_handling` in the Wrangler config.
+
+The workflow asserts the resulting contract against the live host after
+deploying and fails the run if it does not hold.
+
+**Setup (one-time, and load-bearing).** The deploy job declares the
+`architect-archive` environment, but — exactly as for the hotfix lane above — a
+workflow file cannot enforce its own protection: GitHub runs whichever copy of
+the YAML lives on the ref a dispatch selects, so a branch copy with the
+`environment:` line deleted would run instead. Only repository configuration
+closes that:
+
+1. Create the `architect-archive` environment.
+2. Restrict its **deployment branches** to `main`, so a job reaching for it from
+   any other ref is refused.
+3. Hold `CLOUDFLARE_API_TOKEN` as an **environment** secret, not a repository
+   secret. A repository secret is readable by any branch that can rewrite the
+   scripts this workflow runs, and this token can edit DNS across the whole
+   networkcanvas.com zone and deploy Workers to the account. Scope it to that
+   zone with DNS:Edit, Zone:Read and Workers Routes:Edit, plus account-level
+   Workers Scripts:Edit.
+4. Optionally set the repository variable `CLOUDFLARE_ACCOUNT_ID`; a
+   single-account token lets Wrangler resolve it on its own.
+
+Required reviewers are worth considering but are not the load-bearing part
+here: unlike the hotfix lane this one cannot change what production serves, so
+the branch restriction and the environment-scoped secret are what matter.
+
 ## Developer site
 
 The separate `.dev` Netlify site is intentionally linked to this repository and

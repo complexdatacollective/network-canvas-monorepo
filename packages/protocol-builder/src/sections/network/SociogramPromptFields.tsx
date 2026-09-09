@@ -27,6 +27,7 @@ import {
   useVariableOptions,
 } from './codebookOptions.ts';
 import CreateVariableAction from './CreateVariableAction.tsx';
+import { useLostEdgeTypes } from './lostEdgeTypes.ts';
 import { networkCanvasMessages } from './networkCanvasMessages.ts';
 import {
   asNestedBoolean,
@@ -88,42 +89,6 @@ const tapBehaviourOf = (item: Record<string, unknown>): TapBehaviour => {
   }
   return TAP_NOTHING;
 };
-
-const NO_LOST_EDGE_TYPES: readonly string[] = Object.freeze([]);
-
-/**
- * The connection types a prompt names and the codebook no longer defines.
- *
- * Accumulated rather than derived, and that is the point: an id stops being
- * NAMED the moment the researcher unticks it, and a choice that disappeared as
- * it was unticked would take with it the only evidence of what the prompt had
- * been holding — while a `create` value repaired in the same dialog would
- * leave its copy in the display list with nothing on screen to remove. So an
- * id enters this list when the prompt names it and the codebook does not have
- * it, and leaves only when the codebook has it again.
- *
- * The same array is answered with for as long as its contents do not change,
- * for the reason `useStableIdList` exists: the options a control registers
- * with are part of that registration, and a fresh array on every tick
- * re-registers the field — which supersedes a running submit's validation and
- * refuses the save with nothing on screen to say why.
- */
-function useLostEdgeTypes(
-  named: readonly string[],
-  known: ReadonlySet<string>,
-): readonly string[] {
-  const held = useRef<readonly string[]>(NO_LOST_EDGE_TYPES);
-  const current = held.current;
-  const next = current.filter((id) => !known.has(id));
-  for (const id of named) {
-    if (!known.has(id) && !next.includes(id)) next.push(id);
-  }
-  const unchanged =
-    next.length === current.length &&
-    next.every((entry, index) => entry === current[index]);
-  if (!unchanged) held.current = next;
-  return held.current;
-}
 
 /**
  * One question this sociogram asks, and everything the canvas does while it is

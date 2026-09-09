@@ -1,21 +1,26 @@
 import { useCallback } from 'react';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
   hasParameterIssues,
   validateParameters,
 } from '../../codebook/variableParameters.ts';
+import { variableDisplayName } from '../../codebook/variableValidation.ts';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import DialogArrayField, {
   type DialogArrayEditorValidate,
   type DialogArrayFieldProps,
 } from '../../form/arrayFields/DialogArrayField.tsx';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { useRowRenderers } from '../rowRenderers.tsx';
-import { useSubjectVariables } from './codebookOptions.ts';
+import { useStageSubject, useSubjectVariables } from './codebookOptions.ts';
+import { useComposerDraftWriters } from './composerDraftWriters.ts';
 import {
   composerParameterShape,
+  effectiveComposerParameters,
   PARAMETERS_FIELD,
 } from './ComposerFieldParameters.tsx';
 import {
@@ -29,6 +34,24 @@ type FormFieldRow = Record<string, unknown>;
 
 const isRecord = (value: unknown): value is FormFieldRow =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The row as the protocol holds it.
+ *
+ * One thing the shared "drop what was left empty" rule cannot decide: a
+ * validation hint that is switched OFF is written by its absence. `false` is an
+ * answer in general — which is why the shared rule keeps it — but this toggle's
+ * off position is the schema's own default, and stamping it on every field of
+ * every form says nothing its absence did not already say. The same rule
+ * `FormFieldsSection` applies to the same property.
+ */
+const normalizeComposerField = (value: unknown): unknown => {
+  const cleaned = withoutAbsentValues(value);
+  if (!isRecord(cleaned)) return cleaned;
+  if (cleaned.showValidationHints !== false) return cleaned;
+  const { showValidationHints: _off, ...field } = cleaned;
+  return field;
+};
 
 export type ComposerFormFieldsListProps = Omit<
   DialogArrayFieldProps<FormFieldRow>,
@@ -64,14 +87,45 @@ export type ComposerFormFieldsListProps = Omit<
 export default function ComposerFormFieldsList({
   subject,
   value,
+  disabled = false,
   ...listProps
 }: ComposerFormFieldsListProps) {
   const intl = useAppIntl();
+  /**
+   * Read-only is a property of the SESSION, not of any one mount.
+   *
+   * A composer's node form reaches this list through `ProtocolField`, which
+   * hands every field the session's read-only state; each connection form is
+   * mounted directly, because it is reached through a row's position rather
+   * than a path of its own — and arrived with neither `disabled` nor
+   * `readOnly`. Its add, edit, delete and reorder controls therefore stayed
+   * live while another collaborator held the lease, and a deletion took effect
+   * on the local draft at once and was saved when access came back. Asked here
+   * so the answer cannot depend on which way the list was mounted.
+   */
+  const { readOnly } = useStageEditorForm();
   const { editorFieldsComponent, previewComponent } = useRowRenderers(
     ComposerFormFieldEditor,
     ComposerFormFieldPreview,
   );
   const variables = useSubjectVariables(subject);
+  /**
+   * What this stage itself writes around the codebook's rules, which the role
+   * map behind the picker cannot see: it is built with the edited stage
+   * excluded. Judged here as well as offered there, so the dialog cannot refuse
+   * what the picker offered — or accept a pick that survived from a stale
+   * draft.
+   */
+  const stageSubject = useStageSubject();
+  const draftWriters = useComposerDraftWriters();
+  const judgedAgainstTheStage =
+    subject !== undefined &&
+    stageSubject !== undefined &&
+    subject.entity === stageSubject.entity &&
+    (subject.entity === 'ego' ||
+      ('type' in subject &&
+        'type' in stageSubject &&
+        subject.type === stageSubject.type));
 
   const editorValidate = useCallback<DialogArrayEditorValidate>(
     (values, context) => {
@@ -93,6 +147,31 @@ export default function ComposerFormFieldsList({
         };
       }
       /**
+       * And nothing this stage already writes around the codebook's rules.
+       *
+       * Escapes the row's PRE-EDIT pick, the way every other cross-class gate
+       * in this package does: re-saving a row that arrived conflicting must
+       * never be refused for a conflict this edit did not introduce.
+       */
+      const committed =
+        typeof context?.initialValues === 'object' &&
+        context.initialValues !== null
+          ? Reflect.get(context.initialValues, 'variable')
+          : undefined;
+      if (
+        judgedAgainstTheStage &&
+        variable !== '' &&
+        variable !== committed &&
+        draftWriters.unvalidated.has(variable)
+      ) {
+        return {
+          variable: createMessageError(
+            networkCanvasMessages.unvalidatedOnThisStageRefusal,
+            { variableName: variableDisplayName(variables, variable) },
+          ),
+        };
+      }
+      /**
        * The settings block, judged by the protocol's own parameter schemas
        * before the row is committed.
        *
@@ -108,14 +187,26 @@ export default function ComposerFormFieldsList({
         values.component,
       );
       if (shape !== null) {
-        const issues = validateParameters(shape, values[PARAMETERS_FIELD]);
+        // Judged on what the control would actually run with: a field that
+        // omits `parameters` inherits the codebook attribute's block, and
+        // judged on the absent key alone a scale validly inheriting its two end
+        // labels was refused for not having them.
+        const issues = validateParameters(
+          shape,
+          effectiveComposerParameters(
+            variables,
+            values.variable,
+            values.component,
+            values[PARAMETERS_FIELD],
+          ),
+        );
         if (hasParameterIssues(issues)) {
           return { [PARAMETERS_FIELD]: Object.values(issues).flat() };
         }
       }
       return {};
     },
-    [intl, value, variables],
+    [draftWriters, intl, judgedAgainstTheStage, value, variables],
   );
 
   return (
@@ -123,11 +214,12 @@ export default function ComposerFormFieldsList({
       <DialogArrayField<FormFieldRow>
         {...listProps}
         value={value}
+        disabled={disabled || readOnly}
         editorFieldsComponent={editorFieldsComponent}
         previewComponent={previewComponent}
         editorValidate={editorValidate}
         editorDialogSize="editor"
-        normalizeItem={withoutAbsentValues}
+        normalizeItem={normalizeComposerField}
         sortable
       />
     </ComposerFormSubjectContext>

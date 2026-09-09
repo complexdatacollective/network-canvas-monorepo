@@ -188,6 +188,27 @@ does not count: the guard checks commit ancestry. Full procedure in
 `apps/architect/RELEASING.md`, `apps/interviewer/RELEASING.md` and
 `apps/fresco/CLAUDE.md`.
 
+#### Architect version archive
+
+Released Architect versions stay reachable at a per-major host —
+`@codaco/architect@8.2.5` → `https://v8.architect.networkcanvas.com` — so
+researchers on an older protocol schema keep a working Architect. Keyed by major
+version because majors track schema versions, so a later release replaces an
+earlier one on the same line. Run the **Architect Archive Release** workflow
+(`.github/workflows/architect-archive-release.yml`) with the released tag; it is
+deliberately not wired into the release lane yet, and it never touches
+production, tags, or GitHub releases.
+
+The archive is a Cloudflare Worker serving static assets, not Netlify: Netlify
+overrides `Cache-Control` on `/sw.js` and `/manifest.webmanifest` for any
+non-production deploy. Cloudflare instead **appends** `_headers` rules where
+Netlify replaces them, and rejects Netlify's SPA `_redirects` outright, so the
+deploy-time transform in
+`apps/architect/scripts/write-cloudflare-archive-config.mjs` reshapes a copy.
+Never "fix" `apps/architect/public/_headers` for Cloudflare — its Netlify shape
+is asserted in CI by `scripts/assert-pwa-cache-headers.mjs`. Details in
+`apps/architect/RELEASING.md`.
+
 #### Apps that release by mirroring
 
 Fresco and the two classic apps are developed here but ship from their own
