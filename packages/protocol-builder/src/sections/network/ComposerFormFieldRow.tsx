@@ -5,13 +5,19 @@ import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 
 import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
 import AttributeCodebookControls from '../AttributeCodebookControls.tsx';
 import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
-import { useSubjectVariables, useVariableOptions } from './codebookOptions.ts';
+import {
+  useStageSubject,
+  useSubjectVariables,
+  useVariableOptions,
+} from './codebookOptions.ts';
+import { useComposerDraftWriters } from './composerDraftWriters.ts';
 import ComposerFieldParameters from './ComposerFieldParameters.tsx';
 import {
   defaultInputControl,
@@ -26,6 +32,7 @@ const VARIABLE_FIELD = 'variable';
 const COMPONENT_FIELD = 'component';
 const LABEL_FIELD = 'label';
 const HINT_FIELD = 'hint';
+const VALIDATION_HINTS_FIELD = 'showValidationHints';
 
 /**
  * The control the codebook itself gives this attribute, if it gives it one.
@@ -77,7 +84,7 @@ export function ComposerFormFieldEditor({ item }: RowEditorProps) {
   const { variable } = useFormValue([VARIABLE_FIELD] as const);
   const selected = asText(variable) ?? asText(item.variable);
 
-  const options = useVariableOptions({
+  const savedOptions = useVariableOptions({
     subject,
     types: FORM_FIELD_VARIABLE_TYPES,
     // A form field collects its answer through the codebook's own rules, so it
@@ -85,6 +92,44 @@ export function ComposerFormFieldEditor({ item }: RowEditorProps) {
     writerClass: 'validated',
     ...(selected === undefined ? {} : { currentValue: selected }),
   });
+
+  /**
+   * And nothing THIS stage writes around those rules either.
+   *
+   * The role map behind `useVariableOptions` excludes the edited stage, so a
+   * composer's own live grouping or position pick is invisible to it: the same
+   * categorical attribute could be bound to the grouping tool and to a field of
+   * this very form, and the stage saved with participant grouping writing
+   * values that bypass the attribute's validation. Asked of the draft, because
+   * that is where a pick made a moment ago is, and only for the form that
+   * collects the STAGE's own subject — a connection form writes its edge type's
+   * attributes, which nothing else on a composer touches.
+   */
+  const stageSubject = useStageSubject();
+  const draftWriters = useComposerDraftWriters();
+  const judgedAgainstTheStage =
+    subject !== undefined &&
+    stageSubject !== undefined &&
+    subject.entity === stageSubject.entity &&
+    (subject.entity === 'ego' ||
+      ('type' in subject &&
+        'type' in stageSubject &&
+        subject.type === stageSubject.type));
+  const options = useMemo(
+    () =>
+      judgedAgainstTheStage
+        ? savedOptions.filter(
+            (option) =>
+              // The row's own pick is always offered back, whatever the filters
+              // say: a picker that dropped its own value would blank the
+              // control and write the blank over the reference the researcher
+              // has to resolve.
+              option.value === selected ||
+              !draftWriters.unvalidated.has(option.value),
+          )
+        : savedOptions,
+    [draftWriters, judgedAgainstTheStage, savedOptions, selected],
+  );
 
   const variableType =
     selected === undefined ? undefined : variables[selected]?.type;
@@ -175,6 +220,25 @@ export function ComposerFormFieldEditor({ item }: RowEditorProps) {
           networkCanvasMessages.formFieldHelpPlaceholder,
         )}
         initialValue={asText(item.hint)}
+      />
+      {/* The rules an answer is judged by are the codebook attribute's,
+          whatever control this field asks for it with — so the same switch the
+          shared form-fields section offers belongs here, on a property
+          `ComposerFormFieldSchema` carries and the interview runtime honours
+          (`selectors/forms.ts` hands it to every rendered field). Left
+          unregistered, a researcher could neither switch it on for a new field
+          nor change it on an imported one. */}
+      <Field<typeof ToggleField>
+        name={VALIDATION_HINTS_FIELD}
+        component={ToggleField}
+        label={intl.formatMessage(
+          networkCanvasMessages.formFieldValidationHintsLabel,
+        )}
+        hint={intl.formatMessage(
+          networkCanvasMessages.formFieldValidationHintsHint,
+        )}
+        inline
+        initialValue={item.showValidationHints === true}
       />
     </>
   );

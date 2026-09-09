@@ -5,7 +5,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import {
   INHERITANCE_PATTERNS,
@@ -13,6 +12,7 @@ import {
   NodeColorSequence,
 } from '@codaco/protocol-validation';
 
+import { ColorPickerControl } from '../../fields/ColorPicker.tsx';
 import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
@@ -204,15 +204,17 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
           narrativePedigreeMessages.diseaseNameRequired,
         )}
       />
+      {/* Swatches, not a list of names. The palette entries have no names of
+          their own, so a select could only count them — and a researcher
+          choosing "Color 3" is choosing the shade the participant sees without
+          being shown it, finding out which one it was only once the row is
+          saved. The counted names stay, as what a screen reader announces. */}
       <Field
         name={COLOR_FIELD}
-        component={NativeSelectField}
+        component={ColorPickerControl}
         label={intl.formatMessage(narrativePedigreeMessages.diseaseColorLabel)}
         hint={intl.formatMessage(narrativePedigreeMessages.diseaseColorHint)}
         options={colorOptions}
-        placeholder={intl.formatMessage(
-          narrativePedigreeMessages.diseaseColorPlaceholder,
-        )}
         initialValue={asString(item.color)}
         required={intl.formatMessage(
           narrativePedigreeMessages.diseaseColorRequired,

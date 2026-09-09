@@ -46,6 +46,7 @@ import {
   SectionOutlineStore,
   type SectionValidationIssue,
 } from './outlineStore.ts';
+import { READ_ONLY_MESSAGE } from './readOnlyRefusal.ts';
 import { reseedStageForm } from './reseedStageForm.ts';
 import SectionOutline from './SectionOutline.tsx';
 import {
@@ -636,19 +637,17 @@ function useCommittedFields(
 /**
  * What a save or a structural write that reached nothing is called on screen.
  *
- * Encoded rather than formatted, because none of the three is rendered where
- * it is decided: they are handed to the form as `formErrors`, held there until
+ * Encoded rather than formatted, because neither is rendered where it is
+ * decided: they are handed to the form as `formErrors`, held there until
  * something replaces them, and rendered by `FormErrors`, which decodes them —
  * so a refusal already on screen follows a change of language.
+ *
+ * The read-only sentence is not among them: a control can decide for itself
+ * that a write may no longer happen — a confirmed type change answered after
+ * the lease has gone — so it lives in `readOnlyRefusal.ts`, where both this
+ * shell and those controls read the one declaration of it.
  */
 const messages = defineMessages({
-  readOnly: {
-    id: 'protocolBuilder.shell.readOnlyRefusal',
-    defaultMessage:
-      'This stage is read-only, so your changes were not saved. Take over editing and try again.',
-    description:
-      'Shown above a stage editor’s fields when the researcher no longer holds the right to edit this stage (a stage is one step of an interview) and something they did would have written to it. Taking over editing is an action offered elsewhere in the host application.',
-  },
   formUnavailable: {
     id: 'protocolBuilder.shell.formUnavailableRefusal',
     defaultMessage:
@@ -664,8 +663,6 @@ const messages = defineMessages({
       'Shown above a stage editor’s fields when saving failed for a reason that carried no explanation of its own. The last resort, used only when the failure said nothing readable.',
   },
 });
-
-const READ_ONLY_MESSAGE = createMessageError(messages.readOnly);
 
 const UNAVAILABLE_MESSAGE = createMessageError(messages.formUnavailable);
 

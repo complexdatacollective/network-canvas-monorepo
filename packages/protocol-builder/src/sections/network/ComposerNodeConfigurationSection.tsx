@@ -28,6 +28,7 @@ import {
   useVariableOptions,
   useVariableRoleMap,
 } from './codebookOptions.ts';
+import { useComposerDraftWriters } from './composerDraftWriters.ts';
 import ComposerFormFieldsList from './ComposerFormFieldsList.tsx';
 import CreateVariableAction, {
   useSetStageFieldValue,
@@ -65,6 +66,25 @@ const unvalidatedElsewhereMessage = (variableName: string): string =>
   );
 
 /**
+ * The refusal a GROUPING earns by taking an attribute this stage's own form
+ * collects.
+ *
+ * The package's shared cross-class helper says the same thing about a form
+ * "elsewhere in this protocol"; here the form is on this very stage, which is
+ * the one thing the researcher can act on without leaving it.
+ */
+const validatedOnThisStageMessage = (variableName: string): string =>
+  createMessageError(networkCanvasMessages.validatedOnThisStageRefusal, {
+    variableName,
+  });
+
+/** And the same, the other way round, for a picker that collects answers. */
+const unvalidatedOnThisStageMessage = (variableName: string): string =>
+  createMessageError(networkCanvasMessages.unvalidatedOnThisStageRefusal, {
+    variableName,
+  });
+
+/**
  * What the participant can do with nodes on this canvas.
  *
  * Four decisions the stage holds directly — `quickAdd`, `layoutVariable`,
@@ -93,24 +113,56 @@ export default function ComposerNodeConfigurationSection() {
   const liveLayout = asText(useStageValue(LAYOUT_VARIABLE_FIELD));
   const liveHull = asText(useStageValue(CONVEX_HULL_FIELD));
 
-  const quickAddOptions = useVariableOptions({
+  /**
+   * What this stage is writing RIGHT NOW, which the role map cannot describe:
+   * it is built with the edited stage excluded, so a composer's own live picks
+   * — the grouping the participant lassoes, the form its inspector shows —
+   * were invisible to both of the pickers below and to the gates behind them.
+   * One attribute could therefore be bound to a validated writer and an
+   * unvalidated one inside a single stage, which is exactly what the schema's
+   * role-conflict rule refuses.
+   */
+  const draftWriters = useComposerDraftWriters();
+
+  const savedQuickAddOptions = useVariableOptions({
     subject,
     types: TEXT_TYPES,
     writerClass: 'validated',
     ...(liveQuickAdd === undefined ? {} : { currentValue: liveQuickAdd }),
   });
+  const quickAddOptions = useMemo(
+    () =>
+      savedQuickAddOptions.filter(
+        // The field's own pick is always offered back: a picker that dropped
+        // its value would blank the control and write the blank over the
+        // reference the researcher has to resolve.
+        (option) =>
+          option.value === liveQuickAdd ||
+          !draftWriters.unvalidated.has(option.value),
+      ),
+    [draftWriters, liveQuickAdd, savedQuickAddOptions],
+  );
   const layoutOptions = useVariableOptions({
     subject,
     types: LAYOUT_TYPES,
     writerClass: 'unvalidated',
     ...(liveLayout === undefined ? {} : { currentValue: liveLayout }),
   });
-  const hullOptions = useVariableOptions({
+  const savedHullOptions = useVariableOptions({
     subject,
     types: CATEGORICAL_TYPES,
     writerClass: 'unvalidated',
     ...(liveHull === undefined ? {} : { currentValue: liveHull }),
   });
+  const hullOptions = useMemo(
+    () =>
+      savedHullOptions.filter(
+        (option) =>
+          option.value === liveHull ||
+          !draftWriters.validated.has(option.value),
+      ),
+    [draftWriters, liveHull, savedHullOptions],
+  );
 
   // The PRE-EDIT picks, so re-saving a stage that arrived holding a conflict is
   // never refused for one this edit did not introduce.
@@ -127,13 +179,22 @@ export default function ComposerNodeConfigurationSection() {
                 variableId: typeof value === 'string' ? value : '',
                 originalVariableId: originalQuickAdd,
                 hasConflictingUse: (variableId) =>
-                  hasUnvalidatedUse(roleMap, subject, variableId),
+                  hasUnvalidatedUse(roleMap, subject, variableId) ||
+                  draftWriters.unvalidated.has(variableId),
                 allVariables: variables,
-                message: unvalidatedElsewhereMessage,
+                // Where the other writer IS decides what the researcher is
+                // told, and it is the only thing they can act on: a control on
+                // this stage is on screen, and a stage elsewhere in the
+                // protocol is not.
+                message: draftWriters.unvalidated.has(
+                  typeof value === 'string' ? value : '',
+                )
+                  ? unvalidatedOnThisStageMessage
+                  : unvalidatedElsewhereMessage,
               }),
       ]),
     }),
-    [originalQuickAdd, roleMap, subject, variables],
+    [draftWriters, originalQuickAdd, roleMap, subject, variables],
   );
 
   const hullValidation = useMemo(
@@ -146,13 +207,18 @@ export default function ComposerNodeConfigurationSection() {
                 variableId: typeof value === 'string' ? value : '',
                 originalVariableId: originalHull,
                 hasConflictingUse: (variableId) =>
-                  hasValidatedUse(roleMap, subject, variableId),
+                  hasValidatedUse(roleMap, subject, variableId) ||
+                  draftWriters.validated.has(variableId),
                 allVariables: variables,
-                message: validatedElsewhereMessage,
+                message: draftWriters.validated.has(
+                  typeof value === 'string' ? value : '',
+                )
+                  ? validatedOnThisStageMessage
+                  : validatedElsewhereMessage,
               }),
       ]),
     }),
-    [originalHull, roleMap, subject, variables],
+    [draftWriters, originalHull, roleMap, subject, variables],
   );
 
   return (

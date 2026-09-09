@@ -799,7 +799,7 @@ export const networkCanvasMessages = defineMessages({
     defaultMessage:
       '{edgeTypeId} — this edge type is no longer in the codebook',
     description:
-      'Name of the one tick-list choice standing for an edge type a prompt still displays and the protocol’s codebook no longer defines. edgeTypeId is the raw stored identifier — there is no name left to show, because the definition it would have come from has been deleted. An edge type is a kind of relationship between two network members.',
+      'Name of the tick-list choice standing for an edge type a stage still names — a sociogram prompt displays it, a network composer draws it — and the protocol’s codebook no longer defines. edgeTypeId is the raw stored identifier: there is no name left to show, because the definition it would have come from has been deleted. An edge type is a kind of relationship between two network members.',
   },
   promptEmptyPreview: {
     id: 'protocolBuilder.networkCanvas.promptEmptyPreview',
@@ -1088,6 +1088,52 @@ export const networkCanvasMessages = defineMessages({
     description:
       'Title of the dialog a researcher fills in to change a question one connection type’s form already asks. typeName is the edge type’s researcher-facing name, shown inside straight double quotes.',
   },
+  unvalidatedOnThisStageRefusal: {
+    id: 'protocolBuilder.networkCanvas.unvalidatedOnThisStageRefusal',
+    defaultMessage:
+      '"{variableName}" is written directly by another part of this stage, so a question here would validate values it did not collect. Choose a different attribute.',
+    description:
+      'Refusal shown under an attribute picker that collects answers through the codebook’s rules — a form field, or the quick-add name field — when the attribute chosen is one the SAME stage writes around those rules, such as the grouping the participant lassoes. variableName is the attribute’s researcher-facing name, shown inside straight double quotes. A stage is one step of an interview.',
+  },
+  validatedOnThisStageRefusal: {
+    id: 'protocolBuilder.networkCanvas.validatedOnThisStageRefusal',
+    defaultMessage:
+      '"{variableName}" is collected through its own rules elsewhere on this stage, so grouping cannot write it directly as well. Choose a different attribute.',
+    description:
+      'Refusal shown under the grouping-attribute picker when the attribute chosen is one the SAME stage collects through the codebook’s validation rules — its node form, or its quick-add field — which grouping would write around. variableName is the attribute’s researcher-facing name, shown inside straight double quotes.',
+  },
+  formFieldValidationHintsLabel: {
+    id: 'protocolBuilder.networkCanvas.formFieldValidationHintsLabel',
+    defaultMessage: 'Show validation hints',
+    description:
+      'Label of the switch that tells the participant what a valid answer to this question looks like. Shown in the dialog for one field of a network composer’s form.',
+  },
+  formFieldValidationHintsHint: {
+    id: 'protocolBuilder.networkCanvas.formFieldValidationHintsHint',
+    defaultMessage:
+      'Tells the participant what a valid answer looks like, derived from the attribute’s own rules.',
+    description:
+      'Guidance under the validation-hints switch in a network composer’s form-field dialog. The rules are the codebook attribute’s, which is where an answer’s validation lives however the field asks for it.',
+  },
+  edgeFormDiscardTitle: {
+    id: 'protocolBuilder.networkCanvas.edgeFormDiscardTitle',
+    defaultMessage: 'This will delete the form for "{typeName}" connections',
+    description:
+      'Title of the confirmation raised when a researcher unticks a connection type whose form already asks the participant something. typeName is the edge type’s researcher-facing name, shown inside straight double quotes.',
+  },
+  edgeFormDiscardDescription: {
+    id: 'protocolBuilder.networkCanvas.edgeFormDiscardDescription',
+    defaultMessage:
+      'The questions written for this connection type belong to it, so unticking the type removes them too. Ticking it again starts an empty form.',
+    description:
+      'Body of the confirmation raised when a researcher unticks a connection type whose form is configured, saying what is lost and that it does not come back.',
+  },
+  edgeFormDiscardConfirm: {
+    id: 'protocolBuilder.networkCanvas.edgeFormDiscardConfirm',
+    defaultMessage: 'Stop drawing these and delete the form',
+    description:
+      'Button that goes ahead with unticking a connection type and discarding the form configured for it.',
+  },
   edgeFormEmptyState: {
     id: 'protocolBuilder.networkCanvas.edgeFormEmptyState',
     defaultMessage:
@@ -1216,6 +1262,13 @@ export const networkCanvasMessages = defineMessages({
       'These settings belong to this field rather than to the attribute, so the same attribute can be asked for differently on another form.',
     description:
       'Guidance under the settings block’s heading, explaining that these settings are saved with the stage rather than with the codebook attribute.',
+  },
+  fieldParametersInherited: {
+    id: 'protocolBuilder.networkCanvas.fieldParametersInherited',
+    defaultMessage:
+      'These come from the "{attributeName}" attribute, and this field follows them. Change any of them and this field keeps its own instead.',
+    description:
+      'Shown inside the settings block of a network composer’s form field while the field has no settings of its own and is using the codebook attribute’s. attributeName is the attribute’s researcher-facing name, shown inside straight double quotes.',
   },
 
   // The input controls a composer form field can be answered with. Keyed by

@@ -1,9 +1,11 @@
 import { createElement, useId, useMemo, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import {
@@ -22,6 +24,7 @@ import { NEW_ENTITY_DRAFT } from '../SubjectSection.tsx';
 import { type EdgeTypeOption, useEdgeTypeOptions } from './codebookOptions.ts';
 import ComposerFormFieldsList from './ComposerFormFieldsList.tsx';
 import { useSetStageFieldValue } from './CreateVariableAction.tsx';
+import { useLostEdgeTypes } from './lostEdgeTypes.ts';
 import { networkCanvasMessages } from './networkCanvasMessages.ts';
 import { checkboxOptions } from './rowValues.ts';
 
@@ -61,6 +64,20 @@ const isFormFieldRow = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
+ * Whether this entry's form asks the participant anything.
+ *
+ * Read as tolerantly as the entry itself: a form is whatever the protocol
+ * holds, and only a list with something in it is a form the researcher would
+ * miss.
+ */
+const asksAnything = (entry: EdgeEntry): boolean => {
+  const form = entry.form;
+  if (typeof form !== 'object' || form === null) return false;
+  const fields = Reflect.get(form, 'fields');
+  return Array.isArray(fields) && fields.length > 0;
+};
+
+/**
  * The entries for exactly these types, keeping every entry that survives.
  *
  * An entry that is still ticked is handed back unchanged rather than rebuilt,
@@ -85,7 +102,10 @@ type EdgeTypesFieldProps = CreateFormFieldProps<
   'fieldset',
   {
     options: readonly EdgeTypeOption[];
-    /** Shown in place of the list when the protocol defines no edge types. */
+    /**
+     * Shown in place of the list when there is nothing to tick at all —
+     * neither a codebook type nor an entry naming one the codebook has lost.
+     */
     emptyMessage: string;
   }
 >;
@@ -115,17 +135,114 @@ function EdgeTypesField({
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
 }: EdgeTypesFieldProps) {
+  const intl = useAppIntl();
+  const { confirm } = useDialog();
   const entries = readEntries(value);
   const checked = entries.map((entry) => entry.subject.type);
-  const choices = useMemo(() => checkboxOptions(options), [options]);
+  /**
+   * The types this stage draws that the codebook does not define.
+   *
+   * The list renders from the CODEBOOK and the ticks from the value, so a type
+   * a collaborator deletes stopped being a choice while its entry stayed in
+   * `edges` — where the interview would ask for a kind of connection that does
+   * not exist and nothing on screen could remove it. Kept and shown, by the
+   * same seam and in the same words the sociogram's prompt editor uses.
+   */
+  const knownTypes = useMemo(
+    () => new Set(options.map((option) => option.value)),
+    [options],
+  );
+  const lostTypes = useLostEdgeTypes(checked, knownTypes);
+  const choices = useMemo(
+    () => [
+      ...checkboxOptions(options),
+      ...lostTypes.map((type) => ({
+        value: type,
+        label: intl.formatMessage(networkCanvasMessages.promptMissingEdgeType, {
+          edgeTypeId: type,
+        }),
+      })),
+    ],
+    [intl, lostTypes, options],
+  );
 
-  if (options.length === 0) {
+  // Said only when there is nothing to show at all. A protocol whose last
+  // connection type has been deleted still has this stage's dangling entries
+  // to offer, and replacing them with "there are none" would leave the
+  // researcher no way to take them out.
+  if (choices.length === 0) {
     return (
       <Paragraph id={id} margin="none" emphasis="muted" className={className}>
         {emptyMessage}
       </Paragraph>
     );
   }
+
+  const applyTypes = (types: readonly string[]) => {
+    // An emptied list is spelled the way the protocol schema spells "this
+    // stage draws no connections": the key is not there. An empty array
+    // would say something else — a configured capability holding nothing.
+    const nextEntries = entriesForTypes(entries, types, uuid);
+    onChange?.(nextEntries.length === 0 ? undefined : nextEntries);
+  };
+
+  /**
+   * The types the researcher has just asked for, once they have agreed to what
+   * unticking costs.
+   *
+   * Unticking a connection type removes its whole ENTRY, and the entry carries
+   * the questions asked about that kind of connection: rechecking the type
+   * builds a fresh empty one, so a form dropped here cannot be got back without
+   * abandoning the entire stage edit. Asked before the value moves, like every
+   * other question this package puts before a loss, and asked only about the
+   * entries that would actually lose something — an entry with no form is not a
+   * decision worth interrupting.
+   *
+   * One question per entry losing a form, answered in turn: a refused one keeps
+   * its type where it was in the list, rather than being appended somewhere the
+   * researcher did not put it.
+   */
+  const requestTypes = (types: readonly string[]) => {
+    const losing = entries.filter(
+      (entry) => !types.includes(entry.subject.type) && asksAnything(entry),
+    );
+    if (losing.length === 0) {
+      applyTypes(types);
+      return;
+    }
+    void (async () => {
+      const kept = new Set<string>();
+      for (const entry of losing) {
+        const typeName =
+          options.find((option) => option.value === entry.subject.type)
+            ?.label ?? entry.subject.type;
+        const confirmed = await confirm({
+          title: intl.formatMessage(
+            networkCanvasMessages.edgeFormDiscardTitle,
+            { typeName },
+          ),
+          description: intl.formatMessage(
+            networkCanvasMessages.edgeFormDiscardDescription,
+          ),
+          confirmLabel: intl.formatMessage(
+            networkCanvasMessages.edgeFormDiscardConfirm,
+          ),
+          cancelLabel: intl.formatMessage(commonMessages.cancel),
+          intent: 'warning',
+          onConfirm: () => undefined,
+        });
+        if (confirmed !== true) kept.add(entry.subject.type);
+      }
+      applyTypes([
+        ...entries
+          .map((entry) => entry.subject.type)
+          .filter((type) => types.includes(type) || kept.has(type)),
+        ...types.filter(
+          (type) => !entries.some((entry) => entry.subject.type === type),
+        ),
+      ]);
+    })();
+  };
 
   return (
     <CheckboxGroupField
@@ -135,12 +252,7 @@ function EdgeTypesField({
       options={choices}
       value={checked}
       onChange={(next) => {
-        const types = (next ?? []).map(String);
-        // An emptied list is spelled the way the protocol schema spells "this
-        // stage draws no connections": the key is not there. An empty array
-        // would say something else — a configured capability holding nothing.
-        const nextEntries = entriesForTypes(entries, types, uuid);
-        onChange?.(nextEntries.length === 0 ? undefined : nextEntries);
+        requestTypes((next ?? []).map(String));
       }}
       onBlur={onBlur}
       onFocus={onFocus}
@@ -195,14 +307,29 @@ export default function ComposerEdgeConfigurationSection() {
   );
 }
 
-/** The entries with one entry's `form` replaced, or removed when it is empty. */
+/**
+ * The entries with one entry's `form` replaced, or removed when it is empty.
+ *
+ * Addressed by the connection TYPE, which is the only identity the schema
+ * guarantees is unique: `edges` is refined for duplicate types and says nothing
+ * about entry ids, so a protocol authored elsewhere or migrated can hold two
+ * entries carrying the same `id`. Matched on that, one form's edit landed on
+ * both of them — the second connection type was given the first's questions,
+ * which name attributes it does not have, and the stage could then not be
+ * saved at all.
+ *
+ * The duplicate id itself is left exactly as it arrived rather than repaired:
+ * it is valid, nothing here reads it any more, and rewriting an id the
+ * researcher never chose would change a protocol they did not ask this editor
+ * to touch.
+ */
 const withEdgeForm = (
   entries: readonly EdgeEntry[],
-  entryId: string,
+  type: string,
   fields: readonly Record<string, unknown>[],
 ): EdgeEntry[] =>
   entries.map((entry) => {
-    if (entry.id !== entryId) return entry;
+    if (entry.subject.type !== type) return entry;
     if (fields.length === 0) {
       // A form with no fields is spelled by the key not being there. An empty
       // one would say something else — a configured form holding nothing —
@@ -250,13 +377,17 @@ function EdgeTypeForms() {
             ?.label ?? entry.subject.type;
         return (
           <EdgeTypeForm
-            key={entry.id}
+            // The type rather than the entry's id: two entries may carry the
+            // same id, and a duplicate React key makes their UI identity
+            // unstable — the list this renders would hand one type's open
+            // dialog to the other.
+            key={entry.subject.type}
             entry={entry}
             typeName={typeName}
             onChange={(fields) =>
               setStageFieldValue(
                 EDGES_FIELD,
-                withEdgeForm(entries, entry.id, fields ?? []),
+                withEdgeForm(entries, entry.subject.type, fields ?? []),
               )
             }
           />
@@ -315,7 +446,9 @@ function EdgeTypeForm({
         {intl.formatMessage(networkCanvasMessages.edgeFormFieldsHint)}
       </Paragraph>
       <ComposerFormFieldsList
-        name={`edges-${entry.id}-form`}
+        // Named by the type for the reason the key is: an id two entries share
+        // would give two lists the same form ids.
+        name={`edges-${entry.subject.type}-form`}
         subject={entry.subject}
         value={Array.isArray(fields) ? fields.filter(isFormFieldRow) : []}
         onChange={onChange}
@@ -358,35 +491,85 @@ function CreateEdgeType() {
     key: string;
     typeId: string;
   } | null>(null);
+  /**
+   * Whether the create is with the host right now, which is a fact this host
+   * has for itself: the editor owns the draft and this owns request execution,
+   * so the request passes through here on its way out and its answer on the way
+   * back.
+   */
+  const [submitting, setSubmitting] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
+  /**
+   * Every type name the protocol already carries, of BOTH kinds.
+   *
+   * Node and edge types share one namespace — `CodebookSchema` refuses a
+   * protocol that reuses a name across the two maps, and `SubjectSection`'s own
+   * create dialog has always judged a new type against both. Judged against the
+   * edge names alone, a connection could be given a node type's name here: the
+   * editor would accept it and the refusal would arrive from the schema after
+   * the researcher had finished the dialog, with no name-field error to act on.
+   * The confusable pair is the worse half — the editor folds case and Unicode
+   * form together, so what reaches the codebook is two types nobody reading it
+   * could tell apart.
+   *
+   * Read map by map rather than by a computed key: the codebook's two maps hold
+   * different definition types, and one indexed by a union is a union of maps
+   * nothing can be read out of without narrowing it again.
+   */
+  const codebook = controller.snapshot.protocolContext.codebook;
   const existingEntityNames = useMemo(
     () =>
-      Object.values(
-        controller.snapshot.protocolContext.codebook.edge ?? {},
-      ).map((definition) => definition.name),
-    [controller.snapshot.protocolContext.codebook.edge],
+      [
+        ...Object.values(codebook.node ?? {}),
+        ...Object.values(codebook.edge ?? {}),
+      ].map((definition) => definition.name),
+    [codebook],
   );
 
-  if (readOnly) return null;
+  /*
+    The trigger goes when editing does, because a create nobody may start is
+    not on offer. An editor already OPEN stays: the name the researcher is
+    typing exists nowhere else, and unmounting it with the trigger would throw
+    that away without a word — to report something `CodebookEntityEditor` says
+    for itself once its save is refused. `readOnly` is what it takes for
+    exactly this, and it is the rule `SubjectSection`'s own create dialog and
+    the row dialogs already follow after a lease is lost.
+  */
+  if (readOnly && session === null) return null;
 
   return (
     <>
-      <Button
-        ref={triggerRef}
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setSession({ key: uuid(), typeId: uuid() })}
-      >
-        {intl.formatMessage(networkCanvasMessages.createEdgeTypeLabel)}
-      </Button>
+      {!readOnly && (
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setSession({ key: uuid(), typeId: uuid() })}
+        >
+          {intl.formatMessage(networkCanvasMessages.createEdgeTypeLabel)}
+        </Button>
+      )}
       {session !== null && (
         <Dialog
           open
           title={intl.formatMessage(networkCanvasMessages.createEdgeTypeLabel)}
           size="readable"
-          closeDialog={() => setSession(null)}
+          // A request in flight refuses every way out, because the dialog is
+          // about to show what the host made of it. Escape, a press outside and
+          // the close button all arrive at `closeDialog`, so refusing there
+          // covers all three — and `dismissible` takes the close button away
+          // rather than leaving a control on screen that does nothing.
+          // Dismissed mid-flight, the handler awaiting the request stays alive
+          // and a success arriving afterwards still ticks the new type on this
+          // stage: a connection type the researcher would watch appear for a
+          // create they had closed.
+          dismissible={!submitting}
+          closeDialog={() => {
+            if (submitting) return;
+            setSession(null);
+          }}
           finalFocus={() => triggerRef.current}
         >
           <CodebookEntityEditor
@@ -398,8 +581,16 @@ function CreateEdgeType() {
             )}
             subject={{ entity: 'edge', type: session.typeId }}
             initialDraft={NEW_ENTITY_DRAFT.edge}
+            readOnly={readOnly}
             existingEntityNames={existingEntityNames}
-            onSubmit={(request) => controller.requestCompoundEdit(request)}
+            onSubmit={async (request) => {
+              setSubmitting(true);
+              try {
+                return await controller.requestCompoundEdit(request);
+              } finally {
+                setSubmitting(false);
+              }
+            }}
             onApplied={() => {
               // Meant for THIS stage, so it is ticked rather than left for the
               // researcher to find in a list that has just grown.

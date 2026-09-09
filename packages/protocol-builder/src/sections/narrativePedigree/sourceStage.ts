@@ -21,7 +21,13 @@ import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 export type SourceStageOption = Readonly<{
   value: string;
   label: string;
-  /** Where it sits in the finished interview, counting from one. */
+  /**
+   * Where it sits in the finished interview, counting from one.
+   *
+   * Counted in the order the protocol states, so it is the number the timeline
+   * shows — a stage the schema cannot read is still a stage the interview
+   * runs, and still takes up a place in front of the pedigrees below it.
+   */
   position: number;
 }>;
 
@@ -69,7 +75,9 @@ export function resolveSourceStages(
   thisStageId: string,
   currentSourceStageId: unknown,
   /**
-   * Where a stage being CREATED will be inserted, counting from zero. Only
+   * Where a stage being CREATED will be inserted, counting from zero, in the
+   * order the protocol states — the list the host actually inserts into, which
+   * names the stages the schema refuses as well as the ones it accepts. Only
    * consulted for a stage the order does not contain yet; left out, such a
    * stage is treated as arriving at the end, which is where a host that
    * appends puts it.
@@ -94,7 +102,7 @@ export function resolveSourceStages(
           {
             value: stage.id,
             label: stage.label,
-            position: stageNumber(index, placement),
+            position: stageNumber(stage, index, placement),
           },
         ]
       : [],

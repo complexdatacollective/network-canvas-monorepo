@@ -1824,6 +1824,52 @@ describe('a pedigree whose node type changes', () => {
   });
 
   /**
+   * The same rule again, about the one thing that decides whether ANY of this
+   * may be written: the lease.
+   *
+   * Editing was taken away while the researcher was reading what the change
+   * would cost. The continuation that resumes when they answer holds an
+   * `onChange` captured while the picker was still editable, so the type moved
+   * in the form — while the reset it causes was refused by the session, which
+   * takes no commands from a lease that has gone. What was left on screen was
+   * the new type wearing the old type's attributes, which is a pedigree
+   * nobody authored and one no save could have produced.
+   *
+   * Refused rather than applied and put back: the session is the account of
+   * what this stage is, it still holds the old type, and everything on screen
+   * still describes that type.
+   */
+  it('refuses a confirmed change once editing has been taken away while the question was open', async () => {
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    const confirm = await screen.findByRole('button', {
+      name: 'Change the node type',
+    });
+
+    harness.setReadOnly();
+
+    await harness.user.click(confirm);
+
+    expect(
+      await screen.findByText(
+        'This stage is read-only, so your changes were not saved. Take over editing and try again.',
+      ),
+    ).toBeInTheDocument();
+    // The picker never moved. This is the assertion the refusal is FOR: the
+    // session below holds the old type either way, and a form left showing the
+    // new one is the whole defect.
+    expect(screen.getByRole('radio', { name: 'family member' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'person' })).not.toBeChecked();
+    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
+    expect(
+      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
+    ).toEqual(NOMINATION_ROWS);
+    expect(harness.pendingCommands()).toEqual([]);
+    expect(screen.getByText('Who has been unwell?')).toBeInTheDocument();
+  });
+
+  /**
    * And the refusal is about the NODE type alone. A narrative pedigree reads
    * its source's node type and says nothing about its edges, so the edge type
    * is still the researcher's to change.
