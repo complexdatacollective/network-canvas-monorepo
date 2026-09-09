@@ -929,11 +929,23 @@ function DialogEditor({
       // whichever row it is editing NOW and answers nothing, so calling it
       // when it is editing none is a commit that never happens reported as
       // one that did — which closes the dialog over the researcher's draft.
-      if (
-        mountedRef.current &&
+      //
+      // A row, and not a row OBJECT. The list rebuilds every one of them
+      // whenever its value moves — an undo, a rollback, a collaborator's
+      // edit — while keeping each row's identity, which is exactly what lets
+      // this editing session survive an arrival (see the effect that keeps it).
+      // Asked by object alone, any arrival at all during a save sent a commit
+      // that could have gone the ordinary way down the detached route below
+      // instead, where a list whose rows carry no id of their own can address
+      // nothing — and a save the researcher had every right to make came back
+      // as "this field was removed while your changes were being saved" about
+      // a field sitting in the list in front of them.
+      const stillEditingThisRow =
         listItemAtSaveStart !== undefined &&
-        activeItemRef.current === listItemAtSaveStart
-      ) {
+        (activeItemRef.current === listItemAtSaveStart ||
+          (rowIdAtSaveStart !== undefined &&
+            rowIdentityOf(activeItemRef.current) === rowIdAtSaveStart));
+      if (mountedRef.current && stillEditingThisRow) {
         // `ArrayField`'s save handler answers nothing, so what it did is read
         // from the write it caused rather than from its silence. Two different
         // things can go wrong inside it and neither is visible from here: the

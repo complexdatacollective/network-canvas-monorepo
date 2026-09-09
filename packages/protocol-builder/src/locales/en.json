@@ -1211,6 +1211,10 @@
     "defaultMessage": "Date picker",
     "description": "Choice offered for the control a participant answers with: a calendar they choose a date from."
   },
+  "protocolBuilder.formFields.controlLandedElsewhere": {
+    "defaultMessage": "The input control for “{variableName}” was changed, but this field no longer collects that attribute, so the field was not saved.",
+    "description": "Refusal shown above the fields of a form field’s dialog when the researcher’s choice of input control was recorded in the codebook — the protocol’s definition of what an interview records — and, while that was happening, someone else pointed this field at a different attribute. variableName is the attribute’s researcher-facing name and is not translated."
+  },
   "protocolBuilder.formFields.controlLikertScale": {
     "defaultMessage": "Likert scale",
     "description": "Choice offered for the control a participant answers with: an ordered scale from one extreme to the other."
@@ -4020,12 +4024,12 @@
     "description": "Shown in place of the select when nothing can be picked — the caller offered no attributes at all. An attribute is a variable the protocol’s codebook defines. Callers that can say something more specific pass their own sentence instead."
   },
   "protocolBuilder.variablePicker.missingAttribute": {
-    "defaultMessage": "This attribute is no longer in the codebook. Choose another one.",
-    "description": "Shown under the select when the attribute a researcher’s stored choice names has been deleted from the protocol’s codebook, so the choice has to be made again."
+    "defaultMessage": "This attribute is not available here. Choose another one.",
+    "description": "Shown under the select when the attribute a researcher’s stored choice names is not among the ones this control was given to offer — it may have been deleted from the protocol’s codebook, or ruled out by whatever the choice is being made for. Worded for what the control actually knows: it is handed a list of attributes and a stored choice, and cannot tell those two cases apart."
   },
   "protocolBuilder.variablePicker.missingOptionLabel": {
-    "defaultMessage": "{attributeId} — this attribute is no longer in the codebook",
-    "description": "Name of the one option standing for an attribute the protocol’s codebook no longer defines. attributeId is the raw stored identifier — there is no name left to show, because the definition it would have come from has been deleted."
+    "defaultMessage": "{attributeId} — this attribute is not available here",
+    "description": "Name of the one option standing for an attribute that is not among the ones this control was given to offer. attributeId is the raw stored identifier — there is no name to show, because no definition of it reached this control."
   },
   "protocolBuilder.variablePicker.placeholder": {
     "defaultMessage": "Select an attribute…",
