@@ -263,6 +263,37 @@ const openRecordedFixture = () => ({
   otherStages: recordingTheFixtureDisease(),
 });
 
+/**
+ * `otherStages` leaving a stage the interview runs BEFORE the pedigree in a
+ * shape the schema refuses — a merge that lost its label.
+ *
+ * The protocol context reports it and drops it from the readable stages; the
+ * interview's order still names it, and the timeline still numbers it.
+ */
+function anUnreadableStageBeforeThePedigree(): Readonly<
+  Record<string, SectionDoc>
+> {
+  const order = fixtureStageIds();
+  const before = order.indexOf('information-1');
+  const pedigree = order.indexOf('family-pedigree-1');
+  // Asserted rather than assumed: if the fixture ever runs this stage after
+  // the pedigree there is no unreadable stage in front of it to count.
+  if (before === -1 || pedigree === -1 || before > pedigree) {
+    throw new Error(
+      'The fixture protocol no longer runs "information-1" before "family-pedigree-1".',
+    );
+  }
+  const stage = loadFixtureStage('information-1');
+  return {
+    'information-1': {
+      id: stage.id,
+      type: stage.type,
+      ...stage.fields,
+      label: '',
+    },
+  };
+}
+
 describe('the pedigree a narrative pedigree draws', () => {
   it('opens on the stage as the protocol holds it', async () => {
     const harness = renderStageEditor(openFixture());
@@ -281,6 +312,24 @@ describe('the pedigree a narrative pedigree draws', () => {
         'At-risk statuses',
       ]),
     );
+  });
+
+  /**
+   * The number beside a pedigree is what the researcher matches against the
+   * timeline, and the timeline holds every stage the interview runs —
+   * including one whose own document the schema refuses, which is a stage the
+   * researcher can see and open. Counted in the stages this package could read
+   * alone, the pedigree was offered under the number of a different row of
+   * that timeline, which is the wrong family to point at exactly where two
+   * pedigrees share a name.
+   */
+  it('numbers a pedigree behind an unreadable stage as the timeline does', async () => {
+    const harness = renderStageEditor({
+      ...openFixture(),
+      otherStages: anUnreadableStageBeforeThePedigree(),
+    });
+
+    expect(await offeredSources(harness)).toEqual([fixturePedigreeOption()]);
   });
 
   it('saves the stage it opened, unchanged', async () => {

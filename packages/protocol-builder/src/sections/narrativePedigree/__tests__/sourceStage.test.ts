@@ -27,34 +27,38 @@ function contextInOrder(
 }
 
 /**
- * The same protocol with the narrative pedigree's OWN document left in a shape
- * the schema refuses — an import that dropped its diseases, which is exactly
- * the stage a researcher opens this editor to repair.
+ * The same protocol with one stage's OWN document left in a shape the schema
+ * refuses — an import that dropped a required list, which is exactly the kind
+ * of stage a researcher opens this editor to repair.
  *
  * `protocolContextFromSections` reports it and leaves it out of
  * `orderedStages`; the interview's order still names it, and still runs it
  * where the order says.
  */
-function contextWithUnreadableNarrativePedigree(
+function contextWithUnreadableStage(
+  stageId: string,
   order: readonly string[],
 ): ProtocolBuilderProtocolContext {
   const sections = fixtureProtocolSections();
-  const stageKey = sectionId({
-    kind: 'stage',
-    stageId: 'narrative-pedigree-1',
-  });
+  const stageKey = sectionId({ kind: 'stage', stageId });
   const stage = sections[stageKey];
   if (stage === undefined) {
-    throw new Error(
-      'The fixture protocol has no "narrative-pedigree-1" stage.',
-    );
+    throw new Error(`The fixture protocol has no "${stageId}" stage.`);
   }
   return protocolContextFromSections({
     ...sections,
-    [stageKey]: { ...stage, diseases: [] },
+    // Every stage the fixture holds has a `label`, and the schema requires a
+    // non-empty one, so this is a document the schema refuses whatever the
+    // interface — the merge that lost a label, seen from the protocol.
+    [stageKey]: { ...stage, label: '' },
     [sectionId({ kind: 'stageOrder' })]: { stages: [...order] },
   });
 }
+
+const contextWithUnreadableNarrativePedigree = (
+  order: readonly string[],
+): ProtocolBuilderProtocolContext =>
+  contextWithUnreadableStage('narrative-pedigree-1', order);
 
 const FIXTURE_ORDER = [
   'ego-form-1',
@@ -354,6 +358,58 @@ describe('the pedigrees a narrative pedigree may read', () => {
       'family-pedigree-1',
     ]);
     expect(problem).toBeNull();
+  });
+
+  /**
+   * The number is what the researcher matches against the timeline, and the
+   * timeline holds every stage the interview RUNS — including one whose own
+   * document the schema refuses. Counted in the readable stages alone, a
+   * pedigree standing behind an unreadable stage was numbered lower than the
+   * stage it names, so the number pointed at a different row of the timeline
+   * than the option it labels — which is exactly the mistake it exists to
+   * prevent when two pedigrees share a name.
+   */
+  it('counts the stages nobody can read when numbering a pedigree', () => {
+    const order = [
+      'ego-form-1',
+      'sociogram-1',
+      'family-pedigree-1',
+      'narrative-pedigree-1',
+    ];
+    const context = contextWithUnreadableStage('ego-form-1', order);
+    // The precondition, asserted rather than assumed: without a stage missing
+    // from the readable list the two numberings agree and this proves nothing.
+    expect(context.orderedStages.map((stage) => stage.id)).toEqual([
+      'sociogram-1',
+      'family-pedigree-1',
+      'narrative-pedigree-1',
+    ]);
+
+    expect(
+      resolveSourceStages(context, 'narrative-pedigree-1', 'family-pedigree-1')
+        .options,
+    ).toEqual([
+      {
+        value: 'family-pedigree-1',
+        label: 'Family Pedigree',
+        position: order.indexOf('family-pedigree-1') + 1,
+      },
+    ]);
+  });
+
+  /** And a stage being created reads the same timeline. */
+  it('counts them for a stage the host is about to insert', () => {
+    const order = ['ego-form-1', 'sociogram-1', 'family-pedigree-1'];
+    const context = contextWithUnreadableStage('ego-form-1', order);
+
+    expect(
+      resolveSourceStages(
+        context,
+        'not-in-the-order-yet',
+        undefined,
+        order.length,
+      ).options.map((option) => option.position),
+    ).toEqual([order.indexOf('family-pedigree-1') + 1]);
   });
 
   it('reports a source that has left the interview', () => {

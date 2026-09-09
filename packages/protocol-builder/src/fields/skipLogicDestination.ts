@@ -30,7 +30,22 @@ export type DestinationStage = Readonly<{ id: string; label: string }>;
  * cases differ both in which stages count as later and in the numbers the
  * researcher will see against them once the stage exists.
  */
-export type StagePlacement = Readonly<{ index: number; isNew: boolean }>;
+export type StagePlacement = Readonly<{
+  /** Where it sits among the stages that could be READ, counting from zero. */
+  index: number;
+  isNew: boolean;
+  /**
+   * The interview's order as the PROTOCOL states it, when the caller has it.
+   *
+   * Carried on the placement rather than passed again to every caller that
+   * numbers a stage, because it is the same list `index` was translated out
+   * of: `stageNumber` is the only thing that needs it back, and nothing can
+   * number a stage without a placement to number it against. Left out — a
+   * caller with no order to give — the numbers count the readable stages
+   * alone, which is all there is to count.
+   */
+  stageOrder?: readonly string[];
+}>;
 
 export type SkipLogicDestinationOption = Readonly<{
   value: string;
@@ -293,24 +308,26 @@ export function stagePlacement(
   position?: number,
   stageOrder?: readonly string[],
 ): StagePlacement {
+  const placed = (index: number, isNew: boolean): StagePlacement =>
+    stageOrder === undefined
+      ? { index, isNew }
+      : { index, isNew, stageOrder: [...stageOrder] };
   const index = stages.findIndex((stage) => stage.id === stageId);
-  if (index !== -1) return { index, isNew: false };
+  if (index !== -1) return placed(index, false);
   const readable = new Set(stages.map((stage) => stage.id));
   const readableBefore = (cut: number): number =>
     (stageOrder ?? []).slice(0, cut).filter((id) => readable.has(id)).length;
   const orderIndex = stageOrder?.indexOf(stageId) ?? -1;
-  if (orderIndex !== -1) {
-    return { index: readableBefore(orderIndex), isNew: false };
-  }
-  if (position === undefined) return { index: stages.length, isNew: true };
+  if (orderIndex !== -1) return placed(readableBefore(orderIndex), false);
+  if (position === undefined) return placed(stages.length, true);
   const requested = Math.max(position, 0);
-  return {
-    index: Math.min(
+  return placed(
+    Math.min(
       stageOrder === undefined ? requested : readableBefore(requested),
       stages.length,
     ),
-    isNew: true,
-  };
+    true,
+  );
 }
 
 /**
@@ -335,9 +352,31 @@ const isLaterStage = (index: number, placement: StagePlacement): boolean =>
  * that control call an existing "Stage 3" pedigree "Stage 4", disagreeing with
  * the timeline the researcher is reading it against — and the number is there
  * precisely to tell two identically named pedigrees apart.
+ *
+ * Which is also why it is counted in the order the PROTOCOL states rather than
+ * in the stages that could be read. The two lists differ by every stage whose
+ * own document the schema refuses, and the timeline the researcher matches
+ * this number against holds those too — the interview runs them where the
+ * order says. Counted in the readable stages alone, a stage standing behind an
+ * unreadable one was named "Stage 2" while the timeline called it "Stage 3":
+ * a number that points at a different row than the option carrying it is worse
+ * than no number, because the whole job of the number is to tell two stages of
+ * one name apart. The stage's own place in that order is what is asked for,
+ * so a caller cannot supply the wrong stage's; with no order to ask, the
+ * readable count is all there is.
  */
-export const stageNumber = (index: number, placement: StagePlacement): number =>
-  index + 1 + (placement.isNew && index >= placement.index ? 1 : 0);
+export const stageNumber = (
+  stage: DestinationStage,
+  index: number,
+  placement: StagePlacement,
+): number => {
+  const inOrder = placement.stageOrder?.indexOf(stage.id) ?? -1;
+  return (
+    (inOrder === -1 ? index : inOrder) +
+    1 +
+    (placement.isNew && index >= placement.index ? 1 : 0)
+  );
+};
 
 const stageOptionLabel = (
   stage: DestinationStage,
@@ -345,7 +384,7 @@ const stageOptionLabel = (
   placement: StagePlacement,
   intl: IntlShape,
 ): string => {
-  const position = stageNumber(index, placement);
+  const position = stageNumber(stage, index, placement);
   return stage.label === ''
     ? intl.formatMessage(messages.untitledStageOption, { position })
     : intl.formatMessage(messages.stageOption, {
