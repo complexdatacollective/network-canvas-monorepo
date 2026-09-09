@@ -93,7 +93,7 @@ export class InMemoryProtocolStore {
   readonly #locks = new Map<ProtocolSectionId, HostPrincipal>();
   readonly #presence = new Map<string, Presence>();
   readonly #log: LoggedEvent[] = [];
-  readonly #listeners = new Set<(entry: LoggedEvent) => void>();
+  readonly #watchers = new Set<EventQueue<LoggedEvent>>();
   readonly #nextId: () => string;
   #sequence = 0n;
   #cursor = 0;
@@ -253,6 +253,16 @@ export class InMemoryProtocolStore {
   }
 
   /**
+   * Ends every open `watchProtocol` stream, as a dropped connection does.
+   *
+   * Events published after this reach nobody, so a test can write a revision
+   * into the gap and see whether resuming from a cursor delivers it.
+   */
+  disconnectWatchers(): void {
+    for (const watcher of this.#watchers) watcher.close();
+  }
+
+  /**
    * Merges manifest entries into the `assets` section as one revision.
    *
    * Host-serialised like `create`, and for the same reason: promoted bytes and
@@ -270,11 +280,10 @@ export class InMemoryProtocolStore {
     since: string | undefined,
   ): AsyncGenerator<LoggedEvent> {
     const queue = new EventQueue<LoggedEvent>();
-    const listener = (entry: LoggedEvent) => queue.push(entry);
     // Subscribed before the backlog is taken, so an event published between
     // the two is queued rather than lost; the cursor check below drops the
     // overlap.
-    this.#listeners.add(listener);
+    this.#watchers.add(queue);
     const backlog = this.#eventsAfter(since);
     let last = backlog.at(-1)?.cursor ?? since;
     this.#setPresence(principal, 'viewing', undefined);
@@ -288,7 +297,7 @@ export class InMemoryProtocolStore {
         yield entry;
       }
     } finally {
-      this.#listeners.delete(listener);
+      this.#watchers.delete(queue);
       queue.close();
       this.#leave(principal);
     }
@@ -384,7 +393,7 @@ export class InMemoryProtocolStore {
     this.#cursor += 1;
     const entry: LoggedEvent = { cursor: String(this.#cursor), event };
     this.#log.push(entry);
-    for (const listener of this.#listeners) listener(entry);
+    for (const watcher of this.#watchers) watcher.push(entry);
   }
 
   #publishPresence(): void {
