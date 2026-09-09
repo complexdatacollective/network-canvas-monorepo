@@ -53,6 +53,8 @@
     "./StageEditor": "./src/StageEditor.tsx",
     "./stageEditorRegistry": "./src/stageEditorRegistry.ts",
     "./styles.css": "./src/styles.css",
+    "./testing/host/createInMemoryHost": "./src/testing/host/createInMemoryHost.ts",
+    "./testing/host/sectionsFromProtocol": "./src/testing/host/sectionsFromProtocol.ts",
     "./testing/renderStageEditor": "./src/testing/renderStageEditor.tsx",
     "./validation-attribution": "./src/validationAttribution.ts"
   },
