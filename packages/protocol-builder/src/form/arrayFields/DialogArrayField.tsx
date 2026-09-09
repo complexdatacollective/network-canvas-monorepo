@@ -59,6 +59,7 @@ import {
   rowRemovedMessage,
   writeRefusalMessage,
 } from './arrayWriteRefusal.ts';
+import { EditedRowContext, type EditedRowScope } from './editedRow.ts';
 import RowEditorBoundary from './RowEditorBoundary.tsx';
 import {
   ArrayFieldBindingContext,
@@ -1075,6 +1076,38 @@ function DialogEditor({
     };
   }, [editIndex, editorValidate]);
 
+  /**
+   * Which list this row is going into, and what a save would put there.
+   *
+   * The row on screen is not in the stage form behind this dialog — that is
+   * what a row dialog IS — so anything reasoning about the stage the next save
+   * would produce has to be told about it. `read` runs the same merge
+   * `performSave` commits, so the two cannot disagree about one draft.
+   *
+   * The list, not a place in it: this session outlives its row leaving the
+   * array, so the position it opened at can belong to another row by the time
+   * a reader uses it — see `EditedRowScope`.
+   *
+   * `null` for a list with no document path of its own, which is a list inside
+   * another row: its rows reach the stage through the dialog around it, and
+   * that dialog is the one describing them.
+   */
+  const editedRow = useMemo<EditedRowScope | null>(
+    () =>
+      listBinding?.documentPath === undefined
+        ? null
+        : {
+            listPath: listBinding.documentPath,
+            read: () =>
+              mergeEditedRow(
+                sessionBaseRef.current,
+                storeApiRef.current,
+                storeApiRef.current?.getState().getFormValues() ?? {},
+              ),
+          },
+    [listBinding?.documentPath],
+  );
+
   if (!session) return null;
 
   const editorPreview = editorPreviewComponent
@@ -1158,13 +1191,15 @@ function DialogEditor({
           nested form store.
         */}
         <ArrayFieldBindingContext value={NESTED_IN_A_ROW}>
-          {createElement(editorFieldsComponent, {
-            ...itemValues,
-            ...editorProps,
-            item: itemValues,
-            editIndex,
-            form: editFormName,
-          })}
+          <EditedRowContext value={editedRow}>
+            {createElement(editorFieldsComponent, {
+              ...itemValues,
+              ...editorProps,
+              item: itemValues,
+              editIndex,
+              form: editFormName,
+            })}
+          </EditedRowContext>
         </ArrayFieldBindingContext>
       </RowEditorBoundary>
     </DialogForm>

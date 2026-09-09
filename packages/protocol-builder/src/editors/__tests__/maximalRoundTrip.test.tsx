@@ -7,6 +7,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { formStageEditors } from '../formStageEditors.ts';
+import { nameGeneratorStageEditors } from '../nameGeneratorStageEditors.ts';
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
 vi.mock('../../fields/RichTextField.tsx', () => ({
@@ -171,6 +172,47 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       },
     },
     settle: stageName,
+  },
+  {
+    interfaceName: 'NameGenerator',
+    type: 'NameGenerator',
+    registry: nameGeneratorStageEditors,
+    fields: {
+      label: 'Name Generator',
+      interviewScript: 'Guidance.',
+      skipLogic,
+      subject: { entity: 'node', type: 'person' },
+      form: {
+        title: 'Add a person',
+        fields: [
+          {
+            id: 'field-1',
+            variable: 'name',
+            prompt: 'What is their name?',
+            hint: 'Their first name.',
+            showValidationHints: true,
+          },
+        ],
+      },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Who are the people you know?',
+          additionalAttributes: [{ variable: 'flagged', value: true }],
+        },
+      ],
+      panels: [
+        {
+          id: 'panel-1',
+          title: 'People you named earlier',
+          dataSource: 'existing',
+          filter: nodeFilter,
+        },
+        { id: 'panel-2', title: 'From the roster', dataSource: 'roster_data' },
+      ],
+      behaviours: { minNodes: 1, maxNodes: 8 },
+    },
+    settle: () => screen.findByRole('textbox', { name: 'Form title' }),
   },
 ];
 

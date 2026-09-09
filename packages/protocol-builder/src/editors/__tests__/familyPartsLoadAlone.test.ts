@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-// The ONLY import this file may have. `stageEditorRegistry.ts` imports every
+// The ONLY imports this file may have. `stageEditorRegistry.ts` imports every
 // family's part, so a part that imported it back would put the two modules in
 // a cycle — and reaching the part first would then evaluate the registry while
 // the part's own binding is still uninitialised, building `REGISTRY_PARTS` out
 // of nothing. Naming the registry here, in any form, is what would make this
 // file pass while that was true.
 import { formStageEditors } from '../formStageEditors.ts';
+import { nameGeneratorStageEditors } from '../nameGeneratorStageEditors.ts';
 
 /**
  * A family's part has to be loadable without the registry that composes it.
@@ -24,6 +25,9 @@ describe('a family part reached before the registry', () => {
       'AlterForm',
       'EgoForm',
       'Information',
+    ]);
+    expect(Object.keys(nameGeneratorStageEditors).toSorted()).toEqual([
+      'NameGenerator',
     ]);
   });
 });

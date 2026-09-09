@@ -18,9 +18,11 @@ type QualifierResolvers = {
 };
 
 /**
- * Only the data source distinguishes the panel qualifiers, so the caller can
- * pass panels assembled from just that leaf — which is what
- * `usePanelsForAutoName` does, rather than reading the whole `panels` value.
+ * Only the data source distinguishes the panel qualifiers, so a caller may
+ * pass panels carrying nothing else. Both callers do: Architect's
+ * `usePanelsForAutoName` assembles them from the per-index `dataSource` leaves
+ * its form registers, and this package's assembles them from the one `panels`
+ * field value its form registers.
  */
 type PanelQualifierInput = Pick<Panel, 'dataSource'>;
 
