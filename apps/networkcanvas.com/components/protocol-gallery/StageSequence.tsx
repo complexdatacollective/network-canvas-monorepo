@@ -34,10 +34,20 @@ export function StageSequence({ stages }: { stages: ProtocolStage[] }) {
               className="size-2.5 rounded-full"
               style={{ backgroundColor: stageTypeColorStyle(stage.type).color }}
             />
-            <span className="min-w-0 truncate" title={stage.label}>
+            <Paragraph
+              intent="smallText"
+              margin="none"
+              render={<span />}
+              className="min-w-0 truncate"
+              title={stage.label}
+            >
               {stage.label}
-            </span>
-            <Eyebrow render={<span />} className="text-right whitespace-nowrap">
+            </Paragraph>
+            <Eyebrow
+              tone="subtle"
+              render={<span />}
+              className="text-right whitespace-nowrap"
+            >
               {t(`stageTypes.${stage.type}`)}
             </Eyebrow>
           </Surface>
