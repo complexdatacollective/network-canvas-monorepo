@@ -14,7 +14,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { normalizeForComparison } from '@codaco/shared-consts';
 
-import { useResourceGateway } from '../context.tsx';
+import { useResourceClient } from '../client.tsx';
 import {
   resourceOk,
   type ResourceDescriptor,
@@ -22,8 +22,7 @@ import {
   type ResourceSecretStorage,
   type StagedSecret,
   type StageSecretRequest,
-} from '../gateway.ts';
-import { callGateway } from '../gatewayCall.ts';
+} from '../types.ts';
 import { discardAbandonedStaging } from './abandonedStaging.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import { useResourceAttempt } from './useResourceAttempt.ts';
@@ -113,11 +112,15 @@ const messages = defineMessages({
  * Where the key ends up is the whole of what makes this decision consequential
  * — a key written into the protocol file leaves with every copy of that file,
  * and the researcher is the only person who can decide whether that is
- * acceptable for the key in their hand. Saying nothing, as this control did,
- * leaves them deciding without the fact; saying it unconditionally would be
- * telling a host that keeps the value itself that it does not. So the adapter
- * says which it is and each answer is written out whole, ready to translate as
- * the statement it is rather than as a warning glued onto a hint.
+ * acceptable for the key in their hand. Saying nothing leaves them deciding
+ * without the fact; saying it unconditionally would be telling a host that
+ * keeps the value itself that it does not. So the host says which it is and
+ * each answer is written out whole, ready to translate as the statement it is
+ * rather than as a warning glued onto a hint.
+ *
+ * The host states it in its answer to `list`, so until a list has come back
+ * there is no answer to give — and a hint is left off the input entirely
+ * rather than guessed at. Everything else about the key is said either way.
  */
 const KEY_HINT: Readonly<Record<ResourceSecretStorage, MessageDescriptor>> = {
   plaintext: messages.plaintextHint,
@@ -127,8 +130,8 @@ const KEY_HINT: Readonly<Record<ResourceSecretStorage, MessageDescriptor>> = {
 export type ResourceSecretControlProps = Readonly<{
   /**
    * The key that was added, as the field will refer to it. Only the
-   * descriptor: the handle promotion needs is the session's, captured where
-   * the secret was staged, and no surface here has any use for it.
+   * descriptor: the handle promotion needs is the edit's, captured where the
+   * secret was staged, and no surface here has any use for it.
    */
   onStaged: (descriptor: ResourceDescriptor) => void;
   /**
@@ -152,8 +155,8 @@ export type ResourceSecretControlProps = Readonly<{
    *
    * Asked for as a call rather than handed over as a list, because a list is
    * only ever a fact about when it was read: the browser around this control
-   * reads its own once, when it opens, and anything else in the session may
-   * have added a key since. Architect's own key dialog reads the manifest out
+   * reads its own once, when it opens, and anything else in the edit may have
+   * added a key since. Architect's own key dialog reads the manifest out
    * of the store at submit for exactly this reason. A read that fails refuses
    * the submission and is reported as the failure it is — a key added without
    * the check is the pair of indistinguishable buttons this exists to prevent.
@@ -185,8 +188,8 @@ const readNoExistingNames = (): Promise<ResourceResult<readonly string[]>> =>
  * The value exists in this control's own state while it is being typed and
  * nowhere else. Staging hands it to the host and clears both inputs; what this
  * control keeps is the asset id, which is what the field stores. The opaque
- * handle promotion needs never travels through the editor at all: the
- * session's gateway captured it as the secret was staged. Nothing here writes
+ * handle promotion needs never travels through the editor at all: the edit's
+ * resource client captured it as the secret was staged. Nothing here writes
  * the value to the stage draft or renders it once staged.
  *
  * One submission does outlive its inputs. A call that failed in a way that may
@@ -202,7 +205,7 @@ export default function ResourceSecretControl({
   existingNamesBusy = false,
   disabled = false,
 }: ResourceSecretControlProps) {
-  const gateway = useResourceGateway();
+  const resources = useResourceClient();
   const intl = useAppIntl();
   const { busy, clear, failure, retry, run } = useResourceAttempt();
   const [name, setName] = useState('');
@@ -232,8 +235,9 @@ export default function ResourceSecretControl({
    * The submission whose fate the researcher's client never learned, kept for
    * exactly as long as it is undecided.
    *
-   * It carries the key, because settling it is repeating it: the port makes a
-   * staging call idempotent under its request id, so the same call is what
+   * It carries the key, because settling it is repeating it: the contract
+   * makes a staging call idempotent under its request id, so the same call is
+   * what
    * asks the host "did you keep this?" and is answered with the staged secret
    * if it did.
    */
@@ -263,11 +267,11 @@ export default function ResourceSecretControl({
   /**
    * Asks the host to drop whatever the abandoned request may have staged.
    *
-   * Nothing else can. A descriptor the client never received was never
-   * registered in the session's staged set — the session remembers only what a
-   * staging call answered with — so a finish sweeping unreferenced staging
-   * cannot see it, and only a cancel, which drops everything indiscriminately,
-   * would ever reach it. The request id is the one name it has left, and
+   * Nothing else can. A descriptor this control never received was never
+   * registered in the edit's staged set — the edit remembers only what a
+   * staging call answered with — so only a cancel, which drops everything
+   * indiscriminately, would ever reach it. The request id is the one name it
+   * has left, and
    * repeating the identical call under it is what turns that name back into a
    * descriptor: an idempotent host hands back exactly what it staged, and it
    * is dropped there and then. A host that staged nothing stages nothing now
@@ -283,9 +287,9 @@ export default function ResourceSecretControl({
     if (request === undefined) return;
     if (failure === undefined || !failure.retryable) return;
     void (async () => {
-      const repeated = await callGateway(() => gateway.stageSecret(request));
+      const repeated = await resources.stageSecret(request);
       if (repeated.status !== 'ok') return;
-      discardAbandonedStaging(gateway, repeated.data.descriptor);
+      discardAbandonedStaging(resources, repeated.data.descriptor);
     })();
   };
 
@@ -335,7 +339,7 @@ export default function ResourceSecretControl({
     };
     unsettled.current = request;
     run(
-      () => gateway.stageSecret(request),
+      () => resources.stageSecret(request),
       (staged) => {
         // Cleared the moment the host has it: an input still holding the key
         // is the key, on screen and in the page.
@@ -356,9 +360,9 @@ export default function ResourceSecretControl({
       // The key was staged for a form nobody is watching any more — the
       // researcher edited it into a new intent, or closed the browser. A
       // secret held by the host for a choice that no longer exists is worse
-      // than abandoned bytes, so it goes now rather than at the finish.
+      // than abandoned bytes, so it goes now rather than when the edit closes.
       (staged: StagedSecret) =>
-        discardAbandonedStaging(gateway, staged.descriptor),
+        discardAbandonedStaging(resources, staged.descriptor),
     );
   };
 
@@ -424,7 +428,11 @@ export default function ResourceSecretControl({
       <UnconnectedField
         name="staged-secret-value"
         label={intl.formatMessage(messages.valueLabel)}
-        hint={intl.formatMessage(KEY_HINT[gateway.secretStorage])}
+        {...(resources.secretStorage === undefined
+          ? {}
+          : {
+              hint: intl.formatMessage(KEY_HINT[resources.secretStorage]),
+            })}
         component={InputField}
         type="password"
         autoComplete="off"

@@ -11,8 +11,8 @@ import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import { useResourceGateway } from '../context.tsx';
-import type { ResourceDescriptor } from '../gateway.ts';
+import { useResourceClient } from '../client.tsx';
+import type { ResourceDescriptor } from '../types.ts';
 import { downloadResourceContent } from './downloadResourceContent.ts';
 import ResourceBrowserDialog from './ResourceBrowserDialog.tsx';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
@@ -106,7 +106,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.resourcePicker.discard',
     defaultMessage: 'Discard this resource',
     description:
-      'Button that throws away a resource imported in this editing session, for the whole session rather than only for this field.',
+      'Button that throws away a resource imported while this stage has been open, for the whole edit rather than only for this field.',
   },
   interviewNetworkOption: {
     id: 'protocolBuilder.resourcePicker.interviewNetworkOption',
@@ -136,7 +136,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.resourcePicker.discardedAnnouncement',
     defaultMessage: 'The imported resource was discarded.',
     description:
-      'Announced to assistive technology when a resource imported in this editing session is thrown away.',
+      'Announced to assistive technology when a resource imported while this stage has been open is thrown away.',
   },
   downloadedAnnouncement: {
     id: 'protocolBuilder.resourcePicker.downloadedAnnouncement',
@@ -173,8 +173,8 @@ export type ResourcePickerControlProps = CreateFormFieldProps<
  * The field's value is the asset id, exactly as the protocol format spells a
  * resource reference — including for an imported file, which is given its
  * final id the moment it is staged so a draft can point at it before the stage
- * is saved. Everything the control knows comes from the resource gateway:
- * there is no host store, no browser storage, and no URL of the host's in this
+ * is saved. Everything the control knows comes from the resource client: there
+ * is no host store, no browser storage, and no URL of the host's in this
  * component or anything it renders.
  */
 export default function ResourcePickerControl({
@@ -195,7 +195,7 @@ export default function ResourcePickerControl({
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
 }: ResourcePickerControlProps) {
-  const gateway = useResourceGateway();
+  const resources = useResourceClient();
   const intl = useAppIntl();
   const action = useResourceAttempt();
   const referenceCount = useStageResourceUsage();
@@ -209,7 +209,7 @@ export default function ResourcePickerControl({
   const [status, setStatus] = useState('');
   /**
    * Why the last choice was refused, encoded rather than formatted. Some of
-   * these refusals are this control's own and some cross the gateway's
+   * these refusals are this control's own and some cross the contract's
    * string-only `message`, so all of them are held as they arrive and decoded
    * where they are rendered — which also keeps one on screen readable after a
    * change of language.
@@ -269,12 +269,12 @@ export default function ResourcePickerControl({
       setRefusal(unsupportedResourceKindMessage(kind));
       return;
     }
-    // Asked of the session rather than decided here: another field may have
-    // started discarding this very resource a moment ago, and only the session
+    // Asked of the edit rather than decided here: another field may have
+    // started discarding this very resource a moment ago, and only the edit
     // knows that a discard is in flight. Taking it anyway would leave this
     // field naming bytes the host is in the middle of deleting.
-    const reference = gateway.referenceStaged?.(chosen.id);
-    if (reference?.status === 'failed') {
+    const reference = resources.referenceStaged(chosen.id);
+    if (reference.status === 'failed') {
       setRefusal(reference.failure.message);
       return;
     }
@@ -298,8 +298,8 @@ export default function ResourcePickerControl({
 
   const handleDiscard = () => {
     if (selectedId === undefined) return;
-    // Discarding drops the resource for the whole editing session, not just
-    // for this field, so a resource another field still names is refused —
+    // Discarding drops the resource for the whole edit, not just for this
+    // field, so a resource another field still names is refused —
     // dropping it would leave that field pointing at nothing and the stage
     // unable to save, which is not what "discard this one" asked for.
     if (referenceCount(selectedId) > 1) {
@@ -309,7 +309,7 @@ export default function ResourcePickerControl({
     setRefusal(undefined);
     setDiscarding(true);
     action.run(
-      () => gateway.discardStaged(selectedId),
+      () => resources.discardStaged(selectedId),
       () => {
         // The field goes with it: a discarded resource is gone from the host,
         // so a reference left behind could only ever be dangling.
@@ -319,13 +319,21 @@ export default function ResourcePickerControl({
     );
   };
 
+  // The contract has no download: what it can answer with is the URL a preview
+  // renders from, so saving a copy is that URL handed to a link the page
+  // clicks. A researcher who asks for the file therefore waits for the same
+  // call an image on the card already made, and gets a file named the way the
+  // protocol names the resource.
   const handleDownload = () => {
     if (selectedId === undefined || descriptor === undefined) return;
     setDiscarding(false);
     action.run(
-      () => gateway.download(selectedId),
-      (content) => {
-        downloadResourceContent(content, descriptor.source ?? descriptor.name);
+      () => resources.resolvePreview(selectedId),
+      (resolved) => {
+        downloadResourceContent(
+          resolved.url,
+          descriptor.source ?? descriptor.name,
+        );
         setStatus(
           createMessageError(messages.downloadedAnnouncement, {
             name: descriptor.name,

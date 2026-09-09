@@ -7,44 +7,22 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { useStageEditorController } from '../../controller.ts';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import StageEditorShell from '../../form/StageEditorShell.tsx';
+import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
-import {
-  createStageIdentity,
-  ProtocolBuilderSessionStore,
-  type StageIdentity,
-} from '../../session.ts';
-import {
-  resourceFailure,
-  type ProtocolBuilderResourceGateway,
-  type ResourceInspection,
-} from '../gateway.ts';
-import {
-  InMemoryResourceGateway,
-  type InMemoryResourceSeed,
-} from '../InMemoryResourceGateway.ts';
-import { overrideGateway } from '../overrideGateway.ts';
+import { StageEditSession } from '../../stageEdit.tsx';
+import { ResourceClientProvider } from '../client.tsx';
 import ResourcePickerControl from './ResourcePickerControl.tsx';
 import {
+  createStoryHost,
   IMAGE_RESOURCE,
   PROTOCOL_RESOURCES,
   ROSTER_RESOURCE,
   skylineImageFile,
+  type StoryResource,
+  type StoryStage,
 } from './storyFixtures.ts';
-
-/**
- * What a host that cannot be reached answers, every time it is asked.
- *
- * The in-memory host's own injectable failure fails one call and then behaves;
- * a story is a state a researcher is looking at, so the state has to hold
- * still — including when they use the retry it offers.
- */
-const INSPECTION_UNAVAILABLE = resourceFailure<ResourceInspection>(
-  'unavailable',
-  'the resource host is temporarily unavailable',
-);
 
 /** Which stage the picker under the researcher's cursor is a field of. */
 type StagePreset =
@@ -55,11 +33,7 @@ type StagePreset =
   /** A roster name generator, whose data source is a network resource. */
   | 'roster';
 
-type StageScenario = Readonly<{
-  identity: StageIdentity;
-  fields: SectionDoc;
-  children: ReactNode;
-}>;
+type StageScenario = Readonly<{ stage: StoryStage; children: ReactNode }>;
 
 /**
  * The id and type of an information screen's item, mounted so the stage draft
@@ -116,11 +90,14 @@ const STAGE_SCENARIOS: Readonly<
   Record<StagePreset, (holding: string | undefined) => StageScenario>
 > = {
   'welcome-screen': (holding) => ({
-    identity: createStageIdentity('Information', () => 'welcome-screen'),
-    fields: {
-      label: 'Welcome',
-      title: 'Welcome to the study',
-      items: [assetItem(0, holding ?? '')],
+    stage: {
+      stageId: 'welcome-screen',
+      type: 'Information',
+      fields: {
+        label: 'Welcome',
+        title: 'Welcome to the study',
+        items: [assetItem(0, holding ?? '')],
+      },
     },
     children: (
       <>
@@ -130,11 +107,14 @@ const STAGE_SCENARIOS: Readonly<
     ),
   }),
   'two-image-items': (holding) => ({
-    identity: createStageIdentity('Information', () => 'welcome-screen'),
-    fields: {
-      label: 'Welcome',
-      title: 'Welcome to the study',
-      items: [assetItem(0, holding ?? ''), assetItem(1, holding ?? '')],
+    stage: {
+      stageId: 'welcome-screen',
+      type: 'Information',
+      fields: {
+        label: 'Welcome',
+        title: 'Welcome to the study',
+        items: [assetItem(0, holding ?? ''), assetItem(1, holding ?? '')],
+      },
     },
     children: (
       <>
@@ -146,12 +126,15 @@ const STAGE_SCENARIOS: Readonly<
     ),
   }),
   'roster': (holding) => ({
-    identity: createStageIdentity('NameGeneratorRoster', () => 'roster'),
-    fields: {
-      label: 'People you know',
-      subject: { entity: 'node', type: 'person' },
-      prompts: [{ id: 'prompt-1', text: 'Choose the people you know' }],
-      ...(holding === undefined ? {} : { dataSource: holding }),
+    stage: {
+      stageId: 'roster',
+      type: 'NameGeneratorRoster',
+      fields: {
+        label: 'People you know',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'prompt-1', text: 'Choose the people you know' }],
+        ...(holding === undefined ? {} : { dataSource: holding }),
+      },
     },
     children: (
       <ProtocolField
@@ -168,23 +151,23 @@ type ResourcePickerHostProps = Readonly<{
   /** The stage the picker is a field of, and therefore what it may hold. */
   stage: StagePreset;
   /** The resources this protocol already contains. */
-  resources: readonly InMemoryResourceSeed[];
+  resources: readonly StoryResource[];
   /** The resource id the stage draft opens on, if it opens on one. */
   holding?: string;
-  /** Someone else holds the lease, so the session is open for reading. */
+  /** Someone else holds the stage, so this editor opens read-only. */
   readOnly?: boolean;
   /** Whether the host can answer `inspect` for the resource a field holds. */
   hostCanInspect?: boolean;
 }>;
 
 /**
- * A host with no Redux and no storage of its own: an editing session over the
- * in-memory resource host, and a stage editor whose fields are pickers.
+ * The contract served from memory, one stage opened over it, and a stage
+ * editor whose fields are pickers.
  *
- * The session is opened once, so a control changed after the story has
- * rendered does not reopen it — the same thing the stage editor shell's own
- * story does, and for the same reason: a session is a thing a host opens, not
- * a prop.
+ * The host is built once, so a control changed after the story has rendered
+ * does not rebuild the protocol underneath it — the same thing the stage
+ * editor shell's own story does, and for the same reason: a host is a thing an
+ * application supplies, not a prop.
  */
 function ResourcePickerHost({
   stage,
@@ -193,47 +176,39 @@ function ResourcePickerHost({
   readOnly = false,
   hostCanInspect = true,
 }: ResourcePickerHostProps) {
-  const [gateway] = useState<ProtocolBuilderResourceGateway>(() => {
-    const host = new InMemoryResourceGateway({ committed: [...resources] });
-    if (hostCanInspect) return host;
-    return overrideGateway(host, {
-      inspect: () => Promise.resolve(INSPECTION_UNAVAILABLE),
-    });
-  });
   const [scenario] = useState(() => STAGE_SCENARIOS[stage](holding));
-  const [session] = useState(
-    () =>
-      new ProtocolBuilderSessionStore({
-        identity: scenario.identity,
-        fields: scenario.fields,
-        protocolSections: {},
-        manifestRevision: { sequence: 1n, hash: 'storybook' },
-        access: readOnly
-          ? { mode: 'readOnly', reason: 'spectator' }
-          : { mode: 'editable', leaseOwner: 'storybook', leaseEpoch: 1n },
-        resourceGateway: gateway,
-        buildCandidate: ({ stageDocument }) => ({
-          name: 'Resource picker proof host',
-          schemaVersion: 8,
-          codebook: {},
-          stages: [stageDocument],
-        }),
-      }),
-  );
-  const controller = useStageEditorController(session);
+  const [host] = useState(() => {
+    const built = createStoryHost({
+      resources,
+      stage: scenario.stage,
+      // A story is a state a researcher is looking at, so the state has to
+      // hold still — including when they use the retry it offers.
+      ...(hostCanInspect
+        ? {}
+        : { refuses: { procedure: 'inspect', forever: true } as const }),
+    });
+    if (readOnly) built.takeTheStage();
+    return built;
+  });
 
   return (
     <DialogProvider>
-      <main className="mx-auto max-w-6xl p-6">
-        <StageEditorShell controller={controller}>
-          <BuilderSection
-            title="Resources"
-            description="What this stage shows the participant, or reads its people from."
-          >
-            {scenario.children}
-          </BuilderSection>
-        </StageEditorShell>
-      </main>
+      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+        <ResourceClientProvider>
+          <StageEditSession target={{ sectionId: host.sectionId }}>
+            <main className="mx-auto max-w-6xl p-6">
+              <StageEditorShell>
+                <BuilderSection
+                  title="Resources"
+                  description="What this stage shows the participant, or reads its people from."
+                >
+                  {scenario.children}
+                </BuilderSection>
+              </StageEditorShell>
+            </main>
+          </StageEditSession>
+        </ResourceClientProvider>
+      </ProtocolBuilder>
     </DialogProvider>
   );
 }
@@ -246,7 +221,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Chooses the resource a stage field refers to. The field holds the asset id, exactly as the protocol format spells a resource reference, and everything the control knows — the resource list, what it is, what it looks like, whether it is saved or only imported — comes from the resource gateway. These stories run over the in-memory host, seeded with one protocol containing an image, a video, an audio file, a roster and an API key.',
+          'Chooses the resource a stage field refers to. The field holds the asset id, exactly as the protocol format spells a resource reference, and everything the control knows — the resource list, what it is, what it looks like, whether it is saved or only imported — comes from the host contract. These stories run over the in-memory host, seeded with one protocol containing an image, a video, an audio file, a roster and an API key.',
       },
     },
   },
@@ -273,8 +248,8 @@ export const Chosen: Story = {
 
 /**
  * Where a researcher chooses one: everything the protocol already holds of
- * this kind, everything imported so far in this session, and the way to add
- * another. Left open, because that is the state it is looked at in.
+ * this kind, everything imported since the stage was opened, and the way to
+ * add another. Left open, because that is the state it is looked at in.
  */
 export const TheResourceBrowser: Story = {
   play: async ({ canvasElement }) => {
@@ -360,8 +335,8 @@ export const ARosterTheHostHasRead: Story = {
 
 /**
  * Two fields on the same stage naming one imported file. Discarding drops it
- * for the whole session, so the field that asks is refused and offered the
- * thing it can always do instead: let go of it.
+ * for the whole edit, so the field that asks is refused and offered the thing
+ * it can always do instead: let go of it.
  */
 export const SharedWithAnotherField: Story = {
   args: { stage: 'two-image-items', resources: [] },
@@ -382,7 +357,7 @@ export const SharedWithAnotherField: Story = {
     await within(first).findByText('Imported, not yet saved');
 
     // The second field is pointed at the very same import, which the browser
-    // offers because it lists everything staged in this session.
+    // offers because it lists everything staged in this edit.
     await userEvent.click(
       within(second).getByRole('button', { name: 'Select an image' }),
     );
@@ -424,7 +399,7 @@ export const TheHostCannotAnswer: Story = {
   args: { holding: IMAGE_RESOURCE.id, hostCanInspect: false },
 };
 
-/** Someone else holds the lease: the field can be read and nothing else. */
+/** Someone else holds the stage: the field can be read and nothing else. */
 export const Spectating: Story = {
   args: { holding: IMAGE_RESOURCE.id, readOnly: true },
 };

@@ -3,14 +3,13 @@ import { useEffect, useState } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import { useResourceGateway } from '../context.tsx';
 import type {
   ResourceGatewayFailure,
   ResourcePreview as ResolvedPreview,
-} from '../gateway.ts';
-import { callGateway } from '../gatewayCall.ts';
+} from '../types.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import type { PreviewableResourceKind } from './resourceKinds.ts';
+import { useResourceClientRef } from './useResourceClientRef.ts';
 
 const messages = defineMessages({
   retry: {
@@ -30,7 +29,7 @@ export type ResourcePreviewProps = Readonly<{
 }>;
 
 /**
- * How long before a lease ends the next one is asked for.
+ * How long before a URL expires the next one is asked for.
  *
  * Long enough that the replacement has arrived before the old URL stops
  * resolving, and short enough that a preview open for an hour is re-resolved
@@ -39,19 +38,19 @@ export type ResourcePreviewProps = Readonly<{
 export const PREVIEW_RENEWAL_LEAD_MS = 5_000;
 
 /**
- * The shortest a preview will ever wait before asking for another lease.
+ * The shortest a preview will ever wait before asking for another URL.
  *
- * The lead alone bounds nothing: a lease that ends just after it — a host
- * issuing five-second URLs — leaves a lead of a millisecond, and renewing on
- * it lands another such lease, so the preview asks the host for a URL as fast
+ * The lead alone bounds nothing: a URL that expires just after it — a host
+ * issuing five-second links — leaves a lead of a millisecond, and renewing on
+ * it lands another such link, so the preview asks the host for a URL as fast
  * as it can answer, for as long as it is on screen. A floor makes the renewal
  * a renewal rather than a poll.
  *
- * A lease shorter than the floor therefore runs out before its replacement is
- * asked for, and no policy here can change that: the host will not issue a URL
- * that lives longer than it takes to use. What the preview does about it is
- * stop showing the lease when it lapses — the {@link PreviewState.waiting}
- * state — rather than leave a URL on screen that no longer resolves.
+ * A URL shorter-lived than the floor therefore expires before its replacement
+ * is asked for, and no policy here can change that: the host will not issue a
+ * URL that lives longer than it takes to use. What the preview does about it is
+ * stop showing the URL when it lapses — the {@link PreviewState.waiting} state
+ * — rather than leave one on screen that no longer resolves.
  */
 export const PREVIEW_RENEWAL_MIN_INTERVAL_MS = 5_000;
 
@@ -67,15 +66,15 @@ const MAX_TIMER_DELAY_MS = 2_147_483_647;
 type PreviewTimer = Readonly<{ cancel: () => void }>;
 
 /**
- * Runs `wake` in `delayMs`, for any delay a lease can carry.
+ * Runs `wake` in `delayMs`, for any delay `expiresAt` can describe.
  *
  * A host issuing month-long signed URLs is ordinary, and the delay that
  * describes one is past what a timer can hold: asked for it directly, the
- * timer fires immediately, so the lease is renewed and released the moment it
- * arrives — and since each replacement is just as long-lived, the preview goes
- * on asking the host for URLs as fast as it can answer them. So a long wait is
- * served in instalments of the largest delay the platform does hold, and the
- * work happens only when the whole of it has passed.
+ * timer fires immediately, so the URL is renewed the moment it arrives — and
+ * since each replacement is just as long-lived, the preview goes on asking the
+ * host for URLs as fast as it can answer them. So a long wait is served in
+ * instalments of the largest delay the platform does hold, and the work happens
+ * only when the whole of it has passed.
  */
 function armTimer(wake: () => void, delayMs: number): PreviewTimer {
   let handle: ReturnType<typeof setTimeout>;
@@ -90,90 +89,88 @@ function armTimer(wake: () => void, delayMs: number): PreviewTimer {
 }
 
 /**
- * Where a preview's lease has got to.
+ * Where a preview's URL has got to.
  *
- * Every state says two things: which lease, if any, this preview is holding
- * and showing, and what is scheduled or in flight for it. There is at most one
- * resolution in flight at a time, and at most one lease held.
+ * Every state says two things: which resolved URL, if any, this preview is
+ * showing, and what is scheduled or in flight for it. There is at most one
+ * resolution in flight at a time.
  */
 type PreviewState =
-  /** A resolution is in flight and no lease is held; nothing is on screen. */
+  /** A resolution is in flight and nothing is on screen. */
   | Readonly<{ name: 'resolving' }>
   /**
-   * No lease is held and a renewal is scheduled: the lease that was on screen
-   * ran out before the renewal floor let another one be asked for. Nothing is
+   * Nothing is on screen and a renewal is scheduled: the URL that was showing
+   * expired before the renewal floor let another one be asked for. Nothing is
    * on screen until that renewal lands.
    */
   | Readonly<{ name: 'waiting' }>
-  /** A lease is on screen; its renewal and its own expiry are scheduled. */
-  | Readonly<{ name: 'live'; lease: ResolvedPreview }>
-  /** A lease is on screen and its replacement is in flight. */
-  | Readonly<{ name: 'renewing'; lease: ResolvedPreview }>
+  /** A URL is on screen; its renewal and its own expiry are scheduled. */
+  | Readonly<{ name: 'live'; resolved: ResolvedPreview }>
+  /** A URL is on screen and its replacement is in flight. */
+  | Readonly<{ name: 'renewing'; resolved: ResolvedPreview }>
   /**
-   * A lease is on screen, its replacement has failed, and the failure is held
-   * back until the lease's own expiry.
+   * A URL is on screen, its replacement has failed, and the failure is held
+   * back until the URL's own expiry.
    */
   | Readonly<{
       name: 'lapsing';
-      lease: ResolvedPreview;
+      resolved: ResolvedPreview;
       failure: ResourceGatewayFailure;
     }>
-  /** A failure is on screen and no lease is held. */
+  /** A failure is on screen and nothing is showing. */
   | Readonly<{ name: 'failed' }>
-  /** The effect is over: no lease is held and no timer is armed. */
-  | Readonly<{ name: 'released' }>;
+  /** The effect is over: nothing is shown and no timer is armed. */
+  | Readonly<{ name: 'ended' }>;
 
 /**
  * Renders a resource's content from a URL the host resolved.
  *
- * The URL is a lease, not a fact: the host may be holding an object URL, a
- * signed link, or a cache entry open for as long as this component shows it.
- * A lease that says when it ends is renewed shortly before it does, because a
- * stage editor is left open far longer than a signed URL lives and an image
- * that silently stops loading looks like a resource the protocol lost. The
- * renewal runs alongside the lease it replaces rather than in place of it: the
- * old URL goes on rendering, and is released, only once the new one has
- * arrived. Swapping the moment the renewal *begins* would stop an audio or
- * video element seconds before anything was actually wrong with it, and would
- * throw away the rest of a working lease whenever the host was slow to answer
- * or could not answer at all.
+ * The URL is a lease, not a fact: a host may answer with a signed link that
+ * stops resolving, and it says when by putting an `expiresAt` on its answer.
+ * One that says so is renewed shortly before it does, because a stage editor
+ * is left open far longer than a signed URL lives and an image that silently
+ * stops loading looks like a resource the protocol lost. The renewal runs
+ * alongside the URL it replaces rather than in place of it: the old one goes on
+ * rendering until the new one has arrived. Swapping the moment the renewal
+ * *begins* would stop an audio or video element seconds before anything was
+ * actually wrong with it, and would throw away the rest of a working URL
+ * whenever the host was slow to answer or could not answer at all.
  *
  * ## The invariant
  *
- * **Every lease this preview acquires is released exactly once, and a lease it
- * has released is never what the researcher is looking at.**
+ * **What the researcher is looking at is a URL the host has not said is over,
+ * for the resource this preview is currently about.**
  *
- * Both halves matter and they pull against each other, which is why the logic
- * below is one explicit state machine rather than a set of conditions. A host
- * that counts what it has handed out reads a second release as being about the
- * lease it issued next, so releasing twice is as wrong as leaking one; and
- * releasing a lease that is still on screen replaces a working preview with a
- * broken one. Nor can the effect's cleanup be the place a lease is released:
- * it runs on unmount and on a change of resource, and a field simply left open
- * does neither, so a lease that ends while the editor sits there has to be
- * released by the machine itself.
+ * Both halves matter. A URL kept past its `expiresAt` is a broken image where
+ * a preview was; and a resolution that lands after the field has moved to
+ * another resource would put the previous resource's content under the new
+ * one's name. The effect's own cleanup cannot settle either on its own — a
+ * field simply left open neither unmounts nor changes resource, so a URL that
+ * expires while the editor sits there has to be taken off screen by the machine
+ * itself — which is why the logic below is one explicit state machine rather
+ * than a set of conditions.
  *
  * ## States and events
  *
  * The states are {@link PreviewState}. The events are: a resolution came back
  * (`resolved` / `resolve-failed`), the renewal timer fired (`renewal-due`), the
- * lease's own expiry timer fired (`lease-expired`), and the effect was torn
- * down by an unmount, a change of resource, or a retry (`torn-down`).
+ * URL's own expiry timer fired (`expired`), and the effect was torn down by an
+ * unmount, a change of resource, or a retry (`torn-down`).
  *
  * | state | event | what happens |
  * | --- | --- | --- |
  * | `resolving` | `resolved` | show it, schedule its renewal and its expiry → `live` |
  * | `resolving` | `resolve-failed` | nothing is on screen, so the failure is → `failed` |
- * | `live` | `renewal-due` | ask for the next lease → `renewing` |
- * | `live` | `lease-expired` | release it and stop showing it → `waiting` |
- * | `renewing` | `resolved` | show the new one, then release the old → `live` |
- * | `renewing` | `resolve-failed`, lease still good | hold the failure → `lapsing` |
- * | `renewing` | `resolve-failed`, lease already over | release it and show the failure → `failed` |
- * | `renewing` | `lease-expired` | release it; the renewal decides for an empty preview → `resolving` |
- * | `lapsing` | `lease-expired` | release it and show the held failure → `failed` |
+ * | `live` | `renewal-due` | ask for the next URL → `renewing` |
+ * | `live` | `expired` | stop showing it → `waiting` |
+ * | `renewing` | `resolved` | show the new one → `live` |
+ * | `renewing` | `resolve-failed`, the URL still good | hold the failure → `lapsing` |
+ * | `renewing` | `resolve-failed`, the URL already over | show the failure → `failed` |
+ * | `renewing` | `expired` | stop showing it; the renewal decides for an empty preview → `resolving` |
+ * | `lapsing` | `expired` | stop showing it and show the held failure → `failed` |
  * | `waiting` | `renewal-due` | ask again → `resolving` |
- * | `released` | `resolved` | release it at once; nothing else ever will |
- * | any | `torn-down` | release the held lease, clear the timers → `released` |
+ * | `ended` | anything | nothing: this effect is not what is on screen any more |
+ * | any | `torn-down` | clear the timers → `ended` |
  *
  * Every other pairing is unreachable — no other state has a resolution in
  * flight or a timer armed — and is a no-op.
@@ -184,7 +181,7 @@ export default function ResourcePreview({
   name,
   className,
 }: ResourcePreviewProps) {
-  const gateway = useResourceGateway();
+  const resources = useResourceClientRef();
   const intl = useAppIntl();
   const [preview, setPreview] = useState<ResolvedPreview | undefined>(
     undefined,
@@ -210,26 +207,24 @@ export default function ResourcePreview({
 
     const resolve = (): void => {
       void (async () => {
-        const result = await callGateway(() =>
-          gateway.resolvePreview(resourceId),
-        );
+        const result = await resources.current.resolvePreview(resourceId);
         if (result.status === 'ok') onResolved(result.data);
         else onResolveFailed(result.failure);
       })();
     };
 
     /**
-     * Takes a lease into use: puts it on screen and schedules everything that
-     * can happen to it. The caller has already cleared the previous lease's
-     * timers, and releases the lease this one replaces once this returns.
+     * Takes a resolved URL into use: puts it on screen and schedules everything
+     * that can happen to it. The caller has already cleared the previous one's
+     * timers.
      */
-    const show = (lease: ResolvedPreview): void => {
-      const { expiresAt } = lease;
+    const show = (resolved: ResolvedPreview): void => {
+      const { expiresAt } = resolved;
       if (expiresAt === undefined) {
         // Nothing said the URL stops working, so asking for another one would
         // be traffic about nothing, and there is no expiry to outlive.
-        state = { name: 'live', lease };
-        setPreview(lease);
+        state = { name: 'live', resolved };
+        setPreview(resolved);
         return;
       }
       const remaining = expiresAt - Date.now();
@@ -240,11 +235,10 @@ export default function ResourcePreview({
         state = { name: 'waiting' };
         setPreview(undefined);
         renewal = armTimer(onRenewalDue, PREVIEW_RENEWAL_MIN_INTERVAL_MS);
-        lease.release();
         return;
       }
-      state = { name: 'live', lease };
-      setPreview(lease);
+      state = { name: 'live', resolved };
+      setPreview(resolved);
       renewal = armTimer(
         onRenewalDue,
         Math.max(
@@ -252,38 +246,30 @@ export default function ResourcePreview({
           PREVIEW_RENEWAL_MIN_INTERVAL_MS,
         ),
       );
-      // Armed for every lease, not only for the ones whose renewal is asked
-      // for first. A lease shorter than the floor runs out before that ask,
-      // and a renewal the host never answers would otherwise leave a dead URL
-      // on screen and the host holding it for as long as the editor is open.
-      expiry = armTimer(onLeaseExpired, remaining);
+      // Armed for every URL, not only for the ones whose renewal is asked for
+      // first. One shorter-lived than the floor expires before that ask, and a
+      // renewal the host never answers would otherwise leave a dead URL on
+      // screen for as long as the editor is open.
+      expiry = armTimer(onExpired, remaining);
     };
 
-    const onResolved = (lease: ResolvedPreview): void => {
+    const onResolved = (resolved: ResolvedPreview): void => {
       switch (state.name) {
-        case 'released':
-          // Nothing will ever render it, and nothing else would ever release
-          // it: this is the last place that knows it exists.
-          lease.release();
-          return;
-        case 'renewing': {
-          const replaced = state.lease;
-          clearTimers();
-          show(lease);
-          // Let go of the old lease only now: releasing it first is what stops
-          // playback the moment a renewal begins rather than when it lands.
-          replaced.release();
-          return;
-        }
+        case 'renewing':
         case 'resolving':
           clearTimers();
-          show(lease);
+          show(resolved);
           return;
         case 'waiting':
         case 'live':
         case 'lapsing':
         case 'failed':
           // Unreachable: none of these has a resolution in flight.
+          return;
+        case 'ended':
+          // An answer about the resource this preview used to be about, or one
+          // for a preview that has gone. Rendering it would put the previous
+          // resource's content under the current one's name.
           return;
       }
     };
@@ -297,31 +283,32 @@ export default function ResourcePreview({
           setFailure(failed);
           return;
         case 'renewing': {
-          const lease = state.lease;
+          const { resolved } = state;
           const remaining =
-            lease.expiresAt === undefined ? 0 : lease.expiresAt - Date.now();
+            resolved.expiresAt === undefined
+              ? 0
+              : resolved.expiresAt - Date.now();
           if (remaining > 0) {
-            // The lease being renewed still works for a moment. Replacing a
+            // The URL being renewed still works for a moment. Replacing a
             // playing image or track with an error message while its own URL
             // is still good throws that time away for nothing; the expiry
             // already scheduled for it is what shows this.
-            state = { name: 'lapsing', lease, failure: failed };
+            state = { name: 'lapsing', resolved, failure: failed };
             return;
           }
-          // The same end, reached without waiting: this lease has already run
+          // The same end, reached without waiting: this URL has already run
           // out, so there is really nothing left to show.
           clearTimers();
           state = { name: 'failed' };
           setPreview(undefined);
           setFailure(failed);
-          lease.release();
           return;
         }
         case 'waiting':
         case 'live':
         case 'lapsing':
         case 'failed':
-        case 'released':
+        case 'ended':
           // Unreachable, or a resolution for an effect that is already over.
           return;
       }
@@ -331,7 +318,7 @@ export default function ResourcePreview({
       renewal = undefined;
       switch (state.name) {
         case 'live':
-          state = { name: 'renewing', lease: state.lease };
+          state = { name: 'renewing', resolved: state.resolved };
           resolve();
           return;
         case 'waiting':
@@ -342,48 +329,41 @@ export default function ResourcePreview({
         case 'renewing':
         case 'lapsing':
         case 'failed':
-        case 'released':
+        case 'ended':
           return;
       }
     };
 
-    const onLeaseExpired = (): void => {
+    const onExpired = (): void => {
       expiry = undefined;
       switch (state.name) {
-        case 'live': {
-          // Shorter than the renewal floor, so it ran out before another could
-          // be asked for. The renewal is already scheduled; until it lands the
-          // preview shows nothing, which is the truth about a URL that no
-          // longer resolves.
-          const lease = state.lease;
+        case 'live':
+          // Shorter-lived than the renewal floor, so it ran out before another
+          // could be asked for. The renewal is already scheduled; until it
+          // lands the preview shows nothing, which is the truth about a URL
+          // that no longer resolves.
           state = { name: 'waiting' };
           setPreview(undefined);
-          lease.release();
           return;
-        }
-        case 'renewing': {
-          // The replacement has not answered and this lease has nothing left
-          // to give, so whatever the renewal decides, it decides it for a
-          // preview that is already showing nothing.
-          const lease = state.lease;
+        case 'renewing':
+          // The replacement has not answered and this URL has nothing left to
+          // give, so whatever the renewal decides, it decides it for a preview
+          // that is already showing nothing.
           state = { name: 'resolving' };
           setPreview(undefined);
-          lease.release();
           return;
-        }
         case 'lapsing': {
-          const { lease, failure: held } = state;
+          const { failure: held } = state;
           state = { name: 'failed' };
           setPreview(undefined);
           setFailure(held);
-          lease.release();
           return;
         }
         case 'resolving':
         case 'waiting':
         case 'failed':
-        case 'released':
-          // Unreachable: none of these holds a lease whose expiry is armed.
+        case 'ended':
+          // Unreachable: none of these has an expiry armed.
           return;
       }
     };
@@ -392,16 +372,9 @@ export default function ResourcePreview({
 
     return () => {
       clearTimers();
-      const held =
-        state.name === 'live' ||
-        state.name === 'renewing' ||
-        state.name === 'lapsing'
-          ? state.lease
-          : undefined;
-      state = { name: 'released' };
-      held?.release();
+      state = { name: 'ended' };
     };
-  }, [attempt, gateway, resourceId]);
+  }, [attempt, resourceId, resources]);
 
   if (failure !== undefined) {
     return (

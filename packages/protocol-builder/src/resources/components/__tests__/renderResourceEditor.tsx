@@ -4,7 +4,7 @@ import { useEffect, type ReactNode } from 'react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { useStageEditorController } from '../../../controller.ts';
+import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
 import {
   useStageEditorForm,
   type StageFormStoreApi,
@@ -12,57 +12,102 @@ import {
 import StageEditorShell, {
   type StageEditorShellProps,
 } from '../../../form/StageEditorShell.tsx';
+import { ProtocolBuilder } from '../../../ProtocolBuilder.tsx';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
+import { StageEditSession } from '../../../stageEdit.tsx';
+import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import {
-  createStageIdentity,
-  ProtocolBuilderSessionStore,
-} from '../../../session.ts';
-import type { ProtocolBuilderResourceGateway } from '../../gateway.ts';
+  ResourceClientProvider,
+  useResourceClient,
+  type ResourceClient,
+} from '../../client.tsx';
+import type { ResourceDescriptor } from '../../types.ts';
+import {
+  committedManifest,
+  createResourceHost,
+  stagedResources,
+  STAGE_SECTION,
+  type ResourceHostSeed,
+} from './resourceHost.ts';
 
-type RenderOptions = Readonly<{
-  /** The gateway the editor's own session is opened over. */
-  gateway?: ProtocolBuilderResourceGateway;
-  /**
-   * A session the caller has already wired to a host of its own — for a test
-   * that finishes the stage rather than only editing it. The editor's own
-   * session, over `gateway`, is what a test asserting on a field wants.
-   */
-  session?: ProtocolBuilderSessionStore;
-  /** The committed stage draft the editor opens with. */
-  fields?: SectionDoc;
-  readOnly?: boolean;
-  /** The host's action chrome; a submit button, for a test that saves. */
-  actions?: StageEditorShellProps['actions'];
-  children: ReactNode;
-}>;
+export type RenderResourceEditorOptions = ResourceHostSeed &
+  Readonly<{
+    /**
+     * Wraps the seeded host's own client, for a test about a host that
+     * refuses, holds its answer, counts what it is asked, or reads more out of
+     * a file than the in-memory store does.
+     */
+    client?: (host: InMemoryHost) => ProtocolBuilderClient;
+    /** Somebody else holds the stage, so this editor opens read-only. */
+    readOnly?: boolean;
+    /** The host's action chrome; a submit button, for a test that saves. */
+    actions?: StageEditorShellProps['actions'];
+    children: ReactNode;
+  }>;
 
 /**
  * A resource field in the editor it really lives in: the package's own form
- * shell, inside a section, over the gateway the SESSION hands the shell —
- * which is the host's gateway wrapped in the session's own staging tracker,
- * exactly as a host wires it. Nothing here reaches around the field to set its
- * value or to provide a gateway of its own, so what the tests assert on is
- * what the stage draft would be saved from, and what a field stages is staging
- * the session can promote or discard.
+ * shell, inside a section, inside a stage edit opened over the in-memory host.
+ *
+ * Nothing here reaches around the field to set its value or to hand it a
+ * resource client of its own, so what the tests assert on is what the stage
+ * draft would be saved from, and what a field stages is staging the edit can
+ * promote or discard.
  */
-type RenderedEditor = Readonly<{
-  session: ProtocolBuilderSessionStore;
+export type RenderedResourceEditor = Readonly<{
+  host: InMemoryHost;
+  /** The client the editor is mounted over, which may be a wrapped one. */
+  client: ProtocolBuilderClient;
   /** Everything the stage form currently holds, by field name. */
   formValues: () => Record<string, unknown>;
   fieldValue: (name: string) => unknown;
+  /**
+   * The very client the fields call, for a test that has to act on the edit
+   * from outside a control — a modal browser hides the rest of the editor from
+   * a test exactly as it does from the researcher.
+   */
+  resourceClient: () => ResourceClient;
+  /** What the host says is staged right now. */
+  staged: () => Promise<readonly ResourceDescriptor[]>;
+  /** The protocol's own asset manifest, as the host currently holds it. */
+  manifest: () => SectionDoc;
 }>;
 
-export function renderResourceEditor({
-  gateway,
-  session: providedSession,
-  fields = { label: 'Welcome' },
-  readOnly = false,
-  actions,
-  children,
-}: RenderOptions): RenderedEditor {
-  const session = providedSession ?? defaultSession(gateway, fields, readOnly);
+/** A second connection, which is a second lock owner. */
+const COLLABORATOR = {
+  sessionId: 'session-2',
+  userId: 'user-2',
+  displayName: 'Grace',
+};
+
+export function renderResourceEditor(
+  options: RenderResourceEditorOptions,
+): RenderedResourceEditor {
+  const { client: wrap, readOnly, actions, children } = options;
+  const host = createResourceHost({
+    ...(options.stageType === undefined
+      ? {}
+      : { stageType: options.stageType }),
+    ...(options.fields === undefined ? {} : { fields: options.fields }),
+    ...(options.resources === undefined
+      ? {}
+      : { resources: options.resources }),
+    ...(options.nextId === undefined ? {} : { nextId: options.nextId }),
+  });
+  const client = wrap === undefined ? host.client : wrap(host);
+
+  // Taken before the editor mounts, so its own acquire is answered `readOnly`
+  // — the state a researcher reaches by opening a stage somebody else has.
+  if (readOnly === true) {
+    void host
+      .asCollaborator(COLLABORATOR)
+      .acquireLock({ protocolId: host.protocolId, sectionId: STAGE_SECTION });
+  }
 
   const store: { current: StageFormStoreApi | undefined } = {
+    current: undefined,
+  };
+  const resources: { current: ResourceClient | undefined } = {
     current: undefined,
   };
 
@@ -74,24 +119,26 @@ export function renderResourceEditor({
     return null;
   }
 
-  function Host() {
-    const controller = useStageEditorController(session, 'stage-form');
-    return (
-      <StageEditorShell
-        controller={controller}
-        {...(actions === undefined ? {} : { actions })}
-      >
-        <BuilderSection title="Resources">
-          <CaptureStore />
-          {children}
-        </BuilderSection>
-      </StageEditorShell>
-    );
+  function CaptureResourceClient() {
+    resources.current = useResourceClient();
+    return null;
   }
 
   render(
     <DialogProvider>
-      <Host />
+      <ProtocolBuilder client={client} protocolId={host.protocolId}>
+        <ResourceClientProvider>
+          <CaptureResourceClient />
+          <StageEditSession target={{ sectionId: STAGE_SECTION }}>
+            <StageEditorShell {...(actions === undefined ? {} : { actions })}>
+              <BuilderSection title="Resources">
+                <CaptureStore />
+                {children}
+              </BuilderSection>
+            </StageEditorShell>
+          </StageEditSession>
+        </ResourceClientProvider>
+      </ProtocolBuilder>
     </DialogProvider>,
   );
 
@@ -99,34 +146,17 @@ export function renderResourceEditor({
     store.current?.getState().getFormValues() ?? {};
 
   return {
-    session,
+    host,
+    client,
     formValues,
     fieldValue: (name: string): unknown => formValues()[name],
+    resourceClient: () => {
+      if (resources.current === undefined) {
+        throw new Error('the editor rendered without a resource client');
+      }
+      return resources.current;
+    },
+    staged: () => stagedResources(client, host.protocolId),
+    manifest: () => committedManifest(host),
   };
-}
-
-function defaultSession(
-  gateway: ProtocolBuilderResourceGateway | undefined,
-  fields: SectionDoc,
-  readOnly: boolean,
-): ProtocolBuilderSessionStore {
-  if (gateway === undefined) {
-    throw new Error('renderResourceEditor needs a gateway or a session');
-  }
-  return new ProtocolBuilderSessionStore({
-    identity: createStageIdentity('Information', () => 'stage-1'),
-    fields,
-    protocolSections: {},
-    manifestRevision: { sequence: 1n, hash: 'revision-1' },
-    access: readOnly
-      ? { mode: 'readOnly', reason: 'spectator' }
-      : { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
-    resourceGateway: gateway,
-    buildCandidate: ({ stageDocument }) => ({
-      name: 'Resource field test',
-      schemaVersion: 8,
-      codebook: {},
-      stages: [stageDocument],
-    }),
-  });
 }

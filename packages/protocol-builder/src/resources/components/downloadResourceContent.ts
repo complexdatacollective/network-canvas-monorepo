@@ -1,33 +1,22 @@
-import type { ResourceContent } from '../gateway.ts';
-
 /**
- * Hands bytes the gateway returned to the researcher's own computer.
+ * Saves a copy of a resource to the researcher's own computer, from the URL
+ * the host resolved for it.
  *
- * The gateway returns content rather than a location, so saving it is the
- * editor's job and involves no host URL: an object URL made here, used once,
- * and revoked. Hosts without one (a test environment, a server render) simply
- * do not save, which is why the call site announces the download from the
- * gateway's result rather than from anything this returns.
+ * The contract has no download procedure: `preview` is the only thing that
+ * turns an asset id into something a browser can fetch, so a download is that
+ * URL handed to a link the page clicks for itself. Nothing is read into memory
+ * here and no object URL is made, so there is none to revoke — the URL belongs
+ * to the host, and a lease that has run out fails the way any dead link does.
+ *
+ * `filename` is what the manifest records for the resource, so the copy the
+ * researcher ends up with is named the way their protocol names it rather than
+ * after whatever the URL happens to end in.
  */
-export function downloadResourceContent(
-  content: ResourceContent,
-  filename: string,
-): void {
-  if (typeof URL.createObjectURL !== 'function') return;
-
-  // Copied into a buffer of its own rather than handed the view the gateway
-  // returned: a `Blob` takes ownership of what it is given, and the gateway's
-  // bytes may be a view onto something the host still holds.
-  const buffer = new ArrayBuffer(content.bytes.byteLength);
-  new Uint8Array(buffer).set(content.bytes);
-  const url = URL.createObjectURL(
-    new Blob([buffer], { type: content.contentType }),
-  );
+export function downloadResourceContent(url: string, filename: string): void {
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
   document.body.append(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
 }

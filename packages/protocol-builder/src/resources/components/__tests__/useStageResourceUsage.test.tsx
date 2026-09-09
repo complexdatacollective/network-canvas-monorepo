@@ -7,28 +7,24 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import ProtocolField from '../../../form/ProtocolField.tsx';
-import {
-  InMemoryResourceGateway,
-  type InMemoryResourceSeed,
-} from '../../InMemoryResourceGateway.ts';
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import { useStageResourceUsage } from '../useStageResourceUsage.ts';
 import { flushPendingWork } from './asyncControls.ts';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
+import type { CommittedResource } from './resourceHost.ts';
 
 const STILL_IN_USE =
   'This resource is still used elsewhere on this stage, so it was not discarded.';
 
-/** The id the in-memory host gives the first file staged in a session. */
+/** The id the in-memory host gives the first file staged in an edit. */
 const STAGED_ID = 'staged-resource-1';
 
-const COMMITTED_IMAGE: InMemoryResourceSeed = {
+const COMMITTED_IMAGE: CommittedResource = {
   kind: 'image',
   id: 'image-1',
   name: 'Neighbourhood photo',
   source: 'neighbourhood.png',
-  contentType: 'image/png',
-  bytes: new TextEncoder().encode('png-bytes'),
+  bytes: 'png-bytes',
 };
 
 const ASSET_ITEMS: SectionDoc = {
@@ -156,9 +152,7 @@ describe('counting the resource references a stage holds', () => {
   async function twoItemsSharingAnImage(
     user: ReturnType<typeof userEvent.setup>,
   ) {
-    const gateway = new InMemoryResourceGateway();
-    const { formValues } = renderResourceEditor({
-      gateway,
+    const { formValues, staged } = renderResourceEditor({
       fields: ASSET_ITEMS,
       children: <CollapsibleItems />,
     });
@@ -183,13 +177,13 @@ describe('counting the resource references a stage holds', () => {
     );
     await act(flushPendingWork);
 
-    return { first, formValues, gateway };
+    return { first, formValues, staged };
   }
 
   it('counts a reference a collapsed section is still holding', async () => {
     const user = userEvent.setup();
     renderResourceEditor({
-      gateway: new InMemoryResourceGateway({ committed: [COMMITTED_IMAGE] }),
+      resources: [COMMITTED_IMAGE],
       fields: SHARED_ITEMS,
       children: <CollapsibleItems counting={COMMITTED_IMAGE.id} />,
     });
@@ -213,7 +207,7 @@ describe('counting the resource references a stage holds', () => {
 
   it('refuses a discard a collapsed section would be left dangling by', async () => {
     const user = userEvent.setup();
-    const { first, gateway } = await twoItemsSharingAnImage(user);
+    const { first, staged } = await twoItemsSharingAnImage(user);
 
     await user.click(
       screen.getByRole('button', { name: 'Hide the advanced options' }),
@@ -228,14 +222,12 @@ describe('counting the resource references a stage holds', () => {
     // save — a reference the protocol cannot resolve, from an action the
     // researcher was told had worked.
     expect(within(first).getByRole('alert')).toHaveTextContent(STILL_IN_USE);
-    expect(gateway.getStagingResidue()).not.toEqual([]);
+    expect(await staged()).not.toEqual([]);
   });
 
   it('discards one the collapsed section does not name', async () => {
     const user = userEvent.setup();
-    const gateway = new InMemoryResourceGateway();
-    renderResourceEditor({
-      gateway,
+    const { staged } = renderResourceEditor({
       fields: ASSET_ITEMS,
       children: <CollapsibleItems />,
     });
@@ -260,7 +252,7 @@ describe('counting the resource references a stage holds', () => {
       within(first).getByRole('button', { name: 'Discard this resource' }),
     );
 
-    await waitFor(() => expect(gateway.getStagingResidue()).toEqual([]));
+    await waitFor(async () => expect(await staged()).toEqual([]));
     expect(within(first).queryByRole('alert')).toBeNull();
   });
 });

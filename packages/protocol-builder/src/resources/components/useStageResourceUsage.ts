@@ -13,17 +13,17 @@ import {
   stageDraftFromSubmission,
 } from '../../form/stageDraftFromSubmission.ts';
 import { StageEditorFormContext } from '../../form/stageEditorContext.ts';
-import { stageDocument } from '../../session.ts';
+import { stageDocument } from '../../stageDocument.ts';
 import { collectStageResourceReferences } from '../references.ts';
 
 /**
  * How many places in the stage being edited name a resource.
  *
- * Read from the form as it stands rather than from the session's draft: the
- * form reaches the session on submit, so a resource a sibling field picked a
- * moment ago is not in the draft yet, and a control asking "is anything else
- * using this?" would be told no. Committed fields are underneath, so a value
- * the researcher has not touched still counts.
+ * Read from the form as it stands rather than from the document the stage was
+ * opened on: the form reaches that document only at submit, so a resource a
+ * sibling field picked a moment ago is not in it yet, and a control asking "is
+ * anything else using this?" would be told no. The committed fields are
+ * underneath, so a value the researcher has not touched still counts.
  *
  * **Counted over the draft the submit would produce, not over the values the
  * form is showing.** A field hidden behind a collapsed group or a switched-off

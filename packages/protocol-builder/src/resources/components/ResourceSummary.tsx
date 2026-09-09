@@ -5,7 +5,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
-import type { ResourceInspection } from '../gateway.ts';
+import type { ResourceInspection } from '../types.ts';
 import {
   formatByteLength,
   resourceKindLabel,
