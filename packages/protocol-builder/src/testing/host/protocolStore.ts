@@ -75,7 +75,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export class SectionNotFoundError extends Error {
+class SectionNotFoundError extends Error {
   readonly sectionId: ProtocolSectionId;
   constructor(id: ProtocolSectionId) {
     super(`no such section: ${id}`);
@@ -278,8 +278,11 @@ export class InMemoryProtocolStore {
   async *watch(
     principal: HostPrincipal,
     since: string | undefined,
+    signal?: AbortSignal,
   ): AsyncGenerator<LoggedEvent> {
     const queue = new EventQueue<LoggedEvent>();
+    const stop = () => queue.close();
+    signal?.addEventListener('abort', stop, { once: true });
     // Subscribed before the backlog is taken, so an event published between
     // the two is queued rather than lost; the cursor check below drops the
     // overlap.
@@ -297,6 +300,7 @@ export class InMemoryProtocolStore {
         yield entry;
       }
     } finally {
+      signal?.removeEventListener('abort', stop);
       this.#watchers.delete(queue);
       queue.close();
       this.#leave(principal);

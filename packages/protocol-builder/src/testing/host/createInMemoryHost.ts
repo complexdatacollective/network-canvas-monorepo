@@ -118,12 +118,13 @@ function buildRouter(
       context,
       errors,
       lastEventId,
+      signal,
     }) {
       if (input.protocolId !== protocolId) {
         throw errors.PROTOCOL_NOT_FOUND({ data: input });
       }
       const since = input.since ?? lastEventId;
-      for await (const entry of store.watch(context.principal, since)) {
+      for await (const entry of store.watch(context.principal, since, signal)) {
         yield withEventMeta(entry.event, { id: entry.cursor });
       }
     }),
