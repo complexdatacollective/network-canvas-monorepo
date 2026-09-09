@@ -2156,12 +2156,12 @@
     "description": "Shown under any unanswered required control in a stage editor when the researcher tries to save the stage. Addresses the researcher authoring the protocol, not a participant answering it."
   },
   "protocolBuilder.quickAdd.canBeEmptyDescription": {
-    "defaultMessage": "What the participant types here is the only thing they gave, so a person added without it has no name. Requiring an answer changes the attribute everywhere the protocol uses it.",
-    "description": "Warning body offering to make the quick-add attribute one that has to be answered, and saying that the change reaches every other stage using the same attribute."
+    "defaultMessage": "What the participant types here is the only thing they gave, so a “{typeName}” added without it has no name. Requiring an answer changes the attribute everywhere the protocol uses it.",
+    "description": "Warning body offering to make the quick-add attribute one that has to be answered, and saying that the change reaches every other stage using the same attribute. typeName is the researcher’s own name for the node type this stage adds and is not translated."
   },
   "protocolBuilder.quickAdd.canBeEmptyTitle": {
     "defaultMessage": "This attribute can be left empty",
-    "description": "Warning heading shown when the attribute quick add fills in does not have to be answered, so a person could be created with no name."
+    "description": "Warning heading shown when the attribute quick add fills in does not have to be answered, so a network member could be created with no name."
   },
   "protocolBuilder.quickAdd.createAttribute": {
     "defaultMessage": "Create the attribute",
@@ -2172,12 +2172,12 @@
     "description": "Notice shown when an attribute the researcher asked for was added to the codebook — the protocol’s definition of what an interview records — but the node type the stage works with was changed while it was being added, so the new attribute belongs to the old type and nothing here uses it. variableName is the name they typed and is not translated."
   },
   "protocolBuilder.quickAdd.description": {
-    "defaultMessage": "Choose the attribute the participant fills in when they add someone with a single box.",
-    "description": "Description of the quick-add section."
+    "defaultMessage": "Choose the attribute the participant fills in when they add a “{typeName}” with a single box.",
+    "description": "Description of the quick-add section. typeName is the researcher’s own name for the node type this stage adds — a person, an organisation, a place — and is not translated."
   },
   "protocolBuilder.quickAdd.fieldHint": {
-    "defaultMessage": "What the participant types goes here. Use the attribute holding a person’s name unless you have a reason not to — the interview labels people by it.",
-    "description": "Guidance under the quick-add attribute control."
+    "defaultMessage": "What the participant types goes here. Use the attribute holding the name unless you have a reason not to — the interview labels what it creates by it.",
+    "description": "Guidance under the quick-add attribute control. Said without naming what is created, because this interface can add any kind of network member and the control is shown before the researcher has chosen which."
   },
   "protocolBuilder.quickAdd.fieldLabel": {
     "defaultMessage": "Attribute filled in",
@@ -2185,7 +2185,7 @@
   },
   "protocolBuilder.quickAdd.fieldRequired": {
     "defaultMessage": "Choose the attribute quick add fills in.",
-    "description": "Refusal shown when a researcher saves a quick-add stage without saying which attribute receives what the participant types, which would create people with no name at all."
+    "description": "Refusal shown when a researcher saves a quick-add stage without saying which attribute receives what the participant types, which would create network members with no name at all."
   },
   "protocolBuilder.quickAdd.missingType": {
     "defaultMessage": "This type is no longer in the codebook, so its attributes cannot be changed.",
@@ -2229,7 +2229,7 @@
   },
   "protocolBuilder.quickAdd.title": {
     "defaultMessage": "Quick add",
-    "description": "Heading of the section choosing which attribute a participant fills in when they add someone with a single box. An attribute is one field the protocol records about a person."
+    "description": "Heading of the section choosing which attribute a participant fills in when they add a network member with a single box. An attribute is one field the protocol records about that member, which may be a person, an organisation, a place, or anything else the study is about."
   },
   "protocolBuilder.quickAdd.waitingDescription": {
     "defaultMessage": "Choose what this stage works with before setting up quick add.",

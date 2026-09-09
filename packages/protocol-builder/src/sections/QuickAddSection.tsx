@@ -63,13 +63,14 @@ const messages = defineMessages({
     id: 'protocolBuilder.quickAdd.title',
     defaultMessage: 'Quick add',
     description:
-      'Heading of the section choosing which attribute a participant fills in when they add someone with a single box. An attribute is one field the protocol records about a person.',
+      'Heading of the section choosing which attribute a participant fills in when they add a network member with a single box. An attribute is one field the protocol records about that member, which may be a person, an organisation, a place, or anything else the study is about.',
   },
   description: {
     id: 'protocolBuilder.quickAdd.description',
     defaultMessage:
-      'Choose the attribute the participant fills in when they add someone with a single box.',
-    description: 'Description of the quick-add section.',
+      'Choose the attribute the participant fills in when they add a “{typeName}” with a single box.',
+    description:
+      'Description of the quick-add section. typeName is the researcher’s own name for the node type this stage adds — a person, an organisation, a place — and is not translated.',
   },
   waitingDescription: {
     id: 'protocolBuilder.quickAdd.waitingDescription',
@@ -87,14 +88,15 @@ const messages = defineMessages({
   fieldHint: {
     id: 'protocolBuilder.quickAdd.fieldHint',
     defaultMessage:
-      'What the participant types goes here. Use the attribute holding a person’s name unless you have a reason not to — the interview labels people by it.',
-    description: 'Guidance under the quick-add attribute control.',
+      'What the participant types goes here. Use the attribute holding the name unless you have a reason not to — the interview labels what it creates by it.',
+    description:
+      'Guidance under the quick-add attribute control. Said without naming what is created, because this interface can add any kind of network member and the control is shown before the researcher has chosen which.',
   },
   fieldRequired: {
     id: 'protocolBuilder.quickAdd.fieldRequired',
     defaultMessage: 'Choose the attribute quick add fills in.',
     description:
-      'Refusal shown when a researcher saves a quick-add stage without saying which attribute receives what the participant types, which would create people with no name at all.',
+      'Refusal shown when a researcher saves a quick-add stage without saying which attribute receives what the participant types, which would create network members with no name at all.',
   },
   noTextAttribute: {
     id: 'protocolBuilder.quickAdd.noTextAttribute',
@@ -107,14 +109,14 @@ const messages = defineMessages({
     id: 'protocolBuilder.quickAdd.canBeEmptyTitle',
     defaultMessage: 'This attribute can be left empty',
     description:
-      'Warning heading shown when the attribute quick add fills in does not have to be answered, so a person could be created with no name.',
+      'Warning heading shown when the attribute quick add fills in does not have to be answered, so a network member could be created with no name.',
   },
   canBeEmptyDescription: {
     id: 'protocolBuilder.quickAdd.canBeEmptyDescription',
     defaultMessage:
-      'What the participant types here is the only thing they gave, so a person added without it has no name. Requiring an answer changes the attribute everywhere the protocol uses it.',
+      'What the participant types here is the only thing they gave, so a “{typeName}” added without it has no name. Requiring an answer changes the attribute everywhere the protocol uses it.',
     description:
-      'Warning body offering to make the quick-add attribute one that has to be answered, and saying that the change reaches every other stage using the same attribute.',
+      'Warning body offering to make the quick-add attribute one that has to be answered, and saying that the change reaches every other stage using the same attribute. typeName is the researcher’s own name for the node type this stage adds and is not translated.',
   },
   requireAnswer: {
     id: 'protocolBuilder.quickAdd.requireAnswer',
@@ -212,6 +214,29 @@ const validationOf = (variable: unknown): Record<string, unknown> => {
 };
 
 /**
+ * What this stage adds, in the researcher's own words.
+ *
+ * Every sentence here that names what quick add creates says it with this
+ * rather than with "someone": the interface adds whatever node type the stage
+ * is about, and the repository's own development protocol uses it for a venue.
+ * The codebook's name for the type is the only accurate word for it, and it is
+ * the researcher's own — so it falls back to the type id rather than to a noun
+ * this section chose.
+ */
+const typeNameOf = (
+  protocolContext: ProtocolBuilderProtocolContext,
+  subject: CodebookSubject,
+): string => {
+  // Read off the node or edge definition rather than through the shared
+  // subject reader, because ego has no name to read and the union says so.
+  const definition =
+    subject.entity === 'ego'
+      ? undefined
+      : protocolContext.codebook[subject.entity]?.[subject.type];
+  return definition?.name ?? subjectType(subject) ?? '';
+};
+
+/**
  * The node or edge type a subject names, for comparing one reading of the
  * stage's subject against a later one. Ego has no type and this section never
  * sees one.
@@ -274,9 +299,13 @@ export default function QuickAddSection() {
   return (
     <BuilderSection
       title={intl.formatMessage(messages.title)}
-      description={intl.formatMessage(
-        waiting ? messages.waitingDescription : messages.description,
-      )}
+      description={
+        subject === undefined
+          ? intl.formatMessage(messages.waitingDescription)
+          : intl.formatMessage(messages.description, {
+              typeName: typeNameOf(protocolContext, subject),
+            })
+      }
       disabled={waiting}
     >
       <ProtocolField<typeof VariablePicker>
@@ -350,8 +379,15 @@ function QuickAddAnswerRequirement({
 
   // A dangling reference has its own message on the picker above, and a
   // requirement offered against an attribute that is not there would be a
-  // second, worse explanation of the same thing.
-  if (variable === undefined || variableId === undefined) return null;
+  // second, worse explanation of the same thing. With no type chosen there is
+  // no attribute to be offered anything about either.
+  if (
+    subject === undefined ||
+    variable === undefined ||
+    variableId === undefined
+  ) {
+    return null;
+  }
 
   if (alreadyRequired) {
     // Said only to the researcher who just asked for it. Focus has moved to a
@@ -391,7 +427,9 @@ function QuickAddAnswerRequirement({
       <AlertTitle>{intl.formatMessage(messages.canBeEmptyTitle)}</AlertTitle>
       <AlertDescription>
         <p className="m-0">
-          {intl.formatMessage(messages.canBeEmptyDescription)}
+          {intl.formatMessage(messages.canBeEmptyDescription, {
+            typeName: typeNameOf(protocolContext, subject),
+          })}
         </p>
         <Button
           // Never a submit: this control sits inside the stage's own form.

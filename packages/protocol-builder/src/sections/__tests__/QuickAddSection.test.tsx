@@ -16,18 +16,6 @@ const offered = () =>
     .map((option) => (option as HTMLOptionElement).value);
 
 /**
- * A control pressed in the window between the host taking editing away and
- * React drawing that fact.
- *
- * Access arrives as a message from the host, and the section is not redrawn
- * until React gets to the update — so the control the researcher is looking at
- * is still the enabled one, and the click that was already on its way reaches
- * a handler the session is about to refuse by throwing. The harness's own
- * `setReadOnly` flushes that render before it returns, which is the one state
- * this scenario is not about, so the access change is made straight on the
- * session and the click is dispatched before anything is flushed.
- */
-/**
  * Holds the host's answer to the next compound edits until the returned
  * function is called, so a test can do something else while one is in flight.
  *
@@ -45,10 +33,15 @@ const holdTheHost = (
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
-  host.submit = (async (submission: Parameters<typeof answer>[0]) => {
+  // The host answers synchronously; the session accepts a promise from
+  // `onCompoundEdit` and awaits it, which is what makes holding the answer
+  // possible at all — so the replacement is written to the contract the
+  // session has and cast through it.
+  const deferred = async (...request: Parameters<typeof answer>) => {
     await held;
-    return answer(submission);
-  }) as typeof host.submit;
+    return answer(...request);
+  };
+  host.submit = deferred as unknown as typeof host.submit;
 
   return async () => {
     host.submit = answer;
@@ -59,6 +52,18 @@ const holdTheHost = (
   };
 };
 
+/**
+ * A control pressed in the window between the host taking editing away and
+ * React drawing that fact.
+ *
+ * Access arrives as a message from the host, and the section is not redrawn
+ * until React gets to the update — so the control the researcher is looking at
+ * is still the enabled one, and the click that was already on its way reaches
+ * a handler the session is about to refuse by throwing. The harness's own
+ * `setReadOnly` flushes that render before it returns, which is the one state
+ * this scenario is not about, so the access change is made straight on the
+ * session and the click is dispatched before anything is flushed.
+ */
 const clickAsEditingIsRevoked = async (
   harness: ReturnType<typeof renderStageEditor>,
   control: HTMLElement,
@@ -379,6 +384,47 @@ describe('what a quick-add name generator records', () => {
     expect(
       screen.getByRole('textbox', { name: /Create a new attribute/ }),
     ).toHaveValue('nickname');
+  });
+
+  /**
+   * A quick-add name generator adds whatever node type its stage is about —
+   * the repository's own development protocol uses this interface for a venue
+   * — so copy calling what the participant adds "someone", and the attribute
+   * "a person's name", was wrong for every study that is not about people.
+   * Every sentence naming what the stage adds now says it in the researcher's
+   * own word for the type.
+   */
+  it('names what the stage adds in the researcher’s own words', async () => {
+    renderStageEditor({
+      stage: {
+        id: 'quick-add-family-members',
+        type: 'NameGeneratorQuickAdd',
+        fields: {
+          label: 'Quick add',
+          subject: { entity: 'node', type: 'family_member' },
+          quickAdd: 'fm_name',
+          prompts: [{ id: 'prompt-1', text: 'Add your relatives' }],
+        },
+      },
+      sections: quickAdd,
+    });
+
+    expect(
+      await screen.findByText(
+        'Choose the attribute the participant fills in when they add a “family member” with a single box.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'What the participant types here is the only thing they gave, so a “family member” added without it has no name. Requiring an answer changes the attribute everywhere the protocol uses it.',
+      ),
+    ).toBeInTheDocument();
+    // Shown before a type has been chosen as well, so this one names nothing.
+    expect(
+      screen.getByText(
+        'What the participant types goes here. Use the attribute holding the name unless you have a reason not to — the interview labels what it creates by it.',
+      ),
+    ).toBeInTheDocument();
   });
 
   /**
