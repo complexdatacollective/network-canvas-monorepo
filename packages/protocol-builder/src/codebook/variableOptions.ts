@@ -272,7 +272,7 @@ const booleanOptionsFrom = (
  *
  * A choice list is passed through exactly as it was authored: it is edited a
  * row at a time by controls that already hold the schema's shape, and anything
- * wrong with it is the request builder's to refuse against the row it belongs
+ * wrong with it is the document builder's to refuse against the row it belongs
  * to.
  *
  * A boolean's answers are passed through on the same terms wherever they are
