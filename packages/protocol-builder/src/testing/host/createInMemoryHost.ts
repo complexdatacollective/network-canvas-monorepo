@@ -254,7 +254,9 @@ function buildRouter(
         });
       }
       if (outcome.status === 'referenced') {
-        throw new Error('deleting a stage cannot leave references behind');
+        throw errors.REFERENCES_REMAIN({
+          data: { remaining: outcome.remaining },
+        });
       }
       return outcome;
     }),

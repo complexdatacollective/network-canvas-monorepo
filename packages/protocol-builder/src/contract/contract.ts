@@ -8,6 +8,7 @@ import {
   promotionErrors,
   protocolErrors,
   refactorErrors,
+  referenceErrors,
   shapeErrors,
 } from './errors.ts';
 import {
@@ -134,9 +135,17 @@ export const contract = {
    * assembled. It takes no lock of its own and refuses while any editor holds
    * either section, including one in this session whose draft would put the
    * stage back.
+   *
+   * A stage other stages depend on is refused naming them, not swept: a skip
+   * destination or the pedigree a narrative describes is a decision made about
+   * that other stage, and the refactors strip references only where a codebook
+   * dialog is the researcher deciding the thing is gone. The order pointer is
+   * not such a dependency — it is how the protocol holds the stage, and this
+   * call rewrites it.
    */
   delete: base
     .errors(lockedSectionErrors)
+    .errors(referenceErrors)
     .input(DeleteSectionInputSchema)
     .output(SectionChangeResultSchema),
 
