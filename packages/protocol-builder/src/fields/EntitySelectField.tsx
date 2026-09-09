@@ -38,40 +38,25 @@ export type EntityTypeChangeConfirmation = Readonly<{
 }>;
 
 /**
- * Asks the question a type change raises, and answers whether the change may
- * go ahead.
+ * The type a confirmed change would land on, or `null` when it does not land
+ * on a codebook type at all.
  *
- * Shared, because this control is not the only way a researcher moves a
- * stage's type: creating a type from inside the stage and selecting it on it
- * moves it too, and costs the stage exactly the same prompts, form, panels and
- * filter. One definition of the question, so the two cannot ask different ones
- * — or so that one of them cannot quietly stop asking.
+ * Carried into the question rather than left with the caller, because it is
+ * what the answer has to be judged against: the confirmation is awaited, and
+ * the codebook the question was asked about is not necessarily the one the
+ * change lands in.
  *
- * `undefined` is "nothing to lose", and goes ahead without a dialog: a
- * question about nothing is one a researcher learns to dismiss without
- * reading. The dismissal is the provider's own plain "Cancel", which is what
- * this question wants — backing out of a change that has not happened yet
- * needs no words of its own.
+ * `null` is spelled out rather than left off, because the same question is
+ * also asked over a choice that is not a type — the narrative pedigree's
+ * source stage costs the diseases mapped against it in exactly the same way.
+ * Required and nullable, a caller has to say which kind of change it is
+ * making; optional, one that lands on a type could quietly stop being
+ * rechecked, which is the failure this argument exists to close.
  */
-export function useConfirmEntityTypeChange(): (
-  question: EntityTypeChangeConfirmation | undefined,
-) => Promise<boolean> {
-  const { confirm } = useDialog();
-  return useCallback(
-    async (question) => {
-      if (question === undefined) return true;
-      const confirmed = await confirm({
-        title: question.title,
-        description: question.description,
-        confirmLabel: question.confirmLabel,
-        intent: 'warning',
-        onConfirm: () => undefined,
-      });
-      return confirmed === true;
-    },
-    [confirm],
-  );
-}
+export type EntityTypeChangeTarget = Readonly<{
+  entityType: RuleEntityTarget;
+  typeId: string;
+}> | null;
 
 export type EntitySelectFieldProps = CreateFormFieldProps<
   string,
@@ -188,9 +173,114 @@ const messages = defineMessages({
     defaultMessage:
       'This type is no longer in the codebook. Choose another one.',
     description:
-      'Shown under the chips when the node or edge type a researcher’s stored choice names has been deleted from the protocol’s codebook, so the choice has to be made again.',
+      'Shown when the node or edge type a researcher’s choice names has been deleted from the protocol’s codebook, so the choice has to be made again: under the chips when it is the stored choice, and in the message refusing a confirmed change whose target was deleted while the question was open.',
   },
 });
+
+/**
+ * What a change onto a type that has since been deleted is called, written out
+ * per entity kind for the reason `EMPTY_MESSAGES` gives: `entityType` is an
+ * internal token, never display copy.
+ */
+const DELETED_TARGET_TITLES = defineMessages({
+  node: {
+    id: 'protocolBuilder.entitySelect.nodeChangeTargetDeletedTitle',
+    defaultMessage: 'That node type has been deleted',
+    description:
+      'Title of the message shown when a researcher confirms a change of a stage’s node type and the type they chose has been deleted from the codebook in the meantime, so the change is refused. A node type is a kind of network member the study records, such as a person or a place.',
+  },
+  edge: {
+    id: 'protocolBuilder.entitySelect.edgeChangeTargetDeletedTitle',
+    defaultMessage: 'That edge type has been deleted',
+    description:
+      'Title of the message shown when a researcher confirms a change of a stage’s edge type and the type they chose has been deleted from the codebook in the meantime, so the change is refused. An edge type is a kind of relationship between two network members, such as a friendship.',
+  },
+}) satisfies Record<RuleEntityTarget, MessageDescriptor>;
+
+/**
+ * Asks the question a type change raises, and answers whether the change may
+ * go ahead.
+ *
+ * Shared, because this control is not the only way a researcher moves a
+ * stage's type: creating a type from inside the stage and selecting it on it
+ * moves it too, and costs the stage exactly the same prompts, form, panels and
+ * filter. One definition of the question, so the two cannot ask different ones
+ * — or so that one of them cannot quietly stop asking.
+ *
+ * `undefined` is "nothing to lose", and goes ahead without a dialog: a
+ * question about nothing is one a researcher learns to dismiss without
+ * reading. The dismissal is the provider's own plain "Cancel", which is what
+ * this question wants — backing out of a change that has not happened yet
+ * needs no words of its own.
+ *
+ * A "yes" is answered on the codebook as it stands WHEN IT IS GIVEN, not the
+ * one the question was put against. The question is awaited, and a collaborator
+ * can delete the very type the researcher chose while they are reading it —
+ * the picker's latest render has already dropped that type from its chips, and
+ * applying the captured choice anyway would leave the stage pointed at a type
+ * the codebook no longer describes, which is a protocol the host refuses to
+ * save. So it is refused here, once, for every way a confirmed type change is
+ * applied.
+ */
+export function useConfirmEntityTypeChange(): (
+  question: EntityTypeChangeConfirmation | undefined,
+  target: EntityTypeChangeTarget,
+) => Promise<boolean> {
+  const { confirm, openDialog } = useDialog();
+  const intl = useAppIntl();
+  const { protocolContext } = useStageEditorForm();
+  /**
+   * The codebook the answer is judged against, kept live.
+   *
+   * A ref rather than the render's own value, for the reason the recheck
+   * exists at all: what resumes when the question is answered is a closure
+   * from the render that put it. The same seam the picker's refusal is read
+   * through.
+   */
+  const liveCodebook = useRef(protocolContext.codebook);
+  liveCodebook.current = protocolContext.codebook;
+
+  return useCallback(
+    async (question, target) => {
+      if (question === undefined) return true;
+      const confirmed = await confirm({
+        title: question.title,
+        description: question.description,
+        confirmLabel: question.confirmLabel,
+        intent: 'warning',
+        onConfirm: () => undefined,
+      });
+      if (confirmed !== true) return false;
+      // A choice that is not a codebook type has nothing to recheck HERE. The
+      // narrative pedigree's source stage is the one such caller, and what it
+      // could lose while the question is open — the stage it names being
+      // deleted, re-typed or moved — is already watched and reported on the
+      // field itself.
+      if (target === null) return true;
+
+      const stillDefined = ruleEntityTypeOptions(
+        liveCodebook.current,
+        target.entityType,
+      ).some((option) => option.value === target.typeId);
+      if (stillDefined) return true;
+
+      void openDialog({
+        type: 'acknowledge',
+        intent: 'warning',
+        title: intl.formatMessage(DELETED_TARGET_TITLES[target.entityType]),
+        description: intl.formatMessage(messages.missingType),
+        actions: {
+          primary: {
+            label: intl.formatMessage(commonMessages.continue),
+            value: true,
+          },
+        },
+      });
+      return false;
+    },
+    [confirm, intl, openDialog],
+  );
+}
 
 /** Custom properties the edge chip tints itself through. */
 type EdgeChipStyle = CSSProperties & {
@@ -401,7 +491,17 @@ export function EntitySelectControl({
       return;
     }
     void (async () => {
-      if (!(await confirmEntityTypeChange(question))) return;
+      // The target is handed over with the question, so the shared confirm
+      // refuses a "yes" whose type a collaborator has deleted in the meantime
+      // — and refuses it wherever a confirmed type change is applied, not only
+      // here.
+      if (
+        !(await confirmEntityTypeChange(question, {
+          entityType,
+          typeId: nextType,
+        }))
+      )
+        return;
       // Asked AGAIN, on the protocol as it stands now. The researcher has
       // agreed to what this change costs their stage, which is a different
       // question from whether it may happen at all — and the answer to the
