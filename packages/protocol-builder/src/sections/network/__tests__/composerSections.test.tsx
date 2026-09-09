@@ -1085,3 +1085,87 @@ describe('what a composer field’s control accepts', () => {
     expect(savedFields(request)).toEqual([DATED_FIELD]);
   });
 });
+
+/**
+ * Which entry a connection form is written into.
+ *
+ * `id` is not unique by schema — the composer's own refinement requires unique
+ * edge TYPES and says nothing about entry ids — so a protocol authored
+ * elsewhere, or migrated, can hold two entries carrying the same one. Addressed
+ * by id, one form's edit lands on both of them: the second connection type
+ * would silently be given the first's questions, which name attributes it does
+ * not have.
+ */
+describe('two connection entries carrying the same id', () => {
+  const SHARED_ID_EDGES: SectionDoc[] = [
+    {
+      id: 'composer-edge-shared',
+      subject: { entity: 'edge', type: 'knows' },
+      form: { fields: [{ variable: 'edgeNotes', component: 'TextArea' }] },
+    },
+    // No form of its own: everything a "family_edge" connection records is
+    // owned by the Family Pedigree interface, so a form here could ask nothing
+    // — and an entry with no form is what the defect fills in, from a
+    // neighbour's questions about a different edge type.
+    {
+      id: 'composer-edge-shared',
+      subject: { entity: 'edge', type: 'family_edge' },
+    },
+  ];
+
+  const openWithSharedIds = () => {
+    const { type, fields } = loadFixtureStage('network-composer-1');
+    return {
+      stage: {
+        id: 'network-composer-shared-ids',
+        type,
+        fields: { ...fields, edges: SHARED_ID_EDGES },
+      },
+      sections,
+    };
+  };
+
+  it('writes a form into the connection type it belongs to, and no other', async () => {
+    const harness = renderStageEditor(openWithSharedIds());
+
+    // The first of the two lists on screen: the entries are shown in the
+    // order the stage holds them, so this one is "knows".
+    await harness.user.click(
+      (
+        await screen.findAllByRole('button', {
+          name: 'Edit connection attribute field',
+        })
+      )[0]!,
+    );
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.type(
+      field.getByRole('textbox', { name: 'Question' }),
+      'How did you meet?',
+    );
+    await harness.user.click(field.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    const edges = request?.stageDocument.edges;
+    expect(Array.isArray(edges) ? edges[0] : undefined).toEqual({
+      id: 'composer-edge-shared',
+      subject: { entity: 'edge', type: 'knows' },
+      form: {
+        fields: [
+          {
+            variable: 'edgeNotes',
+            component: 'TextArea',
+            label: 'How did you meet?',
+          },
+        ],
+      },
+    });
+    // The other entry is untouched: its questions are about ITS edge type, and
+    // `relationshipType` is not an attribute a "knows" connection has.
+    expect(Array.isArray(edges) ? edges[1] : undefined).toEqual(
+      SHARED_ID_EDGES[1],
+    );
+  });
+});

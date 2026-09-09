@@ -195,14 +195,29 @@ export default function ComposerEdgeConfigurationSection() {
   );
 }
 
-/** The entries with one entry's `form` replaced, or removed when it is empty. */
+/**
+ * The entries with one entry's `form` replaced, or removed when it is empty.
+ *
+ * Addressed by the connection TYPE, which is the only identity the schema
+ * guarantees is unique: `edges` is refined for duplicate types and says nothing
+ * about entry ids, so a protocol authored elsewhere or migrated can hold two
+ * entries carrying the same `id`. Matched on that, one form's edit landed on
+ * both of them — the second connection type was given the first's questions,
+ * which name attributes it does not have, and the stage could then not be
+ * saved at all.
+ *
+ * The duplicate id itself is left exactly as it arrived rather than repaired:
+ * it is valid, nothing here reads it any more, and rewriting an id the
+ * researcher never chose would change a protocol they did not ask this editor
+ * to touch.
+ */
 const withEdgeForm = (
   entries: readonly EdgeEntry[],
-  entryId: string,
+  type: string,
   fields: readonly Record<string, unknown>[],
 ): EdgeEntry[] =>
   entries.map((entry) => {
-    if (entry.id !== entryId) return entry;
+    if (entry.subject.type !== type) return entry;
     if (fields.length === 0) {
       // A form with no fields is spelled by the key not being there. An empty
       // one would say something else — a configured form holding nothing —
@@ -250,13 +265,17 @@ function EdgeTypeForms() {
             ?.label ?? entry.subject.type;
         return (
           <EdgeTypeForm
-            key={entry.id}
+            // The type rather than the entry's id: two entries may carry the
+            // same id, and a duplicate React key makes their UI identity
+            // unstable — the list this renders would hand one type's open
+            // dialog to the other.
+            key={entry.subject.type}
             entry={entry}
             typeName={typeName}
             onChange={(fields) =>
               setStageFieldValue(
                 EDGES_FIELD,
-                withEdgeForm(entries, entry.id, fields ?? []),
+                withEdgeForm(entries, entry.subject.type, fields ?? []),
               )
             }
           />
@@ -315,7 +334,9 @@ function EdgeTypeForm({
         {intl.formatMessage(networkCanvasMessages.edgeFormFieldsHint)}
       </Paragraph>
       <ComposerFormFieldsList
-        name={`edges-${entry.id}-form`}
+        // Named by the type for the reason the key is: an id two entries share
+        // would give two lists the same form ids.
+        name={`edges-${entry.subject.type}-form`}
         subject={entry.subject}
         value={Array.isArray(fields) ? fields.filter(isFormFieldRow) : []}
         onChange={onChange}
