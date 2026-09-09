@@ -3,6 +3,7 @@
 // streaming procedure — `watchProtocol` — is unserveable there; this is the
 // transport that carries it, and the wiring is what this file proves: a real
 // socket, through the real origin and principal guards, to the real router.
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -108,6 +109,7 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
   async function createStage(client: StudioClient, label: string) {
     const created = await client.protocolBuilder.create({
       protocolId,
+      requestId: randomUUID(),
       kind: 'stage',
       document: { type: 'Information', label, title: label, items: [] },
     });
@@ -229,6 +231,7 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
     const stream = await client.protocolBuilder.watchProtocol({ protocolId });
     const created = await client.protocolBuilder.create({
       protocolId,
+      requestId: randomUUID(),
       kind: 'stage',
       document: {
         type: 'Information',
@@ -404,6 +407,7 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
     if (resumed.lock !== 'held') throw new Error('unreachable');
     const written = await second.client.protocolBuilder.submit({
       protocolId,
+      requestId: randomUUID(),
       sectionId,
       document: { ...resumed.document, label: 'Renamed after the reconnect' },
       revision: resumed.revision,

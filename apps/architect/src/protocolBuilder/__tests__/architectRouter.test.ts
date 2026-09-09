@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { getEventMeta, safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
 import { configureStore } from '@reduxjs/toolkit';
@@ -40,6 +42,19 @@ vi.mock('~/utils/assetUtils', async (importOriginal) => ({
 }));
 
 const PROTOCOL_ID = 'library-row-1';
+
+/**
+ * The edit these calls are made from: one stage editor or codebook dialog,
+ * open from the moment it starts until its submit or its cancel.
+ */
+const EDIT = 'edit-1';
+
+/** A second edit open beside it — a codebook dialog over a stage editor. */
+const OTHER_EDIT = 'edit-2';
+
+/** A fresh idempotency key: every write below is its own intent. */
+let writes = 0;
+const nextRequestId = (): string => `write-${++writes}`;
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
 const EGO_FORM = sectionId({ kind: 'stage', stageId: 'ego-form-1' });
 const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
@@ -67,9 +82,13 @@ const openProtocol = (
 };
 
 /** A file imported through the resource lifecycle, as an open edit's own. */
-async function importResource(client: ProtocolBuilderClient): Promise<string> {
+async function importResource(
+  client: ProtocolBuilderClient,
+  editId: string = EDIT,
+): Promise<string> {
   const staged = await client.resources.stage({
     protocolId: PROTOCOL_ID,
+    editId,
     requestId: 'import-1',
     request: {
       kind: 'content',
@@ -186,6 +205,7 @@ describe("Architect's in-process protocol-builder host", () => {
     });
     const { revision } = await client.submit({
       protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Renamed by the editor' },
       revision: held.revision,
@@ -213,6 +233,7 @@ describe("Architect's in-process protocol-builder host", () => {
     const { definedError, isSuccess } = await safe(
       client.submit({
         protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { ...before.document, label: 'Renamed without the lock' },
         revision: before.revision,
@@ -239,6 +260,7 @@ describe("Architect's in-process protocol-builder host", () => {
 
     const created = await client.create({
       protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
       kind: 'stage',
       document: { ...withoutId, label: 'A created stage' },
       position: 0,
@@ -275,6 +297,7 @@ describe("Architect's in-process protocol-builder host", () => {
     });
     await client.submit({
       protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Before the drop' },
       revision: held.revision,
@@ -293,6 +316,7 @@ describe("Architect's in-process protocol-builder host", () => {
     });
     await client.submit({
       protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
       sectionId: EGO_FORM,
       document: { ...second.document, label: 'After the drop' },
       revision: second.revision,
@@ -318,6 +342,7 @@ describe("Architect's in-process protocol-builder host", () => {
     });
     await client.submit({
       protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'One step' },
       revision: held.revision,
@@ -327,6 +352,7 @@ describe("Architect's in-process protocol-builder host", () => {
     const { id: _id, ...withoutId } = held.document;
     await client.create({
       protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
       kind: 'stage',
       document: { ...withoutId, label: 'Also one step' },
       position: 0,
@@ -351,6 +377,7 @@ describe("Architect's in-process protocol-builder host", () => {
       ?.person;
     await client.submit({
       protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
       sectionId: PERSON,
       document: {
         ...committed,
@@ -424,6 +451,7 @@ describe("Architect's in-process protocol-builder host", () => {
     });
     await writer.submit({
       protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Written by the second client' },
       revision: held.revision,
@@ -436,6 +464,7 @@ describe("Architect's in-process protocol-builder host", () => {
     const { definedError } = await safe(
       separate.submit({
         protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
         sectionId: EGO_FORM,
         document: { id: 'ego-form-1', type: 'EgoForm', label: 'No lock here' },
         revision: held.revision,
@@ -455,6 +484,7 @@ describe("Architect's in-process protocol-builder host", () => {
 
     const staged = await client.resources.stage({
       protocolId: PROTOCOL_ID,
+      editId: EDIT,
       requestId: 'import-1',
       request: {
         kind: 'content',
@@ -477,6 +507,7 @@ describe("Architect's in-process protocol-builder host", () => {
 
     const discarded = await client.resources.discard({
       protocolId: PROTOCOL_ID,
+      editId: EDIT,
     });
 
     // The whole answer is the status: a `data` key whose only value is
@@ -486,6 +517,200 @@ describe("Architect's in-process protocol-builder host", () => {
     // Nothing in the protocol names the bytes any more, which is the condition
     // Architect's own orphan sweep collects them on.
     expect(Object.keys(getAssetManifest(store.getState()))).not.toContain(id);
+  });
+
+  /**
+   * One researcher, one store — and still two edits: a codebook dialog over a
+   * stage editor, or a second tab of the same protocol. Neither one's cancel
+   * may take away the file the other is about to submit, so staging is scoped
+   * to the edit here as it is on a multi-editor host.
+   */
+  it('keeps one edit’s imported resource out of the edit open beside it', async () => {
+    const { store, client } = openProtocol();
+    const id = await importResource(client);
+
+    const listed = await client.resources.list({
+      protocolId: PROTOCOL_ID,
+      editId: OTHER_EDIT,
+    });
+    const inspected = await client.resources.inspect({
+      protocolId: PROTOCOL_ID,
+      editId: OTHER_EDIT,
+      resourceId: id,
+    });
+    const discarded = await client.resources.discard({
+      protocolId: PROTOCOL_ID,
+      editId: OTHER_EDIT,
+      resourceId: id,
+    });
+    // The other edit's own cancel, which drops everything IT imported.
+    await client.resources.discard({
+      protocolId: PROTOCOL_ID,
+      editId: OTHER_EDIT,
+    });
+
+    if (listed.status !== 'ok') throw new Error('listing failed');
+    expect(listed.data.resources.map((entry) => entry.id)).not.toContain(id);
+    expect(inspected).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'not-found' },
+    });
+    expect(discarded).toMatchObject({ status: 'failed' });
+    // Still in the protocol, and still the importing edit's to take back.
+    expect(getAssetManifest(store.getState())[id]).toBeDefined();
+    const mine = await client.resources.list({
+      protocolId: PROTOCOL_ID,
+      editId: EDIT,
+      status: 'staged',
+    });
+    if (mine.status !== 'ok') throw new Error('listing failed');
+    expect(mine.data.resources.map((entry) => entry.id)).toContain(id);
+  });
+
+  it('refuses a promotion naming a resource another edit imported', async () => {
+    const { store, client } = openProtocol();
+    const id = await importResource(client);
+    const held = await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+
+    const { definedError, isSuccess } = await safe(
+      client.submit({
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        sectionId: INFORMATION,
+        document: { ...held.document, label: 'Promotes another edit’s file' },
+        revision: held.revision,
+        promote: { editId: OTHER_EDIT, resourceIds: [id] },
+      }),
+    );
+
+    // A promotion takes the naming edit's own imports and no others: a dialog
+    // saving over a stage editor must not commit what the editor imported and
+    // has not saved.
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('PROMOTION_FAILED');
+    expect(definedError?.data).toMatchObject({
+      failure: { reason: 'not-found', resourceId: id },
+    });
+    expect(stageLabel(store, 'information-1')).toBe('Information');
+    // And the file is still the importing edit's to take back.
+    await client.resources.discard({ protocolId: PROTOCOL_ID, editId: EDIT });
+    expect(getAssetManifest(store.getState())[id]).toBeUndefined();
+  });
+
+  it('lists only what the protocol has committed when no edit is named', async () => {
+    const { client } = openProtocol();
+    const id = await importResource(client);
+
+    const listed = await client.resources.list({ protocolId: PROTOCOL_ID });
+
+    // A caller that names no edit is asking what the protocol holds, and an
+    // import nobody has saved yet is not part of it — however committed the
+    // manifest underneath it happens to be.
+    if (listed.status !== 'ok') throw new Error('listing failed');
+    expect(listed.data.resources.map((entry) => entry.id)).not.toContain(id);
+    expect(listed.data.resources.map((entry) => entry.status)).not.toContain(
+      'staged',
+    );
+  });
+
+  /**
+   * Committed bytes are named by their content, not by the file the
+   * researcher picked: two imports called `photo.png` are two assets, and a
+   * protocol that carried both under one name could only export one of them.
+   */
+  it('records an imported file under its content hash, keeping the display name', async () => {
+    const { store, client } = openProtocol();
+    const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+
+    const staged = await client.resources.stage({
+      protocolId: PROTOCOL_ID,
+      editId: EDIT,
+      requestId: 'hashed-import',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Nook',
+        source: 'nook.png',
+        contentType: 'image/png',
+        bytes: new Blob([bytes], { type: 'image/png' }),
+      },
+    });
+
+    // Worked out from the bytes here rather than read back off the host: a
+    // host still recording the caller's filename fails this instead of
+    // agreeing with itself.
+    const source = `${createHash('sha256').update(bytes).digest('hex')}.png`;
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const id = staged.data.descriptor.id;
+    expect(getAssetManifest(store.getState())[id]).toMatchObject({
+      type: 'image',
+      name: 'Nook',
+      source,
+    });
+    const listed = await client.resources.list({
+      protocolId: PROTOCOL_ID,
+      editId: EDIT,
+      status: 'staged',
+    });
+    if (listed.status !== 'ok') throw new Error('listing failed');
+    expect(listed.data.resources).toContainEqual(
+      expect.objectContaining({ id, name: 'Nook', source }),
+    );
+  });
+
+  /**
+   * The retry a promotion-keyed record never covered: a write that promotes
+   * nothing carried no key at all, so a second attempt wrote a second time.
+   */
+  it('replays a retried submit and a retried create that promote nothing', async () => {
+    const { store, client } = openProtocol();
+    const held = await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const submitted = {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: { ...held.document, label: 'Saved without a promotion' },
+      revision: held.revision,
+    };
+    const written = await client.submit(submitted);
+    // The editor closed on the answer it never received, giving the lock back.
+    await client.releaseLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const creating = {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      kind: 'stage' as const,
+      document: {
+        type: 'Information',
+        label: 'Made without a promotion',
+        title: 'Made without a promotion',
+        items: [],
+      },
+    };
+    const created = await client.create(creating);
+    const afterFirst = stageIds(store);
+    const stepsAfterFirst = undoDepth(store);
+
+    const retriedSubmit = await client.submit(submitted);
+    const retriedCreate = await client.create(creating);
+
+    // A second submit would make a revision nothing changed in — and, with the
+    // lock given back, be refused outright; a second create would leave the
+    // protocol holding the stage twice.
+    expect(retriedSubmit.revision).toEqual(written.revision);
+    expect(retriedCreate.sectionId).toBe(created.sectionId);
+    expect(retriedCreate.revision).toEqual(created.revision);
+    expect(stageIds(store)).toEqual(afterFirst);
+    // Nor is a replay an undoable step: nothing happened to undo.
+    expect(undoDepth(store)).toBe(stepsAfterFirst);
   });
 
   it('keeps an imported resource the submit that names it promoted', async () => {
@@ -498,10 +723,11 @@ describe("Architect's in-process protocol-builder host", () => {
     });
     const written = await client.submit({
       protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Names the photograph' },
       revision: held.revision,
-      promote: { promotionId: 'promotion-1', resourceIds: [id] },
+      promote: { editId: EDIT, resourceIds: [id] },
     });
 
     // The edit that brought the file in has ended in a save, so cancelling a
@@ -509,7 +735,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(written.promoted?.map((entry) => entry.status)).toEqual([
       'committed',
     ]);
-    await client.resources.discard({ protocolId: PROTOCOL_ID });
+    await client.resources.discard({ protocolId: PROTOCOL_ID, editId: EDIT });
     expect(getAssetManifest(store.getState())[id]).toBeDefined();
   });
 
@@ -525,10 +751,11 @@ describe("Architect's in-process protocol-builder host", () => {
     const { definedError, isSuccess } = await safe(
       client.submit({
         protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { ...held.document, label: 'Renamed beside a bad promotion' },
         revision: held.revision,
-        promote: { promotionId: 'promotion-1', resourceIds: ['never-staged'] },
+        promote: { editId: EDIT, resourceIds: ['never-staged'] },
       }),
     );
 
@@ -542,7 +769,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(stageLabel(store, 'information-1')).toBe('Information');
     expect(getAssetManifest(store.getState())).toEqual(manifest);
     // The resource this edit imported is still the edit's to take back.
-    await client.resources.discard({ protocolId: PROTOCOL_ID });
+    await client.resources.discard({ protocolId: PROTOCOL_ID, editId: EDIT });
     expect(getAssetManifest(store.getState())[id]).toBeUndefined();
   });
 
@@ -553,9 +780,13 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    const promote = { promotionId: 'promotion-1', resourceIds: [id] };
+    const promote = { editId: EDIT, resourceIds: [id] };
+    // The id the retry repeats: one intent, asked twice, because the answer to
+    // the first attempt can be lost on its way back.
+    const requestId = nextRequestId();
     const written = await client.submit({
       protocolId: PROTOCOL_ID,
+      requestId,
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Saved once' },
       revision: held.revision,
@@ -569,6 +800,7 @@ describe("Architect's in-process protocol-builder host", () => {
 
     const retried = await client.submit({
       protocolId: PROTOCOL_ID,
+      requestId,
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Saved once' },
       revision: held.revision,
@@ -593,6 +825,7 @@ describe("Architect's in-process protocol-builder host", () => {
     const { definedError, isSuccess } = await safe(
       client.create({
         protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
         kind: 'stage',
         document: {
           type: 'Information',
@@ -629,10 +862,11 @@ describe("Architect's in-process protocol-builder host", () => {
     const { definedError, isSuccess } = await safe(
       client.submit({
         protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { ...held.document, label: 'Renamed beside a promotion' },
         revision: held.revision,
-        promote: { promotionId: 'promotion-1', resourceIds: [id] },
+        promote: { editId: EDIT, resourceIds: [id] },
       }),
     );
 
@@ -643,7 +877,7 @@ describe("Architect's in-process protocol-builder host", () => {
     });
     expect(stageLabel(store, 'information-1')).toBe('Information');
     // Nothing was promoted, so the resource is still the edit's to take back.
-    await client.resources.discard({ protocolId: PROTOCOL_ID });
+    await client.resources.discard({ protocolId: PROTOCOL_ID, editId: EDIT });
     expect(getAssetManifest(store.getState())[id]).toBeUndefined();
   });
 
@@ -662,9 +896,10 @@ describe("Architect's in-process protocol-builder host", () => {
 
     const created = await client.create({
       protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
       kind: 'stage',
       document: { ...withoutId, label: 'Carries the photograph' },
-      promote: { promotionId: 'promotion-1', resourceIds: [id] },
+      promote: { editId: EDIT, resourceIds: [id] },
     });
 
     expect(created.promoted?.map((entry) => entry.status)).toEqual([
@@ -677,22 +912,24 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(stage.revision.sequence).toBe(created.revision.sequence);
     // The edit that brought the file in has ended in a create, so a later
     // cancel must not take the saved protocol's resource away with it.
-    await client.resources.discard({ protocolId: PROTOCOL_ID });
+    await client.resources.discard({ protocolId: PROTOCOL_ID, editId: EDIT });
     expect(getAssetManifest(store.getState())[id]).toBeDefined();
   });
 
   it('replays the stage a retried create already made, rather than a second one', async () => {
     const { store, client } = openProtocol();
     const id = await importResource(client);
-    const promote = { promotionId: 'promotion-1', resourceIds: [id] };
+    const promote = { editId: EDIT, resourceIds: [id] };
     const document = {
       type: 'Information',
       label: 'Made once',
       title: 'Made once',
       items: [],
     };
+    const requestId = nextRequestId();
     const created = await client.create({
       protocolId: PROTOCOL_ID,
+      requestId,
       kind: 'stage',
       document,
       promote,
@@ -701,6 +938,7 @@ describe("Architect's in-process protocol-builder host", () => {
 
     const retried = await client.create({
       protocolId: PROTOCOL_ID,
+      requestId,
       kind: 'stage',
       document,
       promote,
@@ -720,6 +958,7 @@ describe("Architect's in-process protocol-builder host", () => {
     const { definedError, isSuccess } = await safe(
       client.create({
         protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
         kind: 'stage',
         document: {
           type: 'Information',
@@ -727,7 +966,7 @@ describe("Architect's in-process protocol-builder host", () => {
           title: 'Never made',
           items: [],
         },
-        promote: { promotionId: 'promotion-1', resourceIds: ['never-staged'] },
+        promote: { editId: EDIT, resourceIds: ['never-staged'] },
       }),
     );
 
@@ -831,6 +1070,7 @@ describe("Architect's in-process protocol-builder host", () => {
     });
     await client.submit({
       protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: {
         ...held.document,
@@ -879,6 +1119,7 @@ describe("Architect's in-process protocol-builder host", () => {
 
     const created = await client.create({
       protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
       kind: 'codebookEgo',
       document: {
         variables: {
@@ -902,6 +1143,7 @@ describe("Architect's in-process protocol-builder host", () => {
     const { definedError, isSuccess } = await safe(
       client.create({
         protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
         kind: 'codebookEgo',
         document: { variables: {} },
       }),
@@ -931,6 +1173,7 @@ describe("Architect's in-process protocol-builder host", () => {
 
     const written = await client.submit({
       protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Saved after the stream ended' },
       revision: held.revision,

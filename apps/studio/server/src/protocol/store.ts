@@ -763,9 +763,14 @@ export class ProtocolStore {
           [draftId, teamId],
         );
         // Before the draft row, which the log's foreign key names. Replay is
-        // meaningful only while the draft it describes exists.
+        // meaningful only while the draft it describes exists, and so is the
+        // receipt that tells a retried write what it already committed.
         await client.query(
           `DELETE FROM protocol_events WHERE draft_id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+        await client.query(
+          `DELETE FROM protocol_write_receipts WHERE draft_id = $1 AND team_id = $2`,
           [draftId, teamId],
         );
         await client.query(

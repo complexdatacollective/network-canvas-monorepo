@@ -38,9 +38,20 @@ import {
   type ProtocolBuilderSession,
   type RefactorOutcome,
 } from './host.ts';
-import { StagedResourceRegistry } from './resources.ts';
+import {
+  committedDescriptors,
+  committedInspection,
+  committedPreview,
+  SECRET_STORAGE,
+  StagedResourceRegistry,
+} from './resources.ts';
 import type { ProtocolBuilderRuntime } from './runtime.ts';
 import { resolveProtocolSession } from './tenancy.ts';
+import {
+  readWriteReceipt,
+  type WriteOperation,
+  type WriteReceipt,
+} from './writeReceipts.ts';
 
 const os = implement(contract).$context<RpcContext>();
 
@@ -98,8 +109,20 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
     return session;
   };
 
-  const stagingKey = (session: ProtocolBuilderSession) =>
-    `${session.draftId} ${sessionOwner(session)}`;
+  /**
+   * Where one edit's staged imports live: the draft, the owner and the edit.
+   *
+   * Not the connection: an edit outlives a dropped socket, and one owner can
+   * have two edits open at once — a codebook dialog over a stage editor, or
+   * two tabs — whose cancels must not reach each other. Not the owner alone
+   * either, for the same reason.
+   */
+  const stagingKey = (session: ProtocolBuilderSession, editId: string) =>
+    `${ownerPrefix(session)}${editId}`;
+
+  /** Everything one owner has staged, whichever edit staged it. */
+  const ownerPrefix = (session: ProtocolBuilderSession) =>
+    `${session.draftId}\u0000${sessionOwner(session)}\u0000`;
 
   const publish = (
     session: ProtocolBuilderSession,
@@ -150,7 +173,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
     for (const sectionId of held) {
       runtime.leases.drop(session.draftId, sectionId, owner);
     }
-    staged.release(stagingKey(session));
+    staged.releaseMatching(ownerPrefix(session));
     const released = await releaseConnection(session, held);
     publish(session, released.events);
   };
@@ -307,27 +330,27 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         if (session === null) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
         }
-        const store = staged.for(stagingKey(session));
         const promotion = input.promote;
-        const already =
+        // This request id's attempt is already committed, so this call is the
+        // retry of an answer that was lost: it is told what that attempt
+        // wrote. Asked before the promotion is planned, because a retry's
+        // staged resources are gone — the first attempt took them — and
+        // planning again would refuse the retry rather than answer it.
+        const already = await readWriteReceipt(
+          session.tenantDb,
+          writeKey(session, 'submit', input.requestId),
+        );
+        if (already !== undefined) return submitted(already);
+        const store =
           promotion === undefined
             ? undefined
-            : store.completedPromotion(promotion.promotionId);
-        // This id's attempt is already committed, so this call is the retry of
-        // an answer that was lost: it is told what that attempt wrote. Writing
-        // again would make a revision nothing changed in, and would refuse
-        // outright once the editor had given its lock back — turning a save
-        // that succeeded into one the researcher is told to discard a draft
-        // over.
-        if (already !== undefined) {
-          return { revision: already.revision, promoted: already.promoted };
-        }
+            : staged.for(stagingKey(session, promotion.editId));
         // The promotion is planned before anything is written: its bytes go to
         // the object store, where nothing names them, and only the section
         // write below puts them in the manifest. A refused submit therefore
         // leaves the protocol as it was and the resources still staged.
         const planned =
-          promotion === undefined
+          promotion === undefined || store === undefined
             ? undefined
             : await store.plan(
                 deps.assetStore,
@@ -339,17 +362,23 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             data: { sectionId: input.sectionId, failure: planned.failure },
           });
         }
-        const result = await submit(
-          session,
-          input.sectionId,
-          input.document,
-          planned?.data.entries,
-        );
+        const result = await submit(session, input.sectionId, input.document, {
+          requestId: input.requestId,
+          ...(planned === undefined
+            ? {}
+            : {
+                assetEntries: planned.data.entries,
+                promoted: planned.data.promoted,
+              }),
+        });
         publish(session, result.events);
         const outcome = result.outcome;
         if (outcome === undefined) {
           throw errors.SECTION_NOT_FOUND({ data: input });
         }
+        // Another call carrying this request id got there first — the two
+        // serialise behind the draft-head lock — so this one is its retry.
+        if (outcome.status === 'replayed') return submitted(outcome.receipt);
         if (outcome.status === 'notLockHolder') {
           throw errors.NOT_LOCK_HOLDER({
             data: {
@@ -368,13 +397,8 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             data: { sectionId: input.sectionId, issues: outcome.issues },
           });
         }
-        if (promotion !== undefined && planned !== undefined) {
-          store.completePromotion(
-            promotion.promotionId,
-            planned.data.promoted,
-            promotion.resourceIds,
-            outcome.revision,
-          );
+        if (promotion !== undefined && store !== undefined) {
+          store.completePromotion(promotion.resourceIds);
         }
         const promoted = planned?.data.promoted;
         return {
@@ -400,30 +424,27 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         if (session === null) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
         }
-        const store = staged.for(stagingKey(session));
         const promotion = input.promote;
-        const already =
+        // This request id's attempt is already committed, so this call is the
+        // retry of an answer that was lost. The section is named from the
+        // record rather than minted again, because a second create would put a
+        // second copy of the stage in the protocol and the retry would never
+        // learn of the first.
+        const already = await readWriteReceipt(
+          session.tenantDb,
+          writeKey(session, 'create', input.requestId),
+        );
+        if (already !== undefined) return created(already);
+        const store =
           promotion === undefined
             ? undefined
-            : store.completedPromotion(promotion.promotionId);
-        // This id's attempt is already committed, so this call is the retry of
-        // an answer that was lost. The section is named from the record rather
-        // than minted again, because a second create would put a second copy
-        // of the stage in the protocol and the retry would never learn of the
-        // first.
-        if (already?.createdSection !== undefined) {
-          return {
-            sectionId: makeSectionId(parseSectionId(already.createdSection)),
-            revision: already.revision,
-            promoted: already.promoted,
-          };
-        }
+            : staged.for(stagingKey(session, promotion.editId));
         // Planned before anything is written, so a promotion that cannot be
         // committed leaves the protocol without the section and the staged
         // resources staged. The refusal names no section: the host mints an id
         // only for one it is going to write.
         const planned =
-          promotion === undefined
+          promotion === undefined || store === undefined
             ? undefined
             : await store.plan(
                 deps.assetStore,
@@ -434,15 +455,24 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           throw errors.PROMOTION_FAILED({ data: { failure: planned.failure } });
         }
         const result = await create(session, {
+          requestId: input.requestId,
           kind: input.kind,
           document: input.document,
           ...(input.position === undefined ? {} : { position: input.position }),
           ...(planned === undefined
             ? {}
-            : { assetEntries: planned.data.entries }),
+            : {
+                assetEntries: planned.data.entries,
+                promoted: planned.data.promoted,
+              }),
           mintId: randomUUID,
         });
         publish(session, result.events);
+        // Another call carrying this request id got there first, so this one
+        // is its retry: the stage it made, not a second one.
+        if (result.outcome.status === 'replayed') {
+          return created(result.outcome.receipt);
+        }
         if (result.outcome.status === 'exists') {
           throw errors.SECTION_EXISTS({
             data: { sectionId: result.outcome.sectionId },
@@ -461,14 +491,8 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             },
           });
         }
-        if (promotion !== undefined && planned !== undefined) {
-          store.completePromotion(
-            promotion.promotionId,
-            planned.data.promoted,
-            promotion.resourceIds,
-            result.outcome.revision,
-            result.outcome.sectionId,
-          );
+        if (promotion !== undefined && store !== undefined) {
+          store.completePromotion(promotion.resourceIds);
         }
         return {
           sectionId: result.outcome.sectionId,
@@ -558,10 +582,16 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           if (session === null) {
             throw errors.PROTOCOL_NOT_FOUND({ data: input });
           }
-          const store = staged.for(stagingKey(session));
+          // Committed resources are the protocol's; staged ones are the
+          // named edit's, and another edit's imports are no more part of this
+          // protocol than the draft that will name them.
+          const store =
+            input.editId === undefined
+              ? undefined
+              : staged.opened(stagingKey(session, input.editId));
           const resources = [
-            ...store.committed(await assetsDocument(session)),
-            ...store.descriptors(),
+            ...committedDescriptors(await assetsDocument(session)),
+            ...(store?.descriptors() ?? []),
           ].filter(
             (descriptor) =>
               (input.kinds === undefined ||
@@ -571,7 +601,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           );
           return {
             status: 'ok' as const,
-            data: { secretStorage: store.secretStorage, resources },
+            data: { secretStorage: SECRET_STORAGE, resources },
           };
         },
       ),
@@ -583,7 +613,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             throw errors.PROTOCOL_NOT_FOUND({ data: input });
           }
           return staged
-            .for(stagingKey(session))
+            .for(stagingKey(session, input.editId))
             .stage(input.requestId, input.request);
         },
       ),
@@ -594,7 +624,11 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           if (session === null) {
             throw errors.PROTOCOL_NOT_FOUND({ data: input });
           }
-          return staged.for(stagingKey(session)).discard(input.resourceId);
+          // Only what this edit staged: a stage editor's cancel must not take
+          // away the file the codebook dialog over it is about to submit.
+          return staged
+            .for(stagingKey(session, input.editId))
+            .discard(input.resourceId);
         },
       ),
 
@@ -604,9 +638,14 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           if (session === null) {
             throw errors.PROTOCOL_NOT_FOUND({ data: input });
           }
-          return staged
-            .for(stagingKey(session))
-            .inspect(await assetsDocument(session), input.resourceId);
+          const assets = await assetsDocument(session);
+          const store =
+            input.editId === undefined
+              ? undefined
+              : staged.opened(stagingKey(session, input.editId));
+          return store === undefined
+            ? committedInspection(assets, input.resourceId)
+            : store.inspect(assets, input.resourceId);
         },
       ),
 
@@ -616,12 +655,50 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           if (session === null) {
             throw errors.PROTOCOL_NOT_FOUND({ data: input });
           }
-          return staged
-            .for(stagingKey(session))
-            .preview(await assetsDocument(session), input.resourceId);
+          const assets = await assetsDocument(session);
+          const store =
+            input.editId === undefined
+              ? undefined
+              : staged.opened(stagingKey(session, input.editId));
+          return store === undefined
+            ? committedPreview(assets, input.resourceId)
+            : store.preview(assets, input.resourceId);
         },
       ),
     },
+  };
+}
+
+/**
+ * A write's identity, for the receipt that answers its retry: the draft it
+ * was made in, which of the two keyed procedures it was, and the id the
+ * client promised to repeat.
+ */
+function writeKey(
+  session: ProtocolBuilderSession,
+  operation: WriteOperation,
+  requestId: string,
+) {
+  return { draftId: session.draftId, operation, requestId };
+}
+
+/** A recorded submit, answered as the contract answers a fresh one. */
+function submitted(receipt: WriteReceipt) {
+  return {
+    revision: receipt.revision,
+    ...(receipt.promoted === undefined ? {} : { promoted: receipt.promoted }),
+  };
+}
+
+/** A recorded create, which always names the section that attempt made. */
+function created(receipt: WriteReceipt) {
+  if (receipt.createdSection === undefined) {
+    throw new ORPCError('INTERNAL_SERVER_ERROR');
+  }
+  return {
+    sectionId: receipt.createdSection,
+    revision: receipt.revision,
+    ...(receipt.promoted === undefined ? {} : { promoted: receipt.promoted }),
   };
 }
 

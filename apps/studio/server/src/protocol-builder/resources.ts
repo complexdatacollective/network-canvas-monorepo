@@ -16,7 +16,6 @@ import {
   type ResourceInspectionSchema,
   type ResourcePreviewSchema,
   type ResourceSecretStorageSchema,
-  type Revision,
   type StageResourceInputSchema,
 } from '@codaco/protocol-builder/contract/schemas';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -50,18 +49,6 @@ type StagedEntry = {
   handle?: string;
   bytes?: Blob;
   secret?: string;
-};
-
-/** What one `promotionId` committed, for the retry that asks about it again. */
-export type CompletedPromotion = {
-  revision: Revision;
-  promoted: Descriptor[];
-  /**
-   * The section a `create` minted for this promotion. A retried create cannot
-   * be answered without it: the host would mint a second stage id, and the
-   * retry would be told about a stage its first attempt never made.
-   */
-  createdSection?: string;
 };
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
@@ -134,17 +121,27 @@ function descriptorFromManifestEntry(
 }
 
 /**
- * One editing connection's staged resources.
+ * One edit's staged resources.
  *
- * Keyed by connection because a stage is the life of one edit: a second tab
- * importing the same file stages its own copy, and closing either one discards
- * only its own.
+ * An edit — a stage editor or a codebook dialog, from the moment it opens to
+ * its submit or its cancel — is the unit rather than the connection, because a
+ * researcher can have two open in one tab: a codebook dialog over a stage
+ * editor, where the dialog's cancel would otherwise take away the file the
+ * editor was about to submit. The registry below is what holds one of these
+ * per edit; nothing in here can reach another's, because another's is a
+ * different object.
  */
+/**
+ * Studio writes a promoted API key's value into the asset manifest, which
+ * travels with the protocol. Only the host knows that, which is why the
+ * contract asks.
+ */
+export const SECRET_STORAGE: SecretStorage = 'plaintext';
+
 export class StagedResources {
-  readonly secretStorage: SecretStorage = 'plaintext';
+  readonly secretStorage = SECRET_STORAGE;
   readonly #staged = new Map<string, StagedEntry>();
   readonly #byRequest = new Map<string, string>();
-  readonly #promoted = new Map<string, CompletedPromotion>();
   readonly #mintId: () => string;
 
   constructor(mintId: () => string) {
@@ -155,12 +152,20 @@ export class StagedResources {
     return [...this.#staged.values()].map((entry) => entry.descriptor);
   }
 
-  /** Idempotent in the request id, so an uncertain retry stages once. */
+  /**
+   * Idempotent in the request id, so an uncertain retry stages once.
+   *
+   * The kind is part of the key because the contract asks only that a request
+   * id be stable across a retry of one intent, not that it be unique across
+   * the pickers an editor has open: a secret answered with an earlier upload's
+   * descriptor is a resource the submit cannot promote.
+   */
   stage(
     requestId: string,
     request: StageRequest,
   ): ResourceOutcome<{ descriptor: Descriptor; handle?: string }> {
-    const existingId = this.#byRequest.get(requestId);
+    const key = `${request.kind}\u0000${requestId}`;
+    const existingId = this.#byRequest.get(key);
     const existing =
       existingId === undefined ? undefined : this.#staged.get(existingId);
     if (existing !== undefined) {
@@ -198,7 +203,7 @@ export class StagedResources {
             bytes: request.bytes,
           };
     this.#staged.set(id, entry);
-    this.#byRequest.set(requestId, id);
+    this.#byRequest.set(key, id);
     return {
       status: 'ok',
       data: {
@@ -206,21 +211,6 @@ export class StagedResources {
         ...(entry.handle === undefined ? {} : { handle: entry.handle }),
       },
     };
-  }
-
-  /**
-   * The write this promotion id already made, if it made one: the revision it
-   * reached and what it committed.
-   *
-   * `promotionId` is stable across an uncertain retry, so a write whose answer
-   * was lost is repeated with the same id and is told what that attempt did.
-   * Answering it is the whole of the retry: writing again would make a second
-   * revision of a save that already succeeded — and would be refused outright
-   * once the editor had given its lock back — while a second create would put
-   * a second copy of the stage in the protocol.
-   */
-  completedPromotion(promotionId: string): CompletedPromotion | undefined {
-    return this.#promoted.get(promotionId);
   }
 
   /**
@@ -294,18 +284,11 @@ export class StagedResources {
     return { status: 'ok', data: { entries, promoted } };
   }
 
-  completePromotion(
-    promotionId: string,
-    promoted: readonly Descriptor[],
-    resourceIds: readonly string[],
-    revision: Revision,
-    createdSection?: string,
-  ): void {
-    this.#promoted.set(promotionId, {
-      revision,
-      promoted: [...promoted],
-      ...(createdSection === undefined ? {} : { createdSection }),
-    });
+  /**
+   * Drops what a written section's promotion took. Called only once that
+   * section is written, so a refused submit leaves staging as it was.
+   */
+  completePromotion(resourceIds: readonly string[]): void {
     for (const resourceId of resourceIds) this.#staged.delete(resourceId);
   }
 
@@ -321,78 +304,118 @@ export class StagedResources {
     return { status: 'ok' };
   }
 
-  committed(assets: SectionDoc): Descriptor[] {
-    const descriptors: Descriptor[] = [];
-    for (const [id, entry] of Object.entries(assets)) {
-      if (!isRecord(entry)) continue;
-      const descriptor = descriptorFromManifestEntry(id, entry);
-      if (descriptor !== undefined) descriptors.push(descriptor);
-    }
-    return descriptors;
-  }
-
+  /** This edit's staged resource, or the protocol's committed one. */
   inspect(assets: SectionDoc, resourceId: string): ResourceOutcome<Inspection> {
-    const descriptor = this.#descriptor(assets, resourceId);
-    if (descriptor === undefined) {
-      return failure('not-found', 'no such resource', resourceId);
-    }
-    return { status: 'ok', data: { descriptor } };
+    const staged = this.#staged.get(resourceId);
+    return staged === undefined
+      ? committedInspection(assets, resourceId)
+      : { status: 'ok', data: { descriptor: staged.descriptor } };
   }
 
   /**
-   * Where the bytes are. A committed resource is served from the object store
-   * by content hash, so its URL is immutable and needs no expiry; a staged one
-   * has not been stored yet and is inlined.
+   * Where the bytes are. A staged resource has not been stored yet and is
+   * inlined; a committed one is served from the object store by content hash,
+   * so its URL is immutable and needs no expiry.
    */
   async preview(
     assets: SectionDoc,
     resourceId: string,
   ): Promise<ResourceOutcome<Preview>> {
-    const descriptor = this.#descriptor(assets, resourceId);
-    if (descriptor === undefined) {
-      return failure('not-found', 'no such resource', resourceId);
-    }
-    if (descriptor.kind === 'apikey') {
+    const staged = this.#staged.get(resourceId);
+    if (staged === undefined) return committedPreview(assets, resourceId);
+    if (staged.descriptor.kind === 'apikey') {
       return failure('unsupported-kind', 'a secret has no preview', resourceId);
     }
-    const staged = this.#staged.get(resourceId);
-    if (staged?.bytes !== undefined) {
-      const contentType = descriptor.contentType ?? 'application/octet-stream';
-      return {
-        status: 'ok',
-        data: {
-          resourceId,
-          url: `data:${contentType};base64,${await base64(staged.bytes)}`,
-        },
-      };
-    }
-    const hash =
-      descriptor.source === undefined
-        ? undefined
-        : hashOfSource(descriptor.source);
-    if (hash === undefined) {
+    if (staged.bytes === undefined) {
       return failure(
         'not-found',
         'this host holds no bytes for that resource',
         resourceId,
       );
     }
-    return { status: 'ok', data: { resourceId, url: `/storage/${hash}` } };
-  }
-
-  #descriptor(assets: SectionDoc, resourceId: string): Descriptor | undefined {
-    const staged = this.#staged.get(resourceId);
-    if (staged !== undefined) return staged.descriptor;
-    const entry = assets[resourceId];
-    return isRecord(entry)
-      ? descriptorFromManifestEntry(resourceId, entry)
-      : undefined;
+    const contentType =
+      staged.descriptor.contentType ?? 'application/octet-stream';
+    return {
+      status: 'ok',
+      data: {
+        resourceId,
+        url: `data:${contentType};base64,${await base64(staged.bytes)}`,
+      },
+    };
   }
 }
 
-/** One staging area per editing connection, for as long as it is open. */
+// What the protocol itself holds, which every caller may reach: a resource
+// listed, inspected or previewed without naming an edit is a committed one,
+// and an edit's staged imports are not the protocol's until a submit promotes
+// them.
+
+export function committedDescriptors(assets: SectionDoc): Descriptor[] {
+  const descriptors: Descriptor[] = [];
+  for (const [id, entry] of Object.entries(assets)) {
+    if (!isRecord(entry)) continue;
+    const descriptor = descriptorFromManifestEntry(id, entry);
+    if (descriptor !== undefined) descriptors.push(descriptor);
+  }
+  return descriptors;
+}
+
+export function committedInspection(
+  assets: SectionDoc,
+  resourceId: string,
+): ResourceOutcome<Inspection> {
+  const descriptor = committedDescriptor(assets, resourceId);
+  if (descriptor === undefined) {
+    return failure('not-found', 'no such resource', resourceId);
+  }
+  return { status: 'ok', data: { descriptor } };
+}
+
+export function committedPreview(
+  assets: SectionDoc,
+  resourceId: string,
+): ResourceOutcome<Preview> {
+  const descriptor = committedDescriptor(assets, resourceId);
+  if (descriptor === undefined) {
+    return failure('not-found', 'no such resource', resourceId);
+  }
+  if (descriptor.kind === 'apikey') {
+    return failure('unsupported-kind', 'a secret has no preview', resourceId);
+  }
+  const hash =
+    descriptor.source === undefined
+      ? undefined
+      : hashOfSource(descriptor.source);
+  if (hash === undefined) {
+    return failure(
+      'not-found',
+      'this host holds no bytes for that resource',
+      resourceId,
+    );
+  }
+  return { status: 'ok', data: { resourceId, url: `/storage/${hash}` } };
+}
+
+function committedDescriptor(
+  assets: SectionDoc,
+  resourceId: string,
+): Descriptor | undefined {
+  const entry = assets[resourceId];
+  return isRecord(entry)
+    ? descriptorFromManifestEntry(resourceId, entry)
+    : undefined;
+}
+
+/**
+ * One staging area per edit, for as long as that edit is open.
+ *
+ * The router keys these by the draft, the owner and the edit, so the two
+ * boundaries the contract names are the same boundary here: one editor's
+ * staging is unreachable from another's, and one edit's is unreachable from
+ * the second edit its own researcher has open.
+ */
 export class StagedResourceRegistry {
-  readonly #byConnection = new Map<string, StagedResources>();
+  readonly #byEdit = new Map<string, StagedResources>();
   readonly #mintId: () => string;
 
   constructor(mintId: () => string) {
@@ -400,14 +423,25 @@ export class StagedResourceRegistry {
   }
 
   for(key: string): StagedResources {
-    const existing = this.#byConnection.get(key);
+    const existing = this.#byEdit.get(key);
     if (existing !== undefined) return existing;
     const created = new StagedResources(this.#mintId);
-    this.#byConnection.set(key, created);
+    this.#byEdit.set(key, created);
     return created;
   }
 
-  release(key: string): void {
-    this.#byConnection.delete(key);
+  /** What one edit staged, if that edit has staged anything. */
+  opened(key: string): StagedResources | undefined {
+    return this.#byEdit.get(key);
+  }
+
+  /**
+   * Drops every edit under a prefix: an owner whose reconnection never came
+   * takes all of its open edits with it, however many it had.
+   */
+  releaseMatching(prefix: string): void {
+    for (const key of this.#byEdit.keys()) {
+      if (key.startsWith(prefix)) this.#byEdit.delete(key);
+    }
   }
 }

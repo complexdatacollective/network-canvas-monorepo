@@ -41,6 +41,7 @@ import {
   deleteStageSection,
   submitSection,
 } from './sectionWrites.ts';
+import { WriteLedger } from './writeLedger.ts';
 
 const os = implement(contract);
 
@@ -62,6 +63,7 @@ const os = implement(contract);
 export function createArchitectRouter(store: ArchitectStore) {
   const revisions = new ProtocolRevisions(store);
   const resources = new ResourceBridge(store);
+  const ledger = new WriteLedger();
   const isOpen = (protocolId: string) =>
     getActiveProtocolId(store.getState()) === protocolId;
 
@@ -118,22 +120,26 @@ export function createArchitectRouter(store: ArchitectStore) {
       if (!isOpen(input.protocolId)) {
         throw errors.PROTOCOL_NOT_FOUND({ data: input });
       }
+      const key = { operation: 'submit' as const, requestId: input.requestId };
+      // This request id's attempt is already committed, so this call is the
+      // retry of an answer that was lost: it is told what that attempt wrote.
+      // Answered before the section is read or the lock looked at, because
+      // writing again would make a revision nothing changed in — and would
+      // refuse outright once the editor had given its lock back, turning a
+      // save that succeeded into one the researcher is told to discard a draft
+      // over.
+      const already = ledger.completed(key);
+      if (already !== undefined) {
+        return {
+          revision: already.revision,
+          ...(already.promoted === undefined
+            ? {}
+            : { promoted: [...already.promoted] }),
+        };
+      }
       const before = revisions.read(input.sectionId);
       if (before === undefined) throw errors.SECTION_NOT_FOUND({ data: input });
       const promotion = input.promote;
-      const already =
-        promotion === undefined
-          ? undefined
-          : resources.completedPromotion(promotion.promotionId);
-      // This id's attempt is already committed, so this call is the retry of
-      // an answer that was lost: it is told what that attempt wrote. Answered
-      // before the lock is looked at, because writing again would make a
-      // revision nothing changed in — and would refuse outright once the
-      // editor had given its lock back, turning a save that succeeded into one
-      // the researcher is told to discard a draft over.
-      if (already !== undefined) {
-        return { revision: already.revision, promoted: already.promoted };
-      }
       if (revisions.holderOf(input.sectionId) === undefined) {
         throw errors.NOT_LOCK_HOLDER({ data: { sectionId: input.sectionId } });
       }
@@ -161,6 +167,7 @@ export function createArchitectRouter(store: ArchitectStore) {
         promotion === undefined
           ? undefined
           : resources.planPromotion(
+              promotion.editId,
               promotion.resourceIds,
               promotion.secretHandles,
             );
@@ -171,13 +178,12 @@ export function createArchitectRouter(store: ArchitectStore) {
       }
       const promoted = planned?.data.promoted;
       const complete = (revision: Revision) => {
-        if (promotion === undefined || planned === undefined) return;
-        resources.completePromotion(
-          promotion.promotionId,
-          planned.data.promoted,
-          planned.data.ids,
+        ledger.record(key, {
           revision,
-        );
+          ...(promoted === undefined ? {} : { promoted }),
+        });
+        if (planned === undefined) return;
+        resources.completePromotion(planned.data.ids);
       };
       // Architect's timeline refuses to record a content-identical change, so
       // a resubmit of what is already committed is not a revision here either.
@@ -222,22 +228,23 @@ export function createArchitectRouter(store: ArchitectStore) {
       if (!isOpen(input.protocolId)) {
         throw errors.PROTOCOL_NOT_FOUND({ data: input });
       }
-      const promotion = input.promote;
-      const already =
-        promotion === undefined
-          ? undefined
-          : resources.completedPromotion(promotion.promotionId);
-      // This id's attempt is already committed, so this call is the retry of
-      // an answer that was lost: the section is named from the record rather
-      // than minted again, because a second create would put a second copy of
-      // the stage in the protocol and the retry would never learn of the first.
+      const key = { operation: 'create' as const, requestId: input.requestId };
+      // This request id's attempt is already committed, so this call is the
+      // retry of an answer that was lost: the section is named from the record
+      // rather than minted again, because a second create would put a second
+      // copy of the stage in the protocol and the retry would never learn of
+      // the first.
+      const already = ledger.completed(key);
       if (already?.createdSection !== undefined) {
         return {
-          sectionId: sectionId(parseSectionId(already.createdSection)),
+          sectionId: already.createdSection,
           revision: already.revision,
-          promoted: already.promoted,
+          ...(already.promoted === undefined
+            ? {}
+            : { promoted: [...already.promoted] }),
         };
       }
+      const promotion = input.promote;
       const held = heldSections(revisions, [
         ...(input.kind === 'stage' ? [STAGE_ORDER_SECTION] : []),
         ...(promotion === undefined ? [] : [ASSETS_SECTION]),
@@ -252,6 +259,7 @@ export function createArchitectRouter(store: ArchitectStore) {
         promotion === undefined
           ? undefined
           : resources.planPromotion(
+              promotion.editId,
               promotion.resourceIds,
               promotion.secretHandles,
             );
@@ -280,15 +288,14 @@ export function createArchitectRouter(store: ArchitectStore) {
           },
         });
       }
-      if (promotion !== undefined && planned !== undefined) {
-        resources.completePromotion(
-          promotion.promotionId,
-          planned.data.promoted,
-          planned.data.ids,
-          created.revision,
-          result.sectionId,
-        );
+      if (planned !== undefined) {
+        resources.completePromotion(planned.data.ids);
       }
+      ledger.record(key, {
+        revision: created.revision,
+        createdSection: result.sectionId,
+        ...(planned === undefined ? {} : { promoted: planned.data.promoted }),
+      });
       return {
         sectionId: result.sectionId,
         revision: created.revision,
@@ -448,23 +455,26 @@ export function createArchitectRouter(store: ArchitectStore) {
         async ({ input }) =>
           (
             await revisions.write(() =>
-              resources.stage(input.requestId, input.request),
+              resources.stage(input.editId, input.requestId, input.request),
             )
           ).result,
       ),
 
       discard: os.resources.discard.handler(
         async ({ input }) =>
-          (await revisions.write(() => resources.discard(input.resourceId)))
-            .result,
+          (
+            await revisions.write(() =>
+              resources.discard(input.editId, input.resourceId),
+            )
+          ).result,
       ),
 
       inspect: os.resources.inspect.handler(({ input }) =>
-        resources.inspect(input.resourceId),
+        resources.inspect(input.resourceId, input.editId),
       ),
 
       preview: os.resources.preview.handler(({ input }) =>
-        resources.preview(input.resourceId),
+        resources.preview(input.resourceId, input.editId),
       ),
     },
   };

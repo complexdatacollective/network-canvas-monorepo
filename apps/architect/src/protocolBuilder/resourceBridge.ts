@@ -7,7 +7,6 @@ import type {
   ResourceListInputSchema,
   ResourcePreviewSchema,
   ResourceSecretStorageSchema,
-  Revision,
   StageResourceInputSchema,
 } from '@codaco/protocol-builder/contract/schemas';
 import {
@@ -45,18 +44,6 @@ export type StagedResource = Readonly<{
   handle?: string;
 }>;
 
-/** What one `promotionId` committed, for the retry that asks about it again. */
-export type CompletedPromotion = Readonly<{
-  revision: Revision;
-  promoted: Descriptor[];
-  /**
-   * The section a `create` minted for this promotion. A retried create cannot
-   * be answered without it: the host would mint a second stage id, and the
-   * retry would be told about a stage its first attempt never made.
-   */
-  createdSection?: string;
-}>;
-
 /**
  * Architect writes an API key's value into the manifest, which is the file the
  * researcher sends to other people. Only the host knows that, which is why the
@@ -87,29 +74,43 @@ function failed(
  * Architect has no staging area: an imported file is validated, written to the
  * asset store and entered in the manifest in one operation, and that manifest
  * is the protocol's own — so `stage` here commits, and what the lifecycle
- * still buys is the bookkeeping that follows it. This object remembers the
- * resources the open edit brought in, so `discard` can take them back out and
- * the submit that promotes them can stop treating them as the edit's to
- * remove.
+ * still buys is the bookkeeping that follows it. This object remembers which
+ * edit brought each resource in, so `discard` can take back exactly that
+ * edit's imports and the submit that promotes them can stop treating them as
+ * the edit's to remove.
+ *
+ * Every entry is owned by one edit — a stage editor or a codebook dialog, from
+ * the moment it opens to its submit or its cancel. One researcher can have two
+ * open at once, a codebook dialog over a stage editor or two tabs, and neither
+ * one's cancel may take away the file the other is about to submit; nor may
+ * either one's submit promote what the other imported.
  */
 export class ResourceBridge {
   readonly #store: ArchitectStore;
   readonly #byRequest = new Map<string, string>();
   readonly #handles = new Map<string, string>();
-  readonly #staged = new Set<string>();
-  readonly #promotions = new Map<string, CompletedPromotion>();
+  /** Which edit imported each staged resource, by resource id. */
+  readonly #staged = new Map<string, string>();
 
   constructor(store: ArchitectStore) {
     this.#store = store;
   }
 
+  /**
+   * The protocol's committed resources, plus the named edit's own imports.
+   *
+   * Another edit's imports are left out entirely rather than reported
+   * committed: they are in the manifest underneath, but the edit that brought
+   * them in can still take them back, so they are no more part of this
+   * protocol than the draft that will name them.
+   */
   list(input: ListInput): ResourceOutcome<
     Readonly<{
       secretStorage: typeof SECRET_STORAGE;
       resources: Descriptor[];
     }>
   > {
-    const resources = this.#descriptors().filter(
+    const resources = this.#descriptors(input.editId).filter(
       (descriptor) =>
         (input.kinds === undefined || input.kinds.includes(descriptor.kind)) &&
         (input.status === undefined || descriptor.status === input.status),
@@ -121,12 +122,18 @@ export class ResourceBridge {
   }
 
   async stage(
+    editId: string,
     requestId: string,
     request: StageRequest,
   ): Promise<ResourceOutcome<StagedResource>> {
-    const alreadyStaged = this.#byRequest.get(requestId);
+    // The kind is part of the key because the contract asks only that a
+    // request id be stable across a retry of one intent, not that it be unique
+    // across the pickers an editor has open: a secret answered with an earlier
+    // upload's descriptor is a resource the submit cannot promote.
+    const key = requestKey(editId, request.kind, requestId);
+    const alreadyStaged = this.#byRequest.get(key);
     if (alreadyStaged !== undefined) {
-      const descriptor = this.#descriptor(alreadyStaged);
+      const descriptor = this.#descriptor(alreadyStaged, editId);
       if (descriptor !== undefined) {
         return { status: 'ok', data: this.#stagedResource(descriptor) };
       }
@@ -135,42 +142,41 @@ export class ResourceBridge {
     if (request.kind === 'secret') {
       const action = addApiKeyAsset(request.name, request.value);
       this.#store.dispatch(action);
-      return { status: 'ok', data: this.#record(requestId, action.payload.id) };
+      return {
+        status: 'ok',
+        data: this.#record(key, editId, action.payload.id),
+      };
     }
 
-    const file = new File([request.bytes], request.source, {
+    // Named by its content, not by the file the researcher picked: Architect
+    // keys the bytes by the asset id, but `source` is what an export writes
+    // the file as and what every other host commits by content, and two
+    // imports of different pictures both called `portrait.png` must stay two
+    // assets wherever the protocol is opened next.
+    const source = await contentAddressedSource(request.bytes, request.source);
+    const file = new File([request.bytes], source, {
       type: request.contentType,
     });
     try {
       const imported = await this.#store
-        .dispatch(importAssetAsync(file))
+        .dispatch(importAssetAsync({ file, name: request.name }))
         .unwrap();
-      return { status: 'ok', data: this.#record(requestId, imported.id) };
+      return { status: 'ok', data: this.#record(key, editId, imported.id) };
     } catch (error) {
       return failed('invalid-content', importFailureMessage(error));
     }
   }
 
   /**
-   * The write this promotion id already made, if it made one: the revision it
-   * reached and what it committed.
-   *
-   * `promotionId` is stable across an uncertain retry, so a write whose answer
-   * was lost is repeated with the same id and is told what that attempt did.
-   * Answering it is the whole of the retry: writing again would make a second
-   * revision of a save that already succeeded, and for a create a second copy
-   * of the stage.
-   */
-  completedPromotion(promotionId: string): CompletedPromotion | undefined {
-    return this.#promotions.get(promotionId);
-  }
-
-  /**
    * What a promotion would commit, or why it cannot be made. Nothing here
    * changes: the submit that carries the promotion completes it, so a refused
    * submit leaves the edit's resources still the edit's to discard.
+   *
+   * A promotion takes the naming edit's own imports and no others — the file
+   * another edit is still composing around is not this write's to commit.
    */
   planPromotion(
+    editId: string,
     resourceIds: readonly string[],
     secretHandles: readonly string[] | undefined,
   ): ResourceOutcome<Readonly<{ promoted: Descriptor[]; ids: string[] }>> {
@@ -180,8 +186,8 @@ export class ResourceBridge {
     ];
     const promoted: Descriptor[] = [];
     for (const id of ids) {
-      const descriptor = this.#descriptor(id);
-      if (descriptor === undefined || !this.#staged.has(id)) {
+      const descriptor = this.#descriptor(id, editId);
+      if (descriptor === undefined || this.#staged.get(id) !== editId) {
         return failed('not-found', 'no such staged resource', id);
       }
       promoted.push({ ...descriptor, status: 'committed' });
@@ -189,41 +195,44 @@ export class ResourceBridge {
     return { status: 'ok', data: { promoted, ids } };
   }
 
-  completePromotion(
-    promotionId: string,
-    promoted: readonly Descriptor[],
-    ids: readonly string[],
-    revision: Revision,
-    createdSection?: string,
-  ): void {
-    this.#promotions.set(promotionId, {
-      revision,
-      promoted: [...promoted],
-      ...(createdSection === undefined ? {} : { createdSection }),
-    });
+  /**
+   * Hands the promoted resources over to the protocol: they stop being the
+   * edit's to discard. Called only once the section naming them is written.
+   */
+  completePromotion(ids: readonly string[]): void {
     for (const id of ids) this.#staged.delete(id);
   }
 
-  discard(resourceId: string | undefined): DiscardOutcome {
+  /** Takes back what this edit imported: one resource, or all of them. */
+  discard(editId: string, resourceId: string | undefined): DiscardOutcome {
     if (resourceId === undefined) {
-      for (const id of this.#staged) this.#store.dispatch(deleteAsset(id));
-      this.#staged.clear();
-      this.#byRequest.clear();
+      for (const [id, owner] of this.#staged) {
+        if (owner !== editId) continue;
+        this.#staged.delete(id);
+        this.#store.dispatch(deleteAsset(id));
+      }
+      for (const key of this.#byRequest.keys()) {
+        if (key.startsWith(editPrefix(editId))) this.#byRequest.delete(key);
+      }
       return { status: 'ok' };
     }
-    if (!this.#staged.delete(resourceId)) {
+    if (this.#staged.get(resourceId) !== editId) {
       return failed(
         'invalid-request',
-        'this resource was not brought in by the open edit',
+        'this resource was not brought in by this edit',
         resourceId,
       );
     }
+    this.#staged.delete(resourceId);
     this.#store.dispatch(deleteAsset(resourceId));
     return { status: 'ok' };
   }
 
-  async inspect(resourceId: string): Promise<ResourceOutcome<Inspection>> {
-    const descriptor = this.#descriptor(resourceId);
+  async inspect(
+    resourceId: string,
+    editId: string | undefined,
+  ): Promise<ResourceOutcome<Inspection>> {
+    const descriptor = this.#descriptor(resourceId, editId);
     if (descriptor === undefined) {
       return failed('not-found', 'no such resource', resourceId);
     }
@@ -251,8 +260,11 @@ export class ResourceBridge {
     }
   }
 
-  async preview(resourceId: string): Promise<ResourceOutcome<Preview>> {
-    const descriptor = this.#descriptor(resourceId);
+  async preview(
+    resourceId: string,
+    editId: string | undefined,
+  ): Promise<ResourceOutcome<Preview>> {
+    const descriptor = this.#descriptor(resourceId, editId);
     if (descriptor === undefined) {
       return failed('not-found', 'no such resource', resourceId);
     }
@@ -270,10 +282,10 @@ export class ResourceBridge {
     return { status: 'ok', data: { resourceId, url } };
   }
 
-  #record(requestId: string, resourceId: string): StagedResource {
-    this.#byRequest.set(requestId, resourceId);
-    this.#staged.add(resourceId);
-    const descriptor = this.#descriptor(resourceId);
+  #record(key: string, editId: string, resourceId: string): StagedResource {
+    this.#byRequest.set(key, resourceId);
+    this.#staged.set(resourceId, editId);
+    const descriptor = this.#descriptor(resourceId, editId);
     if (descriptor === undefined) {
       throw new Error(`the manifest has no entry for ${resourceId}`);
     }
@@ -288,27 +300,73 @@ export class ResourceBridge {
   }
 
   /**
-   * The manifest as descriptors. An entry the open edit brought in is reported
-   * staged even though it is committed underneath: the edit can still take it
-   * back out, and a picker offering to discard it is asking about that, not
-   * about what storage has done.
+   * The manifest as descriptors, from the point of view of one edit.
+   *
+   * An entry that edit brought in is reported staged even though it is
+   * committed underneath: it can still take it back out, and a picker offering
+   * to discard it is asking about that, not about what storage has done. An
+   * entry another edit brought in is reported at all only to that edit.
    */
-  #descriptors(): Descriptor[] {
+  #descriptors(editId: string | undefined): Descriptor[] {
     const manifest = getAssetManifest(this.#store.getState());
-    return Object.entries(manifest).map(([id, entry]) => ({
-      id,
-      kind: entry.type,
-      name: entry.name,
-      status: this.#staged.has(id)
-        ? ('staged' as const)
-        : ('committed' as const),
-      ...(entry.type === 'apikey' ? {} : { source: entry.source }),
-    }));
+    const descriptors: Descriptor[] = [];
+    for (const [id, entry] of Object.entries(manifest)) {
+      const owner = this.#staged.get(id);
+      if (owner !== undefined && owner !== editId) continue;
+      descriptors.push({
+        id,
+        kind: entry.type,
+        name: entry.name,
+        status:
+          owner === undefined ? ('committed' as const) : ('staged' as const),
+        ...(entry.type === 'apikey' ? {} : { source: entry.source }),
+      });
+    }
+    return descriptors;
   }
 
-  #descriptor(resourceId: string): Descriptor | undefined {
-    return this.#descriptors().find(({ id }) => id === resourceId);
+  #descriptor(
+    resourceId: string,
+    editId: string | undefined,
+  ): Descriptor | undefined {
+    return this.#descriptors(editId).find(({ id }) => id === resourceId);
   }
+}
+
+/** Everything one edit's staging requests are keyed under. */
+function editPrefix(editId: string): string {
+  return `${editId}\u0000`;
+}
+
+/** A staging request's identity: whose it is, what it asked for, and its id. */
+function requestKey(editId: string, kind: string, requestId: string): string {
+  return `${editPrefix(editId)}${kind}\u0000${requestId}`;
+}
+
+/**
+ * The name a file is committed under: its SHA-256, and the extension of the
+ * file the researcher picked.
+ *
+ * Content-addressed because the caller's filename is not unique — two edits
+ * importing different pictures both called `portrait.png` would otherwise
+ * commit two manifest entries naming one file, and an export writing the zip
+ * could only carry one of them. The extension is kept so a reader of the
+ * exported protocol, and Architect's own type detection, still know what the
+ * file is.
+ */
+async function contentAddressedSource(
+  bytes: Blob,
+  source: string,
+): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    await bytes.arrayBuffer(),
+  );
+  const hex = [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+  const dot = source.lastIndexOf('.');
+  return `${hex}${dot > 0 ? source.slice(dot).toLowerCase() : ''}`;
 }
 
 function importFailureMessage(error: unknown): string {

@@ -109,6 +109,7 @@ describe.skipIf(!db)('row-level security', () => {
       'protocol_drafts',
       'protocol_events',
       'protocol_versions',
+      'protocol_write_receipts',
       'protocols',
       'schedule_occurrences',
       'sections',

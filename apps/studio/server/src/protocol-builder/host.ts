@@ -13,6 +13,7 @@ import type pg from 'pg';
 
 import type {
   Presence,
+  ResourceDescriptor,
   Revision,
 } from '@codaco/protocol-builder/contract/schemas';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -61,6 +62,11 @@ import {
   type LoggedProtocolEvent,
   type ProtocolEventRecord,
 } from './events.ts';
+import {
+  lockedWriteReceipt,
+  recordWriteReceipt,
+  type WriteReceipt,
+} from './writeReceipts.ts';
 
 /** One caller on one protocol: the tenant, the draft, and the lock owner. */
 export type ProtocolBuilderSession = {
@@ -92,6 +98,7 @@ export type AcquireOutcome =
 
 export type SubmitOutcome =
   | { status: 'written'; revision: Revision }
+  | { status: 'replayed'; receipt: WriteReceipt }
   | { status: 'notLockHolder'; holder?: Presence }
   | { status: 'blocked'; blocked: SectionHolder[] }
   | { status: 'invalidShape'; issues: SectionIssue[] };
@@ -104,6 +111,7 @@ export type CreatableSectionKind =
 
 export type CreateOutcome =
   | { status: 'created'; sectionId: ProtocolSectionId; revision: Revision }
+  | { status: 'replayed'; receipt: WriteReceipt }
   | { status: 'exists'; sectionId: ProtocolSectionId }
   | { status: 'blocked'; blocked: SectionHolder[] }
   | {
@@ -113,6 +121,20 @@ export type CreateOutcome =
     };
 
 export type SectionHolder = { sectionId: ProtocolSectionId; holder?: Presence };
+
+/**
+ * What a write needs beyond the document: the id its retry repeats, the
+ * manifest entries a promotion adds, and the descriptors it answers with.
+ *
+ * `promoted` is carried through rather than derived, because the receipt has
+ * to answer the retry with what the first attempt said — by then the staged
+ * resources it describes have been consumed and cannot be described again.
+ */
+export type WriteIntent = {
+  requestId: string;
+  assetEntries?: Readonly<Record<string, unknown>>;
+  promoted?: ResourceDescriptor[];
+};
 
 export type RefactorOutcome =
   | {
@@ -617,7 +639,10 @@ function committedEvent(
  *
  * `assetEntries` is the submit's promotion: the bytes behind them are already
  * with the host, and this is where they and the section naming them become a
- * single revision, so a refused submit writes neither. The three refusals here
+ * single revision, so a refused submit writes neither. The write's receipt is
+ * recorded in that same revision's transaction, so a retry carrying the same
+ * `requestId` is answered with what this attempt wrote rather than writing a
+ * second time. The three refusals here
  * are returned rather than thrown so no audit event is written for a change
  * that did not happen: the caller does not hold the lock, the document is not
  * shaped like this section, and — for a submit that promotes — an editor holds
@@ -629,10 +654,15 @@ export async function submit(
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
   document: SectionDoc,
-  assetEntries?: Readonly<Record<string, unknown>>,
+  write: WriteIntent,
 ): Promise<Published<SubmitOutcome | undefined>> {
   const owner = sessionOwner(session);
   const teamId = session.tenantDb.teamId;
+  const key = {
+    draftId: session.draftId,
+    operation: 'submit' as const,
+    requestId: write.requestId,
+  };
   const events: LoggedProtocolEvent[] = [];
   const outcome = await runAuditedCommand<SubmitOutcome | undefined>(
     auditedContext(session),
@@ -644,6 +674,17 @@ export async function submit(
         draftId: session.draftId,
       });
       const head = await lockDraftHead(client, teamId, session.draftId);
+      // Under the head lock, so two calls carrying one request id serialise
+      // and the second finds what the first wrote. Asked before the section is
+      // looked at: a retry is answered even once the section it wrote has been
+      // deleted, and even once its lock has been given back.
+      const already = await lockedWriteReceipt(client, teamId, key);
+      if (already !== undefined) {
+        return {
+          status: 'unchanged',
+          result: { status: 'replayed', receipt: already },
+        };
+      }
       if (head.sectionHashes[sectionId] === undefined) {
         return { status: 'unchanged', result: undefined };
       }
@@ -673,7 +714,7 @@ export async function submit(
       const writes = new Map<ProtocolSectionId, SectionDoc | undefined>([
         [sectionId, document],
       ]);
-      if (assetEntries !== undefined) {
+      if (write.assetEntries !== undefined) {
         // The manifest is a section like any other and a promotion writes it,
         // so it is taken on the terms every cross-section write uses. An
         // editor holding it would submit its own whole manifest next, over the
@@ -695,10 +736,14 @@ export async function submit(
         if (assets === undefined) {
           throw new Error(`draft ${session.draftId} has no assets section`);
         }
-        writes.set(ASSETS, { ...assets.document, ...assetEntries });
+        writes.set(ASSETS, { ...assets.document, ...write.assetEntries });
       }
       const written = await writeSections(client, session, { head, writes });
       events.push(...written.events);
+      await recordWriteReceipt(client, teamId, key, {
+        revision: written.revision,
+        ...(write.promoted === undefined ? {} : { promoted: write.promoted }),
+      });
       return {
         status: 'succeeded',
         result: { status: 'written', revision: written.revision },
@@ -734,18 +779,26 @@ export async function submit(
  * has given the participant no attributes yet has no such section, and adding
  * the first one is what creates it. A singleton the protocol already has is
  * refused rather than overwritten.
+ *
+ * The receipt for `requestId` is written in the same transaction as the
+ * section, so a retry is told which stage the first attempt made instead of
+ * minting a second one.
  */
 export async function create(
   session: ProtocolBuilderSession,
-  input: {
+  input: WriteIntent & {
     kind: CreatableSectionKind;
     document: SectionDoc;
     position?: number;
-    assetEntries?: Readonly<Record<string, unknown>>;
     mintId: () => string;
   },
 ): Promise<Published<CreateOutcome>> {
   const teamId = session.tenantDb.teamId;
+  const key = {
+    draftId: session.draftId,
+    operation: 'create' as const,
+    requestId: input.requestId,
+  };
   const events: LoggedProtocolEvent[] = [];
   const outcome = await runAuditedCommand<CreateOutcome>(
     auditedContext(session),
@@ -757,6 +810,16 @@ export async function create(
         draftId: session.draftId,
       });
       const head = await lockDraftHead(client, teamId, session.draftId);
+      // Under the head lock, before an id is minted: a create that ran twice
+      // would put a second copy of the stage in the protocol and tell the
+      // client about only one of them.
+      const already = await lockedWriteReceipt(client, teamId, key);
+      if (already !== undefined) {
+        return {
+          status: 'unchanged',
+          result: { status: 'replayed', receipt: already },
+        };
+      }
       const touched = [
         ...(input.kind === 'stage' ? [STAGE_ORDER] : []),
         ...(input.assetEntries === undefined ? [] : [ASSETS]),
@@ -821,6 +884,11 @@ export async function create(
       }
       const written = await writeSections(client, session, { head, writes });
       events.push(...written.events);
+      await recordWriteReceipt(client, teamId, key, {
+        revision: written.revision,
+        createdSection: target,
+        ...(input.promoted === undefined ? {} : { promoted: input.promoted }),
+      });
       return {
         status: 'succeeded',
         result: {

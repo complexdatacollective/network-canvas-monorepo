@@ -526,6 +526,7 @@ describe.skipIf(!db)('schema verification', () => {
         'protocol_drafts',
         'protocol_events',
         'protocol_versions',
+        'protocol_write_receipts',
         'protocols',
         'rateLimit',
         'schedule_occurrences',

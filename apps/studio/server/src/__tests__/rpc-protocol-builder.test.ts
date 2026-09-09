@@ -6,7 +6,7 @@
 // Driven through `createRouterClient` rather than a transport, so what is
 // under test is the router and its storage rather than a serialization: the
 // WebSocket wiring is covered by ws-protocol-builder.test.ts.
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -18,6 +18,7 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import type { AssetStore } from '../assets.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import {
   createProtocolBuilderRuntime,
@@ -66,6 +67,15 @@ function researcher(slug: string): Researcher {
 
 const ADA = researcher('ada');
 const GRACE = researcher('grace');
+
+/**
+ * The edit these calls are made from: one stage editor or codebook dialog,
+ * open from the moment it starts until its submit or its cancel.
+ */
+const EDIT = 'edit-1';
+
+/** A second edit open beside it — a codebook dialog over a stage editor. */
+const OTHER_EDIT = 'edit-2';
 
 type VariableReference = {
   typeId: string;
@@ -139,7 +149,31 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   /** A protocol whose researcher has given the participant no attributes. */
   let egolessProtocolId: string;
   let router: ReturnType<typeof createRpcRouter>;
+  let buildRouter: () => ReturnType<typeof createRpcRouter>;
   let runtime: ProtocolBuilderRuntime;
+  /**
+   * The object store a content promotion writes through, in memory.
+   *
+   * Studio names committed bytes by their content hash, and only a promotion
+   * that reaches storage produces that name — without a store, every content
+   * promotion is refused `unavailable` and the manifest is never written.
+   */
+  const stored = new Map<string, { bytes: Uint8Array; mediaType: string }>();
+  const assetStore: AssetStore = {
+    checkHealth: () => Promise.resolve(),
+    put: (bytes, mediaType) => {
+      const hash = createHash('sha256').update(bytes).digest('hex');
+      if (!stored.has(hash)) stored.set(hash, { bytes, mediaType });
+      const existing = stored.get(hash);
+      if (existing === undefined) throw new Error('unreachable');
+      return Promise.resolve({
+        hash,
+        size: existing.bytes.byteLength,
+        mediaType: existing.mediaType,
+      });
+    },
+    get: () => Promise.resolve(null),
+  };
   /**
    * The clock the lease keeper reads, so a test can reach the idle bound
    * without spending five minutes there. Timers are left real: this suite
@@ -148,7 +182,15 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   let now = Date.now();
 
   function clientFor(who: Researcher) {
-    return createRouterClient(router, {
+    return clientOn(router, who);
+  }
+
+  /** The same researcher, on whichever router is serving them. */
+  function clientOn(
+    served: ReturnType<typeof createRpcRouter>,
+    who: Researcher,
+  ) {
+    return createRouterClient(served, {
       context: {
         principal: who.principal,
         requestId: randomUUID(),
@@ -170,6 +212,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   const createStage = (who: Researcher, label: string) =>
     asClient(who).protocolBuilder.create({
       protocolId,
+      requestId: randomUUID(),
       kind: 'stage',
       document: { type: 'Information', label, title: label, items: [] },
     });
@@ -215,6 +258,30 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     draftId = draft;
 
     runtime = createProtocolBuilderRuntime(() => now);
+    // A factory rather than one router: everything a host keeps in memory —
+    // its staging areas, its lease keeper — is built here, so calling it again
+    // is a restarted server serving the same database.
+    buildRouter = () =>
+      createRpcRouter(
+        {
+          enabled: true,
+          emailAndPassword: true,
+          magicLink: false,
+          socialProviders: [],
+        },
+        {
+          auth: stubAuthService({
+            listMemberships: () =>
+              Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
+          }),
+          deployment: { mode: 'self-hosted', billing: false },
+          telemetry: false,
+          invitationDeliveryAvailable: false,
+          pool: scratch.app,
+          protocolBuilder: createProtocolBuilderRuntime(() => now),
+          assetStore,
+        },
+      );
     router = createRpcRouter(
       {
         enabled: true,
@@ -232,6 +299,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         invitationDeliveryAvailable: false,
         pool: scratch.app,
         protocolBuilder: runtime,
+        assetStore,
       },
     );
     clients = new Map([
@@ -254,6 +322,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const { error } = await safe(
       asClient(ADA).protocolBuilder.submit({
         protocolId,
+        requestId: randomUUID(),
         sectionId,
         document: { ...before.document, label: 'Renamed without the lock' },
         revision: before.revision,
@@ -309,6 +378,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const document = { ...held.document, label: 'Renamed by its holder' };
     const written = await asClient(ADA).protocolBuilder.submit({
       protocolId,
+      requestId: randomUUID(),
       sectionId,
       document,
       revision: held.revision,
@@ -345,6 +415,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
     const created = await asClient(ADA).protocolBuilder.create({
       protocolId,
+      requestId: randomUUID(),
       kind: 'stage',
       document: {
         type: 'Information',
@@ -522,6 +593,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const stage = await createStage(ADA, 'Names a secret');
     const staged = await asClient(ADA).protocolBuilder.resources.stage({
       protocolId,
+      editId: EDIT,
       requestId: 'promoted-secret',
       request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
     });
@@ -535,11 +607,12 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     });
     const written = await asClient(ADA).protocolBuilder.submit({
       protocolId,
+      requestId: randomUUID(),
       sectionId: stage.sectionId,
       document: { ...held.document, label: 'Names a secret' },
       revision: held.revision,
       promote: {
-        promotionId: 'promotion-1',
+        editId: EDIT,
         resourceIds: [staged.data.descriptor.id],
         secretHandles: [handle],
       },
@@ -579,10 +652,11 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const { error } = await safe(
       asClient(ADA).protocolBuilder.submit({
         protocolId,
+        requestId: randomUUID(),
         sectionId: stage.sectionId,
         document: { ...held.document, label: 'Renamed' },
         revision: held.revision,
-        promote: { promotionId: 'promotion-2', resourceIds: ['never-staged'] },
+        promote: { editId: EDIT, resourceIds: ['never-staged'] },
       }),
     );
 
@@ -614,6 +688,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const stage = await createStage(ADA, 'Promotes a secret it cannot name');
     const staged = await asClient(ADA).protocolBuilder.resources.stage({
       protocolId,
+      editId: EDIT,
       requestId: 'unhandled-secret',
       request: { kind: 'secret', name: 'Another token', value: 'pk.other' },
     });
@@ -626,11 +701,12 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const { error } = await safe(
       asClient(ADA).protocolBuilder.submit({
         protocolId,
+        requestId: randomUUID(),
         sectionId: stage.sectionId,
         document: held.document,
         revision: held.revision,
         promote: {
-          promotionId: 'promotion-3',
+          editId: EDIT,
           resourceIds: [staged.data.descriptor.id],
         },
       }),
@@ -657,6 +733,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   it('answers a discard with the status alone', async () => {
     const staged = await asClient(GRACE).protocolBuilder.resources.stage({
       protocolId,
+      editId: EDIT,
       requestId: 'discarded-secret',
       request: { kind: 'secret', name: 'Throwaway', value: 'pk.throwaway' },
     });
@@ -664,6 +741,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
     const discarded = await asClient(GRACE).protocolBuilder.resources.discard({
       protocolId,
+      editId: EDIT,
       resourceId: staged.data.descriptor.id,
     });
 
@@ -672,6 +750,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     expect(discarded).toStrictEqual({ status: 'ok' });
     const again = await asClient(GRACE).protocolBuilder.resources.discard({
       protocolId,
+      editId: EDIT,
       resourceId: staged.data.descriptor.id,
     });
     expect(again).toStrictEqual({
@@ -770,6 +849,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     });
     await asClient(ADA).protocolBuilder.submit({
       protocolId,
+      requestId: randomUUID(),
       sectionId: source.sectionId,
       document: {
         ...held.document,
@@ -825,6 +905,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const stage = await createStage(ADA, 'Promotes behind a held manifest');
     const staged = await asClient(ADA).protocolBuilder.resources.stage({
       protocolId,
+      editId: EDIT,
       requestId: 'blocked-manifest-secret',
       request: { kind: 'secret', name: 'Blocked token', value: 'pk.blocked' },
     });
@@ -845,11 +926,12 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       const { error } = await safe(
         asClient(ADA).protocolBuilder.submit({
           protocolId,
+          requestId: randomUUID(),
           sectionId: stage.sectionId,
           document: { ...held.document, label: 'Renamed' },
           revision: held.revision,
           promote: {
-            promotionId: 'promotion-4',
+            editId: EDIT,
             resourceIds: [staged.data.descriptor.id],
             secretHandles: [handle],
           },
@@ -933,6 +1015,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   it('promotes a staged resource with the stage being created', async () => {
     const staged = await asClient(ADA).protocolBuilder.resources.stage({
       protocolId,
+      editId: EDIT,
       requestId: 'created-with-secret',
       request: { kind: 'secret', name: 'Created token', value: 'pk.created' },
     });
@@ -942,6 +1025,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
     const created = await asClient(ADA).protocolBuilder.create({
       protocolId,
+      requestId: randomUUID(),
       kind: 'stage',
       document: {
         type: 'Information',
@@ -950,7 +1034,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         items: [],
       },
       promote: {
-        promotionId: 'promotion-5',
+        editId: EDIT,
         resourceIds: [staged.data.descriptor.id],
         secretHandles: [handle],
       },
@@ -986,6 +1070,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const { error } = await safe(
       asClient(ADA).protocolBuilder.create({
         protocolId,
+        requestId: randomUUID(),
         kind: 'stage',
         document: {
           type: 'Information',
@@ -993,7 +1078,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
           title: 'Never made',
           items: [],
         },
-        promote: { promotionId: 'promotion-6', resourceIds: ['never-staged'] },
+        promote: { editId: EDIT, resourceIds: ['never-staged'] },
       }),
     );
 
@@ -1016,6 +1101,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   it('replays the stage a retried create already made, rather than a second one', async () => {
     const staged = await asClient(ADA).protocolBuilder.resources.stage({
       protocolId,
+      editId: EDIT,
       requestId: 'retried-create-secret',
       request: { kind: 'secret', name: 'Retried token', value: 'pk.retried' },
     });
@@ -1029,12 +1115,16 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       items: [],
     };
     const promote = {
-      promotionId: 'promotion-7',
+      editId: EDIT,
       resourceIds: [staged.data.descriptor.id],
       secretHandles: [handle],
     };
+    // The id the retry repeats: one intent, asked twice, because the answer
+    // to the first attempt can be lost on its way back.
+    const requestId = randomUUID();
     const created = await asClient(ADA).protocolBuilder.create({
       protocolId,
+      requestId,
       kind: 'stage',
       document,
       promote,
@@ -1046,6 +1136,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
     const retried = await asClient(ADA).protocolBuilder.create({
       protocolId,
+      requestId,
       kind: 'stage',
       document,
       promote,
@@ -1066,6 +1157,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const stage = await createStage(ADA, 'Saved once');
     const staged = await asClient(ADA).protocolBuilder.resources.stage({
       protocolId,
+      editId: EDIT,
       requestId: 'retried-submit-secret',
       request: { kind: 'secret', name: 'Resubmitted', value: 'pk.resubmitted' },
     });
@@ -1077,12 +1169,14 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       sectionId: stage.sectionId,
     });
     const promote = {
-      promotionId: 'promotion-8',
+      editId: EDIT,
       resourceIds: [staged.data.descriptor.id],
       secretHandles: [handle],
     };
+    const requestId = randomUUID();
     const written = await asClient(ADA).protocolBuilder.submit({
       protocolId,
+      requestId,
       sectionId: stage.sectionId,
       document: { ...held.document, label: 'Saved once' },
       revision: held.revision,
@@ -1096,6 +1190,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
     const retried = await asClient(ADA).protocolBuilder.submit({
       protocolId,
+      requestId,
       sectionId: stage.sectionId,
       document: { ...held.document, label: 'Saved once' },
       revision: held.revision,
@@ -1110,9 +1205,316 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     ]);
   });
 
+  /**
+   * A researcher can have two edits open at once — a codebook dialog over a
+   * stage editor, or two tabs — and one edit's cancel must not take away the
+   * file the other is about to submit. So staging belongs to the edit, not to
+   * the session: every way of reaching a staged resource is asked here from
+   * the edit beside the one that staged it.
+   */
+  it('keeps one edit’s staged resource out of the edit open beside it', async () => {
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      editId: EDIT,
+      requestId: 'two-edits-secret',
+      request: { kind: 'secret', name: 'One edit’s token', value: 'pk.one' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const resourceId = staged.data.descriptor.id;
+
+    const listed = await asClient(ADA).protocolBuilder.resources.list({
+      protocolId,
+      editId: OTHER_EDIT,
+      status: 'staged',
+    });
+    const inspected = await asClient(ADA).protocolBuilder.resources.inspect({
+      protocolId,
+      editId: OTHER_EDIT,
+      resourceId,
+    });
+    const discarded = await asClient(ADA).protocolBuilder.resources.discard({
+      protocolId,
+      editId: OTHER_EDIT,
+      resourceId,
+    });
+    // The other edit's own cancel, which drops everything IT staged.
+    await asClient(ADA).protocolBuilder.resources.discard({
+      protocolId,
+      editId: OTHER_EDIT,
+    });
+
+    if (listed.status !== 'ok') throw new Error('listing failed');
+    expect(listed.data.resources.map((entry) => entry.id)).not.toContain(
+      resourceId,
+    );
+    expect(inspected).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'not-found' },
+    });
+    expect(discarded).toMatchObject({ status: 'failed' });
+    const mine = await asClient(ADA).protocolBuilder.resources.list({
+      protocolId,
+      editId: EDIT,
+      status: 'staged',
+    });
+    if (mine.status !== 'ok') throw new Error('listing failed');
+    expect(mine.data.resources.map((entry) => entry.id)).toContain(resourceId);
+  });
+
+  it('refuses a promotion naming a resource another edit staged', async () => {
+    const stage = await createStage(ADA, 'Promotes what it never staged');
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      editId: EDIT,
+      requestId: 'not-this-edits-secret',
+      request: { kind: 'secret', name: 'Not yours', value: 'pk.notyours' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+
+    const { error } = await safe(
+      asClient(ADA).protocolBuilder.submit({
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: stage.sectionId,
+        document: held.document,
+        revision: held.revision,
+        promote: {
+          editId: OTHER_EDIT,
+          resourceIds: [staged.data.descriptor.id],
+          ...(staged.data.handle === undefined
+            ? {}
+            : { secretHandles: [staged.data.handle] }),
+        },
+      }),
+    );
+
+    // A promotion takes the naming edit's own files and no others: a dialog
+    // saving over a stage editor must not commit what the editor imported and
+    // has not saved.
+    if (!isDefinedError(error) || error.code !== 'PROMOTION_FAILED') {
+      throw error ?? new Error('the submit was not refused at all');
+    }
+    expect(error.data.failure).toMatchObject({
+      reason: 'not-found',
+      resourceId: staged.data.descriptor.id,
+    });
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+  });
+
+  it('lists only what the protocol has committed when no edit is named', async () => {
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      editId: EDIT,
+      requestId: 'unnamed-edit-secret',
+      request: { kind: 'secret', name: 'Still an import', value: 'pk.import' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+
+    const listed = await asClient(ADA).protocolBuilder.resources.list({
+      protocolId,
+    });
+
+    // A caller that names no edit is asking what the protocol holds, and an
+    // import nobody has saved yet is not part of it.
+    if (listed.status !== 'ok') throw new Error('listing failed');
+    expect(listed.data.resources.map((entry) => entry.status)).not.toContain(
+      'staged',
+    );
+    expect(listed.data.resources.map((entry) => entry.id)).not.toContain(
+      staged.data.descriptor.id,
+    );
+  });
+
+  /**
+   * The retry a promotion-keyed record never covered: a write that promotes
+   * nothing carried no key at all, so a second attempt wrote a second time.
+   */
+  it('replays a retried submit and a retried create that promote nothing', async () => {
+    const stage = await createStage(ADA, 'Saved without a promotion');
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    const submitId = randomUUID();
+    const submitted = {
+      protocolId,
+      requestId: submitId,
+      sectionId: stage.sectionId,
+      document: { ...held.document, label: 'Saved without a promotion' },
+      revision: held.revision,
+    };
+    const written = await asClient(ADA).protocolBuilder.submit(submitted);
+    // The editor closed on the answer it never received, giving the lock back.
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    const createId = randomUUID();
+    const creating = {
+      protocolId,
+      requestId: createId,
+      kind: 'stage' as const,
+      document: {
+        type: 'Information',
+        label: 'Made without a promotion',
+        title: 'Made without a promotion',
+        items: [],
+      },
+    };
+    const created = await asClient(ADA).protocolBuilder.create(creating);
+    const afterFirst = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+
+    const retriedSubmit = await asClient(ADA).protocolBuilder.submit(submitted);
+    const retriedCreate = await asClient(ADA).protocolBuilder.create(creating);
+
+    // A second submit would make a revision nothing changed in — and, with
+    // the lock given back, be refused outright; a second create would leave
+    // the protocol holding the stage twice.
+    expect(retriedSubmit.revision).toEqual(written.revision);
+    expect(retriedCreate.sectionId).toBe(created.sectionId);
+    expect(retriedCreate.revision).toEqual(created.revision);
+    const order = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+    expect(order.document.stages).toEqual(afterFirst.document.stages);
+  });
+
+  it('replays a retried write against a server that restarted in between', async () => {
+    const stage = await createStage(ADA, 'Saved before the restart');
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    const call = {
+      protocolId,
+      requestId: randomUUID(),
+      sectionId: stage.sectionId,
+      document: { ...held.document, label: 'Saved before the restart' },
+      revision: held.revision,
+    };
+    const written = await asClient(ADA).protocolBuilder.submit(call);
+    const afterFirst = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+
+    // A new router is a new process: its staging areas and its lease keeper
+    // are empty, and the database is all it has. The client whose answer went
+    // missing is exactly the client that reconnects to a server that came
+    // back up, so a record kept only in memory would answer nothing.
+    const restarted = clientOn(buildRouter(), ADA);
+    const retried = await restarted.protocolBuilder.submit(call);
+
+    expect(retried.revision).toEqual(written.revision);
+    // And wrote nothing on its way to that answer: the section is where the
+    // first attempt left it.
+    const section = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    expect(section.revision).toEqual(afterFirst.revision);
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+  });
+
+  /**
+   * Committed bytes are named by their content, not by the file the
+   * researcher picked: two imports called `portrait.png` are two assets, and a
+   * protocol that carried both under one name could only export one of them.
+   */
+  it('commits promoted bytes under their content hash, keeping the display name', async () => {
+    const stage = await createStage(ADA, 'Names a photograph');
+    const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      editId: EDIT,
+      requestId: 'promoted-portrait',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Nook',
+        source: 'nook.png',
+        contentType: 'image/png',
+        bytes: new Blob([bytes], { type: 'image/png' }),
+      },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const resourceId = staged.data.descriptor.id;
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+
+    const written = await asClient(ADA).protocolBuilder.submit({
+      protocolId,
+      requestId: randomUUID(),
+      sectionId: stage.sectionId,
+      document: held.document,
+      revision: held.revision,
+      promote: { editId: EDIT, resourceIds: [resourceId] },
+    });
+
+    // Worked out from the bytes here rather than read back off the host: a
+    // host still committing them under the caller's filename fails this
+    // instead of agreeing with itself.
+    const digest = createHash('sha256').update(bytes).digest('hex');
+    const source = `${digest}.png`;
+    const assets = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'assets',
+    });
+    expect(assets.document[resourceId]).toEqual({
+      name: 'Nook',
+      type: 'image',
+      source,
+    });
+    expect(written.promoted).toEqual([
+      expect.objectContaining({ id: resourceId, status: 'committed', source }),
+    ]);
+    const listed = await asClient(ADA).protocolBuilder.resources.list({
+      protocolId,
+    });
+    if (listed.status !== 'ok') throw new Error('listing failed');
+    expect(listed.data.resources).toContainEqual(
+      expect.objectContaining({
+        id: resourceId,
+        name: 'Nook',
+        status: 'committed',
+        source,
+      }),
+    );
+    // The bytes are reachable at the hash the manifest names them by.
+    const preview = await asClient(ADA).protocolBuilder.resources.preview({
+      protocolId,
+      resourceId,
+    });
+    expect(preview).toMatchObject({
+      status: 'ok',
+      data: { url: `/storage/${digest}` },
+    });
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+  });
+
   it('keeps a staged resource out of another editor’s discard', async () => {
     const staged = await asClient(GRACE).protocolBuilder.resources.stage({
       protocolId,
+      editId: EDIT,
       requestId: 'grace-keeps-this',
       request: { kind: 'secret', name: 'Grace’s token', value: 'pk.grace' },
     });
@@ -1121,10 +1523,12 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
     const byId = await asClient(ADA).protocolBuilder.resources.discard({
       protocolId,
+      editId: EDIT,
       resourceId,
     });
     const wholesale = await asClient(ADA).protocolBuilder.resources.discard({
       protocolId,
+      editId: EDIT,
     });
 
     // A protocol has as many edits open as it has editors, and cancelling one
@@ -1133,6 +1537,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     expect(wholesale).toStrictEqual({ status: 'ok' });
     const listed = await asClient(GRACE).protocolBuilder.resources.list({
       protocolId,
+      editId: EDIT,
     });
     if (listed.status !== 'ok') throw new Error('listing failed');
     expect(listed.data.resources.map((entry) => entry.id)).toContain(
@@ -1151,6 +1556,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
     const created = await asClient(ADA).protocolBuilder.create({
       protocolId: egolessProtocolId,
+      requestId: randomUUID(),
       kind: 'codebookEgo',
       document: {
         variables: {
@@ -1172,6 +1578,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const { error } = await safe(
       asClient(ADA).protocolBuilder.create({
         protocolId: egolessProtocolId,
+        requestId: randomUUID(),
         kind: 'codebookEgo',
         document: { variables: {} },
       }),
@@ -1192,6 +1599,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     // contains more than one event and an off-by-one replay cannot look right.
     await asClient(ADA).protocolBuilder.create({
       protocolId,
+      requestId: randomUUID(),
       kind: 'stage',
       document: {
         type: 'Information',
@@ -1262,6 +1670,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       const { error } = await safe(
         secondTab.protocolBuilder.submit({
           protocolId,
+          requestId: randomUUID(),
           sectionId,
           document: { ...behind.document, label: 'Renamed by the second tab' },
           revision: behind.revision,
