@@ -70,12 +70,29 @@ export default function CreateEdgeField({
   const [submitting, setSubmitting] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
 
+  /**
+   * Every type name the protocol already carries, of BOTH kinds.
+   *
+   * Node and edge types share one namespace — the rule `SubjectSection`'s own
+   * create dialog applies, and Architect's type editor before it — because
+   * `CodebookSchema` refuses a protocol that reuses a name across the two
+   * maps. Judged against the edge names alone, a connection could be given a
+   * node type's name here: the editor would accept it, and the refusal would
+   * arrive from the schema after the researcher had finished the dialog,
+   * without the name-field error this editor is otherwise able to give them.
+   *
+   * Read map by map rather than by a computed key: the codebook's two maps
+   * hold different definition types, and one indexed by a union is a union of
+   * maps nothing can be read out of without narrowing it again.
+   */
+  const codebook = controller.snapshot.protocolContext.codebook;
   const existingEntityNames = useMemo(
     () =>
-      Object.values(
-        controller.snapshot.protocolContext.codebook.edge ?? {},
-      ).map((definition) => definition.name),
-    [controller.snapshot.protocolContext.codebook.edge],
+      [
+        ...Object.values(codebook.node ?? {}),
+        ...Object.values(codebook.edge ?? {}),
+      ].map((definition) => definition.name),
+    [codebook],
   );
 
   return (

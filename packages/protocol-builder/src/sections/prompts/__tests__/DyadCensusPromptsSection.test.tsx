@@ -176,6 +176,50 @@ describe('creating a connection type from inside a prompt', () => {
     expect(screen.getByRole('radio', { name: 'knows' })).not.toBeChecked();
     expect(harness.pendingCommands()).toEqual([]);
   });
+
+  /**
+   * Node and edge types share one namespace, which `CodebookSchema` enforces
+   * and `SubjectSection`'s own create dialog has always applied.
+   *
+   * Judged against the edge names alone, this dialog accepts a connection
+   * named like a node type and the refusal arrives from the schema after the
+   * researcher has finished it — with no name-field error to act on. The
+   * confusable pair is the worse half: the editor folds case and Unicode form
+   * together, so what would otherwise reach the codebook is two types nobody
+   * reading it could tell apart.
+   */
+  it('refuses a connection-type name a node type already uses, whatever the case', async () => {
+    const harness = renderStageEditor(openEditor());
+    const submit = vi.spyOn(harness.host, 'submit');
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create a new connection type',
+      }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Edge type name' }),
+      'Person',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+
+    expect(
+      await screen.findByText('A type named "Person" already exists.'),
+    ).toBeInTheDocument();
+    // Refused here rather than by the host: nothing was asked of it, and the
+    // codebook still holds the two connection types it opened with.
+    expect(submit).not.toHaveBeenCalled();
+    expect(
+      Object.values(harness.hostCodebook().edge ?? {}).map(
+        (definition) => definition.name,
+      ),
+    ).toEqual(['family_edge', 'knows']);
+  });
 });
 
 /**
