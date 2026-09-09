@@ -141,7 +141,9 @@ describe('the prompt list a stage owns', () => {
       sections: prompts,
     });
 
-    screen.getByRole('button', { name: 'Reorder prompt 1 of 2' }).focus();
+    (
+      await screen.findByRole('button', { name: 'Reorder prompt 1 of 2' })
+    ).focus();
     await harness.user.keyboard('{ArrowDown}');
 
     const request = await harness.submit();

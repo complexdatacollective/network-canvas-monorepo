@@ -359,7 +359,7 @@ describe('dispatching to a named editor', () => {
    * editor's slot. An editor mounted without one has to render nothing rather
    * than fail, because a spectator view is given no chrome at all.
    */
-  it('hands the host’s action chrome to the editor it chose', () => {
+  it('hands the host’s action chrome to the editor it chose', async () => {
     const withoutChrome = renderStageEditor({
       stageId: 'information-1',
       registry: { Information: ChromeEditor },
@@ -373,9 +373,11 @@ describe('dispatching to a named editor', () => {
     });
     // The id is this harness's own — one per mounted harness, so that two
     // forms never answer to the same one — and it is what the host is handed,
-    // so it is read off the harness rather than written down here.
+    // so it is read off the harness rather than written down here. Awaited,
+    // because a host's save control is refused the stage until the acquire
+    // has been answered: `readOnly` is true while it is still opening.
     expect(
-      withChrome.getByText(`chrome for ${withChrome.formId}, false`),
+      await withChrome.findByText(`chrome for ${withChrome.formId}, false`),
     ).toBeInTheDocument();
   });
 

@@ -311,7 +311,9 @@ describe('rule list identity', () => {
       }),
     );
 
-    const handle = screen.getByRole('button', { name: 'Reorder item 1 of 2' });
+    const handle = await screen.findByRole('button', {
+      name: 'Reorder item 1 of 2',
+    });
     handle.focus();
     await user.keyboard('{ArrowDown}');
 

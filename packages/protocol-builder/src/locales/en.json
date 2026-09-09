@@ -723,6 +723,10 @@
     "defaultMessage": "{references, plural, one {One other part of the protocol still uses this} other {# other parts of the protocol still use this}}, so nothing was deleted. Change those first, then delete it.",
     "description": "Refusal shown in a codebook editor when deleting an attribute or a type would leave the protocol naming something that no longer exists, in places the application cannot rewrite for the researcher. references is how many such places there are."
   },
+  "protocolBuilder.compoundFailure.sectionCreatedElsewhere": {
+    "defaultMessage": "Somebody else has just added the participant’s first attribute, so nothing was saved. Try again to add yours to theirs.",
+    "description": "Refusal shown when the researcher added the first attribute asked of the participant themselves at the same moment as a collaborator, so the protocol already held the part of the codebook this change would have created."
+  },
   "protocolBuilder.compoundFailure.sectionGone": {
     "defaultMessage": "This part of the codebook no longer exists, so nothing was saved. Close this editor and start again.",
     "description": "Refusal shown in a codebook editor when the entity type being edited has been deleted from the protocol, usually by a collaborator, while the editor was open."
@@ -3699,6 +3703,10 @@
     "defaultMessage": "This stage could not be added. Wait a moment and try again.",
     "description": "Shown above a stage editor’s fields when adding a new stage failed for a reason that carried no explanation of its own. A stage is one step of an interview."
   },
+  "protocolBuilder.stageEdit.importBeforeAdd": {
+    "defaultMessage": "A file imported here cannot be saved with a stage that is being added for the first time. Discard the import and add the stage, then reopen it to import the file.",
+    "description": "Shown above a stage editor’s fields when the researcher imported a file while adding a brand new stage, which the protocol cannot yet take in one step. A stage is one step of an interview."
+  },
   "protocolBuilder.stageEdit.invalidShape": {
     "defaultMessage": "This stage is not something the protocol can hold, so nothing was saved and your unsaved changes have been discarded.",
     "description": "Shown above a stage editor’s fields when the host refused the save because the stage was the wrong shape. A stage is one step of an interview."
@@ -3710,6 +3718,10 @@
   "protocolBuilder.stageEdit.notReady": {
     "defaultMessage": "This stage is still opening, so there was nothing to save. Wait a moment and try again.",
     "description": "Refusal shown when a save is asked for before the stage has finished opening. A stage is one step of an interview."
+  },
+  "protocolBuilder.stageEdit.promotionFailed": {
+    "defaultMessage": "The files you imported could not be saved with this stage, so nothing was saved and your changes are still here. Try saving again.",
+    "description": "Shown above a stage editor’s fields when the host would not take the files imported during this edit, so neither they nor the stage were saved. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
   },
   "protocolBuilder.stageName.documentation": {
     "defaultMessage": "Documentation",

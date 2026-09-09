@@ -1244,7 +1244,7 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     const harness = renderStageEditor(openFixture());
 
     await harness.user.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: 'Create a new display label attribute',
       }),
     );
@@ -1281,7 +1281,7 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     const harness = renderStageEditor(openFixture());
 
     await harness.user.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: 'Create a new relationship type attribute',
       }),
     );
@@ -1351,7 +1351,7 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     const release = holdTheCodebookWrite(harness);
 
     await harness.user.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: 'Create a new display label attribute',
       }),
     );

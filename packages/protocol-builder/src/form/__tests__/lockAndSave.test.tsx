@@ -1,9 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import type { ProtocolBuilderClient } from '../../contract/contract.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import {
   ResourceClientProvider,
@@ -12,7 +14,10 @@ import {
 } from '../../resources/client.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { StageEditSession } from '../../stageEdit.tsx';
-import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
+import {
+  createInMemoryHost,
+  type InMemoryHost,
+} from '../../testing/host/createInMemoryHost.ts';
 import {
   fixtureProtocolSections,
   fixtureStageIds,
@@ -47,6 +52,41 @@ describe('a stage somebody else is editing', () => {
         'Robin is editing this stage, so you can read it but not change it.',
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe('a stage the protocol has not answered for yet', () => {
+  it('is read but not typed into, and says nothing about a holder', async () => {
+    const host = createInMemoryHost({ sections: fixtureProtocolSections() });
+    const acquire = gatedAcquire(host.client);
+
+    render(
+      <DialogProvider>
+        <ProtocolBuilder client={acquire.client} protocolId={host.protocolId}>
+          <ResourceClientProvider>
+            <StageEditSession target={{ sectionId: STAGE_SECTION }}>
+              <StageEditorShell>{nameSection}</StageEditorShell>
+            </StageEditSession>
+          </ResourceClientProvider>
+        </ProtocolBuilder>
+      </DialogProvider>,
+    );
+
+    const field = await screen.findByRole('textbox', { name: 'Stage name' });
+    expect(field).toBeDisabled();
+    // Not the read-only banner: nobody else has this stage, and a sentence
+    // naming a holder there is not one would be a lie about a collaborator.
+    expect(
+      screen.queryByText(/editing this stage, so you can read it/),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      acquire.answer();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'Stage name' })).toBeEnabled();
+    });
   });
 });
 
@@ -218,11 +258,12 @@ const stagedProbe = (
 );
 
 describe('a file imported while the stage is open', () => {
-  it('is committed with the stage that names it', async () => {
+  it('is committed in the same revision as the stage that names it', async () => {
     const harness = renderStageEditor({
       stageId: STAGE_ID,
       sections: stagedProbe,
     });
+    const before = harness.host.store.read(STAGE_SECTION).revision.sequence;
 
     await harness.user.click(
       screen.getByRole('button', { name: 'Import a file' }),
@@ -237,6 +278,62 @@ describe('a file imported while the stage is open', () => {
     expect(
       Object.values(manifest).some((entry) => entry.name === 'A roster'),
     ).toBe(true);
+    // One revision, not two: the promotion rides the submit, so the manifest
+    // entry and the stage naming it are the same write. A separate promotion
+    // would leave the manifest at a revision of its own, and a protocol in
+    // between the two where the bytes are committed and nothing names them.
+    const stageAfter = harness.host.store.read(STAGE_SECTION).revision.sequence;
+    const manifestAfter = harness.host.store.read(sectionId({ kind: 'assets' }))
+      .revision.sequence;
+    expect(stageAfter).toBe(before + 1n);
+    expect(manifestAfter).toBe(stageAfter);
+  });
+
+  it('leaves the stage and the manifest as they were when it cannot be committed', async () => {
+    const seeded = loadFixtureStage(STAGE_ID);
+    const harness = renderStageEditor({
+      stageId: STAGE_ID,
+      sections: stagedProbe,
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Import a file' }),
+    );
+    expect(await screen.findByText('A roster')).toBeInTheDocument();
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Renamed beside a lost import');
+
+    // The staged file leaves the host behind this editor's back — swept up
+    // after a restart, discarded from another window — and nothing tells the
+    // edit, which submits still naming it.
+    await discardStagedFilesAtTheHost(harness.host);
+
+    expect(await harness.submit()).toBeNull();
+
+    expect(
+      await screen.findByText(
+        /The files you imported could not be saved with this stage/,
+      ),
+    ).toBeInTheDocument();
+    // Neither half was written: not the section, and not the manifest.
+    expect(harness.protocolSections()[STAGE_SECTION]).toEqual({
+      id: STAGE_ID,
+      type: seeded.type,
+      ...seeded.fields,
+    });
+    const manifest = harness.protocolSections()[
+      sectionId({ kind: 'assets' })
+    ] as Record<string, { name?: unknown }>;
+    expect(
+      Object.values(manifest).some((entry) => entry.name === 'A roster'),
+    ).toBe(false);
+    // And the draft is still the researcher's to save again: nothing was
+    // taken, so there is nothing to start again from.
+    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+      'Renamed beside a lost import',
+    );
   });
 
   it('is dropped when the researcher closes the stage without saving', async () => {
@@ -260,6 +357,84 @@ describe('a file imported while the stage is open', () => {
     ).toBe(false);
   });
 });
+
+describe('a file imported while a stage is being added', () => {
+  it('is refused rather than left behind by the stage it belongs to', async () => {
+    const before = fixtureStageIds();
+    const harness = renderStageEditor({
+      create: {
+        type: 'Information',
+        position: 1,
+        fields: loadFixtureStage(STAGE_ID).fields,
+      },
+      sections: stagedProbe,
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Import a file' }),
+    );
+    expect(await screen.findByText('A roster')).toBeInTheDocument();
+
+    expect(await harness.submit()).toBeNull();
+
+    expect(
+      await screen.findByText(
+        /A file imported here cannot be saved with a stage that is being added/,
+      ),
+    ).toBeInTheDocument();
+    // A promotion rides a section's submit, and `create` takes none, so the
+    // stage is not added at all: adding it would name a file the protocol
+    // never took.
+    expect(orderOf(harness.protocolSections())).toEqual(before);
+  });
+});
+
+/**
+ * The host's client with its answer to `acquireLock` held until the test lets
+ * it through, which is every host for as long as it takes to answer.
+ *
+ * Proxied rather than spread: a contract client's procedures are reached
+ * through property access rather than held as own properties, so a spread copy
+ * of one has no procedures on it at all.
+ */
+function gatedAcquire(
+  client: ProtocolBuilderClient,
+): Readonly<{ client: ProtocolBuilderClient; answer: () => void }> {
+  const gates: (() => void)[] = [];
+  const acquireLock: ProtocolBuilderClient['acquireLock'] = async (
+    input,
+    options,
+  ) => {
+    const answer = await client.acquireLock(input, options);
+    await new Promise<void>((open) => gates.push(open));
+    return answer;
+  };
+  return {
+    client: new Proxy(client, {
+      get: (target, property) =>
+        property === 'acquireLock'
+          ? acquireLock
+          : Reflect.get(target, property),
+    }),
+    answer: () => {
+      for (const open of gates.splice(0)) open();
+    },
+  };
+}
+
+/**
+ * Everything this protocol is holding staged, dropped at the host.
+ *
+ * Through the contract rather than through the editor's own client: the point
+ * is that the edit does NOT know, and goes on to submit a promotion for bytes
+ * the host no longer has.
+ */
+async function discardStagedFilesAtTheHost(host: InMemoryHost): Promise<void> {
+  const discarded = await host.client.resources.discard({
+    protocolId: host.protocolId,
+  });
+  expect(discarded.status).toBe('ok');
+}
 
 function orderOf(sections: Readonly<Record<string, unknown>>): string[] {
   const order = sections[sectionId({ kind: 'stageOrder' })];

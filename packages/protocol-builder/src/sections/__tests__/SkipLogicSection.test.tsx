@@ -335,7 +335,9 @@ describe('the rules inside skip logic', () => {
       sections: editorSections,
     });
 
-    screen.getByRole('button', { name: 'Reorder item 1 of 2' }).focus();
+    (
+      await screen.findByRole('button', { name: 'Reorder item 1 of 2' })
+    ).focus();
     await harness.user.keyboard('{ArrowDown}');
 
     const written = await harness.submit();

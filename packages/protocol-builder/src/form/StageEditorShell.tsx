@@ -41,7 +41,7 @@ import {
   type StageFormDraft,
   type StageIdentity,
 } from '../stageDocument.ts';
-import { useStageEdit } from '../stageEdit.tsx';
+import { NOT_READY_MESSAGE, useStageEdit } from '../stageEdit.tsx';
 import {
   SectionOutlineStore,
   type SectionValidationIssue,
@@ -144,7 +144,15 @@ function StageEditorFormBody({
     lostMessage: string | undefined;
     discardDraft: (message: string) => void;
   }>) {
-  const { formId, readOnly, holder, creation, save } = useStageEdit();
+  const { formId, access, holder, creation, save } = useStageEdit();
+  // Everything below the shell asks one question — may this write? — and a
+  // stage the host has not granted yet answers it exactly as one somebody else
+  // holds does. What differs is what is SAID about it, and that is decided
+  // here: only a held stage has a holder to name, and only a stage still
+  // opening is worth trying again in a moment.
+  const readOnly = access !== 'editing';
+  const writeRefusal =
+    access === 'readOnly' ? READ_ONLY_MESSAGE : NOT_READY_MESSAGE;
   const intl = useAppIntl();
   const storeApi = useContext(FormStoreContext);
   const formRef = useRef<HTMLFormElement>(null);
@@ -220,7 +228,7 @@ function StageEditorFormBody({
       const before = liveDraft();
       if (commands.length === 0) return { draft: before, refused: false };
       if (readOnly) {
-        reportRefusedWrite(READ_ONLY_MESSAGE);
+        reportRefusedWrite(writeRefusal);
         return { draft: before, refused: true };
       }
       const next = applyCommands(before, [...commands]);
@@ -229,7 +237,7 @@ function StageEditorFormBody({
       clearRefusedWrite();
       return { draft: next, refused: false };
     },
-    [clearRefusedWrite, liveDraft, readOnly, reportRefusedWrite],
+    [clearRefusedWrite, liveDraft, readOnly, reportRefusedWrite, writeRefusal],
   );
 
   const handleSubmit = useCallback<FormSubmitHandler>(
@@ -238,7 +246,7 @@ function StageEditorFormBody({
         return { success: false, formErrors: [UNAVAILABLE_MESSAGE] };
       }
       if (readOnly) {
-        return { success: false, formErrors: [READ_ONLY_MESSAGE] };
+        return { success: false, formErrors: [writeRefusal] };
       }
 
       const fields = stageDraftFromSubmission({
@@ -288,6 +296,7 @@ function StageEditorFormBody({
       readOnly,
       save,
       storeApi,
+      writeRefusal,
     ],
   );
 
@@ -397,7 +406,7 @@ function StageEditorFormBody({
           >
             <LayoutGroup id={layoutGroupId}>
               <EnclosingHeadingLevel level={stageTitleLevel}>
-                {readOnly && (
+                {access === 'readOnly' && (
                   <Alert variant="info" density="compact">
                     {holder === undefined
                       ? intl.formatMessage(messages.heldByNobodyNamed)

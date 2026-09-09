@@ -103,7 +103,7 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
     ]);
   });
 
-  it('names each attribute slot and the control that creates one', () => {
+  it('names each attribute slot and the control that creates one', async () => {
     renderStageEditor({
       stageId: 'family-pedigree-1',
       locale: 'es',
@@ -116,8 +116,10 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
     expect(
       screen.getByRole('combobox', { name: 'Identificador del participante' }),
     ).toHaveValue('is_ego');
+    // Awaited: a stage the host has not answered for yet offers no way to
+    // create anything, because nobody may write to it.
     expect(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: 'Crear un nuevo atributo de sexo biológico',
       }),
     ).toBeInTheDocument();

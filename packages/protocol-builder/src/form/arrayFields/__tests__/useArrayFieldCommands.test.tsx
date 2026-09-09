@@ -32,7 +32,7 @@ const B: Row = { id: 'b', text: 'Bravo' };
  * is never saved here: what the write reached is read out of the document the
  * editor is holding, which is the very value a save would assemble.
  */
-function renderCommands(
+async function renderCommands(
   fields: SectionDoc,
   rendered: readonly Row[],
   documentPath: readonly string[] | undefined,
@@ -47,7 +47,7 @@ function renderCommands(
     return null;
   }
 
-  renderStageEditor({
+  const harness = renderStageEditor({
     stage: { type: 'Information', fields },
     ...(readOnly ? { readOnly: true } : {}),
     sections: (
@@ -63,6 +63,12 @@ function renderCommands(
       </>
     ),
   });
+
+  // A list a stage editor is still opening may not be written to, because
+  // nobody has said yet whether this researcher holds the stage. These tests
+  // drive the commands rather than a control, so the wait `user` makes on
+  // their behalf is asked for here.
+  await harness.opened();
 
   /**
    * Read at the moment a test drives it, never captured at mount: the hook
@@ -94,8 +100,8 @@ function renderCommands(
 }
 
 describe('a list bound to a document path', () => {
-  it('takes the list operations, so each row edit commits as what it was', () => {
-    const { commands } = renderCommands(
+  it('takes the list operations, so each row edit commits as what it was', async () => {
+    const { commands } = await renderCommands(
       { prompts: [A, B] },
       [A, B],
       ['prompts'],
@@ -108,9 +114,9 @@ describe('a list bound to a document path', () => {
     expect(commands.onOperation).toBeTypeOf('function');
   });
 
-  it('commits a save that outlived its editor onto the row it was made on', () => {
+  it('commits a save that outlived its editor onto the row it was made on', async () => {
     const onChange = vi.fn();
-    const { commands, prompts } = renderCommands(
+    const { commands, prompts } = await renderCommands(
       { prompts: [A, B] },
       [A, B],
       ['prompts'],
@@ -130,9 +136,9 @@ describe('a list bound to a document path', () => {
     expect(prompts()).toEqual([A, { id: 'b', text: 'Bravo edited' }]);
   });
 
-  it('answers no when the row it was asked to commit to has gone', () => {
+  it('answers no when the row it was asked to commit to has gone', async () => {
     const onChange = vi.fn();
-    const { commands, prompts } = renderCommands(
+    const { commands, prompts } = await renderCommands(
       { prompts: [A] },
       [A, B],
       ['prompts'],
@@ -168,11 +174,11 @@ describe('a list bound to a document path', () => {
 describe('a list bound to a path the document does not hold as a list', () => {
   const legacyShape = () => ({ prompts: { text: 'a legacy object' } });
 
-  it('replaces the foreign value, so the added row lands in a list', () => {
+  it('replaces the foreign value, so the added row lands in a list', async () => {
     const onChange = vi.fn();
     // What every reader renders for a value that is not a list of rows, and
     // therefore what the operation's index was resolved against.
-    const { commands, prompts } = renderCommands(
+    const { commands, prompts } = await renderCommands(
       legacyShape(),
       [],
       ['prompts'],
@@ -198,9 +204,9 @@ describe('a list bound to a path the document does not hold as a list', () => {
     expect(onChange).toHaveBeenCalledWith([{ id: 'n' }]);
   });
 
-  it('replaces it for a save that outlived its editor too', () => {
+  it('replaces it for a save that outlived its editor too', async () => {
     const onChange = vi.fn();
-    const { commands, prompts } = renderCommands(
+    const { commands, prompts } = await renderCommands(
       legacyShape(),
       [],
       ['prompts'],
@@ -218,11 +224,11 @@ describe('a list bound to a path the document does not hold as a list', () => {
     expect(prompts()).toEqual([{ id: 'n' }]);
   });
 
-  it('writes nothing at all for an operation naming a row the value has not got', () => {
+  it('writes nothing at all for an operation naming a row the value has not got', async () => {
     const onChange = vi.fn();
     // `ArrayField`'s own optimistic copy still showing a row the document
     // never took: the only way a remove, move or edit can be issued here.
-    const { commands, prompts } = renderCommands(
+    const { commands, prompts } = await renderCommands(
       legacyShape(),
       [A],
       ['prompts'],
@@ -279,10 +285,10 @@ describe('a list the document holds with a hole in it', () => {
   // The only operation an editor that drew no rows can report.
   const addFirstRow = { type: 'insert', index: 0, item: { id: 'n' } } as const;
 
-  it('appends past a leading hole rather than landing in front of it', () => {
+  it('appends past a leading hole rather than landing in front of it', async () => {
     // What the field was handed, and therefore what `ArrayField` refused to
     // draw. Read as the rows on screen, index 0 is "before Alpha".
-    const { commands, prompts } = renderCommands(
+    const { commands, prompts } = await renderCommands(
       { prompts: [null, A] },
       [null as unknown as Row, A],
       ['prompts'],
@@ -296,8 +302,8 @@ describe('a list the document holds with a hole in it', () => {
     expect(prompts()).toEqual([null, A, { id: 'n' }]);
   });
 
-  it('appends past a trailing hole', () => {
-    const { commands, prompts } = renderCommands(
+  it('appends past a trailing hole', async () => {
+    const { commands, prompts } = await renderCommands(
       { prompts: [A, null] },
       [A, null as unknown as Row],
       ['prompts'],
@@ -311,8 +317,8 @@ describe('a list the document holds with a hole in it', () => {
     expect(prompts()).toEqual([A, null, { id: 'n' }]);
   });
 
-  it('appends past a hole between two rows', () => {
-    const { commands, prompts } = renderCommands(
+  it('appends past a hole between two rows', async () => {
+    const { commands, prompts } = await renderCommands(
       { prompts: [A, null, B] },
       [A, null as unknown as Row, B],
       ['prompts'],
@@ -326,9 +332,9 @@ describe('a list the document holds with a hole in it', () => {
     expect(prompts()).toEqual([A, null, B, { id: 'n' }]);
   });
 
-  it('issues nothing for an operation naming a row the editor never drew', () => {
+  it('issues nothing for an operation naming a row the editor never drew', async () => {
     const onChange = vi.fn();
-    const { commands, prompts } = renderCommands(
+    const { commands, prompts } = await renderCommands(
       { prompts: [null, A] },
       [null as unknown as Row, A],
       ['prompts'],
@@ -365,8 +371,8 @@ describe('a list the document holds with a hole in it', () => {
  * list.
  */
 describe('a list drawn without the hole its document still holds', () => {
-  it('inserts before the row on screen, at its document index', () => {
-    const { commands, prompts } = renderCommands(
+  it('inserts before the row on screen, at its document index', async () => {
+    const { commands, prompts } = await renderCommands(
       { prompts: [null, A, B] },
       [A, B],
       ['prompts'],
@@ -380,8 +386,8 @@ describe('a list drawn without the hole its document still holds', () => {
     expect(prompts()).toEqual([null, A, { id: 'n' }, B]);
   });
 
-  it('appends to the end of the document, not the end of the rows drawn', () => {
-    const { commands, prompts } = renderCommands(
+  it('appends to the end of the document, not the end of the rows drawn', async () => {
+    const { commands, prompts } = await renderCommands(
       { prompts: [null, A, B] },
       [A, B],
       ['prompts'],
@@ -395,8 +401,8 @@ describe('a list drawn without the hole its document still holds', () => {
     expect(prompts()).toEqual([null, A, B, { id: 'n' }]);
   });
 
-  it('removes the row it names at its document index', () => {
-    const { commands, prompts } = renderCommands(
+  it('removes the row it names at its document index', async () => {
+    const { commands, prompts } = await renderCommands(
       { prompts: [null, A, B] },
       [A, B],
       ['prompts'],
@@ -420,13 +426,13 @@ describe('a list drawn without the hole its document still holds', () => {
    * and reading it as a position in the list as it stands now moves whichever
    * row has since taken that place.
    */
-  it('moves the row a drag picked up, not the one now at its old index', () => {
+  it('moves the row a drag picked up, not the one now at its old index', async () => {
     const C: Row = { id: 'c', text: 'Charlie' };
     const X: Row = { id: 'x', text: 'Remote' };
     // The researcher took hold of Alpha at the top of [A, B, C]. X arrived at
     // the front while the pointer was down, so the drop was measured against
     // [X, A, B, C] and asked for the place below Bravo.
-    const { commands, prompts } = renderCommands(
+    const { commands, prompts } = await renderCommands(
       { prompts: [X, A, B, C] },
       [X, A, B, C],
       ['prompts'],
@@ -440,8 +446,8 @@ describe('a list drawn without the hole its document still holds', () => {
     expect(prompts()).toEqual([X, B, A, C]);
   });
 
-  it('moves a row between document indices, leaving the hole where it is', () => {
-    const { commands, prompts } = renderCommands(
+  it('moves a row between document indices, leaving the hole where it is', async () => {
+    const { commands, prompts } = await renderCommands(
       { prompts: [null, A, B] },
       [A, B],
       ['prompts'],
@@ -460,8 +466,8 @@ describe('a list drawn without the hole its document still holds', () => {
 });
 
 describe('a list with no document path of its own', () => {
-  it('withholds the list operations, so it commits as an ordinary value', () => {
-    const { commands } = renderCommands(
+  it('withholds the list operations, so it commits as an ordinary value', async () => {
+    const { commands } = await renderCommands(
       { prompts: [A, B] },
       [A, B],
       undefined,
@@ -474,9 +480,9 @@ describe('a list with no document path of its own', () => {
     expect(commands.onOperation).toBeUndefined();
   });
 
-  it('answers no when the row it was asked to commit to has gone', () => {
+  it('answers no when the row it was asked to commit to has gone', async () => {
     const onChange = vi.fn();
-    const { commands } = renderCommands(
+    const { commands } = await renderCommands(
       { prompts: [A, B] },
       [A],
       undefined,
@@ -496,9 +502,9 @@ describe('a list with no document path of its own', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('appends a row that was still being added when its editor went', () => {
+  it('appends a row that was still being added when its editor went', async () => {
     const onChange = vi.fn();
-    const { commands } = renderCommands(
+    const { commands } = await renderCommands(
       { prompts: [A, B] },
       [A],
       undefined,
@@ -535,8 +541,8 @@ describe('a list with no document path of its own', () => {
  * refusals passes just as well against a write path that refuses everything.
  */
 describe('what a list write answers', () => {
-  it('is written when the commands reach the document', () => {
-    const { commands, prompts } = renderCommands(
+  it('is written when the commands reach the document', async () => {
+    const { commands, prompts } = await renderCommands(
       { prompts: [A, B] },
       [A, B],
       ['prompts'],
@@ -554,13 +560,13 @@ describe('what a list write answers', () => {
     expect(prompts()).toEqual([A]);
   });
 
-  it('names the row it could not resolve when an operation reaches no row', () => {
+  it('names the row it could not resolve when an operation reaches no row', async () => {
     // The document has moved on, and the row the operation names carries no id
     // to be found by — so it is matched by content, and two rows the
     // researcher cannot tell apart match it equally. Resolving to either would
     // be a guess; resolving to neither must not read as a save.
     const twin = { text: 'Same' };
-    const { commands, prompts } = renderCommands(
+    const { commands, prompts } = await renderCommands(
       { prompts: [null, twin, twin] },
       [twin, twin],
       ['prompts'],
@@ -582,12 +588,12 @@ describe('what a list write answers', () => {
     expect(prompts()).toEqual([null, twin, twin]);
   });
 
-  it('names the row when a drag’s own row left the list while it was held', () => {
+  it('names the row when a drag’s own row left the list while it was held', async () => {
     // A drag lasts as long as the pointer is down, which is long enough for
     // the row being dragged to be deleted from elsewhere. Nothing is left to
     // move, and no amount of looking at the list again will bring it back —
     // which is what tells this apart from a row that could not be matched.
-    const { commands, prompts } = renderCommands(
+    const { commands, prompts } = await renderCommands(
       { prompts: [B] },
       [B],
       ['prompts'],
@@ -606,7 +612,7 @@ describe('what a list write answers', () => {
   });
 
   it('names the stage when it will not take the write', async () => {
-    const { commands, prompts } = renderCommands(
+    const { commands, prompts } = await renderCommands(
       { prompts: [A, B] },
       [A, B],
       ['prompts'],
@@ -638,8 +644,8 @@ describe('what a list write answers', () => {
     expect(prompts()).toEqual([A, B]);
   });
 
-  it('refuses a dispatch through a bound list that wrote nothing at all', () => {
-    const { commands } = renderCommands(
+  it('refuses a dispatch through a bound list that wrote nothing at all', async () => {
+    const { commands } = await renderCommands(
       { prompts: [A, B] },
       [A, B],
       ['prompts'],
@@ -658,8 +664,8 @@ describe('what a list write answers', () => {
     expect(outcome).toEqual({ kind: 'refused', reason: 'row-removed' });
   });
 
-  it('accepts a dispatch through an unbound list that wrote nothing at all', () => {
-    const { commands } = renderCommands(
+  it('accepts a dispatch through an unbound list that wrote nothing at all', async () => {
+    const { commands } = await renderCommands(
       { prompts: [A, B] },
       [A, B],
       undefined,
@@ -677,8 +683,8 @@ describe('what a list write answers', () => {
     expect(outcome).toEqual({ kind: 'written' });
   });
 
-  it('does not spend one write’s answer on the next', () => {
-    const { commands } = renderCommands(
+  it('does not spend one write’s answer on the next', async () => {
+    const { commands } = await renderCommands(
       { prompts: [A, B] },
       [A, B],
       ['prompts'],
