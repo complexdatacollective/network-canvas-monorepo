@@ -316,14 +316,14 @@ describe('dispatching to a named editor', () => {
       // `Information` will not do here once a family lands: an explicit `{}`
       // is merged OVER the package's own registry rather than replacing it,
       // so an interface a landed family already claims stays claimed no
-      // matter what a host passes. `sociogram-1` is still awaiting its
+      // matter what a host passes. `ordinal-bin-1` is still awaiting its
       // family, so nothing — package or host — has claimed it.
       expect(() =>
-        renderStageEditor({ stageId: 'sociogram-1', registry: {} }),
+        renderStageEditor({ stageId: 'ordinal-bin-1', registry: {} }),
       ).toThrow(UnregisteredStageTypeError);
       expect(() =>
-        renderStageEditor({ stageId: 'sociogram-1', registry: {} }),
-      ).toThrow(/"Sociogram" interface/);
+        renderStageEditor({ stageId: 'ordinal-bin-1', registry: {} }),
+      ).toThrow(/"OrdinalBin" interface/);
     } finally {
       consoleError.mockRestore();
     }
@@ -344,7 +344,7 @@ describe('dispatching to a named editor', () => {
 
       // An interface still awaiting its family says so rather than rendering a
       // blank page.
-      expect(() => renderStageEditor({ stageId: 'sociogram-1' })).toThrow(
+      expect(() => renderStageEditor({ stageId: 'ordinal-bin-1' })).toThrow(
         UnregisteredStageTypeError,
       );
     } finally {
