@@ -23,7 +23,10 @@ import {
   useDiseaseSubject,
 } from './DiseaseRow.tsx';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
-import { sourceStageNodeType } from './sourceStage.ts';
+import {
+  sourceStageNodeType,
+  sourceStageRecordedVariables,
+} from './sourceStage.ts';
 
 const DISEASES_FIELD = 'diseases';
 
@@ -36,6 +39,19 @@ const DISEASES_FIELD = 'diseases';
  */
 const AT_LEAST_ONE_DISEASE = createMessageError(
   narrativePedigreeMessages.diseasesAtLeastOne,
+);
+
+/**
+ * The refusal a pick nothing collects earns, encoded for the same reason.
+ *
+ * Stated here as well as kept out of the picker because the two answer
+ * different questions: the picker decides what a researcher may choose NOW,
+ * and this decides what may be SAVED — a row whose attribute stopped being
+ * recorded while the dialog was open, or one an import brought in, never went
+ * through the picker at all.
+ */
+const NOT_RECORDED = createMessageError(
+  narrativePedigreeMessages.diseasesNotRecorded,
 );
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -57,15 +73,23 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * Names are compared by the schema's own key, so a name this editor accepts is
  * one the saved protocol is still valid under on every device it is opened on.
  *
- * A third rule is the shared pedigree one, and it is stated twice on purpose:
- * a disease writes its attribute from the tree the participant draws, without
- * validation, so it may take neither an attribute another interface slot owns
- * nor one a form elsewhere collects. The picker never offers such an
- * attribute; this gate is what catches one that reached the row another way —
- * an imported protocol, or a draft made before the rule. The row's own
- * COMMITTED attribute escapes, found BY ROW ID rather than by the row the
- * dialog opened on, so a conflict this edit did not introduce leaves the
- * researcher an editor they can close.
+ * Two more rules are the ones the picker applies, stated again here on
+ * purpose, because the picker decides what may be CHOSEN and this decides what
+ * may be SAVED — an attribute that stopped qualifying while the dialog was
+ * open, or a row an import brought in, never went through the picker:
+ *
+ * - a disease writes its attribute from the tree the participant draws,
+ *   without validation, so it may take neither an attribute another interface
+ *   slot owns nor one a form elsewhere collects; and
+ * - it may take only an attribute the source pedigree RECORDS — one a
+ *   nomination prompt of it writes. A disease mapped to anything else marks
+ *   nobody: the attribute is never set, and the genetics engine treats only an
+ *   explicit `true` as affected, so the participant is shown their family with
+ *   nothing on it and no error says why.
+ *
+ * The row's own COMMITTED attribute escapes both, found BY ROW ID rather than
+ * by the row the dialog opened on, so a mapping this edit did not introduce
+ * leaves the researcher an editor they can close.
  */
 export default function DiseasesSection() {
   const intl = useAppIntl();
@@ -100,20 +124,39 @@ export default function DiseasesSection() {
   const onBeforeSave = useCallback(
     (value: unknown) => {
       if (!isRecord(value)) return value;
+      const committed = committedVariableFor(value.id);
       const issue = slotCrossClassIssue({
         roleMap,
         slotMap,
         subject,
         variableId: value.variable,
-        committedValue: committedVariableFor(value.id),
+        committedValue: committed,
         // No `ownSlot`: a disease mapping fills no interface slot of its own.
         writerClass: 'unvalidated',
         allVariables,
       });
-      if (issue === undefined) return value;
-      return { success: false, fieldErrors: { variable: [issue] } };
+      if (issue !== undefined) {
+        return { success: false, fieldErrors: { variable: [issue] } };
+      }
+      const pick = typeof value.variable === 'string' ? value.variable : '';
+      if (
+        pick !== '' &&
+        pick !== committed &&
+        !sourceStageRecordedVariables(protocolContext, sourceStageId).has(pick)
+      ) {
+        return { success: false, fieldErrors: { variable: [NOT_RECORDED] } };
+      }
+      return value;
     },
-    [allVariables, committedVariableFor, roleMap, slotMap, subject],
+    [
+      allVariables,
+      committedVariableFor,
+      protocolContext,
+      roleMap,
+      slotMap,
+      sourceStageId,
+      subject,
+    ],
   );
 
   const editorValidate = useCallback<DialogArrayEditorValidate>(
