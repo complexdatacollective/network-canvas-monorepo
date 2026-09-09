@@ -12,6 +12,7 @@ import BuilderSection from '../../sections/BuilderSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { REQUIRED } from '../requiredField.ts';
 import { createStageDraftProbe } from './stageDraftProbe.tsx';
 
 const initialFields: SectionDoc = {
@@ -66,7 +67,7 @@ const threeSections = (pageContentTitle = 'Page content') => (
         name="title"
         label="Page heading"
         component={InputField}
-        required
+        required={REQUIRED}
       />
     </BuilderSection>
     <BuilderSection title="Interviewer guidance" capability={scriptCapability}>

@@ -21,6 +21,7 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import { DEFAULT_ITEM_LABEL } from './arrayMessages.ts';
+import { ListBinding } from './ListBinding.tsx';
 import RowField from './RowField.tsx';
 import { requiredRow } from './rowValidators.ts';
 import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
@@ -401,7 +402,18 @@ export type MultiSelectProps = Omit<
  * `validation={{ completeRows: completeRows(properties) }}`, the only rule
  * that can actually refuse a half-finished row.
  */
-export default function MultiSelect({
+export default function MultiSelect(props: MultiSelectProps) {
+  // Above the list rather than inside it: the commands the list issues are
+  // resolved against this binding, and a hook cannot read a context its own
+  // component provides.
+  return (
+    <ListBinding name={props.name ?? ''}>
+      <MultiSelectList {...props} />
+    </ListBinding>
+  );
+}
+
+function MultiSelectList({
   value = EMPTY_ITEMS,
   emptyStateMessage,
   onChange,

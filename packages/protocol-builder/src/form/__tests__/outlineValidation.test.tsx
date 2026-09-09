@@ -10,6 +10,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
+import { REQUIRED } from '../requiredField.ts';
 
 const stateOf = (harness: StageEditorHarness, title: string): string =>
   harness.outline().find((section) => section.title === title)?.state ??
@@ -58,7 +59,7 @@ describe('a required value the stage no longer holds', () => {
             name="nodeConfig.egoVariable"
             label="Ego variable"
             component={InputField}
-            required
+            required={REQUIRED}
           />
         </BuilderSection>
       ),

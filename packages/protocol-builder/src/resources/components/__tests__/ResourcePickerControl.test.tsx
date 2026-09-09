@@ -8,6 +8,7 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
+import { REQUIRED } from '../../../form/requiredField.ts';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import { deferred, flushPendingWork } from './asyncControls.ts';
@@ -1200,7 +1201,7 @@ describe('the validation state a picker exposes', () => {
           name="backgroundImage"
           label="Background image"
           kind="image"
-          required
+          required={REQUIRED}
         />
       ),
     });
@@ -1241,7 +1242,7 @@ describe('the validation state a picker exposes', () => {
           name="apiKey"
           label="Map provider API key"
           kind="apikey"
-          required
+          required={REQUIRED}
         />
       ),
     });
@@ -1271,7 +1272,7 @@ describe('the validation state a picker exposes', () => {
           label="Network data"
           kind="network"
           canUseExisting
-          required
+          required={REQUIRED}
         />
       ),
     });

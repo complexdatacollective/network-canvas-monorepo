@@ -16,6 +16,7 @@ import Attribute, {
   type CreateAttributeVariable,
   type VariableOption,
 } from './Attribute.tsx';
+import { ListBinding } from './ListBinding.tsx';
 import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
 
 // Re-exported so a call site configuring this editor needs only this module:
@@ -206,7 +207,18 @@ export type AssignAttributesProps = Omit<
  * `additionalAttributes[0].variable` in the form store — a deleted stamp must
  * not be able to reappear through a dormant value.
  */
-export default function AssignAttributes({
+export default function AssignAttributes(props: AssignAttributesProps) {
+  // Above the list rather than inside it: the commands the list issues are
+  // resolved against this binding, and a hook cannot read a context its own
+  // component provides.
+  return (
+    <ListBinding name={props.name ?? ''}>
+      <AssignAttributesList {...props} />
+    </ListBinding>
+  );
+}
+
+function AssignAttributesList({
   value = EMPTY_ATTRIBUTES,
   onChange,
   name = '',

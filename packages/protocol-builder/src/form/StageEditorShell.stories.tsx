@@ -19,6 +19,7 @@ import StageNameSection from '../sections/StageNameSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import { createInMemoryHost } from '../testing/host/createInMemoryHost.ts';
 import { SeedProtocolCache } from '../testing/seedProtocolCache.tsx';
+import { REQUIRED } from './requiredField.ts';
 import StageEditorShell from './StageEditorShell.tsx';
 
 const STAGE_ID = 'welcome-screen';
@@ -94,7 +95,7 @@ function StageEditorHost({
                       name="title"
                       label="Page heading"
                       component={InputField}
-                      required
+                      required={REQUIRED}
                     />
                   </BuilderSection>
                   <InterviewerGuidanceSection />
