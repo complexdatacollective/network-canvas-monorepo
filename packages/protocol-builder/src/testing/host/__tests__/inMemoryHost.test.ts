@@ -1,4 +1,4 @@
-import { safe } from '@orpc/client';
+import { getEventMeta, safe } from '@orpc/client';
 import { describe, expect, it } from 'vitest';
 
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
@@ -64,6 +64,69 @@ async function submitHeld(
     revision: held.revision,
     ...(promote === undefined ? {} : { promote }),
   });
+}
+
+/**
+ * The cursors of the protocol's first `count` events, read from a watch that
+ * is then closed. Two writes under one lock produce four: the lock, the
+ * presence that follows it, and a revision each.
+ */
+async function watchCursors(
+  subject: InMemoryHost,
+  count: number,
+): Promise<string[]> {
+  const held = await subject.client.acquireLock({
+    protocolId: subject.protocolId,
+    sectionId: INFORMATION,
+  });
+  for (const label of ['one', 'two']) {
+    await subject.client.submit({
+      protocolId: subject.protocolId,
+      sectionId: INFORMATION,
+      document: { ...held.document, label },
+      revision: held.revision,
+    });
+  }
+  const events = await subject.client.watchProtocol({
+    protocolId: subject.protocolId,
+  });
+  const cursors: string[] = [];
+  for await (const event of events) {
+    cursors.push(String(getEventMeta(event)?.id));
+    if (cursors.length === count) break;
+  }
+  await events.return?.(undefined);
+  return cursors;
+}
+
+/** A staged image, as an edit that imported a file holds one. */
+async function stagePortrait(subject: InMemoryHost): Promise<string> {
+  const staged = await subject.client.resources.stage({
+    protocolId: subject.protocolId,
+    requestId: 'request-1',
+    request: {
+      kind: 'content',
+      contentKind: 'image',
+      name: 'Portrait',
+      source: 'portrait.png',
+      contentType: 'image/png',
+      bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+    },
+  });
+  if (staged.status !== 'ok') throw new Error(staged.failure.message);
+  return staged.data.descriptor.id;
+}
+
+/** An Information stage, without an id, whose body is that resource. */
+function informationNaming(
+  subject: InMemoryHost,
+  resourceId: string,
+): SectionDoc {
+  const { id: _id, ...template } = subject.store.read(INFORMATION).document;
+  return {
+    ...template,
+    items: [{ id: 'item-1', type: 'asset', content: resourceId }],
+  };
 }
 
 function stageOrder(subject: InMemoryHost): string[] {
@@ -207,6 +270,100 @@ describe('the in-memory host', () => {
     expect(subject.store.read(STAGE_ORDER).revision.sequence).toBe(
       created.revision.sequence,
     );
+  });
+
+  /**
+   * The gap `submit` cannot close: a stage being ADDED can carry a file the
+   * researcher imported while composing it, and there is no earlier revision
+   * of that stage to promote it with.
+   */
+  it("promotes what a created stage names, in the created stage's own revision", async () => {
+    const subject = host();
+    const staged = await stagePortrait(subject);
+
+    const created = await subject.client.create({
+      protocolId: subject.protocolId,
+      kind: 'stage',
+      document: informationNaming(subject, staged),
+      promote: { promotionId: 'promotion-1', resourceIds: [staged] },
+    });
+
+    expect(created.promoted).toEqual([
+      expect.objectContaining({ id: staged, status: 'committed' }),
+    ]);
+    const assets = subject.store.read(sectionId({ kind: 'assets' }));
+    expect(assets.document[staged]).toMatchObject({
+      name: 'Portrait',
+      type: 'image',
+      source: 'portrait.png',
+    });
+    // The section, the pointer that holds it and the manifest are one
+    // revision, which is what a watcher reading the stream in order sees.
+    expect(assets.revision.sequence).toBe(created.revision.sequence);
+    expect(subject.store.read(created.sectionId).revision.sequence).toBe(
+      created.revision.sequence,
+    );
+    expect(subject.store.read(STAGE_ORDER).revision.sequence).toBe(
+      created.revision.sequence,
+    );
+  });
+
+  it('creates neither the stage nor its pointer when a promotion fails', async () => {
+    const subject = host();
+    const before = stageOrder(subject);
+    const assetsBefore = subject.store.read(sectionId({ kind: 'assets' }));
+
+    const { definedError, isSuccess } = await safe(
+      subject.client.create({
+        protocolId: subject.protocolId,
+        kind: 'stage',
+        document: informationNaming(subject, 'never-staged'),
+        promote: { promotionId: 'promotion-1', resourceIds: ['never-staged'] },
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('PROMOTION_FAILED');
+    // No section id: the host mints one only for a create it is going to make.
+    expect(definedError?.data).toEqual({
+      failure: {
+        reason: 'not-found',
+        message: 'no such staged resource',
+        retryable: false,
+        resourceId: 'never-staged',
+      },
+    });
+    expect(stageOrder(subject)).toEqual(before);
+    expect(subject.store.read(sectionId({ kind: 'assets' }))).toEqual(
+      assetsBefore,
+    );
+    expect(
+      subject.store.has(sectionId({ kind: 'stage', stageId: 'minted-1' })),
+    ).toBe(false);
+  });
+
+  it('answers a repeated create with the stage it already made', async () => {
+    const subject = host();
+    const staged = await stagePortrait(subject);
+    const create = () =>
+      subject.client.create({
+        protocolId: subject.protocolId,
+        kind: 'stage',
+        document: informationNaming(subject, staged),
+        promote: { promotionId: 'promotion-1', resourceIds: [staged] },
+      });
+
+    const first = await create();
+    const order = stageOrder(subject);
+    const again = await create();
+
+    // The answer to the first can be lost. Minting a second stage for the
+    // retry would leave the protocol with two copies of it and the researcher
+    // never told about the first.
+    expect(again.sectionId).toBe(first.sectionId);
+    expect(again.revision).toEqual(first.revision);
+    expect(again.promoted).toEqual(first.promoted);
+    expect(stageOrder(subject)).toEqual(order);
   });
 
   it('refuses to create a section whose document is not shaped like one', async () => {
@@ -793,6 +950,226 @@ describe('the in-memory host', () => {
       status: 'staged',
     });
     expect(staged.status === 'ok' && staged.data.resources).toEqual([]);
+  });
+
+  it('refuses to stage a file with nothing in it', async () => {
+    const subject = host();
+    const staged = await subject.client.resources.stage({
+      protocolId: subject.protocolId,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Empty',
+        source: 'empty.png',
+        contentType: 'image/png',
+        bytes: new Blob([], { type: 'image/png' }),
+      },
+    });
+
+    // Staged, it would promote into a manifest entry naming an image with no
+    // pixels, which the interview would try to show.
+    expect(staged).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'invalid-content' },
+    });
+    const listed = await subject.client.resources.list({
+      protocolId: subject.protocolId,
+      status: 'staged',
+    });
+    expect(listed.status === 'ok' && listed.data.resources).toEqual([]);
+  });
+
+  it('keeps a staged secret to the session that staged it', async () => {
+    const subject = host();
+    const staged = await subject.client.resources.stage({
+      protocolId: subject.protocolId,
+      requestId: 'request-1',
+      request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging a secret failed');
+
+    // Neither half of what promoting somebody else's secret would take is
+    // reachable from another session: staging is that edit's, so a
+    // collaborator is not shown the resource id, and the handle is minted
+    // independently of that id, so it cannot be worked out from one either.
+    const collaborator = subject.asCollaborator(COLLABORATOR);
+    const listed = await collaborator.resources.list({
+      protocolId: subject.protocolId,
+      status: 'staged',
+    });
+    if (listed.status !== 'ok') throw new Error('listing failed');
+    expect(listed.data.resources).toEqual([]);
+    expect(staged.data.handle).not.toContain(staged.data.descriptor.id);
+
+    // The session that staged it still has it: this is scoping, not hiding.
+    const mine = await subject.client.resources.list({
+      protocolId: subject.protocolId,
+      status: 'staged',
+    });
+    if (mine.status !== 'ok') throw new Error('listing failed');
+    expect(mine.data.resources.map((resource) => resource.id)).toEqual([
+      staged.data.descriptor.id,
+    ]);
+
+    const held = await collaborator.acquireLock({
+      protocolId: subject.protocolId,
+      sectionId: INFORMATION,
+    });
+    const forged = await safe(
+      collaborator.submit({
+        protocolId: subject.protocolId,
+        sectionId: INFORMATION,
+        document: held.document,
+        revision: held.revision,
+        promote: {
+          promotionId: 'promotion-1',
+          resourceIds: [staged.data.descriptor.id],
+          secretHandles: [`staged-secret:${staged.data.descriptor.id}`],
+        },
+      }),
+    );
+
+    expect(forged.definedError?.code).toBe('PROMOTION_FAILED');
+    expect(
+      subject.store.read(sectionId({ kind: 'assets' })).document[
+        staged.data.descriptor.id
+      ],
+    ).toBeUndefined();
+  });
+
+  it('answers a retried submit with the revision it already wrote', async () => {
+    const subject = host();
+    const staged = await subject.client.resources.stage({
+      protocolId: subject.protocolId,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Portrait',
+        source: 'portrait.png',
+        contentType: 'image/png',
+        bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+      },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const promotion = {
+      promotionId: 'promotion-1',
+      resourceIds: [staged.data.descriptor.id],
+    };
+
+    const first = await submitHeld(subject, INFORMATION, promotion);
+    const committed = subject.store.read(INFORMATION);
+    const again = await submitHeld(subject, INFORMATION, promotion);
+
+    // The answer to the first can be lost. What the retry is told is what that
+    // attempt wrote — the same revision, not a second one nothing changed in.
+    expect(again).toEqual(first);
+    expect(subject.store.read(INFORMATION)).toEqual(committed);
+
+    await subject.client.releaseLock({
+      protocolId: subject.protocolId,
+      sectionId: INFORMATION,
+    });
+    const afterRelease = await subject.client.submit({
+      protocolId: subject.protocolId,
+      sectionId: INFORMATION,
+      document: committed.document,
+      revision: committed.revision,
+      promote: promotion,
+    });
+
+    // By the time a retry goes out the editor may have closed and given the
+    // lock back. Refusing then would tell the researcher to discard a draft
+    // that was saved.
+    expect(afterRelease).toEqual(first);
+  });
+
+  it('says which section a refactor cannot find', async () => {
+    const subject = host();
+    const { definedError, isSuccess } = await safe(
+      subject.client.refactor.deleteEntityType({
+        protocolId: subject.protocolId,
+        entity: 'node',
+        typeId: 'ghost',
+      }),
+    );
+
+    // A stale client deleting a type another editor has already removed gets
+    // the refusal the contract declares, not an internal failure that reaches
+    // a caller over a transport as nothing it can act on.
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('SECTION_NOT_FOUND');
+    expect(definedError?.data).toMatchObject({
+      sectionId: sectionId({ kind: 'codebookNode', typeId: 'ghost' }),
+    });
+  });
+
+  it('resumes from the cursor the transport says the client reached', async () => {
+    const subject = host();
+    const cursors = await watchCursors(subject, 4);
+
+    // A transport resuming a dropped socket re-invokes the handler with the
+    // same input and the id of the last event it delivered. Starting from the
+    // input would hand this connection everything between the two again, and
+    // the channel applies what it is given.
+    const resumed = await subject.client.watchProtocol(
+      { protocolId: subject.protocolId, since: cursors[0] },
+      { lastEventId: cursors[2] },
+    );
+    const replayed: string[] = [];
+    for await (const event of resumed) {
+      replayed.push(String(getEventMeta(event)?.id));
+      break;
+    }
+    await resumed.return?.(undefined);
+
+    expect(replayed).toEqual([cursors[3]]);
+  });
+
+  it('keeps a holder editing when its watch stream starts again', async () => {
+    const subject = host();
+    await subject.client.acquireLock({
+      protocolId: subject.protocolId,
+      sectionId: PERSON,
+    });
+    const first = await subject.client.watchProtocol({
+      protocolId: subject.protocolId,
+    });
+    await first.next();
+    await first.return(undefined);
+
+    const second = await subject.client.watchProtocol({
+      protocolId: subject.protocolId,
+    });
+    await second.next();
+    const holder = subject.store.holderOf(PERSON);
+    await second.return(undefined);
+
+    // The lock survives the drop, so the editor behind it is still editing.
+    // Rejoining as a viewer would tell every read-only editor of that section
+    // that nobody is in it.
+    expect(holder).toMatchObject({
+      displayName: 'Ada',
+      mode: 'editing',
+      sectionId: PERSON,
+    });
+  });
+
+  it('keeps the section it was seeded with when the seed is changed after', () => {
+    const seed = sectionsFromProtocol(FIXTURE);
+    const subject = createInMemoryHost({ sections: seed });
+    const document = seed[INFORMATION];
+    if (document === undefined) throw new Error('no information section');
+
+    document.label = 'Changed behind the store';
+
+    // Holding the caller's object would let it change the protocol with no
+    // lock check, no revision, no event, and a content hash that no longer
+    // describes what is stored.
+    expect(subject.store.read(INFORMATION).document.label).not.toBe(
+      'Changed behind the store',
+    );
   });
 });
 

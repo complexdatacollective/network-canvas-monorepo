@@ -325,6 +325,68 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     expect(preview.data.url.startsWith('data:image/png;base64,')).toBe(true);
   });
 
+  it('promotes a staged file with the stage being created, not a later submit', async () => {
+    const { host, client } = await open();
+    const bytes = new Blob([new Uint8Array([137, 80, 78, 71])], {
+      type: 'image/png',
+    });
+    const staged = await client.resources.stage({
+      protocolId: host.protocolId,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Nook',
+        source: 'nook.png',
+        contentType: 'image/png',
+        bytes,
+      },
+    });
+    if (staged.status !== 'ok') throw new Error(staged.failure.message);
+    const resourceId = staged.data.descriptor.id;
+
+    // A stage being ADDED has no revision to submit, so the create is the only
+    // place its imported file can become part of the protocol.
+    const created = await client.create({
+      protocolId: host.protocolId,
+      kind: 'stage',
+      document: {
+        type: 'Information',
+        label: 'Information',
+        title: 'Welcome',
+        items: [{ id: 'item-1', type: 'asset', content: resourceId }],
+      },
+      promote: { promotionId: 'promotion-1', resourceIds: [resourceId] },
+    });
+    expect(created.promoted).toEqual([
+      expect.objectContaining({ id: resourceId, status: 'committed' }),
+    ]);
+
+    const manifest = await client.getSection({
+      protocolId: host.protocolId,
+      sectionId: ASSETS,
+    });
+    expect(manifest.document[resourceId]).toMatchObject({
+      name: 'Nook',
+      type: 'image',
+      source: 'nook.png',
+    });
+    expect(manifest.revision.sequence).toBe(created.revision.sequence);
+
+    const section = await client.getSection({
+      protocolId: host.protocolId,
+      sectionId: created.sectionId,
+    });
+    expect(section.revision.sequence).toBe(created.revision.sequence);
+
+    const preview = await client.resources.preview({
+      protocolId: host.protocolId,
+      resourceId,
+    });
+    if (preview.status !== 'ok') throw new Error(preview.failure.message);
+    expect(preview.data.url.endsWith(await base64Of(bytes))).toBe(true);
+  });
+
   it('forgets a staged resource that is discarded', async () => {
     const { host, client } = await open();
     const staged = await client.resources.stage({

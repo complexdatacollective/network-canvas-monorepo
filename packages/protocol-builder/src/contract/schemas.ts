@@ -178,6 +178,8 @@ export const ResourceDescriptorSchema = z.object({
   contentType: z.string().optional(),
 });
 
+export type ResourceDescriptor = z.output<typeof ResourceDescriptorSchema>;
+
 export const ResourceFailureReasonSchema = z.enum([
   'invalid-content',
   'invalid-request',
@@ -253,11 +255,19 @@ export const CreateInputSchema = z.object({
   document: SectionDocumentSchema,
   /** Where a created stage lands in the stage order; appended when absent. */
   position: z.number().int().nonnegative().optional(),
+  /**
+   * The staged resources the created section names, on the same terms as a
+   * submit's: a stage being ADDED can carry an imported file, and there is no
+   * revision of it to submit them with afterwards.
+   */
+  promote: ResourcePromotionRequestSchema.optional(),
 });
 
 export const CreateResultSchema = z.object({
   sectionId: SectionIdSchema,
   revision: RevisionSchema,
+  /** What `promote` committed; absent when the create promoted nothing. */
+  promoted: z.array(ResourceDescriptorSchema).optional(),
 });
 
 export const CodebookSubjectSchema = z.discriminatedUnion('entity', [

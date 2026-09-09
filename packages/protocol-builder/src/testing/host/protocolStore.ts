@@ -21,6 +21,7 @@ import { EventQueue } from './eventQueue.ts';
 import {
   entityTypeReferences,
   inRemovalOrder,
+  stageReferences,
   variableReferences,
   withoutReference,
 } from './references.ts';
@@ -50,6 +51,7 @@ export type AcquireOutcome =
 export type SubmitOutcome =
   | Readonly<{ status: 'written'; revision: Revision }>
   | Readonly<{ status: 'notLockHolder'; holder?: Presence }>
+  | Readonly<{ status: 'blocked'; blocked: SectionHolder[] }>
   | Readonly<{ status: 'invalidShape'; issues: SectionIssue[] }>;
 
 export type CreateOutcome =
@@ -59,6 +61,7 @@ export type CreateOutcome =
       revision: Revision;
     }>
   | Readonly<{ status: 'exists'; sectionId: ProtocolSectionId }>
+  | Readonly<{ status: 'blocked'; blocked: SectionHolder[] }>
   | Readonly<{
       status: 'invalidShape';
       sectionId: ProtocolSectionId;
@@ -72,9 +75,13 @@ export type RefactorOutcome =
       changedSections: ProtocolSectionId[];
     }>
   | Readonly<{ status: 'blocked'; blocked: SectionHolder[] }>
+  | Readonly<{ status: 'notFound'; sectionId: ProtocolSectionId }>
   | Readonly<{ status: 'referenced'; remaining: SectionReference[] }>;
 
 type SectionWrite = readonly [ProtocolSectionId, SectionDoc | undefined];
+
+const ASSETS = sectionId({ kind: 'assets' });
+const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
 export type CreatableSectionKind =
   | 'stage'
@@ -115,9 +122,13 @@ export class InMemoryProtocolStore {
   ) {
     this.#nextId = nextId;
     for (const [id, document] of Object.entries(sections)) {
+      // Copied for the reason `read` gives: the seed is the caller's object,
+      // and a caller that kept it and changed it would otherwise change the
+      // protocol with no lock check, no revision and no event.
+      const stored = structuredClone(document);
       this.#sections.set(sectionId(parseSectionId(id)), {
-        document,
-        revision: { sequence: 0n, contentHash: contentHash(document) },
+        document: stored,
+        revision: { sequence: 0n, contentHash: contentHash(stored) },
       });
     }
   }
@@ -187,7 +198,7 @@ export class InMemoryProtocolStore {
     const owner = this.#locks.get(id);
     if (owner === undefined || owner.sessionId !== principal.sessionId) return;
     this.#locks.delete(id);
-    this.#setPresence(principal, 'viewing', undefined);
+    this.#presenceFollowsLocks(principal);
     this.#publish({ type: 'lock', sectionId: id });
     this.#publishPresence();
   }
@@ -213,17 +224,50 @@ export class InMemoryProtocolStore {
     }
     const issues = shapeIssues(id, document);
     if (issues.length > 0) return { status: 'invalidShape', issues };
+    if (assetEntries !== undefined) {
+      // The manifest is a section like any other and a promotion writes it, so
+      // it is taken on the terms every cross-section write uses. An editor
+      // holding it would submit its own whole manifest next, over the entry
+      // this promotion added, leaving the saved section naming a resource the
+      // protocol no longer has.
+      const blocked = this.#blockedBy([ASSETS], new Set([id]), principal);
+      if (blocked.length > 0) return { status: 'blocked', blocked };
+    }
     const sequence = this.#advance();
     const revision = this.#write(id, document, sequence);
     if (assetEntries !== undefined) this.#mergeAssets(assetEntries, sequence);
     return { status: 'written', revision };
   }
 
+  /**
+   * Creates a section, registers its pointer, and writes the asset manifest
+   * entries handed with it, as one revision.
+   *
+   * The entries are the create's promotion, and the manifest is taken on the
+   * same terms as the pointer section: a create holds no lock, so an editor
+   * holding the manifest blocks it, whoever they are.
+   */
   create(
     kind: CreatableSectionKind,
     document: SectionDoc,
     position: number | undefined,
+    assetEntries?: Readonly<Record<string, unknown>>,
   ): CreateOutcome {
+    // The stage order is the created stage's pointer section, and this write
+    // registers it there. An editor holding the order has a whole-section
+    // draft that does not know about the new stage, and its next submit
+    // would take the pointer out while leaving the section behind — a
+    // protocol `assembleProtocolSections` refuses. Held by anyone, this
+    // session included, is a refusal: a create is not made under a lock, so
+    // there is none it could be writing through.
+    const touched = [
+      ...(kind === 'stage' ? [STAGE_ORDER] : []),
+      ...(assetEntries === undefined ? [] : [ASSETS]),
+    ];
+    if (touched.length > 0) {
+      const blocked = this.#blockedBy(touched, new Set());
+      if (blocked.length > 0) return { status: 'blocked', blocked };
+    }
     // The ego codebook is the one creatable singleton: a protocol whose
     // researcher has not given the participant any attributes yet has no such
     // section, and adding the first one is what creates it.
@@ -243,6 +287,7 @@ export class InMemoryProtocolStore {
     if (kind === 'stage' && id !== undefined) {
       this.#registerStagePointer(id, position, sequence);
     }
+    if (assetEntries !== undefined) this.#mergeAssets(assetEntries, sequence);
     return { status: 'created', sectionId: target, revision };
   }
 
@@ -253,17 +298,29 @@ export class InMemoryProtocolStore {
    * order naming a section that is gone, is a protocol `assembleProtocolSections`
    * refuses. Held sections block it on the terms every cross-section change
    * uses, since the deleting caller holds neither.
+   *
+   * A stage other stages depend on is refused, not swept. The refactors strip
+   * the references they remove because a codebook dialog is the researcher
+   * deciding a variable is gone; nothing here is a decision about ANOTHER
+   * stage, and a sweep would silently rewrite a collaborator's skip logic — or
+   * cut a NarrativePedigree from the pedigree it describes — as a side effect
+   * of removing something else. So the dependants are named and the deletion
+   * is the researcher's to make once they have dealt with them.
    */
   deleteStage(stageId: string, principal: HostPrincipal): RefactorOutcome {
     const target = sectionId({ kind: 'stage', stageId });
-    this.read(target);
-    const orderId = sectionId({ kind: 'stageOrder' });
-    const order = this.read(orderId).document;
+    if (!this.has(target)) return { status: 'notFound', sectionId: target };
+    if (!this.has(STAGE_ORDER)) {
+      return { status: 'notFound', sectionId: STAGE_ORDER };
+    }
+    const remaining = stageReferences(this.#documentsWith([]), stageId);
+    if (remaining.length > 0) return { status: 'referenced', remaining };
+    const order = this.read(STAGE_ORDER).document;
     const stages = stageList(order).filter((entry) => entry !== stageId);
     return this.#applyRefactor(
       [
         [target, undefined],
-        [orderId, { ...order, stages }],
+        [STAGE_ORDER, { ...order, stages }],
       ],
       principal,
       new Set(),
@@ -280,6 +337,7 @@ export class InMemoryProtocolStore {
     principal: HostPrincipal,
   ): RefactorOutcome {
     const owner = codebookSectionId(subject);
+    if (!this.has(owner)) return { status: 'notFound', sectionId: owner };
     const state = this.read(owner);
     const variables = isRecord(state.document.variables)
       ? state.document.variables
@@ -303,7 +361,7 @@ export class InMemoryProtocolStore {
         ? { entity: 'node', type: typeId }
         : { entity: 'edge', type: typeId },
     );
-    this.read(owner);
+    if (!this.has(owner)) return { status: 'notFound', sectionId: owner };
     return this.#refactor(
       [[owner, undefined]],
       (documents) => entityTypeReferences(documents, entity, typeId),
@@ -335,7 +393,10 @@ export class InMemoryProtocolStore {
     this.#watchers.add(queue);
     const backlog = this.#eventsAfter(since);
     let last = backlog.at(-1)?.cursor ?? since;
-    this.#setPresence(principal, 'viewing', undefined);
+    // A lock outlives the stream that reported it, so a principal rejoining
+    // after a drop is still editing what it holds: saying "viewing" here would
+    // tell every read-only editor of that section that nobody is in it.
+    this.#presenceFollowsLocks(principal);
     this.#publishPresence();
     try {
       // Every reader gets its own copy of an event, for the reason `read`
@@ -414,13 +475,11 @@ export class InMemoryProtocolStore {
     principal: HostPrincipal,
     owned: ReadonlySet<ProtocolSectionId>,
   ): RefactorOutcome {
-    const blocked: SectionHolder[] = [];
-    for (const [id] of writes) {
-      const owner = this.#locks.get(id);
-      if (owner === undefined) continue;
-      if (owner.sessionId === principal.sessionId && owned.has(id)) continue;
-      blocked.push({ sectionId: id, holder: this.holderOf(id) });
-    }
+    const blocked = this.#blockedBy(
+      writes.map(([id]) => id),
+      owned,
+      principal,
+    );
     if (blocked.length > 0) return { status: 'blocked', blocked };
     const sequence = this.#advance();
     let revision: Revision | undefined;
@@ -438,17 +497,42 @@ export class InMemoryProtocolStore {
     return { status: 'applied', revision, changedSections };
   }
 
+  /**
+   * The sections of `ids` an editor holds that this write may not write
+   * through, with who holds each.
+   *
+   * `owned` names the sections the caller is changing under its own lock — the
+   * section a submit is for, the codebook section a dialog has open and is
+   * deleting from. Every other section the write touches has to be free, this
+   * session's own included: two editors in one tab are one session, and a
+   * draft lives in its form rather than in the store, so a write under one of
+   * them is undone by that editor's next whole-section submit.
+   */
+  #blockedBy(
+    ids: readonly ProtocolSectionId[],
+    owned: ReadonlySet<ProtocolSectionId>,
+    principal?: HostPrincipal,
+  ): SectionHolder[] {
+    const blocked: SectionHolder[] = [];
+    for (const id of ids) {
+      const owner = this.#locks.get(id);
+      if (owner === undefined) continue;
+      if (owner.sessionId === principal?.sessionId && owned.has(id)) continue;
+      blocked.push({ sectionId: id, holder: this.holderOf(id) });
+    }
+    return blocked;
+  }
+
   #registerStagePointer(
     stageId: string,
     position: number | undefined,
     sequence: bigint,
   ): void {
-    const orderId = sectionId({ kind: 'stageOrder' });
-    const order = this.read(orderId).document;
+    const order = this.read(STAGE_ORDER).document;
     const stages = stageList(order);
     const at = position === undefined ? stages.length : position;
     stages.splice(at, 0, stageId);
-    this.#write(orderId, { ...order, stages }, sequence);
+    this.#write(STAGE_ORDER, { ...order, stages }, sequence);
   }
 
   #write(
@@ -477,8 +561,11 @@ export class InMemoryProtocolStore {
     entries: Readonly<Record<string, unknown>>,
     sequence: bigint,
   ): void {
-    const id = sectionId({ kind: 'assets' });
-    this.#write(id, { ...this.read(id).document, ...entries }, sequence);
+    this.#write(
+      ASSETS,
+      { ...this.read(ASSETS).document, ...entries },
+      sequence,
+    );
   }
 
   #remove(id: ProtocolSectionId, sequence: bigint): Revision {
@@ -487,9 +574,15 @@ export class InMemoryProtocolStore {
       sequence,
       contentHash: previous.revision.contentHash,
     };
+    const owner = this.#locks.get(id);
     this.#sections.delete(id);
     this.#locks.delete(id);
     this.#publish({ type: 'revision', sectionId: id, revision });
+    // The lock went with the section, so its holder is no longer editing it.
+    if (owner !== undefined && this.#presence.has(owner.sessionId)) {
+      this.#presenceFollowsLocks(owner);
+      this.#publishPresence();
+    }
     return revision;
   }
 
@@ -538,6 +631,33 @@ export class InMemoryProtocolStore {
       principal.sessionId,
       this.#presenceOf(principal, mode, id),
     );
+  }
+
+  /**
+   * Sets the principal's presence from the locks it holds rather than from
+   * whatever it was doing last: editing a section it holds, viewing when it
+   * holds none.
+   *
+   * Presence and locks come apart wherever one outlives the other — a watch
+   * stream ends and starts again, a section is deleted under its holder, one
+   * of several locks is given back — and `holderOf` answers a read-only editor
+   * from this map.
+   */
+  #presenceFollowsLocks(principal: HostPrincipal): void {
+    const held = this.#heldBy(principal);
+    this.#setPresence(
+      principal,
+      held === undefined ? 'viewing' : 'editing',
+      held,
+    );
+  }
+
+  /** A section this session holds, if it holds any. */
+  #heldBy(principal: HostPrincipal): ProtocolSectionId | undefined {
+    for (const [id, owner] of this.#locks) {
+      if (owner.sessionId === principal.sessionId) return id;
+    }
+    return undefined;
   }
 
   /**
