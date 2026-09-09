@@ -352,6 +352,66 @@ describe('the protocol state layer', () => {
     expect(screen.getByLabelText('lock').textContent).toBe('yours');
   });
 
+  it('gives back a lock granted for a section the editor has left', async () => {
+    const host = newHost();
+    // Held BEFORE the host sees it, so the release the cleanup sends for the
+    // section this editor left arrives while nobody holds that lock and the
+    // grant lands after it.
+    const gated = withheldAcquire(silentChannel(host.client), INFORMATION);
+
+    const view = render(
+      <ProtocolBuilder client={gated.client} protocolId={host.protocolId}>
+        <Lock id={INFORMATION} />
+      </ProtocolBuilder>,
+    );
+    await waitFor(() => {
+      expect(gated.waiting()).toBe(1);
+    });
+
+    view.rerender(
+      <ProtocolBuilder client={gated.client} protocolId={host.protocolId}>
+        <Lock id={EGO_FORM} />
+      </ProtocolBuilder>,
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText('lock').textContent).toBe('yours');
+    });
+
+    gated.release();
+    // The host has granted the lock for the section this editor left, and the
+    // release its cleanup sent went out before that. Nothing else will ever
+    // hand this one back: the section would stay read-only to every
+    // collaborator with nobody editing it.
+    await waitFor(() => {
+      expect(gated.granted()).toEqual(['held']);
+    });
+    await waitFor(() => {
+      expect(host.store.holderOf(INFORMATION)).toBeUndefined();
+    });
+    expect(host.store.holderOf(EGO_FORM)?.displayName).toBe('Ada');
+  });
+
+  it('says a section is unavailable when its acquire is refused', async () => {
+    const host = newHost();
+    const missing = sectionId({ kind: 'stage', stageId: 'never-existed' });
+
+    render(
+      <ProtocolBuilder
+        client={silentChannel(host.client)}
+        protocolId={host.protocolId}
+      >
+        <Lock id={missing} />
+      </ProtocolBuilder>,
+    );
+
+    // A section deleted while this editor was opening it, or a transport that
+    // dropped: nothing retries, so an editor left acquiring is one the
+    // researcher can neither use nor close.
+    await waitFor(() => {
+      expect(screen.getByLabelText('lock').textContent).toBe('unavailable');
+    });
+  });
+
   it('does not open a cached section for editing before the acquire answers', async () => {
     const host = newHost();
     await host.asCollaborator(COLLABORATOR).acquireLock({
@@ -386,6 +446,50 @@ describe('the protocol state layer', () => {
     gated.release();
     await waitFor(() => {
       expect(screen.getByLabelText('lock').textContent).toBe('Grace');
+    });
+  });
+
+  it('hands the editor what its submit promoted', async () => {
+    const host = newHost();
+    const staged = await host.client.resources.stage({
+      protocolId: host.protocolId,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Portrait',
+        source: 'portrait.png',
+        contentType: 'image/png',
+        bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+      },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+
+    render(
+      <ProtocolBuilder
+        client={silentChannel(host.client)}
+        protocolId={host.protocolId}
+      >
+        <PromotingEditor
+          id={INFORMATION}
+          resourceId={staged.data.descriptor.id}
+        />
+      </ProtocolBuilder>,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'save' })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'save' }));
+
+    // The host answers a promoting submit with what it committed — metadata
+    // staging never had — and this hook is what a component has instead of the
+    // client, so an editor that cannot see it cannot settle the staged rows it
+    // was holding.
+    await waitFor(() => {
+      expect(screen.getByLabelText('promoted').textContent).toBe(
+        'Portrait: committed',
+      );
     });
   });
 
@@ -436,6 +540,43 @@ function Editor({ id }: Readonly<{ id: ProtocolSectionId }>) {
   );
 }
 
+/** An editor whose save promotes a resource it staged during the edit. */
+function PromotingEditor({
+  id,
+  resourceId,
+}: Readonly<{ id: ProtocolSectionId; resourceId: string }>) {
+  const { document, submit } = useSectionMutation(id);
+  const [promoted, setPromoted] = useState('none');
+  return (
+    <>
+      <output aria-label="promoted">{promoted}</output>
+      <button
+        type="button"
+        disabled={document === undefined}
+        onClick={() => {
+          if (document === undefined) return;
+          void submit(document, {
+            promotionId: 'promotion-1',
+            resourceIds: [resourceId],
+          }).then((result) => {
+            if (result.status !== 'written') {
+              setPromoted(result.status);
+              return;
+            }
+            setPromoted(
+              (result.promoted ?? [])
+                .map((resource) => `${resource.name}: ${resource.status}`)
+                .join(', '),
+            );
+          });
+        }}
+      >
+        save
+      </button>
+    </>
+  );
+}
+
 function NodeTypes() {
   const types = useEntityTypes('node');
   return (
@@ -469,6 +610,41 @@ function gatedAcquire(client: ProtocolBuilderClient, held: ProtocolSectionId) {
   return {
     client: wrapped,
     waiting: () => gates.length,
+    release: () => {
+      for (const open of gates.splice(0)) open();
+    },
+  };
+}
+
+/**
+ * The host's client with one section's `acquireLock` held at a gate the test
+ * opens BEFORE the request reaches the host, so an acquire can be granted
+ * after the editor that asked for it has already given the lock back.
+ */
+function withheldAcquire(
+  client: ProtocolBuilderClient,
+  held: ProtocolSectionId,
+) {
+  const gates: (() => void)[] = [];
+  const granted: string[] = [];
+  const acquireLock: ProtocolBuilderClient['acquireLock'] = async (
+    input,
+    options,
+  ) => {
+    if (input.sectionId !== held) return client.acquireLock(input, options);
+    await new Promise<void>((open) => gates.push(open));
+    const answer = await client.acquireLock(input, options);
+    granted.push(answer.lock);
+    return answer;
+  };
+  const wrapped = new Proxy(client, {
+    get: (target, property) =>
+      property === 'acquireLock' ? acquireLock : Reflect.get(target, property),
+  });
+  return {
+    client: wrapped,
+    waiting: () => gates.length,
+    granted: () => granted,
     release: () => {
       for (const open of gates.splice(0)) open();
     },
@@ -513,7 +689,9 @@ function Lock({ id }: Readonly<{ id: ProtocolSectionId }>) {
         ? 'yours'
         : access === 'pending'
           ? 'acquiring'
-          : (holder?.displayName ?? 'someone')}
+          : access === 'unavailable'
+            ? 'unavailable'
+            : (holder?.displayName ?? 'someone')}
     </output>
   );
 }

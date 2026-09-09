@@ -1,3 +1,4 @@
+import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -8,6 +9,7 @@ import type {
   ResourceInspectionSchema,
   ResourcePreviewSchema,
   ResourceSecretStorageSchema,
+  Revision,
   StageResourceInputSchema,
 } from '../../contract/schemas.ts';
 
@@ -28,10 +30,29 @@ export type DiscardOutcome =
   | Readonly<{ status: 'failed'; failure: Failure }>;
 
 type StagedEntry = Readonly<{
+  /**
+   * The session that staged this. Staging belongs to the edit that imported
+   * the file: a collaborator cancelling their own edit must not take away
+   * what somebody else is about to submit, and nobody may promote bytes they
+   * never staged.
+   */
+  owner: string;
   descriptor: Descriptor;
   handle?: string;
   bytes?: Blob;
   secret?: string;
+}>;
+
+/** What one `promotionId` committed, for the retry that asks about it again. */
+type CompletedPromotion = Readonly<{
+  revision: Revision;
+  promoted: Descriptor[];
+  /**
+   * The section a `create` minted for this promotion. A retried create cannot
+   * be answered without it: the host would mint a second id, and the retry
+   * would be told about a section its first attempt never made.
+   */
+  createdSection?: string;
 }>;
 
 function failure(
@@ -59,6 +80,20 @@ async function base64(blob: Blob): Promise<string> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Everything one session's staging requests are keyed under. */
+function sessionPrefix(sessionId: string): string {
+  return `${sessionId}\u0000`;
+}
+
+/** A staging request's identity: whose it is, what it asked for, and its id. */
+function requestKey(
+  sessionId: string,
+  kind: string,
+  requestId: string,
+): string {
+  return `${sessionPrefix(sessionId)}${kind}\u0000${requestId}`;
 }
 
 function descriptorFromManifestEntry(
@@ -92,15 +127,17 @@ const KindSchema = z.enum([
  * Staged resources for the in-memory host: bytes and secrets an edit imported,
  * kept until its submit promotes them or its cancel drops them.
  *
- * One staging area per protocol rather than one per connection, which a host
- * serving several editors would need: a `discard` with no id here drops
- * everything staged, not everything this caller staged.
+ * Every staged entry belongs to the session that staged it, and no procedure
+ * reaches another session's: a protocol has as many edits open as it has
+ * editors, and staging that ignored them would let one editor's cancel take
+ * away the file another was about to submit. Committed resources are the
+ * protocol's and are shared by everyone.
  */
 export class InMemoryResourceStore {
   readonly secretStorage: SecretStorage = 'plaintext';
   readonly #staged = new Map<string, StagedEntry>();
   readonly #byRequest = new Map<string, string>();
-  readonly #promoted = new Map<string, Descriptor[]>();
+  readonly #promoted = new Map<string, CompletedPromotion>();
   /**
    * What staging knew about each promoted resource. The asset manifest records
    * a name, a type and a source; the MIME type and the size are the host's to
@@ -116,8 +153,20 @@ export class InMemoryResourceStore {
     this.#content = new Map(Object.entries(content));
   }
 
-  stagedDescriptors(): Descriptor[] {
-    return [...this.#staged.values()].map((entry) => entry.descriptor);
+  /** A staged entry, if this session is the one that staged it. */
+  #owned(sessionId: string, resourceId: string): StagedEntry | undefined {
+    const entry = this.#staged.get(resourceId);
+    return entry?.owner === sessionId ? entry : undefined;
+  }
+
+  #ownedBy(sessionId: string): StagedEntry[] {
+    return [...this.#staged.values()].filter(
+      (entry) => entry.owner === sessionId,
+    );
+  }
+
+  stagedDescriptors(sessionId: string): Descriptor[] {
+    return this.#ownedBy(sessionId).map((entry) => entry.descriptor);
   }
 
   committedDescriptors(assets: SectionDoc): Descriptor[] {
@@ -131,29 +180,47 @@ export class InMemoryResourceStore {
   }
 
   stage(
+    sessionId: string,
     requestId: string,
     request: StageRequest,
   ): ResourceOutcome<Readonly<{ descriptor: Descriptor; handle?: string }>> {
-    const existingId = this.#byRequest.get(requestId);
+    // The kind is part of the key because the contract asks only that a
+    // request id be stable across a retry of one intent, not that it be unique
+    // across the pickers an editor has open: a secret answered with an earlier
+    // upload's descriptor is a resource the submit cannot promote.
+    const key = requestKey(sessionId, request.kind, requestId);
+    const existingId = this.#byRequest.get(key);
     const existing =
       existingId === undefined ? undefined : this.#staged.get(existingId);
     if (existing !== undefined) {
       return { status: 'ok', data: existing };
     }
+    if (request.kind === 'content' && request.bytes.size === 0) {
+      // An empty file promotes into a manifest entry an interview would try to
+      // show: an image with no pixels, a roster with no network.
+      return failure('invalid-content', 'that file is empty');
+    }
     const id = this.#nextId();
     const entry: StagedEntry =
       request.kind === 'secret'
         ? {
+            owner: sessionId,
             descriptor: {
               id,
               kind: 'apikey',
               name: request.name,
               status: 'staged',
             },
-            handle: `staged-secret:${id}`,
+            // Minted independently of the resource id, which `list` shows to
+            // everyone in the protocol: a handle derived from that id would be
+            // one any collaborator could work out, and the handle is the whole
+            // of what stops a secret being promoted by somebody who never
+            // staged it.
+            handle: `staged-secret:${uuid()}`,
             secret: request.value,
           }
         : {
+            owner: sessionId,
             descriptor: {
               id,
               kind: request.contentKind,
@@ -166,7 +233,7 @@ export class InMemoryResourceStore {
             bytes: request.bytes,
           };
     this.#staged.set(id, entry);
-    this.#byRequest.set(requestId, id);
+    this.#byRequest.set(key, id);
     return {
       status: 'ok',
       data: {
@@ -183,6 +250,7 @@ export class InMemoryResourceStore {
    * completed, so a refused submit leaves staging as it was.
    */
   manifestFor(
+    sessionId: string,
     resourceIds: readonly string[],
     secretHandles: readonly string[] | undefined,
   ): ResourceOutcome<
@@ -191,7 +259,7 @@ export class InMemoryResourceStore {
     const entries: Record<string, unknown> = {};
     const promoted: Descriptor[] = [];
     for (const resourceId of resourceIds) {
-      const entry = this.#staged.get(resourceId);
+      const entry = this.#owned(sessionId, resourceId);
       if (entry === undefined) {
         return failure('not-found', 'no such staged resource', resourceId);
       }
@@ -229,14 +297,17 @@ export class InMemoryResourceStore {
   }
 
   /**
-   * The promotion this id already made, if it made one.
+   * The submit this promotion id already made, if it made one: the revision it
+   * wrote and what it committed.
    *
    * `promotionId` is stable across an uncertain retry, so a client whose
-   * answer was lost asks again with the same id: it is told what was committed
-   * rather than that the bytes and manifest entries it cannot see are somebody
-   * else's problem.
+   * answer was lost asks again with the same id and is told what that attempt
+   * committed. Answering it is the whole of the retry: writing the section a
+   * second time would make a revision nothing changed in, and by then the
+   * editor may have given the lock back, which would turn a save that
+   * succeeded into a refusal the researcher is told to discard a draft over.
    */
-  completedPromotion(promotionId: string): Descriptor[] | undefined {
+  completedPromotion(promotionId: string): CompletedPromotion | undefined {
     return this.#promoted.get(promotionId);
   }
 
@@ -244,8 +315,14 @@ export class InMemoryResourceStore {
     promotionId: string,
     promoted: readonly Descriptor[],
     resourceIds: readonly string[],
+    revision: Revision,
+    createdSection?: string,
   ): void {
-    this.#promoted.set(promotionId, [...promoted]);
+    this.#promoted.set(promotionId, {
+      revision,
+      promoted: [...promoted],
+      ...(createdSection === undefined ? {} : { createdSection }),
+    });
     for (const descriptor of promoted) {
       this.#committed.set(descriptor.id, descriptor);
     }
@@ -258,20 +335,32 @@ export class InMemoryResourceStore {
     }
   }
 
-  discard(resourceId: string | undefined): DiscardOutcome {
+  /** Drops what this session staged: one resource, or its whole edit. */
+  discard(sessionId: string, resourceId: string | undefined): DiscardOutcome {
     if (resourceId === undefined) {
-      this.#staged.clear();
-      this.#byRequest.clear();
+      for (const [id, entry] of this.#staged) {
+        if (entry.owner === sessionId) this.#staged.delete(id);
+      }
+      for (const key of this.#byRequest.keys()) {
+        if (key.startsWith(sessionPrefix(sessionId))) {
+          this.#byRequest.delete(key);
+        }
+      }
       return { status: 'ok' };
     }
-    if (!this.#staged.delete(resourceId)) {
+    if (this.#owned(sessionId, resourceId) === undefined) {
       return failure('not-found', 'no such staged resource', resourceId);
     }
+    this.#staged.delete(resourceId);
     return { status: 'ok' };
   }
 
-  inspect(assets: SectionDoc, resourceId: string): ResourceOutcome<Inspection> {
-    const descriptor = this.#descriptor(assets, resourceId);
+  inspect(
+    assets: SectionDoc,
+    resourceId: string,
+    sessionId: string,
+  ): ResourceOutcome<Inspection> {
+    const descriptor = this.#descriptor(assets, resourceId, sessionId);
     if (descriptor === undefined) {
       return failure('not-found', 'no such resource', resourceId);
     }
@@ -281,8 +370,9 @@ export class InMemoryResourceStore {
   async preview(
     assets: SectionDoc,
     resourceId: string,
+    sessionId: string,
   ): Promise<ResourceOutcome<Preview>> {
-    const descriptor = this.#descriptor(assets, resourceId);
+    const descriptor = this.#descriptor(assets, resourceId, sessionId);
     if (descriptor === undefined) {
       return failure('not-found', 'no such resource', resourceId);
     }
@@ -290,7 +380,7 @@ export class InMemoryResourceStore {
       return failure('unsupported-kind', 'a secret has no preview', resourceId);
     }
     const bytes =
-      this.#staged.get(resourceId)?.bytes ??
+      this.#owned(sessionId, resourceId)?.bytes ??
       (descriptor.source === undefined
         ? undefined
         : this.#content.get(descriptor.source));
@@ -311,8 +401,12 @@ export class InMemoryResourceStore {
     };
   }
 
-  #descriptor(assets: SectionDoc, resourceId: string): Descriptor | undefined {
-    const staged = this.#staged.get(resourceId);
+  #descriptor(
+    assets: SectionDoc,
+    resourceId: string,
+    sessionId: string,
+  ): Descriptor | undefined {
+    const staged = this.#owned(sessionId, resourceId);
     if (staged !== undefined) return staged.descriptor;
     const entry = assets[resourceId];
     return isRecord(entry)
