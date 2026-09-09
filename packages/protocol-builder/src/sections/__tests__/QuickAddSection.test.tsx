@@ -218,6 +218,51 @@ describe('what a quick-add name generator records', () => {
   });
 
   /**
+   * This box is inside the stage's own form, and the form's default button is
+   * the host's Save — associated by `form=`, which makes it the default button
+   * wherever the host renders it. So Enter, which is what anyone typing a name
+   * into a box beside a Create button presses, ran the browser's implicit
+   * submission: the stage saved and closed, the attribute was never created,
+   * and the name went with the editor.
+   *
+   * Driven as a real key press rather than through `userEvent`, which looks
+   * for a submit button INSIDE the form and so never performs the submission
+   * this is about — the assertion is that the event is answered here and does
+   * not go on to the form.
+   */
+  it('creates the attribute when Enter is pressed in the name box', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+    });
+
+    const box = await screen.findByRole('textbox', {
+      name: /Create a new attribute/,
+    });
+    await harness.user.type(box, 'nickname');
+    const enter = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    });
+    await act(async () => {
+      box.dispatchEvent(enter);
+    });
+
+    expect(enter.defaultPrevented).toBe(true);
+    await waitFor(() =>
+      expect(
+        Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+          (variable) => variable.name,
+        ),
+      ).toContain('nickname'),
+    );
+    expect(
+      screen.getByRole('combobox', { name: /Attribute filled in/ }),
+    ).not.toHaveValue('name');
+  });
+
+  /**
    * The create submits the name as it was when the button was pressed, so a
    * name typed while the answer was on its way is not the one the answer is
    * about: the success erased it and a refusal would have contradicted it. The

@@ -605,6 +605,18 @@ function NewQuickAddAttribute() {
         // is about. `CreatableVariablePickerControl` holds its own for the
         // same reason.
         disabled={busy}
+        // Enter here means "create the attribute", and it has to be said so.
+        // This box is inside the stage's own `<form>`, whose default button is
+        // the host's Save — associated by `form=` and therefore the form's
+        // default button wherever the host renders it — so the browser's
+        // implicit submission saved and closed the editor instead, creating
+        // nothing and taking the typed name with it.
+        onKeyDown={(event) => {
+          // A key pressed to compose a character is not a key press.
+          if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+          event.preventDefault();
+          void create();
+        }}
         onChange={(next: unknown) => {
           // The notice is about the create that has just happened; naming
           // another attribute is the start of a different one.
