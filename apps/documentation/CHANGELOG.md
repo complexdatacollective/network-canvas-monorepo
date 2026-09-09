@@ -1,5 +1,19 @@
 # @codaco/documentation
 
+## 0.5.0
+
+### Minor Changes
+
+- Expanded the Fresco "FAQ for IT Departments" to answer the questions institutional IT and security teams ask before approving a deployment: who develops and funds Network Canvas and who owns it, whether Fresco is a vendor product and on what terms it may be used, where to obtain the software, which sites the project itself hosts and what data they hold, whether Fresco supports institutional single sign-on and how to restrict the dashboard to an institutional network in the meantime, and how vulnerabilities and updates are handled, including the project's responsibilities and timelines. Updated the project FAQ's funding answer to list the current and maintenance awards. Corrected two related statements elsewhere in the Fresco docs: container image tags carry no `v` prefix (Advanced Deployment), and a passkey is not guaranteed to be multi-factor because Fresco requests but does not require user verification (Accounts).
+
+### Patch Changes
+
+- Document Fresco's `/api/health` liveness endpoint in the Advanced Deployment guide and the IT FAQ: it is unauthenticated, reports only the service status, and never names the running version or uptime.
+- Describe Fresco's new `REQUIRE_TWO_FACTOR` environment variable in the Accounts & Security guide, the deployment environment-variable reference, and the FAQ for IT departments: what it enforces for password accounts, why it is an environment variable rather than a dashboard setting, how a locked-out colleague is recovered, and why passkey accounts are exempt.
+- The Fresco FAQ for IT departments' network-restriction mitigation now discloses a real gap: Next.js dispatches Server Actions by a request header rather than by URL, so a signed-in researcher's session cookie can still authorize an action (export, deletion, settings changes) through a path the guidance leaves public. Closing this requires app-level enforcement that does not exist yet; the section now says so plainly rather than implying the path split is a complete boundary.
+- Disclose a limit of the Fresco IT FAQ's institutional network-restriction guidance: a Server Action can be invoked through any URL a valid session cookie reaches, including routes the guidance leaves public, the same way the `/api/uploadthing` exception is already documented as session-gated rather than network-gated. Also add the not-yet-configured `/expired` page, which binds a Server Action, to the list of researcher surfaces to restrict.
+- The Fresco Accounts & Security guide and the FAQ for IT Departments now state that Fresco requires WebAuthn user verification for every passkey, so a passkey sign-in always combines possession of the authenticator with a biometric or PIN check, and explain what to do about a passkey registered on a security key that cannot verify its user.
+
 ## 0.4.2
 
 ### Patch Changes
