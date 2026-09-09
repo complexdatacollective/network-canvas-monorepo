@@ -20,15 +20,15 @@
  * landing on separate branches change separate lines. `__tests__/
  * stageEditorRegistry.test.tsx` holds that shape in place.
  *
- * A FAMILY DECLARES ITS PART IN `stage-editor-contract.ts`, never here. This
- * module imports every family's part, so a part module that imported anything
- * from this one would close a cycle: whichever of the two a program reaches
- * first, the other is half-evaluated, and `REGISTRY_PARTS` reads a binding
- * that does not hold its part yet. The contract is a leaf — it imports the
- * stage types and nothing else — which is what makes it
- * safe for a part to import, and it is where the rest of what a family writes
- * against already lives. `defineStageEditorPart` is deliberately NOT
- * re-exported from here: a family that reached it through this module would
+ * AN EDITOR DECLARES ITS PART AWAY FROM HERE — through `defineStageEditor`,
+ * or `defineStageEditorPart` in `stage-editor-contract.ts` for a part composed
+ * by hand — never in this module. This module imports every part, so a part
+ * module that imported anything from this one would close a cycle: whichever
+ * of the two a program reaches first, the other is half-evaluated, and
+ * `REGISTRY_PARTS` reads a binding that does not hold its part yet. Neither
+ * helper's module imports this one, which is what makes both safe for an
+ * editor to import, and `defineStageEditorPart` is deliberately NOT
+ * re-exported from here: an editor that reached it through this module would
  * close the cycle again, and only sometimes.
  */
 import type { StageType } from '@codaco/protocol-validation';

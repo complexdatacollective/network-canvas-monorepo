@@ -71,9 +71,11 @@ export type StageNameSectionProps = Readonly<{
    * gets the right behaviour in each. `propose` overrides that answer, in
    * either direction, for an editor that has a reason to.
    *
-   * `panels` is supplied by the editor rather than read from the draft, because
-   * a name generator's panels are held in the form as per-index leaves that
-   * only the section writing them can assemble.
+   * `panels` is supplied by the editor rather than read from the draft here,
+   * because only an interface that HAS panels may ask about them: the schema
+   * gives `panels` to two of the three name generators and to nothing else, so
+   * a heading that read the path itself would be asking every stage about a
+   * key most of them do not have.
    */
   autoName?: Readonly<{
     propose?: boolean;
