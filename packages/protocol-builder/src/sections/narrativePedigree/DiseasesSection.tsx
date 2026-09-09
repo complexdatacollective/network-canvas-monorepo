@@ -15,7 +15,10 @@ import { useStageValue } from '../../form/stageFormHooks.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import { usePedigreeVariableIndexes } from '../pedigree/entityTypeReset.ts';
-import { slotCrossClassIssue } from '../pedigree/slotWiring.ts';
+import {
+  slotCrossClassIssue,
+  unusableVariableIssue,
+} from '../pedigree/slotWiring.ts';
 import { useRowRenderers } from '../rowRenderers.tsx';
 import {
   DiseaseEditor,
@@ -91,6 +94,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * The row's own COMMITTED attribute escapes both, found BY ROW ID rather than
  * by the row the dialog opened on, so a mapping this edit did not introduce
  * leaves the researcher an editor they can close.
+ *
+ * What it does NOT escape is the attribute having gone: an attribute deleted,
+ * retyped, or left behind by a change of source pedigree is not an authoring
+ * decision anybody made, and nothing can be recorded under it. That is asked
+ * first, of the row's attribute whatever its history, exactly as the pedigree's
+ * own nomination-prompt rows and slot controls ask it.
  */
 export default function DiseasesSection() {
   const intl = useAppIntl();
@@ -133,6 +142,27 @@ export default function DiseasesSection() {
   const onBeforeSave = useCallback(
     (value: unknown) => {
       if (!isRecord(value)) return value;
+
+      // The attribute itself, before anything about who else writes it, and
+      // before the committed value escapes anything below: a collaborator can
+      // delete it or retype it — and repointing this stage's pedigree at
+      // another node type takes it away just as completely — while the row's
+      // dialog is open. The picker drops it at once, being built from the same
+      // codebook, but the row is already holding it and the required rule sees
+      // a nonempty value, so Save closed the row over a reference whole-protocol
+      // validation then refuses. There is deliberately no committed-value
+      // escape here: a pre-existing conflict is somebody's authoring decision,
+      // an attribute that is gone is not, and nothing can be recorded under it.
+      // The same order, and the same seam, as the pedigree's nomination-prompt
+      // rows and its slot controls.
+      const unusable =
+        subject === null
+          ? undefined
+          : unusableVariableIssue(allVariables, value.variable, 'boolean');
+      if (unusable !== undefined) {
+        return { success: false, fieldErrors: { variable: [unusable] } };
+      }
+
       const committed = committedVariableFor(value.id);
       const issue = slotCrossClassIssue({
         roleMap,

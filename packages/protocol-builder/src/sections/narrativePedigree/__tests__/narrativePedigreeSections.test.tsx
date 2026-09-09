@@ -1135,6 +1135,77 @@ describe('a source pedigree that changes while this stage is open', () => {
     expect(dispatch).not.toHaveBeenCalled();
     expect(harness.pendingCommands()).toEqual([]);
   });
+
+  /**
+   * The row dialog's own save, over an attribute that has just gone.
+   *
+   * The picker is built from the live codebook, so it stops offering the
+   * attribute at once — but the row is already holding it, the required rule
+   * sees a nonempty value, and this gate let the row's COMMITTED attribute
+   * escape every check it had. So Save closed the row over a reference
+   * whole-protocol validation then refuses, with nothing on screen marking the
+   * disease the researcher has to fix. The same rule, asked in the same order,
+   * as the pedigree's nomination-prompt rows.
+   */
+  it('refuses a disease whose attribute a collaborator deleted', async () => {
+    const harness = renderStageEditor(openRecordedFixture());
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit disease' }),
+    );
+    await screen.findByRole('dialog');
+    harness.receiveCodebookUpdate({
+      node: {
+        family_member: familyMemberCodebook({ remove: 'hasConditionX' }),
+      },
+    });
+
+    await harness.user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }),
+    );
+
+    expect(
+      await screen.findByText(
+        '"hasConditionX" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+      ),
+    ).toBeInTheDocument();
+    // The dialog stays open, holding the disease the researcher wrote, rather
+    // than closing over a row the stage cannot save.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * The same gate for the other way an attribute stops being usable: it is
+   * still in the codebook, so nothing about who else writes it has changed,
+   * but a true/false marker is not what it holds any more — and a disease
+   * writes `true` onto family members or it marks nobody.
+   */
+  it('refuses a disease whose attribute a collaborator retyped', async () => {
+    const harness = renderStageEditor(openRecordedFixture());
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit disease' }),
+    );
+    await screen.findByRole('dialog');
+    harness.receiveCodebookUpdate({
+      node: {
+        family_member: familyMemberCodebook({
+          add: { hasConditionX: { name: 'hasConditionX', type: 'text' } },
+        }),
+      },
+    });
+
+    await harness.user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }),
+    );
+
+    expect(
+      await screen.findByText(
+        '"hasConditionX" is no longer the kind of attribute this control can use, because its type was changed somewhere else. Choose another attribute.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
 });
 
 /**
