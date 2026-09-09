@@ -62,9 +62,24 @@ type TapBehaviour =
   | typeof TAP_CREATE_EDGE
   | typeof TAP_HIGHLIGHT;
 
+/**
+ * `allowHighlighting`, not `variable`, is what says a tap marks the node.
+ *
+ * The two are different configurations, and the schema says so: the attribute
+ * site carries `usageRequiresSibling: 'allowHighlighting'`, and the interview
+ * reads `variable` for the COLOUR whatever the flag holds while gating the
+ * tap-to-toggle branch on the flag alone. A prompt naming an attribute with
+ * the flag off therefore colours its nodes by something the participant cannot
+ * change — a reading of an attribute a form may well validate elsewhere.
+ *
+ * Read from the variable, that prompt opened on "mark the node", and the
+ * effect below wrote the flag on: opening the dialog and saving it handed the
+ * participant a switch into an attribute the researcher had reserved for
+ * reading, and changed what the study collects.
+ */
 const tapBehaviourOf = (item: Record<string, unknown>): TapBehaviour => {
   if (asNestedText(item.edges, 'create') !== undefined) return TAP_CREATE_EDGE;
-  if (asNestedText(item.highlight, 'variable') !== undefined) {
+  if (asNestedBoolean(item.highlight, 'allowHighlighting') === true) {
     return TAP_HIGHLIGHT;
   }
   return TAP_NOTHING;
@@ -200,12 +215,19 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
 
   const chooseTapBehaviour = (next: TapBehaviour) => {
     if (next === tapBehaviour) return;
+    const left = tapBehaviour;
     setTapBehaviour(next);
-    // The abandoned side is cleared rather than left to unmount: a value the
+    // The side being LEFT is cleared rather than left to unmount: a value the
     // researcher entered and then moved away from is parked by the store, and
     // parked values are replayed into the saved prompt.
-    if (next !== TAP_CREATE_EDGE) setRowValue(CREATE_EDGE_FIELD, undefined);
-    if (next !== TAP_HIGHLIGHT)
+    //
+    // Only that side. Clearing every side but the chosen one threw away a
+    // `highlight.variable` this dialog had never shown — a prompt that colours
+    // its nodes without letting the participant toggle them opens on
+    // "nothing", and answering the question about TAPPING took its colours
+    // with it.
+    if (left === TAP_CREATE_EDGE) setRowValue(CREATE_EDGE_FIELD, undefined);
+    if (left === TAP_HIGHLIGHT)
       setRowValue(HIGHLIGHT_VARIABLE_FIELD, undefined);
   };
 

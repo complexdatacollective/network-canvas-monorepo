@@ -332,6 +332,91 @@ const personVariables = (
   return Object.entries(variables) as [string, { type?: unknown }][];
 };
 
+/**
+ * A prompt that COLOURS its nodes by an attribute without letting the
+ * participant change it.
+ *
+ * `highlight.variable` alone is display-only by the schema's own reading —
+ * `entity-attribute-reference` tags the site `usageRequiresSibling:
+ * 'allowHighlighting'`, and the interview gates its tap-to-toggle branch on
+ * the flag while reading `variable` for the colour regardless. So the
+ * attribute is one this stage READS, and nothing the participant does here
+ * writes it.
+ */
+const DISPLAY_ONLY_PROMPT = {
+  id: 'sociogram-prompt-1',
+  text: 'Place the people who know each other close together',
+  layout: { layoutVariable: 'layout' },
+  highlight: { variable: 'highlighted', allowHighlighting: false },
+};
+
+describe('a prompt that only colours its nodes', () => {
+  /**
+   * Opening the dialog and saving it is not a decision about anything, and the
+   * one it must not make is this one: classified by `highlight.variable` alone,
+   * the prompt opened on "mark the node" and an effect wrote
+   * `allowHighlighting: true` behind it — so merely looking at a display-only
+   * prompt handed the participant a switch that writes to an attribute the
+   * researcher had reserved for reading, and the data collected changed.
+   */
+  it('does not start writing the attribute it only reads', async () => {
+    const harness = renderStageEditor(sociogramHolding(DISPLAY_ONLY_PROMPT));
+
+    const prompt = await openPrompt(harness);
+    // Tapping does nothing, which is exactly what this prompt says: the
+    // colours are drawn from an attribute the participant cannot toggle.
+    expect(prompt.getByRole('option', { name: /Nothing/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]).toEqual(
+      DISPLAY_ONLY_PROMPT,
+    );
+  });
+
+  /**
+   * And choosing what tapping does leaves the colouring alone.
+   *
+   * The chooser owns the two things a TAP can do, so it clears the side it is
+   * leaving and nothing else. Clearing both of the other two on every change
+   * threw away a `highlight.variable` that had never been on screen — the
+   * researcher was answering a question about tapping, and the answer took the
+   * prompt's colours with it.
+   */
+  it('keeps the colouring when the researcher says what tapping does', async () => {
+    const harness = renderStageEditor(sociogramHolding(DISPLAY_ONLY_PROMPT));
+
+    const prompt = await openPrompt(harness);
+    await harness.user.click(
+      prompt.getByRole('option', { name: /Create a connection/ }),
+    );
+    await harness.user.click(
+      await prompt.findByRole('radio', { name: /family_edge/ }),
+    );
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    const saved = prompts(request?.stageDocument ?? {})[0];
+    expect(saved?.highlight).toEqual({
+      variable: 'highlighted',
+      allowHighlighting: false,
+    });
+    expect(saved?.edges).toEqual({
+      create: 'family_edge',
+      display: ['family_edge'],
+    });
+  });
+});
+
 describe('the order a sociogram hands unplaced nodes over in', () => {
   /**
    * An order the prompt already has opens switched ON, holding its rules.
