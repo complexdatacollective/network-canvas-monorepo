@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
@@ -186,23 +186,40 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
    * changes, because a `variable` arriving without its flag is a prompt that
    * colours nodes rather than one that marks them.
    *
-   * Turned OFF only for a prompt that had it on. Writing `false` for every
-   * other prompt made opening a dialog and closing it again an answer: a
-   * prompt that had never said anything about tapping acquired
-   * `highlight.allowHighlighting: false` the first time anyone looked at it,
-   * and an unanswered question saved as an answer is content in the
-   * researcher's protocol that the researcher did not write. A committed `true`
-   * still has to be written over, though, and `undefined` will not do it — the
-   * row is rebuilt by laying the dialog's fields over the committed row, so a
-   * field holding nothing lets the committed value through.
+   * Turned OFF for a prompt that had it on, and for one THIS DIALOG turned it
+   * on for. Writing `false` for every other prompt made opening a dialog and
+   * closing it again an answer: a prompt that had never said anything about
+   * tapping acquired `highlight.allowHighlighting: false` the first time
+   * anyone looked at it, and an unanswered question saved as an answer is
+   * content in the researcher's protocol that the researcher did not write.
+   *
+   * What the committed flag cannot decide is what to do about the flag this
+   * dialog itself has already written. Asked only about the committed value,
+   * a prompt switched to "mark the node" and then away again before saving
+   * kept the `true` written on the way in while the chooser cleared the
+   * attribute beside it — a prompt marking nothing, which the schema refuses,
+   * and beside `edges.create` a conflict between two mutually exclusive
+   * behaviours. So the write is undone as deliberately as it was made:
+   * `false` where the committed prompt said `true`, and otherwise cleared,
+   * which puts the row back exactly as it arrived. Clearing is what
+   * `undefined` does to a value this dialog wrote and nothing else — the row
+   * is rebuilt by laying the dialog's changed fields over the committed row,
+   * so a field back at what it started with lets the committed value through
+   * and a committed `true` still has to be written over.
    */
+  const markedHere = useRef(false);
   useEffect(() => {
     if (tapBehaviour === TAP_HIGHLIGHT) {
+      markedHere.current = true;
       setRowValue(ALLOW_HIGHLIGHTING_FIELD, true);
       return;
     }
-    if (!committedAllowHighlighting) return;
-    setRowValue(ALLOW_HIGHLIGHTING_FIELD, false);
+    if (committedAllowHighlighting) {
+      setRowValue(ALLOW_HIGHLIGHTING_FIELD, false);
+      return;
+    }
+    if (!markedHere.current) return;
+    setRowValue(ALLOW_HIGHLIGHTING_FIELD, undefined);
   }, [committedAllowHighlighting, setRowValue, tapBehaviour]);
 
   /**

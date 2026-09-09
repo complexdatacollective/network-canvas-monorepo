@@ -849,6 +849,146 @@ const openAttributeCreator = async (
   return attributeCreator();
 };
 
+/**
+ * What tapping a node does, and what the prompt saves for it.
+ *
+ * `highlight.allowHighlighting` is the flag the interview gates tap-to-mark
+ * on, and `highlight.variable` is read for the node's COLOUR whatever the flag
+ * holds. So the two are different configurations, and one rule decides both
+ * halves of this family: the FLAG says whether the prompt writes the
+ * attribute, and the attribute alone never does.
+ *
+ * Enumerated rather than asserted case by case, because each of the three tap
+ * choices has to be right against each of the three committed prompts — no
+ * highlight at all, one that only colours, one that already marks — and the
+ * two failures this replaces were each one cell of that table. A prompt sent
+ * to "mark the node" and back kept the `true` written on the way in beside an
+ * attribute the chooser had just cleared; and a colouring prompt switched to
+ * marking escaped the writer-conflict check as an unchanged pick, because the
+ * check read the attribute and not the flag.
+ */
+describe('what tapping a node does, against what the prompt already said', () => {
+  const HIGHLIGHT_ATTRIBUTE = 'highlighted';
+
+  const promptSaying = (
+    highlight?: Record<string, unknown>,
+  ): Record<string, unknown> => ({
+    id: 'sociogram-prompt-1',
+    text: 'Place the people who know each other close together',
+    layout: { layoutVariable: 'layout' },
+    ...(highlight === undefined ? {} : { highlight }),
+  });
+
+  const NOTHING = /Nothing/;
+  const CREATE_EDGE = /Create a connection/;
+  const MARK = /Mark the node/;
+
+  type Case = Readonly<{
+    /** What the protocol holds for this prompt's `highlight`. */
+    committed?: Record<string, unknown>;
+    /** Whether a form elsewhere collects the attribute, making it validated. */
+    collected?: boolean;
+    /** The tap choices the researcher makes, in order. */
+    taps: readonly RegExp[];
+    /** An attribute chosen while "mark the node" is the current choice. */
+    marks?: string;
+    /** An edge type chosen while "create a connection" is the current choice. */
+    draws?: string;
+    /** The prompt's `highlight` after the save, or a refusal instead. */
+    expected: Record<string, unknown> | undefined | 'refused';
+  }>;
+
+  const cases: Readonly<Record<string, Case>> = {
+    'a prompt with no highlight, marked': {
+      taps: [MARK],
+      marks: HIGHLIGHT_ATTRIBUTE,
+      expected: { allowHighlighting: true, variable: HIGHLIGHT_ATTRIBUTE },
+    },
+    'a prompt with no highlight, marked and then left alone again': {
+      taps: [MARK, NOTHING],
+      expected: undefined,
+    },
+    'a prompt with no highlight, marked and then set to draw instead': {
+      taps: [MARK, CREATE_EDGE],
+      draws: 'family_edge',
+      expected: undefined,
+    },
+    'a colouring prompt, opened and saved': {
+      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
+      taps: [],
+      expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
+    },
+    'a colouring prompt whose attribute a form collects, switched to marking': {
+      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
+      collected: true,
+      taps: [MARK],
+      expected: 'refused',
+    },
+    'a marking prompt whose attribute a form already collects, opened and saved':
+      {
+        committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: true },
+        collected: true,
+        taps: [],
+        expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: true },
+      },
+    'a marking prompt, told to do nothing': {
+      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: true },
+      taps: [NOTHING],
+      expected: { allowHighlighting: false },
+    },
+  };
+
+  it.each(Object.entries(cases))('%s', async (_name, scenario) => {
+    const harness = renderStageEditor(
+      sociogramHolding(promptSaying(scenario.committed)),
+    );
+    if (scenario.collected === true) {
+      collectInAForm(harness, HIGHLIGHT_ATTRIBUTE);
+    }
+
+    const prompt = await openPrompt(harness);
+    for (const tap of scenario.taps) {
+      await harness.user.click(prompt.getByRole('option', { name: tap }));
+      if (tap === MARK && scenario.marks !== undefined) {
+        await harness.user.selectOptions(
+          await prompt.findByRole('combobox', { name: 'Attribute marked' }),
+          scenario.marks,
+        );
+      }
+      if (tap === CREATE_EDGE && scenario.draws !== undefined) {
+        await harness.user.click(
+          await prompt.findByRole('radio', { name: scenario.draws }),
+        );
+      }
+    }
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+
+    if (scenario.expected === 'refused') {
+      // The dialog staying open IS the refusal, and the reason is the one the
+      // codebook editor gives for the same conflict.
+      await prompt.findByText(
+        readMessage(validatedElsewhereMessage(HIGHLIGHT_ATTRIBUTE)),
+      );
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      return;
+    }
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const request = await harness.submit();
+    const saved = prompts(request?.stageDocument ?? {})[0];
+    if (scenario.expected === undefined) {
+      // Absent, not empty: an unanswered question saved as an answer is
+      // content in the researcher's protocol that the researcher did not
+      // write.
+      expect(saved).not.toHaveProperty('highlight');
+      return;
+    }
+    expect(saved?.highlight).toEqual(scenario.expected);
+  });
+});
+
 /** The id the codebook now files an attribute of this name under. */
 const personVariableIdByName = (
   harness: StageEditorHarness,
