@@ -820,3 +820,70 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     );
   });
 });
+
+/**
+ * The attribute a prompt needs, created from inside the prompt's own dialog.
+ *
+ * Two dialogs are then open at once — the prompt's, and the editor for the
+ * attribute — so the inner one is reached through the control it owns rather
+ * than by asking for "the dialog": which of the two `getByRole` answers with
+ * is not this test's to depend on.
+ */
+const attributeCreator = async (): Promise<ReturnType<typeof within>> => {
+  const name = await screen.findByRole('textbox', { name: 'Attribute name' });
+  const dialog = name.closest('[role="dialog"]');
+  if (dialog === null) {
+    throw new Error('the attribute editor is not inside a dialog');
+  }
+  return within(dialog as HTMLElement);
+};
+
+/** Opens the position-attribute creator from inside the first prompt. */
+const openAttributeCreator = async (
+  harness: StageEditorHarness,
+): Promise<ReturnType<typeof within>> => {
+  const prompt = await openPrompt(harness);
+  await harness.user.click(
+    prompt.getByRole('button', { name: 'Create a new position attribute' }),
+  );
+  return attributeCreator();
+};
+
+describe('creating an attribute a prompt needs without leaving the stage', () => {
+  /**
+   * A lease taken back while the researcher is naming a new attribute.
+   *
+   * The name exists nowhere but this editor, so unmounting it to report the
+   * lost lease throws the researcher's work away in order to say something the
+   * editor says for itself once its own save is refused. The launch control
+   * goes, because a create nobody may start is not on offer; the editor that
+   * is already open stays, which is the rule the row dialog around
+   * `AttributeCodebookControls` and the pedigree's `CreateVariableButton`
+   * already follow.
+   */
+  it('keeps an open attribute draft when the lease is lost', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const creator = await openAttributeCreator(harness);
+    await harness.user.type(
+      creator.getByRole('textbox', { name: 'Attribute name' }),
+      'seating',
+    );
+
+    harness.setReadOnly();
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', {
+          name: 'Create a new position attribute',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'seating',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    ).toBeDisabled();
+  });
+});
