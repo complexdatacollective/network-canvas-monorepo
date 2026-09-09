@@ -1471,3 +1471,67 @@ describe('naming a connection type created from a composer', () => {
     ).toEqual(['family_edge', 'knows']);
   });
 });
+
+/**
+ * What a spectator may do to a composer's forms.
+ *
+ * The node form is mounted through `ProtocolField`, which hands it the
+ * session's read-only state; each connection form is mounted directly, because
+ * it is reached through a row's position rather than a path of its own — so it
+ * was told nothing, and answered only to the disabled fieldset it happens to
+ * sit inside. That made its buttons inert without making the list read-only:
+ * the reorder handle a spectator can do nothing with was still rendered, where
+ * the node list beside it offers none. Asked of the session instead, so what
+ * the researcher is offered cannot depend on which way the list was mounted.
+ */
+describe('a composer whose stage is held by somebody else', () => {
+  it('offers no editing of a connection form either', async () => {
+    const harness = renderStageEditor(openWithConfiguredForms());
+    // Both lists are on screen and editable first, so what follows is the
+    // lease being lost rather than a control that was never rendered.
+    expect(
+      await screen.findByRole('button', {
+        name: 'Create new attribute field for "knows" connections',
+      }),
+    ).toBeInTheDocument();
+
+    act(() => {
+      harness.setReadOnly();
+    });
+
+    // The node form's own list is the measure: it answers to the session, and
+    // the connection list beside it has to answer to it the same way.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', {
+          name: 'Create new node attribute field',
+        }),
+      ).toBeDisabled(),
+    );
+    expect(
+      screen.getByRole('button', {
+        name: 'Create new attribute field for "knows" connections',
+      }),
+    ).toBeDisabled();
+    // And the row's own affordances. Deleting is the one that cannot be
+    // undone by waiting: it lands on the local draft at once, and is saved
+    // when access comes back.
+    for (const control of screen.getAllByRole('button', {
+      name: 'Remove node attribute field',
+    })) {
+      expect(control).toBeDisabled();
+    }
+    expect(
+      screen.getByRole('button', { name: 'Remove connection attribute field' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Edit connection attribute field' }),
+    ).toBeDisabled();
+    // Reordering is not offered at all to a spectator, on either list — the
+    // one affordance an enclosing disabled fieldset does not take away, and so
+    // the one that shows whether this list was told anything.
+    expect(screen.queryAllByRole('button', { name: /^Reorder/ })).toHaveLength(
+      0,
+    );
+  });
+});

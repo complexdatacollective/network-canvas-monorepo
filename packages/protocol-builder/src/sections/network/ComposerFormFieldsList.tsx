@@ -11,6 +11,7 @@ import DialogArrayField, {
   type DialogArrayEditorValidate,
   type DialogArrayFieldProps,
 } from '../../form/arrayFields/DialogArrayField.tsx';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { useRowRenderers } from '../rowRenderers.tsx';
 import { useSubjectVariables } from './codebookOptions.ts';
@@ -64,9 +65,23 @@ export type ComposerFormFieldsListProps = Omit<
 export default function ComposerFormFieldsList({
   subject,
   value,
+  disabled = false,
   ...listProps
 }: ComposerFormFieldsListProps) {
   const intl = useAppIntl();
+  /**
+   * Read-only is a property of the SESSION, not of any one mount.
+   *
+   * A composer's node form reaches this list through `ProtocolField`, which
+   * hands every field the session's read-only state; each connection form is
+   * mounted directly, because it is reached through a row's position rather
+   * than a path of its own — and arrived with neither `disabled` nor
+   * `readOnly`. Its add, edit, delete and reorder controls therefore stayed
+   * live while another collaborator held the lease, and a deletion took effect
+   * on the local draft at once and was saved when access came back. Asked here
+   * so the answer cannot depend on which way the list was mounted.
+   */
+  const { readOnly } = useStageEditorForm();
   const { editorFieldsComponent, previewComponent } = useRowRenderers(
     ComposerFormFieldEditor,
     ComposerFormFieldPreview,
@@ -123,6 +138,7 @@ export default function ComposerFormFieldsList({
       <DialogArrayField<FormFieldRow>
         {...listProps}
         value={value}
+        disabled={disabled || readOnly}
         editorFieldsComponent={editorFieldsComponent}
         previewComponent={previewComponent}
         editorValidate={editorValidate}
