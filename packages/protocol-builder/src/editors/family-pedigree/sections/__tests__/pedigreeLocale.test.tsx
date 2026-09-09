@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
-import { shimMarkdownEditorMeasurement } from '../../__tests__/editorFixtures.tsx';
+import { shimMarkdownEditorMeasurement } from '../../__tests__/editorFixtures.ts';
 import BoundaryOptionsSection from '../BoundaryOptionsSection.tsx';
 import FramingConfigSection from '../FramingConfigSection.tsx';
 import NominationPromptsSection from '../NominationPromptsSection.tsx';

@@ -11,7 +11,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import { nameGeneratorStageEditors } from '../nameGeneratorStageEditors.ts';
+import { nameGeneratorStageEditor } from '../name-generator/NameGeneratorStageEditor.ts';
 
 /**
  * What a Spanish researcher reads when a WHOLE name-generator editor is on
@@ -113,7 +113,7 @@ describe('the name-generator editor under es, at rest', () => {
     const harness = renderStageEditor({
       stage: { type: 'NameGenerator', fields: PANELLED_NAME_GENERATOR },
       locale: 'es',
-      registry: nameGeneratorStageEditors,
+      registry: nameGeneratorStageEditor,
     });
     await settled(harness);
     await screen.findByRole('list', { name: /Paneles/ });

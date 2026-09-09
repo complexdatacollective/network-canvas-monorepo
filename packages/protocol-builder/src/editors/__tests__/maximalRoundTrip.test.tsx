@@ -10,7 +10,7 @@ import { alterEdgeFormStageEditor } from '../alter-edge-form/AlterEdgeFormStageE
 import { alterFormStageEditor } from '../alter-form/AlterFormStageEditor.ts';
 import { egoFormStageEditor } from '../ego-form/EgoFormStageEditor.ts';
 import { informationStageEditor } from '../information/InformationStageEditor.ts';
-import { nameGeneratorStageEditors } from '../nameGeneratorStageEditors.ts';
+import { nameGeneratorStageEditor } from '../name-generator/NameGeneratorStageEditor.ts';
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
 vi.mock('../../fields/RichTextField.tsx', () => ({
@@ -179,7 +179,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'NameGenerator',
     type: 'NameGenerator',
-    registry: nameGeneratorStageEditors,
+    registry: nameGeneratorStageEditor,
     fields: {
       label: 'Name Generator',
       interviewScript: 'Guidance.',

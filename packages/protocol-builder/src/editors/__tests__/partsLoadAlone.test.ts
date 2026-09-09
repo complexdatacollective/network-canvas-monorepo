@@ -9,8 +9,9 @@ import { describe, expect, it } from 'vitest';
 import { alterEdgeFormStageEditor } from '../alter-edge-form/AlterEdgeFormStageEditor.ts';
 import { alterFormStageEditor } from '../alter-form/AlterFormStageEditor.ts';
 import { egoFormStageEditor } from '../ego-form/EgoFormStageEditor.ts';
+import { familyPedigreeStageEditor } from '../family-pedigree/FamilyPedigreeStageEditor.ts';
 import { informationStageEditor } from '../information/InformationStageEditor.ts';
-import { nameGeneratorStageEditors } from '../nameGeneratorStageEditors.ts';
+import { nameGeneratorStageEditor } from '../name-generator/NameGeneratorStageEditor.ts';
 
 /**
  * A part has to be loadable without the registry that composes it.
@@ -36,9 +37,14 @@ describe('a part reached before the registry', () => {
       claims: ['AlterEdgeForm'],
     },
     {
-      name: 'the name generators',
-      part: nameGeneratorStageEditors,
+      name: 'NameGenerator',
+      part: nameGeneratorStageEditor,
       claims: ['NameGenerator'],
+    },
+    {
+      name: 'FamilyPedigree',
+      part: familyPedigreeStageEditor,
+      claims: ['FamilyPedigree'],
     },
   ])('is the set of interfaces $name claims', ({ part, claims }) => {
     expect(Object.keys(part).toSorted()).toEqual(claims);

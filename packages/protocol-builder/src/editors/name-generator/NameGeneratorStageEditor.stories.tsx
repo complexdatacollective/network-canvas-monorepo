@@ -5,7 +5,7 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import StageEditor from '../../StageEditor.tsx';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
-import { nameGeneratorStageEditors } from '../nameGeneratorStageEditors.ts';
+import { nameGeneratorStageEditor } from './NameGeneratorStageEditor.ts';
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Name Generator',
@@ -13,11 +13,11 @@ const meta = {
   args: {
     stageId: 'name-generator-1',
     // Through the dispatcher rather than by naming the component, so the story
-    // also shows that this family claims the interface its stage is of.
+    // also shows that this editor claims the interface its stage is of.
     renderEditor: ({ actions, ...editor }) => (
       <StageEditor
         {...editor}
-        registry={nameGeneratorStageEditors}
+        registry={nameGeneratorStageEditor}
         actions={actions}
       />
     ),

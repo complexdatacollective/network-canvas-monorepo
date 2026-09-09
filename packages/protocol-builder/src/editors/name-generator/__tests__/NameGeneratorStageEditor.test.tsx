@@ -6,7 +6,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
-import { nameGeneratorStageEditors } from '../../nameGeneratorStageEditors.ts';
+import { nameGeneratorStageEditor } from '../NameGeneratorStageEditor.ts';
 import { addInterviewNetworkPanel, chooseNodeType } from './addSidePanel.ts';
 
 /**
@@ -39,15 +39,15 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
 }));
 
 /**
- * The editor as a host reaches it: through its family's registry part, so
- * every mount here also says this interface is dispatched to THIS editor.
+ * The editor as a host reaches it: through its own registry entry, so every
+ * mount here also says this interface is dispatched to THIS editor.
  * The harness's `editor` slot takes an editor for ANY stage type, which a
  * named editor deliberately is not.
  */
 const mountFixture = () =>
   renderStageEditor({
     stageId: 'name-generator-1',
-    registry: nameGeneratorStageEditors,
+    registry: nameGeneratorStageEditor,
   });
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
@@ -55,7 +55,7 @@ const NAME_GENERATOR_INDEX = fixtureStageIds().indexOf('name-generator-1');
 
 const createFixture = () => ({
   create: { type: 'NameGenerator' as const, position: NAME_GENERATOR_INDEX },
-  registry: nameGeneratorStageEditors,
+  registry: nameGeneratorStageEditor,
 });
 
 /**
@@ -400,7 +400,7 @@ describe('the name generator editor', () => {
   it('refuses to save while someone else holds the stage', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
-      registry: nameGeneratorStageEditors,
+      registry: nameGeneratorStageEditor,
       readOnly: true,
     });
     await screen.findByRole('textbox', { name: 'Form title' });

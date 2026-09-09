@@ -7,9 +7,8 @@
  * 1. Import its part and add it to `REGISTRY_PARTS`.
  * 2. Delete the stage types it claims from `AWAITING_STAGE_EDITORS`.
  *
- * A part is what `defineStageEditor` answers with — one editor, one interface
- * — or, for the families still to be rewritten as section lists, the set of
- * interfaces they claim between them.
+ * A part is what `defineStageEditor` answers with: one editor, one interface,
+ * one line here.
  *
  * Nothing else — `stageEditorRegistry` and every check below are derived from
  * those two lists, and both are checked in both directions at compile time, so
@@ -37,9 +36,9 @@ import type { StageType } from '@codaco/protocol-validation';
 import { alterEdgeFormStageEditor } from './editors/alter-edge-form/AlterEdgeFormStageEditor.ts';
 import { alterFormStageEditor } from './editors/alter-form/AlterFormStageEditor.ts';
 import { egoFormStageEditor } from './editors/ego-form/EgoFormStageEditor.ts';
+import { familyPedigreeStageEditor } from './editors/family-pedigree/FamilyPedigreeStageEditor.ts';
 import { informationStageEditor } from './editors/information/InformationStageEditor.ts';
-import { nameGeneratorStageEditors } from './editors/nameGeneratorStageEditors.ts';
-import { pedigreeAndAnonymisationStageEditors } from './editors/pedigreeAndAnonymisationStageEditors.ts';
+import { nameGeneratorStageEditor } from './editors/name-generator/NameGeneratorStageEditor.ts';
 import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
 
 /**
@@ -115,9 +114,9 @@ const REGISTRY_PARTS = [
   alterEdgeFormStageEditor,
   alterFormStageEditor,
   egoFormStageEditor,
+  familyPedigreeStageEditor,
   informationStageEditor,
-  nameGeneratorStageEditors,
-  pedigreeAndAnonymisationStageEditors,
+  nameGeneratorStageEditor,
 ] as const satisfies readonly StageEditorRegistryPart[];
 
 export const stageEditorRegistry: StageEditorRegistryPart =

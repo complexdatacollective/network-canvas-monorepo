@@ -8,7 +8,7 @@ import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
   familyPedigreeEditor,
   shimMarkdownEditorMeasurement,
-} from '../family-pedigree/__tests__/editorFixtures.tsx';
+} from '../family-pedigree/__tests__/editorFixtures.ts';
 import { addFamilyMemberVariable } from '../family-pedigree/sections/__tests__/pedigreeFixtures.tsx';
 
 shimMarkdownEditorMeasurement();

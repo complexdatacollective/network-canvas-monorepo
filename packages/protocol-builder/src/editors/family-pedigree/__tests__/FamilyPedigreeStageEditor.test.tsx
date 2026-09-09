@@ -15,11 +15,11 @@ import {
   expectStatesItsPosition,
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
-import { pedigreeAndAnonymisationStageEditors } from '../../pedigreeAndAnonymisationStageEditors.ts';
+import { familyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.ts';
 import {
   familyPedigreeEditor,
   shimMarkdownEditorMeasurement,
-} from './editorFixtures.tsx';
+} from './editorFixtures.ts';
 
 shimMarkdownEditorMeasurement();
 
@@ -140,8 +140,8 @@ describe('the family pedigree stage editor', () => {
     expectStatesItsPosition('family-pedigree-1');
   });
 
-  it('claims exactly this interface in its family', () => {
-    expect(pedigreeAndAnonymisationStageEditors.FamilyPedigree).toBeDefined();
+  it('claims exactly this interface', () => {
+    expect(Object.keys(familyPedigreeStageEditor)).toEqual(['FamilyPedigree']);
   });
 
   /**

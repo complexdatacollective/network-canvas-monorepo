@@ -5,17 +5,19 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import StageEditor from '../../StageEditor.tsx';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
-import { pedigreeAndAnonymisationStageEditors } from '../pedigreeAndAnonymisationStageEditors.ts';
+import { familyPedigreeStageEditor } from './FamilyPedigreeStageEditor.ts';
 
 const meta = {
   title: 'Protocol Builder/Editors/Family Pedigree',
   component: StageEditorStoryHost,
   args: {
     stageId: 'family-pedigree-1',
+    // Through the dispatcher rather than by naming the component, so the story
+    // also shows that this editor claims the interface its stage is of.
     renderEditor: ({ actions, ...editor }) => (
       <StageEditor
         {...editor}
-        registry={pedigreeAndAnonymisationStageEditors}
+        registry={familyPedigreeStageEditor}
         actions={actions}
       />
     ),

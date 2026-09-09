@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import { useStageValue } from '../../../../form/stageFormHooks.ts';
 import type { AutoStageNamePanel } from '../../../../naming/useAutoStageName.ts';
+import type { StageHeadingSectionProps } from '../../../../sections/stage-heading/StageHeadingSection.tsx';
 
 /** Where a name generator that offers side panels keeps them. */
 const PANELS = 'panels';
@@ -17,13 +18,14 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * The stage's side panels, for the name proposed to a stage being created.
+ * What the name proposed to a new stage is qualified by, for a generator that
+ * offers side panels.
  *
- * Read here rather than inside `StageNameSection` because only an interface
- * that HAS panels should ask about them: the schema gives `panels` to
- * `NameGenerator` and `NameGeneratorQuickAdd` and to nothing else (a roster
- * name generator's list IS the panel). `NameGeneratorFrame` calls this only
- * for the editors that declare `hasSidePanels`, which are exactly those two.
+ * Composed by the editors that HAVE panels rather than read inside the heading,
+ * because the schema gives `panels` to `NameGenerator` and
+ * `NameGeneratorQuickAdd` and to nothing else (a roster name generator's list
+ * IS the panel), and the heading must not ask a third about a key its
+ * interface does not have.
  *
  * Only `dataSource` is carried, because it is the only part of a panel the
  * qualifier reads — see `resolveStageQualifier`, which turns panels that all
@@ -41,25 +43,28 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * of slots, working around a dormant sentinel parked on the container path.
  * Here the whole list is ONE registered field value — the list is a field
  * component, and never registers per-index leaves, so a deleted row cannot
- * resurrect itself — so the container path IS the panels, and
- * switching the section off parks `undefined` at exactly the path this reads.
+ * resurrect itself — so the container path IS the panels, and switching the
+ * section off parks `undefined` at exactly the path this reads.
  */
-export function usePanelsForAutoName():
-  | readonly AutoStageNamePanel[]
-  | undefined {
+export function useAutoNameFromPanels(): StageHeadingSectionProps['autoName'] {
   const rawPanels = useStageValue(PANELS);
 
   return useMemo(() => {
-    if (!Array.isArray(rawPanels)) return undefined;
+    // The section switched off, which is a stage with no panels rather than a
+    // stage whose panels are unknown: the name says nothing about them.
+    if (!Array.isArray(rawPanels)) return {};
     // An empty list is passed on as an empty list. `resolvePanelQualifier`
     // already reads it as the same absence a missing list is — a stage with no
     // panels is named as if the section had never been switched on — and a
     // second guard here would only be a second thing to keep in step with it.
-    return rawPanels.filter(isRecord).map((panel) => ({
-      dataSource:
-        typeof panel.dataSource === 'string' && panel.dataSource !== ''
-          ? panel.dataSource
-          : INTERVIEW_NETWORK,
-    }));
+    const panels: readonly AutoStageNamePanel[] = rawPanels
+      .filter(isRecord)
+      .map((panel) => ({
+        dataSource:
+          typeof panel.dataSource === 'string' && panel.dataSource !== ''
+            ? panel.dataSource
+            : INTERVIEW_NETWORK,
+      }));
+    return { panels };
   }, [rawPanels]);
 }
