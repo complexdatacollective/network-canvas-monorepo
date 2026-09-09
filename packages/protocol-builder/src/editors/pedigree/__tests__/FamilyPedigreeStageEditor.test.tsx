@@ -398,11 +398,15 @@ describe('a codebook that changes while the pedigree is open', () => {
       node: { family_member: { ...definition, variables } },
     });
 
-    // The dangling pick is still shown as the current one, named as gone: it
-    // is the reference the researcher has to resolve.
+    // The dangling pick is still shown as the current one, named as one this
+    // control cannot offer: it is the reference the researcher has to resolve.
+    // The picker says only that, because it is handed a list and a stored
+    // choice and cannot tell a deleted attribute from one this slot ruled out
+    // (`VariablePicker.missingOptionLabel`); the slot's own gate is what names
+    // the deletion.
     expect(
       await screen.findByRole('option', {
-        name: 'fm_name — this attribute is no longer in the codebook',
+        name: 'fm_name — this attribute is not available here',
       }),
     ).toBeInTheDocument();
     await waitFor(() =>
