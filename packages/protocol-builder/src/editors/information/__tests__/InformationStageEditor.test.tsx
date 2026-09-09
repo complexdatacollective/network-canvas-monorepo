@@ -60,6 +60,11 @@ const itemsOf = (document: SectionDoc): Record<string, unknown>[] => {
   return Array.isArray(items) ? (items as Record<string, unknown>[]) : [];
 };
 
+/**
+ * What is true of THIS interface and no other. The list of sections it
+ * composes, and the round trip over its fixture stage, are asked of all four
+ * form editors together in `editors/__tests__/formEditors.test.tsx`.
+ */
 describe('the editor for a page of content', () => {
   it('opens on the stage the protocol holds', async () => {
     renderStageEditor(openFixture());

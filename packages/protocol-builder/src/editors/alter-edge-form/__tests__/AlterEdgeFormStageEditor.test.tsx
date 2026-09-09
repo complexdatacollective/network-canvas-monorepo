@@ -52,6 +52,11 @@ const createFixture = () => ({
   editor: mountedAs(alterEdgeFormStageEditor.AlterEdgeForm),
 });
 
+/**
+ * What is true of THIS interface and no other. The list of sections it
+ * composes, and the round trip over its fixture stage, are asked of all four
+ * form editors together in `editors/__tests__/formEditors.test.tsx`.
+ */
 describe('the editor for a form about each relationship', () => {
   it('opens on the stage the protocol holds, asking about edges', async () => {
     renderStageEditor(openFixture());
