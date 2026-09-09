@@ -57,6 +57,25 @@ const openWithNominationPrompts = () => ({
   sections: pedigreeSections,
 });
 
+/**
+ * The same configured pedigree, under an id no other stage reads.
+ *
+ * The fixture's `narrative-pedigree-1` draws its diseases through
+ * `family-pedigree-1`'s node type, and that dependency REFUSES a node type
+ * change — so every test below about what a type change costs has to be run
+ * over a pedigree nothing depends on, or it would be testing the refusal
+ * instead. The refusal has tests of its own, over the fixture's own pedigree.
+ */
+const UNREAD_PEDIGREE_ID = 'family-pedigree-nothing-reads';
+
+const openUnreadWithNominationPrompts = () => ({
+  stage: {
+    ...familyPedigreeStageWith({ nominationPrompts: NOMINATION_ROWS }),
+    id: UNREAD_PEDIGREE_ID,
+  },
+  sections: pedigreeSections,
+});
+
 const FIXTURE_NODE_CONFIG = {
   type: 'family_member',
   nodeLabelVariable: 'fm_name',
@@ -138,6 +157,33 @@ Document.prototype.elementFromPoint ??= () => null;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The family member type WITHOUT one of its attributes, as a collaborator's
+ * change.
+ *
+ * The mirror of `addFamilyMemberVariable`: it reaches the host first and the
+ * session under the revision the host issued, so what the editor is looking at
+ * afterwards is a protocol that really lost the attribute rather than a story
+ * the session alone has been told.
+ */
+const removeFamilyMemberVariable = (
+  harness: StageEditorHarness,
+  variableId: string,
+): void => {
+  const section =
+    harness.session.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+  const variables = isRecord(section?.variables) ? section.variables : {};
+  if (!Object.hasOwn(variables, variableId)) {
+    throw new Error(
+      `"family_member" has no "${variableId}" attribute, so removing one proves nothing.`,
+    );
+  }
+  const { [variableId]: _gone, ...rest } = variables;
+  harness.receiveCodebookUpdate({
+    node: { family_member: { ...section, variables: rest } },
+  });
+};
 
 /** The id the seeded boolean below is filed under. */
 const SEEDED_UNWELL = 'seeded-unwell';
@@ -426,11 +472,17 @@ describe('the attributes a pedigree may bind', () => {
    * member form may not collect an attribute the pedigree derives from the
    * tree the participant draws, because the pedigree writes those without any
    * validation and an export would mix checked and unchecked answers under one
-   * name. `fm_name` is the display label — collected THROUGH a form field, so
-   * it stays on offer.
+   * name.
+   *
+   * Nor the display label, for a different reason: the interview collects each
+   * relative's name through the pedigree's own name control and filters that
+   * attribute out of the form it renders, so a field collecting it is a
+   * question no participant is ever asked. The seeded attribute is what keeps
+   * this from being an assertion about an empty picker.
    */
-  it('never offers the family member form an attribute the pedigree derives', async () => {
+  it('never offers the family member form an attribute the pedigree already has', async () => {
     const harness = renderStageEditor(openFixture());
+    const collectable = seedCollectableBoolean(harness);
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Family member form' }),
@@ -445,10 +497,86 @@ describe('the attributes a pedigree may bind', () => {
         .querySelectorAll('option'),
     ].map((option) => option.value);
 
-    expect(offered).toContain('fm_name');
+    expect(offered).toContain(collectable);
+    expect(offered).not.toContain('fm_name');
     expect(offered).not.toContain('is_ego');
     expect(offered).not.toContain('fm_relationship_to_ego');
     expect(offered).not.toContain('biologicalSex');
+  });
+
+  /**
+   * The reserved `name` id, which is a fact about the interview rather than
+   * about this protocol.
+   *
+   * The pedigree's wizard submits each relative's name through its internal
+   * `name` path, so `getNodeForm` drops a field bound to an attribute whose id
+   * is literally `name` as well as one bound to the display label. Both are
+   * questions a researcher can write, save, and never have asked.
+   */
+  it('never offers the family member form an attribute filed under “name”', async () => {
+    const harness = renderStageEditor(openFixture());
+    addFamilyMemberVariable(harness, 'name', {
+      name: 'preferred_name',
+      type: 'text',
+      component: 'Text',
+    });
+    // A second free attribute, so the absence below is an exclusion rather
+    // than a picker with nothing in it.
+    const collectable = seedCollectableBoolean(harness);
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Family member form' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new form field' }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    const offered = [
+      ...field
+        .getByRole('combobox', { name: 'Attribute' })
+        .querySelectorAll('option'),
+    ].map((option) => option.value);
+
+    expect(offered).toContain(collectable);
+    expect(offered).not.toContain('name');
+  });
+
+  /**
+   * And the collision made from the other side: an attribute a form field is
+   * already collecting becomes the display label.
+   *
+   * Nothing about the field changes, so no row is being edited and no picker
+   * is being opened — the stage's own save is the only thing left to notice,
+   * and it refuses with the field named as the thing to fix. Without it the
+   * pedigree saved a form field the interview silently drops.
+   */
+  it('refuses to save a form field the display label has since taken over', async () => {
+    const harness = renderStageEditor(openFixture());
+    addFamilyMemberVariable(harness, 'preferred_name', {
+      name: 'preferred_name',
+      type: 'text',
+      component: 'Text',
+    });
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Family member form' }),
+    );
+    await addFormFieldCollecting(harness, 'preferred_name');
+    // Saveable up to here: the label is still `fm_name`, and the field is a
+    // question about something else.
+    expect(await harness.submit()).not.toBeNull();
+
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Display label' }),
+      'preferred_name',
+    );
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        /The pedigree already collects each family member’s name/,
+      ),
+    ).toBeInTheDocument();
   });
 
   /**
@@ -467,6 +595,7 @@ describe('the attributes a pedigree may bind', () => {
    */
   it('never offers the family member form an attribute a slot took this session', async () => {
     const harness = renderStageEditor(openFixture());
+    const collectable = seedCollectableBoolean(harness);
     addFamilyMemberVariable(harness, 'kinship', {
       name: 'kinship',
       type: 'text',
@@ -492,9 +621,10 @@ describe('the attributes a pedigree may bind', () => {
     ].map((option) => option.value);
 
     expect(offered).not.toContain('kinship');
-    // Not an empty picker: the display label's own attribute is collected
-    // through a form field, so it is still on offer.
-    expect(offered).toContain('fm_name');
+    // Not an empty picker: an attribute nothing on this stage has claimed is
+    // still on offer. Not the display label, which the pedigree collects
+    // through its own name control.
+    expect(offered).toContain(collectable);
   });
 
   /**
@@ -526,42 +656,56 @@ describe('the attributes a pedigree may bind', () => {
   });
 
   /**
-   * What is left for the gate once the picker offers nothing it refuses: a
-   * slot already holding an attribute when the conflicting writer appears.
-   * The display label is bound to a new attribute, and the relationship slot —
-   * whose own picker cannot see the label's unsaved pick — then takes it too.
+   * The display label the researcher has just chosen is a claim like any
+   * other, and the structural slots have to see it.
    *
-   * The words matter as much as the refusal. The display label names the
-   * attribute each family member is SHOWN by; told that it "cannot be used as
-   * a form field", a researcher goes looking for a form field they never
-   * added.
+   * The label holds what the participant TYPES for each relative; a structural
+   * slot holds what the pedigree DERIVES from the tree the participant draws.
+   * Bound to one attribute they are the same key, and the interview settles it
+   * in the slot's favour — `FamilyPedigree/store.ts` spreads each node's
+   * attributes and then writes the relationship over them — so the name a
+   * participant entered is exported as "parent".
+   *
+   * The same rule read from the other end, and the one the pickers used to
+   * disagree about.
+   *
+   * The display label's own picker has always dropped what a slot claims; the
+   * slots did not drop what the LABEL claims, so a researcher could bind an
+   * unused attribute as the display label and then pick it for the
+   * relationship in the same edit, with both controls accepting it. What is
+   * left is a save-time gate for a draft that never came through a picker — an
+   * imported protocol, an arrival — and `slotWiring.test.ts` asks it for that
+   * refusal, and for its words, directly.
    */
-  it('refuses a display label another slot in this stage has since taken', async () => {
+  it('never offers the relationship slot the attribute just made the display label', async () => {
     const harness = renderStageEditor(openFixture());
     addFamilyMemberVariable(harness, 'preferred_name', {
       name: 'preferred_name',
       type: 'text',
     });
 
-    // The label takes it first, so it escapes its own picker's exclusion as
-    // the pick the control is already holding.
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Display label' }),
-      'preferred_name',
+    // On offer while nothing has claimed it, so the exclusion below is a
+    // change rather than a list that was always this short.
+    await waitFor(() =>
+      expect(optionsOf('Relationship to participant')).toEqual([
+        'fm_relationship_to_ego',
+        'preferred_name',
+      ]),
     );
-    // The relationship slot's own picker reads the saved protocol and this
-    // stage's form; neither knows the display label just took this attribute.
+
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Relationship to participant' }),
+      screen.getByRole('combobox', { name: 'Display label' }),
       'preferred_name',
     );
 
-    expect(await harness.submit()).toBeNull();
-    expect(
-      await screen.findByText(
-        '"preferred_name" is written without validation by another slot in this stage, so it cannot also be collected here (the values that slot writes bypass this attribute’s validation)',
-      ),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(optionsOf('Relationship to participant')).toEqual([
+        'fm_relationship_to_ego',
+      ]),
+    );
+    // And the pedigree still saves, with each control holding its own
+    // attribute: the exclusion withholds a pick, it does not block the stage.
+    expect(await harness.submit()).not.toBeNull();
   });
 });
 
@@ -723,6 +867,54 @@ describe('the pedigree’s nomination prompts', () => {
  * all, without it writing that change back as if this session had made it.
  */
 describe('a codebook that changes while the pedigree is open', () => {
+  /**
+   * The row dialog's own save, over an attribute that has just gone.
+   *
+   * The picker is built from the live codebook, so it stops offering the
+   * attribute at once — but the row is already holding it, the required rule
+   * sees a nonempty value, and this gate asked only about who else writes it.
+   * So Save closed the row over a reference whole-protocol validation then
+   * refuses, and the researcher had to find the row that was blocking their
+   * stage with nothing on screen marking it.
+   */
+  it('refuses a nomination prompt whose attribute a collaborator deleted', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit nomination prompt' }),
+    );
+    await screen.findByRole('dialog');
+    removeFamilyMemberVariable(harness, 'hasConditionX');
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText(
+        '"hasConditionX" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+      ),
+    ).toBeInTheDocument();
+    // The dialog stays open, holding the prompt the researcher wrote, rather
+    // than closing over a row the stage cannot save.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * The same rule at the stage's own save, for the slots — which have no
+   * dialog of their own to hold open.
+   */
+  it('refuses to save a slot whose attribute a collaborator deleted', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    removeFamilyMemberVariable(harness, 'fm_name');
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        '"fm_name" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('offers an attribute a collaborator added, without echoing a command', async () => {
     const harness = renderStageEditor(openFixture());
     expect(harness.pendingCommands()).toEqual([]);
@@ -859,6 +1051,117 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     expect(
       screen.queryByRole('button', { name: 'Add option' }),
     ).not.toBeInTheDocument();
+  });
+
+  /**
+   * Holds the compound edit open, and hands back the release.
+   *
+   * The one window this dialog's guard is about: the host has the request and
+   * has not answered, which is when a dismissal unmounts the editor and leaves
+   * the answer with nobody to show it to.
+   */
+  const holdTheCompoundEdit = (harness: StageEditorHarness) => {
+    const send = harness.session.requestCompoundEdit.bind(harness.session);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
+      async (request) => {
+        await held;
+        return send(request);
+      },
+    );
+    return () => {
+      release();
+    };
+  };
+
+  /**
+   * A refusal arriving after the dialog has gone is shown to nobody, and a
+   * success arriving after it binds the slot to an attribute the researcher
+   * watched no editor finish. The dialog therefore withholds every way out
+   * until the host answers, exactly as the nested editors in
+   * `AttributeCodebookControls` do.
+   */
+  it('withholds every way out until the codebook answers', async () => {
+    const harness = renderStageEditor(openFixture());
+    const release = holdTheCompoundEdit(harness);
+
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Create a new display label attribute',
+      }),
+    );
+    const creator = within(await screen.findByRole('dialog'));
+    await harness.user.type(
+      creator.getByRole('textbox', { name: 'Attribute name' }),
+      'nickname',
+    );
+    await harness.user.click(
+      creator.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    // Escape and a press outside are the two routes left; the close button is
+    // taken away rather than left on screen doing nothing.
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(document.body);
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'nickname',
+    );
+    expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
+
+    release();
+    // And the answer lands on the surface that asked for it: the slot now
+    // holds the attribute the codebook holds.
+    await waitFor(() =>
+      expect(variableIdByName(harness, 'nickname')).toEqual(expect.any(String)),
+    );
+    expect(screen.getByRole('combobox', { name: 'Display label' })).toHaveValue(
+      variableIdByName(harness, 'nickname'),
+    );
+  });
+
+  /**
+   * A lease taken back mid-draft.
+   *
+   * The name the researcher is typing exists nowhere but this editor, so
+   * unmounting it to report the lost lease would throw their work away to say
+   * something the editor says for itself — with its save refused, which is
+   * what read-only does to it. The launch control goes, because a create
+   * nobody may start is not on offer.
+   */
+  it('keeps an open attribute draft when the lease is lost', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Create a new display label attribute',
+      }),
+    );
+    const creator = within(await screen.findByRole('dialog'));
+    await harness.user.type(
+      creator.getByRole('textbox', { name: 'Attribute name' }),
+      'nickname',
+    );
+
+    act(() => {
+      harness.setReadOnly();
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', {
+          name: 'Create a new display label attribute',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'nickname',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    ).toBeDisabled();
   });
 
   it('is not offered to a spectator', () => {
@@ -1155,9 +1458,20 @@ describe('what a family member form field’s attribute holds', () => {
  * assertions of any test written about what is on screen.
  */
 describe('a pedigree whose node type changes', () => {
-  /** The one radio that is not already chosen, named for its type. */
+  /**
+   * The one radio that is not already chosen, named for its type — and the
+   * answer to the question a configured pedigree asks before it lets go of
+   * everything that described the type it is leaving.
+   *
+   * Every test below means "the researcher changed the node type", and the
+   * researcher cannot do that without answering, so none of them may pass by a
+   * route the researcher does not have.
+   */
   const chooseNodeType = async (harness: StageEditorHarness, name: string) => {
     await harness.user.click(screen.getByRole('radio', { name }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Change the node type' }),
+    );
   };
 
   const nodeConfigOf = (
@@ -1167,6 +1481,162 @@ describe('a pedigree whose node type changes', () => {
       harness.session.getSnapshot().editedSection.fields.nodeConfig;
     return isRecord(nodeConfig) ? nodeConfig : {};
   };
+
+  /**
+   * A narrative pedigree resolves every disease it draws through its source
+   * pedigree's `nodeConfig.type`, so a type change under one leaves it naming
+   * attributes the new type does not have — a protocol whole-protocol
+   * validation refuses, and one this editor cannot repair: the stage that
+   * would have to be remapped is not the stage it is editing. Architect
+   * refuses the same transition, and the refusal names the stages so the
+   * researcher knows where to go.
+   */
+  it('refuses a node type change while another stage reads this pedigree', async () => {
+    // The fixture's own pedigree, which `narrative-pedigree-1` reads.
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    expect(
+      await screen.findByText('This node type cannot be changed'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/"Narrative Pedigree" reads this pedigree/),
+    ).toBeInTheDocument();
+    // Refused rather than confirmed: the question a change with something to
+    // lose would ask is never put, because there is no answer to it that lets
+    // the change through.
+    expect(
+      screen.queryByRole('button', { name: 'Change the node type' }),
+    ).not.toBeInTheDocument();
+    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  /**
+   * And the refusal is about the NODE type alone. A narrative pedigree reads
+   * its source's node type and says nothing about its edges, so the edge type
+   * is still the researcher's to change.
+   */
+  it('still lets the edge type change while another stage reads this pedigree', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Change the edge type' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'knows' })).toBeChecked(),
+    );
+  });
+
+  /**
+   * The reset is destructive and a chip is one click away, so the researcher
+   * is asked first.
+   *
+   * Undo is not an answer to this: it is a way back from a change the
+   * researcher meant to make, and what this prevents is the one they did not —
+   * a stray click on the chip beside the chosen one taking the member form and
+   * every nomination prompt with it, with nothing said. The question is asked
+   * of the same paths the reset discards (`NODE_TYPE_DEPENDENT_FIELDS`), so it
+   * cannot warn about a change that costs nothing or stay silent about one
+   * that costs something.
+   */
+  it('asks before it discards what described the old node type', async () => {
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    expect(
+      await screen.findByText(
+        'This will clear everything about family members',
+      ),
+    ).toBeInTheDocument();
+    // Nothing has moved while the question stands: the pick is held back
+    // rather than made and offered back. Asked of the draft rather than of the
+    // chips, which the modal question has taken out of reach.
+    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  it('leaves the pedigree exactly as it was when the researcher says no', async () => {
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Cancel' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Change the node type' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
+    expect(
+      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
+    ).toEqual(NOMINATION_ROWS);
+    expect(harness.pendingCommands()).toEqual([]);
+    expect(screen.getByText('Who has been unwell?')).toBeInTheDocument();
+  });
+
+  /**
+   * A question about nothing is one a researcher learns to dismiss without
+   * reading, so a pedigree the host has just created — which holds no
+   * attribute of any type yet — is asked nothing at all.
+   */
+  it('asks nothing of a new pedigree, which has nothing to lose', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'FamilyPedigree', position: 0 },
+      sections: pedigreeSections,
+    });
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family member' }),
+    );
+
+    expect(
+      screen.queryByRole('button', { name: 'Change the node type' }),
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(nodeConfigOf(harness).type).toBe('family_member'),
+    );
+  });
+
+  /**
+   * The edge type reaches the same reset through the same control, and its
+   * slots are worth the same warning: an edge type change takes the
+   * relationship type, whether a relationship is current, who carried each
+   * pregnancy and each parent's gamete with it.
+   */
+  it('asks before it discards what described the old edge type', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
+
+    expect(
+      await screen.findByText(
+        'This will clear everything about family relationships',
+      ),
+    ).toBeInTheDocument();
+    expect(harness.pendingCommands()).toEqual([]);
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Change the edge type' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'knows' })).toBeChecked(),
+    );
+    expect(commandsOf(harness)).toEqual([
+      { op: 'set', key: ['edgeConfig', 'type'], value: 'knows' },
+      { op: 'unset', key: ['edgeConfig', 'gameteRoleVariable'] },
+      { op: 'unset', key: ['edgeConfig', 'isActiveVariable'] },
+      { op: 'unset', key: ['edgeConfig', 'isGestationalCarrierVariable'] },
+      { op: 'unset', key: ['edgeConfig', 'relationshipTypeVariable'] },
+    ]);
+  });
 
   /**
    * The whole decision, in the order it happened: this type was chosen, and
@@ -1192,7 +1662,7 @@ describe('a pedigree whose node type changes', () => {
    * two steps of undo.
    */
   it('carries the chosen type and everything it invalidated in one batch', async () => {
-    const harness = renderStageEditor(openWithNominationPrompts());
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
 
     await chooseNodeType(harness, 'person');
 
@@ -1222,7 +1692,7 @@ describe('a pedigree whose node type changes', () => {
    * follow from that one fact rather than from three sections agreeing.
    */
   it('switches the nomination prompts off rather than calling an empty section finished', async () => {
-    const harness = renderStageEditor(openWithNominationPrompts());
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
     expect(
       await screen.findByRole('switch', { name: 'Nomination prompts' }),
     ).toBeChecked();
@@ -1248,7 +1718,7 @@ describe('a pedigree whose node type changes', () => {
    * to restore the type and never the prompts.
    */
   it('keeps the prompts an undo restores, and switches the section back on', async () => {
-    const harness = renderStageEditor(openWithNominationPrompts());
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
     await chooseNodeType(harness, 'person');
     await waitFor(() =>
       expect(
@@ -1279,7 +1749,7 @@ describe('a pedigree whose node type changes', () => {
    * left, asking for an attribute that type no longer has.
    */
   it('does not bring a prompt about the old type back with the next one added', async () => {
-    const harness = renderStageEditor(openWithNominationPrompts());
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
 
     await chooseNodeType(harness, 'person');
     await waitFor(() =>
@@ -1331,7 +1801,7 @@ describe('a pedigree whose node type changes', () => {
    * nothing bound to it. One batch is what makes that a single step.
    */
   it('comes back whole, type included, when the session undoes it', async () => {
-    const harness = renderStageEditor(openWithNominationPrompts());
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
     await chooseNodeType(harness, 'person');
     await waitFor(() => expect(nodeConfigOf(harness).type).toBe('person'));
 
@@ -1535,6 +2005,15 @@ describe('picks this session has already claimed', () => {
     addFamilyMemberVariable(harness, 'unwell', {
       name: 'unwell',
       type: 'boolean',
+      component: 'Boolean',
+    });
+    // A second collectable boolean, so what the picker still offers is an
+    // attribute rather than the create-a-new-one sentinel: every other boolean
+    // this type carries is written unvalidated somewhere.
+    addFamilyMemberVariable(harness, 'housebound', {
+      name: 'housebound',
+      type: 'boolean',
+      component: 'Boolean',
     });
 
     await harness.user.click(
@@ -1564,9 +2043,10 @@ describe('picks this session has already claimed', () => {
     ].map((option) => option.value);
 
     expect(offered).not.toContain('unwell');
-    // Not an empty picker: the display label is collected through a form
-    // field, so it is still on offer.
-    expect(offered).toContain('fm_name');
+    // Not an empty picker: an attribute nothing on this stage has claimed is
+    // still on offer. Not the display label, which the pedigree collects
+    // through its own name control.
+    expect(offered).toContain('housebound');
   });
 
   /**

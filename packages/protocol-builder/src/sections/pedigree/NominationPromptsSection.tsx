@@ -30,7 +30,7 @@ import {
   NominationPromptPreview,
 } from './NominationPromptRow.tsx';
 import { pedigreeMessages } from './pedigreeMessages.ts';
-import { draftRowVariables } from './slotWiring.ts';
+import { draftRowVariables, unusableVariableIssue } from './slotWiring.ts';
 
 const PROMPTS_FIELD = 'nominationPrompts';
 const NODE_TYPE_FIELD = 'nodeConfig.type';
@@ -137,6 +137,16 @@ export default function NominationPromptsSection() {
     (value: unknown) => {
       if (subject === null || !isRecord(value)) return value;
       const variable = typeof value.variable === 'string' ? value.variable : '';
+
+      // The attribute itself, before anything about who else writes it: a
+      // collaborator can delete it — or change it to something a true/false
+      // toggle cannot be written into — while this row's dialog is open, and
+      // the picker showing it as unavailable does not stop the required rule
+      // seeing a nonempty value and letting the row close.
+      const unusable = unusableVariableIssue(allVariables, variable, 'boolean');
+      if (unusable !== undefined) {
+        return { success: false, fieldErrors: { variable: [unusable] } };
+      }
 
       const ownedIssue =
         interfaceOwnedPickIssue(slotMap, subject, variable) ??
