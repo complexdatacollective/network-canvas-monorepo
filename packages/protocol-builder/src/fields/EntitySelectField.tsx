@@ -38,17 +38,25 @@ export type EntityTypeChangeConfirmation = Readonly<{
 }>;
 
 /**
- * The type a confirmed change would land on.
+ * The type a confirmed change would land on, or `null` when it does not land
+ * on a codebook type at all.
  *
  * Carried into the question rather than left with the caller, because it is
  * what the answer has to be judged against: the confirmation is awaited, and
  * the codebook the question was asked about is not necessarily the one the
  * change lands in.
+ *
+ * `null` is spelled out rather than left off, because the same question is
+ * also asked over a choice that is not a type — the narrative pedigree's
+ * source stage costs the diseases mapped against it in exactly the same way.
+ * Required and nullable, a caller has to say which kind of change it is
+ * making; optional, one that lands on a type could quietly stop being
+ * rechecked, which is the failure this argument exists to close.
  */
 export type EntityTypeChangeTarget = Readonly<{
   entityType: RuleEntityTarget;
   typeId: string;
-}>;
+}> | null;
 
 export type EntitySelectFieldProps = CreateFormFieldProps<
   string,
@@ -243,6 +251,12 @@ export function useConfirmEntityTypeChange(): (
         onConfirm: () => undefined,
       });
       if (confirmed !== true) return false;
+      // A choice that is not a codebook type has nothing to recheck HERE. The
+      // narrative pedigree's source stage is the one such caller, and what it
+      // could lose while the question is open — the stage it names being
+      // deleted, re-typed or moved — is already watched and reported on the
+      // field itself.
+      if (target === null) return true;
 
       const stillDefined = ruleEntityTypeOptions(
         liveCodebook.current,
