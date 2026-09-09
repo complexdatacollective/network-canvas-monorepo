@@ -93,9 +93,9 @@ catalog:
   # which TS7 does not ship; it looks for this exact fallback package name.
   '@typescript/typescript6': ^6.0.2
   '@vitejs/plugin-react': ^6.0.4
-  '@vitest/browser': ^4.1.11
-  '@vitest/browser-playwright': ^4.1.11
-  '@vitest/coverage-v8': ^4.1.11
+  '@vitest/browser': ^5.0.0
+  '@vitest/browser-playwright': ^5.0.0
+  '@vitest/coverage-v8': ^5.0.0
   # The engine behind Storybook's a11y addon, used directly by the
   # protocol-builder suite so a heading ladder is judged by the same
   # `heading-order` rule a story is.
@@ -162,7 +162,7 @@ catalog:
   # workaround exists; unpin once rolldown ships a fix.
   vite: 8.1.4
   vite-plugin-dts: ^5.0.3
-  vitest: ^4.1.11
+  vitest: ^5.0.0
   wrangler: ^4.95.0
   zod: ^4.4.3
   zustand: ^5.0.14
