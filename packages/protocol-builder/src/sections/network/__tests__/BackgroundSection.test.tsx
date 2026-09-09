@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -86,6 +86,35 @@ describe('what the participant sees behind the nodes', () => {
       concentricCircles: 2,
       skewedTowardCenter: true,
     });
+  });
+
+  /**
+   * A count typed with a fraction in it reaches the rule that refuses one.
+   *
+   * The box parsed with `Number.parseInt`, which stops at the decimal point,
+   * so 2.5 became 2 before `Number.isInteger` was ever asked: the refusal the
+   * researcher should have been given never fired, and the stage saved a
+   * number of rings nobody entered. Both halves are asserted — the box still
+   * showing what was typed, and the save refused in the section's own words —
+   * because a field that simply blanked itself would also stop the save, and
+   * would take the researcher's entry with it.
+   */
+  it('refuses a number of circles typed with a fraction, and keeps it on screen', async () => {
+    const harness = renderStageEditor(openCircles());
+
+    const circles = await screen.findByRole('spinbutton', {
+      name: 'Number of concentric circles',
+    });
+    await harness.user.clear(circles);
+    await harness.user.type(circles, '2.5');
+
+    expect(circles).toHaveDisplayValue('2.5');
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        'Enter the number of circles as a whole number of zero or more.',
+      ),
+    ).toBeInTheDocument();
   });
 
   /**
@@ -258,6 +287,41 @@ describe('the batch a background switch makes', () => {
     // history. A reset that has a cause sends it either way.
     expect(commandsOf(harness)).toEqual([{ op: 'unset', key: 'background' }]);
     expect(await circlesBox()).toHaveDisplayValue('');
+  });
+
+  /**
+   * Editing taken away between this handler rendering and the click reaching
+   * it.
+   *
+   * The session refuses the batch and keeps the circles — which is right — but
+   * the mode was moved regardless, so the picker for one background stood over
+   * the other one's draft. Once editing came back, the stage held circles the
+   * researcher could not see and an image control they could fill in, and the
+   * next save wrote a background of both kinds.
+   *
+   * The gesture and the revocation are one commit, because that IS the window:
+   * a render later the control is disabled and there is nothing to click.
+   */
+  it('leaves the mode where it was when the discard is refused', async () => {
+    const harness = renderStageEditor(openCircles());
+    await circlesBox();
+
+    const image = await screen.findByRole('option', { name: /Image/ });
+    act(() => {
+      harness.session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+      fireEvent.click(image);
+    });
+
+    await screen.findByText(/read-only/);
+    expect(draftOf(harness).background).toEqual({
+      concentricCircles: 4,
+      skewedTowardCenter: true,
+    });
+    expect(commandsOf(harness)).toEqual([]);
+    expect(await circlesBox()).toHaveDisplayValue('4');
+    expect(
+      screen.queryByRole('button', { name: 'Select an image' }),
+    ).not.toBeInTheDocument();
   });
 
   /**

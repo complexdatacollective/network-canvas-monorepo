@@ -7,6 +7,7 @@ import {
   MISSING_SORT_PROPERTY_MESSAGE,
   missingSortPropertyLabel,
 } from '../../../fields/sortOrderOptions.ts';
+import { validatedElsewhereMessage } from '../../../form/arrayFields/crossClassPick.ts';
 import type { ManifestRevision } from '../../../session.ts';
 import { enIntl, readMessage } from '../../../testing/i18n.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
@@ -331,6 +332,267 @@ const personVariables = (
   }
   return Object.entries(variables) as [string, { type?: unknown }][];
 };
+
+/**
+ * A form somewhere else in the protocol, started while this dialog is open.
+ *
+ * The arrival is the collaborator's, through the host and back under the
+ * revision it issued, exactly as `deleteLayoutVariable` above: a stage the
+ * host does not hold is a base every later compound edit is refused against.
+ */
+const collectInAForm = (
+  harness: StageEditorHarness,
+  variableId: string,
+): void => {
+  const id = sectionId({ kind: 'stage', stageId: 'alter-form-1' });
+  const stage = harness.host.getSnapshot().protocolSections[id];
+  if (stage === undefined) throw new Error('the fixture has no alter form');
+  const form = stage.form;
+  const fields =
+    typeof form === 'object' &&
+    form !== null &&
+    Array.isArray((form as Record<string, unknown>).fields)
+      ? ((form as Record<string, unknown>).fields as unknown[])
+      : [];
+  const applied = harness.host.receiveAuthoritativeSections({
+    [id]: {
+      ...stage,
+      form: {
+        fields: [...fields, { variable: variableId, prompt: 'Is this so?' }],
+      },
+    },
+  });
+  act(() => {
+    harness.session.receiveAuthoritativeUpdate({
+      protocolSections: applied.protocolSections,
+      manifestRevision: applied.manifestRevision,
+      attribution: {
+        [id]: {
+          sessionId: 'other-tab',
+          displayName: 'Dana',
+          revision: applied.manifestRevision,
+        },
+      },
+    });
+  });
+};
+
+/**
+ * Tapping a node WRITES the attribute it marks, without the codebook's
+ * validation rules running — so a prompt may not mark one a form collects.
+ *
+ * The picker enforces that by never offering such an attribute, and the
+ * codebook reaches this editor live: a collaborator adding the form field
+ * while the dialog is open drops the attribute from the option list and leaves
+ * the pick sitting in the form. Nothing then refused the row, so Save
+ * committed a prompt the protocol reports as a writer conflict.
+ */
+describe('a highlight attribute a form starts collecting mid-edit', () => {
+  it('refuses the row rather than closing on the conflict', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const prompt = await openPrompt(harness);
+    await harness.user.click(
+      prompt.getByRole('option', { name: /Mark the node/ }),
+    );
+    await harness.user.selectOptions(
+      await prompt.findByRole('combobox', { name: 'Attribute marked' }),
+      'highlighted',
+    );
+
+    collectInAForm(harness, 'highlighted');
+
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+
+    // The dialog staying open IS the refusal, and the reason is the one the
+    // codebook editor gives for the same conflict — read back through the same
+    // decode the render site uses, because it travels encoded on a
+    // plain-string contract.
+    await prompt.findByText(
+      readMessage(validatedElsewhereMessage('highlighted')),
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * And the other half: a conflict the protocol ALREADY holds does not make
+   * the prompt that holds it unsaveable. The researcher cannot be asked to fix
+   * a stage by editing a form in another one they may not even be able to
+   * reach.
+   */
+  it('still saves a prompt whose attribute the protocol already collects', async () => {
+    const harness = renderStageEditor(openEditor());
+    // The prompt that already marks `highlighted`, and the form field that
+    // conflicts with it, arriving before anything is edited.
+    collectInAForm(harness, 'highlighted');
+
+    const prompt = await openPrompt(harness, 1);
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+  });
+});
+
+/**
+ * A prompt naming an edge type this protocol does not define.
+ *
+ * A collaborator deleted the type, or the stage was authored against a
+ * different codebook. The tick list renders from the codebook and the value
+ * does not, so the id stayed in the prompt with no box to untick: the
+ * researcher could not see the reference, could not remove it, and the
+ * interview was left asking for a kind of connection that does not exist. The
+ * schema does not refuse it — `entityTypeReference` is a tag rather than an
+ * existence check — so nothing else was going to report it either.
+ */
+describe('a connection type this protocol does not define', () => {
+  const LOST_EDGE = 'former_edge';
+
+  const DISPLAYING_A_LOST_TYPE = {
+    id: 'sociogram-prompt-1',
+    text: 'Place the people who know each other close together',
+    layout: { layoutVariable: 'layout' },
+    edges: { display: ['knows', LOST_EDGE] },
+  };
+
+  const LOST_EDGE_CHOICE = `${LOST_EDGE} — this edge type is no longer in the codebook`;
+
+  const openLostEdgePrompt = async (): Promise<{
+    harness: StageEditorHarness;
+    prompt: ReturnType<typeof within>;
+  }> => {
+    const harness = renderStageEditor(sociogramHolding(DISPLAYING_A_LOST_TYPE));
+    return { harness, prompt: await openPrompt(harness) };
+  };
+
+  /**
+   * Shown, and shown as CHOSEN, because it is: the value the prompt holds is
+   * what the stage saves. Both halves are asserted, since a box that appeared
+   * unticked would read as a type the researcher had never picked.
+   */
+  it('shows the lost type, named by the id nothing describes any more', async () => {
+    const { harness, prompt } = await openLostEdgePrompt();
+
+    expect(
+      prompt.getByRole('checkbox', { name: LOST_EDGE_CHOICE }),
+    ).toBeChecked();
+
+    // And leaving it alone changes nothing — which is what made the missing
+    // box a dead end rather than a harmless omission: the reference survives
+    // every save until somebody can reach it.
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]?.edges).toEqual({
+      display: ['knows', LOST_EDGE],
+    });
+  });
+
+  it('lets the researcher untick it, which repairs the prompt', async () => {
+    const { harness, prompt } = await openLostEdgePrompt();
+
+    await harness.user.click(
+      prompt.getByRole('checkbox', { name: LOST_EDGE_CHOICE }),
+    );
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]?.edges).toEqual({
+      display: ['knows'],
+    });
+  });
+});
+
+/**
+ * A prompt that COLOURS its nodes by an attribute without letting the
+ * participant change it.
+ *
+ * `highlight.variable` alone is display-only by the schema's own reading —
+ * `entity-attribute-reference` tags the site `usageRequiresSibling:
+ * 'allowHighlighting'`, and the interview gates its tap-to-toggle branch on
+ * the flag while reading `variable` for the colour regardless. So the
+ * attribute is one this stage READS, and nothing the participant does here
+ * writes it.
+ */
+const DISPLAY_ONLY_PROMPT = {
+  id: 'sociogram-prompt-1',
+  text: 'Place the people who know each other close together',
+  layout: { layoutVariable: 'layout' },
+  highlight: { variable: 'highlighted', allowHighlighting: false },
+};
+
+describe('a prompt that only colours its nodes', () => {
+  /**
+   * Opening the dialog and saving it is not a decision about anything, and the
+   * one it must not make is this one: classified by `highlight.variable` alone,
+   * the prompt opened on "mark the node" and an effect wrote
+   * `allowHighlighting: true` behind it — so merely looking at a display-only
+   * prompt handed the participant a switch that writes to an attribute the
+   * researcher had reserved for reading, and the data collected changed.
+   */
+  it('does not start writing the attribute it only reads', async () => {
+    const harness = renderStageEditor(sociogramHolding(DISPLAY_ONLY_PROMPT));
+
+    const prompt = await openPrompt(harness);
+    // Tapping does nothing, which is exactly what this prompt says: the
+    // colours are drawn from an attribute the participant cannot toggle.
+    expect(prompt.getByRole('option', { name: /Nothing/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]).toEqual(
+      DISPLAY_ONLY_PROMPT,
+    );
+  });
+
+  /**
+   * And choosing what tapping does leaves the colouring alone.
+   *
+   * The chooser owns the two things a TAP can do, so it clears the side it is
+   * leaving and nothing else. Clearing both of the other two on every change
+   * threw away a `highlight.variable` that had never been on screen — the
+   * researcher was answering a question about tapping, and the answer took the
+   * prompt's colours with it.
+   */
+  it('keeps the colouring when the researcher says what tapping does', async () => {
+    const harness = renderStageEditor(sociogramHolding(DISPLAY_ONLY_PROMPT));
+
+    const prompt = await openPrompt(harness);
+    await harness.user.click(
+      prompt.getByRole('option', { name: /Create a connection/ }),
+    );
+    await harness.user.click(
+      await prompt.findByRole('radio', { name: /family_edge/ }),
+    );
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    const saved = prompts(request?.stageDocument ?? {})[0];
+    expect(saved?.highlight).toEqual({
+      variable: 'highlighted',
+      allowHighlighting: false,
+    });
+    expect(saved?.edges).toEqual({
+      create: 'family_edge',
+      display: ['family_edge'],
+    });
+  });
+});
 
 describe('the order a sociogram hands unplaced nodes over in', () => {
   /**

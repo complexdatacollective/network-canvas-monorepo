@@ -10,7 +10,6 @@ import BackgroundSection from '../BackgroundSection.tsx';
 import ComposerEdgeConfigurationSection from '../ComposerEdgeConfigurationSection.tsx';
 import ComposerNodeConfigurationSection from '../ComposerNodeConfigurationSection.tsx';
 import NarrativeBehavioursSection from '../NarrativeBehavioursSection.tsx';
-import { networkCanvasMessages } from '../networkCanvasMessages.ts';
 
 /**
  * The canvas sections read in Spanish.
@@ -107,31 +106,32 @@ describe('the canvas sections, read in Spanish', () => {
     ).toBeInTheDocument();
   });
 
-  it('says the sociogram’s own words for the same two permissions', () => {
+  /**
+   * The canvas permissions, read where they belong.
+   *
+   * A sociogram mounts neither of them — the interview honours neither on that
+   * interface — so what is proved here is the section's own wiring: it formats
+   * through `useAppIntl()` rather than holding a string, in the words a
+   * narrative stage gives them.
+   */
+  it('names the canvas permissions and what they cost', () => {
     renderStageEditor({
-      stageId: 'sociogram-1',
+      stageId: 'narrative-1',
       locale: 'es',
-      // Exactly what `SociogramStageEditor` hands it: descriptors rather than
-      // strings, so the one place an interface cared enough to write its own
-      // sentence is not the one place that stays English.
-      sections: (
-        <NarrativeBehavioursSection
-          description={
-            networkCanvasMessages.sociogramCanvasInteractionDescription
-          }
-          repositioningHint={networkCanvasMessages.sociogramRepositioningHint}
-        />
-      ),
+      sections: <NarrativeBehavioursSection />,
     });
 
     expect(
       screen.getByText(
-        'Elige lo que el participante puede hacer con el lienzo mientras trabaja en las preguntas.',
+        'Elige lo que el participante puede hacer con la imagen mientras cuenta su historia.',
       ),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole('switch', { name: 'Permitir dibujar en el lienzo' }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByText(
-        'El participante puede arrastrar los nodos a nuevas posiciones. Cada posición se guarda en el atributo que indica la pregunta que está respondiendo, así que mover un nodo aquí lo cambia en todos los sitios donde se use ese atributo.',
+        'El participante puede arrastrar los nodos a nuevas posiciones. Sus posiciones se guardan en el atributo que la vista predefinida usa para la disposición, así que mover un nodo aquí lo cambia en todos los sitios donde se use ese atributo.',
       ),
     ).toBeInTheDocument();
   });

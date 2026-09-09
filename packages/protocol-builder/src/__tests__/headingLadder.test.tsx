@@ -40,6 +40,7 @@ const EMPTY_CONTEXT: ProtocolBuilderProtocolContext = {
   codebook: { node: {}, edge: {} },
   assets: {},
   orderedStages: [],
+  stageOrder: [],
   issues: [],
 };
 const APPLIED: CompoundEditResult = {

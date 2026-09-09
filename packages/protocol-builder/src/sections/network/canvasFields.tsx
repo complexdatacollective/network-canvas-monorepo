@@ -1,4 +1,4 @@
-import { type ComponentProps, useMemo } from 'react';
+import { type ComponentProps, useMemo, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
@@ -38,21 +38,47 @@ type IntegerFieldProps = Omit<
  * is an unanswered question, not an answer of none.
  */
 export function IntegerField({ value, onChange, ...props }: IntegerFieldProps) {
+  // What the researcher actually typed, held for as long as it still describes
+  // `value`. The number is not the same text — "2.", "2.5" and "02" all read
+  // back as something else — so rendering `String(value)` over the box erases
+  // the character being typed, and the reading that reaches the rule is one
+  // nobody entered.
+  const [typed, setTyped] = useState<string | undefined>(undefined);
+  const shown =
+    typed !== undefined && wholeOrFraction(typed) === value
+      ? typed
+      : value === undefined
+        ? ''
+        : String(value);
+
   return (
     <InputField
       {...props}
       type="number"
-      value={value === undefined ? '' : String(value)}
+      value={shown}
       onChange={(raw) => {
-        const parsed =
-          typeof raw === 'string' && raw.trim() !== ''
-            ? Number.parseInt(raw, 10)
-            : Number.NaN;
-        onChange?.(Number.isNaN(parsed) ? undefined : parsed);
+        const text = typeof raw === 'string' ? raw : '';
+        setTyped(text);
+        onChange?.(wholeOrFraction(text));
       }}
     />
   );
 }
+
+/**
+ * The WHOLE reading, fraction and all.
+ *
+ * Truncating here — `Number.parseInt`, which stops at the decimal point — took
+ * the fraction away before any rule could see it: a count typed as 2.5 was
+ * saved as 2, and the "whole number" refusal the researcher should have been
+ * given never fired. Reading the number as it stands is what lets the rule
+ * that owns the constraint state it.
+ */
+const wholeOrFraction = (raw: string): number | undefined => {
+  if (raw.trim() === '') return undefined;
+  const parsed = Number(raw);
+  return Number.isNaN(parsed) ? undefined : parsed;
+};
 
 type OptionalCheckboxGroupFieldProps = Omit<
   ComponentProps<typeof CheckboxGroupField>,

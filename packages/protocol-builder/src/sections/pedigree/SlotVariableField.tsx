@@ -5,7 +5,7 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import type {
-  VariableOption,
+  InterfaceOwnedOption,
   Variables,
   VariableType,
 } from '@codaco/protocol-validation';
@@ -61,8 +61,14 @@ export type SlotVariableFieldProps = Readonly<{
   draftLabelVariable?: string;
   /** The attribute type a newly created attribute is given. */
   variableType: VariableType;
-  /** The canonical value set the interface owns, seeded and locked. */
-  lockedOptions?: readonly VariableOption[];
+  /**
+   * The canonical value set the interface owns, seeded and locked.
+   *
+   * Both the create affordance and the save-time gate read it: an attribute
+   * created here is seeded with it, and one the control is already holding is
+   * refused when its values stop matching it.
+   */
+  lockedOptions?: readonly InterfaceOwnedOption[];
   /** Visible text and accessible name of the create control. */
   createLabel: MessageDescriptor;
   createDescription: MessageDescriptor;
@@ -157,6 +163,7 @@ export default function SlotVariableField({
    */
   const judgeAgainst = useRef({
     variableType,
+    lockedOptions,
     roleMap,
     slotMap,
     draftSlotMap,
@@ -170,6 +177,7 @@ export default function SlotVariableField({
   });
   judgeAgainst.current = {
     variableType,
+    lockedOptions,
     roleMap,
     slotMap,
     draftSlotMap,
@@ -194,6 +202,7 @@ export default function SlotVariableField({
             judgeAgainst.current.allVariables,
             value,
             judgeAgainst.current.variableType,
+            judgeAgainst.current.lockedOptions,
           ),
         (value: unknown) =>
           slotCrossClassIssue({

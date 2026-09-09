@@ -46,6 +46,7 @@ const CONTEXT: ProtocolBuilderProtocolContext = {
   },
   assets: {},
   orderedStages: [],
+  stageOrder: [],
   issues: [
     {
       sectionId: 'codebook:node:removed-remotely',
