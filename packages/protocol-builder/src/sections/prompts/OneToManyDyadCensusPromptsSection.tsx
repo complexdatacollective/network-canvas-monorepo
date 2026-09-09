@@ -8,9 +8,18 @@ import type { RowEditorProps } from '../rowRenderers.tsx';
 import { useStageSubject } from '../useStageSubject.ts';
 import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import CreateEdgeField from './CreateEdgeField.tsx';
-import { useSortVariablePool } from './promptCodebook.ts';
+import {
+  type EntityTypePick,
+  usePromptPickGate,
+  useSortVariablePool,
+} from './promptCodebook.ts';
 import { PromptTextField, PromptTextPreview } from './promptText.tsx';
 import SortOrderRows from './SortOrderRows.tsx';
+
+/** The connection an affirmative answer creates, picked inside the prompt. */
+const ENTITY_PICKS: readonly EntityTypePick[] = Object.freeze([
+  { path: 'createEdge', entity: 'edge' },
+]);
 
 /**
  * What only this family says. The words it shares with the other two censuses
@@ -195,10 +204,13 @@ function OneToManyDyadCensusPromptEditor({ item }: RowEditorProps) {
  * until then the prompt does not yet describe a task to order anything within.
  */
 export default function OneToManyDyadCensusPromptsSection() {
+  const pickGate = usePromptPickGate({ entityPicks: ENTITY_PICKS });
+
   return (
     <PromptsSection
       PromptEditor={OneToManyDyadCensusPromptEditor}
       PromptPreview={PromptTextPreview}
+      editorValidate={pickGate}
       description={censusPromptsMessages.oneToManyDescription}
       fieldHint={censusPromptsMessages.oneToManyFieldHint}
     />

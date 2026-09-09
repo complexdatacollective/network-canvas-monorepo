@@ -171,6 +171,15 @@ const messages = defineMessages({
 });
 
 /**
+ * The sentence for a stored type the codebook no longer defines.
+ *
+ * Exported so a SAVE can refuse the same choice in the same words: the note
+ * under the chips and the refusal that keeps a row dialog open are one rule
+ * seen twice. `usePromptPickGate` is the save-time half.
+ */
+export const entityTypeNotAvailableRefusal = messages.missingType;
+
+/**
  * What a change onto a type that has since been deleted is called, written out
  * per entity kind for the reason `EMPTY_MESSAGES` gives: `entityType` is an
  * internal token, never display copy.

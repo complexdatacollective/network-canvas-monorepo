@@ -24,6 +24,7 @@ import {
   type CrossClassPick,
   crossClassPickErrors,
 } from '../../codebook/variableValidation.ts';
+import { entityTypeNotAvailableRefusal } from '../../fields/EntitySelectField.tsx';
 import {
   attributeNotAvailableRefusal,
   type VariablePickerOption,
@@ -226,24 +227,52 @@ export function useLockedOptions(
 export type PromptPick = CrossClassPick &
   Readonly<{ types: readonly VariableType[] }>;
 
+/**
+ * One node- or edge-TYPE picker a prompt row owns.
+ *
+ * `EntitySelectControl` keeps a stored type on offer after the codebook stops
+ * defining it, for the reason the attribute picker keeps a stored attribute:
+ * blanking it would hide the reference the researcher has to repair. So the
+ * same rule applies to it, and for the same reason it can only be enforced at
+ * save time.
+ */
+export type EntityTypePick = Readonly<{
+  path: string;
+  entity: 'node' | 'edge';
+}>;
+
+const NO_PICKS: readonly PromptPick[] = Object.freeze([]);
+const NO_ENTITY_PICKS: readonly EntityTypePick[] = Object.freeze([]);
+const NO_SUBJECT = () => undefined;
+
 export type PromptPickGateInput = Readonly<{
-  /** Every attribute picker this row editor owns, with its own writer class. */
-  picks: readonly PromptPick[];
+  /**
+   * Every attribute picker this row editor owns, with its own writer class.
+   * Omitted by a prompt that picks no attribute — a Dyad Census asks only what
+   * an affirmative answer connects.
+   */
+  picks?: readonly PromptPick[];
+  /** Every node- or edge-type picker this row editor owns. */
+  entityPicks?: readonly EntityTypePick[];
   /**
    * The codebook subject the row's picks belong to, derived from the row: a
    * Tie-Strength Census prompt chooses its edge type inside itself, so this
-   * cannot be fixed when the section mounts.
+   * cannot be fixed when the section mounts. Omitted with `picks`.
    */
-  subjectForRow: (row: Record<string, unknown>) => CodebookSubject | undefined;
+  subjectForRow?: (row: Record<string, unknown>) => CodebookSubject | undefined;
 }>;
 
 /**
- * The save-time refusals for one prompt's attribute picks.
+ * The save-time refusals for one prompt's codebook picks.
  *
- * Three rules, all of which the pickers above already enforce by omission — so
+ * Four rules, all of which the pickers above already enforce by omission — so
  * what reaches here is a stale draft or an imported protocol, which is exactly
  * what has to be explained rather than quietly saved:
  *
+ * - the node or edge TYPE a pick names still being one the codebook defines.
+ *   `EntitySelectControl` keeps a deleted type on offer for the same reason the
+ *   attribute picker keeps a deleted attribute, so nothing before a save can
+ *   refuse it either;
  * - the pick naming an attribute the picker could still offer: it has to be in
  *   the subject's codebook and of a type this prompt can use. The picker keeps
  *   a stored pick on offer whatever becomes of it, so that reopening a prompt
@@ -266,21 +295,36 @@ export type PromptPickGateInput = Readonly<{
  * consults at save time.
  */
 export function usePromptPickGate({
-  picks,
-  subjectForRow,
+  picks = NO_PICKS,
+  entityPicks = NO_ENTITY_PICKS,
+  subjectForRow = NO_SUBJECT,
 }: PromptPickGateInput): DialogArrayEditorValidate {
   const { controller } = useStageEditorForm();
-  const latest = useRef({ controller, picks, subjectForRow });
-  latest.current = { controller, picks, subjectForRow };
+  const latest = useRef({ controller, picks, entityPicks, subjectForRow });
+  latest.current = { controller, picks, entityPicks, subjectForRow };
 
   return useCallback((values, context) => {
     const current = latest.current;
-    const subject = current.subjectForRow(values);
-    if (subject === undefined) return undefined;
-
     const protocolContext = current.controller.snapshot.protocolContext;
-    const available = variablesFor(protocolContext.codebook, subject);
     const errors: Record<string, string> = {};
+
+    // Asked whatever the row's subject turns out to be: a type the codebook no
+    // longer defines is unusable on its own account, and on a census prompt it
+    // is also what the attribute picker below is scoped to.
+    for (const { path, entity } of current.entityPicks) {
+      const typeId = stringAtPath(values, path);
+      if (typeId === '') continue;
+      if (protocolContext.codebook[entity]?.[typeId] === undefined) {
+        errors[path] = createMessageError(entityTypeNotAvailableRefusal);
+      }
+    }
+
+    const subject = current.subjectForRow(values);
+    if (subject === undefined) {
+      return Object.keys(errors).length === 0 ? undefined : errors;
+    }
+
+    const available = variablesFor(protocolContext.codebook, subject);
     for (const { path, types } of current.picks) {
       const variableId = stringAtPath(values, path);
       // An empty pick is the required rule's to refuse, and says nothing about

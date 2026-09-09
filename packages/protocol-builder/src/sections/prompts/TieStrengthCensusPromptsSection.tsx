@@ -17,6 +17,7 @@ import CreateEdgeField from './CreateEdgeField.tsx';
 import PromptAttributeField from './PromptAttributeField.tsx';
 import {
   edgeSubjectOf,
+  type EntityTypePick,
   type PromptPick,
   usePromptPickGate,
 } from './promptCodebook.ts';
@@ -31,6 +32,11 @@ const STRENGTH_TYPES: readonly VariableType[] = Object.freeze(['ordinal']);
  */
 const PICKS: readonly PromptPick[] = Object.freeze([
   { path: 'edgeVariable', writerClass: 'unvalidated', types: STRENGTH_TYPES },
+]);
+
+/** The connection the scale describes, which is picked inside the prompt. */
+const ENTITY_PICKS: readonly EntityTypePick[] = Object.freeze([
+  { path: 'createEdge', entity: 'edge' },
 ]);
 
 /**
@@ -314,6 +320,7 @@ export default function TieStrengthCensusPromptsSection() {
   // is asked about the row's own edge type rather than about the stage.
   const pickGate = usePromptPickGate({
     picks: PICKS,
+    entityPicks: ENTITY_PICKS,
     subjectForRow: (row) => edgeSubjectOf(row.createEdge),
   });
 

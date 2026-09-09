@@ -5,7 +5,13 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import PromptsSection from '../PromptsSection.tsx';
 import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import CreateEdgeField from './CreateEdgeField.tsx';
+import { type EntityTypePick, usePromptPickGate } from './promptCodebook.ts';
 import { PromptTextField, PromptTextPreview } from './promptText.tsx';
+
+/** The connection an affirmative answer creates, picked inside the prompt. */
+const ENTITY_PICKS: readonly EntityTypePick[] = Object.freeze([
+  { path: 'createEdge', entity: 'edge' },
+]);
 
 /**
  * What only this family says. The words it shares with the other two censuses
@@ -94,10 +100,13 @@ function DyadCensusPromptEditor() {
  * prompts section; only what one prompt SAYS is here.
  */
 export default function DyadCensusPromptsSection() {
+  const pickGate = usePromptPickGate({ entityPicks: ENTITY_PICKS });
+
   return (
     <PromptsSection
       PromptEditor={DyadCensusPromptEditor}
       PromptPreview={PromptTextPreview}
+      editorValidate={pickGate}
       description={censusPromptsMessages.pairDescription}
       fieldHint={censusPromptsMessages.pairFieldHint}
     />

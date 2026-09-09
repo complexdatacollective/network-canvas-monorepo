@@ -401,3 +401,37 @@ describe('dismissing the connection-type dialog while it is submitting', () => {
     );
   });
 });
+
+/**
+ * A prompt saved over a connection type the codebook no longer defines.
+ *
+ * `EntitySelectControl` keeps a deleted type on offer, labelled for what it is,
+ * for the reason the attribute picker keeps a deleted attribute: blanking the
+ * control would hide the reference the researcher has to repair and write the
+ * blank back over it. Nothing else refused it — the field validated only that
+ * something was chosen — so Save closed the dialog and the refusal arrived at
+ * the whole-stage save instead, in the schema's words about a codebook the
+ * researcher was no longer looking at.
+ */
+describe('a prompt whose connection type is no longer in the codebook', () => {
+  it('refuses the save, and says so under the chips', async () => {
+    const harness = renderStageEditor(openEditor());
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('radio', { name: 'knows' });
+
+    harness.receiveCodebookUpdate({ edge: { knows: null } });
+    expect(
+      await screen.findByText(
+        'This type is no longer in the codebook. Choose another one.',
+      ),
+    ).toBeInTheDocument();
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    // Still open on the choice that has to be repaired, rather than closed
+    // over a stage the save will refuse later.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
