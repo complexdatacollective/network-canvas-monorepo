@@ -19,7 +19,10 @@ import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import type { SessionPrincipal } from '../auth/service.ts';
-import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
+import {
+  createProtocolBuilderRuntime,
+  type ProtocolBuilderRuntime,
+} from '../protocol-builder/runtime.ts';
 import { ProtocolStore } from '../protocol/store.ts';
 import { createRpcRouter } from '../rpc.ts';
 import { stubAuthService } from './support/auth.ts';
@@ -90,8 +93,16 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   let dispose: () => Promise<void>;
   let clients: Map<Researcher, ReturnType<typeof clientFor>>;
   let protocolId: string;
+  let draftId: string;
   let reference: ReturnType<typeof referencedVariable>;
   let router: ReturnType<typeof createRpcRouter>;
+  let runtime: ProtocolBuilderRuntime;
+  /**
+   * The clock the lease keeper reads, so a test can reach the idle bound
+   * without spending five minutes there. Timers are left real: this suite
+   * drives Postgres and oRPC event iterators, both of which are timer-driven.
+   */
+  let now = Date.now();
 
   function clientFor(who: Researcher) {
     return createRouterClient(router, {
@@ -137,11 +148,14 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       ),
     ) as CurrentProtocol;
     reference = referencedVariable(protocol);
-    const created = await new ProtocolStore(
-      createTenantDb(scratch.app, TEAM_ID),
-    ).createProtocol({ protocol });
+    const store = new ProtocolStore(createTenantDb(scratch.app, TEAM_ID));
+    const created = await store.createProtocol({ protocol });
     protocolId = created.protocolId;
+    const draft = await store.latestDraftId(protocolId);
+    if (draft === undefined) throw new Error('the new protocol has no draft');
+    draftId = draft;
 
+    runtime = createProtocolBuilderRuntime(() => now);
     router = createRpcRouter(
       {
         enabled: true,
@@ -158,7 +172,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         telemetry: false,
         invitationDeliveryAvailable: false,
         pool: scratch.app,
-        protocolBuilder: createProtocolBuilderRuntime(),
+        protocolBuilder: runtime,
       },
     );
     clients = new Map([
@@ -440,7 +454,96 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       tail.map((entry) => entry.event),
     );
   });
+
+  /**
+   * A researcher with an editor open holds the lock for as long as they are
+   * connected, however long they spend thinking. Studio's storage underneath is
+   * a lease with an expiry, so the section is only theirs while the server
+   * keeps renewing it: this is the test that the server keeps renewing behind
+   * an open channel that has called nothing, and stops when it closes.
+   */
+  it('keeps a lock while its channel is open, and gives it back when it closes', async () => {
+    const sectionId = stageSection(reference.stageId);
+    const owner = `${ADA.principal.userId}:${ADA.connectionId}`;
+    const watch = await watching(asClient(ADA), protocolId);
+    try {
+      await asClient(ADA).protocolBuilder.acquireLock({
+        protocolId,
+        sectionId,
+      });
+      expect(runtime.leases.heldSections(draftId, owner)).toContain(sectionId);
+
+      // Long past the idle bound, with nothing called in between.
+      now += 6 * 60_000;
+      await runtime.leases.renewDue();
+
+      expect(runtime.leases.heldSections(draftId, owner)).toContain(sectionId);
+      const behind = await asClient(GRACE).protocolBuilder.acquireLock({
+        protocolId,
+        sectionId,
+      });
+      expect(behind.lock).toBe('readOnly');
+    } finally {
+      now = Date.now();
+      await watch.close();
+    }
+
+    // The channel closing is what ends the lock, so the next editor takes it.
+    const taken = await asClient(GRACE).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId,
+    });
+    expect(taken.lock).toBe('held');
+    await asClient(GRACE).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId,
+    });
+  });
 });
+
+/**
+ * An open channel, drained in the background.
+ *
+ * Resolves once the stream has published this watcher's own arrival, so
+ * nothing after it can land in the gap before the handler subscribed.
+ */
+async function watching(
+  client: {
+    protocolBuilder: {
+      watchProtocol: (
+        input: { protocolId: string },
+        options: { signal: AbortSignal },
+      ) => Promise<AsyncIterable<ProtocolEvent>>;
+    };
+  },
+  protocolId: string,
+): Promise<{ close: () => Promise<void> }> {
+  const controller = new AbortController();
+  const stream = await client.protocolBuilder.watchProtocol(
+    { protocolId },
+    { signal: controller.signal },
+  );
+  let attached = (): void => undefined;
+  const attach = new Promise<void>((resolve) => {
+    attached = resolve;
+  });
+  const draining = (async () => {
+    try {
+      for await (const event of stream) {
+        if (event.type === 'presence') attached();
+      }
+    } catch {
+      // The abort below is the only way this stream ends.
+    }
+  })();
+  await attach;
+  return {
+    close: async () => {
+      controller.abort();
+      await draining;
+    },
+  };
+}
 
 type WatchedEvent = { cursor: string | undefined; event: ProtocolEvent };
 

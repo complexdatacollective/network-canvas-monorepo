@@ -150,7 +150,7 @@ export class ResourceBridge {
       if (descriptor === undefined || !this.#staged.has(id)) {
         return failed('not-found', 'no such staged resource', id);
       }
-      promoted.push(descriptor);
+      promoted.push({ ...descriptor, status: 'committed' });
     }
     this.#promotions.add(promotionId);
     for (const id of ids) this.#staged.delete(id);
@@ -240,13 +240,21 @@ export class ResourceBridge {
     return { descriptor, handle };
   }
 
+  /**
+   * The manifest as descriptors. An entry the open edit brought in is reported
+   * staged even though it is committed underneath: the edit can still take it
+   * back out, and a picker offering to discard it is asking about that, not
+   * about what storage has done.
+   */
   #descriptors(): Descriptor[] {
     const manifest = getAssetManifest(this.#store.getState());
     return Object.entries(manifest).map(([id, entry]) => ({
       id,
       kind: entry.type,
       name: entry.name,
-      status: 'committed' as const,
+      status: this.#staged.has(id)
+        ? ('staged' as const)
+        : ('committed' as const),
       ...(entry.type === 'apikey' ? {} : { source: entry.source }),
     }));
   }

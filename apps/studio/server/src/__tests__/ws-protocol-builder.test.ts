@@ -17,6 +17,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { type contract } from '@codaco/studio-rpc';
+import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import { createApp } from '../app.ts';
@@ -209,4 +210,60 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
       break;
     }
   });
+
+  /**
+   * Two tabs of one researcher are two connections, so the second has to be
+   * able to say who has the section — and it learns that from the stream, on a
+   * socket that served none of the calls that took the lock.
+   */
+  it('tells a second socket which connection took a section', async () => {
+    const watcher = await connect();
+    const holder = await connect();
+    const stream = await watcher.protocolBuilder.watchProtocol({ protocolId });
+    const locks: LockEvent[] = [];
+    const draining = (async () => {
+      for await (const event of stream) {
+        if (event.type === 'lock') locks.push(event);
+        if (locks.length === 2) break;
+      }
+    })();
+
+    // The watcher takes one section itself first, so the lock event for the
+    // other one can be compared against its own connection rather than merely
+    // looking plausible.
+    await watcher.protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: 'assets',
+    });
+    await holder.protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+    await draining;
+
+    const own = locks.find((event) => event.sectionId === 'assets')?.holder;
+    const theirs = locks.find(
+      (event) => event.sectionId === 'stageOrder',
+    )?.holder;
+    expect(own?.sessionId).toBeDefined();
+    expect(theirs?.userId).toBe(PRINCIPAL.userId);
+    expect(theirs?.displayName).toBe(PRINCIPAL.name);
+    expect(theirs?.mode).toBe('editing');
+    expect(theirs?.sectionId).toBe('stageOrder');
+    // Two tabs of one researcher are two owners, so the identity the event
+    // carries is the socket's rather than the person's.
+    expect(theirs?.sessionId).not.toBe(own?.sessionId);
+
+    // The connection the event named is the one the lease is actually under:
+    // asking for the same section answers read-only behind that same identity.
+    const behind = await watcher.protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+    expect(behind.lock).toBe('readOnly');
+    if (behind.lock !== 'readOnly') return;
+    expect(behind.holder.sessionId).toBe(theirs?.sessionId);
+  });
 });
+
+type LockEvent = Extract<ProtocolEvent, { type: 'lock' }>;

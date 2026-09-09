@@ -234,12 +234,16 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       const subscription = runtime.publisher.subscribe(session.draftId);
       const stop = () => subscription.close();
       signal?.addEventListener('abort', stop, { once: true });
-      runtime.presence.join(
-        session.draftId,
-        sessionPresence(session, 'viewing'),
-      );
-      publishPresence(session);
+      // The channel is the connection: while it runs, every lease its owner
+      // holds is renewed however long they go without calling anything, and
+      // `endConnection` below is what gives those sections back.
+      const disconnect = runtime.leases.connect(sessionOwner(session));
       try {
+        runtime.presence.join(
+          session.draftId,
+          sessionPresence(session, 'viewing'),
+        );
+        publishPresence(session);
         const backlog = await readProtocolEvents(
           session.tenantDb,
           session.draftId,
@@ -268,6 +272,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       } finally {
         signal?.removeEventListener('abort', stop);
         subscription.close();
+        disconnect();
         await endConnection(session);
       }
     }),

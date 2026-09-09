@@ -1,18 +1,21 @@
 import { getEventMeta, safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
 import { configureStore } from '@reduxjs/toolkit';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ProtocolBuilderClient } from '@codaco/protocol-builder/contract';
 import type { ProtocolEvent } from '@codaco/protocol-builder/contract/schemas';
-import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import {
+  CurrentProtocolSchema,
+  type ExtractedAsset,
+} from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { setActiveProtocolId } from '~/ducks/modules/app';
 import { rootReducer } from '~/ducks/modules/root';
-import { getCanonicalProtocol } from '~/selectors/protocol';
+import { getAssetManifest, getCanonicalProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from '../architectStore.ts';
 import {
@@ -20,6 +23,21 @@ import {
   createArchitectRouter,
 } from '../createArchitectRouter.ts';
 import { STAGE_ORDER_SECTION } from '../protocolSections.ts';
+
+/**
+ * The bytes an import wrote, standing in for Architect's IndexedDB asset
+ * store: the store itself is out of this host's reach, and what the resource
+ * lifecycle has to be shown doing is what it leaves in the protocol.
+ */
+const storedAssets = new Map<string, ExtractedAsset>();
+
+vi.mock('~/utils/assetUtils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/assetUtils')>()),
+  saveAssetWithFallback: (asset: ExtractedAsset) => {
+    storedAssets.set(asset.id, asset);
+    return Promise.resolve({ persisted: true });
+  },
+}));
 
 const PROTOCOL_ID = 'library-row-1';
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
@@ -332,13 +350,16 @@ describe("Architect's in-process protocol-builder host", () => {
 
   /**
    * Architect refuses to delete a variable a stage still names, where the
-   * contract's other hosts strip the references and delete it. The refusal is
-   * not one of the contract's typed errors, so it arrives untyped.
+   * contract's other hosts strip the references and delete it instead. The
+   * refusal still has to arrive as one of the contract's own errors — an
+   * editor can do nothing with a thrown string — so it comes back as the
+   * refactor's other refusal: it took none of the sections it has to write,
+   * and it names them.
    */
-  it('refuses to delete a codebook variable the protocol still references', async () => {
+  it('refuses to delete a referenced codebook variable, naming the sections in the way', async () => {
     const { store, client } = openProtocol();
 
-    const { error, definedError } = await safe(
+    const { definedError } = await safe(
       client.refactor.deleteVariable({
         protocolId: PROTOCOL_ID,
         subject: { entity: 'node', type: 'person' },
@@ -346,8 +367,15 @@ describe("Architect's in-process protocol-builder host", () => {
       }),
     );
 
-    expect(error).not.toBeNull();
-    expect(definedError).toBeNull();
+    expect(definedError?.code).toBe('SECTIONS_LOCKED');
+    if (definedError?.code !== 'SECTIONS_LOCKED') return;
+    const { blocked } = definedError.data;
+    expect(blocked.map((entry) => entry.sectionId)).toContain(
+      sectionId({ kind: 'stage', stageId: 'name-generator-1' }),
+    );
+    // Named without a holder: one editor here, so the sections are in the way
+    // rather than taken.
+    expect(blocked.every((entry) => entry.holder === undefined)).toBe(true);
     expect(personVariables(store).name).toBeDefined();
   });
 
@@ -390,6 +418,48 @@ describe("Architect's in-process protocol-builder host", () => {
       }),
     );
     expect(definedError?.code).toBe('NOT_LOCK_HOLDER');
+  });
+
+  /**
+   * Architect has no staging area: `stage` imports and commits, and the
+   * lifecycle's promise — that a cancelled edit leaves nothing behind — is kept
+   * by `discard` taking back exactly what the edit brought in.
+   */
+  it('takes an imported resource back out when the edit is discarded', async () => {
+    const { store, client } = openProtocol();
+    const before = { ...getAssetManifest(store.getState()) };
+
+    const staged = await client.resources.stage({
+      protocolId: PROTOCOL_ID,
+      requestId: 'import-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'A photograph',
+        source: 'photo.png',
+        contentType: 'image/png',
+        bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+      },
+    });
+
+    expect(staged.status).toBe('ok');
+    if (staged.status !== 'ok') return;
+    const { id } = staged.data.descriptor;
+    // Staged, not committed: the edit can still take it back, and a picker
+    // asking which resources are the edit's own is asking about that.
+    expect(staged.data.descriptor.status).toBe('staged');
+    expect(getAssetManifest(store.getState())[id]).toBeDefined();
+    expect(storedAssets.has(id)).toBe(true);
+
+    const discarded = await client.resources.discard({
+      protocolId: PROTOCOL_ID,
+    });
+
+    expect(discarded.status).toBe('ok');
+    expect(getAssetManifest(store.getState())).toEqual(before);
+    // Nothing in the protocol names the bytes any more, which is the condition
+    // Architect's own orphan sweep collects them on.
+    expect(Object.keys(getAssetManifest(store.getState()))).not.toContain(id);
   });
 
   it('lists the committed asset manifest as resources', async () => {

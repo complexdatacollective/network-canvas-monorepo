@@ -13,9 +13,11 @@ import { ProtocolEventPublisher } from './events.ts';
 const RENEW_INTERVAL_MS = 10_000;
 
 /**
- * How long a lease is kept alive for a caller that has gone quiet without
- * releasing it. A WebSocket connection ends its own leases when it closes;
- * this bounds the unary plane, where there is no close to observe.
+ * How long a lease outlives a caller that has neither released it nor left a
+ * connection open. A researcher reading, thinking, or away from the keyboard
+ * still has a `watchProtocol` channel open, and that channel keeps their
+ * leases alive for as long as it runs; this bounds only the case where no
+ * connection of theirs is left to end them.
  */
 const IDLE_MS = 5 * 60_000;
 
@@ -33,16 +35,34 @@ function leaseKey(draftId: string, sectionId: string, owner: string): string {
 }
 
 /**
- * Renews every lease this process is holding until it is released, its
- * connection closes, or its holder goes quiet for longer than the idle bound.
+ * Renews every lease this process is holding until it is released or the
+ * connection holding it is gone.
  */
 export class LeaseKeeper {
   readonly #held = new Map<string, HeldLease>();
+  readonly #connections = new Map<string, number>();
   #timer: NodeJS.Timeout | undefined;
   readonly #now: () => number;
 
   constructor(now: () => number = Date.now) {
     this.#now = now;
+  }
+
+  /**
+   * Counts one live connection for an owner, and gives back the call that ends
+   * it. While a connection is open its owner's leases are renewed however long
+   * the researcher spends not calling anything: losing a lock under an open
+   * editor is not a thing that may happen, and the connection ending is what
+   * gives the section back (`releaseConnection`).
+   */
+  connect(owner: string): () => void {
+    this.#connections.set(owner, (this.#connections.get(owner) ?? 0) + 1);
+    return () => {
+      const open = this.#connections.get(owner);
+      if (open === undefined) return;
+      if (open > 1) this.#connections.set(owner, open - 1);
+      else this.#connections.delete(owner);
+    };
   }
 
   hold(lease: Omit<HeldLease, 'touchedAt'>): void {
@@ -77,7 +97,10 @@ export class LeaseKeeper {
     // Deleting the current entry mid-iteration is defined for a Map, so this
     // walks the live map rather than a copy of it.
     for (const [key, lease] of this.#held) {
-      if (at - lease.touchedAt > IDLE_MS) {
+      if (
+        !this.#connections.has(lease.owner) &&
+        at - lease.touchedAt > IDLE_MS
+      ) {
         this.#held.delete(key);
         continue;
       }
@@ -162,10 +185,12 @@ export type ProtocolBuilderRuntime = {
   leases: LeaseKeeper;
 };
 
-export function createProtocolBuilderRuntime(): ProtocolBuilderRuntime {
+export function createProtocolBuilderRuntime(
+  now?: () => number,
+): ProtocolBuilderRuntime {
   return {
     publisher: new ProtocolEventPublisher(),
     presence: new PresenceRegistry(),
-    leases: new LeaseKeeper(),
+    leases: new LeaseKeeper(now),
   };
 }

@@ -21,6 +21,13 @@ import {
   deleteTypeAsync,
   deleteVariableAsync,
 } from '~/ducks/modules/protocol/codebook';
+import type { RootState } from '~/ducks/modules/root';
+import { getIsUsed } from '~/selectors/codebook/isUsed';
+import {
+  getEntityTypeUsageHitsById,
+  getVariableUsageHits,
+} from '~/selectors/indexes';
+import { getCanonicalProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from './architectStore.ts';
 import { ProtocolRevisions } from './protocolRevisions.ts';
@@ -176,10 +183,13 @@ export function createArchitectRouter(store: ArchitectStore) {
     /**
      * Architect's compound codebook operations, as the contract's refactors.
      *
-     * Nothing is ever blocked: the only lock table is this router's, and a
-     * section it holds is held by the caller. Architect refuses to delete a
-     * variable or a type the protocol still references rather than stripping
-     * the references — see this module's tests.
+     * A section is never held by anyone else — the only lock table is this
+     * router's — but a refactor is still refusable here, because Architect
+     * deletes a variable or a type only when nothing references it and has no
+     * path that strips the references out of the stages naming them (#1392).
+     * That refusal reaches the contract as its other one: the change took none
+     * of the sections it has to write, named without a holder. Giving Architect
+     * the stripping path Studio has belongs with the adoption in PR 4.
      */
     refactor: {
       deleteVariable: os.refactor.deleteVariable.handler(
@@ -197,20 +207,33 @@ export function createArchitectRouter(store: ArchitectStore) {
                       : 'codebookEdge',
                   typeId: input.subject.type,
                 });
-          const { changed } = await revisions.write(() =>
-            store
-              .dispatch(
-                deleteVariableAsync({
-                  entity: input.subject.entity,
-                  ...(input.subject.entity === 'ego'
-                    ? {}
-                    : { type: input.subject.type }),
-                  variable: input.variableId,
-                }),
-              )
-              .unwrap(),
-          );
-          return refactorResult(revisions, changed, owner);
+          try {
+            const { changed } = await revisions.write(() =>
+              store
+                .dispatch(
+                  deleteVariableAsync({
+                    entity: input.subject.entity,
+                    ...(input.subject.entity === 'ego'
+                      ? {}
+                      : { type: input.subject.type }),
+                    variable: input.variableId,
+                  }),
+                )
+                .unwrap(),
+            );
+            return refactorResult(revisions, changed, owner);
+          } catch (error) {
+            const state = store.getState();
+            if (getIsUsed(state)[input.variableId] !== true) throw error;
+            throw errors.SECTIONS_LOCKED({
+              data: {
+                blocked: blockedBy(
+                  state,
+                  getVariableUsageHits(state, input.variableId),
+                ),
+              },
+            });
+          }
         },
       ),
       deleteEntityType: os.refactor.deleteEntityType.handler(
@@ -222,14 +245,25 @@ export function createArchitectRouter(store: ArchitectStore) {
             kind: input.entity === 'node' ? 'codebookNode' : 'codebookEdge',
             typeId: input.typeId,
           });
-          const { changed } = await revisions.write(() =>
-            store
-              .dispatch(
-                deleteTypeAsync({ entity: input.entity, type: input.typeId }),
-              )
-              .unwrap(),
-          );
-          return refactorResult(revisions, changed, owner);
+          try {
+            const { changed } = await revisions.write(() =>
+              store
+                .dispatch(
+                  deleteTypeAsync({ entity: input.entity, type: input.typeId }),
+                )
+                .unwrap(),
+            );
+            return refactorResult(revisions, changed, owner);
+          } catch (error) {
+            const state = store.getState();
+            const hits = (
+              getEntityTypeUsageHitsById(state).get(input.typeId) ?? []
+            ).filter((hit) => hit.entity === input.entity);
+            if (hits.length === 0) throw error;
+            throw errors.SECTIONS_LOCKED({
+              data: { blocked: blockedBy(state, hits) },
+            });
+          }
         },
       ),
     },
@@ -296,6 +330,41 @@ export function createArchitectClient(
   store: ArchitectStore,
 ): ProtocolBuilderClient {
   return createRouterClient(createArchitectRouter(store));
+}
+
+/**
+ * The sections a refused refactor would have had to write, from the reference
+ * hits the codebook's own "Used In" column is built from.
+ *
+ * A hit sitting somewhere with no section of its own — a reference the section
+ * taxonomy does not address — contributes nothing rather than a guess: the
+ * list says which sections are in the way, and a short list is honest where an
+ * invented entry is not.
+ */
+function blockedBy(
+  state: RootState,
+  hits: readonly { path: readonly (string | number)[] }[],
+): { sectionId: ProtocolSectionId }[] {
+  const stages = getCanonicalProtocol(state)?.stages ?? [];
+  const blocked = new Set<ProtocolSectionId>();
+  for (const { path } of hits) {
+    const [root, first, second] = path;
+    if (root === 'stages' && typeof first === 'number') {
+      const stage = stages[first];
+      if (stage !== undefined) {
+        blocked.add(sectionId({ kind: 'stage', stageId: stage.id }));
+      }
+      continue;
+    }
+    if (root !== 'codebook') continue;
+    if (first === 'ego') blocked.add(sectionId({ kind: 'codebookEgo' }));
+    else if (first === 'node' && typeof second === 'string') {
+      blocked.add(sectionId({ kind: 'codebookNode', typeId: second }));
+    } else if (first === 'edge' && typeof second === 'string') {
+      blocked.add(sectionId({ kind: 'codebookEdge', typeId: second }));
+    }
+  }
+  return [...blocked].map((section) => ({ sectionId: section }));
 }
 
 /**
