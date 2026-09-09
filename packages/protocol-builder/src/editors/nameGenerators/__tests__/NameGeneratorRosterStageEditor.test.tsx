@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -207,6 +207,60 @@ describe('the roster name generator editor', () => {
       await screen.findByRole('button', { name: 'Add new card detail' }),
     );
     await waitFor(() => expect(cardDetailOptions()).toEqual(['city', 'name']));
+  });
+
+  /**
+   * And the way back: ONE undo, which is the researcher's way out of a swap
+   * they did not mean.
+   *
+   * Three sections describe the data file, and each of them observes its
+   * replacement for itself. A clear dispatched per observation is three
+   * batches, so the swap would cost three undos — and the ones in between are
+   * the states nobody authored: the new file with the old file's search
+   * settings, or its ordering, standing back underneath it as though they
+   * described it. The clears are pooled instead (`ResetGroupProvider`), so the
+   * file and everything that described it travel as one edit.
+   */
+  it('takes the file and everything that described it back in one undo', async () => {
+    const harness = mountFixture();
+    await screen.findByText(FIXTURE_COLUMNS);
+    const opened = structuredClone(
+      harness.session.getSnapshot().editedSection.fields,
+    );
+    const batchesBefore = harness.pendingCommands().length;
+
+    await importAnotherRoster(harness);
+    await screen.findByText(STAGED_COLUMNS);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Roster search' }),
+      ).not.toBeChecked(),
+    );
+
+    // One batch: the file the researcher chose, and every capability that only
+    // meant anything against the file it replaced.
+    expect(harness.pendingCommands()).toHaveLength(batchesBefore + 1);
+    expect(
+      harness
+        .pendingCommands()
+        .slice(batchesBefore)
+        .flatMap((batch) => batch.commands.map((command) => command.key)),
+    ).toEqual(['dataSource', 'cardOptions', 'searchOptions', 'sortOptions']);
+
+    act(() => {
+      harness.session.undo();
+    });
+
+    // The stage as it was opened — not the new file with two thirds of the old
+    // file's settings back under it.
+    expect(harness.session.getSnapshot().editedSection.fields).toEqual(opened);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Roster search' }),
+      ).toBeChecked(),
+    );
+    expect(screen.getByRole('switch', { name: 'Card details' })).toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Roster order' })).toBeChecked();
   });
 
   /**
@@ -441,17 +495,19 @@ describe('the roster name generator editor', () => {
 
     expect(harness.gateway.getStagingResidue()).toHaveLength(0);
     // The removal travelling with the clears it caused, in one batch, ahead of
-    // them: the file went, and therefore these did.
+    // them: the file went, and therefore these did. The three clears read in
+    // the order one batch says them — the diff walks the draft's keys sorted —
+    // rather than in the order the sections happen to be mounted.
     const kept = [
       { op: 'unset', key: 'dataSource' },
       { op: 'unset', key: 'cardOptions' },
-      { op: 'unset', key: 'sortOptions' },
       { op: 'unset', key: 'searchOptions' },
+      { op: 'unset', key: 'sortOptions' },
     ];
     expect(harness.liveCommands()).toEqual(kept);
-    expect(
-      harness.pendingCommands().flatMap((batch) => [...batch.commands]),
-    ).toEqual(kept);
+    const batches = harness.pendingCommands();
+    expect(batches).toHaveLength(1);
+    expect(batches.flatMap((batch) => [...batch.commands])).toEqual(kept);
     // Read as a whole rather than key by key, so a command carrying the staged
     // id anywhere in it — a value, a nested key — is caught too.
     expect(JSON.stringify(harness.liveCommands())).not.toContain(staged?.id);

@@ -369,13 +369,20 @@ describe('a capability reset by a data file staged in this session', () => {
     expect(
       request?.resourceManifest?.commands.map((command) => command.key),
     ).toEqual([staged]);
+    // ONE batch, holding the file and every capability that only meant
+    // anything against the one it replaced: the three sections pool their
+    // clears rather than each dispatching its own, so this is one entry in the
+    // session's history and one undo. Its clears read in the order the diff
+    // walks the draft's keys — sorted — rather than in the order the sections
+    // are mounted.
+    expect(request?.pendingCommands).toHaveLength(1);
     expect(
       request?.pendingCommands.flatMap((batch) => [...batch.commands]),
     ).toEqual([
       { op: 'set', key: 'dataSource', value: staged },
       { op: 'unset', key: 'cardOptions' },
-      { op: 'unset', key: 'sortOptions' },
       { op: 'unset', key: 'searchOptions' },
+      { op: 'unset', key: 'sortOptions' },
     ]);
     expect(request?.stageDocument).toMatchObject({ dataSource: staged });
     expect(request?.stageDocument).not.toHaveProperty('cardOptions');
@@ -477,8 +484,8 @@ describe('a capability reset by a data file staged in this session', () => {
       expect(harness.liveCommands()).toEqual([
         { op: 'set', key: 'dataSource', value: 'other_roster' },
         { op: 'unset', key: 'cardOptions' },
-        { op: 'unset', key: 'sortOptions' },
         { op: 'unset', key: 'searchOptions' },
+        { op: 'unset', key: 'sortOptions' },
       ]),
     );
   });
@@ -637,8 +644,8 @@ describe('a staged data file the researcher discards again', () => {
       expect(harness.liveCommands()).toEqual([
         { op: 'set', key: 'dataSource', value: staged },
         { op: 'unset', key: 'cardOptions' },
-        { op: 'unset', key: 'sortOptions' },
         { op: 'unset', key: 'searchOptions' },
+        { op: 'unset', key: 'sortOptions' },
         { op: 'unset', key: 'dataSource' },
       ]),
     );

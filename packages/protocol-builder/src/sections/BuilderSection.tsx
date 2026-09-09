@@ -17,6 +17,7 @@ import {
 } from '../form/stageFormHooks.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
 import { useOnResearcherChange } from './researcherChange.ts';
+import { useResetGroup } from './resetGroup.tsx';
 
 /**
  * An optional capability the researcher switches on and off.
@@ -178,6 +179,7 @@ export default function BuilderSection({
   const intl = useAppIntl();
   const { confirm } = useDialog();
   const discardStageValues = useDiscardStageValues();
+  const fieldsResetBy = useResetGroup(resetOn, capability?.fields ?? NO_FIELDS);
   const configured = useStageHasAnyValue(capability?.fields ?? NO_FIELDS);
   const [switchedOn, setSwitchedOn] = useState(configured);
   useSwitchFollowsTheDraft(configured, setSwitchedOn);
@@ -278,10 +280,21 @@ export default function BuilderSection({
   const [resetGeneration, setResetGeneration] = useState(0);
   useOnResearcherChange(resetOn, (value) => {
     if (resetOn === undefined) return;
+    // Everything the same change throws away, not just this section's share of
+    // it. Three sections describing one data file each observe its replacement
+    // for themselves, and a clear dispatched per observation is three batches —
+    // so replacing the file would take three undos, and the ones in between
+    // would put the old file's settings back underneath the new file. The first
+    // observer discards the whole group in one batch; the two behind it find
+    // nothing left to throw away and add nothing to the history. See
+    // `ResetGroupProvider`.
+    //
     // Refused the same way, and for the same reason: a reset the session would
     // not take has thrown nothing away, and closing the capability over values
-    // it still holds would describe a stage nobody agreed to.
-    const discarded = discardStageValues(capability?.fields ?? NO_FIELDS, {
+    // it still holds would describe a stage nobody agreed to. A refusal is the
+    // same answer for every section in the group, because it is the same batch
+    // each of them is trying to send.
+    const discarded = discardStageValues(fieldsResetBy(resetOn), {
       path: resetOn,
       value,
     });

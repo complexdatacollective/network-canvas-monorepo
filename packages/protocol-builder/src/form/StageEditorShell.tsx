@@ -35,6 +35,7 @@ import { canonicalize, type Command } from '@codaco/studio-sync/apply';
 
 import type { StageEditorController } from '../controller.ts';
 import { ResourceGatewayProvider } from '../resources/context.tsx';
+import { ResetGroupProvider } from '../sections/resetGroup.tsx';
 import {
   InvalidProtocolDraftError,
   type ProtocolBuilderSnapshot,
@@ -478,31 +479,43 @@ function StageEditorFormBody({
 
   return (
     <StageEditorFormContext value={context}>
-      <ResourceGatewayProvider gateway={controller.resourceGateway}>
-        <div className={cx('@container flex w-full flex-col gap-6', className)}>
-          <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
-            <SectionOutline />
-            <form
-              id={formId}
-              ref={formRef}
-              noValidate // The form reports its own problems; the browser's differ.
-              aria-busy={isSubmitting}
-              onSubmit={formProps.onSubmit}
-              className="flex min-w-0 flex-col"
-            >
-              <LayoutGroup id={layoutGroupId}>
-                <EnclosingHeadingLevel level={stageTitleLevel}>
-                  {reportedErrors && (
-                    <FormErrorsList key="form-errors" errors={reportedErrors} />
-                  )}
-                  {children}
-                </EnclosingHeadingLevel>
-              </LayoutGroup>
-            </form>
+      {/*
+        Sections that clear themselves when one thing they all describe is
+        replaced pool that clear here, so the change and everything it throws
+        away travel as one edit with one undo. See `ResetGroupProvider`.
+      */}
+      <ResetGroupProvider>
+        <ResourceGatewayProvider gateway={controller.resourceGateway}>
+          <div
+            className={cx('@container flex w-full flex-col gap-6', className)}
+          >
+            <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
+              <SectionOutline />
+              <form
+                id={formId}
+                ref={formRef}
+                noValidate // The form reports its own problems; the browser's differ.
+                aria-busy={isSubmitting}
+                onSubmit={formProps.onSubmit}
+                className="flex min-w-0 flex-col"
+              >
+                <LayoutGroup id={layoutGroupId}>
+                  <EnclosingHeadingLevel level={stageTitleLevel}>
+                    {reportedErrors && (
+                      <FormErrorsList
+                        key="form-errors"
+                        errors={reportedErrors}
+                      />
+                    )}
+                    {children}
+                  </EnclosingHeadingLevel>
+                </LayoutGroup>
+              </form>
+            </div>
+            {actions?.({ controller, formId, readOnly })}
           </div>
-          {actions?.({ controller, formId, readOnly })}
-        </div>
-      </ResourceGatewayProvider>
+        </ResourceGatewayProvider>
+      </ResetGroupProvider>
     </StageEditorFormContext>
   );
 }
