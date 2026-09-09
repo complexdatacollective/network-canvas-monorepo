@@ -82,13 +82,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** Everything one session's staging requests are keyed under. */
+function sessionPrefix(sessionId: string): string {
+  return `${sessionId}\u0000`;
+}
+
 /** A staging request's identity: whose it is, what it asked for, and its id. */
 function requestKey(
   sessionId: string,
   kind: string,
   requestId: string,
 ): string {
-  return `${sessionId}\u0000${kind}\u0000${requestId}`;
+  return `${sessionPrefix(sessionId)}${kind}\u0000${requestId}`;
 }
 
 function descriptorFromManifestEntry(
@@ -337,7 +342,7 @@ export class InMemoryResourceStore {
         if (entry.owner === sessionId) this.#staged.delete(id);
       }
       for (const key of this.#byRequest.keys()) {
-        if (key.startsWith(requestKey(sessionId, '', ''))) {
+        if (key.startsWith(sessionPrefix(sessionId))) {
           this.#byRequest.delete(key);
         }
       }
