@@ -21,6 +21,7 @@ import { createTenantDb } from '@codaco/studio-sync/tenant';
 import type { SessionPrincipal } from '../auth/service.ts';
 import {
   createProtocolBuilderRuntime,
+  RECONNECT_GRACE_MS,
   type ProtocolBuilderRuntime,
 } from '../protocol-builder/runtime.ts';
 import { ProtocolStore } from '../protocol/store.ts';
@@ -40,8 +41,10 @@ const TEAM_ID = 'protocol-builder-team';
 type Researcher = {
   principal: SessionPrincipal;
   memberId: string;
-  /** The connection, which is what the host locks per. */
+  /** The connection, which is what the host draws presence from. */
   connectionId: string;
+  /** The browser tab, which is what the host locks per. */
+  clientSessionId: string;
 };
 
 function researcher(slug: string): Researcher {
@@ -57,6 +60,7 @@ function researcher(slug: string): Researcher {
     },
     memberId: `pb-${slug}-member`,
     connectionId: `pb-${slug}-connection`,
+    clientSessionId: `pb-${slug}-tab`,
   };
 }
 
@@ -149,6 +153,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         principal: who.principal,
         requestId: randomUUID(),
         connectionId: who.connectionId,
+        clientSessionId: who.clientSessionId,
       },
     });
   }
@@ -840,16 +845,71 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   });
 
   /**
-   * A researcher with an editor open holds the lock for as long as they are
-   * connected, however long they spend thinking. Studio's storage underneath is
-   * a lease with an expiry, so the section is only theirs while the server
-   * keeps renewing it: this is the test that the server keeps renewing behind
-   * an open channel that has called nothing, and stops when it closes.
+   * Two tabs of one researcher are two editors: the lock belongs to the tab
+   * rather than to the person, so the second opens read-only behind the first
+   * (#1275) and is refused the write it would otherwise land on top of it.
    */
-  it('keeps a lock while its channel is open, and gives it back when it closes', async () => {
+  it('refuses a second tab of the same researcher, and names the tab holding it', async () => {
     const sectionId = stageSection(reference.stageId);
-    const owner = `${ADA.principal.userId}:${ADA.connectionId}`;
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId,
+    });
+    expect(held.lock).toBe('held');
+    try {
+      // The same person on the same cookie session, in a second tab: a
+      // different tab id, and so a different owner.
+      const secondTab = clientFor({
+        ...ADA,
+        connectionId: 'pb-ada-second-connection',
+        clientSessionId: 'pb-ada-second-tab',
+      });
+      const behind = await secondTab.protocolBuilder.acquireLock({
+        protocolId,
+        sectionId,
+      });
+      expect(behind.lock).toBe('readOnly');
+      if (behind.lock !== 'readOnly') throw new Error('unreachable');
+      expect(behind.holder.userId).toBe(ADA.principal.userId);
+      expect(behind.holder.sessionId).toBe(ADA.connectionId);
+
+      // The refusal has to be a refusal: the second tab cannot write the
+      // section it is reading.
+      const { error } = await safe(
+        secondTab.protocolBuilder.submit({
+          protocolId,
+          sectionId,
+          document: { ...behind.document, label: 'Renamed by the second tab' },
+          revision: behind.revision,
+        }),
+      );
+      if (!isDefinedError(error)) {
+        throw error ?? new Error('the second tab was allowed to write');
+      }
+      expect(error.code).toBe('NOT_LOCK_HOLDER');
+    } finally {
+      await asClient(ADA).protocolBuilder.releaseLock({
+        protocolId,
+        sectionId,
+      });
+    }
+  });
+
+  /**
+   * A researcher with an editor open holds the lock for as long as they are
+   * connected, however long they spend thinking, and keeps it across the
+   * socket that took it: a blip is a reconnection, not a departure. Studio's
+   * storage underneath is a lease with an expiry, so the section is only
+   * theirs while the server keeps renewing it. This is the test that the
+   * server keeps renewing behind an open channel that has called nothing,
+   * keeps renewing through the reconnect grace once that channel has gone, and
+   * gives the section back the moment the grace runs out with nothing back.
+   */
+  it('keeps a lock past the channel that took it, and gives it back when the reconnect grace runs out', async () => {
+    const sectionId = stageSection(reference.stageId);
+    const owner = `${ADA.principal.userId}:${ADA.clientSessionId}`;
     const watch = await watching(asClient(ADA), protocolId);
+    let strandedAt = Date.now();
     try {
       await asClient(ADA).protocolBuilder.acquireLock({
         protocolId,
@@ -868,11 +928,32 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       });
       expect(behind.lock).toBe('readOnly');
     } finally {
-      now = Date.now();
+      strandedAt = Date.now();
+      now = strandedAt;
       await watch.close();
     }
 
-    // The channel closing is what ends the lock, so the next editor takes it.
+    // The channel has closed and the section is still ADA's tab's: the whole
+    // of the grace is a reconnection in progress.
+    now = strandedAt + RECONNECT_GRACE_MS;
+    await runtime.leases.renewDue();
+    expect(runtime.leases.heldSections(draftId, owner)).toContain(sectionId);
+    const tooSoon = await asClient(GRACE).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId,
+    });
+    expect(tooSoon.lock).toBe('readOnly');
+    if (tooSoon.lock !== 'readOnly') throw new Error('unreachable');
+    expect(tooSoon.holder.userId).toBe(ADA.principal.userId);
+
+    // Nothing came back, so the tab has gone rather than blinked: the lease
+    // ends here rather than at its own expiry, so the section is free the
+    // moment the grace is up and the next editor takes it.
+    now = strandedAt + RECONNECT_GRACE_MS + 1;
+    await runtime.leases.renewDue();
+    expect(runtime.leases.heldSections(draftId, owner)).not.toContain(
+      sectionId,
+    );
     const taken = await asClient(GRACE).protocolBuilder.acquireLock({
       protocolId,
       sectionId,
@@ -882,6 +963,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       protocolId,
       sectionId,
     });
+    now = Date.now();
   });
 });
 

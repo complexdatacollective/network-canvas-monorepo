@@ -7,17 +7,38 @@
 import type { Presence } from '@codaco/protocol-builder/contract/schemas';
 import type { SyncServer } from '@codaco/studio-sync/server';
 
+import { logOperational } from '../observability/logger.ts';
 import { ProtocolEventPublisher } from './events.ts';
 
 /** A third of the lease TTL: two renewals may be lost before one expires. */
 const RENEW_INTERVAL_MS = 10_000;
 
 /**
- * How long a lease outlives a caller that has neither released it nor left a
- * connection open. A researcher reading, thinking, or away from the keyboard
- * still has a `watchProtocol` channel open, and that channel keeps their
- * leases alive for as long as it runs; this bounds only the case where no
- * connection of theirs is left to end them.
+ * How long an owner's leases wait for its next connection after the last one
+ * ended.
+ *
+ * A lock belongs to a browser tab, and a tab keeps its identity across the
+ * sockets it opens, so a socket that vanishes is a reconnection in progress
+ * rather than a departure. Shorter than the 30s lease TTL, per #1247's rule
+ * that a dirty drop holds the lease for a window shorter than the TTL: a tab
+ * whose socket died must never cost a colleague more than a server that died,
+ * which frees its sections within one TTL because nothing is left to renew
+ * them. Long enough for five rungs of the reconnect ladder #1247 fixes for the
+ * client (500ms doubling to a 30s cap: 0.5s, 1.5s, 3.5s, 7.5s, 15.5s), which
+ * is every blip a researcher would call one. Renewal is only checked on the
+ * 10s tick, so the release lands within a TTL of the drop either way. A tab
+ * that closes cleanly releases its lock and gives the section back at once, so
+ * this bounds a crash or a drop rather than a departure.
+ */
+export const RECONNECT_GRACE_MS = 20_000;
+
+/**
+ * How long a lease outlives an owner that has never opened a channel.
+ *
+ * Studio's editor opens one, so this is the unary plane alone: a script, or a
+ * client whose network refuses WebSockets. There is no connection to end
+ * there, so the only sign of life is a call, and the bound is wide enough that
+ * a researcher reading a section does not lose it mid-thought.
  */
 const IDLE_MS = 5 * 60_000;
 
@@ -30,17 +51,31 @@ type HeldLease = {
   touchedAt: number;
 };
 
+type OwnerConnections = {
+  open: number;
+  /** When the owner's last connection ended, while none has replaced it. */
+  strandedAt?: number;
+  /**
+   * Everything the owner loses once the grace has run out: the leases it still
+   * holds, given back with a lock event, and the imports it had staged.
+   *
+   * One per draft the owner opened a channel on, because one tab may hold
+   * sections in more than one protocol and each release is that draft's own.
+   */
+  ends: Map<string, () => Promise<void>>;
+};
+
 function leaseKey(draftId: string, sectionId: string, owner: string): string {
   return `${draftId} ${sectionId} ${owner}`;
 }
 
 /**
- * Renews every lease this process is holding until it is released or the
- * connection holding it is gone.
+ * Renews every lease this process is holding until it is released, or until
+ * its owner has gone the reconnect grace with no connection at all.
  */
 export class LeaseKeeper {
   readonly #held = new Map<string, HeldLease>();
-  readonly #connections = new Map<string, number>();
+  readonly #connections = new Map<string, OwnerConnections>();
   #timer: NodeJS.Timeout | undefined;
   readonly #now: () => number;
 
@@ -52,16 +87,34 @@ export class LeaseKeeper {
    * Counts one live connection for an owner, and gives back the call that ends
    * it. While a connection is open its owner's leases are renewed however long
    * the researcher spends not calling anything: losing a lock under an open
-   * editor is not a thing that may happen, and the connection ending is what
-   * gives the section back (`releaseConnection`).
+   * editor is not a thing that may happen.
+   *
+   * The last connection ending starts the reconnect grace rather than the
+   * release: the owner is a browser tab, and a tab reconnecting is the same
+   * tab. `end` is what runs for this draft if none comes back in time.
    */
-  connect(owner: string): () => void {
-    this.#connections.set(owner, (this.#connections.get(owner) ?? 0) + 1);
+  connect(
+    owner: string,
+    draftId: string,
+    end: () => Promise<void>,
+  ): () => void {
+    const state = this.#connections.get(owner);
+    const ends = state?.ends ?? new Map<string, () => Promise<void>>();
+    ends.set(draftId, end);
+    this.#connections.set(owner, { open: (state?.open ?? 0) + 1, ends });
     return () => {
       const open = this.#connections.get(owner);
       if (open === undefined) return;
-      if (open > 1) this.#connections.set(owner, open - 1);
-      else this.#connections.delete(owner);
+      if (open.open > 1) {
+        this.#connections.set(owner, { ...open, open: open.open - 1 });
+        return;
+      }
+      this.#connections.set(owner, {
+        ...open,
+        open: 0,
+        strandedAt: this.#now(),
+      });
+      this.#start();
     };
   }
 
@@ -75,7 +128,7 @@ export class LeaseKeeper {
 
   drop(draftId: string, sectionId: string, owner: string): void {
     this.#held.delete(leaseKey(draftId, sectionId, owner));
-    this.#stopWhenEmpty();
+    this.#stopWhenIdle();
   }
 
   /** Every section this owner still holds here, as far as this process knows. */
@@ -94,6 +147,7 @@ export class LeaseKeeper {
 
   async renewDue(): Promise<void> {
     const at = this.#now();
+    await this.#endStranded(at);
     // Deleting the current entry mid-iteration is defined for a Map, so this
     // walks the live map rather than a copy of it.
     for (const [key, lease] of this.#held) {
@@ -112,7 +166,34 @@ export class LeaseKeeper {
       // entry is the whole of the response here.
       if (renewed === null) this.#held.delete(key);
     }
-    this.#stopWhenEmpty();
+    this.#stopWhenIdle();
+  }
+
+  /**
+   * Owners whose reconnection never came. Renewal continues throughout the
+   * grace, so what ends the lease is this rather than the storage expiry — the
+   * section is free the moment the grace is up, and the release publishes the
+   * lock event that tells everyone watching.
+   */
+  async #endStranded(at: number): Promise<void> {
+    for (const [owner, state] of this.#connections) {
+      if (
+        state.strandedAt === undefined ||
+        at - state.strandedAt <= RECONNECT_GRACE_MS
+      ) {
+        continue;
+      }
+      this.#connections.delete(owner);
+      for (const end of state.ends.values()) {
+        // This runs from a timer, so a release that cannot reach the database
+        // has nobody to report to and must not take the process down with an
+        // unhandled rejection. The leases it was giving back are already out
+        // of this keeper, so they lapse on their own expiry instead.
+        await end().catch(() => {
+          logOperational('STUDIO_PROTOCOL_LEASE_RELEASE_FAILED');
+        });
+      }
+    }
   }
 
   #start(): void {
@@ -124,8 +205,12 @@ export class LeaseKeeper {
     this.#timer.unref();
   }
 
-  #stopWhenEmpty(): void {
-    if (this.#held.size > 0 || this.#timer === undefined) return;
+  #stopWhenIdle(): void {
+    if (this.#timer === undefined || this.#held.size > 0) return;
+    const waiting = [...this.#connections.values()].some(
+      (state) => state.strandedAt !== undefined,
+    );
+    if (waiting) return;
     clearInterval(this.#timer);
     this.#timer = undefined;
   }

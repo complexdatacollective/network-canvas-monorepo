@@ -57,13 +57,22 @@ function requirePrincipal(context: RpcContext): Principal {
 }
 
 /**
- * The connection this call arrived on, which is the lock owner and the
- * presence identity. A WebSocket names its own; a unary call has no connection
- * to name and falls back to the cookie session, so an editor keeps its lock
- * across calls on that plane too.
+ * The connection this call arrived on, which is the presence identity. A
+ * WebSocket names its own; a unary call has no connection to name and falls
+ * back to the cookie session.
  */
 function connectionOf(context: RpcContext, principal: Principal): string {
   return context.connectionId ?? principal.sessionId;
+}
+
+/**
+ * The browser tab this call came from, which is what its locks belong to. A
+ * client that names none is identified by its connection instead, so it is
+ * still its own owner and still keeps its lock across calls — it just has no
+ * identity to present on the next socket.
+ */
+function clientSessionOf(context: RpcContext, principal: Principal): string {
+  return context.clientSessionId ?? connectionOf(context, principal);
 }
 
 export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
@@ -82,6 +91,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       principal,
       requestId: context.requestId,
       connectionId: connectionOf(context, principal),
+      clientSessionId: clientSessionOf(context, principal),
       memberships,
     });
     if (session !== null) runtime.leases.touch(sessionOwner(session));
@@ -120,25 +130,29 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
   };
 
   /**
-   * Everything a closing connection owes its colleagues: its locks back, its
-   * staged imports dropped, and its presence gone.
+   * Everything an owner whose reconnection never came owes its colleagues: its
+   * locks back, with the lock events that say so, and its staged imports
+   * dropped. The lease keeper calls this once the reconnect grace is up, not
+   * when a socket ends: the tab behind that socket is one blip away from
+   * asking for its section again, and the section is still its own.
    */
-  const endConnection = async (
-    session: ProtocolBuilderSession,
-  ): Promise<void> => {
+  const endOwner = async (session: ProtocolBuilderSession): Promise<void> => {
     const owner = sessionOwner(session);
     const held = runtime.leases.heldSections(
       session.draftId,
       owner,
     ) as ProtocolSectionId[];
-    const released = await releaseConnection(session, held);
+    // Renewal stops here rather than after the release, because it must stop
+    // whatever the release does: this runs from a timer, and a process left
+    // renewing the leases of a tab that has gone would be a lock nobody could
+    // ever take. Dropped first, an unreachable database costs the section one
+    // lease expiry instead.
     for (const sectionId of held) {
       runtime.leases.drop(session.draftId, sectionId, owner);
     }
     staged.release(stagingKey(session));
-    runtime.presence.leave(session.draftId, session.connectionId);
+    const released = await releaseConnection(session, held);
     publish(session, released.events);
-    publishPresence(session);
   };
 
   return {
@@ -236,9 +250,14 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       const stop = () => subscription.close();
       signal?.addEventListener('abort', stop, { once: true });
       // The channel is the connection: while it runs, every lease its owner
-      // holds is renewed however long they go without calling anything, and
-      // `endConnection` below is what gives those sections back.
-      const disconnect = runtime.leases.connect(sessionOwner(session));
+      // holds is renewed however long they go without calling anything. Its
+      // ending starts the reconnect grace rather than the release, and
+      // `endOwner` is what runs if nothing of this owner's comes back.
+      const disconnect = runtime.leases.connect(
+        sessionOwner(session),
+        session.draftId,
+        () => endOwner(session),
+      );
       try {
         runtime.presence.join(
           session.draftId,
@@ -274,7 +293,11 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         signal?.removeEventListener('abort', stop);
         subscription.close();
         disconnect();
-        await endConnection(session);
+        // Presence is the connection's, so it goes with the connection even
+        // though the locks stay: a colleague's cursor cannot outlive the
+        // socket it was drawn from.
+        runtime.presence.leave(session.draftId, session.connectionId);
+        publishPresence(session);
       }
     }),
 

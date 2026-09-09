@@ -69,12 +69,18 @@ export type ProtocolBuilderSession = {
   principal: Principal;
   requestId: string;
   /**
-   * The connection, not the person: two tabs of one researcher are two owners,
-   * so the second opens read-only behind the first. A WebSocket gives one per
-   * socket; the unary plane, which has no connection to name, falls back to
-   * the cookie session.
+   * The connection this call arrived on, which is the presence identity. A
+   * WebSocket gives one per socket; the unary plane, which has no connection to
+   * name, falls back to the cookie session.
    */
   connectionId: string;
+  /**
+   * The browser tab: not the person, so two tabs of one researcher are two
+   * owners and the second opens read-only behind the first, and not the
+   * socket, so a tab that reconnects `/ws` is still the same owner. A client
+   * that names no tab falls back to its connection.
+   */
+  clientSessionId: string;
 };
 
 export type SectionAtRevision = { document: SectionDoc; revision: Revision };
@@ -123,7 +129,7 @@ export type AcquireResult = Published<AcquireOutcome | undefined> & {
 };
 
 export function sessionOwner(session: ProtocolBuilderSession): string {
-  return `${session.principal.userId}:${session.connectionId}`;
+  return `${session.principal.userId}:${session.clientSessionId}`;
 }
 
 export function sessionPresence(

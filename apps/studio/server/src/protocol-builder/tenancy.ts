@@ -18,6 +18,7 @@ export type ResolveProtocolInput = {
   principal: Principal;
   requestId: string;
   connectionId: string;
+  clientSessionId: string;
   memberships: readonly ActorMembership[];
 };
 
@@ -53,6 +54,7 @@ export async function resolveProtocolSession(
       principal: input.principal,
       requestId: input.requestId,
       connectionId: input.connectionId,
+      clientSessionId: input.clientSessionId,
     };
   }
   return null;

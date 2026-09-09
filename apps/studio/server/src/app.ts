@@ -8,6 +8,11 @@ import type { Context } from 'hono';
 import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
+import {
+  CLIENT_SESSION_HEADER,
+  CLIENT_SESSION_PARAM,
+  readClientSessionId,
+} from '@codaco/studio-rpc/client-session';
 
 import { createApiV1 } from './api.ts';
 import {
@@ -229,7 +234,13 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   app.use('/rpc/*', async (c, next) => {
     const { matched, response } = await rpcHandler.handle(c.req.raw, {
       prefix: '/rpc',
-      context: { principal: c.get('principal'), requestId: c.get('requestId') },
+      context: {
+        principal: c.get('principal'),
+        requestId: c.get('requestId'),
+        clientSessionId: readClientSessionId(
+          c.req.header(CLIENT_SESSION_HEADER),
+        ),
+      },
     });
     if (matched) return c.newResponse(response.body, response);
     await next();
@@ -268,9 +279,15 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       (c) => {
         const principal = c.get('principal');
         const requestId = c.get('requestId');
-        // The socket is the lock owner and the presence identity, so it needs
-        // an id of its own: two tabs of one researcher are two connections.
+        // The socket is the presence identity, so it needs an id of its own.
         const connectionId = randomUUID();
+        // The lock owner is the tab, which outlives its sockets. A browser
+        // cannot put a header on a WebSocket handshake, so the tab names
+        // itself on the upgrade URL; a client that names nothing falls back to
+        // the connection and is its own owner for as long as it is connected.
+        const clientSessionId = readClientSessionId(
+          c.req.query(CLIENT_SESSION_PARAM),
+        );
         return {
           onOpen() {
             observability.metrics.socketOpened();
@@ -294,7 +311,12 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
             // is per message, in arrival order.
             void socketHandler
               .message(ws, data, {
-                context: { principal, requestId, connectionId },
+                context: {
+                  principal,
+                  requestId,
+                  connectionId,
+                  clientSessionId,
+                },
               })
               .catch(() => {
                 logOperational('STUDIO_WEBSOCKET_ERROR');

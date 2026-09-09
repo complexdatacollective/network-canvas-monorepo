@@ -17,6 +17,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { type contract } from '@codaco/studio-rpc';
+import { CLIENT_SESSION_PARAM } from '@codaco/studio-rpc/client-session';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
@@ -49,6 +50,9 @@ const PRINCIPAL: SessionPrincipal = {
 
 type StudioClient = RouterContractClient<typeof contract>;
 
+/** A client and the socket under it, which a test may kill without warning. */
+type Connected = { client: StudioClient; socket: WebSocket };
+
 describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
   let dispose: () => Promise<void>;
   let server: ReturnType<typeof serve>;
@@ -67,9 +71,20 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
     };
   }
 
-  /** A client on its own socket, which is its own lock owner. */
-  async function connect(): Promise<StudioClient> {
-    const socket = new WebSocket(url, handshake(origin));
+  /**
+   * A client on its own socket.
+   *
+   * A browser cannot put a header on a WebSocket handshake, so a tab names
+   * itself on the upgrade URL and its locks belong to that name; a socket that
+   * names no tab is its own owner, for as long as it is connected.
+   */
+  async function connect(tab?: string): Promise<Connected> {
+    const socket = new WebSocket(
+      tab === undefined
+        ? url
+        : `${url}?${CLIENT_SESSION_PARAM}=${encodeURIComponent(tab)}`,
+      handshake(origin),
+    );
     socket.binaryType = 'arraybuffer';
     sockets.push(socket);
     await new Promise<void>((resolve, reject) => {
@@ -83,7 +98,53 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       connect: () => socket as unknown as globalThis.WebSocket,
     });
-    return createORPCClient(link);
+    return { client: createORPCClient(link), socket };
+  }
+
+  /**
+   * A stage section of the calling test's own, so nothing here locks a section
+   * another test left held.
+   */
+  async function createStage(client: StudioClient, label: string) {
+    const created = await client.protocolBuilder.create({
+      protocolId,
+      kind: 'stage',
+      document: { type: 'Information', label, title: label, items: [] },
+    });
+    return created.sectionId;
+  }
+
+  /**
+   * Everything a stream has delivered so far, collected in the background.
+   *
+   * A dropped socket is noticed by the server rather than reported to the
+   * test, so the tests below wait for what the server publishes when it
+   * notices — the presence list without the connection that died.
+   */
+  function collect(stream: AsyncIterable<ProtocolEvent>): ProtocolEvent[] {
+    const events: ProtocolEvent[] = [];
+    void (async () => {
+      try {
+        for await (const event of stream) events.push(event);
+      } catch {
+        // The socket closing is the only way these streams end.
+      }
+    })();
+    return events;
+  }
+
+  /** Waits for something the server does of its own accord, or fails saying so. */
+  async function until(
+    predicate: () => boolean,
+    what: string,
+    timeoutMs = 10_000,
+  ): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (!predicate()) {
+      if (Date.now() > deadline)
+        throw new Error(`timed out waiting for ${what}`);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
   }
 
   beforeAll(async () => {
@@ -161,7 +222,7 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
   });
 
   it('serves unary calls and a resumable watch over one socket', async () => {
-    const client = await connect();
+    const { client } = await connect();
     const sections = await client.protocolBuilder.listSections({ protocolId });
     expect(sections.sectionIds).toContain('stageOrder');
 
@@ -197,7 +258,7 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
 
     // The resume half, on a second socket: from that cursor the stream starts
     // with the very next event and never repeats the one it resumed from.
-    const second = await connect();
+    const { client: second } = await connect();
     const replay = await second.protocolBuilder.watchProtocol({
       protocolId,
       since: resumeFrom,
@@ -217,8 +278,8 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
    * socket that served none of the calls that took the lock.
    */
   it('tells a second socket which connection took a section', async () => {
-    const watcher = await connect();
-    const holder = await connect();
+    const { client: watcher } = await connect();
+    const { client: holder } = await connect();
     const stream = await watcher.protocolBuilder.watchProtocol({ protocolId });
     const locks: LockEvent[] = [];
     const draining = (async () => {
@@ -264,6 +325,139 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
     if (behind.lock !== 'readOnly') return;
     expect(behind.holder.sessionId).toBe(theirs?.sessionId);
   });
+
+  /**
+   * A tab that loses its socket is the same tab when it comes back, and the
+   * section it had open is still its own: the lock owner is the tab the client
+   * names on its upgrade, never the connection that carried the call. A
+   * network blip is a reconnection in progress, and losing a lock under an
+   * open editor is not a thing that may happen.
+   */
+  it('keeps a section for the tab that took it when its socket dies', async () => {
+    const tab = 'pb-ws-reconnecting-tab';
+    const first = await connect(tab);
+    // A colleague on a socket of its own: what it is refused after the drop is
+    // what makes the section still the dead tab's rather than nobody's.
+    const stranger = await connect();
+    const watched = collect(
+      await stranger.client.protocolBuilder.watchProtocol({ protocolId }),
+    );
+    const sectionId = await createStage(first.client, 'Held across a drop');
+    // The channel is what renews this tab's lease, and what strands its owner
+    // when the socket under it dies.
+    collect(await first.client.protocolBuilder.watchProtocol({ protocolId }));
+
+    const held = await first.client.protocolBuilder.acquireLock({
+      protocolId,
+      sectionId,
+    });
+    expect(held.lock).toBe('held');
+    if (held.lock !== 'held') throw new Error('unreachable');
+    await until(
+      () => lockHolder(watched, sectionId) !== undefined,
+      'the lock event to reach the colleague',
+    );
+    const connection = lockHolder(watched, sectionId)?.sessionId;
+    if (connection === undefined) throw new Error('the lock named no holder');
+    await until(
+      () => isPresent(watched, connection),
+      'the first socket to be present',
+    );
+
+    // A drop rather than a close: no close frame, so the server learns of it
+    // the way it learns of a network blip.
+    first.socket.terminate();
+    await until(
+      () => !isPresent(watched, connection),
+      'the server to notice the socket died',
+    );
+
+    const behind = await stranger.client.protocolBuilder.acquireLock({
+      protocolId,
+      sectionId,
+    });
+    expect(behind.lock).toBe('readOnly');
+    if (behind.lock !== 'readOnly') throw new Error('unreachable');
+    expect(behind.holder.userId).toBe(PRINCIPAL.userId);
+
+    // The tab comes back on a new socket, names itself, and finds the section
+    // still its own — and writes it, which is the whole point of keeping it.
+    const second = await connect(tab);
+    collect(await second.client.protocolBuilder.watchProtocol({ protocolId }));
+    const resumed = await second.client.protocolBuilder.acquireLock({
+      protocolId,
+      sectionId,
+    });
+    expect(resumed.lock).toBe('held');
+    if (resumed.lock !== 'held') throw new Error('unreachable');
+    const written = await second.client.protocolBuilder.submit({
+      protocolId,
+      sectionId,
+      document: { ...resumed.document, label: 'Renamed after the reconnect' },
+      revision: resumed.revision,
+    });
+    expect(written.revision.sequence).toBeGreaterThan(
+      resumed.revision.sequence,
+    );
+    const read = await second.client.protocolBuilder.getSection({
+      protocolId,
+      sectionId,
+    });
+    expect(read.document.label).toBe('Renamed after the reconnect');
+  });
+
+  /**
+   * A tab id the server would not store is no identity at all: the caller
+   * falls back to its connection, which is what a client naming nothing gets
+   * (the test above), so two such sockets are two owners rather than one.
+   */
+  it('falls back to the connection for a socket whose tab id it cannot use', async () => {
+    const unusable = 'not a tab id!';
+    const first = await connect(unusable);
+    const second = await connect(unusable);
+    const sectionId = await createStage(first.client, 'Named by no usable tab');
+
+    const held = await first.client.protocolBuilder.acquireLock({
+      protocolId,
+      sectionId,
+    });
+    expect(held.lock).toBe('held');
+    // Had the server taken the id, both sockets would be one owner and this
+    // would have been the holder's own section handed back to it.
+    const behind = await second.client.protocolBuilder.acquireLock({
+      protocolId,
+      sectionId,
+    });
+    expect(behind.lock).toBe('readOnly');
+    if (behind.lock !== 'readOnly') throw new Error('unreachable');
+    expect(behind.holder.userId).toBe(PRINCIPAL.userId);
+    expect(behind.holder.displayName).toBe(PRINCIPAL.name);
+  });
 });
 
 type LockEvent = Extract<ProtocolEvent, { type: 'lock' }>;
+type PresenceEvent = Extract<ProtocolEvent, { type: 'presence' }>;
+
+/** The holder a lock event named for a section, out of what a stream saw. */
+function lockHolder(
+  events: readonly ProtocolEvent[],
+  sectionId: string,
+): LockEvent['holder'] | undefined {
+  return events.findLast(
+    (event): event is LockEvent =>
+      event.type === 'lock' && event.sectionId === sectionId,
+  )?.holder;
+}
+
+/** Whether the last presence a stream saw still contains this connection. */
+function isPresent(
+  events: readonly ProtocolEvent[],
+  sessionId: string,
+): boolean {
+  const latest = events.findLast(
+    (event): event is PresenceEvent => event.type === 'presence',
+  );
+  return (
+    latest?.present.some((present) => present.sessionId === sessionId) ?? false
+  );
+}

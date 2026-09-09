@@ -83,11 +83,18 @@ export type RpcContext = {
   principal: Principal | null;
   requestId: string;
   /**
-   * The WebSocket this call arrived on, when it arrived on one. The
-   * protocol-builder host locks per connection rather than per person, so two
-   * tabs of one researcher are two lock owners.
+   * The WebSocket this call arrived on, when it arrived on one. This is the
+   * protocol-builder host's presence identity: a colleague's cursor belongs to
+   * a connection and goes when the connection does.
    */
   connectionId?: string;
+  /**
+   * The browser tab behind this call, when it named one — see
+   * `@codaco/studio-rpc/client-session`. A protocol-builder lock belongs to
+   * this rather than to the connection, so two tabs of one researcher are two
+   * lock owners and one tab's reconnection is not a third.
+   */
+  clientSessionId?: string;
 };
 
 const os = implement(contract).$context<RpcContext>();
