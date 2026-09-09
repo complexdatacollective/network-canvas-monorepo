@@ -408,7 +408,7 @@ describe('the side panels a name generator shows', () => {
     if (remove === undefined) throw new Error('the third panel has no remove');
     await harness.user.click(remove);
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove panel' }),
+      await screen.findByRole('button', { name: 'Delete panel' }),
     );
     await waitFor(() =>
       expect(screen.queryByText('Third panel')).not.toBeInTheDocument(),

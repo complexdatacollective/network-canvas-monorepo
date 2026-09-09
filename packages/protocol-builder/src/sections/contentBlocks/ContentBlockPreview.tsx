@@ -3,9 +3,9 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 
+import type { RowPreviewProps } from '../../form/rowDialog.tsx';
 import ResourcePreview from '../../resources/components/ResourcePreview.tsx';
 import { useProtocolContext } from '../../state/protocolContext.ts';
-import type { RowPreviewProps } from '../rowRenderers.tsx';
 import { contentBlockKind } from './contentBlockTypes.ts';
 
 const messages = defineMessages({

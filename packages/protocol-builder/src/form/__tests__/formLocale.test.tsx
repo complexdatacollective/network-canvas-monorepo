@@ -12,9 +12,8 @@ import {
   protocolStrings,
 } from '../../testing/localeSweep.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { DEFAULT_ITEM_LABEL } from '../arrayFields/arrayMessages.ts';
-import { readOnlyMessage } from '../arrayFields/arrayWriteRefusal.ts';
 import Options, { optionsValidation } from '../arrayFields/Options.tsx';
+import { READ_ONLY_MESSAGE } from '../readOnlyRefusal.ts';
 
 /**
  * An options list and the shell around it, read in Spanish.
@@ -83,8 +82,7 @@ describe('a stage form read in Spanish', () => {
         'protocolBuilder.outline.landmarkLabel',
         'protocolBuilder.option.editOption',
         'protocolBuilder.option.emptyState',
-        'protocolBuilder.arrayField.itemNoun',
-        'protocolBuilder.arrayField.readOnlyRefusal',
+        'protocolBuilder.shell.readOnlyRefusal',
       ]),
     );
   });
@@ -124,13 +122,13 @@ describe('a stage form read in Spanish', () => {
     expectNoLocaleLeaks('an empty list', researcherWords(emptied));
   });
 
-  it('reads a refused list write back through the decode a caller uses', () => {
+  it('reads a refused row save back through the decode a caller uses', () => {
     // The encoding half on its own: what a host reading this package's
-    // refusals out of a result — rather than rendering them — gets back. The
-    // noun inside travelled as its own descriptor, so an English `item` in the
-    // parenthetical would mean the nested reference never resolved.
-    expect(readMessage(readOnlyMessage(DEFAULT_ITEM_LABEL), esIntl)).toBe(
-      'Esta etapa es de solo lectura, así que esta entrada (elemento) no se ha guardado. Otra persona la está editando.',
+    // refusals out of a result — rather than rendering them — gets back. It is
+    // the sentence a row dialog shows above the draft it is keeping open when
+    // the list will not take the row.
+    expect(readMessage(READ_ONLY_MESSAGE, esIntl)).toBe(
+      'Esta etapa es de solo lectura, así que tu cambio no se ha hecho. Otra persona la está editando.',
     );
   });
 });

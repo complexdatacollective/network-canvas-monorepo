@@ -31,7 +31,7 @@ export type DormantField = Readonly<{
   value: FieldValue;
 }>;
 
-export type StageDraftSubmission = Readonly<{
+export type DocumentSubmission = Readonly<{
   /** The document as the editor currently holds it. */
   currentFields: StageFormDraft;
   /** What the form handed the submit handler: mounted fields only. */
@@ -46,10 +46,34 @@ export type StageDraftSubmission = Readonly<{
    */
   mountedPaths: readonly ObjectPath[];
   dormantFields: readonly DormantField[];
+  /**
+   * What a control the researcher can SEE holding nothing leaves behind.
+   *
+   * `remove` for the stage form, where absence is how the protocol schema
+   * spells "this capability is off" and nothing downstream would strip a key
+   * holding an empty string.
+   *
+   * `keep` for a row dialog, whose list has a normaliser of its own that runs
+   * after this and whose keys are not independent: a content block's emptied
+   * slot is what clears the `content` it collapses into, so a slot removed
+   * before that collapse runs leaves the old content standing. The row's
+   * normaliser strips what is left holding nothing, so the outcome for an
+   * ordinary key is the same either way.
+   *
+   * A hidden field holding nothing is removed under both: hiding a control is
+   * not a decision about its value, so the only reading of a parked emptiness
+   * is that the researcher threw it away.
+   */
+  emptied?: 'remove' | 'keep';
 }>;
 
 /**
- * The stage draft a submit should produce.
+ * The record a submit should leave, given what the form handed it and what the
+ * form is still holding out of sight.
+ *
+ * Asked by the stage form of the stage document, and by every row dialog of
+ * the row it has open — one answer, so a capability switched off inside a row
+ * dialog means what it means everywhere else.
  *
  * Four rules, applied in this order:
  *
@@ -87,8 +111,8 @@ export type StageDraftSubmission = Readonly<{
  *    answers, and it answers by handing back `undefined`, which this rule then
  *    removes.
  */
-export function stageDraftFromSubmission(
-  submission: StageDraftSubmission,
+export function documentFromSubmission(
+  submission: DocumentSubmission,
 ): SectionDoc {
   let draft: SectionDoc = { ...submission.currentFields };
 
@@ -108,6 +132,10 @@ export function stageDraftFromSubmission(
     // strength of a reading that never happened. A field holding `undefined`
     // is the opposite — the researcher emptied it — and that IS carried.
     if (!submitted.present) continue;
+    if (submission.emptied === 'keep') {
+      setValue(draft, path, submitted.value);
+      continue;
+    }
     // Cleaned before it is judged, and written as cleaned. A control the
     // researcher emptied reports itself in whichever way its own value type
     // spells emptiness, and every one of those spellings means the same thing

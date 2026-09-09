@@ -33,8 +33,8 @@ import type { CreateOptionOutcome } from '../../fields/VariablePickerField.tsx';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
+import { rowsOf } from '../rowDialog.tsx';
 import { useStageEditorForm } from '../stageEditorContext.ts';
-import { readRows } from './arrayFieldCommands.ts';
 import {
   crossClassPickIssue,
   draftValidatedElsewhereMessage,
@@ -222,14 +222,14 @@ const REQUIRED_ONLY: readonly RowValidator[] = [requiredRow()];
  * destructuring one throws out of that render, taking down the
  * editor before the render-tolerant control this whole package is built around
  * ever draws. So it reads its rows the way every other reader here does, with
- * `readRows` — see `renderedRows` in `arrayFieldCommands`, and fresco-ui's
+ * `rowsOf`, which drops what is not a row rather than reading it — fresco-ui's
  * render-tolerance contract (#1433).
  */
 export const committedAttributeVariableIds = (
   committedValue?: unknown,
 ): ReadonlySet<string> =>
   new Set(
-    readRows(committedValue)
+    rowsOf(committedValue)
       .map((row) => row.variable)
       .filter(
         (variable): variable is string =>

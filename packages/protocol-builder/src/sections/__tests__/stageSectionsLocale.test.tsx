@@ -1,10 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
 import type { SortableProperty } from '../../fields/sortOrderOptions.ts';
-import { DialogFormField } from '../../form/DialogForm.tsx';
+import type { RowEditorProps } from '../../form/rowDialog.tsx';
 import {
   expectNoLocaleLeaks,
   protocolStrings,
@@ -20,7 +21,6 @@ import IntroductionSection from '../IntroductionSection.tsx';
 import PageContentSection from '../PageContentSection.tsx';
 import SortOrderRows from '../prompts/SortOrderRows.tsx';
 import PromptsSection from '../PromptsSection.tsx';
-import type { RowEditorProps } from '../rowRenderers.tsx';
 import StageNameSection from '../StageNameSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
 import {
@@ -792,7 +792,7 @@ describe('a prompt’s sort rules, read in Spanish', () => {
   function SortOrderPromptEditor({ item }: RowEditorProps) {
     return (
       <>
-        <DialogFormField
+        <Field
           name="text"
           label="Texto de la pregunta"
           component={InputField}

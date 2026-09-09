@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { stageDraftFromSubmission } from '../stageDraftFromSubmission.ts';
+import { documentFromSubmission } from '../documentFromSubmission.ts';
 
-describe('stageDraftFromSubmission', () => {
+describe('documentFromSubmission', () => {
   it('keeps values the editor never rendered', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: {
         label: 'Friends',
         skipLogic: { action: 'SKIP', filter: { rules: [], join: 'OR' } },
@@ -21,7 +21,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('writes back a value hidden behind a collapsed group', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { label: 'Friends', title: 'Old title' },
       submittedValues: { label: 'Friends' },
       mountedPaths: [],
@@ -32,7 +32,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('removes a discarded field rather than blanking it', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { label: 'Friends', interviewScript: 'Read this aloud' },
       submittedValues: { label: 'Friends' },
       mountedPaths: [],
@@ -52,7 +52,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('removes a field emptied on screen rather than blanking it', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { label: 'Friends', interviewScript: 'Read this aloud' },
       // What a cleared fresco-ui text input submits.
       submittedValues: { label: 'Friends', interviewScript: '' },
@@ -64,7 +64,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('removes a field emptied and then hidden rather than replaying the blank', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { label: 'Friends', interviewScript: 'Read this aloud' },
       submittedValues: { label: 'Friends' },
       mountedPaths: [['label']],
@@ -80,7 +80,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('drops the parts of a compound value that hold nothing', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { edges: { create: 'knows', display: ['knows'] } },
       // One control registered at `edges` carries the whole pair, and the
       // researcher has cleared the half of it that picks what to display.
@@ -93,7 +93,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('keeps a row whose every setting was cleared', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { items: [{ optionalSetting: 'on' }, { id: 'second' }] },
       submittedValues: {},
       mountedPaths: [],
@@ -109,7 +109,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('keeps a list the researcher emptied', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { prompts: [{ id: 'a' }] },
       submittedValues: { prompts: [] },
       mountedPaths: [['prompts']],
@@ -123,7 +123,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('removes a container its last discarded member emptied', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: {
         label: 'Friends',
         skipLogic: {
@@ -159,7 +159,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('keeps a container that still holds something', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: {
         skipLogic: { action: 'SKIP', filter: { rules: [], join: 'OR' } },
       },
@@ -181,7 +181,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('leaves an object the author left empty exactly as it was', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { behaviours: {}, interviewScript: 'Notes' },
       submittedValues: {},
       mountedPaths: [],
@@ -198,7 +198,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('replaces the value at a mounted path outright rather than merging into it', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { prompts: [{ id: 'a' }, { id: 'b' }] },
       submittedValues: { prompts: [{ id: 'b' }] },
       mountedPaths: [['prompts']],
@@ -211,7 +211,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('leaves the rest of a key alone when a section owns one path inside it', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: {
         nodeConfig: { type: 'family_member', form: [{ variable: 'fm_name' }] },
       },
@@ -232,7 +232,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('lets a nested hidden field win over the container it sits in', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { parameters: { bounds: { min: 1 }, style: 'plain' } },
       submittedValues: {},
       // Insertion order puts the descendant first, which is what unmount order
@@ -258,7 +258,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('removes a switched-off capability along with everything inside it', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: {
         skipLogic: { action: 'SKIP', filter: { rules: [], join: 'OR' } },
       },
@@ -280,7 +280,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('keeps what was entered inside a capability after it was switched off', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: {},
       submittedValues: {},
       // Nothing is mounted: the controls were hidden again before saving.
@@ -303,7 +303,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('lets a field still on screen outrank the container hiding around it', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { parameters: { bounds: { min: 1 }, style: 'plain' } },
       // The mounted leaf's current edit, as the form assembled it.
       submittedValues: { parameters: { bounds: { min: 9 } } },
@@ -325,7 +325,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('leaves an emptied row in place rather than punching a hole in the list', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { items: [{ optionalSetting: 'on' }, { id: 'second' }] },
       submittedValues: {},
       mountedPaths: [],
@@ -346,7 +346,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('leaves a row whose every setting cleaned down to nothing', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { items: [{ label: 'Old', size: 3 }, { id: 'second' }] },
       // The row's own control, holding every spelling of emptiness a form
       // produces: text the researcher blanked back to its spaces, and a number
@@ -363,7 +363,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('keeps a capability the researcher switched off and then reopened', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: {},
       // Its controls are back on screen, holding what has been typed since.
       submittedValues: { skipLogic: { action: 'SHOW' } },
@@ -379,7 +379,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('keeps a capability re-entered through a control that owns its parent', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: {},
       // One compound control registered at `settings` carries the value that
       // sits at `settings.enabled`; no field of its own is registered there.
@@ -399,7 +399,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('still clears a capability its mounted parent no longer carries', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { settings: { enabled: true, other: 'kept' } },
       // The parent is mounted and no longer holds the cleared path.
       submittedValues: { settings: { other: 'kept' } },
@@ -417,7 +417,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('removes a container a clear emptied rather than saving it blank', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { settings: { enabled: true } },
       submittedValues: {},
       mountedPaths: [],
@@ -439,7 +439,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('lets a control on screen outrank a hidden field inside it', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { settings: { enabled: 'old' } },
       // The mounted compound control's current value.
       submittedValues: { settings: { enabled: 'shown' } },
@@ -463,7 +463,7 @@ describe('stageDraftFromSubmission', () => {
       mapOptions: Object.freeze({ center: [0, 0] }),
     });
 
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields,
       submittedValues: {},
       mountedPaths: [],
@@ -481,7 +481,7 @@ describe('stageDraftFromSubmission', () => {
   });
 
   it('ignores a dormant field whose name cannot address anything', () => {
-    const draft = stageDraftFromSubmission({
+    const draft = documentFromSubmission({
       currentFields: { label: 'Friends' },
       submittedValues: {},
       mountedPaths: [],

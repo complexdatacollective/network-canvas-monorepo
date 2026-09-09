@@ -4,20 +4,23 @@ import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import { withoutAbsentValues } from '../form/absentValues.ts';
-import DialogArrayField, {
-  type DialogArrayEditorValidate,
-} from '../form/arrayFields/DialogArrayField.tsx';
-import { useStageValue } from '../form/stageFormHooks.ts';
-import BuilderSection from './BuilderSection.tsx';
 import {
+  RowDialog,
+  RowList,
+  RowListItem,
+  rowId,
+  rowTemplate,
   type RowEditorComponent,
+  type RowListConfig,
   type RowPreviewComponent,
   type RowValues,
-  useRowRenderers,
-} from './rowRenderers.tsx';
+} from '../form/rowDialog.tsx';
+import { useStageValue } from '../form/stageFormHooks.ts';
+import BuilderSection from './BuilderSection.tsx';
 
 /** Every interface that asks questions keeps them here. */
 const PROMPTS_FIELD = 'prompts';
@@ -144,10 +147,10 @@ export type PromptsSectionProps = Readonly<{
    * Rules a control can state for itself belong on that control. This is for
    * the ones that need the whole row AND the row as the dialog opened on it —
    * the attribute-exclusivity gates a bin or census prompt runs, which must
-   * not refuse a pick that was already there before this edit. Only
-   * `editorValidate` is given both (see `DialogArrayField`).
+   * not refuse a pick that was already there before this edit. Only this is
+   * given both (see `RowSaveContext`).
    */
-  editorValidate?: DialogArrayEditorValidate;
+  beforeSave?: RowListConfig['beforeSave'];
   /**
    * What a prompt this interface is adding starts out holding.
    *
@@ -235,7 +238,7 @@ export default function PromptsSection({
   PromptEditor,
   PromptPreview,
   requiresSubject = true,
-  editorValidate,
+  beforeSave,
   itemTemplate,
   collapseRow,
   description = messages.description,
@@ -250,21 +253,25 @@ export default function PromptsSection({
     subject !== null &&
     typeof Reflect.get(subject, 'type') === 'string';
   const waiting = requiresSubject && !hasSubject;
-  const { editorFieldsComponent, previewComponent } = useRowRenderers(
-    PromptEditor,
-    PromptPreview,
-  );
 
   // The family's collapse runs FIRST, for the reason `PageContentSection`
   // gives: it decides what each key becomes, and an emptied one has to be able
-  // to clear it. Keyed on the function rather than on the props object so a
-  // family writing it inline does not rebuild the row renderers every render.
-  const normalizeRow = useMemo(
-    () =>
-      collapseRow === undefined
-        ? withoutAbsentValues
-        : (row: unknown) => withoutAbsentValues(collapseRow(row)),
-    [collapseRow],
+  // to clear it.
+  const rowList = useMemo<RowListConfig>(
+    () => ({
+      Preview: PromptPreview,
+      Editor: PromptEditor,
+      addTitle: messages.addTitle,
+      editTitle: messages.editTitle,
+      formId: 'prompt-editor',
+      name: PROMPTS_FIELD,
+      ...(beforeSave === undefined ? {} : { beforeSave }),
+      normalize: (row) =>
+        withoutAbsentValues(
+          collapseRow === undefined ? row : collapseRow(row),
+        ) as RowValues,
+    }),
+    [PromptEditor, PromptPreview, beforeSave, collapseRow],
   );
 
   return (
@@ -275,25 +282,23 @@ export default function PromptsSection({
       )}
       disabled={waiting}
     >
-      <Field<typeof DialogArrayField>
-        name={PROMPTS_FIELD}
-        label={intl.formatMessage(messages.fieldLabel)}
-        hint={intl.formatMessage(fieldHint)}
-        component={DialogArrayField}
-        addButtonLabel={intl.formatMessage(messages.addLabel)}
-        addTitle={intl.formatMessage(messages.addTitle)}
-        editorTitle={intl.formatMessage(messages.editTitle)}
-        itemLabel={messages.itemNoun}
-        emptyStateMessage={intl.formatMessage(emptyState)}
-        editorFieldsComponent={editorFieldsComponent}
-        previewComponent={previewComponent}
-        editorDialogSize="editor"
-        normalizeItem={normalizeRow}
-        {...(itemTemplate === undefined ? {} : { itemTemplate })}
-        {...(editorValidate === undefined ? {} : { editorValidate })}
-        sortable
-        {...promptsValidation}
-      />
+      <RowList config={rowList}>
+        <Field<typeof ArrayField<RowValues>>
+          name={PROMPTS_FIELD}
+          label={intl.formatMessage(messages.fieldLabel)}
+          hint={intl.formatMessage(fieldHint)}
+          component={ArrayField}
+          getId={rowId}
+          addButtonLabel={intl.formatMessage(messages.addLabel)}
+          itemLabel={messages.itemNoun}
+          emptyStateMessage={intl.formatMessage(emptyState)}
+          itemComponent={RowListItem}
+          editorComponent={RowDialog}
+          itemTemplate={rowTemplate(itemTemplate)}
+          sortable
+          {...promptsValidation}
+        />
+      </RowList>
     </BuilderSection>
   );
 }

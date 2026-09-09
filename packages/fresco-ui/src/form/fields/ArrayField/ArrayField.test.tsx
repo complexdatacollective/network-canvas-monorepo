@@ -13,7 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { commonCatalogs } from '@codaco/app-i18n/common';
 import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
-import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
 import DialogProvider from '../../../dialogs/DialogProvider';
@@ -837,6 +837,66 @@ describe('ArrayField', () => {
       await user.click(screen.getByRole('button', { name: 'Delete prompt' }));
 
       expect(onChange).toHaveBeenCalledWith([]);
+    });
+
+    /**
+     * A row that names its own affordances in the list's word for a row, and
+     * registers the control that opens the removal so focus can find its way
+     * back into the list afterwards. What every row of a dialog-edited list
+     * looks like.
+     */
+    function NamedRow({
+      item,
+      itemLabel,
+      onDelete,
+      deleteTriggerRef,
+    }: ArrayFieldItemProps<Item>) {
+      const intl = useAppIntl();
+      const noun = itemLabel ? intl.formatMessage(itemLabel) : 'item';
+
+      return (
+        <div>
+          <span>{item.label}</span>
+          <button
+            type="button"
+            ref={deleteTriggerRef}
+            onClick={onDelete}
+            aria-label={`Remove ${noun} ${item.label ?? ''}`}
+          >
+            Remove
+          </button>
+        </div>
+      );
+    }
+
+    const renderNamedRows = (labels: string[]) =>
+      render(
+        <DialogProvider>
+          <ArrayField<Item>
+            value={labels.map((label) => ({ id: label, label }))}
+            getId={(item) => item.id}
+            onChange={() => undefined}
+            itemComponent={NamedRow}
+            itemLabel={promptLabel}
+            confirmDelete
+          />
+        </DialogProvider>,
+      );
+
+    /**
+     * The row's own controls are named for the researcher, and a stage editor
+     * mounts several of these lists at once — so a row that could not reach
+     * the list's noun would leave every one of them a row of buttons called
+     * "Remove" to anyone navigating by them (#1391). The list already declares
+     * that noun for the confirmation; this is the same declaration reaching
+     * the row.
+     */
+    it('tells each row the word the list uses for its rows', () => {
+      renderNamedRows(['one']);
+
+      expect(
+        screen.getByRole('button', { name: 'Remove prompt one' }),
+      ).toBeInTheDocument();
     });
 
     it('follows a locale change while the confirmation is up', async () => {

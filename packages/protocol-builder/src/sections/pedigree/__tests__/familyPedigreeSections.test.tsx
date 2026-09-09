@@ -918,7 +918,7 @@ describe('a family member form the researcher edits', () => {
       (await screen.findAllByRole('button', { name: 'Remove field' }))[1]!,
     );
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove field' }),
+      await screen.findByRole('button', { name: 'Delete field' }),
     );
     await waitFor(() =>
       expect(screen.queryByText('What do they go by?')).not.toBeInTheDocument(),

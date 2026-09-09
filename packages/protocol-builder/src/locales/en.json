@@ -71,10 +71,6 @@
     "defaultMessage": "These limits cover the whole stage",
     "description": "Warning heading shown when the stage asks several questions, because the cap is counted across all of them rather than per question. A stage is one step of an interview."
   },
-  "protocolBuilder.arrayField.addRowTitle": {
-    "defaultMessage": "Add {itemLabel}",
-    "description": "Title of the dialog a researcher fills in to add a row to a list, where the list has offered no title of its own. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
-  },
   "protocolBuilder.arrayField.addSubmit": {
     "defaultMessage": "Add",
     "description": "Button that commits the dialog a researcher has filled in for a NEW row of a list. The same dialog says Save when it is editing a row that already exists."
@@ -87,10 +83,6 @@
     "defaultMessage": "Edit {itemLabel}",
     "description": "Accessible name of the button that opens one row of a list in its editing dialog. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
   },
-  "protocolBuilder.arrayField.emptyState": {
-    "defaultMessage": "No items have been created yet.",
-    "description": "Shown in place of the rows when a list has none, and the list’s caller has offered no wording of its own."
-  },
   "protocolBuilder.arrayField.invalidName": {
     "defaultMessage": "Not a valid {subject}. Only letters, numbers and the symbols ._-: are supported",
     "description": "Shown under a cell whose text cannot be stored as an XML element name or a CSV column header. subject names what was being entered — an attribute name, an option value — already in the reader’s language. The characters listed are literal punctuation and stay as they are."
@@ -99,17 +91,9 @@
     "defaultMessage": "item",
     "description": "Generic noun for one row of an editable list in a stage editor, used where the list has no more specific word for its rows. Interpolated mid-sentence into things said ABOUT a row (\"Remove this item?\", \"This item was not saved.\"), so it is lower case and singular."
   },
-  "protocolBuilder.arrayField.listDisabledRefusal": {
-    "defaultMessage": "This list is not accepting changes at the moment, so this {itemLabel} was not saved. Copy anything you want to keep, then try again once the list can be edited.",
-    "description": "Shown above the fields of a row editor when the list itself has stopped accepting changes — because something else on the stage that it depends on is no longer chosen — so the row could not be saved. itemLabel is the list’s own noun for one of its rows: \"prompt\", \"option\", \"item\"."
-  },
   "protocolBuilder.arrayField.optionValueSubject": {
     "defaultMessage": "option value",
     "description": "What the researcher was entering, named inside the sentence that refuses it: the stored value of one option of a categorical or ordinal attribute, as opposed to the label a participant reads. Interpolated mid-sentence after \"Not a valid\", so it is lower case."
-  },
-  "protocolBuilder.arrayField.readOnlyRefusal": {
-    "defaultMessage": "This stage is read-only, so this {itemLabel} was not saved. Somebody else is editing it.",
-    "description": "Shown to a researcher whose edit to one row of a list was refused because somebody else is editing the stage (one step of an interview). itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
   },
   "protocolBuilder.arrayField.removalUnavailableRefusal": {
     "defaultMessage": "This list stopped accepting changes while you were confirming, so this {itemLabel} was not removed. Remove it again once the list can be edited.",
@@ -117,15 +101,7 @@
   },
   "protocolBuilder.arrayField.removeRow": {
     "defaultMessage": "Remove {itemLabel}",
-    "description": "Action that deletes one row of a list — the accessible name of the button on the row, and the confirm button of the confirmation it raises. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
-  },
-  "protocolBuilder.arrayField.removeRowDescription": {
-    "defaultMessage": "This {itemLabel} will be removed from the list.",
-    "description": "Body of the confirmation raised when a researcher deletes one row of a list. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
-  },
-  "protocolBuilder.arrayField.removeRowTitle": {
-    "defaultMessage": "Remove this {itemLabel}?",
-    "description": "Title of the confirmation raised when a researcher deletes one row of a list. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
+    "description": "Action that deletes one row of a list — the accessible name of the button on the row. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
   },
   "protocolBuilder.arrayField.reorderRow": {
     "defaultMessage": "Reorder {itemLabel} {position} of {count, number}",
@@ -133,11 +109,7 @@
   },
   "protocolBuilder.arrayField.rowEditorFailed": {
     "defaultMessage": "This editor could not be shown, so there is nothing to fill in here. Close it and try again. If it keeps happening, the problem is in this interface’s editor rather than in your protocol.",
-    "description": "Shown in place of the fields of a row-editing dialog when the interface’s own editor code threw while rendering. Says the fault is in the software rather than in anything the researcher wrote, so they do not go looking for a mistake in their protocol."
-  },
-  "protocolBuilder.arrayField.rowRemovedRefusal": {
-    "defaultMessage": "This {itemLabel} was removed while your changes were being saved, so there is nothing left to save them to. Copy anything you want to keep, then cancel and add a new {itemLabel}.",
-    "description": "Shown to a researcher whose edit to one row of a list was saved after that row had already been deleted. itemLabel is the list’s own noun for one of its rows — \"prompt\", \"option\", \"item\" — already in the reader’s language."
+    "description": "Shown in place of the fields of an editing dialog when the interface’s own editor code threw while rendering. Says the fault is in the software rather than in anything the researcher wrote, so they do not go looking for a mistake in their protocol."
   },
   "protocolBuilder.arrayField.rowReplacedRefusal": {
     "defaultMessage": "This {itemLabel} was replaced while you were confirming, so nothing was removed. Check the list and remove it again if you still want to.",
@@ -146,14 +118,6 @@
   "protocolBuilder.arrayField.rowRequired": {
     "defaultMessage": "Required",
     "description": "Shown under one cell of a row in an editable list when the researcher has left it empty. Terse because it sits inside a row of a table-like list rather than under a full-width field."
-  },
-  "protocolBuilder.arrayField.rowUnresolvedRefusal": {
-    "defaultMessage": "This list changed while you were editing, so this {itemLabel} could not be matched to a row in it and nothing was saved. Copy anything you want to keep, then check the list and make the change again.",
-    "description": "Shown to a researcher whose edit could not be matched to any one row of the list, because the list moved while they were editing. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
-  },
-  "protocolBuilder.arrayField.saveRefused": {
-    "defaultMessage": "This {itemLabel} could not be saved. Check your changes and try again.",
-    "description": "Shown above the fields of a row editor when saving was refused for a reason that gave no explanation of its own. The last resort. itemLabel is the list’s own noun for one of its rows."
   },
   "protocolBuilder.assignAttributes.addButton": {
     "defaultMessage": "Add new attribute to assign",

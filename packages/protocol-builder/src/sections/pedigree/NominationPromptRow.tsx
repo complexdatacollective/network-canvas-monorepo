@@ -9,11 +9,11 @@ import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 
 import RichTextField from '../../fields/RichTextField.tsx';
 import VariablePickerField from '../../fields/VariablePickerField.tsx';
+import type { RowEditorProps, RowPreviewProps } from '../../form/rowDialog.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
-import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
 import CreateVariableButton from './CreateVariableButton.tsx';
 import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';

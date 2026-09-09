@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
 
@@ -16,7 +17,6 @@ import {
   type PropertyField,
 } from '../../form/arrayFields/MultiSelect.tsx';
 import OptionalList from '../../form/arrayFields/OptionalList.tsx';
-import { DialogFormField } from '../../form/DialogForm.tsx';
 
 /**
  * What the two columns of a sort rule are called.
@@ -271,7 +271,7 @@ export default function SortOrderRows({
         of their two ways out, so both routes have to leave the prompt in the
         state the schema recognises.
       */}
-      <DialogFormField<typeof OptionalList>
+      <Field<typeof OptionalList>
         name={name}
         label={label}
         hint={hint}

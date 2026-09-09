@@ -24,12 +24,12 @@ import AssignAttributes, {
   type AttributeValue,
   type VariableOption,
 } from '../form/arrayFields/AssignAttributes.tsx';
+import type { RowEditorProps, RowPreviewProps } from '../form/rowDialog.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { variablesForSubject } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import PromptsSection from './PromptsSection.tsx';
-import type { RowEditorProps, RowPreviewProps } from './rowRenderers.tsx';
 import { useStageSubject } from './useStageSubject.ts';
 
 /**

@@ -101,7 +101,7 @@ describe('the prompt list a stage owns', () => {
     });
     await harness.user.click(firstRemove as HTMLElement);
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove prompt' }),
+      await screen.findByRole('button', { name: 'Delete prompt' }),
     );
 
     await waitFor(() =>
@@ -165,7 +165,7 @@ describe('the prompt list a stage owns', () => {
       screen.getByRole('button', { name: 'Remove prompt' }),
     );
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove prompt' }),
+      await screen.findByRole('button', { name: 'Delete prompt' }),
     );
     await waitFor(() =>
       expect(
@@ -529,7 +529,7 @@ describe('what a family says about its own prompt', () => {
           PromptEditor={TestPromptEditor}
           PromptPreview={TestPromptPreview}
           requiresSubject={false}
-          editorValidate={refuseADuplicateQuestion}
+          beforeSave={refuseADuplicateQuestion}
         />
       ),
     });
@@ -566,7 +566,7 @@ describe('what a family says about its own prompt', () => {
           PromptEditor={TestPromptEditor}
           PromptPreview={TestPromptPreview}
           requiresSubject={false}
-          editorValidate={refuseADuplicateQuestion}
+          beforeSave={refuseADuplicateQuestion}
         />
       ),
     });

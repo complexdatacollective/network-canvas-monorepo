@@ -82,7 +82,7 @@ const parkedStageKey = (name: string): string | undefined => {
  * researcher answered and then unmounted contributes nothing to it, and an
  * answer that has not been saved is not in `committedFields` either. That key
  * is in neither place and is still on its way into the saved stage —
- * `stageDraftFromSubmission` replays parked values on purpose — so the names
+ * `documentFromSubmission` replays parked values on purpose — so the names
  * the store is parking are read as well.
  */
 const heldStageKeys = (

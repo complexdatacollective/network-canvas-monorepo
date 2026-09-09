@@ -324,7 +324,7 @@ describe('the fields a form collects', () => {
       screen.getByRole('button', { name: 'Remove field' }),
     );
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove field' }),
+      await screen.findByRole('button', { name: 'Delete field' }),
     );
     await waitFor(() =>
       expect(
@@ -1271,12 +1271,12 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
       sections: familyMemberForm({ optional: true }),
     });
 
-    // Twice: the first click asks, and the confirmation carries the same words.
+    // Twice: the row's own control asks, and the confirmation says what goes.
     await harness.user.click(
       await screen.findByRole('button', { name: 'Remove field' }),
     );
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove field' }),
+      await screen.findByRole('button', { name: 'Delete field' }),
     );
     await waitFor(() =>
       expect(
@@ -2970,7 +2970,7 @@ describe('a stored field the schema refuses for its own shape', () => {
     if (remove === undefined) throw new Error('There is no second field.');
     await harness.user.click(remove);
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove field' }),
+      await screen.findByRole('button', { name: 'Delete field' }),
     );
 
     expect(fieldsOf(await harness.submit())).toEqual([RELATIONSHIP]);

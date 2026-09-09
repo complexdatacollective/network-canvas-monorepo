@@ -1,12 +1,15 @@
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 
 import type {
-  DialogArrayEditorValidate,
-  DialogArrayItemSelector,
-} from '../../form/arrayFields/DialogArrayField.tsx';
-import { DialogFormField } from '../../form/DialogForm.tsx';
-import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
+  RowEditorProps,
+  RowPreviewProps,
+  RowSaveContext,
+  RowSaveOutcome,
+  RowValues,
+} from '../../form/rowDialog.tsx';
+import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 
 /**
  * A stand-in for one family's prompt fields.
@@ -16,7 +19,7 @@ import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
  * row editor that did anything clever would make a failure ambiguous between
  * the shared machinery and the family's own fields.
  *
- * The controls are `DialogFormField`s, because the row dialog mounts a form
+ * The controls are `Field`s, because the row dialog mounts a form
  * store of its own and seeds it from the row it opened on. A field bound to
  * the stage's form would register the row's cells against the STAGE, which is
  * exactly what the array primitives exist to avoid: a deleted row's dormant
@@ -37,13 +40,13 @@ export function TestPromptEditor({ item, editIndex, form }: RowEditorProps) {
         <dt>Editor form</dt>
         <dd>{form}</dd>
       </dl>
-      <DialogFormField
+      <Field
         name="text"
         label="Prompt text"
         component={InputField}
         required="Enter the question this prompt asks."
       />
-      <DialogFormField
+      <Field
         name="negativeLabel"
         label="Negative label"
         component={InputField}
@@ -78,13 +81,13 @@ export function TestItemEditor() {
       {/* The one field that states its own starting value: a block the
           researcher has just added has no type yet, and every block this
           stand-in edits is prose. */}
-      <DialogFormField
+      <Field
         name="type"
         label="Block type"
         component={InputField}
         initialValue="text"
       />
-      <DialogFormField
+      <Field
         name="content"
         label="Block text"
         component={InputField}
@@ -149,22 +152,22 @@ export function TestMediaItemEditor({ item }: RowEditorProps) {
 
   return (
     <>
-      <DialogFormField name="type" label="Block type" component={InputField} />
+      <Field name="type" label="Block type" component={InputField} />
       {/* Optional in the schema, so its absence has to be spelled by the key
           not being there rather than by an empty string. */}
-      <DialogFormField
+      <Field
         name="description"
         label="Block description"
         component={InputField}
       />
       {type === 'asset' ? (
-        <DialogFormField
+        <Field
           name={CONTENT_SLOTS.asset}
           label="Resource"
           component={InputField}
         />
       ) : (
-        <DialogFormField
+        <Field
           name={CONTENT_SLOTS.text}
           label="Block text"
           component={InputField}
@@ -183,7 +186,10 @@ export function TestMediaItemPreview({ item }: RowPreviewProps) {
 }
 
 /** Expands a saved block's one `content` key into the slot its type names. */
-const expandMediaItem: DialogArrayItemSelector = (_context, { item }) => {
+const expandMediaItem = (
+  _context: ProtocolBuilderProtocolContext,
+  item: RowValues,
+): RowValues => {
   const slot = item.type === 'text' ? CONTENT_SLOTS.text : CONTENT_SLOTS.asset;
   return { ...item, [slot]: item.content };
 };
@@ -232,19 +238,21 @@ const textOf = (value: unknown): string => {
 /**
  * A family's own rule about one prompt, checked when its dialog is submitted.
  *
- * The shape only `editorValidate` can serve: it needs the whole row AND the row
+ * The shape only a save-time gate can serve: it needs the whole row AND the row
  * as the dialog opened on it, because asking the same question twice is a
  * refusal while the prompt that already asks it is not asking it twice.
  */
-export const refuseADuplicateQuestion: DialogArrayEditorValidate = (
-  values,
-  context,
-) => {
+export const refuseADuplicateQuestion = (
+  values: RowValues,
+  context: RowSaveContext,
+): RowSaveOutcome => {
   const asked = typeof values.text === 'string' ? values.text.trim() : '';
-  if (asked !== SEEDED_QUESTION || textOf(context?.initialValues) === asked) {
-    return undefined;
+  if (asked !== SEEDED_QUESTION || textOf(context.openedOn) === asked) {
+    return { row: values };
   }
-  return { text: 'Another prompt already asks this.' };
+  return {
+    refused: { fieldErrors: { text: 'Another prompt already asks this.' } },
+  };
 };
 
 /**
