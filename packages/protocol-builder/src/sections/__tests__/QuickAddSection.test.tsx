@@ -218,6 +218,35 @@ describe('what a quick-add name generator records', () => {
   });
 
   /**
+   * The create submits the name as it was when the button was pressed, so a
+   * name typed while the answer was on its way is not the one the answer is
+   * about: the success erased it and a refusal would have contradicted it. The
+   * button was held for that whole window and the box was not.
+   */
+  it('holds the name box while the write is in flight', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+    });
+    const settle = holdTheHost(harness);
+
+    const box = await screen.findByRole('textbox', {
+      name: /Create a new attribute/,
+    });
+    await harness.user.type(box, 'nickname');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create the attribute' }),
+    );
+
+    expect(box).toBeDisabled();
+    await settle();
+    // Back, and empty: the codebook holds "nickname" now, and asking for it a
+    // second time is refused for a duplicate the researcher did not ask for.
+    expect(box).toBeEnabled();
+    expect(box).toHaveValue('');
+  });
+
+  /**
    * A codebook write is a round trip to the host, and the researcher can
    * change the stage's node type while it is on its way. The attribute lands
    * on the type the request names — the one that was current when they asked —

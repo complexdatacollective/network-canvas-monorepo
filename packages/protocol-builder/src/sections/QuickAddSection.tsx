@@ -597,6 +597,14 @@ function NewQuickAddAttribute() {
         hint={intl.formatMessage(messages.newAttributeHint)}
         placeholder={intl.formatMessage(messages.newAttributePlaceholder)}
         value={name}
+        // Held with the button while the write is in flight. The create
+        // submits the name as it was when it was pressed, so a name typed
+        // while the answer was on its way was erased by a success and
+        // contradicted by a refusal — every sentence here is about the
+        // submitted name, and held, the box is always exactly what the answer
+        // is about. `CreatableVariablePickerControl` holds its own for the
+        // same reason.
+        disabled={busy}
         onChange={(next: unknown) => {
           // The notice is about the create that has just happened; naming
           // another attribute is the start of a different one.
