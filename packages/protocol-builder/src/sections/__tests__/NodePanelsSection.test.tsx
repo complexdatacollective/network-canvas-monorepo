@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -497,49 +497,6 @@ describe('the side panels a name generator shows', () => {
   });
 
   /**
-   * Discarding drops the bytes for the whole session, so a resource another
-   * part of the stage still names is refused. The second panel's dialog is the
-   * case that seam could not see on its own: its pick is in the DIALOG's form
-   * store until the row saves, so the stage form behind it holds one reference
-   * — the first panel's — and a count that missed the asking field read that
-   * as "only this field uses it".
-   */
-  it('refuses to discard an imported network the other panel still names', async () => {
-    const harness = renderStageEditor({
-      stage: nameGeneratorWith([
-        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
-        { id: 'panel-2', title: 'Second panel', dataSource: 'existing' },
-      ]),
-      sections: panels,
-    });
-
-    const first = await openPanel(harness, 'Edit panel', 0);
-    await importNetworkFile(harness, first, 'community.json');
-    await harness.user.click(first.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
-
-    const second = await openPanel(harness, 'Edit panel', 1);
-    await harness.user.click(
-      second.getByRole('radio', { name: 'Use an imported data file' }),
-    );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'community.json' }),
-    );
-    await harness.user.click(
-      await second.findByRole('button', { name: 'Discard this resource' }),
-    );
-
-    expect(await second.findByRole('alert')).toHaveTextContent(
-      'This resource is still used elsewhere on this stage, so it was not discarded.',
-    );
-    // The bytes are still staged, so the first panel's reference still
-    // resolves — which is the whole point of the refusal.
-    expect(harness.gateway.getStagingResidue()).not.toEqual([]);
-  });
-
-  /**
    * A network imported in this session is not in the protocol's manifest yet:
    * it is promoted with the stage at finish. The summary has to look there as
    * well, or a researcher is told the file they have just imported and saved
@@ -596,5 +553,236 @@ describe('the side panels a name generator shows', () => {
 
     expect(await screen.findByText('First panel')).toBeInTheDocument();
     expect(harness.pendingCommands()).toHaveLength(before);
+  });
+});
+
+/** Saves the row the dialog has open and waits for it to close. */
+const saveTheRow = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  dialog: ReturnType<typeof within>,
+) => {
+  await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+  await waitFor(() => expect(screen.queryAllByRole('dialog')).toHaveLength(0));
+};
+
+/** Points a panel at a file already staged in this session. */
+const pickTheStagedFile = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  dialog: ReturnType<typeof within>,
+  fileName: string,
+) => {
+  await harness.user.click(
+    dialog.getByRole('radio', { name: 'Use an imported data file' }),
+  );
+  await harness.user.click(
+    await screen.findByRole('button', { name: fileName }),
+  );
+};
+
+const STILL_IN_USE =
+  'This resource is still used elsewhere on this stage, so it was not discarded.';
+
+const ONE_PANEL = [
+  { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+];
+const TWO_PANELS = [
+  ...ONE_PANEL,
+  { id: 'panel-2', title: 'Second panel', dataSource: 'existing' },
+];
+
+/**
+ * One imported network file, through the whole life a panel dialog can give
+ * it, asked the only question that destroys anything: may these bytes go?
+ *
+ * Discarding drops the file for the entire editing session, and a row dialog
+ * is the one place where the stage has TWO answers about what names it — the
+ * draft on screen, which a save would commit, and the row as it stands
+ * committed, which a cancel would leave. Both are futures the researcher still
+ * has, so a reference in either is a reference the discard would leave
+ * dangling, and the count that gates the discard has to see both. Every case
+ * below differs only in which of them holds the file.
+ *
+ * Refusing costs nothing durable: a staged file no field names is dropped as
+ * abandoned when the stage finishes, which the last test here proves.
+ */
+describe('discarding an imported network from a panel dialog', () => {
+  type Lifecycle = Readonly<{
+    /** What holds the file when the researcher asks to discard it. */
+    holder: string;
+    seeded: SectionDoc[];
+    /** Leaves a panel dialog open, showing the imported file. */
+    reach: (
+      harness: ReturnType<typeof renderStageEditor>,
+    ) => Promise<ReturnType<typeof within>>;
+    /** Whether the bytes may go. */
+    discarded: boolean;
+  }>;
+
+  const lifecycle: readonly Lifecycle[] = [
+    {
+      holder: 'only the dialog that imported it',
+      seeded: ONE_PANEL,
+      discarded: true,
+      reach: async (harness) => {
+        const dialog = await openPanel(harness, 'Edit panel');
+        await importNetworkFile(harness, dialog, 'community.json');
+        return dialog;
+      },
+    },
+    {
+      /**
+       * The row's own committed copy. Written over rather than counted
+       * alongside the draft, it read as a single reference: the discard was
+       * allowed, the bytes went, and the dialog-local clear that came with
+       * them was undone by cancelling the row — leaving the stage naming a
+       * file the host had deleted.
+       */
+      holder: 'the saved copy of the row the dialog has open',
+      seeded: ONE_PANEL,
+      discarded: false,
+      reach: async (harness) => {
+        const dialog = await openPanel(harness, 'Edit panel');
+        await importNetworkFile(harness, dialog, 'community.json');
+        await saveTheRow(harness, dialog);
+        return openPanel(harness, 'Edit panel');
+      },
+    },
+    {
+      /**
+       * The panel next door. Its pick is in the stage form; this dialog's is
+       * not, so a count blind to the asking field read the neighbour's lone
+       * reference as "only this field uses it".
+       */
+      holder: 'the other panel',
+      seeded: TWO_PANELS,
+      discarded: false,
+      reach: async (harness) => {
+        const first = await openPanel(harness, 'Edit panel', 0);
+        await importNetworkFile(harness, first, 'community.json');
+        await saveTheRow(harness, first);
+        const second = await openPanel(harness, 'Edit panel', 1);
+        await pickTheStagedFile(harness, second, 'community.json');
+        return second;
+      },
+    },
+    {
+      /**
+       * A row that has shifted into the place this dialog opened at. The
+       * dialog outlives its own row being removed — the draft stays until the
+       * researcher answers for it — so the position it opened at now belongs
+       * to the panel that survived, and writing this draft over that position
+       * took the survivor's reference out of the count with it.
+       */
+      holder: 'the row that took the removed one’s place',
+      seeded: TWO_PANELS,
+      discarded: false,
+      reach: async (harness) => {
+        const second = await openPanel(harness, 'Edit panel', 1);
+        await importNetworkFile(harness, second, 'community.json');
+        await saveTheRow(harness, second);
+
+        const first = await openPanel(harness, 'Edit panel', 0);
+        await pickTheStagedFile(harness, first, 'community.json');
+        act(() => {
+          harness.session.dispatch([
+            { op: 'removeItem', key: 'panels', index: 0 },
+          ]);
+        });
+        await harness.user.click(
+          await screen.findByRole('button', { name: 'Keep editing' }),
+        );
+        return first;
+      },
+    },
+  ];
+
+  it.each(lifecycle)(
+    'is refused while $holder names it',
+    async ({ seeded, reach, discarded }) => {
+      const harness = renderStageEditor({
+        stage: nameGeneratorWith(seeded),
+        sections: panels,
+      });
+
+      const dialog = await reach(harness);
+      await harness.user.click(
+        await dialog.findByRole('button', { name: 'Discard this resource' }),
+      );
+
+      if (discarded) {
+        await waitFor(() =>
+          expect(harness.gateway.getStagingResidue()).toEqual([]),
+        );
+        expect(dialog.queryByRole('alert')).toBeNull();
+        return;
+      }
+
+      expect(await dialog.findByRole('alert')).toHaveTextContent(STILL_IN_USE);
+      // The bytes are still staged, so every reference to them still
+      // resolves — which is the whole point of the refusal.
+      expect(harness.gateway.getStagingResidue()).not.toEqual([]);
+    },
+  );
+
+  /**
+   * And the refusal leaves a stage that saves. This is the state the discard
+   * used to reach: the file gone, the dialog's own field cleared, and the
+   * committed row still naming it the moment the researcher cancelled.
+   */
+  it('leaves the panel naming a file the finish can still promote', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith(ONE_PANEL),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    await importNetworkFile(harness, dialog, 'community.json');
+    await saveTheRow(harness, dialog);
+    const staged = harness.session.getSnapshot().stagedResources[0]?.id;
+    expect(staged).toBeDefined();
+
+    const reopened = await openPanel(harness, 'Edit panel');
+    await harness.user.click(
+      await reopened.findByRole('button', { name: 'Discard this resource' }),
+    );
+    expect(await reopened.findByRole('alert')).toHaveTextContent(STILL_IN_USE);
+    await harness.user.click(reopened.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    const request = await harness.submit();
+    expect(panelsOf(request)[0]).toMatchObject({ dataSource: staged });
+    // Promoted with the stage, so the reference the panel keeps resolves in
+    // the saved protocol rather than pointing at nothing.
+    expect(request?.resourceManifest).toBeDefined();
+  });
+
+  /**
+   * The dismissal question is asked of the row as the dialog OPENED on it.
+   * Asked of the live value instead, the picker's own choice becomes its own
+   * baseline the moment it is made: nothing reads as changed, and Cancel,
+   * Escape, the close button and a click outside all take the switch away
+   * without a word.
+   */
+  it('asks before losing a source switch the researcher has not saved', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith(ONE_PANEL),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    await chooseImportedNetwork(harness, dialog);
+    await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Keep editing' }),
+    ).toBeVisible();
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Keep editing' }),
+    );
+    expect(
+      await dialog.findByRole('radio', { name: 'Use an imported data file' }),
+    ).toBeChecked();
   });
 });
