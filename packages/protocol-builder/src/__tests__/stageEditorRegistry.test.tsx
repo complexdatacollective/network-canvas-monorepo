@@ -158,8 +158,8 @@ describe('composing the registry from family parts', () => {
 });
 
 /**
- * Nineteen families are still to land, on branches of their own, and each of
- * them edits the same two lists in `stageEditorRegistry.ts`. Written as one
+ * Families are still landing, on branches of their own, and each of them
+ * edits the same two lists in `stageEditorRegistry.ts`. Written as one
  * entry per line in a fixed alphabetical order, three concurrent one-line
  * changes touch three different lines and merge; written any other way — a
  * list collapsed onto one line, two entries sharing a line, an order nobody
