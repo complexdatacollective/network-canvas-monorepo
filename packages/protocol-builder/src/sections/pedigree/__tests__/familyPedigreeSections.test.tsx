@@ -949,6 +949,48 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     );
   });
 
+  /**
+   * A lease taken back mid-draft.
+   *
+   * The name the researcher is typing exists nowhere but this editor, so
+   * unmounting it to report the lost lease would throw their work away to say
+   * something the editor says for itself — with its save refused, which is
+   * what read-only does to it. The launch control goes, because a create
+   * nobody may start is not on offer.
+   */
+  it('keeps an open attribute draft when the lease is lost', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Create a new display label attribute',
+      }),
+    );
+    const creator = within(await screen.findByRole('dialog'));
+    await harness.user.type(
+      creator.getByRole('textbox', { name: 'Attribute name' }),
+      'nickname',
+    );
+
+    act(() => {
+      harness.setReadOnly();
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', {
+          name: 'Create a new display label attribute',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'nickname',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    ).toBeDisabled();
+  });
+
   it('is not offered to a spectator', () => {
     renderStageEditor({ ...openFixture(), readOnly: true });
 

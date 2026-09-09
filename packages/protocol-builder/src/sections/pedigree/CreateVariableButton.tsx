@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import type { VariableOption, VariableType } from '@codaco/protocol-validation';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import VariableEditor from '../../codebook/components/VariableEditor.tsx';
 import { sectionIdForCodebookSubject } from '../../codebook/editing.ts';
@@ -67,6 +68,22 @@ export default function CreateVariableButton({
   const [session, setSession] = useState<{
     key: string;
     variableId: string;
+    /**
+     * The type the attribute is being created ON, taken when the editor opened
+     * rather than read live.
+     *
+     * The draft inside belongs to that type: a stage repointed at another one
+     * while the editor is open — by this researcher, by an undo, by a
+     * collaborator — would otherwise leave the editor authoring an attribute
+     * of a type nobody asked it to. `editorReadOnly` below is what says so,
+     * and the draft is kept rather than thrown away.
+     */
+    subject: CodebookSubject;
+    /**
+     * That type's section as it stood when the editor opened, for the renders
+     * after it has gone. The live one is preferred while there is one.
+     */
+    openedDocument: SectionDoc;
   } | null>(null);
   /**
    * Whether the editor's save is with the host right now.
@@ -85,12 +102,60 @@ export default function CreateVariableButton({
           sectionIdForCodebookSubject(subject)
         ];
 
-  // Nothing to add an attribute to yet. Rendering a disabled control instead
-  // would offer an action whose only explanation is a choice made in a
-  // different field.
-  if (readOnly || subject === null || authoritativeDocument === undefined) {
+  /**
+   * What opening an editor from here would open it ON, or `undefined` while
+   * there is nothing to open one against.
+   *
+   * Nothing to add an attribute to yet, or a lease a collaborator has taken
+   * back, makes this undefined and takes the control away: rendering a
+   * disabled one instead would offer an action whose only explanation is a
+   * choice made in a different field. It carries the two values the session
+   * captures rather than being a bare boolean, so the capture cannot read them
+   * again — and cannot read a different answer — a moment later.
+   */
+  const launchable =
+    readOnly || subject === null || authoritativeDocument === undefined
+      ? undefined
+      : { subject, openedDocument: authoritativeDocument };
+
+  /*
+    An editor ALREADY OPEN is a different question, and the answer is that it
+    stays. The draft inside it — the name the researcher is typing, the values
+    they are entering — exists nowhere else, and unmounting it to say the lease
+    has gone would throw that away to report something the editor says for
+    itself with its own save refused. The same rule the row dialog around
+    `AttributeCodebookControls` follows when the same thing happens.
+  */
+  if (launchable === undefined && session === null) {
     return null;
   }
+
+  // The section the OPEN editor is reading, resolved live so a collaborator's
+  // changes to it still reach the editor, and falling back to the copy taken
+  // when it opened when that section has gone.
+  const openedSection =
+    session === null
+      ? undefined
+      : controller.snapshot.protocolSections[
+          sectionIdForCodebookSubject(session.subject)
+        ];
+
+  /**
+   * Whether what is open may be WRITTEN, which is three questions.
+   *
+   * A lease taken back says this researcher may write nothing. A section that
+   * has gone is a section nothing can be written into. And a slot pointed at
+   * another type is a slot this attribute is no longer for: an attribute
+   * created on the type the editor opened against would be bound to a slot
+   * that has stopped naming that type's attributes.
+   */
+  const editorReadOnly =
+    readOnly ||
+    openedSection === undefined ||
+    subject === null ||
+    session === null ||
+    sectionIdForCodebookSubject(subject) !==
+      sectionIdForCodebookSubject(session.subject);
 
   /**
    * The compound edit the editor submits, with the dialog held shut while it
@@ -128,15 +193,19 @@ export default function CreateVariableButton({
 
   return (
     <>
-      <Button
-        ref={triggerRef}
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setSession({ key: uuid(), variableId: uuid() })}
-      >
-        {label}
-      </Button>
+      {launchable !== undefined && (
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            setSession({ key: uuid(), variableId: uuid(), ...launchable })
+          }
+        >
+          {label}
+        </Button>
+      )}
       {session !== null && (
         <Dialog
           open
@@ -149,8 +218,9 @@ export default function CreateVariableButton({
           <VariableEditor
             mode="create"
             openId={session.key}
-            subject={subject}
-            authoritativeDocument={authoritativeDocument}
+            subject={session.subject}
+            authoritativeDocument={openedSection ?? session.openedDocument}
+            readOnly={editorReadOnly}
             variableId={session.variableId}
             initialDraft={{ name: '', type: variableType }}
             allowedVariableTypes={[variableType]}
@@ -160,7 +230,11 @@ export default function CreateVariableButton({
             createRequestId={() => uuid()}
             onSubmitRequest={submitEdit}
             onComplete={(variableId) => {
-              onCreated(variableId);
+              // Bound only while the slot still names attributes of the type
+              // the attribute was created on. An answer that arrives after the
+              // type has moved would otherwise put a reference to the old
+              // type's attribute into a slot the type change has just cleared.
+              if (!editorReadOnly) onCreated(variableId);
               setSession(null);
             }}
           />
