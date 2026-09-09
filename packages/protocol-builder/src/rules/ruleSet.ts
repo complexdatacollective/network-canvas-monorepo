@@ -32,9 +32,16 @@ export type RuleSetJoin = 'AND' | 'OR';
  * What a rule set is for.
  *
  * A network filter narrows the entities a stage works on; a query asks a
- * yes/no question about the whole network.
+ * yes/no question about the whole network. The two panel variants are filters
+ * as well — a side panel beside a name generator is narrowed by the same
+ * builder — but what they narrow is not the stage's network, so what their
+ * rules may be about is not the stage filter's answer either.
  */
-export type RuleSetVariant = 'filter' | 'query';
+export type RuleSetVariant =
+  | 'filter'
+  | 'query'
+  | 'interviewNetworkPanel'
+  | 'externalDataPanel';
 
 /**
  * What a rule set of each kind may be ABOUT.
@@ -51,12 +58,28 @@ export type RuleSetVariant = 'filter' | 'query';
  * and only this one belongs here: a rule set that does not offer edge rules is
  * still a rule set the schema lets one sit in, so an edge rule in one is the
  * researcher's own rule and not a problem to report.
+ *
+ * A side panel's filter answers both questions at once, because what it may
+ * hold follows from what it is narrowing and nothing else:
+ *
+ * - `interviewNetworkPanel` — the interview's own network. The schema
+ *   validates a panel filter with ego rules ENABLED, and the interview hands
+ *   that filter the session's real edges and its real ego
+ *   (`getPanelNodes`, existing branch), so all three targets ask about
+ *   something that is really there.
+ * - `externalDataPanel` — an imported file, which is a flat list of node rows.
+ *   The schema refuses an edge rule there outright, and the interview filters
+ *   the rows with no edges and a stand-in ego
+ *   (`filterExternalPanelNodes`), so an ego rule keeps every row or none —
+ *   degenerate in exactly the way an ego rule in a stage filter is.
  */
 const RULE_SET_TARGETS: Readonly<
   Record<RuleSetVariant, readonly RuleTargetType[]>
 > = Object.freeze({
   filter: Object.freeze(['node', 'edge'] as const),
   query: Object.freeze(['node', 'edge', 'ego'] as const),
+  interviewNetworkPanel: Object.freeze(['node', 'edge', 'ego'] as const),
+  externalDataPanel: Object.freeze(['node'] as const),
 });
 
 export const ruleSetTargets = (

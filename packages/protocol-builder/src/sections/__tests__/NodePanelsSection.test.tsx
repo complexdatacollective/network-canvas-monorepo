@@ -52,6 +52,31 @@ const panelWithAnEdgeRule = {
   },
 };
 
+/**
+ * A panel narrowed by a rule about the participant themselves. Legal in a
+ * panel filter — `ProtocolSchemaV8` validates one with ego rules enabled, and
+ * `getPanelNodes` hands the interview network's real ego to the filter — so a
+ * stage carrying one is a stage this section has to be able to open and save.
+ */
+const panelWithAnEgoRule = {
+  id: 'panel-1',
+  title: 'People you named earlier',
+  dataSource: 'existing',
+  filter: {
+    rules: [
+      {
+        id: 'rule-1',
+        type: 'ego',
+        options: {
+          attribute: 'ego_name',
+          operator: 'EXACTLY',
+          value: 'Ada',
+        },
+      },
+    ],
+  },
+};
+
 /** Points a panel at an imported file, the way a researcher does. */
 const chooseImportedNetwork = async (
   harness: ReturnType<typeof renderStageEditor>,
@@ -453,6 +478,37 @@ describe('the side panels a name generator shows', () => {
       id: 'panel-1',
       title: 'People you named earlier',
       dataSource: 'existing',
+    });
+  });
+
+  /**
+   * A rule about the participant themselves is a rule a panel over the
+   * interview's own network can really be narrowed by: the schema validates a
+   * panel filter with ego rules enabled, and the interview hands that filter
+   * the session's real ego. Reported as unusable, it would hold the panel's
+   * dialog shut over an edit that has nothing to do with the rule.
+   */
+  it('saves an unrelated edit to a panel narrowed by a rule about the participant', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([panelWithAnEgoRule]),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    expect(
+      dialog.queryByText(
+        'This rule is about the ego, which these rules cannot ask about. Edit or delete the rule.',
+      ),
+    ).not.toBeInTheDocument();
+
+    const title = dialog.getByRole('textbox', { name: 'Panel title' });
+    await harness.user.clear(title);
+    await harness.user.type(title, 'People you already know');
+    await saveTheRow(harness, dialog);
+
+    expect(panelsOf(await harness.submit())[0]).toEqual({
+      ...panelWithAnEgoRule,
+      title: 'People you already know',
     });
   });
 

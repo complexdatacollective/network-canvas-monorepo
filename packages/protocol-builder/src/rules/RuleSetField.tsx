@@ -81,14 +81,13 @@ export type RuleSetFieldProps = CreateFormFieldProps<
   'div',
   {
     /**
-     * A network filter narrows the entities a stage works on; a query asks a
-     * yes/no question about the whole network. Only a query can ask about the
-     * ego, because only a query has anything to do with the answer — and the
-     * protocol schema says the same, so a stored ego rule in a filter is
-     * reported here rather than refused by the schema alone.
+     * What this set narrows, which is what decides the targets it may offer
+     * and hold: a stage's network filter, a skip-logic query, or one of the
+     * two side-panel sources. See `RULE_SET_TARGETS`, which states what each
+     * of them may be about and why — a stored rule this variant cannot be
+     * about is reported here rather than refused by the schema alone.
      */
     variant?: RuleSetVariant;
-    allowEdgeRules?: boolean;
     /**
      * What this rule set's one add control is called.
      *
@@ -130,7 +129,6 @@ function RuleSetControl({
   onBlur,
   onFocus,
   variant = 'filter',
-  allowEdgeRules = true,
   addRuleLabel,
   disabled = false,
   readOnly = false,
@@ -147,26 +145,20 @@ function RuleSetControl({
   const rules = ruleSet?.rules ?? [];
   const join = ruleSet?.join;
 
-  // What the rules in this set may be ABOUT: the protocol schema's own rule,
-  // and what a stored rule is held to. `allowEdgeRules` is not part of it —
-  // the schema accepts an edge rule in any rule set, so one sitting in a set
-  // that does not offer to build them is the researcher's own rule and not a
-  // problem to report.
+  // What the rules in this set may be ABOUT, which is both what it offers to
+  // build and what a stored rule is held to. One answer rather than two: a
+  // target this set cannot be about is one the researcher must not be offered
+  // AND one a stored rule is reported for, and a set that offered less than it
+  // accepted would leave a rule it will not let anyone rebuild.
   const allowedTargets = ruleSetTargets(variant);
 
   const ruleTypes = useMemo(
     () =>
-      allowedTargets.flatMap<RuleTypeOption>((target) =>
-        target === 'edge' && !allowEdgeRules
-          ? []
-          : [
-              {
-                label: intl.formatMessage(RULE_TYPE_LABELS[target]),
-                value: target,
-              },
-            ],
-      ),
-    [allowEdgeRules, allowedTargets, intl],
+      allowedTargets.map<RuleTypeOption>((target) => ({
+        label: intl.formatMessage(RULE_TYPE_LABELS[target]),
+        value: target,
+      })),
+    [allowedTargets, intl],
   );
 
   const updateRules = useCallback(
@@ -240,21 +232,31 @@ function RuleSetControl({
  * convention the rest of the builder's list add controls use: "Add new …" for
  * a row assembled by choosing from material that already exists.
  */
-export function FilterRuleSetField(
-  props: Omit<RuleSetFieldProps, 'variant' | 'addRuleLabel'>,
-) {
+export function FilterRuleSetField({
+  variant = 'filter',
+  ...props
+}: Omit<RuleSetFieldProps, 'variant' | 'addRuleLabel'> &
+  Readonly<{
+    /**
+     * Which filter this is: a stage's own, or one of the two a side panel can
+     * be. All three are filters — same builder, same add control — and differ
+     * only in what their rules may be about, so they are the same field asked
+     * what it is narrowing rather than three fields.
+     */
+    variant?: Exclude<RuleSetVariant, 'query'>;
+  }>) {
   const intl = useAppIntl();
   return (
     <RuleSetControl
       {...props}
-      variant="filter"
+      variant={variant}
       addRuleLabel={intl.formatMessage(messages.addFilterRule)}
     />
   );
 }
 
 export function QueryRuleSetField(
-  props: Omit<RuleSetFieldProps, 'variant' | 'addRuleLabel' | 'allowEdgeRules'>,
+  props: Omit<RuleSetFieldProps, 'variant' | 'addRuleLabel'>,
 ) {
   const intl = useAppIntl();
   return (

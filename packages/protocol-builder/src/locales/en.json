@@ -1675,18 +1675,6 @@
     "defaultMessage": "Show a list of people beside this stage, so the participant can nominate someone without typing their name again.",
     "description": "Description of the side-panels section. A stage is one step of an interview."
   },
-  "protocolBuilder.nodePanels.edgeRulesClearConfirm": {
-    "defaultMessage": "Delete the rules",
-    "description": "Action that confirms deleting a side panel’s connection rules so the panel can list an imported file instead."
-  },
-  "protocolBuilder.nodePanels.edgeRulesClearDescription": {
-    "defaultMessage": "Rules about connections ask about the network the participant is building, and an imported file has none — so they would match nobody. Delete them and use the file, or cancel to keep the rules and go on listing the people named so far.",
-    "description": "Body of the dialog asked when a side panel stops listing the interview’s own network, naming both answers: delete the connection rules, or cancel and keep reading the interview."
-  },
-  "protocolBuilder.nodePanels.edgeRulesClearTitle": {
-    "defaultMessage": "This will delete this panel’s connection rules",
-    "description": "Title of the dialog asked when a side panel stops listing the interview’s own network, because rules about connections between people cannot be answered by an imported file."
-  },
   "protocolBuilder.nodePanels.editTitle": {
     "defaultMessage": "Edit panel",
     "description": "Title of the dialog a researcher fills in to change a side panel they have already added."
@@ -1798,6 +1786,18 @@
   "protocolBuilder.nodePanels.tooManyPanels": {
     "defaultMessage": "This stage has more side panels than a name generator can show. Delete panels until two are left.",
     "description": "Refusal shown above the side-panel list when the stage arrived holding more panels than fit beside an interview. Refused rather than trimmed, because deleting a panel a researcher wrote is their decision. A stage is one step of an interview."
+  },
+  "protocolBuilder.nodePanels.unanswerableRulesClearConfirm": {
+    "defaultMessage": "Delete the rules",
+    "description": "Action that confirms deleting the side panel’s rules an imported file cannot answer, so the panel can list that file instead."
+  },
+  "protocolBuilder.nodePanels.unanswerableRulesClearDescription": {
+    "defaultMessage": "Rules about connections between people, or about the participant themselves, ask about the interview the participant is doing — and an imported file is no part of it, so they would match nobody. Delete them and use the file, or cancel to keep the rules and go on listing the people named so far.",
+    "description": "Body of the dialog asked when a side panel stops listing the interview’s own network, naming both answers: delete the rules an imported file cannot answer, or cancel and keep reading the interview."
+  },
+  "protocolBuilder.nodePanels.unanswerableRulesClearTitle": {
+    "defaultMessage": "This will delete rules an imported file cannot answer",
+    "description": "Title of the dialog asked when a side panel stops listing the interview’s own network, because rules about connections between people, or about the participant themselves, cannot be answered by an imported file."
   },
   "protocolBuilder.nodePanels.untitledPanel": {
     "defaultMessage": "Untitled panel",
