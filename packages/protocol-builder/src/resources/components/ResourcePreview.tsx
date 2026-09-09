@@ -3,13 +3,13 @@ import { useEffect, useState } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import { useResourceClient } from '../client.tsx';
 import type {
   ResourceGatewayFailure,
   ResourcePreview as ResolvedPreview,
 } from '../types.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import type { PreviewableResourceKind } from './resourceKinds.ts';
-import { useResourceClientRef } from './useResourceClientRef.ts';
 
 const messages = defineMessages({
   retry: {
@@ -181,7 +181,7 @@ export default function ResourcePreview({
   name,
   className,
 }: ResourcePreviewProps) {
-  const resources = useResourceClientRef();
+  const resources = useResourceClient();
   const intl = useAppIntl();
   const [preview, setPreview] = useState<ResolvedPreview | undefined>(
     undefined,
@@ -207,7 +207,7 @@ export default function ResourcePreview({
 
     const resolve = (): void => {
       void (async () => {
-        const result = await resources.current.resolvePreview(resourceId);
+        const result = await resources.resolvePreview(resourceId);
         if (result.status === 'ok') onResolved(result.data);
         else onResolveFailed(result.failure);
       })();

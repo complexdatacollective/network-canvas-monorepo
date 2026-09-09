@@ -14,7 +14,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { normalizeForComparison } from '@codaco/shared-consts';
 
-import { useResourceClient } from '../client.tsx';
+import { useResourceClient, useSecretStorage } from '../client.tsx';
 import {
   resourceOk,
   type ResourceDescriptor,
@@ -206,6 +206,7 @@ export default function ResourceSecretControl({
   disabled = false,
 }: ResourceSecretControlProps) {
   const resources = useResourceClient();
+  const secretStorage = useSecretStorage();
   const intl = useAppIntl();
   const { busy, clear, failure, retry, run } = useResourceAttempt();
   const [name, setName] = useState('');
@@ -428,11 +429,9 @@ export default function ResourceSecretControl({
       <UnconnectedField
         name="staged-secret-value"
         label={intl.formatMessage(messages.valueLabel)}
-        {...(resources.secretStorage === undefined
+        {...(secretStorage === undefined
           ? {}
-          : {
-              hint: intl.formatMessage(KEY_HINT[resources.secretStorage]),
-            })}
+          : { hint: intl.formatMessage(KEY_HINT[secretStorage]) })}
         component={InputField}
         type="password"
         autoComplete="off"

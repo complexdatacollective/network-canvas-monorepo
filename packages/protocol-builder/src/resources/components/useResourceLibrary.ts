@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useResourceClient } from '../client.tsx';
 import {
   resourceOk,
   type ResourceDescriptor,
@@ -10,7 +11,6 @@ import {
   useResourceAttempt,
   type ResourceAttempt,
 } from './useResourceAttempt.ts';
-import { useResourceClientRef } from './useResourceClientRef.ts';
 
 const NO_RESOURCES: readonly ResourceDescriptor[] = Object.freeze([]);
 
@@ -46,7 +46,7 @@ export type ResourceLibrary = Readonly<{
 export function useResourceLibrary(
   kinds: readonly ResourceKind[],
 ): ResourceLibrary {
-  const resources = useResourceClientRef();
+  const resources = useResourceClient();
   const { busy, failure, retry, run } = useResourceAttempt();
   const [offered, setOffered] =
     useState<readonly ResourceDescriptor[]>(NO_RESOURCES);
@@ -63,7 +63,7 @@ export function useResourceLibrary(
   // to refuse. One seam, so every caller — the list on screen and the name
   // check beside it — sees the same library.
   const list = useCallback(async () => {
-    const listed = await resources.current.list({ kinds: latestKinds.current });
+    const listed = await resources.list({ kinds: latestKinds.current });
     if (listed.status !== 'ok') return listed;
     const accepted = new Set<ResourceKind>(latestKinds.current);
     const allowed = listed.data.filter((descriptor) =>

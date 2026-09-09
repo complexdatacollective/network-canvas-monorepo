@@ -254,10 +254,14 @@ export const Chosen: Story = {
 export const TheResourceBrowser: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // The stage arrives from the host over a promise, so the editor — and
+    // every control in it — is drawn a turn after the story mounts. Every play
+    // in this file awaits its FIRST query for that reason; the ones after it
+    // are about what the researcher just did.
     await awaitPassiveEffects();
 
     await userEvent.click(
-      canvas.getByRole('button', { name: 'Select an image' }),
+      await canvas.findByRole('button', { name: 'Select an image' }),
     );
 
     // The dialog is portalled out of the story root, so it is reached through
@@ -282,7 +286,7 @@ export const ChoosingOne: Story = {
     await awaitPassiveEffects();
 
     await userEvent.click(
-      canvas.getByRole('button', { name: 'Select an image' }),
+      await canvas.findByRole('button', { name: 'Select an image' }),
     );
     // The browser is portalled out of the story root; the field it reports
     // back to is inside the canvas.
@@ -308,7 +312,7 @@ export const ImportingAFile: Story = {
     await awaitPassiveEffects();
 
     await userEvent.click(
-      canvas.getByRole('button', { name: 'Select an image' }),
+      await canvas.findByRole('button', { name: 'Select an image' }),
     );
     await userEvent.upload(
       await screen.findByLabelText('Choose a file from your computer'),
@@ -344,7 +348,7 @@ export const SharedWithAnotherField: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    const first = canvas.getByRole('group', { name: 'First image' });
+    const first = await canvas.findByRole('group', { name: 'First image' });
     const second = canvas.getByRole('group', { name: 'Second image' });
 
     await userEvent.click(

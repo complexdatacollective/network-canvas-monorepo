@@ -97,3 +97,42 @@ it('lists an imported file as staged, and lets a second field reference it, befo
   );
   expect(Object.keys(manifest())).toEqual(['image-1']);
 });
+
+/**
+ * Every control that calls the host does so from an effect, and an effect is
+ * keyed on what it calls. So the client has to be the same object from one end
+ * of the edit to the other: rebuilt whenever anything was staged, a preview
+ * would resolve itself again, an inspection re-read its file, and a library
+ * re-list the protocol, each time any field on the stage imported anything.
+ *
+ * What the edit has staged is a separate value, so a control that renders the
+ * list still follows it.
+ */
+it('keeps one resource client across a staging change', async () => {
+  const user = userEvent.setup();
+  const { fieldValue, resourceClient, staged } = renderResourceEditor({
+    resources: [NEIGHBOURHOOD],
+    children: picker('backgroundImage', 'Background image'),
+  });
+
+  const first = await screen.findByRole('group', { name: 'Background image' });
+  const before = resourceClient();
+
+  await user.click(
+    within(first).getByRole('button', { name: 'Select an image' }),
+  );
+  await user.upload(
+    await screen.findByLabelText('Choose a file from your computer'),
+    new File(['fake-png-bytes'], 'skyline.png', { type: 'image/png' }),
+  );
+  await waitFor(() =>
+    expect(fieldValue('backgroundImage')).toBe('staged-resource-1'),
+  );
+
+  expect(resourceClient()).toBe(before);
+  // And the staging itself did happen, so the identity above is not the
+  // identity of a client nothing ever asked to stage anything.
+  expect(await staged()).toEqual([
+    expect.objectContaining({ id: 'staged-resource-1', status: 'staged' }),
+  ]);
+});

@@ -62,13 +62,6 @@ async function called<T>(
  * which resources it has staged, and which of those are on their way out.
  */
 export type ResourceClient = Readonly<{
-  /**
-   * Where this host puts a promoted secret's value, or `undefined` until the
-   * host has said. A researcher pasting an API key is deciding whether to put
-   * a credential into a file they will send to other people, and only the host
-   * knows which it is — so nothing is claimed on its behalf before it answers.
-   */
-  secretStorage: ResourceSecretStorage | undefined;
   list(
     options?: ResourceListOptions,
   ): Promise<ResourceResult<readonly ResourceDescriptor[]>>;
@@ -102,32 +95,56 @@ export type StagedResources = Readonly<{
   discardAll(): Promise<ResourceResult<undefined>>;
 }>;
 
-type ResourceContextValue = Readonly<{
-  client: ResourceClient;
-  staged: StagedResources;
-}>;
-
-const ResourceContext = createContext<ResourceContextValue | undefined>(
+/**
+ * Three values rather than one, because they change at different rates and are
+ * read by different components.
+ *
+ * The client is the host's procedures with this protocol's id supplied, and
+ * nothing about the edit's own state is in it, so it is the SAME object for
+ * the life of the edit. That is what lets an effect that calls the host —
+ * resolving a preview, inspecting a file, listing a library — depend on it:
+ * held together with what the edit has staged, every one of those would run
+ * again each time any field on the stage imported or discarded anything.
+ */
+const ResourceClientContext = createContext<ResourceClient | undefined>(
+  undefined,
+);
+const StagedResourcesContext = createContext<StagedResources | undefined>(
+  undefined,
+);
+const SecretStorageContext = createContext<ResourceSecretStorage | undefined>(
   undefined,
 );
 
 export function useResourceClient(): ResourceClient {
-  const value = useContext(ResourceContext);
-  if (value === undefined) {
+  const client = useContext(ResourceClientContext);
+  if (client === undefined) {
     throw new Error(
       'a resource control was rendered outside a stage editor, so it has no edit to stage into',
     );
   }
-  return value.client;
+  return client;
 }
 
 /** Everything this edit has staged and not yet promoted or discarded. */
 export function useStagedResources(): StagedResources {
-  const value = useContext(ResourceContext);
-  if (value === undefined) {
+  const staged = useContext(StagedResourcesContext);
+  if (staged === undefined) {
     throw new Error('staged resources were read outside a stage editor');
   }
-  return value.staged;
+  return staged;
+}
+
+/**
+ * Where this host puts a promoted secret's value, or `undefined` until the host
+ * has said.
+ *
+ * A researcher pasting an API key is deciding whether to put a credential into
+ * a file they will send to other people, and only the host knows which it is —
+ * so nothing is claimed on its behalf before it answers.
+ */
+export function useSecretStorage(): ResourceSecretStorage | undefined {
+  return useContext(SecretStorageContext);
 }
 
 type ProviderProps = Readonly<{ children: ReactNode }>;
@@ -151,59 +168,97 @@ export function ResourceClientProvider({ children }: ProviderProps) {
   const leaving = useRef(new Set<string>());
   const discarded = useRef(new Set<string>());
 
-  const value = useMemo<ResourceContextValue>(
+  const editorClient = useMemo(
     () =>
-      buildResourceContext({
+      buildResourceClient({
         client,
         protocolId,
-        staged,
         setStaged,
-        secretStorage,
         setSecretStorage,
         handles: handles.current,
         leaving: leaving.current,
         discarded: discarded.current,
       }),
-    [client, protocolId, secretStorage, staged],
+    [client, protocolId],
+  );
+
+  const stagedResources = useMemo(
+    () =>
+      buildStagedResources({
+        client,
+        protocolId,
+        staged,
+        setStaged,
+        handles: handles.current,
+      }),
+    [client, protocolId, staged],
   );
 
   // Where a promoted secret's value comes to rest is a fact the host states in
   // its answer to `list`, and a control that asks a researcher to paste an API
   // key has to be able to say it before they do. Asked once, here, rather than
   // by each control that might need it.
-  const readSecretStorage = useRef(value.client.list);
-  readSecretStorage.current = value.client.list;
   useEffect(() => {
-    void readSecretStorage.current();
-  }, []);
+    void editorClient.list();
+  }, [editorClient]);
 
   // Whatever is still staged when the edit goes is what nothing saved: the
   // researcher cancelled, or navigated away. Read through a ref so the effect
   // runs once, at the end, over the resources staged by then.
-  const discardOnClose = useRef(value.staged.discardAll);
-  discardOnClose.current = value.staged.discardAll;
+  const discardOnClose = useRef(stagedResources.discardAll);
+  discardOnClose.current = stagedResources.discardAll;
   useEffect(() => () => void discardOnClose.current(), []);
 
-  return <ResourceContext value={value}>{children}</ResourceContext>;
+  return (
+    <ResourceClientContext value={editorClient}>
+      <SecretStorageContext value={secretStorage}>
+        <StagedResourcesContext value={stagedResources}>
+          {children}
+        </StagedResourcesContext>
+      </SecretStorageContext>
+    </ResourceClientContext>
+  );
 }
 
-type ContextDeps = Readonly<{
+/**
+ * Everything the client is built from, and every one of them holds still for
+ * the life of the edit: the two setters are `useState`'s own, and the three
+ * collections are refs. That is what makes the client itself hold still.
+ */
+type ClientDeps = Readonly<{
   client: ProtocolBuilderClient;
   protocolId: string;
-  staged: readonly ResourceDescriptor[];
   setStaged: (
     next: (
       current: readonly ResourceDescriptor[],
     ) => readonly ResourceDescriptor[],
   ) => void;
-  secretStorage: ResourceSecretStorage | undefined;
   setSecretStorage: (next: ResourceSecretStorage) => void;
   handles: Map<string, StagedSecretHandle>;
   leaving: Set<string>;
   discarded: Set<string>;
 }>;
 
-function buildResourceContext(deps: ContextDeps): ResourceContextValue {
+type StagedDeps = Readonly<{
+  client: ProtocolBuilderClient;
+  protocolId: string;
+  staged: readonly ResourceDescriptor[];
+  setStaged: ClientDeps['setStaged'];
+  handles: Map<string, StagedSecretHandle>;
+}>;
+
+/** Drops a staged resource from the edit's bookkeeping, wherever it is held. */
+function forgetStaged(
+  deps: Pick<StagedDeps, 'handles' | 'setStaged'>,
+  resourceId: string,
+): void {
+  deps.handles.delete(resourceId);
+  deps.setStaged((current) =>
+    current.filter((entry) => entry.id !== resourceId),
+  );
+}
+
+function buildResourceClient(deps: ClientDeps): ResourceClient {
   const { client, protocolId } = deps;
   const resources = client.resources;
 
@@ -230,14 +285,10 @@ function buildResourceContext(deps: ContextDeps): ResourceContextValue {
   };
 
   const forget = (resourceId: string) => {
-    deps.handles.delete(resourceId);
-    deps.setStaged((current) =>
-      current.filter((entry) => entry.id !== resourceId),
-    );
+    forgetStaged(deps, resourceId);
   };
 
-  const editorClient: ResourceClient = {
-    secretStorage: deps.secretStorage,
+  return {
     list,
 
     stageUpload: (request) =>
@@ -327,8 +378,16 @@ function buildResourceContext(deps: ContextDeps): ResourceContextValue {
       return resourceOk(undefined);
     },
   };
+}
 
-  const staged: StagedResources = {
+function buildStagedResources(deps: StagedDeps): StagedResources {
+  const { client, protocolId } = deps;
+  const resources = client.resources;
+  const forget = (resourceId: string) => {
+    forgetStaged(deps, resourceId);
+  };
+
+  return {
     staged: deps.staged,
     promote: () =>
       called(async () => {
@@ -358,6 +417,4 @@ function buildResourceContext(deps: ContextDeps): ResourceContextValue {
         return resourceOk(undefined);
       }),
   };
-
-  return { client: editorClient, staged };
 }
