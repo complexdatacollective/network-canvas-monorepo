@@ -160,6 +160,39 @@ describe('where the stage sits', () => {
       stagePlacement(stages, 'stage-new', 1, ['stage-1', 'stage-2', 'stage-3']),
     ).toEqual({ index: 1, isNew: true });
   });
+
+  /**
+   * The host inserts into the order the PROTOCOL states, so the position it
+   * gives is an index in that list — which names the stages the schema refuses
+   * as well as the ones that could be read. Applied straight to the readable
+   * ones, an unreadable stage before the insertion point is counted as if it
+   * were not there and the new stage lands one place too late, after a stage
+   * it actually runs before.
+   */
+  it('translates a creation position through the stages it cannot read', () => {
+    const order = ['stage-1', 'unreadable', 'stage-2', 'stage-3'];
+
+    // Position 2 is between the unreadable stage and `stage-2`, which is
+    // readable index 1 — not index 2, where `stage-2` sits.
+    expect(stagePlacement(stages, 'stage-new', 2, order)).toEqual({
+      index: 1,
+      isNew: true,
+    });
+    expect(stagePlacement(stages, 'stage-new', 3, order)).toEqual({
+      index: 2,
+      isNew: true,
+    });
+    // Past the end of the order, and before its start, still land inside the
+    // readable list.
+    expect(stagePlacement(stages, 'stage-new', 9, order)).toEqual({
+      index: 3,
+      isNew: true,
+    });
+    expect(stagePlacement(stages, 'stage-new', -1, order)).toEqual({
+      index: 0,
+      isNew: true,
+    });
+  });
 });
 
 describe('the destinations on offer', () => {

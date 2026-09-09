@@ -183,6 +183,56 @@ describe('the pedigrees a narrative pedigree may read', () => {
   });
 
   /**
+   * The insertion position is an index in the order the PROTOCOL states, which
+   * is the list the host inserts into — and that list names the stages the
+   * schema refuses as well as the ones it accepts.
+   *
+   * Applied straight to the readable stages, a stage the schema cannot read
+   * sitting before the insertion point is counted as if it were not there, and
+   * the boundary lands one stage too far down the interview: the pedigree the
+   * new stage will run BEFORE was offered to it as one it could read, and a
+   * stage bound to it draws a family the participant has not been asked about
+   * yet.
+   */
+  it('counts an unreadable stage before the insertion point', () => {
+    const context = contextWithUnreadableNarrativePedigree([
+      'ego-form-1',
+      'narrative-pedigree-1',
+      'family-pedigree-1',
+    ]);
+    // The precondition, asserted rather than assumed: without an unreadable
+    // stage in the order this test proves nothing.
+    expect(context.orderedStages.map((stage) => stage.id)).toEqual([
+      'ego-form-1',
+      'family-pedigree-1',
+    ]);
+
+    // Inserted between the unreadable stage and the pedigree, the new stage
+    // runs first, so the pedigree is not one it may read.
+    const before = resolveSourceStages(
+      context,
+      'not-in-the-order-yet',
+      'family-pedigree-1',
+      2,
+    );
+    expect(before.options).toEqual([]);
+    expect(before.problem).toBe('afterThisStage');
+
+    // And one position further on it runs after the pedigree, which is then
+    // exactly what it may read.
+    const after = resolveSourceStages(
+      context,
+      'not-in-the-order-yet',
+      'family-pedigree-1',
+      3,
+    );
+    expect(after.options.map((option) => option.value)).toEqual([
+      'family-pedigree-1',
+    ]);
+    expect(after.problem).toBeNull();
+  });
+
+  /**
    * The same rule seen from the stored choice: a pedigree that will run after
    * the stage being created is the problem it is for an existing stage, not a
    * choice silently left standing.

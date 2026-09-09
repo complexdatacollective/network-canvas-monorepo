@@ -69,7 +69,9 @@ export function resolveSourceStages(
   thisStageId: string,
   currentSourceStageId: unknown,
   /**
-   * Where a stage being CREATED will be inserted, counting from zero. Only
+   * Where a stage being CREATED will be inserted, counting from zero, in the
+   * order the protocol states — the list the host actually inserts into, which
+   * names the stages the schema refuses as well as the ones it accepts. Only
    * consulted for a stage the order does not contain yet; left out, such a
    * stage is treated as arriving at the end, which is where a host that
    * appends puts it.

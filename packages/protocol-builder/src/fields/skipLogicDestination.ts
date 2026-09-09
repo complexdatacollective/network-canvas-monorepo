@@ -276,6 +276,16 @@ export const routeDestination = (
  * because only its host knows where it is about to be inserted. Left out, a
  * new stage is treated as arriving at the end, which is where a host that
  * appends puts it.
+ *
+ * And it is a position in the order the PROTOCOL states, because that is the
+ * list the host inserts into — the same list `stageOrder` is. Applied straight
+ * to `stages`, it counted stages nobody could read as if they were not there:
+ * inserting at position 2 of `[pedigree, unreadable, pedigree]` landed at
+ * index 2 of the two readable ones, and the second pedigree — which the new
+ * stage runs BEFORE — was offered to it as a source it could read. Counting
+ * the readable stages before the insertion point translates the one order into
+ * the other; with no `stageOrder` to translate through there is nothing to
+ * count, and the position is taken as given.
  */
 export function stagePlacement(
   stages: readonly DestinationStage[],
@@ -285,19 +295,20 @@ export function stagePlacement(
 ): StagePlacement {
   const index = stages.findIndex((stage) => stage.id === stageId);
   if (index !== -1) return { index, isNew: false };
+  const readable = new Set(stages.map((stage) => stage.id));
+  const readableBefore = (cut: number): number =>
+    (stageOrder ?? []).slice(0, cut).filter((id) => readable.has(id)).length;
   const orderIndex = stageOrder?.indexOf(stageId) ?? -1;
   if (orderIndex !== -1) {
-    const readable = new Set(stages.map((stage) => stage.id));
-    return {
-      index: (stageOrder ?? [])
-        .slice(0, orderIndex)
-        .filter((id) => readable.has(id)).length,
-      isNew: false,
-    };
+    return { index: readableBefore(orderIndex), isNew: false };
   }
-  const requested = position ?? stages.length;
+  if (position === undefined) return { index: stages.length, isNew: true };
+  const requested = Math.max(position, 0);
   return {
-    index: Math.min(Math.max(requested, 0), stages.length),
+    index: Math.min(
+      stageOrder === undefined ? requested : readableBefore(requested),
+      stages.length,
+    ),
     isNew: true,
   };
 }
