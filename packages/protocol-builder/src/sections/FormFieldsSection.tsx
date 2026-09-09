@@ -532,35 +532,28 @@ const noAttributeTwice = (value: unknown) =>
     : DUPLICATE_FIELD;
 
 /**
- * The two shapes the schema allows, as a pair of stable objects.
+ * The rows collecting an attribute the interface mounting this form already
+ * collects for itself.
  *
- * Written out rather than assembled per render because a validation object is
- * part of what a field registers with: a fresh one each time re-registers the
- * rules on every keystroke. Which of the two applies is the `optional` prop —
- * a form that IS the stage must collect something, while a form hung off
- * another section is a capability the researcher may leave switched off, and
- * the schema says exactly that (`FormSchema.fields.min(1)` against
- * `FormFieldArraySchema.optional()`).
+ * A rule about the LIST rather than about a row, because either side of the
+ * collision can move: the researcher can point a row at the reserved
+ * attribute, and the interface can reserve an attribute a row is already
+ * collecting — a Family Pedigree makes an attribute its display label, and the
+ * form field asking for it stops being asked. Only the list is registered with
+ * the form, so only a rule here is re-asked when the second thing happens.
  */
-const REQUIRED_FIELDS_VALIDATION = Object.freeze({
-  custom: messageRuleValidation([
-    // Before the one that counts it. Only the first rule to fail is shown, and
-    // "add at least one field" said of a value that is not a list sends the
-    // researcher to add a row to something that cannot hold one.
-    everyEntryIsAField,
-    atLeastOneField,
-    everyFieldComplete,
-    noAttributeTwice,
-  ]),
-});
-
-const OPTIONAL_FIELDS_VALIDATION = Object.freeze({
-  custom: messageRuleValidation([
-    everyEntryIsAField,
-    everyFieldComplete,
-    noAttributeTwice,
-  ]),
-});
+const noReservedAttribute = (
+  value: unknown,
+  reserved: ReadonlySet<string>,
+  refusal: MessageDescriptor | undefined,
+): string | undefined => {
+  if (refusal === undefined || reserved.size === 0) return undefined;
+  return rowsOf(value).some(
+    (row) => typeof row.variable === 'string' && reserved.has(row.variable),
+  )
+    ? createMessageError(refusal)
+    : undefined;
+};
 
 /**
  * What a row's own controls need to know about the list they belong to.
@@ -582,6 +575,8 @@ type FormFieldsScope = Readonly<{
   subject: CodebookSubject | undefined;
   /** See `draftUnvalidatedVariables`. Carried for the row's own picker. */
   draftUnvalidated: ReadonlySet<string>;
+  /** See `reservedVariables`. Carried for the row's own picker. */
+  reserved: ReadonlySet<string>;
   /**
    * The stage `draftUnvalidated` is the whole account of, where there is one.
    * Carried so the picker and the save-time gate build the same role map.
@@ -667,6 +662,33 @@ export type FormFieldsSectionProps = Readonly<{
    */
   draftUnvalidatedVariables?: readonly string[];
   /**
+   * Attributes this form may NOT collect, because the interface mounting it
+   * already collects them through a control of its own.
+   *
+   * Not a conflict between writers — both are validated collections — but the
+   * same attribute asked for twice on one screen, which the INTERVIEW resolves
+   * by dropping the form field: a Family Pedigree collects each relative's
+   * name through its own name control and filters the display label (and any
+   * attribute whose id is literally `name`) out of the form it renders
+   * (`interview/src/interfaces/FamilyPedigree/utils/nodeUtils.ts`). A field
+   * bound to one is a question the researcher wrote that no participant is
+   * ever asked, recorded nowhere and reported by nothing.
+   *
+   * Live, and read whole on every save: the interface can reserve an attribute
+   * a field is already collecting, which is what making an existing field's
+   * attribute the display label does.
+   */
+  reservedVariables?: readonly string[];
+  /**
+   * Why a reserved attribute may not be collected here, in the words of the
+   * interface that reserved it.
+   *
+   * A DESCRIPTOR, like every other word a host hands this section: only the
+   * interface knows which of its own controls has the attribute, and a string
+   * handed across this seam is extracted by nothing and translated by nobody.
+   */
+  reservedVariableRefusal?: MessageDescriptor;
+  /**
    * Words this form needs instead of the shared ones, because it describes
    * something the shared section cannot name.
    *
@@ -721,6 +743,8 @@ export default function FormFieldsSection({
   capability,
   hasTitle = false,
   draftUnvalidatedVariables,
+  reservedVariables,
+  reservedVariableRefusal,
   title = messages.title,
   description = messages.description,
   fieldLabel = messages.fieldLabel,
@@ -739,6 +763,53 @@ export default function FormFieldsSection({
     () => new Set(draftUnvalidatedVariables ?? []),
     [draftUnvalidatedVariables],
   );
+  const reserved = useMemo(
+    () => new Set(reservedVariables ?? []),
+    [reservedVariables],
+  );
+  /**
+   * The reserved attributes as the LIST rule reads them.
+   *
+   * Through a ref, because a validation object is part of what a field
+   * registers with and is memoised on a JSON of its rules — which drops
+   * functions, so a rebuilt closure would never replace the one registered on
+   * the first render. Read this way, the rule judges the form against what the
+   * interface reserves NOW, which is the half of this that changes while the
+   * researcher is looking at it.
+   */
+  const reservedNow = useRef({ reserved, refusal: reservedVariableRefusal });
+  reservedNow.current = { reserved, refusal: reservedVariableRefusal };
+  /**
+   * The rules that can refuse this save, as ONE stable object.
+   *
+   * Memoised rather than rebuilt per render because a validation object is
+   * part of what a field registers with: a fresh one each time re-registers
+   * the rules on every keystroke. Which rules apply is the `optional` prop —
+   * a form that IS the stage must collect something, while a form hung off
+   * another section is a capability the researcher may leave switched off, and
+   * the schema says exactly that (`FormSchema.fields.min(1)` against
+   * `FormFieldArraySchema.optional()`).
+   */
+  const fieldsValidation = useMemo(
+    () => ({
+      custom: messageRuleValidation([
+        // Before the one that counts it. Only the first rule to fail is shown,
+        // and "add at least one field" said of a value that is not a list
+        // sends the researcher to add a row to something that cannot hold one.
+        everyEntryIsAField,
+        ...(optional ? [] : [atLeastOneField]),
+        everyFieldComplete,
+        noAttributeTwice,
+        (value: unknown) =>
+          noReservedAttribute(
+            value,
+            reservedNow.current.reserved,
+            reservedNow.current.refusal,
+          ),
+      ]),
+    }),
+    [optional],
+  );
   // The stage whose saved unvalidated writes the draft above replaces, where
   // there is a draft to replace them with. See `draftUnvalidatedVariables`.
   const { identity } = useStageEditorForm();
@@ -749,6 +820,8 @@ export default function FormFieldsSection({
     codebookSubject,
     fieldsPath,
     draftUnvalidated,
+    reserved,
+    reservedVariableRefusal,
     answeredFor,
     intl,
   );
@@ -757,9 +830,10 @@ export default function FormFieldsSection({
       fieldsPath,
       subject: codebookSubject,
       draftUnvalidated,
+      reserved,
       answeredFor,
     }),
-    [answeredFor, codebookSubject, draftUnvalidated, fieldsPath],
+    [answeredFor, codebookSubject, draftUnvalidated, fieldsPath, reserved],
   );
 
   return (
@@ -799,9 +873,7 @@ export default function FormFieldsSection({
           onBeforeSave={onBeforeSave}
           normalizeItem={normalizeFormField}
           sortable
-          {...(optional
-            ? OPTIONAL_FIELDS_VALIDATION
-            : REQUIRED_FIELDS_VALIDATION)}
+          {...fieldsValidation}
         />
       </FormFieldsScopeContext>
     </BuilderSection>
@@ -946,6 +1018,8 @@ function useFormFieldValidate(
   codebookSubject: CodebookSubject | undefined,
   fieldsPath: string,
   draftUnvalidated: ReadonlySet<string>,
+  reserved: ReadonlySet<string>,
+  reservedRefusal: MessageDescriptor | undefined,
   answeredFor: string | undefined,
   intl: IntlShape,
 ) {
@@ -1008,6 +1082,19 @@ function useFormFieldValidate(
       ) {
         return { variable: intl.formatMessage(messages.attributeTaken) };
       }
+      // An attribute the interface around this form collects for itself, which
+      // the interview drops this field for. Refused with no escape for a
+      // committed pick, deliberately: unlike a writer-class conflict, this is
+      // not a state a protocol can legitimately arrive in — the field collects
+      // nothing wherever it came from.
+      if (
+        reservedRefusal !== undefined &&
+        variable !== '' &&
+        variable !== NEW_VARIABLE &&
+        reserved.has(variable)
+      ) {
+        return { variable: intl.formatMessage(reservedRefusal) };
+      }
       // Two refusals this deliberately does NOT make.
       //
       // A row that named an attribute with values and never created one is
@@ -1031,7 +1118,16 @@ function useFormFieldValidate(
         ? undefined
         : { variable: issues.variable };
     };
-  }, [allVariables, codebookSubject, draftUnvalidated, fields, intl, roleMap]);
+  }, [
+    allVariables,
+    codebookSubject,
+    draftUnvalidated,
+    fields,
+    intl,
+    reserved,
+    reservedRefusal,
+    roleMap,
+  ]);
 }
 
 /**
@@ -1379,7 +1475,7 @@ function AttributePicker({
 }: Readonly<{ item: RowEditorProps['item']; editIndex?: number }>) {
   const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
-  const { fieldsPath, subject, draftUnvalidated, answeredFor } =
+  const { fieldsPath, subject, draftUnvalidated, reserved, answeredFor } =
     useFormFieldsScope();
   const fields = useStageValue(fieldsPath);
   const committed = asString(item.variable) ?? '';
@@ -1418,7 +1514,11 @@ function AttributePicker({
           // does; the protocol simply does not hold it yet. Asked the same way
           // as the save-time gate, so the picker cannot offer what the dialog
           // is about to refuse.
-          (!siblings.has(value) && !draftUnvalidated.has(value)),
+          (!siblings.has(value) &&
+            !draftUnvalidated.has(value) &&
+            // And nothing the interface around this form collects itself: a
+            // field bound to one is a question no participant is ever asked.
+            !reserved.has(value)),
       ),
       {
         value: NEW_VARIABLE,
@@ -1432,6 +1532,7 @@ function AttributePicker({
     fields,
     intl,
     protocolContext,
+    reserved,
     roleMap,
     subject,
   ]);

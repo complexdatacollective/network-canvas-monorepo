@@ -1,4 +1,7 @@
-import { useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
+
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
   buildExclusiveVariableSlotMap,
@@ -6,8 +9,10 @@ import {
   type ExclusiveVariableSlotMap,
   type VariableRoleMap,
 } from '../../codebook/variableRoles.ts';
+import type { EntityTypeChangeConfirmation } from '../../fields/EntitySelectField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
+  useAskStageHasAnyValue,
   useDiscardStageValues,
   useStageValue,
 } from '../../form/stageFormHooks.ts';
@@ -155,6 +160,60 @@ export function usePedigreeVariableIndexes(): Readonly<{
  * live-applying host as a stage describing the OLD type with none of its
  * attributes, which is a stage nobody authored.
  */
+/**
+ * The words one pedigree type change is announced in.
+ *
+ * DESCRIPTORS, because the sentences belong to the section that owns the
+ * control rather than to this module: what a node type change costs — the
+ * display label, the family member form, every nomination prompt — is not what
+ * an edge type change costs, and a string handed across this seam is extracted
+ * by nothing and translated by nobody.
+ */
+export type EntityTypeChangeWords = Readonly<{
+  title: MessageDescriptor;
+  description: MessageDescriptor;
+  confirmLabel: MessageDescriptor;
+}>;
+
+/**
+ * The question a pedigree type change has to ask before it may go ahead.
+ *
+ * `useResetOnEntityTypeChange` below throws away everything that described the
+ * previous type, and a chip is one click: an accidental pick discarded the
+ * member form and every nomination prompt with no warning at all, leaving undo
+ * as the only way back from a change the researcher never intended to make.
+ *
+ * Asked of the SAME paths the reset discards, so the question can neither
+ * appear over a change that costs nothing nor stay silent over one that costs
+ * something. `undefined` — nothing bound at any of them — lets the pick
+ * through, which is what a first choice on a new pedigree is.
+ *
+ * `useAskStageHasAnyValue` is the shared "does the stage hold anything here"
+ * that a capability's switch-off is judged by, so a type change and a switch
+ * warn about exactly the same content.
+ */
+export function useEntityTypeChangeConfirmation(
+  dependentPaths: readonly string[],
+  words: EntityTypeChangeWords,
+): () => EntityTypeChangeConfirmation | undefined {
+  const intl = useAppIntl();
+  const hasAnyValue = useAskStageHasAnyValue();
+  // The paths themselves rather than the array carrying them, for the reason
+  // `useResetOnEntityTypeChange` gives.
+  const key = JSON.stringify(dependentPaths);
+  const latestPaths = useRef(dependentPaths);
+  latestPaths.current = dependentPaths;
+
+  return useCallback(() => {
+    if (!hasAnyValue(latestPaths.current)) return undefined;
+    return {
+      title: intl.formatMessage(words.title),
+      description: intl.formatMessage(words.description),
+      confirmLabel: intl.formatMessage(words.confirmLabel),
+    };
+  }, [hasAnyValue, intl, key, words]);
+}
+
 export function useResetOnEntityTypeChange(
   typePath: string,
   dependentPaths: readonly string[],

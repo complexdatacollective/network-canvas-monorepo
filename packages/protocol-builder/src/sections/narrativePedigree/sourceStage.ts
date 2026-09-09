@@ -83,10 +83,66 @@ export function sourceStageNodeType(
   sourceStageId: unknown,
 ): string | undefined {
   if (typeof sourceStageId !== 'string') return undefined;
+  const stage = sourceStageOf(context, sourceStageId);
+  if (stage === undefined) return undefined;
+  const nodeType = stage.nodeConfig.type;
+  return typeof nodeType === 'string' ? nodeType : undefined;
+}
+
+const sourceStageOf = (
+  context: ProtocolBuilderProtocolContext,
+  sourceStageId: unknown,
+): Extract<Readonly<Stage>, { type: 'FamilyPedigree' }> | undefined => {
+  if (typeof sourceStageId !== 'string') return undefined;
   const stage = context.orderedStages.find(
     (candidate) => candidate.id === sourceStageId,
   );
-  if (stage === undefined || stage.type !== 'FamilyPedigree') return undefined;
-  const nodeType = stage.nodeConfig.type;
-  return typeof nodeType === 'string' ? nodeType : undefined;
+  return stage !== undefined && stage.type === 'FamilyPedigree'
+    ? stage
+    : undefined;
+};
+
+/**
+ * The attributes the source pedigree actually RECORDS about a family member.
+ *
+ * A disease mapping only reads: it colours the family tree from an attribute
+ * the interview has already written. The Family Pedigree writes a boolean onto
+ * a family member in exactly one place — a nomination prompt, where the
+ * participant is asked who the question applies to and everyone they pick is
+ * marked. Its member form is the other surface that collects an attribute, and
+ * it is deliberately not counted here: a form field is a VALIDATED writer and a
+ * disease mapping an unvalidated one, so the protocol reports a role conflict
+ * for an attribute both name, and the shared cross-class exclusion drops those
+ * from this picker with a refusal of its own.
+ *
+ * So an attribute no nomination prompt of the source pedigree records is one
+ * nothing ever sets to `true`, and the genetics engine treats only an explicit
+ * `true` as affected: a disease mapped to it draws an unmarked family, in
+ * every interview, with no error anywhere to say so. That is what this set
+ * exists to keep out of the picker and out of the save.
+ *
+ * Read from the protocol context rather than passed down, so a nomination prompt
+ * a collaborator adds to the source pedigree appears here without this stage
+ * doing anything.
+ */
+export function sourceStageRecordedVariables(
+  context: ProtocolBuilderProtocolContext,
+  sourceStageId: unknown,
+): ReadonlySet<string> {
+  const stage = sourceStageOf(context, sourceStageId);
+  const prompts = stage?.nominationPrompts;
+  if (!Array.isArray(prompts)) return new Set();
+  // Read defensively rather than trusted from the type: the context holds the
+  // protocol as the host last sent it, which is a document a collaborator can
+  // leave half-written.
+  return new Set(
+    prompts.flatMap((prompt: unknown) =>
+      typeof prompt === 'object' &&
+      prompt !== null &&
+      'variable' in prompt &&
+      typeof prompt.variable === 'string'
+        ? [prompt.variable]
+        : [],
+    ),
+  );
 }
