@@ -35,6 +35,10 @@ import {
 import { unconsumedChangesets } from './check-version-packages-freshness.mjs';
 import { collectWorkspacePackages } from './release-e2e-policy.mjs';
 
+const ABBREVIATED_PACKUMENT_ACCEPT =
+  'application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8';
+const FULL_PACKUMENT_ACCEPT = 'application/json';
+
 function ignoredPackages(repoRoot) {
   const config = JSON.parse(
     readFileSync(join(repoRoot, '.changeset', 'config.json'), 'utf8'),
@@ -75,16 +79,10 @@ export async function classifyLanePackages(
 ) {
   const neverPublished = [];
   const pendingVersions = [];
-  for (const pkg of packages) {
-    let response;
+  const fetchPackument = async (pkg, accept) => {
     try {
-      response = await fetchImpl(npmPackageUrl(registryUrl, pkg.name), {
-        // The abbreviated document carries the version list without every
-        // version's full manifest.
-        headers: {
-          accept:
-            'application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8',
-        },
+      return await fetchImpl(npmPackageUrl(registryUrl, pkg.name), {
+        headers: { accept },
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
@@ -92,6 +90,19 @@ export async function classifyLanePackages(
         `Could not verify ${pkg.name} against npm: ${error.message}`,
         { cause: error },
       );
+    }
+  };
+  for (const pkg of packages) {
+    // The abbreviated document carries the version list without every
+    // version's full manifest.
+    let response = await fetchPackument(pkg, ABBREVIATED_PACKUMENT_ACCEPT);
+    // npm derives the abbreviated document from the full one asynchronously,
+    // so a package created minutes ago answers 404 here while the full
+    // document already lists its first version (@codaco/app-i18n, published
+    // 2026-09-09 20:48 UTC, still answered 404 on the abbreviated route
+    // minutes later). Only the full document's 404 means npm has no package.
+    if (response.status === 404) {
+      response = await fetchPackument(pkg, FULL_PACKUMENT_ACCEPT);
     }
     if (response.status === 404) {
       neverPublished.push(pkg);
