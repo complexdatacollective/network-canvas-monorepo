@@ -491,6 +491,13 @@ function CreateEdgeType() {
     key: string;
     typeId: string;
   } | null>(null);
+  /**
+   * Whether the create is with the host right now, which is a fact this host
+   * has for itself: the editor owns the draft and this owns request execution,
+   * so the request passes through here on its way out and its answer on the way
+   * back.
+   */
+  const [submitting, setSubmitting] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   /**
@@ -538,7 +545,20 @@ function CreateEdgeType() {
           open
           title={intl.formatMessage(networkCanvasMessages.createEdgeTypeLabel)}
           size="readable"
-          closeDialog={() => setSession(null)}
+          // A request in flight refuses every way out, because the dialog is
+          // about to show what the host made of it. Escape, a press outside and
+          // the close button all arrive at `closeDialog`, so refusing there
+          // covers all three — and `dismissible` takes the close button away
+          // rather than leaving a control on screen that does nothing.
+          // Dismissed mid-flight, the handler awaiting the request stays alive
+          // and a success arriving afterwards still ticks the new type on this
+          // stage: a connection type the researcher would watch appear for a
+          // create they had closed.
+          dismissible={!submitting}
+          closeDialog={() => {
+            if (submitting) return;
+            setSession(null);
+          }}
           finalFocus={() => triggerRef.current}
         >
           <CodebookEntityEditor
@@ -551,7 +571,14 @@ function CreateEdgeType() {
             subject={{ entity: 'edge', type: session.typeId }}
             initialDraft={NEW_ENTITY_DRAFT.edge}
             existingEntityNames={existingEntityNames}
-            onSubmit={(request) => controller.requestCompoundEdit(request)}
+            onSubmit={async (request) => {
+              setSubmitting(true);
+              try {
+                return await controller.requestCompoundEdit(request);
+              } finally {
+                setSubmitting(false);
+              }
+            }}
             onApplied={() => {
               // Meant for THIS stage, so it is ticked rather than left for the
               // researcher to find in a list that has just grown.

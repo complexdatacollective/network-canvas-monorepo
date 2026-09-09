@@ -1347,6 +1347,73 @@ describe('a connection type whose form already asks something', () => {
  * it, with no name-field error to act on.
  */
 describe('naming a connection type created from a composer', () => {
+  /**
+   * Holds the compound edit open, and hands back the release.
+   *
+   * The one window this dialog's guard is about: the host has the request and
+   * has not answered, which is when a dismissal unmounts the editor and leaves
+   * the answer with nobody to show it to.
+   */
+  const holdTheCompoundEdit = (harness: StageEditorHarness) => {
+    const send = harness.session.requestCompoundEdit.bind(harness.session);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
+      async (request) => {
+        await held;
+        return send(request);
+      },
+    );
+    return () => {
+      release();
+    };
+  };
+
+  const openCreator = async (harness: StageEditorHarness, name: string) => {
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create a new connection type',
+      }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Edge type name' }),
+      name,
+    );
+  };
+
+  /**
+   * A refusal arriving after the dialog has gone is shown to nobody, and a
+   * success arriving after it ticks a connection type on the stage that the
+   * researcher watched no editor finish.
+   */
+  it('withholds every way out until the codebook answers', async () => {
+    const harness = renderStageEditor(openEditor());
+    const release = holdTheCompoundEdit(harness);
+
+    await openCreator(harness, 'housemates');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+
+    // Escape and a press outside are the two routes left; the close button is
+    // taken away rather than left on screen doing nothing.
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(document.body);
+    expect(screen.getByRole('textbox', { name: 'Edge type name' })).toHaveValue(
+      'housemates',
+    );
+    expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
+
+    release();
+    // And the answer lands on the surface that asked for it: the stage now
+    // draws the connection type the codebook now holds.
+    expect(
+      await screen.findByRole('checkbox', { name: 'housemates' }),
+    ).toBeChecked();
+  });
+
   it('refuses a name a node type already uses, whatever the case', async () => {
     const harness = renderStageEditor(openEditor());
     const submit = vi.spyOn(harness.host, 'submit');
