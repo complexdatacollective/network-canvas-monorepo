@@ -16,8 +16,7 @@ import { saveStageAction } from './saveStageAction.tsx';
  * A section takes SEMANTIC props — which entity its subject is, whose codebook
  * its fields collect into — and never the lock, the codebook, or the stage
  * document. Everything a section reads about the rest of the protocol it
- * subscribes to itself, so composing one is choosing it and saying what it is
- * about, which is what makes an editor a list rather than a component.
+ * subscribes to itself.
  */
 export type StageSection = () => ReactNode;
 
@@ -27,7 +26,7 @@ export type StageSection = () => ReactNode;
  * Answers with the registry entry the interface claims rather than with the
  * component, so an editor module IS its part: `stageEditorRegistry.ts` adds it
  * to `REGISTRY_PARTS` and the compile-time coverage checks read the interface
- * out of the key. One editor, one file, one line in the registry.
+ * out of the key.
  *
  * The shell and the fallback save control are here rather than in each editor
  * because they are the same for every interface — a researcher who has learnt
