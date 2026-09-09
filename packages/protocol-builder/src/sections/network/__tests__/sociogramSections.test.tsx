@@ -333,6 +333,80 @@ const personVariables = (
 };
 
 /**
+ * A prompt naming an edge type this protocol does not define.
+ *
+ * A collaborator deleted the type, or the stage was authored against a
+ * different codebook. The tick list renders from the codebook and the value
+ * does not, so the id stayed in the prompt with no box to untick: the
+ * researcher could not see the reference, could not remove it, and the
+ * interview was left asking for a kind of connection that does not exist. The
+ * schema does not refuse it — `entityTypeReference` is a tag rather than an
+ * existence check — so nothing else was going to report it either.
+ */
+describe('a connection type this protocol does not define', () => {
+  const LOST_EDGE = 'former_edge';
+
+  const DISPLAYING_A_LOST_TYPE = {
+    id: 'sociogram-prompt-1',
+    text: 'Place the people who know each other close together',
+    layout: { layoutVariable: 'layout' },
+    edges: { display: ['knows', LOST_EDGE] },
+  };
+
+  const LOST_EDGE_CHOICE = `${LOST_EDGE} — this edge type is no longer in the codebook`;
+
+  const openLostEdgePrompt = async (): Promise<{
+    harness: StageEditorHarness;
+    prompt: ReturnType<typeof within>;
+  }> => {
+    const harness = renderStageEditor(sociogramHolding(DISPLAYING_A_LOST_TYPE));
+    return { harness, prompt: await openPrompt(harness) };
+  };
+
+  /**
+   * Shown, and shown as CHOSEN, because it is: the value the prompt holds is
+   * what the stage saves. Both halves are asserted, since a box that appeared
+   * unticked would read as a type the researcher had never picked.
+   */
+  it('shows the lost type, named by the id nothing describes any more', async () => {
+    const { harness, prompt } = await openLostEdgePrompt();
+
+    expect(
+      prompt.getByRole('checkbox', { name: LOST_EDGE_CHOICE }),
+    ).toBeChecked();
+
+    // And leaving it alone changes nothing — which is what made the missing
+    // box a dead end rather than a harmless omission: the reference survives
+    // every save until somebody can reach it.
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]?.edges).toEqual({
+      display: ['knows', LOST_EDGE],
+    });
+  });
+
+  it('lets the researcher untick it, which repairs the prompt', async () => {
+    const { harness, prompt } = await openLostEdgePrompt();
+
+    await harness.user.click(
+      prompt.getByRole('checkbox', { name: LOST_EDGE_CHOICE }),
+    );
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]?.edges).toEqual({
+      display: ['knows'],
+    });
+  });
+});
+
+/**
  * A prompt that COLOURS its nodes by an attribute without letting the
  * participant change it.
  *

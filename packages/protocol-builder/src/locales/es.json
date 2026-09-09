@@ -479,6 +479,7 @@
   "protocolBuilder.networkCanvas.promptLayoutHint": "El atributo que guarda la posición de cada nodo. Las preguntas que comparten un atributo trasladan entre sí las colocaciones del participante.",
   "protocolBuilder.networkCanvas.promptLayoutLabel": "Atributo de posición",
   "protocolBuilder.networkCanvas.promptLayoutRequired": "Elige el atributo en el que esta pregunta guarda las posiciones.",
+  "protocolBuilder.networkCanvas.promptMissingEdgeType": "{edgeTypeId} — este tipo de vínculo ya no está en el libro de códigos",
   "protocolBuilder.networkCanvas.promptPositionsDescription": "Dónde se guardan las colocaciones del participante.",
   "protocolBuilder.networkCanvas.promptPositionsTitle": "Posiciones de nodos",
   "protocolBuilder.networkCanvas.promptSortAddLabel": "Añadir una regla para el orden en que se entregan los nodos sin colocar",

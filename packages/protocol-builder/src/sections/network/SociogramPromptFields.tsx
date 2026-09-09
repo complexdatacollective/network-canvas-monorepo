@@ -231,13 +231,40 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
       setRowValue(HIGHLIGHT_VARIABLE_FIELD, undefined);
   };
 
-  const edgeChoices = useMemo(
-    () =>
-      checkboxOptions(edgeOptions).map((option) =>
-        option.value === createdEdge ? { ...option, disabled: true } : option,
-      ),
-    [createdEdge, edgeOptions],
-  );
+  /**
+   * The connection types on offer, plus the ones this prompt already names and
+   * the codebook has lost.
+   *
+   * The list renders from the codebook, so an edge type a collaborator deletes
+   * simply stops being a choice — while the id stays in the prompt's value,
+   * where the schema still refuses it. With no tick box to untick, the only
+   * way out was deleting the whole prompt. It is kept and shown instead, for
+   * the reason `VariablePicker` keeps a deleted attribute: the reference the
+   * researcher has to resolve must be the one thing they can see.
+   *
+   * Taken from the COMMITTED list rather than the live one, which is what the
+   * researcher can no longer add to: the value is stable while the dialog is
+   * open, so unticking the lost type does not take the box away mid-gesture —
+   * and a control's options are part of what it registers with, so a list that
+   * moved with every tick would re-register the field under a running submit.
+   */
+  const edgeChoices = useMemo(() => {
+    const offered = checkboxOptions(edgeOptions).map((option) =>
+      option.value === createdEdge ? { ...option, disabled: true } : option,
+    );
+    const known = new Set(offered.map((option) => option.value));
+    const lost = (committedDisplay ?? []).filter((id) => !known.has(id));
+    if (lost.length === 0) return offered;
+    return [
+      ...offered,
+      ...lost.map((id) => ({
+        value: id,
+        label: intl.formatMessage(networkCanvasMessages.promptMissingEdgeType, {
+          edgeTypeId: id,
+        }),
+      })),
+    ];
+  }, [committedDisplay, createdEdge, edgeOptions, intl]);
 
   // Held for as long as the reader's language does not change: the control's
   // options are part of what it registers with, and a fresh array every render

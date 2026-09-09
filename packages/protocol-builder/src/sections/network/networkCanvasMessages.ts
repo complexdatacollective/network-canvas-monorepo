@@ -522,6 +522,24 @@ export const networkCanvasMessages = defineMessages({
     description:
       'Guidance under the prompt connection-types tick list, saying that ticking nothing is a real answer rather than an unfinished one.',
   },
+  /**
+   * Names an edge type the researcher's prompt still displays and the codebook
+   * no longer defines.
+   *
+   * A stored id nothing describes any more is kept and shown rather than
+   * quietly dropped, exactly as `VariablePicker.missingOptionLabel` keeps a
+   * deleted attribute: the tick list renders from the codebook, so an id no
+   * choice carries left the prompt holding a reference the researcher could
+   * neither see nor untick — and the protocol went on being refused for it
+   * with no way to repair the prompt short of deleting the whole thing.
+   */
+  promptMissingEdgeType: {
+    id: 'protocolBuilder.networkCanvas.promptMissingEdgeType',
+    defaultMessage:
+      '{edgeTypeId} — this edge type is no longer in the codebook',
+    description:
+      'Name of the one tick-list choice standing for an edge type a prompt still displays and the protocol’s codebook no longer defines. edgeTypeId is the raw stored identifier — there is no name left to show, because the definition it would have come from has been deleted. An edge type is a kind of relationship between two network members.',
+  },
   promptEmptyPreview: {
     id: 'protocolBuilder.networkCanvas.promptEmptyPreview',
     defaultMessage: 'Empty prompt',
