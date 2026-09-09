@@ -1039,6 +1039,10 @@
     "defaultMessage": "Resize form and preview panes",
     "description": "Accessible name of the divider a researcher drags to give more room either to the fields of an editing dialog or to the live preview beside them."
   },
+  "protocolBuilder.entitySelect.edgeChangeBlockedTitle": {
+    "defaultMessage": "This edge type cannot be changed",
+    "description": "Title of the message shown when a researcher tries to change the edge type of a stage something else in the protocol depends on, and the change is refused. An edge type is a kind of relationship between two network members, such as a friendship."
+  },
   "protocolBuilder.entitySelect.edgeEmptyState": {
     "defaultMessage": "This protocol has no edge types yet.",
     "description": "Shown in place of the chips when a researcher is asked to choose an edge type and the protocol’s codebook defines none. An edge type is a kind of relationship between two network members, such as a friendship."
@@ -1054,6 +1058,10 @@
   "protocolBuilder.entitySelect.missingType": {
     "defaultMessage": "This type is no longer in the codebook. Choose another one.",
     "description": "Shown under the chips when the node or edge type a researcher’s stored choice names has been deleted from the protocol’s codebook, so the choice has to be made again."
+  },
+  "protocolBuilder.entitySelect.nodeChangeBlockedTitle": {
+    "defaultMessage": "This node type cannot be changed",
+    "description": "Title of the message shown when a researcher tries to change the node type of a stage something else in the protocol depends on, and the change is refused. A node type is a kind of network member the study records, such as a person or a place."
   },
   "protocolBuilder.entitySelect.nodeEmptyState": {
     "defaultMessage": "This protocol has no node types yet.",
@@ -2111,6 +2119,10 @@
     "defaultMessage": "Family-building prompt",
     "description": "Heading of the section holding the single question shown while a participant is drawing their family."
   },
+  "protocolBuilder.pedigree.dependentStagesBlockReason": {
+    "defaultMessage": "{stageCount, plural, one {{stageNames} reads this pedigree and maps its own attributes onto this node type, so the node type cannot be changed here. Change or remove that stage first.} other {{stageNames} read this pedigree and map their own attributes onto this node type, so the node type cannot be changed here. Change or remove those stages first.}}",
+    "description": "Shown when a researcher tries to change the node type of a pedigree that another stage of the protocol reads, and the change is refused. stageCount is how many such stages there are; stageNames is their names, each in quotation marks, already joined into one phrase in the reader’s language."
+  },
   "protocolBuilder.pedigree.dependentStagesDescription": {
     "defaultMessage": "These stages visualize this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have.",
     "description": "Body of the warning about other stages that read this pedigree. stageNames is the list of those stages’ names, each in quotation marks, already joined into one phrase in the reader’s language."
@@ -2190,6 +2202,18 @@
   "protocolBuilder.pedigree.edgeTitle": {
     "defaultMessage": "Relationship data",
     "description": "Heading of the section binding the edge type and the attributes the pedigree stores each family relationship’s details in."
+  },
+  "protocolBuilder.pedigree.edgeTypeChangeConfirm": {
+    "defaultMessage": "Change the edge type",
+    "description": "Button that confirms changing a Family Pedigree’s edge type and discarding everything that described the previous one."
+  },
+  "protocolBuilder.pedigree.edgeTypeChangeDescription": {
+    "defaultMessage": "The relationship type, whether a relationship is current, who carried each pregnancy and the gamete each parent contributed all name attributes of the current edge type, so changing it removes them.",
+    "description": "Body of the confirmation shown before a Family Pedigree’s edge type changes, listing what the change discards."
+  },
+  "protocolBuilder.pedigree.edgeTypeChangeTitle": {
+    "defaultMessage": "This will clear everything about family relationships",
+    "description": "Title of the confirmation shown before a researcher changes the edge type a Family Pedigree records relationships as. Everything the stage says about a relationship describes attributes of the current type, so changing it discards all of it."
   },
   "protocolBuilder.pedigree.edgeTypeHint": {
     "defaultMessage": "Every relationship the pedigree records — parents, partners and donors alike — is an edge of this one type.",
@@ -2279,6 +2303,10 @@
     "defaultMessage": "Form fields",
     "description": "Label of the ordered list of questions the family member form asks."
   },
+  "protocolBuilder.pedigree.memberFormReservedRefusal": {
+    "defaultMessage": "The pedigree already collects each family member’s name through its own name control, so this form cannot collect the display label attribute — or an attribute whose id is “name” — as well. Choose another attribute for the field, or remove it.",
+    "description": "Refusal shown when a family member form field collects the attribute the pedigree shows each relative by. The interview asks for that name through its own control and never renders such a field, so the question the researcher wrote would never be asked. Shown under the attribute control while the field’s own dialog is open, and above the list of fields when the display label moves onto an attribute an existing field already collects. \"id\" is the identifier an attribute is filed under in the protocol."
+  },
   "protocolBuilder.pedigree.memberFormTitle": {
     "defaultMessage": "Family member form",
     "description": "Heading of the section holding what a Family Pedigree asks about each person the participant adds. Replaces the shared form section’s generic heading, because this form describes a relative rather than standing on its own."
@@ -2354,6 +2382,18 @@
   "protocolBuilder.pedigree.nodeTitle": {
     "defaultMessage": "Family member data",
     "description": "Heading of the section binding the node type and the attributes the pedigree stores each family member’s details in."
+  },
+  "protocolBuilder.pedigree.nodeTypeChangeConfirm": {
+    "defaultMessage": "Change the node type",
+    "description": "Button that confirms changing a Family Pedigree’s node type and discarding everything that described the previous one."
+  },
+  "protocolBuilder.pedigree.nodeTypeChangeDescription": {
+    "defaultMessage": "The display label, the participant identifier, the relationship attribute, the biological sex attribute, the family member form and every nomination prompt all name attributes of the current node type, so changing it removes them.",
+    "description": "Body of the confirmation shown before a Family Pedigree’s node type changes, listing what the change discards."
+  },
+  "protocolBuilder.pedigree.nodeTypeChangeTitle": {
+    "defaultMessage": "This will clear everything about family members",
+    "description": "Title of the confirmation shown before a researcher changes the node type a Family Pedigree draws people as. Everything the stage says about a family member describes attributes of the current type, so changing it discards all of it."
   },
   "protocolBuilder.pedigree.nodeTypeHint": {
     "defaultMessage": "Every family member the participant adds will be a node of this type.",
@@ -2471,6 +2511,10 @@
     "defaultMessage": "\"{attributeName}\" is collected by this stage’s own form, so it cannot also be written by this slot (values written here would bypass its validation)",
     "description": "Refusal shown under a pedigree slot the interface writes directly, when the attribute picked is already collected by the family member form one section above — so both are on the screen the researcher is looking at, and the wording must not send them searching their other stages. attributeName is the codebook name of the attribute, which is not translated."
   },
+  "protocolBuilder.pedigree.slotDraftLabelCollectsRefusal": {
+    "defaultMessage": "\"{attributeName}\" is the display label this stage shows each family member by, so it cannot also be written by this slot (what this slot derives would replace the name the participant entered)",
+    "description": "Refusal shown under a pedigree slot the interface writes directly, when the attribute picked is the one the display label control — a few lines above, in the same section — already names. attributeName is the codebook name of the attribute, which is not translated."
+  },
   "protocolBuilder.pedigree.slotDraftSlotDerivesRefusal": {
     "defaultMessage": "\"{attributeName}\" is written without validation by another slot in this stage, so it cannot also be collected here (the values that slot writes bypass this attribute’s validation)",
     "description": "Refusal shown under the display label — the one pedigree slot whose value is collected through a form field — when the attribute picked is already written directly by another slot of the same stage. Deliberately says \"slot\" rather than \"form field\": told it cannot be used as a form field, a researcher goes looking for a form field they never added. attributeName is the codebook name of the attribute, which is not translated."
@@ -2482,6 +2526,14 @@
   "protocolBuilder.pedigree.slotUnvalidatedElsewhereRefusal": {
     "defaultMessage": "\"{attributeName}\" is written without validation by another stage, so it cannot also be collected here (the values that stage writes bypass this attribute’s validation)",
     "description": "Refusal shown under a pedigree slot that collects an answer — the display label — when the attribute picked is already written directly by another stage of the protocol, which would let unchecked values in under the same name. attributeName is the codebook name of the attribute, which is not translated."
+  },
+  "protocolBuilder.pedigree.variableGoneRefusal": {
+    "defaultMessage": "\"{attributeName}\" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.",
+    "description": "Refusal shown under a pedigree attribute control when the attribute it holds has been deleted from the codebook — by a collaborator, or in another part of this session — while this editor was open. attributeName is the codebook name of the attribute, or its stored identifier when there is no definition left to take a name from; neither is translated."
+  },
+  "protocolBuilder.pedigree.variableTypeChangedRefusal": {
+    "defaultMessage": "\"{attributeName}\" is no longer the kind of attribute this control can use, because its type was changed somewhere else. Choose another attribute.",
+    "description": "Refusal shown under a pedigree attribute control when the attribute it holds still exists but has been given a different type — a true/false attribute turned into a list of answers, say — so the interface can no longer write or read it. attributeName is the codebook name of the attribute, which is not translated."
   },
   "protocolBuilder.promptsSection.addLabel": {
     "defaultMessage": "Create new prompt",

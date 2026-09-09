@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { type StageType, stageSchema } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { addFamilyMemberVariable } from '../../sections/pedigree/__tests__/pedigreeFixtures.tsx';
 import type { StageEditorComponent } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
@@ -71,8 +72,12 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
     egoVariable: 'is_ego',
     relationshipVariable: 'fm_relationship_to_ego',
     biologicalSexVariable: 'biologicalSex',
-    // What the participant is asked as they add each family member.
-    form: [{ variable: 'fm_name', prompt: 'What do they go by?' }],
+    // What the participant is asked as they add each family member. NOT the
+    // display label: the interview collects each relative's name through the
+    // pedigree's own name control and drops a form field bound to it, so a
+    // stage that collected it here would be one no participant ever answers.
+    // See `MEMBER_FORM_ATTRIBUTE`.
+    form: [{ variable: 'fm_occupation', prompt: 'What do they do?' }],
   },
   edgeConfig: {
     type: 'family_edge',
@@ -104,6 +109,19 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
     },
   ],
 };
+
+/**
+ * The attribute the maximal pedigree's member form collects, and the fact that
+ * it has to be put on the type first.
+ *
+ * Every attribute the fixture's `family_member` type carries is already
+ * claimed: three are the pedigree's structural slots, one is the display label
+ * the interview collects through its own control, and the last is the
+ * nomination prompt's. A maximal stage has to fill `nodeConfig.form` with
+ * something a form may legally collect, so this one arrives the way a
+ * collaborator's would — through the host, under a revision it issued.
+ */
+const MEMBER_FORM_ATTRIBUTE = 'fm_occupation';
 
 const NARRATIVE_PEDIGREE_FIELDS: SectionDoc = {
   label: 'Narrative Pedigree',
@@ -184,6 +202,11 @@ describe.each(MAXIMAL)(
       const harness = renderStageEditor({
         stage: { type: stageType, fields },
         editor,
+      });
+      addFamilyMemberVariable(harness, MEMBER_FORM_ATTRIBUTE, {
+        name: MEMBER_FORM_ATTRIBUTE,
+        type: 'text',
+        component: 'Text',
       });
 
       await harness.roundTrip({ unowned: [] });
