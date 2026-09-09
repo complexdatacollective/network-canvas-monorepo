@@ -1,5 +1,6 @@
 import type { Stage } from '@codaco/protocol-validation';
 
+import { stagePlacement } from '../../fields/skipLogicDestination.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 
 export type SourceStageOption = Readonly<{ value: string; label: string }>;
@@ -35,20 +36,31 @@ export type SourceStageResolution = Readonly<{
  * has gone or moved leaves every disease mapping pointing at nothing — which
  * is a thing to report, not a thing to crash on.
  *
- * A stage the order does not list at all is treated as running last, which is
- * what a stage being created is: every existing pedigree precedes it.
+ * Where this stage runs is `stagePlacement`'s answer, which is the same one
+ * the skip-logic destination control asks: an existing stage is found in the
+ * order, and a stage being CREATED is where the host is about to insert it.
+ * A new stage displaces the stage currently at its index, so the pedigrees
+ * that precede it are those before that index in both cases. Reading a
+ * creation as "last" instead offered a new stage inserted at the top of the
+ * interview every pedigree in it, including the ones it would run before.
  */
 export function resolveSourceStages(
   context: ProtocolBuilderProtocolContext,
   thisStageId: string,
   currentSourceStageId: unknown,
+  /**
+   * Where a stage being CREATED will be inserted, counting from zero. Only
+   * consulted for a stage the order does not contain yet; left out, such a
+   * stage is treated as arriving at the end, which is where a host that
+   * appends puts it.
+   */
+  position?: number,
 ): SourceStageResolution {
   const stages = context.orderedStages;
-  const ownIndex = stages.findIndex((stage) => stage.id === thisStageId);
-  const boundary = ownIndex === -1 ? stages.length : ownIndex;
+  const placement = stagePlacement(stages, thisStageId, position);
 
   const options = stages
-    .slice(0, boundary)
+    .slice(0, placement.index)
     .filter(isPedigree)
     .map((stage) => ({ value: stage.id, label: stage.label }));
 
