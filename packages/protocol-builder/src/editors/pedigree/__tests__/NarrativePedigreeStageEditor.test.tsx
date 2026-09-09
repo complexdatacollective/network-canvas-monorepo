@@ -5,7 +5,11 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  loadFixtureStage,
+  recordingTheFixtureDisease,
+} from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -30,10 +34,21 @@ const SOURCE_STAGE_ID = 'family-pedigree-1';
 const MISSING_SOURCE_MESSAGE =
   'The Family Pedigree stage this one reads is no longer part of the interview. Choose another one, or restore it, before this stage can be saved.';
 
+/**
+ * The fixture stage, over a pedigree that RECORDS the disease it maps.
+ *
+ * A disease may only map an attribute a nomination prompt of the source
+ * pedigree records — anything else is never set, so the stage would draw an
+ * unmarked family — and the fixture protocol's own pedigree has no nomination
+ * prompts at all. So the stage as the fixture holds it is one the editor now
+ * refuses to save, and every claim below about a save states the pedigree the
+ * stage would need.
+ */
 const openFixture = () =>
   renderStageEditor({
     stageId: 'narrative-pedigree-1',
     editor: narrativePedigreeEditor,
+    otherStages: recordingTheFixtureDisease(),
   });
 
 /** The fixture stage with whatever a test needs replaced on it. */
@@ -51,32 +66,6 @@ const narrativePedigreeStageWith = (extra: SectionDoc) => {
   };
 };
 
-/**
- * The fixture's source pedigree, recording who is affected by `hasConditionX`.
- *
- * A disease may only be mapped to an attribute a nomination prompt of the
- * source pedigree records — anything else is never set, so the stage would
- * draw an unmarked family — and the fixture's own pedigree has no nomination
- * prompts. Built from that pedigree rather than written out here, so
- * everything this stage resolves through it, its node type above all, stays
- * the fixture's.
- */
-function sourcePedigreeRecordingConditionX(): SectionDoc {
-  const source = loadFixtureStage(SOURCE_STAGE_ID);
-  return {
-    id: source.id,
-    type: source.type,
-    ...source.fields,
-    nominationPrompts: [
-      {
-        id: 'nomination-1',
-        text: 'Who in your family has condition X?',
-        variable: 'hasConditionX',
-      },
-    ],
-  };
-}
-
 /** A stage of this interface that does not exist yet, as a host creates one. */
 const openNewStage = () =>
   renderStageEditor({
@@ -86,7 +75,7 @@ const openNewStage = () =>
       fields: getInterfaceTemplate('NarrativePedigree'),
     },
     editor: narrativePedigreeEditor,
-    otherStages: { [SOURCE_STAGE_ID]: sourcePedigreeRecordingConditionX() },
+    otherStages: recordingTheFixtureDisease(),
   });
 
 /**
@@ -270,7 +259,13 @@ describe('the narrative pedigree stage editor', () => {
     // The source comes first because everything below it is asked against the
     // pedigree it names — the diseases section is unavailable until there is
     // one — not because anything typed before it would be lost.
-    await chooseSourceStage(harness, 'Family Pedigree');
+    // Every option carries the number the stage has in the interview, because
+    // two pedigrees may share a name. Read off the fixture's own order rather
+    // than written down.
+    await chooseSourceStage(
+      harness,
+      `Stage ${fixtureStageIds().indexOf(SOURCE_STAGE_ID) + 1} — Family Pedigree`,
+    );
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Stage name' }),
       'Affected',

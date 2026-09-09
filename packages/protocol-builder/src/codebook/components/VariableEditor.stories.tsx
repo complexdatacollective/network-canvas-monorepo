@@ -16,6 +16,7 @@ const CONTEXT: ProtocolBuilderProtocolContext = {
   codebook: { node: {}, edge: {} },
   assets: {},
   orderedStages: [],
+  stageOrder: [],
   issues: [],
 };
 const LOCKED_OPTIONS: readonly VariableOption[] = [

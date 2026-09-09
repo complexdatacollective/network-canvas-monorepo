@@ -5,6 +5,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { addFamilyMemberVariable } from '../../sections/pedigree/__tests__/pedigreeFixtures.tsx';
 import type { StageEditorComponent } from '../../stage-editor-contract.ts';
+import { recordingTheFixtureDisease } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { harnessEditor } from '../network/__tests__/editorFixtures.tsx';
 import { SociogramStageEditor } from '../network/SociogramStageEditor.tsx';
@@ -192,6 +193,11 @@ type MaximalStage = Readonly<{
   stageType: StageType;
   editor: StageEditorComponent;
   fields: SectionDoc;
+  /**
+   * Stages AROUND this one that a rule of it reads, as the interview would
+   * have to hold them for the stage to be saveable at all.
+   */
+  otherStages?: Readonly<Record<string, SectionDoc>>;
 }>;
 
 /**
@@ -227,12 +233,17 @@ const MAXIMAL: readonly MaximalStage[] = [
     stageType: 'NarrativePedigree',
     editor: narrativePedigreeEditor,
     fields: NARRATIVE_PEDIGREE_FIELDS,
+    // A disease may only map an attribute a nomination prompt of the source
+    // pedigree records, and the fixture's own pedigree has none — so the
+    // interview this stage is saved inside has to be one where its disease
+    // marks somebody.
+    otherStages: recordingTheFixtureDisease(),
   },
 ];
 
 describe.each(MAXIMAL)(
   'a $stageType stage holding every key its schema declares',
-  ({ stageType, editor, fields }: MaximalStage) => {
+  ({ stageType, editor, fields, otherStages }: MaximalStage) => {
     /**
      * The stage above is the schema's key list, spelled as a stage. A key
      * added to this interface fails here first, with the key named, rather
@@ -255,6 +266,7 @@ describe.each(MAXIMAL)(
       const harness = renderStageEditor({
         stage: { type: stageType, fields },
         editor,
+        ...(otherStages === undefined ? {} : { otherStages }),
       });
       addFamilyMemberVariable(harness, MEMBER_FORM_ATTRIBUTE, {
         name: MEMBER_FORM_ATTRIBUTE,
@@ -271,13 +283,20 @@ describe.each(MAXIMAL)(
 const FIXTURE_STAGES: readonly Readonly<{
   stageId: string;
   editor: StageEditorComponent;
+  otherStages?: Readonly<Record<string, SectionDoc>>;
 }>[] = [
   {
     stageId: 'sociogram-1',
     editor: harnessEditor(SociogramStageEditor, 'Sociogram'),
   },
   { stageId: 'family-pedigree-1', editor: familyPedigreeEditor },
-  { stageId: 'narrative-pedigree-1', editor: narrativePedigreeEditor },
+  {
+    stageId: 'narrative-pedigree-1',
+    editor: narrativePedigreeEditor,
+    // As above: the fixture's pedigree records nothing, so the narrative
+    // pedigree beside it maps an attribute nobody would ever be marked with.
+    otherStages: recordingTheFixtureDisease(),
+  },
 ];
 
 /**
@@ -298,9 +317,13 @@ const FIXTURE_STAGES: readonly Readonly<{
  */
 describe.each(FIXTURE_STAGES)(
   'the stage "$stageId" as the fixture protocol configures it',
-  ({ stageId, editor }) => {
+  ({ stageId, editor, otherStages }) => {
     it('is saved back without a key the researcher never authored', async () => {
-      const harness = renderStageEditor({ stageId, editor });
+      const harness = renderStageEditor({
+        stageId,
+        editor,
+        ...(otherStages === undefined ? {} : { otherStages }),
+      });
 
       await harness.roundTrip({ unowned: [] });
     });

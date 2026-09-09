@@ -70,6 +70,7 @@ const context: ProtocolBuilderProtocolContext = {
   },
   assets: {},
   orderedStages: [],
+  stageOrder: [],
   issues: [],
 };
 

@@ -646,6 +646,7 @@ describe('InMemoryCompoundHost', () => {
         codebook: { node: {}, edge: {} },
         assets: {},
         orderedStages: [],
+        stageOrder: [],
         issues: [],
       },
       draft: { name: 'local', type: 'text' },

@@ -122,6 +122,20 @@ export type ProtocolBuilderProtocolContext = Readonly<{
    */
   assets: Readonly<Record<string, Asset>>;
   orderedStages: readonly Readonly<Stage>[];
+  /**
+   * The interview's stage order as the protocol states it: every id the order
+   * names, in order, whether or not the stage behind it could be read.
+   *
+   * `orderedStages` is the readable ones, which is what almost everything
+   * wants. This is what remains when a stage's own document is one the schema
+   * refuses — an import that left `diseases` empty, a merge that lost a label:
+   * the stage is not in `orderedStages`, but the interview still runs it where
+   * the order says. Anything that decides what a stage may reference by WHERE
+   * IT RUNS has to read that from here, or a stage it cannot parse looks like
+   * a stage that is not there — and one being edited then looks like a new one
+   * appended at the end, offered everything the interview holds.
+   */
+  stageOrder: readonly string[];
   issues: readonly ProtocolContextIssue[];
 }>;
 
@@ -371,6 +385,7 @@ export function protocolContextFromSections(
     codebook: Object.freeze(codebook),
     assets: Object.freeze(Object.fromEntries(assets)),
     orderedStages: Object.freeze(orderedStages),
+    stageOrder: Object.freeze(stageOrder ?? []),
     issues: Object.freeze(issues),
   });
 }
