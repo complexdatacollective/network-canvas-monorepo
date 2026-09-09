@@ -1,20 +1,26 @@
 import { createElement, useMemo } from 'react';
 
 import type { StageType } from '@codaco/protocol-validation';
+import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
-import type { StageEditorController } from './controller.ts';
+import { ResourceClientProvider } from './resources/client.tsx';
 import type {
   StageEditorActions,
   StageEditorComponent,
   StageEditorRegistry,
 } from './stage-editor-contract.ts';
 import {
+  StageEditSession,
+  useStageEdit,
+  type StageEditTarget,
+} from './stageEdit.tsx';
+import {
   stageEditorRegistry,
   stageEditorsWithHostOverrides,
 } from './stageEditorRegistry.ts';
 
 /**
- * Thrown when the session holds a stage no family has claimed.
+ * Thrown when the stage under edit is an interface no family has claimed.
  *
  * A host cannot recover from this — there is no editor to fall back to, and
  * rendering nothing would leave a researcher looking at an empty page with no
@@ -34,19 +40,17 @@ export class UnregisteredStageTypeError extends Error {
 }
 
 export type StageEditorProps = Readonly<{
-  controller: StageEditorController;
+  /**
+   * Which stage to open: the section id of one the protocol holds, or the
+   * interface and position of one it does not hold yet.
+   */
+  target: StageEditTarget;
   /**
    * Editors of the host's own, merged OVER the package's composed registry:
    * the entries it names are the host's, and every other interface keeps the
    * editor the package ships. A host supplies this to add an interface it owns
    * or to replace one it wants to render differently, never to take the rest
    * away — see `stageEditorsWithHostOverrides`.
-   *
-   * The dispatcher PR that lands after the families makes the registry TOTAL —
-   * every schema member has an editor, and `StageEditorRegistry` can be
-   * required rather than partial — and will revisit this prop. Whatever it
-   * becomes, the rule it has to keep is this one: a host never loses a
-   * built-in editor by supplying one of its own.
    */
   registry?: StageEditorRegistry | Partial<StageEditorRegistry>;
   /**
@@ -57,30 +61,62 @@ export type StageEditorProps = Readonly<{
    * editor's slot.
    */
   actions?: StageEditorActions;
+  /** The DOM id of the stage form, when the host wants to name it. */
+  formId?: string;
+  /** Told which section the stage landed in, once a save has been accepted. */
+  onSaved?: (sectionId: ProtocolSectionId) => void;
 }>;
 
 /**
- * Renders the editor for whichever stage the session is editing.
+ * Opens one stage and renders the editor its interface is registered under.
  *
- * The stage type is read from the session rather than taken as a prop, because
- * it is session-owned identity: a host that could pass a different one could
- * render a Sociogram editor over a name generator's document.
+ * The interface comes from the stage the host opened rather than from a prop of
+ * its own: a host that could pass a different one could render a Sociogram
+ * editor over a name generator's document.
  */
 export default function StageEditor({
-  controller,
+  target,
   registry,
   actions,
+  formId,
+  onSaved,
 }: StageEditorProps) {
+  return (
+    <ResourceClientProvider>
+      <StageEditSession
+        target={target}
+        {...(formId === undefined ? {} : { formId })}
+        {...(onSaved === undefined ? {} : { onSaved })}
+      >
+        <OpenStageEditor
+          {...(registry === undefined ? {} : { registry })}
+          {...(actions === undefined ? {} : { actions })}
+        />
+      </StageEditSession>
+    </ResourceClientProvider>
+  );
+}
+
+function OpenStageEditor({
+  registry,
+  actions,
+}: Readonly<{
+  registry?: StageEditorRegistry | Partial<StageEditorRegistry>;
+  actions?: StageEditorActions;
+}>) {
+  const { identity } = useStageEdit();
   const editors = useMemo(
     () => stageEditorsWithHostOverrides(stageEditorRegistry, registry),
     [registry],
   );
 
+  // The stage has not arrived yet, so there is no interface to dispatch on.
+  if (identity === undefined) return null;
+
   return (
     <NamedStageEditor
       registry={editors}
-      controller={controller}
-      stageType={controller.snapshot.editedSection.identity.type}
+      stageType={identity.type}
       {...(actions === undefined ? {} : { actions })}
     />
   );
@@ -97,12 +133,10 @@ export default function StageEditor({
  */
 function NamedStageEditor<T extends StageType>({
   registry,
-  controller,
   stageType,
   actions,
 }: Readonly<{
   registry: Partial<StageEditorRegistry>;
-  controller: StageEditorController;
   stageType: T;
   actions?: StageEditorActions;
 }>) {
@@ -112,7 +146,6 @@ function NamedStageEditor<T extends StageType>({
   // and JSX resolves a component's accepted props through machinery that
   // cannot see through an unresolved type parameter.
   return createElement(Editor, {
-    controller,
     stageType,
     // Spread rather than passed as `undefined`: the slot's absence is what
     // says a host rendered no chrome, and an editor forwarding an explicit

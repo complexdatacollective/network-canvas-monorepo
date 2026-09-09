@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
+import StageEditorShell from '../form/StageEditorShell.tsx';
 import {
   defineStageEditorPart,
   missingStageEditors,
@@ -31,17 +32,17 @@ const EgoFormEditor: StageEditorComponent<'EgoForm'> = ({
 }: StageEditorProps<'EgoForm'>) => <p>{stageType} editor</p>;
 
 /**
- * An editor that renders the host's chrome and nothing else, so a test can
- * read whether the slot reached it — and what it was called with.
+ * An editor that forwards the host's chrome into the shell's slot and renders
+ * nothing else, so a test can read whether the slot reached it — and what the
+ * shell called it with. The stand-in when a host gave none says so, because
+ * the shell renders an empty slot as nothing at all.
  */
 const ChromeEditor: StageEditorComponent<'Information'> = ({
-  controller,
   actions,
 }: StageEditorProps<'Information'>) => (
-  <p>
-    {actions?.({ controller, formId: controller.formId, readOnly: false }) ??
-      'no chrome'}
-  </p>
+  <StageEditorShell actions={actions ?? (() => 'no chrome')}>
+    <p>Information editor</p>
+  </StageEditorShell>
 );
 
 describe('composing the registry from family parts', () => {
@@ -396,7 +397,7 @@ describe('dispatching to a named editor', () => {
    * different editor is to open a different stage. A host that could pass one
    * could render a Sociogram editor over a name generator's document.
    */
-  it('reads the stage type from the session, so one registry serves both', () => {
+  it('reads the stage type from the open edit, so one registry serves both', () => {
     const registry = { EgoForm: EgoFormEditor, Information: InformationEditor };
 
     expect(

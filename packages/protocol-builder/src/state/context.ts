@@ -43,3 +43,17 @@ export function lockQueryKey(
 export function presenceQueryKey(protocolId: string): readonly unknown[] {
   return ['protocol-builder', protocolId, 'presence'];
 }
+
+/**
+ * Where the answer to one editor's `acquireLock` is kept.
+ *
+ * The acquire is a read as well as a claim — it hands back the document at the
+ * revision the lock was taken at — so it is the query an editor opens on, and
+ * the document it holds is the one the editor edits for as long as it is open.
+ */
+export function acquireQueryKey(
+  protocolId: string,
+  sectionId: ProtocolSectionId,
+): readonly unknown[] {
+  return ['protocol-builder', protocolId, 'acquire', sectionId];
+}

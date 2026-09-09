@@ -15,6 +15,7 @@ import * as variableEditorStories from '../codebook/components/VariableEditor.st
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import * as validationEditorStories from '../codebook/validation/CodebookVariableValidationEditor.stories.tsx';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
+import type { CodebookWriteOutcome } from '../codebook/writes.ts';
 import * as alterEdgeFormStories from '../editors/forms/AlterEdgeFormStageEditor.stories.tsx';
 import * as alterFormStories from '../editors/forms/AlterFormStageEditor.stories.tsx';
 import * as egoFormStories from '../editors/forms/EgoFormStageEditor.stories.tsx';
@@ -25,12 +26,13 @@ import * as familyPedigreeEditorStories from '../editors/pedigree/FamilyPedigree
 import * as shellStories from '../form/StageEditorShell.stories.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
+import { ResourceClientProvider } from '../resources/client.tsx';
 import ContentBlockEditor from '../sections/contentBlocks/ContentBlockEditor.tsx';
 import ContentBlockPreview from '../sections/contentBlocks/ContentBlockPreview.tsx';
 import { contentBlockSlots } from '../sections/contentBlocks/contentBlockTypes.ts';
 import PageContentSection from '../sections/PageContentSection.tsx';
 import StageNameSection from '../sections/StageNameSection.tsx';
-import type { CompoundEditResult } from '../session.ts';
+import { StageEditSession } from '../stageEdit.tsx';
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
 import * as storyHostStories from '../testing/StageEditorStoryHost.stories.tsx';
 import { StageEditorStoryHost } from '../testing/StageEditorStoryHost.tsx';
@@ -42,13 +44,12 @@ const EMPTY_CONTEXT: ProtocolBuilderProtocolContext = {
   orderedStages: [],
   issues: [],
 };
-const APPLIED: CompoundEditResult = {
-  status: 'applied',
-  update: {
-    protocolSections: {},
-    manifestRevision: { sequence: 2n, hash: 'revision-2' },
-  },
-};
+/** A host that refuses, which is what raises an editor's own alert. */
+const REFUSED = async (): Promise<CodebookWriteOutcome> => ({
+  status: 'refused',
+  message: 'the test host does not persist changes',
+  held: false,
+});
 
 const personDocument = (
   variables: Record<string, unknown> = {},
@@ -137,14 +138,14 @@ describe('an editor opened in a dialog', () => {
           subject={SUBJECT}
           authoritativeDocument={personDocument()}
           variableId="new-variable"
-          // Refused where the draft is judged, so the failure alert is raised
-          // by the editor itself rather than by a host that answers.
-          initialDraft={{ name: 'choice', type: 'categorical', options: null }}
+          initialDraft={{
+            name: 'choice',
+            type: 'categorical',
+            options: [{ label: 'Yes', value: 'yes' }],
+          }}
           protocolContext={EMPTY_CONTEXT}
           title="Define allowed values"
-          description="Create attribute"
-          createRequestId={() => 'request-1'}
-          onSubmitRequest={() => APPLIED}
+          onSubmitDocument={REFUSED}
           onComplete={() => undefined}
         />
       </Dialog>,
@@ -169,8 +170,6 @@ describe('an editor opened in a dialog', () => {
         <CodebookEntityEditor
           mode="create"
           sessionKey="open-1"
-          createRequestId={() => 'request-1'}
-          description="Create a node type"
           subject={SUBJECT}
           initialDraft={{
             name: 'Person',
@@ -179,12 +178,7 @@ describe('an editor opened in a dialog', () => {
             shape: { default: 'circle' },
           }}
           existingEntityNames={[]}
-          // A host that refuses is what raises this editor's own alert.
-          onSubmit={() => ({
-            status: 'failed',
-            reason: 'unavailable',
-            message: 'the test host does not persist changes',
-          })}
+          onSubmit={REFUSED}
           onApplied={() => undefined}
         />
       </Dialog>,
@@ -212,11 +206,7 @@ describe('an editor opened in a dialog', () => {
           // it was given, which is the alert this surface raises on its own.
           authoritativeEntityDocument={personDocument()}
           allSubjectVariables={{}}
-          requestMetadata={{
-            createId: () => 'request-1',
-            description: 'Update Age validation',
-          }}
-          onSubmitRequest={() => APPLIED}
+          onSubmitDocument={REFUSED}
         />
       </Dialog>,
     );
@@ -234,15 +224,19 @@ describe('the stage editor shell', () => {
   const editor = (
     <StageEditorStoryHost
       stageId="information-1"
-      renderEditor={({ controller, actions }) => (
-        <StageEditorShell controller={controller} actions={actions}>
-          <StageNameSection />
-          <PageContentSection
-            ItemEditor={ContentBlockEditor}
-            ItemPreview={ContentBlockPreview}
-            slots={contentBlockSlots}
-          />
-        </StageEditorShell>
+      renderEditor={({ target, formId, onSaved, actions }) => (
+        <ResourceClientProvider>
+          <StageEditSession target={target} formId={formId} onSaved={onSaved}>
+            <StageEditorShell actions={actions}>
+              <StageNameSection />
+              <PageContentSection
+                ItemEditor={ContentBlockEditor}
+                ItemPreview={ContentBlockPreview}
+                slots={contentBlockSlots}
+              />
+            </StageEditorShell>
+          </StageEditSession>
+        </ResourceClientProvider>
       )}
     />
   );
@@ -256,6 +250,9 @@ describe('the stage editor shell', () => {
    */
   it('opens at the stage name, with each section one below it', async () => {
     render(editor);
+    // The host answers the acquire over a promise, so the form is drawn a turn
+    // after the story mounts.
+    await screen.findByRole('heading', { name: 'Page content' });
 
     expect(headingLadder()).toEqual(['h2: Stage name', 'h3: Page content']);
     await expectHeadingOrder(2);
@@ -274,6 +271,7 @@ describe('the stage editor shell', () => {
         <EnclosingHeadingLevel level="h2">{editor}</EnclosingHeadingLevel>
       </div>,
     );
+    await screen.findByRole('heading', { name: 'Page content' });
 
     expect(headingLadder()).toEqual([
       'h2: Prompt configuration',
@@ -389,6 +387,11 @@ describe('every story of a surface that writes its own heading', () => {
 
   it.each(stories)('has no heading skip in %s', async (_name, Story) => {
     render(<Story />);
+    // A stage editor's story mounts over a host that answers the acquire over
+    // a promise, so it writes no heading at all on its first pass. Judged then,
+    // axe would report a document it found nothing to judge in — which
+    // `expectHeadingOrder` refuses, but only after the wait it needs anyway.
+    await screen.findAllByRole('heading');
 
     await expectHeadingOrder(1);
   });

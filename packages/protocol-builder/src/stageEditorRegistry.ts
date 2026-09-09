@@ -22,7 +22,7 @@
  * from this one would close a cycle: whichever of the two a program reaches
  * first, the other is half-evaluated, and `REGISTRY_PARTS` reads a binding
  * that does not hold its part yet. The contract is a leaf — it imports the
- * controller and the stage types and nothing else — which is what makes it
+ * stage types and nothing else — which is what makes it
  * safe for a part to import, and it is where the rest of what a family writes
  * against already lives. `defineStageEditorPart` is deliberately NOT
  * re-exported from here: a family that reached it through this module would
