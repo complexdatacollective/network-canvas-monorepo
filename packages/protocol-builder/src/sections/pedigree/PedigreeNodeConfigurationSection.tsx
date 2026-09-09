@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 
-import { EntitySelectControl } from '../../fields/EntitySelectField.tsx';
+import EntityTypePickerField from '../../fields/EntityTypePickerField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
@@ -282,9 +282,9 @@ export default function PedigreeNodeConfigurationSection() {
           </AlertDescription>
         </Alert>
       )}
-      <Field<typeof EntitySelectControl>
+      <Field<typeof EntityTypePickerField>
         name={TYPE_FIELD}
-        component={EntitySelectControl}
+        component={EntityTypePickerField}
         entityType="node"
         confirmChange={confirmTypeChange}
         {...(blockChangeReason === undefined ? {} : { blockChangeReason })}

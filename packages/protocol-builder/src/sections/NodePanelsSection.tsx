@@ -19,11 +19,11 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 import Section from '@codaco/fresco-ui/Section';
 import type { Asset } from '@codaco/protocol-validation';
 
+import AssetPickerField from '../fields/AssetPickerField.tsx';
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
 import { useStagedResources } from '../resources/client.tsx';
 import { acceptsResourceKind } from '../resources/components/resourceKinds.ts';
-import ResourcePickerControl from '../resources/components/ResourcePickerControl.tsx';
 import type { ResourceDescriptor, ResourceKind } from '../resources/types.ts';
 import {
   ruleSetRules,
@@ -351,7 +351,7 @@ const INCOMPLETE_PANEL = createMessageError(messages.incompletePanel);
  */
 const TOO_MANY_PANELS = createMessageError(messages.tooManyPanels);
 
-const ResourcePicker = ResourcePickerControl as ComponentType<
+const ResourcePicker = AssetPickerField as ComponentType<
   Record<string, unknown>
 >;
 

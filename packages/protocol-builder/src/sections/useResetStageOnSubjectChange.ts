@@ -99,7 +99,7 @@ const heldStageKeys = (
 /**
  * Whether changing the subject would actually cost the researcher anything.
  *
- * Asked before the change rather than after it — see `SubjectSelectField`,
+ * Asked before the change rather than after it — see `EntityTypePickerField`,
  * which holds the pick back until it is answered — so it reads what the stage
  * is carrying NOW rather than what a reset would write. A key the template
  * supplies and the stage does not is no loss, which is why this is not the

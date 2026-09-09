@@ -7,7 +7,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
-import SubjectSelectField from '../../fields/SubjectSelectField.tsx';
+import { EntitySubjectPickerField } from '../../fields/EntityTypePickerField.tsx';
 import MultiSelect from '../../form/arrayFields/MultiSelect.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { fixtureMessage } from '../../testing/i18n.ts';
@@ -82,10 +82,10 @@ function SearchOptionsAgainstASubject() {
   return (
     <>
       <BuilderSection title="Node type">
-        <Field<typeof SubjectSelectField>
+        <Field<typeof EntitySubjectPickerField>
           name="subject"
           label="Node type"
-          component={SubjectSelectField}
+          component={EntitySubjectPickerField}
           entityType="node"
         />
       </BuilderSection>

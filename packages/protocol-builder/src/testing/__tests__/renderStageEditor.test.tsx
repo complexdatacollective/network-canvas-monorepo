@@ -58,7 +58,7 @@ const previewText = (url: string): string => {
  * test its "this file cannot be read" state rather than itself.
  *
  * The contract has no download, so the file arrives as the URL a preview
- * resolves to — which is what `ResourcePickerControl` reads one through.
+ * resolves to — which is what `AssetPickerField` reads one through.
  */
 function RosterColumnsSection({
   resourceId,

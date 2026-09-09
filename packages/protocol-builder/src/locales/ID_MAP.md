@@ -85,7 +85,7 @@ after the fact is marked in place.
 | `ruleDescription`           | `rules/ruleDescription.ts`, `rules/ruleMessages.ts`                                                                                                                                           | i18n-1a   |
 | `ruleCodebook`              | `rules/ruleCodebook.ts`                                                                                                                                                                       | i18n-1a   |
 | `resourceKinds`             | `resources/components/resourceKinds.ts`                                                                                                                                                       | i18n-1b   |
-| `resourcePicker`            | `resources/components/ResourcePickerControl.tsx`                                                                                                                                              | i18n-1b   |
+| `resourcePicker`            | `fields/AssetPickerField.tsx`                                                                                                                                                                 | i18n-1b   |
 | `resourceBrowser`           | `resources/components/ResourceBrowserDialog.tsx`                                                                                                                                              | i18n-1b   |
 | `resourceUpload`            | `resources/components/ResourceUploadControl.tsx`                                                                                                                                              | i18n-1b   |
 | `resourceSecret`            | `resources/components/ResourceSecretControl.tsx`                                                                                                                                              | i18n-1b   |
@@ -105,7 +105,7 @@ after the fact is marked in place.
 | `assignAttributes`          | `form/arrayFields/AssignAttributes.tsx`, `form/arrayFields/Attribute.tsx`                                                                                                                     | i18n-2b   |
 | `multiSelect`               | `form/arrayFields/MultiSelect.tsx`                                                                                                                                                            | i18n-2b   |
 | `option`                    | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`                                                                                                                                 | i18n-2b   |
-| `entitySelect`              | `fields/EntitySelectField.tsx`                                                                                                                                                                | i18n-2b   |
+| `entitySelect`              | `fields/EntityTypePickerField.tsx`                                                                                                                                                            | i18n-2b   |
 | `variablePicker`            | `fields/VariablePicker.tsx`, `sections/CreatableVariablePicker.tsx` (added by `sections`; see below)                                                                                          | i18n-2b   |
 | `skipLogicDestination`      | `fields/stageDestination.ts`                                                                                                                                                                  | i18n-2b   |
 | `networkFilter`             | `sections/NetworkFilterSection.tsx`                                                                                                                                                           | i18n-2b   |
@@ -312,12 +312,12 @@ for something else or reopens a decision that has been made:
 - **`builderSection`** — `sections/BuilderSection.tsx` renders only the words
   its section hands it, as `MessageDescriptor`s on `SectionCapability`, plus
   `commonMessages.cancel`.
-- **`subjectSelect`** — `fields/SubjectSelectField.tsx` exists now and holds no
-  copy of its own: it bridges the schema's `{entity, type}` subject to the bare
-  type ids `EntitySelectField` speaks, and every word around it — the label,
+- **`subjectSelect`** — the subject bridge in `fields/EntityTypePickerField.tsx`
+  holds no copy of its own: it turns the schema's `{entity, type}` subject into
+  the bare type ids the picker speaks, and every word around it — the label,
   the hint, the empty state — belongs to the section that mounts it
-  (`subjectSection`) or to the control it wraps (`entitySelect`). The name
-  stays reserved rather than being reused for something else.
+  (`subjectSection`) or to the picker itself (`entitySelect`). The name stays
+  reserved rather than being reused for something else.
 - **`variablePicker`'s five `create*` ids are not on any screen yet.**
   `sections/CreatableVariablePicker.tsx` pairs a picker over what exists with a
   name box that creates an attribute under that name and selects it. Nothing in

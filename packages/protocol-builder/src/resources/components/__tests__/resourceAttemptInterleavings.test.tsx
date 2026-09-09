@@ -5,13 +5,13 @@ import { expect, it, vi } from 'vitest';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
 import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
+import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { enIntl } from '../../../testing/i18n.ts';
 import {
   RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
   type ResourceDescriptor,
 } from '../../types.ts';
-import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import ResourcePreview, {
   PREVIEW_RENEWAL_LEAD_MS,
   PREVIEW_RENEWAL_MIN_INTERVAL_MS,
@@ -91,7 +91,7 @@ const bytesOf = (text: string): Uint8Array => new TextEncoder().encode(text);
 function imageField() {
   return (
     <Field
-      component={ResourcePickerControl}
+      component={AssetPickerField}
       name="backgroundImage"
       label="Background image"
       kind="image"
@@ -102,7 +102,7 @@ function imageField() {
 function rosterField() {
   return (
     <Field
-      component={ResourcePickerControl}
+      component={AssetPickerField}
       name="dataSource"
       label="Roster"
       kind="network"
@@ -113,7 +113,7 @@ function rosterField() {
 function mapLayerField() {
   return (
     <Field
-      component={ResourcePickerControl}
+      component={AssetPickerField}
       name="mapLayer"
       label="Map layer"
       kind="geojson"

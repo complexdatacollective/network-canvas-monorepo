@@ -9,10 +9,10 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
 
+import AssetPickerField from '../../fields/AssetPickerField.tsx';
 import RichTextField from '../../fields/RichTextField.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
-import ResourcePickerControl from '../../resources/components/ResourcePickerControl.tsx';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import type { RowEditorProps } from '../rowRenderers.tsx';
 import {
@@ -31,7 +31,7 @@ import {
  * The picker takes an open prop bag from the field wrapper, as every resource
  * field in the package does; `kind` is what says which resources it offers.
  */
-const ResourcePicker = ResourcePickerControl as ComponentType<
+const ResourcePicker = AssetPickerField as ComponentType<
   Record<string, unknown>
 >;
 

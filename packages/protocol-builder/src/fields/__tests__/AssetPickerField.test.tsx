@@ -7,16 +7,19 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
-import { REQUIRED } from '../../../form/requiredField.ts';
-import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
-import ResourcePickerControl from '../ResourcePickerControl.tsx';
-import { deferred, flushPendingWork } from './asyncControls.ts';
-import { renderResourceEditor } from './renderResourceEditor.tsx';
+import type { ProtocolBuilderClient } from '../../contract/contract.ts';
+import { REQUIRED } from '../../form/requiredField.ts';
+import {
+  deferred,
+  flushPendingWork,
+} from '../../resources/components/__tests__/asyncControls.ts';
+import { renderResourceEditor } from '../../resources/components/__tests__/renderResourceEditor.tsx';
 import {
   withResourceProcedures,
   type CommittedResource,
-} from './resourceHost.ts';
+} from '../../resources/components/__tests__/resourceHost.ts';
+import type { InMemoryHost } from '../../testing/host/createInMemoryHost.ts';
+import AssetPickerField from '../AssetPickerField.tsx';
 
 const HOST_UNAVAILABLE = 'the resource host is temporarily unavailable';
 
@@ -88,7 +91,7 @@ const REFUSAL = {
 function imageField() {
   return (
     <Field
-      component={ResourcePickerControl}
+      component={AssetPickerField}
       name="backgroundImage"
       label="Background image"
       kind="image"
@@ -99,7 +102,7 @@ function imageField() {
 function rosterField() {
   return (
     <Field
-      component={ResourcePickerControl}
+      component={AssetPickerField}
       name="dataSource"
       label="Roster"
       kind="network"
@@ -147,7 +150,7 @@ const withBackgroundImage = (id: string): SectionDoc => ({
   backgroundImage: id,
 });
 
-describe('ResourcePickerControl', () => {
+describe('AssetPickerField', () => {
   it('sets the field to the id of an image chosen from the protocol', async () => {
     const user = userEvent.setup();
     const { fieldValue } = renderResourceEditor({
@@ -199,7 +202,7 @@ describe('ResourcePickerControl', () => {
       resources: [videoSeed],
       children: (
         <Field
-          component={ResourcePickerControl}
+          component={AssetPickerField}
           name="video"
           label="Stage video"
           kind="video"
@@ -225,7 +228,7 @@ describe('ResourcePickerControl', () => {
       resources: [audioSeed],
       children: (
         <Field
-          component={ResourcePickerControl}
+          component={AssetPickerField}
           name="audio"
           label="Stage audio"
           kind="audio"
@@ -251,7 +254,7 @@ describe('ResourcePickerControl', () => {
       resources: [imageSeed, networkSeed],
       children: (
         <Field
-          component={ResourcePickerControl}
+          component={AssetPickerField}
           name="attachment"
           label="Attachment"
           kind="file"
@@ -293,7 +296,7 @@ describe('ResourcePickerControl', () => {
         }),
       children: (
         <Field
-          component={ResourcePickerControl}
+          component={AssetPickerField}
           name="apiKey"
           label="Map provider API key"
           kind="apikey"
@@ -412,7 +415,7 @@ describe('ResourcePickerControl', () => {
       client: counted.wrap,
       children: (
         <Field
-          component={ResourcePickerControl}
+          component={AssetPickerField}
           name="dataSource"
           label="Network data"
           kind="network"
@@ -441,7 +444,7 @@ describe('ResourcePickerControl', () => {
       client: counted.wrap,
       children: (
         <Field
-          component={ResourcePickerControl}
+          component={AssetPickerField}
           name="mapLayer"
           label="Map layer"
           kind="geojson"
@@ -471,7 +474,7 @@ describe('ResourcePickerControl', () => {
     const { fieldValue } = renderResourceEditor({
       children: (
         <Field
-          component={ResourcePickerControl}
+          component={AssetPickerField}
           name="mapLayer"
           label="Map layer"
           kind="geojson"
@@ -711,7 +714,7 @@ describe('ResourcePickerControl', () => {
     renderResourceEditor({
       children: (
         <Field
-          component={ResourcePickerControl}
+          component={AssetPickerField}
           name="mapLayer"
           label="Map layer"
           kind="geojson"
@@ -951,7 +954,7 @@ function itemIdentityFields(index: number) {
 function itemPicker(index: number, label: string) {
   return (
     <Field
-      component={ResourcePickerControl}
+      component={AssetPickerField}
       name={`items[${index}].content`}
       nameMode="path"
       label={label}
@@ -1197,7 +1200,7 @@ describe('the validation state a picker exposes', () => {
       actions: ({ formId }) => <SubmitButton form={formId}>Save</SubmitButton>,
       children: (
         <Field
-          component={ResourcePickerControl}
+          component={AssetPickerField}
           name="backgroundImage"
           label="Background image"
           kind="image"
@@ -1238,7 +1241,7 @@ describe('the validation state a picker exposes', () => {
       actions: ({ formId }) => <SubmitButton form={formId}>Save</SubmitButton>,
       children: (
         <Field
-          component={ResourcePickerControl}
+          component={AssetPickerField}
           name="apiKey"
           label="Map provider API key"
           kind="apikey"
@@ -1267,7 +1270,7 @@ describe('the validation state a picker exposes', () => {
       actions: ({ formId }) => <SubmitButton form={formId}>Save</SubmitButton>,
       children: (
         <Field
-          component={ResourcePickerControl}
+          component={AssetPickerField}
           name="dataSource"
           label="Network data"
           kind="network"
@@ -1353,7 +1356,7 @@ describe('a picker the researcher backs out of', () => {
       },
       children: (
         <Field
-          component={ResourcePickerControl}
+          component={AssetPickerField}
           name="dataSource"
           label="Network data"
           kind="network"

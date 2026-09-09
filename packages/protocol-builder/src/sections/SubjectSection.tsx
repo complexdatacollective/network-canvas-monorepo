@@ -13,12 +13,11 @@ import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.ts
 import type { CodebookEntityDraft } from '../codebook/editing.ts';
 import { useCreateCodebookEntity } from '../codebook/writes.ts';
 import {
+  type EntitySubject,
+  EntitySubjectPickerField,
   type EntityTypeChangeConfirmation,
   useConfirmEntityTypeChange,
-} from '../fields/EntitySelectField.tsx';
-import SubjectSelectField, {
-  type EntitySubject,
-} from '../fields/SubjectSelectField.tsx';
+} from '../fields/EntityTypePickerField.tsx';
 import { REQUIRED } from '../form/requiredField.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useAskStageHasAnyValue } from '../form/stageFormHooks.ts';
@@ -348,9 +347,9 @@ export default function SubjectSection({
         title={intl.formatMessage(words.title)}
         description={intl.formatMessage(words.description)}
       >
-        <Field<typeof SubjectSelectField>
+        <Field<typeof EntitySubjectPickerField>
           name="subject"
-          component={SubjectSelectField}
+          component={EntitySubjectPickerField}
           entityType={entity}
           confirmChange={confirmChange}
           label={intl.formatMessage(words.fieldLabel)}

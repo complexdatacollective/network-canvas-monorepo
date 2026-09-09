@@ -411,7 +411,7 @@ export default function ResourceSecretControl({
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
+    <form onSubmit={handleSubmit} noValidate>
       <UnconnectedField
         name="staged-secret-name"
         label={intl.formatMessage(messages.nameLabel)}
@@ -445,34 +445,38 @@ export default function ResourceSecretControl({
         showErrors={errors.value !== undefined}
       />
 
-      {failure !== undefined && (
-        <ResourceFailureNotice
-          failure={failure}
-          onRetry={retry}
-          retryLabel={intl.formatMessage(messages.retry)}
-          busy={busy}
-        />
-      )}
+      {/* The fields above space themselves; this holds what comes AFTER
+          them — a refusal, a wait, and the button that submits the key —
+          which are not fields and have a rhythm of their own. */}
+      <div className="flex flex-col items-start gap-3">
+        {failure !== undefined && (
+          <ResourceFailureNotice
+            failure={failure}
+            onRetry={retry}
+            retryLabel={intl.formatMessage(messages.retry)}
+            busy={busy}
+          />
+        )}
 
-      {existingNamesBusy && (
-        <Paragraph id={waitingId} intent="smallText" emphasis="muted">
-          {intl.formatMessage(messages.waitingForNames)}
-        </Paragraph>
-      )}
+        {existingNamesBusy && (
+          <Paragraph id={waitingId} intent="smallText" emphasis="muted">
+            {intl.formatMessage(messages.waitingForNames)}
+          </Paragraph>
+        )}
 
-      <Button
-        type="submit"
-        color="primary"
-        className="self-start"
-        disabled={disabled || busy || existingNamesBusy}
-        {...(existingNamesBusy ? { 'aria-describedby': waitingId } : {})}
-      >
-        {intl.formatMessage(messages.submit)}
-      </Button>
+        <Button
+          type="submit"
+          color="primary"
+          disabled={disabled || busy || existingNamesBusy}
+          {...(existingNamesBusy ? { 'aria-describedby': waitingId } : {})}
+        >
+          {intl.formatMessage(messages.submit)}
+        </Button>
 
-      <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {formatMessageError(status, intl) ?? status}
-      </span>
+        <span className="sr-only" aria-live="polite" aria-atomic="true">
+          {formatMessageError(status, intl) ?? status}
+        </span>
+      </div>
     </form>
   );
 }

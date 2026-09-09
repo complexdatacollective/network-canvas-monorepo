@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
-import ResourcePickerControl from '../ResourcePickerControl.tsx';
+import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
 import type { CommittedResource } from './resourceHost.ts';
 
@@ -19,7 +19,7 @@ const NEIGHBOURHOOD: CommittedResource = {
 function picker(name: string, label: string) {
   return (
     <Field
-      component={ResourcePickerControl}
+      component={AssetPickerField}
       name={name}
       label={label}
       kind="image"

@@ -8,12 +8,9 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import StageEditorShell from '../../form/StageEditorShell.tsx';
-import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
-import BuilderSection from '../../sections/BuilderSection.tsx';
-import { StageEditSession } from '../../stageEdit.tsx';
-import { ResourceClientProvider } from '../client.tsx';
-import ResourcePickerControl from './ResourcePickerControl.tsx';
+import StageEditorShell from '../form/StageEditorShell.tsx';
+import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
+import { ResourceClientProvider } from '../resources/client.tsx';
 import {
   createStoryHost,
   IMAGE_RESOURCE,
@@ -22,7 +19,10 @@ import {
   skylineImageFile,
   type StoryResource,
   type StoryStage,
-} from './storyFixtures.ts';
+} from '../resources/components/storyFixtures.ts';
+import BuilderSection from '../sections/BuilderSection.tsx';
+import { StageEditSession } from '../stageEdit.tsx';
+import AssetPickerField from './AssetPickerField.tsx';
 
 /** Which stage the picker under the researcher's cursor is a field of. */
 type StagePreset =
@@ -69,7 +69,7 @@ function itemIdentityFields(index: number): ReactNode {
 function imageItemPicker(index: number, label: string): ReactNode {
   return (
     <Field
-      component={ResourcePickerControl}
+      component={AssetPickerField}
       name={`items[${index}].content`}
       nameMode="path"
       label={label}
@@ -138,7 +138,7 @@ const STAGE_SCENARIOS: Readonly<
     },
     children: (
       <Field
-        component={ResourcePickerControl}
+        component={AssetPickerField}
         name="dataSource"
         label="Roster data file"
         kind="network"

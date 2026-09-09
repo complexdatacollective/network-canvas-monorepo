@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 
+import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import { protocolBuilderCatalogs } from '../../../locales/catalogs.ts';
 import { esIntl } from '../../../testing/i18n.ts';
 import type {
@@ -14,7 +15,6 @@ import type {
   ResourceResult,
 } from '../../types.ts';
 import ResourceFailureNotice from '../ResourceFailureNotice.tsx';
-import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import ResourceSummary from '../ResourceSummary.tsx';
 import ResourceUploadControl from '../ResourceUploadControl.tsx';
 import {
@@ -81,7 +81,7 @@ function expectFailure<T>(result: ResourceResult<T>): ResourceGatewayFailure {
 function ImagePicker() {
   const [value, setValue] = useState<string | undefined>(undefined);
   return (
-    <ResourcePickerControl
+    <AssetPickerField
       name="backgroundImage"
       kind="image"
       value={value}

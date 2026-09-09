@@ -22,14 +22,14 @@ import {
   HARNESS_PRINCIPAL,
   SeedProtocolCache,
 } from '../../testing/seedProtocolCache.tsx';
-import { EntitySelectControl } from '../EntitySelectField.tsx';
+import EntityTypePickerField from '../EntityTypePickerField.tsx';
 import StageDestinationPickerField from '../StageDestinationPickerField.tsx';
 import { VariablePickerControl } from '../VariablePicker.tsx';
 
 /**
  * The three controls in this directory, read in the researcher's own language.
  *
- * `EntitySelectControl` and `StageDestinationPickerField` render their own words
+ * `EntityTypePickerField` and `StageDestinationPickerField` render their own words
  * with `useAppIntl()`; the destination control is handed everything it shows by
  * `stageDestination.ts`, which is pure and takes the formatter as an
  * argument. Both have to agree, so this mounts the control rather than calling
@@ -190,7 +190,7 @@ describe('the fields in this directory, read in Spanish', () => {
     // Literals rather than the same descriptors re-formatted: asserting
     // `esIntl.formatMessage(...)` here would pass whatever the catalog said,
     // including nothing.
-    render(inEditor(<EntitySelectControl entityType="node" value="ghost" />));
+    render(inEditor(<EntityTypePickerField entityType="node" value="ghost" />));
 
     expect(
       screen.getByRole('radiogroup', { name: 'Tipo de nodo' }),
@@ -214,7 +214,7 @@ describe('the fields in this directory, read in Spanish', () => {
   it('says a protocol has no types yet in Spanish', () => {
     const { [personSection]: _person, ...withoutTypes } = baseSections;
 
-    render(inEditor(<EntitySelectControl entityType="node" />, withoutTypes));
+    render(inEditor(<EntityTypePickerField entityType="node" />, withoutTypes));
 
     expect(
       screen.getByText('Este protocolo aún no tiene tipos de nodo.'),

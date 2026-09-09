@@ -135,7 +135,7 @@ describe('the section that says what a stage is about', () => {
   });
 
   /**
-   * The end of the same path `SubjectSelectField` bridges: a picked EDGE type
+   * The end of the same path `EntitySubjectPickerField` bridges: a picked EDGE type
    * reaches the stage as an edge subject. The two branches are written out
    * rather than computed from the entity, so the edge one has to be walked.
    *

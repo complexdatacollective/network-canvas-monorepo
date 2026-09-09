@@ -7,7 +7,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import ResourcePickerControl from '../ResourcePickerControl.tsx';
+import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import { useStageResourceUsage } from '../useStageResourceUsage.ts';
 import { flushPendingWork } from './asyncControls.ts';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
@@ -73,7 +73,7 @@ function itemIdentityFields(index: number) {
 function itemPicker(index: number, label: string) {
   return (
     <Field
-      component={ResourcePickerControl}
+      component={AssetPickerField}
       name={`items[${index}].content`}
       nameMode="path"
       label={label}

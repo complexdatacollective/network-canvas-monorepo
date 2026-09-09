@@ -4,7 +4,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 
-import { EntitySelectControl } from '../../fields/EntitySelectField.tsx';
+import EntityTypePickerField from '../../fields/EntityTypePickerField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
@@ -100,9 +100,9 @@ export default function PedigreeEdgeConfigurationSection() {
       title={intl.formatMessage(pedigreeMessages.edgeTitle)}
       description={intl.formatMessage(pedigreeMessages.edgeDescription)}
     >
-      <Field<typeof EntitySelectControl>
+      <Field<typeof EntityTypePickerField>
         name={TYPE_FIELD}
-        component={EntitySelectControl}
+        component={EntityTypePickerField}
         entityType="edge"
         confirmChange={confirmTypeChange}
         label={intl.formatMessage(pedigreeMessages.edgeTypeLabel)}
