@@ -2167,6 +2167,10 @@
     "defaultMessage": "Create the attribute",
     "description": "Action that adds the named text attribute to the codebook and selects it for quick add."
   },
+  "protocolBuilder.quickAdd.createdOnAnotherType": {
+    "defaultMessage": "“{variableName}” was added to the type this stage was about when you asked for it. This stage is about a different type now, so it has not been selected here.",
+    "description": "Notice shown when an attribute the researcher asked for was added to the codebook — the protocol’s definition of what an interview records — but the node type the stage works with was changed while it was being added, so the new attribute belongs to the old type and nothing here uses it. variableName is the name they typed and is not translated."
+  },
   "protocolBuilder.quickAdd.description": {
     "defaultMessage": "Choose the attribute the participant fills in when they add someone with a single box.",
     "description": "Description of the quick-add section."

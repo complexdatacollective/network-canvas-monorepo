@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { v4 as uuid } from 'uuid';
@@ -179,6 +180,13 @@ const messages = defineMessages({
     description:
       'Refusal shown when a researcher asks to create a quick-add attribute without typing a name for it.',
   },
+  createdOnAnotherType: {
+    id: 'protocolBuilder.quickAdd.createdOnAnotherType',
+    defaultMessage:
+      '“{variableName}” was added to the type this stage was about when you asked for it. This stage is about a different type now, so it has not been selected here.',
+    description:
+      'Notice shown when an attribute the researcher asked for was added to the codebook — the protocol’s definition of what an interview records — but the node type the stage works with was changed while it was being added, so the new attribute belongs to the old type and nothing here uses it. variableName is the name they typed and is not translated.',
+  },
 });
 
 const CHOOSE_AN_ATTRIBUTE = createMessageError(messages.fieldRequired);
@@ -202,6 +210,16 @@ const validationOf = (variable: unknown): Record<string, unknown> => {
     ? (validation as Record<string, unknown>)
     : {};
 };
+
+/**
+ * The node or edge type a subject names, for comparing one reading of the
+ * stage's subject against a later one. Ego has no type and this section never
+ * sees one.
+ */
+const subjectType = (
+  subject: CodebookSubject | undefined,
+): string | undefined =>
+  subject === undefined || subject.entity === 'ego' ? undefined : subject.type;
 
 /** The authoritative section document this subject's attributes live in. */
 const codebookDocumentFor = (
@@ -477,6 +495,17 @@ function useRequireCodebookAnswer(subject: CodebookSubject | undefined) {
  * compound edit — the codebook write and the stage that references it must land
  * together or not at all. Selecting the result is the point: a researcher who
  * has just said what they want it called should not then have to find it.
+ *
+ * Selected only if the stage is still about the type it was created on. A
+ * compound edit is a round trip to the host, and the researcher can change the
+ * node type while it is in flight — the attribute lands on the type that was
+ * current when they asked, because that is the codebook section the request
+ * names, and filling the picker in with it afterwards left `quickAdd` naming an
+ * attribute the new type does not have: a reference that cannot be saved,
+ * against a stage the researcher has just moved on from. So the type is read
+ * again when the codebook answers, and where it has moved the attribute is
+ * reported rather than selected — it exists, and where it went is the only
+ * thing left to say.
  */
 function NewQuickAddAttribute() {
   const intl = useAppIntl();
@@ -486,6 +515,26 @@ function NewQuickAddAttribute() {
   const [name, setName] = useState('');
   const [problem, setProblem] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  /**
+   * The name of an attribute that was created onto a type this stage is no
+   * longer about, held for as long as the notice about it is on screen.
+   *
+   * The submitted name rather than whatever the box holds now: the notice is
+   * about the attribute that was created, and the box is empty by the time it
+   * appears. Same shape as `CreatableVariablePickerControl`'s
+   * "created but not selected" notice, which answers the same question.
+   */
+  const [strandedName, setStrandedName] = useState<string | undefined>(
+    undefined,
+  );
+
+  // In a ref, so `create` reads the type as it is when the codebook ANSWERS
+  // rather than the one closed over when it was asked.
+  const typeNow = subjectType(subject);
+  const typeNowRef = useRef(typeNow);
+  useEffect(() => {
+    typeNowRef.current = typeNow;
+  }, [typeNow]);
 
   const create = useCallback(async () => {
     const trimmed = name.trim();
@@ -493,6 +542,7 @@ function NewQuickAddAttribute() {
       setProblem(intl.formatMessage(messages.nameTheAttribute));
       return;
     }
+    const askedFor = typeNowRef.current;
     setBusy(true);
     try {
       const outcome = await createVariable({
@@ -506,7 +556,15 @@ function NewQuickAddAttribute() {
         return;
       }
       setProblem(undefined);
+      // The codebook holds it now, whatever becomes of it here, and asking for
+      // the same name a second time is refused for a duplicate the researcher
+      // did not choose to ask for — so the box empties on both answers below.
       setName('');
+      if (typeNowRef.current !== askedFor) {
+        setStrandedName(trimmed);
+        return;
+      }
+      setStrandedName(undefined);
       // Written into the form rather than dispatched to the session: the
       // picker above is a registered field, and a command that went round it
       // would be overwritten by whatever the control still held when the
@@ -539,13 +597,33 @@ function NewQuickAddAttribute() {
         hint={intl.formatMessage(messages.newAttributeHint)}
         placeholder={intl.formatMessage(messages.newAttributePlaceholder)}
         value={name}
-        onChange={(next: unknown) =>
-          setName(typeof next === 'string' ? next : '')
-        }
+        onChange={(next: unknown) => {
+          // The notice is about the create that has just happened; naming
+          // another attribute is the start of a different one.
+          setStrandedName(undefined);
+          setName(typeof next === 'string' ? next : '');
+        }}
       />
       <Button type="button" onClick={() => void create()} disabled={busy}>
         {intl.formatMessage(messages.createAttribute)}
       </Button>
+      {/* Always mounted, so a screen reader is watching this region before the
+          notice appears: a live region added to the page at the same moment as
+          its own content is not reliably announced. The `Alert` inside it is
+          presentational for the same reason — its `info` variant is a
+          `role="status"` of its own, and a second polite region inserted into
+          this one is the double announcement this wrapper exists to avoid. */}
+      <div role="status" aria-live="polite">
+        {strandedName !== undefined && (
+          <Alert variant="info" role="presentation" className="my-7">
+            <AlertDescription>
+              {intl.formatMessage(messages.createdOnAnotherType, {
+                variableName: strandedName,
+              })}
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
       {problem !== undefined && (
         <Alert variant="destructive" className="my-7">
           <AlertDescription>{problem}</AlertDescription>

@@ -5,6 +5,8 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import QuickAddSection from '../QuickAddSection.tsx';
+import SubjectSection from '../SubjectSection.tsx';
+import { changeSubjectTo } from './changeSubject.ts';
 
 const quickAdd = <QuickAddSection />;
 
@@ -25,6 +27,38 @@ const offered = () =>
  * this scenario is not about, so the access change is made straight on the
  * session and the click is dispatched before anything is flushed.
  */
+/**
+ * Holds the host's answer to the next compound edits until the returned
+ * function is called, so a test can do something else while one is in flight.
+ *
+ * The real host still decides — this only delays when it is asked, which is
+ * the one thing a request that answers within the click cannot be made to do.
+ * Answering is what the returned function waits for, so an assertion after it
+ * is about a settled editor.
+ */
+const holdTheHost = (
+  harness: ReturnType<typeof renderStageEditor>,
+): (() => Promise<void>) => {
+  const { host } = harness;
+  const answer = host.submit.bind(host);
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  host.submit = (async (submission: Parameters<typeof answer>[0]) => {
+    await held;
+    return answer(submission);
+  }) as typeof host.submit;
+
+  return async () => {
+    host.submit = answer;
+    release();
+    await act(async () => {
+      await held;
+    });
+  };
+};
+
 const clickAsEditingIsRevoked = async (
   harness: ReturnType<typeof renderStageEditor>,
   control: HTMLElement,
@@ -184,6 +218,57 @@ describe('what a quick-add name generator records', () => {
   });
 
   /**
+   * A codebook write is a round trip to the host, and the researcher can
+   * change the stage's node type while it is on its way. The attribute lands
+   * on the type the request names — the one that was current when they asked —
+   * so filling the picker in with it afterwards left `quickAdd` naming an
+   * attribute the new type does not have: a reference nothing can save,
+   * against a stage they had already moved on from.
+   */
+  it('does not select an attribute created onto the type the stage has left', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: (
+        <>
+          <SubjectSection entity="node" />
+          <QuickAddSection />
+        </>
+      ),
+    });
+    const settle = holdTheHost(harness);
+
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: /Create a new attribute/ }),
+      'nickname',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create the attribute' }),
+    );
+    await changeSubjectTo(harness.user, 'family member');
+    await settle();
+
+    // The write landed where it was addressed, and the researcher is told so
+    // rather than left to find an attribute they cannot see from here.
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).toContain('nickname');
+    expect(
+      screen
+        .getByText(
+          '“nickname” was added to the type this stage was about when you asked for it. This stage is about a different type now, so it has not been selected here.',
+        )
+        .closest('[role="status"]'),
+    ).not.toBeNull();
+    // Nothing the family-member type does not have was written into the stage.
+    expect(
+      screen.getByRole('combobox', { name: /Attribute filled in/ }),
+    ).toHaveValue('');
+    expect(offered()).toEqual(['', 'fm_name']);
+  });
+
+  /**
    * The Create button is disabled while the codebook write is in flight, so a
    * write that never answers is a control that never comes back: the
    * researcher is left with a dead button and the name they typed, and taking
@@ -336,11 +421,17 @@ describe('a quick-add attribute that need not be answered', () => {
     expect(screen.getByRole('combobox', { name: /Attribute filled in/ })).toBe(
       document.activeElement,
     );
+    // Reached through the sentence rather than through the region, because the
+    // create beside this one keeps a live region of its own mounted whether it
+    // is saying anything or not. Still a claim about the region: this is what
+    // makes the sentence reach a screen reader at all.
     expect(
-      within(await screen.findByRole('status')).getByText(
-        'This attribute now has to be answered, everywhere the protocol uses it.',
-      ),
-    ).toBeInTheDocument();
+      (
+        await screen.findByText(
+          'This attribute now has to be answered, everywhere the protocol uses it.',
+        )
+      ).closest('[role="status"]'),
+    ).not.toBeNull();
   });
 
   /**
