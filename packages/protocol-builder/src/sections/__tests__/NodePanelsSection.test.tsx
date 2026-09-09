@@ -597,4 +597,33 @@ describe('the side panels a name generator shows', () => {
     expect(await screen.findByText('First panel')).toBeInTheDocument();
     expect(harness.pendingCommands()).toHaveLength(before);
   });
+  /**
+   * The dismissal question is asked of the row as the dialog OPENED on it.
+   * Asked of the live value instead, the picker's own choice becomes its own
+   * baseline the moment it is made: nothing reads as changed, and Cancel,
+   * Escape, the close button and a click outside all take the switch away
+   * without a word.
+   */
+  it('asks before losing a source switch the researcher has not saved', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+      ]),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    await chooseImportedNetwork(harness, dialog);
+    await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Keep editing' }),
+    ).toBeVisible();
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Keep editing' }),
+    );
+    expect(
+      await dialog.findByRole('radio', { name: 'Use an imported data file' }),
+    ).toBeChecked();
+  });
 });

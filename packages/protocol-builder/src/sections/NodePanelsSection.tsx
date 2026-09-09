@@ -454,6 +454,22 @@ function PanelEditor({ item }: RowEditorProps) {
   const intl = useAppIntl();
   const dataSource =
     asString(useRowValue('dataSource') ?? item.dataSource) ?? INTERVIEW_NETWORK;
+  /**
+   * The source the row was OPENED on, which is the only thing the picker's
+   * starting value may be — the same reading every other field here takes of
+   * `item`.
+   *
+   * A field's `initialValue` is half of what "has the researcher changed
+   * anything?" is asked of, and the dialog asks it before every dismissal.
+   * Given the LIVE source, it moves to whatever the researcher just chose, the
+   * field re-registers, and the choice becomes its own baseline: Cancel,
+   * Escape, the close button and a click outside all then close without asking,
+   * and a source switch the researcher never saved goes with them unremarked.
+   * The live value is for what the row RENDERS — which rules a filter may
+   * offer, and the question asked when a file supersedes the interview's own
+   * network — and for nothing else.
+   */
+  const openedDataSource = asString(item.dataSource) ?? INTERVIEW_NETWORK;
   const usesInterviewNetwork = dataSource === INTERVIEW_NETWORK;
   const filterValidation = usePanelFilterValidation();
   const { hasRules, requestFilterOpenChange } = usePanelFilterCapability(
@@ -483,7 +499,7 @@ function PanelEditor({ item }: RowEditorProps) {
           hint={intl.formatMessage(messages.sourceHint)}
           kind="network"
           canUseExisting
-          initialValue={dataSource}
+          initialValue={openedDataSource}
           required={PANEL_SOURCE_REQUIRED}
         />
       </Section>
