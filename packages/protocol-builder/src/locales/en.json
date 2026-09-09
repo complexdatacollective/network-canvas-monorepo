@@ -987,6 +987,10 @@
     "defaultMessage": "A file you added is still waiting to be saved with this stage. Save the stage first, then make this change.",
     "description": "Refusal shown in a codebook editor when the stage still holds an imported file that has not been saved, which has to land before the codebook can change."
   },
+  "protocolBuilder.compoundFailure.saveInFlight": {
+    "defaultMessage": "This stage is being saved, so nothing was changed. Wait for the save to finish, then make this change.",
+    "description": "Refusal shown in a codebook editor when the researcher asks for a codebook change while the stage they are editing is in the middle of being saved. A stage is one step of an interview."
+  },
   "protocolBuilder.compoundFailure.staleBase": {
     "defaultMessage": "Someone else changed this while you were editing it, so nothing was saved. Close and reopen this editor to load their version, then make your change again.",
     "description": "Refusal shown in a codebook editor when a collaborator changed the same thing while this editor was open."
@@ -3726,6 +3730,10 @@
   "protocolBuilder.session.compoundConflictingRevision": {
     "defaultMessage": "the compound result conflicts with the loaded authoritative revision",
     "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: what came back cannot be reconciled with the version of the protocol on screen."
+  },
+  "protocolBuilder.session.compoundDuringFinish": {
+    "defaultMessage": "the stage is being saved",
+    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: the step itself is in the middle of being saved. \"stage\" is one step of an interview."
   },
   "protocolBuilder.session.compoundHostError": {
     "defaultMessage": "the compound edit failed",

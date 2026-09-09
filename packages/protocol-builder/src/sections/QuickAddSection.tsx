@@ -417,6 +417,49 @@ function useLandedAnswer(
   return { standing: moved ? undefined : landed, record, forget };
 }
 
+/**
+ * The refusal this box still has to say about a create it asked for, read
+ * against the name on screen rather than against the one it was asked with.
+ *
+ * The same rule as `useLandedAnswer`, for the same reason: every sentence a
+ * refusal here can carry is about the text in the box — "name the attribute",
+ * "an attribute with this name already exists" — and the box is the
+ * researcher's to correct. Held as a flag, "name the attribute" went on
+ * standing beside a name they had just typed, and "already exists" beside a
+ * name nothing is called.
+ *
+ * Forgotten the first time the trimmed name CHANGES, rather than merely
+ * hidden: the researcher who has done what the refusal asked has answered it,
+ * and a name typed back a third time deserves a fresh attempt rather than the
+ * verdict on an earlier one — the codebook is shared, and what was taken a
+ * moment ago may not be now. Trimmed, because whitespace is not an answer to
+ * "name the attribute".
+ */
+function useLiveRefusal(name: string): Readonly<{
+  /** The refusal that is still true of the box, or nothing. */
+  problem: string | undefined;
+  refuse: (message: string, asked: string) => void;
+  forget: () => void;
+}> {
+  const [refusal, setRefusal] = useState<
+    Readonly<{ asked: string; message: string }> | undefined
+  >(undefined);
+  const retyped = refusal !== undefined && refusal.asked !== name;
+  const forget = useCallback(() => {
+    setRefusal(undefined);
+  }, []);
+  // Dropped for good rather than only hidden, so nothing can raise it again.
+  // The reading above is what the render is guarded by, so no stale refusal is
+  // drawn in the frame before this runs.
+  useEffect(() => {
+    if (retyped) forget();
+  }, [forget, retyped]);
+  const refuse = useCallback((message: string, asked: string) => {
+    setRefusal({ asked, message });
+  }, []);
+  return { problem: retyped ? undefined : refusal?.message, refuse, forget };
+}
+
 const VariablePicker = VariablePickerControl as ComponentType<
   Record<string, unknown>
 >;
@@ -772,7 +815,6 @@ function NewQuickAddAttribute({
   const createVariable = useCreateCodebookVariable(subject);
   const answerLands = useWhereTheAnswerLands(subject, fillsIn);
   const [name, setName] = useState('');
-  const [problem, setProblem] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   /**
    * The attribute that was created and then not selected, held for as long as
@@ -784,11 +826,17 @@ function NewQuickAddAttribute({
    * "created but not selected" notice, which answers the same question.
    */
   const { standing, record, forget } = useLandedAnswer(subject, fillsIn);
+  /** And the refusals, held against the name they were refused for. */
+  const {
+    problem,
+    refuse,
+    forget: forgetRefusal,
+  } = useLiveRefusal(name.trim());
 
   const create = useCallback(async () => {
     const trimmed = name.trim();
     if (trimmed === '') {
-      setProblem(intl.formatMessage(messages.nameTheAttribute));
+      refuse(intl.formatMessage(messages.nameTheAttribute), trimmed);
       return;
     }
     // Nothing below this component is rendered without a subject, and the
@@ -807,10 +855,10 @@ function NewQuickAddAttribute({
         validation: QUICK_ADD_VALIDATION,
       });
       if (outcome.status === 'refused') {
-        setProblem(outcome.message);
+        refuse(outcome.message, trimmed);
         return;
       }
-      setProblem(undefined);
+      forgetRefusal();
       // The codebook holds it now, whatever becomes of it here, and asking for
       // the same name a second time is refused for a duplicate the researcher
       // did not choose to ask for — so the box empties on both answers below.
@@ -844,9 +892,11 @@ function NewQuickAddAttribute({
     createVariable,
     fillsIn,
     forget,
+    forgetRefusal,
     intl,
     name,
     record,
+    refuse,
     storeApi,
     subject,
   ]);

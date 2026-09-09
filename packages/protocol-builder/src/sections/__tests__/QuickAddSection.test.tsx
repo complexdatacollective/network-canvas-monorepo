@@ -353,6 +353,79 @@ describe('what a quick-add name generator records', () => {
   });
 
   /**
+   * A refusal about the name in the box is a sentence about what is on
+   * screen — "name the attribute", "that one already exists" — so it is read
+   * against the box the same way every other sentence this section says is
+   * read against the picker: the researcher who has done what it asked has
+   * answered it, and it is dropped rather than left standing over a corrected
+   * name it is no longer true of.
+   */
+  it('stops asking for a name once the researcher types one', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+    });
+
+    const box = await screen.findByRole('textbox', {
+      name: /Create a new attribute/,
+    });
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create the attribute' }),
+    );
+    expect(
+      screen.getByText('Name the attribute quick add should fill in.'),
+    ).toBeInTheDocument();
+
+    await harness.user.type(box, 'nickname');
+
+    expect(
+      screen.queryByText('Name the attribute quick add should fill in.'),
+    ).toBeNull();
+  });
+
+  it('stops saying a name is taken once the researcher changes it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+    });
+
+    const box = await screen.findByRole('textbox', {
+      name: /Create a new attribute/,
+    });
+    // The name the fixture's own attribute already has.
+    await harness.user.type(box, 'name');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create the attribute' }),
+    );
+    expect(
+      await screen.findByText(
+        'An attribute with this name already exists here. Choose another name.',
+      ),
+    ).toBeInTheDocument();
+    // Refused, so the box keeps the name to correct.
+    expect(box).toHaveValue('name');
+
+    await harness.user.type(box, 'sake');
+
+    expect(
+      screen.queryByText(
+        'An attribute with this name already exists here. Choose another name.',
+      ),
+    ).toBeNull();
+    // And the corrected name is still the researcher's to create.
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create the attribute' }),
+    );
+    await waitFor(() => {
+      expect(
+        Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+          (variable) => variable.name,
+        ),
+      ).toContain('namesake');
+    });
+  });
+
+  /**
    * A quick-add name generator adds whatever node type its stage is about —
    * the repository's own development protocol uses this interface for a venue
    * — so copy calling what the participant adds "someone", and the attribute

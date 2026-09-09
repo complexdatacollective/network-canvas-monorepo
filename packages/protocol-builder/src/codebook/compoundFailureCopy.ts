@@ -62,6 +62,13 @@ const messages = defineMessages({
     description:
       'Refusal shown in a codebook editor when the stage still holds an imported file that has not been saved, which has to land before the codebook can change.',
   },
+  saveInFlight: {
+    id: 'protocolBuilder.compoundFailure.saveInFlight',
+    defaultMessage:
+      'This stage is being saved, so nothing was changed. Wait for the save to finish, then make this change.',
+    description:
+      'Refusal shown in a codebook editor when the researcher asks for a codebook change while the stage they are editing is in the middle of being saved. A stage is one step of an interview.',
+  },
   staleBase: {
     id: 'protocolBuilder.compoundFailure.staleBase',
     defaultMessage:
@@ -124,6 +131,7 @@ const REFUSAL_MESSAGES: Readonly<
   'invalid-response': messages.invalidResponse,
   'lease-lost': messages.leaseLost,
   'pending-commands': messages.pendingCommands,
+  'save-in-flight': messages.saveInFlight,
   'stale-base': messages.staleBase,
   'stale-epoch': messages.staleEpoch,
   'stale-result': messages.staleResult,
