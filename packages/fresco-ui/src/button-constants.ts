@@ -29,5 +29,3 @@ export const ICON_BUTTON_COLORS = [
   'accent',
   'dynamic',
 ] as const;
-
-// Temporary: invalidates the fresco-ui test cache and every dependent suite for a CI wall-time measurement; reverted before merge.
