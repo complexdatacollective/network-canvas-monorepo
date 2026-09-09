@@ -445,11 +445,17 @@ describe('the attributes a pedigree may bind', () => {
    * member form may not collect an attribute the pedigree derives from the
    * tree the participant draws, because the pedigree writes those without any
    * validation and an export would mix checked and unchecked answers under one
-   * name. `fm_name` is the display label — collected THROUGH a form field, so
-   * it stays on offer.
+   * name.
+   *
+   * Nor the display label, for a different reason: the interview collects each
+   * relative's name through the pedigree's own name control and filters that
+   * attribute out of the form it renders, so a field collecting it is a
+   * question no participant is ever asked. The seeded attribute is what keeps
+   * this from being an assertion about an empty picker.
    */
-  it('never offers the family member form an attribute the pedigree derives', async () => {
+  it('never offers the family member form an attribute the pedigree already has', async () => {
     const harness = renderStageEditor(openFixture());
+    const collectable = seedCollectableBoolean(harness);
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Family member form' }),
@@ -464,10 +470,86 @@ describe('the attributes a pedigree may bind', () => {
         .querySelectorAll('option'),
     ].map((option) => option.value);
 
-    expect(offered).toContain('fm_name');
+    expect(offered).toContain(collectable);
+    expect(offered).not.toContain('fm_name');
     expect(offered).not.toContain('is_ego');
     expect(offered).not.toContain('fm_relationship_to_ego');
     expect(offered).not.toContain('biologicalSex');
+  });
+
+  /**
+   * The reserved `name` id, which is a fact about the interview rather than
+   * about this protocol.
+   *
+   * The pedigree's wizard submits each relative's name through its internal
+   * `name` path, so `getNodeForm` drops a field bound to an attribute whose id
+   * is literally `name` as well as one bound to the display label. Both are
+   * questions a researcher can write, save, and never have asked.
+   */
+  it('never offers the family member form an attribute filed under “name”', async () => {
+    const harness = renderStageEditor(openFixture());
+    addFamilyMemberVariable(harness, 'name', {
+      name: 'preferred_name',
+      type: 'text',
+      component: 'Text',
+    });
+    // A second free attribute, so the absence below is an exclusion rather
+    // than a picker with nothing in it.
+    const collectable = seedCollectableBoolean(harness);
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Family member form' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new form field' }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    const offered = [
+      ...field
+        .getByRole('combobox', { name: 'Attribute' })
+        .querySelectorAll('option'),
+    ].map((option) => option.value);
+
+    expect(offered).toContain(collectable);
+    expect(offered).not.toContain('name');
+  });
+
+  /**
+   * And the collision made from the other side: an attribute a form field is
+   * already collecting becomes the display label.
+   *
+   * Nothing about the field changes, so no row is being edited and no picker
+   * is being opened — the stage's own save is the only thing left to notice,
+   * and it refuses with the field named as the thing to fix. Without it the
+   * pedigree saved a form field the interview silently drops.
+   */
+  it('refuses to save a form field the display label has since taken over', async () => {
+    const harness = renderStageEditor(openFixture());
+    addFamilyMemberVariable(harness, 'preferred_name', {
+      name: 'preferred_name',
+      type: 'text',
+      component: 'Text',
+    });
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Family member form' }),
+    );
+    await addFormFieldCollecting(harness, 'preferred_name');
+    // Saveable up to here: the label is still `fm_name`, and the field is a
+    // question about something else.
+    expect(await harness.submit()).not.toBeNull();
+
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Display label' }),
+      'preferred_name',
+    );
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        /The pedigree already collects each family member’s name/,
+      ),
+    ).toBeInTheDocument();
   });
 
   /**
@@ -486,6 +568,7 @@ describe('the attributes a pedigree may bind', () => {
    */
   it('never offers the family member form an attribute a slot took this session', async () => {
     const harness = renderStageEditor(openFixture());
+    const collectable = seedCollectableBoolean(harness);
     addFamilyMemberVariable(harness, 'kinship', {
       name: 'kinship',
       type: 'text',
@@ -511,9 +594,10 @@ describe('the attributes a pedigree may bind', () => {
     ].map((option) => option.value);
 
     expect(offered).not.toContain('kinship');
-    // Not an empty picker: the display label's own attribute is collected
-    // through a form field, so it is still on offer.
-    expect(offered).toContain('fm_name');
+    // Not an empty picker: an attribute nothing on this stage has claimed is
+    // still on offer. Not the display label, which the pedigree collects
+    // through its own name control.
+    expect(offered).toContain(collectable);
   });
 
   /**
@@ -1846,6 +1930,15 @@ describe('picks this session has already claimed', () => {
     addFamilyMemberVariable(harness, 'unwell', {
       name: 'unwell',
       type: 'boolean',
+      component: 'Boolean',
+    });
+    // A second collectable boolean, so what the picker still offers is an
+    // attribute rather than the create-a-new-one sentinel: every other boolean
+    // this type carries is written unvalidated somewhere.
+    addFamilyMemberVariable(harness, 'housebound', {
+      name: 'housebound',
+      type: 'boolean',
+      component: 'Boolean',
     });
 
     await harness.user.click(
@@ -1875,9 +1968,10 @@ describe('picks this session has already claimed', () => {
     ].map((option) => option.value);
 
     expect(offered).not.toContain('unwell');
-    // Not an empty picker: the display label is collected through a form
-    // field, so it is still on offer.
-    expect(offered).toContain('fm_name');
+    // Not an empty picker: an attribute nothing on this stage has claimed is
+    // still on offer. Not the display label, which the pedigree collects
+    // through its own name control.
+    expect(offered).toContain('housebound');
   });
 
   /**

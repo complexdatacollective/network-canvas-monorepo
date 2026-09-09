@@ -36,6 +36,16 @@ const EGO_SLOT = PEDIGREE_EXCLUSIVE_SLOTS.egoVariable;
 const RELATIONSHIP_SLOT = PEDIGREE_EXCLUSIVE_SLOTS.relationshipVariable;
 const BIOLOGICAL_SEX_FIELD = 'nodeConfig.biologicalSexVariable';
 const FORM_FIELD = 'nodeConfig.form';
+/**
+ * The attribute id the pedigree's own name control writes through.
+ *
+ * The interview submits each relative's name on its internal `name` path and
+ * filters a form field collecting `name` out for that reason
+ * (`interview/src/interfaces/FamilyPedigree/utils/nodeUtils.ts`), so a field
+ * bound to it is a question nobody is ever asked. Written down here because
+ * the runtime spells it as a literal too, and the two have to agree.
+ */
+const RESERVED_NAME_VARIABLE = 'name';
 const NOMINATION_PROMPTS_FIELD = 'nominationPrompts';
 
 /**
@@ -204,6 +214,24 @@ export default function PedigreeNodeConfigurationSection() {
       ? labelDraft
       : undefined;
 
+  /**
+   * What the member form may not collect, because the pedigree collects it
+   * itself.
+   *
+   * Interviewer's `getNodeForm` filters both out of the form it renders — the
+   * display label, whose value the dedicated name control writes, and any
+   * attribute whose id is literally `name`, which that control submits through
+   * — so a field bound to either is a question the researcher wrote, saw
+   * accepted, and no participant is ever asked.
+   */
+  const reservedFormVariables = useMemo(
+    () =>
+      draftLabelVariable === undefined
+        ? [RESERVED_NAME_VARIABLE]
+        : [draftLabelVariable, RESERVED_NAME_VARIABLE],
+    [draftLabelVariable],
+  );
+
   const dependentNarrativeStages = useMemo(
     () =>
       protocolContext.orderedStages.filter(
@@ -365,6 +393,8 @@ export default function PedigreeNodeConfigurationSection() {
             optional
             capability={FORM_CAPABILITY}
             draftUnvalidatedVariables={draftUnvalidatedVariables}
+            reservedVariables={reservedFormVariables}
+            reservedVariableRefusal={pedigreeMessages.memberFormReservedRefusal}
             /*
               The shared section is worded for a form that stands on its own.
               This one is hung off the node configuration of a stage the

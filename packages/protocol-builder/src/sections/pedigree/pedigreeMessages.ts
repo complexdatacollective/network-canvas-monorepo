@@ -100,6 +100,13 @@ export const pedigreeMessages = defineMessages({
     description:
       'Button that opens the dialog for adding one more question to the family member form. Whole rather than a generic "Add", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons.',
   },
+  memberFormReservedRefusal: {
+    id: 'protocolBuilder.pedigree.memberFormReservedRefusal',
+    defaultMessage:
+      'The pedigree already collects each family member’s name through its own name control, so this form cannot collect the display label attribute — or an attribute whose id is “name” — as well. Choose another attribute for the field, or remove it.',
+    description:
+      'Refusal shown when a family member form field collects the attribute the pedigree shows each relative by. The interview asks for that name through its own control and never renders such a field, so the question the researcher wrote would never be asked. Shown under the attribute control while the field’s own dialog is open, and above the list of fields when the display label moves onto an attribute an existing field already collects. "id" is the identifier an attribute is filed under in the protocol.',
+  },
   memberFormEmptyState: {
     id: 'protocolBuilder.pedigree.memberFormEmptyState',
     defaultMessage:

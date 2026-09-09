@@ -513,6 +513,7 @@
   "protocolBuilder.pedigree.memberFormEmptyState": "Todavía no hay campos de formulario. Crea uno para preguntar algo sobre cada familiar.",
   "protocolBuilder.pedigree.memberFormFieldHint": "El participante responde a estos cuando añade o edita un familiar. Arrástralos para reordenarlos.",
   "protocolBuilder.pedigree.memberFormFieldLabel": "Campos del formulario",
+  "protocolBuilder.pedigree.memberFormReservedRefusal": "La genealogía ya recoge el nombre de cada familiar con su propio control de nombre, así que este formulario tampoco puede recoger el atributo de la etiqueta visible —ni un atributo cuyo identificador sea «name»—. Elige otro atributo para el campo, o elimínalo.",
   "protocolBuilder.pedigree.memberFormTitle": "Formulario de familiar",
   "protocolBuilder.pedigree.nodeBiologicalSexCreateDescription": "Crea el atributo categórico en el que la genealogía registra el sexo",
   "protocolBuilder.pedigree.nodeBiologicalSexCreateLabel": "Crear un nuevo atributo de sexo biológico",
