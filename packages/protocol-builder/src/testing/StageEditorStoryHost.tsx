@@ -45,6 +45,15 @@ export type StageEditorStoryHostProps = Readonly<{
    */
   assets?: Readonly<Record<string, SectionDoc>>;
   /**
+   * Other stages of the fixture protocol, as this story needs them, keyed by
+   * stage id. Each REPLACES the fixture's own document for that stage.
+   *
+   * For a stage whose rules read the stages AROUND it — the pedigree a
+   * narrative pedigree names as its source — where the fixture protocol
+   * happens to leave one in a state the editor rightly refuses.
+   */
+  otherStages?: Readonly<Record<string, SectionDoc>>;
+  /**
    * Names staged resources in sequence rather than randomly. A story that
    * imports a file renders the id it was given, and a fresh uuid on every run
    * would make the page differ from itself in every visual comparison.
@@ -73,6 +82,7 @@ export function StageEditorStoryHost({
   renderEditor,
   readOnly = false,
   assets,
+  otherStages,
   createResourceId,
 }: StageEditorStoryHostProps) {
   const [saved, setSaved] = useState<FinishRequest | null>(null);
@@ -81,6 +91,7 @@ export function StageEditorStoryHost({
       seeded: loadFixtureStage(stageId),
       readOnly,
       ...(assets === undefined ? {} : { assets }),
+      ...(otherStages === undefined ? {} : { otherStages }),
       ...(createResourceId === undefined ? {} : { createResourceId }),
       onFinish: setSaved,
     }),

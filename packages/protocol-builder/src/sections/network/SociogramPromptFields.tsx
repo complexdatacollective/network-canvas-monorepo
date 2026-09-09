@@ -42,7 +42,11 @@ const LAYOUT_VARIABLE_FIELD = 'layout.layoutVariable';
 const SORT_ORDER_FIELD = 'sortOrder';
 const DISPLAY_EDGES_FIELD = 'edges.display';
 const CREATE_EDGE_FIELD = 'edges.create';
-const HIGHLIGHT_VARIABLE_FIELD = 'highlight.variable';
+/**
+ * Where a prompt keeps the attribute a tap marks, exported so the list around
+ * this dialog can refuse a pick against the same path the control writes.
+ */
+export const HIGHLIGHT_VARIABLE_FIELD = 'highlight.variable';
 const ALLOW_HIGHLIGHTING_FIELD = 'highlight.allowHighlighting';
 
 /**
@@ -62,9 +66,24 @@ type TapBehaviour =
   | typeof TAP_CREATE_EDGE
   | typeof TAP_HIGHLIGHT;
 
+/**
+ * `allowHighlighting`, not `variable`, is what says a tap marks the node.
+ *
+ * The two are different configurations, and the schema says so: the attribute
+ * site carries `usageRequiresSibling: 'allowHighlighting'`, and the interview
+ * reads `variable` for the COLOUR whatever the flag holds while gating the
+ * tap-to-toggle branch on the flag alone. A prompt naming an attribute with
+ * the flag off therefore colours its nodes by something the participant cannot
+ * change — a reading of an attribute a form may well validate elsewhere.
+ *
+ * Read from the variable, that prompt opened on "mark the node", and the
+ * effect below wrote the flag on: opening the dialog and saving it handed the
+ * participant a switch into an attribute the researcher had reserved for
+ * reading, and changed what the study collects.
+ */
 const tapBehaviourOf = (item: Record<string, unknown>): TapBehaviour => {
   if (asNestedText(item.edges, 'create') !== undefined) return TAP_CREATE_EDGE;
-  if (asNestedText(item.highlight, 'variable') !== undefined) {
+  if (asNestedBoolean(item.highlight, 'allowHighlighting') === true) {
     return TAP_HIGHLIGHT;
   }
   return TAP_NOTHING;
@@ -200,22 +219,56 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
 
   const chooseTapBehaviour = (next: TapBehaviour) => {
     if (next === tapBehaviour) return;
+    const left = tapBehaviour;
     setTapBehaviour(next);
-    // The abandoned side is cleared rather than left to unmount: a value the
+    // The side being LEFT is cleared rather than left to unmount: a value the
     // researcher entered and then moved away from is parked by the store, and
     // parked values are replayed into the saved prompt.
-    if (next !== TAP_CREATE_EDGE) setRowValue(CREATE_EDGE_FIELD, undefined);
-    if (next !== TAP_HIGHLIGHT)
+    //
+    // Only that side. Clearing every side but the chosen one threw away a
+    // `highlight.variable` this dialog had never shown — a prompt that colours
+    // its nodes without letting the participant toggle them opens on
+    // "nothing", and answering the question about TAPPING took its colours
+    // with it.
+    if (left === TAP_CREATE_EDGE) setRowValue(CREATE_EDGE_FIELD, undefined);
+    if (left === TAP_HIGHLIGHT)
       setRowValue(HIGHLIGHT_VARIABLE_FIELD, undefined);
   };
 
-  const edgeChoices = useMemo(
-    () =>
-      checkboxOptions(edgeOptions).map((option) =>
-        option.value === createdEdge ? { ...option, disabled: true } : option,
-      ),
-    [createdEdge, edgeOptions],
-  );
+  /**
+   * The connection types on offer, plus the ones this prompt already names and
+   * the codebook has lost.
+   *
+   * The list renders from the codebook, so an edge type a collaborator deletes
+   * simply stops being a choice — while the id stays in the prompt's value,
+   * where the schema still refuses it. With no tick box to untick, the only
+   * way out was deleting the whole prompt. It is kept and shown instead, for
+   * the reason `VariablePicker` keeps a deleted attribute: the reference the
+   * researcher has to resolve must be the one thing they can see.
+   *
+   * Taken from the COMMITTED list rather than the live one, which is what the
+   * researcher can no longer add to: the value is stable while the dialog is
+   * open, so unticking the lost type does not take the box away mid-gesture —
+   * and a control's options are part of what it registers with, so a list that
+   * moved with every tick would re-register the field under a running submit.
+   */
+  const edgeChoices = useMemo(() => {
+    const offered = checkboxOptions(edgeOptions).map((option) =>
+      option.value === createdEdge ? { ...option, disabled: true } : option,
+    );
+    const known = new Set(offered.map((option) => option.value));
+    const lost = (committedDisplay ?? []).filter((id) => !known.has(id));
+    if (lost.length === 0) return offered;
+    return [
+      ...offered,
+      ...lost.map((id) => ({
+        value: id,
+        label: intl.formatMessage(networkCanvasMessages.promptMissingEdgeType, {
+          edgeTypeId: id,
+        }),
+      })),
+    ];
+  }, [committedDisplay, createdEdge, edgeOptions, intl]);
 
   // Held for as long as the reader's language does not change: the control's
   // options are part of what it registers with, and a fresh array every render

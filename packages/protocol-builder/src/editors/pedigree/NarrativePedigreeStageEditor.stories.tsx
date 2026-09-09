@@ -3,6 +3,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
+import { recordingTheFixtureDisease } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { NarrativePedigreeStageEditor } from './NarrativePedigreeStageEditor.tsx';
 
@@ -15,6 +16,12 @@ const meta = {
     // earlier in the interview there is no family to draw, and the editor
     // opens on its own empty state instead.
     stageId: 'narrative-pedigree-1',
+    // A disease may only map an attribute a nomination prompt of the source
+    // pedigree records — anything else is never set on a family member, so the
+    // stage would draw an unmarked family and the disease list refuses to save
+    // it. The fixture protocol's own pedigree carries no nomination prompts,
+    // so the pedigree this story reads is stated here.
+    otherStages: recordingTheFixtureDisease(),
     renderEditor: ({ controller, actions }) => (
       <NarrativePedigreeStageEditor
         controller={controller}

@@ -1,9 +1,29 @@
 import type { Stage } from '@codaco/protocol-validation';
 
-import { stagePlacement } from '../../fields/skipLogicDestination.ts';
+import {
+  stageNumber,
+  stagePlacement,
+} from '../../fields/skipLogicDestination.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 
-export type SourceStageOption = Readonly<{ value: string; label: string }>;
+/**
+ * One pedigree this stage may read: which one it is, what the researcher calls
+ * it, and where it sits.
+ *
+ * The POSITION is not decoration. A stage label is required to be non-empty
+ * and is not required to be unique, and researchers rename generated names, so
+ * two Family Pedigree stages can read identically in this list while binding
+ * the stage to different families — with nothing on screen to tell them apart
+ * and nothing afterwards to say the wrong one was chosen. The number is the
+ * one the researcher will see against that stage once this stage exists, which
+ * is what the skip-logic destination control shows for the same reason.
+ */
+export type SourceStageOption = Readonly<{
+  value: string;
+  label: string;
+  /** Where it sits in the finished interview, counting from one. */
+  position: number;
+}>;
 
 /**
  * Why a narrative pedigree's chosen source is not one it may use.
@@ -57,12 +77,28 @@ export function resolveSourceStages(
   position?: number,
 ): SourceStageResolution {
   const stages = context.orderedStages;
-  const placement = stagePlacement(stages, thisStageId, position);
+  const placement = stagePlacement(
+    stages,
+    thisStageId,
+    position,
+    // The order as the protocol states it, so a stage the schema refuses —
+    // one an import left with an empty `diseases` list, which is exactly the
+    // stage a researcher opens this editor to repair — keeps the place the
+    // interview runs it at instead of being read as a new one appended last.
+    context.stageOrder,
+  );
 
-  const options = stages
-    .slice(0, placement.index)
-    .filter(isPedigree)
-    .map((stage) => ({ value: stage.id, label: stage.label }));
+  const options = stages.slice(0, placement.index).flatMap((stage, index) =>
+    isPedigree(stage)
+      ? [
+          {
+            value: stage.id,
+            label: stage.label,
+            position: stageNumber(index, placement),
+          },
+        ]
+      : [],
+  );
 
   if (typeof currentSourceStageId !== 'string' || currentSourceStageId === '') {
     return { options, problem: null };
@@ -144,5 +180,32 @@ export function sourceStageRecordedVariables(
         ? [prompt.variable]
         : [],
     ),
+  );
+}
+
+/**
+ * Whether one disease row maps an attribute the source pedigree never records.
+ *
+ * The same question `sourceStageRecordedVariables` answers for the picker,
+ * asked of a row that is already there. A row an import brought in, or one a
+ * collaborator invalidated by deleting the nomination prompt behind it, never
+ * went through the picker at all — and the mapping it leaves behind draws an
+ * unmarked family in every interview, because nothing ever sets the attribute
+ * to `true`.
+ *
+ * A row with no attribute yet is not this rule's business: an unfinished row
+ * is what `required` reports, and complaining that a blank marks nobody would
+ * put two refusals on one empty control.
+ */
+export function diseaseMarksNobody(
+  row: unknown,
+  recorded: ReadonlySet<string>,
+): boolean {
+  if (typeof row !== 'object' || row === null || Array.isArray(row)) {
+    return false;
+  }
+  const variable: unknown = Reflect.get(row, 'variable');
+  return (
+    typeof variable === 'string' && variable !== '' && !recorded.has(variable)
   );
 }
