@@ -409,6 +409,16 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      */
     assets?: Readonly<Record<string, SectionDoc>>;
     /**
+     * Other stages of the fixture protocol, as a collaborator has left them,
+     * keyed by stage id — see `FixtureSessionOptions.otherStages`.
+     *
+     * The stage under test is named by `stageId`/`stage`/`create`; this says
+     * what the interview AROUND it holds, which is what a rule reading the
+     * whole protocol answers from — the pedigree a narrative pedigree reads,
+     * the form whose fields already collect an attribute.
+     */
+    otherStages?: Readonly<Record<string, SectionDoc>>;
+    /**
      * The host's action chrome, as a host would give it to the editor.
      *
      * Given, it is what gets rendered in the editor's slot, whichever of the
@@ -584,6 +594,9 @@ export function renderStageEditor<T extends StageType = StageType>(
   const { session, host, gateway } = openFixtureStageSession({
     seeded,
     ...(options.assets === undefined ? {} : { assets: options.assets }),
+    ...(options.otherStages === undefined
+      ? {}
+      : { otherStages: options.otherStages }),
     ...(options.readOnly === undefined ? {} : { readOnly: options.readOnly }),
     ...(options.heldSections === undefined
       ? {}
