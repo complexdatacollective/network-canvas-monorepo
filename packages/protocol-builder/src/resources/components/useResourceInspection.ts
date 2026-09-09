@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { useResourceGateway } from '../context.tsx';
+import { useResourceInspect } from '../context.tsx';
 import type { ResourceInspection } from '../gateway.ts';
 import {
   useResourceAttempt,
@@ -29,7 +29,11 @@ export type ResourceInspectionState = Readonly<{
 export function useResourceInspection(
   resourceId: string | undefined,
 ): ResourceInspectionState {
-  const gateway = useResourceGateway();
+  // Shared, so the five controls a roster stage asks from — the picker, and
+  // every section naming one of the file's columns — are one question rather
+  // than five parses of the same file. Each keeps its own busy state, failure
+  // and retry; see `useSharedInspect`.
+  const inspect = useResourceInspect();
   const { busy, failure, retry, run, clear } = useResourceAttempt();
   const [inspection, setInspection] = useState<ResourceInspection | undefined>(
     undefined,
@@ -41,8 +45,8 @@ export function useResourceInspection(
       clear();
       return;
     }
-    run(() => gateway.inspect(resourceId), setInspection);
-  }, [clear, gateway, resourceId, run]);
+    run(() => inspect(resourceId), setInspection);
+  }, [clear, inspect, resourceId, run]);
 
   useEffect(() => {
     // Dropped before the new one is asked for, so a picker never shows the

@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
+import { InMemoryResourceGateway } from '../../../resources/InMemoryResourceGateway.ts';
 import {
   fixtureStageIds,
   loadFixtureStage,
@@ -261,6 +262,45 @@ describe('the roster name generator editor', () => {
     );
     expect(screen.getByRole('switch', { name: 'Card details' })).toBeChecked();
     expect(screen.getByRole('switch', { name: 'Roster order' })).toBeChecked();
+  });
+
+  /**
+   * Five controls on this stage want to know what is inside the data file —
+   * the picker, and each of the four sections that name one of its columns —
+   * and they all mount in the same commit. `inspect` is a read a real gateway
+   * answers by fetching the bytes and parsing the whole CSV or JSON, so five
+   * callers asking for themselves is five parses of one file for one answer,
+   * every time the editor opens and every time the file is swapped.
+   */
+  it('reads the data file once, however many sections name its columns', async () => {
+    const inspect = vi.spyOn(InMemoryResourceGateway.prototype, 'inspect');
+    // A pass-through spy, so it changes nothing while it is installed — but it
+    // is installed on the prototype every other test here shares.
+    onTestFinished(() => {
+      inspect.mockRestore();
+    });
+
+    const harness = mountFixture();
+    await screen.findByText(FIXTURE_COLUMNS);
+
+    expect(
+      inspect.mock.calls.filter(([id]) => id === 'roster_data'),
+    ).toHaveLength(1);
+
+    inspect.mockClear();
+    await importAnotherRoster(harness);
+    await screen.findByText(STAGED_COLUMNS);
+    const [staged] = harness.session.getSnapshot().stagedResources;
+
+    // Two, and neither is a duplicate of the other: the picker asks the moment
+    // it has staged the file, and the sections ask once the stage's own
+    // `dataSource` names it. One call per round of asking rather than one per
+    // asker is the whole of what is shared — an answer that has already
+    // arrived is never reused, because nothing here knows when a host's answer
+    // stops being true.
+    expect(inspect.mock.calls.filter(([id]) => id === staged?.id)).toHaveLength(
+      2,
+    );
   });
 
   /**

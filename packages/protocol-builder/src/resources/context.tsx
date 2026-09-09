@@ -1,6 +1,10 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 
-import type { ProtocolBuilderResourceGateway } from './gateway';
+import type {
+  ProtocolBuilderResourceGateway,
+  ResourceInspection,
+  ResourceResult,
+} from './gateway';
 import type { StagedResourceReferenceGuard } from './lifecycle.ts';
 
 /**
@@ -26,6 +30,86 @@ const ResourceGatewayContext = createContext<
   ProvidedResourceGateway | undefined
 >(undefined);
 
+/**
+ * Asks the gateway about one resource, joining a question already being asked
+ * about the same one rather than asking it again.
+ */
+export type SharedInspect = (
+  resourceId: string,
+) => Promise<ResourceResult<ResourceInspection>>;
+
+/**
+ * One inspection per resource, however many controls are waiting on it.
+ *
+ * A roster stage asks what is inside its data file from five places at once —
+ * the picker, and every section that names one of the file's columns — and
+ * each of them mounts and re-reads in the same commit. `inspect` is a read the
+ * gateway is free to make expensive: a real one fetches the bytes and parses
+ * the whole CSV or JSON to answer what attributes the file's people carry, so
+ * five callers is five parses of the same file for one answer, every time the
+ * editor opens and every time the researcher swaps the file.
+ *
+ * So the CALL is shared rather than the answer. A question already in flight is
+ * joined; one that has settled is asked afresh, because nothing here knows when
+ * a host's answer stops being true — a resource can be replaced, promoted or
+ * discarded, and a cache would go on describing the file that was there. Each
+ * caller keeps its own busy state, its own failure and its own retry, and reads
+ * the shared answer exactly as it read its own.
+ *
+ * Safe to share because `inspect` is idempotent and carries nothing — see the
+ * gateway's own note on retryable reads. Nothing else here may be shared this
+ * way: a call that STAGES or PROMOTES is idempotent only against its
+ * caller-supplied request id.
+ */
+function useSharedInspect(
+  gateway: ProvidedResourceGateway | undefined,
+): SharedInspect | undefined {
+  return useMemo(() => {
+    if (gateway === undefined) return undefined;
+    const inFlight = new Map<
+      string,
+      Promise<ResourceResult<ResourceInspection>>
+    >();
+    return (resourceId: string) => {
+      const joined = inFlight.get(resourceId);
+      if (joined !== undefined) return joined;
+      // Dropped as it settles, both ways: a rejection is the caller's to
+      // handle — `callGateway` does — and a rejected promise nobody is left
+      // holding is an unhandled rejection.
+      const asked = Promise.resolve(gateway.inspect(resourceId)).then(
+        (result) => {
+          inFlight.delete(resourceId);
+          return result;
+        },
+        (error: unknown) => {
+          inFlight.delete(resourceId);
+          throw error;
+        },
+      );
+      inFlight.set(resourceId, asked);
+      return asked;
+    };
+  }, [gateway]);
+}
+
+const ResourceInspectContext = createContext<SharedInspect | undefined>(
+  undefined,
+);
+
+/**
+ * The shared inspection, for the one hook that reads a resource
+ * (`useResourceInspection`). Everything else reaches the gateway directly.
+ */
+export function useResourceInspect(): SharedInspect {
+  const inspect = useContext(ResourceInspectContext);
+  if (inspect === undefined) {
+    throw new Error(
+      'useResourceInspect must be used inside a ResourceGatewayProvider with a gateway: this editing session was opened without one, and a resource control cannot read from another session',
+    );
+  }
+  return inspect;
+}
+
 type ResourceGatewayProviderProps = Readonly<{
   /**
    * The session's gateway, or `undefined` for a session opened without one.
@@ -43,9 +127,13 @@ export function ResourceGatewayProvider({
   gateway,
   children,
 }: ResourceGatewayProviderProps) {
+  const inspect = useSharedInspect(gateway);
+
   return (
     <ResourceGatewayContext.Provider value={gateway}>
-      {children}
+      <ResourceInspectContext value={inspect}>
+        {children}
+      </ResourceInspectContext>
     </ResourceGatewayContext.Provider>
   );
 }
