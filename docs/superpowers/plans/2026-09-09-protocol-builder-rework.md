@@ -231,9 +231,12 @@ know which row a dialog was still editing after the list moved underneath
 it. Under this plan the editor owns its section, so none of that is needed,
 and Fresco's `ArrayField` already provides what the editors use:
 
-- **It is a Field.** `ArrayField` is used as the `component` of a
-  `<Field name="prompts">`, never mounted on its own, so the list's value,
-  validation, and errors are the form's.
+- **It is a Field component.** The canonical use is as the `component` of a
+  `<Field name="prompts">`, so the list's value, validation, and errors are
+  the form's. Like any field component it may also be used on its own; when
+  a control is not bound to the form, it is rendered through
+  `UnconnectedField`, which keeps the same spacing and accessibility wiring
+  as a connected one. A bare field component is never rendered directly.
 - **Row dialogs follow one canonical shape.** `editorComponent` receives
   `item`, `isNewItem`, `onSave`, and `onCancel`; it renders
   `<FormStoreProvider>` wrapping the `<Dialog>`, and `<FormWithoutProvider>`
@@ -276,7 +279,14 @@ validation, error, label, and hint contract:
   keeps its selected value in the form.
 
 No package field wraps `<Field>`; a package field is a `component` for
-`<Field>`, exactly as Fresco's own fields are.
+`<Field>`, exactly as Fresco's own fields are, and is used through
+`UnconnectedField` when it is not bound to the form.
+
+**Layout of fields.** `Field` carries its own bottom margin. Fields are laid
+out by placing them one after another; they are never put in a flex or grid
+container with `gap-*` to space them, and no section adds margins of its own
+between fields. Spacing inside a section comes from the fields; spacing
+between sections comes from the section shell.
 
 ### Package structure
 
@@ -397,6 +407,9 @@ They apply from the first PR here:
   before a third patch.
 - A review pass over comments is part of every PR: any comment that
   narrates, restates a type, or records history is removed.
+- A review pass over layout is part of every PR: a list of fields inside a
+  `gap-*` container, a bare field component, or a package wrapper around
+  `<Field>` is a finding.
 
 ## Decisions taken (2026-09-09, Josh)
 
@@ -425,7 +438,10 @@ They apply from the first PR here:
   `FormStoreProvider`-around-`Dialog`, `FormWithoutProvider`-inside pattern
   for every row dialog.
 - Fresco's `<Field>` and `validations` only; no package or app field wrapper
-  (`ArchitectField`, `ProtocolField`).
+  (`ArchitectField`, `ProtocolField`). A field component used outside the
+  form goes through `UnconnectedField`; none is rendered bare.
+- Fields are spaced by `Field`'s own bottom margin, never by a flex or grid
+  container with `gap-*` or by section margins.
 - Missing controls are Field components: colour picker in fresco-ui, variable
   picker and other protocol-specific pickers in the package; none of them
   rendered as select fields.
