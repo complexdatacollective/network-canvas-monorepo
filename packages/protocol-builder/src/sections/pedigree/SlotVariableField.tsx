@@ -19,7 +19,9 @@ import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import CreateVariableButton from './CreateVariableButton.tsx';
 import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
+import { pedigreeMessages } from './pedigreeMessages.ts';
 import {
+  ruleOutValuesOutsideOwnedSet,
   slotCrossClassIssue,
   slotPickerOptions,
   type SlotVariableOption,
@@ -44,7 +46,15 @@ export type SlotVariableFieldProps = Readonly<{
   hint: MessageDescriptor;
   /** The type whose attributes this slot binds. `null` while none is chosen. */
   subject: CodebookSubject | null;
-  /** The pool, already narrowed to what this slot can bind. */
+  /**
+   * The pool, already narrowed to the attribute TYPE this slot binds.
+   *
+   * Narrowing by VALUES is done here rather than by the section, because it
+   * is not a narrowing: an attribute whose values have stopped matching
+   * `lockedOptions` stays in the pool, ruled out and named for what is wrong
+   * with it, so the one a slot already holds is still listed as held. See
+   * `ruleOutValuesOutsideOwnedSet`.
+   */
   options: readonly SlotVariableOption[];
   writerClass: WriterClass;
   /** The interface slot this picker fills, if the schema names one. */
@@ -64,9 +74,10 @@ export type SlotVariableFieldProps = Readonly<{
   /**
    * The canonical value set the interface owns, seeded and locked.
    *
-   * Both the create affordance and the save-time gate read it: an attribute
+   * The picker, the create affordance and the save-time gate all read it: an
+   * attribute whose values do not match it is ruled out of the picker, one
    * created here is seeded with it, and one the control is already holding is
-   * refused when its values stop matching it.
+   * refused at the save when its values stop matching it.
    */
   lockedOptions?: readonly InterfaceOwnedOption[];
   /** Visible text and accessible name of the create control. */
@@ -121,13 +132,31 @@ export default function SlotVariableField({
   // writer class is not on offer here, so the only pick that can reach the gate
   // is one this picker never made — a value that arrived with the protocol, or
   // one a slot was already holding when the conflicting field appeared.
+  const valueCheckedOptions = useMemo(
+    () =>
+      lockedOptions === undefined
+        ? options
+        : ruleOutValuesOutsideOwnedSet(
+            options,
+            lockedOptions,
+            (attributeName) => ({
+              optionLabel: intl.formatMessage(
+                pedigreeMessages.slotValuesChangedOptionLabel,
+                { attributeName },
+              ),
+              note: intl.formatMessage(pedigreeMessages.slotValuesChangedNote),
+            }),
+          ),
+    [intl, lockedOptions, options],
+  );
+
   const pickerOptions = useMemo(
     () =>
       slotPickerOptions({
         roleMap,
         slotMap,
         subject,
-        options,
+        options: valueCheckedOptions,
         ...(currentValue === undefined ? {} : { currentValue }),
         ...(ownSlot === undefined ? {} : { ownSlot }),
         writerClass,
@@ -140,11 +169,11 @@ export default function SlotVariableField({
       draftConflicting,
       draftLabelVariable,
       draftSlotMap,
-      options,
       ownSlot,
       roleMap,
       slotMap,
       subject,
+      valueCheckedOptions,
       writerClass,
     ],
   );

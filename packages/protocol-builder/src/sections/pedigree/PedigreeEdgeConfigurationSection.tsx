@@ -1,11 +1,7 @@
 import { useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import {
-  INTERFACE_OWNED_OPTION_SETS,
-  optionsMatchInterfaceOwnedSet,
-  type InterfaceOwnedOptionSetKey,
-} from '@codaco/protocol-validation';
+import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 
 import { EntitySelectControl } from '../../fields/EntitySelectField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
@@ -22,7 +18,6 @@ import SlotVariableField from './SlotVariableField.tsx';
 import {
   PEDIGREE_EXCLUSIVE_SLOTS,
   subjectVariableOptions,
-  type SlotVariableOption,
 } from './slotWiring.ts';
 
 const TYPE_FIELD = 'edgeConfig.type';
@@ -88,30 +83,15 @@ export default function PedigreeEdgeConfigurationSection() {
     () => variableOptions.filter((option) => option.type === 'boolean'),
     [variableOptions],
   );
-  // Only categorical attributes carrying exactly the canonical value set may be
-  // bound: the interview writes these exact values onto the edges it draws, and
-  // the genetics engine branches on them. Asked with the protocol schema's own
-  // comparison, so a picker can never offer what the schema then refuses.
-  const matchingOwnedOptions = useMemo(
-    () =>
-      (setKey: InterfaceOwnedOptionSetKey): SlotVariableOption[] =>
-        variableOptions.filter(
-          (option) =>
-            option.type === 'categorical' &&
-            optionsMatchInterfaceOwnedSet(
-              option.options === undefined ? undefined : [...option.options],
-              INTERFACE_OWNED_OPTION_SETS[setKey].options,
-            ),
-        ),
+  // Narrowed by type only. Which of these may actually be bound is decided by
+  // their VALUES — the interview writes the exact canonical set onto the edges
+  // it draws, and the genetics engine branches on it — and the slot field does
+  // that itself against the `lockedOptions` it is handed, so that an attribute
+  // whose values were edited elsewhere is ruled out and named rather than
+  // dropped from the pool.
+  const categoricalVariables = useMemo(
+    () => variableOptions.filter((option) => option.type === 'categorical'),
     [variableOptions],
-  );
-  const relationshipTypeVariables = useMemo(
-    () => matchingOwnedOptions('relationshipType'),
-    [matchingOwnedOptions],
-  );
-  const gameteRoleVariables = useMemo(
-    () => matchingOwnedOptions('gameteRole'),
-    [matchingOwnedOptions],
   );
 
   return (
@@ -136,7 +116,7 @@ export default function PedigreeEdgeConfigurationSection() {
             label={pedigreeMessages.edgeRelationshipTypeLabel}
             hint={pedigreeMessages.edgeRelationshipTypeHint}
             subject={subject}
-            options={relationshipTypeVariables}
+            options={categoricalVariables}
             writerClass="unvalidated"
             ownSlot={RELATIONSHIP_TYPE_SLOT.slot}
             variableType="categorical"
@@ -180,7 +160,7 @@ export default function PedigreeEdgeConfigurationSection() {
             label={pedigreeMessages.edgeGameteRoleLabel}
             hint={pedigreeMessages.edgeGameteRoleHint}
             subject={subject}
-            options={gameteRoleVariables}
+            options={categoricalVariables}
             writerClass="unvalidated"
             ownSlot={GAMETE_ROLE_SLOT.slot}
             variableType="categorical"

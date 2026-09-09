@@ -21,6 +21,20 @@ export type VariablePickerOption = Readonly<{
    * codebook has lost.
    */
   usable?: boolean;
+  /**
+   * What to say about an option the caller has ruled out, in the caller's own
+   * words: the name the held option is listed under, and the sentence shown
+   * beneath the select.
+   *
+   * Read only while `usable` is false. Absent, the picker says the attribute
+   * cannot carry a rule, which is what every rule caller means by ruling one
+   * out — but a pedigree slot rules out a categorical attribute whose VALUES
+   * a collaborator edited, and told it "cannot be used in a rule" a researcher
+   * goes looking for a rule they never wrote. Formatted by the caller, the way
+   * `emptyMessage` is: the words belong to whatever the choice is being made
+   * for, and that is the module whose catalog carries them.
+   */
+  unusableWords?: Readonly<{ optionLabel: string; note: string }>;
 }>;
 
 export type VariablePickerProps = CreateFormFieldProps<
@@ -61,8 +75,9 @@ const messages = defineMessages({
    * collaborator has since edited, and that attribute is sitting in the
    * codebook exactly where the researcher left it. Told it was "no longer in
    * the codebook", they would go looking for something that never went
-   * anywhere. A caller that KNOWS which it is keeps the option and marks it
-   * `usable: false`, and its own sentence is shown instead.
+   * anywhere. A caller that KNOWS which it is keeps the option, marks it
+   * `usable: false` and passes its own `unusableWords`, which are shown
+   * instead.
    */
   missingOptionLabel: {
     id: 'protocolBuilder.variablePicker.missingOptionLabel',
@@ -79,6 +94,10 @@ const messages = defineMessages({
    * attribute is one to find or recreate, and this one is sitting where they
    * left it. Told it was "no longer in the codebook", they would go looking
    * for something that never went anywhere.
+   *
+   * These are the picker's words for the only reason a RULE caller has. A
+   * caller ruling an attribute out for a reason of its own passes
+   * `unusableWords` on the option, and neither of these two is read.
    */
   unusableOptionLabel: {
     id: 'protocolBuilder.variablePicker.unusableOptionLabel',
@@ -146,6 +165,7 @@ export function VariablePickerControl({
   const isMissing =
     value !== undefined && value !== '' && selected === undefined;
   const isUnusable = selected?.usable === false;
+  const unusableWords = isUnusable ? selected?.unusableWords : undefined;
 
   const selectOptions = useMemo(() => {
     const listed = options.flatMap((option) =>
@@ -174,14 +194,16 @@ export function VariablePickerControl({
         ...listed,
         {
           value: selected.value,
-          label: intl.formatMessage(messages.unusableOptionLabel, {
-            attributeName: selected.label,
-          }),
+          label:
+            unusableWords?.optionLabel ??
+            intl.formatMessage(messages.unusableOptionLabel, {
+              attributeName: selected.label,
+            }),
         },
       ];
     }
     return listed;
-  }, [intl, isMissing, isUnusable, options, selected, value]);
+  }, [intl, isMissing, isUnusable, options, selected, unusableWords, value]);
 
   if (selectOptions.length === 0) {
     return (
@@ -245,11 +267,15 @@ export function VariablePickerControl({
           </span>
         </Pill>
       )}
-      {(isMissing || isUnusable) && (
+      {isMissing && (
         <p className="text-destructive text-sm">
-          {intl.formatMessage(
-            isMissing ? messages.missingAttribute : messages.unusableAttribute,
-          )}
+          {intl.formatMessage(messages.missingAttribute)}
+        </p>
+      )}
+      {isUnusable && (
+        <p className="text-destructive text-sm">
+          {unusableWords?.note ??
+            intl.formatMessage(messages.unusableAttribute)}
         </p>
       )}
     </div>

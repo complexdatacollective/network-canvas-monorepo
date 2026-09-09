@@ -136,6 +136,45 @@ export function subjectVariableOptions(
   );
 }
 
+/**
+ * The same pool, with every attribute whose values are not exactly the set
+ * the interface owns ruled out rather than dropped.
+ *
+ * Three of the pedigree's slots need a canonical value set: the interview
+ * writes those exact values, and the genetics engine branches on them, so an
+ * attribute carrying any other set would silently degrade what the pedigree
+ * records. Asked with the protocol schema's OWN comparison, so a picker can
+ * never offer what the schema then refuses.
+ *
+ * RULED OUT rather than filtered out, because the attribute a slot is already
+ * holding is one of them. Filtered, it left the pool entirely, and the picker
+ * — handed a stored id nothing in its list described — could only say the
+ * attribute was "not available here". It is available: it is in the codebook,
+ * still categorical, exactly where the researcher left it, and only its values
+ * were edited. Kept and marked, the picker names it, still lists it as the
+ * held choice, and says what is actually wrong in the pedigree's own words.
+ * An attribute ruled out that no slot holds is never listed at all, which is
+ * what the filter used to achieve.
+ *
+ * `words` rather than a formatter, because this module has no reader.
+ */
+export function ruleOutValuesOutsideOwnedSet<T extends SlotVariableOption>(
+  options: readonly T[],
+  expectedOptions: readonly InterfaceOwnedOption[],
+  words: (
+    attributeName: string,
+  ) => NonNullable<VariablePickerOption['unusableWords']>,
+): T[] {
+  return options.map((option) =>
+    optionsMatchInterfaceOwnedSet(
+      option.options === undefined ? undefined : [...option.options],
+      expectedOptions,
+    )
+      ? option
+      : { ...option, usable: false, unusableWords: words(option.label) },
+  );
+}
+
 export type SlotPickerOptionsInput<T extends SlotVariableOption> = Readonly<{
   roleMap: VariableRoleMap;
   slotMap: ExclusiveVariableSlotMap;
@@ -383,10 +422,10 @@ export function slotCrossClassIssue({
  * The VALUES are the third way an attribute stops being usable, and the one
  * the type check cannot see: three of the pedigree's slots need a canonical
  * set the interface owns, and an attribute whose options a collaborator has
- * edited is still categorical. The pickers already drop such an attribute —
- * they ask the schema's own `optionsMatchInterfaceOwnedSet` — so asking it
- * here too is what stops the picker and the gate disagreeing about a pick the
- * control is already holding.
+ * edited is still categorical. The pickers already rule such an attribute out
+ * — `ruleOutValuesOutsideOwnedSet` asks the schema's own
+ * `optionsMatchInterfaceOwnedSet` — so asking it here too is what stops the
+ * picker and the gate disagreeing about a pick the control is already holding.
  */
 export function unusableVariableIssue(
   allVariables: Readonly<Variables>,

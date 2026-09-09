@@ -2,10 +2,7 @@ import { useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
-import {
-  INTERFACE_OWNED_OPTION_SETS,
-  optionsMatchInterfaceOwnedSet,
-} from '@codaco/protocol-validation';
+import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 
 import { EntitySelectControl } from '../../fields/EntitySelectField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
@@ -151,21 +148,13 @@ export default function PedigreeNodeConfigurationSection() {
     () => variableOptions.filter((option) => option.type === 'boolean'),
     [variableOptions],
   );
-  // Only categorical attributes whose options are exactly the canonical
-  // biological-sex set may be bound: the interview and the genetics engine
-  // branch on those exact values, so an attribute with a different value set
-  // would silently degrade sex resolution. Asked with the protocol schema's
-  // OWN comparison, so the picker cannot offer something the schema refuses.
-  const biologicalSexVariables = useMemo(
-    () =>
-      variableOptions.filter(
-        (option) =>
-          option.type === 'categorical' &&
-          optionsMatchInterfaceOwnedSet(
-            option.options === undefined ? undefined : [...option.options],
-            INTERFACE_OWNED_OPTION_SETS.biologicalSex.options,
-          ),
-      ),
+  // Narrowed by type only. Which of these may actually be bound is decided by
+  // their VALUES — the interview and the genetics engine branch on the exact
+  // canonical biological-sex set — and the slot field does that itself against
+  // the `lockedOptions` it is handed, so that an attribute whose values were
+  // edited elsewhere is ruled out and named rather than dropped from the pool.
+  const categoricalVariables = useMemo(
+    () => variableOptions.filter((option) => option.type === 'categorical'),
     [variableOptions],
   );
 
@@ -357,7 +346,7 @@ export default function PedigreeNodeConfigurationSection() {
             label={pedigreeMessages.nodeBiologicalSexLabel}
             hint={pedigreeMessages.nodeBiologicalSexHint}
             subject={subject}
-            options={biologicalSexVariables}
+            options={categoricalVariables}
             writerClass="unvalidated"
             draftConflicting={draftFormVariables}
             {...(draftLabelVariable === undefined
