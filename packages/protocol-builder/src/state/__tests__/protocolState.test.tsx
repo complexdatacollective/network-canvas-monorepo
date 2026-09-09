@@ -1,3 +1,4 @@
+import { AsyncIteratorClass } from '@orpc/client';
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
@@ -8,10 +9,11 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import type { ProtocolBuilderClient } from '../../contract/contract.ts';
+import type { ProtocolEvent } from '../../contract/schemas.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
-import { useSection } from '../hooks.ts';
+import { useSection, useSectionMutation } from '../hooks.ts';
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
@@ -135,7 +137,134 @@ describe('the protocol state layer', () => {
     expect(calls.length).toBeGreaterThan(1);
     expect(calls[1]).toBeDefined();
   });
+
+  it('keeps a revision that landed while the section was being read', async () => {
+    const host = newHost();
+    const delayed = delayedSectionReads(host.client);
+    const counts: Counts = { information: 0, egoForm: 0 };
+    render(
+      <ProtocolBuilder client={delayed.client} protocolId={host.protocolId}>
+        <Label
+          name="information"
+          id={INFORMATION}
+          counts={counts}
+          field="information"
+        />
+        <Label name="ego form" id={EGO_FORM} counts={counts} field="egoForm" />
+      </ProtocolBuilder>,
+    );
+    await waitFor(() => {
+      expect(delayed.waiting()).toBe(2);
+    });
+
+    const collaborator = host.asCollaborator(COLLABORATOR);
+    const held = await collaborator.acquireLock({
+      protocolId: host.protocolId,
+      sectionId: INFORMATION,
+    });
+    await collaborator.submit({
+      protocolId: host.protocolId,
+      sectionId: INFORMATION,
+      document: { ...held.document, label: 'Renamed by Grace' },
+      revision: held.revision,
+    });
+    await waitFor(() => {
+      expect(screen.getByLabelText('information').textContent).toBe(
+        'Renamed by Grace',
+      );
+    });
+
+    delayed.release();
+
+    // Both reads were released together, so the ego form's document arriving
+    // is the proof that the information section's older answer has been
+    // through the cache too.
+    await waitFor(() => {
+      expect(screen.getByLabelText('ego form').textContent).not.toBe('loading');
+    });
+    expect(screen.getByLabelText('information').textContent).toBe(
+      'Renamed by Grace',
+    );
+  });
+
+  it('names the holder from the acquire, without waiting for a lock event', async () => {
+    const host = newHost();
+    await host.asCollaborator(COLLABORATOR).acquireLock({
+      protocolId: host.protocolId,
+      sectionId: INFORMATION,
+    });
+
+    render(
+      <ProtocolBuilder
+        client={silentChannel(host.client)}
+        protocolId={host.protocolId}
+      >
+        <Lock id={INFORMATION} />
+      </ProtocolBuilder>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('lock').textContent).toBe('Grace');
+    });
+  });
 });
+
+function Lock({ id }: Readonly<{ id: ProtocolSectionId }>) {
+  const { readOnly, holder } = useSectionMutation(id);
+  return (
+    <output aria-label="lock">
+      {readOnly ? (holder?.displayName ?? 'someone') : 'yours'}
+    </output>
+  );
+}
+
+/**
+ * The host's client with every `getSection` answer held at a gate the test
+ * opens, so a revision can be published while a read is in flight.
+ */
+function delayedSectionReads(client: ProtocolBuilderClient) {
+  const gates: (() => void)[] = [];
+  const getSection: ProtocolBuilderClient['getSection'] = async (
+    input,
+    options,
+  ) => {
+    const answer = await client.getSection(input, options);
+    await new Promise<void>((open) => gates.push(open));
+    return answer;
+  };
+  const wrapped = new Proxy(client, {
+    get: (target, property) =>
+      property === 'getSection' ? getSection : Reflect.get(target, property),
+  });
+  return {
+    client: wrapped,
+    waiting: () => gates.length,
+    release: () => {
+      for (const open of gates.splice(0)) open();
+    },
+  };
+}
+
+/**
+ * A host that answers procedures but publishes nothing — Architect's
+ * in-process router, whose locks are always granted, has no lock events to
+ * send.
+ */
+function silentChannel(client: ProtocolBuilderClient): ProtocolBuilderClient {
+  const watchProtocol: ProtocolBuilderClient['watchProtocol'] = () =>
+    Promise.resolve(
+      new AsyncIteratorClass<ProtocolEvent, void, void>(
+        () => new Promise<never>(() => undefined),
+        () => Promise.resolve(),
+      ),
+    );
+  return new Proxy(client, {
+    get: (target, property) =>
+      property === 'watchProtocol'
+        ? watchProtocol
+        : Reflect.get(target, property),
+  });
+}
 
 /**
  * The host's client, recording the cursor each `watchProtocol` call resumes

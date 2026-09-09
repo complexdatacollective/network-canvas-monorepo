@@ -1,5 +1,10 @@
 import { safe } from '@orpc/client';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import {
+  skipToken,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 import type { z } from 'zod';
 
@@ -139,11 +144,15 @@ export type SectionMutation = Readonly<{
  */
 export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   const { client, protocolId } = useProtocolBuilderContext();
+  const queryClient = useQueryClient();
   const [readOnly, setReadOnly] = useState(false);
   const section = useSection(id);
   const { data: lock } = useQuery<LockState>({
     queryKey: lockQueryKey(protocolId, id),
-    queryFn: () => ({}),
+    // Written by the channel's lock events and by the acquire below. No
+    // procedure answers "who holds this", so this observer never fetches.
+    queryFn: skipToken,
+    initialData: {},
   });
 
   useEffect(() => {
@@ -156,12 +165,20 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         return;
       }
       setReadOnly(result.lock === 'readOnly');
+      if (result.lock === 'readOnly') {
+        // The refusal already names the holder. Waiting for the channel to say
+        // it again leaves a read-only editor unable to say whose section it is
+        // — and a host whose locks are always granted never says it at all.
+        queryClient.setQueryData<LockState>(lockQueryKey(protocolId, id), {
+          holder: result.holder,
+        });
+      }
     });
     return () => {
       mounted = false;
       void client.releaseLock({ protocolId, sectionId: id });
     };
-  }, [client, protocolId, id]);
+  }, [client, protocolId, id, queryClient]);
 
   const submit = useCallback(
     async (document: SectionDoc): Promise<SubmitResult> => {

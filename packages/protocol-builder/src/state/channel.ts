@@ -14,7 +14,8 @@ import {
   type ProtocolQueryUtils,
 } from './context.ts';
 
-const RECONNECT_DELAY_MS = 250;
+const FIRST_RECONNECT_DELAY_MS = 250;
+const MAX_RECONNECT_DELAY_MS = 4_000;
 
 type ChannelDeps = Readonly<{
   client: ProtocolBuilderClient;
@@ -59,6 +60,11 @@ export function useProtocolChannel(protocolId: string): void {
  * Consumes `watchProtocol` until the signal aborts, resuming from the last
  * cursor seen whenever the stream ends or fails.
  *
+ * The wait before a resume doubles up to a cap, so a host that is down stops
+ * being asked four times a second by every open tab, and goes back to the
+ * first delay as soon as a stream delivers something — an editor whose socket
+ * flaps is reconnected promptly rather than paying for the last outage.
+ *
  * Separate from the cache so the WebSocket spike drives the resume this
  * channel actually uses rather than a copy of it.
  */
@@ -69,6 +75,7 @@ export async function streamProtocolEvents(
   signal: AbortSignal,
 ): Promise<void> {
   let since: string | undefined;
+  let delay = FIRST_RECONNECT_DELAY_MS;
   while (!signal.aborted) {
     try {
       const events = await client.watchProtocol(
@@ -76,6 +83,7 @@ export async function streamProtocolEvents(
         { signal },
       );
       for await (const event of events) {
+        delay = FIRST_RECONNECT_DELAY_MS;
         since = getEventMeta(event)?.id ?? since;
         onEvent(event);
       }
@@ -86,7 +94,8 @@ export async function streamProtocolEvents(
       if (isDefinedError(error)) return;
     }
     if (signal.aborted) return;
-    await sleep(RECONNECT_DELAY_MS, signal);
+    await sleep(delay, signal);
+    delay = Math.min(delay * 2, MAX_RECONNECT_DELAY_MS);
   }
 }
 
@@ -145,14 +154,12 @@ function updateSectionList(
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timer);
-        resolve();
-      },
-      { once: true },
-    );
+    const done = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal.addEventListener('abort', done, { once: true });
   });
 }
