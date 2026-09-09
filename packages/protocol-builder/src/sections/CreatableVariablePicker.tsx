@@ -47,6 +47,21 @@ const messages = defineMessages({
 });
 
 /**
+ * The package's one sentence for "the codebook has it, and nothing here took
+ * it".
+ *
+ * Exported because the event is not this control's alone. Every route that
+ * creates an attribute FOR something can land in the moment where that
+ * something has moved on — a row a collaborator replaced, a stage repointed at
+ * another type while the write was with the host — and what has to be said is
+ * the same fact each time: the write landed, so do not try again, and here is
+ * where the attribute went. A second wording of it would be a second thing for
+ * a researcher to learn. Said about their own surfaces by
+ * `AttributeCodebookControls` and by the form-field row's own save.
+ */
+export const createdUnassigned = messages.createdUnassigned;
+
+/**
  * What became of a create the researcher asked for.
  *
  * Three answers rather than two, because "it does not exist" and "it exists,

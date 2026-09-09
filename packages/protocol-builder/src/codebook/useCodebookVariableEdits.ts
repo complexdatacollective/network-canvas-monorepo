@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -22,6 +22,7 @@ import {
   type CodebookDraftIssue,
   DuplicateVariableNameError,
   InvalidCodebookDraftError,
+  sectionIdForCodebookSubject,
 } from './editing.ts';
 import { optionsShapeFor } from './variableOptions.ts';
 import { parametersForShape, parameterShapeFor } from './variableParameters.ts';
@@ -472,6 +473,38 @@ export function useSetVariableComponent(
     },
     [controller, intl, protocolContext, subject],
   );
+}
+
+/**
+ * Whether the subject a codebook write was started FOR is still the one this
+ * editor collects into.
+ *
+ * Every create here is a round trip through the host, and a collaborator can
+ * repoint the stage at another type inside it. What comes back is an attribute
+ * that exists — in the codebook of the type the stage collected about when the
+ * researcher asked for it — and a record key belongs to exactly one type, so
+ * the row the id would be written into is now a row about something else, which
+ * can neither resolve it nor save it. The write is not undone; only the
+ * assignment must not happen. Callers say so with `createdUnassigned`.
+ *
+ * A getter reading a ref rather than a value, because the answer is needed
+ * AFTER an await, in a closure made before it: read as a value it would be the
+ * subject as it stood when the researcher pressed the button, which is the one
+ * thing already known.
+ */
+export function useSubjectStillCollected(
+  subject: CodebookSubject | undefined,
+): (startedWith: CodebookSubject) => boolean {
+  const live = useRef(subject);
+  live.current = subject;
+  return useCallback((startedWith) => {
+    const now = live.current;
+    return (
+      now !== undefined &&
+      sectionIdForCodebookSubject(now) ===
+        sectionIdForCodebookSubject(startedWith)
+    );
+  }, []);
 }
 
 /**

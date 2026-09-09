@@ -26,6 +26,7 @@ import { duplicateFormFieldIndices } from '@codaco/protocol-validation';
 import {
   useCreateCodebookVariable,
   useSetVariableComponent,
+  useSubjectStillCollected,
 } from '../codebook/useCodebookVariableEdits.ts';
 import {
   buildVariableRoleMap,
@@ -62,6 +63,7 @@ import {
   needsCodebookEditorToCreate,
   TYPE_OPTIONS,
 } from './collectableTypes.ts';
+import { createdUnassigned } from './CreatableVariablePicker.tsx';
 import {
   type RowEditorProps,
   type RowPreviewProps,
@@ -850,6 +852,7 @@ function useCommitFormField(
 ): (value: unknown) => Promise<unknown> {
   const createVariable = useCreateCodebookVariable(codebookSubject);
   const setComponent = useSetVariableComponent(codebookSubject);
+  const subjectStillCollected = useSubjectStillCollected(codebookSubject);
 
   return useCallback(
     async (value: unknown) => {
@@ -920,14 +923,47 @@ function useCommitFormField(
       }
 
       const outcome = await createVariable({ name, type, component });
-      return outcome.status === 'refused'
-        ? {
-            success: false,
-            fieldErrors: { [NEW_VARIABLE_NAME]: outcome.message },
-          }
-        : { ...value, variable: outcome.variableId };
+      if (outcome.status === 'refused') {
+        return {
+          success: false,
+          fieldErrors: { [NEW_VARIABLE_NAME]: outcome.message },
+        };
+      }
+      // Which codebook the attribute went into was decided when the researcher
+      // pressed Add, and a collaborator can repoint the stage at another type
+      // while that write is with the host. A record key belongs to exactly one
+      // type, so committing the row now would add a field naming an attribute
+      // the type this form collects about does not have — a stage the schema
+      // refuses, built out of a save the researcher was told succeeded.
+      //
+      // What is refused is the ROW, and what the researcher is told is not that
+      // the create failed: it landed, and pressing Add again would ask the
+      // codebook for a name it already holds. So the sentence is the one the
+      // picker's own create already uses for this — the write is done, and here
+      // is where the attribute went — with the draft left standing so they can
+      // point the field at something this stage collects, or leave it.
+      if (
+        codebookSubject === undefined ||
+        !subjectStillCollected(codebookSubject)
+      ) {
+        return {
+          success: false,
+          formErrors: [
+            createMessageError(createdUnassigned, {
+              variableName: name,
+            }),
+          ],
+        };
+      }
+      return { ...value, variable: outcome.variableId };
     },
-    [createVariable, intl, setComponent],
+    [
+      codebookSubject,
+      createVariable,
+      intl,
+      setComponent,
+      subjectStillCollected,
+    ],
   );
 }
 

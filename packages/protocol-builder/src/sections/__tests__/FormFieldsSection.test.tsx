@@ -198,6 +198,30 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     ? (value as Record<string, unknown>)
     : {};
 
+/**
+ * Holds the compound edit open, and hands back the release.
+ *
+ * What every question about an editor's save arriving LATE than the researcher
+ * needs: the round trip through the host is where the protocol underneath can
+ * move, and holding it is the only way to put anything in that window.
+ */
+const holdTheCompoundEdit = (harness: ReturnType<typeof renderStageEditor>) => {
+  const send = harness.session.requestCompoundEdit.bind(harness.session);
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
+    async (request) => {
+      await held;
+      return send(request);
+    },
+  );
+  return () => {
+    release();
+  };
+};
+
 describe('the fields a form collects', () => {
   it('shows what an alter form collects, and saves it unchanged', async () => {
     const harness = renderStageEditor({
@@ -2883,6 +2907,147 @@ describe('a codebook editor open over a row when the stage is repointed', () => 
   });
 
   /**
+   * The other half of the same fact, for a create the researcher had already
+   * pressed.
+   *
+   * The editor above is refused because it can see the stage move. One already
+   * WITH the host cannot: the request outlives the repoint, comes back applied,
+   * and the attribute it made is in the codebook of the type the stage
+   * collected about when it was asked for. Writing that id into the row would
+   * leave the field naming an attribute the type this form now collects about
+   * has never held — a key belongs to exactly one type — which the row can
+   * neither resolve nor save.
+   *
+   * So the row takes nothing, and the researcher is told where the attribute
+   * went, in the sentence the picker's own create already uses for it: the
+   * write landed, and pressing Create again would ask the codebook for a name
+   * it already holds.
+   */
+  it('leaves a create that landed after the repoint out of the row, and says where it went', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    giveFamilyMembersSomethingToCollect(harness);
+    const release = holdTheCompoundEdit(harness);
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      CREATE_NEW_ATTRIBUTE,
+    );
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
+      'categorical',
+    );
+    await harness.user.click(
+      dialog.getByRole('button', {
+        name: 'Create this attribute and its values',
+      }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+      'contact_setting',
+    );
+    await addValue(harness, 1, 'At home', 'home');
+    await addValue(harness, 2, 'At work', 'work');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    repointTheStage(harness);
+    release();
+
+    // The write landed, in the codebook it was addressed to.
+    await waitFor(() =>
+      expect(savedAttribute(harness, 'contact_setting')).toBeDefined(),
+    );
+    const [createdId] = savedAttribute(harness, 'contact_setting') ?? [];
+    expect(createdId).toBeDefined();
+    // And the row this was started from is not holding it.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Attribute name' }),
+      ).toBeNull(),
+    );
+    expect(dialog.getByRole('combobox', { name: 'Attribute' })).not.toHaveValue(
+      createdId,
+    );
+    expect(
+      dialog.getByText(
+        '“contact_setting” was added to the codebook, but it has not been selected here.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The same rule where the row creates the attribute ITSELF.
+   *
+   * A kind of answer that needs nothing but a name is invented by the row's own
+   * save rather than in the codebook editor — the codebook write goes first,
+   * and the row that names it is committed after it lands. Which is the same
+   * window: the stage can be repointed inside the write, and a row committed
+   * afterwards would add a field naming an attribute the type this form
+   * collects about has never held.
+   *
+   * So the row is held rather than added, with what the researcher typed still
+   * in it, and the same sentence says where the attribute went.
+   */
+  it('does not add a row whose attribute was created for the type the stage has left', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    giveFamilyMembersSomethingToCollect(harness);
+    const release = holdTheCompoundEdit(harness);
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      CREATE_NEW_ATTRIBUTE,
+    );
+    await harness.user.type(
+      await dialog.findByRole('textbox', { name: 'Attribute name' }),
+      'nickname',
+    );
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Kind of answer' }),
+      'text',
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'What do people call them?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    repointTheStage(harness);
+    release();
+
+    // The write landed, in the codebook it was addressed to.
+    await waitFor(() =>
+      expect(savedAttribute(harness, 'nickname')).toBeDefined(),
+    );
+    // The row was not added: the repointed stage collects the one field the
+    // collaborator's edit left it with, and nothing else.
+    expect(
+      await dialog.findByText(
+        '“nickname” was added to the codebook, but it has not been selected here.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      asRecord(
+        asRecord(harness.session.getSnapshot().editedSection.fields).form,
+      ).fields,
+    ).toEqual([{ variable: 'fm_notes', prompt: 'Anything else to add?' }]);
+    // Read past the list, which the open dialog has made inert: the fields the
+    // form holds are the collaborator's one, and not a second naming an
+    // attribute of the type this stage has left.
+    expect(dialog.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'nickname',
+    );
+  });
+
+  /**
    * The row's OWN answer about how the attribute is collected, when the type
    * under it changes.
    *
@@ -3749,26 +3914,6 @@ describe('a codebook editor open over a row when its attribute is deleted', () =
  * until the compound edit answers, and these three are the same act.
  */
 describe('dismissing a codebook editor while its save is in flight', () => {
-  /** Holds the compound edit open, and hands back the release. */
-  const holdTheCompoundEdit = (
-    harness: ReturnType<typeof renderStageEditor>,
-  ) => {
-    const send = harness.session.requestCompoundEdit.bind(harness.session);
-    let release: () => void = () => undefined;
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
-      async (request) => {
-        await held;
-        return send(request);
-      },
-    );
-    return () => {
-      release();
-    };
-  };
-
   it('refuses every way out of the attribute editor until it answers', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
