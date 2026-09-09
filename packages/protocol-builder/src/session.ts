@@ -168,6 +168,19 @@ const messages = defineMessages({
     description:
       'Why an edit that would change the codebook alongside the interview step being edited did not happen: the step being edited was missing from the answer. "stage" is one step of an interview.',
   },
+  /**
+   * A whole sentence rather than a fragment, unlike every message above it: it
+   * is not a clause `compoundFailureMessage` builds a refusal out of but the
+   * refusal itself, thrown from `finish` and rendered by the form's own error
+   * region.
+   */
+  finishDuringCompoundEdit: {
+    id: 'protocolBuilder.session.finishDuringCompoundEdit',
+    defaultMessage:
+      'This stage was not saved: a change to the codebook it asked for is still being made. Wait for it to finish, then save again.',
+    description:
+      'Shown above a stage editor’s fields when the researcher saves while a change the editor asked for — inventing an attribute, adding a rule to one — is still on its way to the host. Saving now would commit the step without what they just asked for. A stage is one step of an interview; the codebook is the protocol’s definition of what an interview records.',
+  },
 });
 
 export type StageIdentity = Readonly<{ id: string; type: StageType }>;
@@ -476,6 +489,31 @@ export type AuthoritativeUpdate = Readonly<{
 export class SessionReadOnlyError extends Error {
   constructor() {
     super('the protocol-builder session is read-only');
+  }
+}
+
+/**
+ * A save asked for while a codebook write this session is carrying is still on
+ * its way to the host.
+ *
+ * Both halves of a compound edit are the host's to apply together, and the
+ * half that belongs HERE — the stage naming the attribute that was invented,
+ * the rule the researcher just asked for — is applied by the section when the
+ * answer arrives. A finish that ran first would commit the stage as it stood
+ * before any of that: the attribute is created and nothing references it, or
+ * the editor closes over a rule the researcher watched nobody apply. So the
+ * save is refused for as long as the answer is out, in the one place every
+ * host's save goes through, rather than by disabling a control this package
+ * does not own — `formId` is the whole contract for a submit rendered outside
+ * the form, and a plain `<button form={formId}>` is a conforming host.
+ *
+ * Refused rather than queued: the values a submit carries were read from the
+ * controls before it started, so a finish held until the answer landed would
+ * still be carrying the draft from before it.
+ */
+class CompoundEditInFlightError extends Error {
+  constructor() {
+    super(createMessageError(messages.finishDuringCompoundEdit));
   }
 }
 
@@ -1179,6 +1217,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    */
   async finish(): Promise<void> {
     this.assertEditable();
+    // Before anything is validated or flushed: see `CompoundEditInFlightError`
+    // for why a save may not overtake the answer a section is waiting on.
+    if (this.compoundEditInFlight) throw new CompoundEditInFlightError();
     const validation = await this.validate();
     const validatedProtocol = this.snapshot.validatedProtocol;
     if (validation.status !== 'valid' || validatedProtocol === null) {

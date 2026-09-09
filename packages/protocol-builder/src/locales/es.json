@@ -898,6 +898,7 @@
   "protocolBuilder.session.compoundStaleEpoch": "la autoridad de edición cambió antes de que terminara la edición compuesta",
   "protocolBuilder.session.compoundStaleStage": "la etapa autorizada cambió mientras se hacía este cambio, así que no se modificó nada localmente",
   "protocolBuilder.session.compoundUnavailable": "la edición compuesta no está disponible",
+  "protocolBuilder.session.finishDuringCompoundEdit": "Esta etapa no se ha guardado: todavía se está haciendo un cambio en el libro de códigos que pidió. Espera a que termine y guárdala de nuevo.",
   "protocolBuilder.shell.formUnavailableRefusal": "Esta etapa no se ha podido guardar porque su formulario ya no está disponible. Vuelve a abrir la etapa e inténtalo de nuevo.",
   "protocolBuilder.shell.readOnlyRefusal": "Esta etapa es de solo lectura, así que tus cambios no se han guardado. Toma el control de la edición e inténtalo de nuevo.",
   "protocolBuilder.shell.saveFailedRefusal": "Esta etapa no se ha podido guardar. Espera un momento e inténtalo de nuevo.",

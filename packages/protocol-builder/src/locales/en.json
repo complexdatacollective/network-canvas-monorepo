@@ -3595,6 +3595,10 @@
     "defaultMessage": "compound editing is unavailable",
     "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: this host does not offer it."
   },
+  "protocolBuilder.session.finishDuringCompoundEdit": {
+    "defaultMessage": "This stage was not saved: a change to the codebook it asked for is still being made. Wait for it to finish, then save again.",
+    "description": "Shown above a stage editor’s fields when the researcher saves while a change the editor asked for — inventing an attribute, adding a rule to one — is still on its way to the host. Saving now would commit the step without what they just asked for. A stage is one step of an interview; the codebook is the protocol’s definition of what an interview records."
+  },
   "protocolBuilder.shell.formUnavailableRefusal": {
     "defaultMessage": "This stage could not be saved because its form is no longer available. Reopen the stage and try again.",
     "description": "Shown above a stage editor’s fields when a save arrives after the editor’s own form has been taken down, so there are no values left to save."
