@@ -1783,6 +1783,10 @@
     "defaultMessage": "People in this panel",
     "description": "Label of the control choosing where the people one side panel lists come from."
   },
+  "protocolBuilder.nodePanels.sourceNotNetwork": {
+    "defaultMessage": "A panel is set to list something that is not network data. Open it and choose a data file, or the people named so far.",
+    "description": "Refusal shown above the side-panel list when a panel names an imported resource that is not participant data — a picture, a recording or a map layer — which the interview could not read as a list of people. Network data is imported participant data: a roster of people and the ties between them."
+  },
   "protocolBuilder.nodePanels.sourceRequired": {
     "defaultMessage": "Choose where the people in this panel come from.",
     "description": "Refusal shown when a researcher saves a side panel without saying who it lists."

@@ -445,6 +445,7 @@
   "protocolBuilder.nodePanels.panelTitleRequired": "Da un título a este panel.",
   "protocolBuilder.nodePanels.sourceHint": "La red de la propia entrevista hasta ahora, o un archivo de red que hayas importado.",
   "protocolBuilder.nodePanels.sourceLabel": "Personas de este panel",
+  "protocolBuilder.nodePanels.sourceNotNetwork": "Un panel está configurado para mostrar algo que no son datos de red. Ábrelo y elige un archivo de datos, o las personas nombradas hasta ahora.",
   "protocolBuilder.nodePanels.sourceRequired": "Elige de dónde vienen las personas de este panel.",
   "protocolBuilder.nodePanels.title": "Paneles laterales",
   "protocolBuilder.nodePanels.tooManyPanels": "Esta etapa tiene más paneles laterales de los que un generador de nombres puede mostrar. Elimina paneles hasta que queden dos.",

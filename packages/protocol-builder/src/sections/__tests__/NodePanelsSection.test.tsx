@@ -180,6 +180,37 @@ describe('the side panels a name generator shows', () => {
   });
 
   /**
+   * A panel reads its source as network data, so a reference to a map layer,
+   * an image or a recording is a panel the interview cannot fill: it reads the
+   * bytes, fails to parse them, and tells the participant the external data is
+   * unavailable. The picker refuses such a resource when one is CHOSEN; a
+   * stage authored elsewhere never went through the picker.
+   *
+   * `ProtocolSchemaV8` does not catch it either — it checks a
+   * `NameGeneratorRoster` data source is a `network` asset and says nothing
+   * about a panel's — so this section is where the researcher hears about it.
+   */
+  it('refuses a panel whose stored source is not network data', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        { id: 'panel-1', title: 'People nearby', dataSource: 'geo_data' },
+      ]),
+      sections: panels,
+    });
+
+    expect(await screen.findByText('People nearby')).toBeInTheDocument();
+    expect(await harness.submit()).toBeNull();
+    // Nothing reached the session, so the refusal is this section's rather
+    // than a schema message arriving against a path after the write.
+    expect(harness.pendingCommands()).toHaveLength(0);
+    expect(
+      await screen.findByText(
+        'A panel is set to list something that is not network data. Open it and choose a data file, or the people named so far.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
    * A rule about connections is a question about the network the participant is
    * building. An imported file has none, so the rule could never match and the
    * panel would silently show nobody — accepted by the schema, unreported by

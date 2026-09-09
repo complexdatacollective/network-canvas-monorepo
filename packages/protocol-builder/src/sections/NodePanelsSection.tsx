@@ -17,12 +17,15 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import Section from '@codaco/fresco-ui/Section';
+import type { Asset } from '@codaco/protocol-validation';
 
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { acceptsResourceKind } from '../resources/components/resourceKinds.ts';
 import ResourcePickerControl from '../resources/components/ResourcePickerControl.tsx';
+import type { ResourceDescriptor, ResourceKind } from '../resources/gateway.ts';
 import {
   ruleSetRules,
   ruleSetTargets,
@@ -182,6 +185,13 @@ const messages = defineMessages({
       "The interview's own network so far, or a network file you have imported.",
     description:
       'Guidance under the control choosing where one side panel’s people come from, naming the two kinds of source.',
+  },
+  sourceNotNetwork: {
+    id: 'protocolBuilder.nodePanels.sourceNotNetwork',
+    defaultMessage:
+      'A panel is set to list something that is not network data. Open it and choose a data file, or the people named so far.',
+    description:
+      'Refusal shown above the side-panel list when a panel names an imported resource that is not participant data — a picture, a recording or a map layer — which the interview could not read as a list of people. Network data is imported participant data: a roster of people and the ties between them.',
   },
   sourceRequired: {
     id: 'protocolBuilder.nodePanels.sourceRequired',
@@ -354,30 +364,111 @@ const rowsOf = (value: unknown): Record<string, unknown>[] =>
   Array.isArray(value) ? value.filter(isRecord) : [];
 
 /**
- * The rule that can actually refuse a save.
+ * What one resource a panel may name is, wherever the editor holds it.
+ *
+ * Both places a resource this panel may legally name exists are consulted. A
+ * network imported in this session is not in the manifest yet — it is promoted
+ * with the stage at finish — so a manifest-only lookup would call a file the
+ * researcher had just imported and saved one this protocol does not have.
+ * `undefined` is for an id in NEITHER: a resource a collaborator deleted, or
+ * one discarded here, which the session reports as the dangling reference it
+ * is rather than as anything about its kind.
+ *
+ * Both shapes are the gateway's own answer about a resource — the manifest
+ * entry it promotes and the descriptor it hands out for a staged one — so this
+ * reads the kind and the name off whichever of them holds this id.
+ */
+type PanelSource = Readonly<{ name: string; kind: ResourceKind }>;
+
+const panelSource = (
+  dataSource: string,
+  assets: Readonly<Record<string, Asset>>,
+  staged: readonly ResourceDescriptor[],
+): PanelSource | undefined => {
+  const committed = assets[dataSource];
+  if (committed !== undefined) {
+    return { name: committed.name, kind: committed.type };
+  }
+  const stagedResource = staged.find((resource) => resource.id === dataSource);
+  return stagedResource === undefined
+    ? undefined
+    : { name: stagedResource.name, kind: stagedResource.kind };
+};
+
+/**
+ * The rules that can actually refuse a save.
  *
  * A row cannot refuse anything (see `RowField`), and a panel missing its title
  * or its source reaches the schema as `stages.N.panels.0.title` — a path,
  * rather than the section the researcher is looking at. An EMPTY list passes:
  * a stage with no panels is the norm, and the capability switch is what says
  * so.
+ *
+ * The source's KIND is judged here for the same reason. The picker refuses a
+ * resource of the wrong kind when one is CHOSEN, but a stage authored
+ * elsewhere never went through the picker, and `ProtocolSchemaV8` says nothing
+ * about a panel's `dataSource` kind — it checks a `NameGeneratorRoster`'s and
+ * stops there. So a panel pointing at an image, a recording or a map layer
+ * saves, and the interview tells the participant the external data is
+ * unavailable. Held to the same rule the picker keeps
+ * (`acceptsResourceKind`), against the same kind the field is mounted with,
+ * so a researcher cannot be refused for something the picker would have
+ * offered.
  */
-const panelsValidation = {
-  custom: messageRuleValidation([
-    (value: unknown) =>
-      rowsOf(value).length > MAX_PANELS ? TOO_MANY_PANELS : undefined,
-    (value: unknown) =>
-      rowsOf(value).every(
-        (panel) =>
-          typeof panel.title === 'string' &&
-          panel.title.trim() !== '' &&
-          typeof panel.dataSource === 'string' &&
-          panel.dataSource !== '',
-      )
-        ? undefined
-        : INCOMPLETE_PANEL,
-  ]),
-};
+function usePanelsValidation() {
+  const { controller, protocolContext } = useStageEditorForm();
+  const resolve = useRef<(dataSource: string) => PanelSource | undefined>(
+    () => undefined,
+  );
+  resolve.current = (dataSource) =>
+    panelSource(
+      dataSource,
+      protocolContext.assets,
+      controller.snapshot.stagedResources,
+    );
+
+  return useMemo(
+    () => ({
+      custom: messageRuleValidation([
+        (value: unknown) =>
+          rowsOf(value).length > MAX_PANELS ? TOO_MANY_PANELS : undefined,
+        (value: unknown) =>
+          rowsOf(value).every(
+            (panel) =>
+              typeof panel.title === 'string' &&
+              panel.title.trim() !== '' &&
+              typeof panel.dataSource === 'string' &&
+              panel.dataSource !== '',
+          )
+            ? undefined
+            : INCOMPLETE_PANEL,
+        (value: unknown) =>
+          rowsOf(value).every((panel) => {
+            const dataSource = asString(panel.dataSource);
+            if (dataSource === undefined || dataSource === INTERVIEW_NETWORK) {
+              return true;
+            }
+            const source = resolve.current(dataSource);
+            return (
+              source === undefined ||
+              acceptsResourceKind(PANEL_SOURCE_KIND, source.kind)
+            );
+          })
+            ? undefined
+            : SOURCE_NOT_NETWORK,
+      ]),
+    }),
+    [],
+  );
+}
+
+/**
+ * What a panel's source is, in the one place the picker and the refusal both
+ * read it from, so the field cannot accept what the refusal rejects.
+ */
+const PANEL_SOURCE_KIND = 'network' as const;
+
+const SOURCE_NOT_NETWORK = createMessageError(messages.sourceNotNetwork);
 
 /**
  * The lists of people shown beside a name generator.
@@ -403,6 +494,7 @@ export default function NodePanelsSection() {
     PanelEditor,
     PanelPreview,
   );
+  const panelsValidation = usePanelsValidation();
 
   return (
     <BuilderSection
@@ -497,7 +589,7 @@ function PanelEditor({ item }: RowEditorProps) {
           component={ResourcePicker}
           label={intl.formatMessage(messages.sourceLabel)}
           hint={intl.formatMessage(messages.sourceHint)}
-          kind="network"
+          kind={PANEL_SOURCE_KIND}
           canUseExisting
           initialValue={openedDataSource}
           required={PANEL_SOURCE_REQUIRED}
@@ -713,23 +805,16 @@ function PanelPreview({ item }: RowPreviewProps) {
   // The imported file's own name, which the researcher gave it, or one of two
   // phrases about it. All three are the same argument of one sentence, so the
   // sentence is a single message with a plural rather than three fragments
-  // joined in English word order.
-  //
-  // Looked for in BOTH places a resource this panel may legally name exists.
-  // A network imported in this session is not in the manifest yet — it is
-  // promoted with the stage at finish — so a manifest-only lookup told the
-  // researcher that the file they had just imported and saved was "no longer
-  // in this protocol", which is neither true nor anything they could act on.
-  // The missing phrase is left for an id that is in neither: a resource a
-  // collaborator deleted, or one discarded here.
+  // joined in English word order. `panelSource` is what looks the file up, and
+  // the missing phrase is what it having no answer reads as.
   const source =
     dataSource === INTERVIEW_NETWORK
       ? intl.formatMessage(messages.interviewSource)
-      : (protocolContext.assets[dataSource]?.name ??
-        controller.snapshot.stagedResources.find(
-          (resource) => resource.id === dataSource,
-        )?.name ??
-        intl.formatMessage(messages.missingSource));
+      : (panelSource(
+          dataSource,
+          protocolContext.assets,
+          controller.snapshot.stagedResources,
+        )?.name ?? intl.formatMessage(messages.missingSource));
 
   return (
     <div className="flex flex-col gap-2">
