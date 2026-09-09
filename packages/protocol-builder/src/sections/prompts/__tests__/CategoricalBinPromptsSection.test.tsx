@@ -105,6 +105,81 @@ describe('the questions a categorical bin asks', () => {
     expect(picker).toHaveValue('contactType');
   });
 
+  /**
+   * A stage whose STORED subject names the wrong part of the network.
+   *
+   * This interface is node-based — the schema pins its subject to
+   * `NodeStageSubjectSchema`, and `SubjectSection` offers node types alone —
+   * so a subject saying `edge` is something only a tolerant import or a
+   * half-written draft can hold. Read as written, it would point the picker,
+   * the values editor and every compound edit behind them at a connection
+   * type's codebook, and the researcher would be binning people by an
+   * attribute their connections carry.
+   */
+  it('reads only the TYPE of a subject that says it is a connection', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'CategoricalBin',
+        fields: {
+          label: 'Categorical Bin',
+          subject: { entity: 'edge', type: 'knows' },
+          prompts: [{ id: 'prompt-a', text: 'What kind of contact?' }],
+        },
+      },
+      sections: <CategoricalBinPromptsSection />,
+    });
+    // An attribute the edge type has and nothing else claims, so what the
+    // picker would offer if it read the stored entity is on the table.
+    harness.receiveCodebookUpdate({
+      edge: {
+        knows: {
+          name: 'knows',
+          color: 'edge-color-seq-2',
+          variables: {
+            closeness: {
+              name: 'closeness',
+              type: 'ordinal',
+              options: [
+                { label: 'Very close', value: 3 },
+                { label: 'Somewhat close', value: 2 },
+                { label: 'Not close', value: 1 },
+              ],
+            },
+            edgeNotes: {
+              name: 'edgeNotes',
+              type: 'text',
+              component: 'TextArea',
+            },
+            contactStyle: {
+              name: 'contactStyle',
+              type: 'categorical',
+              options: [
+                { label: 'In person', value: 'person' },
+                { label: 'Online', value: 'online' },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+
+    // Nothing to bin by, said in the family's own words — rather than the
+    // connection type's `contactStyle`, which is what reading the stored
+    // entity would have put on offer.
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(
+      await dialog.findByText(
+        'This type has no categorical attributes yet. Create one to say what the bins are.',
+      ),
+    ).toBeInTheDocument();
+    expect(dialog.queryByRole('combobox', { name: 'Attribute' })).toBeNull();
+    expect(dialog.queryByText('contactStyle')).toBeNull();
+  });
+
   it('refuses a prompt that names no attribute, and says which one', async () => {
     const harness = renderStageEditor(openEditor());
 

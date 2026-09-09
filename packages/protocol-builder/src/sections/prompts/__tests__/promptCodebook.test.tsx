@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { useSortVariablePool, useStageSubject } from '../promptCodebook.ts';
+import { useStageSubject } from '../../useStageSubject.ts';
+import { useSortVariablePool } from '../promptCodebook.ts';
 
 /**
  * Which of `SortOrderRows`' two answers this family gives about the properties
@@ -28,7 +29,7 @@ import { useSortVariablePool, useStageSubject } from '../promptCodebook.ts';
  * subject this editor cannot read still opens.
  */
 function SortPoolProbe() {
-  const subject = useStageSubject();
+  const subject = useStageSubject('node');
   const properties = useSortVariablePool(subject);
   // `null` stands in for `undefined`, which `JSON.stringify` answers with
   // nothing at all. The same stand-in `useStageValue`'s own probe uses.

@@ -26,7 +26,6 @@ import {
 import type { VariablePickerOption } from '../../fields/VariablePicker.tsx';
 import type { DialogArrayEditorValidate } from '../../form/arrayFields/DialogArrayField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
-import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { ruleVariables } from '../../rules/ruleCodebook.ts';
 
@@ -48,35 +47,20 @@ import { ruleVariables } from '../../rules/ruleCodebook.ts';
 
 const EMPTY_OPTIONS: readonly VariablePickerOption[] = Object.freeze([]);
 
-/** A stage subject or an edge type a prompt named, as a codebook subject. */
-const codebookSubjectOf = (value: unknown): CodebookSubject | null => {
-  if (typeof value !== 'object' || value === null) return null;
-  const entity: unknown = Reflect.get(value, 'entity');
-  const type: unknown = Reflect.get(value, 'type');
-  if (entity === 'ego') return { entity: 'ego' };
-  if (typeof type !== 'string' || type === '') return null;
-  if (entity === 'node') return { entity: 'node', type };
-  if (entity === 'edge') return { entity: 'edge', type };
-  return null;
-};
-
-/** The edge type a census prompt creates, as a codebook subject. */
-export const edgeSubjectOf = (typeId: unknown): CodebookSubject | null =>
+/**
+ * The edge type a census prompt creates, as a codebook subject.
+ *
+ * The prompt's OWN connection type rather than the stage's subject — a
+ * Tie-Strength Census chooses one inside each prompt — so it is a bare type id
+ * the row holds, and the entity it belongs to is this family's knowledge
+ * rather than the draft's. `sections/useStageSubject` says the same thing
+ * about a subject a stage holds: the entity comes from what the schema knows
+ * of the interface, and only the type is read from the draft.
+ */
+export const edgeSubjectOf = (typeId: unknown): CodebookSubject | undefined =>
   typeof typeId === 'string' && typeId !== ''
     ? { entity: 'edge', type: typeId }
-    : null;
-
-/**
- * What this stage works on, read from the draft rather than passed in.
- *
- * Every prompt in this family describes the stage's own subject, and that can
- * change while the prompts section is open — the subject section throws the
- * prompts away when it does — so it is read live.
- */
-export function useStageSubject(): CodebookSubject | null {
-  const subject = useStageValue('subject');
-  return useMemo(() => codebookSubjectOf(subject), [subject]);
-}
+    : undefined;
 
 const variablesFor = (
   codebook: Readonly<Codebook>,
@@ -116,7 +100,7 @@ const stringAtPath = (row: unknown, path: string): string => {
 };
 
 export type PromptVariablePoolInput = Readonly<{
-  subject: CodebookSubject | null;
+  subject: CodebookSubject | undefined;
   /**
    * Only these attribute types can answer this prompt. Pass a constant: it is
    * a memoisation dependency, and a fresh array per render rebuilds the pool
@@ -154,7 +138,7 @@ export function usePromptVariablePool({
   const stageId = editedSection.identity.id;
 
   return useMemo(() => {
-    if (subject === null) return EMPTY_OPTIONS;
+    if (subject === undefined) return EMPTY_OPTIONS;
     const pool = optionsFor(
       variablesFor(protocolContext.codebook, subject),
       types,
@@ -192,13 +176,13 @@ export function usePromptVariablePool({
  * told what it collects as pointing at a deleted attribute.
  */
 export function useSortVariablePool(
-  subject: CodebookSubject | null,
+  subject: CodebookSubject | undefined,
 ): readonly VariablePickerOption[] | undefined {
   const { controller } = useStageEditorForm();
   const { protocolContext } = controller.snapshot;
 
   return useMemo(() => {
-    if (subject === null) return undefined;
+    if (subject === undefined) return undefined;
     return optionsFor(variablesFor(protocolContext.codebook, subject));
   }, [protocolContext, subject]);
 }
@@ -208,14 +192,14 @@ export function useSortVariablePool(
  * `undefined` when the researcher may change it.
  */
 export function useLockedOptions(
-  subject: CodebookSubject | null,
+  subject: CodebookSubject | undefined,
   variableId: string | undefined,
 ): LockedOptionList | undefined {
   const { controller } = useStageEditorForm();
   const { protocolContext } = controller.snapshot;
 
   return useMemo(() => {
-    if (subject === null || variableId === undefined) return undefined;
+    if (subject === undefined || variableId === undefined) return undefined;
     return lockedVariableOptions(
       variablesFor(protocolContext.codebook, subject),
       variableId,
@@ -234,7 +218,7 @@ export type PromptPickGateInput = Readonly<{
    * Tie-Strength Census prompt chooses its edge type inside itself, so this
    * cannot be fixed when the section mounts.
    */
-  subjectForRow: (row: Record<string, unknown>) => CodebookSubject | null;
+  subjectForRow: (row: Record<string, unknown>) => CodebookSubject | undefined;
 }>;
 
 /**
@@ -266,7 +250,7 @@ export function usePromptPickGate({
   return useCallback((values, context) => {
     const current = latest.current;
     const subject = current.subjectForRow(values);
-    if (subject === null) return undefined;
+    if (subject === undefined) return undefined;
 
     const protocolContext = current.controller.snapshot.protocolContext;
     const errors: Record<string, string> = {

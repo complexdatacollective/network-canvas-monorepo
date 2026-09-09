@@ -10,13 +10,10 @@ import RichTextField from '../../fields/RichTextField.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import type { RowEditorProps } from '../rowRenderers.tsx';
+import { useStageSubject } from '../useStageSubject.ts';
 import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import PromptAttributeField from './PromptAttributeField.tsx';
-import {
-  usePromptPickGate,
-  useSortVariablePool,
-  useStageSubject,
-} from './promptCodebook.ts';
+import { usePromptPickGate, useSortVariablePool } from './promptCodebook.ts';
 import { PromptTextField, PromptTextPreview } from './promptText.tsx';
 import SortOrderRows from './SortOrderRows.tsx';
 
@@ -219,7 +216,15 @@ function CategoricalBinGuidance() {
  */
 function CategoricalBinPromptEditor({ item }: RowEditorProps) {
   const intl = useAppIntl();
-  const subject = useStageSubject();
+  /*
+    The entity comes from the schema rather than from the draft: this
+    interface's subject is a `NodeStageSubjectSchema`, so only the TYPE is read
+    from what the stage holds. A draft whose stored subject says `edge` — which
+    a tolerant import or a half-written stage can hold — would otherwise send
+    this family's picker and its compound attribute edits at the edge codebook,
+    about an interface the schema and `SubjectSection` both treat as node-based.
+  */
+  const subject = useStageSubject('node');
   const sortableProperties = useSortVariablePool(subject);
   const { variable, otherVariable } = useFormValue([
     'variable',
@@ -376,7 +381,7 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
  * selector, so a collaborator's codebook change reaches an open prompt.
  */
 export default function CategoricalBinPromptsSection() {
-  const subject = useStageSubject();
+  const subject = useStageSubject('node');
   const pickGate = usePromptPickGate({
     picks: PICKS,
     subjectForRow: () => subject,

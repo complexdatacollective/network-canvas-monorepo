@@ -66,8 +66,11 @@ export type PromptAttributeFieldProps = Readonly<{
   hint?: ReactNode;
   /** The message shown when the prompt is saved without a pick. */
   requiredMessage: string;
-  /** The codebook subject the attribute belongs to; `null` until it is known. */
-  subject: CodebookSubject | null;
+  /**
+   * The codebook subject the attribute belongs to; `undefined` until it is
+   * known.
+   */
+  subject: CodebookSubject | undefined;
   /** Only these attribute types can answer this prompt. Pass a constant. */
   types: readonly VariableType[];
   /** The type a brand-new attribute is created as. */
@@ -183,9 +186,7 @@ export default function PromptAttributeField({
     writerClass,
     currentValue: picked,
   });
-  // `undefined` rather than `null`: the shared hook takes the codebook's own
-  // absent-subject value, and this family's is the picker's.
-  const codebookDocument = useCodebookSectionDocument(subject ?? undefined);
+  const codebookDocument = useCodebookSectionDocument(subject);
   const lockedOptions = useLockedOptions(subject, picked);
   const [editing, setEditing] = useState<{
     key: string;
@@ -304,7 +305,7 @@ export default function PromptAttributeField({
         emptyMessage={emptyMessage}
         required={requiredMessage}
       />
-      {!readOnly && subject !== null && codebookDocument !== null && (
+      {!readOnly && subject !== undefined && codebookDocument !== null && (
         <div className="mt-4 flex flex-wrap gap-3">
           <Button
             ref={createTrigger}
@@ -373,65 +374,67 @@ export default function PromptAttributeField({
           session, and unmounting it would throw away work to say something
           `readOnly` says for itself, with the save disabled. The same rule the
           row editors follow (`AttributeCodebookControls`, `SubjectSection`). */}
-      {editing !== null && codebookDocument !== null && subject !== null && (
-        <Dialog
-          open
-          title={editingTitle}
-          size="readable"
-          dismissible={!submitting}
-          closeDialog={requestCloseEditor}
-          finalFocus={() =>
-            editing.mode === 'create'
-              ? createTrigger.current
-              : editTrigger.current
-          }
-        >
-          {editing.mode === 'create' ? (
-            <VariableEditor
-              mode="create"
-              openId={editing.key}
-              subject={subject}
-              protocolContext={controller.snapshot.protocolContext}
-              authoritativeDocument={codebookDocument}
-              variableId={editing.variableId}
-              initialDraft={newVariableDraft(createType)}
-              allowedVariableTypes={types}
-              readOnly={readOnly}
-              description={createLabel}
-              title={createLabel}
-              createRequestId={() => uuid()}
-              onSubmitRequest={submitEdit}
-              onComplete={(variableId) => {
-                setFieldValue(name, variableId);
-                closeEditor();
-              }}
-            />
-          ) : (
-            <VariableEditor
-              mode="update"
-              openId={editing.key}
-              subject={subject}
-              authoritativeDocument={codebookDocument}
-              variableId={editing.variableId}
-              initialDraft={existingVariableDraft(
-                variablesIn(codebookDocument)[editing.variableId],
-                createType,
-              )}
-              allowedVariableTypes={types}
-              readOnly={readOnly}
-              description={editingTitle}
-              title={editingTitle}
-              createRequestId={() => uuid()}
-              onSubmitRequest={submitEdit}
-              onComplete={closeEditor}
-            />
-          )}
-        </Dialog>
-      )}
+      {editing !== null &&
+        codebookDocument !== null &&
+        subject !== undefined && (
+          <Dialog
+            open
+            title={editingTitle}
+            size="readable"
+            dismissible={!submitting}
+            closeDialog={requestCloseEditor}
+            finalFocus={() =>
+              editing.mode === 'create'
+                ? createTrigger.current
+                : editTrigger.current
+            }
+          >
+            {editing.mode === 'create' ? (
+              <VariableEditor
+                mode="create"
+                openId={editing.key}
+                subject={subject}
+                protocolContext={controller.snapshot.protocolContext}
+                authoritativeDocument={codebookDocument}
+                variableId={editing.variableId}
+                initialDraft={newVariableDraft(createType)}
+                allowedVariableTypes={types}
+                readOnly={readOnly}
+                description={createLabel}
+                title={createLabel}
+                createRequestId={() => uuid()}
+                onSubmitRequest={submitEdit}
+                onComplete={(variableId) => {
+                  setFieldValue(name, variableId);
+                  closeEditor();
+                }}
+              />
+            ) : (
+              <VariableEditor
+                mode="update"
+                openId={editing.key}
+                subject={subject}
+                authoritativeDocument={codebookDocument}
+                variableId={editing.variableId}
+                initialDraft={existingVariableDraft(
+                  variablesIn(codebookDocument)[editing.variableId],
+                  createType,
+                )}
+                allowedVariableTypes={types}
+                readOnly={readOnly}
+                description={editingTitle}
+                title={editingTitle}
+                createRequestId={() => uuid()}
+                onSubmitRequest={submitEdit}
+                onComplete={closeEditor}
+              />
+            )}
+          </Dialog>
+        )}
       {validating !== null &&
         validationLabel !== undefined &&
         codebookDocument !== null &&
-        subject !== null && (
+        subject !== undefined && (
           <Dialog
             open
             title={validationLabel}

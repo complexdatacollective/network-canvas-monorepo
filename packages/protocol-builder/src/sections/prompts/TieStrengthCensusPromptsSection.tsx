@@ -249,7 +249,7 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
         until the connection type is known — and it is the connection type's
         own attributes that are offered, not the person's.
       */}
-      {edgeSubject !== null && (
+      {edgeSubject !== undefined && (
         <PromptAttributeField
           name="edgeVariable"
           title={intl.formatMessage(censusPromptsMessages.scaleTitle)}
