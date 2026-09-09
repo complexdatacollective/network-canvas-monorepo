@@ -138,6 +138,94 @@ describe("a roster stage's data file", () => {
   });
 
   /**
+   * The first of the two places a roster the interview could not load is
+   * stopped, and the one a researcher meets: an import is not finished until
+   * the host has read back what it staged, so a malformed file never becomes
+   * something this field can point at. The bytes are dropped again as well —
+   * the researcher is about to choose another file, and this one would
+   * otherwise sit at the host until the finish walked away from it.
+   */
+  it('refuses an imported data file the host cannot read, and stages nothing', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({}),
+      sections: <ExternalDataSourceSection />,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Select a data file' }),
+    );
+    // Nonempty, and a CSV the host will hold: one row carries a value more
+    // than the header names it, which is the spreadsheet export a researcher
+    // actually arrives with.
+    await harness.user.upload(
+      await screen.findByLabelText('Choose a file from your computer'),
+      new File(['name,age\nAda,36,and one more\n'], 'broken.csv', {
+        type: 'text/csv',
+      }),
+    );
+
+    expect(
+      await screen.findByText('the selected file is not a readable network'),
+    ).toBeVisible();
+    expect(harness.gateway.getStagingResidue()).toEqual([]);
+
+    // And the field is still empty, so the stage is refused for the reason it
+    // would have been refused before the import was ever attempted.
+    await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText('Choose the data file this roster lists people from.'),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The second place, and the one no field-level check can stand in for: the
+   * host held bytes it read once and will not vouch for now. Asked again at
+   * the finish — the last moment before the protocol commits to the file — it
+   * refuses, and the refusal lands on the field naming the file rather than
+   * committing a roster the interview would reject when the stage opens.
+   */
+  it('refuses to save a roster whose imported file the host will not vouch for', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({}),
+      sections: <ExternalDataSourceSection />,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Select a data file' }),
+    );
+    await harness.user.upload(
+      await screen.findByLabelText('Choose a file from your computer'),
+      new File(['name,age\nAda,36\nGrace,45\n'], 'community.csv', {
+        type: 'text/csv',
+      }),
+    );
+    expect(
+      await screen.findByText(
+        'The people in it carry these attributes: age and name.',
+      ),
+    ).toBeInTheDocument();
+
+    harness.gateway.failNext('inspect', {
+      reason: 'invalid-content',
+      message: 'the selected file is not a readable network',
+      retryable: false,
+    });
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(
+        'The resource ("staged-resource-1") this stage uses cannot be saved: the selected file is not a readable network',
+      ),
+    ).toBeInTheDocument();
+    // Nothing was committed for it, so the protocol holds no manifest entry
+    // pointing at bytes the interview would refuse.
+    expect(
+      harness.gateway.getCommittedManifest()['staged-resource-1'],
+    ).toBeUndefined();
+  });
+
+  /**
    * Every other roster section names a column of the file. A new file makes
    * each of those a reference to something that may not be there, and a stage
    * half-describing the old roster is one the schema accepts and the interview
