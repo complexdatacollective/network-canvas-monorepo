@@ -99,7 +99,7 @@ after the fact is marked in place.
 | `codebookVariable`          | `codebook/variableTypeLabels.ts`, `codebook/components/VariableEditor.tsx`, `codebook/variableRoles.ts`, `codebook/variableOptions.ts`, `codebook/components/VariableBooleanAnswerFields.tsx` | i18n-2a   |
 | `variableValidation`        | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/codebookMessages.ts`              | i18n-2a   |
 | `codebookEditing`           | `codebook/editing.ts`, `codebook/codebookMessages.ts`, `codebook/useCodebookVariableEdits.ts` (added by `sections`)                                                                           | i18n-2a   |
-| `shell`                     | `form/StageEditorShell.tsx`, `editors/saveStageAction.tsx`                                                                                                                                    | i18n-2b   |
+| `shell`                     | `form/StageEditorShell.tsx`, `form/readOnlyRefusal.ts`, `editors/saveStageAction.tsx`                                                                                                         | i18n-2b   |
 | `outline`                   | `form/SectionOutline.tsx`                                                                                                                                                                     | i18n-2b   |
 | `dialogForm`                | `form/DialogForm.tsx`, `form/discardDraftGuard.ts`                                                                                                                                            | i18n-2b   |
 | `protocolField`             | `form/ProtocolField.tsx`                                                                                                                                                                      | i18n-2b   |
@@ -130,7 +130,12 @@ after the fact is marked in place.
 `shell` covers `editors/saveStageAction.tsx` as well as the shell itself,
 rather than that control taking an area of its own: the fallback save button is
 the shell's action slot standing in for a host that rendered none, so its words
-are the shell's chrome like the refusals already declared there.
+are the shell's chrome like the refusals already declared there. It covers
+`form/readOnlyRefusal.ts` for the reason the `*Messages.ts` rule below gives:
+the read-only refusal is decided in more than one place — the shell, for a save
+or a structural write the session declines, and a control that finds the lease
+gone when the researcher answers a question about a change — and a shared
+sentence has exactly one declaration.
 
 The `*Messages.ts` files are the homes for copy more than one module renders —
 `extractMessages` throws when the same id is declared twice, so a shared string

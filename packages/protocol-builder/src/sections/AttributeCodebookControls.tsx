@@ -19,13 +19,17 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import { sectionIdForCodebookSubject } from '../codebook/editing.ts';
-import { useCodebookSectionDocument } from '../codebook/useCodebookVariableEdits.ts';
+import {
+  useCodebookSectionDocument,
+  useWhereTheAnswerLands,
+} from '../codebook/useCodebookVariableEdits.ts';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
 import { optionsShapeFor } from '../codebook/variableOptions.ts';
 import { parameterShapeFor } from '../codebook/variableParameters.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { isCollectableType, isOptionType } from './collectableTypes.ts';
+import { createdUnassigned } from './CreatableVariablePicker.tsx';
 
 /** Where every row that binds an attribute keeps the attribute it binds. */
 const VARIABLE_FIELD = 'variable';
@@ -303,6 +307,15 @@ export default function AttributeCodebookControls({
      */
     subject: CodebookSubject;
     /**
+     * What the row's attribute picker held when the editor opened, which is
+     * the field a created attribute would be written into.
+     *
+     * Captured with the subject because the pair is one fact — where the
+     * answer was asked from — and read back through `useWhereTheAnswerLands`
+     * when it arrives.
+     */
+    fillsIn: string;
+    /**
      * That subject's document as it stood when the editor opened, for the
      * renders after it has gone. See `editingDocument`, which prefers the
      * live one.
@@ -328,6 +341,21 @@ export default function AttributeCodebookControls({
    * a state living there would go with it. See `submitEdit`.
    */
   const [submitting, setSubmitting] = useState(false);
+  /**
+   * The name of an attribute this row asked for, got, and could not take, held
+   * for as long as the notice about it is on screen.
+   *
+   * The name rather than the id, because the id is a record key the researcher
+   * has never seen, and the name is what they typed into the editor and what
+   * they will look for in the codebook. `undefined` is the ordinary case: every
+   * create either lands on this row or has not happened.
+   */
+  const [createdElsewhere, setCreatedElsewhere] = useState<string | undefined>(
+    undefined,
+  );
+  // The row's own picker is what a create here fills in, so it is the second
+  // half of where the answer lands: see `useWhereTheAnswerLands`.
+  const whereTheAnswerLands = useWhereTheAnswerLands(subject, () => chosen);
   /**
    * The row dialog these controls sit in, remembered rather than walked up to.
    *
@@ -464,7 +492,11 @@ export default function AttributeCodebookControls({
       canEditAnswers ||
       canEditParameters ||
       canEditRules);
-  if (!offerLaunch && openEditor === null) {
+  // The notice below counts too: it is the only record of an attribute the
+  // researcher created and this row did not take, and a component that
+  // vanished at the moment it had something to say would take the sentence
+  // with it.
+  if (!offerLaunch && openEditor === null && createdElsewhere === undefined) {
     return null;
   }
   // The attributes an open editor is reading about, which are the ones in the
@@ -608,6 +640,10 @@ export default function AttributeCodebookControls({
     // and the check is written out rather than assumed because what it takes
     // is what the editor goes on reading until it closes.
     if (subject === undefined || codebookDocument === null) return;
+    // The notice is about the create that has just happened; opening another
+    // editor is the start of a different one. Same rule, and the same reason,
+    // as the picker's own notice clearing when the researcher types a new name.
+    setCreatedElsewhere(undefined);
     setEditing({
       openId: uuid(),
       surface,
@@ -616,6 +652,7 @@ export default function AttributeCodebookControls({
       name: asString(asRecord(picked).name) ?? chosen,
       variableId: surface === 'create' ? uuid() : chosen,
       subject,
+      fillsIn: chosen,
       openedDocument: codebookDocument,
       component: pickedComponent,
     });
@@ -686,6 +723,28 @@ export default function AttributeCodebookControls({
           </Button>
         )}
       </div>
+      {/* Always mounted, so a screen reader is watching this region before the
+          notice appears: a live region added to the page at the same moment as
+          its own content is not reliably announced. The `Alert` inside it is
+          presentational for the same reason its twin in
+          `CreatableVariablePicker` is — its `info` variant is a `role="status"`
+          of its own, and a second polite region inserted into this one is the
+          double announcement this wrapper exists to avoid. */}
+      <div
+        role="status"
+        aria-live="polite"
+        className={createdElsewhere === undefined ? undefined : 'mb-8'}
+      >
+        {createdElsewhere !== undefined && (
+          <Alert variant="info" role="presentation">
+            <AlertDescription>
+              {intl.formatMessage(createdUnassigned, {
+                variableName: createdElsewhere,
+              })}
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
       {/* Each surface is written out rather than switched inside one dialog:
           which attribute an editor is editing is decided when it OPENS, and a
           shared dialog would hand it whatever the row named by the time it
@@ -747,10 +806,33 @@ export default function AttributeCodebookControls({
             description={editorDescription}
             createRequestId={() => uuid()}
             onSubmitRequest={submitEdit}
-            onComplete={(variableId) => {
-              // The picker now names something that exists, which is what
-              // takes this row out of inventing anything.
-              setFieldValue(VARIABLE_FIELD, variableId);
+            onComplete={(variableId, variableName) => {
+              // Which codebook the attribute was written into, and which field
+              // it was going to fill in, were both decided when this editor
+              // opened — and either can move while the request is with the
+              // host. Asked HERE rather than of `editorReadOnly`, which is a
+              // fact about the render the researcher pressed Create in: this
+              // runs afterwards, out of a closure made before the protocol
+              // moved. The one reading of that question is
+              // `useWhereTheAnswerLands`.
+              //
+              // A record key belongs to exactly one type, so a row that has
+              // moved can neither resolve this id nor save it — it would leave
+              // the field pointing into a codebook it does not read. The write
+              // itself landed and stands; only the assignment does not happen,
+              // and the researcher is told where the attribute went.
+              if (
+                whereTheAnswerLands({
+                  subject: openEditor.subject,
+                  fillsIn: openEditor.fillsIn,
+                }) === 'here'
+              ) {
+                // The picker now names something that exists, which is what
+                // takes this row out of inventing anything.
+                setFieldValue(VARIABLE_FIELD, variableId);
+              } else {
+                setCreatedElsewhere(variableName);
+              }
               close();
             }}
           />

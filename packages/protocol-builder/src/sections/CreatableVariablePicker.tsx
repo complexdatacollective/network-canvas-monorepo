@@ -7,6 +7,7 @@ import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
+import { createVariableRefused } from '../codebook/useCodebookVariableEdits.ts';
 import {
   VariablePickerControl,
   type VariablePickerProps,
@@ -47,6 +48,21 @@ const messages = defineMessages({
 });
 
 /**
+ * The package's one sentence for "the codebook has it, and nothing here took
+ * it".
+ *
+ * Exported because the event is not this control's alone. Every route that
+ * creates an attribute FOR something can land in the moment where that
+ * something has moved on — a row a collaborator replaced, a stage repointed at
+ * another type while the write was with the host — and what has to be said is
+ * the same fact each time: the write landed, so do not try again, and here is
+ * where the attribute went. A second wording of it would be a second thing for
+ * a researcher to learn. Said about their own surfaces by
+ * `AttributeCodebookControls` and by the form-field row's own save.
+ */
+export const createdUnassigned = messages.createdUnassigned;
+
+/**
  * What became of a create the researcher asked for.
  *
  * Three answers rather than two, because "it does not exist" and "it exists,
@@ -69,6 +85,24 @@ export type CreateOptionOutcome =
   | Readonly<{ status: 'unassigned' }>
   /** Nothing was created. The name is the researcher's to correct. */
   | Readonly<{ status: 'refused' }>;
+
+/**
+ * What this control has left to say once a create has ended.
+ *
+ * Only the two events nobody else says anything about. A `refused` outcome is
+ * not among them: it is a sentence the CALLER already has — it knows what the
+ * codebook would not take — and it is shown on the surface the researcher
+ * asked from, so a second notice here would say the same thing twice.
+ */
+type CreateNotice =
+  /** The attribute exists, and nothing here was given it. */
+  | Readonly<{ kind: 'unassigned'; variableName: string }>
+  /**
+   * The create ended without an answer at all — the caller broke the promise
+   * `onCreateOption` makes, so nothing is known to exist and nobody has told
+   * the researcher anything.
+   */
+  | Readonly<{ kind: 'failed' }>;
 
 export type CreatableVariablePickerProps = VariablePickerProps &
   Readonly<{
@@ -134,16 +168,20 @@ export function CreatableVariablePickerControl({
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   /**
-   * The name of an attribute that was created and then taken by nothing, held
-   * for as long as the notice about it is on screen.
+   * What is left to say about the create that has just happened, held for as
+   * long as the notice about it is on screen.
    *
-   * The submitted name rather than whatever the box holds now: the notice is
-   * about the attribute that was created, and the box is empty by the time it
-   * appears.
+   * One piece of state and one region rather than two, because the two things
+   * this control ever has to say are answers to the same press and can never
+   * both be true: the attribute exists and nothing here took it, or nothing
+   * was written at all.
+   *
+   * `unassigned` carries the SUBMITTED name rather than whatever the box holds
+   * now — the sentence is about the attribute that was created, and the box is
+   * empty by the time it appears. `failed` carries none, because there is no
+   * attribute to name.
    */
-  const [unassignedName, setUnassignedName] = useState<string | undefined>(
-    undefined,
-  );
+  const [notice, setNotice] = useState<CreateNotice | undefined>(undefined);
   const { disabled = false, readOnly = false } = pickerProps;
 
   if (onCreateOption === undefined) {
@@ -153,24 +191,41 @@ export function CreatableVariablePickerControl({
   const create = async () => {
     const submitted = name.trim();
     setBusy(true);
-    setUnassignedName(undefined);
+    setNotice(undefined);
     try {
       const outcome = await onCreateOption(submitted);
-      // A refusal is ABOUT this name, so it stays in the box to be corrected.
+      // A refusal is ABOUT this name, so it stays in the box to be corrected —
+      // and it is said by whoever refused it, on the surface that asked. This
+      // control is handed an outcome with no words of its own precisely
+      // because the caller has already put the reason where the researcher is
+      // looking.
       if (outcome.status === 'refused') return;
       // Every other answer means the codebook now holds it, and asking for it
       // a second time is refused for a duplicate name.
       setName('');
-      if (outcome.status === 'unassigned') setUnassignedName(submitted);
+      if (outcome.status === 'unassigned') {
+        setNotice({ kind: 'unassigned', variableName: submitted });
+      }
     } catch {
       // A caller that throws — synchronously, or by rejecting, or by answering
       // with something that is not an outcome at all — has broken the promise
       // `onCreateOption` makes, and from here they are the same broken promise:
-      // nothing is known to exist, there is nothing more specific the
-      // researcher could be told, and the name they typed stays in the box for
+      // nothing is known to exist, and the name they typed stays in the box for
       // another try. `callGateway` answers a host that throws the same way, for
       // the same reason. Everything is inside the `try` rather than only the
       // call, so a synchronous throw is caught too.
+      //
+      // Said rather than swallowed. A broken promise is not a refusal the
+      // caller has explained somewhere — nobody has said anything, so the
+      // button coming back beside an unchanged row is all the researcher gets,
+      // and it is indistinguishable from a press that never happened. Their
+      // next move is to press Create again: the same failing write, or, if
+      // that first one did land somewhere this control never heard about, a
+      // duplicate-name refusal about an attempt they never made. So the one
+      // sentence the package already has for a codebook write refused with no
+      // explanation of its own is said here too, rather than a second wording
+      // of it.
+      setNotice({ kind: 'failed' });
     } finally {
       // In a `finally` because the button is disabled while this is true: a
       // create that ended in a throw would otherwise leave the researcher
@@ -195,10 +250,29 @@ export function CreatableVariablePickerControl({
         placeholder={intl.formatMessage(messages.createPlaceholder)}
         value={name}
         disabled={disabled || readOnly || busy}
+        // Enter here means "create the attribute", and it has to be said so.
+        // This box is inside a form whose submit means something else — the
+        // stage's own, whose default button is the host's Save, associated by
+        // `form=` and therefore the form's default button wherever the host
+        // renders it, and a row dialog's — so the browser's implicit
+        // submission saved and closed the editor instead, creating nothing and
+        // taking the typed name with it. `QuickAddSection`'s own name box
+        // answers Enter for the same reason.
+        onKeyDown={(event) => {
+          // A key pressed to compose a character is not a key press.
+          if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+          // Whatever else is true, Enter in this box does not mean "save".
+          event.preventDefault();
+          // Nothing is named, so there is nothing to create — the one part of
+          // the button's own guard a key press can still reach, since the box
+          // is disabled in every other case the button is.
+          if (name.trim() === '') return;
+          void create();
+        }}
         onChange={(next: unknown) => {
           // The notice is about the create that has just happened; naming
           // another attribute is the start of a different one.
-          setUnassignedName(undefined);
+          setNotice(undefined);
           setName(typeof next === 'string' ? next : '');
         }}
       />
@@ -220,22 +294,35 @@ export function CreatableVariablePickerControl({
             moment as its own content is not reliably announced.
 
             The `Alert` inside it is presentational for exactly that reason.
-            Its `info` variant is a `role="status"` of its own — a second
-            polite region, inserted into this one at the moment its content
+            Its `info` variant is a `role="status"` of its own — and its
+            `destructive` variant a `role="alert"` — so either would be a
+            second live region inserted into this one at the moment its content
             appears, which is the double (or, on some assistive technology,
             dropped) announcement this wrapper exists to avoid. Same shape as
-            the bounds notice in `VariableParameterFields`. */}
+            the bounds notice in `VariableParameterFields`.
+
+            One region for both sentences, and polite for both. Neither
+            interrupts anything: they are said about a press the researcher has
+            already made and finished waiting for, and the control they would
+            act on next is the one their focus is already in. */}
         <div
           role="status"
           aria-live="polite"
-          className={unassignedName === undefined ? undefined : 'mt-3'}
+          className={notice === undefined ? undefined : 'mt-3'}
         >
-          {unassignedName !== undefined && (
+          {notice?.kind === 'unassigned' && (
             <Alert variant="info" role="presentation">
               <AlertDescription>
                 {intl.formatMessage(messages.createdUnassigned, {
-                  variableName: unassignedName,
+                  variableName: notice.variableName,
                 })}
+              </AlertDescription>
+            </Alert>
+          )}
+          {notice?.kind === 'failed' && (
+            <Alert variant="destructive" role="presentation">
+              <AlertDescription>
+                {intl.formatMessage(createVariableRefused)}
               </AlertDescription>
             </Alert>
           )}
