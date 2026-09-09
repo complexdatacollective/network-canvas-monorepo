@@ -76,9 +76,14 @@ export default function SkipLogicDestinationField({
   const problemId = useId();
   const stages = protocolContext.orderedStages;
 
+  // The RAW order travels too: a stage whose own document the schema refuses
+  // is not in `orderedStages`, and without it this stage would be placed as a
+  // new one arriving at the end — offering the researcher a skip forward to
+  // stages the interview reaches before it. See `stagePlacement`.
   const placement = useMemo(
-    () => stagePlacement(stages, identity.id, position),
-    [identity.id, position, stages],
+    () =>
+      stagePlacement(stages, identity.id, position, protocolContext.stageOrder),
+    [identity.id, position, protocolContext.stageOrder, stages],
   );
   const options = useMemo(
     () => skipLogicDestinationOptions(stages, placement, value, intl),

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
@@ -25,6 +26,7 @@ import {
 import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
 import {
+  diseaseMarksNobody,
   sourceStageNodeType,
   sourceStageRecordedVariables,
 } from './sourceStage.ts';
@@ -254,9 +256,23 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
   );
 }
 
-/** How one disease reads in the list when its dialog is closed. */
+/**
+ * How one disease reads in the list when its dialog is closed.
+ *
+ * A row whose attribute the source pedigree does not record carries the
+ * problem beside its name. The list's own validation is what REFUSES the save;
+ * this is what says which row is at fault — the refusal names them, but the
+ * researcher acts on the row, and the badge is there the moment a collaborator
+ * removes the nomination prompt rather than at the next submit.
+ */
 export function DiseasePreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
+  const { protocolContext } = useStageEditorForm();
+  const sourceStageId = useStageValue('sourceStageId');
+  const marksNobody = diseaseMarksNobody(
+    item,
+    sourceStageRecordedVariables(protocolContext, sourceStageId),
+  );
   // Narrowed against the palette rather than cast: a stored colour the theme
   // no longer defines loses its swatch, and the row still reads.
   const color = NodeColorSequence.find((candidate) => candidate === item.color);
@@ -273,6 +289,11 @@ export function DiseasePreview({ item }: RowPreviewProps) {
         {asString(item.label) ??
           intl.formatMessage(narrativePedigreeMessages.diseaseUnnamed)}
       </span>
+      {marksNobody && (
+        <Badge variant="destructive">
+          {intl.formatMessage(narrativePedigreeMessages.diseaseMarksNobody)}
+        </Badge>
+      )}
     </div>
   );
 }

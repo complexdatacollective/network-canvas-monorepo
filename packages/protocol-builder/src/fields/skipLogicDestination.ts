@@ -260,18 +260,41 @@ export const routeDestination = (
 /**
  * Where this stage sits, found in the stage order rather than handed down.
  *
- * `position` is consulted only for a stage the order does not contain yet —
- * one being created — because only its host knows where it is about to be
- * inserted. Left out, a new stage is treated as arriving at the end, which is
- * where a host that appends puts it.
+ * `stageOrder` is the interview's order as the PROTOCOL states it, ids and
+ * all, and `stages` is the ones that could be read. The two differ whenever a
+ * stage's own document is one the schema refuses — an import that left a
+ * required list empty, a merge that lost a label — and the difference matters
+ * most for the stage being EDITED, which is exactly the one a researcher opens
+ * to repair. Absent from `stages`, it looked like a stage that is not in the
+ * interview at all, so it was placed as a new one arriving at the end: a
+ * narrative pedigree could then be pointed at a family pedigree that actually
+ * runs after it, and once the rest of the stage was repaired the save took it.
+ * Counting the readable stages before it in the real order gives it back its
+ * place; nothing has to be readable for that to be true.
+ *
+ * `position` is consulted only for a stage NEITHER holds — one being created —
+ * because only its host knows where it is about to be inserted. Left out, a
+ * new stage is treated as arriving at the end, which is where a host that
+ * appends puts it.
  */
 export function stagePlacement(
   stages: readonly DestinationStage[],
   stageId: string,
   position?: number,
+  stageOrder?: readonly string[],
 ): StagePlacement {
   const index = stages.findIndex((stage) => stage.id === stageId);
   if (index !== -1) return { index, isNew: false };
+  const orderIndex = stageOrder?.indexOf(stageId) ?? -1;
+  if (orderIndex !== -1) {
+    const readable = new Set(stages.map((stage) => stage.id));
+    return {
+      index: (stageOrder ?? [])
+        .slice(0, orderIndex)
+        .filter((id) => readable.has(id)).length,
+      isNew: false,
+    };
+  }
   const requested = position ?? stages.length;
   return {
     index: Math.min(Math.max(requested, 0), stages.length),
@@ -293,7 +316,7 @@ const isLaterStage = (index: number, placement: StagePlacement): boolean =>
  * edited exists — which is one higher than today's for every stage a new
  * stage is about to be inserted in front of.
  */
-const stageNumber = (index: number, placement: StagePlacement): number =>
+export const stageNumber = (index: number, placement: StagePlacement): number =>
   index + 1 + (placement.isNew ? 1 : 0);
 
 const stageOptionLabel = (

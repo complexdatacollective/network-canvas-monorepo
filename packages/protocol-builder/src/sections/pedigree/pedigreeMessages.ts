@@ -806,6 +806,13 @@ export const pedigreeMessages = defineMessages({
     description:
       'Refusal shown under a pedigree attribute control when the attribute it holds still exists but has been given a different type — a true/false attribute turned into a list of answers, say — so the interface can no longer write or read it. attributeName is the codebook name of the attribute, which is not translated.',
   },
+  variableOptionsChangedRefusal: {
+    id: 'protocolBuilder.pedigree.variableOptionsChangedRefusal',
+    defaultMessage:
+      '"{attributeName}" no longer offers the exact values this control needs, because they were changed somewhere else. Choose another attribute.',
+    description:
+      'Refusal shown under a pedigree attribute control whose slot uses a fixed set of values the interface owns — biological sex, relationship type, or gamete role — when the attribute it holds still exists and is still a list of answers, but the values it offers have been edited elsewhere and no longer match that fixed set. attributeName is the codebook name of the attribute, which is not translated.',
+  },
   slotDraftLabelCollectsRefusal: {
     id: 'protocolBuilder.pedigree.slotDraftLabelCollectsRefusal',
     defaultMessage:
