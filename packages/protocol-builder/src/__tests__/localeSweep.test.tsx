@@ -16,7 +16,6 @@ import SourceStageSection from '../sections/narrativePedigree/SourceStageSection
 import AutomaticLayoutSection from '../sections/network/AutomaticLayoutSection.tsx';
 import BackgroundSection from '../sections/network/BackgroundSection.tsx';
 import NarrativeBehavioursSection from '../sections/network/NarrativeBehavioursSection.tsx';
-import { networkCanvasMessages } from '../sections/network/networkCanvasMessages.ts';
 import SociogramPromptsSection from '../sections/network/SociogramPromptsSection.tsx';
 import NetworkFilterSection from '../sections/NetworkFilterSection.tsx';
 import PageContentSection from '../sections/PageContentSection.tsx';
@@ -351,12 +350,6 @@ describe('the interface families under es, at rest', () => {
           <SociogramPromptsSection />
           <BackgroundSection allowsImage />
           <AutomaticLayoutSection />
-          <NarrativeBehavioursSection
-            description={
-              networkCanvasMessages.sociogramCanvasInteractionDescription
-            }
-            repositioningHint={networkCanvasMessages.sociogramRepositioningHint}
-          />
         </>
       ),
     });
@@ -364,6 +357,27 @@ describe('the interface families under es, at rest', () => {
 
     expectNoLocaleLeaks(
       'sociogram canvas sections at rest',
+      researcherWords(harness),
+    );
+  });
+
+  /**
+   * The canvas permissions, swept on their own.
+   *
+   * The sociogram does not mount them — the interview honours neither on that
+   * interface — so they are swept where they belong, over the narrative stage
+   * whose editor will mount them.
+   */
+  it('sweeps the canvas permissions a narrative grants', async () => {
+    const harness = renderStageEditor({
+      stageId: 'narrative-1',
+      locale: 'es',
+      sections: <NarrativeBehavioursSection />,
+    });
+    await settled(harness);
+
+    expectNoLocaleLeaks(
+      'narrative canvas permissions at rest',
       researcherWords(harness),
     );
   });

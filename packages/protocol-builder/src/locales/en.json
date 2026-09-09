@@ -1789,7 +1789,7 @@
   },
   "protocolBuilder.networkCanvas.canvasInteractionDescription": {
     "defaultMessage": "Choose what the participant may do to the picture while they tell their story.",
-    "description": "Description of the canvas-interaction section on a narrative stage, where the participant is shown the network they have already built and asked to talk about it. The sociogram’s wording is sociogramCanvasInteractionDescription."
+    "description": "Description of the canvas-interaction section on a narrative stage, where the participant is shown the network they have already built and asked to talk about it."
   },
   "protocolBuilder.networkCanvas.canvasInteractionTitle": {
     "defaultMessage": "Canvas interaction",
@@ -1977,15 +1977,11 @@
   },
   "protocolBuilder.networkCanvas.repositioningHint": {
     "defaultMessage": "The participant can drag nodes to new positions. Their positions are stored in the attribute the preset uses for layout, so moving a node here changes it everywhere that attribute is used.",
-    "description": "Guidance under the allow-moving-nodes switch on a narrative stage, where each preset names the attribute the positions are stored in. The sociogram’s wording is sociogramRepositioningHint."
+    "description": "Guidance under the allow-moving-nodes switch on a narrative stage, where each preset names the attribute the positions are stored in."
   },
   "protocolBuilder.networkCanvas.repositioningLabel": {
     "defaultMessage": "Allow moving nodes",
     "description": "Label of the switch letting the participant drag nodes to new places on the canvas."
-  },
-  "protocolBuilder.networkCanvas.sociogramCanvasInteractionDescription": {
-    "defaultMessage": "Choose what the participant may do to the canvas while they work through the prompts.",
-    "description": "Description of the canvas-interaction section on a sociogram stage, where the participant is working through a series of tasks rather than talking over a finished picture. Replaces canvasInteractionDescription."
   },
   "protocolBuilder.networkCanvas.sociogramPromptsDescription": {
     "defaultMessage": "Write the tasks the participant works through on the canvas, and drag them into the order they do them.",
@@ -2002,10 +1998,6 @@
   "protocolBuilder.networkCanvas.sociogramPromptsWaitingDescription": {
     "defaultMessage": "Choose what this stage works with before writing its prompts.",
     "description": "Shown in place of the sociogram prompts description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against."
-  },
-  "protocolBuilder.networkCanvas.sociogramRepositioningHint": {
-    "defaultMessage": "The participant can drag nodes to new positions. Each position is stored in the attribute the prompt they are answering names, so moving a node here changes it everywhere that attribute is used.",
-    "description": "Guidance under the allow-moving-nodes switch on a sociogram stage, where the prompt rather than a preset names the attribute the positions are stored in. Replaces repositioningHint."
   },
   "protocolBuilder.networkCanvas.tapBehaviourLabel": {
     "defaultMessage": "Tap behavior",

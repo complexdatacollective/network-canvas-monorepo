@@ -147,7 +147,7 @@ describe('the sociogram stage editor', () => {
   it('composes its sections in the order the decisions are made', async () => {
     const harness = openFixture();
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(9));
+    await waitFor(() => expect(harness.outline()).toHaveLength(8));
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Stage name',
       'Node type',
@@ -155,7 +155,6 @@ describe('the sociogram stage editor', () => {
       'Prompts',
       'Background',
       'Node layout',
-      'Canvas interaction',
       'Skip logic',
       'Interviewer guidance',
     ]);
@@ -164,58 +163,56 @@ describe('the sociogram stage editor', () => {
   /**
    * The list below is only as good as its agreement with the schema, so it is
    * checked against it: a behaviour added to `canvasBehavioursSchema` and not
-   * here would leave the round-trip test passing while the editor silently
-   * dropped the new key.
+   * here would leave the claims underneath describing two keys out of three.
    */
-  it('asks about every behaviour the schema allows', () => {
+  it('names every behaviour the schema allows', () => {
     expect(Object.keys(ALL_BEHAVIOURS.behaviours ?? {}).toSorted()).toEqual(
       schemaBehaviourKeys(),
     );
   });
 
   /**
-   * Each of them has a control the researcher can reach.
+   * Only the arrangement is asked about, and that is the whole of what the
+   * interview honours.
+   *
+   * `canvasBehavioursSchema` is shared with the narrative interface, so
+   * `freeDraw` and `allowRepositioning` are expressible here — and
+   * `Sociogram.tsx` reads neither: it has no drawing surface, and
+   * repositioning is unconditionally on by a recorded decision that its own
+   * regression test keeps ("does not override the Canvas allowRepositioning
+   * default"). A switch for either would take a researcher's answer about
+   * their study and do nothing with it, which is worse than not asking.
    *
    * Asked of the mounted fields rather than of a save, because a save cannot
    * tell the difference: a behaviour no section renders is left alone, so a
    * stage carrying one round-trips intact whether or not anything on screen
-   * offers it. What a missing section costs is the decision — a stage somebody
-   * else authored opening with a behaviour switched on that the researcher can
-   * neither see nor change.
+   * offers it.
    */
-  it('gives every behaviour the schema allows a control of its own', async () => {
+  it('asks only about the behaviour the interview honours', async () => {
     const harness = openWithEveryBehaviour();
 
     await waitFor(() =>
-      expect(behavioursOnScreen(harness)).toEqual(schemaBehaviourKeys()),
+      expect(behavioursOnScreen(harness)).toEqual(['automaticLayout']),
     );
+    expect(
+      screen.queryByRole('switch', { name: 'Allow drawing on the canvas' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('switch', { name: 'Allow moving nodes' }),
+    ).not.toBeInTheDocument();
   });
 
-  /** And a save gives every one of them back exactly as it arrived. */
+  /**
+   * And a save gives every one of them back exactly as it arrived — the two it
+   * does not ask about included. Not asking is not the same as throwing away:
+   * a stage somebody else authored keeps what it was authored with.
+   */
   it('keeps every behaviour the schema allows when a stage carrying them is re-saved', async () => {
     const harness = openWithEveryBehaviour();
 
     const request = await harness.roundTrip({ unowned: [] });
 
     expect(request.stageDocument.behaviours).toEqual(ALL_BEHAVIOURS.behaviours);
-  });
-
-  it('saves each canvas permission the researcher grants', async () => {
-    const harness = openFixture();
-
-    await harness.user.click(
-      screen.getByRole('switch', { name: 'Allow drawing on the canvas' }),
-    );
-    await harness.user.click(
-      screen.getByRole('switch', { name: 'Allow moving nodes' }),
-    );
-
-    const request = await harness.submit();
-    expect(request?.stageDocument.behaviours).toEqual({
-      automaticLayout: true,
-      freeDraw: true,
-      allowRepositioning: true,
-    });
   });
 
   /**

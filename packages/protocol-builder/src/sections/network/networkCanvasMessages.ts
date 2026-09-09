@@ -219,7 +219,7 @@ export const networkCanvasMessages = defineMessages({
     defaultMessage:
       'Choose what the participant may do to the picture while they tell their story.',
     description:
-      'Description of the canvas-interaction section on a narrative stage, where the participant is shown the network they have already built and asked to talk about it. The sociogram’s wording is sociogramCanvasInteractionDescription.',
+      'Description of the canvas-interaction section on a narrative stage, where the participant is shown the network they have already built and asked to talk about it.',
   },
   freeDrawLabel: {
     id: 'protocolBuilder.networkCanvas.freeDrawLabel',
@@ -244,21 +244,7 @@ export const networkCanvasMessages = defineMessages({
     defaultMessage:
       'The participant can drag nodes to new positions. Their positions are stored in the attribute the preset uses for layout, so moving a node here changes it everywhere that attribute is used.',
     description:
-      'Guidance under the allow-moving-nodes switch on a narrative stage, where each preset names the attribute the positions are stored in. The sociogram’s wording is sociogramRepositioningHint.',
-  },
-  sociogramCanvasInteractionDescription: {
-    id: 'protocolBuilder.networkCanvas.sociogramCanvasInteractionDescription',
-    defaultMessage:
-      'Choose what the participant may do to the canvas while they work through the prompts.',
-    description:
-      'Description of the canvas-interaction section on a sociogram stage, where the participant is working through a series of tasks rather than talking over a finished picture. Replaces canvasInteractionDescription.',
-  },
-  sociogramRepositioningHint: {
-    id: 'protocolBuilder.networkCanvas.sociogramRepositioningHint',
-    defaultMessage:
-      'The participant can drag nodes to new positions. Each position is stored in the attribute the prompt they are answering names, so moving a node here changes it everywhere that attribute is used.',
-    description:
-      'Guidance under the allow-moving-nodes switch on a sociogram stage, where the prompt rather than a preset names the attribute the positions are stored in. Replaces repositioningHint.',
+      'Guidance under the allow-moving-nodes switch on a narrative stage, where each preset names the attribute the positions are stored in.',
   },
 
   // One sociogram prompt, as its dialog asks for it.
