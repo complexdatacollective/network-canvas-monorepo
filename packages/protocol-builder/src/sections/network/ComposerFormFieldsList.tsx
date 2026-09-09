@@ -1,11 +1,13 @@
 import { useCallback } from 'react';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
   hasParameterIssues,
   validateParameters,
 } from '../../codebook/variableParameters.ts';
+import { variableDisplayName } from '../../codebook/variableValidation.ts';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import DialogArrayField, {
   type DialogArrayEditorValidate,
@@ -14,7 +16,8 @@ import DialogArrayField, {
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { useRowRenderers } from '../rowRenderers.tsx';
-import { useSubjectVariables } from './codebookOptions.ts';
+import { useStageSubject, useSubjectVariables } from './codebookOptions.ts';
+import { useComposerDraftWriters } from './composerDraftWriters.ts';
 import {
   composerParameterShape,
   effectiveComposerParameters,
@@ -106,6 +109,23 @@ export default function ComposerFormFieldsList({
     ComposerFormFieldPreview,
   );
   const variables = useSubjectVariables(subject);
+  /**
+   * What this stage itself writes around the codebook's rules, which the role
+   * map behind the picker cannot see: it is built with the edited stage
+   * excluded. Judged here as well as offered there, so the dialog cannot refuse
+   * what the picker offered — or accept a pick that survived from a stale
+   * draft.
+   */
+  const stageSubject = useStageSubject();
+  const draftWriters = useComposerDraftWriters();
+  const judgedAgainstTheStage =
+    subject !== undefined &&
+    stageSubject !== undefined &&
+    subject.entity === stageSubject.entity &&
+    (subject.entity === 'ego' ||
+      ('type' in subject &&
+        'type' in stageSubject &&
+        subject.type === stageSubject.type));
 
   const editorValidate = useCallback<DialogArrayEditorValidate>(
     (values, context) => {
@@ -123,6 +143,31 @@ export default function ComposerFormFieldsList({
         return {
           variable: intl.formatMessage(
             networkCanvasMessages.duplicateVariableRefusal,
+          ),
+        };
+      }
+      /**
+       * And nothing this stage already writes around the codebook's rules.
+       *
+       * Escapes the row's PRE-EDIT pick, the way every other cross-class gate
+       * in this package does: re-saving a row that arrived conflicting must
+       * never be refused for a conflict this edit did not introduce.
+       */
+      const committed =
+        typeof context?.initialValues === 'object' &&
+        context.initialValues !== null
+          ? Reflect.get(context.initialValues, 'variable')
+          : undefined;
+      if (
+        judgedAgainstTheStage &&
+        variable !== '' &&
+        variable !== committed &&
+        draftWriters.unvalidated.has(variable)
+      ) {
+        return {
+          variable: createMessageError(
+            networkCanvasMessages.unvalidatedOnThisStageRefusal,
+            { variableName: variableDisplayName(variables, variable) },
           ),
         };
       }
@@ -161,7 +206,7 @@ export default function ComposerFormFieldsList({
       }
       return {};
     },
-    [intl, value, variables],
+    [draftWriters, intl, judgedAgainstTheStage, value, variables],
   );
 
   return (

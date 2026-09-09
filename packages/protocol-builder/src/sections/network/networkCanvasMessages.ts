@@ -847,6 +847,20 @@ export const networkCanvasMessages = defineMessages({
     description:
       'Title of the dialog a researcher fills in to change a question one connection type’s form already asks. typeName is the edge type’s researcher-facing name, shown inside straight double quotes.',
   },
+  unvalidatedOnThisStageRefusal: {
+    id: 'protocolBuilder.networkCanvas.unvalidatedOnThisStageRefusal',
+    defaultMessage:
+      '"{variableName}" is written directly by another part of this stage, so a question here would validate values it did not collect. Choose a different attribute.',
+    description:
+      'Refusal shown under an attribute picker that collects answers through the codebook’s rules — a form field, or the quick-add name field — when the attribute chosen is one the SAME stage writes around those rules, such as the grouping the participant lassoes. variableName is the attribute’s researcher-facing name, shown inside straight double quotes. A stage is one step of an interview.',
+  },
+  validatedOnThisStageRefusal: {
+    id: 'protocolBuilder.networkCanvas.validatedOnThisStageRefusal',
+    defaultMessage:
+      '"{variableName}" is collected through its own rules elsewhere on this stage, so grouping cannot write it directly as well. Choose a different attribute.',
+    description:
+      'Refusal shown under the grouping-attribute picker when the attribute chosen is one the SAME stage collects through the codebook’s validation rules — its node form, or its quick-add field — which grouping would write around. variableName is the attribute’s researcher-facing name, shown inside straight double quotes.',
+  },
   formFieldValidationHintsLabel: {
     id: 'protocolBuilder.networkCanvas.formFieldValidationHintsLabel',
     defaultMessage: 'Show validation hints',

@@ -1762,3 +1762,119 @@ describe('a composer field with no settings of its own', () => {
     ).toEqual(SCALE);
   });
 });
+
+/**
+ * The two kinds of writer a composer has, meeting on one attribute.
+ *
+ * A form field collects its answer through the codebook's own rules; the
+ * grouping the participant lassoes and taps writes membership straight onto the
+ * node, around them. The schema's role-conflict rule refuses the pair — but the
+ * role map the pickers read is built with the EDITED stage excluded, so a
+ * composer's own live picks were invisible to it, and one attribute could be
+ * bound to both inside a single stage: participant grouping storing values that
+ * bypass the attribute's validation.
+ */
+describe('an attribute this composer already writes the other way', () => {
+  /**
+   * A categorical attribute nothing else in the protocol claims.
+   *
+   * The fixture's own `contactType` is written by a categorical bin elsewhere,
+   * so it is already kept out of every form — and a claim about this stage
+   * would hold for that reason instead.
+   */
+  const addSpareCategorical = (harness: StageEditorHarness) =>
+    addPersonVariable(harness, 'household', {
+      name: 'household',
+      type: 'categorical',
+      options: [
+        { label: 'Same household', value: 'same' },
+        { label: 'Different household', value: 'different' },
+      ],
+    });
+
+  const openTheNodeFieldPicker = async (harness: StageEditorHarness) => {
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create new node attribute field',
+      }),
+    );
+    return within(await screen.findByRole('dialog'));
+  };
+
+  it('is not offered to the node form once the stage groups by it', async () => {
+    const harness = renderStageEditor(openEditor());
+    addSpareCategorical(harness);
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Node attributes' }),
+    );
+
+    // Offered first, so what follows is the grouping pick and not an attribute
+    // this picker never showed.
+    const before = await openTheNodeFieldPicker(harness);
+    expect(
+      within(before.getByRole('combobox', { name: 'Attribute' })).getByRole(
+        'option',
+        { name: 'household' },
+      ),
+    ).toBeInTheDocument();
+    await harness.user.click(before.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Grouping attribute' }),
+      'household',
+    );
+
+    const after = await openTheNodeFieldPicker(harness);
+    expect(
+      within(after.getByRole('combobox', { name: 'Attribute' })).queryByRole(
+        'option',
+        { name: 'household' },
+      ),
+    ).toBeNull();
+  });
+
+  /**
+   * And the other way round: an attribute this stage's own form collects is
+   * not offered to the grouping tool, which would write it without validating
+   * it.
+   */
+  it('is not offered to the grouping once the node form collects it', async () => {
+    const harness = renderStageEditor(openEditor());
+    addSpareCategorical(harness);
+
+    const grouping = await screen.findByRole('combobox', {
+      name: 'Grouping attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(grouping).getByRole('option', { name: 'household' }),
+      ).toBeInTheDocument(),
+    );
+
+    // Bound to a field of this stage's own form, which collects it through the
+    // codebook's rules.
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Node attributes' }),
+    );
+    const field = await openTheNodeFieldPicker(harness);
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      'household',
+    );
+    await harness.user.click(field.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    await waitFor(() =>
+      expect(
+        within(
+          screen.getByRole('combobox', { name: 'Grouping attribute' }),
+        ).queryByRole('option', { name: 'household' }),
+      ).toBeNull(),
+    );
+  });
+});

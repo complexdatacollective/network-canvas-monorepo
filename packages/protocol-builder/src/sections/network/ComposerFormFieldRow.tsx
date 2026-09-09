@@ -12,7 +12,12 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
 import AttributeCodebookControls from '../AttributeCodebookControls.tsx';
 import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
-import { useSubjectVariables, useVariableOptions } from './codebookOptions.ts';
+import {
+  useStageSubject,
+  useSubjectVariables,
+  useVariableOptions,
+} from './codebookOptions.ts';
+import { useComposerDraftWriters } from './composerDraftWriters.ts';
 import ComposerFieldParameters from './ComposerFieldParameters.tsx';
 import {
   defaultInputControl,
@@ -79,7 +84,7 @@ export function ComposerFormFieldEditor({ item }: RowEditorProps) {
   const { variable } = useFormValue([VARIABLE_FIELD] as const);
   const selected = asText(variable) ?? asText(item.variable);
 
-  const options = useVariableOptions({
+  const savedOptions = useVariableOptions({
     subject,
     types: FORM_FIELD_VARIABLE_TYPES,
     // A form field collects its answer through the codebook's own rules, so it
@@ -87,6 +92,44 @@ export function ComposerFormFieldEditor({ item }: RowEditorProps) {
     writerClass: 'validated',
     ...(selected === undefined ? {} : { currentValue: selected }),
   });
+
+  /**
+   * And nothing THIS stage writes around those rules either.
+   *
+   * The role map behind `useVariableOptions` excludes the edited stage, so a
+   * composer's own live grouping or position pick is invisible to it: the same
+   * categorical attribute could be bound to the grouping tool and to a field of
+   * this very form, and the stage saved with participant grouping writing
+   * values that bypass the attribute's validation. Asked of the draft, because
+   * that is where a pick made a moment ago is, and only for the form that
+   * collects the STAGE's own subject — a connection form writes its edge type's
+   * attributes, which nothing else on a composer touches.
+   */
+  const stageSubject = useStageSubject();
+  const draftWriters = useComposerDraftWriters();
+  const judgedAgainstTheStage =
+    subject !== undefined &&
+    stageSubject !== undefined &&
+    subject.entity === stageSubject.entity &&
+    (subject.entity === 'ego' ||
+      ('type' in subject &&
+        'type' in stageSubject &&
+        subject.type === stageSubject.type));
+  const options = useMemo(
+    () =>
+      judgedAgainstTheStage
+        ? savedOptions.filter(
+            (option) =>
+              // The row's own pick is always offered back, whatever the filters
+              // say: a picker that dropped its own value would blank the
+              // control and write the blank over the reference the researcher
+              // has to resolve.
+              option.value === selected ||
+              !draftWriters.unvalidated.has(option.value),
+          )
+        : savedOptions,
+    [draftWriters, judgedAgainstTheStage, savedOptions, selected],
+  );
 
   const variableType =
     selected === undefined ? undefined : variables[selected]?.type;
