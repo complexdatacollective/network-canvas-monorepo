@@ -403,9 +403,9 @@ export const narrativePedigreeMessages = defineMessages({
   atRiskHowInferred: {
     id: 'protocolBuilder.narrativePedigree.atRiskHowInferred',
     defaultMessage:
-      'At-risk statuses are not observed or diagnosed. They are inferred from the family structure together with each condition’s inheritance pattern — the child of a parent affected by a dominant condition is shown as <em>may develop</em> it, and the child of two carriers of a recessive condition as <em>may carry</em> it.',
+      'At-risk statuses are not observed or diagnosed. They are inferred from the family structure together with each condition’s inheritance pattern — the child of a parent affected by a dominant condition and the child of two carriers of a recessive condition are both shown as <em>may develop</em> it, while a child with only one carrier parent is shown as <em>may carry</em> it.',
     description:
-      'Says what an at-risk status is worked out from, with one example of each kind. The <em> tags mark the two phrases drawn from standard pedigree nomenclature; a carrier holds a condition without developing it.',
+      'Says what an at-risk status is worked out from, with the examples the pedigree itself draws that way: a child of two carriers of a recessive condition inherits both copies in a quarter of cases, so it is drawn as "may develop" rather than as "may carry", which is what a child with one carrier parent is drawn as. The <em> tags mark the two phrases drawn from standard pedigree nomenclature; a carrier holds a condition without developing it.',
   },
   atRiskHowConstrained: {
     id: 'protocolBuilder.narrativePedigree.atRiskHowConstrained',

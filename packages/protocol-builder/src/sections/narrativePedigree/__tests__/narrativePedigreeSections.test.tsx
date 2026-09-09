@@ -918,3 +918,29 @@ describe('the batch a source change makes', () => {
     await screen.findByText('Condition X');
   });
 });
+
+/**
+ * The prose explaining at-risk statuses describes what the pedigree actually
+ * draws, so a researcher reading it can predict the family tree in front of
+ * them.
+ *
+ * The recessive example is the one that can be got wrong in a way nothing else
+ * catches: the genetics engine marks a child of two obligate carriers
+ * `atRiskAffected`, which the interview draws as "may develop", while "may
+ * carry" is what a child with a single carrier parent is drawn as. Described
+ * the other way round, the explanation contradicts the picture it explains.
+ */
+describe('the explanation of at-risk statuses', () => {
+  it('gives the two-carrier child as an example of "may develop"', () => {
+    renderStageEditor(openFixture());
+
+    // Read off the paragraph as a whole: the two phrases the sentence turns on
+    // are emphasised, so a text query matching only direct text nodes would
+    // answer a question about half of it.
+    expect(
+      [...document.querySelectorAll('p')].map((node) => node.textContent),
+    ).toContain(
+      'At-risk statuses are not observed or diagnosed. They are inferred from the family structure together with each condition\u2019s inheritance pattern \u2014 the child of a parent affected by a dominant condition and the child of two carriers of a recessive condition are both shown as may develop it, while a child with only one carrier parent is shown as may carry it.',
+    );
+  });
+});
