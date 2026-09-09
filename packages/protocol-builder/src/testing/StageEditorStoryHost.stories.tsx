@@ -66,9 +66,13 @@ export const Editing: Story = {
     // protocol the host opened — so the line is derived from that same stage
     // order, and from the stage this story actually opened, rather than
     // written out here.
+    //
+    // Awaited: the stage order is another section, and the host answers for it
+    // over a promise like any other. The editor draws itself from the stage it
+    // holds and fills the position in when that answer lands.
     const order = fixtureStageIds();
     await expect(
-      canvas.getByText(
+      await canvas.findByText(
         `Stage ${order.indexOf(args.stageId) + 1} of ${order.length}`,
       ),
     ).toBeInTheDocument();

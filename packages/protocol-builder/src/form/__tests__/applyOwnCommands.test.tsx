@@ -11,6 +11,7 @@ import {
   type OwnCommandsResult,
   useStageEditorForm,
 } from '../stageEditorContext.ts';
+import { useStageValue } from '../stageFormHooks.ts';
 
 /**
  * The seam a list editor writes through, exercised directly.
@@ -29,6 +30,25 @@ const initialFields: SectionDoc = {
   title: 'Welcome to the study',
   items: [],
 };
+
+/**
+ * A section reading a path no control on screen is registered at.
+ *
+ * That is the shape of every cross-section read: the section that renders a
+ * value and the section that reads it are different sections, and one of them
+ * is routinely not mounted — collapsed, behind a switch, or simply not part of
+ * this interface's editor.
+ */
+function ItemsProbe() {
+  return (
+    <output data-testid="items">
+      {JSON.stringify(useStageValue('items'))}
+    </output>
+  );
+}
+
+const probedItems = (): unknown =>
+  JSON.parse(screen.getByTestId('items').textContent ?? 'null');
 
 function renderEditor(readOnly = false) {
   const held: { apply?: ApplyOwnCommands } = {};
@@ -49,6 +69,7 @@ function renderEditor(readOnly = false) {
           label="Page heading"
           component={InputField}
         />
+        <ItemsProbe />
       </BuilderSection>
     ),
   });
@@ -137,6 +158,30 @@ describe('the form’s own structural writes', () => {
       title: 'Half-written heading',
       items: [{ id: 'a', type: 'text', content: 'Who?' }],
     });
+  });
+
+  it('is visible to a section reading a path no control covers', async () => {
+    const { apply } = renderEditor();
+    await screen.findByRole('textbox', { name: 'Page heading' });
+    expect(probedItems()).toEqual([]);
+
+    apply([
+      {
+        op: 'set',
+        key: 'items',
+        value: [{ id: 'a', type: 'text', content: 'Who?' }],
+      },
+    ]);
+
+    // The live document is what a reader reads, not the one the lock handed
+    // over: a reader still answered from the opening document would report a
+    // list that has since gained a row as empty, and go on doing so until the
+    // stage was saved and reopened.
+    await waitFor(() =>
+      expect(probedItems()).toEqual([
+        { id: 'a', type: 'text', content: 'Who?' },
+      ]),
+    );
   });
 
   it('answers a read with the document as it stands, and never refuses one', async () => {

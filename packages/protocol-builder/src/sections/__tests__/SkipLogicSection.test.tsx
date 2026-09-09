@@ -933,8 +933,17 @@ describe('choosing where the interview continues', () => {
     ]);
   });
 
-  it('reports a destination whose stage has left the interview, without throwing', () => {
-    renderStageEditor({
+  /**
+   * Whether the destination still exists is a fact about ANOTHER section, so
+   * it is reported and the save goes through: a draft is allowed to be
+   * transiently invalid across sections, and publication is where that is
+   * enforced. Both halves are asserted here, because either on its own would
+   * hold while the other broke — a save silently refused with the problem on
+   * screen, or a save taken with nothing to tell the researcher why the stage
+   * they authored no longer skips anywhere.
+   */
+  it('reports a destination whose stage has left the interview, and saves it', async () => {
+    const harness = renderStageEditor({
       stage: lateStageHolding(
         configuredFields({ type: 'stage', stageId: 'deleted-stage' }),
       ),
@@ -954,6 +963,11 @@ describe('choosing where the interview continues', () => {
       /no longer part of this interview/,
     );
     expect(destinationSelect()).toHaveAttribute('aria-invalid', 'true');
+
+    const written = await harness.submit();
+    expect(written?.stageDocument.skipLogic).toEqual(
+      configuredFields({ type: 'stage', stageId: 'deleted-stage' }).skipLogic,
+    );
   });
 
   it('leaves a destination the interview can still reach marked valid', () => {
@@ -1040,8 +1054,8 @@ describe('choosing where the interview continues', () => {
     expect(destinationSelect()).toHaveAttribute('aria-invalid', 'true');
   });
 
-  it('reports a destination the interview now reaches first, without throwing', () => {
-    renderStageEditor({
+  it('reports a destination the interview now reaches first, and saves it', async () => {
+    const harness = renderStageEditor({
       stage: lateStageHolding(
         // The interview reaches the Information stage long before this one.
         configuredFields({ type: 'stage', stageId: 'information-1' }),
@@ -1054,6 +1068,12 @@ describe('choosing where the interview continues', () => {
         'The stage this skips to no longer comes after this one. Choose a later stage, or end the interview.',
       ),
     ).toBeInTheDocument();
+    expect(destinationSelect()).toHaveAttribute('aria-invalid', 'true');
+
+    const written = await harness.submit();
+    expect(written?.stageDocument.skipLogic).toEqual(
+      configuredFields({ type: 'stage', stageId: 'information-1' }).skipLogic,
+    );
   });
 
   it('saves the same stage once the destination is chosen again', async () => {
