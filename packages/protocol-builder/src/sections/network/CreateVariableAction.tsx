@@ -65,6 +65,14 @@ export default function CreateVariableAction({
      */
     openedDocument: SectionDoc;
   } | null>(null);
+  /**
+   * Whether the editor's save is with the host right now.
+   *
+   * Held HERE rather than inside the editor because it is the DIALOG that has
+   * to answer for it: what a dismissal mid-flight unmounts is the editor, and
+   * a state living there would go with it. See `submitEdit`.
+   */
+  const [submitting, setSubmitting] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const entityDocument =
@@ -130,6 +138,40 @@ export default function CreateVariableAction({
     sectionIdForCodebookSubject(subject) !==
       sectionIdForCodebookSubject(session.subject);
 
+  /**
+   * The compound edit the editor submits, with the dialog held shut while it
+   * is in flight.
+   *
+   * The request outlives the dialog: dismissed mid-flight, the editor is
+   * unmounted but the handler awaiting the host is still alive, so a refusal
+   * is shown to nobody and a success still runs `onCreated` — choosing an
+   * attribute into a picker the researcher watched no editor finish. The same
+   * act as `AttributeCodebookControls`' three nested editors, which withhold
+   * every way out for exactly this.
+   */
+  const submitEdit = async (
+    request: Parameters<typeof controller.requestCompoundEdit>[0],
+  ) => {
+    setSubmitting(true);
+    try {
+      return await controller.requestCompoundEdit(request);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /**
+   * Every way out of the editor, which is one handler.
+   *
+   * Escape, a press outside and the close button all arrive at `closeDialog`,
+   * so refusing here covers all three — and `dismissible` takes the close
+   * button away rather than leaving a control on screen that does nothing.
+   */
+  const requestClose = () => {
+    if (submitting) return;
+    setSession(null);
+  };
+
   return (
     <>
       {launchable !== undefined && (
@@ -150,7 +192,8 @@ export default function CreateVariableAction({
           open
           title={label}
           size="readable"
-          closeDialog={() => setSession(null)}
+          dismissible={!submitting}
+          closeDialog={requestClose}
           finalFocus={() => triggerRef.current}
         >
           <VariableEditor
@@ -166,9 +209,7 @@ export default function CreateVariableAction({
             description={description}
             title={label}
             createRequestId={() => uuid()}
-            onSubmitRequest={(request) =>
-              controller.requestCompoundEdit(request)
-            }
+            onSubmitRequest={submitEdit}
             onComplete={(variableId) => {
               // Chosen only while the field still names attributes of the type
               // the attribute was created on. An answer that arrives after the

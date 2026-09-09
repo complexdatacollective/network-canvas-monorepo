@@ -1,5 +1,5 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -849,6 +849,22 @@ const openAttributeCreator = async (
   return attributeCreator();
 };
 
+/** The id the codebook now files an attribute of this name under. */
+const personVariableIdByName = (
+  harness: StageEditorHarness,
+  name: string,
+): string | undefined => {
+  const person = harness.host.getSnapshot().protocolSections[PERSON_SECTION];
+  const variables = person?.variables;
+  if (typeof variables !== 'object' || variables === null) return undefined;
+  return Object.entries(variables).find(
+    ([, variable]) =>
+      typeof variable === 'object' &&
+      variable !== null &&
+      Reflect.get(variable, 'name') === name,
+  )?.[0];
+};
+
 describe('creating an attribute a prompt needs without leaving the stage', () => {
   /**
    * A lease taken back while the researcher is naming a new attribute.
@@ -885,5 +901,77 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
     expect(
       screen.getByRole('button', { name: 'Create attribute' }),
     ).toBeDisabled();
+  });
+
+  /**
+   * Holds the compound edit open, and hands back the release.
+   *
+   * The one window this dialog's guard is about: the host has the request and
+   * has not answered, which is when a dismissal unmounts the editor and leaves
+   * the answer with nobody to show it to.
+   */
+  const holdTheCompoundEdit = (harness: StageEditorHarness) => {
+    const send = harness.session.requestCompoundEdit.bind(harness.session);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
+      async (request) => {
+        await held;
+        return send(request);
+      },
+    );
+    return () => {
+      release();
+    };
+  };
+
+  /**
+   * A refusal arriving after the dialog has gone is shown to nobody, and a
+   * success arriving after it points the prompt at an attribute the researcher
+   * watched no editor finish. The dialog therefore withholds every way out
+   * until the host answers, exactly as the nested editors in
+   * `AttributeCodebookControls` do.
+   */
+  it('withholds every way out until the codebook answers', async () => {
+    const harness = renderStageEditor(openEditor());
+    const release = holdTheCompoundEdit(harness);
+
+    const creator = await openAttributeCreator(harness);
+    await harness.user.type(
+      creator.getByRole('textbox', { name: 'Attribute name' }),
+      'seating',
+    );
+    await harness.user.click(
+      creator.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    // Escape and a press outside are the two routes left; the close button is
+    // taken away rather than left on screen doing nothing.
+    await harness.user.keyboard('{Escape}');
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'seating',
+    );
+    expect(
+      within(
+        screen
+          .getByRole('textbox', { name: 'Attribute name' })
+          .closest('[role="dialog"]') as HTMLElement,
+      ).queryAllByRole('button', { name: 'Close' }),
+    ).toHaveLength(0);
+
+    release();
+    // And the answer lands on the surface that asked for it: the prompt now
+    // positions its nodes with the attribute the codebook now holds.
+    await waitFor(() =>
+      expect(personVariableIdByName(harness, 'seating')).toEqual(
+        expect.any(String),
+      ),
+    );
+    const prompt = within(await screen.findByRole('dialog'));
+    expect(
+      prompt.getByRole('combobox', { name: 'Position attribute' }),
+    ).toHaveValue(personVariableIdByName(harness, 'seating'));
   });
 });
