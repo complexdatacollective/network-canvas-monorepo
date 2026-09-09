@@ -349,6 +349,44 @@ export const pedigreeMessages = defineMessages({
     description:
       'Body of the warning about other stages that read this pedigree. stageNames is the list of those stages’ names, each in quotation marks, already joined into one phrase in the reader’s language.',
   },
+  nodeTypeChangeTitle: {
+    id: 'protocolBuilder.pedigree.nodeTypeChangeTitle',
+    defaultMessage: 'This will clear everything about family members',
+    description:
+      'Title of the confirmation shown before a researcher changes the node type a Family Pedigree draws people as. Everything the stage says about a family member describes attributes of the current type, so changing it discards all of it.',
+  },
+  nodeTypeChangeDescription: {
+    id: 'protocolBuilder.pedigree.nodeTypeChangeDescription',
+    defaultMessage:
+      'The display label, the participant identifier, the relationship attribute, the biological sex attribute, the family member form and every nomination prompt all name attributes of the current node type, so changing it removes them.',
+    description:
+      'Body of the confirmation shown before a Family Pedigree’s node type changes, listing what the change discards.',
+  },
+  nodeTypeChangeConfirm: {
+    id: 'protocolBuilder.pedigree.nodeTypeChangeConfirm',
+    defaultMessage: 'Change the node type',
+    description:
+      'Button that confirms changing a Family Pedigree’s node type and discarding everything that described the previous one.',
+  },
+  edgeTypeChangeTitle: {
+    id: 'protocolBuilder.pedigree.edgeTypeChangeTitle',
+    defaultMessage: 'This will clear everything about family relationships',
+    description:
+      'Title of the confirmation shown before a researcher changes the edge type a Family Pedigree records relationships as. Everything the stage says about a relationship describes attributes of the current type, so changing it discards all of it.',
+  },
+  edgeTypeChangeDescription: {
+    id: 'protocolBuilder.pedigree.edgeTypeChangeDescription',
+    defaultMessage:
+      'The relationship type, whether a relationship is current, who carried each pregnancy and the gamete each parent contributed all name attributes of the current edge type, so changing it removes them.',
+    description:
+      'Body of the confirmation shown before a Family Pedigree’s edge type changes, listing what the change discards.',
+  },
+  edgeTypeChangeConfirm: {
+    id: 'protocolBuilder.pedigree.edgeTypeChangeConfirm',
+    defaultMessage: 'Change the edge type',
+    description:
+      'Button that confirms changing a Family Pedigree’s edge type and discarding everything that described the previous one.',
+  },
   slotEmptyState: {
     id: 'protocolBuilder.pedigree.slotEmptyState',
     defaultMessage:

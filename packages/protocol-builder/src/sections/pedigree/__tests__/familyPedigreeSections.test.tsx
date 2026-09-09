@@ -1155,9 +1155,20 @@ describe('what a family member form field’s attribute holds', () => {
  * assertions of any test written about what is on screen.
  */
 describe('a pedigree whose node type changes', () => {
-  /** The one radio that is not already chosen, named for its type. */
+  /**
+   * The one radio that is not already chosen, named for its type — and the
+   * answer to the question a configured pedigree asks before it lets go of
+   * everything that described the type it is leaving.
+   *
+   * Every test below means "the researcher changed the node type", and the
+   * researcher cannot do that without answering, so none of them may pass by a
+   * route the researcher does not have.
+   */
   const chooseNodeType = async (harness: StageEditorHarness, name: string) => {
     await harness.user.click(screen.getByRole('radio', { name }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Change the node type' }),
+    );
   };
 
   const nodeConfigOf = (
@@ -1167,6 +1178,113 @@ describe('a pedigree whose node type changes', () => {
       harness.session.getSnapshot().editedSection.fields.nodeConfig;
     return isRecord(nodeConfig) ? nodeConfig : {};
   };
+
+  /**
+   * The reset is destructive and a chip is one click away, so the researcher
+   * is asked first.
+   *
+   * Undo is not an answer to this: it is a way back from a change the
+   * researcher meant to make, and what this prevents is the one they did not —
+   * a stray click on the chip beside the chosen one taking the member form and
+   * every nomination prompt with it, with nothing said. The question is asked
+   * of the same paths the reset discards (`NODE_TYPE_DEPENDENT_FIELDS`), so it
+   * cannot warn about a change that costs nothing or stay silent about one
+   * that costs something.
+   */
+  it('asks before it discards what described the old node type', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    expect(
+      await screen.findByText(
+        'This will clear everything about family members',
+      ),
+    ).toBeInTheDocument();
+    // Nothing has moved while the question stands: the pick is held back
+    // rather than made and offered back. Asked of the draft rather than of the
+    // chips, which the modal question has taken out of reach.
+    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  it('leaves the pedigree exactly as it was when the researcher says no', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Cancel' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Change the node type' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
+    expect(
+      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
+    ).toEqual(NOMINATION_ROWS);
+    expect(harness.pendingCommands()).toEqual([]);
+    expect(screen.getByText('Who has been unwell?')).toBeInTheDocument();
+  });
+
+  /**
+   * A question about nothing is one a researcher learns to dismiss without
+   * reading, so a pedigree the host has just created — which holds no
+   * attribute of any type yet — is asked nothing at all.
+   */
+  it('asks nothing of a new pedigree, which has nothing to lose', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'FamilyPedigree', position: 0 },
+      sections: pedigreeSections,
+    });
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family member' }),
+    );
+
+    expect(
+      screen.queryByRole('button', { name: 'Change the node type' }),
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(nodeConfigOf(harness).type).toBe('family_member'),
+    );
+  });
+
+  /**
+   * The edge type reaches the same reset through the same control, and its
+   * slots are worth the same warning: an edge type change takes the
+   * relationship type, whether a relationship is current, who carried each
+   * pregnancy and each parent's gamete with it.
+   */
+  it('asks before it discards what described the old edge type', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
+
+    expect(
+      await screen.findByText(
+        'This will clear everything about family relationships',
+      ),
+    ).toBeInTheDocument();
+    expect(harness.pendingCommands()).toEqual([]);
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Change the edge type' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'knows' })).toBeChecked(),
+    );
+    expect(commandsOf(harness)).toEqual([
+      { op: 'set', key: ['edgeConfig', 'type'], value: 'knows' },
+      { op: 'unset', key: ['edgeConfig', 'gameteRoleVariable'] },
+      { op: 'unset', key: ['edgeConfig', 'isActiveVariable'] },
+      { op: 'unset', key: ['edgeConfig', 'isGestationalCarrierVariable'] },
+      { op: 'unset', key: ['edgeConfig', 'relationshipTypeVariable'] },
+    ]);
+  });
 
   /**
    * The whole decision, in the order it happened: this type was chosen, and

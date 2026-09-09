@@ -14,7 +14,10 @@ import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import FormFieldsSection from '../FormFieldsSection.tsx';
-import { useResetOnEntityTypeChange } from './entityTypeReset.ts';
+import {
+  useEntityTypeChangeConfirmation,
+  useResetOnEntityTypeChange,
+} from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
 import SlotVariableField from './SlotVariableField.tsx';
 import {
@@ -65,6 +68,20 @@ const NODE_TYPE_DEPENDENT_FIELDS: readonly string[] = Object.freeze([
 ]);
 
 /**
+ * What a node type change costs, in the pedigree's own words.
+ *
+ * The list above says which paths go; this says it in a sentence, because the
+ * researcher is asked before the reset runs rather than told afterwards. The
+ * two are declared together so a path added to one is visibly missing from the
+ * other.
+ */
+const NODE_TYPE_CHANGE_WORDS = Object.freeze({
+  title: pedigreeMessages.nodeTypeChangeTitle,
+  description: pedigreeMessages.nodeTypeChangeDescription,
+  confirmLabel: pedigreeMessages.nodeTypeChangeConfirm,
+});
+
+/**
  * What switching the family member form off means, in the pedigree's words.
  *
  * The shared form-fields section owns the list; what a researcher loses by
@@ -100,6 +117,10 @@ export default function PedigreeNodeConfigurationSection() {
   const relationshipDraft = useStageValue(RELATIONSHIP_SLOT.path);
   const biologicalSexDraft = useStageValue(BIOLOGICAL_SEX_FIELD);
   useResetOnEntityTypeChange(TYPE_FIELD, NODE_TYPE_DEPENDENT_FIELDS);
+  const confirmTypeChange = useEntityTypeChangeConfirmation(
+    NODE_TYPE_DEPENDENT_FIELDS,
+    NODE_TYPE_CHANGE_WORDS,
+  );
 
   const subject: CodebookSubject | null = useMemo(
     () =>
@@ -206,6 +227,7 @@ export default function PedigreeNodeConfigurationSection() {
         name={TYPE_FIELD}
         component={EntitySelectControl}
         entityType="node"
+        confirmChange={confirmTypeChange}
         label={intl.formatMessage(pedigreeMessages.nodeTypeLabel)}
         hint={intl.formatMessage(pedigreeMessages.nodeTypeHint)}
         required
