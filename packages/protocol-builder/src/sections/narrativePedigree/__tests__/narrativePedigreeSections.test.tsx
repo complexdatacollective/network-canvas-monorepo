@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { NodeColorSequence } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -51,6 +52,21 @@ function narrativePedigreeStageWith(extra: SectionDoc): Readonly<{
     type: 'NarrativePedigree',
     fields: { ...seeded.fields, ...extra },
   };
+}
+
+/**
+ * The fixture narrative pedigree's own disease row.
+ *
+ * Read from the protocol rather than written out here, so a test that changes
+ * one field of it is still a test about a row the schema otherwise accepts.
+ */
+function fixtureDisease(): Record<string, unknown> {
+  const diseases = loadFixtureStage('narrative-pedigree-1').fields.diseases;
+  const disease = Array.isArray(diseases) ? diseases[0] : undefined;
+  if (typeof disease !== 'object' || disease === null) {
+    throw new Error('The fixture narrative pedigree has no disease to read.');
+  }
+  return { ...disease };
 }
 
 const openFixture = () => ({
@@ -186,12 +202,16 @@ const movePedigreeLast = (stages: string[]): string[] => [
  * Every option carries the number the stage will have in the finished
  * interview, so two pedigrees a researcher gave one name can still be told
  * apart. Read off the fixture's own order rather than written down, because
- * the number is a fact about the fixture and not about this rule; `displaced`
- * is for a stage being CREATED, which pushes everything at or after its own
- * index one place down.
+ * the number is a fact about the fixture and not about this rule.
+ *
+ * One number, whatever this stage is: every pedigree this control offers runs
+ * BEFORE the stage being edited, and a stage inserted after them does not move
+ * them. The number is what the researcher matches against the timeline, so a
+ * different one for a stage being created would point them at the wrong
+ * pedigree.
  */
-const fixturePedigreeOption = (displaced = false): string =>
-  `Stage ${fixtureStageIds().indexOf('family-pedigree-1') + (displaced ? 2 : 1)} — Family Pedigree`;
+const fixturePedigreeOption = (): string =>
+  `Stage ${fixtureStageIds().indexOf('family-pedigree-1') + 1} — Family Pedigree`;
 
 /** What the confirmation before a source change offers as its answer. */
 const CONFIRM_SOURCE_CHANGE = 'Change the pedigree';
@@ -258,6 +278,37 @@ const openRecordedFixture = () => ({
   otherStages: recordingTheFixtureDisease(),
 });
 
+/**
+ * `otherStages` leaving a stage the interview runs BEFORE the pedigree in a
+ * shape the schema refuses — a merge that lost its label.
+ *
+ * The protocol context reports it and drops it from the readable stages; the
+ * interview's order still names it, and the timeline still numbers it.
+ */
+function anUnreadableStageBeforeThePedigree(): Readonly<
+  Record<string, SectionDoc>
+> {
+  const order = fixtureStageIds();
+  const before = order.indexOf('information-1');
+  const pedigree = order.indexOf('family-pedigree-1');
+  // Asserted rather than assumed: if the fixture ever runs this stage after
+  // the pedigree there is no unreadable stage in front of it to count.
+  if (before === -1 || pedigree === -1 || before > pedigree) {
+    throw new Error(
+      'The fixture protocol no longer runs "information-1" before "family-pedigree-1".',
+    );
+  }
+  const stage = loadFixtureStage('information-1');
+  return {
+    'information-1': {
+      id: stage.id,
+      type: stage.type,
+      ...stage.fields,
+      label: '',
+    },
+  };
+}
+
 describe('the pedigree a narrative pedigree draws', () => {
   it('opens on the stage as the protocol holds it', async () => {
     const harness = renderStageEditor(openFixture());
@@ -276,6 +327,24 @@ describe('the pedigree a narrative pedigree draws', () => {
         'At-risk statuses',
       ]),
     );
+  });
+
+  /**
+   * The number beside a pedigree is what the researcher matches against the
+   * timeline, and the timeline holds every stage the interview runs —
+   * including one whose own document the schema refuses, which is a stage the
+   * researcher can see and open. Counted in the stages this package could read
+   * alone, the pedigree was offered under the number of a different row of
+   * that timeline, which is the wrong family to point at exactly where two
+   * pedigrees share a name.
+   */
+  it('numbers a pedigree behind an unreadable stage as the timeline does', async () => {
+    const harness = renderStageEditor({
+      ...openFixture(),
+      otherStages: anUnreadableStageBeforeThePedigree(),
+    });
+
+    expect(await offeredSources(harness)).toEqual([fixturePedigreeOption()]);
   });
 
   it('saves the stage it opened, unchanged', async () => {
@@ -380,12 +449,17 @@ describe('a narrative pedigree the host is creating', () => {
     expect(screen.getByText('No pedigree to read')).toBeInTheDocument();
   });
 
-  it('offers the pedigrees it will run after', async () => {
+  /**
+   * Numbered as the timeline already numbers them, because a stage appended
+   * after them moves none of them. Shifting every offered pedigree by one
+   * called the fixture's "Stage 3" pedigree "Stage 4", which is the wrong
+   * stage to point a researcher at — and pointing at the right one is the
+   * whole reason the number is there.
+   */
+  it('offers the pedigrees it will run after, numbered as they run', async () => {
     const harness = renderStageEditor(createAt(fixtureStageIds().length));
 
-    expect(await offeredSources(harness)).toEqual([
-      fixturePedigreeOption(true),
-    ]);
+    expect(await offeredSources(harness)).toEqual([fixturePedigreeOption()]);
   });
 
   /**
@@ -530,6 +604,100 @@ describe('the diseases a narrative pedigree defines', () => {
     expect(optionsOf('Affected-status attribute')).toEqual(['hasConditionX']);
   });
 
+  /**
+   * The colour is what the PARTICIPANT sees on the family tree, and the
+   * palette entries have no names of their own — they are the study's theme
+   * colours, counted rather than called anything. Offered as a list of counts,
+   * the researcher picks the shade blind and learns which one it was only
+   * after the row is saved and the list redraws it. So each choice is the
+   * colour itself, with the count kept as the name a screen reader announces.
+   */
+  it('shows every disease colour as the colour it is', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit disease' }),
+    );
+    const disease = within(await screen.findByRole('dialog'));
+
+    const swatches = NodeColorSequence.map((_, index) =>
+      disease.getByRole('radio', { name: `Color ${index + 1}` }),
+    );
+    swatches.forEach((swatch, index) => {
+      // The visible control beside the radio is drawn in the palette entry it
+      // stands for, through the theme variable the rest of the editor tints
+      // protocol colours with.
+      expect(swatch.nextElementSibling?.getAttribute('style')).toContain(
+        `--swatch: var(--node-${index + 1})`,
+      );
+    });
+    // And the colour the row already carries is the one shown as chosen.
+    expect(disease.getByRole('radio', { name: 'Color 1' })).toBeChecked();
+  });
+
+  /**
+   * A closed list of choices holds a value it cannot show, and `required` sees
+   * a non-empty string.
+   *
+   * Both of this row's counted choices — the palette and the inheritance
+   * patterns — are enums in the protocol schema, so a value outside them is
+   * one the saved stage is refused for. An import or a merge can leave one
+   * there, and that stage is exactly the one a researcher opens this editor to
+   * repair: the control shows nothing as chosen, the row still holds the
+   * value, and Save closed the dialog over it with nothing anywhere saying
+   * what was wrong. The refusal names the control the researcher has to act
+   * on, which is the one showing nothing.
+   */
+  it('refuses to close a disease row over choices the lists do not hold', async () => {
+    const harness = renderStageEditor({
+      stage: narrativePedigreeStageWith({
+        diseases: [
+          {
+            ...fixtureDisease(),
+            color: 'node-color-seq-from-another-study',
+            inheritancePattern: 'inherited-somehow',
+          },
+        ],
+      }),
+      sections: narrativePedigreeSections,
+      otherStages: recordingTheFixtureDisease(),
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit disease' }),
+    );
+    const disease = within(await screen.findByRole('dialog'));
+    // The precondition, asserted rather than assumed: neither control is
+    // showing one of the choices it offers — the palette shows nothing at all
+    // as chosen, and the pattern select can only read back the stored token —
+    // so nothing on screen says the row is holding a value the protocol will
+    // not take.
+    expect(
+      disease
+        .getAllByRole<HTMLInputElement>('radio')
+        .filter((radio) => radio.checked),
+    ).toEqual([]);
+    expect(
+      disease.getByRole('combobox', { name: 'Inheritance pattern' }),
+    ).toHaveTextContent('inherited-somehow');
+
+    await harness.user.click(disease.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await disease.findByText(
+        'This disease is set to a color the palette does not have. Choose one of the colors shown.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      disease.getByText(
+        'This disease is set to an inheritance pattern this editor does not know. Choose one from the list.',
+      ),
+    ).toBeInTheDocument();
+    // And the row is still open, holding the work, rather than closed over a
+    // stage the protocol refuses.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
   it('refuses a second disease that reuses a name', async () => {
     const harness = renderStageEditor({
       ...openFixture(),
@@ -547,10 +715,7 @@ describe('the diseases a narrative pedigree defines', () => {
       disease.getByRole('textbox', { name: 'Disease name' }),
       'condition x ',
     );
-    await harness.user.selectOptions(
-      disease.getByRole('combobox', { name: 'Color' }),
-      'node-color-seq-2',
-    );
+    await harness.user.click(disease.getByRole('radio', { name: 'Color 2' }));
     await harness.user.selectOptions(
       disease.getByRole('combobox', { name: 'Affected-status attribute' }),
       'hasConditionY',
@@ -728,10 +893,7 @@ describe('the diseases a narrative pedigree defines', () => {
       disease.getByRole('textbox', { name: 'Disease name' }),
       'Condition Y',
     );
-    await harness.user.selectOptions(
-      disease.getByRole('combobox', { name: 'Color' }),
-      'node-color-seq-2',
-    );
+    await harness.user.click(disease.getByRole('radio', { name: 'Color 2' }));
     await harness.user.selectOptions(
       disease.getByRole('combobox', { name: 'Affected-status attribute' }),
       'hasConditionY',
@@ -769,6 +931,59 @@ describe('the diseases a narrative pedigree defines', () => {
  * sat untouched, and for the row an import brought in.
  */
 describe('a disease the source pedigree stopped recording', () => {
+  /**
+   * The standing refusal names the rows at fault, so it has to follow WHICH
+   * rows those are — not merely how many there are.
+   *
+   * One change to the source pedigree can invalidate one disease and repair
+   * another at the same time: a collaborator moving a nomination prompt from
+   * one condition to the other leaves the number of unrecorded rows exactly as
+   * it was. Watching the count alone, the re-run never happened, and the
+   * sentence under the list went on naming the disease that had just been
+   * fixed while the badge sat on a different row — sending the researcher to
+   * repair a mapping that was already right.
+   */
+  it('renames the standing refusal when the unrecorded rows change', async () => {
+    const harness = renderStageEditor({
+      stage: narrativePedigreeStageWith({
+        diseases: [
+          fixtureDisease(),
+          {
+            ...fixtureDisease(),
+            id: 'disease-2',
+            label: 'Condition Y',
+            variable: 'hasConditionY',
+            color: NodeColorSequence[1],
+          },
+        ],
+      }),
+      sections: narrativePedigreeSections,
+      otherStages: recordingTheFixtureDisease(),
+    });
+    harness.receiveCodebookUpdate({
+      node: { family_member: familyMemberCodebook({ add: A_SECOND_BOOLEAN }) },
+    });
+
+    const namesConditionY =
+      'Condition Y maps an attribute the source pedigree does not record, so nobody in the family would be marked with it. Add a nomination prompt to that pedigree asking who has it, or remove the disease.';
+    const namesConditionX =
+      'Condition X maps an attribute the source pedigree does not record, so nobody in the family would be marked with it. Add a nomination prompt to that pedigree asking who has it, or remove the disease.';
+    // Where it starts: the pedigree records X, so the row mapping Y is the one
+    // nothing would ever mark, and the refusal under the list says so.
+    expect(await harness.submit()).toBeNull();
+    expect(await screen.findByText(namesConditionY)).toBeInTheDocument();
+
+    // The collaborator moves the one nomination prompt from X to Y. Both rows
+    // change verdict, and the count of them does not.
+    replaceSourcePedigree(
+      harness,
+      sourcePedigreeDocument({ records: ['hasConditionY'] }),
+    );
+
+    expect(await screen.findByText(namesConditionX)).toBeInTheDocument();
+    expect(screen.queryByText(namesConditionY)).not.toBeInTheDocument();
+  });
+
   it('refuses the save and names the disease', async () => {
     const harness = renderStageEditor(openRecordedFixture());
     expect(
@@ -908,6 +1123,50 @@ describe('a source stage that is no longer usable', () => {
       screen.getByRole('combobox', { name: 'Source stage' }),
     ).toHaveTextContent('a-pedigree-that-was-deleted');
     expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  /**
+   * The question is awaited, and the interview does not hold still while it
+   * stands.
+   *
+   * What resumes when the researcher answers is a closure from the render that
+   * asked, holding the pedigree they picked — while a collaborator can delete
+   * it, re-type it, or move it below this stage. Applied anyway, the answer
+   * costs them every disease the question warned about AND leaves the stage
+   * pointing at a pedigree it may not read: the control's own latest render
+   * has already stopped offering it. The same live-read-at-write family the
+   * shared confirm reads the codebook back through.
+   */
+  it('refuses a confirmed source the interview has moved in the meantime', async () => {
+    const harness = renderStageEditor(withMissingSource());
+
+    await chooseOption(harness, 'Source stage', fixturePedigreeOption());
+    await screen.findByRole('button', { name: CONFIRM_SOURCE_CHANGE });
+    // The collaborator's move, arriving while the question stands: the
+    // pedigree now runs after this stage, so it is not one this stage may
+    // read and the control has stopped offering it.
+    reorderStages(harness, movePedigreeLast);
+    await harness.user.click(
+      screen.getByRole('button', { name: CONFIRM_SOURCE_CHANGE }),
+    );
+
+    // The stage is as it was: the choice was not applied, and nothing it was
+    // carrying was thrown away for it.
+    await waitFor(() =>
+      expect(harness.session.getSnapshot().editedSection.fields).toMatchObject({
+        sourceStageId: 'a-pedigree-that-was-deleted',
+        diseases: [{ id: 'disease-1', label: 'Condition X' }],
+      }),
+    );
+    expect(screen.getByText('Condition X')).toBeInTheDocument();
+    expect(harness.pendingCommands()).toEqual([]);
+    // And the researcher is told what did not happen, rather than left to
+    // notice that their answer did nothing.
+    expect(
+      await screen.findByText(
+        'What you chose is no longer one of the options here, so nothing has changed. Choose again.',
+      ),
+    ).toBeInTheDocument();
   });
 
   /**
@@ -1056,6 +1315,77 @@ describe('a source pedigree that changes while this stage is open', () => {
     expect(dispatch).not.toHaveBeenCalled();
     expect(harness.pendingCommands()).toEqual([]);
   });
+
+  /**
+   * The row dialog's own save, over an attribute that has just gone.
+   *
+   * The picker is built from the live codebook, so it stops offering the
+   * attribute at once — but the row is already holding it, the required rule
+   * sees a nonempty value, and this gate let the row's COMMITTED attribute
+   * escape every check it had. So Save closed the row over a reference
+   * whole-protocol validation then refuses, with nothing on screen marking the
+   * disease the researcher has to fix. The same rule, asked in the same order,
+   * as the pedigree's nomination-prompt rows.
+   */
+  it('refuses a disease whose attribute a collaborator deleted', async () => {
+    const harness = renderStageEditor(openRecordedFixture());
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit disease' }),
+    );
+    await screen.findByRole('dialog');
+    harness.receiveCodebookUpdate({
+      node: {
+        family_member: familyMemberCodebook({ remove: 'hasConditionX' }),
+      },
+    });
+
+    await harness.user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }),
+    );
+
+    expect(
+      await screen.findByText(
+        '"hasConditionX" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+      ),
+    ).toBeInTheDocument();
+    // The dialog stays open, holding the disease the researcher wrote, rather
+    // than closing over a row the stage cannot save.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * The same gate for the other way an attribute stops being usable: it is
+   * still in the codebook, so nothing about who else writes it has changed,
+   * but a true/false marker is not what it holds any more — and a disease
+   * writes `true` onto family members or it marks nobody.
+   */
+  it('refuses a disease whose attribute a collaborator retyped', async () => {
+    const harness = renderStageEditor(openRecordedFixture());
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit disease' }),
+    );
+    await screen.findByRole('dialog');
+    harness.receiveCodebookUpdate({
+      node: {
+        family_member: familyMemberCodebook({
+          add: { hasConditionX: { name: 'hasConditionX', type: 'text' } },
+        }),
+      },
+    });
+
+    await harness.user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }),
+    );
+
+    expect(
+      await screen.findByText(
+        '"hasConditionX" is no longer the kind of attribute this control can use, because its type was changed somewhere else. Choose another attribute.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
 });
 
 /**
@@ -1105,6 +1435,46 @@ describe('the batch a source change makes', () => {
   });
 
   /**
+   * The lease, asked of this change too.
+   *
+   * The source select asks its question through the same hook the chip picker
+   * does, and answers it with `null` because what it moves is a stage id
+   * rather than a codebook type. That says there is no TARGET to recheck; it
+   * does not say the change may be written. Editing can be taken away while
+   * the researcher reads what a new pedigree costs, and the continuation that
+   * resumes holds an `onChange` captured while the select was still editable —
+   * so the source moved in the form while the session refused the batch,
+   * leaving a stage reading a pedigree nobody chose beside the diseases of one
+   * it no longer reads.
+   *
+   * Refused where every other confirmed change is refused, before the target
+   * is considered at all, and SAID in the words a refused save already uses.
+   */
+  it('refuses a confirmed source change once editing has been taken away', async () => {
+    const harness = renderStageEditor(withMissingSource());
+
+    await chooseOption(harness, 'Source stage', fixturePedigreeOption());
+    const confirm = await screen.findByRole('button', {
+      name: CONFIRM_SOURCE_CHANGE,
+    });
+
+    harness.setReadOnly();
+
+    await harness.user.click(confirm);
+
+    expect(
+      await screen.findByText(
+        'This stage is read-only, so your changes were not saved. Take over editing and try again.',
+      ),
+    ).toBeInTheDocument();
+    // Neither half moved. The session below still reads the pedigree it did,
+    // and the diseases that described it are still there to describe it.
+    expect(draftOf(harness).sourceStageId).toBe('a-pedigree-that-was-deleted');
+    expect(screen.getByText('Condition X')).toBeInTheDocument();
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  /**
    * The defect a form-only clear leaves behind. A bound list resolves every
    * insertion against the draft the SESSION holds, so rows the session was
    * never told about are still there to be resolved against — and the next
@@ -1126,10 +1496,7 @@ describe('the batch a source change makes', () => {
       disease.getByRole('textbox', { name: 'Disease name' }),
       'Cystic fibrosis',
     );
-    await harness.user.selectOptions(
-      disease.getByRole('combobox', { name: 'Color' }),
-      'Color 2',
-    );
+    await harness.user.click(disease.getByRole('radio', { name: 'Color 2' }));
     await harness.user.selectOptions(
       disease.getByRole('combobox', { name: 'Affected-status attribute' }),
       'hasConditionX',
