@@ -62,22 +62,45 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
     asNestedIdList(item.edges, 'display'),
   );
 
+  /**
+   * No writer class on any of these three, and that is what a preset IS.
+   *
+   * A writer class is a claim to WRITE the attribute, and it buys an
+   * exclusivity: an unvalidated writer may not share an attribute with a form
+   * field, because a value written around the codebook's rules would defeat
+   * the validation the form applies. A preset writes nothing. The narrative
+   * runtime reads each node's position out of the attribute
+   * (`syncFromNodes`), runs its layout with `persist: false` and passes no
+   * drag handler, reads the grouping attribute to draw hulls, and reads the
+   * highlight attributes to colour nodes; there is no path on which it stores
+   * a value under any of them.
+   *
+   * Classed `unvalidated`, `excludeValidatedUses` dropped exactly the
+   * attributes a narrative stage exists to look at: the boolean an alter form
+   * collects, the categorical a form asks about. A committed preset hid it —
+   * `currentValue` escapes every filter — so the picker looked right on the
+   * stage that was already configured and offered nothing usable on a new
+   * preset.
+   *
+   * The interface-owned exclusion `useVariableOptions` always applies is a
+   * different rule and stays: an attribute a pedigree slot derives is still
+   * offered as a thing to READ where the reference is already stored, and is
+   * kept off the list of new picks so a researcher does not build a preset on
+   * a value another interface rewrites out from under it.
+   */
   const layoutOptions = useVariableOptions({
     subject,
     types: LAYOUT_TYPES,
-    writerClass: 'unvalidated',
     ...(committedLayout === undefined ? {} : { currentValue: committedLayout }),
   });
   const groupOptions = useVariableOptions({
     subject,
     types: CATEGORICAL_TYPES,
-    writerClass: 'unvalidated',
     ...(committedGroup === undefined ? {} : { currentValue: committedGroup }),
   });
   const highlightOptions = useVariableOptions({
     subject,
     types: BOOLEAN_TYPES,
-    writerClass: 'unvalidated',
     ...(committedHighlight === undefined
       ? {}
       : { currentValue: committedHighlight }),

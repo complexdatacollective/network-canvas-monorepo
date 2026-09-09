@@ -50,6 +50,42 @@ const personWithVariable = (
   return { ...document, variables: { ...variables, [variableId]: variable } };
 };
 
+/**
+ * What a preset READS, offered whoever else writes it.
+ *
+ * A narrative preset stores four references and writes none of them: the
+ * runtime reads positions out of the layout attribute, reads the grouping
+ * attribute to draw hulls, and reads the highlight attributes to colour nodes.
+ * Classed as an unvalidated WRITER, the pickers ran the exclusivity that keeps
+ * a bin or a stamp off an attribute a form collects — and dropped exactly the
+ * attributes a narrative stage exists to look at.
+ *
+ * `flagged` is the case: the fixture's alter form collects it, which is the
+ * normal way a true/false attribute about a person comes to exist. A committed
+ * preset hid the omission, because a picker always offers its own value back,
+ * so it showed up only on a preset being added.
+ */
+describe('an attribute something else already collects', () => {
+  it('is offered to a new preset, because a preset only reads it', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new preset' }),
+    );
+    const preset = within(await screen.findByRole('dialog'));
+
+    // The alter form collects this one; nothing collects the other. Both are
+    // asserted, so a tick list that rendered nothing at all cannot pass as a
+    // list that correctly left one out.
+    expect(
+      await preset.findByRole('checkbox', { name: 'flagged' }),
+    ).toBeInTheDocument();
+    expect(
+      preset.getByRole('checkbox', { name: 'highlighted' }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('the ways of looking at the network a narrative stage offers', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openEditor());
