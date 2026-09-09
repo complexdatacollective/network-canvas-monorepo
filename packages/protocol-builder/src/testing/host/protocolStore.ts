@@ -11,11 +11,19 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import type {
+  CodebookSubject,
   Presence,
   ProtocolEvent,
   Revision,
+  SectionReference,
 } from '../../contract/schemas.ts';
 import { EventQueue } from './eventQueue.ts';
+import {
+  entityTypeReferences,
+  inRemovalOrder,
+  variableReferences,
+  withoutReference,
+} from './references.ts';
 
 export type HostPrincipal = Readonly<{
   sessionId: string;
@@ -62,12 +70,10 @@ export type RefactorOutcome =
       revision: Revision;
       changedSections: ProtocolSectionId[];
     }>
-  | Readonly<{ status: 'blocked'; blocked: SectionHolder[] }>;
+  | Readonly<{ status: 'blocked'; blocked: SectionHolder[] }>
+  | Readonly<{ status: 'referenced'; remaining: SectionReference[] }>;
 
-export type CodebookSubject =
-  | Readonly<{ entity: 'node'; type: string }>
-  | Readonly<{ entity: 'edge'; type: string }>
-  | Readonly<{ entity: 'ego' }>;
+type SectionWrite = readonly [ProtocolSectionId, SectionDoc | undefined];
 
 export type CreatableSectionKind = 'stage' | 'codebookNode' | 'codebookEdge';
 
@@ -119,10 +125,22 @@ export class InMemoryProtocolStore {
     return this.#sections.has(id);
   }
 
+  /**
+   * A section, at the revision it currently holds.
+   *
+   * The document is a copy: an in-process client shares this process's memory
+   * with the store, and a caller that kept a document and changed it would
+   * otherwise change the protocol itself — with no lock check, no revision,
+   * no event and a content hash that no longer describes it. A host over a
+   * wire gets that isolation from serialising; this one has to make it.
+   */
   read(id: ProtocolSectionId): SectionAtRevision {
     const state = this.#sections.get(id);
     if (state === undefined) throw new SectionNotFoundError(id);
-    return state;
+    return {
+      document: structuredClone(state.document),
+      revision: state.revision,
+    };
   }
 
   holderOf(id: ProtocolSectionId): Presence | undefined {
@@ -201,11 +219,8 @@ export class InMemoryProtocolStore {
   }
 
   /**
-   * Removes a codebook variable and every prompt that names it.
-   *
-   * "Every prompt" is the whole of what a reference is here: the editors reach
-   * variables from prompts, and a host that also rewrote sort orders or filter
-   * rules would be guessing at semantics `@codaco/protocol-validation` owns.
+   * Removes a codebook variable, and the references to it that can go with the
+   * list entry holding them.
    */
   deleteVariable(
     subject: CodebookSubject,
@@ -219,9 +234,9 @@ export class InMemoryProtocolStore {
       : {};
     const nextVariables = { ...variables };
     delete nextVariables[variableId];
-    const stages = this.#stagesReferencing(variableId);
-    return this.#applyRefactor(
-      [[owner, { ...state.document, variables: nextVariables }], ...stages],
+    return this.#refactor(
+      [[owner, { ...state.document, variables: nextVariables }]],
+      (documents) => variableReferences(documents, subject, variableId),
       principal,
     );
   }
@@ -236,18 +251,10 @@ export class InMemoryProtocolStore {
         ? { entity: 'node', type: typeId }
         : { entity: 'edge', type: typeId },
     );
-    const state = this.read(owner);
-    const variables = isRecord(state.document.variables)
-      ? Object.keys(state.document.variables)
-      : [];
-    const stages = new Map<ProtocolSectionId, SectionDoc>();
-    for (const variableId of variables) {
-      for (const [id, document] of this.#stagesReferencing(variableId)) {
-        stages.set(id, stripPrompts(stages.get(id) ?? document, variableId));
-      }
-    }
-    return this.#applyRefactor(
-      [[owner, undefined], ...stages.entries()],
+    this.read(owner);
+    return this.#refactor(
+      [[owner, undefined]],
+      (documents) => entityTypeReferences(documents, entity, typeId),
       principal,
     );
   }
@@ -292,12 +299,14 @@ export class InMemoryProtocolStore {
     this.#setPresence(principal, 'viewing', undefined);
     this.#publishPresence();
     try {
-      for (const entry of backlog) yield entry;
+      // Every reader gets its own copy of an event, for the reason `read`
+      // gives: in process, the document on it is the store's own.
+      for (const entry of backlog) yield copyOf(entry);
       for await (const entry of queue) {
         if (last !== undefined && Number(entry.cursor) <= Number(last))
           continue;
         last = entry.cursor;
-        yield entry;
+        yield copyOf(entry);
       }
     } finally {
       signal?.removeEventListener('abort', stop);
@@ -307,8 +316,61 @@ export class InMemoryProtocolStore {
     }
   }
 
+  /**
+   * What a refactor writes: the codebook change it was asked for, and every
+   * section that stops naming what the change removed.
+   *
+   * The references come from the protocol schema rather than from the two or
+   * three paths a host happens to know, so a stage naming a variable from a
+   * form field or a filter rule is rewritten like one naming it from a prompt.
+   * One reference is removed at a time and the protocol is asked again, since
+   * removing a list entry moves every path after it. What the sweep cannot
+   * remove — a stage's own subject, a quick-add attribute — is left standing
+   * and refuses the whole change: reporting success there would leave the
+   * protocol naming something that no longer exists.
+   */
+  #refactor(
+    seed: readonly SectionWrite[],
+    referencesTo: (
+      documents: Readonly<Record<string, SectionDoc>>,
+    ) => SectionReference[],
+    principal: HostPrincipal,
+  ): RefactorOutcome {
+    const documents = this.#documentsWith(seed);
+    const rewritten = new Map<ProtocolSectionId, SectionDoc>();
+    let remaining = referencesTo(documents);
+    for (let removed = true; removed; remaining = referencesTo(documents)) {
+      removed = false;
+      for (const reference of inRemovalOrder(remaining)) {
+        const current = documents[reference.sectionId];
+        if (current === undefined) continue;
+        const next = withoutReference(current, reference.path);
+        if (next === undefined) continue;
+        if (shapeIssues(reference.sectionId, next).length > 0) continue;
+        documents[reference.sectionId] = next;
+        rewritten.set(reference.sectionId, next);
+        removed = true;
+        break;
+      }
+      if (!removed) break;
+    }
+    if (remaining.length > 0) return { status: 'referenced', remaining };
+    return this.#applyRefactor([...seed, ...rewritten], principal);
+  }
+
+  /** Every section document, with a refactor's own writes folded in. */
+  #documentsWith(writes: readonly SectionWrite[]): Record<string, SectionDoc> {
+    const documents: Record<string, SectionDoc> = {};
+    for (const [id, state] of this.#sections) documents[id] = state.document;
+    for (const [id, document] of writes) {
+      if (document === undefined) delete documents[id];
+      else documents[id] = document;
+    }
+    return documents;
+  }
+
   #applyRefactor(
-    writes: readonly (readonly [ProtocolSectionId, SectionDoc | undefined])[],
+    writes: readonly SectionWrite[],
     principal: HostPrincipal,
   ): RefactorOutcome {
     const blocked: SectionHolder[] = [];
@@ -333,16 +395,6 @@ export class InMemoryProtocolStore {
       throw new Error('a refactor must write at least one section');
     }
     return { status: 'applied', revision, changedSections };
-  }
-
-  #stagesReferencing(variableId: string): [ProtocolSectionId, SectionDoc][] {
-    const changed: [ProtocolSectionId, SectionDoc][] = [];
-    for (const [id, state] of this.#sections) {
-      if (parseSectionId(id).kind !== 'stage') continue;
-      const stripped = stripPrompts(state.document, variableId);
-      if (stripped !== state.document) changed.push([id, stripped]);
-    }
-    return changed;
   }
 
   #registerStagePointer(
@@ -371,8 +423,16 @@ export class InMemoryProtocolStore {
       sequence,
       contentHash: contentHash(document),
     };
-    this.#sections.set(id, { document, revision });
-    this.#publish({ type: 'revision', sectionId: id, revision, document });
+    // The submitter's document and this store's copy are two objects, and
+    // `watch` hands every reader a third: see `read`.
+    const stored = structuredClone(document);
+    this.#sections.set(id, { document: stored, revision });
+    this.#publish({
+      type: 'revision',
+      sectionId: id,
+      revision,
+      document: stored,
+    });
     return revision;
   }
 
@@ -447,22 +507,16 @@ export class InMemoryProtocolStore {
   }
 }
 
+function copyOf(entry: LoggedEvent): LoggedEvent {
+  return { cursor: entry.cursor, event: structuredClone(entry.event) };
+}
+
 function codebookSectionId(subject: CodebookSubject): ProtocolSectionId {
   if (subject.entity === 'ego') return sectionId({ kind: 'codebookEgo' });
   if (subject.entity === 'node') {
     return sectionId({ kind: 'codebookNode', typeId: subject.type });
   }
   return sectionId({ kind: 'codebookEdge', typeId: subject.type });
-}
-
-function stripPrompts(document: SectionDoc, variableId: string): SectionDoc {
-  const prompts = document.prompts;
-  if (!Array.isArray(prompts)) return document;
-  const kept = prompts.filter(
-    (prompt) => !(isRecord(prompt) && prompt.variable === variableId),
-  );
-  if (kept.length === prompts.length) return document;
-  return { ...document, prompts: kept };
 }
 
 function shapeIssues(

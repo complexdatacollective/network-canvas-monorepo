@@ -77,6 +77,11 @@ function buildRouter(
   resources: InMemoryResourceStore,
 ) {
   const assets = (): SectionDoc => store.read(ASSETS).document;
+  // Resources are scoped by protocol like everything else here: this host's
+  // staged files and its asset manifest belong to one protocol, so a caller
+  // naming another one is asking a host that does not exist.
+  const elsewhere = (input: Readonly<{ protocolId: string }>): boolean =>
+    input.protocolId !== protocolId;
 
   return {
     acquireLock: os.acquireLock.handler(({ input, context, errors }) => {
@@ -186,6 +191,11 @@ function buildRouter(
               data: { blocked: outcome.blocked },
             });
           }
+          if (outcome.status === 'referenced') {
+            throw errors.REFERENCES_REMAIN({
+              data: { remaining: outcome.remaining },
+            });
+          }
           return outcome;
         },
       ),
@@ -204,13 +214,19 @@ function buildRouter(
               data: { blocked: outcome.blocked },
             });
           }
+          if (outcome.status === 'referenced') {
+            throw errors.REFERENCES_REMAIN({
+              data: { remaining: outcome.remaining },
+            });
+          }
           return outcome;
         },
       ),
     },
 
     resources: {
-      list: os.resources.list.handler(({ input }) => {
+      list: os.resources.list.handler(({ input, errors }) => {
+        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
         const all = [
           ...resources.committedDescriptors(assets()),
           ...resources.stagedDescriptors(),
@@ -226,39 +242,45 @@ function buildRouter(
         };
       }),
 
-      stage: os.resources.stage.handler(({ input }) =>
-        resources.stage(input.requestId, input.request),
-      ),
+      stage: os.resources.stage.handler(({ input, errors }) => {
+        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        return resources.stage(input.requestId, input.request);
+      }),
 
-      promote: os.resources.promote.handler(({ input }) => {
+      promote: os.resources.promote.handler(({ input, errors }) => {
+        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        const made = resources.completedPromotion(input.promotionId);
+        if (made !== undefined) return { status: 'ok' as const, data: made };
         const manifest = resources.manifestFor(
           input.promotionId,
           input.resourceIds,
+          input.secretHandles,
         );
         if (manifest.status === 'failed') return manifest;
         const revision = store.mergeAssets(manifest.data.entries);
-        resources.completePromotion(input.promotionId, input.resourceIds);
-        return {
-          status: 'ok' as const,
-          data: {
-            id: input.promotionId,
-            promoted: manifest.data.promoted,
-            revision,
-          },
+        const promotion = {
+          id: input.promotionId,
+          promoted: manifest.data.promoted,
+          revision,
         };
+        resources.completePromotion(promotion, input.resourceIds);
+        return { status: 'ok' as const, data: promotion };
       }),
 
-      discard: os.resources.discard.handler(({ input }) =>
-        resources.discard(input.resourceId),
-      ),
+      discard: os.resources.discard.handler(({ input, errors }) => {
+        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        return resources.discard(input.resourceId);
+      }),
 
-      inspect: os.resources.inspect.handler(({ input }) =>
-        resources.inspect(assets(), input.resourceId),
-      ),
+      inspect: os.resources.inspect.handler(({ input, errors }) => {
+        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        return resources.inspect(assets(), input.resourceId);
+      }),
 
-      preview: os.resources.preview.handler(({ input }) =>
-        resources.preview(assets(), input.resourceId),
-      ),
+      preview: os.resources.preview.handler(({ input, errors }) => {
+        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        return resources.preview(assets(), input.resourceId);
+      }),
     },
   };
 }

@@ -6,6 +6,7 @@ import {
   SectionHolderSchema,
   SectionIdSchema,
   SectionIssueSchema,
+  SectionReferenceSchema,
 } from './schemas.ts';
 
 export const protocolErrors = {
@@ -43,5 +44,15 @@ export const refactorErrors = {
   SECTIONS_LOCKED: {
     message: 'another editor holds a section this change has to write',
     data: z.object({ blocked: z.array(SectionHolderSchema) }),
+  },
+  /**
+   * The subject is still named where the host cannot remove the reference —
+   * a stage's own subject, a quick-add attribute — so applying the change
+   * would leave the protocol naming something that no longer exists. The
+   * references are what a codebook dialog tells the researcher is using it.
+   */
+  REFERENCES_REMAIN: {
+    message: 'the change would leave references this host cannot remove',
+    data: z.object({ remaining: z.array(SectionReferenceSchema) }),
   },
 } as const;

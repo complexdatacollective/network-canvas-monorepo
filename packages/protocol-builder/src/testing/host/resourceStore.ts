@@ -7,6 +7,7 @@ import type {
   ResourceGatewayFailureSchema,
   ResourceInspectionSchema,
   ResourcePreviewSchema,
+  ResourcePromotionSchema,
   ResourceSecretStorageSchema,
   StageResourceInputSchema,
 } from '../../contract/schemas.ts';
@@ -15,6 +16,7 @@ type Descriptor = z.output<typeof ResourceDescriptorSchema>;
 type Failure = z.output<typeof ResourceGatewayFailureSchema>;
 type Inspection = z.output<typeof ResourceInspectionSchema>;
 type Preview = z.output<typeof ResourcePreviewSchema>;
+type Promotion = z.output<typeof ResourcePromotionSchema>;
 type SecretStorage = z.output<typeof ResourceSecretStorageSchema>;
 type StageRequest = z.output<typeof StageResourceInputSchema>['request'];
 
@@ -95,7 +97,7 @@ export class InMemoryResourceStore {
   readonly secretStorage: SecretStorage = 'plaintext';
   readonly #staged = new Map<string, StagedEntry>();
   readonly #byRequest = new Map<string, string>();
-  readonly #promoted = new Set<string>();
+  readonly #promoted = new Map<string, Promotion>();
   readonly #content: Map<string, Blob>;
   readonly #nextId: () => string;
 
@@ -172,12 +174,10 @@ export class InMemoryResourceStore {
   manifestFor(
     promotionId: string,
     resourceIds: readonly string[],
+    secretHandles: readonly string[] | undefined,
   ): ResourceOutcome<
     Readonly<{ entries: Record<string, unknown>; promoted: Descriptor[] }>
   > {
-    if (this.#promoted.has(promotionId)) {
-      return failure('invalid-request', 'this promotion has already been made');
-    }
     const entries: Record<string, unknown> = {};
     const promoted: Descriptor[] = [];
     for (const resourceId of resourceIds) {
@@ -185,25 +185,56 @@ export class InMemoryResourceStore {
       if (entry === undefined) {
         return failure('not-found', 'no such staged resource', resourceId);
       }
-      entries[resourceId] =
-        entry.secret === undefined
-          ? {
-              name: entry.descriptor.name,
-              type: entry.descriptor.kind,
-              source: entry.descriptor.source,
-            }
-          : {
-              name: entry.descriptor.name,
-              type: 'apikey',
-              value: entry.secret,
-            };
+      if (entry.secret === undefined) {
+        entries[resourceId] = {
+          name: entry.descriptor.name,
+          type: entry.descriptor.kind,
+          source: entry.descriptor.source,
+        };
+      } else {
+        // The handle staging answered with is the only way to promote the
+        // secret behind it. A staged resource id is listed to everyone in the
+        // protocol; the value it stands for is not, and writing it into the
+        // manifest is what puts a credential into the file the researcher
+        // sends on.
+        if (
+          entry.handle === undefined ||
+          secretHandles?.includes(entry.handle) !== true
+        ) {
+          return failure(
+            'invalid-request',
+            'promoting a staged secret needs the handle staging returned',
+            resourceId,
+          );
+        }
+        entries[resourceId] = {
+          name: entry.descriptor.name,
+          type: 'apikey',
+          value: entry.secret,
+        };
+      }
       promoted.push({ ...entry.descriptor, status: 'committed' });
     }
     return { status: 'ok', data: { entries, promoted } };
   }
 
-  completePromotion(promotionId: string, resourceIds: readonly string[]): void {
-    this.#promoted.add(promotionId);
+  /**
+   * The promotion this id already made, if it made one.
+   *
+   * `promotionId` is stable across an uncertain retry, so a client whose
+   * answer was lost asks again with the same id: it is told what was committed
+   * rather than that the bytes and manifest entries it cannot see are somebody
+   * else's problem.
+   */
+  completedPromotion(promotionId: string): Promotion | undefined {
+    return this.#promoted.get(promotionId);
+  }
+
+  completePromotion(
+    promotion: Promotion,
+    resourceIds: readonly string[],
+  ): void {
+    this.#promoted.set(promotion.id, promotion);
     for (const resourceId of resourceIds) {
       const entry = this.#staged.get(resourceId);
       if (entry?.bytes !== undefined && entry.descriptor.source !== undefined) {

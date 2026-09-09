@@ -5,7 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { z } from 'zod';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -143,9 +143,14 @@ export type SectionMutation = Readonly<{
  * editor's to discard.
  */
 export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
-  const { client, protocolId } = useProtocolBuilderContext();
+  const { client, protocolId, utils } = useProtocolBuilderContext();
   const queryClient = useQueryClient();
   const [readOnly, setReadOnly] = useState(false);
+  // Which acquire is this editor's. An acquire that settles after its own
+  // effect has been cleaned up must not touch the lock, because the next
+  // effect for the same section may already hold it.
+  const acquisition = useRef(0);
+  const released = useRef(false);
   const section = useSection(id);
   const { data: lock } = useQuery<LockState>({
     queryKey: lockQueryKey(protocolId, id),
@@ -156,9 +161,23 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   });
 
   useEffect(() => {
-    let mounted = true;
+    const mine = (acquisition.current += 1);
     void client.acquireLock({ protocolId, sectionId: id }).then((result) => {
-      if (!mounted) {
+      // The acquire answers with the section as the host holds it now, which
+      // is what this editor has to start from: a cached document from before
+      // a revision this client has not seen yet — the channel is reconnecting,
+      // say — would be submitted back whole over the newer one.
+      queryClient.setQueryData<SectionAtRevision>(
+        utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
+        { document: result.document, revision: result.revision },
+      );
+      if (acquisition.current !== mine) {
+        // A later mount of this section owns the lock now. Locks are held by
+        // the session, so handing this one back would take that editor's:
+        // its own cleanup is what releases it.
+        return;
+      }
+      if (released.current) {
         // Acquired after unmount: hand it straight back rather than holding a
         // lock no editor is behind.
         void client.releaseLock({ protocolId, sectionId: id });
@@ -174,11 +193,12 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         });
       }
     });
+    released.current = false;
     return () => {
-      mounted = false;
+      released.current = true;
       void client.releaseLock({ protocolId, sectionId: id });
     };
-  }, [client, protocolId, id, queryClient]);
+  }, [client, protocolId, id, queryClient, utils]);
 
   const submit = useCallback(
     async (document: SectionDoc): Promise<SubmitResult> => {

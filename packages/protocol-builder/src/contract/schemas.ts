@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { assetSourceSchema } from '@codaco/protocol-validation';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
 export const ProtocolIdSchema = z.string().min(1);
@@ -58,10 +59,21 @@ export const PresenceSchema = z.object({
 
 export type Presence = z.output<typeof PresenceSchema>;
 
+/** Where inside a section document something sits, as the schemas report it. */
+const DocumentPathSchema = z.array(z.union([z.string(), z.number()]));
+
 export const SectionIssueSchema = z.object({
-  path: z.array(z.union([z.string(), z.number()])),
+  path: DocumentPathSchema,
   message: z.string(),
 });
+
+/** One place a section names something: a reference, at its path. */
+export const SectionReferenceSchema = z.object({
+  sectionId: SectionIdSchema,
+  path: DocumentPathSchema,
+});
+
+export type SectionReference = z.output<typeof SectionReferenceSchema>;
 
 export const SectionHolderSchema = z.object({
   sectionId: SectionIdSchema,
@@ -173,6 +185,8 @@ export const CodebookSubjectSchema = z.discriminatedUnion('entity', [
   z.object({ entity: z.literal('ego') }),
 ]);
 
+export type CodebookSubject = z.output<typeof CodebookSubjectSchema>;
+
 export const DeleteVariableInputSchema = z.object({
   protocolId: ProtocolIdSchema,
   subject: CodebookSubjectSchema,
@@ -274,8 +288,14 @@ export const StageResourceInputSchema = z.object({
       kind: z.literal('content'),
       contentKind: ResourceContentKindSchema,
       name: z.string().min(1),
-      /** Filename the manifest will record; no path separators or `..`. */
-      source: z.string().min(1),
+      /**
+       * Filename the manifest will record, refused here on the terms the
+       * manifest itself is validated on: a promoted `source` becomes a zip
+       * entry name at export, so a name carrying a path separator or `..`
+       * either escapes the archive or produces a protocol that cannot be
+       * published.
+       */
+      source: assetSourceSchema,
       contentType: z.string().min(1),
       bytes: z.instanceof(Blob),
     }),
