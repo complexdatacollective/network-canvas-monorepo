@@ -22,9 +22,7 @@ import { createContext } from 'react';
  * instead: what a save would leave and what a cancel would leave are both
  * futures the stage still has.
  *
- * Absent outside a row dialog, and for a list that has no place in the stage
- * document of its own — a list nested inside another row, whose rows reach the
- * stage through the dialog around IT.
+ * Absent outside a row dialog.
  */
 export type EditedRowScope = Readonly<{
   /** Where the list holding this row lives in the stage document. */

@@ -299,7 +299,7 @@ export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
    * This list's own noun for one of its rows, as the list declared it.
    *
    * A DESCRIPTOR, formatted where the sentence around it is read: a row's
-   * affordances are named for the researcher ("Edit prompt", "Remove prompt"),
+   * affordances are named for the researcher ("Edit prompt", "Delete prompt"),
    * and a list that mounts several of these at once is otherwise a row of
    * identically named buttons to anyone navigating by them. Undefined for a
    * list that has no word for its rows.

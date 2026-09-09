@@ -87,7 +87,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.promptsSection.itemNoun',
     defaultMessage: 'prompt',
     description:
-      'What one row of the prompt list is called inside things said ABOUT it — "Edit prompt", "Remove this prompt?" — so it is lower case and singular. A prompt is one question a participant is asked.',
+      'What one row of the prompt list is called inside things said ABOUT it — "Edit prompt", "Delete this prompt?" — so it is lower case and singular. A prompt is one question a participant is asked.',
   },
   emptyState: {
     id: 'protocolBuilder.promptsSection.emptyState',
@@ -254,9 +254,6 @@ export default function PromptsSection({
     typeof Reflect.get(subject, 'type') === 'string';
   const waiting = requiresSubject && !hasSubject;
 
-  // The family's collapse runs FIRST, for the reason `PageContentSection`
-  // gives: it decides what each key becomes, and an emptied one has to be able
-  // to clear it.
   const rowList = useMemo<RowListConfig>(
     () => ({
       Preview: PromptPreview,
@@ -266,6 +263,9 @@ export default function PromptsSection({
       formId: 'prompt-editor',
       name: PROMPTS_FIELD,
       ...(beforeSave === undefined ? {} : { beforeSave }),
+      // The family's collapse runs FIRST, for the reason `PageContentSection`
+      // gives: it decides what each key becomes, and an emptied one has to be
+      // able to clear it.
       normalize: (row) =>
         withoutAbsentValues(
           collapseRow === undefined ? row : collapseRow(row),

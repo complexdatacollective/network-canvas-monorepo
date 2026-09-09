@@ -321,7 +321,7 @@ describe('the fields a form collects', () => {
     });
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Remove field' }),
+      screen.getByRole('button', { name: 'Delete field' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Delete field' }),
@@ -627,7 +627,7 @@ describe('a spectator and the fields a form collects', () => {
       name: 'Create new form field',
     });
     const edit = screen.getAllByRole('button', { name: 'Edit field' })[0]!;
-    const remove = screen.getAllByRole('button', { name: 'Remove field' })[0];
+    const remove = screen.getAllByRole('button', { name: 'Delete field' })[0];
 
     expect({
       add: add.hasAttribute('disabled') || add.ariaDisabled === 'true',
@@ -1273,7 +1273,7 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
 
     // Twice: the row's own control asks, and the confirmation says what goes.
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove field' }),
+      await screen.findByRole('button', { name: 'Delete field' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Delete field' }),
@@ -2963,10 +2963,10 @@ describe('a stored field the schema refuses for its own shape', () => {
 
     await waitFor(() =>
       expect(
-        screen.getAllByRole('button', { name: 'Remove field' }),
+        screen.getAllByRole('button', { name: 'Delete field' }),
       ).toHaveLength(2),
     );
-    const remove = screen.getAllByRole('button', { name: 'Remove field' })[1];
+    const remove = screen.getAllByRole('button', { name: 'Delete field' })[1];
     if (remove === undefined) throw new Error('There is no second field.');
     await harness.user.click(remove);
     await harness.user.click(

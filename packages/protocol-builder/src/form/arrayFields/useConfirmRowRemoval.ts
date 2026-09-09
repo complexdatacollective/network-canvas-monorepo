@@ -29,8 +29,8 @@ export type RowRemovalConfirm = Readonly<{
   confirmLabel: MessageDescriptor;
   /**
    * Values all three are formatted with, for a list whose noun for a row is
-   * itself a message — `DialogArrayField` names every one of its lists this
-   * way. A list whose sentences take no placeholders leaves this out.
+   * itself a message, which is how every list that edits a row at a time names
+   * its rows. A list whose sentences take no placeholders leaves this out.
    */
   values?: Readonly<Record<string, string | number>>;
 }>;

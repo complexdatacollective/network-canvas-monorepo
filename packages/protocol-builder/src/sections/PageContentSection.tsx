@@ -116,7 +116,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.pageContent.pageItemNoun',
     defaultMessage: 'block',
     description:
-      'What one piece of a page is called inside things said ABOUT it — "Edit block", "Remove this block?" — so it is lower case and singular.',
+      'What one piece of a page is called inside things said ABOUT it — "Edit block", "Delete this block?" — so it is lower case and singular.',
   },
   pageEmptyState: {
     id: 'protocolBuilder.pageContent.pageEmptyState',
