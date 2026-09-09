@@ -27,11 +27,25 @@ const ROSTER = JSON.stringify({
   edges: [{ from: 0, to: 1 }],
 });
 
+/**
+ * What the protocol files a committed resource's bytes under: their own
+ * content, and the extension of the file the researcher picked.
+ *
+ * Written out as a digest rather than as a filename because that is what a
+ * host commits — two researchers importing different pictures both called
+ * `portrait.png` are two assets, so the manifest cannot name either by the
+ * filename it came from. A fixture spelling it `neighbourhood.png` would let
+ * every surface that shows a filename go on passing while showing a hash to
+ * the researcher.
+ */
+const filedUnder = (digit: string, extension: string): string =>
+  `${digit.repeat(64)}${extension}`;
+
 const imageSeed: CommittedResource = {
   kind: 'image',
   id: 'image-1',
   name: 'Neighbourhood photo',
-  source: 'neighbourhood.png',
+  source: filedUnder('a', '.png'),
   bytes: 'png-bytes',
 };
 
@@ -39,7 +53,7 @@ const videoSeed: CommittedResource = {
   kind: 'video',
   id: 'video-1',
   name: 'Interview walkthrough',
-  source: 'walkthrough.mp4',
+  source: filedUnder('b', '.mp4'),
   bytes: 'mp4-bytes',
 };
 
@@ -47,7 +61,7 @@ const audioSeed: CommittedResource = {
   kind: 'audio',
   id: 'audio-1',
   name: 'Spoken instructions',
-  source: 'instructions.mp3',
+  source: filedUnder('c', '.mp3'),
   bytes: 'mp3-bytes',
 };
 
@@ -55,7 +69,7 @@ const networkSeed: CommittedResource = {
   kind: 'network',
   id: 'network-1',
   name: 'Community roster',
-  source: 'community.json',
+  source: filedUnder('d', '.json'),
   bytes: ROSTER,
 };
 
@@ -71,7 +85,7 @@ const secondImageSeed: CommittedResource = {
   kind: 'image',
   id: 'image-2',
   name: 'Community centre',
-  source: 'centre.png',
+  source: filedUnder('e', '.png'),
   bytes: 'png-bytes-2',
 };
 
@@ -592,12 +606,41 @@ describe('ResourcePickerControl', () => {
     expect(
       await screen.findByText('Neighbourhood photo was downloaded.'),
     ).toBeVisible();
-    // Named as the protocol names the file, and pointed at what the host
-    // answered with rather than at anything this editor made up.
+    // Named as the protocol names the resource, carrying the extension of the
+    // file it came from, and pointed at what the host answered with rather
+    // than at anything this editor made up. NOT the name the bytes are filed
+    // under: a copy called sixty-four hex characters is one the researcher
+    // cannot recognise on their own computer.
     expect(saved).toHaveLength(1);
-    expect(saved[0]?.download).toBe('neighbourhood.png');
+    expect(saved[0]?.download).toBe('Neighbourhood photo.png');
     expect(saved[0]?.href).toContain('base64,');
     vi.restoreAllMocks();
+  });
+
+  /**
+   * The name a committed resource's bytes are filed under is the host's, not
+   * the researcher's: it is worked out from the content so that two files
+   * imported under one filename stay two assets. So it is never shown, and
+   * what the summary says about a saved resource is what the protocol calls
+   * it.
+   */
+  it('never shows the name a committed resource’s bytes are filed under', async () => {
+    renderResourceEditor({
+      resources: [imageSeed],
+      fields: withBackgroundImage('image-1'),
+      children: imageField(),
+    });
+
+    // The summary is on screen: the heading names the resource, and the size
+    // read out of the bytes is a detail row only an inspection can supply.
+    expect(await screen.findByText('Neighbourhood photo')).toBeVisible();
+    expect(await screen.findByText('Size')).toBeVisible();
+    // And nothing under it is the digest, nor the label that would introduce
+    // one as the file the researcher chose.
+    expect(document.body.textContent ?? '').not.toContain(
+      filedUnder('a', '.png'),
+    );
+    expect(screen.queryByText('File')).not.toBeInTheDocument();
   });
 
   it('reports a resource the protocol no longer holds', async () => {

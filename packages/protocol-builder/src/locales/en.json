@@ -2801,7 +2801,7 @@
   },
   "protocolBuilder.resourceSummary.fileTerm": {
     "defaultMessage": "File",
-    "description": "Label beside the original filename of a resource a researcher imported into their protocol."
+    "description": "Label beside the original filename of a file a researcher has just imported into their protocol and not yet saved."
   },
   "protocolBuilder.resourceSummary.nodesTerm": {
     "defaultMessage": "Nodes",
