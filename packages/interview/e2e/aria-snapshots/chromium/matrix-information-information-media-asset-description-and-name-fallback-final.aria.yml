@@ -1,5 +1,5 @@
 - main:
-  - heading "Audio stage" [level=1]
+  - heading "Media stage" [level=1]
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

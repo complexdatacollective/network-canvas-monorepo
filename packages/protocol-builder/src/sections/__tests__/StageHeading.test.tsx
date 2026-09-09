@@ -114,3 +114,39 @@ describe('the stage heading', () => {
     await waitFor(() => expect(name).toHaveValue(''));
   });
 });
+
+/**
+ * Where a researcher's cursor is when a stage editor opens.
+ *
+ * Naming the stage is the first thing there is to do in a stage that does not
+ * exist yet, and the name field is the page's own heading — so a keyboard or
+ * screen-reader researcher who has just chosen an interface should already be
+ * in it rather than tabbing through the shell to find it. Asked through the
+ * heading rather than the name section, because the heading is what every
+ * editor actually composes: a section that focused correctly on its own but
+ * was never told to would leave every editor unfocused and the suite green.
+ */
+describe('where the researcher starts', () => {
+  it('puts the cursor in the name of a stage being created', () => {
+    renderStageEditor({
+      create: { type: 'Information', position: 2 },
+      sections: heading,
+    });
+
+    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveFocus();
+  });
+
+  /**
+   * An existing stage's name is already the researcher's, and they clicked a
+   * stage in the timeline to look at it rather than to rename it. Stealing
+   * focus into a text field would also move a screen reader's cursor past the
+   * editor's own heading, so it never says which stage was opened.
+   */
+  it('leaves focus alone for a stage the interview already holds', () => {
+    renderStageEditor({ stageId: 'information-1', sections: heading });
+
+    expect(
+      screen.getByRole('textbox', { name: 'Stage name' }),
+    ).not.toHaveFocus();
+  });
+});
