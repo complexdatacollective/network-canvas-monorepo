@@ -18,7 +18,10 @@ import { resolveFieldErrorTarget } from '@codaco/fresco-ui/form/utils/focusFirst
 
 import { compoundFailureMessage } from '../codebook/compoundFailureCopy.ts';
 import { buildUpdateVariableRequest } from '../codebook/editing.ts';
-import { useCreateCodebookVariable } from '../codebook/useCodebookVariableEdits.ts';
+import {
+  useCreateCodebookVariable,
+  useSubjectStillCollected,
+} from '../codebook/useCodebookVariableEdits.ts';
 import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
@@ -182,6 +185,20 @@ const messages = defineMessages({
     description:
       'Refusal shown when a researcher asks to create a quick-add attribute without typing a name for it.',
   },
+  createdNotSelected: {
+    id: 'protocolBuilder.quickAdd.createdNotSelected',
+    defaultMessage:
+      '“{variableName}” was added to the codebook. You have chosen a different attribute here since you asked for it, so it has not been selected.',
+    description:
+      'Notice shown when an attribute the researcher asked for was added to the codebook — the protocol’s definition of what an interview records — but they chose a different attribute for quick add to fill in while it was being added, so the newer choice is left standing. variableName is the name they typed and is not translated.',
+  },
+  nowRequiredElsewhere: {
+    id: 'protocolBuilder.quickAdd.nowRequiredElsewhere',
+    defaultMessage:
+      '“{variableName}” now has to be answered, everywhere the protocol uses it. It is not the attribute this stage fills in any more.',
+    description:
+      'Confirmation shown to a researcher who asked for the quick-add attribute to be required, when the stage moved off that attribute while the change was being made — they chose a different node type, or a different attribute. The change was still made, so it is said rather than swallowed. variableName is the attribute’s own name and is not translated.',
+  },
   createdOnAnotherType: {
     id: 'protocolBuilder.quickAdd.createdOnAnotherType',
     defaultMessage:
@@ -255,6 +272,67 @@ const codebookDocumentFor = (
     ? protocolContext.codebook.ego
     : protocolContext.codebook[subject.entity]?.[subject.type];
 
+/**
+ * What this section was pointed at when a codebook round trip was asked for.
+ *
+ * Both writes this section makes are answered by the host after a delay the
+ * researcher can act inside — the attribute picker stays live while an answer
+ * is on its way, and so does the type picker above it — and both then apply
+ * their answer to that picker: one selects the attribute it created, the other
+ * says the attribute the picker names now has to be answered.
+ */
+type QuickAddTarget = Readonly<{
+  subject: CodebookSubject;
+  /** The attribute the stage filled in when the request went out. */
+  fillsIn: string | undefined;
+}>;
+
+/** Where a round trip's answer belongs by the time it arrives. */
+type AnswerLands = 'here' | 'onAnotherType' | 'besideAnotherAttribute';
+
+/** An attribute that was created, and why it was not also selected. */
+type CreatedButNotSelected = Readonly<{
+  /** The name the researcher submitted, which is what the notice is about. */
+  name: string;
+  /** Anything but `here`, which is the case where it IS selected. */
+  because: Exclude<AnswerLands, 'here'>;
+}>;
+
+/**
+ * Reads, when a round trip ANSWERS, whether it still belongs where it was
+ * asked from.
+ *
+ * The write itself is never undone: it landed in the codebook of the type the
+ * request named, which is the type the stage was about when the researcher
+ * asked for it. Only what happens HERE is in question, and there are two ways
+ * to get it wrong — an answer written into a picker the researcher has since
+ * re-answered replaces a newer, deliberate choice with an older one, and an
+ * answer that finds the section moved on and says nothing leaves a change to
+ * the whole protocol that nobody was told about.
+ *
+ * A getter over refs rather than values, because the answer is needed AFTER an
+ * await, inside a closure made before it: read as values they would be what
+ * the section held when the button was pressed, which is the one thing already
+ * known. `useSubjectStillCollected` is the package's own reading of the first
+ * half; the second asks the same question of the field the answer would be
+ * written into.
+ */
+function useWhereTheAnswerLands(
+  subject: CodebookSubject | undefined,
+  fillsIn: string | undefined,
+): (asked: QuickAddTarget) => AnswerLands {
+  const subjectStillCollected = useSubjectStillCollected(subject);
+  const live = useRef(fillsIn);
+  live.current = fillsIn;
+  return useCallback(
+    (asked) => {
+      if (!subjectStillCollected(asked.subject)) return 'onAnotherType';
+      return live.current === asked.fillsIn ? 'here' : 'besideAnotherAttribute';
+    },
+    [subjectStillCollected],
+  );
+}
+
 const VariablePicker = VariablePickerControl as ComponentType<
   Record<string, unknown>
 >;
@@ -318,7 +396,7 @@ export default function QuickAddSection() {
         required={CHOOSE_AN_ATTRIBUTE}
       />
       <QuickAddAnswerRequirement variableId={currentValue} />
-      <NewQuickAddAttribute />
+      <NewQuickAddAttribute fillsIn={currentValue} />
     </BuilderSection>
   );
 }
@@ -350,6 +428,7 @@ function QuickAddAnswerRequirement({
   const subject = useStageSubject('node');
   const { protocolContext } = useStageEditorForm();
   const requireAnswer = useRequireCodebookAnswer(subject);
+  const answerLands = useWhereTheAnswerLands(subject, variableId);
   const [problem, setProblem] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   // Which attribute this session made required, so the confirmation belongs to
@@ -358,6 +437,19 @@ function QuickAddAnswerRequirement({
   const [requiredHere, setRequiredHere] = useState<string | undefined>(
     undefined,
   );
+  /**
+   * The name of an attribute this session made required after the section had
+   * moved off it — the researcher chose another type, or another attribute,
+   * while the write was on its way.
+   *
+   * The write is a change to the whole protocol and it landed, so it is said
+   * rather than swallowed. The name it had when it was asked about, because
+   * that is the attribute the sentence is about and this stage no longer names
+   * it — the same reason `NewQuickAddAttribute` holds the name it submitted.
+   */
+  const [requiredElsewhere, setRequiredElsewhere] = useState<
+    string | undefined
+  >(undefined);
 
   // Accepting destroys the control that was pressed — the offer is about an
   // attribute that can be left empty, and it no longer can — so focus goes to
@@ -365,7 +457,9 @@ function QuickAddAnswerRequirement({
   // one answer to "which control does this field name?", tiers and all; asking
   // it here rather than reaching for a selector keeps that answer in one place.
   // In an effect, so the field is asked for after the commit that removed the
-  // button.
+  // button. Only where the answer landed here: a researcher who has moved the
+  // picker on has chosen where they are, and taking focus back to it would
+  // undo their own gesture.
   useEffect(() => {
     if (requiredHere === undefined) return;
     resolveFieldErrorTarget(QUICK_ADD)?.focus();
@@ -377,33 +471,11 @@ function QuickAddAnswerRequirement({
       : variablesForSubject(protocolContext, subject)[variableId];
   const alreadyRequired = validationOf(variable).required === true;
 
-  // A dangling reference has its own message on the picker above, and a
-  // requirement offered against an attribute that is not there would be a
-  // second, worse explanation of the same thing. With no type chosen there is
-  // no attribute to be offered anything about either.
-  if (
-    subject === undefined ||
-    variable === undefined ||
-    variableId === undefined
-  ) {
-    return null;
-  }
-
-  if (alreadyRequired) {
-    // Said only to the researcher who just asked for it. Focus has moved to a
-    // control that says nothing about what changed, so this is the whole of
-    // what they are told — and `Alert`'s success variant carries `role=
-    // "status"`, which is how it reaches a screen reader without interrupting.
-    return requiredHere === variableId ? (
-      <Alert variant="success" className="my-7">
-        <AlertDescription>
-          {intl.formatMessage(messages.nowRequired)}
-        </AlertDescription>
-      </Alert>
-    ) : null;
-  }
-
   const accept = async () => {
+    if (subject === undefined || variable === undefined) return;
+    if (variableId === undefined) return;
+    const asked: QuickAddTarget = { subject, fillsIn: variableId };
+    const variableName = variable.name;
     setBusy(true);
     try {
       const outcome = await requireAnswer(variableId);
@@ -412,7 +484,16 @@ function QuickAddAnswerRequirement({
         return;
       }
       setProblem(undefined);
-      setRequiredHere(variableId);
+      if (answerLands(asked) === 'here') {
+        setRequiredElsewhere(undefined);
+        setRequiredHere(variableId);
+        return;
+      }
+      // The rule was added to the attribute the request named, wherever this
+      // stage has got to since. Said against the name it was asked about,
+      // because the picker is about something else now.
+      setRequiredHere(undefined);
+      setRequiredElsewhere(variableName);
     } finally {
       // In a `finally` because the button is disabled while this is true: an
       // offer that ended in a throw would otherwise leave the researcher
@@ -422,27 +503,80 @@ function QuickAddAnswerRequirement({
     }
   };
 
+  /**
+   * What this session has to say about a requirement it added, or nothing.
+   *
+   * The in-place confirmation is said only to the researcher who just asked
+   * for it, and only once the codebook shows it — it must not appear against
+   * every attribute that happens to arrive already required.
+   */
+  const said =
+    requiredElsewhere !== undefined
+      ? intl.formatMessage(messages.nowRequiredElsewhere, {
+          variableName: requiredElsewhere,
+        })
+      : alreadyRequired && requiredHere === variableId
+        ? intl.formatMessage(messages.nowRequired)
+        : undefined;
+
   return (
-    <Alert variant="warning" className="my-7">
-      <AlertTitle>{intl.formatMessage(messages.canBeEmptyTitle)}</AlertTitle>
-      <AlertDescription>
-        <p className="m-0">
-          {intl.formatMessage(messages.canBeEmptyDescription, {
-            typeName: typeNameOf(protocolContext, subject),
-          })}
-        </p>
-        <Button
-          // Never a submit: this control sits inside the stage's own form.
-          type="button"
-          className="mt-4"
-          disabled={busy}
-          onClick={() => void accept()}
-        >
-          {intl.formatMessage(messages.requireAnswer)}
-        </Button>
-        {problem !== undefined && <p className="mt-4 mb-0">{problem}</p>}
-      </AlertDescription>
-    </Alert>
+    <>
+      {/* A dangling reference has its own message on the picker above, and a
+          requirement offered against an attribute that is not there would be a
+          second, worse explanation of the same thing. With no type chosen
+          there is no attribute to be offered anything about either. Written
+          inline so the offer's own sentence can name the type it is about. */}
+      {subject !== undefined && variable !== undefined && !alreadyRequired && (
+        <Alert variant="warning" className="my-7">
+          <AlertTitle>
+            {intl.formatMessage(messages.canBeEmptyTitle)}
+          </AlertTitle>
+          <AlertDescription>
+            <p className="m-0">
+              {intl.formatMessage(messages.canBeEmptyDescription, {
+                typeName: typeNameOf(protocolContext, subject),
+              })}
+            </p>
+            <Button
+              // Never a submit: this control sits inside the stage's own form.
+              type="button"
+              className="mt-4"
+              disabled={busy}
+              onClick={() => void accept()}
+            >
+              {intl.formatMessage(messages.requireAnswer)}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {/* Always mounted, so a screen reader is watching this region before
+          anything appears in it: a live region added to the page at the same
+          moment as its own content is not reliably announced — and accepting
+          the offer destroys the control that was pressed, so this sentence is
+          the whole of what the researcher is told. The `Alert` inside it is
+          presentational for the same reason `NewQuickAddAttribute`'s is: its
+          success variant is a `role="status"` of its own, and a second polite
+          region inserted into this one is the double announcement the wrapper
+          exists to avoid. */}
+      <div role="status" aria-live="polite">
+        {said !== undefined && (
+          <Alert variant="success" role="presentation" className="my-7">
+            <AlertDescription>{said}</AlertDescription>
+          </Alert>
+        )}
+      </div>
+      {/* Outside the offer rather than inside it. The offer is about an
+          attribute that can be left empty, so a collaborator deleting that
+          attribute while the write was in flight took the warning away — and
+          the refusal that arrived a moment later went with it, leaving a
+          researcher who had pressed a button with no account of what
+          happened. */}
+      {problem !== undefined && (
+        <Alert variant="destructive" className="my-7">
+          <AlertDescription>{problem}</AlertDescription>
+        </Alert>
+      )}
+    </>
   );
 }
 
@@ -534,45 +668,41 @@ function useRequireCodebookAnswer(subject: CodebookSubject | undefined) {
  * together or not at all. Selecting the result is the point: a researcher who
  * has just said what they want it called should not then have to find it.
  *
- * Selected only if the stage is still about the type it was created on. A
- * compound edit is a round trip to the host, and the researcher can change the
- * node type while it is in flight — the attribute lands on the type that was
- * current when they asked, because that is the codebook section the request
- * names, and filling the picker in with it afterwards left `quickAdd` naming an
- * attribute the new type does not have: a reference that cannot be saved,
- * against a stage the researcher has just moved on from. So the type is read
- * again when the codebook answers, and where it has moved the attribute is
- * reported rather than selected — it exists, and where it went is the only
- * thing left to say.
+ * Selected only if the section is still pointed where the create was asked
+ * from. A compound edit is a round trip to the host, and the researcher can
+ * act inside it — that is `useWhereTheAnswerLands`, which both of this
+ * section's writes read. Changing the node type leaves the attribute on the
+ * type the request named, so filling the picker in with it afterwards left
+ * `quickAdd` naming an attribute the new type does not have: a reference that
+ * cannot be saved. Choosing a different attribute in the picker is a newer,
+ * deliberate answer to the very question this create was going to answer, and
+ * overwriting it replaced what the researcher chose with what they had asked
+ * for a moment earlier. Either way the attribute exists, so where it went is
+ * reported rather than done.
  */
-function NewQuickAddAttribute() {
+function NewQuickAddAttribute({
+  fillsIn,
+}: Readonly<{ fillsIn: string | undefined }>) {
   const intl = useAppIntl();
   const { storeApi } = useStageEditorForm();
   const subject = useStageSubject('node');
   const createVariable = useCreateCodebookVariable(subject);
+  const answerLands = useWhereTheAnswerLands(subject, fillsIn);
   const [name, setName] = useState('');
   const [problem, setProblem] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   /**
-   * The name of an attribute that was created onto a type this stage is no
-   * longer about, held for as long as the notice about it is on screen.
+   * An attribute that was created and then not selected, and which of the two
+   * reasons it was not, held for as long as the notice about it is on screen.
    *
    * The submitted name rather than whatever the box holds now: the notice is
    * about the attribute that was created, and the box is empty by the time it
    * appears. Same shape as `CreatableVariablePickerControl`'s
    * "created but not selected" notice, which answers the same question.
    */
-  const [strandedName, setStrandedName] = useState<string | undefined>(
-    undefined,
-  );
-
-  // In a ref, so `create` reads the type as it is when the codebook ANSWERS
-  // rather than the one closed over when it was asked.
-  const typeNow = subjectType(subject);
-  const typeNowRef = useRef(typeNow);
-  useEffect(() => {
-    typeNowRef.current = typeNow;
-  }, [typeNow]);
+  const [notSelected, setNotSelected] = useState<
+    CreatedButNotSelected | undefined
+  >(undefined);
 
   const create = useCallback(async () => {
     const trimmed = name.trim();
@@ -580,7 +710,10 @@ function NewQuickAddAttribute() {
       setProblem(intl.formatMessage(messages.nameTheAttribute));
       return;
     }
-    const askedFor = typeNowRef.current;
+    // Read before the await and compared after it: `answerLands` holds the
+    // section's own reading of both halves.
+    const asked: QuickAddTarget | undefined =
+      subject === undefined ? undefined : { subject, fillsIn };
     setBusy(true);
     try {
       const outcome = await createVariable({
@@ -598,11 +731,14 @@ function NewQuickAddAttribute() {
       // the same name a second time is refused for a duplicate the researcher
       // did not choose to ask for — so the box empties on both answers below.
       setName('');
-      if (typeNowRef.current !== askedFor) {
-        setStrandedName(trimmed);
+      // A subject that was already gone when this was asked for is a create
+      // the hook above refuses, so this reading is only ever reached with one.
+      const lands = asked === undefined ? 'onAnotherType' : answerLands(asked);
+      if (lands !== 'here') {
+        setNotSelected({ name: trimmed, because: lands });
         return;
       }
-      setStrandedName(undefined);
+      setNotSelected(undefined);
       // Written into the form rather than dispatched to the session: the
       // picker above is a registered field, and a command that went round it
       // would be overwritten by whatever the control still held when the
@@ -616,7 +752,7 @@ function NewQuickAddAttribute() {
       // `CreatableVariablePickerControl`.
       setBusy(false);
     }
-  }, [createVariable, intl, name, storeApi]);
+  }, [answerLands, createVariable, fillsIn, intl, name, storeApi, subject]);
 
   if (subject === undefined) return null;
 
@@ -658,7 +794,7 @@ function NewQuickAddAttribute() {
         onChange={(next: unknown) => {
           // The notice is about the create that has just happened; naming
           // another attribute is the start of a different one.
-          setStrandedName(undefined);
+          setNotSelected(undefined);
           setName(typeof next === 'string' ? next : '');
         }}
       />
@@ -672,12 +808,15 @@ function NewQuickAddAttribute() {
           `role="status"` of its own, and a second polite region inserted into
           this one is the double announcement this wrapper exists to avoid. */}
       <div role="status" aria-live="polite">
-        {strandedName !== undefined && (
+        {notSelected !== undefined && (
           <Alert variant="info" role="presentation" className="my-7">
             <AlertDescription>
-              {intl.formatMessage(messages.createdOnAnotherType, {
-                variableName: strandedName,
-              })}
+              {intl.formatMessage(
+                notSelected.because === 'onAnotherType'
+                  ? messages.createdOnAnotherType
+                  : messages.createdNotSelected,
+                { variableName: notSelected.name },
+              )}
             </AlertDescription>
           </Alert>
         )}
