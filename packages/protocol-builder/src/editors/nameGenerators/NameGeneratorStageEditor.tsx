@@ -30,12 +30,10 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl(
  * `interviewScript`.
  */
 export function NameGeneratorStageEditor({
-  controller,
   actions,
 }: StageEditorProps<'NameGenerator'>) {
   return (
     <NameGeneratorFrame
-      controller={controller}
       documentationUrl={DOCUMENTATION_URL}
       // A generator offering the people named so far is a different stage from
       // one that offers nothing, so the name proposed to a new stage says so.

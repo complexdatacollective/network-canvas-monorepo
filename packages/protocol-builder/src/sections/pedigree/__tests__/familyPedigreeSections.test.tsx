@@ -96,10 +96,6 @@ const openWithFamilyMemberForm = () => ({
   sections: pedigreeSections,
 });
 
-/** Every command this session has issued and not had acknowledged. */
-const commandsOf = (harness: StageEditorHarness) =>
-  harness.pendingCommands().flatMap((batch) => [...batch.commands]);
-
 /**
  * What the outline says about one section, by its title.
  *
@@ -112,16 +108,39 @@ const outlineStateOf = (
 ): string | undefined =>
   harness.outline().find((section) => section.title === title)?.state;
 
-/** The node configuration as the session holds it right now. */
-const nodeConfigOf = (harness: StageEditorHarness): Record<string, unknown> => {
-  const nodeConfig =
-    harness.session.getSnapshot().editedSection.fields.nodeConfig;
+/**
+ * The stage as the protocol holds it once this editor has handed it back.
+ *
+ * The draft lives only in the form now, so a claim about what the researcher
+ * has actually configured is read from the save. Refusing to answer for a
+ * refused save rather than returning nothing: a test that meant to read a
+ * configuration must not pass against a stage that never saved.
+ */
+const savedStage = async (
+  harness: StageEditorHarness,
+): Promise<Record<string, unknown>> => {
+  const written = await harness.submit();
+  if (written === null) {
+    throw new Error(
+      'The pedigree did not save, so there is nothing to read. The sections on screen say what it is refusing.',
+    );
+  }
+  return written.stageDocument;
+};
+
+/** The node configuration the researcher would save right now. */
+const savedNodeConfig = async (
+  harness: StageEditorHarness,
+): Promise<Record<string, unknown>> => {
+  const nodeConfig = (await savedStage(harness)).nodeConfig;
   return isRecord(nodeConfig) ? nodeConfig : {};
 };
 
-/** The family member form as the session holds it right now. */
-const formRows = (harness: StageEditorHarness): unknown[] => {
-  const form = nodeConfigOf(harness).form;
+/** The family member form the researcher would save right now. */
+const savedFormRows = async (
+  harness: StageEditorHarness,
+): Promise<unknown[]> => {
+  const form = (await savedNodeConfig(harness)).form;
   return Array.isArray(form) ? form : [];
 };
 
@@ -137,13 +156,23 @@ const optionsOf = (name: string): string[] =>
     .map((option) => option.value)
     .filter((value) => value !== '');
 
+/**
+ * Waits until a picker on screen is offering an attribute.
+ *
+ * A change made outside this editor reaches it over the protocol's own
+ * channel, which is a microtask, so nothing an arrival changes can be read
+ * synchronously after it — and a picker that has not been told about a seeded
+ * attribute yet is the shape every silent pass below would take.
+ */
+const awaitOffered = (name: string, variableId: string): Promise<void> =>
+  waitFor(() => {
+    expect(optionsOf(name)).toContain(variableId);
+  });
+
 const FAMILY_MEMBER_SECTION = sectionId({
   kind: 'codebookNode',
   typeId: 'family_member',
 });
-
-/** The other node type the fixture carries, which a pedigree can move to. */
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
 /**
  * jsdom has no layout, and the markdown editor a nomination prompt is written
@@ -171,17 +200,17 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * The family member type WITHOUT one of its attributes, as a collaborator's
  * change.
  *
- * The mirror of `addFamilyMemberVariable`: it reaches the host first and the
- * session under the revision the host issued, so what the editor is looking at
- * afterwards is a protocol that really lost the attribute rather than a story
- * the session alone has been told.
+ * The mirror of `addFamilyMemberVariable`: the protocol itself loses the
+ * attribute and publishes the revision on its own channel, so what the editor
+ * is looking at afterwards is a protocol that really lost it. The revision
+ * arrives as a microtask, so a caller reads what it changed with `waitFor` or
+ * `findBy`.
  */
 const removeFamilyMemberVariable = (
   harness: StageEditorHarness,
   variableId: string,
 ): void => {
-  const section =
-    harness.session.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+  const section = harness.protocolSections()[FAMILY_MEMBER_SECTION];
   const variables = isRecord(section?.variables) ? section.variables : {};
   if (!Object.hasOwn(variables, variableId)) {
     throw new Error(
@@ -200,32 +229,17 @@ const NARRATIVE_PEDIGREE_SECTION = sectionId({
 });
 
 /**
- * The fixture's narrative pedigree, repointed at another pedigree as a
- * collaborator's change.
- *
- * The same two-ended arrival `receiveCodebookUpdate` makes, for a STAGE
- * section rather than a codebook one: the host issues the revision and the
- * session is told about it under that revision, so this is one protocol seen
- * from both ends. A narrative pedigree naming a pedigree is what refuses that
- * pedigree's node type change, and it is a thing a collaborator can do at any
- * moment — including while the researcher is being asked about a change.
- */
-/**
  * A node type DELETED by a collaborator.
  *
- * The same two-ended arrival `receiveCodebookUpdate` makes for a redefinition,
- * with `null` standing for the section that has gone: the host issues the
- * revision and the session is told about it under that revision, so the type
- * really leaves the protocol both ends are looking at rather than being a
- * story the session alone has been told. Deleting a type nothing has bound yet
- * is something a collaborator can do at any moment — including while the
+ * The same arrival `receiveCodebookUpdate` makes for a redefinition, with
+ * `null` standing for the section that has gone: the type really leaves the
+ * protocol the editor is reading. Deleting a type nothing has bound yet is
+ * something a collaborator can do at any moment — including while the
  * researcher is being asked about a change onto it.
  */
 const deleteNodeType = (harness: StageEditorHarness, typeId: string): void => {
   const section =
-    harness.session.getSnapshot().protocolSections[
-      sectionId({ kind: 'codebookNode', typeId })
-    ];
+    harness.protocolSections()[sectionId({ kind: 'codebookNode', typeId })];
   if (section === undefined) {
     throw new Error(
       `the fixture protocol has no "${typeId}" node type, so deleting one proves nothing.`,
@@ -234,12 +248,22 @@ const deleteNodeType = (harness: StageEditorHarness, typeId: string): void => {
   harness.receiveCodebookUpdate({ node: { [typeId]: null } });
 };
 
+/**
+ * The fixture's narrative pedigree, repointed at another pedigree as a
+ * collaborator's change.
+ *
+ * The same arrival `receiveCodebookUpdate` makes, for a STAGE section rather
+ * than a codebook one: the protocol publishes the revision on its own channel
+ * and every subscribed component reads it. A narrative pedigree naming a
+ * pedigree is what refuses that pedigree's node type change, and it is a thing
+ * a collaborator can do at any moment — including while the researcher is
+ * being asked about a change.
+ */
 const readNarrativePedigreeFrom = (
   harness: StageEditorHarness,
   sourceStageId: string,
 ): void => {
-  const section =
-    harness.session.getSnapshot().protocolSections[NARRATIVE_PEDIGREE_SECTION];
+  const section = harness.protocolSections()[NARRATIVE_PEDIGREE_SECTION];
   if (section === undefined) {
     throw new Error('the fixture protocol has no "narrative-pedigree-1" stage');
   }
@@ -248,13 +272,10 @@ const readNarrativePedigreeFrom = (
       `"narrative-pedigree-1" already reads "${sourceStageId}", so pointing it there proves nothing.`,
     );
   }
-  const applied = harness.host.receiveAuthoritativeSections({
-    [NARRATIVE_PEDIGREE_SECTION]: { ...section, sourceStageId },
-  });
   act(() => {
-    harness.session.receiveAuthoritativeUpdate({
-      protocolSections: applied.protocolSections,
-      manifestRevision: applied.manifestRevision,
+    harness.host.store.applyAsCollaborator(NARRATIVE_PEDIGREE_SECTION, {
+      ...section,
+      sourceStageId,
     });
   });
 };
@@ -271,8 +292,7 @@ const redefineFamilyMemberVariable = (
   variableId: string,
   variable: Readonly<Record<string, unknown>>,
 ): void => {
-  const section =
-    harness.session.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+  const section = harness.protocolSections()[FAMILY_MEMBER_SECTION];
   const variables = isRecord(section?.variables) ? section.variables : {};
   if (!Object.hasOwn(variables, variableId)) {
     throw new Error(
@@ -300,8 +320,7 @@ const redefineFamilyEdgeVariable = (
   variableId: string,
   variable: Readonly<Record<string, unknown>>,
 ): void => {
-  const section =
-    harness.session.getSnapshot().protocolSections[FAMILY_EDGE_SECTION];
+  const section = harness.protocolSections()[FAMILY_EDGE_SECTION];
   const variables = isRecord(section?.variables) ? section.variables : {};
   if (!Object.hasOwn(variables, variableId)) {
     throw new Error(
@@ -353,8 +372,7 @@ const seedCollectableBoolean = (harness: StageEditorHarness): string => {
  * a second picker, a typed name, and a re-render of the open dialog per
  * keystroke — and it is the SUBJECT of `creates a categorical field together
  * with the values it offers` below rather than of either caller here, both of
- * which are about what happens once a field collects an attribute. Seeded
- * through the host, so the revision the session holds is one the host issued.
+ * which are about what happens once a field collects an attribute.
  *
  * The prompt text is as short as a question can be: every character is a
  * keystroke through a controlled field, and what these tests are about is
@@ -386,9 +404,8 @@ async function addFormFieldCollecting(
 function variableIdByName(
   harness: StageEditorHarness,
   name: string,
-  section: typeof FAMILY_MEMBER_SECTION = FAMILY_MEMBER_SECTION,
 ): string | undefined {
-  const definition = harness.host.getSnapshot().protocolSections[section];
+  const definition = harness.protocolSections()[FAMILY_MEMBER_SECTION];
   const variables = isRecord(definition) ? definition.variables : undefined;
   if (!isRecord(variables)) return undefined;
   return Object.entries(variables).find(
@@ -505,18 +522,6 @@ describe('the pedigree’s own configuration', () => {
       ],
     });
   });
-
-  it('leaves nothing pending when the researcher cancels', async () => {
-    const harness = renderStageEditor(openFixture());
-
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Grandparent requirement' }),
-      'required',
-    );
-    await harness.cancel();
-
-    expect(harness.pendingCommands()).toEqual([]);
-  });
 });
 
 /**
@@ -616,6 +621,7 @@ describe('the attributes a pedigree may bind', () => {
   it('never offers the family member form an attribute the pedigree already has', async () => {
     const harness = renderStageEditor(openFixture());
     const collectable = seedCollectableBoolean(harness);
+    await awaitOffered('Participant identifier', collectable);
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Family member form' }),
@@ -656,6 +662,7 @@ describe('the attributes a pedigree may bind', () => {
     // A second free attribute, so the absence below is an exclusion rather
     // than a picker with nothing in it.
     const collectable = seedCollectableBoolean(harness);
+    await awaitOffered('Participant identifier', collectable);
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Family member form' }),
@@ -690,6 +697,7 @@ describe('the attributes a pedigree may bind', () => {
       type: 'text',
       component: 'Text',
     });
+    await awaitOffered('Display label', 'preferred_name');
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Family member form' }),
@@ -733,8 +741,10 @@ describe('the attributes a pedigree may bind', () => {
       name: 'kinship',
       type: 'text',
     });
+    await awaitOffered('Relationship to participant', 'kinship');
+
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', {
+      screen.getByRole('combobox', {
         name: 'Relationship to participant',
       }),
       'kinship',
@@ -844,44 +854,48 @@ describe('the attributes a pedigree may bind', () => {
 
 /**
  * The family member form is a list the stage keeps NESTED, at
- * `nodeConfig.form`, and it is edited as one — insert this row, move that one,
- * remove the third — rather than by replacing the node configuration around
- * it.
- *
- * What that buys is what the commands SAY. A whole-value `set` on `nodeConfig`
- * can say only "the node configuration is now this", so it needs every sibling
- * slot mounted to say even that much — which is why an editor without them
- * used to have to mount them anyway — and it carries nothing a merge could act
- * on. `insertItem`/`moveItem`/`removeItem` at `['nodeConfig','form']` name the
- * row and the list it belongs to, which is the material a rebase would need.
- *
- * What the session then DOES with them is a separate question this test does
- * not answer, and one the session's own suites do: `listArrivals` and
- * `session` cover rebasing a pending batch onto a base a collaborator has
- * moved, and the whole-key `set` an undo or a submit used to derive from a
- * changed draft. What is asserted here is only the commands the section emits.
+ * `nodeConfig.form`, so every edit to it has to reach the save carrying the
+ * slots beside it untouched: a section that rewrote the node configuration
+ * around the list to move one row would need every sibling slot mounted to
+ * say even that much, and would lose whichever it did not render.
  */
-describe('the way a family member form reaches the document', () => {
-  it('commits an added, moved and removed field as that row’s own edit', async () => {
+describe('a family member form the researcher edits', () => {
+  /**
+   * The questions the form is asking, in the order they are on screen.
+   *
+   * Rendered markdown nests, so each question matches the paragraph and the
+   * block around it; the outermost is the one that carries its position.
+   */
+  const questionsOnScreen = (questions: readonly string[]): string[] =>
+    questions
+      .map((text) => screen.getAllByText(text)[0])
+      .filter((node): node is HTMLElement => node !== undefined)
+      .toSorted((first, second) =>
+        (first.compareDocumentPosition(second) &
+          Node.DOCUMENT_POSITION_FOLLOWING) ===
+        0
+          ? 1
+          : -1,
+      )
+      .map((node) => node.textContent ?? '');
+
+  it('saves the field it added, where it moved it to, without the one it removed', async () => {
     const harness = renderStageEditor(openWithFamilyMemberForm());
 
     // Added. Every boolean this node type already has is written unvalidated
     // somewhere — this pedigree's own slots, and the narrative pedigree's
     // disease — so the attribute the field collects is seeded rather than
     // picked off the fixture. Inventing it through the dialog would be a
-    // second journey, and what is asserted here is the three commands the
-    // list emits.
+    // second journey, and what is asserted here is what the list keeps.
     const unwell = seedCollectableBoolean(harness);
+    await awaitOffered('Participant identifier', unwell);
     await addFormFieldCollecting(harness, unwell);
-    await waitFor(() => expect(formRows(harness)).toHaveLength(2));
-
-    // The row identity the list stamps on a row it creates, which is a fresh
-    // uuid and cannot be written down here.
-    const added = {
-      id: expect.any(String) as unknown as string,
-      variable: unwell,
-      prompt: 'Q?',
-    };
+    await waitFor(() =>
+      expect(questionsOnScreen(['What do they go by?', 'Q?'])).toEqual([
+        'What do they go by?',
+        'Q?',
+      ]),
+    );
 
     // Moved, through the keyboard half of the drag handle — the same operation
     // a pointer drag commits.
@@ -891,35 +905,38 @@ describe('the way a family member form reaches the document', () => {
     handle.focus();
     fireEvent.keyDown(handle, { key: 'ArrowUp' });
     await waitFor(() =>
-      expect(
-        formRows(harness).map((row) =>
-          isRecord(row) ? row.variable : undefined,
-        ),
-      ).toEqual([unwell, 'fm_name']),
+      expect(questionsOnScreen(['What do they go by?', 'Q?'])).toEqual([
+        'Q?',
+        'What do they go by?',
+      ]),
     );
 
     // Removed: the row's own affordance, then the confirmation that carries
-    // the same words.
+    // the same words. The second row is the one the move put there, so a move
+    // that never happened takes the added field away instead.
     await harness.user.click(
       (await screen.findAllByRole('button', { name: 'Remove field' }))[1]!,
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Remove field' }),
     );
-    await waitFor(() => expect(formRows(harness)).toHaveLength(1));
+    await waitFor(() =>
+      expect(screen.queryByText('What do they go by?')).not.toBeInTheDocument(),
+    );
 
-    // Each one says WHICH row it was, and where the list it belongs to lives.
-    expect(commandsOf(harness)).toEqual([
-      { op: 'insertItem', key: ['nodeConfig', 'form'], index: 1, item: added },
-      { op: 'moveItem', key: ['nodeConfig', 'form'], from: 1, to: 0 },
-      { op: 'removeItem', key: ['nodeConfig', 'form'], index: 1 },
-    ]);
-
-    // And the slots beside the list are exactly as the pedigree held them: no
-    // section had to mount, or rewrite, a sibling to move one row.
+    // The slots beside the list are exactly as the pedigree held them: no
+    // section had to mount, or rewrite, a sibling to move one row. The row
+    // identity is the fresh uuid the list stamps on a row it creates, and
+    // cannot be written down here.
     expect((await harness.submit())?.stageDocument.nodeConfig).toEqual({
       ...FIXTURE_NODE_CONFIG,
-      form: [added],
+      form: [
+        {
+          id: expect.any(String) as unknown as string,
+          variable: unwell,
+          prompt: 'Q?',
+        },
+      ],
     });
   });
 });
@@ -999,9 +1016,8 @@ describe('the pedigree’s nomination prompts', () => {
 });
 
 /**
- * The codebook is read from the editor's own protocol context, so a change made
- * anywhere else appears here without this section doing anything — and, above
- * all, without it writing that change back as if this session had made it.
+ * Every section reads the codebook through its own subscription, so a change
+ * made anywhere else appears here without this section doing anything.
  */
 describe('a codebook that changes while the pedigree is open', () => {
   /**
@@ -1010,9 +1026,9 @@ describe('a codebook that changes while the pedigree is open', () => {
    * The picker is built from the live codebook, so it stops offering the
    * attribute at once — but the row is already holding it, the required rule
    * sees a nonempty value, and this gate asked only about who else writes it.
-   * So Save closed the row over a reference whole-protocol validation then
-   * refuses, and the researcher had to find the row that was blocking their
-   * stage with nothing on screen marking it.
+   * So Save closed the row over a reference the stage's own save then refuses,
+   * and the researcher had to find the row that was blocking their stage with
+   * nothing on screen marking it.
    */
   it('refuses a nomination prompt whose attribute a collaborator deleted', async () => {
     const harness = renderStageEditor(openWithNominationPrompts());
@@ -1022,6 +1038,12 @@ describe('a codebook that changes while the pedigree is open', () => {
     );
     await screen.findByRole('dialog');
     removeFamilyMemberVariable(harness, 'hasConditionX');
+    // The deletion reaches the row's own picker over the protocol channel,
+    // which is a microtask: the pick is kept and named for what is wrong with
+    // it rather than dropped.
+    await screen.findByRole('option', {
+      name: 'hasConditionX — this attribute is not available here',
+    });
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -1043,6 +1065,9 @@ describe('a codebook that changes while the pedigree is open', () => {
     const harness = renderStageEditor(openFixture());
 
     removeFamilyMemberVariable(harness, 'fm_name');
+    await screen.findByRole('option', {
+      name: 'fm_name — this attribute is not available here',
+    });
 
     expect(await harness.submit()).toBeNull();
     expect(
@@ -1061,9 +1086,8 @@ describe('a codebook that changes while the pedigree is open', () => {
    * A collaborator editing those values leaves the attribute in the codebook,
    * still categorical, so the deleted-or-retyped gate had nothing to say about
    * it — while the picker, which asks the schema's own comparison, drops it at
-   * once. The stage was still refused, but by whole-protocol validation,
-   * against a path: the researcher was stopped from finishing with nothing on
-   * screen naming the control that had to change.
+   * once. What is asserted here is WHERE the researcher reads the refusal:
+   * under the control they have to change.
    */
   it('refuses to save a slot whose canonical values a collaborator changed', async () => {
     const harness = renderStageEditor(openFixture());
@@ -1081,15 +1105,15 @@ describe('a codebook that changes while the pedigree is open', () => {
     });
 
     // The control goes on holding it — which is the gap this gate closes: the
-    // attribute is still there and still categorical, so nothing else refuses
-    // it until whole-protocol validation does.
+    // attribute is still there and still categorical, so nothing refuses the
+    // pick itself.
+    await screen.findByRole('option', {
+      name: 'biologicalSex — no longer offers the values this control needs',
+    });
     expect(
       screen.getByRole('combobox', { name: 'Biological sex' }),
     ).toHaveValue('biologicalSex');
 
-    // The refusal is the point rather than the save: the stage was refused
-    // before this gate too, by the whole protocol. What is asserted is WHERE
-    // the researcher reads it — under the control they have to change.
     expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
@@ -1110,7 +1134,7 @@ describe('a codebook that changes while the pedigree is open', () => {
    * what is actually wrong, in the pedigree's own words, while still showing
    * it as the held choice — and never lists it as one that can be picked.
    */
-  it('names a held attribute whose canonical values changed, before the save', () => {
+  it('names a held attribute whose canonical values changed, before the save', async () => {
     const harness = renderStageEditor(openFixture());
 
     redefineFamilyMemberVariable(harness, 'biologicalSex', {
@@ -1122,6 +1146,9 @@ describe('a codebook that changes while the pedigree is open', () => {
       ],
     });
 
+    await screen.findByRole('option', {
+      name: 'biologicalSex — no longer offers the values this control needs',
+    });
     const control = screen.getByRole('combobox', { name: 'Biological sex' });
     expect(control).toHaveValue('biologicalSex');
     expect(
@@ -1151,7 +1178,7 @@ describe('a codebook that changes while the pedigree is open', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('says the same of an edge slot whose canonical values changed', () => {
+  it('says the same of an edge slot whose canonical values changed', async () => {
     const harness = renderStageEditor(openFixture());
 
     redefineFamilyEdgeVariable(harness, 'gameteRole', {
@@ -1164,6 +1191,9 @@ describe('a codebook that changes while the pedigree is open', () => {
       ],
     });
 
+    await screen.findByRole('option', {
+      name: 'gameteRole — no longer offers the values this control needs',
+    });
     const control = screen.getByRole('combobox', { name: 'Gamete role' });
     expect(control).toHaveValue('gameteRole');
     expect(
@@ -1185,72 +1215,32 @@ describe('a codebook that changes while the pedigree is open', () => {
     ).toHaveValue('relationshipType');
   });
 
-  it('offers an attribute a collaborator added, without echoing a command', async () => {
+  /**
+   * The stage is judged at its own save, so a codebook that moved after the
+   * editor opened is the codebook the save is judged against — not the one the
+   * lock handed over.
+   *
+   * A node type the researcher is still bound to is the largest version of
+   * that: every slot on screen names an attribute of a type the protocol no
+   * longer describes.
+   */
+  it('refuses to save a pedigree whose node type a collaborator deleted', async () => {
     const harness = renderStageEditor(openFixture());
-    expect(harness.pendingCommands()).toEqual([]);
-    const dispatch = vi.spyOn(harness.session, 'dispatch');
-
-    harness.receiveCodebookUpdate({
-      node: {
-        family_member: {
-          name: 'family member',
-          color: 'node-color-seq-2',
-          icon: 'add-a-person',
-          shape: { default: 'circle' },
-          variables: {
-            fm_name: { name: 'fm_name', type: 'text', component: 'Text' },
-            is_ego: { name: 'is_ego', type: 'boolean' },
-            fm_relationship_to_ego: {
-              name: 'fm_relationship_to_ego',
-              type: 'text',
-            },
-            biologicalSex: {
-              name: 'biologicalSex',
-              type: 'categorical',
-              options: [
-                { value: 'female', label: 'Female' },
-                { value: 'male', label: 'Male' },
-                {
-                  value: 'intersex',
-                  label: 'Intersex or a variation in sex characteristics',
-                },
-                { value: 'unknown', label: 'Don’t know' },
-                { value: 'preferNotToSay', label: 'Prefer not to say' },
-              ],
-            },
-            hasConditionX: { name: 'hasConditionX', type: 'boolean' },
-            fm_nickname: { name: 'fm_nickname', type: 'text' },
-          },
-        },
-      },
-    });
-
-    await waitFor(() =>
-      expect(optionsOf('Display label')).toContain('fm_nickname'),
-    );
-    expect(dispatch).not.toHaveBeenCalled();
-    expect(harness.pendingCommands()).toEqual([]);
-    // The researcher's own picks are untouched by someone else's addition.
-    expect(screen.getByRole('combobox', { name: 'Display label' })).toHaveValue(
-      'fm_name',
-    );
-  });
-
-  it('reruns validation against the arriving codebook, and says whose change it was', async () => {
-    const harness = renderStageEditor(openFixture());
+    expect(await harness.submit()).not.toBeNull();
 
     harness.receiveCodebookUpdate({ node: { family_member: null } });
-
     await waitFor(() => {
-      const { validation, attribution } = harness.session.getSnapshot();
-      expect(validation.status).not.toBe('valid');
-      expect(attribution).toBeDefined();
+      expect(
+        screen.queryByRole('radio', { name: 'family member' }),
+      ).not.toBeInTheDocument();
     });
+
+    expect(await harness.submit()).toBeNull();
   });
 });
 
 describe('creating an attribute a slot needs without leaving the stage', () => {
-  it('puts the attribute in the codebook as one edit, and binds it here', async () => {
+  it('puts the attribute in the codebook, and binds it here', async () => {
     const harness = renderStageEditor(openFixture());
 
     await harness.user.click(
@@ -1266,7 +1256,6 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
       creator.getByRole('textbox', { name: 'Attribute name' }),
       'nickname',
     );
-    const submissions = vi.spyOn(harness.host, 'submit');
     await harness.user.click(
       creator.getByRole('button', { name: 'Create attribute' }),
     );
@@ -1276,15 +1265,13 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
         screen.getByRole('combobox', { name: 'Display label' }),
       ).not.toHaveValue('fm_name'),
     );
-    // One compound edit, touching one section: the whole attribute reaches the
-    // codebook at once, or none of it does.
-    expect(submissions).toHaveBeenCalledTimes(1);
-    expect(
-      submissions.mock.calls[0]?.[0].edits.map((edit) => edit.sectionId),
-    ).toEqual([FAMILY_MEMBER_SECTION]);
-    // And the slot now points at the attribute the codebook now holds.
+    // The attribute is in the codebook the protocol holds — nothing about it
+    // is waiting on this stage's own save — and the slot points at it.
     const created = variableIdByName(harness, 'nickname');
     expect(created).toEqual(expect.any(String));
+    expect(
+      harness.hostCodebook().node?.family_member?.variables,
+    ).toHaveProperty(created ?? '');
     expect(screen.getByRole('combobox', { name: 'Display label' })).toHaveValue(
       created,
     );
@@ -1324,24 +1311,29 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
   });
 
   /**
-   * Holds the compound edit open, and hands back the release.
+   * Holds the codebook write open, and hands back the release.
    *
-   * The one window this dialog's guard is about: the host has the request and
+   * The one window this dialog's guard is about: the protocol has the write and
    * has not answered, which is when a dismissal unmounts the editor and leaves
-   * the answer with nobody to show it to.
+   * the answer with nobody to show it to. A codebook write takes the section's
+   * own lock first, so holding that acquire holds the whole write — and only
+   * this write, because no other section is being taken while the dialog is
+   * open.
    */
-  const holdTheCompoundEdit = (harness: StageEditorHarness) => {
-    const send = harness.session.requestCompoundEdit.bind(harness.session);
+  const holdTheCodebookWrite = (harness: StageEditorHarness) => {
+    const store = harness.host.store;
+    const through = store.acquire.bind(store);
     let release: () => void = () => undefined;
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
-    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
-      async (request) => {
-        await held;
-        return send(request);
-      },
-    );
+    vi.spyOn(store, 'acquire').mockImplementation(((
+      section: Parameters<typeof through>[0],
+      principal: Parameters<typeof through>[1],
+    ) =>
+      section === FAMILY_MEMBER_SECTION
+        ? held.then(() => through(section, principal))
+        : through(section, principal)) as unknown as typeof through);
     return () => {
       release();
     };
@@ -1356,7 +1348,7 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
    */
   it('withholds every way out until the codebook answers', async () => {
     const harness = renderStageEditor(openFixture());
-    const release = holdTheCompoundEdit(harness);
+    const release = holdTheCodebookWrite(harness);
 
     await harness.user.click(
       screen.getByRole('button', {
@@ -1392,125 +1384,6 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     );
   });
 
-  /**
-   * A lease taken back mid-draft.
-   *
-   * The name the researcher is typing exists nowhere but this editor, so
-   * unmounting it to report the lost lease would throw their work away to say
-   * something the editor says for itself — with its save refused, which is
-   * what read-only does to it. The launch control goes, because a create
-   * nobody may start is not on offer.
-   */
-  it('keeps an open attribute draft when the lease is lost', async () => {
-    const harness = renderStageEditor(openFixture());
-
-    await harness.user.click(
-      screen.getByRole('button', {
-        name: 'Create a new display label attribute',
-      }),
-    );
-    const creator = within(await screen.findByRole('dialog'));
-    await harness.user.type(
-      creator.getByRole('textbox', { name: 'Attribute name' }),
-      'nickname',
-    );
-
-    act(() => {
-      harness.setReadOnly();
-    });
-
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('button', {
-          name: 'Create a new display label attribute',
-        }),
-      ).not.toBeInTheDocument(),
-    );
-    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
-      'nickname',
-    );
-    expect(
-      screen.getByRole('button', { name: 'Create attribute' }),
-    ).toBeDisabled();
-  });
-
-  /**
-   * The slot repointed at another type while the codebook was answering.
-   *
-   * The submit handler inside the editor captured this dialog's `onComplete`
-   * before it awaited the host, so the answer is applied by a closure that
-   * still believes what was true when the request left: the slot named
-   * attributes of the type the attribute is being created on. Repointed since
-   * — by this researcher, by an undo, by a collaborator — the slot now names
-   * another type's attributes, and binding the new attribute to it writes a
-   * reference to the OLD type's codebook into the new type's slot, which
-   * nothing on screen explains and whole-protocol validation refuses.
-   *
-   * The undo is what moves the type here: it is the one route that moves the
-   * draft underneath a dialog the researcher cannot dismiss while the request
-   * is in flight.
-   */
-  it('binds nothing when the slot moves to another type while the codebook answers', async () => {
-    const harness = renderStageEditor(openUnreadWithNominationPrompts());
-
-    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Change the node type' }),
-    );
-    await waitFor(() => expect(nodeConfigOf(harness).type).toBe('person'));
-
-    const release = holdTheCompoundEdit(harness);
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Create a new display label attribute',
-      }),
-    );
-    const creator = within(await screen.findByRole('dialog'));
-    await harness.user.type(
-      creator.getByRole('textbox', { name: 'Attribute name' }),
-      'nickname',
-    );
-    await harness.user.click(
-      creator.getByRole('button', { name: 'Create attribute' }),
-    );
-
-    // The type moves back while the host is still holding the request, so the
-    // attribute in flight belongs to a type this slot no longer names.
-    act(() => {
-      harness.session.undo();
-    });
-    await waitFor(() =>
-      expect(nodeConfigOf(harness).type).toBe('family_member'),
-    );
-
-    release();
-    // The attribute itself is created — the researcher asked for it, and the
-    // codebook edit was already with the host — and the dialog closes.
-    await waitFor(() =>
-      expect(variableIdByName(harness, 'nickname', PERSON_SECTION)).toEqual(
-        expect.any(String),
-      ),
-    );
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-    // But nothing is bound to it: the slot is left holding what the undo
-    // restored, rather than a "person" attribute under "family_member".
-    //
-    // Read from the CONTROL rather than from the session, because an ordinary
-    // field change waits for the submit that flushes it: the session would go
-    // on reporting the undone value while the form the researcher is about to
-    // save already held the dangling one.
-    expect(screen.getByRole('combobox', { name: 'Display label' })).toHaveValue(
-      'fm_name',
-    );
-    // And the stage still saves, which is what the dangling reference cost:
-    // an attribute of "person" under "family_member" is refused at the gate,
-    // leaving the researcher unable to finish a stage they never changed.
-    const request = await harness.submit();
-    expect(request?.stageDocument.nodeConfig).toEqual(FIXTURE_NODE_CONFIG);
-  });
-
   it('is not offered to a spectator', () => {
     renderStageEditor({ ...openFixture(), readOnly: true });
 
@@ -1522,12 +1395,11 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
   });
 });
 
-/** Every attribute the host currently files under the pedigree's node type. */
+/** Every attribute the protocol currently files under the pedigree's node type. */
 function familyMemberVariables(
   harness: StageEditorHarness,
 ): Record<string, unknown> {
-  const definition =
-    harness.host.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+  const definition = harness.protocolSections()[FAMILY_MEMBER_SECTION];
   const variables = isRecord(definition) ? definition.variables : undefined;
   return isRecord(variables) ? variables : {};
 }
@@ -1580,21 +1452,26 @@ describe('what a family member form field’s attribute holds', () => {
   /**
    * The node configuration alone, which is where the form lives.
    *
-   * Every journey below opens two nested dialogs and waits on a compound edit,
-   * and each of the pedigree's other five sections is a whole editor that
-   * re-renders on every keystroke of it. Nothing here reads or writes a key
-   * any of them own, and nothing here submits the stage — the claims are about
-   * the codebook and about the one list the fields live in.
+   * Every journey below opens two nested dialogs and waits on a codebook
+   * write, and each of the pedigree's other five sections is a whole editor
+   * that re-renders on every keystroke of it. Nothing here reads or writes a
+   * key any of them own — the claims are about the codebook and about the one
+   * list the fields live in.
+   *
+   * The pedigree asks nothing about each family member yet, so each journey
+   * switches the form on: the fixture carries no attribute a form field may
+   * collect, so a form seeded here could only hold a row the section refuses.
    */
   const openNodeConfig = () => ({
-    stage: familyPedigreeStageWith({
-      nodeConfig: {
-        ...FIXTURE_NODE_CONFIG,
-        form: [{ variable: 'fm_name', prompt: 'What do they go by?' }],
-      },
-    }),
+    stage: familyPedigreeStageWith({ nodeConfig: FIXTURE_NODE_CONFIG }),
     sections: <PedigreeNodeConfigurationSection />,
   });
+
+  /** Turns the family member form on, which is what puts its list on screen. */
+  const switchTheFormOn = (harness: StageEditorHarness): Promise<void> =>
+    harness.user.click(
+      screen.getByRole('switch', { name: 'Family member form' }),
+    );
 
   /**
    * A categorical attribute a form field may collect, already on the node
@@ -1634,6 +1511,7 @@ describe('what a family member form field’s attribute holds', () => {
 
   it('creates a categorical attribute, with its values, from the field that collects it', async () => {
     const harness = renderStageEditor(openNodeConfig());
+    await switchTheFormOn(harness);
 
     await harness.user.click(
       await screen.findByRole('button', { name: 'Create new form field' }),
@@ -1706,6 +1584,7 @@ describe('what a family member form field’s attribute holds', () => {
   it('writes the control the row chose onto what it collects, with the field', async () => {
     const harness = renderStageEditor(openNodeConfig());
     const householdRole = seedCategorical(harness);
+    await switchTheFormOn(harness);
 
     await harness.user.click(
       await screen.findByRole('button', { name: 'Create new form field' }),
@@ -1736,8 +1615,7 @@ describe('what a family member form field’s attribute holds', () => {
         component: 'ToggleButtonGroup',
       }),
     );
-    expect(formRows(harness)).toEqual([
-      { variable: 'fm_name', prompt: 'What do they go by?' },
+    expect(await savedFormRows(harness)).toEqual([
       {
         id: expect.any(String) as unknown as string,
         variable: householdRole,
@@ -1755,9 +1633,10 @@ describe('what a family member form field’s attribute holds', () => {
     // control those settings belong to, and with no settings of its own, so
     // `parameters` below is a write rather than the value the seed held.
     const diagnosedOn = seedDatetime(harness);
+    await switchTheFormOn(harness);
     await addFormFieldCollecting(harness, diagnosedOn);
 
-    const editing = await openFormField(harness, 1);
+    const editing = await openFormField(harness, 0);
     await harness.user.click(
       await editing.findByRole('button', {
         name: 'Set what this field accepts',
@@ -1786,11 +1665,20 @@ describe('what a family member form field’s attribute holds', () => {
         parameters: { type: 'year' },
       }),
     );
-    expect(formRows(harness)[1]).toEqual({
-      id: expect.any(String) as unknown as string,
-      variable: diagnosedOn,
-      prompt: 'Q?',
-    });
+    // The row is closed before the stage is read: the settings the researcher
+    // authored went to the attribute, and the row itself still holds nothing
+    // but its question.
+    await harness.user.click(editing.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    expect(await savedFormRows(harness)).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        variable: diagnosedOn,
+        prompt: 'Q?',
+      },
+    ]);
   });
 });
 
@@ -1798,11 +1686,10 @@ describe('what a family member form field’s attribute holds', () => {
  * The node type is what every attribute this stage binds means anything
  * against, so choosing a different one invalidates all of them at once.
  *
- * The throwing away goes through `useDiscardStageValues`, which is the one
- * seam a reset goes through: ONE batch, carrying the type that caused it in
- * front of the values it cost, and the form emptied afterwards. Each half of
- * that is a claim below, because a form-only clear passes the first two
- * assertions of any test written about what is on screen.
+ * Each claim below is made twice: about what is on screen, and about the stage
+ * the researcher would save. A clear that emptied the controls and left the
+ * document holding the old type's attributes passes the first and fails the
+ * second.
  */
 describe('a pedigree whose node type changes', () => {
   /**
@@ -1822,13 +1709,26 @@ describe('a pedigree whose node type changes', () => {
   };
 
   /**
+   * Acknowledges a refusal, which is what puts the pedigree back in reach.
+   *
+   * The refusal is modal, so nothing behind it can be read or saved while it
+   * stands — and the researcher has exactly one way past it.
+   */
+  const dismissTheRefusal = async (harness: StageEditorHarness) => {
+    await harness.user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => {
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0);
+    });
+  };
+
+  /**
    * A narrative pedigree resolves every disease it draws through its source
    * pedigree's `nodeConfig.type`, so a type change under one leaves it naming
-   * attributes the new type does not have — a protocol whole-protocol
-   * validation refuses, and one this editor cannot repair: the stage that
-   * would have to be remapped is not the stage it is editing. Architect
-   * refuses the same transition, and the refusal names the stages so the
-   * researcher knows where to go.
+   * attributes the new type does not have — a protocol nobody could publish,
+   * and one this editor cannot repair: the stage that would have to be
+   * remapped is not the stage it is editing. Architect refuses the same
+   * transition, and the refusal names the stages so the researcher knows where
+   * to go.
    */
   it('refuses a node type change while another stage reads this pedigree', async () => {
     // The fixture's own pedigree, which `narrative-pedigree-1` reads.
@@ -1848,8 +1748,10 @@ describe('a pedigree whose node type changes', () => {
     expect(
       screen.queryByRole('button', { name: 'Change the node type' }),
     ).not.toBeInTheDocument();
-    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
-    expect(harness.pendingCommands()).toEqual([]);
+
+    await dismissTheRefusal(harness);
+    expect(screen.getByRole('radio', { name: 'family member' })).toBeChecked();
+    expect(await savedNodeConfig(harness)).toEqual(FIXTURE_NODE_CONFIG);
   });
 
   /**
@@ -1877,6 +1779,10 @@ describe('a pedigree whose node type changes', () => {
     });
 
     readNarrativePedigreeFrom(harness, UNREAD_PEDIGREE_ID);
+    // The dependency really reaches the section while the question stands: the
+    // warning about it appears behind the modal, which is where a researcher
+    // would read it once they had answered.
+    await screen.findByText('Other stages read this pedigree');
 
     await harness.user.click(confirm);
 
@@ -1886,12 +1792,13 @@ describe('a pedigree whose node type changes', () => {
     expect(
       screen.getByText(/"Narrative Pedigree" reads this pedigree/),
     ).toBeInTheDocument();
-    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
-    expect(
-      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
-    ).toEqual(NOMINATION_ROWS);
-    expect(harness.pendingCommands()).toEqual([]);
+
+    await dismissTheRefusal(harness);
+    expect(screen.getByRole('radio', { name: 'family member' })).toBeChecked();
     expect(screen.getByText('Who has been unwell?')).toBeInTheDocument();
+    const saved = await savedStage(harness);
+    expect(saved.nodeConfig).toEqual(FIXTURE_NODE_CONFIG);
+    expect(saved.nominationPrompts).toEqual(NOMINATION_ROWS);
   });
 
   /**
@@ -1903,8 +1810,9 @@ describe('a pedigree whose node type changes', () => {
    * were reading what the change would cost. The picker's latest render has
    * already dropped it from the chips, but the continuation that resumes when
    * the question is answered still holds it, and applying it points
-   * `nodeConfig.type` at a type the codebook no longer describes — a stage the
-   * host refuses to save, and one nothing on screen explains.
+   * `nodeConfig.type` at a type the codebook no longer describes — a stage
+   * whose every slot then names an attribute of nothing, and one nothing on
+   * screen explains.
    *
    * Refused rather than applied and repaired: there is nothing to repair it
    * to. The researcher agreed to lose this stage's configuration in exchange
@@ -1920,6 +1828,13 @@ describe('a pedigree whose node type changes', () => {
     });
 
     deleteNodeType(harness, 'person');
+    // The deletion really reaches the picker while the question stands, so the
+    // refusal below is about a type the chips no longer offer.
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('radio', { name: 'person', hidden: true }),
+      ).not.toBeInTheDocument();
+    });
 
     await harness.user.click(confirm);
 
@@ -1931,63 +1846,13 @@ describe('a pedigree whose node type changes', () => {
         'This type is no longer in the codebook. Choose another one.',
       ),
     ).toBeInTheDocument();
-    // The deletion really reached the picker, so the refusal above is about a
-    // type the chips no longer offer rather than about nothing.
-    expect(
-      screen.queryByRole('radio', { name: 'person' }),
-    ).not.toBeInTheDocument();
-    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
-    expect(
-      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
-    ).toEqual(NOMINATION_ROWS);
-    expect(harness.pendingCommands()).toEqual([]);
-    expect(screen.getByText('Who has been unwell?')).toBeInTheDocument();
-  });
 
-  /**
-   * The same rule again, about the one thing that decides whether ANY of this
-   * may be written: the lease.
-   *
-   * Editing was taken away while the researcher was reading what the change
-   * would cost. The continuation that resumes when they answer holds an
-   * `onChange` captured while the picker was still editable, so the type moved
-   * in the form — while the reset it causes was refused by the session, which
-   * takes no commands from a lease that has gone. What was left on screen was
-   * the new type wearing the old type's attributes, which is a pedigree
-   * nobody authored and one no save could have produced.
-   *
-   * Refused rather than applied and put back: the session is the account of
-   * what this stage is, it still holds the old type, and everything on screen
-   * still describes that type.
-   */
-  it('refuses a confirmed change once editing has been taken away while the question was open', async () => {
-    const harness = renderStageEditor(openUnreadWithNominationPrompts());
-
-    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    const confirm = await screen.findByRole('button', {
-      name: 'Change the node type',
-    });
-
-    harness.setReadOnly();
-
-    await harness.user.click(confirm);
-
-    expect(
-      await screen.findByText(
-        'This stage is read-only, so your changes were not saved. Take over editing and try again.',
-      ),
-    ).toBeInTheDocument();
-    // The picker never moved. This is the assertion the refusal is FOR: the
-    // session below holds the old type either way, and a form left showing the
-    // new one is the whole defect.
+    await dismissTheRefusal(harness);
     expect(screen.getByRole('radio', { name: 'family member' })).toBeChecked();
-    expect(screen.getByRole('radio', { name: 'person' })).not.toBeChecked();
-    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
-    expect(
-      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
-    ).toEqual(NOMINATION_ROWS);
-    expect(harness.pendingCommands()).toEqual([]);
     expect(screen.getByText('Who has been unwell?')).toBeInTheDocument();
+    const saved = await savedStage(harness);
+    expect(saved.nodeConfig).toEqual(FIXTURE_NODE_CONFIG);
+    expect(saved.nominationPrompts).toEqual(NOMINATION_ROWS);
   });
 
   /**
@@ -2031,10 +1896,14 @@ describe('a pedigree whose node type changes', () => {
       ),
     ).toBeInTheDocument();
     // Nothing has moved while the question stands: the pick is held back
-    // rather than made and offered back. Asked of the draft rather than of the
-    // chips, which the modal question has taken out of reach.
-    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
-    expect(harness.pendingCommands()).toEqual([]);
+    // rather than made and offered back. Read through the modal, which has
+    // taken the chips out of reach without taking them off the page.
+    expect(
+      screen.getByRole('radio', { name: 'person', hidden: true }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole('radio', { name: 'family member', hidden: true }),
+    ).toBeChecked();
   });
 
   it('leaves the pedigree exactly as it was when the researcher says no', async () => {
@@ -2050,12 +1919,11 @@ describe('a pedigree whose node type changes', () => {
         screen.queryByRole('button', { name: 'Change the node type' }),
       ).not.toBeInTheDocument(),
     );
-    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
-    expect(
-      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
-    ).toEqual(NOMINATION_ROWS);
-    expect(harness.pendingCommands()).toEqual([]);
+    expect(screen.getByRole('radio', { name: 'family member' })).toBeChecked();
     expect(screen.getByText('Who has been unwell?')).toBeInTheDocument();
+    const saved = await savedStage(harness);
+    expect(saved.nodeConfig).toEqual(FIXTURE_NODE_CONFIG);
+    expect(saved.nominationPrompts).toEqual(NOMINATION_ROWS);
   });
 
   /**
@@ -2077,7 +1945,9 @@ describe('a pedigree whose node type changes', () => {
       screen.queryByRole('button', { name: 'Change the node type' }),
     ).not.toBeInTheDocument();
     await waitFor(() =>
-      expect(nodeConfigOf(harness).type).toBe('family_member'),
+      expect(
+        screen.getByRole('radio', { name: 'family member' }),
+      ).toBeChecked(),
     );
   });
 
@@ -2089,6 +1959,9 @@ describe('a pedigree whose node type changes', () => {
    */
   it('asks before it discards what described the old edge type', async () => {
     const harness = renderStageEditor(openFixture());
+    expect(
+      screen.getByRole('combobox', { name: 'Relationship type' }),
+    ).toHaveValue('relationshipType');
 
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
 
@@ -2097,7 +1970,9 @@ describe('a pedigree whose node type changes', () => {
         'This will clear everything about family relationships',
       ),
     ).toBeInTheDocument();
-    expect(harness.pendingCommands()).toEqual([]);
+    expect(
+      screen.getByRole('radio', { name: 'family_edge', hidden: true }),
+    ).toBeChecked();
 
     await harness.user.click(
       screen.getByRole('button', { name: 'Change the edge type' }),
@@ -2106,52 +1981,23 @@ describe('a pedigree whose node type changes', () => {
     await waitFor(() =>
       expect(screen.getByRole('radio', { name: 'knows' })).toBeChecked(),
     );
-    expect(commandsOf(harness)).toEqual([
-      { op: 'set', key: ['edgeConfig', 'type'], value: 'knows' },
-      { op: 'unset', key: ['edgeConfig', 'gameteRoleVariable'] },
-      { op: 'unset', key: ['edgeConfig', 'isActiveVariable'] },
-      { op: 'unset', key: ['edgeConfig', 'isGestationalCarrierVariable'] },
-      { op: 'unset', key: ['edgeConfig', 'relationshipTypeVariable'] },
-    ]);
-  });
-
-  /**
-   * The whole decision, in the order it happened: this type was chosen, and
-   * therefore these were thrown away.
-   *
-   * The type is in the batch because it is an ordinary field, which otherwise
-   * waits for the submit that flushes it — so a host applying this session's
-   * edits live would be given a pedigree still describing `family_member` with
-   * none of the attributes that described it, which is a stage nobody
-   * authored. `nodeConfig.type` itself is not among the unsets: the researcher
-   * is changing it, not losing it.
-   *
-   * ONE batch even though TWO sections reset on this type: the node
-   * configuration lists every path the type invalidates, and the nomination
-   * prompts section names the same type in its own `resetOn` so that its
-   * switch goes off with them. The node configuration's reset runs first — it
-   * is the earlier section, and passive effects run in tree order — so by the
-   * time the prompts section looks there is nothing left for it to say: the
-   * prompts are already gone from the draft, and the type it would name as its
-   * cause is the type the draft already holds. A reset with nothing to discard
-   * still sends its cause; a reset whose cause the draft already agrees with
-   * has no cause to send. The two compose instead of costing the researcher
-   * two steps of undo.
-   */
-  it('carries the chosen type and everything it invalidated in one batch', async () => {
-    const harness = renderStageEditor(openUnreadWithNominationPrompts());
-
-    await chooseNodeType(harness, 'person');
-
-    await waitFor(() => expect(harness.pendingCommands()).toHaveLength(1));
-    expect(commandsOf(harness)).toEqual([
-      { op: 'set', key: ['nodeConfig', 'type'], value: 'person' },
-      { op: 'unset', key: ['nodeConfig', 'biologicalSexVariable'] },
-      { op: 'unset', key: ['nodeConfig', 'egoVariable'] },
-      { op: 'unset', key: ['nodeConfig', 'nodeLabelVariable'] },
-      { op: 'unset', key: ['nodeConfig', 'relationshipVariable'] },
-      { op: 'unset', key: 'nominationPrompts' },
-    ]);
+    // And everything that described the old edge type has gone with it: the
+    // relationship type, whether a relationship is current, who carried each
+    // pregnancy and each parent's gamete.
+    //
+    // Read as the slot having no control at all: the new type carries no
+    // attributes, and a slot still holding one would go on rendering a select
+    // so the researcher could see the choice it can no longer offer.
+    for (const slot of [
+      'Relationship type',
+      'Active status',
+      'Gestational carrier',
+      'Gamete role',
+    ]) {
+      expect(
+        screen.queryByRole('combobox', { name: slot }),
+      ).not.toBeInTheDocument();
+    }
   });
 
   /**
@@ -2188,42 +2034,14 @@ describe('a pedigree whose node type changes', () => {
   });
 
   /**
-   * And the other side of it, which is what the arrival guard in
-   * `useOnResearcherChange` exists for: an undo moves the same value, so a
-   * reset that acted on the value merely MOVING would throw the prompts away
-   * again the instant the undo brought them back — leaving the researcher able
-   * to restore the type and never the prompts.
-   */
-  it('keeps the prompts an undo restores, and switches the section back on', async () => {
-    const harness = renderStageEditor(openUnreadWithNominationPrompts());
-    await chooseNodeType(harness, 'person');
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'Nomination prompts' }),
-      ).not.toBeChecked(),
-    );
-
-    act(() => {
-      harness.session.undo();
-    });
-
-    await screen.findByText('Who has been unwell?');
-    expect(
-      screen.getByRole('switch', { name: 'Nomination prompts' }),
-    ).toBeChecked();
-    expect(outlineStateOf(harness, 'Nomination prompts')).toBe('Finished');
-  });
-
-  /**
-   * The defect a form-only clear leaves behind, stated as what the researcher
-   * sees.
+   * The defect a clear that never reached the document leaves behind, stated
+   * as what the researcher sees.
    *
-   * A bound list resolves every insertion against the draft the SESSION holds
-   * — that is what stops a row dialog's save from landing on whichever row has
-   * since moved into its position — so a clear the session was never told
-   * about leaves the old rows there to be resolved against, and the next
-   * prompt the researcher writes arrives beside a prompt about the type they
-   * left, asking for an attribute that type no longer has.
+   * The list a switched-off section holds is unmounted, so the next prompt the
+   * researcher writes is added to whatever the document still has at that
+   * path. A clear that only emptied the controls leaves the old prompt there
+   * to be added beside — a question about the type they left, asking for an
+   * attribute that type no longer has.
    */
   it('does not bring a prompt about the old type back with the next one added', async () => {
     const harness = renderStageEditor(openUnreadWithNominationPrompts());
@@ -2237,7 +2055,7 @@ describe('a pedigree whose node type changes', () => {
 
     // The section went off with the prompts it lost, so writing another one
     // starts by asking for it back. See "switches the nomination prompts off"
-    // below.
+    // above.
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Nomination prompts' }),
     );
@@ -2260,44 +2078,14 @@ describe('a pedigree whose node type changes', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
+    // One prompt, and it is the one the researcher just wrote. The stage a
+    // pedigree with no node slots bound would save is refused, so this is read
+    // where the researcher reads it.
     expect(
-      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
-    ).toEqual([
-      {
-        id: expect.any(String) as unknown as string,
-        text: 'Who?',
-        variable: 'highlighted',
-      },
-    ]);
-  });
-
-  /**
-   * Undo is the researcher's way back from a type they did not mean, and it
-   * has to bring back BOTH halves: a stage holding the old type's attributes
-   * under the new type is one nobody authored, and so is the new type with
-   * nothing bound to it. One batch is what makes that a single step.
-   */
-  it('comes back whole, type included, when the session undoes it', async () => {
-    const harness = renderStageEditor(openUnreadWithNominationPrompts());
-    await chooseNodeType(harness, 'person');
-    await waitFor(() => expect(nodeConfigOf(harness).type).toBe('person'));
-
-    act(() => {
-      harness.session.undo();
-    });
-
-    await waitFor(() =>
-      expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG),
-    );
-    expect(
-      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
-    ).toEqual(NOMINATION_ROWS);
-    // And on screen, not only in the session: the controls are re-seeded from
-    // an arrival this form did not make.
-    expect(
-      await screen.findByRole('radio', { name: 'family member' }),
-    ).toBeChecked();
-    await screen.findByText('Who has been unwell?');
+      screen.getAllByRole('button', { name: 'Edit nomination prompt' }),
+    ).toHaveLength(1);
+    expect(await screen.findByText('Who?')).toBeInTheDocument();
+    expect(screen.queryByText('Who has been unwell?')).not.toBeInTheDocument();
   });
 });
 
@@ -2305,20 +2093,12 @@ describe('a pedigree whose node type changes', () => {
  * The framing is a discriminated union, so choosing a participant choice is
  * also the decision to lose the terminology a fixed framing carried.
  *
- * The two halves belong in ONE batch: the mode is an ordinary field that waits
- * for the submit that flushes it, so a clear sent alone would reach a host
- * applying this session's edits live as a pedigree still claiming a fixed
- * framing with nothing to fix it to — a stage nobody authored, and one the
- * union refuses. And the clear has to reach the session at all, or the draft
- * goes on holding a terminology the union's chosen branch has no room for.
- *
- * The switch back is asked about the DRAFT rather than about the control,
- * because the control cannot fail it: a cleared field parks its emptiness in
- * the form store, which outlives the field and is what a re-mount is restored
- * from. That record is only as good as the form holding it; the draft is what
- * a re-opened editor, a live-applying host and the session's own undo read.
+ * The clear has to reach the document and not only the control it emptied: the
+ * union has no room for a terminology beside a participant choice, and a
+ * cleared field that parked its emptiness in the form store alone would put
+ * the old terminology back the next time the control mounted.
  */
-describe('the batch a framing change makes', () => {
+describe('what a framing change costs', () => {
   /** Seeded away from the schema's canonical framing, so a fallback shows. */
   const openWithGenderedFraming = () => ({
     stage: familyPedigreeStageWith({
@@ -2327,11 +2107,6 @@ describe('the batch a framing change makes', () => {
     sections: pedigreeSections,
   });
 
-  const framingOf = (harness: StageEditorHarness): Record<string, unknown> => {
-    const framing = harness.session.getSnapshot().editedSection.fields.framing;
-    return isRecord(framing) ? framing : {};
-  };
-
   const terminology = () =>
     screen.findByRole('combobox', { name: 'Fixed framing terminology' });
 
@@ -2339,29 +2114,9 @@ describe('the batch a framing change makes', () => {
     await harness.user.click(screen.getByRole('radio', { name }));
   };
 
-  it('carries the mode it chose and the terminology it cost in one batch', async () => {
+  it('leaves the terminology gone when the researcher goes back to a fixed framing', async () => {
     const harness = renderStageEditor(openWithGenderedFraming());
     expect(await terminology()).toHaveValue('gendered');
-
-    await chooseMode(harness, 'Let the participant choose');
-
-    await waitFor(() => expect(harness.pendingCommands()).toHaveLength(1));
-    // ONE command, not the mode-then-clear pair this used to be. `framing` is
-    // a discriminated union, so it is an exclusive-variant container and the
-    // whole of it travels at once (`commandsFromDraftChange`): the chosen mode
-    // and the terminology it cost are the same write, and there is no moment
-    // between them at which the stage claims a fixed framing with nothing to
-    // fix it to. That is a stronger guarantee than the pair gave, not a weaker
-    // one — the pair only held because nothing ever replayed the two commands
-    // apart.
-    expect(commandsOf(harness)).toEqual([
-      { op: 'set', key: 'framing', value: { mode: 'participantChoice' } },
-    ]);
-  });
-
-  it('leaves the terminology gone from the draft when the researcher goes back to a fixed framing', async () => {
-    const harness = renderStageEditor(openWithGenderedFraming());
-    await terminology();
 
     await chooseMode(harness, 'Let the participant choose');
     await waitFor(() =>
@@ -2371,36 +2126,19 @@ describe('the batch a framing change makes', () => {
     );
     await chooseMode(harness, 'Fixed framing');
 
-    expect(framingOf(harness)).not.toHaveProperty('value');
-    expect(await terminology()).not.toHaveValue('gendered');
-  });
+    // Empty rather than back at what the fixed framing used to say — and the
+    // stage is refused, because a fixed framing with no terminology is not a
+    // framing the union accepts.
+    expect(await terminology()).toHaveValue('');
+    expect(await harness.submit()).toBeNull();
 
-  /**
-   * Undo is the researcher's way back from a framing they did not mean, and it
-   * has to bring back BOTH halves: a fixed framing with no terminology is not
-   * a framing the union accepts, and neither is a participant choice carrying
-   * one. One batch is what makes that a single step.
-   */
-  it('comes back whole, mode included, when the session undoes it', async () => {
-    const harness = renderStageEditor(openWithGenderedFraming());
-    await terminology();
-    await chooseMode(harness, 'Let the participant choose');
-    // What the undo below has to find. A clear that never reached the session
-    // leaves the terminology in the draft, and everything after the undo would
-    // then describe a value nothing ever took away.
-    await waitFor(() => expect(framingOf(harness)).not.toHaveProperty('value'));
-
-    act(() => {
-      harness.session.undo();
+    // Answered afresh, it saves the answer the researcher gave rather than the
+    // one they left behind.
+    await harness.user.selectOptions(await terminology(), 'gamete');
+    expect((await savedStage(harness)).framing).toEqual({
+      mode: 'fixed',
+      value: 'gamete',
     });
-
-    await waitFor(() =>
-      expect(framingOf(harness)).toEqual({ mode: 'fixed', value: 'gendered' }),
-    );
-    // And on screen, not only in the session: the controls are re-seeded from
-    // an arrival this form did not make.
-    expect(screen.getByRole('radio', { name: 'Fixed framing' })).toBeChecked();
-    expect(await terminology()).toHaveValue('gendered');
   });
 });
 
@@ -2422,7 +2160,7 @@ describe('picks this session has already claimed', () => {
     variable: Readonly<Record<string, unknown>>,
   ): void => {
     const section =
-      harness.session.getSnapshot().protocolSections[
+      harness.protocolSections()[
         sectionId({ kind: 'codebookEdge', typeId: 'family_edge' })
       ];
     if (section === undefined) {
@@ -2442,7 +2180,7 @@ describe('picks this session has already claimed', () => {
   /**
    * A nomination toggle is an UNVALIDATED writer, so it may not take an
    * attribute this stage's own form collects — and the form field that
-   * collects it is unsaved, so only the live draft knows about it.
+   * collects it is unsaved, so only this form knows about it.
    *
    * The attribute the field collects is seeded rather than invented, for the
    * reason `seedCollectableBoolean` gives: every boolean the node type
@@ -2455,6 +2193,7 @@ describe('picks this session has already claimed', () => {
   it('never offers a nomination prompt an attribute this stage’s own form collects', async () => {
     const harness = renderStageEditor(openWithNominationPrompts());
     const unwell = seedCollectableBoolean(harness);
+    await awaitOffered('Participant identifier', unwell);
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Family member form' }),
@@ -2492,6 +2231,7 @@ describe('picks this session has already claimed', () => {
       type: 'boolean',
       component: 'Boolean',
     });
+    await awaitOffered('Participant identifier', 'housebound');
 
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit nomination prompt' }),

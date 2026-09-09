@@ -9,6 +9,7 @@ import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import FormFieldsSection from '../FormFieldsSection.tsx';
 import {
@@ -60,10 +61,10 @@ const NOMINATION_PROMPTS_FIELD = 'nominationPrompts';
  * section, and passive effects run in tree order), so the prompts section
  * finds nothing left at its path AND finds the draft already holding the type
  * it would name as its cause, which is what leaves it nothing to write: a
- * reset still sends a cause the draft has not got, discards or no discards.
+ * reset still sends a cause the document has not got, discards or no discards.
  * Taking `nominationPrompts` out of this list instead splits the change into
- * TWO batches, and one undo then restores only half of it: measured, and the
- * reason it stays.
+ * two writes, so the document passes through a state describing the new type
+ * with the old type's prompts: measured, and the reason it stays.
  */
 const NODE_TYPE_DEPENDENT_FIELDS: readonly string[] = Object.freeze([
   LABEL_FIELD,
@@ -116,7 +117,8 @@ const FORM_CAPABILITY = Object.freeze({
  */
 export default function PedigreeNodeConfigurationSection() {
   const intl = useAppIntl();
-  const { identity, protocolContext } = useStageEditorForm();
+  const { identity } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const nodeType = useStageValue(TYPE_FIELD);
   const formRows = useStageValue(FORM_FIELD);
   const nominationRows = useStageValue(NOMINATION_PROMPTS_FIELD);
@@ -302,7 +304,6 @@ export default function PedigreeNodeConfigurationSection() {
             draftConflicting={draftUnvalidatedVariables}
             variableType="text"
             createLabel={pedigreeMessages.nodeLabelCreateLabel}
-            createDescription={pedigreeMessages.nodeLabelCreateDescription}
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
@@ -319,7 +320,6 @@ export default function PedigreeNodeConfigurationSection() {
               : { draftLabelVariable })}
             variableType="boolean"
             createLabel={pedigreeMessages.nodeEgoCreateLabel}
-            createDescription={pedigreeMessages.nodeEgoCreateDescription}
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
@@ -336,9 +336,6 @@ export default function PedigreeNodeConfigurationSection() {
               : { draftLabelVariable })}
             variableType="text"
             createLabel={pedigreeMessages.nodeRelationshipCreateLabel}
-            createDescription={
-              pedigreeMessages.nodeRelationshipCreateDescription
-            }
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
@@ -355,9 +352,6 @@ export default function PedigreeNodeConfigurationSection() {
             variableType="categorical"
             lockedOptions={INTERFACE_OWNED_OPTION_SETS.biologicalSex.options}
             createLabel={pedigreeMessages.nodeBiologicalSexCreateLabel}
-            createDescription={
-              pedigreeMessages.nodeBiologicalSexCreateDescription
-            }
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
 

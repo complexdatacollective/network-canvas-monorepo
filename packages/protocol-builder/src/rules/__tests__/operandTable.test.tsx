@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import {
   type FilterOperator,
@@ -16,12 +15,6 @@ import {
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { useStageEditorController } from '../../controller.ts';
-import StageEditorShell from '../../form/StageEditorShell.tsx';
-import {
-  createStageIdentity,
-  ProtocolBuilderSessionStore,
-} from '../../session.ts';
 import {
   canAuthorRuleForType,
   type OperandControl,
@@ -33,6 +26,7 @@ import type { RuleDraft } from '../rule.ts';
 import { isOperandValidForAttributeType } from '../ruleCodebook.ts';
 import RuleEditorDialog, { type RuleTypeOption } from '../RuleEditorDialog.tsx';
 import { ruleSetTargets } from '../ruleSet.ts';
+import { RuleEditorHost, STAGE_SECTION } from './ruleEditorHost.tsx';
 
 /**
  * One attribute of every type the schema has, so the sweep below covers the
@@ -95,7 +89,6 @@ const personDefinition = {
 
 const settingsSection = sectionId({ kind: 'settings' });
 const stageOrderSection = sectionId({ kind: 'stageOrder' });
-const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
 const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
 const stageFields: SectionDoc = {
@@ -108,7 +101,7 @@ const stageFields: SectionDoc = {
 const baseSections: Record<string, SectionDoc> = {
   [settingsSection]: { name: 'Operand table', schemaVersion: 8 },
   [stageOrderSection]: { stages: ['stage-1'] },
-  [stageSection]: { id: 'stage-1', type: 'AlterForm', ...stageFields },
+  [STAGE_SECTION]: { id: 'stage-1', type: 'AlterForm', ...stageFields },
   [personSection]: personDefinition,
 };
 
@@ -121,22 +114,6 @@ const RULE_TYPES: readonly RuleTypeOption[] = [
   },
 ];
 
-function createSession() {
-  return new ProtocolBuilderSessionStore({
-    identity: createStageIdentity('AlterForm', () => 'stage-1'),
-    fields: stageFields,
-    protocolSections: baseSections,
-    manifestRevision: { sequence: 1n, hash: 'revision-1' },
-    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
-    buildCandidate: ({ stageDocument }) => ({
-      name: 'Operand table',
-      schemaVersion: 8,
-      codebook,
-      stages: [stageDocument],
-    }),
-  });
-}
-
 function Editor({
   onSave,
   seed = { type: '' },
@@ -144,12 +121,10 @@ function Editor({
   onSave: (rule: RuleDraft) => void;
   seed?: RuleDraft;
 }) {
-  const [session] = useState(() => createSession());
-  const controller = useStageEditorController(session, 'stage-form');
   const [open, setOpen] = useState(true);
 
   return (
-    <StageEditorShell controller={controller}>
+    <RuleEditorHost sections={baseSections}>
       <RuleEditorDialog
         open={open}
         seed={seed}
@@ -161,17 +136,13 @@ function Editor({
         }}
         onCancel={() => setOpen(false)}
       />
-    </StageEditorShell>
+    </RuleEditorHost>
   );
 }
 
 const renderEditor = (seed?: RuleDraft) => {
   const onSave = vi.fn<(rule: RuleDraft) => void>();
-  render(
-    <DialogProvider>
-      <Editor onSave={onSave} seed={seed} />
-    </DialogProvider>,
-  );
+  render(<Editor onSave={onSave} seed={seed} />);
   return onSave;
 };
 

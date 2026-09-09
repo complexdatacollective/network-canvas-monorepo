@@ -6,6 +6,7 @@ import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { AlterEdgeFormStageEditor } from '../AlterEdgeFormStageEditor.tsx';
 import {
+  expectStageUntouched,
   fieldsOf,
   knowsDefinition,
   mountedAs,
@@ -106,7 +107,7 @@ describe('the editor for a form about each relationship', () => {
 
     // A per-alter-edge form has no authored defaults, so a new one has no type
     // chosen, and its form waits on one. Only the name arrives filled in,
-    // proposed because the session is creating the stage.
+    // proposed because the stage is being created.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     expect(stageNameInput().value).toMatch(/^Per Alter Edge Form/);
     expect(screen.getByRole('radio', { name: 'knows' })).not.toBeChecked();
@@ -203,14 +204,11 @@ describe('the editor for a form about each relationship', () => {
       screen.getByRole('textbox', { name: 'Introduction heading' }),
       'A heading nobody kept',
     );
-    expect(harness.pendingCommands()).toHaveLength(0);
+    expectStageUntouched(harness);
 
     await harness.cancel();
 
-    expect(harness.pendingCommands()).toHaveLength(0);
-    expect(harness.session.getSnapshot().editedSection.fields).toEqual(
-      harness.seeded.fields,
-    );
+    expectStageUntouched(harness);
   });
 
   it('follows an attribute deleted elsewhere without echoing it back', async () => {
@@ -219,7 +217,6 @@ describe('the editor for a form about each relationship', () => {
       await screen.findByText('Collects "edgeNotes" as text.'),
     ).toBeInTheDocument();
 
-    const dispatch = vi.spyOn(harness.session, 'dispatch');
     harness.receiveCodebookUpdate({
       edge: {
         knows: knowsDefinition({
@@ -239,24 +236,15 @@ describe('the editor for a form about each relationship', () => {
     expect(
       await screen.findByText('This attribute is no longer in the codebook.'),
     ).toBeInTheDocument();
-    expect(dispatch).not.toHaveBeenCalled();
-    expect(harness.pendingCommands()).toHaveLength(0);
-    // The session says so too, naming the attribute: a stage collecting one
-    // that is gone cannot be saved.
-    await waitFor(() =>
-      expect(
-        harness.outline().find((section) => section.title === 'Form fields')
-          ?.state,
-      ).toBe(
-        'Has a problem. The attribute "edgeNotes" does not exist in the codebook',
-      ),
-    );
+    // Their deletion is theirs. The field the researcher authored is still on
+    // the stage, still pointing where they pointed it: an editor that quietly
+    // dropped it would be saving somebody else's edit as this one.
+    expectStageUntouched(harness);
+    await harness.roundTrip({ unowned: [] });
   });
 
-  it('refuses to save a stage the session has made read-only', async () => {
-    const harness = renderStageEditor(openFixture());
-
-    harness.setReadOnly();
+  it('refuses to save a stage somebody else is editing', async () => {
+    const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
     await waitFor(() =>
       expect(

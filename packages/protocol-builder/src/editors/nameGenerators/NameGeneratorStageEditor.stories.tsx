@@ -14,9 +14,9 @@ const meta = {
     stageId: 'name-generator-1',
     // Through the dispatcher rather than by naming the component, so the story
     // also shows that this family claims the interface its stage is of.
-    renderEditor: ({ controller, actions }) => (
+    renderEditor: ({ actions, ...editor }) => (
       <StageEditor
-        controller={controller}
+        {...editor}
         registry={nameGeneratorStageEditors}
         actions={actions}
       />

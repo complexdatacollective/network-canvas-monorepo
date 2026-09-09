@@ -18,13 +18,13 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
  * Why a list write did not reach the document.
  *
  * The three are separate because they ask the researcher for different things:
- * a lease is taken back, a removed row is gone for good, and a row that cannot
- * be told from its neighbours is still there to be edited once the list is
- * looked at again.
+ * a read-only stage cannot be written to at all, a removed row is gone for
+ * good, and a row that cannot be told from its neighbours is still there to be
+ * edited once the list is looked at again.
  */
 export type ArrayWriteRefusal =
-  /** The session declined the commands — a read-only stage, a lost lease. */
-  | 'session-refused'
+  /** The stage is read-only, so the form declined the commands. */
+  | 'read-only'
   /** The row this write was addressed at is not in the array any more. */
   | 'row-removed'
   /**
@@ -55,9 +55,9 @@ const refusalMessages = defineMessages({
   readOnly: {
     id: 'protocolBuilder.arrayField.readOnlyRefusal',
     defaultMessage:
-      'This stage is read-only, so this {itemLabel} was not saved. Take over editing and try again.',
+      'This stage is read-only, so this {itemLabel} was not saved. Somebody else is editing it.',
     description:
-      'Shown to a researcher whose edit to one row of a list was refused because they no longer hold the right to edit the stage (one step of an interview). itemLabel is the list’s own noun for one of its rows, already in the reader’s language. Taking over editing is an action offered elsewhere in the host application.',
+      'Shown to a researcher whose edit to one row of a list was refused because somebody else is editing the stage (one step of an interview). itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
   },
   rowUnresolved: {
     id: 'protocolBuilder.arrayField.rowUnresolvedRefusal',
@@ -87,10 +87,9 @@ export const rowRemovedMessage = (itemLabel: MessageDescriptor) =>
   createMessageError(refusalMessages.rowRemoved, itemLabelValue(itemLabel));
 
 /**
- * Said when the stage stopped accepting writes while the edit was being made.
- * It echoes the stage form's own read-only wording, because it is the same
- * lease that has gone: the researcher's next move is to take editing back, and
- * anything still on screen stays there meanwhile.
+ * Said when the stage is read-only, so the row's write reached nothing. It
+ * echoes the stage form's own read-only wording, because it is the same
+ * refusal said about one row; anything on screen stays where it is.
  */
 export const readOnlyMessage = (itemLabel: MessageDescriptor) =>
   createMessageError(refusalMessages.readOnly, itemLabelValue(itemLabel));
@@ -117,7 +116,7 @@ const rowUnresolvedMessage = (itemLabel: MessageDescriptor) =>
 const WRITE_REFUSAL_MESSAGES: Readonly<
   Record<ArrayWriteRefusal, (itemLabel: MessageDescriptor) => string>
 > = Object.freeze({
-  'session-refused': readOnlyMessage,
+  'read-only': readOnlyMessage,
   'row-removed': rowRemovedMessage,
   'row-unresolved': rowUnresolvedMessage,
 });

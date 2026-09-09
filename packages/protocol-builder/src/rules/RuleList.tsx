@@ -118,7 +118,7 @@ function RuleListItem({
   // half-added row is already covered — it exists only while its dialog is
   // open, and is dropped whole when that dialog is cancelled — so the only
   // rows this used to hide were stored ones, from a protocol authored
-  // elsewhere or merged from a collaborator's edit. `ruleSetIssues` reports
+  // elsewhere. `ruleSetIssues` reports
   // those and the field tells the researcher to open rule N, and nothing here
   // opens a row by position: the row was the only way in, and hiding it left
   // the whole rule set unrepairable except by deleting every rule in it.

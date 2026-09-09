@@ -9,6 +9,7 @@ import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { AlterFormStageEditor } from '../AlterFormStageEditor.tsx';
 import {
+  expectStageUntouched,
   fieldsOf,
   mountedAs,
   authorsDateSettingsFromField,
@@ -141,7 +142,7 @@ describe('the editor for a form about each person', () => {
     // A per-alter form has no authored defaults, so a new one has no type
     // chosen — and its form cannot be written until one is, because there is
     // no codebook for its fields to collect into. Only the name arrives
-    // filled in, proposed because the session is creating the stage.
+    // filled in, proposed because the stage is being created.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     expect(stageNameInput().value).toMatch(/^Per Alter Form/);
     expect(screen.getByRole('radio', { name: 'person' })).not.toBeChecked();
@@ -239,19 +240,16 @@ describe('the editor for a form about each person', () => {
       screen.getByRole('textbox', { name: 'Introduction heading' }),
       'A heading nobody kept',
     );
-    expect(harness.pendingCommands()).toHaveLength(0);
+    expectStageUntouched(harness);
 
     await harness.cancel();
 
-    expect(harness.pendingCommands()).toHaveLength(0);
-    expect(harness.session.getSnapshot().editedSection.fields).toEqual(
-      harness.seeded.fields,
-    );
+    expectStageUntouched(harness);
   });
 
   /**
    * A collaborator renaming an attribute this form collects is their edit, not
-   * this session's: the field now asks for something called something else,
+   * this researcher's: the field now asks for something called something else,
    * which the researcher has to be able to see, and echoing the rename back
    * would save it as ours.
    */
@@ -261,7 +259,6 @@ describe('the editor for a form about each person', () => {
       await screen.findByText('Collects "relationship_to_ego" as text.'),
     ).toBeInTheDocument();
 
-    const dispatch = vi.spyOn(harness.session, 'dispatch');
     harness.receiveCodebookUpdate({
       node: {
         person: personDefinition({
@@ -278,14 +275,15 @@ describe('the editor for a form about each person', () => {
     expect(
       await screen.findByText('Collects "how_they_know_each_other" as text.'),
     ).toBeInTheDocument();
-    expect(dispatch).not.toHaveBeenCalled();
-    expect(harness.pendingCommands()).toHaveLength(0);
+    // Their rename is theirs. The stage still holds the field the researcher
+    // authored, pointing at the attribute it always did — so a save carries
+    // their change nowhere.
+    expectStageUntouched(harness);
+    await harness.roundTrip({ unowned: [] });
   });
 
-  it('refuses to save a stage the session has made read-only', async () => {
-    const harness = renderStageEditor(openFixture());
-
-    harness.setReadOnly();
+  it('refuses to save a stage somebody else is editing', async () => {
+    const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
     await waitFor(() =>
       expect(

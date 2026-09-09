@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
@@ -12,7 +12,6 @@ import {
 } from '../form/stageEditorContext.ts';
 import {
   useDiscardStageValues,
-  useFormRestoreVersion,
   useStageHasAnyValue,
 } from '../form/stageFormHooks.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
@@ -25,8 +24,7 @@ import { useOnResearcherChange } from './researcherChange.ts';
  * do this" means to the protocol schema, which has no way to say "configured
  * but disabled". Because the loss is real, it is confirmed first, in the
  * capability's own words; and because it is a decision rather than a way of
- * hiding something, it reaches the draft as an edit that travels with the
- * session's other batches and comes back with its undo.
+ * hiding something, it reaches the document rather than only the panel.
  */
 export type SectionCapability = Readonly<{
   /**
@@ -110,51 +108,6 @@ export type BuilderSectionProps = Readonly<{
 const NO_FIELDS: readonly string[] = Object.freeze([]);
 
 /**
- * Keeps the researcher's switch in step with a draft that was replaced beneath
- * it.
- *
- * The switch records a decision the researcher made, and nothing about the
- * form's own editing should disturb it — emptying the last field inside an
- * open capability is not switching it off. That is a rule about the SWITCH, and
- * it is not in tension with what emptying a list SAVES. A researcher who has
- * just deleted their last card detail is mid-decision: closing the section
- * under them would take away the Add button they are reaching for, so the
- * switch stays where they left it. The save is the other moment, and there an
- * emptied list means exactly what the empty state on screen says — `OptionalList`
- * reports it as absent, the key leaves the stage, and the switch reads off the
- * next time the stage is opened, which is by then the truth about it. An
- * authoritative arrival is the one exception: a replacement, an undo, a rollback after a lost lease can take
- * every value a capability owns away, or bring a whole capability in, and a
- * decision made about the draft that is gone no longer describes anything. The
- * section's own panel is already reset from the same signal (Fresco's
- * `Section` reapplies `defaultOpen` on a restore), so without this the outline
- * would go on calling a capability available while the panel it lives in has
- * closed itself over nothing.
- *
- * Only a capability whose OWN content changed across the arrival is touched:
- * an arrival elsewhere in the stage says nothing about this capability, and
- * must not undo a switch the researcher has just thrown.
- *
- * Adjusted during render rather than in an effect so the outline never commits
- * a frame describing the draft that has just been replaced.
- */
-function useSwitchFollowsTheDraft(
-  configured: boolean,
-  setSwitchedOn: (value: boolean) => void,
-): void {
-  const restoreVersion = useFormRestoreVersion();
-  const previous = useRef({ restoreVersion, configured });
-
-  if (
-    previous.current.restoreVersion !== restoreVersion &&
-    previous.current.configured !== configured
-  ) {
-    setSwitchedOn(configured);
-  }
-  previous.current = { restoreVersion, configured };
-}
-
-/**
  * One semantic section of a stage editor.
  *
  * Sections know what they are for, not where their values live: everything
@@ -180,11 +133,8 @@ export default function BuilderSection({
   const discardStageValues = useDiscardStageValues();
   const configured = useStageHasAnyValue(capability?.fields ?? NO_FIELDS);
   const [switchedOn, setSwitchedOn] = useState(configured);
-  useSwitchFollowsTheDraft(configured, setSwitchedOn);
-  // Holding a value is itself proof the capability is on, so an undo that
-  // restores what a switch-off cleared reopens the section — which is exactly
-  // what Fresco's Section does with the same fact — without this mirror
-  // drifting out of step with it.
+  // Holding a value is itself proof the capability is on, which is what keeps
+  // this mirror of Fresco's Section in step with it rather than drifting.
   const enabled = switchedOn || configured;
   const isDisabled = disabled || readOnly;
   // A read-only session is deliberately absent here. Nothing can be edited in
@@ -243,15 +193,14 @@ export default function BuilderSection({
       // around it, so its value would survive — and go on making the
       // capability look configured, and be written back on save.
       //
-      // One call for all of them, so the whole capability leaves the draft as a
-      // single edit: one entry in the session's history, so an undo brings the
-      // capability back whole rather than a path at a time.
+      // One call for all of them, so the whole capability leaves the document
+      // at once rather than a path at a time.
       //
-      // A session that refuses it — editing taken away while the confirmation
-      // was open — has thrown nothing away, so the panel stays open over the
-      // values it still holds and the switch stays where the researcher left
-      // it. Saying so is `applyOwnCommands`'s job, and it has already done it
-      // in the form's own error region.
+      // A refused write — the editor made read-only while the confirmation was
+      // open — has thrown nothing away, so the panel stays open over the values
+      // it still holds and the switch stays where the researcher left it.
+      // Saying so is `applyOwnCommands`'s job, and it has already done it in
+      // the form's own error region.
       if (!discardStageValues(capability?.fields ?? NO_FIELDS)) return false;
       setSwitchedOn(false);
       return true;
@@ -260,16 +209,11 @@ export default function BuilderSection({
   );
 
   // Only on the RESEARCHER changing it — `useOnResearcherChange` is what tells
-  // that apart from the draft moving beneath the form. An undo, a redo or a
-  // collaborator's change moves the same value and arrives carrying the
-  // configuration that belongs to it, so resetting there would throw away the
-  // half of the change the researcher was reaching for: an undo that restored
-  // a type AND the capability describing it would lose the capability again on
-  // the spot.
+  // that apart from the value moving for some other reason, which arrives
+  // carrying the configuration that belongs to it.
   //
-  // The clear carries the value that caused it, so the session — and any host
-  // applying its batches live — never receives one without the other. See
-  // `resetOn` and `useDiscardStageValues`.
+  // The clear carries the value that caused it, so the document never holds one
+  // without the other. See `resetOn` and `useDiscardStageValues`.
   //
   // The panel is remounted rather than closed, because its open state is its
   // own: a caller can seed it through `defaultOpen` but has no way to close it.
@@ -278,9 +222,9 @@ export default function BuilderSection({
   const [resetGeneration, setResetGeneration] = useState(0);
   useOnResearcherChange(resetOn, (value) => {
     if (resetOn === undefined) return;
-    // Refused the same way, and for the same reason: a reset the session would
-    // not take has thrown nothing away, and closing the capability over values
-    // it still holds would describe a stage nobody agreed to.
+    // Refused the same way, and for the same reason: a reset that was not taken
+    // has thrown nothing away, and closing the capability over values it still
+    // holds would describe a stage nobody chose.
     const discarded = discardStageValues(capability?.fields ?? NO_FIELDS, {
       path: resetOn,
       value,

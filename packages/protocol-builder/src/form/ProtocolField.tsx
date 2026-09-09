@@ -108,7 +108,7 @@ export default function ProtocolField<C extends ValidFieldComponent>(
   const fieldProps = {
     ...stripStoreOwnedProps(props),
     initialValue: props.initialValue ?? seedValue,
-    // Read-only is a property of the session, not of any one control, so no
+    // Read-only is a property of the edit, not of any one control, so no
     // section has to remember to pass it down.
     disabled: props.disabled === true || readOnly,
     // A section says a field is required; what that reads like when it is

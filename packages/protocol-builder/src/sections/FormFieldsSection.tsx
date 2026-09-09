@@ -53,6 +53,7 @@ import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { variablesForSubject } from '../protocol-context.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
 import AttributeCodebookControls, {
   useRowValue,
 } from './AttributeCodebookControls.tsx';
@@ -959,8 +960,8 @@ function normalizeFormField(value: unknown): unknown {
  * committed.
  *
  * Ordered this way on purpose: the codebook write is the one that can be
- * refused — a lost lease, a name a collaborator has just taken, a stage whose
- * own list edits are unsaved — and a row committed first would reference an
+ * refused — a collaborator holding that codebook section, a name they have
+ * just taken — and a row committed first would reference an
  * attribute that was never written, or promise a control the interview cannot
  * render. Returning the refusal keeps the dialog open with the reason on the
  * control that caused it.
@@ -970,7 +971,7 @@ function useCommitFormField(
   rowUnderEdit: RefObject<RowUnderEdit | undefined>,
   intl: IntlShape,
 ): (value: unknown) => Promise<unknown> {
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const createVariable = useCreateCodebookVariable(codebookSubject);
   const setComponent = useSetVariableComponent(codebookSubject);
   // Both writes below are round trips, and both are ABOUT the attribute the
@@ -1169,7 +1170,7 @@ function useFormFieldValidate(
   answeredFor: string | undefined,
   intl: IntlShape,
 ) {
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const fields = useStageValue(fieldsPath);
 
   const allVariables = useMemo(
@@ -1300,7 +1301,7 @@ function useFormFieldValidate(
  * protocol that arrives already conflicting stays editable.
  */
 function useUnvalidatedWriterMap(answeredFor: string | undefined) {
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   return useMemo(
     () => buildVariableRoleMap(protocolContext, answeredFor),
     [answeredFor, protocolContext],
@@ -1511,7 +1512,7 @@ type AttributeControl = Readonly<{
  */
 function useAttributeControl(item: RowEditorProps['item']): AttributeControl {
   const intl = useAppIntl();
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const { subject } = useFormFieldsScope();
   const chosen = asString(useRowValue('variable') ?? item.variable) ?? '';
   const newType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
@@ -1764,7 +1765,7 @@ function AttributePicker({
   editIndex,
 }: Readonly<{ item: RowEditorProps['item']; editIndex?: number }>) {
   const intl = useAppIntl();
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const { fieldsPath, subject, draftUnvalidated, reserved, answeredFor } =
     useFormFieldsScope();
   const fields = useStageValue(fieldsPath);
@@ -1843,7 +1844,7 @@ function AttributePicker({
 /** How one field reads in the list when its dialog is closed. */
 function FormFieldPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const { subject } = useFormFieldsScope();
   const variableId = asString(item.variable) ?? '';
   const variable =

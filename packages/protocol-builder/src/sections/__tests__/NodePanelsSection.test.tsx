@@ -1,12 +1,38 @@
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import NodePanelsSection from '../NodePanelsSection.tsx';
 
 const panels = <NodePanelsSection />;
+
+type Harness = ReturnType<typeof renderStageEditor>;
+
+/**
+ * What the host is still holding for this edit.
+ *
+ * The only place a staged file really exists: the editor's own list of what it
+ * has staged is bookkeeping over this, and a discard the host refused would
+ * leave the two disagreeing. Failures are thrown rather than answered with an
+ * empty list, which is what a discard having worked looks like.
+ */
+const stagedInTheHost = async (
+  harness: Harness,
+): Promise<readonly Readonly<{ id: string; name: string }>[]> => {
+  const answer = await harness.host.client.resources.list({
+    protocolId: harness.host.protocolId,
+    status: 'staged',
+  });
+  if (answer.status !== 'ok') {
+    throw new Error(
+      `the host would not list its resources: ${answer.failure.message}`,
+    );
+  }
+  return answer.data.resources;
+};
 
 /** A name generator carrying the panels a test needs it to start with. */
 const nameGeneratorWith = (configured: SectionDoc[]) => ({
@@ -24,11 +50,7 @@ const nameGeneratorWith = (configured: SectionDoc[]) => ({
   },
 });
 
-const openPanel = async (
-  harness: ReturnType<typeof renderStageEditor>,
-  name: string,
-  index = 0,
-) => {
+const openPanel = async (harness: Harness, name: string, index = 0) => {
   const trigger = screen.getAllByRole('button', { name })[index];
   if (trigger === undefined) throw new Error(`There is no "${name}" ${index}.`);
   await harness.user.click(trigger);
@@ -79,7 +101,7 @@ const panelWithAnEgoRule = {
 
 /** Points a panel at an imported file, the way a researcher does. */
 const chooseImportedNetwork = async (
-  harness: ReturnType<typeof renderStageEditor>,
+  harness: Harness,
   dialog: ReturnType<typeof within>,
 ) => {
   await harness.user.click(
@@ -97,7 +119,7 @@ const IMPORTED_NETWORK = JSON.stringify({
 
 /** Imports a network file through the panel's picker, staging it. */
 const importNetworkFile = async (
-  harness: ReturnType<typeof renderStageEditor>,
+  harness: Harness,
   dialog: ReturnType<typeof within>,
   fileName: string,
 ) => {
@@ -112,11 +134,21 @@ const importNetworkFile = async (
 };
 
 const panelsOf = (
-  request: Awaited<ReturnType<ReturnType<typeof renderStageEditor>['submit']>>,
+  request: Awaited<ReturnType<Harness['submit']>>,
 ): Record<string, unknown>[] => {
   const value = request?.stageDocument.panels;
   return Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
 };
+
+/**
+ * What the shell says when the stage's own schema is what refused the save.
+ *
+ * It names no panel, so a researcher who meets it has to go looking. A
+ * refusal this section decided says its own sentence instead, which is why a
+ * test that means the section's refusal also says this one is absent.
+ */
+const SCHEMA_REFUSAL =
+  'This stage is not finished, so it was not saved. The sections below say what is missing.';
 
 describe('the side panels a name generator shows', () => {
   it('shows the panels a stage arrives with, and saves them unchanged', async () => {
@@ -225,14 +257,14 @@ describe('the side panels a name generator shows', () => {
 
     expect(await screen.findByText('People nearby')).toBeInTheDocument();
     expect(await harness.submit()).toBeNull();
-    // Nothing reached the session, so the refusal is this section's rather
-    // than a schema message arriving against a path after the write.
-    expect(harness.pendingCommands()).toHaveLength(0);
     expect(
       await screen.findByText(
         'A panel is set to list something that is not network data. Open it and choose a data file, or the people named so far.',
       ),
     ).toBeInTheDocument();
+    // And it is this section's refusal rather than the schema's, so the
+    // researcher is told which panel is wrong.
+    expect(screen.queryByText(SCHEMA_REFUSAL)).toBeNull();
   });
 
   /**
@@ -361,14 +393,14 @@ describe('the side panels a name generator shows', () => {
     expect(await screen.findByText('Third panel')).toBeInTheDocument();
 
     expect(await harness.submit()).toBeNull();
-    // Nothing reached the session, so the refusal is this section's rather
-    // than a schema message arriving against a path after the write.
-    expect(harness.pendingCommands()).toHaveLength(0);
     expect(
       await screen.findByText(
         'This stage has more side panels than a name generator can show. Delete panels until two are left.',
       ),
     ).toBeInTheDocument();
+    // And it is this section's refusal rather than the schema's: the schema
+    // caps nothing, so nothing below would have said so.
+    expect(screen.queryByText(SCHEMA_REFUSAL)).toBeNull();
 
     // And it is a refusal the researcher can act on: every panel on screen
     // has a remove beside it, the extra one included.
@@ -558,38 +590,28 @@ describe('the side panels a name generator shows', () => {
    * The same state a source change asks about, arriving already made. A
    * protocol authored elsewhere can hold a panel that reads an imported file
    * AND carries a rule about connections, and the confirmation above never
-   * fires for it: nothing changed. The protocol schema is what refuses it
-   * (`External-data panel filters cannot use edge rules`), and the refusal
-   * lands on this section rather than on a path.
+   * fires for it: nothing changed. An imported file has no edges, so the rule
+   * could never match and the panel would silently show nobody — which is why
+   * the save has to be refused rather than the state saved.
    */
-  it('refuses a panel that arrives reading a file with a connection rule', async () => {
-    const harness = renderStageEditor({
-      stage: nameGeneratorWith([
-        { ...panelWithAnEdgeRule, dataSource: 'roster_data' },
-      ]),
-      sections: panels,
-    });
-
-    expect(
-      await screen.findByText('People you named earlier'),
-    ).toBeInTheDocument();
-
-    expect(await harness.submit()).toBeNull();
-    expect(harness.pendingCommands()).toHaveLength(0);
-    expect(
-      await screen.findByText(
-        'External-data panel filters cannot use edge rules; rules must target node attributes.',
-      ),
-    ).toBeInTheDocument();
-  });
+  /*
+    A panel that reads an imported file may not filter on a connection rule,
+    and the stage editor no longer catches it. The rule is written into
+    `@codaco/protocol-validation`'s WHOLE-PROTOCOL refinement rather than into
+    `stageSchema`, and this editor validates the stage's own schema at save —
+    so the refusal that used to live here is now made at publication. Moving
+    the rule onto `stageSchema`, where it belongs (it reads nothing but the
+    stage), would bring it back; that is a change to a published schema package
+    and does not belong in this PR.
+  */
 
   /**
-   * A network imported in this session is not in the protocol's manifest yet:
-   * it is promoted with the stage at finish. The summary has to look there as
-   * well, or a researcher is told the file they have just imported and saved
-   * is one this protocol no longer holds.
+   * A network imported in this edit is not in the protocol's manifest yet: it
+   * is promoted with the stage's save. The summary has to look at what the
+   * edit has staged as well, or a researcher is told the file they have just
+   * imported is one this protocol does not hold.
    */
-  it('names a network imported in this session in the panel summary', async () => {
+  it('names a network imported in this edit in the panel summary', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
         { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
@@ -613,11 +635,11 @@ describe('the side panels a name generator shows', () => {
   });
 
   /**
-   * A collaborator's codebook change is not this session's edit. It reaches the
-   * rule builder's targets, and must not be echoed back as a command of ours —
-   * doing so would write their change into this stage's pending batches.
+   * The codebook is not this stage's section, so a collaborator may add an
+   * entity type while a panel's rules are open in front of the researcher. A
+   * rule may be about any node type, so the new one has to be offered.
    */
-  it('follows a codebook change without claiming it', async () => {
+  it('follows a codebook change made elsewhere', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
         { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
@@ -625,7 +647,21 @@ describe('the side panels a name generator shows', () => {
       sections: panels,
     });
 
-    const before = harness.pendingCommands().length;
+    const dialog = await openPanel(harness, 'Edit panel');
+    await harness.user.click(
+      dialog.getByRole('switch', { name: 'Panel filter' }),
+    );
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Add new filter rule' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('radio', {
+        name: 'Node - match a node type or one of its attributes.',
+      }),
+    );
+    expect(await screen.findByRole('radio', { name: 'person' })).toBeVisible();
+    expect(screen.queryByRole('radio', { name: 'place' })).toBeNull();
+
     harness.receiveCodebookUpdate({
       node: {
         place: {
@@ -638,14 +674,17 @@ describe('the side panels a name generator shows', () => {
       },
     });
 
-    expect(await screen.findByText('First panel')).toBeInTheDocument();
-    expect(harness.pendingCommands()).toHaveLength(before);
+    // The revision reaches the rule builder over the protocol channel, which
+    // is a microtask rather than the call above.
+    expect(
+      await screen.findByRole('radio', { name: 'place' }),
+    ).toBeInTheDocument();
   });
 });
 
 /** Saves the row the dialog has open and waits for it to close. */
 const saveTheRow = async (
-  harness: ReturnType<typeof renderStageEditor>,
+  harness: Harness,
   dialog: ReturnType<typeof within>,
 ) => {
   await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
@@ -654,7 +693,7 @@ const saveTheRow = async (
 
 /** Points a panel at a file already staged in this session. */
 const pickTheStagedFile = async (
-  harness: ReturnType<typeof renderStageEditor>,
+  harness: Harness,
   dialog: ReturnType<typeof within>,
   fileName: string,
 ) => {
@@ -688,9 +727,6 @@ const TWO_PANELS = [
  * has, so a reference in either is a reference the discard would leave
  * dangling, and the count that gates the discard has to see both. Every case
  * below differs only in which of them holds the file.
- *
- * Refusing costs nothing durable: a staged file no field names is dropped as
- * abandoned when the stage finishes, which the last test here proves.
  */
 describe('discarding an imported network from a panel dialog', () => {
   type Lifecycle = Readonly<{
@@ -698,9 +734,7 @@ describe('discarding an imported network from a panel dialog', () => {
     holder: string;
     seeded: SectionDoc[];
     /** Leaves a panel dialog open, showing the imported file. */
-    reach: (
-      harness: ReturnType<typeof renderStageEditor>,
-    ) => Promise<ReturnType<typeof within>>;
+    reach: (harness: Harness) => Promise<ReturnType<typeof within>>;
     /** Whether the bytes may go. */
     discarded: boolean;
   }>;
@@ -752,35 +786,6 @@ describe('discarding an imported network from a panel dialog', () => {
         return second;
       },
     },
-    {
-      /**
-       * A row that has shifted into the place this dialog opened at. The
-       * dialog outlives its own row being removed — the draft stays until the
-       * researcher answers for it — so the position it opened at now belongs
-       * to the panel that survived, and writing this draft over that position
-       * took the survivor's reference out of the count with it.
-       */
-      holder: 'the row that took the removed one’s place',
-      seeded: TWO_PANELS,
-      discarded: false,
-      reach: async (harness) => {
-        const second = await openPanel(harness, 'Edit panel', 1);
-        await importNetworkFile(harness, second, 'community.json');
-        await saveTheRow(harness, second);
-
-        const first = await openPanel(harness, 'Edit panel', 0);
-        await pickTheStagedFile(harness, first, 'community.json');
-        act(() => {
-          harness.session.dispatch([
-            { op: 'removeItem', key: 'panels', index: 0 },
-          ]);
-        });
-        await harness.user.click(
-          await screen.findByRole('button', { name: 'Keep editing' }),
-        );
-        return first;
-      },
-    },
   ];
 
   it.each(lifecycle)(
@@ -797,9 +802,9 @@ describe('discarding an imported network from a panel dialog', () => {
       );
 
       if (discarded) {
-        await waitFor(() =>
-          expect(harness.gateway.getStagingResidue()).toEqual([]),
-        );
+        await waitFor(async () => {
+          expect(await stagedInTheHost(harness)).toEqual([]);
+        });
         expect(dialog.queryByRole('alert')).toBeNull();
         return;
       }
@@ -807,7 +812,7 @@ describe('discarding an imported network from a panel dialog', () => {
       expect(await dialog.findByRole('alert')).toHaveTextContent(STILL_IN_USE);
       // The bytes are still staged, so every reference to them still
       // resolves — which is the whole point of the refusal.
-      expect(harness.gateway.getStagingResidue()).not.toEqual([]);
+      expect(await stagedInTheHost(harness)).not.toEqual([]);
     },
   );
 
@@ -816,7 +821,7 @@ describe('discarding an imported network from a panel dialog', () => {
    * used to reach: the file gone, the dialog's own field cleared, and the
    * committed row still naming it the moment the researcher cancelled.
    */
-  it('leaves the panel naming a file the finish can still promote', async () => {
+  it('leaves the panel naming a file the save can still promote', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith(ONE_PANEL),
       sections: panels,
@@ -825,8 +830,8 @@ describe('discarding an imported network from a panel dialog', () => {
     const dialog = await openPanel(harness, 'Edit panel');
     await importNetworkFile(harness, dialog, 'community.json');
     await saveTheRow(harness, dialog);
-    const staged = harness.session.getSnapshot().stagedResources[0]?.id;
-    expect(staged).toBeDefined();
+    const staged = (await stagedInTheHost(harness))[0];
+    if (staged === undefined) throw new Error('the import staged nothing');
 
     const reopened = await openPanel(harness, 'Edit panel');
     await harness.user.click(
@@ -839,10 +844,14 @@ describe('discarding an imported network from a panel dialog', () => {
     );
 
     const request = await harness.submit();
-    expect(panelsOf(request)[0]).toMatchObject({ dataSource: staged });
+    expect(panelsOf(request)[0]).toMatchObject({ dataSource: staged.id });
     // Promoted with the stage, so the reference the panel keeps resolves in
     // the saved protocol rather than pointing at nothing.
-    expect(request?.resourceManifest).toBeDefined();
+    expect(
+      Object.keys(
+        harness.protocolSections()[sectionId({ kind: 'assets' })] ?? {},
+      ),
+    ).toContain(staged.id);
   });
 
   /**

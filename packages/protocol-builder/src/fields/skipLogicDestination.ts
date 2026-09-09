@@ -18,7 +18,7 @@ const englishIntl = createAppIntl({ locale: 'en' });
  *
  * Narrower than `Stage` on purpose. Everything here is pure, so it can be
  * reasoned about and tested without assembling whole stage documents, and the
- * editor's protocol context satisfies it directly.
+ * package's protocol read model satisfies it directly.
  */
 export type DestinationStage = Readonly<{ id: string; label: string }>;
 

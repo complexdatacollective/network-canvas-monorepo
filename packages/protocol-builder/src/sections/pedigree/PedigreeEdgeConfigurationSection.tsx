@@ -5,9 +5,9 @@ import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 
 import { EntitySelectControl } from '../../fields/EntitySelectField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
-import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import {
   useEntityTypeChangeConfirmation,
@@ -61,7 +61,7 @@ const EDGE_TYPE_CHANGE_WORDS = Object.freeze({
  */
 export default function PedigreeEdgeConfigurationSection() {
   const intl = useAppIntl();
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const edgeType = useStageValue(TYPE_FIELD);
   useResetOnEntityTypeChange(TYPE_FIELD, EDGE_TYPE_DEPENDENT_FIELDS);
   const confirmTypeChange = useEntityTypeChangeConfirmation(
@@ -122,9 +122,6 @@ export default function PedigreeEdgeConfigurationSection() {
             variableType="categorical"
             lockedOptions={INTERFACE_OWNED_OPTION_SETS.relationshipType.options}
             createLabel={pedigreeMessages.edgeRelationshipTypeCreateLabel}
-            createDescription={
-              pedigreeMessages.edgeRelationshipTypeCreateDescription
-            }
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
@@ -137,7 +134,6 @@ export default function PedigreeEdgeConfigurationSection() {
             ownSlot={IS_ACTIVE_SLOT.slot}
             variableType="boolean"
             createLabel={pedigreeMessages.edgeIsActiveCreateLabel}
-            createDescription={pedigreeMessages.edgeIsActiveCreateDescription}
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
@@ -150,9 +146,6 @@ export default function PedigreeEdgeConfigurationSection() {
             ownSlot={GESTATIONAL_CARRIER_SLOT.slot}
             variableType="boolean"
             createLabel={pedigreeMessages.edgeGestationalCarrierCreateLabel}
-            createDescription={
-              pedigreeMessages.edgeGestationalCarrierCreateDescription
-            }
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
@@ -166,7 +159,6 @@ export default function PedigreeEdgeConfigurationSection() {
             variableType="categorical"
             lockedOptions={INTERFACE_OWNED_OPTION_SETS.gameteRole.options}
             createLabel={pedigreeMessages.edgeGameteRoleCreateLabel}
-            createDescription={pedigreeMessages.edgeGameteRoleCreateDescription}
             emptyMessage={pedigreeMessages.slotEmptyState}
           />
         </>

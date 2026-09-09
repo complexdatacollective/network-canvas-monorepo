@@ -10,13 +10,13 @@ import {
   type VariableRoleMap,
 } from '../../codebook/variableRoles.ts';
 import type { EntityTypeChangeConfirmation } from '../../fields/EntitySelectField.tsx';
-import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
   useAskStageHasAnyValue,
   useDiscardStageValues,
   useStageValue,
 } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import { useOnResearcherChange } from '../researcherChange.ts';
 import {
   draftExclusiveSlotClaims,
@@ -59,7 +59,7 @@ export function usePedigreeVariableIndexes(): Readonly<{
   slotMap: ExclusiveVariableSlotMap;
   draftSlotMap: ExclusiveVariableSlotMap;
 }> {
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const nodeType = useStageValue(NODE_TYPE_PATH);
   const edgeType = useStageValue(EDGE_TYPE_PATH);
   const ego = useStageValue(PEDIGREE_EXCLUSIVE_SLOTS.egoVariable.path);
@@ -145,20 +145,16 @@ export function usePedigreeVariableIndexes(): Readonly<{
  * nothing against a different type, and a stage saved still holding one points
  * at attributes that type does not have.
  *
- * A researcher picking a different type is told apart from the draft moving
- * beneath the form — an undo, a redo, a collaborator's change — by
- * `useOnResearcherChange`, which is the one place that distinction is made.
+ * A researcher picking a different type is told apart from the value moving
+ * for some other reason by `useOnResearcherChange`, which is the one place
+ * that distinction is made.
  *
  * The throwing away is `useDiscardStageValues`, which is the one seam a reset
- * goes through: the SESSION is told, in one batch carrying the type that
+ * goes through: the DOCUMENT is written, in one batch carrying the type that
  * caused it, and the form is emptied afterwards. A form-only clear would leave
- * the draft holding the old type's attributes, and the draft is what a bound
- * list resolves its next row against and what every field seeds itself from —
- * so the next form field the researcher adds would bring them back. The type
- * travels in the same batch because it is an ordinary field, which waits for
- * the submit that flushes it: sent alone, the clears would reach a
- * live-applying host as a stage describing the OLD type with none of its
- * attributes, which is a stage nobody authored.
+ * the document holding the old type's attributes, which is what a bound list
+ * resolves its next row against and what every field seeds itself from — so
+ * the next form field the researcher adds would bring them back.
  */
 /**
  * The words one pedigree type change is announced in.
@@ -180,8 +176,8 @@ export type EntityTypeChangeWords = Readonly<{
  *
  * `useResetOnEntityTypeChange` below throws away everything that described the
  * previous type, and a chip is one click: an accidental pick discarded the
- * member form and every nomination prompt with no warning at all, leaving undo
- * as the only way back from a change the researcher never intended to make.
+ * member form and every nomination prompt with no warning at all, and nothing
+ * brings back a change the researcher never intended to make.
  *
  * Asked of the SAME paths the reset discards, so the question can neither
  * appear over a change that costs nothing nor stay silent over one that costs

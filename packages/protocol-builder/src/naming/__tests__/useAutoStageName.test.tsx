@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -13,20 +14,24 @@ import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { useStageEditorController } from '../../controller.ts';
 import {
   type StageFormStoreApi,
   useStageEditorForm,
 } from '../../form/stageEditorContext.ts';
 import StageEditorShell from '../../form/StageEditorShell.tsx';
+import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
+import { ResourceClientProvider } from '../../resources/client.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
+import { StageEditSession, type StageEditTarget } from '../../stageEdit.tsx';
+import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import {
-  createStageIdentity,
-  ProtocolBuilderSessionStore,
-} from '../../session.ts';
+  HARNESS_PRINCIPAL,
+  SeedProtocolCache,
+} from '../../testing/seedProtocolCache.tsx';
 import type { AutoStageNamePanel } from '../useAutoStageName.ts';
 
 const EDITED_STAGE_ID = 'stage-edited';
+const EDITED_SECTION = sectionId({ kind: 'stage', stageId: EDITED_STAGE_ID });
 
 type AutoNameProps = Readonly<{
   propose?: boolean;
@@ -67,57 +72,65 @@ const protocolSections = (extra: SectionMap = {}): SectionMap => ({
   ...extra,
 });
 
-function createSession(
-  options: Readonly<{
-    type?: StageType;
-    fields?: SectionDoc;
-    sections?: SectionMap;
-    /**
-     * Opens the stage as one the interview already contains, rather than one
-     * being created. Only a stage being created is named automatically, and
-     * that is what the session says — nothing is passed to the section.
-     */
-    existing?: boolean;
-  }> = {},
-) {
-  return new ProtocolBuilderSessionStore({
-    identity: createStageIdentity(
-      options.type ?? 'NameGenerator',
-      () => EDITED_STAGE_ID,
-    ),
-    fields: options.fields ?? { label: '' },
-    ...(options.existing === true ? {} : { creation: { position: 1 } }),
-    protocolSections: options.sections ?? protocolSections(),
-    manifestRevision: { sequence: 1n, hash: 'revision-1' },
-    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
-    buildCandidate: ({ stageDocument }) => ({
-      name: 'Automatic naming test',
-      schemaVersion: 8,
-      codebook: {},
-      stages: [stageDocument],
-    }),
-  });
-}
+type EditorOptions = Readonly<{
+  type?: StageType;
+  fields?: SectionDoc;
+  sections?: SectionMap;
+  /**
+   * Opens the stage as one the interview already contains, rather than one
+   * being created. Only a stage being created is named automatically, and that
+   * is what the open edit says — nothing is passed to the section.
+   */
+  existing?: boolean;
+  /**
+   * The material only the editor can supply, and the override for whether to
+   * propose at all. Whether to propose is otherwise read from the open edit, so
+   * this stays out unless the stage has panels.
+   */
+  autoName?: AutoNameProps;
+}>;
 
 function Editor({
-  session,
+  sections,
+  target,
   autoName,
   onStore,
+  onHost,
 }: {
-  session: ProtocolBuilderSessionStore;
+  sections: SectionMap;
+  target: StageEditTarget;
   autoName: AutoNameProps | undefined;
   onStore: (storeApi: StageFormStoreApi) => void;
+  onHost: (host: ReturnType<typeof createInMemoryHost>) => void;
 }) {
-  const controller = useStageEditorController(session, 'stage-form');
+  const [host] = useState(() => {
+    const built = createInMemoryHost({
+      sections,
+      principal: HARNESS_PRINCIPAL,
+    });
+    onHost(built);
+    return built;
+  });
 
   return (
-    <StageEditorShell controller={controller}>
-      <StageNameSection
-        position={{ index: 1, total: 2 }}
-        {...(autoName === undefined ? {} : { autoName })}
-      />
-      <Probe onStore={onStore} />
-    </StageEditorShell>
+    <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <SeedProtocolCache
+        store={host.store}
+        {...('sectionId' in target ? { acquire: target.sectionId } : {})}
+      >
+        <ResourceClientProvider>
+          <StageEditSession target={target} formId="stage-form">
+            <StageEditorShell>
+              <StageNameSection
+                position={{ index: 1, total: 2 }}
+                {...(autoName === undefined ? {} : { autoName })}
+              />
+              <Probe onStore={onStore} />
+            </StageEditorShell>
+          </StageEditSession>
+        </ResourceClientProvider>
+      </SeedProtocolCache>
+    </ProtocolBuilder>
   );
 }
 
@@ -127,36 +140,39 @@ function Probe({ onStore }: { onStore: (api: StageFormStoreApi) => void }) {
 }
 
 /**
- * A stage editor driven the way a host drives one: a real session, the real
- * shell, and the real name Section. Nothing about the codebook, the asset
- * manifest or the stage order is mocked — every one of them is read out of the
- * session's own protocol context.
+ * A stage editor driven the way a host drives one: the package's own host
+ * contract served from memory, the real shell, and the real name section.
+ * Nothing about the codebook, the asset manifest or the stage order is mocked —
+ * every one of them is read from the protocol the host serves.
  */
-function renderEditor(
-  options: Readonly<{
-    type?: StageType;
-    fields?: SectionDoc;
-    sections?: SectionMap;
-    /** Opens a stage the interview already contains. */
-    existing?: boolean;
-    /**
-     * The material only the editor can supply, and the override for whether to
-     * propose at all. Whether to propose is otherwise the session's answer, so
-     * this stays out unless the stage has panels.
-     */
-    autoName?: AutoNameProps;
-  }> = {},
-) {
-  const session = createSession(options);
+function renderEditor(options: EditorOptions = {}) {
+  const type = options.type ?? 'NameGenerator';
+  const fields = options.fields ?? { label: '' };
+  const existing = options.existing === true;
+  const sections: SectionMap = {
+    ...(options.sections ?? protocolSections()),
+    ...(existing
+      ? { [EDITED_SECTION]: { id: EDITED_STAGE_ID, type, ...fields } }
+      : {}),
+  };
+  const target: StageEditTarget = existing
+    ? { sectionId: EDITED_SECTION }
+    : { stageType: type, position: 1, fields };
+
   let storeApi: StageFormStoreApi | null = null;
+  let host: ReturnType<typeof createInMemoryHost> | null = null;
 
   render(
     <DialogProvider>
       <Editor
-        session={session}
+        sections={sections}
+        target={target}
         autoName={options.autoName}
         onStore={(api) => {
           storeApi = api;
+        }}
+        onHost={(built) => {
+          host = built;
         }}
       />
     </DialogProvider>,
@@ -165,11 +181,18 @@ function renderEditor(
   const input = screen.getByRole('textbox', { name: 'Stage name' });
 
   return {
-    session,
     input,
     setValue: (name: string, value: FieldValue) =>
       act(() => {
         storeApi?.getState().setFieldValue(name, value);
+      }),
+    /** A codebook change made somewhere other than this editor. */
+    renameNodeType: (typeId: string, definition: SectionDoc) =>
+      act(() => {
+        host?.store.applyAsCollaborator(
+          sectionId({ kind: 'codebookNode', typeId }),
+          definition,
+        );
       }),
   };
 }
@@ -286,21 +309,13 @@ describe('useAutoStageName', () => {
   });
 
   it('re-proposes when the codebook changes underneath the editor', async () => {
-    const { input, session, setValue } = renderEditor();
+    const { input, renameNodeType, setValue } = renderEditor();
     setValue('subject', { entity: 'node', type: 'person' });
     await waitFor(() =>
       expect(input).toHaveValue('Person Form Name Generator'),
     );
 
-    act(() => {
-      session.receiveAuthoritativeUpdate({
-        protocolSections: protocolSections({
-          [sectionId({ kind: 'codebookNode', typeId: 'person' })]:
-            personNode('Participant'),
-        }),
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
-    });
+    renameNodeType('person', personNode('Participant'));
 
     await waitFor(() =>
       expect(input).toHaveValue('Participant Form Name Generator'),
@@ -310,25 +325,31 @@ describe('useAutoStageName', () => {
   it('de-duplicates against the other stages, but not against itself', async () => {
     const { input } = renderEditor({
       type: 'Information',
+      existing: true,
+      // The stage being edited is in the protocol, holding the very name it is
+      // about to be proposed again. Counting it would suffix the proposal
+      // against the stage's own last accepted name.
+      fields: { label: 'Information #2', title: 'Information #2', items: [] },
+      autoName: { propose: true },
       sections: protocolSections({
         [sectionId({ kind: 'stageOrder' })]: {
           stages: ['stage-other', EDITED_STAGE_ID],
         },
         [sectionId({ kind: 'stage', stageId: 'stage-other' })]:
           informationStage('stage-other', 'Information'),
-        // The stage being edited is already in the protocol, holding the very
-        // name it is about to be proposed. Counting it would suffix every
-        // proposal against the stage's own last accepted name.
-        [sectionId({ kind: 'stage', stageId: EDITED_STAGE_ID })]:
-          informationStage(EDITED_STAGE_ID, 'Information #2'),
       }),
     });
+
+    // The researcher clears the name and tabs away, which is what asks for the
+    // proposal again.
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.blur(input);
 
     await waitFor(() => expect(input).toHaveValue('Information #2'));
   });
 
   it('never overwrites a name the researcher typed', async () => {
-    const { input, session, setValue } = renderEditor();
+    const { input, renameNodeType, setValue } = renderEditor();
     await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
 
     // One change, the way selecting all and typing arrives.
@@ -339,15 +360,7 @@ describe('useAutoStageName', () => {
     // changing, and the codebook changing under the editor. Neither is licence
     // to replace what the researcher typed.
     setValue('subject', { entity: 'node', type: 'person' });
-    act(() => {
-      session.receiveAuthoritativeUpdate({
-        protocolSections: protocolSections({
-          [sectionId({ kind: 'codebookNode', typeId: 'person' })]:
-            personNode('Participant'),
-        }),
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
-    });
+    renameNodeType('person', personNode('Participant'));
 
     await settle();
     expect(input).toHaveValue('My custom stage');
@@ -379,7 +392,7 @@ describe('useAutoStageName', () => {
   });
 
   /**
-   * The session's answer is a default, not a rule. An editor with a reason to
+   * The open edit's answer is a default, not a rule. An editor with a reason to
    * disagree says so, and is obeyed in both directions.
    */
   it('proposes nothing for a stage being created when the editor says not to', async () => {

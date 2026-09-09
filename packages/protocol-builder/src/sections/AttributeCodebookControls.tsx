@@ -26,8 +26,10 @@ import {
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
 import { optionsShapeFor } from '../codebook/variableOptions.ts';
 import { parameterShapeFor } from '../codebook/variableParameters.ts';
+import { useCodebookSectionWrite } from '../codebook/writes.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
 import { isCollectableType, isOptionType } from './collectableTypes.ts';
 import { createdUnassigned } from './CreatableVariablePicker.tsx';
 
@@ -79,36 +81,6 @@ const messages = defineMessages({
     description:
       'Button that opens the codebook editor for the rules a participant’s answer has to satisfy. Also the title of the dialog it opens.',
   },
-  describeCreate: {
-    id: 'protocolBuilder.attributeCodebookControls.describeCreate',
-    defaultMessage: 'Create an attribute for a form field',
-    description:
-      'What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. The attribute has no name yet — the researcher is about to type one — so this is the one edit here that cannot name it.',
-  },
-  describeValues: {
-    id: 'protocolBuilder.attributeCodebookControls.describeValues',
-    defaultMessage: 'Change the values of "{name}"',
-    description:
-      'What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name.',
-  },
-  describeAnswerLabels: {
-    id: 'protocolBuilder.attributeCodebookControls.describeAnswerLabels',
-    defaultMessage: 'Change the answer labels of "{name}"',
-    description:
-      'The same record for a yes/no attribute, whose two stored values are fixed and whose words are what a researcher writes. name is the attribute’s researcher-facing name.',
-  },
-  describeParameters: {
-    id: 'protocolBuilder.attributeCodebookControls.describeParameters',
-    defaultMessage: 'Change what "{name}" accepts',
-    description:
-      'The same record for an attribute whose answer is not chosen from a list — a date between two bounds, a position on a scale. name is the attribute’s researcher-facing name.',
-  },
-  describeRules: {
-    id: 'protocolBuilder.attributeCodebookControls.describeRules',
-    defaultMessage: 'Change the rules for "{name}"',
-    description:
-      'What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name.',
-  },
   createNeedsValues: {
     id: 'protocolBuilder.attributeCodebookControls.createNeedsValues',
     defaultMessage:
@@ -154,9 +126,9 @@ const asRecord = (value: unknown): Record<string, unknown> =>
   isRecord(value) ? value : {};
 
 const variablesIn = (
-  document: Readonly<SectionDoc> | null,
+  document: Readonly<SectionDoc> | undefined,
 ): Record<string, unknown> =>
-  document === null ? {} : asRecord(document.variables);
+  document === undefined ? {} : asRecord(document.variables);
 
 /**
  * A value of the row dialog's OWN form, live.
@@ -237,9 +209,9 @@ export type AttributeCodebookControlsProps = Readonly<{
  * writes them through the field's save (`Form/fieldCommit.ts`).
  *
  * They cannot be inline here, because a codebook attribute lives in a
- * different protocol section from the stage: changing it is a compound edit
- * that lands whole or not at all, and a save that carried both would be a
- * stage the schema cannot accept until the attribute exists. So each opens the
+ * different protocol section from the stage: changing it takes that section's
+ * own lock and commits on its own, before the row that names it. So each opens
+ * the
  * codebook's own editor, which is where a refusal is already turned into words
  * for the researcher. What happens to the row dialog behind an editor saved
  * this way is `nestedEditorSubmit`'s subject: nothing, which is the point.
@@ -259,7 +231,9 @@ export default function AttributeCodebookControls({
   offerParameters = true,
 }: AttributeCodebookControlsProps) {
   const intl = useAppIntl();
-  const { controller, protocolContext, readOnly } = useStageEditorForm();
+  const { readOnly } = useStageEditorForm();
+  const writeCodebookSection = useCodebookSectionWrite();
+  const protocolContext = useProtocolContext();
   const codebookDocument = useCodebookSectionDocument(subject);
   // The dialog's OWN store: the picker's choice is the row's, and the created
   // attribute has to land on it rather than on the stage behind it.
@@ -281,7 +255,6 @@ export default function AttributeCodebookControls({
      * language it was opened in.
      */
     label: MessageDescriptor;
-    describe: MessageDescriptor;
     /**
      * The attribute's name as it was when the editor opened, for the host's
      * record. Captured rather than read live, so a rename made INSIDE the
@@ -403,7 +376,7 @@ export default function AttributeCodebookControls({
     editing === null
       ? null
       : { ...editing, document: editingDocument ?? editing.openedDocument };
-  const sectionIsLive = subject !== undefined && codebookDocument !== null;
+  const sectionIsLive = subject !== undefined && codebookDocument !== undefined;
 
   const variables = variablesIn(codebookDocument);
   // An id no attribute carries is an attribute there is nothing to edit on —
@@ -466,20 +439,15 @@ export default function AttributeCodebookControls({
     : canEditAnswers
       ? messages.editAnswerLabels
       : messages.editParameters;
-  const definesDescribe = canEditValues
-    ? messages.describeValues
-    : canEditAnswers
-      ? messages.describeAnswerLabels
-      : messages.describeParameters;
 
   /**
    * Whether another editor may be STARTED from here.
    *
-   * A lease taken back by a collaborator makes this false, and a section that
-   * has gone makes it false as well — the second is the stronger fact, because
-   * there is not even a document to open an editor against. Neither makes
-   * anything else false: an editor already open holds a draft the researcher
-   * made in this session, of exactly the kind the row dialog around it
+   * A read-only stage makes this false, and a section that has gone makes it
+   * false as well — the second is the stronger fact, because there is not even
+   * a document to open an editor against. Neither makes anything else false: an
+   * editor already open holds a draft the researcher made, of exactly the kind
+   * the row dialog around it
    * deliberately keeps when the same thing happens. Unmounting it would throw
    * that draft away to say something the editor can say for itself, with its
    * own save refused — which is what `readOnly` does to both of them.
@@ -501,7 +469,7 @@ export default function AttributeCodebookControls({
   }
   // The attributes an open editor is reading about, which are the ones in the
   // section it was opened against rather than whatever the row points at now.
-  const editorVariables = variablesIn(openEditor?.document ?? null);
+  const editorVariables = variablesIn(openEditor?.document);
   /**
    * Whether the attribute an open editor was opened ON has been deleted from
    * under it.
@@ -515,13 +483,13 @@ export default function AttributeCodebookControls({
   const editedAttributeDeleted =
     openEditor !== null &&
     openEditor.surface !== 'create' &&
-    editingDocument !== null &&
+    editingDocument !== undefined &&
     !Object.hasOwn(editorVariables, openEditor.variableId);
 
   /**
    * Whether what is open may be WRITTEN, which is four questions.
    *
-   * A lease taken back says this researcher may write nothing. A section that
+   * A read-only stage says this researcher may write nothing. A section that
    * has gone is a section nothing can be written into, which says the same
    * thing from the other side. A stage that has been repointed at another type
    * says it a third way: the row this editor was opened from is a row about
@@ -538,7 +506,7 @@ export default function AttributeCodebookControls({
    */
   const editorReadOnly =
     readOnly ||
-    editingDocument === null ||
+    editingDocument === undefined ||
     openEditor === null ||
     editedAttributeDeleted ||
     subject === undefined ||
@@ -579,11 +547,11 @@ export default function AttributeCodebookControls({
    * and a screen-reader user is returned to the page rather than to the row
    * they were in.
    *
-   * These two are offered by facts about the LIVE codebook and the live lease,
-   * and every one of those can turn false under a researcher who is mid-edit:
-   * a collaborator changing what kind of answer the attribute holds takes the
-   * values button away, deleting it takes both away, and a lease taken back
-   * takes every launch control away while the editor deliberately stays open.
+   * These two are offered by facts about the LIVE codebook, and every one of
+   * those can turn false under a researcher who is mid-edit: a collaborator
+   * changing what kind of answer the attribute holds takes the values button
+   * away, and deleting it takes both away, while the editor deliberately stays
+   * open.
    * All of that has already happened by the time the editor is closed, which
    * is what makes "is it still there?" the right question to ask here — and
    * the wrong one for the create, whose trigger is still on screen at exactly
@@ -599,26 +567,28 @@ export default function AttributeCodebookControls({
   };
 
   /**
-   * The compound edit an open editor submits, with the dialog held shut while
-   * it is in flight.
+   * The codebook write an open editor asks for, with the dialog held shut
+   * while it is in flight.
    *
-   * The request outlives the dialog: dismissed mid-flight, the editor is
+   * The write outlives the dialog: dismissed mid-flight, the editor is
    * unmounted but the handler awaiting the host is still alive, so a refusal
    * is shown to nobody and a success still runs `onComplete` — which, for the
    * create, binds the row to an attribute the researcher watched no editor
    * finish. `SubjectSection`'s own create dialog withholds every way out for
    * exactly this, and these three are the same act.
+   *
+   * Bound to the subject the editor OPENED on, so a write cannot land on the
+   * type a repointed stage has moved to since.
    */
-  const submitEdit = async (
-    request: Parameters<typeof controller.requestCompoundEdit>[0],
-  ) => {
-    setSubmitting(true);
-    try {
-      return await controller.requestCompoundEdit(request);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const submitEdit =
+    (target: CodebookSubject) => async (document: SectionDoc) => {
+      setSubmitting(true);
+      try {
+        return await writeCodebookSection(target, () => document);
+      } finally {
+        setSubmitting(false);
+      }
+    };
 
   /**
    * Every way out of a nested editor, which is one handler.
@@ -634,12 +604,11 @@ export default function AttributeCodebookControls({
   const open = (
     surface: 'create' | 'defines' | 'rules',
     label: MessageDescriptor,
-    describe: MessageDescriptor,
   ) => {
     // Every control that calls this is offered only while the section is live,
     // and the check is written out rather than assumed because what it takes
     // is what the editor goes on reading until it closes.
-    if (subject === undefined || codebookDocument === null) return;
+    if (subject === undefined || codebookDocument === undefined) return;
     // The notice is about the create that has just happened; opening another
     // editor is the start of a different one. Same rule, and the same reason,
     // as the picker's own notice clearing when the researcher types a new name.
@@ -648,7 +617,6 @@ export default function AttributeCodebookControls({
       openId: uuid(),
       surface,
       label,
-      describe,
       name: asString(asRecord(picked).name) ?? chosen,
       variableId: surface === 'create' ? uuid() : chosen,
       subject,
@@ -658,20 +626,8 @@ export default function AttributeCodebookControls({
     });
   };
 
-  /**
-   * The dialog's title, and what the host is told this edit is.
-   *
-   * Two different sentences, which is the point: the title is the words on the
-   * button the researcher pressed, and a host's undo history that repeated
-   * those would read "Change this attribute's values" for every attribute a
-   * researcher has ever changed the values of. The record names the one they
-   * changed.
-   */
+  /** The dialog's title: the words on the button the researcher pressed. */
   const editorTitle = editing === null ? '' : intl.formatMessage(editing.label);
-  const editorDescription =
-    editing === null
-      ? ''
-      : intl.formatMessage(editing.describe, { name: editing.name });
 
   return (
     <>
@@ -692,7 +648,7 @@ export default function AttributeCodebookControls({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => open('create', createLabel, messages.describeCreate)}
+            onClick={() => open('create', createLabel)}
           >
             {intl.formatMessage(createLabel)}
           </Button>
@@ -704,7 +660,7 @@ export default function AttributeCodebookControls({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => open('defines', definesLabel, definesDescribe)}
+              onClick={() => open('defines', definesLabel)}
             >
               {intl.formatMessage(definesLabel)}
             </Button>
@@ -715,9 +671,7 @@ export default function AttributeCodebookControls({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() =>
-              open('rules', messages.editRules, messages.describeRules)
-            }
+            onClick={() => open('rules', messages.editRules)}
           >
             {intl.formatMessage(messages.editRules)}
           </Button>
@@ -803,9 +757,7 @@ export default function AttributeCodebookControls({
             allowedVariableTypes={[inventingType]}
             readOnly={editorReadOnly}
             title={editorTitle}
-            description={editorDescription}
-            createRequestId={() => uuid()}
-            onSubmitRequest={submitEdit}
+            onSubmitDocument={submitEdit(openEditor.subject)}
             onComplete={(variableId, variableName) => {
               // Which codebook the attribute was written into, and which field
               // it was going to fill in, were both decided when this editor
@@ -898,9 +850,7 @@ export default function AttributeCodebookControls({
             }
             readOnly={editorReadOnly}
             title={editorTitle}
-            description={editorDescription}
-            createRequestId={() => uuid()}
-            onSubmitRequest={submitEdit}
+            onSubmitDocument={submitEdit(openEditor.subject)}
             onComplete={close}
           />
         </Dialog>
@@ -920,12 +870,8 @@ export default function AttributeCodebookControls({
             variableId={openEditor.variableId}
             authoritativeEntityDocument={openEditor.document}
             allSubjectVariables={editorVariables}
-            requestMetadata={{
-              createId: () => uuid(),
-              description: editorDescription,
-            }}
             readOnly={editorReadOnly}
-            onSubmitRequest={submitEdit}
+            onSubmitDocument={submitEdit(openEditor.subject)}
             onComplete={close}
           />
         </Dialog>

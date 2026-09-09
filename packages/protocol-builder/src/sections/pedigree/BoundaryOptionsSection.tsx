@@ -17,7 +17,7 @@ const CHILDREN_CONTRIBUTORS_FIELD = 'boundaries.requireChildrenContributors';
  *
  * Descriptors rather than words, and resolved beside the control: a label
  * resolved at module load would be whatever language happened to be current
- * when this file was first imported, for the rest of the session.
+ * when this file was first imported, and would never change again.
  */
 const REQUIREMENT_LABELS: Readonly<Record<string, MessageDescriptor>> =
   Object.freeze({

@@ -153,33 +153,19 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
   });
 
   /**
-   * The one sentence in this area that leaves React before it is read.
-   *
-   * A pedigree's refusals have no formatter where they are decided, so they
-   * are encoded and handed to the field as plain strings; `FieldErrors`
-   * decodes them where they render. A refusal frozen into English at the
-   * moment the save was judged would pass every other test in this file and
-   * fail here.
-   *
-   * Read through the nomination prompts, whose switch-on-and-leave-empty is
-   * the refusal a researcher can still reach: every slot refusal is now
-   * withheld by the picker before a pick can earn it — see
-   * `slotWiring.test.ts`, which asks the gate for those sentences directly.
-   */
-  /**
    * The note a slot picker shows about a held attribute whose values moved is
    * formatted by the slot field, not by the picker — the picker is handed
    * finished words — so this is where a section that handed it English would
    * show up.
    */
-  it('names a held attribute whose values changed, in Spanish', () => {
+  it('names a held attribute whose values changed, in Spanish', async () => {
     const harness = renderStageEditor({
       stageId: 'family-pedigree-1',
       locale: 'es',
       sections: <PedigreeNodeConfigurationSection />,
     });
     const section =
-      harness.session.getSnapshot().protocolSections[
+      harness.protocolSections()[
         sectionId({ kind: 'codebookNode', typeId: 'family_member' })
       ];
     const variables =
@@ -206,6 +192,11 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
       },
     });
 
+    // The collaborator's revision reaches this control over the protocol
+    // channel, which is a microtask: read after it has arrived, not before.
+    await screen.findByRole('option', {
+      name: 'biologicalSex — ya no ofrece los valores que necesita este control',
+    });
     const control = screen.getByRole('combobox', { name: 'Sexo biológico' });
     expect(control).toHaveValue('biologicalSex');
     expect(
@@ -220,6 +211,20 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * The one sentence in this area that leaves React before it is read.
+   *
+   * A pedigree's refusals have no formatter where they are decided, so they
+   * are encoded and handed to the field as plain strings; `FieldErrors`
+   * decodes them where they render. A refusal frozen into English at the
+   * moment the save was judged would pass every other test in this file and
+   * fail here.
+   *
+   * Read through the nomination prompts, whose switch-on-and-leave-empty is
+   * the refusal a researcher can still reach: every slot refusal is now
+   * withheld by the picker before a pick can earn it — see
+   * `slotWiring.test.ts`, which asks the gate for those sentences directly.
+   */
   it('reads a refused save back in Spanish', async () => {
     // The fixture pedigree already asks one question, so the switch below
     // would turn it OFF (and ask for confirmation) rather than on: open a

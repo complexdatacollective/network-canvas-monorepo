@@ -61,7 +61,7 @@ const createFixture = () => ({
 /**
  * The stage's name control, as the input it is.
  *
- * A stage the session is CREATING opens with a name already proposed for it,
+ * A stage that is being CREATED opens with a name already proposed for it,
  * so a create-mode test asks what the value looks like rather than what it
  * equals — the proposal is deduplicated against the interview it is joining.
  */
@@ -74,6 +74,26 @@ const openDialog = async (
 ) => {
   await harness.user.click(screen.getByRole('button', { name }));
   return within(await screen.findByRole('dialog'));
+};
+
+/**
+ * Nothing the researcher did reached the protocol.
+ *
+ * The draft lives in the form and nowhere else until a save hands the whole
+ * section back, so the protocol is where an edit that escaped would show up.
+ */
+const expectStageUntouched = (
+  harness: ReturnType<typeof renderStageEditor>,
+): void => {
+  expect(
+    harness.protocolSections()[
+      sectionId({ kind: 'stage', stageId: harness.seeded.id })
+    ],
+  ).toEqual({
+    id: harness.seeded.id,
+    type: harness.seeded.type,
+    ...harness.seeded.fields,
+  });
 };
 
 describe('the name generator editor', () => {
@@ -113,7 +133,7 @@ describe('the name generator editor', () => {
   it('opens a new stage on the interface template', async () => {
     renderStageEditor(createFixture());
 
-    // A stage the session is CREATING opens with a name proposed for it —
+    // A stage that is being CREATED opens with a name proposed for it —
     // nothing else about this interface has an authored default, so
     // everything a host will store is the researcher's to write.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
@@ -321,12 +341,11 @@ describe('the name generator editor', () => {
   });
 
   /**
-   * Closing the editor without saving leaves the host holding nothing: typing
-   * is the researcher's, not the session's, until they save it.
+   * Closing the editor without saving leaves the protocol holding nothing:
+   * typing is the researcher's until they save it.
    */
   it('leaves nothing behind when the editor is closed without saving', async () => {
     const harness = mountFixture();
-    const dispatch = vi.spyOn(harness.session, 'dispatch');
 
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Stage name' }),
@@ -338,20 +357,17 @@ describe('the name generator editor', () => {
     );
     await harness.cancel();
 
-    expect(dispatch).not.toHaveBeenCalled();
-    expect(harness.pendingCommands()).toHaveLength(0);
-    expect(harness.gateway.getStagingResidue()).toHaveLength(0);
+    expectStageUntouched(harness);
   });
 
   /**
-   * A node type a collaborator adds appears here, and the editor says nothing
-   * back: their change is not this session's edit, and echoing it would write
-   * their work into this stage's own pending batch and save it as ours.
+   * A node type a collaborator adds appears here, and the editor writes
+   * nothing back: their change is not this researcher's edit, and echoing it
+   * would save their work as ours.
    */
   it('follows a codebook change made elsewhere without writing anything', async () => {
     const harness = mountFixture();
     await screen.findByRole('radio', { name: 'person' });
-    const dispatch = vi.spyOn(harness.session, 'dispatch');
 
     harness.receiveCodebookUpdate({
       node: {
@@ -374,33 +390,25 @@ describe('the name generator editor', () => {
     expect(
       await screen.findByRole('radio', { name: 'colleague' }),
     ).toBeInTheDocument();
-    expect(dispatch).not.toHaveBeenCalled();
+    expectStageUntouched(harness);
 
-    // The spy is watching the path a local edit really takes: a list editor
-    // commits its rows structurally, so an echo of the change above would have
-    // been caught here.
-    const [removePrompt] = screen.getAllByRole('button', {
-      name: 'Remove prompt',
-    });
-    await harness.user.click(removePrompt as HTMLElement);
-    // The confirmation is modal, so the row's own control is hidden from the
-    // accessibility tree while it is open and this finds the dialog's.
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove prompt' }),
-    );
-    await waitFor(() => expect(dispatch).toHaveBeenCalled());
+    // And a save carries none of it either: the stage comes back exactly the
+    // stage that was opened, which is what "without writing anything" means.
+    await harness.roundTrip({ unowned: [] });
   });
 
   it('refuses to save while someone else holds the stage', async () => {
-    const harness = mountFixture();
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      registry: nameGeneratorStageEditors,
+      readOnly: true,
+    });
     await screen.findByRole('textbox', { name: 'Form title' });
-
-    harness.setReadOnly();
 
     expect(await harness.submit()).toBeNull();
     expect(
       screen.getByText(
-        'This stage is read-only, so your changes were not saved. Take over editing and try again.',
+        'This stage is read-only, so your change was not made. Somebody else is editing it.',
       ),
     ).toBeInTheDocument();
   });
@@ -437,7 +445,7 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
 
   const addFreeAttribute = (harness: ReturnType<typeof renderStageEditor>) => {
     const person =
-      harness.session.getSnapshot().protocolSections[
+      harness.protocolSections()[
         sectionId({ kind: 'codebookNode', typeId: 'person' })
       ];
     if (person === undefined) throw new Error('the person type is gone');
@@ -498,9 +506,9 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
-    // Nothing has been saved: the stamp is a draft write, invisible to the
+    // Nothing has been saved: the stamp lives in the form, invisible to the
     // role map, and this is the editor handing it to the form.
-    expect(harness.pendingCommands().length).toBeGreaterThan(0);
+    expectStageUntouched(harness);
 
     const after = await openDialog(harness, 'Create new form field');
     const offered = offeredAttributes(after);

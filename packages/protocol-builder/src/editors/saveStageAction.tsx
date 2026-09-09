@@ -35,7 +35,7 @@ export const saveStageMessages = defineMessages({
  * differently: a researcher who has learnt what pressing it does on one stage
  * has learnt it for all of them.
  *
- * Deliberately NOT disabled while the session is read-only. Every control
+ * Deliberately NOT disabled while the editor is read-only. Every control
  * above it already is, so the state is on screen; a spectator who presses this
  * anyway is asking a question, and the shell answers it with the reason the
  * stage cannot be saved and what to do about it, which a disabled button says

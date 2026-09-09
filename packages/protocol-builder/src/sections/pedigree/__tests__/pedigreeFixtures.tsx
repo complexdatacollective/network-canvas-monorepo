@@ -16,19 +16,21 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * One more attribute on the type the pedigree draws people as, put there from
  * outside this editor.
  *
- * The pickers read the codebook out of the editor's protocol context, so where
- * an attribute came from makes no difference to what they offer — and arriving
- * this way costs a single authoritative revision rather than a trip through
- * the create dialog. Tests that are about the create dialog itself still drive
- * it; tests that only need an attribute to exist use this.
+ * The pickers subscribe to the codebook sections, so where an attribute came
+ * from makes no difference to what they offer — and arriving this way costs a
+ * single revision on the protocol's own channel rather than a trip through the
+ * create dialog. Tests that are about the create dialog itself still drive it;
+ * tests that only need an attribute to exist use this.
+ *
+ * The revision reaches the components over the channel, which is a microtask,
+ * so a caller reads what it changed with `waitFor` or `findBy`.
  */
 export function addFamilyMemberVariable(
   harness: StageEditorHarness,
   variableId: string,
   variable: Readonly<Record<string, unknown>>,
 ): void {
-  const section =
-    harness.session.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+  const section = harness.protocolSections()[FAMILY_MEMBER_SECTION];
   if (section === undefined) {
     throw new Error('the fixture protocol has no family_member node type');
   }

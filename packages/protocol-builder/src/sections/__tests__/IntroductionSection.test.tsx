@@ -77,7 +77,7 @@ describe('the introduction a participant reads before a task', () => {
 
   /**
    * Spectating is not reading through a keyhole: the introduction stays legible
-   * while someone else holds the lease, and everything that would change it
+   * while somebody else holds the stage, and everything that would change it
    * says it cannot.
    *
    * The rich text toolbar was the exception. Its buttons sat undimmed and
@@ -86,15 +86,14 @@ describe('the introduction a participant reads before a task', () => {
    * field's — reported itself available and opened its popover.
    */
   it('makes every rich text control unavailable to a spectator', async () => {
-    const harness = renderStageEditor({
+    renderStageEditor({
       stageId: 'ego-form-1',
       sections: introduction,
+      readOnly: true,
     });
     const text = await screen.findByRole('textbox', {
       name: 'Introduction text',
     });
-
-    harness.setReadOnly();
 
     const buttons = within(screen.getByRole('toolbar')).getAllByRole('button');
     expect(buttons.length).toBeGreaterThan(1);

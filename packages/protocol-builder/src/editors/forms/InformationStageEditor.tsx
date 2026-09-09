@@ -25,14 +25,10 @@ import { saveStageAction } from '../saveStageAction.tsx';
  * logic somebody had already authored.
  */
 export function InformationStageEditor({
-  controller,
   actions,
 }: StageEditorProps<'Information'>) {
   return (
-    <StageEditorShell
-      controller={controller}
-      actions={actions ?? saveStageAction}
-    >
+    <StageEditorShell actions={actions ?? saveStageAction}>
       <StageHeading
         documentationUrl={interfaceDocumentationUrl('information')}
       />

@@ -122,9 +122,9 @@ export type SkipLogicSectionProps = Readonly<{
    * stage's position is read from the stage order. It decides which stages are
    * later than this one, and so which of them the interview may continue at.
    *
-   * The session already knows it — the host said so when it opened a create
-   * session — so an editor leaves this out and gets the right destinations for
-   * both cases. Given, it overrides what the session says.
+   * The edit already knows it — the host said so when it opened the creation
+   * — so an editor leaves this out and gets the right destinations for both
+   * cases. Given, it overrides that.
    */
   position?: number;
 }>;

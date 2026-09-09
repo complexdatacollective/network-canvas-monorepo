@@ -17,6 +17,7 @@ import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import CreateVariableButton from './CreateVariableButton.tsx';
 import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
@@ -82,7 +83,6 @@ export type SlotVariableFieldProps = Readonly<{
   lockedOptions?: readonly InterfaceOwnedOption[];
   /** Visible text and accessible name of the create control. */
   createLabel: MessageDescriptor;
-  createDescription: MessageDescriptor;
   /** Said in place of the list when the codebook offers nothing usable. */
   emptyMessage: MessageDescriptor;
 }>;
@@ -109,11 +109,11 @@ export default function SlotVariableField({
   variableType,
   lockedOptions,
   createLabel,
-  createDescription,
   emptyMessage,
 }: SlotVariableFieldProps) {
   const intl = useAppIntl();
-  const { committedFields, protocolContext, storeApi } = useStageEditorForm();
+  const { committedFields, storeApi } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const { roleMap, slotMap, draftSlotMap } = usePedigreeVariableIndexes();
   const draftValue = useStageValue(name);
   const currentValue = typeof draftValue === 'string' ? draftValue : undefined;
@@ -259,7 +259,6 @@ export default function SlotVariableField({
         variableType={variableType}
         {...(lockedOptions === undefined ? {} : { lockedOptions })}
         label={intl.formatMessage(createLabel)}
-        description={intl.formatMessage(createDescription)}
         onCreated={(variableId) =>
           storeApi.getState().setFieldValue(name, variableId)
         }

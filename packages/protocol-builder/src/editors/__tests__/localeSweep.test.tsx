@@ -103,7 +103,7 @@ const settled = async (harness: StageEditorHarness) => {
  */
 const researcherWords = (harness: StageEditorHarness) =>
   protocolStrings(
-    harness.session.getSnapshot().protocolSections,
+    harness.protocolSections(),
     harness.seeded.fields,
     harness.hostCodebook(),
   );

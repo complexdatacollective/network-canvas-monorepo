@@ -21,7 +21,10 @@ import {
   targetPath,
 } from '@codaco/studio-sync/apply';
 
-import { commandsFromDraftChange, type StageFormDraft } from '../session.ts';
+import {
+  commandsFromDraftChange,
+  type StageFormDraft,
+} from '../stageDocument.ts';
 import { withoutValueAt } from './absentValues.ts';
 import { mountedPathsOf } from './stageDraftFromSubmission.ts';
 import {
@@ -42,13 +45,12 @@ type FormStoreState = ReturnType<StageFormStoreApi['getState']>;
  * store about and the path the value is read from are the ones the field is
  * really registered under.
  *
- * **The committed draft is the account of what a path holds once saved.**
- * That is enough on its own because everything that throws a value away tells
- * the SESSION: a capability the researcher switches off is unset there before
- * the form is emptied (`useDiscardStageValues`), so a control arriving under
- * that path afterwards — a list behind a collapsed group, say — reads the same
- * absence every other reader does, without a second record of the decision to
- * consult.
+ * **The document the editor opened on is the account of what a path holds once
+ * saved.** That is enough on its own because everything that throws a value
+ * away writes the document first: a capability the researcher switches off is
+ * unset there before the form is emptied (`useDiscardStageValues`), so a
+ * control arriving under that path afterwards — a list behind a collapsed
+ * group, say — reads the same absence every other reader does.
  *
  * **The live form is the account of an edit that has not been saved yet**, and
  * only for as long as something is mounted to hold it. A field registered at a
@@ -135,91 +137,34 @@ export type DiscardCause = Readonly<{ path: string; value: unknown }>;
  * caused it, the change that did.
  *
  * What switching a capability off means, and the one place that decides it.
- * The session is told first, in ONE batch, and the form is emptied afterwards
- * so the controls on screen do not wait for a re-seed that is never coming —
- * the session write is the form's own, so nothing is written back over the
- * researcher.
+ * The document is written first, in ONE batch, and the form is emptied
+ * afterwards.
  *
- * **A discard travels with its cause.** An ordinary field waits for the submit
- * that flushes it, so a discard caused by one — a roster's card details
- * emptied because the data file changed — would otherwise reach the session,
- * and a live-applying host, entirely alone: the host would hold a stage
- * describing the OLD file with the details of it gone, which is a stage nobody
- * authored. Carrying the cause in the same batch is what stops that, and it is
- * the rule `useResetStageOnSubjectChange` already follows for the same reason
- * (its batch writes the new subject beside the values it resets, so an undo
- * cannot restore a configuration without the type it describes).
+ * **A discard travels with its cause.** A capability cleared because the data
+ * file it described was replaced is only intelligible beside the replacement:
+ * written on its own, the document passes through a state describing the old
+ * file with everything about it gone, which is a stage nobody authored. The
+ * cause is also part of the state the discards are read against — an
+ * exclusive-variant container travels whole, so a discard inside one is a
+ * single `set` of the container, and a container assembled without the cause
+ * would put back the value the researcher has just changed.
  *
- * The session decides what a live-applying host may be given, and it decides
- * from the draft — so the cause has to be IN the draft, in the batch being
- * judged. A cause naming a resource this session has staged makes that whole
- * batch unsendable (`withholdsFromHost`), and the session's hold is a suffix:
- * every later edit made against the staged file waits with it, reaches the
- * host in the finish apply that promotes the file, and is dropped by a cancel.
- * Without the cause the clears travel and the file does not.
- *
- * Nothing is written for a cause the draft already holds, so the second and
+ * Nothing is written for a cause the document already holds, so the second and
  * third sections resetting on the same file add no command of their own.
- *
- * The session rather than the form alone, because the form is not where the
- * stage lives. A bound list resolves every insertion, removal and reorder
- * against the draft the session holds right now, `useResolvedFieldIdentity`
- * seeds every field that mounts from it, and validation judges it — so a
- * decision recorded only in the form is a decision three of its readers never
- * hear, and the next row a researcher adds to a cleared list is resolved
- * against the rows the switch-off was supposed to have thrown away. Teaching
- * each of them to read the form's records instead cannot close that: a record
- * only exists where a field once was, and a capability's controls need not
- * have been on screen at all. One notion of what a path holds, and it is the
- * session's.
- *
- * So a switched-off capability is an edit like any other: it travels with the
- * batches, it is undone by the session's own undo — which brings the values
- * back, and with them the switch — and `rebaseCommand` keeps its `unset` as it
- * stands wherever it lands, because the researcher has decided. A collaborator
- * writing under the path AFTER that decision reaches the protocol is
- * authoritative and shows up as any other arrival does; one whose write is
- * still being reconciled against a clear the host has not applied yet loses it
- * to the clear, exactly as any other pending local edit would win over it.
- *
- * The container the removal empties goes too — `withoutValueAt`'s rule — so
- * the paths this unsets are the paths the save would have had to unset anyway.
  *
  * **The cause travels whether or not anything was thrown away.** A capability
  * that happened to hold nothing changes what the batch discards and nothing
- * else: the file was still replaced, and the session still has to see that
- * before it can judge anything written against the new one. A roster whose
- * capabilities are not yet configured is exactly that case — no clear to
- * strand, and so, if the cause waited for the submit like the ordinary field it
- * is, no batch touching `dataSource` at all. The hold would never start, and
- * every card detail chosen from the columns of the new file would go to a
- * live-applying host at once, against the file it replaced.
- *
- * So the batch is built first and dispatched on ITS length, not on the
- * discards': a lone cause travels, and a reset with nothing whatever to say —
- * no cause, nothing discarded, or a cause the draft already agrees with —
- * still writes nothing at all.
- *
- * A lone cause spends a step of the session's history like any other batch,
- * because the alternative is not "no step". Undo restores a whole draft and is
- * applied as the difference from the live one, so a change written outside a
- * step is not left un-undoable: it is undone by whatever step comes next,
- * taking the researcher's choice of file away with an unrelated edit.
+ * else: the file was still replaced. So the batch is built first and dispatched
+ * on ITS length rather than on the discards': a lone cause travels, and a reset
+ * with nothing whatever to say writes nothing at all.
  *
  * The FORM is emptied either way. A value typed into a capability and not yet
- * flushed is on screen and in no draft, so a reset that left it there would
- * write it back on the next save under a cause it no longer describes.
- *
- * **Unless the session refuses the batch**, which is what it does when editing
- * has been taken away since this handler was built — between the click that
- * opened a confirmation and the click that answered it, say. A refusal means
- * nothing was thrown away, so nothing may be emptied either: the values are
- * still the session's, the access change has already re-rendered everything
- * that would re-seed them, and a form emptied here would leave the capability
- * looking cleared with nothing left to fill it back in — and the next save
- * writing that emptiness into a stage the session never agreed to. Answered
- * rather than swallowed, so the caller can leave its own switch where the
- * researcher left it; `applyOwnCommands` has already said so on screen.
+ * flushed is on screen and in no document, so a reset that left it there would
+ * write it back on the next save under a cause it no longer describes —
+ * **unless the write was refused**, which is what happens when the editor is
+ * read-only. Nothing was thrown away then, so nothing may be emptied either,
+ * and the caller is told so it can leave its own switch where the researcher
+ * left it.
  */
 export function useDiscardStageValues(): (
   paths: readonly string[],
@@ -230,23 +175,14 @@ export function useDiscardStageValues(): (
 
   return useCallback(
     (paths: readonly string[], cause?: DiscardCause) => {
-      // `applyOwnCommands([])` is how anything here reads the draft the session
-      // holds NOW, rather than the snapshot this callback was built against.
-      // An empty batch writes nothing, so it can never be refused.
+      // `applyOwnCommands([])` is how anything here reads the document as it
+      // stands NOW, rather than the render this callback was built against. An
+      // empty batch writes nothing, so it can never be refused.
       const { draft: current } = applyOwnCommands([]);
       const causeBatch = causeCommands(current, cause);
       /**
-       * The draft the discards are read against, WITH the cause already in it.
-       *
-       * The cause is not context here, it is part of the state being described:
-       * an exclusive-variant container travels whole
-       * (`commandsFromDraftChange`), so a discard inside one is a single `set`
-       * of the container — assembled out of the draft this diff is given. Given
-       * the draft without the cause, that container is assembled around the
-       * value the researcher has just changed, and the batch puts it back: a
-       * pedigree told to let the participant choose its framing sent
-       * `set framing.mode` and then `set framing = {mode: 'fixed'}`, and the
-       * second command undid the first.
+       * The document the discards are read against, WITH the cause already in
+       * it. See above for why the cause cannot be left out of it.
        */
       const withCause = applyCommands(current, [...causeBatch]);
       let next = withCause;
@@ -257,8 +193,7 @@ export function useDiscardStageValues(): (
       }
       const discards = commandsFromDraftChange(withCause, next);
       // The cause first, so the batch reads as what happened: this changed, and
-      // therefore these were thrown away. Judged as a whole, so a cause with no
-      // discards behind it still travels — see above.
+      // therefore these were thrown away.
       const batch = [
         ...causeBatch.filter((command) => !carriedBy(discards, command)),
         ...discards,
@@ -266,7 +201,7 @@ export function useDiscardStageValues(): (
       if (batch.length > 0 && applyOwnCommands(batch).refused) return false;
 
       // The FORM only, and only the discarded paths: the cause is already on
-      // screen — the researcher chose it — and it is the draft that was behind.
+      // screen, because the researcher chose it.
       for (const path of paths) clearStageValue(path);
       return true;
     },
@@ -317,11 +252,10 @@ const covers = (
  * index in it, or one that is not a path at all, has no command that could
  * carry it. That is a section describing itself wrongly: `resetOn` is
  * documented as the path a single FIELD owns. Answering with no command would
- * be the worst of the three outcomes, because the discards would then travel
- * without the change that explains them and reach a live-applying host alone —
- * the whole defect the cause exists to prevent. So it throws, at the first
- * reset, where the path is a constant of the section and every test of it says
- * so.
+ * be the worst of the three outcomes, because the discards would then be
+ * written without the change that explains them — the whole defect the cause
+ * exists to prevent. So it throws, at the first reset, where the path is a
+ * constant of the section and every test of it says so.
  */
 function causeCommands(
   current: StageFormDraft,
@@ -348,11 +282,11 @@ function causeCommands(
 /**
  * Empties a path in the stage form, and everything that reaches it.
  *
- * The FORM only. Its caller has already told the session what it decided —
- * `useDiscardStageValues` with an unset, `useResetStageOnSubjectChange` with a
- * batch that also carries the template defaults it is resetting to — and this
- * brings the controls on screen level with that, immediately, rather than
- * leaving them showing values the draft no longer has.
+ * The FORM only. Its caller has already written what it decided into the
+ * document — `useDiscardStageValues` with an unset, `useResetStageOnSubjectChange`
+ * with a batch that also carries the template defaults it is resetting to — and
+ * this brings the controls on screen level with that, immediately, rather than
+ * leaving them showing values the document no longer has.
  *
  * Confirming a deletion has to leave nothing holding the value anywhere, or
  * some later reader finds it again and the deletion undoes itself. Three
@@ -508,35 +442,6 @@ export function useStageValue(path: string | undefined): unknown {
       ? pathOperations.getValue(target)
       : stageDraftValue(committedFields, path);
   }, [committedFields, path, storeApi]);
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-}
-
-/**
- * How many times the stage form has been written to from an authoritative
- * draft.
- *
- * The form-owned record of `reseedStageForm` having run — a count Fresco's own
- * `Section` already watches to reapply `defaultOpen`. Anything in the editor
- * holding state OF ITS OWN about the draft has the same problem the panel does
- * (it was decided from a draft that has since been replaced beneath it) and so
- * needs the same signal, or the two disagree about the same capability.
- *
- * Deliberately not the session's own generation: what matters is not that the
- * draft moved but that the CONTROLS were rewritten from it, and only the form
- * knows when that happened.
- */
-export function useFormRestoreVersion(): number {
-  const { storeApi } = useStageEditorForm();
-
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => storeApi.subscribe(onStoreChange),
-    [storeApi],
-  );
-  const getSnapshot = useCallback(
-    () => storeApi.getState().formRestoreVersion,
-    [storeApi],
-  );
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

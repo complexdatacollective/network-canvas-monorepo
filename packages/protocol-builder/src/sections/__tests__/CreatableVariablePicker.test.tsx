@@ -19,12 +19,12 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { useCreateCodebookVariable } from '../../codebook/useCodebookVariableEdits.ts';
 import AssignAttributes from '../../form/arrayFields/AssignAttributes.tsx';
 import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
-import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import {
   type CodebookSubject,
   variablesForSubject,
 } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
   CreatableVariablePickerControl,
@@ -67,10 +67,10 @@ const STAMPED: CreateAs = {
  *
  * The picker is injected as `variablePickerComponent` and reaches the rows'
  * `onCreateOption` through `AssignAttributes`' `onCreateVariable`; the codebook
- * write is the package's own compound edit, applied by the harness's in-memory
- * host exactly as a real one would. Nothing here is a stand-in — what this
- * supplies is what a host supplies: which type a created attribute is, and
- * where a refusal is shown.
+ * write commits immediately through the contract, under the codebook section's
+ * own lock, served by the harness's in-memory host. Nothing here is a stand-in
+ * — what this supplies is what a host supplies: which type a created attribute
+ * is, and where a refusal is shown.
  *
  * The two host answers arrive as one `createAs` prop rather than being written
  * into the body, because what the codebook refuses is a fact about them: it
@@ -84,7 +84,7 @@ function StampedAttributes({
   createAs = STAMPED,
 }: Readonly<{ createAs?: CreateAs }>) {
   const { into, draft } = createAs;
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const createVariable = useCreateCodebookVariable(into);
   const [problem, setProblem] = useState<string | undefined>(undefined);
 
@@ -140,7 +140,7 @@ function StampedAttributes({
 
 /** The same list, with nothing offering to create anything. */
 function SelectableAttributes() {
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const variableOptions = useMemo(
     () =>
       Object.entries(variablesForSubject(protocolContext, SUBJECT)).map(
@@ -183,15 +183,33 @@ const picker = () =>
     name: 'Create or select an attribute',
   }) as HTMLSelectElement;
 
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+
+/**
+ * The person type's attributes as the PROTOCOL holds them, which is the only
+ * way to prove a create landed there or that nothing did.
+ *
+ * A person with no attributes at all is thrown on rather than answered as an
+ * empty record: every claim below is that one name is or is not among them, and
+ * an empty record satisfies "is not" without anything having been read.
+ */
+const personVariables = (harness: ReturnType<typeof renderStageEditor>) => {
+  const variables = harness.hostCodebook().node?.person?.variables;
+  if (variables === undefined) {
+    throw new Error('the person type is gone, so it has no attributes to read');
+  }
+  return variables;
+};
+
 describe('the creatable attribute picker', () => {
   /**
    * The attribute a researcher wants is often the one they have only just
    * thought of, and a picker that could only choose would send them to the
    * codebook and back to finish a single thought.
    *
-   * The codebook write is a real compound edit through the harness's in-memory
-   * host, so this also proves the attribute actually lands in the protocol the
-   * editor is holding — not just that a callback was called.
+   * The codebook write goes through the harness's in-memory host under the
+   * codebook section's own lock, so this also proves the attribute actually
+   * lands in the protocol — not just that a callback was called.
    */
   it('creates the attribute a row asks for, and selects it', async () => {
     const harness = renderRows(<StampedAttributes />);
@@ -213,14 +231,10 @@ describe('the creatable attribute picker', () => {
     const created = picker().value;
     expect(created).not.toBe('');
 
-    const person =
-      harness.session.getSnapshot().protocolSections[
-        sectionId({ kind: 'codebookNode', typeId: 'person' })
-      ];
-    if (person === undefined) throw new Error('the person type is gone');
-    expect(
-      (person.variables as Record<string, { type?: string }>)[created],
-    ).toMatchObject({ name: 'nominated_early', type: 'boolean' });
+    expect(personVariables(harness)[created]).toMatchObject({
+      name: 'nominated_early',
+      type: 'boolean',
+    });
 
     // The name box is emptied, so the button cannot create the same attribute
     // a second time by being pressed again.
@@ -257,73 +271,46 @@ describe('the creatable attribute picker', () => {
     expect(box).toHaveValue('nominated early');
     // Nothing was written, so the row still names nothing.
     expect(picker().value).toBe('');
-    const person =
-      harness.session.getSnapshot().protocolSections[
-        sectionId({ kind: 'codebookNode', typeId: 'person' })
-      ];
-    if (person === undefined) throw new Error('the person type is gone');
     expect(
-      Object.values(person.variables as Record<string, { name?: string }>).map(
-        (variable) => variable.name,
-      ),
+      Object.values(personVariables(harness)).map((variable) => variable.name),
     ).not.toContain('nominated early');
   });
 
   /**
-   * The refusal that arrives as a throw rather than as an answer.
+   * The refusal the row cannot carry, and only the host can give.
    *
-   * A session that has stopped accepting changes refuses a compound edit by
-   * throwing (`assertEditable`), and access is taken away by a message from
-   * the host: it lands before React has redrawn the row the researcher is
-   * looking at, so the click already on its way reaches a handler about to be
-   * refused. `useCreateCodebookVariable` promises every refusal is ANSWERED,
-   * and a rejection escaping it went all the way to the picker's own catch,
-   * which had nothing to say — leaving a researcher who pressed Create looking
-   * at a row that is exactly as it was, with no way to tell a write that did
-   * nothing from one that has not happened yet.
+   * The attribute is written to the codebook section under that section's own
+   * lock, so a collaborator editing the person type refuses this create outright
+   * — before the draft is ever judged, and for a reason no row can see. A row is
+   * handed a variable id or nothing at all, so a refusal said by nobody leaves a
+   * researcher who pressed Create looking at a row exactly as it was, with no
+   * way to tell a write that did nothing from one that has not happened yet.
    */
-  it('says nothing was created when the session refuses the write outright', async () => {
-    const harness = renderRows(<StampedAttributes />);
+  it('says nothing was created when the host refuses the write outright', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <StampedAttributes />,
+      heldSections: [{ sectionId: PERSON_SECTION, displayName: 'Robin' }],
+    });
     await addRow(harness);
 
     const box = await screen.findByRole('textbox', {
       name: 'Create a new attribute',
     });
     await harness.user.type(box, 'nominated_early');
-    // The access change is made straight on the session and the click is
-    // dispatched before anything is flushed: the harness's own `setReadOnly`
-    // flushes that render before it returns, which is the one state this
-    // scenario is not about. React warns that the update was not wrapped in
-    // `act`, which is the point: wrapping it would draw the disabled control
-    // this window exists to be in front of. Same shape, and the same warning,
-    // as `clickAsEditingIsRevoked` in `QuickAddSection.test.tsx`.
-    harness.session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
-    screen
-      .getByRole('button', { name: 'Create the attribute' })
-      .dispatchEvent(
-        new MouseEvent('click', { bubbles: true, cancelable: true }),
-      );
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This attribute could not be created, so nothing was changed. Try again.',
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create the attribute' }),
     );
 
-    // And nothing was written, which is what makes the sentence true. (What
-    // becomes of the row itself is read-only's business, not this create's:
-    // the list stops offering an unassigned row the moment editing is taken
-    // away.)
-    const person =
-      harness.session.getSnapshot().protocolSections[
-        sectionId({ kind: 'codebookNode', typeId: 'person' })
-      ];
-    if (person === undefined) throw new Error('the person type is gone');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Robin is currently editing a section needed for this change.',
+    );
+
+    // And nothing was written, which is what makes the sentence true, so the
+    // row still names nothing.
+    expect(picker().value).toBe('');
     expect(
-      Object.values(person.variables as Record<string, { name?: string }>).map(
-        (variable) => variable.name,
-      ),
+      Object.values(personVariables(harness)).map((variable) => variable.name),
     ).not.toContain('nominated_early');
   });
 
@@ -434,11 +421,11 @@ describe('the creatable attribute picker', () => {
  * The control, with the answer to its create held in the test's own hand.
  *
  * The window between the click and the codebook's answer is one no test going
- * through the harness's host can hold open: the compound edit is applied
- * before the click's own act() has settled, so the busy state is over by the
- * time anything could look at it. Nothing is stubbed that the control depends
- * on — `onCreateOption` IS the seam, and a caller answering it slowly is
- * exactly what a real codebook round trip is.
+ * through the harness's host can hold open: the write commits before the
+ * click's own act() has settled, so the busy state is over by the time anything
+ * could look at it. Nothing is stubbed that the control depends on —
+ * `onCreateOption` IS the seam, and a caller answering it slowly is exactly
+ * what a real codebook round trip is.
  *
  * A locale mounts the same provider a host does, over this package's own
  * catalog; without one the control renders its descriptors, which is what
@@ -848,6 +835,11 @@ describe('the creatable attribute picker, read in Spanish', () => {
     );
   });
 
+  /**
+   * The sentence is the HOST's refusal now, not a check this control makes for
+   * itself: the write is attempted, the protocol has no such section, and the
+   * refusal comes back from there. Same claim, in the words that now say it.
+   */
   it('says in Spanish that the type it would be added to has gone', async () => {
     const harness = renderInSpanish({
       into: { entity: 'node', type: 'un-tipo-que-no-existe' },
@@ -855,7 +847,7 @@ describe('the creatable attribute picker, read in Spanish', () => {
     });
 
     expect(await askFor(harness, 'nominado_pronto')).toHaveTextContent(
-      'Este tipo ya no está en el libro de códigos, así que no se le puede añadir un atributo.',
+      'Esta parte del libro de códigos ya no existe, así que no se ha guardado nada. Cierra este editor y empieza de nuevo.',
     );
   });
 

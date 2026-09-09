@@ -12,12 +12,8 @@ const meta = {
   component: StageEditorStoryHost,
   args: {
     stageId: 'alter-form-1',
-    renderEditor: ({ controller, actions }) => (
-      <StageEditor
-        controller={controller}
-        registry={formStageEditors}
-        actions={actions}
-      />
+    renderEditor: ({ actions, ...editor }) => (
+      <StageEditor {...editor} registry={formStageEditors} actions={actions} />
     ),
   },
   parameters: {

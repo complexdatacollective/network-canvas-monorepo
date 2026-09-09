@@ -3,8 +3,8 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 
-import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import ResourcePreview from '../../resources/components/ResourcePreview.tsx';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import type { RowPreviewProps } from '../rowRenderers.tsx';
 import { contentBlockKind } from './contentBlockTypes.ts';
 
@@ -38,7 +38,7 @@ const asString = (value: unknown): string | undefined =>
  */
 export default function ContentBlockPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const kind = contentBlockKind(protocolContext, item);
   const content = asString(item.content) ?? '';
 

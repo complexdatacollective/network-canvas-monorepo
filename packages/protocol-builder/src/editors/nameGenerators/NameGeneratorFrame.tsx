@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 
-import type { StageEditorController } from '../../controller.ts';
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
@@ -10,7 +9,6 @@ import { saveStageAction } from '../saveStageAction.tsx';
 import { usePanelsForAutoName } from './usePanelsForAutoName.ts';
 
 export type NameGeneratorFrameProps = Readonly<{
-  controller: StageEditorController;
   /** Where this interface is documented. */
   documentationUrl: string;
   /**
@@ -54,17 +52,13 @@ export type NameGeneratorFrameProps = Readonly<{
  * `StageHeading` sits with the sections rather than inside this frame.
  */
 export default function NameGeneratorFrame({
-  controller,
   documentationUrl,
   hasSidePanels = false,
   actions,
   children,
 }: NameGeneratorFrameProps) {
   return (
-    <StageEditorShell
-      controller={controller}
-      actions={actions ?? saveStageAction}
-    >
+    <StageEditorShell actions={actions ?? saveStageAction}>
       {/*
         Two headings rather than one that reads the panels conditionally: which
         of them an interface gets is fixed for the life of the editor, and a
