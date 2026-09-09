@@ -1150,6 +1150,17 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   const inventingInTheEditor =
     inventing && needsCodebookEditorToCreate(newType);
 
+  // Asked HERE rather than inside the field, because the field comes and goes
+  // and the question does not: the row is on its second binding by the time a
+  // control invented in the codebook editor is back on screen, and what the
+  // control is an answer about has to be remembered across that gap.
+  const control = useAttributeControl(item);
+  useControlThatFollowsTheAttribute(
+    control.binding,
+    control.seeded,
+    asString(useRowValue(INPUT_CONTROL)),
+  );
+
   return (
     <>
       <Section
@@ -1184,7 +1195,7 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         {/* The input control belongs to an attribute that exists. While one
             is still being invented in the codebook editor, there is nothing
             yet for a control to be chosen for. */}
-        {!inventingInTheEditor && <InputControlField item={item} />}
+        {!inventingInTheEditor && <InputControlField control={control} />}
         <AttributeCodebookControls
           subject={subject}
           committedVariable={item.variable}
@@ -1234,18 +1245,43 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
 }
 
 /**
- * How the participant answers this field.
- *
- * The control belongs to the codebook attribute rather than to the field —
- * one attribute is collected the same way wherever it is asked for — so it is
- * seeded from the codebook, offered from the list its type allows, and written
- * back through a codebook edit when the dialog saves. It is required: the
- * schema refuses a form field whose attribute defines no control, and an
- * attribute created for its own sake (a number nothing collects yet) has none.
+ * The row's input control as a question: what it is being asked ABOUT, what
+ * the codebook's own answer to it is, and what may be chosen instead.
  */
-function InputControlField({
-  item,
-}: Readonly<{ item: RowEditorProps['item'] }>) {
+type AttributeControl = Readonly<{
+  /** The attribute the row currently collects, or the create sentinel. */
+  chosen: string;
+  /** The controls the chosen attribute's kind of answer allows. */
+  options: readonly Readonly<{ value: string; label: string }>[];
+  /**
+   * What the control is an answer ABOUT — the chosen attribute, or, while one
+   * is being invented, the kind of answer that decides which controls exist at
+   * all. Two rows of the same dialog holding different bindings are two
+   * different questions, whatever they happen to be showing.
+   */
+  binding: string;
+  /**
+   * The codebook's own answer for that binding: the attribute's control, and
+   * the first one its kind of answer offers where the attribute has none yet
+   * (an attribute created for its own sake, or one just invented in the
+   * codebook editor).
+   */
+  seeded: string;
+}>;
+
+/**
+ * The row's input control, derived wherever the row itself is.
+ *
+ * Read by `FormFieldEditor` rather than by the field, because the field is not
+ * always on screen and the question outlives it: an attribute that IS its
+ * values or its end labels is authored in the codebook's own editor, and there
+ * is nothing for a control to be chosen for while that is happening. The
+ * row's `_component` survives that unmount — `useField` unregisters preserving
+ * its value and `registerField` prefers that dormant value over the initial
+ * one — so a control chosen for the attribute the row USED to collect would
+ * come back as an answer about the one it collects now.
+ */
+function useAttributeControl(item: RowEditorProps['item']): AttributeControl {
   const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
   const { subject } = useFormFieldsScope();
@@ -1269,14 +1305,30 @@ function InputControlField({
     variable !== undefined && 'component' in variable
       ? asString(variable.component)
       : undefined;
-  const belongsTo =
-    chosen === NEW_VARIABLE ? `${NEW_VARIABLE}:${type}` : chosen;
-  const seeded = committed ?? options[0]?.value ?? '';
-  useControlThatFollowsTheAttribute(
-    belongsTo,
-    seeded,
-    asString(useRowValue(INPUT_CONTROL)),
-  );
+
+  return {
+    chosen,
+    options,
+    binding: chosen === NEW_VARIABLE ? `${NEW_VARIABLE}:${type}` : chosen,
+    seeded: committed ?? options[0]?.value ?? '',
+  };
+}
+
+/**
+ * How the participant answers this field.
+ *
+ * The control belongs to the codebook attribute rather than to the field —
+ * one attribute is collected the same way wherever it is asked for — so it is
+ * seeded from the codebook, offered from the list its type allows, and written
+ * back through a codebook edit when the dialog saves. It is required: the
+ * schema refuses a form field whose attribute defines no control, and an
+ * attribute created for its own sake (a number nothing collects yet) has none.
+ */
+function InputControlField({
+  control,
+}: Readonly<{ control: AttributeControl }>) {
+  const intl = useAppIntl();
+  const { chosen, options, seeded } = control;
 
   // Nothing to choose from — and which of the two reasons it is decides
   // whether the researcher is mid-answer or stuck.
@@ -1329,6 +1381,17 @@ function InputControlField({
  * nothing about the row is different — only the codebook is — and saving
  * anything else in the row put the collaborator's change back.
  *
+ * Held by the ROW rather than by the field, because the field is not on screen
+ * for every one of those bindings. An attribute that IS its values or its end
+ * labels is authored in the codebook's own editor, and there is nothing for a
+ * control to be chosen for while that is happening: the field is unmounted for
+ * the whole invention, and a memory kept inside it would be a fresh one that
+ * read the previous binding's answer — a value the field never lost — as the
+ * researcher's answer about the attribute they had just created. Writing while
+ * the field is gone is what a dormant value is for: `setFieldValue` parks it
+ * for the next registration, so the control comes back saying what the new
+ * attribute says.
+ *
  * A write through the store rather than a tombstone: the control is not being
  * discarded, it is being answered again, and the answer is the one the
  * codebook now holds.
@@ -1355,16 +1418,18 @@ function useControlThatFollowsTheAttribute(
     if (binding !== previous.binding) {
       // A different question, so the answer starts again from the codebook's.
       shown.current = { binding, seeded, answered: false };
-      // Nothing is on screen to answer: the row names no attribute yet, or
-      // names one no control can collect. The field is unmounted in both
-      // cases, and whatever it left behind is refused by `useCommitFormField`
-      // rather than written.
+      // There is no answer to give: the row names no attribute yet, or names
+      // one no control can collect, or is inventing one whose kind of answer
+      // is still unsettled. Nothing is written, and whatever the field left
+      // behind is refused by `useCommitFormField` or held off by
+      // `NoInputControlOffered` rather than saved.
       if (seeded === '') return;
       setFieldValue(INPUT_CONTROL, seeded);
       return;
     }
-    // The control has not registered yet, so there is nothing on screen for
-    // anyone to have answered.
+    // The row holds no control at all: the field has not registered, and
+    // nothing has been parked for it either. There is nothing for anyone to
+    // have answered.
     if (live === undefined) return;
     const answered = previous.answered || live !== previous.seeded;
     shown.current = { binding, seeded, answered };
