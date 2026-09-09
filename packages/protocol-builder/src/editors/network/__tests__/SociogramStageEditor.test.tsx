@@ -356,6 +356,65 @@ describe('the sociogram stage editor', () => {
   });
 
   /**
+   * A stage filter that keeps out a connection the prompts draw.
+   *
+   * Interviewer applies the stage filter first, so an edge type the rules
+   * exclude never reaches the canvas: existing ties disappear and a tie the
+   * participant is invited to draw vanishes as they draw it. Architect warns
+   * about that, and so does this editor — in `NetworkFilterSection`, which is
+   * where the rules the researcher has to change actually are, rather than in
+   * the prompt dialog they would have to close to reach them.
+   *
+   * Driven through the DIALOG rather than by seeding the stage, which is what
+   * `NetworkFilterSection`'s own suite already does: what is pinned here is
+   * that the warning reads the prompts as this editor writes them, so a
+   * connection type ticked in a row and committed to the list is one the
+   * filter section can see. It starts absent, so the claim can fail.
+   */
+  it('warns when a filter keeps out a connection a prompt has just been given', async () => {
+    const { type, fields } = loadFixtureStage('sociogram-1');
+    const harness = renderStageEditor({
+      stage: {
+        id: 'sociogram-filtered',
+        type,
+        fields: {
+          ...fields,
+          filter: {
+            rules: [
+              {
+                id: 'rule-a',
+                type: 'edge',
+                options: { type: 'knows', operator: 'EXISTS' },
+              },
+            ],
+          },
+        },
+      },
+      editor: sociogramEditor,
+    });
+    await screen.findByRole('button', { name: 'Create new prompt' });
+    expect(
+      screen.queryByText('Filter rules hide configured values'),
+    ).not.toBeInTheDocument();
+
+    await harness.user.click(
+      screen.getAllByRole('button', { name: 'Edit prompt' })[0] as HTMLElement,
+    );
+    const prompt = within(await screen.findByRole('dialog'));
+    await harness.user.click(
+      prompt.getByRole('checkbox', { name: /family_edge/ }),
+    );
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    expect(
+      await screen.findByText('Filter rules hide configured values'),
+    ).toBeInTheDocument();
+  });
+
+  /**
    * A prompt marks nodes with an attribute of the codebook's. A collaborator
    * deleting that attribute breaks the prompt, and the editor has to say so —
    * and say whose change it was — without writing anything of its own.
