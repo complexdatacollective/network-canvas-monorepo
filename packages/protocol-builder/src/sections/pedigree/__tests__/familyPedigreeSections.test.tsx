@@ -209,6 +209,30 @@ const NARRATIVE_PEDIGREE_SECTION = sectionId({
  * pedigree's node type change, and it is a thing a collaborator can do at any
  * moment — including while the researcher is being asked about a change.
  */
+/**
+ * A node type DELETED by a collaborator.
+ *
+ * The same two-ended arrival `receiveCodebookUpdate` makes for a redefinition,
+ * with `null` standing for the section that has gone: the host issues the
+ * revision and the session is told about it under that revision, so the type
+ * really leaves the protocol both ends are looking at rather than being a
+ * story the session alone has been told. Deleting a type nothing has bound yet
+ * is something a collaborator can do at any moment — including while the
+ * researcher is being asked about a change onto it.
+ */
+const deleteNodeType = (harness: StageEditorHarness, typeId: string): void => {
+  const section =
+    harness.session.getSnapshot().protocolSections[
+      sectionId({ kind: 'codebookNode', typeId })
+    ];
+  if (section === undefined) {
+    throw new Error(
+      `the fixture protocol has no "${typeId}" node type, so deleting one proves nothing.`,
+    );
+  }
+  harness.receiveCodebookUpdate({ node: { [typeId]: null } });
+};
+
 const readNarrativePedigreeFrom = (
   harness: StageEditorHarness,
   sourceStageId: string,
@@ -1741,6 +1765,56 @@ describe('a pedigree whose node type changes', () => {
     expect(
       screen.getByText(/"Narrative Pedigree" reads this pedigree/),
     ).toBeInTheDocument();
+    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
+    expect(
+      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
+    ).toEqual(NOMINATION_ROWS);
+    expect(harness.pendingCommands()).toEqual([]);
+    expect(screen.getByText('Who has been unwell?')).toBeInTheDocument();
+  });
+
+  /**
+   * The same rule — decide on the live document at the moment of the write —
+   * applied to the type the change lands ON rather than to the refusal it is
+   * judged by.
+   *
+   * A collaborator deleted the type the researcher had just chosen while they
+   * were reading what the change would cost. The picker's latest render has
+   * already dropped it from the chips, but the continuation that resumes when
+   * the question is answered still holds it, and applying it points
+   * `nodeConfig.type` at a type the codebook no longer describes — a stage the
+   * host refuses to save, and one nothing on screen explains.
+   *
+   * Refused rather than applied and repaired: there is nothing to repair it
+   * to. The researcher agreed to lose this stage's configuration in exchange
+   * for a type that no longer exists, so the exchange is off and what they had
+   * is still theirs.
+   */
+  it('refuses a confirmed change onto a type deleted while the question was open', async () => {
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    const confirm = await screen.findByRole('button', {
+      name: 'Change the node type',
+    });
+
+    deleteNodeType(harness, 'person');
+
+    await harness.user.click(confirm);
+
+    expect(
+      await screen.findByText('That node type has been deleted'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'This type is no longer in the codebook. Choose another one.',
+      ),
+    ).toBeInTheDocument();
+    // The deletion really reached the picker, so the refusal above is about a
+    // type the chips no longer offer rather than about nothing.
+    expect(
+      screen.queryByRole('radio', { name: 'person' }),
+    ).not.toBeInTheDocument();
     expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
     expect(
       harness.session.getSnapshot().editedSection.fields.nominationPrompts,
