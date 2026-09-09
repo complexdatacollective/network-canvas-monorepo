@@ -199,6 +199,30 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     ? (value as Record<string, unknown>)
     : {};
 
+/**
+ * Holds the compound edit open, and hands back the release.
+ *
+ * What every question about an editor's save arriving LATE than the researcher
+ * needs: the round trip through the host is where the protocol underneath can
+ * move, and holding it is the only way to put anything in that window.
+ */
+const holdTheCompoundEdit = (harness: ReturnType<typeof renderStageEditor>) => {
+  const send = harness.session.requestCompoundEdit.bind(harness.session);
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
+    async (request) => {
+      await held;
+      return send(request);
+    },
+  );
+  return () => {
+    release();
+  };
+};
+
 describe('the fields a form collects', () => {
   it('shows what an alter form collects, and saves it unchanged', async () => {
     const harness = renderStageEditor({
@@ -1593,10 +1617,15 @@ const nameBothAnswers = async (
  * The fixture's own categorical and ordinal attributes are both written
  * unvalidated by a bin stage, so a form may collect neither — which is why
  * every journey here starts by making one.
+ *
+ * The name is a parameter because a row that is REBOUND from an attribute
+ * that already exists to one it invents needs both at once, and a codebook
+ * refuses a name it already holds.
  */
 const createContactSetting = async (
   harness: ReturnType<typeof renderStageEditor>,
   dialog: ReturnType<typeof within>,
+  name = 'contact_setting',
 ) => {
   await harness.user.selectOptions(
     dialog.getByRole('combobox', { name: 'Attribute' }),
@@ -1613,7 +1642,7 @@ const createContactSetting = async (
   );
   await harness.user.type(
     await screen.findByRole('textbox', { name: 'Attribute name' }),
-    'contact_setting',
+    name,
   );
   await addValue(harness, 1, 'At home', 'home');
   await addValue(harness, 2, 'At work', 'work');
@@ -1622,10 +1651,152 @@ const createContactSetting = async (
   );
 
   return waitFor(() => {
-    const entry = savedAttribute(harness, 'contact_setting');
+    const entry = savedAttribute(harness, name);
     if (entry === undefined) throw new Error('the attribute was not created');
     return entry;
   });
+};
+
+/**
+ * A second text attribute, collected with the OTHER text control.
+ *
+ * The fixture collects every one of a person's text attributes with a plain
+ * text box, so nothing in it can tell a control that followed the rebinding
+ * from one that was simply never reset.
+ */
+const collectNotesInATextArea = (
+  harness: ReturnType<typeof renderStageEditor>,
+) => {
+  harness.receiveCodebookUpdate({
+    node: {
+      person: {
+        ...personDocument(harness),
+        variables: {
+          ...personVariables(harness),
+          notes: { name: 'notes', type: 'text', component: 'TextArea' },
+        },
+      },
+    },
+  });
+};
+
+/** The id the seeded categorical attribute below is filed under. */
+const SEEDED_CONTACT_SETTING = 'seeded-contact-setting';
+
+/**
+ * The same categorical attribute, already in the protocol.
+ *
+ * `createContactSetting` above authors one through the create dialog, which is
+ * a journey of its own — roughly fifteen simulated interactions and forty
+ * keystrokes, each one a render of the open dialog. That journey is the
+ * SUBJECT of the test that asserts it, and only setup for a test about an
+ * attribute that already offers values: paid for twice, it was the slowest
+ * test in this file and the one that exceeded the 20s timeout on CI, where a
+ * runner is tens of times slower than a developer's machine.
+ *
+ * Seeded through the host rather than written onto the fixture, so the
+ * revision the session is holding is one the host issued — see
+ * `receiveCodebookUpdate` — and the compound edit that changes these values is
+ * judged against a base the host recognises rather than refused as stale.
+ *
+ * It is unused by any stage, which is what makes it collectable: the fixture's
+ * own categorical and ordinal attributes are written unvalidated by a bin
+ * stage, so the picker offers neither.
+ */
+const seedContactSetting = (
+  harness: ReturnType<typeof renderStageEditor>,
+): string => {
+  harness.receiveCodebookUpdate({
+    node: {
+      person: {
+        ...personDocument(harness),
+        variables: {
+          ...personVariables(harness),
+          [SEEDED_CONTACT_SETTING]: {
+            name: 'contact_setting',
+            type: 'categorical',
+            // One of the two controls the schema lets a categorical be
+            // collected with. A control belonging to another type — `RadioGroup`
+            // is the ordinal one — makes this variable invalid, and an entity
+            // definition is parsed whole, so the picker would then offer NONE of
+            // the person's attributes rather than complain about this one.
+            component: 'CheckboxGroup',
+            options: [
+              { label: 'At home', value: 'home' },
+              { label: 'At work', value: 'work' },
+            ],
+          },
+        },
+      },
+    },
+  });
+  return SEEDED_CONTACT_SETTING;
+};
+
+/** The id the seeded date attribute below is filed under. */
+const SEEDED_MET_ON = 'seeded-met-on';
+
+/**
+ * A date attribute already in the protocol, collected with the plain picker.
+ *
+ * The same bargain `seedContactSetting` makes, for the date family: inventing
+ * one through the row dialog is four interactions and a name before a test
+ * about date SETTINGS can start, and the tests below are about what the
+ * settings editor does with an attribute that exists, not about inventing one
+ * — which `creates a categorical attribute with the values it will offer` and
+ * `creates the attribute a field invents, and binds the field to it` are.
+ *
+ * `parameters` is what a picker's settings were already authored as, for the
+ * tests whose subject is what happens to settings that are already there.
+ * Seeded through the host, so the revision the session holds is one the host
+ * issued and the row's own compound edit is not refused as stale.
+ */
+const seedDateAttribute = (
+  harness: ReturnType<typeof renderStageEditor>,
+  parameters?: Readonly<Record<string, unknown>>,
+): string => {
+  harness.receiveCodebookUpdate({
+    node: {
+      person: {
+        ...personDocument(harness),
+        variables: {
+          ...personVariables(harness),
+          [SEEDED_MET_ON]: {
+            name: 'met_on',
+            type: 'datetime',
+            component: 'DatePicker',
+            ...(parameters === undefined ? {} : { parameters }),
+          },
+        },
+      },
+    },
+  });
+  return SEEDED_MET_ON;
+};
+
+/**
+ * Adds a form field collecting `variableId`, and closes the row it was
+ * authored in.
+ *
+ * The row lands third in the fixture's form, which is why the tests below
+ * reopen it as `openField(harness, 'Edit field', 2)`.
+ */
+const addFieldCollecting = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  variableId: string,
+  prompt: string,
+) => {
+  const creating = await openField(harness, 'Create new form field');
+  await harness.user.selectOptions(
+    creating.getByRole('combobox', { name: 'Attribute' }),
+    variableId,
+  );
+  await harness.user.type(
+    creating.getByRole('textbox', { name: 'Question text' }),
+    prompt,
+  );
+  await harness.user.click(creating.getByRole('button', { name: 'Add' }));
+  await waitFor(() => expect(screen.queryAllByRole('dialog')).toHaveLength(0));
 };
 
 /**
@@ -1677,11 +1848,45 @@ describe('the codebook an attribute a form field collects lives in', () => {
       dialog.getByRole('combobox', { name: 'Attribute' }),
     );
 
-    // The field is bound to what was just created, and finishing the row
-    // writes the input control onto the same attribute.
+    // The row is left collecting what was just invented for it: the researcher
+    // asked for an attribute they did not have, and the answer to "which one
+    // does this field collect?" is the one they finished authoring.
+    expect(dialog.getByRole('combobox', { name: 'Attribute' })).toHaveValue(
+      created[0],
+    );
+  });
+
+  /**
+   * The row's save, from a row collecting an attribute that already exists.
+   *
+   * Split from the journey above rather than run after it, because the two are
+   * separate subjects and the create journey is not cheap: fifteen simulated
+   * interactions and forty keystrokes, each one a render of the open dialog.
+   * Paying for it again to reach the save put the pair within sight of the 20s
+   * per-test timeout on a CI runner tens of times slower than a developer's
+   * machine — and the attribute this half needs is one the host can simply
+   * hand over.
+   *
+   * The control is the OTHER one a categorical may be collected with, so this
+   * writes something: seeded as `CheckboxGroup`, a row that chose it would
+   * have asserted the value the codebook already held.
+   */
+  it('writes the control the row chose onto what it collects, with the field', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const variableId = seedContactSetting(harness);
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      variableId,
+    );
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Input control' }),
-      'CheckboxGroup',
+      'ToggleButtonGroup',
     );
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Question text' }),
@@ -1692,12 +1897,12 @@ describe('the codebook an attribute a form field collects lives in', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
-    expect(asRecord(personVariables(harness)[created[0]])).toMatchObject({
-      component: 'CheckboxGroup',
+    expect(asRecord(personVariables(harness)[variableId])).toMatchObject({
+      component: 'ToggleButtonGroup',
     });
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
-      variable: created[0],
+      variable: variableId,
       prompt: 'Where do you usually meet?',
     });
   });
@@ -1715,9 +1920,13 @@ describe('the codebook an attribute a form field collects lives in', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await openField(harness, 'Create new form field');
-    const [variableId] = await createContactSetting(harness, dialog);
+    const variableId = seedContactSetting(harness);
 
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      variableId,
+    );
     await harness.user.click(
       await dialog.findByRole('button', {
         name: 'Change this attribute’s values',
@@ -1747,9 +1956,10 @@ describe('the codebook an attribute a form field collects lives in', () => {
    * what it would accept. Architect authors the same settings inline in this
    * same dialog and writes them through the field's save.
    *
-   * Two steps, because the settings belong to an attribute: there is nothing
-   * to configure until the attribute exists, and it is the row's save that
-   * creates it.
+   * The settings belong to an attribute, so there is nothing to configure
+   * until one exists. That the row's save can create it is the subject of the
+   * invention tests above; here the attribute is seeded and the field simply
+   * collects it, so what this test pays for is the settings editor alone.
    */
   it('sets what a date field accepts, on the attribute it collects', async () => {
     const harness = renderStageEditor({
@@ -1757,33 +1967,8 @@ describe('the codebook an attribute a form field collects lives in', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const creating = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      creating.getByRole('combobox', { name: 'Attribute' }),
-      CREATE_NEW_ATTRIBUTE,
-    );
-    await harness.user.selectOptions(
-      await creating.findByRole('combobox', { name: 'Kind of answer' }),
-      'datetime',
-    );
-    await harness.user.type(
-      await creating.findByRole('textbox', { name: 'Attribute name' }),
-      'met_on',
-    );
-    await harness.user.selectOptions(
-      await creating.findByRole('combobox', { name: 'Input control' }),
-      'DatePicker',
-    );
-    await harness.user.type(
-      creating.getByRole('textbox', { name: 'Question text' }),
-      'When did you first meet?',
-    );
-    await harness.user.click(creating.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
-    const created = savedAttribute(harness, 'met_on');
-    if (created === undefined) throw new Error('the attribute was not created');
+    const variableId = seedDateAttribute(harness);
+    await addFieldCollecting(harness, variableId, 'When did you first meet?');
 
     const editing = await openField(harness, 'Edit field', 2);
     await harness.user.click(
@@ -1801,13 +1986,13 @@ describe('the codebook an attribute a form field collects lives in', () => {
     );
 
     await waitFor(() =>
-      expect(asRecord(personVariables(harness)[created[0]]).parameters).toEqual(
+      expect(asRecord(personVariables(harness)[variableId]).parameters).toEqual(
         { type: 'year' },
       ),
     );
     // Written on the attribute, beside the control they were authored for —
     // not on the form field, which holds only its question.
-    expect(asRecord(personVariables(harness)[created[0]])).toMatchObject({
+    expect(asRecord(personVariables(harness)[variableId])).toMatchObject({
       name: 'met_on',
       type: 'datetime',
       component: 'DatePicker',
@@ -1830,30 +2015,14 @@ describe('the codebook an attribute a form field collects lives in', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const creating = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      creating.getByRole('combobox', { name: 'Attribute' }),
-      CREATE_NEW_ATTRIBUTE,
+    const variableId = seedDateAttribute(harness);
+    await addFieldCollecting(harness, variableId, 'When did you first meet?');
+
+    // The picker the codebook holds, and the one the row therefore opens on:
+    // the premise this test switches away from.
+    expect(asRecord(personVariables(harness)[variableId]).component).toBe(
+      'DatePicker',
     );
-    await harness.user.selectOptions(
-      await creating.findByRole('combobox', { name: 'Kind of answer' }),
-      'datetime',
-    );
-    await harness.user.type(
-      await creating.findByRole('textbox', { name: 'Attribute name' }),
-      'met_on',
-    );
-    await harness.user.type(
-      creating.getByRole('textbox', { name: 'Question text' }),
-      'When did you first meet?',
-    );
-    await harness.user.click(creating.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
-    const created = savedAttribute(harness, 'met_on');
-    if (created === undefined) throw new Error('the attribute was not created');
-    expect(asRecord(created[1]).component).toBe('DatePicker');
 
     const editing = await openField(harness, 'Edit field', 2);
     await harness.user.selectOptions(
@@ -1879,7 +2048,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
     // The control is written with the settings that depend on it, so the two
     // can never be committed out of step.
     await waitFor(() =>
-      expect(asRecord(personVariables(harness)[created[0]])).toMatchObject({
+      expect(asRecord(personVariables(harness)[variableId])).toMatchObject({
         component: 'RelativeDatePicker',
         parameters: { before: 30 },
       }),
@@ -2039,63 +2208,34 @@ describe('the codebook an attribute a form field collects lives in', () => {
  * with the control, exactly as the codebook editor's own save does.
  */
 describe('switching the input control on a configured attribute', () => {
-  /** A date field on a fresh attribute, collected with the plain date picker. */
-  const createDateField = async (
+  /**
+   * A form field collecting a date attribute, with `parameters` already
+   * authored for the plain picker when the test needs a settings block.
+   *
+   * Both are premises here, not subjects: what the row's save does when the
+   * researcher CHANGES the control is, and inventing the attribute through the
+   * dialog (four interactions and a name) and authoring the resolution through
+   * the codebook editor (six more) are what
+   * `creates a categorical attribute with the values it will offer` and
+   * `sets what a date field accepts, on the attribute it collects` already
+   * assert. Handed over by the host instead, which halves what the slower of
+   * these two tests costs a CI runner.
+   */
+  const collectADateField = async (
     harness: ReturnType<typeof renderStageEditor>,
+    parameters?: Readonly<Record<string, unknown>>,
   ) => {
-    const creating = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      creating.getByRole('combobox', { name: 'Attribute' }),
-      CREATE_NEW_ATTRIBUTE,
-    );
-    await harness.user.selectOptions(
-      await creating.findByRole('combobox', { name: 'Kind of answer' }),
-      'datetime',
-    );
-    await harness.user.type(
-      await creating.findByRole('textbox', { name: 'Attribute name' }),
-      'met_on',
-    );
-    await harness.user.type(
-      creating.getByRole('textbox', { name: 'Question text' }),
-      'When did you first meet?',
-    );
-    await harness.user.click(creating.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
-    const created = savedAttribute(harness, 'met_on');
-    if (created === undefined) throw new Error('the attribute was not created');
-    return created[0];
-  };
-
-  /** Authors settings for the date picker, so the attribute carries a block. */
-  const giveItAResolution = async (
-    harness: ReturnType<typeof renderStageEditor>,
-  ) => {
-    const editing = await openField(harness, 'Edit field', 2);
-    await harness.user.click(
-      await editing.findByRole('button', {
-        name: 'Set what this field accepts',
-      }),
-    );
-    await screen.findByRole('button', { name: 'Save attribute' });
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Date resolution' }),
-      'year',
-    );
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Save attribute' }),
-    );
-    await waitFor(() =>
-      expect(
-        asRecord(savedAttribute(harness, 'met_on')?.[1]).parameters,
-      ).toEqual({ type: 'year' }),
-    );
-    await harness.user.click(editing.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
+    const variableId = seedDateAttribute(harness, parameters);
+    // The premise, checked: a settings block that never arrived would leave
+    // `takes the old control’s settings with it` asserting that nothing was
+    // carried over from nothing.
+    if (parameters !== undefined) {
+      expect(asRecord(personVariables(harness)[variableId]).parameters).toEqual(
+        parameters,
+      );
+    }
+    await addFieldCollecting(harness, variableId, 'When did you first meet?');
+    return variableId;
   };
 
   const switchToRelative = async (
@@ -2117,7 +2257,7 @@ describe('switching the input control on a configured attribute', () => {
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
     });
-    const variableId = await createDateField(harness);
+    const variableId = await collectADateField(harness);
 
     await switchToRelative(harness);
 
@@ -2131,8 +2271,7 @@ describe('switching the input control on a configured attribute', () => {
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
     });
-    const variableId = await createDateField(harness);
-    await giveItAResolution(harness);
+    const variableId = await collectADateField(harness, { type: 'year' });
 
     await switchToRelative(harness);
 
@@ -2155,29 +2294,6 @@ describe('switching the input control on a configured attribute', () => {
  * changes how that attribute is collected in every form that asks for it.
  */
 describe('rebinding a form field to another attribute', () => {
-  /**
-   * A second text attribute, collected with the OTHER text control.
-   *
-   * The fixture collects every one of a person's text attributes with a plain
-   * text box, so nothing in it can tell a control that followed the rebinding
-   * from one that was simply never reset.
-   */
-  const collectNotesInATextArea = (
-    harness: ReturnType<typeof renderStageEditor>,
-  ) => {
-    harness.receiveCodebookUpdate({
-      node: {
-        person: {
-          ...personDocument(harness),
-          variables: {
-            ...personVariables(harness),
-            notes: { name: 'notes', type: 'text', component: 'TextArea' },
-          },
-        },
-      },
-    });
-  };
-
   const inputControl = (dialog: ReturnType<typeof within>) =>
     dialog.getByRole('combobox', { name: 'Input control' });
 
@@ -2746,6 +2862,147 @@ describe('a codebook editor open over a row when the stage is repointed', () => 
   });
 
   /**
+   * The other half of the same fact, for a create the researcher had already
+   * pressed.
+   *
+   * The editor above is refused because it can see the stage move. One already
+   * WITH the host cannot: the request outlives the repoint, comes back applied,
+   * and the attribute it made is in the codebook of the type the stage
+   * collected about when it was asked for. Writing that id into the row would
+   * leave the field naming an attribute the type this form now collects about
+   * has never held — a key belongs to exactly one type — which the row can
+   * neither resolve nor save.
+   *
+   * So the row takes nothing, and the researcher is told where the attribute
+   * went, in the sentence the picker's own create already uses for it: the
+   * write landed, and pressing Create again would ask the codebook for a name
+   * it already holds.
+   */
+  it('leaves a create that landed after the repoint out of the row, and says where it went', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    giveFamilyMembersSomethingToCollect(harness);
+    const release = holdTheCompoundEdit(harness);
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      CREATE_NEW_ATTRIBUTE,
+    );
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
+      'categorical',
+    );
+    await harness.user.click(
+      dialog.getByRole('button', {
+        name: 'Create this attribute and its values',
+      }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+      'contact_setting',
+    );
+    await addValue(harness, 1, 'At home', 'home');
+    await addValue(harness, 2, 'At work', 'work');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    repointTheStage(harness);
+    release();
+
+    // The write landed, in the codebook it was addressed to.
+    await waitFor(() =>
+      expect(savedAttribute(harness, 'contact_setting')).toBeDefined(),
+    );
+    const [createdId] = savedAttribute(harness, 'contact_setting') ?? [];
+    expect(createdId).toBeDefined();
+    // And the row this was started from is not holding it.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Attribute name' }),
+      ).toBeNull(),
+    );
+    expect(dialog.getByRole('combobox', { name: 'Attribute' })).not.toHaveValue(
+      createdId,
+    );
+    expect(
+      dialog.getByText(
+        '“contact_setting” was added to the codebook, but it has not been selected here.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The same rule where the row creates the attribute ITSELF.
+   *
+   * A kind of answer that needs nothing but a name is invented by the row's own
+   * save rather than in the codebook editor — the codebook write goes first,
+   * and the row that names it is committed after it lands. Which is the same
+   * window: the stage can be repointed inside the write, and a row committed
+   * afterwards would add a field naming an attribute the type this form
+   * collects about has never held.
+   *
+   * So the row is held rather than added, with what the researcher typed still
+   * in it, and the same sentence says where the attribute went.
+   */
+  it('does not add a row whose attribute was created for the type the stage has left', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    giveFamilyMembersSomethingToCollect(harness);
+    const release = holdTheCompoundEdit(harness);
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      CREATE_NEW_ATTRIBUTE,
+    );
+    await harness.user.type(
+      await dialog.findByRole('textbox', { name: 'Attribute name' }),
+      'nickname',
+    );
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Kind of answer' }),
+      'text',
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'What do people call them?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    repointTheStage(harness);
+    release();
+
+    // The write landed, in the codebook it was addressed to.
+    await waitFor(() =>
+      expect(savedAttribute(harness, 'nickname')).toBeDefined(),
+    );
+    // The row was not added: the repointed stage collects the one field the
+    // collaborator's edit left it with, and nothing else.
+    expect(
+      await dialog.findByText(
+        '“nickname” was added to the codebook, but it has not been selected here.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      asRecord(
+        asRecord(harness.session.getSnapshot().editedSection.fields).form,
+      ).fields,
+    ).toEqual([{ variable: 'fm_notes', prompt: 'Anything else to add?' }]);
+    // Read past the list, which the open dialog has made inert: the fields the
+    // form holds are the collaborator's one, and not a second naming an
+    // attribute of the type this stage has left.
+    expect(dialog.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'nickname',
+    );
+  });
+
+  /**
    * The row's OWN answer about how the attribute is collected, when the type
    * under it changes.
    *
@@ -3232,6 +3489,143 @@ describe('a form whose list is not a list', () => {
 });
 
 /**
+ * A field the list CAN show and the schema still refuses.
+ *
+ * The rule above is about an entry the section cannot turn into a row at all.
+ * This is the other half: a record carrying a key `FormFieldSchema` does not
+ * have, or an `id` that is not a string — the same protocols leave both, and
+ * `isRecord` admits them on purpose. They become rows, they can be read, and
+ * they can be taken out, so the section says nothing of its own about them:
+ * the schema is what a form field means, and its refusal already arrives on
+ * this section through the session's validation, in the editor's own words,
+ * before the researcher has tried to save anything.
+ *
+ * Written down because the alternatives are both worse than they look. A
+ * permitted-key check here would be a second copy of `FormFieldSchema` that
+ * drifts the day an optional key is added to it — the editor would refuse a
+ * field the protocol accepts. And stripping the key in `normalizeFormField`
+ * would throw away stored protocol data on a save the researcher asked for
+ * something else, on exactly the rows they happen to open, while leaving every
+ * row they do not touch refused.
+ */
+describe('a stored field the schema refuses for its own shape', () => {
+  const outlineEntry = () =>
+    [
+      ...screen
+        .getByRole('navigation', { name: 'Stage sections' })
+        .querySelectorAll('button'),
+    ].map((item) => item.textContent);
+
+  const alterFormHolding = (fields: readonly Record<string, unknown>[]) => ({
+    id: 'alter-form-1',
+    type: 'AlterForm' as const,
+    fields: {
+      ...loadFixtureStage('alter-form-1').fields,
+      form: { fields },
+    },
+  });
+
+  /** A field of the fixture's own form, plus a key no form field has. */
+  const CARRIES_AN_UNKNOWN_KEY = {
+    variable: 'flagged',
+    prompt: 'Does this person have this attribute?',
+    notAThing: 'left behind by a half-applied migration',
+  };
+
+  const RELATIONSHIP = {
+    variable: 'relationship_to_ego',
+    prompt: 'What is this person’s relationship to you?',
+  };
+
+  it('names the fault on this section before a save is attempted', async () => {
+    renderStageEditor({
+      stage: alterFormHolding([CARRIES_AN_UNKNOWN_KEY]),
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await waitFor(() =>
+      expect(outlineEntry()).toEqual([
+        'Form fieldsHas a problem. Fields holds settings this stage does not have.',
+      ]),
+    );
+  });
+
+  it('says the same of an id that is not a string', async () => {
+    renderStageEditor({
+      stage: alterFormHolding([{ ...RELATIONSHIP, id: 42 }]),
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await waitFor(() =>
+      expect(outlineEntry()).toEqual([
+        'Form fieldsHas a problem. Fields holds the wrong kind of value.',
+      ]),
+    );
+  });
+
+  it('shows the row, and refuses the save the schema refuses', async () => {
+    const harness = renderStageEditor({
+      stage: alterFormHolding([CARRIES_AN_UNKNOWN_KEY]),
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Edit field' }),
+    ).toBeInTheDocument();
+    expect(await harness.submit()).toBeNull();
+    // Not the sentence for an entry that cannot be shown: there is a row here,
+    // and it is the researcher's to remove.
+    expect(screen.queryByText(NOT_A_FIELD)).not.toBeInTheDocument();
+  });
+
+  it('is repaired by removing the field, which the researcher can do', async () => {
+    const harness = renderStageEditor({
+      stage: alterFormHolding([RELATIONSHIP, CARRIES_AN_UNKNOWN_KEY]),
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: 'Remove field' }),
+      ).toHaveLength(2),
+    );
+    const remove = screen.getAllByRole('button', { name: 'Remove field' })[1];
+    if (remove === undefined) throw new Error('There is no second field.');
+    await harness.user.click(remove);
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove field' }),
+    );
+
+    expect(fieldsOf(await harness.submit())).toEqual([RELATIONSHIP]);
+    await waitFor(() =>
+      expect(outlineEntry()).toEqual(['Form fieldsFinished']),
+    );
+  });
+
+  it('does not silently strip the key when the row itself is saved', async () => {
+    const harness = renderStageEditor({
+      stage: alterFormHolding([CARRIES_AN_UNKNOWN_KEY]),
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    // The protocol still holds what it held: a row editor is not the place a
+    // researcher agrees to lose stored data.
+    expect(await harness.submit()).toBeNull();
+    await waitFor(() =>
+      expect(outlineEntry()).toEqual([
+        'Form fieldsHas a problem. Fields holds settings this stage does not have.',
+      ]),
+    );
+  });
+});
+
+/**
  * An attribute answered on a scale is its two end labels.
  *
  * `REQUIRED_PARAMETERS` makes both of them settings the codebook editor
@@ -3475,26 +3869,6 @@ describe('a codebook editor open over a row when its attribute is deleted', () =
  * until the compound edit answers, and these three are the same act.
  */
 describe('dismissing a codebook editor while its save is in flight', () => {
-  /** Holds the compound edit open, and hands back the release. */
-  const holdTheCompoundEdit = (
-    harness: ReturnType<typeof renderStageEditor>,
-  ) => {
-    const send = harness.session.requestCompoundEdit.bind(harness.session);
-    let release: () => void = () => undefined;
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
-      async (request) => {
-        await held;
-        return send(request);
-      },
-    );
-    return () => {
-      release();
-    };
-  };
-
   it('refuses every way out of the attribute editor until it answers', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
@@ -3570,5 +3944,277 @@ describe('dismissing a codebook editor while its save is in flight', () => {
         ).required,
       ).toBe(true),
     );
+  });
+});
+
+/**
+ * What the row's save writes onto the attribute it finally collects, over
+ * every route its binding can take to get there.
+ *
+ * One rule, which is why these are one table rather than a test per route: the
+ * control a row saves is the one the researcher chose while it was collecting
+ * THAT attribute, and otherwise the attribute's own — the first control its
+ * kind of answer offers, where it has none yet. The row's save writes to the
+ * CODEBOOK, so a control carried in from an earlier binding is not a stale
+ * label on screen: it changes how that attribute is collected in every form
+ * that asks for it, out of a save the researcher made about a question.
+ *
+ * The routes differ in whether the control is on screen throughout. An
+ * attribute that IS its values or its end labels is authored in the codebook's
+ * own editor, and the row has no control to offer while one is being invented
+ * — so the field is unmounted across the invention, and its value survives
+ * that unmount (`registerField` prefers a dormant value over the initial one
+ * it is handed). Every route here that passes through the sentinel is a route
+ * where whatever remembers the binding has to outlive the field.
+ *
+ * Two interleavings are deliberately absent, because neither ends in a save
+ * for this rule to be about: a create that lands after the stage has been
+ * repointed leaves the row unbound and refuses it
+ * (`leaves a create that landed after the repoint out of the row, and says
+ * where it went`), and a lease taken back commits nothing at all
+ * (`commits nothing from a row dialog left open when the lease goes`).
+ */
+describe('the control a row saves for the attribute it finally collects', () => {
+  /** Resolves the attribute the row ended up collecting, after the save. */
+  type Collected = () => string;
+
+  type Route = (
+    harness: ReturnType<typeof renderStageEditor>,
+    dialog: ReturnType<typeof within>,
+  ) => Promise<Collected>;
+
+  const chooseAttribute = (
+    harness: ReturnType<typeof renderStageEditor>,
+    dialog: ReturnType<typeof within>,
+    value: string,
+  ) =>
+    harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      value,
+    );
+
+  const chooseControl = async (
+    harness: ReturnType<typeof renderStageEditor>,
+    dialog: ReturnType<typeof within>,
+    value: string,
+  ) =>
+    harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      value,
+    );
+
+  const created = (
+    harness: ReturnType<typeof renderStageEditor>,
+    name: string,
+  ): Collected => {
+    return () => {
+      const entry = savedAttribute(harness, name);
+      if (entry === undefined) {
+        throw new Error(`“${name}” was never created`);
+      }
+      return entry[0];
+    };
+  };
+
+  /**
+   * The answer every route below has to leave behind: a control chosen for the
+   * attribute the row starts on, and the OTHER one that attribute offers, so a
+   * control that was simply never reset cannot pass as one that followed the
+   * binding.
+   */
+  const chooseAControlForTheSeededAttribute = async (
+    harness: ReturnType<typeof renderStageEditor>,
+    dialog: ReturnType<typeof within>,
+  ) => {
+    await chooseAttribute(harness, dialog, SEEDED_CONTACT_SETTING);
+    await chooseControl(harness, dialog, 'ToggleButtonGroup');
+  };
+
+  /** Names the kind of answer an invented attribute holds. */
+  const chooseKind = async (
+    harness: ReturnType<typeof renderStageEditor>,
+    dialog: ReturnType<typeof within>,
+    kind: string,
+  ) => {
+    await chooseAttribute(harness, dialog, CREATE_NEW_ATTRIBUTE);
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
+      kind,
+    );
+  };
+
+  const ROUTES: readonly Readonly<{
+    name: string;
+    route: Route;
+    /** What the codebook must hold for the attribute the row collects. */
+    saves: string;
+  }>[] = [
+    {
+      name: 'the attribute’s own, where the researcher chose nothing',
+      route: async (harness, dialog) => {
+        await chooseAttribute(harness, dialog, SEEDED_CONTACT_SETTING);
+        await dialog.findByRole('combobox', { name: 'Input control' });
+        return () => SEEDED_CONTACT_SETTING;
+      },
+      saves: 'CheckboxGroup',
+    },
+    {
+      name: 'the researcher’s own choice, on the attribute they chose it for',
+      route: async (harness, dialog) => {
+        await chooseAControlForTheSeededAttribute(harness, dialog);
+        return () => SEEDED_CONTACT_SETTING;
+      },
+      saves: 'ToggleButtonGroup',
+    },
+    {
+      name: 'the newly bound attribute’s own, after a rebinding',
+      route: async (harness, dialog) => {
+        await chooseAControlForTheSeededAttribute(harness, dialog);
+        await chooseAttribute(harness, dialog, 'notes');
+        return () => 'notes';
+      },
+      saves: 'TextArea',
+    },
+    {
+      name: 'the default of an attribute invented from a name and a kind',
+      route: async (harness, dialog) => {
+        await chooseAControlForTheSeededAttribute(harness, dialog);
+        await chooseKind(harness, dialog, 'text');
+        await harness.user.type(
+          await dialog.findByRole('textbox', { name: 'Attribute name' }),
+          'nickname',
+        );
+        return created(harness, 'nickname');
+      },
+      saves: 'Text',
+    },
+    {
+      name: 'the default of an attribute authored in the codebook editor',
+      route: async (harness, dialog) => {
+        await chooseAControlForTheSeededAttribute(harness, dialog);
+        const entry = await createContactSetting(
+          harness,
+          dialog,
+          'meeting_place',
+        );
+        return () => entry[0];
+      },
+      saves: 'CheckboxGroup',
+    },
+    {
+      name: 'the choice made for that attribute once there is one to make it for',
+      route: async (harness, dialog) => {
+        await chooseAControlForTheSeededAttribute(harness, dialog);
+        const entry = await createContactSetting(
+          harness,
+          dialog,
+          'meeting_place',
+        );
+        await chooseControl(harness, dialog, 'ToggleButtonGroup');
+        return () => entry[0];
+      },
+      saves: 'ToggleButtonGroup',
+    },
+    {
+      name: 'the only control a scale offers, which is not the one carried in',
+      route: async (harness, dialog) => {
+        await chooseAControlForTheSeededAttribute(harness, dialog);
+        await chooseKind(harness, dialog, 'scalar');
+        await harness.user.click(
+          dialog.getByRole('button', {
+            name: 'Create this attribute and what it accepts',
+          }),
+        );
+        await harness.user.type(
+          await screen.findByRole('textbox', { name: 'Attribute name' }),
+          'closeness',
+        );
+        await harness.user.type(
+          screen.getByRole('textbox', { name: 'Minimum label' }),
+          'Not at all close',
+        );
+        await harness.user.type(
+          screen.getByRole('textbox', { name: 'Maximum label' }),
+          'As close as can be',
+        );
+        await harness.user.click(
+          screen.getByRole('button', { name: 'Create attribute' }),
+        );
+        const entry = created(harness, 'closeness');
+        await waitFor(entry);
+        return entry;
+      },
+      saves: 'VisualAnalogScale',
+    },
+    {
+      name: 'the next binding’s own, after an invention the researcher abandoned',
+      route: async (harness, dialog) => {
+        await chooseAControlForTheSeededAttribute(harness, dialog);
+        await chooseKind(harness, dialog, 'categorical');
+        await harness.user.click(
+          dialog.getByRole('button', {
+            name: 'Create this attribute and its values',
+          }),
+        );
+        await screen.findByRole('button', { name: 'Create attribute' });
+        await harness.user.keyboard('{Escape}');
+        await waitFor(() =>
+          expect(
+            screen.queryByRole('button', { name: 'Create attribute' }),
+          ).toBeNull(),
+        );
+        await chooseAttribute(harness, dialog, 'notes');
+        return () => 'notes';
+      },
+      saves: 'TextArea',
+    },
+  ];
+
+  /** How the two seeded attributes are collected before any of this runs. */
+  const SEEDED = {
+    [SEEDED_CONTACT_SETTING]: 'CheckboxGroup',
+    notes: 'TextArea',
+  } as const;
+
+  it.each(ROUTES)('$name', async ({ route, saves }) => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    seedContactSetting(harness);
+    collectNotesInATextArea(harness);
+
+    const dialog = await openField(harness, 'Create new form field');
+    const collected = await route(harness, dialog);
+
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'Where do you usually meet?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    const variableId = collected();
+    // The premise of every assertion below: this is the attribute the row
+    // ended up collecting, so this is the one its save may write to.
+    expect(fieldsOf(await harness.submit()).at(-1)).toMatchObject({
+      variable: variableId,
+    });
+    expect(asRecord(personVariables(harness)[variableId]).component).toBe(
+      saves,
+    );
+
+    // And nothing the row stopped collecting was written to on the way: a
+    // control carried out of an abandoned binding is a change to how another
+    // form asks for that attribute.
+    Object.entries(SEEDED)
+      .filter(([id]) => id !== variableId)
+      .forEach(([id, component]) => {
+        expect(asRecord(personVariables(harness)[id]).component).toBe(
+          component,
+        );
+      });
   });
 });
