@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { NodeColorSequence } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -539,6 +540,37 @@ describe('the diseases a narrative pedigree defines', () => {
     expect(optionsOf('Affected-status attribute')).toEqual(['hasConditionX']);
   });
 
+  /**
+   * The colour is what the PARTICIPANT sees on the family tree, and the
+   * palette entries have no names of their own — they are the study's theme
+   * colours, counted rather than called anything. Offered as a list of counts,
+   * the researcher picks the shade blind and learns which one it was only
+   * after the row is saved and the list redraws it. So each choice is the
+   * colour itself, with the count kept as the name a screen reader announces.
+   */
+  it('shows every disease colour as the colour it is', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit disease' }),
+    );
+    const disease = within(await screen.findByRole('dialog'));
+
+    const swatches = NodeColorSequence.map((_, index) =>
+      disease.getByRole('radio', { name: `Color ${index + 1}` }),
+    );
+    swatches.forEach((swatch, index) => {
+      // The visible control beside the radio is drawn in the palette entry it
+      // stands for, through the theme variable the rest of the editor tints
+      // protocol colours with.
+      expect(swatch.nextElementSibling?.getAttribute('style')).toContain(
+        `--swatch: var(--node-${index + 1})`,
+      );
+    });
+    // And the colour the row already carries is the one shown as chosen.
+    expect(disease.getByRole('radio', { name: 'Color 1' })).toBeChecked();
+  });
+
   it('refuses a second disease that reuses a name', async () => {
     const harness = renderStageEditor({
       ...openFixture(),
@@ -556,10 +588,7 @@ describe('the diseases a narrative pedigree defines', () => {
       disease.getByRole('textbox', { name: 'Disease name' }),
       'condition x ',
     );
-    await harness.user.selectOptions(
-      disease.getByRole('combobox', { name: 'Color' }),
-      'node-color-seq-2',
-    );
+    await harness.user.click(disease.getByRole('radio', { name: 'Color 2' }));
     await harness.user.selectOptions(
       disease.getByRole('combobox', { name: 'Affected-status attribute' }),
       'hasConditionY',
@@ -737,10 +766,7 @@ describe('the diseases a narrative pedigree defines', () => {
       disease.getByRole('textbox', { name: 'Disease name' }),
       'Condition Y',
     );
-    await harness.user.selectOptions(
-      disease.getByRole('combobox', { name: 'Color' }),
-      'node-color-seq-2',
-    );
+    await harness.user.click(disease.getByRole('radio', { name: 'Color 2' }));
     await harness.user.selectOptions(
       disease.getByRole('combobox', { name: 'Affected-status attribute' }),
       'hasConditionY',
@@ -1179,10 +1205,7 @@ describe('the batch a source change makes', () => {
       disease.getByRole('textbox', { name: 'Disease name' }),
       'Cystic fibrosis',
     );
-    await harness.user.selectOptions(
-      disease.getByRole('combobox', { name: 'Color' }),
-      'Color 2',
-    );
+    await harness.user.click(disease.getByRole('radio', { name: 'Color 2' }));
     await harness.user.selectOptions(
       disease.getByRole('combobox', { name: 'Affected-status attribute' }),
       'hasConditionX',

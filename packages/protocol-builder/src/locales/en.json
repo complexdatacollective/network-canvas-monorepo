@@ -1547,10 +1547,6 @@
     "defaultMessage": "Color {position}",
     "description": "How one entry of the disease-colour list is named. The palette’s colours have no names of their own — they are the study’s own theme colours — so they are counted instead. position identifies which one, counting from 1."
   },
-  "protocolBuilder.narrativePedigree.diseaseColorPlaceholder": {
-    "defaultMessage": "Select a color...",
-    "description": "Placeholder shown in the disease-colour control while no colour has been chosen. The trailing dots are an ellipsis written as three full stops."
-  },
   "protocolBuilder.narrativePedigree.diseaseColorRequired": {
     "defaultMessage": "Choose a color for this disease.",
     "description": "Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one."

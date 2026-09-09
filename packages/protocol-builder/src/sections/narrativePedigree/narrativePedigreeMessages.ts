@@ -267,12 +267,6 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Guidance under the disease-colour control. A pedigree is a family tree.',
   },
-  diseaseColorPlaceholder: {
-    id: 'protocolBuilder.narrativePedigree.diseaseColorPlaceholder',
-    defaultMessage: 'Select a color...',
-    description:
-      'Placeholder shown in the disease-colour control while no colour has been chosen. The trailing dots are an ellipsis written as three full stops.',
-  },
   diseaseColorRequired: {
     id: 'protocolBuilder.narrativePedigree.diseaseColorRequired',
     defaultMessage: 'Choose a color for this disease.',

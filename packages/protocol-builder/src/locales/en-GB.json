@@ -8,7 +8,6 @@
   "protocolBuilder.narrativePedigree.diseaseColorHint": "The colour this disease is drawn in on the pedigree.",
   "protocolBuilder.narrativePedigree.diseaseColorLabel": "Colour",
   "protocolBuilder.narrativePedigree.diseaseColorOption": "Colour {position}",
-  "protocolBuilder.narrativePedigree.diseaseColorPlaceholder": "Select a colour...",
   "protocolBuilder.narrativePedigree.diseaseColorRequired": "Choose a colour for this disease.",
   "protocolBuilder.narrativePedigree.diseaseNameHint": "Shown to the participant in the pedigree's key, so it should be a name they recognise.",
   "protocolBuilder.narrativePedigree.sourceDescription": "Choose the Family Pedigree stage whose family this stage visualises.",

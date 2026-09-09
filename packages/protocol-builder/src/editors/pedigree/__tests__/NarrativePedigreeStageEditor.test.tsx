@@ -282,10 +282,7 @@ describe('the narrative pedigree stage editor', () => {
       disease.getByRole('textbox', { name: 'Disease name' }),
       'Z',
     );
-    await harness.user.selectOptions(
-      disease.getByRole('combobox', { name: 'Color' }),
-      'node-color-seq-2',
-    );
+    await harness.user.click(disease.getByRole('radio', { name: 'Color 2' }));
     await harness.user.selectOptions(
       disease.getByRole('combobox', { name: 'Affected-status attribute' }),
       'hasConditionX',
