@@ -33,7 +33,7 @@ host contract the package owns (an oRPC contract: lock, subscribe, submit,
 create, and the server-mediated refactor), keeps sections read by other
 components in a TanStack Query cache fed by one revision channel per open
 protocol, keeps the section under edit in Fresco's `<Form>` and nowhere
-else, cuts extracted generality the editors never reach, and rebuilds the
+else with Fresco's own `ArrayField` for rows and row dialogs, cuts extracted generality the editors never reach, and rebuilds the
 nineteen editors as declarative section lists. The target is an editor of
 one file under 200 lines that never inspects a lock or a codebook.
 
@@ -89,9 +89,11 @@ Three mechanisms account for it.
   does not undo it.
 - **A stage editor is data.** A named editor declares which sections it
   composes and in what order. Under 200 lines per editor.
-- **One form.** Fresco's `<Form>` is the form. Rows and dialogs are sub-forms
-  whose values are fields. The package adds no store, scope, or memory of its
-  own beside it.
+- **One form.** Fresco's `<Form>` is the form and Fresco's `ArrayField` is
+  the list. Its `editorComponent` already edits one item in a dialog with its
+  own form and commits or discards on save or cancel; its managed ids already
+  give rows identity across insert, remove, and move. The package adds no
+  store, scope, or memory of its own beside them.
 - **Only what the editors reach.** Rule, validation, and resource code keeps
   the paths the nineteen editors exercise. Architect keeps its own copies of
   the rest until it adopts the package.
@@ -208,21 +210,36 @@ store keeps the committed protocol and app state; its host implementation is
 a router whose `watchProtocol` is a store subscription and whose `submit`
 is a reducer. That is a smaller Architect than today.
 
-### Form: Fresco's, with two additions
+### Form: Fresco's, as it is
 
-Fresco's `<Form>` gains what the editors genuinely need and nothing more:
+The package built a parallel array layer (`DialogArrayField`, `RowField`,
+`RowEditorBoundary`, `editedRow.ts`, `arrayFieldCommands`,
+`reseedStageForm`, edited-row scopes, dormant values, binding memory) because
+its command model needed array edits to be section commands and needed to
+know which row a dialog was still editing after the list moved underneath
+it. Under this plan the editor owns its section, so none of that is needed,
+and Fresco's `ArrayField` already provides what the editors use:
 
-- **Sub-forms.** A row or dialog is a nested form bound to a path. Its values
-  are ordinary fields; saving it commits the sub-form's values into the
-  parent's; cancel restores the parent's. No separate store.
-- **Row identity.** Rows carry the schema's own ids where the schema has them
-  (prompts, panels, form fields) and a form-issued id where it does not.
-  Insert, remove, and move act on that identity.
+- **Row dialogs.** `editorComponent` receives `item`, `isNewItem`, `onSave`,
+  and `onCancel`, renders a `Dialog` with its own `FormStoreProvider` and
+  `FormWithoutProvider`, and calls `onSave(value)` to commit the row or
+  `onCancel` to discard it. The parent form's value changes only on save.
+  See the `DialogEditing` story in `ArrayField.stories.tsx`.
+- **Row identity.** `useArrayFieldItems` keys every row by a managed internal
+  id (`getId` reads the schema's own id where one exists, as prompts,
+  panels, and form fields have), so `updateItem`, `removeItem`, and moves act
+  on identity and `editingId` survives a reorder; `stripManagedProperties`
+  removes the managed keys on submit. Rows without a schema id (categorical
+  options) get a form-issued one and nothing else.
+- **Everything else the editors reach** — `sortable`, `maxItems`,
+  `confirmDelete`, `immediateAdd`, `onOperation`, `itemTemplate`, the empty
+  state — is already there.
 
-`DialogArrayField`, `editedRow.ts`, edited-row scopes, dormant values,
-own-write markers, and binding memory are deleted. "Invent an attribute from
-a row" is a codebook dialog that creates the attribute immediately (through
-`create`) and hands its id back to the row's field.
+The package's array layer is deleted. "Invent an attribute from a row" is a
+codebook dialog that creates the attribute immediately (through `create`)
+and hands its id back to the row's field. If a stage editor needs something
+`ArrayField` lacks, it is added to Fresco's `ArrayField`, never rebuilt beside
+it.
 
 ### Editors: section lists
 
@@ -281,9 +298,10 @@ read whole.
    (Studio over the wire, Architect in-process) with the same router types.
    `main`'s four merged editors (the form family) are re-pointed at the
    contract in the same PR so there is never a second implementation.
-2. **Form: sub-forms and row identity.** The two Fresco additions, deletion of
-   the package's form framework, and the four merged editors rewritten as
-   section lists to prove the pattern.
+2. **Form: Fresco's `ArrayField` throughout.** Deletion of the package's
+   array and dialog layer, any gap found closed in Fresco's `ArrayField`
+   rather than beside it, and the four merged editors rewritten as section
+   lists to prove the pattern.
 3. **The other fifteen editors** in one PR, because the point is that they
    are all the same shape and that is only reviewable whole. Includes the
    proof-host stories (#1493) and the release gates (#1494).
@@ -351,8 +369,9 @@ They apply from the first PR here:
 - oRPC's event iterators and TanStack Query's push-into-cache pattern behave
   as documented in the versions the catalog pins; PR 1's spikes are where this
   is checked.
-- Fresco's `<Form>` can take the two additions without breaking Fresco's own
-  consumers; this is checked in PR 2 with Fresco's tests and Storybook.
+- Fresco's `ArrayField` covers every row and dialog pattern the nineteen
+  editors need; a gap found in PR 2 is closed in Fresco with its tests and
+  Storybook, not in the package.
 - The `all-interfaces` e2e fixture remains the source of representative
   stages for round-trip tests; its family-pedigree defect (no nomination
   prompt behind a mapped disease) is fixed in PR 3 where CI regenerates the
