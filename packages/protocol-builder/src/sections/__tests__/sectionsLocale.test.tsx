@@ -351,13 +351,7 @@ describe('the form-fields section, read in Spanish', () => {
  * descriptor the component read, for the reason given above: a formatted
  * assertion passes over an empty catalog.
  *
- * One of this section's sentences is deliberately absent, because nothing can
- * put it on screen in any language: `formFields.scopeMissing` is shown inside
- * the row dialog when the stage has no subject — and the section is `disabled`
- * on exactly that condition, so its whole body sits in a disabled `fieldset`
- * and the dialog cannot be opened. The last test in this file pins that.
- *
- * Two others used to be listed here as unreachable and are not:
+ * Two sentences used to be listed here as unreachable and are not:
  * `formFields.componentRequired` is what the dialog says when the attribute a
  * field collects has no input control to offer — read below — and
  * `codebookEditing.unsupportedControl` is read in
@@ -766,7 +760,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
 
     expect(
       await dialog.findByText(
-        'Esta parte del libro de códigos ya no existe, así que no se ha guardado nada. Cierra este editor y empieza de nuevo.',
+        'Esta etapa trabaja con algo que el libro de códigos ya no contiene, así que no se ha guardado nada. Elige de nuevo con qué trabaja.',
       ),
     ).toBeInTheDocument();
   });
@@ -946,11 +940,7 @@ describe('a form a Spanish researcher cannot save', () => {
  * A form on a stage that has not been told what it is about yet.
  *
  * There is nothing to draw attributes from, so the section says what is
- * missing in place of its own description and closes: everything inside a
- * disabled `Section` is inside a disabled `fieldset`, which is why
- * `protocolBuilder.formFields.scopeMissing` — the same sentence said inside
- * the row dialog — has no test here. The dialog cannot be opened while the
- * subject is missing, and the subject is the only thing that hides it.
+ * missing in place of its own description and closes.
  */
 describe('a Spanish form-fields section waiting on a subject', () => {
   it('says what has to be chosen first', async () => {

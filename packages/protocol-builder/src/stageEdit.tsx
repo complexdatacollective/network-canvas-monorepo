@@ -55,6 +55,8 @@ export type StageEdit = Readonly<{
   readOnly: boolean;
   /** Who is editing this stage, when it is somebody else. */
   holder: Presence | undefined;
+  /** The protocol would not open this stage: it is gone, or out of reach. */
+  unavailable: boolean;
   save(fields: StageFormDraft): Promise<StageSaveOutcome>;
 }>;
 
@@ -133,7 +135,7 @@ function EditingStage({
   const formId = useFormId(requestedFormId);
   const section = useSectionMutation(sectionId);
   const staged = useStagedResources();
-  const { submit, readOnly, holder } = section;
+  const { submit, readOnly, holder, unavailable } = section;
 
   const opened = useMemo(
     () =>
@@ -173,9 +175,10 @@ function EditingStage({
       committedFields: opened?.fields,
       readOnly,
       holder,
+      unavailable,
       save,
     }),
-    [formId, holder, identity, opened, readOnly, save],
+    [formId, holder, identity, opened, readOnly, save, unavailable],
   );
 
   return <StageEditContext value={edit}>{children}</StageEditContext>;
@@ -254,6 +257,8 @@ function CreatingStage({
       committedFields,
       readOnly: false,
       holder: undefined,
+      // A stage the protocol does not hold yet cannot have gone.
+      unavailable: false,
       save,
     }),
     [committedFields, creation, formId, identity, save],

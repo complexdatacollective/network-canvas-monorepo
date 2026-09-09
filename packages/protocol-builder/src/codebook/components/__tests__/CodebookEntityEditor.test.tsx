@@ -327,15 +327,9 @@ describe('CodebookEntityEditor', () => {
       status: 'refused',
       message: codebookRefusalMessage({
         kind: 'held',
-        holder: {
-          sessionId: 'remote-session',
-          userId: 'remote-user',
-          displayName: 'Morgan',
-          sectionId: PERSON_SECTION,
-          mode: 'editing',
-        },
+        holders: ['Morgan'],
       }),
-      held: true,
+      refusal: { kind: 'held' },
     }));
     renderUpdateEditor(onSubmit);
 

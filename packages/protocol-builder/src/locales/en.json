@@ -703,6 +703,10 @@
     "defaultMessage": "{holder} is currently editing a section needed for this change.",
     "description": "Refusal shown in a codebook editor when a named collaborator is editing part of the protocol the change needs. holder is that person’s display name, which the host supplies."
   },
+  "protocolBuilder.compoundFailure.heldBySeveral": {
+    "defaultMessage": "{holders} are currently editing sections needed for this change.",
+    "description": "Refusal shown in a codebook editor when several named collaborators are between them editing the parts of the protocol the change needs. holders is their display names, which the host supplies, joined as a list."
+  },
   "protocolBuilder.compoundFailure.heldBySomeoneUnnamed": {
     "defaultMessage": "A section needed for this change is currently being edited.",
     "description": "Refusal shown in a codebook editor when part of the protocol the change needs is being edited by somebody the host would not name."
@@ -715,9 +719,17 @@
     "defaultMessage": "This protocol is no longer open, so nothing was saved. Reload it and try again.",
     "description": "Refusal shown in a codebook editor when the application it is running in no longer holds the protocol the change was written to."
   },
+  "protocolBuilder.compoundFailure.referencesRemain": {
+    "defaultMessage": "{references, plural, one {One other part of the protocol still uses this} other {# other parts of the protocol still use this}}, so nothing was deleted. Change those first, then delete it.",
+    "description": "Refusal shown in a codebook editor when deleting an attribute or a type would leave the protocol naming something that no longer exists, in places the application cannot rewrite for the researcher. references is how many such places there are."
+  },
   "protocolBuilder.compoundFailure.sectionGone": {
     "defaultMessage": "This part of the codebook no longer exists, so nothing was saved. Close this editor and start again.",
     "description": "Refusal shown in a codebook editor when the entity type being edited has been deleted from the protocol, usually by a collaborator, while the editor was open."
+  },
+  "protocolBuilder.compoundFailure.subjectGone": {
+    "defaultMessage": "This stage works with something the codebook no longer holds, so nothing was saved. Choose what it works with again.",
+    "description": "Refusal shown on a control inside a stage editor when the node or edge type the stage collects into has been deleted from the protocol, usually by a collaborator, while the researcher was working. A stage is one step of an interview."
   },
   "protocolBuilder.compoundFailure.unexplained": {
     "defaultMessage": "This change could not be saved, and nothing was altered. Wait a moment and try again.",
@@ -1174,10 +1186,6 @@
   "protocolBuilder.formFields.questionSectionTitle": {
     "defaultMessage": "Question",
     "description": "Heading of the half of the field dialog that says what the participant is asked."
-  },
-  "protocolBuilder.formFields.scopeMissing": {
-    "defaultMessage": "Choose what this stage works with before adding fields to its form.",
-    "description": "Shown inside the field editor when the researcher has not yet chosen which node or edge type the stage (one step of an interview) is about, so there is no codebook to draw attributes from."
   },
   "protocolBuilder.formFields.title": {
     "defaultMessage": "Form fields",
@@ -3546,6 +3554,10 @@
   "protocolBuilder.shell.saveStage": {
     "defaultMessage": "Save stage",
     "description": "Action that saves the step of the interview a researcher is editing. Names the stage rather than saying only \"Save\", because a host may show its own controls beside this one."
+  },
+  "protocolBuilder.shell.stageUnavailable": {
+    "defaultMessage": "This stage could not be opened. It may have been deleted while you were away. Go back to the interview and choose another one.",
+    "description": "Shown in place of a stage editor when the protocol would not open the stage at all — it has been deleted, or the application could not be reached. A stage is one step of an interview."
   },
   "protocolBuilder.skipLogic.actionHint": {
     "defaultMessage": "What should happen when the rules match?",

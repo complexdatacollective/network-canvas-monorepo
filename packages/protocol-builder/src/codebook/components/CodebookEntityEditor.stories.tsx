@@ -31,7 +31,7 @@ function ExistingNodeEditor() {
           Promise.resolve({
             status: 'refused' as const,
             message: codebookRefusalMessage({ kind: 'unreachable' }),
-            held: false,
+            refusal: { kind: 'unreachable' } as const,
           })
         }
       />

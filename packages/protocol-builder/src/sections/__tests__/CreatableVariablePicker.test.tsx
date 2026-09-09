@@ -838,7 +838,12 @@ describe('the creatable attribute picker, read in Spanish', () => {
   /**
    * The sentence is the HOST's refusal now, not a check this control makes for
    * itself: the write is attempted, the protocol has no such section, and the
-   * refusal comes back from there. Same claim, in the words that now say it.
+   * refusal comes back from there.
+   *
+   * Said in the words a stage ROW needs. The codebook's own editors answer the
+   * same refusal by telling the researcher to close the editor and start
+   * again, and there is no codebook editor open here: what they have to do on
+   * a row is choose what the stage works with.
    */
   it('says in Spanish that the type it would be added to has gone', async () => {
     const harness = renderInSpanish({
@@ -847,7 +852,7 @@ describe('the creatable attribute picker, read in Spanish', () => {
     });
 
     expect(await askFor(harness, 'nominado_pronto')).toHaveTextContent(
-      'Esta parte del libro de códigos ya no existe, así que no se ha guardado nada. Cierra este editor y empieza de nuevo.',
+      'Esta etapa trabaja con algo que el libro de códigos ya no contiene, así que no se ha guardado nada. Elige de nuevo con qué trabaja.',
     );
   });
 

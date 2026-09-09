@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { DATE_RESOLUTION } from '@codaco/protocol-validation';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { enIntl, esIntl, readMessage } from '../../testing/i18n.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
@@ -201,13 +200,7 @@ describe('codebook copy produced outside React, read in Spanish', () => {
       readMessage(
         codebookRefusalMessage({
           kind: 'held',
-          holder: {
-            sessionId: 'session-1',
-            userId: 'user-1',
-            displayName: 'Ana',
-            sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
-            mode: 'editing',
-          },
+          holders: ['Ana'],
         }),
         esIntl,
       ),

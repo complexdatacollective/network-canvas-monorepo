@@ -182,7 +182,7 @@ describe('CodebookVariableValidationEditor', () => {
     const onSubmitDocument = vi.fn<SubmitDocument>(async () => ({
       status: 'refused' as const,
       message: codebookRefusalMessage({ kind: 'held' }),
-      held: true,
+      refusal: { kind: 'held' } as const,
     }));
     const onComplete = vi.fn();
     renderEditor({ onSubmitDocument, onComplete });
@@ -225,7 +225,7 @@ describe('CodebookVariableValidationEditor', () => {
     const onSubmitDocument = vi.fn<SubmitDocument>(async () => ({
       status: 'refused',
       message: CONTRADICTION,
-      held: false,
+      refusal: { kind: 'unexplained' },
     }));
     const onComplete = vi.fn();
     renderEditor({ onSubmitDocument, onComplete });
@@ -261,7 +261,7 @@ describe('CodebookVariableValidationEditor', () => {
     const refusal = {
       status: 'refused' as const,
       message: draftValidatedElsewhereMessage('Height'),
-      held: false,
+      refusal: { kind: 'unexplained' } as const,
     };
     const props: CodebookVariableValidationEditorProps = {
       openId: 'open-1',

@@ -1,7 +1,5 @@
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 
-import type { Presence } from '../contract/schemas.ts';
-
 /**
  * Why a codebook save did not happen, in the terms the contract answers in.
  *
@@ -9,12 +7,20 @@ import type { Presence } from '../contract/schemas.ts';
  * back read-only, the submit was refused because the lock had gone, a refactor
  * could not take every section it writes — because a researcher is told who is
  * editing rather than which of the three it was. A section id is an internal
- * address and is never shown, so an unnamed holder is all that is left to say.
+ * address and is never shown, so unnamed holders are all that is left to say.
+ *
+ * `sectionGone` and `subjectGone` are one fact seen from two surfaces: the
+ * type a codebook editor is open on has been deleted, and the type a STAGE
+ * collects into has. What to do about it differs — there is no codebook editor
+ * to close on a stage row — so each says its own sentence.
  */
 export type CodebookRefusal =
-  | Readonly<{ kind: 'held'; holder?: Presence }>
+  | Readonly<{ kind: 'held'; holders?: readonly string[] }>
+  /** Something the host cannot rewrite still names what was to be deleted. */
+  | Readonly<{ kind: 'referencesRemain'; references: number }>
   | Readonly<{ kind: 'invalidShape' }>
   | Readonly<{ kind: 'sectionGone' }>
+  | Readonly<{ kind: 'subjectGone' }>
   | Readonly<{ kind: 'protocolGone' }>
   | Readonly<{ kind: 'unreachable' }>
   | Readonly<{ kind: 'unexplained' }>;
@@ -33,6 +39,27 @@ const messages = defineMessages({
       '{holder} is currently editing a section needed for this change.',
     description:
       'Refusal shown in a codebook editor when a named collaborator is editing part of the protocol the change needs. holder is that person’s display name, which the host supplies.',
+  },
+  heldBySeveral: {
+    id: 'protocolBuilder.compoundFailure.heldBySeveral',
+    defaultMessage:
+      '{holders} are currently editing sections needed for this change.',
+    description:
+      'Refusal shown in a codebook editor when several named collaborators are between them editing the parts of the protocol the change needs. holders is their display names, which the host supplies, joined as a list.',
+  },
+  referencesRemain: {
+    id: 'protocolBuilder.compoundFailure.referencesRemain',
+    defaultMessage:
+      '{references, plural, one {One other part of the protocol still uses this} other {# other parts of the protocol still use this}}, so nothing was deleted. Change those first, then delete it.',
+    description:
+      'Refusal shown in a codebook editor when deleting an attribute or a type would leave the protocol naming something that no longer exists, in places the application cannot rewrite for the researcher. references is how many such places there are.',
+  },
+  subjectGone: {
+    id: 'protocolBuilder.compoundFailure.subjectGone',
+    defaultMessage:
+      'This stage works with something the codebook no longer holds, so nothing was saved. Choose what it works with again.',
+    description:
+      'Refusal shown on a control inside a stage editor when the node or edge type the stage collects into has been deleted from the protocol, usually by a collaborator, while the researcher was working. A stage is one step of an interview.',
   },
   invalidShape: {
     id: 'protocolBuilder.compoundFailure.invalidShape',
@@ -84,16 +111,32 @@ const messages = defineMessages({
  */
 export function codebookRefusalMessage(refusal: CodebookRefusal): string {
   switch (refusal.kind) {
-    case 'held':
-      return refusal.holder === undefined
-        ? createMessageError(messages.heldBySomeoneUnnamed)
-        : createMessageError(messages.heldBy, {
-            holder: refusal.holder.displayName,
+    case 'held': {
+      // A refactor takes every section it writes, so more than one person can
+      // be standing in the way of one change — and being told about one of
+      // them, then about the next, is how a researcher comes to believe the
+      // application is refusing at random. The list is assembled by
+      // `formatList`, where the reader's own language decides the commas.
+      const [holder, ...rest] = refusal.holders ?? [];
+      if (holder === undefined) {
+        return createMessageError(messages.heldBySomeoneUnnamed);
+      }
+      return rest.length === 0
+        ? createMessageError(messages.heldBy, { holder })
+        : createMessageError(messages.heldBySeveral, {
+            holders: { list: [holder, ...rest] },
           });
+    }
+    case 'referencesRemain':
+      return createMessageError(messages.referencesRemain, {
+        references: refusal.references,
+      });
     case 'invalidShape':
       return createMessageError(messages.invalidShape);
     case 'sectionGone':
       return createMessageError(messages.sectionGone);
+    case 'subjectGone':
+      return createMessageError(messages.subjectGone);
     case 'protocolGone':
       return createMessageError(messages.protocolGone);
     case 'unreachable':

@@ -90,7 +90,8 @@ export type StageEditorShellProps = Readonly<{
  * after a save the host refused.
  */
 export default function StageEditorShell(props: StageEditorShellProps) {
-  const { identity, committedFields } = useStageEdit();
+  const { identity, committedFields, unavailable } = useStageEdit();
+  const intl = useAppIntl();
   const [discarded, setDiscarded] = useState(0);
   const [lostMessage, setLostMessage] = useState<string | undefined>(undefined);
 
@@ -98,6 +99,17 @@ export default function StageEditorShell(props: StageEditorShellProps) {
     setLostMessage(message);
     setDiscarded((count) => count + 1);
   }, []);
+
+  // A stage the protocol will not open is the one case that has to be said
+  // rather than waited out: the document is never arriving, so a form waiting
+  // for it is a page that never finishes opening.
+  if (unavailable) {
+    return (
+      <Alert variant="destructive">
+        {intl.formatMessage(messages.stageUnavailable)}
+      </Alert>
+    );
+  }
 
   // Nothing is drawn until the host has handed the stage over. A form built
   // from a document that has not arrived would seed every field from nothing
@@ -493,6 +505,13 @@ const messages = defineMessages({
       '{holder} is editing this stage, so you can read it but not change it.',
     description:
       'Shown at the top of a stage editor opened while a collaborator holds it. holder is that person’s display name, which the host supplies. A stage is one step of an interview.',
+  },
+  stageUnavailable: {
+    id: 'protocolBuilder.shell.stageUnavailable',
+    defaultMessage:
+      'This stage could not be opened. It may have been deleted while you were away. Go back to the interview and choose another one.',
+    description:
+      'Shown in place of a stage editor when the protocol would not open the stage at all — it has been deleted, or the application could not be reached. A stage is one step of an interview.',
   },
   heldByNobodyNamed: {
     id: 'protocolBuilder.shell.heldByNobodyNamed',

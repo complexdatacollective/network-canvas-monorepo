@@ -694,7 +694,7 @@ describe('VariableEditor', () => {
           onSubmitDocument: async () => ({
             status: 'refused',
             message: CONTRADICTION,
-            held: false,
+            refusal: { kind: 'unexplained' },
           }),
           onComplete,
         })}
@@ -722,15 +722,9 @@ describe('VariableEditor', () => {
       status: 'refused',
       message: codebookRefusalMessage({
         kind: 'held',
-        holder: {
-          sessionId: 'tab-other',
-          userId: 'user-other',
-          displayName: 'Another researcher',
-          sectionId: PERSON_SECTION,
-          mode: 'editing',
-        },
+        holders: ['Another researcher'],
       }),
-      held: true,
+      refusal: { kind: 'held', holders: ['Another researcher'] },
     });
 
     render(

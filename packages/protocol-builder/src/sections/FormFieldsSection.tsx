@@ -161,13 +161,6 @@ const messages = defineMessages({
     description:
       'The same refusal for an attribute whose answer is not chosen from a list but still needs something the researcher has not been asked for — a scale, whose two end labels tell the participant what each end means.',
   },
-  scopeMissing: {
-    id: 'protocolBuilder.formFields.scopeMissing',
-    defaultMessage:
-      'Choose what this stage works with before adding fields to its form.',
-    description:
-      'Shown inside the field editor when the researcher has not yet chosen which node or edge type the stage (one step of an interview) is about, so there is no codebook to draw attributes from.',
-  },
   title: {
     id: 'protocolBuilder.formFields.title',
     defaultMessage: 'Form fields',
@@ -1431,11 +1424,6 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
           componentField={INPUT_CONTROL}
           {...(inventingInTheEditor ? { inventingType: newType } : {})}
         />
-        {subject === undefined && (
-          <p className="text-sm text-current/70">
-            {intl.formatMessage(messages.scopeMissing)}
-          </p>
-        )}
       </Section>
       <Section
         title={intl.formatMessage(messages.questionSectionTitle)}
@@ -1776,10 +1764,10 @@ function AttributePicker({
   const options = useMemo(() => {
     // The ONLY way to an empty list: every other path appends the
     // create-a-new-one sentinel, so a pool with nothing in it still has one
-    // option. That is why the picker is left to say what an empty list means —
-    // a message written here would describe a state that only exists when the
-    // stage has no subject, where the sentence beneath the section
-    // (`scopeMissing`) is the one that is true.
+    // option. It is unreachable from the researcher's side — the section is
+    // disabled without a subject, so no row dialog can be opened — and the
+    // picker is left to say what an empty list means rather than a second
+    // sentence being written for a state nothing can render.
     if (subject === undefined) return NO_OPTIONS;
     const siblings = new Set(
       rowsOf(fields)

@@ -130,6 +130,16 @@ export type SectionMutation = Readonly<{
   revision: Revision | undefined;
   readOnly: boolean;
   holder: Presence | undefined;
+  /**
+   * The host would not open this section at all: it is gone, or it could not
+   * be reached.
+   *
+   * Answered rather than thrown, because it arrives after the component has
+   * rendered and there is nothing to retry. An editor that never learned of it
+   * waits for a document that is not coming, which on screen is a blank page
+   * that never resolves.
+   */
+  unavailable: boolean;
   submit(document: SectionDoc): Promise<SubmitResult>;
   release(): void;
 }>;
@@ -146,6 +156,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   const { client, protocolId, utils } = useProtocolBuilderContext();
   const queryClient = useQueryClient();
   const [readOnly, setReadOnly] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
   // Which acquire is this editor's. An acquire that settles after its own
   // effect has been cleaned up must not touch the lock, because the next
   // effect for the same section may already hold it.
@@ -162,41 +173,55 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
 
   useEffect(() => {
     const mine = (acquisition.current += 1);
-    void client.acquireLock({ protocolId, sectionId: id }).then((result) => {
-      // The acquire answers with the section as the host holds it now, which
-      // is what this editor has to start from: a cached document from before
-      // a revision this client has not seen yet — the channel is reconnecting,
-      // say — would be submitted back whole over the newer one.
-      queryClient.setQueryData<SectionAtRevision>(
-        utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
-        { document: result.document, revision: result.revision },
-      );
-      if (acquisition.current !== mine) {
-        // A later mount of this section owns the lock now. Locks are held by
-        // the session, so handing this one back would take that editor's:
-        // its own cleanup is what releases it.
-        return;
-      }
-      if (released.current) {
-        // Acquired after unmount: hand it straight back rather than holding a
-        // lock no editor is behind.
-        void client.releaseLock({ protocolId, sectionId: id });
-        return;
-      }
-      setReadOnly(result.lock === 'readOnly');
-      if (result.lock === 'readOnly') {
-        // The refusal already names the holder. Waiting for the channel to say
-        // it again leaves a read-only editor unable to say whose section it is
-        // — and a host whose locks are always granted never says it at all.
-        queryClient.setQueryData<LockState>(lockQueryKey(protocolId, id), {
-          holder: result.holder,
-        });
-      }
-    });
     released.current = false;
+    // Through `safe`, because an acquire the host refuses is an ordinary thing
+    // for it to answer — a section a collaborator deleted while it was still
+    // listed in an outline — and a bare promise makes it an unhandled
+    // rejection instead: nothing on screen, nothing for the editor to say, and
+    // the researcher left on a page that never finishes opening.
+    void safe(client.acquireLock({ protocolId, sectionId: id })).then(
+      ({ data: result, isSuccess }) => {
+        if (!isSuccess) {
+          if (acquisition.current === mine && !released.current) {
+            setUnavailable(true);
+          }
+          return;
+        }
+        // The acquire answers with the section as the host holds it now, which
+        // is what this editor has to start from: a cached document from before
+        // a revision this client has not seen yet — the channel is
+        // reconnecting, say — would be submitted back whole over the newer one.
+        queryClient.setQueryData<SectionAtRevision>(
+          utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
+          { document: result.document, revision: result.revision },
+        );
+        if (acquisition.current !== mine) {
+          // A later mount of this section owns the lock now. Locks are held by
+          // the session, so handing this one back would take that editor's:
+          // its own cleanup is what releases it.
+          return;
+        }
+        if (released.current) {
+          // Acquired after unmount: hand it straight back rather than holding a
+          // lock no editor is behind.
+          void safe(client.releaseLock({ protocolId, sectionId: id }));
+          return;
+        }
+        setReadOnly(result.lock === 'readOnly');
+        if (result.lock === 'readOnly') {
+          // The refusal already names the holder. Waiting for the channel to
+          // say it again leaves a read-only editor unable to say whose section
+          // it is — and a host whose locks are always granted never says it at
+          // all.
+          queryClient.setQueryData<LockState>(lockQueryKey(protocolId, id), {
+            holder: result.holder,
+          });
+        }
+      },
+    );
     return () => {
       released.current = true;
-      void client.releaseLock({ protocolId, sectionId: id });
+      void safe(client.releaseLock({ protocolId, sectionId: id }));
     };
   }, [client, protocolId, id, queryClient, utils]);
 
@@ -231,7 +256,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   );
 
   const release = useCallback(() => {
-    void client.releaseLock({ protocolId, sectionId: id });
+    void safe(client.releaseLock({ protocolId, sectionId: id }));
   }, [client, protocolId, id]);
 
   return {
@@ -239,6 +264,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
     revision: section?.revision,
     readOnly,
     holder: lock?.holder,
+    unavailable,
     submit,
     release,
   };

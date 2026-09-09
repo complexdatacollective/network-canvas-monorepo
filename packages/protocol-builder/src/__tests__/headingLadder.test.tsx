@@ -48,7 +48,7 @@ const EMPTY_CONTEXT: ProtocolBuilderProtocolContext = {
 const REFUSED = async (): Promise<CodebookWriteOutcome> => ({
   status: 'refused',
   message: 'the test host does not persist changes',
-  held: false,
+  refusal: { kind: 'unexplained' },
 });
 
 const personDocument = (

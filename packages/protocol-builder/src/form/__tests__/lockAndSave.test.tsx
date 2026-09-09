@@ -1,20 +1,26 @@
-import { screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import {
+  ResourceClientProvider,
   useResourceClient,
   useStagedResources,
 } from '../../resources/client.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
+import { StageEditSession } from '../../stageEdit.tsx';
+import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import {
+  fixtureProtocolSections,
   fixtureStageIds,
   loadFixtureStage,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import ProtocolField from '../ProtocolField.tsx';
+import StageEditorShell from '../StageEditorShell.tsx';
 
 const STAGE_ID = 'information-1';
 const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE_ID });
@@ -109,6 +115,35 @@ describe('a save the protocol refuses because the lock has gone', () => {
       type: seeded.type,
       ...seeded.fields,
     });
+  });
+});
+
+describe('a stage the protocol will not open', () => {
+  it('says so instead of waiting for a document that is not coming', async () => {
+    const host = createInMemoryHost({ sections: fixtureProtocolSections() });
+
+    render(
+      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+        <ResourceClientProvider>
+          <StageEditSession
+            target={{
+              sectionId: sectionId({ kind: 'stage', stageId: 'deleted-stage' }),
+            }}
+          >
+            <StageEditorShell>{nameSection}</StageEditorShell>
+          </StageEditSession>
+        </ResourceClientProvider>
+      </ProtocolBuilder>,
+    );
+
+    // The refusal is also the whole of what stops it being an unhandled
+    // rejection: the acquire is answered rather than dropped, so vitest's own
+    // unhandled-error check is the second half of this assertion.
+    expect(
+      await screen.findByText(
+        /This stage could not be opened\. It may have been deleted/,
+      ),
+    ).toBeInTheDocument();
   });
 });
 

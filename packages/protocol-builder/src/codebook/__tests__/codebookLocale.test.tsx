@@ -222,7 +222,7 @@ const PERSON_DOCUMENT: SectionDoc = {
 const refused = async (): Promise<CodebookWriteOutcome> => ({
   status: 'refused',
   message: codebookRefusalMessage({ kind: 'held' }),
-  held: true,
+  refusal: { kind: 'unexplained' },
 });
 
 describe('the codebook editors swept for English', () => {

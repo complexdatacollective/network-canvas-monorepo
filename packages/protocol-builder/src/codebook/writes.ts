@@ -7,7 +7,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import type { Presence } from '../contract/schemas.ts';
+import type { Presence, SectionReference } from '../contract/schemas.ts';
 import { useProtocolBuilderContext } from '../state/context.ts';
 import {
   codebookRefusalMessage,
@@ -34,19 +34,21 @@ export type CodebookWriteOutcome =
       status: 'refused';
       message: string;
       /**
-       * Somebody else is editing a section this change needs.
+       * What the refusal was, beside the sentence for it.
        *
-       * Carried because it is the one refusal that is not a fault: the change
-       * is fine and will work once they are finished, so a surface says it in
-       * the register of a notice rather than of an error.
+       * A surface reads it for two things it cannot get from the sentence: a
+       * held section is the one refusal that is not a fault — the change is
+       * fine and will work once the collaborator is finished, so it is shown
+       * in the register of a notice rather than of an error — and a stage row
+       * has its own words for a codebook subject that has gone.
        */
-      held: boolean;
+      refusal: CodebookRefusal;
     }>;
 
 const refused = (refusal: CodebookRefusal): CodebookWriteOutcome => ({
   status: 'refused',
   message: codebookRefusalMessage(refusal),
-  held: refusal.kind === 'held',
+  refusal,
 });
 
 /** Every procedure can answer these two; anything else never reached a host. */
@@ -57,7 +59,65 @@ const protocolRefusal = (code: string | undefined): CodebookRefusal => {
 };
 
 const heldRefusal = (holder: Presence | undefined): CodebookRefusal =>
-  holder === undefined ? { kind: 'held' } : { kind: 'held', holder };
+  holder === undefined
+    ? { kind: 'held' }
+    : { kind: 'held', holders: [holder.displayName] };
+
+/**
+ * The refusal a compound refactor answers with, naming everyone in its way.
+ *
+ * A refactor writes several sections, so more than one collaborator can be
+ * holding it up; a host that would not name one contributes nothing, and a
+ * change blocked only by those is refused without a name rather than with a
+ * gap in the list.
+ */
+const blockedRefusal = (
+  blocked: readonly Readonly<{ holder?: Presence }>[],
+): CodebookRefusal => {
+  const holders = [
+    ...new Set(
+      blocked.flatMap((section) =>
+        section.holder === undefined ? [] : [section.holder.displayName],
+      ),
+    ),
+  ];
+  return holders.length === 0 ? { kind: 'held' } : { kind: 'held', holders };
+};
+
+/**
+ * Every way a compound refactor is refused, in the researcher's terms.
+ *
+ * Both of the contract's refactor errors are answered here rather than falling
+ * through to "could not be sent": a change refused because somebody is editing
+ * and one refused because the protocol still names what would go are both
+ * things the researcher can act on, and both were reported as a connection
+ * problem while nothing offered a delete to reach them with.
+ */
+const refactorRefusal = (
+  failure:
+    | Readonly<{
+        code: 'SECTIONS_LOCKED';
+        data: Readonly<{ blocked: readonly Readonly<{ holder?: Presence }>[] }>;
+      }>
+    | Readonly<{
+        code: 'REFERENCES_REMAIN';
+        data: Readonly<{ remaining: readonly SectionReference[] }>;
+      }>
+    | Readonly<{ code: 'PROTOCOL_NOT_FOUND' | 'SECTION_NOT_FOUND' }>
+    | null
+    | undefined,
+): CodebookRefusal => {
+  if (failure?.code === 'SECTIONS_LOCKED') {
+    return blockedRefusal(failure.data.blocked);
+  }
+  if (failure?.code === 'REFERENCES_REMAIN') {
+    return {
+      kind: 'referencesRemain',
+      references: failure.data.remaining.length,
+    };
+  }
+  return protocolRefusal(failure?.code);
+};
 
 /**
  * What a draft the builder refused says to the researcher.
@@ -70,7 +130,11 @@ const heldRefusal = (holder: Presence | undefined): CodebookRefusal =>
 const builderRefusal = (error: unknown): CodebookWriteOutcome =>
   error instanceof DuplicateVariableNameError ||
   error instanceof MissingVariableError
-    ? { status: 'refused', message: error.message, held: false }
+    ? {
+        status: 'refused',
+        message: error.message,
+        refusal: { kind: 'unexplained' },
+      }
     : refused({ kind: 'unexplained' });
 
 /**
@@ -191,11 +255,7 @@ export function useDeleteCodebookVariable(): (
           sectionId: sectionIdForCodebookSubject(subject),
         };
       }
-      const { definedError } = removed;
-      if (definedError?.code === 'SECTIONS_LOCKED') {
-        return refused(heldRefusal(definedError.data.blocked[0]?.holder));
-      }
-      return refused(protocolRefusal(definedError?.code));
+      return refused(refactorRefusal(removed.definedError));
     },
     [client, protocolId],
   );
@@ -222,11 +282,7 @@ export function useDeleteCodebookEntity(): (
           }),
         };
       }
-      const { definedError } = removed;
-      if (definedError?.code === 'SECTIONS_LOCKED') {
-        return refused(heldRefusal(definedError.data.blocked[0]?.holder));
-      }
-      return refused(protocolRefusal(definedError?.code));
+      return refused(refactorRefusal(removed.definedError));
     },
     [client, protocolId],
   );

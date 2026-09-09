@@ -691,7 +691,10 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
         );
         return;
       }
-      setFailure({ message: outcome.message, held: outcome.held });
+      setFailure({
+        message: outcome.message,
+        held: outcome.refusal.kind === 'held',
+      });
     } catch {
       setFailure({
         message: codebookRefusalMessage({ kind: 'unexplained' }),

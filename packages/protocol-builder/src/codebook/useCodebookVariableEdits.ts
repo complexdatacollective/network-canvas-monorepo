@@ -15,6 +15,7 @@ import type {
   ProtocolBuilderProtocolContext,
 } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
+import { codebookRefusalMessage } from './compoundFailureCopy.ts';
 import {
   documentWithCreatedVariable,
   documentWithUpdatedVariable,
@@ -26,7 +27,10 @@ import {
 } from './editing.ts';
 import { optionsShapeFor } from './variableOptions.ts';
 import { parametersForShape, parameterShapeFor } from './variableParameters.ts';
-import { useCodebookSectionWrite } from './writes.ts';
+import {
+  useCodebookSectionWrite,
+  type CodebookWriteOutcome,
+} from './writes.ts';
 
 /**
  * What a stage section knows about an attribute it is inventing.
@@ -234,6 +238,26 @@ const readRefusal = (message: string, intl: IntlShape): string =>
   formatMessageError(message, intl) ?? message;
 
 /**
+ * A codebook refusal in the words a STAGE row needs.
+ *
+ * One of them differs by surface. The codebook's own editors answer a subject
+ * that has been deleted by telling the researcher to close the editor and
+ * start again, and there is no codebook editor open on a row inside a stage:
+ * what they have to do there is choose what the stage works with again.
+ */
+const rowRefusal = (outcome: CodebookWriteOutcome, intl: IntlShape): string => {
+  if (outcome.status !== 'refused') {
+    throw new TypeError('a codebook write that was not refused has no refusal');
+  }
+  return readRefusal(
+    outcome.refusal.kind === 'sectionGone'
+      ? codebookRefusalMessage({ kind: 'subjectGone' })
+      : outcome.message,
+    intl,
+  );
+};
+
+/**
  * Adds an attribute to the codebook from inside a stage editor.
  *
  * The write commits on its own, under the codebook section's own lock, before
@@ -310,7 +334,7 @@ export function useCreateCodebookVariable(
         return { status: 'created', variableId };
       return {
         status: 'refused',
-        message: refusal ?? readRefusal(outcome.message, intl),
+        message: refusal ?? rowRefusal(outcome, intl),
       };
     },
     [intl, protocolContext, subject, write],
@@ -424,7 +448,7 @@ export function useSetVariableComponent(
       if (outcome.status === 'applied') return { status: 'written' };
       return {
         status: 'refused',
-        message: refusal ?? readRefusal(outcome.message, intl),
+        message: refusal ?? rowRefusal(outcome, intl),
       };
     },
     [intl, protocolContext, subject, write],
