@@ -288,6 +288,35 @@ const redefineFamilyMemberVariable = (
   });
 };
 
+const FAMILY_EDGE_SECTION = sectionId({
+  kind: 'codebookEdge',
+  typeId: 'family_edge',
+});
+
+/** `redefineFamilyMemberVariable`, for the pedigree's edge type. */
+const redefineFamilyEdgeVariable = (
+  harness: StageEditorHarness,
+  variableId: string,
+  variable: Readonly<Record<string, unknown>>,
+): void => {
+  const section =
+    harness.session.getSnapshot().protocolSections[FAMILY_EDGE_SECTION];
+  const variables = isRecord(section?.variables) ? section.variables : {};
+  if (!Object.hasOwn(variables, variableId)) {
+    throw new Error(
+      `"family_edge" has no "${variableId}" attribute, so redefining one proves nothing.`,
+    );
+  }
+  harness.receiveCodebookUpdate({
+    edge: {
+      family_edge: {
+        ...section,
+        variables: { ...variables, [variableId]: variable },
+      },
+    },
+  });
+};
+
 /** The id the seeded boolean below is filed under. */
 const SEEDED_UNWELL = 'seeded-unwell';
 
@@ -1062,6 +1091,93 @@ describe('a codebook that changes while the pedigree is open', () => {
         '"biologicalSex" no longer offers the exact values this control needs, because they were changed somewhere else. Choose another attribute.',
       ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * The same change, read BEFORE the save.
+   *
+   * The pool used to be filtered by value set, so the attribute the control was
+   * holding left it entirely, and the picker — handed a stored id nothing in
+   * its list described — said the attribute was "not available here" (and,
+   * before that, "no longer in the codebook"). It is in the codebook, still
+   * categorical, and exactly where the researcher left it; only its values
+   * moved. Now it stays in the pool, ruled out, so the picker names it for
+   * what is actually wrong, in the pedigree's own words, while still showing
+   * it as the held choice — and never lists it as one that can be picked.
+   */
+  it('names a held attribute whose canonical values changed, before the save', () => {
+    const harness = renderStageEditor(openFixture());
+
+    redefineFamilyMemberVariable(harness, 'biologicalSex', {
+      name: 'biologicalSex',
+      type: 'categorical',
+      options: [
+        { value: 'female', label: 'Female' },
+        { value: 'male', label: 'Male' },
+      ],
+    });
+
+    const control = screen.getByRole('combobox', { name: 'Biological sex' });
+    expect(control).toHaveValue('biologicalSex');
+    expect(
+      within(control).getByRole('option', {
+        name: 'biologicalSex — no longer offers the values this control needs',
+      }),
+    ).toHaveValue('biologicalSex');
+    expect(optionsOf('Biological sex')).toEqual(['biologicalSex']);
+    expect(
+      screen.getByText(
+        'This attribute no longer offers the exact values this control needs, because they were changed somewhere else. Choose another one.',
+      ),
+    ).toBeInTheDocument();
+    // Still categorical, and the control still says so: the badge is what a
+    // researcher reads to see that the TYPE is not what changed.
+    expect(
+      within(control.closest('[data-name]') ?? control).getByLabelText(
+        'Attribute type: categorical',
+      ),
+    ).toBeInTheDocument();
+    // Neither of the picker's own sentences: one says the attribute is gone
+    // from here, the other that it cannot carry a rule, and both send the
+    // researcher looking for the wrong thing.
+    expect(screen.queryByText(/not available here/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/cannot be used in a rule/),
+    ).not.toBeInTheDocument();
+  });
+
+  it('says the same of an edge slot whose canonical values changed', () => {
+    const harness = renderStageEditor(openFixture());
+
+    redefineFamilyEdgeVariable(harness, 'gameteRole', {
+      name: 'gameteRole',
+      type: 'categorical',
+      options: [
+        { value: 'egg', label: 'Egg' },
+        { value: 'sperm', label: 'Sperm' },
+        { value: 'unknown', label: 'Unknown' },
+      ],
+    });
+
+    const control = screen.getByRole('combobox', { name: 'Gamete role' });
+    expect(control).toHaveValue('gameteRole');
+    expect(
+      within(control).getByRole('option', {
+        name: 'gameteRole — no longer offers the values this control needs',
+      }),
+    ).toHaveValue('gameteRole');
+    expect(optionsOf('Gamete role')).toEqual(['gameteRole']);
+    expect(
+      screen.getByText(
+        'This attribute no longer offers the exact values this control needs, because they were changed somewhere else. Choose another one.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/not available here/)).not.toBeInTheDocument();
+    // The sibling slot on the same edge type is untouched by it.
+    expect(optionsOf('Relationship type')).toEqual(['relationshipType']);
+    expect(
+      screen.getByRole('combobox', { name: 'Relationship type' }),
+    ).toHaveValue('relationshipType');
   });
 
   it('offers an attribute a collaborator added, without echoing a command', async () => {

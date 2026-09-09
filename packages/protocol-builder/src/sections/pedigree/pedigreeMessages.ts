@@ -813,6 +813,35 @@ export const pedigreeMessages = defineMessages({
     description:
       'Refusal shown under a pedigree attribute control whose slot uses a fixed set of values the interface owns — biological sex, relationship type, or gamete role — when the attribute it holds still exists and is still a list of answers, but the values it offers have been edited elsewhere and no longer match that fixed set. attributeName is the codebook name of the attribute, which is not translated.',
   },
+  /**
+   * What a slot picker says about the attribute it HOLDS while that
+   * attribute's values no longer match the set the interface owns — before
+   * the researcher saves, and beside `variableOptionsChangedRefusal` once
+   * they try to.
+   *
+   * Two sentences for one fact, because they are read in different places
+   * and neither may be the other: the option label is a name in a list, and
+   * the note under the select has to stand on its own. Both are worded for
+   * what is actually wrong — the attribute is in the codebook and still a
+   * list of answers, it is the VALUES that moved — because the picker's own
+   * words for a held attribute it was not given say it is "not available
+   * here", and its words for a ruled-out one say it "cannot be used in a
+   * rule". A researcher told either goes looking for the wrong thing.
+   */
+  slotValuesChangedOptionLabel: {
+    id: 'protocolBuilder.pedigree.slotValuesChangedOptionLabel',
+    defaultMessage:
+      '{attributeName} — no longer offers the values this control needs',
+    description:
+      'Name of the one option standing for the attribute a pedigree attribute control already holds, in a slot that uses a fixed set of values the interface owns (biological sex, relationship type, or gamete role), when that attribute still exists and is still a list of answers but the values it offers have been edited elsewhere and no longer match the fixed set. Shown in the select’s list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated.',
+  },
+  slotValuesChangedNote: {
+    id: 'protocolBuilder.pedigree.slotValuesChangedNote',
+    defaultMessage:
+      'This attribute no longer offers the exact values this control needs, because they were changed somewhere else. Choose another one.',
+    description:
+      'Shown under a pedigree attribute control, as soon as the editor sees it, when the attribute the control holds still exists and is still a list of answers but its values have been edited elsewhere and no longer match the fixed set the interface owns. The refusal that stops the save says the same thing with the attribute’s name; this is the standing note beside the control before the researcher tries.',
+  },
   slotDraftLabelCollectsRefusal: {
     id: 'protocolBuilder.pedigree.slotDraftLabelCollectsRefusal',
     defaultMessage:

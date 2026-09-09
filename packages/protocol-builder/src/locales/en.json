@@ -2307,6 +2307,14 @@
     "defaultMessage": "\"{attributeName}\" is written without validation by another stage, so it cannot also be collected here (the values that stage writes bypass this attribute’s validation)",
     "description": "Refusal shown under a pedigree slot that collects an answer — the display label — when the attribute picked is already written directly by another stage of the protocol, which would let unchecked values in under the same name. attributeName is the codebook name of the attribute, which is not translated."
   },
+  "protocolBuilder.pedigree.slotValuesChangedNote": {
+    "defaultMessage": "This attribute no longer offers the exact values this control needs, because they were changed somewhere else. Choose another one.",
+    "description": "Shown under a pedigree attribute control, as soon as the editor sees it, when the attribute the control holds still exists and is still a list of answers but its values have been edited elsewhere and no longer match the fixed set the interface owns. The refusal that stops the save says the same thing with the attribute’s name; this is the standing note beside the control before the researcher tries."
+  },
+  "protocolBuilder.pedigree.slotValuesChangedOptionLabel": {
+    "defaultMessage": "{attributeName} — no longer offers the values this control needs",
+    "description": "Name of the one option standing for the attribute a pedigree attribute control already holds, in a slot that uses a fixed set of values the interface owns (biological sex, relationship type, or gamete role), when that attribute still exists and is still a list of answers but the values it offers have been edited elsewhere and no longer match the fixed set. Shown in the select’s list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated."
+  },
   "protocolBuilder.pedigree.variableGoneRefusal": {
     "defaultMessage": "\"{attributeName}\" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.",
     "description": "Refusal shown under a pedigree attribute control when the attribute it holds has been deleted from the codebook — by a collaborator, or in another part of this session — while this editor was open. attributeName is the codebook name of the attribute, or its stored identifier when there is no definition left to take a name from; neither is translated."

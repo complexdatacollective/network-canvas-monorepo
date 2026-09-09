@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Variables } from '@codaco/protocol-validation';
+import {
+  INTERFACE_OWNED_OPTION_SETS,
+  type Variables,
+} from '@codaco/protocol-validation';
 
 import type {
   ExclusiveVariableSlotMap,
@@ -9,6 +12,7 @@ import type {
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { readMessage } from '../../../testing/i18n.ts';
 import {
+  ruleOutValuesOutsideOwnedSet,
   slotCrossClassIssue,
   slotPickerOptions,
   type SlotVariableOption,
@@ -247,6 +251,73 @@ describe('what a refused pedigree pick is told', () => {
  * was asking, so a save closed over a reference the whole-protocol check then
  * refused.
  */
+describe('the categorical pool a value-owning slot is handed', () => {
+  const CANONICAL = INTERFACE_OWNED_OPTION_SETS.gameteRole.options;
+  const words = (attributeName: string) => ({
+    optionLabel: `${attributeName}: values moved`,
+    note: 'note',
+  });
+  const exact: SlotVariableOption = {
+    value: 'gameteRole',
+    label: 'gameteRole',
+    type: 'categorical',
+    options: [
+      { value: 'egg', label: 'Egg' },
+      { value: 'sperm', label: 'Sperm' },
+    ],
+  };
+  const edited: SlotVariableOption = {
+    value: 'gameteRole',
+    label: 'gameteRole',
+    type: 'categorical',
+    options: [
+      { value: 'egg', label: 'Egg' },
+      { value: 'sperm', label: 'Sperm' },
+      { value: 'unknown', label: 'Unknown' },
+    ],
+  };
+  const valueless: SlotVariableOption = {
+    value: 'bare',
+    label: 'bare',
+    type: 'categorical',
+  };
+
+  it('leaves an attribute carrying exactly the owned set as it is', () => {
+    expect(ruleOutValuesOutsideOwnedSet([exact], CANONICAL, words)).toEqual([
+      exact,
+    ]);
+  });
+
+  /**
+   * Ruled out and named rather than dropped: the attribute a slot already
+   * holds is one of these, and dropped it could only be reported as gone.
+   */
+  it('keeps an attribute whose values moved, ruled out in the caller’s words', () => {
+    expect(
+      ruleOutValuesOutsideOwnedSet(
+        [exact, edited, valueless],
+        CANONICAL,
+        words,
+      ),
+    ).toEqual([
+      exact,
+      {
+        ...edited,
+        usable: false,
+        unusableWords: {
+          optionLabel: 'gameteRole: values moved',
+          note: 'note',
+        },
+      },
+      {
+        ...valueless,
+        usable: false,
+        unusableWords: { optionLabel: 'bare: values moved', note: 'note' },
+      },
+    ]);
+  });
+});
+
 describe('an attribute a pedigree control can no longer use', () => {
   it('says nothing about an attribute of the type the control needs', () => {
     expect(

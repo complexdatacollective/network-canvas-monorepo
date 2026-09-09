@@ -1,5 +1,7 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { shimMarkdownEditorMeasurement } from '../../../editors/pedigree/__tests__/editorFixtures.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
@@ -161,6 +163,60 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
    * withheld by the picker before a pick can earn it — see
    * `slotWiring.test.ts`, which asks the gate for those sentences directly.
    */
+  /**
+   * The note a slot picker shows about a held attribute whose values moved is
+   * formatted by the slot field, not by the picker — the picker is handed
+   * finished words — so this is where a section that handed it English would
+   * show up.
+   */
+  it('names a held attribute whose values changed, in Spanish', () => {
+    const harness = renderStageEditor({
+      stageId: 'family-pedigree-1',
+      locale: 'es',
+      sections: <PedigreeNodeConfigurationSection />,
+    });
+    const section =
+      harness.session.getSnapshot().protocolSections[
+        sectionId({ kind: 'codebookNode', typeId: 'family_member' })
+      ];
+    const variables =
+      typeof section?.variables === 'object' && section.variables !== null
+        ? section.variables
+        : {};
+
+    harness.receiveCodebookUpdate({
+      node: {
+        family_member: {
+          ...section,
+          variables: {
+            ...variables,
+            biologicalSex: {
+              name: 'biologicalSex',
+              type: 'categorical',
+              options: [
+                { value: 'female', label: 'Female' },
+                { value: 'male', label: 'Male' },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    const control = screen.getByRole('combobox', { name: 'Sexo biológico' });
+    expect(control).toHaveValue('biologicalSex');
+    expect(
+      within(control).getByRole('option', {
+        name: 'biologicalSex — ya no ofrece los valores que necesita este control',
+      }),
+    ).toHaveValue('biologicalSex');
+    expect(
+      screen.getByText(
+        'Este atributo ya no ofrece exactamente los valores que necesita este control, porque se cambiaron en otro sitio. Elige otro.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('reads a refused save back in Spanish', async () => {
     const harness = renderStageEditor({
       stageId: 'family-pedigree-1',
