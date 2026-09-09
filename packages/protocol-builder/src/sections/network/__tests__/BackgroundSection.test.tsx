@@ -89,6 +89,35 @@ describe('what the participant sees behind the nodes', () => {
   });
 
   /**
+   * A count typed with a fraction in it reaches the rule that refuses one.
+   *
+   * The box parsed with `Number.parseInt`, which stops at the decimal point,
+   * so 2.5 became 2 before `Number.isInteger` was ever asked: the refusal the
+   * researcher should have been given never fired, and the stage saved a
+   * number of rings nobody entered. Both halves are asserted — the box still
+   * showing what was typed, and the save refused in the section's own words —
+   * because a field that simply blanked itself would also stop the save, and
+   * would take the researcher's entry with it.
+   */
+  it('refuses a number of circles typed with a fraction, and keeps it on screen', async () => {
+    const harness = renderStageEditor(openCircles());
+
+    const circles = await screen.findByRole('spinbutton', {
+      name: 'Number of concentric circles',
+    });
+    await harness.user.clear(circles);
+    await harness.user.type(circles, '2.5');
+
+    expect(circles).toHaveDisplayValue('2.5');
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        'Enter the number of circles as a whole number of zero or more.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
    * The schema refuses a background holding both kinds, so the keys belonging
    * to the kind being left have to go. A value merely left behind by an
    * unmounted field is replayed into the saved stage, and is then refused
