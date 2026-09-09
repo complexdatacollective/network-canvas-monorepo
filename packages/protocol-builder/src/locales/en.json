@@ -1739,6 +1739,10 @@
     "defaultMessage": "This stage has no family to show",
     "description": "Heading of the warning shown when the stage this one was pointed at can no longer be used. The sentence under it says which of the three things went wrong."
   },
+  "protocolBuilder.narrativePedigree.sourceStageOption": {
+    "defaultMessage": "Stage {position, number} — {stageLabel}",
+    "description": "One Family Pedigree stage offered as the one this stage draws its family from. position is where that stage will sit in the finished interview, counting from one; stageLabel is the researcher’s own name for it and is not translated. The number is shown because two stages may carry the same name."
+  },
   "protocolBuilder.narrativePedigree.sourceTitle": {
     "defaultMessage": "Pedigree source",
     "description": "Heading of the section where a researcher chooses which earlier step of the interview collected the family this step draws on. A pedigree is a family tree."

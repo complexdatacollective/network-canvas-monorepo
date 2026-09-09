@@ -71,10 +71,62 @@ describe('the pedigrees a narrative pedigree may read', () => {
       'family-pedigree-1',
     );
 
+    // Numbered by where it runs, so two pedigrees a researcher gave one name
+    // can still be told apart.
     expect(options).toEqual([
-      { value: 'family-pedigree-1', label: 'Family Pedigree' },
+      {
+        value: 'family-pedigree-1',
+        label: 'Family Pedigree',
+        position: FIXTURE_ORDER.indexOf('family-pedigree-1') + 1,
+      },
     ]);
     expect(problem).toBeNull();
+  });
+
+  /**
+   * The protocol schema requires a stage label to be non-empty and does NOT
+   * require it to be unique, and researchers rename generated names — so two
+   * Family Pedigree stages can carry one name while collecting different
+   * families. Offered by name alone they are two identical rows, and choosing
+   * the wrong one binds this stage to the wrong family with nothing, then or
+   * later, to say so. Each carries where it runs, which is what the section
+   * puts in front of the researcher and what the skip-logic destination
+   * control shows for the same reason.
+   */
+  it('tells two pedigrees that share a name apart by where they run', () => {
+    const sections = fixtureProtocolSections();
+    const pedigreeKey = sectionId({
+      kind: 'stage',
+      stageId: 'family-pedigree-1',
+    });
+    const pedigree = sections[pedigreeKey];
+    if (pedigree === undefined) {
+      throw new Error('The fixture protocol has no "family-pedigree-1" stage.');
+    }
+    const twin = 'family-pedigree-2';
+    const context = protocolContextFromSections({
+      ...sections,
+      [sectionId({ kind: 'stage', stageId: twin })]: { ...pedigree, id: twin },
+      [sectionId({ kind: 'stageOrder' })]: {
+        stages: ['family-pedigree-1', twin, 'narrative-pedigree-1'],
+      },
+    });
+
+    const { options } = resolveSourceStages(
+      context,
+      'narrative-pedigree-1',
+      'family-pedigree-1',
+    );
+
+    // The same name, deliberately: that is the protocol this rule is about.
+    expect(options.map((option) => option.label)).toEqual([
+      'Family Pedigree',
+      'Family Pedigree',
+    ]);
+    expect(options).toEqual([
+      { value: 'family-pedigree-1', label: 'Family Pedigree', position: 1 },
+      { value: twin, label: 'Family Pedigree', position: 2 },
+    ]);
   });
 
   /**

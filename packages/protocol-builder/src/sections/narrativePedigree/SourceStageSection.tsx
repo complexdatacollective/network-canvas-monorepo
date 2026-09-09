@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import {
   createMessageError,
@@ -22,7 +22,11 @@ import {
 } from '../pedigree/entityTypeReset.ts';
 import { useOnResearcherChange } from '../researcherChange.ts';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
-import { resolveSourceStages, type SourceStageProblem } from './sourceStage.ts';
+import {
+  resolveSourceStages,
+  type SourceStageOption,
+  type SourceStageProblem,
+} from './sourceStage.ts';
 
 const SOURCE_FIELD = 'sourceStageId';
 const DISEASES_FIELD = 'diseases';
@@ -126,6 +130,30 @@ export default function SourceStageSection() {
     [creation?.position, identity.id, protocolContext, sourceStageId],
   );
 
+  /**
+   * Each pedigree named by where it runs as well as by what it is called.
+   *
+   * A stage label is required to be non-empty and is not required to be
+   * unique, and a researcher may rename a generated name — so two Family
+   * Pedigree stages can read identically here while collecting different
+   * families. Numbered, they cannot; the same reason, and the same phrasing,
+   * as the skip-logic destination control.
+   *
+   * No untitled variant, because there is no untitled stage to name: only
+   * stages the protocol schema accepted reach `orderedStages`, and it requires
+   * a label.
+   */
+  const numbered = useCallback(
+    (option: SourceStageOption) => ({
+      value: option.value,
+      label: intl.formatMessage(narrativePedigreeMessages.sourceStageOption, {
+        position: option.position,
+        stageLabel: option.label,
+      }),
+    }),
+    [intl],
+  );
+
   // A stored choice the list no longer contains is still offered, as the
   // current one and labelled with what is wrong: blanking the control would
   // hide the very reference the researcher has to resolve, and would then
@@ -133,9 +161,9 @@ export default function SourceStageSection() {
   const selectOptions = useMemo<{ value: string; label: string }[]>(
     () =>
       problem === null || typeof sourceStageId !== 'string'
-        ? options.map((option) => ({ ...option }))
+        ? options.map(numbered)
         : [
-            ...options.map((option) => ({ ...option })),
+            ...options.map(numbered),
             {
               value: sourceStageId,
               label: intl.formatMessage(
@@ -144,7 +172,7 @@ export default function SourceStageSection() {
               ),
             },
           ],
-    [intl, options, problem, sourceStageId],
+    [intl, numbered, options, problem, sourceStageId],
   );
 
   /**

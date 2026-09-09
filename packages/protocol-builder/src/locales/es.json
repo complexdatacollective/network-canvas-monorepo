@@ -434,6 +434,7 @@
   "protocolBuilder.narrativePedigree.sourceNotAPedigree": "La etapa que lee esta ya no es una genealogía familiar, así que no hay ninguna familia que visualizar. Elige una etapa de genealogía familiar en su lugar.",
   "protocolBuilder.narrativePedigree.sourcePlaceholder": "Selecciona una etapa de genealogía familiar...",
   "protocolBuilder.narrativePedigree.sourceProblemTitle": "Esta etapa no tiene ninguna familia que mostrar",
+  "protocolBuilder.narrativePedigree.sourceStageOption": "Etapa {position, number} — {stageLabel}",
   "protocolBuilder.narrativePedigree.sourceTitle": "Origen de la genealogía",
   "protocolBuilder.narrativePedigree.sourceUnusableOption": "{stageId} — esta etapa ya no se puede usar",
   "protocolBuilder.networkFilter.clearConfirm": "Borrar filtro",

@@ -1,9 +1,29 @@
 import type { Stage } from '@codaco/protocol-validation';
 
-import { stagePlacement } from '../../fields/skipLogicDestination.ts';
+import {
+  stageNumber,
+  stagePlacement,
+} from '../../fields/skipLogicDestination.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 
-export type SourceStageOption = Readonly<{ value: string; label: string }>;
+/**
+ * One pedigree this stage may read: which one it is, what the researcher calls
+ * it, and where it sits.
+ *
+ * The POSITION is not decoration. A stage label is required to be non-empty
+ * and is not required to be unique, and researchers rename generated names, so
+ * two Family Pedigree stages can read identically in this list while binding
+ * the stage to different families — with nothing on screen to tell them apart
+ * and nothing afterwards to say the wrong one was chosen. The number is the
+ * one the researcher will see against that stage once this stage exists, which
+ * is what the skip-logic destination control shows for the same reason.
+ */
+export type SourceStageOption = Readonly<{
+  value: string;
+  label: string;
+  /** Where it sits in the finished interview, counting from one. */
+  position: number;
+}>;
 
 /**
  * Why a narrative pedigree's chosen source is not one it may use.
@@ -68,10 +88,17 @@ export function resolveSourceStages(
     context.stageOrder,
   );
 
-  const options = stages
-    .slice(0, placement.index)
-    .filter(isPedigree)
-    .map((stage) => ({ value: stage.id, label: stage.label }));
+  const options = stages.slice(0, placement.index).flatMap((stage, index) =>
+    isPedigree(stage)
+      ? [
+          {
+            value: stage.id,
+            label: stage.label,
+            position: stageNumber(index, placement),
+          },
+        ]
+      : [],
+  );
 
   if (typeof currentSourceStageId !== 'string' || currentSourceStageId === '') {
     return { options, problem: null };

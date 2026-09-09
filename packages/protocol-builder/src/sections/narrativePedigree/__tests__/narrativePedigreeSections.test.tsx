@@ -180,6 +180,19 @@ const movePedigreeLast = (stages: string[]): string[] => [
   'family-pedigree-1',
 ];
 
+/**
+ * How the source control names the fixture's only pedigree.
+ *
+ * Every option carries the number the stage will have in the finished
+ * interview, so two pedigrees a researcher gave one name can still be told
+ * apart. Read off the fixture's own order rather than written down, because
+ * the number is a fact about the fixture and not about this rule; `displaced`
+ * is for a stage being CREATED, which pushes everything at or after its own
+ * index one place down.
+ */
+const fixturePedigreeOption = (displaced = false): string =>
+  `Stage ${fixtureStageIds().indexOf('family-pedigree-1') + (displaced ? 2 : 1)} — Family Pedigree`;
+
 /** What the confirmation before a source change offers as its answer. */
 const CONFIRM_SOURCE_CHANGE = 'Change the pedigree';
 
@@ -370,7 +383,9 @@ describe('a narrative pedigree the host is creating', () => {
   it('offers the pedigrees it will run after', async () => {
     const harness = renderStageEditor(createAt(fixtureStageIds().length));
 
-    expect(await offeredSources(harness)).toEqual(['Family Pedigree']);
+    expect(await offeredSources(harness)).toEqual([
+      fixturePedigreeOption(true),
+    ]);
   });
 
   /**
@@ -859,7 +874,7 @@ describe('a source stage that is no longer usable', () => {
   it('asks before a different source discards the diseases', async () => {
     const harness = renderStageEditor(withMissingSource());
 
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseOption(harness, 'Source stage', fixturePedigreeOption());
 
     expect(
       await screen.findByText('This will remove every disease'),
@@ -876,7 +891,7 @@ describe('a source stage that is no longer usable', () => {
   it('leaves the stage exactly as it was when the researcher says no', async () => {
     const harness = renderStageEditor(withMissingSource());
 
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseOption(harness, 'Source stage', fixturePedigreeOption());
     await harness.user.click(
       await screen.findByRole('button', { name: 'Cancel' }),
     );
@@ -909,7 +924,7 @@ describe('a source stage that is no longer usable', () => {
   it('drops the diseases that described it when another source is chosen', async () => {
     const harness = renderStageEditor(withMissingSource());
 
-    await chooseSourcePedigree(harness, 'Family Pedigree');
+    await chooseSourcePedigree(harness, fixturePedigreeOption());
 
     await waitFor(() =>
       expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
@@ -942,7 +957,7 @@ describe('a source stage that is no longer usable', () => {
       sections: narrativePedigreeSections,
     });
 
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseOption(harness, 'Source stage', fixturePedigreeOption());
 
     // Nothing was asked: a stage with no disease has nothing to lose, and a
     // question about nothing is one a researcher learns to dismiss unread.
@@ -986,7 +1001,7 @@ describe('a source stage that is no longer usable', () => {
     });
     expect(screen.getByText('Condition X')).toBeInTheDocument();
 
-    await chooseSourcePedigree(harness, 'Family Pedigree');
+    await chooseSourcePedigree(harness, fixturePedigreeOption());
 
     await waitFor(() =>
       expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
@@ -1078,7 +1093,7 @@ describe('the batch a source change makes', () => {
   it('carries the chosen pedigree and the diseases it invalidated together', async () => {
     const harness = renderStageEditor(withMissingSource());
 
-    await chooseSourcePedigree(harness, 'Family Pedigree');
+    await chooseSourcePedigree(harness, fixturePedigreeOption());
 
     await waitFor(() => expect(harness.pendingCommands()).toHaveLength(1));
     expect(
@@ -1098,7 +1113,7 @@ describe('the batch a source change makes', () => {
    */
   it('does not bring the old diseases back with the next one added', async () => {
     const harness = renderStageEditor(withMissingSource());
-    await chooseSourcePedigree(harness, 'Family Pedigree');
+    await chooseSourcePedigree(harness, fixturePedigreeOption());
     await waitFor(() =>
       expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
     );
@@ -1172,7 +1187,7 @@ describe('the batch a source change makes', () => {
       sections: narrativePedigreeSections,
     });
 
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseOption(harness, 'Source stage', fixturePedigreeOption());
 
     expect(
       screen.queryByRole('button', { name: CONFIRM_SOURCE_CHANGE }),
@@ -1198,7 +1213,7 @@ describe('the batch a source change makes', () => {
    */
   it('comes back whole, source included, when the session undoes it', async () => {
     const harness = renderStageEditor(withMissingSource());
-    await chooseSourcePedigree(harness, 'Family Pedigree');
+    await chooseSourcePedigree(harness, fixturePedigreeOption());
     await waitFor(() =>
       expect(draftOf(harness).sourceStageId).toBe('family-pedigree-1'),
     );

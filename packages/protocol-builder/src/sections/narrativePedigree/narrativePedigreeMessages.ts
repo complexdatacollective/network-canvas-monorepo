@@ -68,6 +68,12 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Heading of the warning shown when the stage this one was pointed at can no longer be used. The sentence under it says which of the three things went wrong.',
   },
+  sourceStageOption: {
+    id: 'protocolBuilder.narrativePedigree.sourceStageOption',
+    defaultMessage: 'Stage {position, number} \u2014 {stageLabel}',
+    description:
+      'One Family Pedigree stage offered as the one this stage draws its family from. position is where that stage will sit in the finished interview, counting from one; stageLabel is the researcher\u2019s own name for it and is not translated. The number is shown because two stages may carry the same name.',
+  },
   sourceUnusableOption: {
     id: 'protocolBuilder.narrativePedigree.sourceUnusableOption',
     defaultMessage: '{stageId} — this stage can no longer be used',

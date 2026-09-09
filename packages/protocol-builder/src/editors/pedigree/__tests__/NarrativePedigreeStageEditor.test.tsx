@@ -6,6 +6,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
 import {
+  fixtureStageIds,
   loadFixtureStage,
   recordingTheFixtureDisease,
 } from '../../../testing/protocolFixture.ts';
@@ -258,7 +259,13 @@ describe('the narrative pedigree stage editor', () => {
     // The source comes first because everything below it is asked against the
     // pedigree it names — the diseases section is unavailable until there is
     // one — not because anything typed before it would be lost.
-    await chooseSourceStage(harness, 'Family Pedigree');
+    // Every option carries the number the stage has in the interview, because
+    // two pedigrees may share a name. Read off the fixture's own order rather
+    // than written down.
+    await chooseSourceStage(
+      harness,
+      `Stage ${fixtureStageIds().indexOf(SOURCE_STAGE_ID) + 1} — Family Pedigree`,
+    );
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Stage name' }),
       'Affected',
