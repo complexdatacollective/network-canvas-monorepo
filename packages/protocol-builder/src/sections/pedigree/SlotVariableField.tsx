@@ -12,7 +12,7 @@ import type {
 } from '@codaco/protocol-validation';
 
 import type { WriterClass } from '../../codebook/variableRoles.ts';
-import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
+import VariablePickerField from '../../fields/VariablePickerField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
@@ -245,9 +245,9 @@ export default function SlotVariableField({
 
   return (
     <>
-      <Field<typeof VariablePickerControl>
+      <Field<typeof VariablePickerField>
         name={name}
-        component={VariablePickerControl}
+        component={VariablePickerField}
         label={intl.formatMessage(label)}
         hint={intl.formatMessage(hint)}
         required={REQUIRED}

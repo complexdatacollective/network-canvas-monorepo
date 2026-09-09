@@ -27,9 +27,9 @@ import {
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
-  CreatableVariablePickerControl,
+  default as VariablePickerField,
   type CreateOptionOutcome,
-} from '../CreatableVariablePicker.tsx';
+} from '../VariablePickerField.tsx';
 
 const SUBJECT: CodebookSubject = { entity: 'node', type: 'person' };
 
@@ -37,7 +37,7 @@ const NO_VARIABLES: ReadonlySet<string> = new Set();
 
 // Rows know nothing about what any control takes, so the picker reaches them
 // as an open-record renderer — adapted once, exactly as a section does it.
-const VariablePicker = CreatableVariablePickerControl as ComponentType<
+const VariablePicker = VariablePickerField as ComponentType<
   Record<string, unknown>
 >;
 
@@ -46,7 +46,7 @@ const VariablePicker = CreatableVariablePickerControl as ComponentType<
  * section it lands in, and what it is created as.
  *
  * The researcher is only ever asked for a name — see
- * `CreatableVariablePickerProps.onCreateOption` — so these two are the host's
+ * `VariablePickerFieldProps.onCreateOption` — so these two are the host's
  * to give, and they are the whole of what one host differs from another by.
  * `undefined` for the subject is a real answer: a stage that has not been told
  * which node type it is about yet has no codebook section to add anything to.
@@ -440,7 +440,7 @@ const mountControl = (locale?: string) => {
       refuse = reject;
     });
   const control = (
-    <CreatableVariablePickerControl
+    <VariablePickerField
       name="variable"
       options={[]}
       emptyMessage="Nothing to choose from yet."
@@ -693,7 +693,7 @@ describe('the create control while the codebook write is in flight', () => {
 /**
  * The same control, and the same codebook writes, read in Spanish.
  *
- * This file is the only place `CreatableVariablePickerControl` is mounted —
+ * This file is the only place `VariablePickerField` is mounted —
  * no section renders it yet — so it is also the only place its own copy can be
  * read in any language at all, and the only place the
  * refusals `useCreateCodebookVariable` answers with can be provoked one at a

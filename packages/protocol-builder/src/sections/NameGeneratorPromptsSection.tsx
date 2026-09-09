@@ -17,6 +17,7 @@ import {
 } from '../codebook/variableRoles.ts';
 import { draftFormFieldVariableIds } from '../codebook/variableValidation.ts';
 import RichTextField from '../fields/RichTextField.tsx';
+import VariablePickerField from '../fields/VariablePickerField.tsx';
 import AssignAttributes, {
   committedAttributeVariableIds,
   makeAssignAttributesValidation,
@@ -27,7 +28,6 @@ import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { variablesForSubject } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
-import { CreatableVariablePickerControl } from './CreatableVariablePicker.tsx';
 import PromptsSection from './PromptsSection.tsx';
 import type { RowEditorProps, RowPreviewProps } from './rowRenderers.tsx';
 import { useStageSubject } from './useStageSubject.ts';
@@ -42,7 +42,7 @@ const NO_VARIABLES: ReadonlySet<string> = new Set();
 
 // The picker is handed to the rows as an open-record renderer, because a row
 // knows nothing about what any control takes. Adapted once, here.
-const VariablePicker = CreatableVariablePickerControl as ComponentType<
+const VariablePicker = VariablePickerField as ComponentType<
   Record<string, unknown>
 >;
 

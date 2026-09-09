@@ -106,7 +106,7 @@ after the fact is marked in place.
 | `multiSelect`               | `form/arrayFields/MultiSelect.tsx`                                                                                                                                                            | i18n-2b   |
 | `option`                    | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`                                                                                                                                 | i18n-2b   |
 | `entitySelect`              | `fields/EntityTypePickerField.tsx`                                                                                                                                                            | i18n-2b   |
-| `variablePicker`            | `fields/VariablePicker.tsx`, `sections/CreatableVariablePicker.tsx` (added by `sections`; see below)                                                                                          | i18n-2b   |
+| `variablePicker`            | `fields/VariablePickerField.tsx`                                                                                                                                                              | i18n-2b   |
 | `skipLogicDestination`      | `fields/stageDestination.ts`                                                                                                                                                                  | i18n-2b   |
 | `networkFilter`             | `sections/NetworkFilterSection.tsx`                                                                                                                                                           | i18n-2b   |
 | `skipLogic`                 | `sections/SkipLogicSection.tsx`                                                                                                                                                               | i18n-2b   |
@@ -319,7 +319,7 @@ for something else or reopens a decision that has been made:
   (`subjectSection`) or to the picker itself (`entitySelect`). The name stays
   reserved rather than being reused for something else.
 - **`variablePicker`'s five `create*` ids are not on any screen yet.**
-  `sections/CreatableVariablePicker.tsx` pairs a picker over what exists with a
+  `fields/VariablePickerField.tsx` pairs a picker over what exists with a
   name box that creates an attribute under that name and selects it. Nothing in
   the product mounts it: `FormFieldsSection` answers the same question through
   the `#create-new-attribute` sentinel in its own picker, and the control is

@@ -40,10 +40,10 @@ import {
   variableDisplayName,
 } from '../codebook/variableValidation.ts';
 import RichTextField from '../fields/RichTextField.tsx';
-import {
-  VariablePickerControl,
+import VariablePickerField, {
   type VariablePickerOption,
-} from '../fields/VariablePicker.tsx';
+  createdUnassigned,
+} from '../fields/VariablePickerField.tsx';
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
 import { useDialogFormSubmissionBlock } from '../form/DialogForm.tsx';
@@ -63,7 +63,6 @@ import {
   needsCodebookEditorToCreate,
   TYPE_OPTIONS,
 } from './collectableTypes.ts';
-import { createdUnassigned } from './CreatableVariablePicker.tsx';
 import {
   type RowEditorProps,
   type RowPreviewProps,
@@ -459,7 +458,7 @@ const NO_INPUT_CONTROL = createMessageError(messages.noInputControl);
 /** Stable identity: `options` is a memo dependency of the picker below. */
 const NO_OPTIONS: VariablePickerOption[] = [];
 
-const VariablePicker = VariablePickerControl as ComponentType<
+const VariablePicker = VariablePickerField as ComponentType<
   Record<string, unknown>
 >;
 const SelectControl = NativeSelectField as ComponentType<

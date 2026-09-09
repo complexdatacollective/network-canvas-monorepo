@@ -355,7 +355,7 @@ describe('the form-fields section, read in Spanish', () => {
  * `formFields.componentRequired` is what the dialog says when the attribute a
  * field collects has no input control to offer — read below — and
  * `codebookEditing.unsupportedControl` is read in
- * `CreatableVariablePicker.test.tsx`, where a host asks the codebook for an
+ * `fields/__tests__/VariablePickerField.test.tsx`, where a host asks the codebook for an
  * attribute its control cannot collect.
  */
 const PERSON_TYPE_SECTION = sectionId({

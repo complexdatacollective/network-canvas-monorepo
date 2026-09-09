@@ -24,7 +24,7 @@ import {
 } from '../../testing/seedProtocolCache.tsx';
 import EntityTypePickerField from '../EntityTypePickerField.tsx';
 import StageDestinationPickerField from '../StageDestinationPickerField.tsx';
-import { VariablePickerControl } from '../VariablePicker.tsx';
+import VariablePickerField from '../VariablePickerField.tsx';
 
 /**
  * The three controls in this directory, read in the researcher's own language.
@@ -224,7 +224,7 @@ describe('the fields in this directory, read in Spanish', () => {
   it('reads the attribute picker in Spanish', () => {
     render(
       standalone(
-        <VariablePickerControl
+        <VariablePickerField
           name="attribute"
           options={[{ value: 'age', label: 'Age', type: 'number' }]}
           value="gone"
@@ -253,7 +253,7 @@ describe('the fields in this directory, read in Spanish', () => {
   it('names the chosen attribute’s type in Spanish', () => {
     render(
       standalone(
-        <VariablePickerControl
+        <VariablePickerField
           name="attribute"
           options={[{ value: 'age', label: 'Age', type: 'number' }]}
           value="age"
@@ -268,7 +268,7 @@ describe('the fields in this directory, read in Spanish', () => {
   });
 
   it('says there is nothing to choose from in Spanish', () => {
-    render(standalone(<VariablePickerControl name="attribute" />));
+    render(standalone(<VariablePickerField name="attribute" />));
 
     expect(
       screen.getByText('No hay atributos entre los que elegir.'),

@@ -7,8 +7,8 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import type { CreateOptionOutcome } from '../../../fields/VariablePickerField.tsx';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
-import type { CreateOptionOutcome } from '../../../sections/CreatableVariablePicker.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';

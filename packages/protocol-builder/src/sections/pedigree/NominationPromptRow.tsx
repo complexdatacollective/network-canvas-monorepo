@@ -8,7 +8,7 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 
 import RichTextField from '../../fields/RichTextField.tsx';
-import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
+import VariablePickerField from '../../fields/VariablePickerField.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
@@ -123,7 +123,7 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
       />
       <Field
         name={VARIABLE_FIELD}
-        component={VariablePickerControl}
+        component={VariablePickerField}
         label={intl.formatMessage(pedigreeMessages.nominationVariableLabel)}
         hint={intl.formatMessage(pedigreeMessages.nominationVariableHint)}
         initialValue={asString(item.variable)}
