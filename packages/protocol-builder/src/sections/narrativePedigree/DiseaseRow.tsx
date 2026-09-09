@@ -13,17 +13,17 @@ import {
   NodeColorSequence,
 } from '@codaco/protocol-validation';
 
-import {
-  buildExclusiveVariableSlotMap,
-  excludeInterfaceOwned,
-} from '../../codebook/variableRoles.ts';
 import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
-import { variablesForSubject } from '../../protocol-context.ts';
 import { protocolColor } from '../../protocolColor.ts';
 import CreateVariableButton from '../pedigree/CreateVariableButton.tsx';
+import { usePedigreeVariableIndexes } from '../pedigree/entityTypeReset.ts';
+import {
+  slotPickerOptions,
+  subjectVariableOptions,
+} from '../pedigree/slotWiring.ts';
 import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
 import { sourceStageNodeType } from './sourceStage.ts';
@@ -87,7 +87,7 @@ const siblingVariables = (
  * form store of its own, but the stage editor context is deliberately not
  * re-provided, so everything in the dialog can still see the stage around it.
  */
-function useDiseaseSubject(): CodebookSubject | null {
+export function useDiseaseSubject(): CodebookSubject | null {
   const { protocolContext } = useStageEditorForm();
   const sourceStageId = useStageValue('sourceStageId');
   return useMemo(() => {
@@ -101,9 +101,14 @@ function useDiseaseSubject(): CodebookSubject | null {
  * has it, and how it travels through a family.
  *
  * The attribute pool is the source pedigree's boolean node attributes, minus
- * the ones the pedigree derives structurally. Mapping the participant marker
- * as a disease would paint the participant as affected in every interview,
- * which is why the schema refuses it and why the picker never offers it.
+ * the ones the pedigree derives structurally and the ones a form elsewhere
+ * collects. Mapping the participant marker as a disease would paint the
+ * participant as affected in every interview, which is why the schema refuses
+ * it and why the picker never offers it; a disease mapping writes its
+ * attribute from the tree the participant draws, with no validation, so taking
+ * one a form field collects would bypass that field's validation. Both
+ * exclusions are the shared pedigree ones, so this picker and the save gate in
+ * `DiseasesSection` cannot disagree about which picks are legal.
  *
  * A researcher describing a condition the codebook does not record yet creates
  * the attribute here rather than leaving the stage for the codebook and coming
@@ -113,6 +118,7 @@ function useDiseaseSubject(): CodebookSubject | null {
 export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
+  const { roleMap, slotMap } = usePedigreeVariableIndexes();
   const subject = useDiseaseSubject();
   const rows = useStageValue('diseases');
   const setFieldValue = useFormStore((state) => state.setFieldValue);
@@ -142,27 +148,32 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
   );
 
   const options = useMemo(() => {
-    if (subject === null) return [];
     const used = siblingVariables(rows, editIndex);
-    const booleans = Object.entries(
-      variablesForSubject(protocolContext, subject),
-    )
-      .filter(([, variable]) => variable.type === 'boolean')
-      .map(([variableId, variable]) => ({
-        value: variableId,
-        label: variable.name,
-        type: variable.type,
-      }))
-      .filter(
-        (option) => option.value === currentVariable || !used.has(option.value),
-      );
-    return excludeInterfaceOwned(
-      buildExclusiveVariableSlotMap(protocolContext),
+    return slotPickerOptions({
+      roleMap,
+      slotMap,
       subject,
-      booleans,
-      currentVariable,
-    );
-  }, [currentVariable, editIndex, protocolContext, rows, subject]);
+      options: subjectVariableOptions(protocolContext, subject).filter(
+        (option) =>
+          option.type === 'boolean' &&
+          (option.value === currentVariable || !used.has(option.value)),
+      ),
+      ...(currentVariable === undefined
+        ? {}
+        : { currentValue: currentVariable }),
+      // No `ownSlot`: a disease mapping fills no interface slot of its own, so
+      // every attribute a slot owns is out of bounds.
+      writerClass: 'unvalidated',
+    });
+  }, [
+    currentVariable,
+    editIndex,
+    protocolContext,
+    roleMap,
+    rows,
+    slotMap,
+    subject,
+  ]);
 
   return (
     <>

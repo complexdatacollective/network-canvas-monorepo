@@ -175,6 +175,42 @@ const A_SECOND_BOOLEAN = {
   hasConditionY: { name: 'hasConditionY', type: 'boolean' },
 } as const;
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The source pedigree, collecting one of its node type's attributes through a
+ * form field of its own.
+ *
+ * A pedigree's form field is a VALIDATED writer: what the participant types is
+ * checked before it is stored. A disease mapping writes the same attribute
+ * from the tree the participant draws, with no validation at all, so the two
+ * may never name one attribute — the protocol reports a role conflict for it,
+ * and the values the pedigree writes would bypass the field's validation.
+ *
+ * Built from the fixture's own pedigree rather than written out here, so this
+ * stays a real source stage: everything the narrative pedigree resolves
+ * through it — its node type above all — is the fixture's.
+ */
+function sourcePedigreeCollecting(variable: string): SectionDoc {
+  const source = loadFixtureStage('family-pedigree-1');
+  const nodeConfig = source.fields.nodeConfig;
+  if (!isRecord(nodeConfig)) {
+    throw new Error(
+      'The fixture stage "family-pedigree-1" no longer configures a node type.',
+    );
+  }
+  return {
+    id: source.id,
+    type: source.type,
+    ...source.fields,
+    nodeConfig: {
+      ...nodeConfig,
+      form: [{ variable, prompt: 'How would you describe them?' }],
+    },
+  };
+}
+
 describe('the pedigree a narrative pedigree draws', () => {
   it('opens on the stage as the protocol holds it', async () => {
     const harness = renderStageEditor(openFixture());
@@ -441,6 +477,71 @@ describe('the diseases a narrative pedigree defines', () => {
     });
 
     expect(optionsOf('Affected-status attribute')).toEqual(['hasConditionY']);
+  });
+
+  /**
+   * A disease mapping writes its attribute from the pedigree, unvalidated, so
+   * it may not take one a form elsewhere collects — the mapping would bypass
+   * that form field's validation, and the saved protocol carries a role
+   * conflict the schema reports.
+   */
+  it('never offers an attribute a form elsewhere collects', async () => {
+    const harness = renderStageEditor({
+      stage: narrativePedigreeStageWith({ diseases: [] }),
+      sections: narrativePedigreeSections,
+      otherStages: {
+        'family-pedigree-1': sourcePedigreeCollecting('hasConditionX'),
+      },
+    });
+    harness.receiveCodebookUpdate({
+      node: { family_member: familyMemberCodebook({ add: A_SECOND_BOOLEAN }) },
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new disease' }),
+    );
+    await screen.findByRole('combobox', {
+      name: 'Affected-status attribute',
+    });
+
+    expect(optionsOf('Affected-status attribute')).toEqual(['hasConditionY']);
+  });
+
+  /**
+   * The same rule, from the other side. An attribute this row ALREADY maps
+   * stays on offer and stays saveable however the protocol came to hold it:
+   * the conflict is not one this edit introduced, and a row that will not
+   * close is a researcher who cannot rename their own disease.
+   *
+   * The escape is anchored to the row's COMMITTED attribute, found by the
+   * row's id — anchored to the row's position instead, a reordered or deleted
+   * sibling would move the anchor and refuse an untouched pick.
+   */
+  it('keeps a mapping the protocol already holds saveable', async () => {
+    const harness = renderStageEditor({
+      stageId: 'narrative-pedigree-1',
+      sections: narrativePedigreeSections,
+      otherStages: {
+        'family-pedigree-1': sourcePedigreeCollecting('hasConditionX'),
+      },
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit disease' }),
+    );
+    const disease = within(await screen.findByRole('dialog'));
+    expect(optionsOf('Affected-status attribute')).toEqual(['hasConditionX']);
+    const label = disease.getByRole('textbox', { name: 'Disease name' });
+    await harness.user.clear(label);
+    await harness.user.type(label, 'Condition Z');
+    await harness.user.click(disease.getByRole('button', { name: 'Save' }));
+
+    // The dialog closing IS the acceptance: a refused pick keeps it open with
+    // the refusal under the picker.
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText('Condition Z')).toBeInTheDocument();
   });
 
   it('creates an attribute for a disease as one compound edit', async () => {
