@@ -1,4 +1,4 @@
-import { type CSSProperties, useCallback, useId, useMemo } from 'react';
+import { type CSSProperties, useCallback, useId, useMemo, useRef } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -350,12 +350,28 @@ export function EntitySelectControl({
    * through in silence. `confirmChange` is where the loss is judged, and it
    * already returns nothing to ask when there is nothing to lose.
    */
+  /**
+   * What a refusal is judged against, kept live.
+   *
+   * Asked once before the question is put and again after it is answered, and
+   * the second reading has to be the CURRENT one: a confirmation is awaited,
+   * so the handler that resumes is a closure from the render that put the
+   * question. Read from that closure, a dependency a collaborator created
+   * while the researcher was reading the question — a narrative pedigree
+   * pointed at this stage, say — would be invisible, and the confirmed change
+   * would go through against a refusal the latest render is already showing.
+   * The same seam the pedigree's own slot gate reads its live inputs through.
+   */
+  const judgeAgainst = useRef({ blockChangeReason, value });
+  judgeAgainst.current = { blockChangeReason, value };
+
   const refuseBlockedChange = (nextType: string): boolean => {
+    const { blockChangeReason: reason, value: current } = judgeAgainst.current;
     if (
-      blockChangeReason === undefined ||
-      value === undefined ||
-      value === '' ||
-      nextType === value
+      reason === undefined ||
+      current === undefined ||
+      current === '' ||
+      nextType === current
     ) {
       return false;
     }
@@ -363,7 +379,7 @@ export function EntitySelectControl({
       type: 'acknowledge',
       intent: 'warning',
       title: intl.formatMessage(BLOCKED_TITLES[entityType]),
-      description: blockChangeReason,
+      description: reason,
       actions: {
         primary: {
           label: intl.formatMessage(commonMessages.continue),
@@ -385,7 +401,13 @@ export function EntitySelectControl({
       return;
     }
     void (async () => {
-      if (await confirmEntityTypeChange(question)) onChange?.(nextType);
+      if (!(await confirmEntityTypeChange(question))) return;
+      // Asked AGAIN, on the protocol as it stands now. The researcher has
+      // agreed to what this change costs their stage, which is a different
+      // question from whether it may happen at all — and the answer to the
+      // second one can have changed while they were reading the first.
+      if (refuseBlockedChange(nextType)) return;
+      onChange?.(nextType);
     })();
   };
 

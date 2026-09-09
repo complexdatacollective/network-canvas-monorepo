@@ -190,6 +190,47 @@ const removeFamilyMemberVariable = (
   });
 };
 
+const NARRATIVE_PEDIGREE_SECTION = sectionId({
+  kind: 'stage',
+  stageId: 'narrative-pedigree-1',
+});
+
+/**
+ * The fixture's narrative pedigree, repointed at another pedigree as a
+ * collaborator's change.
+ *
+ * The same two-ended arrival `receiveCodebookUpdate` makes, for a STAGE
+ * section rather than a codebook one: the host issues the revision and the
+ * session is told about it under that revision, so this is one protocol seen
+ * from both ends. A narrative pedigree naming a pedigree is what refuses that
+ * pedigree's node type change, and it is a thing a collaborator can do at any
+ * moment — including while the researcher is being asked about a change.
+ */
+const readNarrativePedigreeFrom = (
+  harness: StageEditorHarness,
+  sourceStageId: string,
+): void => {
+  const section =
+    harness.session.getSnapshot().protocolSections[NARRATIVE_PEDIGREE_SECTION];
+  if (section === undefined) {
+    throw new Error('the fixture protocol has no "narrative-pedigree-1" stage');
+  }
+  if (section.sourceStageId === sourceStageId) {
+    throw new Error(
+      `"narrative-pedigree-1" already reads "${sourceStageId}", so pointing it there proves nothing.`,
+    );
+  }
+  const applied = harness.host.receiveAuthoritativeSections({
+    [NARRATIVE_PEDIGREE_SECTION]: { ...section, sourceStageId },
+  });
+  act(() => {
+    harness.session.receiveAuthoritativeUpdate({
+      protocolSections: applied.protocolSections,
+      manifestRevision: applied.manifestRevision,
+    });
+  });
+};
+
 /** The id the seeded boolean below is filed under. */
 const SEEDED_UNWELL = 'seeded-unwell';
 
@@ -1587,6 +1628,48 @@ describe('a pedigree whose node type changes', () => {
     ).not.toBeInTheDocument();
     expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
     expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  /**
+   * The same refusal, when the dependency arrives while the question is open.
+   *
+   * The confirmation is awaited, and the handler that resumes when it is
+   * answered is a closure from the render that put the question: it holds the
+   * `blockChangeReason` as it stood then, which was none. A collaborator
+   * pointing a narrative pedigree at this stage in the meantime made the
+   * change one that may not happen at all — but the confirmed change went
+   * through, discarding the source configuration the narrative stage resolves
+   * its diseases against and leaving that stage naming attributes the new type
+   * does not have.
+   *
+   * Refused rather than merely re-confirmed: the researcher agreed to what a
+   * change costs THIS stage, which is a different question from whether the
+   * change is allowed at all.
+   */
+  it('refuses a confirmed change a stage began depending on while the question was open', async () => {
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    const confirm = await screen.findByRole('button', {
+      name: 'Change the node type',
+    });
+
+    readNarrativePedigreeFrom(harness, UNREAD_PEDIGREE_ID);
+
+    await harness.user.click(confirm);
+
+    expect(
+      await screen.findByText('This node type cannot be changed'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/"Narrative Pedigree" reads this pedigree/),
+    ).toBeInTheDocument();
+    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
+    expect(
+      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
+    ).toEqual(NOMINATION_ROWS);
+    expect(harness.pendingCommands()).toEqual([]);
+    expect(screen.getByText('Who has been unwell?')).toBeInTheDocument();
   });
 
   /**
