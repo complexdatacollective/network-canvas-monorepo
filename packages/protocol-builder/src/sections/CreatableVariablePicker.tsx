@@ -210,6 +210,25 @@ export function CreatableVariablePickerControl({
         placeholder={intl.formatMessage(messages.createPlaceholder)}
         value={name}
         disabled={disabled || readOnly || busy}
+        // Enter here means "create the attribute", and it has to be said so.
+        // This box is inside a form whose submit means something else — the
+        // stage's own, whose default button is the host's Save, associated by
+        // `form=` and therefore the form's default button wherever the host
+        // renders it, and a row dialog's — so the browser's implicit
+        // submission saved and closed the editor instead, creating nothing and
+        // taking the typed name with it. `QuickAddSection`'s own name box
+        // answers Enter for the same reason.
+        onKeyDown={(event) => {
+          // A key pressed to compose a character is not a key press.
+          if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+          // Whatever else is true, Enter in this box does not mean "save".
+          event.preventDefault();
+          // Nothing is named, so there is nothing to create — the one part of
+          // the button's own guard a key press can still reach, since the box
+          // is disabled in every other case the button is.
+          if (name.trim() === '') return;
+          void create();
+        }}
         onChange={(next: unknown) => {
           // The notice is about the create that has just happened; naming
           // another attribute is the start of a different one.
