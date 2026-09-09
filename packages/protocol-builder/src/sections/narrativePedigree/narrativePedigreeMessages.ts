@@ -96,6 +96,26 @@ export const narrativePedigreeMessages = defineMessages({
       'Shown when the stage this one draws its family from has been moved to run later in the interview, so the participant would not have built the family yet.',
   },
 
+  sourceChangeTitle: {
+    id: 'protocolBuilder.narrativePedigree.sourceChangeTitle',
+    defaultMessage: 'This will remove every disease',
+    description:
+      'Title of the confirmation shown before a researcher points this stage at a different Family Pedigree stage. Every disease it draws names an attribute of the current pedigree\u2019s family members, so changing the pedigree discards all of them.',
+  },
+  sourceChangeDescription: {
+    id: 'protocolBuilder.narrativePedigree.sourceChangeDescription',
+    defaultMessage:
+      'Each disease names an attribute of the family members the current pedigree collects, so none of them would still describe the new one. Choosing a different pedigree removes them all, and choosing this one again does not bring them back.',
+    description:
+      'Body of the confirmation shown before a narrative pedigree\u2019s source changes, saying what the change discards and that reversing the choice does not undo it.',
+  },
+  sourceChangeConfirm: {
+    id: 'protocolBuilder.narrativePedigree.sourceChangeConfirm',
+    defaultMessage: 'Change the pedigree',
+    description:
+      'Button that confirms pointing a narrative pedigree at a different Family Pedigree stage and discarding every disease that described the previous one.',
+  },
+
   // ── The list of conditions drawn on that family ───────────────────────────
   diseasesTitle: {
     id: 'protocolBuilder.narrativePedigree.diseasesTitle',

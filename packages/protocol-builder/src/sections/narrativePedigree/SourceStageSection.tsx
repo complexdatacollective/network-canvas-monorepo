@@ -6,9 +6,9 @@ import {
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
-import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
+import ConfirmingSelectField from '../../fields/ConfirmingSelectField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
@@ -16,6 +16,10 @@ import {
   useStageValue,
 } from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
+import {
+  type EntityTypeChangeWords,
+  useEntityTypeChangeConfirmation,
+} from '../pedigree/entityTypeReset.ts';
 import { useOnResearcherChange } from '../researcherChange.ts';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
 import { resolveSourceStages, type SourceStageProblem } from './sourceStage.ts';
@@ -50,6 +54,21 @@ const PROBLEM_MESSAGES: Readonly<
 });
 
 /**
+ * What a source change costs, in this stage's own words.
+ *
+ * Declared beside the field the reset discards, so a path added to one is
+ * visibly missing from the other. `useEntityTypeChangeConfirmation` is the
+ * shared question a destructive pick asks — the same one a pedigree's type
+ * chips ask — so the two cannot judge "there is something to lose"
+ * differently, or one of them quietly stop asking.
+ */
+const SOURCE_CHANGE_WORDS: EntityTypeChangeWords = Object.freeze({
+  title: narrativePedigreeMessages.sourceChangeTitle,
+  description: narrativePedigreeMessages.sourceChangeDescription,
+  confirmLabel: narrativePedigreeMessages.sourceChangeConfirm,
+});
+
+/**
  * The family this stage draws, and the stage that collected it.
  *
  * Every disease mapping names an attribute of the source pedigree's node type,
@@ -57,6 +76,15 @@ const PROBLEM_MESSAGES: Readonly<
  * rather than left to fail validation later: the researcher reconfigures
  * against the new family, instead of saving a stage that points at attributes
  * the new node type does not have.
+ *
+ * Which is why the choice is held back until the researcher has agreed to it.
+ * An option in a listbox is one click, and the reset it triggers cannot be
+ * taken back by choosing the old pedigree again — the diseases are gone, and
+ * the researcher has to notice and reach for undo. The question is asked
+ * through `useEntityTypeChangeConfirmation` and by `ConfirmingSelectField`,
+ * before the value moves, which is the same seam and the same moment a
+ * pedigree's own type chips use: one definition of "is there anything to
+ * lose", so no destructive pick in this package can quietly stop asking.
  *
  * The removal goes through `useDiscardStageValues`, which is the one seam a
  * reset goes through, and it is one batch: the chosen source first, the
@@ -75,6 +103,13 @@ export default function SourceStageSection() {
     useStageEditorForm();
   const sourceStageId = useStageValue(SOURCE_FIELD);
   const discardStageValues = useDiscardStageValues();
+  // Asked of the SAME field the reset below discards, so the question can
+  // neither appear over a change that costs nothing — a stage that has mapped
+  // no disease yet — nor stay silent over one that costs something.
+  const confirmSourceChange = useEntityTypeChangeConfirmation(
+    [DISEASES_FIELD],
+    SOURCE_CHANGE_WORDS,
+  );
 
   // Where the stage runs decides which pedigrees precede it, and a stage being
   // created is not in the order to be found in: the session carries the
@@ -204,9 +239,10 @@ export default function SourceStageSection() {
           session's own complaint about the missing source with no field to
           attribute it to. Mounted and empty, the section reports the
           prerequisite nobody has met yet. */}
-      <ProtocolField<typeof StyledSelectField>
+      <ProtocolField<typeof ConfirmingSelectField>
         name={SOURCE_FIELD}
-        component={StyledSelectField}
+        component={ConfirmingSelectField}
+        confirmChange={confirmSourceChange}
         label={intl.formatMessage(narrativePedigreeMessages.sourceLabel)}
         hint={intl.formatMessage(narrativePedigreeMessages.sourceHint)}
         placeholder={intl.formatMessage(

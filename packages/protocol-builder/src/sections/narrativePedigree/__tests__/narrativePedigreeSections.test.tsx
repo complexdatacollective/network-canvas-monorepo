@@ -180,6 +180,34 @@ const movePedigreeLast = (stages: string[]): string[] => [
   'family-pedigree-1',
 ];
 
+/** What the confirmation before a source change offers as its answer. */
+const CONFIRM_SOURCE_CHANGE = 'Change the pedigree';
+
+/**
+ * Chooses a source pedigree on a stage that has diseases to lose, and agrees
+ * to losing them.
+ *
+ * Every disease names an attribute of the current pedigree's family members,
+ * so a different pedigree leaves none of them usable and the reset that
+ * follows the choice throws them all away. That is asked about first, which
+ * means a test driving this stage answers the question the researcher is
+ * asked rather than skipping it.
+ */
+async function chooseSourcePedigree(
+  harness: StageEditorHarness,
+  optionLabel: string,
+): Promise<void> {
+  await chooseOption(harness, 'Source stage', optionLabel);
+  await harness.user.click(
+    await screen.findByRole('button', { name: CONFIRM_SOURCE_CHANGE }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('button', { name: CONFIRM_SOURCE_CHANGE }),
+    ).not.toBeInTheDocument(),
+  );
+}
+
 /** The pedigrees the source control is currently offering, by their labels. */
 async function offeredSources(harness: StageEditorHarness): Promise<string[]> {
   await harness.user.click(
@@ -791,6 +819,57 @@ describe('a source stage that is no longer usable', () => {
   });
 
   /**
+   * The reset is destructive and a listbox option is one click away, so the
+   * researcher is asked first.
+   *
+   * Undo is not an answer to this: it is a way back from a change the
+   * researcher meant to make, and what this prevents is the one they did not —
+   * a stray choice taking every disease with it, with nothing said, and
+   * choosing the old pedigree again bringing none of them back. The question
+   * is the same seam the pedigree's own type chips ask through
+   * (`useEntityTypeChangeConfirmation`), asked of the very field the reset
+   * discards.
+   */
+  it('asks before a different source discards the diseases', async () => {
+    const harness = renderStageEditor(withMissingSource());
+
+    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+
+    expect(
+      await screen.findByText('This will remove every disease'),
+    ).toBeInTheDocument();
+    // Nothing has moved while the question stands: the choice is held back
+    // rather than made and offered back.
+    expect(harness.session.getSnapshot().editedSection.fields).toMatchObject({
+      sourceStageId: 'a-pedigree-that-was-deleted',
+      diseases: [{ id: 'disease-1', label: 'Condition X' }],
+    });
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  it('leaves the stage exactly as it was when the researcher says no', async () => {
+    const harness = renderStageEditor(withMissingSource());
+
+    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Cancel' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: CONFIRM_SOURCE_CHANGE }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText('Condition X')).toBeInTheDocument();
+    // The control is back on the stored choice too, rather than showing a
+    // pedigree the stage does not read.
+    expect(
+      screen.getByRole('combobox', { name: 'Source stage' }),
+    ).toHaveTextContent('a-pedigree-that-was-deleted');
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  /**
    * Every disease names an attribute of the source pedigree's node type, so a
    * different source invalidates all of them at once. They go rather than
    * being left to fail validation later, and they go as the loss of a whole
@@ -804,7 +883,7 @@ describe('a source stage that is no longer usable', () => {
   it('drops the diseases that described it when another source is chosen', async () => {
     const harness = renderStageEditor(withMissingSource());
 
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseSourcePedigree(harness, 'Family Pedigree');
 
     await waitFor(() =>
       expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
@@ -839,6 +918,11 @@ describe('a source stage that is no longer usable', () => {
 
     await chooseOption(harness, 'Source stage', 'Family Pedigree');
 
+    // Nothing was asked: a stage with no disease has nothing to lose, and a
+    // question about nothing is one a researcher learns to dismiss unread.
+    expect(
+      screen.queryByRole('button', { name: CONFIRM_SOURCE_CHANGE }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('combobox', { name: 'Source stage' }),
     ).toHaveTextContent('Family Pedigree');
@@ -876,7 +960,7 @@ describe('a source stage that is no longer usable', () => {
     });
     expect(screen.getByText('Condition X')).toBeInTheDocument();
 
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseSourcePedigree(harness, 'Family Pedigree');
 
     await waitFor(() =>
       expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
@@ -968,7 +1052,7 @@ describe('the batch a source change makes', () => {
   it('carries the chosen pedigree and the diseases it invalidated together', async () => {
     const harness = renderStageEditor(withMissingSource());
 
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseSourcePedigree(harness, 'Family Pedigree');
 
     await waitFor(() => expect(harness.pendingCommands()).toHaveLength(1));
     expect(
@@ -988,7 +1072,7 @@ describe('the batch a source change makes', () => {
    */
   it('does not bring the old diseases back with the next one added', async () => {
     const harness = renderStageEditor(withMissingSource());
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseSourcePedigree(harness, 'Family Pedigree');
     await waitFor(() =>
       expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
     );
@@ -1065,6 +1149,9 @@ describe('the batch a source change makes', () => {
     await chooseOption(harness, 'Source stage', 'Family Pedigree');
 
     expect(
+      screen.queryByRole('button', { name: CONFIRM_SOURCE_CHANGE }),
+    ).not.toBeInTheDocument();
+    expect(
       screen.getByRole('combobox', { name: 'Source stage' }),
     ).toHaveTextContent('Family Pedigree');
     await waitFor(() => expect(harness.pendingCommands()).toHaveLength(1));
@@ -1085,7 +1172,7 @@ describe('the batch a source change makes', () => {
    */
   it('comes back whole, source included, when the session undoes it', async () => {
     const harness = renderStageEditor(withMissingSource());
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseSourcePedigree(harness, 'Family Pedigree');
     await waitFor(() =>
       expect(draftOf(harness).sourceStageId).toBe('family-pedigree-1'),
     );
