@@ -671,6 +671,24 @@ export class ProtocolStore {
     return res.rowCount === 1;
   }
 
+  /**
+   * The draft a protocol line is edited through — its newest, by the same
+   * ordering `listProtocols` shows. The protocol-builder contract names a
+   * protocol and never a draft, so the server picks one, and it must pick the
+   * one the rest of the app calls current.
+   */
+  async latestDraftId(protocolId: string): Promise<string | undefined> {
+    const res = await this.db.query(
+      `SELECT pd.draft_id
+       FROM protocol_drafts pd
+       WHERE pd.protocol_id = $1 AND pd.team_id = $2
+       ORDER BY pd.created_at DESC, pd.draft_id
+       LIMIT 1`,
+      [protocolId, this.db.teamId],
+    );
+    return (res.rows[0] as { draft_id: string } | undefined)?.draft_id;
+  }
+
   async listProtocols(visibility: StudyVisibility): Promise<ProtocolRow[]> {
     const res = await this.db.query(
       `SELECT p.id, p.name, p.created_at, p.updated_at, d.draft_id
@@ -742,6 +760,12 @@ export class ProtocolStore {
         );
         await client.query(
           `DELETE FROM command_log WHERE draft_id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+        // Before the draft row, which the log's foreign key names. Replay is
+        // meaningful only while the draft it describes exists.
+        await client.query(
+          `DELETE FROM protocol_events WHERE draft_id = $1 AND team_id = $2`,
           [draftId, teamId],
         );
         await client.query(

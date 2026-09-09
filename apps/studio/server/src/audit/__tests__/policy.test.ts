@@ -284,6 +284,15 @@ describe('audit mutation policy', () => {
       'audit.filterOptions',
       'audit.alerts.list',
       'audit.alerts.settings',
+      // The protocol-builder host's reads. `watchProtocol` is a subscription
+      // rather than a write: it observes revisions, locks and presence, and
+      // changes nothing it observes.
+      'protocolBuilder.getSection',
+      'protocolBuilder.listSections',
+      'protocolBuilder.watchProtocol',
+      'protocolBuilder.resources.list',
+      'protocolBuilder.resources.inspect',
+      'protocolBuilder.resources.preview',
     ]);
     const mutations = contractLeaves(contract).filter(
       (procedure) => !reads.has(procedure),
@@ -318,6 +327,18 @@ describe('audit mutation policy', () => {
     expect(RPC_MUTATION_AUDIT_POLICIES['protocols.moveStage']).toEqual({
       kind: 'required',
     });
+    expect(RPC_MUTATION_AUDIT_POLICIES['protocolBuilder.submit']).toEqual({
+      kind: 'required',
+    });
+    expect(RPC_MUTATION_AUDIT_POLICIES['protocolBuilder.create']).toEqual({
+      kind: 'required',
+    });
+    expect(
+      RPC_MUTATION_AUDIT_POLICIES['protocolBuilder.refactor.deleteVariable'],
+    ).toEqual({ kind: 'required' });
+    expect(
+      RPC_MUTATION_AUDIT_POLICIES['protocolBuilder.resources.promote'],
+    ).toEqual({ kind: 'required' });
     assertReasons(RPC_MUTATION_AUDIT_POLICIES);
     assertReasons(NON_RPC_MUTATION_AUDIT_POLICIES);
     assertReasons(NO_AUDIT_TRANSACTION_POLICIES);

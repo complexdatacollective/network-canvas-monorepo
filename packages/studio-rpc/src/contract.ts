@@ -9,6 +9,7 @@ import {
   AuditAlertSettingsSchema,
   UpdateAuditAlertSettingsSchema,
 } from './alerts.ts';
+import { protocolBuilderContract } from './protocolBuilder.ts';
 export {
   AUDIT_ALERT_MAX_RECIPIENTS,
   AuditAlertPolicySchema,
@@ -223,6 +224,14 @@ export const contract = {
       .output(ManifestRevisionSchema),
     moveStage: oc.input(MoveStageInputSchema).output(ManifestRevisionSchema),
   },
+  /**
+   * The editing host `@codaco/protocol-builder` is written against, nested
+   * whole so a Studio router client exposes it as `client.protocolBuilder`
+   * typed by the package's own contract. Its inputs name a protocol and never
+   * a team or a draft: the server derives both from the caller's memberships,
+   * the way a `/study/$studyId` URL is resolved.
+   */
+  protocolBuilder: protocolBuilderContract,
   /**
    * The team's immutable activity record. Reads require the audit.read
    * permission (built-in owner/admin until #1257); ordering and cursors are

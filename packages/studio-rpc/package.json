@@ -12,6 +12,7 @@
   "type": "module",
   "exports": {
     ".": "./src/contract.ts",
+    "./protocol-builder": "./src/protocolBuilder.ts",
     "./surfaces": "./src/surfaces.ts",
     "./telemetry": "./src/telemetry.ts"
   },
@@ -19,6 +20,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@codaco/protocol-builder": "workspace:^",
     "@orpc/contract": "catalog:",
     "zod": "catalog:"
   },

@@ -1996,6 +1996,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1101.0
         version: 3.1102.0
+      '@codaco/protocol-builder':
+        specifier: workspace:^
+        version: link:../../../packages/protocol-builder
       '@codaco/protocol-utilities':
         specifier: workspace:^
         version: link:../../../packages/protocol-utilities
@@ -3136,6 +3139,9 @@ importers:
 
   packages/studio-rpc:
     dependencies:
+      '@codaco/protocol-builder':
+        specifier: workspace:^
+        version: link:../protocol-builder
       '@orpc/contract':
         specifier: 'catalog:'
         version: 2.0.0-beta.34(@opentelemetry/api@1.9.1)
