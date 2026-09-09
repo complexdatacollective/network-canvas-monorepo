@@ -441,6 +441,32 @@ describe('saving a narrative pedigree whose source cannot be used', () => {
     expect(await harness.submit()).toBeNull();
   });
 
+  /**
+   * The same refusal for a stage the schema itself refuses.
+   *
+   * A narrative pedigree an import left with no diseases is one
+   * `protocolContextFromSections` cannot read, so it is absent from
+   * `orderedStages` — and read from that list alone it looked like a stage the
+   * interview does not hold at all, placed as a new one arriving last. Every
+   * pedigree was then offered to it, the one that now runs AFTER it included,
+   * with nothing said. The interview's own order still names it, and that is
+   * where it runs.
+   */
+  it('refuses a later source on a stage the schema cannot read', async () => {
+    const harness = renderStageEditor({
+      stage: narrativePedigreeStageWith({ diseases: [] }),
+      sections: narrativePedigreeSections,
+    });
+
+    reorderStages(harness, movePedigreeLast);
+
+    expect(
+      await screen.findByText(
+        'The Family Pedigree stage this one reads now runs after it, so the family would still be empty. Move it earlier in the interview, or choose a pedigree that runs before this stage.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('refuses a source that has left the interview', async () => {
     const harness = renderStageEditor({
       stage: narrativePedigreeStageWith({

@@ -133,6 +133,33 @@ describe('where the stage sits', () => {
       isNew: true,
     });
   });
+
+  /**
+   * A stage whose own document the schema refuses is not among the stages that
+   * could be read, but the interview's order still names it and still runs it
+   * there. Placed from the readable list alone it looked like a stage the
+   * interview does not hold, and was treated as a new one arriving at the end
+   * — which offered it a skip forward to stages it actually runs before.
+   *
+   * Its index is counted in READABLE stages, because that is the list the
+   * options and the numbering are built from.
+   */
+  it('keeps the place of an existing stage that could not be read', () => {
+    expect(
+      stagePlacement(stages, 'unreadable', undefined, [
+        'stage-1',
+        'unreadable',
+        'stage-2',
+        'stage-3',
+      ]),
+    ).toEqual({ index: 1, isNew: false });
+  });
+
+  it('still places a stage neither the order nor the interview holds', () => {
+    expect(
+      stagePlacement(stages, 'stage-new', 1, ['stage-1', 'stage-2', 'stage-3']),
+    ).toEqual({ index: 1, isNew: true });
+  });
 });
 
 describe('the destinations on offer', () => {

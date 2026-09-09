@@ -26,6 +26,36 @@ function contextInOrder(
   });
 }
 
+/**
+ * The same protocol with the narrative pedigree's OWN document left in a shape
+ * the schema refuses — an import that dropped its diseases, which is exactly
+ * the stage a researcher opens this editor to repair.
+ *
+ * `protocolContextFromSections` reports it and leaves it out of
+ * `orderedStages`; the interview's order still names it, and still runs it
+ * where the order says.
+ */
+function contextWithUnreadableNarrativePedigree(
+  order: readonly string[],
+): ProtocolBuilderProtocolContext {
+  const sections = fixtureProtocolSections();
+  const stageKey = sectionId({
+    kind: 'stage',
+    stageId: 'narrative-pedigree-1',
+  });
+  const stage = sections[stageKey];
+  if (stage === undefined) {
+    throw new Error(
+      'The fixture protocol has no "narrative-pedigree-1" stage.',
+    );
+  }
+  return protocolContextFromSections({
+    ...sections,
+    [stageKey]: { ...stage, diseases: [] },
+    [sectionId({ kind: 'stageOrder' })]: { stages: [...order] },
+  });
+}
+
 const FIXTURE_ORDER = [
   'ego-form-1',
   'sociogram-1',
@@ -133,6 +163,54 @@ describe('the pedigrees a narrative pedigree may read', () => {
     expect(problem).toBe('afterThisStage');
     // And nothing is offered in its place, because nothing qualifies.
     expect(options).toEqual([]);
+  });
+
+  /**
+   * A stage the schema refuses is still a stage the interview RUNS, and where
+   * it runs is what decides which pedigrees precede it.
+   *
+   * `orderedStages` holds only the stages that could be read, so an
+   * existing-but-invalid one is missing from it — and, read from that list
+   * alone, it looked like a stage the interview does not contain, which is
+   * placed as a new one arriving at the end. Every pedigree in the interview
+   * was then offered to it, including the one that runs after it, and the
+   * stored choice of that pedigree had nothing wrong with it. Repair the rest
+   * of the stage and the save takes an order the interview cannot execute.
+   */
+  it('keeps the place of an existing stage the schema refuses', () => {
+    const context = contextWithUnreadableNarrativePedigree([
+      'ego-form-1',
+      'narrative-pedigree-1',
+      'family-pedigree-1',
+    ]);
+    // The precondition, asserted rather than assumed: without it this test
+    // would pass on the ordinary path and prove nothing.
+    expect(context.orderedStages.map((stage) => stage.id)).not.toContain(
+      'narrative-pedigree-1',
+    );
+
+    const { options, problem } = resolveSourceStages(
+      context,
+      'narrative-pedigree-1',
+      'family-pedigree-1',
+    );
+
+    expect(options).toEqual([]);
+    expect(problem).toBe('afterThisStage');
+  });
+
+  /** And the pedigrees that really do precede it are still offered. */
+  it('offers an unreadable stage the pedigrees that run before it', () => {
+    const { options, problem } = resolveSourceStages(
+      contextWithUnreadableNarrativePedigree(FIXTURE_ORDER),
+      'narrative-pedigree-1',
+      'family-pedigree-1',
+    );
+
+    expect(options.map((option) => option.value)).toEqual([
+      'family-pedigree-1',
+    ]);
+    expect(problem).toBeNull();
   });
 
   it('reports a source that has left the interview', () => {

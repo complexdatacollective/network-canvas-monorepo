@@ -57,7 +57,16 @@ export function resolveSourceStages(
   position?: number,
 ): SourceStageResolution {
   const stages = context.orderedStages;
-  const placement = stagePlacement(stages, thisStageId, position);
+  const placement = stagePlacement(
+    stages,
+    thisStageId,
+    position,
+    // The order as the protocol states it, so a stage the schema refuses —
+    // one an import left with an empty `diseases` list, which is exactly the
+    // stage a researcher opens this editor to repair — keeps the place the
+    // interview runs it at instead of being read as a new one appended last.
+    context.stageOrder,
+  );
 
   const options = stages
     .slice(0, placement.index)
