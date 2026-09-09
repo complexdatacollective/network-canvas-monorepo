@@ -187,7 +187,10 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         };
       }
     | undefined;
-  const diseaseNominationStep = configuration.diseaseNominationStep as
+  // FamilyPedigree: the attribute nomination steps asked after the family is
+  // built. (`diseaseNominationStep` was the legacy FamilyTreeCensus key; no
+  // current schema stage carries it, so it is not read here.)
+  const nominationPrompts = configuration.nominationPrompts as
     | Array<{
         id: string;
         text: string;
@@ -333,9 +336,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       />
       <ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />
       <NameGenerationStep nameGenerationStep={nameGenerationStep ?? null} />
-      <DiseaseNominationPrompts
-        diseaseNominationStep={diseaseNominationStep ?? null}
-      />
+      <DiseaseNominationPrompts nominationPrompts={nominationPrompts ?? null} />
       <Anonymisation
         explanationText={explanationText ?? null}
         validation={validation ?? null}

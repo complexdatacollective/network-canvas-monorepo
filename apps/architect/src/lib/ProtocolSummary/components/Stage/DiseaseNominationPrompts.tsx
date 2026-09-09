@@ -23,21 +23,21 @@ type DiseasePrompt = {
 };
 
 type DiseaseNominationPromptsProps = {
-  diseaseNominationStep?: DiseasePrompt[] | null;
+  nominationPrompts?: DiseasePrompt[] | null;
 };
 
 const DiseaseNominationPrompts = ({
-  diseaseNominationStep = null,
+  nominationPrompts = null,
 }: DiseaseNominationPromptsProps) => {
   const intl = useAppIntl();
-  if (!diseaseNominationStep || diseaseNominationStep.length === 0) {
+  if (!nominationPrompts || nominationPrompts.length === 0) {
     return null;
   }
 
   return (
     <SectionFrame title={intl.formatMessage(messages.diseaseNominationPrompts)}>
       <UnorderedList>
-        {diseaseNominationStep.map((prompt) => (
+        {nominationPrompts.map((prompt) => (
           <li className="my-5" key={prompt.id}>
             <div className="break-inside-avoid">
               <Markdown label={prompt.text} />
