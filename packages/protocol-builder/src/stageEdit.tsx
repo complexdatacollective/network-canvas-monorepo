@@ -12,6 +12,7 @@ import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { StageType } from '@codaco/protocol-validation';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
+import { blockedHolders } from './codebook/writes.ts';
 import type { Presence } from './contract/schemas.ts';
 import { getInterfaceTemplate } from './interfaces/templates.ts';
 import { useStagedResources } from './resources/client.tsx';
@@ -287,17 +288,45 @@ function CreatingStage({
  *
  * A lost lock and a document the section cannot hold are both the end of this
  * draft: the editor may not write, or what it wrote is not a stage. A refused
- * promotion is not — the submit wrote nothing at all, the files are still
- * staged, and saving again is a thing that can work — so the draft stays where
- * the researcher left it.
+ * promotion and a section somebody else is holding are not — the submit wrote
+ * nothing at all, and saving again once they are finished is a thing that can
+ * work — so the draft stays where the researcher left it.
  */
 function refusalFromHost(result: SubmitResult): StageSaveOutcome {
   if (result.status === 'promotionFailed') {
     return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
   }
+  if (result.status === 'sectionsLocked') {
+    return {
+      status: 'refused',
+      message: blockedMessage(blockedHolders(result.blocked)),
+    };
+  }
   return result.status === 'notLockHolder'
     ? { status: 'lost', message: LOCK_LOST_MESSAGE }
     : { status: 'lost', message: INVALID_SHAPE_MESSAGE };
+}
+
+/**
+ * A save the protocol would not take because somebody else is holding a
+ * section it writes: not this stage — the editor holds that — but the stage
+ * order a new stage is registered in, or the list of files a promotion adds
+ * to.
+ *
+ * The holders are named the way a refused codebook change names them, because
+ * it is the same fact about the same protocol; what differs is that nothing
+ * here is lost, so the sentence says the draft is still on screen.
+ */
+function blockedMessage(holders: readonly string[]): string {
+  const [holder, ...rest] = holders;
+  if (holder === undefined) {
+    return createMessageError(messages.blockedBySomeoneUnnamed);
+  }
+  return rest.length === 0
+    ? createMessageError(messages.blockedBy, { holder })
+    : createMessageError(messages.blockedBySeveral, {
+        holders: { list: [holder, ...rest] },
+      });
 }
 
 const messages = defineMessages({
@@ -335,6 +364,27 @@ const messages = defineMessages({
       'A file imported here cannot be saved with a stage that is being added for the first time. Discard the import and add the stage, then reopen it to import the file.',
     description:
       'Shown above a stage editor’s fields when the researcher imported a file while adding a brand new stage, which the protocol cannot yet take in one step. A stage is one step of an interview.',
+  },
+  blockedBySomeoneUnnamed: {
+    id: 'protocolBuilder.stageEdit.blockedBySomeoneUnnamed',
+    defaultMessage:
+      'Another part of the protocol that this save needs is being edited, so nothing was saved and your changes are still here. Try saving again in a moment.',
+    description:
+      'Shown above a stage editor’s fields when the save was refused because somebody the host would not name is editing another part of the protocol the save has to write. The researcher’s unsaved work is still on screen. A stage is one step of an interview.',
+  },
+  blockedBy: {
+    id: 'protocolBuilder.stageEdit.blockedBy',
+    defaultMessage:
+      '{holder} is editing another part of the protocol that this save needs, so nothing was saved and your changes are still here. Try saving again in a moment.',
+    description:
+      'Shown above a stage editor’s fields when the save was refused because a named collaborator is editing another part of the protocol the save has to write. holder is that person’s display name, which the host supplies. The researcher’s unsaved work is still on screen. A stage is one step of an interview.',
+  },
+  blockedBySeveral: {
+    id: 'protocolBuilder.stageEdit.blockedBySeveral',
+    defaultMessage:
+      '{holders} are editing other parts of the protocol that this save needs, so nothing was saved and your changes are still here. Try saving again in a moment.',
+    description:
+      'Shown above a stage editor’s fields when the save was refused because several named collaborators are between them editing the other parts of the protocol the save has to write. holders is their display names, which the host supplies, joined as a list. The researcher’s unsaved work is still on screen. A stage is one step of an interview.',
   },
   addFailed: {
     id: 'protocolBuilder.stageEdit.addFailed',

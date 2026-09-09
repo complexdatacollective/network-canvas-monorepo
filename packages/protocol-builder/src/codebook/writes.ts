@@ -65,23 +65,29 @@ const heldRefusal = (holder: Presence | undefined): CodebookRefusal =>
     : { kind: 'held', holders: [holder.displayName] };
 
 /**
- * The refusal a compound refactor answers with, naming everyone in its way.
+ * Everyone a `SECTIONS_LOCKED` refusal names, once each and in the order the
+ * host named them.
  *
- * A refactor writes several sections, so more than one collaborator can be
- * holding it up; a host that would not name one contributes nothing, and a
- * change blocked only by those is refused without a name rather than with a
- * gap in the list.
+ * A write that touches several sections can be held up by more than one
+ * collaborator, and being told about one of them and then about the next is
+ * how a researcher comes to believe the application is refusing at random. A
+ * host that would not name a holder contributes nothing to the list.
  */
+export const blockedHolders = (
+  blocked: readonly Readonly<{ holder?: Presence }>[],
+): readonly string[] => [
+  ...new Set(
+    blocked.flatMap((section) =>
+      section.holder === undefined ? [] : [section.holder.displayName],
+    ),
+  ),
+];
+
+/** The refusal a write blocked by other editors answers with. */
 const blockedRefusal = (
   blocked: readonly Readonly<{ holder?: Presence }>[],
 ): CodebookRefusal => {
-  const holders = [
-    ...new Set(
-      blocked.flatMap((section) =>
-        section.holder === undefined ? [] : [section.holder.displayName],
-      ),
-    ),
-  ];
+  const holders = blockedHolders(blocked);
   return holders.length === 0 ? { kind: 'held' } : { kind: 'held', holders };
 };
 
@@ -198,6 +204,9 @@ export function useCodebookSectionWrite(): (
         if (definedError?.code === 'NOT_LOCK_HOLDER') {
           return refused(heldRefusal(definedError.data.holder));
         }
+        if (definedError?.code === 'SECTIONS_LOCKED') {
+          return refused(blockedRefusal(definedError.data.blocked));
+        }
         if (definedError?.code === 'INVALID_SHAPE') {
           return refused({ kind: 'invalidShape' });
         }
@@ -241,6 +250,9 @@ async function createEgoCodebook(
   if (definedError?.code === 'INVALID_SHAPE') {
     return refused({ kind: 'invalidShape' });
   }
+  if (definedError?.code === 'SECTIONS_LOCKED') {
+    return refused(blockedRefusal(definedError.data.blocked));
+  }
   if (definedError?.code === 'SECTION_EXISTS') {
     return refused({ kind: 'sectionCreatedElsewhere' });
   }
@@ -274,6 +286,9 @@ export function useCreateCodebookEntity(): (
       const { definedError } = created;
       if (definedError?.code === 'INVALID_SHAPE') {
         return refused({ kind: 'invalidShape' });
+      }
+      if (definedError?.code === 'SECTIONS_LOCKED') {
+        return refused(blockedRefusal(definedError.data.blocked));
       }
       return refused(protocolRefusal(definedError?.code));
     },

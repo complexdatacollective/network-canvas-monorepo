@@ -3703,6 +3703,18 @@
     "defaultMessage": "This stage could not be added. Wait a moment and try again.",
     "description": "Shown above a stage editor’s fields when adding a new stage failed for a reason that carried no explanation of its own. A stage is one step of an interview."
   },
+  "protocolBuilder.stageEdit.blockedBy": {
+    "defaultMessage": "{holder} is editing another part of the protocol that this save needs, so nothing was saved and your changes are still here. Try saving again in a moment.",
+    "description": "Shown above a stage editor’s fields when the save was refused because a named collaborator is editing another part of the protocol the save has to write. holder is that person’s display name, which the host supplies. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
+  },
+  "protocolBuilder.stageEdit.blockedBySeveral": {
+    "defaultMessage": "{holders} are editing other parts of the protocol that this save needs, so nothing was saved and your changes are still here. Try saving again in a moment.",
+    "description": "Shown above a stage editor’s fields when the save was refused because several named collaborators are between them editing the other parts of the protocol the save has to write. holders is their display names, which the host supplies, joined as a list. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
+  },
+  "protocolBuilder.stageEdit.blockedBySomeoneUnnamed": {
+    "defaultMessage": "Another part of the protocol that this save needs is being edited, so nothing was saved and your changes are still here. Try saving again in a moment.",
+    "description": "Shown above a stage editor’s fields when the save was refused because somebody the host would not name is editing another part of the protocol the save has to write. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
+  },
   "protocolBuilder.stageEdit.importBeforeAdd": {
     "defaultMessage": "A file imported here cannot be saved with a stage that is being added for the first time. Discard the import and add the stage, then reopen it to import the file.",
     "description": "Shown above a stage editor’s fields when the researcher imported a file while adding a brand new stage, which the protocol cannot yet take in one step. A stage is one step of an interview."

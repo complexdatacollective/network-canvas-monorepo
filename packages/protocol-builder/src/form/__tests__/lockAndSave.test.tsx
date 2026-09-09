@@ -336,6 +336,46 @@ describe('a file imported while the stage is open', () => {
     );
   });
 
+  it('leaves the draft on screen when somebody else is holding the file list', async () => {
+    const seeded = loadFixtureStage(STAGE_ID);
+    const harness = renderStageEditor({
+      stageId: STAGE_ID,
+      sections: stagedProbe,
+      // The manifest the promotion writes, not the stage: this editor holds
+      // the stage, and a save that promotes has to write both.
+      heldSections: [
+        { sectionId: sectionId({ kind: 'assets' }), displayName: 'Robin' },
+      ],
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Import a file' }),
+    );
+    expect(await screen.findByText('A roster')).toBeInTheDocument();
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Renamed behind a held manifest');
+
+    expect(await harness.submit()).toBeNull();
+
+    expect(
+      await screen.findByText(
+        /Robin is editing another part of the protocol that this save needs/,
+      ),
+    ).toBeInTheDocument();
+    // Nothing was written, so there is nothing to start again from: the draft
+    // is the researcher's to save once Robin has finished.
+    expect(harness.protocolSections()[STAGE_SECTION]).toEqual({
+      id: STAGE_ID,
+      type: seeded.type,
+      ...seeded.fields,
+    });
+    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+      'Renamed behind a held manifest',
+    );
+  });
+
   it('is dropped when the researcher closes the stage without saving', async () => {
     const harness = renderStageEditor({
       stageId: STAGE_ID,
