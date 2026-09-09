@@ -55,7 +55,14 @@ export type StageNameSectionProps = Readonly<{
   position?: Readonly<{ index: number; total: number }>;
   /** Where this interface is documented. */
   documentationUrl?: string;
-  /** A stage being created starts with its name focused. */
+  /**
+   * Whether the name field takes focus when the editor opens.
+   *
+   * The session's answer by default, for the same reason `autoName` reads it:
+   * naming the stage is the first thing there is to do in a stage that does
+   * not exist yet, and an existing stage was opened to be looked at rather
+   * than renamed. An editor with a reason to differ overrides it either way.
+   */
   autoFocus?: boolean;
   /**
    * What a proposed name is derived from, and whether to propose one at all.
@@ -86,10 +93,11 @@ export type StageNameSectionProps = Readonly<{
 export default function StageNameSection({
   position,
   documentationUrl,
-  autoFocus = false,
+  autoFocus,
   autoName,
 }: StageNameSectionProps) {
   const { identity, creation } = useStageEditorForm();
+  const isNewStage = creation !== undefined;
   const intl = useAppIntl();
   // One descriptor read twice: the section's name in the outline and the
   // field's own label are the same words, and a translator moves them once.
@@ -104,7 +112,7 @@ export default function StageNameSection({
   const interfaceName =
     interfaceDisplayName(identity.type, intl) ?? identity.type;
   const { onLabelBlur } = useAutoStageName({
-    isNewStage: autoName?.propose ?? creation !== undefined,
+    isNewStage: autoName?.propose ?? isNewStage,
     panels: autoName?.panels,
   });
 
@@ -157,7 +165,7 @@ export default function StageNameSection({
           placeholder={intl.formatMessage(messages.placeholder)}
           characterLimit={STAGE_NAME_LIMIT}
           required
-          autoFocus={autoFocus}
+          autoFocus={autoFocus ?? isNewStage}
           onFieldBlur={onLabelBlur}
         />
       </SectionScopeContext>
