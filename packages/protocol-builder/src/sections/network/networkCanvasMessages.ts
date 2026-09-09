@@ -521,6 +521,26 @@ export const networkCanvasMessages = defineMessages({
     description:
       'Stands in for a preset’s name in the collapsed row of the preset list while the researcher has not written one yet.',
   },
+  presetUnavailableHighlightAttribute: {
+    id: 'protocolBuilder.networkCanvas.presetUnavailableHighlightAttribute',
+    defaultMessage: '{attributeId} — this attribute is not available here',
+    description:
+      'Name of the tick-list choice standing for an attribute a preset still highlights by and the list can no longer offer — it may have been deleted from the protocol’s codebook, or changed to a kind of attribute that is not true-or-false. Worded for what the list knows: it is handed the true-or-false attributes and a stored choice, and cannot tell those two cases apart. attributeId is the raw stored identifier, which is not translated.',
+  },
+  presetMissingEdgeTypeRefusal: {
+    id: 'protocolBuilder.networkCanvas.presetMissingEdgeTypeRefusal',
+    defaultMessage:
+      '“{edgeTypeId}” is no longer in the codebook, so this preset cannot draw it. Untick it.',
+    description:
+      'Refusal shown under a preset’s connection tick list when the preset still draws a connection type the protocol’s codebook no longer defines. edgeTypeId is the raw stored identifier — there is no name left to show — and is not translated. A connection type is a kind of relationship between two network members.',
+  },
+  presetsUnusableReferences: {
+    id: 'protocolBuilder.networkCanvas.presetsUnusableReferences',
+    defaultMessage:
+      '{count, plural, one {{presetNames} names an attribute or connection type this protocol no longer offers. Open it and choose again.} other {{presetNames} name attributes or connection types this protocol no longer offers. Open each of them and choose again.}}',
+    description:
+      'Refusal shown above the preset list when one or more presets already in it point at something a collaborator has since deleted or changed the kind of — usually while this editor was open, or in an imported protocol. count is how many such presets there are; presetNames is their names, already joined into one phrase in the reader’s language. A preset is one saved way of looking at the network.',
+  },
 
   // One sociogram prompt, as its dialog asks for it.
   promptTextTitle: {
@@ -799,7 +819,7 @@ export const networkCanvasMessages = defineMessages({
     defaultMessage:
       '{edgeTypeId} — this edge type is no longer in the codebook',
     description:
-      'Name of the tick-list choice standing for an edge type a stage still names — a sociogram prompt displays it, a network composer draws it — and the protocol’s codebook no longer defines. edgeTypeId is the raw stored identifier: there is no name left to show, because the definition it would have come from has been deleted. An edge type is a kind of relationship between two network members.',
+      'Name of the tick-list choice standing for an edge type a stage still names — a sociogram prompt displays it, a network composer draws it, a narrative preset draws it — and the protocol’s codebook no longer defines. edgeTypeId is the raw stored identifier: there is no name left to show, because the definition it would have come from has been deleted. An edge type is a kind of relationship between two network members.',
   },
   promptEmptyPreview: {
     id: 'protocolBuilder.networkCanvas.promptEmptyPreview',

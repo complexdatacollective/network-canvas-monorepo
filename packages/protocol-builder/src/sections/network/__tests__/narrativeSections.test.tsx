@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -50,6 +50,21 @@ const personWithVariable = (
   return { ...document, variables: { ...variables, [variableId]: variable } };
 };
 
+/** A narrative stage holding one preset of the caller's choosing. */
+const narrativeHolding = (preset: Record<string, unknown>) => ({
+  stage: {
+    type: 'Narrative' as const,
+    fields: {
+      label: 'Narrative',
+      subject: { entity: 'node', type: 'person' },
+      background: { concentricCircles: 4, skewedTowardCenter: true },
+      behaviours: { freeDraw: true, allowRepositioning: true },
+      presets: [preset],
+    },
+  },
+  sections,
+});
+
 /**
  * What a preset READS, offered whoever else writes it.
  *
@@ -83,6 +98,160 @@ describe('an attribute something else already collects', () => {
     expect(
       preset.getByRole('checkbox', { name: 'highlighted' }),
     ).toBeInTheDocument();
+  });
+});
+
+const LOST_EDGE = 'former_edge';
+const LOST_HIGHLIGHT = 'former_flag';
+const LOST_EDGE_CHOICE = `${LOST_EDGE} — this edge type is no longer in the codebook`;
+const LOST_HIGHLIGHT_CHOICE = `${LOST_HIGHLIGHT} — this attribute is not available here`;
+
+/**
+ * A preset naming things this protocol does not define.
+ *
+ * Both tick lists render from the codebook and neither value does, so an id
+ * the codebook lost stayed in the preset with no box to untick it with:
+ * `CheckboxGroupField` writes the whole list back on any tick, so the
+ * reference survived every gesture and the only way out was deleting the whole
+ * preset. The same repair the sociogram's prompt editor makes, made on both of
+ * a preset's lists.
+ */
+describe('a preset naming what the codebook no longer has', () => {
+  const openLostPreset = async () => {
+    const harness = renderStageEditor(
+      narrativeHolding({
+        id: 'narrative-preset-1',
+        label: 'Default layout',
+        layoutVariable: 'layout',
+        edges: { display: ['knows', LOST_EDGE] },
+        highlight: ['flagged', LOST_HIGHLIGHT],
+      }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit preset' }),
+    );
+    return { harness, preset: within(await screen.findByRole('dialog')) };
+  };
+
+  it('shows both lost references, and shows them as chosen', async () => {
+    const { preset } = await openLostPreset();
+
+    expect(
+      preset.getByRole('checkbox', { name: LOST_EDGE_CHOICE }),
+    ).toBeChecked();
+    expect(
+      preset.getByRole('checkbox', { name: LOST_HIGHLIGHT_CHOICE }),
+    ).toBeChecked();
+  });
+
+  it('refuses the row while they are still ticked', async () => {
+    const { harness, preset } = await openLostPreset();
+
+    await harness.user.click(preset.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await preset.findByText(/is no longer in the codebook, so this preset/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('lets the researcher untick them, which repairs the preset', async () => {
+    const { harness, preset } = await openLostPreset();
+
+    await harness.user.click(
+      preset.getByRole('checkbox', { name: LOST_EDGE_CHOICE }),
+    );
+    await harness.user.click(
+      preset.getByRole('checkbox', { name: LOST_HIGHLIGHT_CHOICE }),
+    );
+    // Unticking must not take the box away mid-gesture: the researcher has to
+    // be able to see what they have just done.
+    expect(
+      preset.getByRole('checkbox', { name: LOST_EDGE_CHOICE }),
+    ).not.toBeChecked();
+    await harness.user.click(preset.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(presets(request?.stageDocument ?? {})[0]).toEqual({
+      id: 'narrative-preset-1',
+      label: 'Default layout',
+      layoutVariable: 'layout',
+      edges: { display: ['knows'] },
+      highlight: ['flagged'],
+    });
+  });
+});
+
+/**
+ * An attribute a preset points at, given a different type somewhere else.
+ *
+ * `ProtocolSchema` V8 checks that a referenced attribute EXISTS and nothing
+ * more, so every one of these saves unremarked and changes what the interview
+ * does: `syncFromNodes` has no coordinates to restore from a text value,
+ * `getGroupKeys` discards a boolean where it wanted a category, and the
+ * highlight branch reads every nonempty string as "highlighted". The pickers
+ * drop the attribute the moment the type changes — they are built from the
+ * same live codebook — and that only decides what may be CHOSEN.
+ *
+ * So the same rule is asked in the two places a preset reaches the protocol:
+ * of the row a dialog is committing, and of every row in the list when the
+ * stage is saved. The second is the one that matters most: a researcher
+ * editing some other section never opens the row at all.
+ */
+describe.each([
+  { held: 'positions its nodes by', variableId: 'layout' },
+  { held: 'groups its nodes by', variableId: 'contactType' },
+  { held: 'highlights its nodes by', variableId: 'flagged' },
+])('an attribute a preset $held, retyped elsewhere', ({ variableId }) => {
+  /** The collaborator's change: same id, same name, a different kind of thing. */
+  const retype = (harness: StageEditorHarness) => {
+    act(() => {
+      harness.receiveCodebookUpdate({
+        node: {
+          person: personWithVariable(harness, variableId, {
+            name: variableId,
+            type: 'text',
+            component: 'Text',
+          }),
+        },
+      });
+    });
+  };
+
+  it('refuses the stage save while every row stays closed', async () => {
+    const harness = renderStageEditor(openEditor());
+    await waitFor(() => expect(harness.outline()).toHaveLength(2));
+
+    retype(harness);
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        /names an attribute or connection type this protocol no longer offers/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('refuses the row, and says which control holds it', async () => {
+    const harness = renderStageEditor(openEditor());
+    await waitFor(() => expect(harness.outline()).toHaveLength(2));
+
+    retype(harness);
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit preset' }),
+    );
+    const preset = within(await screen.findByRole('dialog'));
+    await harness.user.click(preset.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await preset.findByText(
+        /is no longer the kind of attribute this control can use/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
 
