@@ -9,10 +9,12 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 
 import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.tsx';
 import type { CodebookEntityDraft } from '../codebook/editing.ts';
+import {
+  type EntityTypeChangeConfirmation,
+  useConfirmEntityTypeChange,
+} from '../fields/EntitySelectField.tsx';
 import SubjectSelectField, {
   type EntitySubject,
-  type SubjectChangeConfirmation,
-  useConfirmSubjectChange,
 } from '../fields/SubjectSelectField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
@@ -302,7 +304,7 @@ export type SubjectSectionProps = Readonly<{
 function useSubjectChangeQuestion(
   words: SubjectWords,
   intl: IntlShape,
-): () => SubjectChangeConfirmation | undefined {
+): () => EntityTypeChangeConfirmation | undefined {
   const discardsConfiguration = useSubjectChangeDiscards();
   const hasAnyValue = useAskStageHasAnyValue();
   return useCallback(() => {
@@ -409,7 +411,7 @@ function CreateSubjectType({
   words: SubjectWords;
   intl: IntlShape;
   /** The picker's own question, asked before this selects the new type. */
-  confirmChange: () => SubjectChangeConfirmation | undefined;
+  confirmChange: () => EntityTypeChangeConfirmation | undefined;
 }>) {
   const { controller, readOnly, storeApi } = useStageEditorForm();
   const codebook = controller.snapshot.protocolContext.codebook;
@@ -450,7 +452,7 @@ function CreateSubjectType({
     [codebook],
   );
 
-  const confirmSubjectChange = useConfirmSubjectChange();
+  const confirmEntityTypeChange = useConfirmEntityTypeChange();
 
   const selectCreatedType = useCallback(
     (typeId: string) => {
@@ -482,12 +484,19 @@ function CreateSubjectType({
         // there, and the dialog outliving the question is what keeps focus on
         // a live control — the confirm returns focus to the Save it was raised
         // from, and the dialog then returns it to its own trigger.
-        const confirmed = await confirmSubjectChange(question);
+        // The created type travels with the question: a "yes" is judged on the
+        // codebook as it stands when it is given, and a collaborator deleting
+        // this type while the researcher reads the question is exactly what
+        // that judgement is for.
+        const confirmed = await confirmEntityTypeChange(question, {
+          entityType: entity,
+          typeId,
+        });
         if (confirmed) select();
         setSession(null);
       })();
     },
-    [confirmChange, confirmSubjectChange, entity, storeApi],
+    [confirmChange, confirmEntityTypeChange, entity, storeApi],
   );
 
   return (
