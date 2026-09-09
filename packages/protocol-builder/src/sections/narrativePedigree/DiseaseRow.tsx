@@ -6,7 +6,6 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
-import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import {
   INHERITANCE_PATTERNS,
   type InheritancePattern,
@@ -18,7 +17,6 @@ import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { protocolColor } from '../../protocolColor.ts';
-import CreateVariableButton from '../pedigree/CreateVariableButton.tsx';
 import { usePedigreeVariableIndexes } from '../pedigree/entityTypeReset.ts';
 import {
   slotPickerOptions,
@@ -26,7 +24,10 @@ import {
 } from '../pedigree/slotWiring.ts';
 import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
-import { sourceStageNodeType } from './sourceStage.ts';
+import {
+  sourceStageNodeType,
+  sourceStageRecordedVariables,
+} from './sourceStage.ts';
 
 const LABEL_FIELD = 'label';
 const COLOR_FIELD = 'color';
@@ -100,28 +101,33 @@ export function useDiseaseSubject(): CodebookSubject | null {
  * One disease: what it is called, how it is drawn, which attribute says who
  * has it, and how it travels through a family.
  *
- * The attribute pool is the source pedigree's boolean node attributes, minus
- * the ones the pedigree derives structurally and the ones a form elsewhere
- * collects. Mapping the participant marker as a disease would paint the
- * participant as affected in every interview, which is why the schema refuses
- * it and why the picker never offers it; a disease mapping writes its
+ * The attribute pool is the boolean attributes the source pedigree RECORDS —
+ * the ones a nomination prompt of it writes (`sourceStageRecordedVariables`) —
+ * minus the ones the pedigree derives structurally and the ones a form
+ * elsewhere collects. Mapping the participant marker as a disease would paint
+ * the participant as affected in every interview, which is why the schema
+ * refuses it and why the picker never offers it; a disease mapping writes its
  * attribute from the tree the participant draws, with no validation, so taking
- * one a form field collects would bypass that field's validation. Both
+ * one a form field collects would bypass that field's validation. Those two
  * exclusions are the shared pedigree ones, so this picker and the save gate in
  * `DiseasesSection` cannot disagree about which picks are legal.
  *
- * A researcher describing a condition the codebook does not record yet creates
- * the attribute here rather than leaving the stage for the codebook and coming
- * back: it goes onto the source pedigree's own node type, through the session's
- * compound-edit path.
+ * The recorded-attribute rule is the same pair, and it exists because a
+ * disease only READS: an attribute the source pedigree never asks about is
+ * never `true`, so a stage mapped to one draws an unmarked family in every
+ * interview and nothing anywhere reports it. There is no create-an-attribute
+ * affordance here for the same reason — a bare new attribute is one nothing
+ * collects. The condition the study does not record yet is added where it IS
+ * recorded, as a nomination prompt of the source pedigree, which has a create
+ * button of its own; the picker's empty message says so.
  */
 export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
   const { roleMap, slotMap } = usePedigreeVariableIndexes();
   const subject = useDiseaseSubject();
+  const sourceStageId = useStageValue('sourceStageId');
   const rows = useStageValue('diseases');
-  const setFieldValue = useFormStore((state) => state.setFieldValue);
   const currentVariable = asString(item.variable);
 
   // Both lists are the same every render, and both are a control's `options`:
@@ -149,6 +155,10 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
 
   const options = useMemo(() => {
     const used = siblingVariables(rows, editIndex);
+    const recorded = sourceStageRecordedVariables(
+      protocolContext,
+      sourceStageId,
+    );
     return slotPickerOptions({
       roleMap,
       slotMap,
@@ -156,7 +166,8 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
       options: subjectVariableOptions(protocolContext, subject).filter(
         (option) =>
           option.type === 'boolean' &&
-          (option.value === currentVariable || !used.has(option.value)),
+          (option.value === currentVariable ||
+            (recorded.has(option.value) && !used.has(option.value))),
       ),
       ...(currentVariable === undefined
         ? {}
@@ -172,6 +183,7 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
     roleMap,
     rows,
     slotMap,
+    sourceStageId,
     subject,
   ]);
 
@@ -219,17 +231,6 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
         required={intl.formatMessage(
           narrativePedigreeMessages.diseaseVariableRequired,
         )}
-      />
-      <CreateVariableButton
-        subject={subject}
-        variableType="boolean"
-        label={intl.formatMessage(
-          narrativePedigreeMessages.diseaseCreateVariableLabel,
-        )}
-        description={intl.formatMessage(
-          narrativePedigreeMessages.diseaseCreateVariableDescription,
-        )}
-        onCreated={(variableId) => setFieldValue(VARIABLE_FIELD, variableId)}
       />
       <Field
         name={INHERITANCE_FIELD}

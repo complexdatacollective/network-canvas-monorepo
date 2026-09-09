@@ -1,8 +1,10 @@
-import { type CSSProperties, useId, useMemo } from 'react';
+import { type CSSProperties, useCallback, useId, useMemo } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, {
@@ -22,11 +24,81 @@ import {
   ruleEntityTypeOptions,
 } from '../rules/ruleCodebook.ts';
 
+/**
+ * What the researcher is asked before a change that costs them something.
+ *
+ * Whole strings rather than a noun dropped into a frame, like every other word
+ * a type picker uses: "the node type" and "the edge type" do not differ only in
+ * the noun in every language.
+ */
+export type EntityTypeChangeConfirmation = Readonly<{
+  title: string;
+  description: string;
+  confirmLabel: string;
+}>;
+
+/**
+ * Asks the question a type change raises, and answers whether the change may
+ * go ahead.
+ *
+ * Shared, because this control is not the only way a researcher moves a
+ * stage's type: creating a type from inside the stage and selecting it on it
+ * moves it too, and costs the stage exactly the same prompts, form, panels and
+ * filter. One definition of the question, so the two cannot ask different ones
+ * — or so that one of them cannot quietly stop asking.
+ *
+ * `undefined` is "nothing to lose", and goes ahead without a dialog: a
+ * question about nothing is one a researcher learns to dismiss without
+ * reading. The dismissal is the provider's own plain "Cancel", which is what
+ * this question wants — backing out of a change that has not happened yet
+ * needs no words of its own.
+ */
+export function useConfirmEntityTypeChange(): (
+  question: EntityTypeChangeConfirmation | undefined,
+) => Promise<boolean> {
+  const { confirm } = useDialog();
+  return useCallback(
+    async (question) => {
+      if (question === undefined) return true;
+      const confirmed = await confirm({
+        title: question.title,
+        description: question.description,
+        confirmLabel: question.confirmLabel,
+        intent: 'warning',
+        onConfirm: () => undefined,
+      });
+      return confirmed === true;
+    },
+    [confirm],
+  );
+}
+
 export type EntitySelectFieldProps = CreateFormFieldProps<
   string,
   'div',
   {
     entityType: RuleEntityTarget;
+    /**
+     * What to ask before a pick that costs the stage what it is carrying, or
+     * `undefined` to let the pick through without asking.
+     *
+     * A function, because it is asked at the moment of the change: the answer
+     * depends on what the stage is carrying, and a control re-rendering on
+     * every keystroke to keep it current is one re-rendering for a question
+     * nobody has asked yet. The same reason `useDiscardDraftGuard` takes
+     * `hasDraft` as one.
+     */
+    confirmChange?: () => EntityTypeChangeConfirmation | undefined;
+    /**
+     * Why this stage's type may not be changed at all, or `undefined` while it
+     * may.
+     *
+     * A whole sentence, because it is the only thing the researcher is given
+     * to act on: what depends on this type, and what to do about it. Refusing
+     * is stronger than confirming and is asked first — a change nothing can
+     * undo the consequences of is not one to offer with a warning.
+     */
+    blockChangeReason?: string;
   }
 >;
 
@@ -72,6 +144,26 @@ const GROUP_LABELS = defineMessages({
     defaultMessage: 'Edge type',
     description:
       'Accessible name of the group of chips a researcher picks an edge type from. An edge type is a kind of relationship between two network members, such as a friendship.',
+  },
+}) satisfies Record<RuleEntityTarget, MessageDescriptor>;
+
+/**
+ * What a refused change is called, written out per entity kind for the reason
+ * `EMPTY_MESSAGES` gives: `entityType` is an internal token, never display
+ * copy.
+ */
+const BLOCKED_TITLES = defineMessages({
+  node: {
+    id: 'protocolBuilder.entitySelect.nodeChangeBlockedTitle',
+    defaultMessage: 'This node type cannot be changed',
+    description:
+      'Title of the message shown when a researcher tries to change the node type of a stage something else in the protocol depends on, and the change is refused. A node type is a kind of network member the study records, such as a person or a place.',
+  },
+  edge: {
+    id: 'protocolBuilder.entitySelect.edgeChangeBlockedTitle',
+    defaultMessage: 'This edge type cannot be changed',
+    description:
+      'Title of the message shown when a researcher tries to change the edge type of a stage something else in the protocol depends on, and the change is refused. An edge type is a kind of relationship between two network members, such as a friendship.',
   },
 }) satisfies Record<RuleEntityTarget, MessageDescriptor>;
 
@@ -225,6 +317,8 @@ export function EntitySelectControl({
   onChange,
   onBlur,
   onFocus,
+  confirmChange,
+  blockChangeReason,
   disabled = false,
   readOnly: readOnlyProp = false,
   className,
@@ -235,9 +329,65 @@ export function EntitySelectControl({
 }: EntitySelectFieldProps) {
   const { protocolContext, readOnly: sessionReadOnly } = useStageEditorForm();
   const intl = useAppIntl();
+  const { openDialog } = useDialog();
+  const confirmEntityTypeChange = useConfirmEntityTypeChange();
   const readOnly = readOnlyProp || sessionReadOnly;
   const generatedGroupName = useId();
   const groupName = name ?? generatedGroupName;
+
+  /**
+   * A pick, held back until the researcher has agreed to what it costs.
+   *
+   * Asked HERE, before the value moves, rather than by whatever watches it
+   * afterwards: a watcher would have to put the picker back, and would be
+   * asking about a change the researcher can already see on screen. The shape
+   * Architect has always used (`NodeType`'s `promptBeforeChange`).
+   *
+   * Asked whatever the picker is currently showing. "The stage has no type
+   * yet" is not the same as "the stage has nothing to lose": a filter written
+   * before the type was picked is thrown away by the first choice exactly as
+   * it is by a later change, and a guard keyed on the value would let that one
+   * through in silence. `confirmChange` is where the loss is judged, and it
+   * already returns nothing to ask when there is nothing to lose.
+   */
+  const refuseBlockedChange = (nextType: string): boolean => {
+    if (
+      blockChangeReason === undefined ||
+      value === undefined ||
+      value === '' ||
+      nextType === value
+    ) {
+      return false;
+    }
+    void openDialog({
+      type: 'acknowledge',
+      intent: 'warning',
+      title: intl.formatMessage(BLOCKED_TITLES[entityType]),
+      description: blockChangeReason,
+      actions: {
+        primary: {
+          label: intl.formatMessage(commonMessages.continue),
+          value: true,
+        },
+      },
+    });
+    return true;
+  };
+
+  const select = (nextType: string) => {
+    // Refused before it is confirmed: a change that may not happen at all is
+    // not one to ask about, and asking first would offer the researcher a
+    // choice the next dialog takes back.
+    if (refuseBlockedChange(nextType)) return;
+    const question = confirmChange?.();
+    if (question === undefined) {
+      onChange?.(nextType);
+      return;
+    }
+    void (async () => {
+      if (await confirmEntityTypeChange(question)) onChange?.(nextType);
+    })();
+  };
 
   const codebookOptions = useMemo(
     () => ruleEntityTypeOptions(protocolContext.codebook, entityType),
@@ -312,7 +462,7 @@ export function EntitySelectControl({
                 // so it cannot be chosen again once it has been replaced.
                 disabled={disabled || (isMissing && value === option.value)}
                 readOnly={readOnly}
-                onSelect={() => onChange?.(option.value)}
+                onSelect={() => select(option.value)}
               />
             ))}
           </div>

@@ -23,6 +23,7 @@ import {
   slotCrossClassIssue,
   slotPickerOptions,
   type SlotVariableOption,
+  unusableVariableIssue,
 } from './slotWiring.ts';
 
 const NO_VARIABLES: Readonly<Variables> = Object.freeze({});
@@ -53,6 +54,11 @@ export type SlotVariableFieldProps = Readonly<{
    * writer class.
    */
   draftConflicting?: readonly string[];
+  /**
+   * The attribute this stage's display label names right now, which no
+   * structural slot may also write. See `slotWiring`'s own note.
+   */
+  draftLabelVariable?: string;
   /** The attribute type a newly created attribute is given. */
   variableType: VariableType;
   /** The canonical value set the interface owns, seeded and locked. */
@@ -82,6 +88,7 @@ export default function SlotVariableField({
   writerClass,
   ownSlot,
   draftConflicting,
+  draftLabelVariable,
   variableType,
   lockedOptions,
   createLabel,
@@ -119,11 +126,13 @@ export default function SlotVariableField({
         ...(ownSlot === undefined ? {} : { ownSlot }),
         writerClass,
         ...(draftConflicting === undefined ? {} : { draftConflicting }),
+        ...(draftLabelVariable === undefined ? {} : { draftLabelVariable }),
         draftSlotMap,
       }),
     [
       currentValue,
       draftConflicting,
+      draftLabelVariable,
       draftSlotMap,
       options,
       ownSlot,
@@ -147,6 +156,7 @@ export default function SlotVariableField({
    * slot: the whole point of the draft half of the rule.
    */
   const judgeAgainst = useRef({
+    variableType,
     roleMap,
     slotMap,
     draftSlotMap,
@@ -155,9 +165,11 @@ export default function SlotVariableField({
     ownSlot,
     writerClass,
     draftConflicting,
+    draftLabelVariable,
     allVariables,
   });
   judgeAgainst.current = {
+    variableType,
     roleMap,
     slotMap,
     draftSlotMap,
@@ -166,12 +178,23 @@ export default function SlotVariableField({
     ownSlot,
     writerClass,
     draftConflicting,
+    draftLabelVariable,
     allVariables,
   };
 
   const crossClassValidation = useMemo(
     () =>
       messageRuleValidation([
+        // Asked first: an attribute that has been deleted or retyped under the
+        // slot is not a conflict with another writer, it is a reference to
+        // something that cannot hold what this slot writes — and saying so is
+        // more use than naming whoever else was writing it.
+        (value: unknown) =>
+          unusableVariableIssue(
+            judgeAgainst.current.allVariables,
+            value,
+            judgeAgainst.current.variableType,
+          ),
         (value: unknown) =>
           slotCrossClassIssue({
             ...judgeAgainst.current,
