@@ -493,12 +493,31 @@ function CreateEdgeType() {
   } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
+  /**
+   * Every type name the protocol already carries, of BOTH kinds.
+   *
+   * Node and edge types share one namespace — `CodebookSchema` refuses a
+   * protocol that reuses a name across the two maps, and `SubjectSection`'s own
+   * create dialog has always judged a new type against both. Judged against the
+   * edge names alone, a connection could be given a node type's name here: the
+   * editor would accept it and the refusal would arrive from the schema after
+   * the researcher had finished the dialog, with no name-field error to act on.
+   * The confusable pair is the worse half — the editor folds case and Unicode
+   * form together, so what reaches the codebook is two types nobody reading it
+   * could tell apart.
+   *
+   * Read map by map rather than by a computed key: the codebook's two maps hold
+   * different definition types, and one indexed by a union is a union of maps
+   * nothing can be read out of without narrowing it again.
+   */
+  const codebook = controller.snapshot.protocolContext.codebook;
   const existingEntityNames = useMemo(
     () =>
-      Object.values(
-        controller.snapshot.protocolContext.codebook.edge ?? {},
-      ).map((definition) => definition.name),
-    [controller.snapshot.protocolContext.codebook.edge],
+      [
+        ...Object.values(codebook.node ?? {}),
+        ...Object.values(codebook.edge ?? {}),
+      ].map((definition) => definition.name),
+    [codebook],
   );
 
   if (readOnly) return null;
