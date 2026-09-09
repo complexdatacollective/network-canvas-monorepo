@@ -97,6 +97,17 @@ Three mechanisms account for it.
 - **Only what the editors reach.** Rule, validation, and resource code keeps
   the paths the nineteen editors exercise. Architect keeps its own copies of
   the rest until it adopts the package.
+- **Fields and validations are Fresco's.** Every control is Fresco's `<Field>`
+  with a `component`, validated by the form system's `validations`. Wrapping
+  `<Field>` in a package-specific field (Architect's `ArchitectField`, the
+  package's `ProtocolField`) is forbidden. A control the editors need and
+  Fresco lacks is written as a Field component: in `@codaco/fresco-ui` when it
+  is reusable, in the package when it is protocol-specific.
+- **Comments only where the code cannot say it.** No narration, no restating
+  a type, no history. A comment survives only if it explains something a
+  reader cannot get from the code and the tests.
+- **One directory per editor.** An editor's own sections live with it;
+  sections two or more editors share live in the package's shared sections.
 - **Hosts may change to fit the package.** Architect's editing slices are
   replaced by the package's state; Studio takes the dependencies the contract
   needs. Getting the package right comes first.
@@ -220,11 +231,18 @@ know which row a dialog was still editing after the list moved underneath
 it. Under this plan the editor owns its section, so none of that is needed,
 and Fresco's `ArrayField` already provides what the editors use:
 
-- **Row dialogs.** `editorComponent` receives `item`, `isNewItem`, `onSave`,
-  and `onCancel`, renders a `Dialog` with its own `FormStoreProvider` and
-  `FormWithoutProvider`, and calls `onSave(value)` to commit the row or
-  `onCancel` to discard it. The parent form's value changes only on save.
-  See the `DialogEditing` story in `ArrayField.stories.tsx`.
+- **It is a Field.** `ArrayField` is used as the `component` of a
+  `<Field name="prompts">`, never mounted on its own, so the list's value,
+  validation, and errors are the form's.
+- **Row dialogs follow one canonical shape.** `editorComponent` receives
+  `item`, `isNewItem`, `onSave`, and `onCancel`; it renders
+  `<FormStoreProvider>` wrapping the `<Dialog>`, and `<FormWithoutProvider>`
+  inside the dialog with the fields, so the dialog chrome (title, footer with
+  `SubmitButton form={formId}` and a cancel button) sits outside the form
+  element while sharing its store. `onSave(value)` commits the row;
+  `onCancel` discards it; the parent form's value changes only on save. The
+  `DialogEditing` story in `ArrayField.stories.tsx` is the reference, and
+  every row dialog in the package is written that way.
 - **Row identity.** `useArrayFieldItems` keys every row by a managed internal
   id (`getId` reads the schema's own id where one exists, as prompts,
   panels, and form fields have), so `updateItem`, `removeItem`, and moves act
@@ -240,6 +258,55 @@ codebook dialog that creates the attribute immediately (through `create`)
 and hands its id back to the row's field. If a stage editor needs something
 `ArrayField` lacks, it is added to Fresco's `ArrayField`, never rebuilt beside
 it.
+
+### Fields: the form system's, extended where it is short
+
+The current implementation rendered several protocol concepts as select
+fields when they are not selects: a colour is picked from swatches, a
+variable is picked from a codebook with its type visible and a create
+affordance, a stage destination is picked from an ordered timeline. Each of
+these becomes a proper Field component with the form system's value,
+validation, error, label, and hint contract:
+
+- in `@codaco/fresco-ui` when the control is reusable outside protocol
+  authoring (the colour picker, an ordered-list picker);
+- in the package when the control is protocol-specific (the variable picker,
+  the entity type picker, the stage destination picker, the asset picker),
+  where it reads its options through the package's subscription hooks and
+  keeps its selected value in the form.
+
+No package field wraps `<Field>`; a package field is a `component` for
+`<Field>`, exactly as Fresco's own fields are.
+
+### Package structure
+
+One directory per editor, containing the sections only that editor uses;
+shared sections at the top level. Nothing else decides where a file goes.
+
+```
+src/
+  editors/
+    anonymisation/
+    categorical-bin/
+    name-generator-quick-add/
+      NameGeneratorQuickAddEditor.tsx
+      sections/
+        quick-add-attribute/
+    ordinal-bin/
+    …
+  sections/                 shared by two or more editors
+    stage-title/
+    subject-picker/
+    skip-logic/
+    interviewer-guidance/
+  fields/                   protocol-specific Field components
+  contract/                 the oRPC contract and its types
+  state/                    query client, protocol channel, the two hooks
+  testing/                  in-memory host, renderStageEditor, collaborator helpers
+```
+
+A section moves from an editor's directory to `sections/` the day a second
+editor uses it, and not before.
 
 ### Editors: section lists
 
@@ -298,10 +365,12 @@ read whole.
    (Studio over the wire, Architect in-process) with the same router types.
    `main`'s four merged editors (the form family) are re-pointed at the
    contract in the same PR so there is never a second implementation.
-2. **Form: Fresco's `ArrayField` throughout.** Deletion of the package's
-   array and dialog layer, any gap found closed in Fresco's `ArrayField`
-   rather than beside it, and the four merged editors rewritten as section
-   lists to prove the pattern.
+2. **Form and fields: Fresco's throughout.** Deletion of the package's array
+   and dialog layer and of `ProtocolField`; any gap closed in Fresco's
+   `ArrayField` rather than beside it; the colour picker in fresco-ui and the
+   variable, entity type, stage destination, and asset pickers as package
+   Field components; the package laid out one directory per editor; and the
+   four merged editors rewritten as section lists to prove the pattern.
 3. **The other fifteen editors** in one PR, because the point is that they
    are all the same shape and that is only reviewable whole. Includes the
    proof-host stories (#1493) and the release gates (#1494).
@@ -326,6 +395,8 @@ They apply from the first PR here:
   the contract.
 - A mechanism found twice gets one enumeration test over its interleavings
   before a third patch.
+- A review pass over comments is part of every PR: any comment that
+  narrates, restates a type, or records history is removed.
 
 ## Decisions taken (2026-09-09, Josh)
 
@@ -350,6 +421,17 @@ They apply from the first PR here:
   no added capability; a cached copy of Architect's store).
 - Whole-protocol channel rather than per-component server subscriptions;
   re-render scope set by query key and `select`.
+- Fresco's `ArrayField` as it is, used as a `<Field>` component, with the
+  `FormStoreProvider`-around-`Dialog`, `FormWithoutProvider`-inside pattern
+  for every row dialog.
+- Fresco's `<Field>` and `validations` only; no package or app field wrapper
+  (`ArchitectField`, `ProtocolField`).
+- Missing controls are Field components: colour picker in fresco-ui, variable
+  picker and other protocol-specific pickers in the package; none of them
+  rendered as select fields.
+- Comments only where the code cannot say it.
+- Package layout: one directory per editor with its own sections; shared
+  sections at the top level.
 
 ## Decisions for Josh
 
