@@ -1551,6 +1551,10 @@
     "defaultMessage": "Choose a color for this disease.",
     "description": "Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one."
   },
+  "protocolBuilder.narrativePedigree.diseaseColorUnavailable": {
+    "defaultMessage": "This disease is set to a color the palette does not have. Choose one of the colors shown.",
+    "description": "Refusal shown under the disease-colour control when the row holds a colour that is not one of the ones offered — an import or a merge left it there — so nothing is shown as chosen and the protocol would refuse the stage."
+  },
   "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
     "defaultMessage": "How the disease is passed on. Mendelian patterns let the pedigree infer carrier and at-risk statuses from biological relationships and recorded sex; multifactorial and unknown show affected status only.",
     "description": "Guidance under the inheritance-pattern control. \"Mendelian\" describes the classical single-gene patterns; a carrier holds a condition without developing it; \"multifactorial\" and \"unknown\" are two of the choices in the list, and are written here in lower case because they are named inside a sentence."
@@ -1566,6 +1570,10 @@
   "protocolBuilder.narrativePedigree.diseaseInheritanceRequired": {
     "defaultMessage": "Choose how this disease is inherited.",
     "description": "Refusal shown under the inheritance-pattern control when the researcher saves the dialog without choosing one."
+  },
+  "protocolBuilder.narrativePedigree.diseaseInheritanceUnavailable": {
+    "defaultMessage": "This disease is set to an inheritance pattern this editor does not know. Choose one from the list.",
+    "description": "Refusal shown under the inheritance-pattern control when the row holds a pattern that is not one of the ones offered — an import or a merge left it there — so the control can only read the stored value back, and the protocol would refuse the stage. An inheritance pattern is how a condition travels from parent to child."
   },
   "protocolBuilder.narrativePedigree.diseaseMarksNobody": {
     "defaultMessage": "Nothing records this attribute",

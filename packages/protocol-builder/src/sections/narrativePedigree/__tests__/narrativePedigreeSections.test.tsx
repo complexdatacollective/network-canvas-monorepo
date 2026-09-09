@@ -54,6 +54,21 @@ function narrativePedigreeStageWith(extra: SectionDoc): Readonly<{
   };
 }
 
+/**
+ * The fixture narrative pedigree's own disease row.
+ *
+ * Read from the protocol rather than written out here, so a test that changes
+ * one field of it is still a test about a row the schema otherwise accepts.
+ */
+function fixtureDisease(): Record<string, unknown> {
+  const diseases = loadFixtureStage('narrative-pedigree-1').fields.diseases;
+  const disease = Array.isArray(diseases) ? diseases[0] : undefined;
+  if (typeof disease !== 'object' || disease === null) {
+    throw new Error('The fixture narrative pedigree has no disease to read.');
+  }
+  return { ...disease };
+}
+
 const openFixture = () => ({
   stageId: 'narrative-pedigree-1',
   sections: narrativePedigreeSections,
@@ -618,6 +633,67 @@ describe('the diseases a narrative pedigree defines', () => {
     });
     // And the colour the row already carries is the one shown as chosen.
     expect(disease.getByRole('radio', { name: 'Color 1' })).toBeChecked();
+  });
+
+  /**
+   * A closed list of choices holds a value it cannot show, and `required` sees
+   * a non-empty string.
+   *
+   * Both of this row's counted choices — the palette and the inheritance
+   * patterns — are enums in the protocol schema, so a value outside them is
+   * one the saved stage is refused for. An import or a merge can leave one
+   * there, and that stage is exactly the one a researcher opens this editor to
+   * repair: the control shows nothing as chosen, the row still holds the
+   * value, and Save closed the dialog over it with nothing anywhere saying
+   * what was wrong. The refusal names the control the researcher has to act
+   * on, which is the one showing nothing.
+   */
+  it('refuses to close a disease row over choices the lists do not hold', async () => {
+    const harness = renderStageEditor({
+      stage: narrativePedigreeStageWith({
+        diseases: [
+          {
+            ...fixtureDisease(),
+            color: 'node-color-seq-from-another-study',
+            inheritancePattern: 'inherited-somehow',
+          },
+        ],
+      }),
+      sections: narrativePedigreeSections,
+      otherStages: recordingTheFixtureDisease(),
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit disease' }),
+    );
+    const disease = within(await screen.findByRole('dialog'));
+    // The precondition, asserted rather than assumed: neither control is
+    // showing one of the choices it offers — the palette shows nothing at all
+    // as chosen, and the pattern select can only read back the stored token —
+    // so nothing on screen says the row is holding a value the protocol will
+    // not take.
+    expect(
+      disease.getAllByRole('radio').filter((radio) => radio.checked),
+    ).toEqual([]);
+    expect(
+      disease.getByRole('combobox', { name: 'Inheritance pattern' }),
+    ).toHaveTextContent('inherited-somehow');
+
+    await harness.user.click(disease.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await disease.findByText(
+        'This disease is set to a color the palette does not have. Choose one of the colors shown.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      disease.getByText(
+        'This disease is set to an inheritance pattern this editor does not know. Choose one from the list.',
+      ),
+    ).toBeInTheDocument();
+    // And the row is still open, holding the work, rather than closed over a
+    // stage the protocol refuses.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   it('refuses a second disease that reuses a name', async () => {

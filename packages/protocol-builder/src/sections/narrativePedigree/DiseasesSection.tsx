@@ -3,7 +3,11 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import { diseaseLabelKey } from '@codaco/protocol-validation';
+import {
+  diseaseLabelKey,
+  INHERITANCE_PATTERNS,
+  NodeColorSequence,
+} from '@codaco/protocol-validation';
 
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import DialogArrayField, {
@@ -58,8 +62,37 @@ const NOT_RECORDED = createMessageError(
   narrativePedigreeMessages.diseasesNotRecorded,
 );
 
+/**
+ * The refusals a row earns for holding a choice its control does not offer.
+ *
+ * The colour and the inheritance pattern are enums in the protocol schema, so
+ * a value outside either one is a value the saved stage is refused for — and
+ * neither control can show it. The palette shows nothing as chosen, the
+ * pattern select reads the stored token back, and `required` sees a non-empty
+ * string either way, so Save closed the row over a stage the protocol would
+ * not take with nothing anywhere saying what was wrong.
+ */
+const COLOR_UNAVAILABLE = createMessageError(
+  narrativePedigreeMessages.diseaseColorUnavailable,
+);
+const INHERITANCE_UNAVAILABLE = createMessageError(
+  narrativePedigreeMessages.diseaseInheritanceUnavailable,
+);
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * Whether a stored value is one of a closed list of choices.
+ *
+ * An ABSENT value is not this rule's business — an unfinished row is what
+ * `required` reports, and two refusals on one empty control say the same
+ * thing twice.
+ */
+const outsideChoices = (value: unknown, choices: readonly string[]): boolean =>
+  typeof value === 'string' &&
+  value !== '' &&
+  !choices.some((choice) => choice === value);
 
 /**
  * The conditions this stage draws on the family it reads.
@@ -143,6 +176,22 @@ export default function DiseasesSection() {
     (value: unknown) => {
       if (!isRecord(value)) return value;
 
+      const fieldErrors: Record<string, string[]> = {};
+
+      // The two counted choices, judged on what the row HOLDS rather than on
+      // what the researcher touched: neither control can show a value from
+      // outside its list, so a row an import or a merge left holding one reads
+      // as unfinished while carrying something the schema refuses. There is no
+      // committed-value escape, for the same reason there is none below — a
+      // colour the palette does not have is nobody's authoring decision, and
+      // nothing can be drawn in it.
+      if (outsideChoices(value.color, NodeColorSequence)) {
+        fieldErrors.color = [COLOR_UNAVAILABLE];
+      }
+      if (outsideChoices(value.inheritancePattern, INHERITANCE_PATTERNS)) {
+        fieldErrors.inheritancePattern = [INHERITANCE_UNAVAILABLE];
+      }
+
       // The attribute itself, before anything about who else writes it, and
       // before the committed value escapes anything below: a collaborator can
       // delete it or retype it — and repointing this stage's pedigree at
@@ -155,33 +204,39 @@ export default function DiseasesSection() {
       // an attribute that is gone is not, and nothing can be recorded under it.
       // The same order, and the same seam, as the pedigree's nomination-prompt
       // rows and its slot controls.
+      const committed = committedVariableFor(value.id);
       const unusable =
         subject === null
           ? undefined
           : unusableVariableIssue(allVariables, value.variable, 'boolean');
-      if (unusable !== undefined) {
-        return { success: false, fieldErrors: { variable: [unusable] } };
+      const issue =
+        unusable ??
+        slotCrossClassIssue({
+          roleMap,
+          slotMap,
+          subject,
+          variableId: value.variable,
+          committedValue: committed,
+          // No `ownSlot`: a disease mapping fills no interface slot of its own.
+          writerClass: 'unvalidated',
+          allVariables,
+        });
+      const pick = typeof value.variable === 'string' ? value.variable : '';
+      const variableIssue =
+        issue ??
+        (pick !== '' && pick !== committed && !recorded.has(pick)
+          ? NOT_RECORDED
+          : undefined);
+      if (variableIssue !== undefined) {
+        fieldErrors.variable = [variableIssue];
       }
 
-      const committed = committedVariableFor(value.id);
-      const issue = slotCrossClassIssue({
-        roleMap,
-        slotMap,
-        subject,
-        variableId: value.variable,
-        committedValue: committed,
-        // No `ownSlot`: a disease mapping fills no interface slot of its own.
-        writerClass: 'unvalidated',
-        allVariables,
-      });
-      if (issue !== undefined) {
-        return { success: false, fieldErrors: { variable: [issue] } };
-      }
-      const pick = typeof value.variable === 'string' ? value.variable : '';
-      if (pick !== '' && pick !== committed && !recorded.has(pick)) {
-        return { success: false, fieldErrors: { variable: [NOT_RECORDED] } };
-      }
-      return value;
+      // Every refusal the row has earned, in one answer: a researcher repairing
+      // an imported row would otherwise be told about one of them, fix it, and
+      // be told about the next.
+      return Object.keys(fieldErrors).length === 0
+        ? value
+        : { success: false, fieldErrors };
     },
     [allVariables, committedVariableFor, recorded, roleMap, slotMap, subject],
   );
