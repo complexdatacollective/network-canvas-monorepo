@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
@@ -88,6 +88,42 @@ const tapBehaviourOf = (item: Record<string, unknown>): TapBehaviour => {
   }
   return TAP_NOTHING;
 };
+
+const NO_LOST_EDGE_TYPES: readonly string[] = Object.freeze([]);
+
+/**
+ * The connection types a prompt names and the codebook no longer defines.
+ *
+ * Accumulated rather than derived, and that is the point: an id stops being
+ * NAMED the moment the researcher unticks it, and a choice that disappeared as
+ * it was unticked would take with it the only evidence of what the prompt had
+ * been holding — while a `create` value repaired in the same dialog would
+ * leave its copy in the display list with nothing on screen to remove. So an
+ * id enters this list when the prompt names it and the codebook does not have
+ * it, and leaves only when the codebook has it again.
+ *
+ * The same array is answered with for as long as its contents do not change,
+ * for the reason `useStableIdList` exists: the options a control registers
+ * with are part of that registration, and a fresh array on every tick
+ * re-registers the field — which supersedes a running submit's validation and
+ * refuses the save with nothing on screen to say why.
+ */
+function useLostEdgeTypes(
+  named: readonly string[],
+  known: ReadonlySet<string>,
+): readonly string[] {
+  const held = useRef<readonly string[]>(NO_LOST_EDGE_TYPES);
+  const current = held.current;
+  const next = current.filter((id) => !known.has(id));
+  for (const id of named) {
+    if (!known.has(id) && !next.includes(id)) next.push(id);
+  }
+  const unchanged =
+    next.length === current.length &&
+    next.every((entry, index) => entry === current[index]);
+  if (!unchanged) held.current = next;
+  return held.current;
+}
 
 /**
  * One question this sociogram asks, and everything the canvas does while it is
@@ -186,36 +222,77 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
    * changes, because a `variable` arriving without its flag is a prompt that
    * colours nodes rather than one that marks them.
    *
-   * Turned OFF only for a prompt that had it on. Writing `false` for every
-   * other prompt made opening a dialog and closing it again an answer: a
-   * prompt that had never said anything about tapping acquired
-   * `highlight.allowHighlighting: false` the first time anyone looked at it,
-   * and an unanswered question saved as an answer is content in the
-   * researcher's protocol that the researcher did not write. A committed `true`
-   * still has to be written over, though, and `undefined` will not do it — the
-   * row is rebuilt by laying the dialog's fields over the committed row, so a
-   * field holding nothing lets the committed value through.
+   * Turned OFF for a prompt that had it on, and for one THIS DIALOG turned it
+   * on for. Writing `false` for every other prompt made opening a dialog and
+   * closing it again an answer: a prompt that had never said anything about
+   * tapping acquired `highlight.allowHighlighting: false` the first time
+   * anyone looked at it, and an unanswered question saved as an answer is
+   * content in the researcher's protocol that the researcher did not write.
+   *
+   * What the committed flag cannot decide is what to do about the flag this
+   * dialog itself has already written. Asked only about the committed value,
+   * a prompt switched to "mark the node" and then away again before saving
+   * kept the `true` written on the way in while the chooser cleared the
+   * attribute beside it — a prompt marking nothing, which the schema refuses,
+   * and beside `edges.create` a conflict between two mutually exclusive
+   * behaviours. So the write is undone as deliberately as it was made:
+   * `false` where the committed prompt said `true`, and otherwise cleared,
+   * which puts the row back exactly as it arrived. Clearing is what
+   * `undefined` does to a value this dialog wrote and nothing else — the row
+   * is rebuilt by laying the dialog's changed fields over the committed row,
+   * so a field back at what it started with lets the committed value through
+   * and a committed `true` still has to be written over.
    */
+  const markedHere = useRef(false);
   useEffect(() => {
     if (tapBehaviour === TAP_HIGHLIGHT) {
+      markedHere.current = true;
       setRowValue(ALLOW_HIGHLIGHTING_FIELD, true);
       return;
     }
-    if (!committedAllowHighlighting) return;
-    setRowValue(ALLOW_HIGHLIGHTING_FIELD, false);
+    if (committedAllowHighlighting) {
+      setRowValue(ALLOW_HIGHLIGHTING_FIELD, false);
+      return;
+    }
+    if (!markedHere.current) return;
+    setRowValue(ALLOW_HIGHLIGHTING_FIELD, undefined);
   }, [committedAllowHighlighting, setRowValue, tapBehaviour]);
 
   /**
-   * The connection being drawn is always among the connections shown.
+   * Whether the connection this prompt draws was chosen HERE, in this dialog.
    *
-   * Drawing a connection the participant cannot see is not something a
-   * researcher can have meant, and the interview draws it regardless.
+   * The two rules below hang on it, and both are about a choice the researcher
+   * has just made rather than about the prompt they opened. Held as state
+   * rather than a ref because it is rendered: the notice and the locked tick
+   * box are what the rule looks like on screen, and a ref set in an effect
+   * that writes nothing else leaves them a render behind.
+   */
+  const [drawChosenHere, setDrawChosenHere] = useState(false);
+  useEffect(() => {
+    if (createdEdge === undefined || createdEdge === committedCreate) return;
+    setDrawChosenHere(true);
+  }, [committedCreate, createdEdge]);
+
+  /**
+   * A connection the researcher has just said this prompt draws is shown too.
+   *
+   * Drawing a connection the participant cannot see is not what somebody
+   * picking a connection type here can have meant, and the interview draws it
+   * regardless of the tick list.
+   *
+   * Only that choice, though. A prompt STORED as `create` with an empty
+   * `display` is a real and deliberate configuration — the interview filters
+   * the ties it renders strictly by `edges.display`, and the
+   * `edges-full-matrix` end-to-end scenario collects a tie without showing it
+   * on exactly that shape — so an effect that ran on mount made merely opening
+   * a prompt and saving it change what the participant sees.
    */
   useEffect(() => {
+    if (!drawChosenHere) return;
     if (createdEdge === undefined) return;
     if (displayedEdges.includes(createdEdge)) return;
     setRowValue(DISPLAY_EDGES_FIELD, [...displayedEdges, createdEdge]);
-  }, [createdEdge, displayedEdges, setRowValue]);
+  }, [createdEdge, displayedEdges, drawChosenHere, setRowValue]);
 
   const chooseTapBehaviour = (next: TapBehaviour) => {
     if (next === tapBehaviour) return;
@@ -246,29 +323,47 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
    * the reason `VariablePicker` keeps a deleted attribute: the reference the
    * researcher has to resolve must be the one thing they can see.
    *
-   * Taken from the COMMITTED list rather than the live one, which is what the
-   * researcher can no longer add to: the value is stable while the dialog is
-   * open, so unticking the lost type does not take the box away mid-gesture —
+   * Taken from what this prompt NAMES — the list it arrived with and the one
+   * the researcher is building — rather than from the committed list alone. A
+   * type ticked in this dialog and deleted by a collaborator a moment later is
+   * lost in exactly the same way, and read only from the committed value it
+   * simply left the tick list while the id stayed in the field: an invisible
+   * dangling reference, saved.
+   *
+   * `useLostEdgeTypes` is what keeps that from moving the control's options
+   * around. It answers with the same array while its contents do not change,
+   * and it does not forget an id the researcher has just unticked — a box that
+   * vanished mid-gesture would leave them unable to see what they had done,
    * and a control's options are part of what it registers with, so a list that
    * moved with every tick would re-register the field under a running submit.
    */
+  const knownEdgeTypes = useMemo(
+    () => new Set(edgeOptions.map((option) => option.value)),
+    [edgeOptions],
+  );
+  const namedEdgeTypes = useMemo(
+    () => [...(committedDisplay ?? []), ...displayedEdges],
+    [committedDisplay, displayedEdges],
+  );
+  const lostEdgeTypes = useLostEdgeTypes(namedEdgeTypes, knownEdgeTypes);
+
   const edgeChoices = useMemo(() => {
     const offered = checkboxOptions(edgeOptions).map((option) =>
-      option.value === createdEdge ? { ...option, disabled: true } : option,
+      drawChosenHere && option.value === createdEdge
+        ? { ...option, disabled: true }
+        : option,
     );
-    const known = new Set(offered.map((option) => option.value));
-    const lost = (committedDisplay ?? []).filter((id) => !known.has(id));
-    if (lost.length === 0) return offered;
+    if (lostEdgeTypes.length === 0) return offered;
     return [
       ...offered,
-      ...lost.map((id) => ({
+      ...lostEdgeTypes.map((id) => ({
         value: id,
         label: intl.formatMessage(networkCanvasMessages.promptMissingEdgeType, {
           edgeTypeId: id,
         }),
       })),
     ];
-  }, [committedDisplay, createdEdge, edgeOptions, intl]);
+  }, [createdEdge, drawChosenHere, edgeOptions, intl, lostEdgeTypes]);
 
   // Held for as long as the reader's language does not change: the control's
   // options are part of what it registers with, and a fresh array every render
@@ -470,7 +565,15 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
           networkCanvasMessages.promptEdgesDescription,
         )}
       >
-        {createdEdge !== undefined && (
+        {/*
+          Said only where it is TRUE: this prompt's connection type is locked
+          into the list because the researcher chose it a moment ago and the
+          effect above put it there. A prompt that arrived drawing a connection
+          it does not show is not locked and is not claimed to be — the tick
+          list is the whole answer, and the notice beside an unticked, untickable
+          box was a dead end as well as a false statement.
+        */}
+        {drawChosenHere && createdEdge !== undefined && (
           <Alert variant="info" className="my-7">
             <AlertDescription>
               {intl.formatMessage(

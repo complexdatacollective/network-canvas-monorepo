@@ -62,7 +62,11 @@ export default function ConfirmingSelectField({
           return;
         }
         void (async () => {
-          if (await askAboutChange(question)) onChange?.(next);
+          // No codebook type to recheck the answer against: what this select
+          // moves is a stage id, not a node or edge type. Said explicitly
+          // because the shared hook makes every caller say it — one that DOES
+          // land on a type cannot leave the recheck off by omission.
+          if (await askAboutChange(question, null)) onChange?.(next);
         })();
       }}
     />

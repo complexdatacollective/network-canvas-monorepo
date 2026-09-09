@@ -13,7 +13,7 @@ import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import PromptsSection from '../PromptsSection.tsx';
 import { useStageSubject, useSubjectVariables } from './codebookOptions.ts';
 import { networkCanvasMessages } from './networkCanvasMessages.ts';
-import { asNestedText } from './rowValues.ts';
+import { asNestedBoolean, asNestedText } from './rowValues.ts';
 import {
   HIGHLIGHT_VARIABLE_FIELD,
   SociogramPromptFields,
@@ -61,7 +61,7 @@ export default function SociogramPromptsSection() {
   );
 
   /**
-   * This row's own SAVED attribute, found by the row's stable id.
+   * This row's own saved attribute, where the row already WROTE it.
    *
    * The id comes from the row this dialog session opened on and the value from
    * the committed prompts, which is the anchor `NominationPromptsSection`
@@ -70,6 +70,16 @@ export default function SociogramPromptsSection() {
    * committed value keeps an attribute the protocol ALREADY binds here
    * saveable. A researcher cannot be asked to repair this stage by editing a
    * form in another one they may not be able to reach.
+   *
+   * `allowHighlighting` is what makes the saved prompt a writer, and only a
+   * saved writer's pick is a conflict this edit did not introduce. A prompt
+   * that merely COLOURS its nodes by the attribute reads it and writes
+   * nothing, so a form is free to collect the same one — and switching that
+   * prompt to "mark the node" turns the very same id into an unvalidated
+   * writer of an attribute something else validates. Answered with the
+   * attribute regardless of the flag, the unchanged-value escape called that
+   * conflict pre-existing, closed the row on it, and left the stage
+   * unsaveable with nothing on screen saying why.
    */
   const committedHighlightFor = useCallback(
     (rowId: unknown): string => {
@@ -78,10 +88,9 @@ export default function SociogramPromptsSection() {
       const row = committed.find(
         (candidate) => isRecord(candidate) && candidate.id === rowId,
       );
-      return (
-        asNestedText(isRecord(row) ? row.highlight : undefined, 'variable') ??
-        ''
-      );
+      const highlight = isRecord(row) ? row.highlight : undefined;
+      if (asNestedBoolean(highlight, 'allowHighlighting') !== true) return '';
+      return asNestedText(highlight, 'variable') ?? '';
     },
     [committedFields],
   );
