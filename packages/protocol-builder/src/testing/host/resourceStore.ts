@@ -40,6 +40,12 @@ type StagedEntry = Readonly<{
 type CompletedPromotion = Readonly<{
   revision: Revision;
   promoted: Descriptor[];
+  /**
+   * The section a `create` minted for this promotion. A retried create cannot
+   * be answered without it: the host would mint a second id, and the retry
+   * would be told about a section its first attempt never made.
+   */
+  createdSection?: string;
 }>;
 
 function failure(
@@ -266,8 +272,13 @@ export class InMemoryResourceStore {
     promoted: readonly Descriptor[],
     resourceIds: readonly string[],
     revision: Revision,
+    createdSection?: string,
   ): void {
-    this.#promoted.set(promotionId, { revision, promoted: [...promoted] });
+    this.#promoted.set(promotionId, {
+      revision,
+      promoted: [...promoted],
+      ...(createdSection === undefined ? {} : { createdSection }),
+    });
     for (const descriptor of promoted) {
       this.#committed.set(descriptor.id, descriptor);
     }

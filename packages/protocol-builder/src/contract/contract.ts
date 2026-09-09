@@ -118,11 +118,19 @@ export const contract = {
    * the pointer section, whose whole-section draft would take the new pointer
    * straight back out. A singleton the protocol already has — `codebookEgo` —
    * is refused rather than overwritten.
+   *
+   * It takes `promote` on the same terms as `submit`, and for the reason a
+   * submit cannot cover: a stage being ADDED can carry a file the researcher
+   * imported while composing it, and there is no earlier revision of that
+   * stage to have promoted it with. The section, its pointer and the manifest
+   * entries are one revision, so a promotion that cannot be committed refuses
+   * the create outright and writes nothing.
    */
   create: base
     .errors(shapeErrors)
     .errors(existenceErrors)
     .errors(lockedSectionErrors)
+    .errors(promotionErrors)
     .input(CreateInputSchema)
     .output(CreateResultSchema),
 

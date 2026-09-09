@@ -216,7 +216,47 @@ function buildRouter(
       if (input.protocolId !== protocolId) {
         throw errors.PROTOCOL_NOT_FOUND({ data: input });
       }
-      const outcome = store.create(input.kind, input.document, input.position);
+      const promotion = input.promote;
+      const already =
+        promotion === undefined
+          ? undefined
+          : resources.completedPromotion(promotion.promotionId);
+      // This id's attempt is already committed, so this call is the retry of
+      // an answer that was lost: it is told what that attempt created. The
+      // section is named from the record rather than minted again, because a
+      // second create would put a second copy of the stage in the protocol
+      // and the retry would never learn about the first.
+      if (already?.createdSection !== undefined) {
+        return {
+          sectionId: sectionId(parseSectionId(already.createdSection)),
+          revision: already.revision,
+          promoted: already.promoted,
+        };
+      }
+      // The manifest is worked out before anything is written, so a promotion
+      // that cannot be committed leaves the protocol without the section and
+      // the staged resources staged.
+      let entries: Record<string, unknown> | undefined;
+      let promoted: ResourceDescriptor[] | undefined;
+      if (promotion !== undefined) {
+        const manifest = resources.manifestFor(
+          promotion.resourceIds,
+          promotion.secretHandles,
+        );
+        if (manifest.status === 'failed') {
+          throw errors.PROMOTION_FAILED({
+            data: { failure: manifest.failure },
+          });
+        }
+        entries = manifest.data.entries;
+        promoted = manifest.data.promoted;
+      }
+      const outcome = store.create(
+        input.kind,
+        input.document,
+        input.position,
+        entries,
+      );
       if (outcome.status === 'exists') {
         throw errors.SECTION_EXISTS({
           data: { sectionId: outcome.sectionId },
@@ -230,7 +270,20 @@ function buildRouter(
           data: { sectionId: outcome.sectionId, issues: outcome.issues },
         });
       }
-      return outcome;
+      if (promotion !== undefined) {
+        resources.completePromotion(
+          promotion.promotionId,
+          promoted ?? [],
+          promotion.resourceIds,
+          outcome.revision,
+          outcome.sectionId,
+        );
+      }
+      return {
+        sectionId: outcome.sectionId,
+        revision: outcome.revision,
+        ...(promoted === undefined ? {} : { promoted }),
+      };
     }),
 
     delete: os.delete.handler(({ input, context, errors }) => {

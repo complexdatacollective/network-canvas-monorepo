@@ -66,6 +66,36 @@ async function submitHeld(
   });
 }
 
+/** A staged image, as an edit that imported a file holds one. */
+async function stagePortrait(subject: InMemoryHost): Promise<string> {
+  const staged = await subject.client.resources.stage({
+    protocolId: subject.protocolId,
+    requestId: 'request-1',
+    request: {
+      kind: 'content',
+      contentKind: 'image',
+      name: 'Portrait',
+      source: 'portrait.png',
+      contentType: 'image/png',
+      bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+    },
+  });
+  if (staged.status !== 'ok') throw new Error(staged.failure.message);
+  return staged.data.descriptor.id;
+}
+
+/** An Information stage, without an id, whose body is that resource. */
+function informationNaming(
+  subject: InMemoryHost,
+  resourceId: string,
+): SectionDoc {
+  const { id: _id, ...template } = subject.store.read(INFORMATION).document;
+  return {
+    ...template,
+    items: [{ id: 'item-1', type: 'asset', content: resourceId }],
+  };
+}
+
 function stageOrder(subject: InMemoryHost): string[] {
   const order = subject.store.read(STAGE_ORDER).document.stages;
   if (!Array.isArray(order)) throw new Error('stage order is not a list');
@@ -207,6 +237,100 @@ describe('the in-memory host', () => {
     expect(subject.store.read(STAGE_ORDER).revision.sequence).toBe(
       created.revision.sequence,
     );
+  });
+
+  /**
+   * The gap `submit` cannot close: a stage being ADDED can carry a file the
+   * researcher imported while composing it, and there is no earlier revision
+   * of that stage to promote it with.
+   */
+  it("promotes what a created stage names, in the created stage's own revision", async () => {
+    const subject = host();
+    const staged = await stagePortrait(subject);
+
+    const created = await subject.client.create({
+      protocolId: subject.protocolId,
+      kind: 'stage',
+      document: informationNaming(subject, staged),
+      promote: { promotionId: 'promotion-1', resourceIds: [staged] },
+    });
+
+    expect(created.promoted).toEqual([
+      expect.objectContaining({ id: staged, status: 'committed' }),
+    ]);
+    const assets = subject.store.read(sectionId({ kind: 'assets' }));
+    expect(assets.document[staged]).toMatchObject({
+      name: 'Portrait',
+      type: 'image',
+      source: 'portrait.png',
+    });
+    // The section, the pointer that holds it and the manifest are one
+    // revision, which is what a watcher reading the stream in order sees.
+    expect(assets.revision.sequence).toBe(created.revision.sequence);
+    expect(subject.store.read(created.sectionId).revision.sequence).toBe(
+      created.revision.sequence,
+    );
+    expect(subject.store.read(STAGE_ORDER).revision.sequence).toBe(
+      created.revision.sequence,
+    );
+  });
+
+  it('creates neither the stage nor its pointer when a promotion fails', async () => {
+    const subject = host();
+    const before = stageOrder(subject);
+    const assetsBefore = subject.store.read(sectionId({ kind: 'assets' }));
+
+    const { definedError, isSuccess } = await safe(
+      subject.client.create({
+        protocolId: subject.protocolId,
+        kind: 'stage',
+        document: informationNaming(subject, 'never-staged'),
+        promote: { promotionId: 'promotion-1', resourceIds: ['never-staged'] },
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('PROMOTION_FAILED');
+    // No section id: the host mints one only for a create it is going to make.
+    expect(definedError?.data).toEqual({
+      failure: {
+        reason: 'not-found',
+        message: 'no such staged resource',
+        retryable: false,
+        resourceId: 'never-staged',
+      },
+    });
+    expect(stageOrder(subject)).toEqual(before);
+    expect(subject.store.read(sectionId({ kind: 'assets' }))).toEqual(
+      assetsBefore,
+    );
+    expect(
+      subject.store.has(sectionId({ kind: 'stage', stageId: 'minted-1' })),
+    ).toBe(false);
+  });
+
+  it('answers a repeated create with the stage it already made', async () => {
+    const subject = host();
+    const staged = await stagePortrait(subject);
+    const create = () =>
+      subject.client.create({
+        protocolId: subject.protocolId,
+        kind: 'stage',
+        document: informationNaming(subject, staged),
+        promote: { promotionId: 'promotion-1', resourceIds: [staged] },
+      });
+
+    const first = await create();
+    const order = stageOrder(subject);
+    const again = await create();
+
+    // The answer to the first can be lost. Minting a second stage for the
+    // retry would leave the protocol with two copies of it and the researcher
+    // never told about the first.
+    expect(again.sectionId).toBe(first.sectionId);
+    expect(again.revision).toEqual(first.revision);
+    expect(again.promoted).toEqual(first.promoted);
+    expect(stageOrder(subject)).toEqual(order);
   });
 
   it('refuses to create a section whose document is not shaped like one', async () => {

@@ -239,20 +239,33 @@ export class InMemoryProtocolStore {
     return { status: 'written', revision };
   }
 
+  /**
+   * Creates a section, registers its pointer, and writes the asset manifest
+   * entries handed with it, as one revision.
+   *
+   * The entries are the create's promotion, and the manifest is taken on the
+   * same terms as the pointer section: a create holds no lock, so an editor
+   * holding the manifest blocks it, whoever they are.
+   */
   create(
     kind: CreatableSectionKind,
     document: SectionDoc,
     position: number | undefined,
+    assetEntries?: Readonly<Record<string, unknown>>,
   ): CreateOutcome {
-    if (kind === 'stage') {
-      // The stage order is the created stage's pointer section, and this write
-      // registers it there. An editor holding the order has a whole-section
-      // draft that does not know about the new stage, and its next submit
-      // would take the pointer out while leaving the section behind — a
-      // protocol `assembleProtocolSections` refuses. Held by anyone, this
-      // session included, is a refusal: a create is not made under a lock, so
-      // there is none it could be writing through.
-      const blocked = this.#blockedBy([STAGE_ORDER], new Set());
+    // The stage order is the created stage's pointer section, and this write
+    // registers it there. An editor holding the order has a whole-section
+    // draft that does not know about the new stage, and its next submit
+    // would take the pointer out while leaving the section behind — a
+    // protocol `assembleProtocolSections` refuses. Held by anyone, this
+    // session included, is a refusal: a create is not made under a lock, so
+    // there is none it could be writing through.
+    const touched = [
+      ...(kind === 'stage' ? [STAGE_ORDER] : []),
+      ...(assetEntries === undefined ? [] : [ASSETS]),
+    ];
+    if (touched.length > 0) {
+      const blocked = this.#blockedBy(touched, new Set());
       if (blocked.length > 0) return { status: 'blocked', blocked };
     }
     // The ego codebook is the one creatable singleton: a protocol whose
@@ -274,6 +287,7 @@ export class InMemoryProtocolStore {
     if (kind === 'stage' && id !== undefined) {
       this.#registerStagePointer(id, position, sequence);
     }
+    if (assetEntries !== undefined) this.#mergeAssets(assetEntries, sequence);
     return { status: 'created', sectionId: target, revision };
   }
 

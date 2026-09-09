@@ -32,15 +32,19 @@ export const lockErrors = {
 } as const;
 
 /**
- * The staged resources a submit asked to promote could not be committed, so
- * neither they nor the section were written: the submit is the only place the
- * two become one revision, and half of it is not an outcome a host offers.
+ * The staged resources a write asked to promote could not be committed, so
+ * neither they nor the section were written: the write that names them is the
+ * only place the two become one revision, and half of it is not an outcome a
+ * host offers.
+ *
+ * `sectionId` is absent when a `create` is refused, because the host mints an
+ * id only for a section it is going to write.
  */
 export const promotionErrors = {
   PROMOTION_FAILED: {
-    message: 'the resources this submit promotes could not be committed',
+    message: 'the resources this write promotes could not be committed',
     data: z.object({
-      sectionId: SectionIdSchema,
+      sectionId: SectionIdSchema.optional(),
       failure: ResourceGatewayFailureSchema,
     }),
   },

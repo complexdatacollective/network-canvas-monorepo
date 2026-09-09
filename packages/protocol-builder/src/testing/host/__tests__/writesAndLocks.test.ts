@@ -221,6 +221,23 @@ const CALLS: readonly Call[] = [
   },
   {
     procedure: 'create',
+    name: 'creating a stage that promotes a resource',
+    run: async (host) => {
+      const resourceId = await stagePortrait(host);
+      const { id: _id, ...template } = host.store.read(INFORMATION).document;
+      return host.client.create({
+        protocolId: host.protocolId,
+        kind: 'stage',
+        document: {
+          ...template,
+          items: [{ id: 'item-1', type: 'asset', content: resourceId }],
+        },
+        promote: { promotionId: 'promotion-1', resourceIds: [resourceId] },
+      });
+    },
+  },
+  {
+    procedure: 'create',
     name: 'creating a node type',
     run: (host) =>
       host.client.create({
