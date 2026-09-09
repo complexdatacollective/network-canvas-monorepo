@@ -4,6 +4,7 @@ import { LayoutGroup } from 'motion/react';
 import { type ComponentProps, useId, useRef } from 'react';
 
 import { cx } from '../utils/cva';
+import type { FieldValue } from './Field/types';
 import FormErrorsList from './FormErrors';
 import { useForm } from './hooks/useForm';
 import FormStoreProvider from './store/formStoreProvider';
@@ -76,9 +77,15 @@ export function FormWithoutProvider(props: FormProps) {
  * (e.g., in a dialog footer), use FormWithoutProvider with a manual
  * FormStoreProvider wrapper.
  */
-export default function Form(props: FormProps) {
+export default function Form({
+  initialValues,
+  ...props
+}: FormProps & {
+  /** The document being edited; see `FormStoreProvider`. */
+  initialValues?: Record<string, FieldValue>;
+}) {
   return (
-    <FormStoreProvider>
+    <FormStoreProvider initialValues={initialValues}>
       <FormWithoutProvider {...props} />
     </FormStoreProvider>
   );

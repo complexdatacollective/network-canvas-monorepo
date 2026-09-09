@@ -356,7 +356,7 @@ export const ruleVariableChoices = (
  * existence operators, which is what the `exists` subject holds.
  *
  * The operator the rule ALREADY holds is added to the list when the list does
- * not contain it, in the same way `skipLogicDestinationOptions` keeps an
+ * not contain it, in the same way `stageDestinationOptions` keeps an
  * unreachable destination and `VariablePickerControl` keeps a deleted
  * attribute. The list is deliberately narrower than the schema — a stored
  * protocol may hold an attribute-level `EXISTS` that today's editor would not

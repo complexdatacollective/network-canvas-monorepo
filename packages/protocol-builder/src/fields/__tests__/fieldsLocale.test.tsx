@@ -23,15 +23,15 @@ import {
   SeedProtocolCache,
 } from '../../testing/seedProtocolCache.tsx';
 import { EntitySelectControl } from '../EntitySelectField.tsx';
-import SkipLogicDestinationField from '../SkipLogicDestinationField.tsx';
+import StageDestinationPickerField from '../StageDestinationPickerField.tsx';
 import { VariablePickerControl } from '../VariablePicker.tsx';
 
 /**
  * The three controls in this directory, read in the researcher's own language.
  *
- * `EntitySelectControl` and `SkipLogicDestinationField` render their own words
+ * `EntitySelectControl` and `StageDestinationPickerField` render their own words
  * with `useAppIntl()`; the destination control is handed everything it shows by
- * `skipLogicDestination.ts`, which is pure and takes the formatter as an
+ * `stageDestination.ts`, which is pure and takes the formatter as an
  * argument. Both have to agree, so this mounts the control rather than calling
  * the producer: a translated select beside an English option list is exactly
  * the drift this checks for.
@@ -71,7 +71,7 @@ const personDefinition: SectionDoc = {
  * Every one of them is named: the protocol schema requires a stage label, so
  * the option that stands in for an unnamed stage cannot be reached through a
  * real protocol context. That branch is exercised in English against the pure
- * option builder, in `skipLogicDestination.test.ts`.
+ * option builder, in `stageDestination.test.ts`.
  */
 const baseSections: Record<string, SectionDoc> = {
   [settingsSection]: { name: 'Field localization', schemaVersion: 8 },
@@ -277,7 +277,7 @@ describe('the fields in this directory, read in Spanish', () => {
 
   it('offers the skip destinations in Spanish', () => {
     render(
-      inEditor(<SkipLogicDestinationField name="skipLogic.destination" />),
+      inEditor(<StageDestinationPickerField name="skipLogic.destination" />),
     );
 
     expect(optionText()).toEqual([
@@ -294,7 +294,7 @@ describe('the fields in this directory, read in Spanish', () => {
   it('reports a destination the interview has lost in Spanish', () => {
     render(
       inEditor(
-        <SkipLogicDestinationField
+        <StageDestinationPickerField
           name="skipLogic.destination"
           value={{ type: 'stage', stageId: 'deleted' }}
         />,

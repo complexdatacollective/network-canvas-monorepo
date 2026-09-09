@@ -32,6 +32,7 @@ import {
   useFieldNamespace,
   useFieldNamespacePath,
 } from '../FieldNamespace';
+import { useFieldsDisabled } from '../FieldsDisabled';
 import { useShouldDiscardFieldOnUnmount } from '../FieldUnmountPolicy';
 import type { FieldState, ValidationContext } from '../store/types';
 import { validationPropKeys } from '../validation/functions';
@@ -317,9 +318,11 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   const setFieldBlurred = useFormStore((store) => store.setFieldBlurred);
   const validateField = useFormStore((store) => store.validateField);
   const shouldDiscardOnUnmount = useShouldDiscardFieldOnUnmount();
+  const fieldsDisabled = useFieldsDisabled();
 
-  // Disable fields while form is submitting
-  const isDisabled = isSubmitting || config.disabled;
+  // Disable fields while form is submitting, and for as long as the form
+  // around them says nothing in it may be edited.
+  const isDisabled = isSubmitting || fieldsDisabled || config.disabled;
   const isReadOnly = config.readOnly;
 
   const validateOnChange = config.validateOnChange ?? false;

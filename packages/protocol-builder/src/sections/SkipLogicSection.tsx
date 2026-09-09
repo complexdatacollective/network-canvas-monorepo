@@ -2,7 +2,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
-import SkipLogicDestinationField from '../fields/SkipLogicDestinationField.tsx';
+import StageDestinationPickerField from '../fields/StageDestinationPickerField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { NO_RULES_MESSAGE } from '../rules/ruleSet.ts';
@@ -175,11 +175,11 @@ export default function SkipLogicSection({ position }: SkipLogicSectionProps) {
         required={NO_RULES_MESSAGE}
         custom={rulesValidation}
       />
-      <ProtocolField<typeof SkipLogicDestinationField>
+      <ProtocolField<typeof StageDestinationPickerField>
         name="skipLogic.destination"
         label={intl.formatMessage(messages.destinationLabel)}
         hint={intl.formatMessage(messages.destinationHint)}
-        component={SkipLogicDestinationField}
+        component={StageDestinationPickerField}
         position={insertionPosition}
       />
     </BuilderSection>

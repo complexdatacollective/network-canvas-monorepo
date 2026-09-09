@@ -45,6 +45,17 @@ const storeMessages = defineMessages({
  */
 export type FormStoreOptions = {
   getIntl?: () => IntlShape | undefined;
+  /**
+   * The document this form is editing, for fields that carry no
+   * `initialValue` of their own.
+   *
+   * A getter for the same reason `getIntl` is one: the store outlives any one
+   * render, and a form whose document advances while it is open — a list
+   * written structurally, a capability switched back on — has to seed a field
+   * mounting afterwards from the document as it stands then rather than as it
+   * stood when the form opened.
+   */
+  getInitialValues?: () => Record<string, FieldValue> | undefined;
 };
 
 // Enable Map/Set support in Immer
@@ -569,6 +580,44 @@ export const createFormStore = (
   // keep returning it by identity while it stays deep-equal. See `getValue`.
   const containerValues = new Map<string, FieldValue>();
 
+  /**
+   * What a field with no `initialValue` of its own starts out holding.
+   *
+   * Three readings of the same path, in the order they outrank each other:
+   *
+   * 1. Beneath a field mounted ABOVE it, the form answers for the whole path,
+   *    absence included. A compound control the person has emptied says there
+   *    is nothing there, and the document must not put it back — that is a
+   *    value they have just deleted reappearing under them.
+   * 2. Otherwise, whatever the mounted fields assemble at the path, so a
+   *    container mounting over leaves already on screen shows their edits
+   *    rather than the document they were opened from.
+   * 3. Otherwise the document, which is the only account of a path nothing
+   *    mounted has anything to say about.
+   */
+  const seedValueAt = (
+    fieldPath: ObjectPath,
+    formValues: Record<string, FieldValue>,
+  ): FieldValue => {
+    // `getFormValues` assembles its output out of `FieldValue` leaves, and a
+    // caller's document is declared as a map of them, so every node within
+    // either is itself a `FieldValue`.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const assembled = readObjectPath(formValues, fieldPath) as FieldValue;
+    const beneathAMountedField = [...fieldRecords.values()].some(
+      (field) =>
+        field.path !== undefined &&
+        field.path.length < fieldPath.length &&
+        field.path.every((segment, index) => fieldPath[index] === segment),
+    );
+    if (beneathAMountedField) return assembled;
+    if (assembled !== undefined) return assembled;
+    const document = storeOptions.getInitialValues?.();
+    if (document === undefined) return undefined;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    return readObjectPath(document, fieldPath) as FieldValue;
+  };
+
   const invalidateFormValidation = () => {
     formValidationToken = Symbol('form-validation');
   };
@@ -700,6 +749,10 @@ export const createFormStore = (
           fieldRecords,
           fieldName,
         );
+        const seeded =
+          config.initialValue === undefined
+            ? seedValueAt(fieldPath, get().getFormValues())
+            : config.initialValue;
         invalidateAllValidations();
         set((state) => {
           state.isValidating = false;
@@ -707,7 +760,7 @@ export const createFormStore = (
 
           const dormant = dormantRecords.get(fieldName);
           const hasDormantValue = dormant !== undefined;
-          const value = hasDormantValue ? dormant.value : config.initialValue;
+          const value = hasDormantValue ? dormant.value : seeded;
           const standingErrors = Object.hasOwn(
             state.errors.fieldErrors,
             fieldName,
@@ -727,7 +780,7 @@ export const createFormStore = (
               dormant?.submissionErrorKey ??
               config.submissionErrorKey ??
               (publicFieldName === fieldName ? undefined : publicFieldName),
-            initialValue: config.initialValue,
+            initialValue: seeded,
             validation: config.validation,
             value,
             meta: {
