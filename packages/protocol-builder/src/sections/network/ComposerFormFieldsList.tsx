@@ -17,6 +17,7 @@ import { useRowRenderers } from '../rowRenderers.tsx';
 import { useSubjectVariables } from './codebookOptions.ts';
 import {
   composerParameterShape,
+  effectiveComposerParameters,
   PARAMETERS_FIELD,
 } from './ComposerFieldParameters.tsx';
 import {
@@ -141,7 +142,19 @@ export default function ComposerFormFieldsList({
         values.component,
       );
       if (shape !== null) {
-        const issues = validateParameters(shape, values[PARAMETERS_FIELD]);
+        // Judged on what the control would actually run with: a field that
+        // omits `parameters` inherits the codebook attribute's block, and
+        // judged on the absent key alone a scale validly inheriting its two end
+        // labels was refused for not having them.
+        const issues = validateParameters(
+          shape,
+          effectiveComposerParameters(
+            variables,
+            values.variable,
+            values.component,
+            values[PARAMETERS_FIELD],
+          ),
+        );
         if (hasParameterIssues(issues)) {
           return { [PARAMETERS_FIELD]: Object.values(issues).flat() };
         }

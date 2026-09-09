@@ -1008,6 +1008,13 @@ export const networkCanvasMessages = defineMessages({
     description:
       'Guidance under the settings block’s heading, explaining that these settings are saved with the stage rather than with the codebook attribute.',
   },
+  fieldParametersInherited: {
+    id: 'protocolBuilder.networkCanvas.fieldParametersInherited',
+    defaultMessage:
+      'These come from the "{attributeName}" attribute, and this field follows them. Change any of them and this field keeps its own instead.',
+    description:
+      'Shown inside the settings block of a network composer’s form field while the field has no settings of its own and is using the codebook attribute’s. attributeName is the attribute’s researcher-facing name, shown inside straight double quotes.',
+  },
 
   // The input controls a composer form field can be answered with. Keyed by
   // the schema's own `ComponentTypes` tokens in `composerFormComponents.ts`;

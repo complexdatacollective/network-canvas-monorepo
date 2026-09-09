@@ -1634,3 +1634,131 @@ describe('validation hints on a composer form field', () => {
     });
   });
 });
+
+/**
+ * A composer field that inherits its control's settings.
+ *
+ * `ComposerFormFieldSchema` leaves `parameters` optional, and the interview
+ * runtime reads `fieldParameters ?? codebookParameters` (interview's
+ * `selectors/forms.ts`) — so a field with no block of its own runs on the
+ * codebook attribute's. Seeded from the row alone, the editor showed those
+ * settings as blank, refused a scale that validly inherits its two end labels
+ * for not having them, and turned one apparent override into a block holding
+ * only the setting just typed.
+ */
+describe('a composer field with no settings of its own', () => {
+  const SCALE = {
+    name: 'closeness_scale',
+    type: 'scalar',
+    parameters: { minLabel: 'Not at all close', maxLabel: 'Extremely close' },
+  } as const;
+
+  const INHERITING_FIELD: SectionDoc = {
+    id: 'composer-node-field-scale',
+    variable: 'closeness_scale',
+    component: 'VisualAnalogScale',
+  };
+
+  const openInheritingField = () => {
+    const { type, fields } = loadFixtureStage('network-composer-1');
+    return {
+      stage: {
+        id: 'network-composer-inherited',
+        type,
+        fields: { ...fields, nodeForm: { fields: [INHERITING_FIELD] } },
+      },
+      sections,
+    };
+  };
+
+  const openTheRow = async (harness: StageEditorHarness) => {
+    addPersonVariable(harness, SCALE.name, SCALE);
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit node attribute field' }),
+    );
+    return within(await screen.findByRole('dialog'));
+  };
+
+  it('shows what it inherits, and says where it comes from', async () => {
+    const harness = renderStageEditor(openInheritingField());
+    const field = await openTheRow(harness);
+
+    expect(field.getByRole('textbox', { name: 'Minimum label' })).toHaveValue(
+      'Not at all close',
+    );
+    expect(field.getByRole('textbox', { name: 'Maximum label' })).toHaveValue(
+      'Extremely close',
+    );
+    expect(
+      field.getByText(
+        'These come from the "closeness_scale" attribute, and this field follows them. Change any of them and this field keeps its own instead.',
+      ),
+    ).toBeVisible();
+  });
+
+  /**
+   * And saving it untouched leaves it inheriting.
+   *
+   * Written back as a copy of what it was inheriting, the field would stop
+   * following the attribute — a decision the researcher never made, taken
+   * because a dialog was opened.
+   */
+  it('is saved without a block of its own when nothing is changed', async () => {
+    const harness = renderStageEditor(openInheritingField());
+    const field = await openTheRow(harness);
+
+    // Refused for missing end labels while the block read as empty, so this
+    // save is itself half of the claim.
+    await harness.user.click(field.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    const nodeForm = request?.stageDocument.nodeForm;
+    expect(isRecord(nodeForm) ? nodeForm.fields : undefined).toEqual([
+      INHERITING_FIELD,
+    ]);
+  });
+
+  /**
+   * And changing one of them keeps the rest.
+   *
+   * The block is written whole, so a field that overrides one end of the scale
+   * still says what the other end means — edited over blanks it wrote only the
+   * setting just typed, and the participant met a scale labelled at one end.
+   */
+  it('keeps the settings it did not change when one is overridden', async () => {
+    const harness = renderStageEditor(openInheritingField());
+    const field = await openTheRow(harness);
+
+    await harness.user.clear(
+      field.getByRole('textbox', { name: 'Minimum label' }),
+    );
+    await harness.user.type(
+      field.getByRole('textbox', { name: 'Minimum label' }),
+      'Strangers',
+    );
+    await harness.user.click(field.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    const nodeForm = request?.stageDocument.nodeForm;
+    expect(isRecord(nodeForm) ? nodeForm.fields : undefined).toEqual([
+      {
+        ...INHERITING_FIELD,
+        parameters: {
+          minLabel: 'Strangers',
+          maxLabel: 'Extremely close',
+        },
+      },
+    ]);
+    // The attribute itself is untouched: what this field asks for is this
+    // field's, and the codebook goes on meaning what it meant.
+    expect(
+      harness.hostCodebook().node?.person?.variables?.closeness_scale,
+    ).toEqual(SCALE);
+  });
+});
