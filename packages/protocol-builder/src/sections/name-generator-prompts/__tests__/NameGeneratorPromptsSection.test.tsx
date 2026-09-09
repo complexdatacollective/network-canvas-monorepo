@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
+import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import NameGeneratorPromptsSection from '../NameGeneratorPromptsSection.tsx';
 
 /**
@@ -12,7 +12,7 @@ import NameGeneratorPromptsSection from '../NameGeneratorPromptsSection.tsx';
  * about what they are for — the list around the row, the stamps inside it, and
  * what reaches the stage — and the editor itself is covered by its own test.
  */
-vi.mock('../../../../../fields/RichTextField.tsx', () => ({
+vi.mock('../../../fields/RichTextField.tsx', () => ({
   default: ({
     id,
     name,

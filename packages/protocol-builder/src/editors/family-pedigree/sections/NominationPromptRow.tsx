@@ -16,8 +16,8 @@ import type {
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
+import CreateVariableButton from '../../../sections/create-variable/CreateVariableButton.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
-import CreateVariableButton from './CreateVariableButton.tsx';
 import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
 import {

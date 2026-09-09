@@ -10,12 +10,10 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 import {
   IntegerFieldControl,
   wholeNumberRule,
-} from '../../../../fields/IntegerField.tsx';
-import { useStageEditorForm } from '../../../../form/stageEditorContext.ts';
-import { useStageValue } from '../../../../form/stageFormHooks.ts';
-import BuilderSection, {
-  type SectionCapability,
-} from '../../../../sections/BuilderSection.tsx';
+} from '../../fields/IntegerField.tsx';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { useStageValue } from '../../form/stageFormHooks.ts';
+import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 
 /** Where every name generator holds its stage-wide nomination window. */
 const MIN_FIELD = 'behaviours.minNodes';

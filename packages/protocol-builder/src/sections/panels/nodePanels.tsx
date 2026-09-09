@@ -1,4 +1,4 @@
-import type { StageSection } from '../../../defineStageEditor.tsx';
+import type { StageSection } from '../../editors/defineStageEditor.tsx';
 import NodePanelsSection from './NodePanelsSection.tsx';
 
 /**

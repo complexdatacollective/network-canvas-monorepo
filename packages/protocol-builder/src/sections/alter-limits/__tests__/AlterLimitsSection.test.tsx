@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
+import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import AlterLimitsSection from '../AlterLimitsSection.tsx';
 
 const limits = <AlterLimitsSection />;

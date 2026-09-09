@@ -7,33 +7,30 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 
-import { useCreateCodebookVariable } from '../../../../codebook/useCodebookVariableEdits.ts';
+import { useCreateCodebookVariable } from '../../codebook/useCodebookVariableEdits.ts';
 import {
   buildVariableRoleMap,
   excludeInterfaceOwned,
   excludeValidatedUses,
   buildExclusiveVariableSlotMap,
   hasValidatedUse,
-} from '../../../../codebook/variableRoles.ts';
-import { draftFormFieldVariableIds } from '../../../../codebook/variableValidation.ts';
-import RichTextField from '../../../../fields/RichTextField.tsx';
-import VariablePickerField from '../../../../fields/VariablePickerField.tsx';
+} from '../../codebook/variableRoles.ts';
+import { draftFormFieldVariableIds } from '../../codebook/variableValidation.ts';
+import RichTextField from '../../fields/RichTextField.tsx';
+import VariablePickerField from '../../fields/VariablePickerField.tsx';
 import AssignAttributes, {
   committedAttributeVariableIds,
   makeAssignAttributesValidation,
   type AttributeValue,
   type VariableOption,
-} from '../../../../form/arrayFields/AssignAttributes.tsx';
-import type {
-  RowEditorProps,
-  RowPreviewProps,
-} from '../../../../form/rowDialog.tsx';
-import { useStageEditorForm } from '../../../../form/stageEditorContext.ts';
-import { useStageValue } from '../../../../form/stageFormHooks.ts';
-import { variablesForSubject } from '../../../../protocol-context.ts';
-import PromptsSection from '../../../../sections/PromptsSection.tsx';
-import { useStageSubject } from '../../../../sections/useStageSubject.ts';
-import { useProtocolContext } from '../../../../state/protocolContext.ts';
+} from '../../form/arrayFields/AssignAttributes.tsx';
+import type { RowEditorProps, RowPreviewProps } from '../../form/rowDialog.tsx';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { useStageValue } from '../../form/stageFormHooks.ts';
+import { variablesForSubject } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
+import PromptsSection from '../PromptsSection.tsx';
+import { useStageSubject } from '../useStageSubject.ts';
 
 /**
  * Stable identities for the empty cases: `initialValue` is a dependency of the

@@ -20,8 +20,8 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 import Section from '@codaco/fresco-ui/Section';
 import type { Asset } from '@codaco/protocol-validation';
 
-import AssetPickerField from '../../../../fields/AssetPickerField.tsx';
-import { withoutAbsentValues } from '../../../../form/absentValues.ts';
+import AssetPickerField from '../../fields/AssetPickerField.tsx';
+import { withoutAbsentValues } from '../../form/absentValues.ts';
 import {
   RowDialog,
   RowList,
@@ -33,27 +33,25 @@ import {
   type RowValues,
   type RowEditorProps,
   type RowPreviewProps,
-} from '../../../../form/rowDialog.tsx';
-import { useStagedResources } from '../../../../resources/client.tsx';
-import { acceptsResourceKind } from '../../../../resources/components/resourceKinds.ts';
+} from '../../form/rowDialog.tsx';
+import { useStagedResources } from '../../resources/client.tsx';
+import { acceptsResourceKind } from '../../resources/components/resourceKinds.ts';
 import type {
   ResourceDescriptor,
   ResourceKind,
-} from '../../../../resources/types.ts';
+} from '../../resources/types.ts';
 import {
   ruleSetRules,
   ruleSetTargets,
   ruleSetValidationMessage,
   type RuleSetValue,
   type RuleSetVariant,
-} from '../../../../rules/ruleSet.ts';
-import { FilterRuleSetField } from '../../../../rules/RuleSetField.tsx';
-import { useRowValue } from '../../../../sections/AttributeCodebookControls.tsx';
-import BuilderSection, {
-  type SectionCapability,
-} from '../../../../sections/BuilderSection.tsx';
-import { useStageSubject } from '../../../../sections/useStageSubject.ts';
-import { useProtocolContext } from '../../../../state/protocolContext.ts';
+} from '../../rules/ruleSet.ts';
+import { FilterRuleSetField } from '../../rules/RuleSetField.tsx';
+import { useProtocolContext } from '../../state/protocolContext.ts';
+import { useRowValue } from '../AttributeCodebookControls.tsx';
+import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
+import { useStageSubject } from '../useStageSubject.ts';
 
 /** Where every name generator that offers side panels keeps them. */
 const PANELS = 'panels';
