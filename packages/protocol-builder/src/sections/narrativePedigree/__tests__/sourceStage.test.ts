@@ -233,6 +233,47 @@ describe('the pedigrees a narrative pedigree may read', () => {
   });
 
   /**
+   * Every pedigree this control offers a NEW stage runs before it, and a stage
+   * inserted after them does not move them: their numbers are the ones the
+   * timeline already shows.
+   *
+   * The number is what tells two identically named pedigrees apart, so one
+   * that disagrees with the timeline points the researcher at the wrong stage
+   * — which is worse than no number at all.
+   */
+  it('keeps the numbers of the pedigrees a new stage is inserted after', () => {
+    const context = contextInOrder(FIXTURE_ORDER);
+    const pedigreePosition = FIXTURE_ORDER.indexOf('family-pedigree-1') + 1;
+
+    // Appended at the end of the interview.
+    expect(
+      resolveSourceStages(
+        context,
+        'not-in-the-order-yet',
+        undefined,
+        FIXTURE_ORDER.length,
+      ).options,
+    ).toEqual([
+      {
+        value: 'family-pedigree-1',
+        label: 'Family Pedigree',
+        position: pedigreePosition,
+      },
+    ]);
+
+    // And inserted immediately after the pedigree, which it displaces
+    // downwards without moving anything above it.
+    expect(
+      resolveSourceStages(
+        context,
+        'not-in-the-order-yet',
+        undefined,
+        pedigreePosition,
+      ).options.map((option) => option.position),
+    ).toEqual([pedigreePosition]);
+  });
+
+  /**
    * The same rule seen from the stored choice: a pedigree that will run after
    * the stage being created is the problem it is for an existing stage, not a
    * choice silently left standing.

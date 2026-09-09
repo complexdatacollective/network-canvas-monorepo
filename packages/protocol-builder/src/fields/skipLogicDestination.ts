@@ -325,10 +325,19 @@ const isLaterStage = (index: number, placement: StagePlacement): boolean =>
 /**
  * The number the researcher will see against this stage once the stage being
  * edited exists — which is one higher than today's for every stage a new
- * stage is about to be inserted in front of.
+ * stage is about to be inserted in front of, and today's own for every stage
+ * it is inserted after.
+ *
+ * Both halves are needed because both kinds of stage are numbered: the
+ * destination control offers the stages a skip can reach, which a new stage
+ * always displaces, and the narrative pedigree's source control offers the
+ * pedigrees that already ran, which it never does. Shifting all of them made
+ * that control call an existing "Stage 3" pedigree "Stage 4", disagreeing with
+ * the timeline the researcher is reading it against — and the number is there
+ * precisely to tell two identically named pedigrees apart.
  */
 export const stageNumber = (index: number, placement: StagePlacement): number =>
-  index + 1 + (placement.isNew ? 1 : 0);
+  index + 1 + (placement.isNew && index >= placement.index ? 1 : 0);
 
 const stageOptionLabel = (
   stage: DestinationStage,

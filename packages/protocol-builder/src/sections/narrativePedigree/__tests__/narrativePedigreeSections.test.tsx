@@ -186,12 +186,16 @@ const movePedigreeLast = (stages: string[]): string[] => [
  * Every option carries the number the stage will have in the finished
  * interview, so two pedigrees a researcher gave one name can still be told
  * apart. Read off the fixture's own order rather than written down, because
- * the number is a fact about the fixture and not about this rule; `displaced`
- * is for a stage being CREATED, which pushes everything at or after its own
- * index one place down.
+ * the number is a fact about the fixture and not about this rule.
+ *
+ * One number, whatever this stage is: every pedigree this control offers runs
+ * BEFORE the stage being edited, and a stage inserted after them does not move
+ * them. The number is what the researcher matches against the timeline, so a
+ * different one for a stage being created would point them at the wrong
+ * pedigree.
  */
-const fixturePedigreeOption = (displaced = false): string =>
-  `Stage ${fixtureStageIds().indexOf('family-pedigree-1') + (displaced ? 2 : 1)} — Family Pedigree`;
+const fixturePedigreeOption = (): string =>
+  `Stage ${fixtureStageIds().indexOf('family-pedigree-1') + 1} — Family Pedigree`;
 
 /** What the confirmation before a source change offers as its answer. */
 const CONFIRM_SOURCE_CHANGE = 'Change the pedigree';
@@ -380,12 +384,17 @@ describe('a narrative pedigree the host is creating', () => {
     expect(screen.getByText('No pedigree to read')).toBeInTheDocument();
   });
 
-  it('offers the pedigrees it will run after', async () => {
+  /**
+   * Numbered as the timeline already numbers them, because a stage appended
+   * after them moves none of them. Shifting every offered pedigree by one
+   * called the fixture's "Stage 3" pedigree "Stage 4", which is the wrong
+   * stage to point a researcher at — and pointing at the right one is the
+   * whole reason the number is there.
+   */
+  it('offers the pedigrees it will run after, numbered as they run', async () => {
     const harness = renderStageEditor(createAt(fixtureStageIds().length));
 
-    expect(await offeredSources(harness)).toEqual([
-      fixturePedigreeOption(true),
-    ]);
+    expect(await offeredSources(harness)).toEqual([fixturePedigreeOption()]);
   });
 
   /**
