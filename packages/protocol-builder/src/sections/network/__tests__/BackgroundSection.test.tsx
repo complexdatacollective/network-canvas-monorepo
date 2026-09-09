@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -287,6 +287,41 @@ describe('the batch a background switch makes', () => {
     // history. A reset that has a cause sends it either way.
     expect(commandsOf(harness)).toEqual([{ op: 'unset', key: 'background' }]);
     expect(await circlesBox()).toHaveDisplayValue('');
+  });
+
+  /**
+   * Editing taken away between this handler rendering and the click reaching
+   * it.
+   *
+   * The session refuses the batch and keeps the circles — which is right — but
+   * the mode was moved regardless, so the picker for one background stood over
+   * the other one's draft. Once editing came back, the stage held circles the
+   * researcher could not see and an image control they could fill in, and the
+   * next save wrote a background of both kinds.
+   *
+   * The gesture and the revocation are one commit, because that IS the window:
+   * a render later the control is disabled and there is nothing to click.
+   */
+  it('leaves the mode where it was when the discard is refused', async () => {
+    const harness = renderStageEditor(openCircles());
+    await circlesBox();
+
+    const image = await screen.findByRole('option', { name: /Image/ });
+    act(() => {
+      harness.session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+      fireEvent.click(image);
+    });
+
+    await screen.findByText(/read-only/);
+    expect(draftOf(harness).background).toEqual({
+      concentricCircles: 4,
+      skewedTowardCenter: true,
+    });
+    expect(commandsOf(harness)).toEqual([]);
+    expect(await circlesBox()).toHaveDisplayValue('4');
+    expect(
+      screen.queryByRole('button', { name: 'Select an image' }),
+    ).not.toBeInTheDocument();
   });
 
   /**
