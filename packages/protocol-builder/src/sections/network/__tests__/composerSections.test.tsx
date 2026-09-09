@@ -1,4 +1,10 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -1167,5 +1173,83 @@ describe('two connection entries carrying the same id', () => {
     expect(Array.isArray(edges) ? edges[1] : undefined).toEqual(
       SHARED_ID_EDGES[1],
     );
+  });
+});
+
+/**
+ * A connection type this stage draws and the protocol no longer defines.
+ *
+ * A collaborator deleted the type, or the stage was authored against a
+ * different codebook. The tick list renders from the codebook and the ticks
+ * from the value, so the entry stayed in `edges` with no box to untick: the
+ * researcher could not see the reference, could not remove it, and the stage
+ * went on naming a kind of connection that does not exist.
+ */
+describe('a connection type the codebook has lost', () => {
+  const LOST_EDGE = 'former_edge';
+  const LOST_EDGE_CHOICE = `${LOST_EDGE} — this edge type is no longer in the codebook`;
+
+  const openDrawingALostType = () => {
+    const { type, fields } = loadFixtureStage('network-composer-1');
+    return {
+      stage: {
+        id: 'network-composer-lost-edge',
+        type,
+        fields: {
+          ...fields,
+          edges: [
+            {
+              id: 'composer-edge-lost',
+              subject: { entity: 'edge', type: LOST_EDGE },
+            },
+          ],
+        },
+      },
+      sections,
+    };
+  };
+
+  it('shows it, ticked, so the researcher can take it out', async () => {
+    const harness = renderStageEditor(openDrawingALostType());
+
+    const lost = await screen.findByRole('checkbox', {
+      name: LOST_EDGE_CHOICE,
+    });
+    expect(lost).toBeChecked();
+
+    await harness.user.click(lost);
+    // Unticking must not take the box away mid-gesture: the researcher has to
+    // be able to see what they have just done.
+    expect(
+      screen.getByRole('checkbox', { name: LOST_EDGE_CHOICE }),
+    ).not.toBeChecked();
+
+    const request = await harness.submit();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'edges')).toBe(false);
+  });
+
+  /**
+   * And when the deleted type was the last one the codebook had.
+   *
+   * The empty-state paragraph replaced the whole control, so the dangling
+   * entry had nowhere at all to be shown — the one case where the researcher
+   * has no way out but abandoning the stage.
+   */
+  it('shows it even when the protocol has no connection types left', async () => {
+    const harness = renderStageEditor(openDrawingALostType());
+    act(() => {
+      harness.receiveCodebookUpdate({
+        edge: { knows: null, family_edge: null },
+      });
+    });
+
+    expect(
+      await screen.findByRole('checkbox', { name: LOST_EDGE_CHOICE }),
+    ).toBeChecked();
+    expect(
+      screen.queryByText(
+        'This protocol has no connection types yet. Create one to let the participant connect nodes.',
+      ),
+    ).toBeNull();
   });
 });

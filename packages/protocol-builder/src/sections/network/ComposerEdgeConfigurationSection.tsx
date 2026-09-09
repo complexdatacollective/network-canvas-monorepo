@@ -22,6 +22,7 @@ import { NEW_ENTITY_DRAFT } from '../SubjectSection.tsx';
 import { type EdgeTypeOption, useEdgeTypeOptions } from './codebookOptions.ts';
 import ComposerFormFieldsList from './ComposerFormFieldsList.tsx';
 import { useSetStageFieldValue } from './CreateVariableAction.tsx';
+import { useLostEdgeTypes } from './lostEdgeTypes.ts';
 import { networkCanvasMessages } from './networkCanvasMessages.ts';
 import { checkboxOptions } from './rowValues.ts';
 
@@ -85,7 +86,10 @@ type EdgeTypesFieldProps = CreateFormFieldProps<
   'fieldset',
   {
     options: readonly EdgeTypeOption[];
-    /** Shown in place of the list when the protocol defines no edge types. */
+    /**
+     * Shown in place of the list when there is nothing to tick at all —
+     * neither a codebook type nor an entry naming one the codebook has lost.
+     */
     emptyMessage: string;
   }
 >;
@@ -115,11 +119,41 @@ function EdgeTypesField({
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
 }: EdgeTypesFieldProps) {
+  const intl = useAppIntl();
   const entries = readEntries(value);
   const checked = entries.map((entry) => entry.subject.type);
-  const choices = useMemo(() => checkboxOptions(options), [options]);
+  /**
+   * The types this stage draws that the codebook does not define.
+   *
+   * The list renders from the CODEBOOK and the ticks from the value, so a type
+   * a collaborator deletes stopped being a choice while its entry stayed in
+   * `edges` — where the interview would ask for a kind of connection that does
+   * not exist and nothing on screen could remove it. Kept and shown, by the
+   * same seam and in the same words the sociogram's prompt editor uses.
+   */
+  const knownTypes = useMemo(
+    () => new Set(options.map((option) => option.value)),
+    [options],
+  );
+  const lostTypes = useLostEdgeTypes(checked, knownTypes);
+  const choices = useMemo(
+    () => [
+      ...checkboxOptions(options),
+      ...lostTypes.map((type) => ({
+        value: type,
+        label: intl.formatMessage(networkCanvasMessages.promptMissingEdgeType, {
+          edgeTypeId: type,
+        }),
+      })),
+    ],
+    [intl, lostTypes, options],
+  );
 
-  if (options.length === 0) {
+  // Said only when there is nothing to show at all. A protocol whose last
+  // connection type has been deleted still has this stage's dangling entries
+  // to offer, and replacing them with "there are none" would leave the
+  // researcher no way to take them out.
+  if (choices.length === 0) {
     return (
       <Paragraph id={id} margin="none" emphasis="muted" className={className}>
         {emptyMessage}
