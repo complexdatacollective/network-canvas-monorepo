@@ -492,6 +492,57 @@ describe('a connection type this protocol does not define', () => {
     });
   });
 
+  /**
+   * And the same for a type the researcher ticks HERE, which a collaborator
+   * then deletes.
+   *
+   * Derived from the committed list alone, the repair could not see it: the
+   * tick list dropped the box while the live field kept the id, so Save wrote
+   * a display reference the researcher could neither see nor remove. The id is
+   * in the prompt either way, and either way the only way out of it is being
+   * shown.
+   */
+  it('shows a type the researcher ticked and a collaborator then deleted', async () => {
+    const harness = renderStageEditor(openEditor());
+    // A connection type a collaborator adds while this dialog is open reaches
+    // the tick list without the dialog asking for it, which is what makes it
+    // tickable and then losable.
+    act(() => {
+      harness.receiveCodebookUpdate({
+        edge: { [LOST_EDGE]: { name: 'Former' } },
+      });
+    });
+
+    const prompt = await openPrompt(harness);
+    await harness.user.click(prompt.getByRole('checkbox', { name: 'Former' }));
+
+    act(() => {
+      harness.receiveCodebookUpdate({ edge: { [LOST_EDGE]: null } });
+    });
+
+    const lost = await prompt.findByRole('checkbox', {
+      name: LOST_EDGE_CHOICE,
+    });
+    expect(lost).toBeChecked();
+
+    await harness.user.click(lost);
+    // Unticking must not take the box away mid-gesture: the researcher has to
+    // be able to see what they have just done.
+    expect(
+      prompt.getByRole('checkbox', { name: LOST_EDGE_CHOICE }),
+    ).not.toBeChecked();
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]?.edges).toEqual({
+      display: ['knows'],
+      create: 'knows',
+    });
+  });
+
   it('lets the researcher untick it, which repairs the prompt', async () => {
     const { harness, prompt } = await openLostEdgePrompt();
 

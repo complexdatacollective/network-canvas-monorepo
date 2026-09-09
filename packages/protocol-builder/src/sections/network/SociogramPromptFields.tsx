@@ -89,6 +89,42 @@ const tapBehaviourOf = (item: Record<string, unknown>): TapBehaviour => {
   return TAP_NOTHING;
 };
 
+const NO_LOST_EDGE_TYPES: readonly string[] = Object.freeze([]);
+
+/**
+ * The connection types a prompt names and the codebook no longer defines.
+ *
+ * Accumulated rather than derived, and that is the point: an id stops being
+ * NAMED the moment the researcher unticks it, and a choice that disappeared as
+ * it was unticked would take with it the only evidence of what the prompt had
+ * been holding — while a `create` value repaired in the same dialog would
+ * leave its copy in the display list with nothing on screen to remove. So an
+ * id enters this list when the prompt names it and the codebook does not have
+ * it, and leaves only when the codebook has it again.
+ *
+ * The same array is answered with for as long as its contents do not change,
+ * for the reason `useStableIdList` exists: the options a control registers
+ * with are part of that registration, and a fresh array on every tick
+ * re-registers the field — which supersedes a running submit's validation and
+ * refuses the save with nothing on screen to say why.
+ */
+function useLostEdgeTypes(
+  named: readonly string[],
+  known: ReadonlySet<string>,
+): readonly string[] {
+  const held = useRef<readonly string[]>(NO_LOST_EDGE_TYPES);
+  const current = held.current;
+  const next = current.filter((id) => !known.has(id));
+  for (const id of named) {
+    if (!known.has(id) && !next.includes(id)) next.push(id);
+  }
+  const unchanged =
+    next.length === current.length &&
+    next.every((entry, index) => entry === current[index]);
+  if (!unchanged) held.current = next;
+  return held.current;
+}
+
 /**
  * One question this sociogram asks, and everything the canvas does while it is
  * on screen.
@@ -287,31 +323,47 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
    * the reason `VariablePicker` keeps a deleted attribute: the reference the
    * researcher has to resolve must be the one thing they can see.
    *
-   * Taken from the COMMITTED list rather than the live one, which is what the
-   * researcher can no longer add to: the value is stable while the dialog is
-   * open, so unticking the lost type does not take the box away mid-gesture —
+   * Taken from what this prompt NAMES — the list it arrived with and the one
+   * the researcher is building — rather than from the committed list alone. A
+   * type ticked in this dialog and deleted by a collaborator a moment later is
+   * lost in exactly the same way, and read only from the committed value it
+   * simply left the tick list while the id stayed in the field: an invisible
+   * dangling reference, saved.
+   *
+   * `useLostEdgeTypes` is what keeps that from moving the control's options
+   * around. It answers with the same array while its contents do not change,
+   * and it does not forget an id the researcher has just unticked — a box that
+   * vanished mid-gesture would leave them unable to see what they had done,
    * and a control's options are part of what it registers with, so a list that
    * moved with every tick would re-register the field under a running submit.
    */
+  const knownEdgeTypes = useMemo(
+    () => new Set(edgeOptions.map((option) => option.value)),
+    [edgeOptions],
+  );
+  const namedEdgeTypes = useMemo(
+    () => [...(committedDisplay ?? []), ...displayedEdges],
+    [committedDisplay, displayedEdges],
+  );
+  const lostEdgeTypes = useLostEdgeTypes(namedEdgeTypes, knownEdgeTypes);
+
   const edgeChoices = useMemo(() => {
     const offered = checkboxOptions(edgeOptions).map((option) =>
       drawChosenHere && option.value === createdEdge
         ? { ...option, disabled: true }
         : option,
     );
-    const known = new Set(offered.map((option) => option.value));
-    const lost = (committedDisplay ?? []).filter((id) => !known.has(id));
-    if (lost.length === 0) return offered;
+    if (lostEdgeTypes.length === 0) return offered;
     return [
       ...offered,
-      ...lost.map((id) => ({
+      ...lostEdgeTypes.map((id) => ({
         value: id,
         label: intl.formatMessage(networkCanvasMessages.promptMissingEdgeType, {
           edgeTypeId: id,
         }),
       })),
     ];
-  }, [committedDisplay, createdEdge, drawChosenHere, edgeOptions, intl]);
+  }, [createdEdge, drawChosenHere, edgeOptions, intl, lostEdgeTypes]);
 
   // Held for as long as the reader's language does not change: the control's
   // options are part of what it registers with, and a fresh array every render
