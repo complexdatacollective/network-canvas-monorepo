@@ -270,6 +270,64 @@ describe('the creatable attribute picker', () => {
   });
 
   /**
+   * The refusal that arrives as a throw rather than as an answer.
+   *
+   * A session that has stopped accepting changes refuses a compound edit by
+   * throwing (`assertEditable`), and access is taken away by a message from
+   * the host: it lands before React has redrawn the row the researcher is
+   * looking at, so the click already on its way reaches a handler about to be
+   * refused. `useCreateCodebookVariable` promises every refusal is ANSWERED,
+   * and a rejection escaping it went all the way to the picker's own catch,
+   * which had nothing to say — leaving a researcher who pressed Create looking
+   * at a row that is exactly as it was, with no way to tell a write that did
+   * nothing from one that has not happened yet.
+   */
+  it('says nothing was created when the session refuses the write outright', async () => {
+    const harness = renderRows(<StampedAttributes />);
+    await addRow(harness);
+
+    const box = await screen.findByRole('textbox', {
+      name: 'Create a new attribute',
+    });
+    await harness.user.type(box, 'nominated_early');
+    // The access change is made straight on the session and the click is
+    // dispatched before anything is flushed: the harness's own `setReadOnly`
+    // flushes that render before it returns, which is the one state this
+    // scenario is not about. React warns that the update was not wrapped in
+    // `act`, which is the point: wrapping it would draw the disabled control
+    // this window exists to be in front of. Same shape, and the same warning,
+    // as `clickAsEditingIsRevoked` in `QuickAddSection.test.tsx`.
+    harness.session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    screen
+      .getByRole('button', { name: 'Create the attribute' })
+      .dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This attribute could not be created, so nothing was changed. Try again.',
+    );
+
+    // And nothing was written, which is what makes the sentence true. (What
+    // becomes of the row itself is read-only's business, not this create's:
+    // the list stops offering an unassigned row the moment editing is taken
+    // away.)
+    const person =
+      harness.session.getSnapshot().protocolSections[
+        sectionId({ kind: 'codebookNode', typeId: 'person' })
+      ];
+    if (person === undefined) throw new Error('the person type is gone');
+    expect(
+      Object.values(person.variables as Record<string, { name?: string }>).map(
+        (variable) => variable.name,
+      ),
+    ).not.toContain('nominated_early');
+  });
+
+  /**
    * The other half a host supplies, refused: a control that cannot collect the
    * kind of answer the host asks the attribute to be created as.
    *
@@ -485,6 +543,47 @@ describe('the create control while the codebook write is in flight', () => {
   });
 
   /**
+   * And says so. The button coming back is not an answer: a create that ended
+   * in a throw looks exactly like one that has not been pressed, and the
+   * researcher's next move is to press it again — which is the same failing
+   * write, or, if that first one did land somewhere this control never heard
+   * about, a duplicate name they never asked for twice.
+   *
+   * There is nothing more specific to say — no host answered — so what is said
+   * is the package's own sentence for a codebook write refused for a reason
+   * with no explanation of its own, the same one `useCreateCodebookVariable`
+   * answers with.
+   */
+  it('says the create failed when the caller throws instead of answering', async () => {
+    const { user, throwFrom } = mountControl();
+
+    await user.type(nameBox(), 'nominated_early');
+    await user.click(createButton());
+    throwFrom(new Error('the host refused the commit'));
+
+    await waitFor(() =>
+      expect(notice()).toHaveTextContent(
+        'This attribute could not be created, so nothing was changed. Try again.',
+      ),
+    );
+    // Said about a write that did not happen, so the name is still theirs.
+    expect(nameBox()).toHaveValue('nominated_early');
+  });
+
+  /** The sentence is about the create that just failed, not about the next name. */
+  it('takes the failure notice down as soon as another name is typed', async () => {
+    const { user, throwFrom } = mountControl();
+
+    await user.type(nameBox(), 'nominated_early');
+    await user.click(createButton());
+    throwFrom(new Error('the host refused the commit'));
+    await waitFor(() => expect(notice()).not.toBeEmptyDOMElement());
+
+    await user.type(nameBox(), '_again');
+    expect(notice()).toBeEmptyDOMElement();
+  });
+
+  /**
    * And the box with it, for the same reason and one more.
    *
    * A name typed while the write was in flight was erased by the answer: the
@@ -689,6 +788,29 @@ describe('the creatable attribute picker, read in Spanish', () => {
     await waitFor(() =>
       expect(notice()).toHaveTextContent(
         'Se ha añadido «nominado_pronto» al libro de códigos, pero no se ha seleccionado aquí.',
+      ),
+    );
+  });
+
+  /**
+   * The other sentence only the seam can produce: a caller that throws instead
+   * of answering. It is the package's shared wording for a codebook write
+   * refused with no explanation of its own, so this also reads that one on this
+   * surface, in this language.
+   */
+  it('says in Spanish that a create which never answered created nothing', async () => {
+    const { user, throwFrom } = mountControl('es');
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Crear un atributo nuevo' }),
+      'nominado_pronto',
+    );
+    await user.click(screen.getByRole('button', { name: 'Crear el atributo' }));
+    throwFrom(new Error('the host refused the commit'));
+
+    await waitFor(() =>
+      expect(notice()).toHaveTextContent(
+        'No se ha podido crear este atributo, así que no se ha cambiado nada. Inténtalo de nuevo.',
       ),
     );
   });
