@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { receiveCollaboratorStageEdit } from '../../../testing/collaboratorStageEdit.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -358,6 +359,84 @@ describe('a codebook that changes while a tie-strength prompt is open', () => {
     ).toBeInTheDocument();
     expect(dispatch).not.toHaveBeenCalled();
     expect(harness.pendingCommands()).toEqual([]);
+  });
+});
+
+/**
+ * The connection type a census prompt invents is the same act as the attribute
+ * a bin prompt invents: a compound edit to another section of the protocol,
+ * which the prompt is then pointed at.
+ *
+ * So it is refused by the same reading. A prompt a collaborator removed keeps
+ * its dialog — `DialogArrayField` holds the detached editor open so the draft
+ * can be rescued — and can never be committed again, so a connection type
+ * created from it would be left in the protocol for a question nobody can ask.
+ * `CreateEdgeField` used to ask only about `readOnly`, which says nothing
+ * about a row that has gone.
+ */
+describe('the connection editor open in a prompt a collaborator removes', () => {
+  it('refuses the create, and writes no connection type', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    // The prompt's own draft is written first: it is what makes the removal
+    // ASK before it takes the dialog down, and once the create dialog is open
+    // everything behind it is inert.
+    const promptText = await screen.findByRole('textbox', {
+      name: 'Prompt text',
+    });
+    await harness.user.clear(promptText);
+    await harness.user.type(promptText, 'How close are they?');
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new connection type' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Edge type name' }),
+      'confides_in',
+    );
+
+    receiveCollaboratorStageEdit(harness, {
+      description: 'Ask a different question instead, from another session',
+      commands: [
+        {
+          op: 'set',
+          key: 'prompts',
+          value: [
+            {
+              id: 'prompt-b',
+              text: 'How often do they speak?',
+              createEdge: 'knows',
+              edgeVariable: 'closeness',
+              negativeLabel: "Don't know each other",
+            },
+          ],
+        },
+      ],
+    });
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Keep editing' }),
+    );
+
+    // Watched from here, so what is counted is what the EDITOR asked for
+    // rather than the collaborator's own edit above.
+    const submit = vi.spyOn(harness.host, 'submit');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+
+    expect(screen.getByRole('textbox', { name: 'Edge type name' })).toHaveValue(
+      'confides_in',
+    );
+    expect(screen.getByRole('button', { name: 'Save entity' })).toBeDisabled();
+    expect(submit).not.toHaveBeenCalled();
+    expect(
+      Object.values(harness.hostCodebook().edge ?? {}).map(
+        (definition) => definition.name,
+      ),
+    ).not.toContain('confides_in');
   });
 });
 

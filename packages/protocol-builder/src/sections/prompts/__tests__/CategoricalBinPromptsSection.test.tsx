@@ -1567,3 +1567,177 @@ async function addOption(
     value,
   );
 }
+
+/**
+ * A collaborator removing the very prompt the researcher has open.
+ *
+ * The stage is not repointed and the lease is not lost — the subject, the
+ * codebook section and editing are all exactly as they were — so none of the
+ * three questions `writable` used to ask says anything about this. What HAS
+ * gone is the row: `DialogArrayField` keeps the detached dialog on screen so
+ * the draft in it can be read and rescued, and every save from it is refused
+ * with "this row was removed", because a row is committed by its own id and
+ * there is no such row left.
+ *
+ * That makes every codebook control inside it a way to leave an orphan behind.
+ * The compound edit lands in the codebook whole, and the prompt that was going
+ * to point at what it created can never be saved: the protocol keeps an
+ * attribute invented for a question nobody can ask. The rule is the family's —
+ * an open editor is refused rather than torn down, and the controls that START
+ * one go — read now from the row's own attachment (`editedRow.ts`).
+ */
+describe('a codebook editor open in a prompt a collaborator removes', () => {
+  /**
+   * The prompt being edited is replaced by a different one, so the list is
+   * left non-empty: the interface's own schema wants a prompt, and the point
+   * here is the removal of THIS row rather than of the list.
+   */
+  const removeTheOpenPrompt = (harness: StageEditorHarness) => {
+    receiveCollaboratorStageEdit(harness, {
+      description: 'Ask a different question instead, from another session',
+      commands: [
+        {
+          op: 'set',
+          key: 'prompts',
+          value: [
+            {
+              id: 'prompt-b',
+              text: 'Which of these are they?',
+              variable: 'contactType',
+            },
+          ],
+        },
+      ],
+    });
+  };
+
+  /**
+   * The draft that makes the removal ASK before it takes the dialog down.
+   *
+   * Written before any codebook editor is opened, because a nested dialog
+   * makes everything behind it inert: the prompt's own fields are then out of
+   * reach, which is precisely the position the researcher is in.
+   */
+  const writeInThePrompt = async (harness: StageEditorHarness) => {
+    const promptText = screen.getByRole('textbox', { name: 'Prompt text' });
+    await harness.user.clear(promptText);
+    await harness.user.type(promptText, 'What kind of contact is this?');
+  };
+
+  /**
+   * The removal, answered with "Keep editing" — which is the state this whole
+   * describe is about: a dialog outliving its row.
+   */
+  const removeItAndKeepEditing = async (harness: StageEditorHarness) => {
+    removeTheOpenPrompt(harness);
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Keep editing' }),
+    );
+  };
+
+  it('refuses the create, and writes nothing to the codebook', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+    await writeInThePrompt(harness);
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new text attribute' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+      'Closeness',
+    );
+
+    await removeItAndKeepEditing(harness);
+    // Watched from here, so what is counted is what the EDITOR asked for
+    // rather than the collaborator's own edit above.
+    const submit = vi.spyOn(harness.host, 'submit');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    // The draft is still there to be copied out of; nothing reached the
+    // codebook, so no attribute is left behind for a prompt that has gone.
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'Closeness',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    ).toBeDisabled();
+    expect(submit).not.toHaveBeenCalled();
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).not.toContain('Closeness');
+  });
+
+  it('refuses an open values editor, and keeps its draft', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+    await writeInThePrompt(harness);
+    await harness.user.click(
+      screen.getByRole('button', { name: "Change this attribute's values" }),
+    );
+    const firstOption = await screen.findByRole('textbox', {
+      name: 'Option 1 label',
+    });
+    await harness.user.clear(firstOption);
+    await harness.user.type(firstOption, 'Close friend');
+
+    await removeItAndKeepEditing(harness);
+    const submit = vi.spyOn(harness.host, 'submit');
+
+    expect(screen.getByRole('textbox', { name: 'Option 1 label' })).toHaveValue(
+      'Close friend',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    ).toBeDisabled();
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it('refuses an open rules editor, and keeps its draft', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+    await writeInThePrompt(harness);
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Set rules for what the participant types',
+      }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Required' }),
+    );
+
+    await removeItAndKeepEditing(harness);
+
+    expect(screen.getByRole('checkbox', { name: 'Required' })).toBeChecked();
+    expect(
+      screen.getByRole('button', { name: 'Save validation' }),
+    ).toBeDisabled();
+  });
+
+  it('takes away the controls that would start another one', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+    for (const name of CODEBOOK_CONTROLS) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    }
+
+    await writeInThePrompt(harness);
+    await removeItAndKeepEditing(harness);
+
+    for (const name of CODEBOOK_CONTROLS) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+    }
+    // The prompt itself is still open over the draft: what goes is the way to
+    // start a codebook edit, not the work the researcher has done.
+    expect(
+      screen.getByRole('textbox', { name: 'Prompt text' }),
+    ).toHaveTextContent('What kind of contact is this?');
+  });
+});

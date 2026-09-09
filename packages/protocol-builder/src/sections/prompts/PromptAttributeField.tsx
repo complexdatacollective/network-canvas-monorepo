@@ -24,6 +24,7 @@ import {
   type WriterClass,
 } from '../../codebook/variableRoles.ts';
 import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
+import { useEditedRowStillInTheList } from '../../form/arrayFields/editedRow.ts';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
@@ -196,6 +197,17 @@ export default function PromptAttributeField({
 }: PromptAttributeFieldProps) {
   const intl = useAppIntl();
   const { controller, readOnly } = useStageEditorForm();
+  /**
+   * Whether the prompt this picker belongs to is still a row the list holds.
+   *
+   * A prompt removed by a collaborator leaves its dialog open over the draft —
+   * `DialogArrayField` keeps it so the work can be read and rescued — and a
+   * removed row can never be committed again. Every write below goes to the
+   * CODEBOOK, which would land whole while the prompt pointing at it never
+   * could, so an attribute invented here would be left in the protocol for a
+   * question nobody can ask. See `editedRow.ts`.
+   */
+  const rowStillInTheList = useEditedRowStillInTheList();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   // Read the field's own state, falling back to the row the dialog opened on:
   // the picker registers a render after this component first mounts, and the
@@ -273,22 +285,26 @@ export default function PromptAttributeField({
           document: validatingDocument ?? validating.openedDocument,
         };
   /**
-   * Whether what is open may be WRITTEN, which is three questions.
+   * Whether what is open may be WRITTEN, which is four questions.
    *
    * A lease taken back says this researcher may write nothing. A section that
    * has gone — the type deleted under them — is a section nothing can be
-   * written into. And a stage repointed at another type says it a third way:
-   * the prompt this editor was opened from is a prompt about something else
-   * now, and the row holding it cannot commit, so an attribute created here
-   * would be left behind in a codebook nothing points at. The draft is kept
-   * and shown in all three, refused rather than thrown away, exactly as the
-   * row dialog around it is kept.
+   * written into. A stage repointed at another type says it a third way: the
+   * prompt this editor was opened from is a prompt about something else now,
+   * and the row holding it cannot commit, so an attribute created here would
+   * be left behind in a codebook nothing points at. And the prompt ROW itself
+   * can go while the stage stays exactly where it was — a collaborator
+   * removing this one question — which leaves the same orphan by a different
+   * route and is the same refusal. The draft is kept and shown in all four,
+   * refused rather than thrown away, exactly as the row dialog around it is
+   * kept.
    */
   const writable = (
     opened: CodebookSubject,
     live: SectionDoc | null,
   ): boolean =>
     !readOnly &&
+    rowStillInTheList &&
     live !== null &&
     subject !== undefined &&
     sectionIdForCodebookSubject(subject) ===
@@ -404,64 +420,67 @@ export default function PromptAttributeField({
         emptyMessage={emptyMessage}
         required={requiredMessage}
       />
-      {!readOnly && subject !== undefined && codebookDocument !== null && (
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Button
-            ref={createTrigger}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              setEditing({
-                key: uuid(),
-                mode: 'create',
-                variableId: uuid(),
-                subject,
-                openedDocument: codebookDocument,
-              })
-            }
-          >
-            {createLabel}
-          </Button>
-          {valuesEditor !== null && (
+      {!readOnly &&
+        rowStillInTheList &&
+        subject !== undefined &&
+        codebookDocument !== null && (
+          <div className="mt-4 flex flex-wrap gap-3">
             <Button
-              ref={editTrigger}
+              ref={createTrigger}
               type="button"
               variant="outline"
               size="sm"
               onClick={() =>
                 setEditing({
                   key: uuid(),
-                  mode: 'update',
-                  variableId: valuesEditor.variableId,
+                  mode: 'create',
+                  variableId: uuid(),
                   subject,
                   openedDocument: codebookDocument,
                 })
               }
             >
-              {valuesEditor.label}
+              {createLabel}
             </Button>
-          )}
-          {validationEditor !== null && (
-            <Button
-              ref={validationTrigger}
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setValidating({
-                  key: uuid(),
-                  variableId: validationEditor.variableId,
-                  subject,
-                  openedDocument: codebookDocument,
-                })
-              }
-            >
-              {validationEditor.label}
-            </Button>
-          )}
-        </div>
-      )}
+            {valuesEditor !== null && (
+              <Button
+                ref={editTrigger}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setEditing({
+                    key: uuid(),
+                    mode: 'update',
+                    variableId: valuesEditor.variableId,
+                    subject,
+                    openedDocument: codebookDocument,
+                  })
+                }
+              >
+                {valuesEditor.label}
+              </Button>
+            )}
+            {validationEditor !== null && (
+              <Button
+                ref={validationTrigger}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setValidating({
+                    key: uuid(),
+                    variableId: validationEditor.variableId,
+                    subject,
+                    openedDocument: codebookDocument,
+                  })
+                }
+              >
+                {validationEditor.label}
+              </Button>
+            )}
+          </div>
+        )}
       {/* The values themselves, and not only the reason they are fixed: they
           ARE the bins this prompt sorts into, or the points of the scale it
           offers, and a researcher who cannot see them cannot tell what the
@@ -482,12 +501,14 @@ export default function PromptAttributeField({
           <AlertDescription>{optionLimitDescription}</AlertDescription>
         </Alert>
       )}
-      {/* An editor already open survives editing being taken away, and is
-          refused instead. The launch controls above go — a spectator may not
-          START another one — but the draft inside this dialog was made in this
-          session, and unmounting it would throw away work to say something
-          `readOnly` says for itself, with the save disabled. The same rule the
-          row editors follow (`AttributeCodebookControls`, `SubjectSection`). */}
+      {/* An editor already open survives the write being taken away, and is
+          refused instead. The launch controls above go — nobody may START a
+          codebook edit they cannot finish, whether because editing was revoked
+          or because the prompt row has left the list — but the draft inside
+          this dialog was made in this session, and unmounting it would throw
+          away work to say something the disabled save says for itself. The
+          same rule the row editors follow (`AttributeCodebookControls`,
+          `SubjectSection`). */}
       {openEditor !== null && (
         <Dialog
           open

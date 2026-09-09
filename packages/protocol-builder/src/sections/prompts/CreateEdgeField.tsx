@@ -9,6 +9,7 @@ import Section from '@codaco/fresco-ui/Section';
 import CodebookEntityEditor from '../../codebook/components/CodebookEntityEditor.tsx';
 import type { CodebookEntityDraft } from '../../codebook/editing.ts';
 import { EntitySelectControl } from '../../fields/EntitySelectField.tsx';
+import { useEditedRowStillInTheList } from '../../form/arrayFields/editedRow.ts';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 
@@ -57,6 +58,17 @@ export default function CreateEdgeField({
   guidance,
 }: CreateEdgeFieldProps) {
   const { controller, readOnly } = useStageEditorForm();
+  /**
+   * Whether the prompt this control belongs to is still a row the list holds.
+   *
+   * The create below writes the CODEBOOK and then points the prompt at what
+   * comes back. A prompt a collaborator removed keeps its dialog open over the
+   * draft and can never be committed again, so the connection type would be
+   * left in the protocol for a question nobody can ask — the same orphan
+   * `PromptAttributeField` refuses, by the same reading. See `editedRow.ts`.
+   */
+  const rowStillInTheList = useEditedRowStillInTheList();
+  const writable = !readOnly && rowStillInTheList;
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const [session, setSession] = useState<{
     key: string;
@@ -106,7 +118,7 @@ export default function CreateEdgeField({
         entityType="edge"
         required={requiredMessage}
       />
-      {!readOnly && (
+      {writable && (
         <div className="mt-4">
           <Button
             ref={trigger}
@@ -119,10 +131,11 @@ export default function CreateEdgeField({
           </Button>
         </div>
       )}
-      {/* Open already, and so kept when editing is taken away: what the
-          researcher has typed is theirs, and the editor refuses its own save
-          under `readOnly` rather than being torn down to say the same thing.
-          What a spectator loses is the control above, which STARTS one. */}
+      {/* Open already, and so kept when the write is taken away — editing
+          revoked, or the prompt row removed from under it: what the researcher
+          has typed is theirs, and the editor refuses its own save rather than
+          being torn down to say the same thing. What goes is the control
+          above, which STARTS one. */}
       {session !== null && (
         <Dialog
           open
@@ -154,7 +167,7 @@ export default function CreateEdgeField({
             subject={{ entity: 'edge', type: session.typeId }}
             initialDraft={NEW_EDGE_DRAFT}
             existingEntityNames={existingEntityNames}
-            readOnly={readOnly}
+            readOnly={!writable}
             onSubmit={async (request) => {
               setSubmitting(true);
               try {

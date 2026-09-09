@@ -49,6 +49,7 @@ import {
   type StageFormStoreApi,
 } from '../stageEditorContext.ts';
 import {
+  readRows,
   reseatEditedRow,
   rowIdentity,
   rowPathFor,
@@ -59,6 +60,9 @@ import {
   rowRemovedMessage,
   writeRefusalMessage,
 } from './arrayWriteRefusal.ts';
+import EditedRowAttachmentContext, {
+  useEditedRowStillInTheList,
+} from './editedRow.ts';
 import RowEditorBoundary from './RowEditorBoundary.tsx';
 import {
   ArrayFieldBindingContext,
@@ -474,6 +478,14 @@ type DialogArrayContextValue = {
   previewComponent: Renderer;
   previewProps?: Record<string, unknown>;
   /**
+   * Whether this row is still one of the list's own, asked of the row rather
+   * than of the editing state: the list stops editing a row for reasons that
+   * leave it exactly where it was — a refused commit hands it back before the
+   * dialog declines the write — and a session that outlived its row is the
+   * only one whose fields must not write anywhere else. See `editedRow.ts`.
+   */
+  rowStillInTheList: (row: ArrayItem) => boolean;
+  /**
    * Runs the commit the editor issues through the list's own save handler —
    * which answers nothing — and says what it wrote. The only thing that can
    * tell a commit from a no-op on that route.
@@ -635,9 +647,16 @@ function DialogEditor({
     itemSelector,
     normalizeItem,
     onBeforeSave,
+    rowStillInTheList,
     writeThrough,
   } = useDialogArrayContext();
   const intl = useAppIntl();
+  /**
+   * Whether the row ENCLOSING this list is still saveable, where this list is
+   * itself inside a row dialog. A row of a nested list cannot outlive the row
+   * that holds it, so a detached outer row detaches every one of its own.
+   */
+  const enclosingRowStillInTheList = useEditedRowStillInTheList();
   const { protocolContext, readOnly } = useStageEditorForm();
   /**
    * Where the rows of the list this dialog edits live in the stage document.
@@ -1077,6 +1096,20 @@ function DialogEditor({
 
   if (!session) return null;
 
+  /**
+   * Whether what this session is editing can still be committed to the list.
+   *
+   * A new row is not in the array yet and is not detached by being absent from
+   * it — the save is what puts it there. An existing row is asked for by its
+   * own id, which is the same question `commitDetachedRow` answers with
+   * "removed": if it cannot find the row, no save from this dialog will ever
+   * land, and a field inside it that writes to ANOTHER section would be
+   * leaving that write behind for a row nothing can save.
+   */
+  const editedRowStillInTheList =
+    enclosingRowStillInTheList &&
+    (session.isNewItem || rowStillInTheList(session.item));
+
   const editorPreview = editorPreviewComponent
     ? createElement(editorPreviewComponent, {
         ...itemValues,
@@ -1158,13 +1191,19 @@ function DialogEditor({
           nested form store.
         */}
         <ArrayFieldBindingContext value={NESTED_IN_A_ROW}>
-          {createElement(editorFieldsComponent, {
-            ...itemValues,
-            ...editorProps,
-            item: itemValues,
-            editIndex,
-            form: editFormName,
-          })}
+          {/* Told to the fields, because some of them write to a section of
+              the protocol other than this row: a row that has left the list
+              can never be saved, so a codebook edit sent from inside it lands
+              somewhere nothing will ever point at. See `editedRow.ts`. */}
+          <EditedRowAttachmentContext value={editedRowStillInTheList}>
+            {createElement(editorFieldsComponent, {
+              ...itemValues,
+              ...editorProps,
+              item: itemValues,
+              editIndex,
+              form: editFormName,
+            })}
+          </EditedRowAttachmentContext>
         </ArrayFieldBindingContext>
       </RowEditorBoundary>
     </DialogForm>
@@ -1238,6 +1277,38 @@ export default function DialogArrayField<T extends ArrayItem>({
     [commitById, resolveItemId],
   );
 
+  /**
+   * The rows the list currently holds, by their own ids.
+   *
+   * Read from the value the field was handed, through the same reader the
+   * rendered rows come out of, so a value an import left as something other
+   * than a list answers "no rows" here exactly as it does there.
+   */
+  const committedRowIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const row of readRows(value)) {
+      const id = resolveItemId(row as T);
+      if (id !== undefined) ids.add(id);
+    }
+    return ids;
+  }, [resolveItemId, value]);
+
+  /**
+   * Whether a row is still one the list holds.
+   *
+   * A row with no id of its own is treated as still there: this answers "has
+   * this row been removed?", and a list whose rows cannot be told apart cannot
+   * say that any of them has. It is the same reading `commitDetachedRow`
+   * takes, which can address a row by id or nothing at all.
+   */
+  const rowStillInTheList = useCallback(
+    (row: ArrayItem) => {
+      const id = resolveItemId(row as T);
+      return id === undefined || committedRowIds.has(id);
+    },
+    [committedRowIds, resolveItemId],
+  );
+
   const context = useMemo<DialogArrayContextValue>(
     () => ({
       addTitle:
@@ -1260,6 +1331,7 @@ export default function DialogArrayField<T extends ArrayItem>({
       onBeforeSave,
       previewComponent,
       previewProps,
+      rowStillInTheList,
       writeThrough,
     }),
     [
@@ -1282,6 +1354,7 @@ export default function DialogArrayField<T extends ArrayItem>({
       previewComponent,
       previewProps,
       requestedEditFormName,
+      rowStillInTheList,
       writeThrough,
     ],
   );
