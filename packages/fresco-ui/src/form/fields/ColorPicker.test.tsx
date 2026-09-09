@@ -10,8 +10,10 @@ import ColorPickerField, { resolveSwatchColor } from './ColorPicker';
 
 type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
+// The theme's own names for what these tokens paint: `--node-1` is
+// `--neon-coral` (`tooling/tailwind/fresco/themes/default.css`).
 const palette = [
-  { value: 'node-color-seq-1', label: 'Sea Green' },
+  { value: 'node-color-seq-1', label: 'Neon Coral' },
   { value: 'node-color-seq-2', label: 'Sea Serpent' },
   { value: 'node-color-seq-3', label: 'Purple Pizazz' },
 ];
@@ -61,8 +63,8 @@ describe('ColorPickerField', () => {
       screen
         .getAllByRole('radio')
         .map((radio) => radio.getAttribute('aria-label')),
-    ).toEqual(['Sea Green', 'Sea Serpent', 'Purple Pizazz']);
-    expect(screen.getByRole('radio', { name: 'Sea Green' })).toHaveAttribute(
+    ).toEqual(['Neon Coral', 'Sea Serpent', 'Purple Pizazz']);
+    expect(screen.getByRole('radio', { name: 'Neon Coral' })).toHaveAttribute(
       'aria-checked',
       'true',
     );
@@ -83,7 +85,7 @@ describe('ColorPickerField', () => {
         component={ColorPickerField}
         options={[
           { value: 'node-color-seq-3', label: 'Purple Pizazz' },
-          { value: 'edge-color-seq-2', label: 'Tomato' },
+          { value: 'edge-color-seq-6', label: 'Tomato' },
           { value: 'ord-color-seq-10', label: 'Slate Blue' },
           { value: 'cat-color-seq-1', label: 'Sea Serpent' },
         ]}
@@ -94,7 +96,7 @@ describe('ColorPickerField', () => {
     // which re-resolve inside a themed region; the swatch must reference them
     // rather than freeze one rendering of the palette.
     expect(swatchColorOf('Purple Pizazz')).toBe('var(--node-3)');
-    expect(swatchColorOf('Tomato')).toBe('var(--edge-2)');
+    expect(swatchColorOf('Tomato')).toBe('var(--edge-6)');
     expect(swatchColorOf('Slate Blue')).toBe('var(--ord-10)');
     expect(swatchColorOf('Sea Serpent')).toBe('var(--cat-1)');
   });
@@ -136,7 +138,7 @@ describe('ColorPickerField', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Sea Serpent' }));
 
     expect(storedColor()).toBe('node-color-seq-1');
-    expect(screen.getByRole('radio', { name: 'Sea Green' })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: 'Neon Coral' })).toHaveAttribute(
       'aria-checked',
       'true',
     );

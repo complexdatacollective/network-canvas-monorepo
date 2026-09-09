@@ -26,7 +26,7 @@ import {
   defineMessages,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 
 import { MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
@@ -121,6 +121,33 @@ const messages = defineMessages({
       'Confirm button of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
   },
 });
+
+/**
+ * One sentence of the delete confirmation, formatted where it is rendered
+ * rather than where the dialog was raised.
+ *
+ * A dialog outlives the click that opened it, and `DialogProvider` formats its
+ * own copy on every render, so copy frozen into strings at click time would
+ * leave the title, body and action in the language the reader has just left
+ * while the rest of the dialog follows the new one.
+ */
+function DeleteConfirmationMessage({
+  message,
+  itemLabel,
+}: {
+  message: MessageDescriptor;
+  itemLabel: MessageDescriptor;
+}) {
+  const intl = useAppIntl();
+
+  return (
+    <>
+      {intl.formatMessage(message, {
+        itemLabel: intl.formatMessage(itemLabel),
+      })}
+    </>
+  );
+}
 
 // Stable empty array to prevent infinite re-renders when value is undefined
 const EMPTY_ARRAY: never[] = [];
@@ -972,21 +999,30 @@ export default function ArrayField<T extends Record<string, unknown>>({
       if (confirmDelete) {
         // A named list says what is going; an unnamed one keeps `confirm`'s
         // own "Are you sure? This action cannot be undone.", which is all it
-        // can honestly say.
-        const named = itemLabel
-          ? { itemLabel: intl.formatMessage(itemLabel) }
-          : undefined;
-
+        // can honestly say. Either way the copy goes to the dialog as nodes,
+        // so it is formatted in whatever language is active while the dialog
+        // is up rather than the one that was active when Delete was clicked.
         await confirm({
-          title: named
-            ? intl.formatMessage(messages.confirmDeleteTitle, named)
-            : undefined,
-          description: named
-            ? intl.formatMessage(messages.confirmDeleteDescription, named)
-            : undefined,
-          confirmLabel: named
-            ? intl.formatMessage(messages.confirmDeleteAction, named)
-            : intl.formatMessage(commonMessages.delete),
+          title: itemLabel ? (
+            <DeleteConfirmationMessage
+              message={messages.confirmDeleteTitle}
+              itemLabel={itemLabel}
+            />
+          ) : undefined,
+          description: itemLabel ? (
+            <DeleteConfirmationMessage
+              message={messages.confirmDeleteDescription}
+              itemLabel={itemLabel}
+            />
+          ) : undefined,
+          confirmLabel: itemLabel ? (
+            <DeleteConfirmationMessage
+              message={messages.confirmDeleteAction}
+              itemLabel={itemLabel}
+            />
+          ) : (
+            <AppMessage message={commonMessages.delete} />
+          ),
           onConfirm: removeAndAnnounce,
           // On confirm the row — and the Delete control that opened this — is
           // gone, so focus has nowhere to return to. The add button is the

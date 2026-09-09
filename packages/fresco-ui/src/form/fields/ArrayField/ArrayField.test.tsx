@@ -11,10 +11,14 @@ import { MotionConfig } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { commonCatalogs } from '@codaco/app-i18n/common';
+import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
 import DialogProvider from '../../../dialogs/DialogProvider';
 import Surface from '../../../layout/Surface';
+import { frescoUiCatalogs } from '../../../locales/catalogs';
 import ArrayField, {
   ArrayFieldDragHandle,
   stripManagedProperties,
@@ -833,6 +837,61 @@ describe('ArrayField', () => {
       await user.click(screen.getByRole('button', { name: 'Delete prompt' }));
 
       expect(onChange).toHaveBeenCalledWith([]);
+    });
+
+    it('follows a locale change while the confirmation is up', async () => {
+      const user = userEvent.setup();
+      // The noun is a descriptor so that it is translated like the sentence
+      // around it; this stands in for the catalog entry a real list ships.
+      const view = (locale: string) => (
+        <AppI18nProvider
+          locale={locale}
+          locales={ecosystemLocales}
+          messages={mergeCatalogs(
+            commonCatalogs[locale] ?? {},
+            frescoUiCatalogs[locale] ?? {},
+            locale === 'es' ? { [promptLabel.id]: 'pregunta' } : {},
+          )}
+        >
+          <DialogProvider>
+            <ArrayField<Item>
+              value={[{ id: 'one', label: 'one' }]}
+              getId={(item) => item.id}
+              onChange={() => undefined}
+              itemComponent={TestItem}
+              itemLabel={promptLabel}
+              confirmDelete
+            />
+          </DialogProvider>
+        </AppI18nProvider>
+      );
+
+      const { rerender } = render(view('en'));
+
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+      expect(
+        await screen.findByRole('dialog', { name: 'Delete this prompt?' }),
+      ).toBeInTheDocument();
+
+      // The dialog outlives the click that raised it, and the rest of it —
+      // Cancel, and the copy `confirm` supplies itself — is already following
+      // the reader's language, so its named copy has to as well.
+      rerender(view('es'));
+
+      const translated = screen.getByRole('dialog', {
+        name: '¿Eliminar pregunta?',
+      });
+      expect(
+        within(translated).getByText(
+          'Se eliminará de la lista esta entrada (pregunta).',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(translated).getByRole('button', { name: 'Eliminar pregunta' }),
+      ).toBeInTheDocument();
+      expect(
+        within(translated).getByRole('button', { name: 'Cancelar' }),
+      ).toBeInTheDocument();
     });
 
     it('keeps the generic wording when the list has no word for its rows', async () => {

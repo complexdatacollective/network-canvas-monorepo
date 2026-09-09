@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { type ComponentProps, useState } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '../../storybook-support/awaitPassiveEffects';
 import Paragraph from '../../typography/Paragraph';
@@ -10,22 +10,34 @@ import Form from '../Form';
 import SubmitButton from '../SubmitButton';
 import ColorPickerField, { type ColorSwatchOption } from './ColorPicker';
 
+// A swatch's name is what the colour is to a reader who cannot see it, so
+// these are the theme's own names for the colours these tokens paint —
+// `--node-1` is `--neon-coral`, `--edge-1` is `--mustard`, and so on
+// (`tooling/tailwind/fresco/themes/default.css`). `PaletteNames` holds them to
+// it against the theme itself.
 const nodePalette: ColorSwatchOption[] = [
-  { value: 'node-color-seq-1', label: 'Sea Green' },
+  { value: 'node-color-seq-1', label: 'Neon Coral' },
   { value: 'node-color-seq-2', label: 'Sea Serpent' },
   { value: 'node-color-seq-3', label: 'Purple Pizazz' },
   { value: 'node-color-seq-4', label: 'Neon Carrot' },
-  { value: 'node-color-seq-5', label: 'Barbie Pink' },
+  { value: 'node-color-seq-5', label: 'Kiwi' },
   { value: 'node-color-seq-6', label: 'Cerulean Blue' },
-  { value: 'node-color-seq-7', label: 'Kiwi' },
+  { value: 'node-color-seq-7', label: 'Paradise Pink' },
   { value: 'node-color-seq-8', label: 'Mustard' },
 ];
 
 const edgePalette: ColorSwatchOption[] = [
-  { value: 'edge-color-seq-1', label: 'Edge Purple' },
-  { value: 'edge-color-seq-2', label: 'Edge Teal' },
-  { value: 'edge-color-seq-3', label: 'Edge Orange' },
-  { value: 'edge-color-seq-4', label: 'Edge Green' },
+  { value: 'edge-color-seq-1', label: 'Mustard' },
+  { value: 'edge-color-seq-2', label: 'Purple Pizazz' },
+  { value: 'edge-color-seq-3', label: 'Neon Coral' },
+  { value: 'edge-color-seq-4', label: 'Kiwi' },
+];
+
+/** Colours a caller may hand a swatch that the group is itself painted in. */
+const backgroundLikePalette: ColorSwatchOption[] = [
+  { value: 'white', label: 'White' },
+  { value: 'transparent', label: 'Transparent' },
+  { value: 'node-color-seq-2', label: 'Sea Serpent' },
 ];
 
 const cssColorPalette: ColorSwatchOption[] = [
@@ -33,6 +45,32 @@ const cssColorPalette: ColorSwatchOption[] = [
   { value: '#0f7b6c', label: 'Pine' },
   { value: 'oklch(0.72 0.19 45)', label: 'Ember' },
 ];
+
+/**
+ * The arg-driven examples, holding the colour they are shown choosing.
+ *
+ * The control is always controlled — a `<Field>` or an `UnconnectedField` owns
+ * the value — so a story that only spread its args would render a palette
+ * nothing could be chosen from, and the docs page's first example would look
+ * broken. Each story keys this on the value it is given, so the Controls panel
+ * still sets the selection. (Storybook's own `useArgs` would keep the value in
+ * args, but its updates never reach the story under `test:storybook`, which
+ * leaves the example's operability unprovable.)
+ */
+function ExampleColorPicker(props: ComponentProps<typeof ColorPickerField>) {
+  const [value, setValue] = useState(props.value);
+
+  return (
+    <ColorPickerField
+      {...props}
+      value={value}
+      onChange={(next) => {
+        setValue(next);
+        props.onChange?.(next);
+      }}
+    />
+  );
+}
 
 const meta = {
   title: 'Systems/Form/Fields/ColorPicker',
@@ -53,7 +91,7 @@ import ColorPickerField from '@codaco/fresco-ui/form/fields/ColorPicker';
   label="Node color"
   component={ColorPickerField}
   options={[
-    { value: 'node-color-seq-1', label: 'Sea Green' },
+    { value: 'node-color-seq-1', label: 'Neon Coral' },
     { value: 'node-color-seq-2', label: 'Sea Serpent' },
   ]}
   required
@@ -69,6 +107,10 @@ import ColorPickerField from '@codaco/fresco-ui/form/fields/ColorPicker';
   used as a CSS colour verbatim.
 - The chosen swatch is marked by an outline ring standing off it — a change of
   shape, so the selection is legible without perceiving the colour at all.
+- Every swatch also carries a hairline in the group's foreground, and the
+  chosen one a ring in it, so a swatch filled with the colour the group is
+  painted in — white, transparent — is still visibly a swatch, and visibly the
+  chosen one.
 - Labelling belongs to the surrounding field: use it as the \`component\` of a
   \`<Field>\`, or of an \`UnconnectedField\` when the value is not the form's.
         `,
@@ -86,12 +128,25 @@ import ColorPickerField from '@codaco/fresco-ui/form/fields/ColorPicker';
     'options': nodePalette,
     'aria-label': 'Node color',
   },
+  render: (args) => <ExampleColorPicker key={args.value} {...args} />,
 } satisfies Meta<typeof ColorPickerField>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  play: async ({ canvasElement }) => {
+    await awaitPassiveEffects();
+    const canvas = within(canvasElement);
+    const swatch = canvas.getByRole('radio', { name: 'Purple Pizazz' });
+
+    await expect(swatch).toHaveAttribute('aria-checked', 'false');
+
+    await userEvent.click(swatch);
+
+    await expect(swatch).toHaveAttribute('aria-checked', 'true');
+  },
+};
 
 export const WithSelection: Story = {
   args: {
@@ -114,6 +169,63 @@ export const CssColors: Story = {
     'options': cssColorPalette,
     'value': '#0f7b6c',
     'aria-label': 'Brand color',
+  },
+};
+
+/**
+ * A palette is free to hand a swatch the colour the group is painted in —
+ * white, transparent, anything near `--input`. The swatch's edge and its
+ * chosen state are drawn in the group's foreground rather than in the swatch's
+ * own colour, so neither can be a colour that vanishes.
+ */
+export const ColorsCloseToTheBackground: Story = {
+  args: {
+    'options': backgroundLikePalette,
+    'aria-label': 'Brand color',
+  },
+  // This play reads a style that exists only while the swatch matches
+  // `:focus-visible`, which never matches in Chromatic's unfocused capture
+  // tab. `test:storybook` is where it runs; the boundary it is about is in
+  // every other story's snapshot, since every swatch now carries one.
+  parameters: { chromatic: { disableSnapshot: true } },
+  play: async ({ canvasElement }) => {
+    await awaitPassiveEffects();
+    const canvas = within(canvasElement);
+    const white = canvas.getByRole('radio', { name: 'White' });
+    const fill = getComputedStyle(white).backgroundColor;
+    const ground = getComputedStyle(
+      canvas.getByRole('radiogroup', { name: 'Brand color' }),
+    ).backgroundColor;
+
+    // Where the swatch is: a hairline inside its edge, in neither the colour
+    // it is filled with nor the colour it sits on.
+    const unchosen = getComputedStyle(white).boxShadow;
+    await expect(unchosen).toContain('inset');
+    await expect(unchosen).not.toContain(fill);
+    await expect(unchosen).not.toContain(ground);
+
+    // Choosing it changes the swatch in that same colour-independent way.
+    // Focus moves off afterwards, so what is read is the chosen state and not
+    // a focus ring.
+    await userEvent.tab();
+    await expect(white).toHaveFocus();
+
+    // Focus is the same promise. `waitFor` because `transition-all` eases the
+    // outline in from the swatch's own colour: the settled value is the one
+    // the reader sees.
+    await waitFor(async () => {
+      await expect(getComputedStyle(white).outlineColor).not.toBe(fill);
+    });
+
+    await userEvent.keyboard(' ');
+    await expect(white).toHaveAttribute('aria-checked', 'true');
+    await userEvent.tab();
+    await expect(white).not.toHaveFocus();
+
+    const chosen = getComputedStyle(white).boxShadow;
+    await expect(chosen).not.toBe(unchosen);
+    await expect(chosen).not.toContain(fill);
+    await expect(chosen).not.toContain(ground);
   },
 };
 
@@ -145,7 +257,7 @@ export const NarrowContainer: Story = {
   },
   render: (args) => (
     <div className="w-56">
-      <ColorPickerField {...args} />
+      <ExampleColorPicker key={args.value} {...args} />
     </div>
   ),
 };
@@ -187,11 +299,11 @@ export const KeyboardSelection: Story = {
 
     // Nothing is chosen, so the group's tab stop is its first swatch.
     await userEvent.tab();
-    await expect(swatch('Sea Green')).toHaveFocus();
+    await expect(swatch('Neon Coral')).toHaveFocus();
 
     await userEvent.keyboard(' ');
     await expect(chosen).toHaveTextContent('node-color-seq-1');
-    await expect(swatch('Sea Green')).toHaveAttribute('aria-checked', 'true');
+    await expect(swatch('Neon Coral')).toHaveAttribute('aria-checked', 'true');
 
     await userEvent.keyboard('{ArrowRight}{ArrowRight}');
     await expect(chosen).toHaveTextContent('node-color-seq-3');
@@ -262,5 +374,54 @@ export const ErrorState: Story = {
     await userEvent.click(canvas.getByRole('radio', { name: 'Kiwi' }));
 
     await expect(group).not.toHaveAttribute('aria-invalid', 'true');
+  },
+};
+
+/**
+ * A swatch's accessible name is the whole of what its colour is to a reader
+ * who cannot see it, so the name has to be the name of the colour the theme
+ * paints. Each swatch is compared against the theme's own token for the colour
+ * it is named after: a name the theme does not define paints nothing, and a
+ * name belonging to another colour paints that other colour.
+ */
+export const PaletteNames: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  render: () => (
+    <>
+      <ExampleColorPicker options={nodePalette} aria-label="Node color" />
+      <ExampleColorPicker options={edgePalette} aria-label="Edge color" />
+    </>
+  ),
+  play: async ({ canvasElement }) => {
+    await awaitPassiveEffects();
+    const canvas = within(canvasElement);
+    const probe = document.createElement('div');
+    canvasElement.append(probe);
+
+    const namesMatchColors = async (
+      groupName: string,
+      palette: ColorSwatchOption[],
+    ) => {
+      const group = within(canvas.getByRole('radiogroup', { name: groupName }));
+
+      for (const { label } of palette) {
+        // Painted with the theme's token for the name the swatch carries.
+        // Cleared first: an invalid value leaves the previous one in place.
+        probe.style.backgroundColor = '';
+        probe.style.backgroundColor = `oklch(var(--${label.toLowerCase().replaceAll(' ', '-')}))`;
+
+        const named = getComputedStyle(probe).backgroundColor;
+        await expect(named).not.toBe('rgba(0, 0, 0, 0)');
+        await expect(
+          getComputedStyle(group.getByRole('radio', { name: label }))
+            .backgroundColor,
+        ).toBe(named);
+      }
+    };
+
+    await namesMatchColors('Node color', nodePalette);
+    await namesMatchColors('Edge color', edgePalette);
+
+    probe.remove();
   },
 };
