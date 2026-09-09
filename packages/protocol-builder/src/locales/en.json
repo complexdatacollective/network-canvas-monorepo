@@ -135,6 +135,66 @@
     "defaultMessage": "Create or select an attribute",
     "description": "Label of the control that picks (or adds) the codebook attribute this row stamps onto every node the prompt creates."
   },
+  "protocolBuilder.attributeCodebookControls.attributeDeletedDescription": {
+    "defaultMessage": "This attribute is no longer in the codebook, so these changes cannot be saved.",
+    "description": "Shown over an open attribute editor when someone else deleted the attribute it was opened on. The draft stays on screen; what it says is that there is nothing left to write it to."
+  },
+  "protocolBuilder.attributeCodebookControls.attributeDeletedTitle": {
+    "defaultMessage": "Attribute deleted",
+    "description": "Heading of the warning shown over an open attribute editor when someone else deleted the attribute it was opened on."
+  },
+  "protocolBuilder.attributeCodebookControls.createNeedsSettings": {
+    "defaultMessage": "An attribute answered on a scale needs a label at each end, so it is created together with them.",
+    "description": "The same explanation for a scale: shown above the buttons when the researcher is inventing one, saying why they are sent to the codebook editor rather than being asked for a name here."
+  },
+  "protocolBuilder.attributeCodebookControls.createNeedsValues": {
+    "defaultMessage": "An attribute participants choose an answer from needs at least two values, so it is created together with them.",
+    "description": "Shown above the buttons when the researcher is inventing an attribute whose answers come from a list, explaining why they are sent to the codebook editor rather than being asked for a name here."
+  },
+  "protocolBuilder.attributeCodebookControls.createWithSettings": {
+    "defaultMessage": "Create this attribute and what it accepts",
+    "description": "The same button for inventing an attribute whose answer is not chosen from a list but still needs something a name cannot carry — a scale, whose two end labels say what each end means. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.attributeCodebookControls.createWithValues": {
+    "defaultMessage": "Create this attribute and its values",
+    "description": "Button that opens the codebook editor for inventing an attribute whose answers are chosen from a list, together with that list. Also the title of the dialog it opens. An attribute is one thing an interview records about a network member."
+  },
+  "protocolBuilder.attributeCodebookControls.describeAnswerLabels": {
+    "defaultMessage": "Change the answer labels of \"{name}\"",
+    "description": "The same record for a yes/no attribute, whose two stored values are fixed and whose words are what a researcher writes. name is the attribute’s researcher-facing name."
+  },
+  "protocolBuilder.attributeCodebookControls.describeCreate": {
+    "defaultMessage": "Create an attribute for a form field",
+    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. The attribute has no name yet — the researcher is about to type one — so this is the one edit here that cannot name it."
+  },
+  "protocolBuilder.attributeCodebookControls.describeParameters": {
+    "defaultMessage": "Change what \"{name}\" accepts",
+    "description": "The same record for an attribute whose answer is not chosen from a list — a date between two bounds, a position on a scale. name is the attribute’s researcher-facing name."
+  },
+  "protocolBuilder.attributeCodebookControls.describeRules": {
+    "defaultMessage": "Change the rules for \"{name}\"",
+    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name."
+  },
+  "protocolBuilder.attributeCodebookControls.describeValues": {
+    "defaultMessage": "Change the values of \"{name}\"",
+    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name."
+  },
+  "protocolBuilder.attributeCodebookControls.editAnswerLabels": {
+    "defaultMessage": "Change this attribute’s answer labels",
+    "description": "The same button for a yes/no attribute, whose two stored values are fixed and whose WORDS are what a researcher writes — so this says labels rather than values. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.attributeCodebookControls.editParameters": {
+    "defaultMessage": "Set what this field accepts",
+    "description": "The same button for an attribute whose answer is not chosen from a list — a date between two bounds, a position on a scale. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.attributeCodebookControls.editRules": {
+    "defaultMessage": "Set rules for this answer",
+    "description": "Button that opens the codebook editor for the rules a participant’s answer has to satisfy. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.attributeCodebookControls.editValues": {
+    "defaultMessage": "Change this attribute’s values",
+    "description": "Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens."
+  },
   "protocolBuilder.coarseDateBound.monthPart": {
     "defaultMessage": "Month",
     "description": "Names the month half of a bounding date that is written as a year and a month. Also the empty state of that dropdown."
@@ -143,13 +203,41 @@
     "defaultMessage": "Year",
     "description": "Names the year half of a bounding date that is written as a year and a month, for a screen reader that would otherwise hear the two halves as one field said twice."
   },
+  "protocolBuilder.codebookEditing.createDescription": {
+    "defaultMessage": "Create the attribute \"{name}\"",
+    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute name the researcher typed."
+  },
+  "protocolBuilder.codebookEditing.createVariableRefused": {
+    "defaultMessage": "This attribute could not be created, so nothing was changed. Try again.",
+    "description": "Refusal shown on the attribute control of a stage editor when inventing a new attribute (a codebook variable) failed for a reason with no explanation of its own."
+  },
   "protocolBuilder.codebookEditing.duplicateVariableName": {
     "defaultMessage": "Attribute with name \"{name}\" already exists",
     "description": "Refusal shown when a researcher names an attribute (a codebook variable) something another attribute of the same entity is already called. name is what they typed."
   },
+  "protocolBuilder.codebookEditing.missingType": {
+    "defaultMessage": "This type is no longer in the codebook, so an attribute cannot be added to it.",
+    "description": "Refusal shown when the node or edge type the stage works with has been deleted from the codebook — the protocol’s definition of what an interview records — while the researcher was editing."
+  },
   "protocolBuilder.codebookEditing.missingVariable": {
     "defaultMessage": "Attribute record id \"{variableId}\" does not exist",
     "description": "Refusal shown when a save is submitted for an attribute (a codebook variable) that is no longer in the protocol — usually because a collaborator deleted it while this editor was open. variableId is the attribute’s stored record id, which the researcher does not choose."
+  },
+  "protocolBuilder.codebookEditing.missingVariableHere": {
+    "defaultMessage": "This attribute is no longer in the codebook. Choose another one.",
+    "description": "Refusal shown on the attribute control of a stage editor when the attribute a row names has been deleted from the codebook while the researcher was editing."
+  },
+  "protocolBuilder.codebookEditing.nameTaken": {
+    "defaultMessage": "An attribute with this name already exists here. Choose another name.",
+    "description": "Refusal shown under the name field when another attribute of the same type is already called that."
+  },
+  "protocolBuilder.codebookEditing.newVariableNameInvalid": {
+    "defaultMessage": "Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported",
+    "description": "Refusal shown under the name field of a stage editor when the name typed for a new attribute holds characters the export formats cannot carry. The listed symbols are literal characters and must not be translated. Said in the same words as the row-cell rule that judges an attribute name as it is typed."
+  },
+  "protocolBuilder.codebookEditing.noSubject": {
+    "defaultMessage": "Choose what this stage works with before creating an attribute.",
+    "description": "Refusal shown when a researcher tries to invent an attribute before choosing which node or edge type the stage (one step of an interview) is about, so there is no codebook section to add it to."
   },
   "protocolBuilder.codebookEditing.optionsDuplicateLabel": {
     "defaultMessage": "Every option needs a unique label.",
@@ -171,9 +259,21 @@
     "defaultMessage": "Saving…",
     "description": "The submit button of a codebook editor while the change is in flight, replacing its usual wording."
   },
+  "protocolBuilder.codebookEditing.setComponentDescription": {
+    "defaultMessage": "Set the input control for \"{name}\"",
+    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name."
+  },
+  "protocolBuilder.codebookEditing.setComponentRefused": {
+    "defaultMessage": "This attribute’s input control could not be changed, so nothing was changed. Try again.",
+    "description": "Refusal shown on the input-control dropdown of a stage editor when recording which control an attribute is collected with failed for a reason with no explanation of its own."
+  },
   "protocolBuilder.codebookEditing.staleAuthoritativeTitle": {
     "defaultMessage": "Newer codebook data is available",
     "description": "Heading of the warning shown when the protocol’s codebook changed elsewhere while the researcher had this editor open. The codebook is the protocol’s definition of its entity types and their attributes."
+  },
+  "protocolBuilder.codebookEditing.unsupportedControl": {
+    "defaultMessage": "This attribute cannot be collected with that input control.",
+    "description": "Refusal shown on the input-control dropdown when the control chosen cannot collect the kind of answer this attribute holds."
   },
   "protocolBuilder.codebookEntity.addEgoAttributes": {
     "defaultMessage": "Add ego attributes",
@@ -958,6 +1058,262 @@
   "protocolBuilder.entitySelect.nodeGroupLabel": {
     "defaultMessage": "Node type",
     "description": "Accessible name of the group of chips a researcher picks a node type from. A node type is a kind of network member the study records, such as a person or a place."
+  },
+  "protocolBuilder.formFields.addLabel": {
+    "defaultMessage": "Create new form field",
+    "description": "Button that opens the dialog for adding one more question to a form. Whole rather than a generic \"Add\", because a stage editor shows several lists at once."
+  },
+  "protocolBuilder.formFields.addTitle": {
+    "defaultMessage": "Create form field",
+    "description": "Title of the dialog a researcher fills in to add one more question to a form."
+  },
+  "protocolBuilder.formFields.atLeastOne": {
+    "defaultMessage": "Add at least one field. A form with no fields collects nothing.",
+    "description": "Refusal shown above a form’s list of fields when a researcher saves a form that asks nothing. A field is one question bound to one attribute of a network member."
+  },
+  "protocolBuilder.formFields.attributeHint": {
+    "defaultMessage": "The codebook attribute this field’s answer is stored in.",
+    "description": "Guidance under the attribute control. The codebook is the protocol’s definition of what an interview records."
+  },
+  "protocolBuilder.formFields.attributeLabel": {
+    "defaultMessage": "Attribute",
+    "description": "Label of the control choosing which attribute this question’s answer is recorded under. The same word as the section heading above it, and translated once for each."
+  },
+  "protocolBuilder.formFields.attributeRequired": {
+    "defaultMessage": "Choose the attribute this field collects.",
+    "description": "Refusal shown under the attribute control when nothing has been chosen."
+  },
+  "protocolBuilder.formFields.attributeSectionDescription": {
+    "defaultMessage": "Choose the attribute this field collects, or create one for it.",
+    "description": "Description under the Attribute heading."
+  },
+  "protocolBuilder.formFields.attributeSectionTitle": {
+    "defaultMessage": "Attribute",
+    "description": "Heading of the half of the field dialog that says which attribute this question’s answer is recorded under."
+  },
+  "protocolBuilder.formFields.attributeTaken": {
+    "defaultMessage": "Another field in this form already collects this attribute. Choose a different one, or edit that field instead.",
+    "description": "Refusal shown under the attribute control when a sibling field of the same form already records its answer under the attribute just chosen."
+  },
+  "protocolBuilder.formFields.componentHint": {
+    "defaultMessage": "What the participant uses to answer. Changing it changes how this attribute is collected everywhere.",
+    "description": "Guidance under the input-control field, warning that the control belongs to the attribute rather than to this one question."
+  },
+  "protocolBuilder.formFields.componentLabel": {
+    "defaultMessage": "Input control",
+    "description": "Label of the control choosing what the participant uses to answer — a text box, a slider, a set of buttons."
+  },
+  "protocolBuilder.formFields.componentRequired": {
+    "defaultMessage": "This field’s attribute gives the participant no way to answer. Choose a different attribute, or remove this field.",
+    "description": "Refusal shown above the fields of a form field’s dialog, and named by its unavailable save control, when the attribute the field collects has no input control to offer — an attribute that records a position rather than an answer, or one that has been deleted from the codebook. There is no control to choose in this dialog, so the way out is a different attribute."
+  },
+  "protocolBuilder.formFields.controlBoolean": {
+    "defaultMessage": "Yes or no buttons",
+    "description": "Choice offered for the control a participant answers with: a pair of buttons for a true or false answer."
+  },
+  "protocolBuilder.formFields.controlCheckboxGroup": {
+    "defaultMessage": "Checkbox group",
+    "description": "Choice offered for the control a participant answers with: a list of options of which they may pick several."
+  },
+  "protocolBuilder.formFields.controlDatePicker": {
+    "defaultMessage": "Date picker",
+    "description": "Choice offered for the control a participant answers with: a calendar they choose a date from."
+  },
+  "protocolBuilder.formFields.controlLandedElsewhere": {
+    "defaultMessage": "The input control for “{variableName}” was changed, but this field no longer collects that attribute, so the field was not saved.",
+    "description": "Refusal shown above the fields of a form field’s dialog when the researcher’s choice of input control was recorded in the codebook — the protocol’s definition of what an interview records — and, while that was happening, someone else pointed this field at a different attribute. variableName is the attribute’s researcher-facing name and is not translated."
+  },
+  "protocolBuilder.formFields.controlLikertScale": {
+    "defaultMessage": "Likert scale",
+    "description": "Choice offered for the control a participant answers with: an ordered scale from one extreme to the other."
+  },
+  "protocolBuilder.formFields.controlNumber": {
+    "defaultMessage": "Number input",
+    "description": "Choice offered for the control a participant answers with: a box that takes a number."
+  },
+  "protocolBuilder.formFields.controlRadioGroup": {
+    "defaultMessage": "Radio group",
+    "description": "Choice offered for the control a participant answers with: a list of options of which they pick one."
+  },
+  "protocolBuilder.formFields.controlRelativeDatePicker": {
+    "defaultMessage": "Relative date picker",
+    "description": "Choice offered for the control a participant answers with: a date chosen as a number of days before or after another date."
+  },
+  "protocolBuilder.formFields.controlText": {
+    "defaultMessage": "Text input",
+    "description": "Choice offered for the control a participant answers with: a single-line box they type into."
+  },
+  "protocolBuilder.formFields.controlTextArea": {
+    "defaultMessage": "Text area",
+    "description": "Choice offered for the control a participant answers with: a large box for several lines of text."
+  },
+  "protocolBuilder.formFields.controlToggle": {
+    "defaultMessage": "Toggle",
+    "description": "Choice offered for the control a participant answers with: a single switch they turn on or off."
+  },
+  "protocolBuilder.formFields.controlToggleButtonGroup": {
+    "defaultMessage": "Toggle button group",
+    "description": "Choice offered for the control a participant answers with: a row of buttons of which they may turn on several."
+  },
+  "protocolBuilder.formFields.controlVisualAnalogScale": {
+    "defaultMessage": "Visual analogue scale",
+    "description": "Choice offered for the control a participant answers with: a slider they move along a continuous line."
+  },
+  "protocolBuilder.formFields.createNewOption": {
+    "defaultMessage": "Create a new attribute…",
+    "description": "The last choice in the attribute list, which stands for an attribute that does not exist yet and asks the researcher to name one. The trailing character is an ellipsis."
+  },
+  "protocolBuilder.formFields.createWithSettingsFirst": {
+    "defaultMessage": "Create this attribute and what it accepts before adding the field that collects it.",
+    "description": "The same refusal for an attribute whose answer is not chosen from a list but still needs something the researcher has not been asked for — a scale, whose two end labels tell the participant what each end means."
+  },
+  "protocolBuilder.formFields.createWithValuesFirst": {
+    "defaultMessage": "Create this attribute and the values it offers before adding the field that collects it.",
+    "description": "Refusal shown under the kind-of-answer control when a researcher tries to invent an attribute whose answers come from a list, which cannot be made from a name and a kind alone."
+  },
+  "protocolBuilder.formFields.description": {
+    "defaultMessage": "Choose the attributes this form collects, and write the question the participant answers for each.",
+    "description": "Description of the form-fields section."
+  },
+  "protocolBuilder.formFields.duplicateField": {
+    "defaultMessage": "Two fields collect the same attribute. Each attribute may be collected once per form.",
+    "description": "Refusal shown above a form’s list of fields when two of them record their answers under the same attribute, which would leave only one of the answers."
+  },
+  "protocolBuilder.formFields.editTitle": {
+    "defaultMessage": "Edit form field",
+    "description": "Title of the dialog a researcher fills in to change a question a form already asks."
+  },
+  "protocolBuilder.formFields.emptyState": {
+    "defaultMessage": "No fields yet. Create one to say what this form collects.",
+    "description": "Shown in place of the list of form fields while a form asks nothing yet."
+  },
+  "protocolBuilder.formFields.fieldHint": {
+    "defaultMessage": "The participant answers these one after another, in this order. Add at least one.",
+    "description": "Guidance under the list of form fields."
+  },
+  "protocolBuilder.formFields.fieldLabel": {
+    "defaultMessage": "Fields",
+    "description": "Label of the ordered list of questions a form asks."
+  },
+  "protocolBuilder.formFields.formTitleHint": {
+    "defaultMessage": "Shown above the form. Use a short phrase describing what it collects, such as \"Add a person\".",
+    "description": "Guidance under the form-title field. The quoted phrase is an example a researcher might write, and should be translated as such."
+  },
+  "protocolBuilder.formFields.formTitleLabel": {
+    "defaultMessage": "Form title",
+    "description": "Label of the field holding the heading shown above the form a participant fills in."
+  },
+  "protocolBuilder.formFields.formTitlePlaceholder": {
+    "defaultMessage": "Add a person",
+    "description": "Example form title shown in the empty field. An example a researcher might write, not a value that is stored."
+  },
+  "protocolBuilder.formFields.formTitleRequired": {
+    "defaultMessage": "Give this form a title.",
+    "description": "Refusal shown under the form-title field when it has been left empty."
+  },
+  "protocolBuilder.formFields.hintHint": {
+    "defaultMessage": "Optional guidance shown below the question, for a field participants may find ambiguous.",
+    "description": "Guidance under the hint-text field."
+  },
+  "protocolBuilder.formFields.hintLabel": {
+    "defaultMessage": "Hint text",
+    "description": "Label of the optional field holding extra guidance shown to the participant under the question."
+  },
+  "protocolBuilder.formFields.hintPlaceholder": {
+    "defaultMessage": "Select all that apply",
+    "description": "Example hint shown in the empty hint-text field. An example a researcher might write, not a value that is stored."
+  },
+  "protocolBuilder.formFields.incompleteField": {
+    "defaultMessage": "Every field needs both an attribute and a question. Open the incomplete field and finish it.",
+    "description": "Refusal shown above a form’s list of fields when one of them names no attribute, or asks no question."
+  },
+  "protocolBuilder.formFields.itemNoun": {
+    "defaultMessage": "field",
+    "description": "What one row of a form’s list of questions is called inside things said ABOUT it — \"Edit field\", \"Remove this field?\" — so it is lower case and singular."
+  },
+  "protocolBuilder.formFields.malformedField": {
+    "defaultMessage": "This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.",
+    "description": "Refusal shown above a form’s list of fields when the list holds an entry that is not a field at all — which an import, a migration or another session can leave behind. The list cannot render such an entry, so there is no row for the researcher to open and finish, which is why this says the protocol itself has to be repaired."
+  },
+  "protocolBuilder.formFields.newNameHint": {
+    "defaultMessage": "How this attribute is named in the codebook and in exported data.",
+    "description": "Guidance under the new-attribute name field. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyzes afterwards."
+  },
+  "protocolBuilder.formFields.newNameLabel": {
+    "defaultMessage": "Attribute name",
+    "description": "Label of the field naming an attribute the researcher is inventing."
+  },
+  "protocolBuilder.formFields.newNamePlaceholder": {
+    "defaultMessage": "Nickname",
+    "description": "Example attribute name shown in the empty field. An example a researcher might write, not a value that is stored."
+  },
+  "protocolBuilder.formFields.newNameRequired": {
+    "defaultMessage": "Name the attribute this field collects.",
+    "description": "Refusal shown under the new-attribute name field when it has been left empty."
+  },
+  "protocolBuilder.formFields.newTypeHint": {
+    "defaultMessage": "What this attribute holds. It cannot be changed once answers have been collected.",
+    "description": "Guidance under the kind-of-answer control."
+  },
+  "protocolBuilder.formFields.newTypeLabel": {
+    "defaultMessage": "Kind of answer",
+    "description": "Label of the control choosing what sort of value a new attribute holds — text, a number, a date, a choice from a list."
+  },
+  "protocolBuilder.formFields.newTypeRequired": {
+    "defaultMessage": "Choose what kind of answer this attribute holds.",
+    "description": "Refusal shown under the kind-of-answer control when nothing has been chosen."
+  },
+  "protocolBuilder.formFields.previewCollects": {
+    "defaultMessage": "Collects \"{name}\" as {type}.",
+    "description": "Shown in the collapsed row of a form’s list of questions, saying which attribute it records into and what kind of value that holds. name is the attribute’s researcher-facing name; type is a schema token such as text, number or ordinal, which is not translated."
+  },
+  "protocolBuilder.formFields.previewMissing": {
+    "defaultMessage": "This attribute is no longer in the codebook.",
+    "description": "Shown in the collapsed row of a form’s list of questions when the attribute it records into has been deleted from the codebook."
+  },
+  "protocolBuilder.formFields.promptHint": {
+    "defaultMessage": "Shown to the participant above the control. Supports markdown formatting.",
+    "description": "Guidance under the question-text field. Markdown is the name of the formatting syntax and is not translated."
+  },
+  "protocolBuilder.formFields.promptLabel": {
+    "defaultMessage": "Question text",
+    "description": "Label of the field holding what the participant is asked for this one answer."
+  },
+  "protocolBuilder.formFields.promptPlaceholder": {
+    "defaultMessage": "What is this person’s name?",
+    "description": "Example question shown in the empty question-text field. An example a researcher might write, not a value that is stored."
+  },
+  "protocolBuilder.formFields.promptRequired": {
+    "defaultMessage": "Write the question this field asks.",
+    "description": "Refusal shown under the question-text field when it has been left empty."
+  },
+  "protocolBuilder.formFields.questionSectionDescription": {
+    "defaultMessage": "Write what the participant is asked, and how much help they are given.",
+    "description": "Description under the Question heading."
+  },
+  "protocolBuilder.formFields.questionSectionTitle": {
+    "defaultMessage": "Question",
+    "description": "Heading of the half of the field dialog that says what the participant is asked."
+  },
+  "protocolBuilder.formFields.scopeMissing": {
+    "defaultMessage": "Choose what this stage works with before adding fields to its form.",
+    "description": "Shown inside the field editor when the researcher has not yet chosen which node or edge type the stage (one step of an interview) is about, so there is no codebook to draw attributes from."
+  },
+  "protocolBuilder.formFields.title": {
+    "defaultMessage": "Form fields",
+    "description": "Heading of the section holding the questions a form asks and the attributes each answer is recorded under."
+  },
+  "protocolBuilder.formFields.validationHintsHint": {
+    "defaultMessage": "Tells the participant what a valid answer looks like, derived from the attribute’s own rules.",
+    "description": "Guidance under the validation-hints switch."
+  },
+  "protocolBuilder.formFields.validationHintsLabel": {
+    "defaultMessage": "Show validation hints",
+    "description": "Label of the switch that tells the participant what a valid answer to this question looks like."
+  },
+  "protocolBuilder.formFields.waitingDescription": {
+    "defaultMessage": "Choose what this stage works with before writing its form.",
+    "description": "Shown in place of the form-fields section’s description while the researcher has not yet chosen which node or edge type the stage is about."
   },
   "protocolBuilder.interface.alterEdgeForm": {
     "defaultMessage": "Per Alter Edge Form",
@@ -3255,17 +3611,37 @@
     "defaultMessage": "Attribute type: {attributeType}",
     "description": "Accessible name of the badge stating what kind of answer the chosen attribute records. attributeType is a protocol schema token such as \"number\", \"text\" or \"categorical\", and is shown as it is stored rather than translated. Read as a label and its value, not as a sentence."
   },
+  "protocolBuilder.variablePicker.createAction": {
+    "defaultMessage": "Create the attribute",
+    "description": "Button that adds the attribute named in the box beside it to the codebook and selects it."
+  },
+  "protocolBuilder.variablePicker.createHint": {
+    "defaultMessage": "Adds it to this type’s codebook and selects it above.",
+    "description": "Guidance under the box for naming a new attribute, saying that it lands in the codebook — the protocol’s definition of what an interview records — and becomes the choice made above."
+  },
+  "protocolBuilder.variablePicker.createLabel": {
+    "defaultMessage": "Create a new attribute",
+    "description": "Label of the box where a researcher types the name of an attribute that does not exist yet, beside the list of the ones that do. An attribute is one thing an interview records about a network member."
+  },
+  "protocolBuilder.variablePicker.createPlaceholder": {
+    "defaultMessage": "nominated_early",
+    "description": "Example attribute name shown in the empty box. A name the codebook would accept: letters, digits and the symbols . _ - : only, so it deliberately has no space in it. Translate it to an equally valid example if that reads better."
+  },
+  "protocolBuilder.variablePicker.createdUnassigned": {
+    "defaultMessage": "“{variableName}” was added to the codebook, but it has not been selected here.",
+    "description": "Notice under the create button, shown when the attribute the researcher named was added to the codebook — the protocol’s definition of what an interview records — but whatever they were creating it for did not take it. variableName is the name they typed and is not translated."
+  },
   "protocolBuilder.variablePicker.emptyState": {
     "defaultMessage": "No attributes are available to choose from.",
     "description": "Shown in place of the select when nothing can be picked — the caller offered no attributes at all. An attribute is a variable the protocol’s codebook defines. Callers that can say something more specific pass their own sentence instead."
   },
   "protocolBuilder.variablePicker.missingAttribute": {
-    "defaultMessage": "This attribute is no longer in the codebook. Choose another one.",
-    "description": "Shown under the select when the attribute a researcher’s stored choice names has been deleted from the protocol’s codebook, so the choice has to be made again."
+    "defaultMessage": "This attribute is not available here. Choose another one.",
+    "description": "Shown under the select when the attribute a researcher’s stored choice names is not among the ones this control was given to offer — it may have been deleted from the protocol’s codebook, or ruled out by whatever the choice is being made for. Worded for what the control actually knows: it is handed a list of attributes and a stored choice, and cannot tell those two cases apart."
   },
   "protocolBuilder.variablePicker.missingOptionLabel": {
-    "defaultMessage": "{attributeId} — this attribute is no longer in the codebook",
-    "description": "Name of the one option standing for an attribute the protocol’s codebook no longer defines. attributeId is the raw stored identifier — there is no name left to show, because the definition it would have come from has been deleted."
+    "defaultMessage": "{attributeId} — this attribute is not available here",
+    "description": "Name of the one option standing for an attribute that is not among the ones this control was given to offer. attributeId is the raw stored identifier — there is no name to show, because no definition of it reached this control."
   },
   "protocolBuilder.variablePicker.placeholder": {
     "defaultMessage": "Select an attribute…",

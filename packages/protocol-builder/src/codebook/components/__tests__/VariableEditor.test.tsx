@@ -237,7 +237,10 @@ describe('VariableEditor', () => {
         { label: 'No', value: 'no' },
       ],
     });
-    expect(onComplete).toHaveBeenCalledWith('new-variable');
+    // The name as well as the id: a caller that can no longer use what was
+    // created has to be able to say which attribute it was, and the id is a
+    // record key the researcher has never seen.
+    expect(onComplete).toHaveBeenCalledWith('new-variable', 'preference');
   });
 
   it('preserves host-supplied properties when creating a new variable', async () => {
