@@ -6,9 +6,12 @@ import { networkCanvasMessages } from './networkCanvasMessages.ts';
 import { asIdList, asNestedIdList, asText } from './rowValues.ts';
 
 /**
- * Where a preset keeps each of the four references it stores, spelled once so
- * the row gate and the list gate report against the same paths the controls
- * write to.
+ * Where a preset keeps each of the four references it stores, spelled once.
+ *
+ * The dialog's controls register at these paths and both gates report against
+ * them, so a refusal always lands on the control holding the reference it is
+ * about — which two lists of string literals, in two files, could stop being
+ * true of each other without anything failing.
  */
 export const PRESET_LAYOUT_FIELD = 'layoutVariable';
 export const PRESET_GROUP_FIELD = 'groupVariable';

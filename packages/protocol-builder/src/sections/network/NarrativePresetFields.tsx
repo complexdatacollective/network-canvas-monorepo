@@ -22,6 +22,12 @@ import CreateVariableAction from './CreateVariableAction.tsx';
 import { useLostEdgeTypes } from './lostEdgeTypes.ts';
 import { networkCanvasMessages } from './networkCanvasMessages.ts';
 import {
+  PRESET_DISPLAY_EDGES_FIELD as DISPLAY_EDGES_FIELD,
+  PRESET_GROUP_FIELD as GROUP_VARIABLE_FIELD,
+  PRESET_HIGHLIGHT_FIELD as HIGHLIGHT_FIELD,
+  PRESET_LAYOUT_FIELD as LAYOUT_VARIABLE_FIELD,
+} from './presetReferences.ts';
+import {
   asIdList,
   asNestedIdList,
   asText,
@@ -30,10 +36,6 @@ import {
 } from './rowValues.ts';
 
 const LABEL_FIELD = 'label';
-const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
-const GROUP_VARIABLE_FIELD = 'groupVariable';
-const DISPLAY_EDGES_FIELD = 'edges.display';
-const HIGHLIGHT_FIELD = 'highlight';
 
 /**
  * One saved way of looking at the network.
