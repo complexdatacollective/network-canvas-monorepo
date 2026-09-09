@@ -3715,10 +3715,6 @@
     "defaultMessage": "Another part of the protocol that this save needs is being edited, so nothing was saved and your changes are still here. Try saving again in a moment.",
     "description": "Shown above a stage editor’s fields when the save was refused because somebody the host would not name is editing another part of the protocol the save has to write. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
   },
-  "protocolBuilder.stageEdit.importBeforeAdd": {
-    "defaultMessage": "A file imported here cannot be saved with a stage that is being added for the first time. Discard the import and add the stage, then reopen it to import the file.",
-    "description": "Shown above a stage editor’s fields when the researcher imported a file while adding a brand new stage, which the protocol cannot yet take in one step. A stage is one step of an interview."
-  },
   "protocolBuilder.stageEdit.invalidShape": {
     "defaultMessage": "This stage is not something the protocol can hold, so nothing was saved and your unsaved changes have been discarded.",
     "description": "Shown above a stage editor’s fields when the host refused the save because the stage was the wrong shape. A stage is one step of an interview."

@@ -29,6 +29,7 @@ import StageEditorShell from '../StageEditorShell.tsx';
 
 const STAGE_ID = 'information-1';
 const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE_ID });
+const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
 /** One section owning one value, so a save can be compared key by key. */
 const nameSection = (
@@ -399,7 +400,51 @@ describe('a file imported while the stage is open', () => {
 });
 
 describe('a file imported while a stage is being added', () => {
-  it('is refused rather than left behind by the stage it belongs to', async () => {
+  it('is committed with the stage, its place in the order, and nothing in between', async () => {
+    const harness = renderStageEditor({
+      create: {
+        type: 'Information',
+        position: 1,
+        fields: loadFixtureStage(STAGE_ID).fields,
+      },
+      sections: stagedProbe,
+    });
+    const orderBefore = harness.host.store.read(STAGE_ORDER).revision.sequence;
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Import a file' }),
+    );
+    expect(await screen.findByText('A roster')).toBeInTheDocument();
+
+    const written = await harness.submit();
+    if (written === null) {
+      throw new Error(
+        `The stage was not added, so nothing was committed. The editor is showing: ${document.body.textContent ?? ''}`,
+      );
+    }
+
+    const manifest = harness.protocolSections()[
+      sectionId({ kind: 'assets' })
+    ] as Record<string, { name?: unknown }>;
+    expect(
+      Object.values(manifest).some((entry) => entry.name === 'A roster'),
+    ).toBe(true);
+
+    // One revision for all three: the stage, the order that now holds it, and
+    // the manifest entry it names. Two would leave a protocol in between where
+    // a stage names a file nothing committed, or the bytes are committed and
+    // no stage names them.
+    const orderAfter = harness.host.store.read(STAGE_ORDER).revision.sequence;
+    expect(orderAfter).toBe(orderBefore + 1n);
+    expect(harness.host.store.read(written.sectionId).revision.sequence).toBe(
+      orderAfter,
+    );
+    expect(
+      harness.host.store.read(sectionId({ kind: 'assets' })).revision.sequence,
+    ).toBe(orderAfter);
+  });
+
+  it('leaves the protocol without the stage when it cannot be committed', async () => {
     const before = fixtureStageIds();
     const harness = renderStageEditor({
       create: {
@@ -415,17 +460,33 @@ describe('a file imported while a stage is being added', () => {
     );
     expect(await screen.findByText('A roster')).toBeInTheDocument();
 
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Never added');
+
+    // The staged file leaves the host behind this editor's back, and nothing
+    // tells the edit: it creates the stage still naming it.
+    await discardStagedFilesAtTheHost(harness.host);
+
     expect(await harness.submit()).toBeNull();
 
     expect(
       await screen.findByText(
-        /A file imported here cannot be saved with a stage that is being added/,
+        /The files you imported could not be saved with this stage/,
       ),
     ).toBeInTheDocument();
-    // A promotion rides a section's submit, and `create` takes none, so the
-    // stage is not added at all: adding it would name a file the protocol
-    // never took.
+    // Neither half was written: no stage in the order, and no manifest entry.
     expect(orderOf(harness.protocolSections())).toEqual(before);
+    const manifest = harness.protocolSections()[
+      sectionId({ kind: 'assets' })
+    ] as Record<string, { name?: unknown }>;
+    expect(
+      Object.values(manifest).some((entry) => entry.name === 'A roster'),
+    ).toBe(false);
+    // And the draft is still the researcher's to add again.
+    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+      'Never added',
+    );
   });
 });
 

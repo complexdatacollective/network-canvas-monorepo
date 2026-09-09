@@ -234,23 +234,34 @@ function CreatingStage({
 
   const save = useCallback(
     async (fields: StageFormDraft): Promise<StageSaveOutcome> => {
-      // A promotion rides a section's submit, and a stage that does not exist
-      // yet has none to ride: `create` mints the section and takes no
-      // promotion, so there is nowhere to commit these bytes in the revision
-      // that would name them. Refused rather than saved without them, which is
-      // a stage pointing at a file the protocol never took.
-      if (staged.promotion() !== undefined) {
-        return { status: 'refused', message: IMPORT_BEFORE_ADD_MESSAGE };
-      }
+      // Carried by the create for the reason a submit cannot cover: a stage
+      // being added can hold a file the researcher imported while composing
+      // it, and there is no earlier revision of that stage to have promoted it
+      // with. The section, its place in the stage order and the manifest
+      // entries are one revision.
+      const promotion = staged.promotion();
       const { data, definedError, isSuccess } = await safe(
         client.create({
           protocolId,
           kind: 'stage',
           document: stageDocument(identity, fields),
           position,
+          ...(promotion === undefined ? {} : { promote: promotion }),
         }),
       );
       if (!isSuccess) {
+        // Every one of these left the protocol exactly as it was, so the draft
+        // stays: the stage was not added, and adding it again once the reason
+        // has passed is what the researcher will do next.
+        if (definedError?.code === 'PROMOTION_FAILED') {
+          return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
+        }
+        if (definedError?.code === 'SECTIONS_LOCKED') {
+          return {
+            status: 'refused',
+            message: blockedMessage(blockedHolders(definedError.data.blocked)),
+          };
+        }
         return {
           status: 'refused',
           message:
@@ -259,6 +270,7 @@ function CreatingStage({
               : ADD_FAILED_MESSAGE,
         };
       }
+      staged.promoted();
       onSaved?.(data.sectionId);
       return { status: 'saved', sectionId: data.sectionId };
     },
@@ -358,13 +370,6 @@ const messages = defineMessages({
     description:
       'Shown above a stage editor’s fields when the host would not take the files imported during this edit, so neither they nor the stage were saved. The researcher’s unsaved work is still on screen. A stage is one step of an interview.',
   },
-  importBeforeAdd: {
-    id: 'protocolBuilder.stageEdit.importBeforeAdd',
-    defaultMessage:
-      'A file imported here cannot be saved with a stage that is being added for the first time. Discard the import and add the stage, then reopen it to import the file.',
-    description:
-      'Shown above a stage editor’s fields when the researcher imported a file while adding a brand new stage, which the protocol cannot yet take in one step. A stage is one step of an interview.',
-  },
   blockedBySomeoneUnnamed: {
     id: 'protocolBuilder.stageEdit.blockedBySomeoneUnnamed',
     defaultMessage:
@@ -404,4 +409,3 @@ const LOCK_LOST_MESSAGE = createMessageError(messages.lockLost);
 const INVALID_SHAPE_MESSAGE = createMessageError(messages.invalidShape);
 const ADD_FAILED_MESSAGE = createMessageError(messages.addFailed);
 const PROMOTION_FAILED_MESSAGE = createMessageError(messages.promotionFailed);
-const IMPORT_BEFORE_ADD_MESSAGE = createMessageError(messages.importBeforeAdd);
