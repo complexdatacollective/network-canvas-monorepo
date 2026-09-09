@@ -3,6 +3,11 @@ import { type ComponentProps, useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '../../storybook-support/awaitPassiveEffects';
+import {
+  contrastRatio,
+  insetShadowColor,
+  opacityOf,
+} from '../../storybook-support/colorContrast';
 import Paragraph from '../../typography/Paragraph';
 import Field from '../Field/Field';
 import UnconnectedField from '../Field/UnconnectedField';
@@ -37,6 +42,14 @@ const edgePalette: ColorSwatchOption[] = [
 const backgroundLikePalette: ColorSwatchOption[] = [
   { value: 'white', label: 'White' },
   { value: 'transparent', label: 'Transparent' },
+  { value: 'node-color-seq-2', label: 'Sea Serpent' },
+];
+
+/** Colours that let what is behind them through, beside the ones that do not. */
+const seeThroughPalette: ColorSwatchOption[] = [
+  { value: 'white', label: 'White' },
+  { value: 'transparent', label: 'Transparent' },
+  { value: 'oklch(0.72 0.19 45 / 0.35)', label: 'Ember Wash' },
   { value: 'node-color-seq-2', label: 'Sea Serpent' },
 ];
 
@@ -111,6 +124,9 @@ import ColorPickerField from '@codaco/fresco-ui/form/fields/ColorPicker';
   chosen one a ring in it, so a swatch filled with the colour the group is
   painted in — white, transparent — is still visibly a swatch, and visibly the
   chosen one.
+- A see-through fill — \`transparent\`, or any colour carrying an alpha channel
+  — shows the chequerboard every swatch is painted on, so it is never the same
+  disc as an opaque swatch of the colour behind it.
 - Labelling belongs to the surrounding field: use it as the \`component\` of a
   \`<Field>\`, or of an \`UnconnectedField\` when the value is not the form's.
         `,
@@ -204,6 +220,15 @@ export const ColorsCloseToTheBackground: Story = {
     await expect(unchosen).not.toContain(fill);
     await expect(unchosen).not.toContain(ground);
 
+    // Being a different colour is not enough to be a boundary. When the fill
+    // is the colour the group is painted in, this hairline is the whole of the
+    // swatch's edge, so it is held to the 3:1 that telling a control from its
+    // background asks for — measured as painted, which is what a faded ring
+    // fails: the group's foreground at 30% over white came to 1.84:1.
+    await expect(
+      contrastRatio(insetShadowColor(unchosen), ground),
+    ).toBeGreaterThanOrEqual(3);
+
     // Choosing it changes the swatch in that same colour-independent way.
     // Focus moves off afterwards, so what is read is the chosen state and not
     // a focus ring.
@@ -226,6 +251,54 @@ export const ColorsCloseToTheBackground: Story = {
     await expect(chosen).not.toBe(unchosen);
     await expect(chosen).not.toContain(fill);
     await expect(chosen).not.toContain(ground);
+  },
+};
+
+/**
+ * A colour is free to be see-through: `transparent`, or any colour carrying an
+ * alpha channel. Every swatch is painted on a chequerboard, so what a
+ * see-through fill lets through is that pattern rather than the group's
+ * background — the difference between `white` and `transparent` is something
+ * to look at, not only something in the accessible name. An opaque fill covers
+ * the chequerboard completely, so nothing else in the palette changes.
+ */
+export const SeeThroughColors: Story = {
+  args: {
+    'options': seeThroughPalette,
+    'value': 'transparent',
+    'aria-label': 'Brand color',
+  },
+  play: async ({ canvasElement }) => {
+    await awaitPassiveEffects();
+    const canvas = within(canvasElement);
+    const swatch = (name: string) => canvas.getByRole('radio', { name });
+
+    // What the two discs differ by. White covers what it is painted on;
+    // transparent covers nothing, and the alpha colour covers part of it.
+    await expect(
+      opacityOf(getComputedStyle(swatch('White')).backgroundColor),
+    ).toBe(1);
+    await expect(
+      opacityOf(getComputedStyle(swatch('Transparent')).backgroundColor),
+    ).toBe(0);
+    await expect(
+      opacityOf(getComputedStyle(swatch('Ember Wash')).backgroundColor),
+    ).toBeLessThan(1);
+
+    const underlay = swatch('Transparent').parentElement;
+    if (!underlay) throw new Error('A swatch is painted on nothing.');
+
+    const checkerboard = getComputedStyle(underlay);
+    await expect(checkerboard.backgroundImage).not.toBe('none');
+
+    // A cue a low-vision reader cannot make out is not a cue: the
+    // chequerboard's squares are held to 3:1 against each other.
+    await expect(
+      contrastRatio(
+        checkerboard.getPropertyValue('--swatch-check'),
+        checkerboard.backgroundColor,
+      ),
+    ).toBeGreaterThanOrEqual(3);
   },
 };
 

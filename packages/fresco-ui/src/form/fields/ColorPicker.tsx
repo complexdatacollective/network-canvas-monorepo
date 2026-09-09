@@ -103,7 +103,9 @@ const colorPickerVariants = compose(
  * is legible without perceiving the colour at all. Every swatch also carries a
  * hairline in the group's foreground, and the chosen one a ring in it, so a
  * swatch filled with the group's own background colour is still a swatch and
- * can still be seen to be the chosen one.
+ * can still be seen to be the chosen one. A swatch whose fill is see-through
+ * shows the chequerboard it is painted on, so `transparent` is never the same
+ * disc as the colour the group is painted in.
  *
  * The labelling belongs to the surrounding field: use it as the `component` of
  * a `<Field>`, or of an `UnconnectedField` when the value is not the form's.
@@ -163,48 +165,70 @@ export default function ColorPickerField({
         </p>
       )}
       {options.map((option) => (
-        <Radio.Root
+        // What the swatch is painted on. A fill is any CSS colour a caller
+        // has, and a colour is free to be see-through — `transparent`, or
+        // anything carrying an alpha channel. Painted straight onto the group,
+        // such a swatch is the group's own background: the same disc as one
+        // filled with `--input` itself, and nothing a reader can tell it apart
+        // from, since the difference lives only in the accessible name. This
+        // layer shows through exactly as much as the fill lets it, in the one
+        // pattern that already reads as "see-through", and an opaque fill
+        // covers it completely.
+        <span
           key={option.value}
-          value={option.value}
-          disabled={disabled}
-          nativeButton
-          render={(renderProps, state) => (
-            <button
-              {...renderProps}
-              type="button"
-              aria-label={option.label}
-              className={cx(
-                'focusable relative size-12 shrink-0 rounded-full',
-                // The selection ring is the design system's focus outline in
-                // the swatch's own colour (never a generic primary border), so
-                // the cue reads as "this colour". Hover previews it at a
-                // tighter offset.
-                'bg-(--swatch-color) outline-(--swatch-color) transition-all',
-                // A swatch may be filled with any CSS colour a caller has,
-                // including the group's own background — white, transparent,
-                // anything near `--input`. Such a swatch is an invisible disc
-                // on an invisible ground, and a ring in its own colour cannot
-                // say it is the chosen one. So the group's foreground draws a
-                // hairline round every swatch and a full ring round the chosen
-                // one: neither the swatch nor its chosen state is ever left to
-                // a colour that can vanish.
-                'inset-ring-input-contrast/30 inset-ring-1',
-                // Focus is the same promise, and belongs to the reader rather
-                // than to the palette: never the swatch's colour.
-                'focus-visible:outline-input-contrast',
-                state.checked
-                  ? 'ring-input-contrast ring-2 outline-2 outline-offset-3'
-                  : 'hover:outline-2 hover:outline-offset-2',
-                readOnly && 'pointer-events-none',
-              )}
-              style={
-                {
-                  '--swatch-color': resolveSwatchColor(option.value),
-                } as React.CSSProperties
-              }
-            />
+          className={cx(
+            'relative block size-12 shrink-0 rounded-full',
+            'bg-input [--swatch-check:color-mix(in_oklab,var(--input-contrast)_60%,transparent)]',
+            '[background-image:conic-gradient(var(--swatch-check)_0_25%,transparent_0_50%,var(--swatch-check)_0_75%,transparent_0)]',
+            'bg-size-[--spacing(3)_--spacing(3)]',
           )}
-        />
+        >
+          <Radio.Root
+            value={option.value}
+            disabled={disabled}
+            nativeButton
+            render={(renderProps, state) => (
+              <button
+                {...renderProps}
+                type="button"
+                aria-label={option.label}
+                className={cx(
+                  'focusable relative block size-full rounded-full',
+                  // The selection ring is the design system's focus outline in
+                  // the swatch's own colour (never a generic primary border),
+                  // so the cue reads as "this colour". Hover previews it at a
+                  // tighter offset.
+                  'bg-(--swatch-color) outline-(--swatch-color) transition-all',
+                  // A swatch may be filled with any CSS colour a caller has,
+                  // including the group's own background — white, transparent,
+                  // anything near `--input`. Such a swatch is an invisible disc
+                  // on an invisible ground, and a ring in its own colour cannot
+                  // say it is the chosen one. So the group's foreground draws a
+                  // hairline round every swatch and a full ring round the
+                  // chosen one: neither the swatch nor its chosen state is ever
+                  // left to a colour that can vanish. At full strength, because
+                  // the hairline is the whole of the swatch's edge whenever the
+                  // fill is the ground, and a boundary a reader has to hunt for
+                  // is not one — faded, it clears none of the 3:1 that telling
+                  // a control from its background asks for.
+                  'inset-ring-input-contrast inset-ring-1',
+                  // Focus is the same promise, and belongs to the reader rather
+                  // than to the palette: never the swatch's colour.
+                  'focus-visible:outline-input-contrast',
+                  state.checked
+                    ? 'ring-input-contrast ring-2 outline-2 outline-offset-3'
+                    : 'hover:outline-2 hover:outline-offset-2',
+                  readOnly && 'pointer-events-none',
+                )}
+                style={
+                  {
+                    '--swatch-color': resolveSwatchColor(option.value),
+                  } as React.CSSProperties
+                }
+              />
+            )}
+          />
+        </span>
       ))}
     </RadioGroup>
   );
