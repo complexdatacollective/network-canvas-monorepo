@@ -527,6 +527,10 @@
     "defaultMessage": "Define the attribute name, data type, and any available values.",
     "description": "Sentence under the editor heading saying what the researcher decides here. Available values are the options a participant may choose from."
   },
+  "protocolBuilder.codebookVariable.draftInterfaceOwnedPick": {
+    "defaultMessage": "This attribute is already set by another part of the stage you are editing, so it cannot be used here as well. Choose a different attribute.",
+    "description": "Refusal shown when a researcher picks an attribute (a codebook variable) that another control of the interview step they have open has already been set to write, in an edit they have not saved yet. Says \"the stage you are editing\" rather than naming the interface, because both controls are on the screen in front of them. A stage is one step of an interview."
+  },
   "protocolBuilder.codebookVariable.editTitle": {
     "defaultMessage": "Edit attribute",
     "description": "Heading of the editor while an existing attribute (a codebook variable) is being changed."

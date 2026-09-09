@@ -1456,3 +1456,149 @@ describe('the batch a framing change makes', () => {
     expect(await terminology()).toHaveValue('gendered');
   });
 });
+
+/**
+ * The same window the display label and the family member form already close,
+ * seen from the two places that were still reading the SAVED protocol alone:
+ * the nomination prompts, and a second structural slot.
+ *
+ * An exclusion built only from what is committed cannot see the edit in front
+ * of the researcher, so the picker offers an attribute this session has
+ * already claimed — and the refusal arrives at the save, naming a stage the
+ * researcher thought they had finished.
+ */
+describe('picks this session has already claimed', () => {
+  /** One more attribute on the type the pedigree records relationships as. */
+  const addFamilyEdgeVariable = (
+    harness: StageEditorHarness,
+    variableId: string,
+    variable: Readonly<Record<string, unknown>>,
+  ): void => {
+    const section =
+      harness.session.getSnapshot().protocolSections[
+        sectionId({ kind: 'codebookEdge', typeId: 'family_edge' })
+      ];
+    if (section === undefined) {
+      throw new Error('the fixture protocol has no family_edge edge type');
+    }
+    const variables = isRecord(section.variables) ? section.variables : {};
+    harness.receiveCodebookUpdate({
+      edge: {
+        family_edge: {
+          ...section,
+          variables: { ...variables, [variableId]: variable },
+        },
+      },
+    });
+  };
+
+  /**
+   * A nomination toggle is an UNVALIDATED writer, so it may not take an
+   * attribute this stage's own form collects — and the form field that
+   * collects it is unsaved, so only the live draft knows about it.
+   *
+   * The attribute the field collects is seeded rather than invented, for the
+   * reason `seedCollectableBoolean` gives: every boolean the node type
+   * already has is written unvalidated somewhere, so the shared form picker
+   * refuses all of them. Seeded, it reaches this dialog as a saved boolean
+   * nothing has claimed — on offer to a nomination prompt until the unsaved
+   * field takes it, which is what makes the list below a change rather than
+   * one that was always this short.
+   */
+  it('never offers a nomination prompt an attribute this stage’s own form collects', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+    const unwell = seedCollectableBoolean(harness);
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Family member form' }),
+    );
+    await addFormFieldCollecting(harness, unwell);
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit nomination prompt' }),
+    );
+    await screen.findByRole('combobox', { name: 'Attribute' });
+
+    // The prompt's own committed pick, and nothing the form now collects.
+    expect(optionsOf('Attribute')).toEqual(['hasConditionX']);
+  });
+
+  /**
+   * The other direction: the family member form may not collect an attribute
+   * a nomination prompt claimed in this session. The pedigree answers for its
+   * own stage here — the shared section drops the open stage from the saved
+   * role map as soon as it is handed a live list — so a nomination prompt
+   * missing from that list is a writer nothing accounts for.
+   */
+  it('never offers the family member form an attribute a nomination prompt took this session', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+    addFamilyMemberVariable(harness, 'unwell', {
+      name: 'unwell',
+      type: 'boolean',
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit nomination prompt' }),
+    );
+    const prompt = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      await prompt.findByRole('combobox', { name: 'Attribute' }),
+      'unwell',
+    );
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Family member form' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new form field' }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    const offered = [
+      ...field
+        .getByRole('combobox', { name: 'Attribute' })
+        .querySelectorAll('option'),
+    ].map((option) => option.value);
+
+    expect(offered).not.toContain('unwell');
+    // Not an empty picker: the display label is collected through a form
+    // field, so it is still on offer.
+    expect(offered).toContain('fm_name');
+  });
+
+  /**
+   * Two exclusive slots may never name one attribute — each would overwrite
+   * the other's meaning — and the pedigree has four of them on its edge type,
+   * two of which take any boolean. A slot bound in this session is not in the
+   * saved protocol, so the sibling picker was still offering it.
+   */
+  it('never offers a second edge slot an attribute another slot took this session', async () => {
+    const harness = renderStageEditor(openFixture());
+    addFamilyEdgeVariable(harness, 'together', {
+      name: 'together',
+      type: 'boolean',
+    });
+
+    // On offer to both while nothing has claimed it, so the exclusion below is
+    // a change rather than a list that was always this short.
+    await waitFor(() =>
+      expect(optionsOf('Gestational carrier')).toEqual([
+        'isGestationalCarrier',
+        'together',
+      ]),
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Active status' }),
+      'together',
+    );
+
+    await waitFor(() =>
+      expect(optionsOf('Gestational carrier')).toEqual([
+        'isGestationalCarrier',
+      ]),
+    );
+  });
+});
