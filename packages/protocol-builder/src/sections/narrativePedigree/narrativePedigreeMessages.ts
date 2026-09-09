@@ -182,6 +182,19 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Refusal shown under the attribute control in the disease dialog when the chosen attribute is one no nomination prompt of the source Family Pedigree stage records — a mapping to it draws an unmarked family in every interview. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name; "Nomination prompts" is the name of that part of the pedigree editor.',
   },
+  diseasesMarkNobody: {
+    id: 'protocolBuilder.narrativePedigree.diseasesMarkNobody',
+    defaultMessage:
+      '{count, plural, one {{diseaseNames} maps an attribute the source pedigree does not record, so nobody in the family would be marked with it. Add a nomination prompt to that pedigree asking who has it, or remove the disease.} other {{diseaseNames} map attributes the source pedigree does not record, so nobody in the family would be marked with them. Add a nomination prompt to that pedigree for each of them, or remove those diseases.}}',
+    description:
+      'Refusal shown above the disease list when one or more diseases already in it map an attribute no nomination prompt of the source Family Pedigree stage records \u2014 usually because a collaborator deleted that prompt, or the protocol was imported that way. count is how many such diseases there are; diseaseNames is their names, already joined into one phrase in the reader\u2019s language. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name.',
+  },
+  diseaseMarksNobody: {
+    id: 'protocolBuilder.narrativePedigree.diseaseMarksNobody',
+    defaultMessage: 'Nothing records this attribute',
+    description:
+      'Badge shown on a collapsed row of the disease list when that disease maps an attribute the source Family Pedigree stage does not record, so the disease would mark nobody. Terse because it sits inside a row beside the disease\u2019s name.',
+  },
   diseasesDuplicateLabel: {
     id: 'protocolBuilder.narrativePedigree.diseasesDuplicateLabel',
     defaultMessage:

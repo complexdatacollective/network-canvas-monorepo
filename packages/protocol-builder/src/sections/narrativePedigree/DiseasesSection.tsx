@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -24,6 +24,7 @@ import {
 } from './DiseaseRow.tsx';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
 import {
+  diseaseMarksNobody,
   sourceStageNodeType,
   sourceStageRecordedVariables,
 } from './sourceStage.ts';
@@ -93,13 +94,21 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  */
 export default function DiseasesSection() {
   const intl = useAppIntl();
-  const { committedFields, protocolContext } = useStageEditorForm();
+  const { committedFields, protocolContext, storeApi } = useStageEditorForm();
   const { roleMap, slotMap } = usePedigreeVariableIndexes();
   const subject = useDiseaseSubject();
   const sourceStageId = useStageValue('sourceStageId');
   const rows = useStageValue(DISEASES_FIELD);
   const waiting =
     sourceStageNodeType(protocolContext, sourceStageId) === undefined;
+
+  // Read from the protocol context, so a nomination prompt a collaborator adds
+  // to or removes from the source pedigree is seen here without this section
+  // doing anything.
+  const recorded = useMemo(
+    () => sourceStageRecordedVariables(protocolContext, sourceStageId),
+    [protocolContext, sourceStageId],
+  );
 
   const allVariables = useMemo(
     () =>
@@ -139,24 +148,12 @@ export default function DiseasesSection() {
         return { success: false, fieldErrors: { variable: [issue] } };
       }
       const pick = typeof value.variable === 'string' ? value.variable : '';
-      if (
-        pick !== '' &&
-        pick !== committed &&
-        !sourceStageRecordedVariables(protocolContext, sourceStageId).has(pick)
-      ) {
+      if (pick !== '' && pick !== committed && !recorded.has(pick)) {
         return { success: false, fieldErrors: { variable: [NOT_RECORDED] } };
       }
       return value;
     },
-    [
-      allVariables,
-      committedVariableFor,
-      protocolContext,
-      roleMap,
-      slotMap,
-      sourceStageId,
-      subject,
-    ],
+    [allVariables, committedVariableFor, recorded, roleMap, slotMap, subject],
   );
 
   const editorValidate = useCallback<DialogArrayEditorValidate>(
@@ -202,6 +199,58 @@ export default function DiseasesSection() {
     [intl, rows],
   );
 
+  /**
+   * The recorded set as it is NOW, read through a ref.
+   *
+   * `useField` memoises a field's validation on a JSON of its props, which
+   * drops functions: a rule rebuilt each render serialises identically and
+   * pins the first closure — and its first protocol — forever. One entry for
+   * the field's lifetime, reading the current set, keeps the rule live without
+   * ever re-registering the field. The same reason `SourceStageSection` reads
+   * its verdict through one.
+   */
+  const recordedRef = useRef(recorded);
+  recordedRef.current = recorded;
+
+  /**
+   * The rows nothing would ever mark, by the name the researcher gave them.
+   *
+   * A row with no name of its own is named by the same stand-in its collapsed
+   * row shows, carried as a nested message error so the whole refusal is
+   * resolved in the reader's language where it is finally rendered.
+   */
+  const unrecordedNames = useCallback(
+    (value: unknown): (string | Readonly<{ messageError: string }>)[] => {
+      if (!Array.isArray(value)) return [];
+      return value.flatMap((row: unknown) =>
+        diseaseMarksNobody(row, recordedRef.current)
+          ? [
+              isRecord(row) && typeof row.label === 'string' && row.label !== ''
+                ? row.label
+                : {
+                    messageError: createMessageError(
+                      narrativePedigreeMessages.diseaseUnnamed,
+                    ),
+                  },
+            ]
+          : [],
+      );
+    },
+    [],
+  );
+
+  /**
+   * What the LIST refuses.
+   *
+   * The recorded-attribute rule is asked of every row, not only of the one a
+   * dialog just saved: `onBeforeSave` runs when a row is committed and lets
+   * the row's own committed attribute through, so a mapping a collaborator
+   * invalidated while the editor sat untouched — and one an import brought in
+   * — reached the host with nothing anywhere refusing it. The saved stage then
+   * draws an unmarked family in every interview, and the protocol schema
+   * accepts it because it checks that the attribute exists and is a boolean,
+   * not that anything ever writes it.
+   */
   const diseasesValidation = useMemo(
     () => ({
       custom: messageRuleValidation([
@@ -209,10 +258,39 @@ export default function DiseasesSection() {
           Array.isArray(value) && value.length > 0
             ? undefined
             : AT_LEAST_ONE_DISEASE,
+        (value: unknown) => {
+          const names = unrecordedNames(value);
+          return names.length === 0
+            ? undefined
+            : createMessageError(narrativePedigreeMessages.diseasesMarkNobody, {
+                count: names.length,
+                diseaseNames: { list: names },
+              });
+        },
       ]),
     }),
-    [],
+    [unrecordedNames],
   );
+
+  // Field validation runs when the researcher touches a control, and on
+  // submit. Neither covers how this problem appears: a collaborator deletes
+  // the nomination prompt behind a disease while this editor sits untouched.
+  // Re-running the list's validation whenever that set of rows changes is what
+  // reports it the moment it appears rather than at the next save — and only
+  // when there is something to report, or an error already standing that it
+  // would now clear, so an untouched empty list is not given the "add at least
+  // one" refusal nobody has earned yet.
+  const unrecordedCount = unrecordedNames(rows).length;
+  useEffect(() => {
+    const state = storeApi.getState();
+    if (
+      unrecordedCount === 0 &&
+      state.getFieldErrors(DISEASES_FIELD) === null
+    ) {
+      return;
+    }
+    void state.validateField(DISEASES_FIELD);
+  }, [storeApi, unrecordedCount]);
 
   const { editorFieldsComponent, previewComponent } = useRowRenderers(
     DiseaseEditor,

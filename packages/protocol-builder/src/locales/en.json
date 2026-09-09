@@ -1555,6 +1555,10 @@
     "defaultMessage": "Choose how this disease is inherited.",
     "description": "Refusal shown under the inheritance-pattern control when the researcher saves the dialog without choosing one."
   },
+  "protocolBuilder.narrativePedigree.diseaseMarksNobody": {
+    "defaultMessage": "Nothing records this attribute",
+    "description": "Badge shown on a collapsed row of the disease list when that disease maps an attribute the source Family Pedigree stage does not record, so the disease would mark nobody. Terse because it sits inside a row beside the disease’s name."
+  },
   "protocolBuilder.narrativePedigree.diseaseNameHint": {
     "defaultMessage": "Shown to the participant in the pedigree's key, so it should be a name they recognize.",
     "description": "Guidance under the disease-name field. The key is the legend drawn beside the family tree, naming what each colour means."
@@ -1634,6 +1638,10 @@
   "protocolBuilder.narrativePedigree.diseasesFieldLabel": {
     "defaultMessage": "Diseases",
     "description": "Label of the list of conditions inside the diseases section. The same word as the section heading, and translated once for each: the heading names the part of the stage, and this names the control."
+  },
+  "protocolBuilder.narrativePedigree.diseasesMarkNobody": {
+    "defaultMessage": "{count, plural, one {{diseaseNames} maps an attribute the source pedigree does not record, so nobody in the family would be marked with it. Add a nomination prompt to that pedigree asking who has it, or remove the disease.} other {{diseaseNames} map attributes the source pedigree does not record, so nobody in the family would be marked with them. Add a nomination prompt to that pedigree for each of them, or remove those diseases.}}",
+    "description": "Refusal shown above the disease list when one or more diseases already in it map an attribute no nomination prompt of the source Family Pedigree stage records — usually because a collaborator deleted that prompt, or the protocol was imported that way. count is how many such diseases there are; diseaseNames is their names, already joined into one phrase in the reader’s language. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name."
   },
   "protocolBuilder.narrativePedigree.diseasesNotRecorded": {
     "defaultMessage": "Nothing records this attribute, so nobody would be marked with it. Add a nomination prompt to the source pedigree asking who has this condition, then map it here.",

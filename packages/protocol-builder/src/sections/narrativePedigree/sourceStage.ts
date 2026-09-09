@@ -146,3 +146,30 @@ export function sourceStageRecordedVariables(
     ),
   );
 }
+
+/**
+ * Whether one disease row maps an attribute the source pedigree never records.
+ *
+ * The same question `sourceStageRecordedVariables` answers for the picker,
+ * asked of a row that is already there. A row an import brought in, or one a
+ * collaborator invalidated by deleting the nomination prompt behind it, never
+ * went through the picker at all — and the mapping it leaves behind draws an
+ * unmarked family in every interview, because nothing ever sets the attribute
+ * to `true`.
+ *
+ * A row with no attribute yet is not this rule's business: an unfinished row
+ * is what `required` reports, and complaining that a blank marks nobody would
+ * put two refusals on one empty control.
+ */
+export function diseaseMarksNobody(
+  row: unknown,
+  recorded: ReadonlySet<string>,
+): boolean {
+  if (typeof row !== 'object' || row === null || Array.isArray(row)) {
+    return false;
+  }
+  const variable: unknown = Reflect.get(row, 'variable');
+  return (
+    typeof variable === 'string' && variable !== '' && !recorded.has(variable)
+  );
+}

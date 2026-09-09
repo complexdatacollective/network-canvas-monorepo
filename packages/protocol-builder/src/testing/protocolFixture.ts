@@ -249,3 +249,78 @@ const FIXTURE_ASSET_CONTENT: Readonly<Record<string, string>> = Object.freeze({
   'regions.geojson': regionsLayer,
   'roster.json': rosterNetwork,
 });
+
+/**
+ * The fixture pedigree as a stage DOCUMENT, recording or collecting attributes
+ * of its node type.
+ *
+ * `records` gives it a nomination prompt per attribute — the participant is
+ * asked who in the family it applies to, and everyone they name is marked with
+ * it. That is the one surface that ever sets a family member's disease boolean,
+ * so it is what a disease may be mapped to, and the fixture's own pedigree has
+ * none.
+ *
+ * `collects` gives it a member-form field instead. A form field is a VALIDATED
+ * writer: what the participant types is checked before it is stored. A disease
+ * mapping writes the same attribute from the tree the participant draws, with
+ * no validation at all, so the two may never name one attribute — the protocol
+ * reports a role conflict for it, and the values the pedigree writes would
+ * bypass the field's validation.
+ *
+ * Built from the fixture's own pedigree rather than written out here, so this
+ * stays a real source stage: everything a narrative pedigree resolves through
+ * it — its node type above all — is the fixture's.
+ *
+ * Shared by every suite that needs one, because they all need the same thing:
+ * the fixture protocol's narrative pedigree maps an attribute its pedigree
+ * does not record, so a test that asserts a SAVE has to state the pedigree the
+ * stage would need.
+ */
+export function sourcePedigreeDocument(
+  change: Readonly<{ records?: readonly string[]; collects?: string }>,
+): SectionDoc {
+  const source = loadFixtureStage('family-pedigree-1');
+  const nodeConfig = source.fields.nodeConfig;
+  if (!isRecord(nodeConfig)) {
+    throw new Error(
+      'The fixture stage "family-pedigree-1" no longer configures a node type.',
+    );
+  }
+  return {
+    id: source.id,
+    type: source.type,
+    ...source.fields,
+    nodeConfig: {
+      ...nodeConfig,
+      ...(change.collects === undefined
+        ? {}
+        : {
+            form: [
+              {
+                variable: change.collects,
+                prompt: 'How would you describe them?',
+              },
+            ],
+          }),
+    },
+    ...(change.records === undefined
+      ? {}
+      : {
+          nominationPrompts: change.records.map((variable, index) => ({
+            id: `nomination-${index + 1}`,
+            text: `Who in your family has ${variable}?`,
+            variable,
+          })),
+        }),
+  };
+}
+
+/**
+ * `otherStages` putting the fixture's pedigree over a source that RECORDS the
+ * one disease the fixture's narrative pedigree maps.
+ */
+export const recordingTheFixtureDisease = (): Readonly<
+  Record<string, SectionDoc>
+> => ({
+  'family-pedigree-1': sourcePedigreeDocument({ records: ['hasConditionX'] }),
+});

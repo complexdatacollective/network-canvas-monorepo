@@ -9,6 +9,8 @@ import {
   fixtureProtocolSections,
   fixtureStageIds,
   loadFixtureStage,
+  recordingTheFixtureDisease,
+  sourcePedigreeDocument,
 } from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
@@ -193,79 +195,27 @@ const A_SECOND_BOOLEAN = {
   hasConditionY: { name: 'hasConditionY', type: 'boolean' },
 } as const;
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/**
- * The source pedigree, recording or collecting attributes of its node type.
- *
- * `records` gives it a nomination prompt per attribute — the participant is
- * asked who in the family it applies to, and everyone they name is marked with
- * it. That is the one surface that ever sets a family member's disease boolean,
- * so it is what a disease may be mapped to, and the fixture's own pedigree has
- * none.
- *
- * `collects` gives it a member-form field instead. A form field is a VALIDATED
- * writer: what the participant types is checked before it is stored. A disease
- * mapping writes the same attribute from the tree the participant draws, with
- * no validation at all, so the two may never name one attribute — the protocol
- * reports a role conflict for it, and the values the pedigree writes would
- * bypass the field's validation.
- *
- * Built from the fixture's own pedigree rather than written out here, so this
- * stays a real source stage: everything the narrative pedigree resolves
- * through it — its node type above all — is the fixture's.
- */
-function sourcePedigree(
-  change: Readonly<{ records?: readonly string[]; collects?: string }>,
-): SectionDoc {
-  const source = loadFixtureStage('family-pedigree-1');
-  const nodeConfig = source.fields.nodeConfig;
-  if (!isRecord(nodeConfig)) {
-    throw new Error(
-      'The fixture stage "family-pedigree-1" no longer configures a node type.',
-    );
-  }
-  return {
-    id: source.id,
-    type: source.type,
-    ...source.fields,
-    nodeConfig: {
-      ...nodeConfig,
-      ...(change.collects === undefined
-        ? {}
-        : {
-            form: [
-              {
-                variable: change.collects,
-                prompt: 'How would you describe them?',
-              },
-            ],
-          }),
-    },
-    ...(change.records === undefined
-      ? {}
-      : {
-          nominationPrompts: change.records.map((variable, index) => ({
-            id: `nomination-${index + 1}`,
-            text: `Who in your family has ${variable}?`,
-            variable,
-          })),
-        }),
-  };
-}
-
-/** The fixture's pedigree, recording the attribute its narrative one maps. */
-const recordingTheFixtureDisease = {
-  'family-pedigree-1': sourcePedigree({ records: ['hasConditionX'] }),
-};
-
 /** The same, recording the second boolean the codebook updates add too. */
 const recordingBothConditions = {
-  'family-pedigree-1': sourcePedigree({
+  'family-pedigree-1': sourcePedigreeDocument({
     records: ['hasConditionX', 'hasConditionY'],
   }),
 };
+
+/**
+ * The fixture narrative pedigree over a pedigree that RECORDS the disease it
+ * maps.
+ *
+ * The fixture protocol's own Family Pedigree has no nomination prompts at all,
+ * so the attribute its narrative pedigree draws is one nothing ever sets — a
+ * stage the disease list now refuses to save, and rightly. Every test below
+ * that asserts a save therefore states the source pedigree the stage would
+ * need, rather than asserting a save the editor declines.
+ */
+const openRecordedFixture = () => ({
+  ...openFixture(),
+  otherStages: recordingTheFixtureDisease(),
+});
 
 describe('the pedigree a narrative pedigree draws', () => {
   it('opens on the stage as the protocol holds it', async () => {
@@ -288,14 +238,14 @@ describe('the pedigree a narrative pedigree draws', () => {
   });
 
   it('saves the stage it opened, unchanged', async () => {
-    const harness = renderStageEditor(openFixture());
+    const harness = renderStageEditor(openRecordedFixture());
 
     // The stage's name belongs to a section this mount does not include.
     await harness.roundTrip({ unowned: ['label'] });
   });
 
   it('saves an edit to every key it owns', async () => {
-    const harness = renderStageEditor(openFixture());
+    const harness = renderStageEditor(openRecordedFixture());
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Show possible (at-risk) statuses' }),
@@ -444,6 +394,10 @@ describe('saving a narrative pedigree whose source cannot be used', () => {
     renderStageEditor({
       stage: narrativePedigreeStageWith({}),
       sections: narrativePedigreeSections,
+      // See `openRecordedFixture`: the fixture's own pedigree records nothing,
+      // and one of these claims is that the stage saves once the pedigree is
+      // back before it.
+      otherStages: recordingTheFixtureDisease(),
     });
 
   it('refuses a source that now runs after this stage', async () => {
@@ -580,7 +534,7 @@ describe('the diseases a narrative pedigree defines', () => {
       // attribute off the list. Given a source that merely fails to nominate
       // it, this test would pass with the form rule deleted.
       otherStages: {
-        'family-pedigree-1': sourcePedigree({
+        'family-pedigree-1': sourcePedigreeDocument({
           records: ['hasConditionX', 'hasConditionY'],
           collects: 'hasConditionX',
         }),
@@ -615,7 +569,9 @@ describe('the diseases a narrative pedigree defines', () => {
       stageId: 'narrative-pedigree-1',
       sections: narrativePedigreeSections,
       otherStages: {
-        'family-pedigree-1': sourcePedigree({ collects: 'hasConditionX' }),
+        'family-pedigree-1': sourcePedigreeDocument({
+          collects: 'hasConditionX',
+        }),
       },
     });
 
@@ -715,7 +671,7 @@ describe('the diseases a narrative pedigree defines', () => {
 
     replaceSourcePedigree(
       harness,
-      sourcePedigree({ records: ['hasConditionX'] }),
+      sourcePedigreeDocument({ records: ['hasConditionX'] }),
     );
     await harness.user.click(disease.getByRole('button', { name: 'Add' }));
 
@@ -725,6 +681,84 @@ describe('the diseases a narrative pedigree defines', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
+
+/**
+ * A disease only READS: the Family Pedigree writes a family member's disease
+ * boolean in exactly one place, a nomination prompt of the source pedigree.
+ * An attribute no prompt of it records is therefore never `true`, and the
+ * genetics engine treats only an explicit `true` as affected — so a disease
+ * mapped to one draws an unmarked family in every interview, with nothing in
+ * the protocol schema to say so.
+ *
+ * The picker keeps such an attribute off the list and `onBeforeSave` refuses a
+ * pick that stops qualifying while the dialog is open. Neither sees a row that
+ * is already there: `onBeforeSave` runs only when a row dialog is saved, and
+ * it lets the row's own committed attribute through. So the LIST has to state
+ * the rule as well — for the row a collaborator invalidated while this editor
+ * sat untouched, and for the row an import brought in.
+ */
+describe('a disease the source pedigree stopped recording', () => {
+  it('refuses the save and names the disease', async () => {
+    const harness = renderStageEditor(openRecordedFixture());
+    expect(
+      screen.queryByText('Nothing records this attribute'),
+    ).not.toBeInTheDocument();
+
+    // The collaborator's pedigree records nothing at all, which is the shape
+    // the fixture's own pedigree has: the prompt behind this disease is gone.
+    replaceSourcePedigree(harness, sourcePedigreeDocument({}));
+
+    // The section is reported as having a problem straight away — that is what
+    // the re-run validation is for — and the researcher reads the sentence
+    // under the list when they try to save.
+    await waitFor(() =>
+      expect(
+        harness.outline().find((section) => section.title === 'Diseases')
+          ?.state,
+      ).toBe('Has a problem'),
+    );
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        'Condition X maps an attribute the source pedigree does not record, so nobody in the family would be marked with it. Add a nomination prompt to that pedigree asking who has it, or remove the disease.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The refusal names the rows; the row is where the researcher acts. The
+   * badge is on screen the moment the prompt goes, rather than at the next
+   * submit.
+   */
+  it('marks the row it is about', async () => {
+    const harness = renderStageEditor(openRecordedFixture());
+
+    replaceSourcePedigree(harness, sourcePedigreeDocument({}));
+
+    expect(
+      await screen.findByText('Nothing records this attribute'),
+    ).toBeInTheDocument();
+  });
+
+  /** And it lets go again once the pedigree records the attribute anew. */
+  it('saves again once the pedigree records it again', async () => {
+    const harness = renderStageEditor(openRecordedFixture());
+    replaceSourcePedigree(harness, sourcePedigreeDocument({}));
+    expect(await harness.submit()).toBeNull();
+
+    replaceSourcePedigree(
+      harness,
+      sourcePedigreeDocument({ records: ['hasConditionX'] }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Nothing records this attribute'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(await harness.submit()).not.toBeNull();
   });
 });
 
@@ -918,7 +952,7 @@ describe('the batch a source change makes', () => {
     // The pedigree these tests switch TO records the attribute the disease
     // they then describe is mapped to; without a nomination prompt recording it,
     // that attribute is one the picker rightly never offers.
-    otherStages: recordingTheFixtureDisease,
+    otherStages: recordingTheFixtureDisease(),
   });
 
   const draftOf = (harness: StageEditorHarness) =>
