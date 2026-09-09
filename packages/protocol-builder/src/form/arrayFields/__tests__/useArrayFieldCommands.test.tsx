@@ -1,4 +1,4 @@
-import { act } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -64,12 +64,32 @@ function renderCommands(
     ),
   });
 
-  const { commands } = held;
-  if (commands === undefined) {
-    throw new Error(
-      'nothing mounted the list, so there are no commands to drive',
-    );
+  /**
+   * Read at the moment a test drives it, never captured at mount: the hook
+   * rebuilds its commands when the editor learns the stage is somebody else's,
+   * and a caller holding the first render's copy would drive an editor that
+   * still believed it could write.
+   */
+  const commands = {
+    get onOperation() {
+      return live().onOperation;
+    },
+    writeThrough: (dispatch: () => void) => live().writeThrough(dispatch),
+    commitDetachedRow: (
+      ...args: Parameters<ArrayFieldCommands<Row>['commitDetachedRow']>
+    ) => live().commitDetachedRow(...args),
+  };
+
+  function live(): ArrayFieldCommands<Row> {
+    const current = held.commands;
+    if (current === undefined) {
+      throw new Error(
+        'nothing mounted the list, so there are no commands to drive',
+      );
+    }
+    return current;
   }
+
   return { commands, prompts: () => draft().prompts };
 }
 
@@ -585,7 +605,7 @@ describe('what a list write answers', () => {
     expect(prompts()).toEqual([B]);
   });
 
-  it('names the stage when it will not take the write', () => {
+  it('names the stage when it will not take the write', async () => {
     const { commands, prompts } = renderCommands(
       { prompts: [A, B] },
       [A, B],
@@ -593,6 +613,11 @@ describe('what a list write answers', () => {
       vi.fn(),
       { readOnly: true },
     );
+
+    // Awaited, because nothing tells the editor the stage is somebody else's
+    // until the host answers its acquire, and the notice saying so is what
+    // arrives when it has.
+    await screen.findByText(/is editing this stage/);
 
     let operated: ArrayWriteOutcome | undefined;
     let detached: ArrayWriteOutcome | undefined;

@@ -576,12 +576,7 @@ export function renderStageEditor<T extends StageType = StageType>(
     >
       <DialogProvider>
         <ProtocolBuilder client={host.client} protocolId={protocolId}>
-          <SeedProtocolCache
-            store={store}
-            {...(seeded.creation === undefined
-              ? { acquire: stageSectionId }
-              : {})}
-          >
+          <SeedProtocolCache store={store}>
             <HarnessEditor
               target={target}
               formId={formId}

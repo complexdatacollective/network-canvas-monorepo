@@ -1,21 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRef, type ReactNode } from 'react';
 
-import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
-
-import {
-  acquireQueryKey,
-  useProtocolBuilderContext,
-} from '../state/context.ts';
+import { useProtocolBuilderContext } from '../state/context.ts';
 import type { InMemoryProtocolStore } from './host/protocolStore.ts';
 
 export type SeedProtocolCacheProps = Readonly<{
   store: InMemoryProtocolStore;
-  /**
-   * The section the editor below is about to open, whose lock is taken here so
-   * the form is drawn from the document it was taken at.
-   */
-  acquire?: ProtocolSectionId;
   children: ReactNode;
 }>;
 
@@ -30,16 +20,11 @@ export type SeedProtocolCacheProps = Readonly<{
  *
  * So the in-memory host — which holds every answer synchronously — is read
  * directly and written into the cache from this component's render, before
- * React reaches the children that observe it. The lock is taken here too, and
- * really taken: it is the same call the host's own `acquireLock` makes, under
- * the same principal, so the protocol is in the state the editor believes it
- * is in.
+ * React reaches the children that observe it. The LOCK is not taken here: an
+ * editor takes its own on mount, and whether that comes back read-only is
+ * exactly what a test opening a held section is asking about.
  */
-export function SeedProtocolCache({
-  store,
-  acquire,
-  children,
-}: SeedProtocolCacheProps) {
+export function SeedProtocolCache({ store, children }: SeedProtocolCacheProps) {
   const queryClient = useQueryClient();
   const { protocolId, utils } = useProtocolBuilderContext();
   const seeded = useRef(false);
@@ -55,12 +40,6 @@ export function SeedProtocolCache({
       queryClient.setQueryData(
         utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
         store.read(id),
-      );
-    }
-    if (acquire !== undefined && store.has(acquire)) {
-      queryClient.setQueryData(
-        acquireQueryKey(protocolId, acquire),
-        store.acquire(acquire, HARNESS_PRINCIPAL),
       );
     }
   }

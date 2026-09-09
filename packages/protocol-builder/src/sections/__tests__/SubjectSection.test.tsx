@@ -517,16 +517,20 @@ describe('creating the type a stage needs without leaving it', () => {
     expect(nodeTypeNames(harness)).toEqual(['person', 'family member']);
   });
 
-  it('is not offered to a spectator', () => {
+  it('is not offered to a spectator', async () => {
     renderStageEditor({
       stageId: 'name-generator-1',
       sections: nodeSubjectAndPrompts,
       readOnly: true,
     });
 
-    expect(
-      screen.queryByRole('button', { name: 'Create a new node type' }),
-    ).not.toBeInTheDocument();
+    // Awaited, because nothing tells the editor the stage is somebody else's
+    // until the host answers its acquire.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Create a new node type' }),
+      ).not.toBeInTheDocument(),
+    );
   });
 });
 

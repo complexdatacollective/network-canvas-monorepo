@@ -114,12 +114,18 @@ export const contract = {
    * holds what. Codebook dialogs issue these; no stage editor does.
    */
   refactor: {
-    /** Removes a codebook variable and strips every reference to it. */
+    /**
+     * Removes a codebook variable and the references to it the schema
+     * declares, or refuses naming the ones it cannot remove: a reference
+     * inside a list — a prompt, a form field, a filter rule — goes with the
+     * entry holding it, and one that is a property of a stage cannot be
+     * removed without inventing what the stage then means.
+     */
     deleteVariable: base
       .errors(refactorErrors)
       .input(DeleteVariableInputSchema)
       .output(RefactorResultSchema),
-    /** Removes an entity type, its section, and every reference to it. */
+    /** Removes an entity type and its section, on the same terms. */
     deleteEntityType: base
       .errors(refactorErrors)
       .input(DeleteEntityTypeInputSchema)

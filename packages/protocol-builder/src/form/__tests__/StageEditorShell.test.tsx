@@ -1115,7 +1115,11 @@ describe('StageEditorShell', () => {
     });
     const before = harness.protocolSections()[stageSection];
 
-    expect(screen.getByRole('button', { name: SUBMIT_LABEL })).toBeDisabled();
+    // Awaited, because nothing tells the editor the section is somebody
+    // else's until the host answers its acquire.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: SUBMIT_LABEL })).toBeDisabled(),
+    );
     expect(
       screen.getByRole('textbox', { name: 'Page heading' }),
     ).toBeDisabled();

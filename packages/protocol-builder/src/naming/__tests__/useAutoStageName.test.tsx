@@ -114,10 +114,7 @@ function Editor({
 
   return (
     <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
-      <SeedProtocolCache
-        store={host.store}
-        {...('sectionId' in target ? { acquire: target.sectionId } : {})}
-      >
+      <SeedProtocolCache store={host.store}>
         <ResourceClientProvider>
           <StageEditSession target={target} formId="stage-form">
             <StageEditorShell>

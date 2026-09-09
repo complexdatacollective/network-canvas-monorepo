@@ -1384,14 +1384,18 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     );
   });
 
-  it('is not offered to a spectator', () => {
+  it('is not offered to a spectator', async () => {
     renderStageEditor({ ...openFixture(), readOnly: true });
 
-    expect(
-      screen.queryByRole('button', {
-        name: 'Create a new display label attribute',
-      }),
-    ).not.toBeInTheDocument();
+    // Awaited, because nothing tells the editor the stage is somebody else's
+    // until the host answers its acquire.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', {
+          name: 'Create a new display label attribute',
+        }),
+      ).not.toBeInTheDocument(),
+    );
   });
 });
 

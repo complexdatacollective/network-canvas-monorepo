@@ -1,6 +1,11 @@
 import { safe } from '@orpc/client';
-import { useQueries, useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect } from 'react';
+import {
+  skipToken,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { z } from 'zod';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -16,7 +21,6 @@ import type {
   SectionIssueSchema,
 } from '../contract/schemas.ts';
 import {
-  acquireQueryKey,
   lockQueryKey,
   useProtocolBuilderContext,
   type LockState,
@@ -124,60 +128,90 @@ export type SubmitResult =
 export type SectionMutation = Readonly<{
   document: SectionDoc | undefined;
   revision: Revision | undefined;
-  /**
-   * `pending` until the host has answered the acquire. An editor must not draw
-   * an editable form over it: the answer decides whether this caller may write
-   * at all, and a form that opened editable and turned read-only a tick later
-   * has already invited an edit it cannot keep.
-   */
-  lock: 'pending' | 'held' | 'readOnly';
   readOnly: boolean;
   holder: Presence | undefined;
   submit(document: SectionDoc): Promise<SubmitResult>;
+  release(): void;
 }>;
 
 /**
  * The section this component is editing.
  *
- * Takes the lock on mount and gives it back on unmount. The acquire is also
- * the read: it answers with the document at the revision the lock was taken
- * at, which is the document the editor then owns for as long as it holds it.
- *
- * There is no renewal and no re-acquire: a submit the host refuses comes back
- * as a `notLockHolder` result for the editor to report, and the draft is the
+ * Takes the lock on mount and gives it back on unmount. There is no renewal
+ * and no re-acquire: a submit the host refuses comes back as a
+ * `notLockHolder` result for the editor to report, and the draft is the
  * editor's to discard.
  */
 export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
-  const { client, protocolId } = useProtocolBuilderContext();
-  const { data: acquired } = useQuery({
-    queryKey: acquireQueryKey(protocolId, id),
-    queryFn: () => client.acquireLock({ protocolId, sectionId: id }),
-    staleTime: Number.POSITIVE_INFINITY,
-    // Dropped the moment the last editor unmounts, because the lock goes back
-    // with it: a cached answer served to the next editor would hand it a
-    // document under a lock nobody holds, and its first save would be refused.
-    gcTime: 0,
-  });
-  const { data: lockState } = useQuery<LockState>({
+  const { client, protocolId, utils } = useProtocolBuilderContext();
+  const queryClient = useQueryClient();
+  const [readOnly, setReadOnly] = useState(false);
+  // Which acquire is this editor's. An acquire that settles after its own
+  // effect has been cleaned up must not touch the lock, because the next
+  // effect for the same section may already hold it.
+  const acquisition = useRef(0);
+  const released = useRef(false);
+  const section = useSection(id);
+  const { data: lock } = useQuery<LockState>({
     queryKey: lockQueryKey(protocolId, id),
-    queryFn: () => ({}),
+    // Written by the channel's lock events and by the acquire below. No
+    // procedure answers "who holds this", so this observer never fetches.
+    queryFn: skipToken,
+    initialData: {},
   });
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    const mine = (acquisition.current += 1);
+    void client.acquireLock({ protocolId, sectionId: id }).then((result) => {
+      // The acquire answers with the section as the host holds it now, which
+      // is what this editor has to start from: a cached document from before
+      // a revision this client has not seen yet — the channel is reconnecting,
+      // say — would be submitted back whole over the newer one.
+      queryClient.setQueryData<SectionAtRevision>(
+        utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
+        { document: result.document, revision: result.revision },
+      );
+      if (acquisition.current !== mine) {
+        // A later mount of this section owns the lock now. Locks are held by
+        // the session, so handing this one back would take that editor's:
+        // its own cleanup is what releases it.
+        return;
+      }
+      if (released.current) {
+        // Acquired after unmount: hand it straight back rather than holding a
+        // lock no editor is behind.
+        void client.releaseLock({ protocolId, sectionId: id });
+        return;
+      }
+      setReadOnly(result.lock === 'readOnly');
+      if (result.lock === 'readOnly') {
+        // The refusal already names the holder. Waiting for the channel to say
+        // it again leaves a read-only editor unable to say whose section it is
+        // — and a host whose locks are always granted never says it at all.
+        queryClient.setQueryData<LockState>(lockQueryKey(protocolId, id), {
+          holder: result.holder,
+        });
+      }
+    });
+    released.current = false;
+    return () => {
+      released.current = true;
       void client.releaseLock({ protocolId, sectionId: id });
-    },
-    [client, protocolId, id],
-  );
+    };
+  }, [client, protocolId, id, queryClient, utils]);
 
-  const revision = acquired?.revision;
   const submit = useCallback(
     async (document: SectionDoc): Promise<SubmitResult> => {
-      if (revision === undefined) {
+      if (section === undefined) {
         throw new Error(`section ${id} was submitted before it was read`);
       }
       const { data, definedError, isSuccess } = await safe(
-        client.submit({ protocolId, sectionId: id, document, revision }),
+        client.submit({
+          protocolId,
+          sectionId: id,
+          document,
+          revision: section.revision,
+        }),
       );
       if (isSuccess) return { status: 'written', revision: data.revision };
       if (definedError?.code === 'NOT_LOCK_HOLDER') {
@@ -193,18 +227,20 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       }
       throw definedError ?? new Error(`submit of ${id} failed`);
     },
-    [client, protocolId, id, revision],
+    [client, protocolId, id, section],
   );
 
+  const release = useCallback(() => {
+    void client.releaseLock({ protocolId, sectionId: id });
+  }, [client, protocolId, id]);
+
   return {
-    document: acquired?.document,
-    revision,
-    lock: acquired?.lock ?? 'pending',
-    readOnly: acquired?.lock === 'readOnly',
-    // The acquire's own answer first: an editor that opened read-only has
-    // already been told who by, and has nothing to wait on the channel for.
-    holder: acquired?.lock === 'readOnly' ? acquired.holder : lockState?.holder,
+    document: section?.document,
+    revision: section?.revision,
+    readOnly,
+    holder: lock?.holder,
     submit,
+    release,
   };
 }
 

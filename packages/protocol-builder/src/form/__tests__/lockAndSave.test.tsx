@@ -27,15 +27,17 @@ const nameSection = (
 );
 
 describe('a stage somebody else is editing', () => {
-  it('opens read-only, and says who has it', () => {
+  it('opens read-only, and says who has it', async () => {
     renderStageEditor({
       stageId: STAGE_ID,
       sections: nameSection,
       readOnly: true,
     });
 
+    // Awaited, because nothing tells the editor the stage is somebody else's
+    // until the host answers its acquire.
     expect(
-      screen.getByText(
+      await screen.findByText(
         'Robin is editing this stage, so you can read it but not change it.',
       ),
     ).toBeInTheDocument();

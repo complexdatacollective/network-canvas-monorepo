@@ -648,6 +648,13 @@ describe('a spectator and the fields a form collects', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
+    // Awaited, because nothing tells the editor the stage is somebody else's
+    // until the host answers its acquire.
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: 'Edit field' })[0],
+      ).toBeDisabled(),
+    );
     await harness.user.click(
       screen.getAllByRole('button', { name: 'Edit field' })[0]!,
     );

@@ -1,4 +1,34 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, replaceEqualDeep } from '@tanstack/react-query';
+
+function sequenceOf(value: unknown): bigint | undefined {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const revision = (value as Record<string, unknown>).revision;
+  if (typeof revision !== 'object' || revision === null) return undefined;
+  const sequence = (revision as Record<string, unknown>).sequence;
+  return typeof sequence === 'bigint' ? sequence : undefined;
+}
+
+/**
+ * Keeps the newer of two revisions of a section, and shares structure
+ * otherwise.
+ *
+ * A `getSection` can still be in flight when the channel writes a newer
+ * revision of the same section into the cache. Its answer arrives last and, as
+ * nothing here refetches, that older document would then be what every reader
+ * of the section sees until the next revision happens to arrive.
+ */
+function keepTheNewerRevision<TData>(
+  previous: TData | undefined,
+  next: TData,
+): TData {
+  if (previous === undefined) return next;
+  const before = sequenceOf(previous);
+  const after = sequenceOf(next);
+  if (before !== undefined && after !== undefined && after < before) {
+    return previous;
+  }
+  return replaceEqualDeep(previous, next);
+}
 
 /**
  * The cache `<ProtocolBuilder>` mounts.
@@ -15,6 +45,7 @@ export function createProtocolQueryClient(): QueryClient {
         staleTime: Number.POSITIVE_INFINITY,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
+        structuralSharing: keepTheNewerRevision,
       },
     },
   });

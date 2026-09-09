@@ -66,7 +66,7 @@ export function RuleEditorHost({
   return (
     <DialogProvider>
       <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
-        <SeedProtocolCache store={host.store} acquire={STAGE_SECTION}>
+        <SeedProtocolCache store={host.store}>
           <ResourceClientProvider>
             <StageEditSession
               target={{ sectionId: STAGE_SECTION }}

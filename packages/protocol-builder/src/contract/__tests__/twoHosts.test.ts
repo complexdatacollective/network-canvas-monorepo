@@ -1,3 +1,8 @@
+// @vitest-environment node
+// A staged file crosses the wire as multipart form data, and jsdom's
+// `FormData` is invisible to Node's `Response`: encoding one there yields the
+// string "[object FormData]" and the host refuses the request as malformed.
+// Nothing here renders.
 import { safe } from '@orpc/client';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -17,6 +22,18 @@ import type { ProtocolEvent } from '../schemas.ts';
 const FIXTURE: Record<string, unknown> = allInterfaces;
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
+const ASSETS = sectionId({ kind: 'assets' });
+
+async function base64Of(blob: Blob): Promise<string> {
+  return Buffer.from(await blob.arrayBuffer()).toString('base64');
+}
+
+/** Everything a procedure answered with, as text a secret could hide in. */
+function wholeAnswer(value: unknown): string {
+  return JSON.stringify(value, (_key, item: unknown) =>
+    typeof item === 'bigint' ? item.toString() : item,
+  );
+}
 
 const HOLDER = {
   sessionId: 'holder-session',
@@ -183,5 +200,157 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     expect(revision?.type === 'revision' && revision.document?.label).toBe(
       'Written before anyone watched',
     );
+  });
+
+  it('stages a file, promotes it into the manifest, and hands its bytes back', async () => {
+    const { host, client } = await open();
+    const bytes = new Blob(
+      [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])],
+      {
+        type: 'image/png',
+      },
+    );
+
+    const staged = await client.resources.stage({
+      protocolId: host.protocolId,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Nook',
+        source: 'nook.png',
+        contentType: 'image/png',
+        bytes,
+      },
+    });
+    if (staged.status !== 'ok') throw new Error(staged.failure.message);
+    const resourceId = staged.data.descriptor.id;
+    expect(staged.data.descriptor).toMatchObject({
+      kind: 'image',
+      name: 'Nook',
+      status: 'staged',
+      source: 'nook.png',
+      byteLength: bytes.size,
+    });
+
+    const inspected = await client.resources.inspect({
+      protocolId: host.protocolId,
+      resourceId,
+    });
+    expect(inspected.status === 'ok' && inspected.data.descriptor.name).toBe(
+      'Nook',
+    );
+
+    const promoted = await client.resources.promote({
+      protocolId: host.protocolId,
+      promotionId: 'promotion-1',
+      resourceIds: [resourceId],
+    });
+    if (promoted.status !== 'ok') throw new Error(promoted.failure.message);
+    expect(promoted.data.promoted).toHaveLength(1);
+    expect(promoted.data.revision.sequence).toBeGreaterThan(0n);
+
+    const listed = await client.resources.list({ protocolId: host.protocolId });
+    if (listed.status !== 'ok') throw new Error(listed.failure.message);
+    expect(listed.data.resources).toContainEqual(
+      expect.objectContaining({
+        id: resourceId,
+        name: 'Nook',
+        status: 'committed',
+        source: 'nook.png',
+      }),
+    );
+    const manifest = await client.getSection({
+      protocolId: host.protocolId,
+      sectionId: ASSETS,
+    });
+    expect(manifest.document[resourceId]).toMatchObject({
+      name: 'Nook',
+      type: 'image',
+      source: 'nook.png',
+    });
+
+    // The whole point of the wire leg: the bytes the researcher imported are
+    // the bytes the host committed, having crossed a real socket.
+    const preview = await client.resources.preview({
+      protocolId: host.protocolId,
+      resourceId,
+    });
+    if (preview.status !== 'ok') throw new Error(preview.failure.message);
+    expect(preview.data.url.endsWith(await base64Of(bytes))).toBe(true);
+  });
+
+  it('forgets a staged resource that is discarded', async () => {
+    const { host, client } = await open();
+    const staged = await client.resources.stage({
+      protocolId: host.protocolId,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'network',
+        name: 'A roster',
+        source: 'roster.csv',
+        contentType: 'text/csv',
+        bytes: new Blob(['name\nAda\n'], { type: 'text/csv' }),
+      },
+    });
+    if (staged.status !== 'ok') throw new Error(staged.failure.message);
+    const resourceId = staged.data.descriptor.id;
+
+    const discarded = await client.resources.discard({
+      protocolId: host.protocolId,
+      resourceId,
+    });
+    expect(discarded.status).toBe('ok');
+
+    const listed = await client.resources.list({
+      protocolId: host.protocolId,
+      status: 'staged',
+    });
+    expect(listed.status === 'ok' && listed.data.resources).toEqual([]);
+    const inspected = await client.resources.inspect({
+      protocolId: host.protocolId,
+      resourceId,
+    });
+    expect(inspected.status === 'failed' && inspected.failure.reason).toBe(
+      'not-found',
+    );
+  });
+
+  it('never hands a staged or promoted secret back', async () => {
+    const { host, client } = await open();
+    const value = 'pk.a-key-a-researcher-pasted';
+
+    const staged = await client.resources.stage({
+      protocolId: host.protocolId,
+      requestId: 'request-1',
+      request: { kind: 'secret', name: 'Mapbox token', value },
+    });
+    if (staged.status !== 'ok') throw new Error(staged.failure.message);
+    expect(staged.data.handle).toBeDefined();
+    expect(wholeAnswer(staged)).not.toContain(value);
+
+    const promoted = await client.resources.promote({
+      protocolId: host.protocolId,
+      promotionId: 'promotion-1',
+      resourceIds: [staged.data.descriptor.id],
+      ...(staged.data.handle === undefined
+        ? {}
+        : { secretHandles: [staged.data.handle] }),
+    });
+    if (promoted.status !== 'ok') throw new Error(promoted.failure.message);
+    expect(wholeAnswer(promoted)).not.toContain(value);
+
+    const listed = await client.resources.list({ protocolId: host.protocolId });
+    if (listed.status !== 'ok') throw new Error(listed.failure.message);
+    expect(listed.data.resources).toContainEqual(
+      expect.objectContaining({
+        id: staged.data.descriptor.id,
+        kind: 'apikey',
+        name: 'Mapbox token',
+        status: 'committed',
+      }),
+    );
+    expect(wholeAnswer(listed)).not.toContain(value);
   });
 });
