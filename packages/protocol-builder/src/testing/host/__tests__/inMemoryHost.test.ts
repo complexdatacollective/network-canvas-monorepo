@@ -749,14 +749,14 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
-    const watching = subject.client.watchProtocol({
+    const events = await subject.client.watchProtocol({
       protocolId: subject.protocolId,
     });
-    await (await watching).next();
+    await events.next();
 
-    // The socket drops; the channel resumes on a new stream, and the editor
-    // behind it never stopped holding its draft.
-    subject.store.disconnectWatchers();
+    // The stream ends, as a dropped socket ends it; the channel resumes on a
+    // new one, and the editor behind it never stopped holding its draft.
+    await events.return(undefined);
 
     const written = await subject.client.submit({
       protocolId: subject.protocolId,
