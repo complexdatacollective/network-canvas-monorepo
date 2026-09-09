@@ -23,7 +23,10 @@ import { defineMessages } from '@codaco/app-i18n/messages';
  * on a sociogram and on a narrative stage, and the composer's node and edge
  * configuration is built out of the same pickers. Where one of them needs a
  * different sentence for the same control, it is declared here too and handed
- * over as a named prop — see `sociogramCanvasInteractionDescription`.
+ * over as a named prop — see `sociogramPromptsDescription`, which
+ * `SociogramPromptsSection` gives the shared `PromptsSection` in place of its
+ * own, and `NarrativeBehavioursSection`'s `description` and
+ * `repositioningHint`.
  */
 export const networkCanvasMessages = defineMessages({
   sociogramPromptsDescription: {
