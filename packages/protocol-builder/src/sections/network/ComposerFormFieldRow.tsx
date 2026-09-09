@@ -5,6 +5,7 @@ import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 
@@ -26,6 +27,7 @@ const VARIABLE_FIELD = 'variable';
 const COMPONENT_FIELD = 'component';
 const LABEL_FIELD = 'label';
 const HINT_FIELD = 'hint';
+const VALIDATION_HINTS_FIELD = 'showValidationHints';
 
 /**
  * The control the codebook itself gives this attribute, if it gives it one.
@@ -175,6 +177,25 @@ export function ComposerFormFieldEditor({ item }: RowEditorProps) {
           networkCanvasMessages.formFieldHelpPlaceholder,
         )}
         initialValue={asText(item.hint)}
+      />
+      {/* The rules an answer is judged by are the codebook attribute's,
+          whatever control this field asks for it with — so the same switch the
+          shared form-fields section offers belongs here, on a property
+          `ComposerFormFieldSchema` carries and the interview runtime honours
+          (`selectors/forms.ts` hands it to every rendered field). Left
+          unregistered, a researcher could neither switch it on for a new field
+          nor change it on an imported one. */}
+      <Field<typeof ToggleField>
+        name={VALIDATION_HINTS_FIELD}
+        component={ToggleField}
+        label={intl.formatMessage(
+          networkCanvasMessages.formFieldValidationHintsLabel,
+        )}
+        hint={intl.formatMessage(
+          networkCanvasMessages.formFieldValidationHintsHint,
+        )}
+        inline
+        initialValue={item.showValidationHints === true}
       />
     </>
   );

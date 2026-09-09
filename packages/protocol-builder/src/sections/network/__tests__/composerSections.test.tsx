@@ -1535,3 +1535,102 @@ describe('a composer whose stage is held by somebody else', () => {
     );
   });
 });
+
+/**
+ * Whether a composer field tells the participant what a valid answer is.
+ *
+ * `showValidationHints` is on `ComposerFormFieldSchema` and the interview
+ * runtime honours it — `selectors/forms.ts` hands it to every rendered field,
+ * where it becomes a readable summary of the attribute's own rules. The row
+ * editor registered no control for it, so a researcher could neither switch it
+ * on for a field they were writing nor change it on one that arrived with it.
+ */
+describe('validation hints on a composer form field', () => {
+  const HINTS_SWITCH = 'Show validation hints';
+
+  it('records the researcher switching them on', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Node attributes' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create new node attribute field',
+      }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      'age',
+    );
+    await harness.user.click(field.getByRole('switch', { name: HINTS_SWITCH }));
+    await harness.user.click(field.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.nodeForm).toEqual({
+      fields: [
+        {
+          id: expect.any(String) as unknown as string,
+          variable: 'age',
+          component: 'Number',
+          showValidationHints: true,
+        },
+      ],
+    });
+  });
+
+  /**
+   * And a field that arrived with them on comes back with them on: a switch
+   * that started in its off position would turn the setting off for every
+   * imported field whose row was ever opened.
+   */
+  it('gives an imported field its setting back, and lets it be switched off', async () => {
+    const { type, fields } = loadFixtureStage('network-composer-1');
+    const harness = renderStageEditor({
+      stage: {
+        id: 'network-composer-hints',
+        type,
+        fields: {
+          ...fields,
+          nodeForm: {
+            fields: [
+              {
+                id: 'composer-node-field-1',
+                variable: 'name',
+                component: 'Text',
+                showValidationHints: true,
+              },
+            ],
+          },
+        },
+      },
+      sections,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit node attribute field' }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    expect(field.getByRole('switch', { name: HINTS_SWITCH })).toBeChecked();
+
+    await harness.user.click(field.getByRole('switch', { name: HINTS_SWITCH }));
+    await harness.user.click(field.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    // Switched off is spelled by the key not being there, which is the
+    // schema's own default — the same rule the shared form-fields section
+    // applies to the same property.
+    expect(request?.stageDocument.nodeForm).toEqual({
+      fields: [
+        { id: 'composer-node-field-1', variable: 'name', component: 'Text' },
+      ],
+    });
+  });
+});

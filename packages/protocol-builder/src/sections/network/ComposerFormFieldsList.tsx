@@ -31,6 +31,24 @@ type FormFieldRow = Record<string, unknown>;
 const isRecord = (value: unknown): value is FormFieldRow =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/**
+ * The row as the protocol holds it.
+ *
+ * One thing the shared "drop what was left empty" rule cannot decide: a
+ * validation hint that is switched OFF is written by its absence. `false` is an
+ * answer in general — which is why the shared rule keeps it — but this toggle's
+ * off position is the schema's own default, and stamping it on every field of
+ * every form says nothing its absence did not already say. The same rule
+ * `FormFieldsSection` applies to the same property.
+ */
+const normalizeComposerField = (value: unknown): unknown => {
+  const cleaned = withoutAbsentValues(value);
+  if (!isRecord(cleaned)) return cleaned;
+  if (cleaned.showValidationHints !== false) return cleaned;
+  const { showValidationHints: _off, ...field } = cleaned;
+  return field;
+};
+
 export type ComposerFormFieldsListProps = Omit<
   DialogArrayFieldProps<FormFieldRow>,
   | 'editorDialogSize'
@@ -143,7 +161,7 @@ export default function ComposerFormFieldsList({
         previewComponent={previewComponent}
         editorValidate={editorValidate}
         editorDialogSize="editor"
-        normalizeItem={withoutAbsentValues}
+        normalizeItem={normalizeComposerField}
         sortable
       />
     </ComposerFormSubjectContext>

@@ -847,6 +847,19 @@ export const networkCanvasMessages = defineMessages({
     description:
       'Title of the dialog a researcher fills in to change a question one connection type’s form already asks. typeName is the edge type’s researcher-facing name, shown inside straight double quotes.',
   },
+  formFieldValidationHintsLabel: {
+    id: 'protocolBuilder.networkCanvas.formFieldValidationHintsLabel',
+    defaultMessage: 'Show validation hints',
+    description:
+      'Label of the switch that tells the participant what a valid answer to this question looks like. Shown in the dialog for one field of a network composer’s form.',
+  },
+  formFieldValidationHintsHint: {
+    id: 'protocolBuilder.networkCanvas.formFieldValidationHintsHint',
+    defaultMessage:
+      'Tells the participant what a valid answer looks like, derived from the attribute’s own rules.',
+    description:
+      'Guidance under the validation-hints switch in a network composer’s form-field dialog. The rules are the codebook attribute’s, which is where an answer’s validation lives however the field asks for it.',
+  },
   edgeFormDiscardTitle: {
     id: 'protocolBuilder.networkCanvas.edgeFormDiscardTitle',
     defaultMessage: 'This will delete the form for "{typeName}" connections',
