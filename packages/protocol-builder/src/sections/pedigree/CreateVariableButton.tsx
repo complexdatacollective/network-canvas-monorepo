@@ -68,6 +68,14 @@ export default function CreateVariableButton({
     key: string;
     variableId: string;
   } | null>(null);
+  /**
+   * Whether the editor's save is with the host right now.
+   *
+   * Held HERE rather than inside the editor because it is the DIALOG that has
+   * to answer for it: what a dismissal mid-flight unmounts is the editor, and
+   * a state living there would go with it. See `submitEdit`.
+   */
+  const [submitting, setSubmitting] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const authoritativeDocument =
@@ -83,6 +91,40 @@ export default function CreateVariableButton({
   if (readOnly || subject === null || authoritativeDocument === undefined) {
     return null;
   }
+
+  /**
+   * The compound edit the editor submits, with the dialog held shut while it
+   * is in flight.
+   *
+   * The request outlives the dialog: dismissed mid-flight, the editor is
+   * unmounted but the handler awaiting the host is still alive, so a refusal
+   * is shown to nobody and a success still runs `onComplete` — binding a slot
+   * to an attribute the researcher watched no editor finish. The same act as
+   * `AttributeCodebookControls`' three nested editors, which withhold every
+   * way out for exactly this.
+   */
+  const submitEdit = async (
+    request: Parameters<typeof controller.requestCompoundEdit>[0],
+  ) => {
+    setSubmitting(true);
+    try {
+      return await controller.requestCompoundEdit(request);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /**
+   * Every way out of the editor, which is one handler.
+   *
+   * Escape, a press outside and the close button all arrive at `closeDialog`,
+   * so refusing here covers all three — and `dismissible` takes the close
+   * button away rather than leaving a control on screen that does nothing.
+   */
+  const requestClose = () => {
+    if (submitting) return;
+    setSession(null);
+  };
 
   return (
     <>
@@ -100,7 +142,8 @@ export default function CreateVariableButton({
           open
           title={label}
           size="readable"
-          closeDialog={() => setSession(null)}
+          dismissible={!submitting}
+          closeDialog={requestClose}
           finalFocus={() => triggerRef.current}
         >
           <VariableEditor
@@ -115,9 +158,7 @@ export default function CreateVariableButton({
             description={description}
             protocolContext={controller.snapshot.protocolContext}
             createRequestId={() => uuid()}
-            onSubmitRequest={(request) =>
-              controller.requestCompoundEdit(request)
-            }
+            onSubmitRequest={submitEdit}
             onComplete={(variableId) => {
               onCreated(variableId);
               setSession(null);

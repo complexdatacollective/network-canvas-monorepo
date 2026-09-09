@@ -880,6 +880,75 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     ).not.toBeInTheDocument();
   });
 
+  /**
+   * Holds the compound edit open, and hands back the release.
+   *
+   * The one window this dialog's guard is about: the host has the request and
+   * has not answered, which is when a dismissal unmounts the editor and leaves
+   * the answer with nobody to show it to.
+   */
+  const holdTheCompoundEdit = (harness: StageEditorHarness) => {
+    const send = harness.session.requestCompoundEdit.bind(harness.session);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
+      async (request) => {
+        await held;
+        return send(request);
+      },
+    );
+    return () => {
+      release();
+    };
+  };
+
+  /**
+   * A refusal arriving after the dialog has gone is shown to nobody, and a
+   * success arriving after it binds the slot to an attribute the researcher
+   * watched no editor finish. The dialog therefore withholds every way out
+   * until the host answers, exactly as the nested editors in
+   * `AttributeCodebookControls` do.
+   */
+  it('withholds every way out until the codebook answers', async () => {
+    const harness = renderStageEditor(openFixture());
+    const release = holdTheCompoundEdit(harness);
+
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Create a new display label attribute',
+      }),
+    );
+    const creator = within(await screen.findByRole('dialog'));
+    await harness.user.type(
+      creator.getByRole('textbox', { name: 'Attribute name' }),
+      'nickname',
+    );
+    await harness.user.click(
+      creator.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    // Escape and a press outside are the two routes left; the close button is
+    // taken away rather than left on screen doing nothing.
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(document.body);
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'nickname',
+    );
+    expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
+
+    release();
+    // And the answer lands on the surface that asked for it: the slot now
+    // holds the attribute the codebook holds.
+    await waitFor(() =>
+      expect(variableIdByName(harness, 'nickname')).toEqual(expect.any(String)),
+    );
+    expect(screen.getByRole('combobox', { name: 'Display label' })).toHaveValue(
+      variableIdByName(harness, 'nickname'),
+    );
+  });
+
   it('is not offered to a spectator', () => {
     renderStageEditor({ ...openFixture(), readOnly: true });
 
