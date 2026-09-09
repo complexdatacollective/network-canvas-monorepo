@@ -237,6 +237,137 @@ describe('a page whose blocks are text and media', () => {
 });
 
 /**
+ * A media block's `description` is the words that stand in for the file, and
+ * the interview runtime is where that matters: it reads them as an image's alt
+ * text and as the accessible name of an audio or video player. The schema has
+ * carried the key all along — on a page's items and on a task's introduction
+ * items alike — so a page whose editor cannot write it is a page whose
+ * researcher cannot describe their own media, and cannot repair a description
+ * somebody else got wrong.
+ */
+describe('describing a media block for a participant who cannot see it', () => {
+  const describedPage = (description?: string) => ({
+    stage: {
+      id: 'information-described',
+      type: 'Information' as const,
+      fields: {
+        label: 'Information',
+        title: 'Welcome',
+        items: [
+          { id: 'block-text', type: 'text', content: 'Read this.' },
+          {
+            id: 'block-image',
+            type: 'asset',
+            content: 'welcome_image',
+            ...(description === undefined ? {} : { description }),
+          },
+        ],
+      },
+    },
+    assets: {
+      welcome_image: {
+        name: 'Welcome image',
+        type: 'image',
+        source: 'welcome.png',
+      },
+    },
+    sections: pageOfBlocks(),
+  });
+
+  const openImageBlock = async (harness: {
+    user: { click: (element: Element) => Promise<void> };
+  }) => {
+    await harness.user.click(
+      (await screen.findAllByRole('button', { name: 'Edit block' }))[1]!,
+    );
+    await screen.findByRole('radio', { name: 'Image' });
+  };
+
+  it('opens the block on the words somebody already wrote', async () => {
+    const harness = renderStageEditor(
+      describedPage('Two people talking at a kitchen table.'),
+    );
+
+    await openImageBlock(harness);
+
+    expect(
+      await screen.findByRole('textbox', { name: 'Description' }),
+    ).toHaveValue('Two people talking at a kitchen table.');
+  });
+
+  it('saves a description the researcher writes for an undescribed block', async () => {
+    const harness = renderStageEditor(describedPage());
+
+    await openImageBlock(harness);
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Description' }),
+      'A researcher waving at the camera.',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(itemsOf(request?.stageDocument ?? {})).toEqual([
+      { id: 'block-text', type: 'text', content: 'Read this.' },
+      {
+        id: 'block-image',
+        type: 'asset',
+        content: 'welcome_image',
+        description: 'A researcher waving at the camera.',
+      },
+    ]);
+  });
+
+  /**
+   * An image a page shows for decoration is correctly described by nothing at
+   * all, and the schema spells that by the key being absent. An empty string
+   * saved instead would not merely be untidy: the runtime names an audio or
+   * video player `description ?? name`, so `""` is a player whose accessible
+   * name is nothing, which is worse than the filename it replaced.
+   */
+  it('removes a description the researcher clears rather than emptying it', async () => {
+    const harness = renderStageEditor(
+      describedPage('Two people talking at a kitchen table.'),
+    );
+
+    await openImageBlock(harness);
+    await harness.user.clear(
+      await screen.findByRole('textbox', { name: 'Description' }),
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(itemsOf(request?.stageDocument ?? {})).toEqual([
+      { id: 'block-text', type: 'text', content: 'Read this.' },
+      { id: 'block-image', type: 'asset', content: 'welcome_image' },
+    ]);
+  });
+
+  /**
+   * A text block is already its own words: the runtime renders its markdown
+   * and reads no description from it, so a control here would ask a researcher
+   * to describe prose to somebody who is about to be read the prose.
+   */
+  it('asks nothing about a text block, which is already its own words', async () => {
+    const harness = renderStageEditor(describedPage());
+
+    await harness.user.click(
+      (await screen.findAllByRole('button', { name: 'Edit block' }))[0]!,
+    );
+    await screen.findByRole('radio', { name: 'Text' });
+
+    expect(
+      screen.queryByRole('textbox', { name: 'Description' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+/**
  * Choosing or changing a block's content type swaps a whole required control —
  * a rich text editor becomes a resource picker, or the other way round. A
  * sighted researcher watches that happen; the live region is the only thing
@@ -462,6 +593,42 @@ describe('the same blocks on a task’s introduction screen', () => {
     expect(request).not.toBeNull();
     expect(introItemsOf(request?.stageDocument ?? {})).toEqual([
       { id: 'intro-image', type: 'asset', content: 'intro_image' },
+    ]);
+  });
+
+  /**
+   * The half of the same question that goes the other way. `size` is a key
+   * only SOME pages have room for, so the control is decided from the stage.
+   * `description` is on both page schemas and read by the same runtime
+   * component whichever page rendered it, so it is offered here unconditionally
+   * — and a rule copied from `size` would have hidden it on the very screen a
+   * task's introduction media is most likely to need explaining.
+   */
+  it('describes an introduction block the same way a page’s block is described', async () => {
+    const harness = renderStageEditor(introScreenPage());
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit introduction block' }),
+    );
+    await screen.findByRole('radio', { name: 'Image' });
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Description' }),
+      'The family tree this task builds.',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(request).not.toBeNull();
+    expect(introItemsOf(request?.stageDocument ?? {})).toEqual([
+      {
+        id: 'intro-image',
+        type: 'asset',
+        content: 'intro_image',
+        description: 'The family tree this task builds.',
+      },
     ]);
   });
 
