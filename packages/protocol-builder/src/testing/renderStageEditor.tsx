@@ -117,6 +117,23 @@ const nextStageFormId = (): string => {
 };
 
 /**
+ * The edit one mounted harness is, named rather than minted so a test can ask
+ * the host what THIS edit is holding staged — a question the contract answers
+ * only for a named edit, because staged files belong to the edit that imported
+ * them and to nothing wider.
+ *
+ * One per harness for the same reason the form id is: a test may mount two,
+ * and two edits sharing an id would each be able to promote and discard what
+ * the other imported. The number is nobody's to depend on; a test that needs
+ * the id reads `editId` off the harness.
+ */
+let editsOpened = 0;
+const nextEditId = (): string => {
+  editsOpened += 1;
+  return `stage-edit-${editsOpened}`;
+};
+
+/**
  * A change to the codebook made somewhere other than this editor.
  *
  * `null` removes the entity. The editor must follow either kind without
@@ -163,6 +180,12 @@ export type StageEditorHarness = RenderResult &
      * action chrome is given as `formId`.
      */
     formId: string;
+    /**
+     * The edit THIS harness has open, which is what the host holds its staged
+     * files under. A test asking the host directly — listing what is staged,
+     * dropping it behind the editor's back — names it.
+     */
+    editId: string;
     /** The stage the editor opened on, exactly as it was seeded. */
     seeded: SeededStage;
     /**
@@ -586,6 +609,7 @@ export function renderStageEditor<T extends StageType = StageType>(
   const saved: SavedStage[] = [];
   const submitLabel = options.submitLabel ?? defaultSubmitLabel(options.locale);
   const formId = nextStageFormId();
+  const editId = nextEditId();
   const target: StageEditTarget =
     seeded.creation === undefined
       ? { sectionId: stageSectionId }
@@ -605,6 +629,7 @@ export function renderStageEditor<T extends StageType = StageType>(
             <HarnessEditor
               target={target}
               formId={formId}
+              editId={editId}
               submitLabel={submitLabel}
               onSaved={(id) => {
                 saved.push({
@@ -699,6 +724,7 @@ export function renderStageEditor<T extends StageType = StageType>(
     host,
     user,
     formId,
+    editId,
     seeded,
     submit,
     cancel: async () => {
@@ -921,6 +947,7 @@ function withSafeTypingIntoRichText(keyboard: HarnessUser): HarnessUser {
 function HarnessEditor<T extends StageType>({
   target,
   formId,
+  editId,
   submitLabel,
   onSaved,
   actions,
@@ -931,6 +958,8 @@ function HarnessEditor<T extends StageType>({
   target: StageEditTarget;
   /** This harness's own form id. See `nextStageFormId`. */
   formId: string;
+  /** This harness's own edit id. See `nextEditId`. */
+  editId: string;
   submitLabel: string;
   onSaved: (sectionId: ProtocolSectionId) => void;
   actions?: StageEditorActions;
@@ -943,6 +972,7 @@ function HarnessEditor<T extends StageType>({
       <StageEditor
         target={target}
         formId={formId}
+        editId={editId}
         onSaved={onSaved}
         {...(registry === undefined ? {} : { registry })}
         {...(actions === undefined ? {} : { actions })}
@@ -951,7 +981,7 @@ function HarnessEditor<T extends StageType>({
   }
 
   return (
-    <ResourceClientProvider>
+    <ResourceClientProvider editId={editId}>
       <StageEditSession target={target} formId={formId} onSaved={onSaved}>
         {Editor === undefined ? (
           <StageEditorShell

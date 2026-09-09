@@ -1,5 +1,6 @@
 import { safe } from '@orpc/client';
 import { useCallback } from 'react';
+import { v4 as uuid } from 'uuid';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
@@ -20,6 +21,19 @@ import {
   sectionIdForCodebookSubject,
   type CodebookSubject,
 } from './editing.ts';
+
+/**
+ * One key for one codebook change the researcher asked for.
+ *
+ * A host makes the write once for its key and answers a retry with what that
+ * attempt wrote, so a change whose answer was lost on the way back is not made
+ * twice — which for `create` would leave the codebook holding two entity types
+ * where the researcher added one. Minted per change rather than per dialog: a
+ * refused change the researcher corrects and asks for again is a different
+ * intent, and one that reused the key would be answered with the earlier
+ * write instead of being made.
+ */
+const nextRequestId = (): string => uuid();
 
 /**
  * What became of a codebook change the researcher asked for.
@@ -194,6 +208,7 @@ export function useCodebookSectionWrite(): (
         const submitted = await safe(
           client.submit({
             protocolId,
+            requestId: nextRequestId(),
             sectionId: id,
             document,
             revision: acquired.data.revision,
@@ -241,7 +256,12 @@ async function createEgoCodebook(
     return builderRefusal(error);
   }
   const created = await safe(
-    client.create({ protocolId, kind: 'codebookEgo', document }),
+    client.create({
+      protocolId,
+      requestId: nextRequestId(),
+      kind: 'codebookEgo',
+      document,
+    }),
   );
   if (created.isSuccess) {
     return { status: 'applied', sectionId: created.data.sectionId };
@@ -276,6 +296,7 @@ export function useCreateCodebookEntity(): (
       const created = await safe(
         client.create({
           protocolId,
+          requestId: nextRequestId(),
           kind: entity === 'node' ? 'codebookNode' : 'codebookEdge',
           document,
         }),

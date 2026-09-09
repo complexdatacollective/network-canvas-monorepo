@@ -63,6 +63,12 @@ export type StageEditorProps = Readonly<{
   actions?: StageEditorActions;
   /** The DOM id of the stage form, when the host wants to name it. */
   formId?: string;
+  /**
+   * Which edit this is, when the host wants to name it. One is minted for
+   * every editor otherwise, which is what keeps a second editor open in the
+   * same session from reaching this one's imported files.
+   */
+  editId?: string;
   /** Told which section the stage landed in, once a save has been accepted. */
   onSaved?: (sectionId: ProtocolSectionId) => void;
 }>;
@@ -79,10 +85,11 @@ export default function StageEditor({
   registry,
   actions,
   formId,
+  editId,
   onSaved,
 }: StageEditorProps) {
   return (
-    <ResourceClientProvider>
+    <ResourceClientProvider {...(editId === undefined ? {} : { editId })}>
       <StageEditSession
         target={target}
         {...(formId === undefined ? {} : { formId })}

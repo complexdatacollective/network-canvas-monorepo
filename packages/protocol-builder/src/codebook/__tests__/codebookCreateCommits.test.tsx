@@ -9,6 +9,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
+import type { ProtocolBuilderClient } from '../../contract/contract.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import { useEntityTypes } from '../../state/hooks.ts';
 import {
@@ -139,6 +140,117 @@ describe('a codebook type created from inside a stage editor', () => {
     expect(stageName).toHaveValue(seededLabel);
     expect(nodeTypeNames(host)).toContain('Place');
     expect(list).toHaveTextContent('Place');
+  });
+});
+
+describe('two codebook types added one after the other', () => {
+  it('are two types, not the first one answered for twice', async () => {
+    const user = userEvent.setup();
+    const host = createInMemoryHost({
+      sections: sectionsFromProtocol(FIXTURE),
+    });
+    const seededLabel = String(host.store.read(STAGE).document.label);
+
+    render(
+      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+        <StageEditorWithACodebookDialog seededLabel={seededLabel} />
+      </ProtocolBuilder>,
+    );
+
+    const list = screen.getByRole('list', { name: 'Node types' });
+    await waitFor(() => expect(list).not.toBeEmptyDOMElement());
+
+    for (const name of ['Place', 'Event']) {
+      await user.click(
+        screen.getByRole('button', { name: 'Create a new node type' }),
+      );
+      await user.type(
+        await screen.findByRole('textbox', { name: 'Node type name' }),
+        name,
+      );
+      await user.click(screen.getByRole('button', { name: 'Save entity' }));
+      await waitFor(() => expect(list).toHaveTextContent(name));
+    }
+
+    // Each change the researcher asked for is its own write. A key held across
+    // them — one per dialog, one per session — would have the host answer the
+    // second with the section the first created: the editor would report that
+    // Event had been added, and the codebook would hold two Places.
+    expect(nodeTypeNames(host)).toContain('Place');
+    expect(nodeTypeNames(host)).toContain('Event');
+  });
+});
+
+/**
+ * A transport that loses the answer to the first `create` and sends the
+ * identical request again — a socket that drops between the host writing and
+ * the client reading it, which is the one case a client cannot tell from a
+ * write that never happened.
+ *
+ * Proxied rather than spread: a contract client's procedures are reached
+ * through property access rather than held as own properties, so a spread copy
+ * of one has no procedures on it at all.
+ */
+function withTheFirstAnswerLost(
+  host: InMemoryHost,
+): Readonly<{ client: ProtocolBuilderClient; resends: () => number }> {
+  let resends = 0;
+  let lost = false;
+  const create: ProtocolBuilderClient['create'] = async (input, options) => {
+    const answer = await host.client.create(input, options);
+    if (lost) return answer;
+    lost = true;
+    resends += 1;
+    // The first answer never reaches the client, so the very same request
+    // goes out again.
+    return host.client.create(input, options);
+  };
+  return {
+    client: new Proxy(host.client, {
+      get: (target, property) =>
+        property === 'create' ? create : Reflect.get(target, property),
+    }),
+    resends: () => resends,
+  };
+}
+
+describe('a codebook type whose answer is lost on the way back', () => {
+  it('is created once, however many times the request reaches the host', async () => {
+    const user = userEvent.setup();
+    const host = createInMemoryHost({
+      sections: sectionsFromProtocol(FIXTURE),
+    });
+    const lost = withTheFirstAnswerLost(host);
+    const seededLabel = String(host.store.read(STAGE).document.label);
+
+    render(
+      <ProtocolBuilder client={lost.client} protocolId={host.protocolId}>
+        <StageEditorWithACodebookDialog seededLabel={seededLabel} />
+      </ProtocolBuilder>,
+    );
+
+    const list = screen.getByRole('list', { name: 'Node types' });
+    await waitFor(() => expect(list).not.toBeEmptyDOMElement());
+
+    await user.click(
+      screen.getByRole('button', { name: 'Create a new node type' }),
+    );
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+      'Place',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    await waitFor(() => expect(list).toHaveTextContent('Place'));
+    // One Place in the codebook, not two. The request really was made twice —
+    // otherwise this proves nothing about a retry — and the second was
+    // answered with the section the first minted rather than minting another,
+    // which would leave the researcher with a duplicate node type they never
+    // asked for and no way to tell which of the two anything points at.
+    expect(lost.resends()).toBe(1);
+    expect(nodeTypeNames(host).filter((name) => name === 'Place')).toEqual([
+      'Place',
+    ]);
   });
 });
 

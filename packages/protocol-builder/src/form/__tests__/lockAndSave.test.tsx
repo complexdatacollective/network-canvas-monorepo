@@ -113,6 +113,146 @@ describe('what a save writes', () => {
   });
 });
 
+/**
+ * A transport that loses the answer to the first write it carries and sends
+ * the identical request again — a socket that drops between the host writing
+ * and the client reading it, which is the one case a client cannot tell from
+ * a write that never happened.
+ *
+ * Proxied rather than spread: a contract client's procedures are reached
+ * through property access rather than held as own properties, so a spread copy
+ * of one has no procedures on it at all.
+ */
+function withTheFirstAnswerLost(): Readonly<{
+  client: (host: InMemoryHost) => ProtocolBuilderClient;
+  resends: () => number;
+}> {
+  let resends = 0;
+  return {
+    client: ({ client }) => {
+      const resent = new Map<PropertyKey, unknown>();
+      const resend = <TArgs extends unknown[], TAnswer>(
+        call: (...args: TArgs) => Promise<TAnswer>,
+      ) => {
+        let lost = false;
+        return async (...args: TArgs): Promise<TAnswer> => {
+          const answer = await call(...args);
+          if (lost) return answer;
+          lost = true;
+          resends += 1;
+          // The first answer never reaches the client, so the very same
+          // request goes out again.
+          return call(...args);
+        };
+      };
+      resent.set(
+        'submit',
+        resend((...args: Parameters<InMemoryClient['submit']>) =>
+          client.submit(...args),
+        ),
+      );
+      resent.set(
+        'create',
+        resend((...args: Parameters<InMemoryClient['create']>) =>
+          client.create(...args),
+        ),
+      );
+      return new Proxy(client, {
+        get: (target, property) =>
+          resent.get(property) ?? Reflect.get(target, property),
+      });
+    },
+    resends: () => resends,
+  };
+}
+
+describe('a save whose answer is lost on the way back', () => {
+  it('is written once, however many times the request reaches the host', async () => {
+    const lost = withTheFirstAnswerLost();
+    const harness = renderStageEditor({
+      stageId: STAGE_ID,
+      sections: nameSection,
+      client: lost.client,
+    });
+    const before = harness.host.store.read(STAGE_SECTION).revision.sequence;
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Saved through a dropped socket');
+
+    expect(await harness.submit()).not.toBeNull();
+
+    // The request really was made twice — otherwise this proves nothing about
+    // a retry — and the protocol advanced by exactly one revision, because the
+    // second attempt was answered with what the first wrote rather than
+    // writing a revision of its own that changed nothing.
+    expect(lost.resends()).toBe(1);
+    expect(harness.host.store.read(STAGE_SECTION).revision.sequence).toBe(
+      before + 1n,
+    );
+    expect(harness.protocolSections()[STAGE_SECTION]).toMatchObject({
+      label: 'Saved through a dropped socket',
+    });
+  });
+
+  it('is a different write from the save the researcher makes next', async () => {
+    const harness = renderStageEditor({
+      stageId: STAGE_ID,
+      sections: nameSection,
+    });
+    const before = harness.host.store.read(STAGE_SECTION).revision.sequence;
+
+    const field = () => screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field());
+    await harness.user.type(field(), 'Saved once');
+    expect(await harness.submit()).not.toBeNull();
+
+    await harness.user.clear(field());
+    await harness.user.type(field(), 'Saved again');
+    expect(await harness.submit()).not.toBeNull();
+
+    // Two revisions, and the protocol holds the second draft. A key shared
+    // between the two saves would have the host answer the second with what
+    // the first wrote: the editor would report a save that was never made,
+    // and the researcher's second draft would be nowhere.
+    expect(harness.host.store.read(STAGE_SECTION).revision.sequence).toBe(
+      before + 2n,
+    );
+    expect(harness.protocolSections()[STAGE_SECTION]).toMatchObject({
+      label: 'Saved again',
+    });
+  });
+
+  it('adds a stage once, however many times the request reaches the host', async () => {
+    const before = fixtureStageIds();
+    const lost = withTheFirstAnswerLost();
+    const harness = renderStageEditor({
+      create: {
+        type: 'Information',
+        position: 1,
+        fields: loadFixtureStage(STAGE_ID).fields,
+      },
+      sections: nameSection,
+      client: lost.client,
+    });
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Added through a dropped socket');
+
+    const written = await harness.submit();
+    expect(written).not.toBeNull();
+
+    // One stage in the order, not two: a create that minted a second section
+    // for the retry would leave the protocol holding the stage twice and tell
+    // the editor about only one of them, which nothing could then repair.
+    expect(lost.resends()).toBe(1);
+    const order = orderOf(harness.protocolSections());
+    expect(order.length).toBe(before.length + 1);
+    expect(order).toContain(written?.sectionId.split(':').at(-1));
+  });
+});
+
 describe('a save the protocol refuses because the lock has gone', () => {
   it('says so, discards the draft, and leaves the stage as it was', async () => {
     const seeded = loadFixtureStage(STAGE_ID);
@@ -301,7 +441,7 @@ describe('a file imported while the stage is open', () => {
     // The staged file leaves the host behind this editor's back — swept up
     // after a restart, discarded from another window — and nothing tells the
     // edit, which submits still naming it.
-    await discardStagedFilesAtTheHost(harness.host);
+    await discardStagedFilesAtTheHost(harness);
 
     expect(await harness.submit()).toBeNull();
 
@@ -458,7 +598,7 @@ describe('a file imported while a stage is being added', () => {
 
     // The staged file leaves the host behind this editor's back, and nothing
     // tells the edit: it creates the stage still naming it.
-    await discardStagedFilesAtTheHost(harness.host);
+    await discardStagedFilesAtTheHost(harness);
 
     expect(await harness.submit()).toBeNull();
 
@@ -514,15 +654,21 @@ function gatedAcquire(): Readonly<{
 }
 
 /**
- * Everything this protocol is holding staged, dropped at the host.
+ * Everything this edit is holding staged, dropped at the host.
  *
  * Through the contract rather than through the editor's own client: the point
  * is that the edit does NOT know, and goes on to submit a promotion for bytes
- * the host no longer has.
+ * the host no longer has. The edit is named because that is the only way to
+ * reach its staging at all — one edit's files are not another's to drop — so
+ * this stands in for the host losing them rather than for a collaborator
+ * taking them.
  */
-async function discardStagedFilesAtTheHost(host: InMemoryHost): Promise<void> {
-  const discarded = await host.client.resources.discard({
-    protocolId: host.protocolId,
+async function discardStagedFilesAtTheHost(
+  harness: Readonly<{ host: InMemoryHost; editId: string }>,
+): Promise<void> {
+  const discarded = await harness.host.client.resources.discard({
+    protocolId: harness.host.protocolId,
+    editId: harness.editId,
   });
   expect(discarded.status).toBe('ok');
 }

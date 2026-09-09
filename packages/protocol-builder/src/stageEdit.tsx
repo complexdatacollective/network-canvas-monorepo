@@ -7,6 +7,7 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
+import { v4 as uuid } from 'uuid';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { StageType } from '@codaco/protocol-validation';
@@ -243,6 +244,13 @@ function CreatingStage({
       const { data, definedError, isSuccess } = await safe(
         client.create({
           protocolId,
+          // One id for this attempt to add the stage, so a transport that
+          // re-sends the request after a lost answer is told which section the
+          // first attempt made rather than adding a second copy of the stage
+          // the client would never learn about. Minted per save rather than
+          // per edit: an add the host refused is one the researcher fixes and
+          // asks for again, and that is a different intent.
+          requestId: uuid(),
           kind: 'stage',
           document: stageDocument(identity, fields),
           position,

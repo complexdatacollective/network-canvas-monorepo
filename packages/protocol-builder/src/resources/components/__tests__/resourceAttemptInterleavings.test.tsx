@@ -24,7 +24,7 @@ import {
   shownUrl,
 } from './previewHarness.tsx';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
-import { renderInResourceContext } from './resourceContext.tsx';
+import { renderInResourceContext, TEST_EDIT_ID } from './resourceContext.tsx';
 import {
   createResourceHost,
   stagedResources,
@@ -766,7 +766,9 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       // A key the host goes on holding for a form that is gone is worse than
       // abandoned bytes: nothing left knows it is there.
       await waitFor(async () =>
-        expect(await stagedResources(host.client, host.protocolId)).toEqual([]),
+        expect(
+          await stagedResources(host.client, host.protocolId, TEST_EDIT_ID),
+        ).toEqual([]),
       );
       expect(staged).not.toHaveBeenCalled();
     },
@@ -936,6 +938,9 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       const host = createResourceHost();
       const staged = await host.client.resources.stage({
         protocolId: host.protocolId,
+        // The edit the preview below is mounted in; a file staged for another
+        // one is not one it may resolve.
+        editId: TEST_EDIT_ID,
         requestId: 'request-throwing',
         request: {
           kind: 'content',
