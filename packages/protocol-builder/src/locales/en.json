@@ -1635,6 +1635,10 @@
     "defaultMessage": "Task introduction",
     "description": "Heading of the section where a researcher writes what a participant reads before this step of the interview begins."
   },
+  "protocolBuilder.multiSelect.duplicateCells": {
+    "defaultMessage": "Two rows have the same {column}. Give each row its own: the participant reads this text, and cannot tell two the same apart.",
+    "description": "Shown above a list of rows in a stage editor when two rows carry identical text in a column the participant reads — the label on a roster card’s detail, the label on a control that reorders a roster. column is that column’s own heading, already in the reader’s language."
+  },
   "protocolBuilder.multiSelect.emptyState": {
     "defaultMessage": "No items available.",
     "description": "Shown in place of the rows when a list has none, and the list’s caller has offered no wording of its own."

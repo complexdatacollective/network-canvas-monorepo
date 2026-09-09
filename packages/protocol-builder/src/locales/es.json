@@ -408,6 +408,7 @@
   "protocolBuilder.introduction.textLabel": "Texto de introducción",
   "protocolBuilder.introduction.textPlaceholder": "Introduce aquí tu introducción...",
   "protocolBuilder.introduction.title": "Introducción a la tarea",
+  "protocolBuilder.multiSelect.duplicateCells": "Dos filas tienen la misma {column}. Da a cada fila la suya: la persona participante lee este texto y no puede distinguir dos iguales.",
   "protocolBuilder.multiSelect.emptyState": "No hay elementos disponibles.",
   "protocolBuilder.multiSelect.incompleteRows": "Cada fila necesita un valor en todas las columnas.",
   "protocolBuilder.multiSelect.removeItem": "Eliminar elemento",

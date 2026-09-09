@@ -473,6 +473,59 @@ describe("what a roster's cards show", () => {
     ).not.toBeChecked();
   });
 
+  /**
+   * Two card details labelled the same are one card detail by the time the
+   * participant sees it.
+   *
+   * The interview builds a card's details as an object keyed by the label the
+   * researcher wrote (`detailsWithVariableUUIDs`), so the second of two
+   * identical labels overwrites the first and the attribute underneath it is
+   * simply not on the card. Nothing downstream says so — the schema has no way
+   * to refuse a repeat — which leaves this the only place it can be caught.
+   */
+  it('refuses to save two card details labelled the same', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        cardOptions: {
+          additionalProperties: [
+            { variable: 'age', label: 'About them' },
+            { variable: 'name', label: 'About them' },
+          ],
+        },
+      }),
+      sections: <CardDisplaySection />,
+    });
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(
+        'Two rows have the same Label. Give each row its own: the participant reads this text, and cannot tell two the same apart.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /** Identical once a reader meets it is identical: the check trims. */
+  it('refuses two card labels that differ only by surrounding space', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        cardOptions: {
+          additionalProperties: [
+            { variable: 'age', label: 'Age' },
+            { variable: 'name', label: 'Age ' },
+          ],
+        },
+      }),
+      sections: <CardDisplaySection />,
+    });
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(/Two rows have the same Label\./),
+    ).toBeInTheDocument();
+  });
+
   it('adds the row with a command addressed to the nested list', async () => {
     const harness = renderStageEditor({
       stage: rosterWith({ dataSource: 'roster_data' }),
@@ -570,6 +623,34 @@ describe('how a roster is ordered', () => {
     expect(
       screen.getByText(
         'This row points at an attribute that is not in the data file. Choose another or delete the row.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * And two sortable attributes labelled the same are two controls the
+   * participant cannot tell apart: the roster renders one button per sortable
+   * attribute, named with the label the researcher wrote, so two of them sort
+   * by different columns under one visible and one accessible name.
+   */
+  it('refuses to save two sortable attributes labelled the same', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        sortOptions: {
+          sortableProperties: [
+            { variable: 'age', label: 'About them' },
+            { variable: 'name', label: 'About them' },
+          ],
+        },
+      }),
+      sections: <SortOptionsSection />,
+    });
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(
+        'Two rows have the same Label. Give each row its own: the participant reads this text, and cannot tell two the same apart.',
       ),
     ).toBeInTheDocument();
   });

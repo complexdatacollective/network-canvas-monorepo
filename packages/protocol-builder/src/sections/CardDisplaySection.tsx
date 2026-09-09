@@ -131,6 +131,8 @@ const cardPropertyColumns = (intl: IntlShape): PropertyField[] => [
     control: 'input',
     label: intl.formatMessage(messages.labelColumn),
     placeholder: intl.formatMessage(messages.labelPlaceholder),
+    // The participant reads this, and nothing downstream refuses a repeat.
+    unique: true,
   },
 ];
 

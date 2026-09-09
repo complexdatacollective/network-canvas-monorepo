@@ -36,6 +36,13 @@ const messages = defineMessages({
     description:
       'Shown above a list of rows in a stage editor when the researcher tries to save with a row that has an empty cell in it. Each row here is a set of dropdowns filled in together — a sort rule, a display property.',
   },
+  duplicateCells: {
+    id: 'protocolBuilder.multiSelect.duplicateCells',
+    defaultMessage:
+      'Two rows have the same {column}. Give each row its own: the participant reads this text, and cannot tell two the same apart.',
+    description:
+      'Shown above a list of rows in a stage editor when two rows carry identical text in a column the participant reads — the label on a roster card’s detail, the label on a control that reorders a roster. column is that column’s own heading, already in the reader’s language.',
+  },
   removeItem: {
     id: 'protocolBuilder.multiSelect.removeItem',
     defaultMessage: 'Remove item',
@@ -89,6 +96,23 @@ export type PropertyField = {
    */
   label: string;
   placeholder?: string;
+  /**
+   * No two rows may hold the same value in this column.
+   *
+   * For a column whose values the PARTICIPANT reads rather than the protocol:
+   * a roster card's detail labels, the labels on the controls that reorder a
+   * roster. Nothing downstream refuses a repeat — the schema has no way to say
+   * it — so a duplicate is a silent loss. The roster runtime keys a card's
+   * details by their label, so the later of two identical ones overwrites the
+   * earlier and the attribute simply is not on the card; two sort controls
+   * named the same are two buttons with one accessible name, sorting by
+   * different things.
+   *
+   * The values themselves are already distinct wherever the column is a picker
+   * — an option already chosen is offered disabled — so this is about the
+   * columns the researcher TYPES.
+   */
+  unique?: boolean;
 };
 
 export type ItemValue = Record<string, unknown>;
@@ -169,6 +193,17 @@ const completeRows =
     ) {
       return createMessageError(messages.incompleteRows);
     }
+    // Between the two, because a row that is both blank and a repeat is asked
+    // for the missing value first, and a repeat is about text the researcher
+    // has written rather than about a reference that went stale under them.
+    const repeated = properties.find(
+      ({ fieldName, unique }) => unique === true && hasRepeat(rows, fieldName),
+    );
+    if (repeated !== undefined) {
+      return createMessageError(messages.duplicateCells, {
+        column: repeated.label,
+      });
+    }
     return dangling.find(({ fieldName, values }) =>
       rows.some((row) => {
         const cell = row[fieldName];
@@ -176,6 +211,26 @@ const completeRows =
       }),
     )?.message;
   };
+
+/**
+ * Whether two rows carry the same text in one column.
+ *
+ * Compared trimmed, the way `isCellEmpty` judges a cell and the way a reader
+ * meets it: a trailing space makes two labels different keys to the interview
+ * and identical on a card. Non-strings are left alone — a picker's value is
+ * kept distinct by its own option list.
+ */
+const hasRepeat = (rows: ItemValue[], fieldName: string): boolean => {
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const cell = row[fieldName];
+    if (typeof cell !== 'string') continue;
+    const text = cell.trim();
+    if (seen.has(text)) return true;
+    seen.add(text);
+  }
+  return false;
+};
 
 /**
  * Every array-level rule a MultiSelect owner needs, as one object to SPREAD
@@ -306,6 +361,10 @@ function MultiSelectRow({
               fieldName: propertyFieldName,
               control = 'select',
               label,
+              // Taken out rather than spread: it is an array-level rule about
+              // the column (`makeMultiSelectValidation`), not a prop of the
+              // control, and React writes an unknown one straight to the DOM.
+              unique: _unique,
               ...rest
             },
             propertyIndex,
