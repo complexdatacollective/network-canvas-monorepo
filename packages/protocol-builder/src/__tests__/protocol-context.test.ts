@@ -191,6 +191,61 @@ describe('protocolContextFromSections', () => {
     });
   });
 
+  /**
+   * The stage schema states rules about a stage on its own, not only about a
+   * whole protocol — an external-data panel filtered on a connection is one.
+   * A stage refused by one of them is reported against its own section, with
+   * the schema's own wording and its stage-relative path, and left out of the
+   * read model the way any unreadable section is. The stage order is NOT also
+   * accused of naming a stage that does not exist: the protocol has it, and
+   * the one thing wrong with it has already been said.
+   */
+  it('reports a stage the stage schema refuses against that stage, not the order', () => {
+    const sections = protocolSections();
+    const stageSectionId = sectionId({ kind: 'stage', stageId: FIRST_STAGE });
+    sections[stageSectionId] = {
+      id: FIRST_STAGE,
+      type: 'NameGenerator',
+      label: 'First',
+      subject: { entity: 'node', type: 'person' },
+      form: { title: 'Add', fields: [{ variable: 'name', prompt: 'Name' }] },
+      prompts: [{ id: 'p1', text: 'Who?' }],
+      panels: [
+        {
+          id: 'panel-1',
+          title: 'From a file',
+          dataSource: 'roster-asset',
+          filter: {
+            rules: [
+              {
+                id: 'r1',
+                type: 'edge',
+                options: { type: 'knows', operator: 'EXISTS' },
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const context = protocolContextFromSections(sections);
+
+    expect(
+      context.issues.map((issue) => ({
+        ...issue,
+        message: readMessage(issue.message),
+      })),
+    ).toEqual([
+      {
+        sectionId: stageSectionId,
+        path: ['panels', 0, 'filter', 'rules', 0, 'type'],
+        message:
+          'External-data panel filters cannot use edge rules; rules must target node attributes.',
+      },
+    ]);
+    expect(context.orderedStages.map(({ id }) => id)).toEqual([SECOND_STAGE]);
+  });
+
   it('reports stage-order inconsistencies instead of throwing', () => {
     const sections = protocolSections();
     sections[sectionId({ kind: 'stageOrder' })] = {

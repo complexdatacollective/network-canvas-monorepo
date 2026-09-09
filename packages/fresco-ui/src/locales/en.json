@@ -91,6 +91,18 @@
     "defaultMessage": "Added item at position {position, number} of {count, number}.",
     "description": "Screen-reader announcement after a new list item is added."
   },
+  "frescoUi.arrayField.confirmDeleteAction": {
+    "defaultMessage": "Delete {itemLabel}",
+    "description": "Confirm button of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
+  },
+  "frescoUi.arrayField.confirmDeleteDescription": {
+    "defaultMessage": "This {itemLabel} will be removed from the list.",
+    "description": "Body of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
+  },
+  "frescoUi.arrayField.confirmDeleteTitle": {
+    "defaultMessage": "Delete this {itemLabel}?",
+    "description": "Title of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
+  },
   "frescoUi.arrayField.emptyState": {
     "defaultMessage": "No items added yet. Click \"Add Item\" to get started.",
     "description": "Default empty state of the list field; mention the add button by its default label."
@@ -166,6 +178,10 @@
   "frescoUi.collectionSortSelect.toggleDirection": {
     "defaultMessage": "{direction, select, asc {Sort ascending, click to toggle} other {Sort descending, click to toggle}}",
     "description": "Accessible name of the sort-direction toggle button; announces the current direction."
+  },
+  "frescoUi.colorPicker.emptyPalette": {
+    "defaultMessage": "No colors are available to choose from.",
+    "description": "Shown in place of the swatches when the palette handed to the color picker is empty."
   },
   "frescoUi.columnHeader.applyFilter": {
     "defaultMessage": "Apply",

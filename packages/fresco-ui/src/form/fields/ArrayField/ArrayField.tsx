@@ -22,8 +22,11 @@ import {
 } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import {
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 
 import { MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
@@ -99,7 +102,52 @@ const messages = defineMessages({
     description:
       'Default empty state of the list field; mention the add button by its default label.',
   },
+  confirmDeleteTitle: {
+    id: 'frescoUi.arrayField.confirmDeleteTitle',
+    defaultMessage: 'Delete this {itemLabel}?',
+    description:
+      'Title of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+  confirmDeleteDescription: {
+    id: 'frescoUi.arrayField.confirmDeleteDescription',
+    defaultMessage: 'This {itemLabel} will be removed from the list.',
+    description:
+      'Body of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+  confirmDeleteAction: {
+    id: 'frescoUi.arrayField.confirmDeleteAction',
+    defaultMessage: 'Delete {itemLabel}',
+    description:
+      'Confirm button of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
 });
+
+/**
+ * One sentence of the delete confirmation, formatted where it is rendered
+ * rather than where the dialog was raised.
+ *
+ * A dialog outlives the click that opened it, and `DialogProvider` formats its
+ * own copy on every render, so copy frozen into strings at click time would
+ * leave the title, body and action in the language the reader has just left
+ * while the rest of the dialog follows the new one.
+ */
+function DeleteConfirmationMessage({
+  message,
+  itemLabel,
+}: {
+  message: MessageDescriptor;
+  itemLabel: MessageDescriptor;
+}) {
+  const intl = useAppIntl();
+
+  return (
+    <>
+      {intl.formatMessage(message, {
+        itemLabel: intl.formatMessage(itemLabel),
+      })}
+    </>
+  );
+}
 
 // Stable empty array to prevent infinite re-renders when value is undefined
 const EMPTY_ARRAY: never[] = [];
@@ -319,8 +367,24 @@ type ArrayFieldCustomProps<T extends Record<string, unknown>> = {
   /**
    * Function that returns a new item template when adding a new item.
    * Note: You don't need to include an 'id' property - ArrayField handles ID generation internally.
+   *
+   * Optional: a list whose rows are filled in from nothing — every field of a
+   * new row answered in the editor, no seeded defaults — adds an empty item,
+   * which is what `DialogEditing` and every row dialog written after it does
+   * with the template it has to pass today.
    */
-  itemTemplate: () => Partial<T>;
+  itemTemplate?: () => Partial<T>;
+
+  /**
+   * This list's own noun for one of its rows ("prompt", "option"), as a
+   * DESCRIPTOR rather than a string, so the word a researcher reads is one
+   * extraction sees and a translator can answer for.
+   *
+   * Given, the delete confirmation names what is being deleted instead of
+   * asking the generic "Are you sure?"; absent, it keeps that generic copy,
+   * which is all a list with no word for its rows can honestly say.
+   */
+  itemLabel?: MessageDescriptor;
   addButtonLabel?: string;
   emptyStateMessage?: string;
   confirmDelete?: boolean;
@@ -639,7 +703,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
   getId,
   itemComponent: ItemComponent,
   editorComponent: EditorComponent,
-  itemTemplate,
+  // A row whose every field is answered in the editor starts from nothing.
+  itemTemplate = () => ({}),
+  itemLabel,
   addButtonLabel,
   emptyStateMessage,
   confirmDelete = true,
@@ -931,8 +997,32 @@ export default function ArrayField<T extends Record<string, unknown>>({
       };
 
       if (confirmDelete) {
+        // A named list says what is going; an unnamed one keeps `confirm`'s
+        // own "Are you sure? This action cannot be undone.", which is all it
+        // can honestly say. Either way the copy goes to the dialog as nodes,
+        // so it is formatted in whatever language is active while the dialog
+        // is up rather than the one that was active when Delete was clicked.
         await confirm({
-          confirmLabel: intl.formatMessage(commonMessages.delete),
+          title: itemLabel ? (
+            <DeleteConfirmationMessage
+              message={messages.confirmDeleteTitle}
+              itemLabel={itemLabel}
+            />
+          ) : undefined,
+          description: itemLabel ? (
+            <DeleteConfirmationMessage
+              message={messages.confirmDeleteDescription}
+              itemLabel={itemLabel}
+            />
+          ) : undefined,
+          confirmLabel: itemLabel ? (
+            <DeleteConfirmationMessage
+              message={messages.confirmDeleteAction}
+              itemLabel={itemLabel}
+            />
+          ) : (
+            <AppMessage message={commonMessages.delete} />
+          ),
           onConfirm: removeAndAnnounce,
           // On confirm the row — and the Delete control that opened this — is
           // gone, so focus has nowhere to return to. The add button is the
@@ -952,6 +1042,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
       intl,
       isDraft,
       isInteractionDisabled,
+      itemLabel,
       items,
       removeItem,
     ],
