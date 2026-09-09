@@ -1741,3 +1741,46 @@ describe('a codebook editor open in a prompt a collaborator removes', () => {
     ).toHaveTextContent('What kind of contact is this?');
   });
 });
+
+/**
+ * A prompt saved over an attribute that is no longer one the picker offers.
+ *
+ * The picker keeps a stored pick on offer whatever becomes of it — blanking it
+ * would hide the very reference the researcher has to repair, and write the
+ * blank back over it — so the picker can only SAY that it is not available.
+ * Nothing else refused it: the dialog validated that the field held something,
+ * the pick gate asked about writer conflicts and interface ownership, and the
+ * row was committed carrying a reference the schema rejects. The refusal then
+ * arrived at the whole-stage save, in the schema's words, about a codebook the
+ * researcher was no longer looking at.
+ *
+ * Refused in the dialog instead, in the picker's own sentence, where the
+ * control that has to be repaired is on screen.
+ */
+describe('a prompt whose attribute is no longer available', () => {
+  it('refuses the save, and says so under the picker', async () => {
+    const harness = renderStageEditor(openEditor());
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('combobox', { name: 'Attribute' });
+
+    harness.receiveCodebookUpdate({
+      node: { person: { ...personDocument(harness), variables: {} } },
+    });
+    expect(
+      await screen.findAllByText(
+        'This attribute is not available here. Choose another one.',
+      ),
+    ).not.toHaveLength(0);
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    // The dialog is still open on the pick that has to be repaired, rather
+    // than closed over a stage the save will refuse later.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'Attribute' }),
+    ).toBeInTheDocument();
+  });
+});

@@ -5,7 +5,6 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
-import type { CrossClassPick } from '../../codebook/variableValidation.ts';
 import { OrdinalColorControl } from '../../fields/OrdinalColorField.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import PromptsSection from '../PromptsSection.tsx';
@@ -13,7 +12,11 @@ import type { RowEditorProps } from '../rowRenderers.tsx';
 import { useStageSubject } from '../useStageSubject.ts';
 import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import PromptAttributeField from './PromptAttributeField.tsx';
-import { usePromptPickGate, useSortVariablePool } from './promptCodebook.ts';
+import {
+  type PromptPick,
+  usePromptPickGate,
+  useSortVariablePool,
+} from './promptCodebook.ts';
 import { PromptTextField, PromptTextPreview } from './promptText.tsx';
 import SortOrderRows from './SortOrderRows.tsx';
 
@@ -24,8 +27,8 @@ const BIN_TYPES: readonly VariableType[] = Object.freeze(['ordinal']);
  * The bins are filled by dragging, which writes the attribute without asking
  * the participant anything a form could validate.
  */
-const PICKS: readonly CrossClassPick[] = Object.freeze([
-  { path: 'variable', writerClass: 'unvalidated' },
+const PICKS: readonly PromptPick[] = Object.freeze([
+  { path: 'variable', writerClass: 'unvalidated', types: BIN_TYPES },
 ]);
 
 /** What this interface can show at once before the bins stop being readable. */

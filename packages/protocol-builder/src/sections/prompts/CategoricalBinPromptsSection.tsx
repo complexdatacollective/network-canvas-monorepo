@@ -5,7 +5,6 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
-import type { CrossClassPick } from '../../codebook/variableValidation.ts';
 import RichTextField from '../../fields/RichTextField.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import PromptsSection from '../PromptsSection.tsx';
@@ -13,7 +12,11 @@ import type { RowEditorProps } from '../rowRenderers.tsx';
 import { useStageSubject } from '../useStageSubject.ts';
 import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import PromptAttributeField from './PromptAttributeField.tsx';
-import { usePromptPickGate, useSortVariablePool } from './promptCodebook.ts';
+import {
+  type PromptPick,
+  usePromptPickGate,
+  useSortVariablePool,
+} from './promptCodebook.ts';
 import { PromptTextField, PromptTextPreview } from './promptText.tsx';
 import SortOrderRows from './SortOrderRows.tsx';
 
@@ -33,9 +36,9 @@ const FOLLOW_UP_TYPES: readonly VariableType[] = Object.freeze(['text']);
  * an input that honours the attribute's own codebook validation, so it is the
  * opposite class — and the two therefore exclude different attributes.
  */
-const PICKS: readonly CrossClassPick[] = Object.freeze([
-  { path: 'variable', writerClass: 'unvalidated' },
-  { path: 'otherVariable', writerClass: 'validated' },
+const PICKS: readonly PromptPick[] = Object.freeze([
+  { path: 'variable', writerClass: 'unvalidated', types: BIN_TYPES },
+  { path: 'otherVariable', writerClass: 'validated', types: FOLLOW_UP_TYPES },
 ]);
 
 /** What this interface can show at once before the bins stop being readable. */

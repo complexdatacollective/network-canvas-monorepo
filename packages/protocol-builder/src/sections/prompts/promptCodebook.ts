@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from 'react';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import type {
   Codebook,
   VariableType,
@@ -23,7 +24,10 @@ import {
   type CrossClassPick,
   crossClassPickErrors,
 } from '../../codebook/variableValidation.ts';
-import type { VariablePickerOption } from '../../fields/VariablePicker.tsx';
+import {
+  attributeNotAvailableRefusal,
+  type VariablePickerOption,
+} from '../../fields/VariablePicker.tsx';
 import type { DialogArrayEditorValidate } from '../../form/arrayFields/DialogArrayField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
@@ -210,9 +214,21 @@ export function useLockedOptions(
   }, [protocolContext, subject, variableId]);
 }
 
+/**
+ * One attribute picker a prompt row owns, as the save-time gate needs it.
+ *
+ * `types` is the SAME constant the picker itself is given, because the two are
+ * one rule read at two moments: the pool offers only these types, and the gate
+ * refuses a stored pick that is no longer one of them. Passing it twice from
+ * the section is what keeps them the same list — a gate that guessed the types
+ * from the value would refuse whatever the picker happened to offer.
+ */
+export type PromptPick = CrossClassPick &
+  Readonly<{ types: readonly VariableType[] }>;
+
 export type PromptPickGateInput = Readonly<{
   /** Every attribute picker this row editor owns, with its own writer class. */
-  picks: readonly CrossClassPick[];
+  picks: readonly PromptPick[];
   /**
    * The codebook subject the row's picks belong to, derived from the row: a
    * Tie-Strength Census prompt chooses its edge type inside itself, so this
@@ -224,10 +240,20 @@ export type PromptPickGateInput = Readonly<{
 /**
  * The save-time refusals for one prompt's attribute picks.
  *
- * Two rules, both of which the pickers above already enforce by omission — so
+ * Three rules, all of which the pickers above already enforce by omission — so
  * what reaches here is a stale draft or an imported protocol, which is exactly
  * what has to be explained rather than quietly saved:
  *
+ * - the pick naming an attribute the picker could still offer: it has to be in
+ *   the subject's codebook and of a type this prompt can use. The picker keeps
+ *   a stored pick on offer whatever becomes of it, so that reopening a prompt
+ *   never loses the reference the researcher has to repair — which means the
+ *   ONLY thing that can refuse a deleted or retyped attribute is a save. Asked
+ *   first, because the two rules below are about a claim on an attribute and
+ *   there is no attribute here to claim. No escape for a pick this edit did
+ *   not change: the reference is unusable however it got there, and letting it
+ *   through moves the refusal to a whole-stage save, phrased by the schema
+ *   about a codebook the researcher is no longer looking at;
  * - the cross-class exclusivity rule, which escapes a pick this edit did not
  *   change (`context.initialValues` is the row as the dialog opened on it);
  * - the interface-owned structural slot rule, which has NO such escape:
@@ -253,16 +279,35 @@ export function usePromptPickGate({
     if (subject === undefined) return undefined;
 
     const protocolContext = current.controller.snapshot.protocolContext;
-    const errors: Record<string, string> = {
-      ...crossClassPickErrors({
+    const available = variablesFor(protocolContext.codebook, subject);
+    const errors: Record<string, string> = {};
+    for (const { path, types } of current.picks) {
+      const variableId = stringAtPath(values, path);
+      // An empty pick is the required rule's to refuse, and says nothing about
+      // an attribute at all.
+      if (variableId === '') continue;
+      const definition = available[variableId];
+      if (definition === undefined || !types.includes(definition.type)) {
+        errors[path] = createMessageError(attributeNotAvailableRefusal);
+      }
+    }
+
+    // Reported only where the pick names an attribute at all: a path already
+    // refused above is refused for the reason asked first, and a second
+    // sentence written over it would say the attribute conflicts with a use
+    // elsewhere when it is not there to conflict with anything.
+    const crossClass =
+      crossClassPickErrors({
         values,
         initialValues: context?.initialValues,
         picks: current.picks,
         subject,
         roleMap: buildVariableRoleMap(protocolContext),
-        allVariables: variablesFor(protocolContext.codebook, subject),
-      }),
-    };
+        allVariables: available,
+      }) ?? {};
+    for (const [path, message] of Object.entries(crossClass)) {
+      errors[path] ??= message;
+    }
 
     const slotMap = buildExclusiveVariableSlotMap(protocolContext);
     for (const { path } of current.picks) {

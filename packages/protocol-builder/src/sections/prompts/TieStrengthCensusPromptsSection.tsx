@@ -8,7 +8,6 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
-import type { CrossClassPick } from '../../codebook/variableValidation.ts';
 import RichTextField from '../../fields/RichTextField.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import PromptsSection from '../PromptsSection.tsx';
@@ -16,7 +15,11 @@ import type { RowEditorProps } from '../rowRenderers.tsx';
 import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import CreateEdgeField from './CreateEdgeField.tsx';
 import PromptAttributeField from './PromptAttributeField.tsx';
-import { edgeSubjectOf, usePromptPickGate } from './promptCodebook.ts';
+import {
+  edgeSubjectOf,
+  type PromptPick,
+  usePromptPickGate,
+} from './promptCodebook.ts';
 import { PromptTextField, PromptTextPreview } from './promptText.tsx';
 
 /** The strength is a point on a scale, so only an ordinal attribute holds it. */
@@ -26,8 +29,8 @@ const STRENGTH_TYPES: readonly VariableType[] = Object.freeze(['ordinal']);
  * The participant answers by tapping one of the scale's own values, which
  * writes the attribute without asking anything a form could validate.
  */
-const PICKS: readonly CrossClassPick[] = Object.freeze([
-  { path: 'edgeVariable', writerClass: 'unvalidated' },
+const PICKS: readonly PromptPick[] = Object.freeze([
+  { path: 'edgeVariable', writerClass: 'unvalidated', types: STRENGTH_TYPES },
 ]);
 
 /**
@@ -181,9 +184,10 @@ function TieStrengthGuidance() {
  * can say of the stale one is that it is not available here — it is handed a
  * list and a stored choice, so it cannot say the attribute is sitting on the
  * connection type the researcher just moved away from, which is the one thing
- * that would explain this. The prompt is then accepted by its own dialog and
- * refused by the stage save, in the schema's words about a codebook the
- * researcher is not looking at.
+ * that would explain this. The save-time gate refuses it in those same words
+ * (`usePromptPickGate`), which stops the prompt being committed but explains
+ * it no better: the researcher is left with a refusal about a pick they can
+ * see and no account of where it came from.
  *
  * The same rule the subject section applies one level up, where changing what
  * a stage is about throws away everything that described the old subject

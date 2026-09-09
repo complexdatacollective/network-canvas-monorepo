@@ -108,6 +108,16 @@ const messages = defineMessages({
 });
 
 /**
+ * The sentence for a stored choice this control was not given to offer.
+ *
+ * Exported so a SAVE can refuse the same pick in the same words: the note
+ * under the picker and the refusal that keeps the dialog open are one rule
+ * seen twice, and a researcher who meets both must not be told two different
+ * things about one attribute. `usePromptPickGate` is the save-time half.
+ */
+export const attributeNotAvailableRefusal = messages.missingAttribute;
+
+/**
  * Chooses one codebook attribute from a supplied list.
  *
  * It takes its options rather than reading a codebook, because what a rule may

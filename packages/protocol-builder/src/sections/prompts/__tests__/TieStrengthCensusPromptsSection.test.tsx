@@ -90,10 +90,11 @@ describe('the questions a tie-strength census asks about a pair', () => {
    * Left in place it is unsaveable and unexplained: the picker kept the stale
    * pick on offer as one that is "not available here" — all it can say, and it
    * does not say where the attribute went, which is nowhere: it belongs to the
-   * other connection type — the row dialog accepted it, and the refusal only
-   * arrived at the stage save, in the schema's words about a codebook the
-   * researcher was not looking at. Cleared, the prompt says what it needs, in
-   * the dialog the researcher is still in.
+   * other connection type. The save-time gate refuses that pick in the same
+   * words, so the prompt cannot be committed carrying it, but neither sentence
+   * accounts for the connection type the researcher just moved away from.
+   * Cleared, the prompt says what it needs, in the dialog the researcher is
+   * still in.
    */
   it('clears the scale when the connection type changes under it', async () => {
     const harness = renderStageEditor(openEditor());
