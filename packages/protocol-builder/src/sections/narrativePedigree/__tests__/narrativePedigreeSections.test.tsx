@@ -324,9 +324,12 @@ describe('a narrative pedigree the host is creating', () => {
   it('offers no pedigree the participant has not reached yet', () => {
     renderStageEditor(createAt(0));
 
+    // The control stays on screen with nothing in it, beside the alert saying
+    // why: it is what the outline reads this section's state from, and what
+    // the researcher comes back to once a pedigree runs before this stage.
     expect(
-      screen.queryByRole('combobox', { name: 'Source stage' }),
-    ).not.toBeInTheDocument();
+      screen.getByRole('combobox', { name: 'Source stage' }),
+    ).toBeDisabled();
     expect(screen.getByText('No pedigree to read')).toBeInTheDocument();
   });
 
@@ -334,6 +337,25 @@ describe('a narrative pedigree the host is creating', () => {
     const harness = renderStageEditor(createAt(fixtureStageIds().length));
 
     expect(await offeredSources(harness)).toEqual(['Family Pedigree']);
+  });
+
+  /**
+   * The empty state is not a finished section. `ProtocolField` is also what
+   * registers a field with the outline, so a section that renders the alert
+   * INSTEAD of the control has registered nothing — and a section with no
+   * fields and no issues reads as "Finished", which is the one thing this
+   * stage is not: it cannot be saved until a pedigree runs before it.
+   */
+  it('reports the source it still needs as unfinished', async () => {
+    const harness = renderStageEditor(createAt(0));
+
+    await waitFor(() =>
+      expect(
+        harness.outline().find((section) => section.title === 'Pedigree source')
+          ?.state,
+      ).toBe('Not finished'),
+    );
+    expect(await harness.submit()).toBeNull();
   });
 
   /**
@@ -345,8 +367,9 @@ describe('a narrative pedigree the host is creating', () => {
     renderStageEditor(createAt(fixtureStageIds().indexOf('family-pedigree-1')));
 
     expect(
-      screen.queryByRole('combobox', { name: 'Source stage' }),
-    ).not.toBeInTheDocument();
+      screen.getByRole('combobox', { name: 'Source stage' }),
+    ).toBeDisabled();
+    expect(screen.getByText('No pedigree to read')).toBeInTheDocument();
   });
 });
 
