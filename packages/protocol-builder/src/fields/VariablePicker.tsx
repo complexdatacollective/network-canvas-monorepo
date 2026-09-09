@@ -47,19 +47,28 @@ const messages = defineMessages({
       'Shown in place of the select when nothing can be picked — the caller offered no attributes at all. An attribute is a variable the protocol’s codebook defines. Callers that can say something more specific pass their own sentence instead.',
   },
   /**
-   * Names an attribute the researcher has since deleted.
+   * Names a stored choice that is not among the attributes this picker was
+   * given.
    *
-   * A stored id that the codebook no longer describes is kept and shown rather
-   * than quietly dropped: blanking the control would hide the very reference
-   * the researcher has to resolve, and would then write the blank back over
-   * it.
+   * A stored id the list does not describe is kept and shown rather than
+   * quietly dropped: blanking the control would hide the very reference the
+   * researcher has to resolve, and would then write the blank back over it.
+   *
+   * It says only that, because that is all this control knows. An attribute
+   * the researcher has deleted is one case; another is an attribute the CALLER
+   * has ruled out and left out of the list — a pedigree slot whose interface
+   * owns the exact values its attribute must hold refuses one whose values a
+   * collaborator has since edited, and that attribute is sitting in the
+   * codebook exactly where the researcher left it. Told it was "no longer in
+   * the codebook", they would go looking for something that never went
+   * anywhere. A caller that KNOWS which it is keeps the option and marks it
+   * `usable: false`, and its own sentence is shown instead.
    */
   missingOptionLabel: {
     id: 'protocolBuilder.variablePicker.missingOptionLabel',
-    defaultMessage:
-      '{attributeId} — this attribute is no longer in the codebook',
+    defaultMessage: '{attributeId} — this attribute is not available here',
     description:
-      'Name of the one option standing for an attribute the protocol’s codebook no longer defines. attributeId is the raw stored identifier — there is no name left to show, because the definition it would have come from has been deleted.',
+      'Name of the one option standing for an attribute that is not among the ones this control was given to offer. attributeId is the raw stored identifier — there is no name to show, because no definition of it reached this control.',
   },
   /**
    * Names an attribute that is still in the codebook and still cannot carry a
@@ -79,10 +88,9 @@ const messages = defineMessages({
   },
   missingAttribute: {
     id: 'protocolBuilder.variablePicker.missingAttribute',
-    defaultMessage:
-      'This attribute is no longer in the codebook. Choose another one.',
+    defaultMessage: 'This attribute is not available here. Choose another one.',
     description:
-      'Shown under the select when the attribute a researcher’s stored choice names has been deleted from the protocol’s codebook, so the choice has to be made again.',
+      'Shown under the select when the attribute a researcher’s stored choice names is not among the ones this control was given to offer — it may have been deleted from the protocol’s codebook, or ruled out by whatever the choice is being made for. Worded for what the control actually knows: it is handed a list of attributes and a stored choice, and cannot tell those two cases apart.',
   },
   unusableAttribute: {
     id: 'protocolBuilder.variablePicker.unusableAttribute',
