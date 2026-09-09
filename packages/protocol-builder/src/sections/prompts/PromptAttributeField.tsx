@@ -19,7 +19,10 @@ import {
 } from '../../codebook/editing.ts';
 import { useCodebookSectionDocument } from '../../codebook/useCodebookVariableEdits.ts';
 import CodebookVariableValidationEditor from '../../codebook/validation/CodebookVariableValidationEditor.tsx';
-import type { WriterClass } from '../../codebook/variableRoles.ts';
+import {
+  interfaceOwnedOptionsRefusal,
+  type WriterClass,
+} from '../../codebook/variableRoles.ts';
 import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
@@ -243,6 +246,24 @@ export default function PromptAttributeField({
     editing === null
       ? null
       : { ...editing, document: editingDocument ?? editing.openedDocument };
+  /**
+   * Whether the values an open editor is writing have become the protocol's
+   * rather than the researcher's, read LIVE and asked about the attribute the
+   * editor is actually on — its own `variableId` and the subject it opened
+   * against, never the picker's current pick.
+   *
+   * A collaborator binding this attribute to an interface that derives its
+   * values takes the launch control away, and an editor already open would
+   * otherwise stay writable: `writable` asks only about the lease and the
+   * subject, and neither of them moved. The draft is kept and shown, as it is
+   * in all three of `writable`'s cases, with the refusal above it and the save
+   * disabled — the same rule the family follows for a lease taken back or a
+   * stage repointed mid-edit.
+   */
+  const editorLockedOptions = useLockedOptions(
+    editing?.subject,
+    editing?.variableId,
+  );
   const validatingDocument = useCodebookSectionDocument(validating?.subject);
   const openValidating =
     validating === null
@@ -272,6 +293,18 @@ export default function PromptAttributeField({
     subject !== undefined &&
     sectionIdForCodebookSubject(subject) ===
       sectionIdForCodebookSubject(opened);
+  /**
+   * Whether the ATTRIBUTE editor is refused, which is `writable`'s three
+   * questions and the values having become interface-owned under it.
+   *
+   * The fourth is asked here rather than left to `VariableEditor`, which is
+   * handed one document and one attribute and cannot see a binding a stage
+   * elsewhere in the protocol declares.
+   */
+  const editorReadOnly =
+    openEditor === null ||
+    !writable(openEditor.subject, editingDocument) ||
+    editorLockedOptions !== undefined;
   /**
    * Whether a codebook edit is in flight, which is a fact this host has for
    * itself: an editor owns its draft and this owns request execution, so every
@@ -468,6 +501,19 @@ export default function PromptAttributeField({
               : editTrigger.current
           }
         >
+          {/* Said here rather than left to the editor, which is handed one
+              document and one attribute and cannot see the binding that took
+              the values away. The save-time refusal's own words
+              (`interfaceOwnedOptionsRefusal`), so a researcher who meets both
+              meets one sentence — and it says the way out, which is to close
+              the dialog and reopen it on the values the interface now owns. */}
+          {editorLockedOptions !== undefined && (
+            <Alert variant="warning" appearance="soft" density="compact">
+              <AlertDescription>
+                {intl.formatMessage(interfaceOwnedOptionsRefusal)}
+              </AlertDescription>
+            </Alert>
+          )}
           {openEditor.mode === 'create' ? (
             <VariableEditor
               mode="create"
@@ -478,7 +524,7 @@ export default function PromptAttributeField({
               variableId={openEditor.variableId}
               initialDraft={newVariableDraft(createType)}
               allowedVariableTypes={types}
-              readOnly={!writable(openEditor.subject, editingDocument)}
+              readOnly={editorReadOnly}
               description={createLabel}
               title={createLabel}
               createRequestId={() => uuid()}
@@ -500,7 +546,7 @@ export default function PromptAttributeField({
                 createType,
               )}
               allowedVariableTypes={types}
-              readOnly={!writable(openEditor.subject, editingDocument)}
+              readOnly={editorReadOnly}
               description={editingTitle}
               title={editingTitle}
               createRequestId={() => uuid()}

@@ -1,7 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { receiveCollaboratorStageEdit } from '../../../testing/collaboratorStageEdit.ts';
+import {
+  receiveCollaboratorEditToOtherStage,
+  receiveCollaboratorStageEdit,
+} from '../../../testing/collaboratorStageEdit.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -1372,6 +1375,10 @@ describe('a prompt whose attribute’s values an interface owns', () => {
   const LOCKED_VALUES =
     'These values are set by the interface that uses this attribute, so they cannot be changed here.';
 
+  /** The refusal an editor shows once its values are the interface's. */
+  const OWNED_OPTIONS_REFUSAL =
+    'These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.';
+
   const VALUES_CONTROL = "Change this attribute's values";
 
   /** A bin over family members, which is the type the pedigree describes. */
@@ -1398,6 +1405,55 @@ describe('a prompt whose attribute’s values an interface owns', () => {
       )
       .filter((cells) => cells.length > 0);
 
+  /**
+   * A SECOND categorical attribute carrying the canonical set, which nothing
+   * yet owns.
+   *
+   * The canonical options are what makes the binding below one the protocol
+   * accepts: the schema refuses a pedigree slot bound to an attribute whose
+   * options have drifted from the set the genetics engine reads. Derived from
+   * the codebook the host actually holds rather than written out, so the rest
+   * of the type is whatever the shared fixture says it is.
+   */
+  const addUnownedSexAttribute = (harness: StageEditorHarness) => {
+    const familyMember = harness.hostCodebook().node?.family_member;
+    if (familyMember === undefined) {
+      throw new Error('the fixture has no family_member type to add to');
+    }
+    harness.receiveCodebookUpdate({
+      node: {
+        family_member: {
+          ...familyMember,
+          variables: {
+            ...familyMember.variables,
+            pedigreeSex: {
+              name: 'pedigreeSex',
+              type: 'categorical',
+              options: BIOLOGICAL_SEX_OPTIONS.map((option) => ({ ...option })),
+            },
+          },
+        },
+      },
+    });
+  };
+
+  /**
+   * The collaborator's edit: the pedigree takes its biological sex from the
+   * attribute this prompt is pointed at.
+   *
+   * A stage that is not the one on screen, because that is where ownership is
+   * declared — nothing about the bin's own document changes.
+   */
+  const bindTheAttributeToThePedigree = (harness: StageEditorHarness) => {
+    receiveCollaboratorEditToOtherStage(harness, 'family-pedigree-1', [
+      {
+        op: 'set',
+        key: ['nodeConfig', 'biologicalSexVariable'],
+        value: 'pedigreeSex',
+      },
+    ]);
+  };
+
   it('shows the values the prompt will offer, not only the reason they are fixed', async () => {
     const harness = renderStageEditor(
       openBinningFamilyMembers({
@@ -1423,6 +1479,59 @@ describe('a prompt whose attribute’s values an interface owns', () => {
     expect(
       screen.queryByRole('button', { name: VALUES_CONTROL }),
     ).not.toBeInTheDocument();
+  });
+
+  it('refuses an open values editor once the interface owns them, and keeps the draft', async () => {
+    const harness = renderStageEditor(
+      openBinningFamilyMembers({
+        id: 'prompt-a',
+        text: 'Which of these are they?',
+      }),
+    );
+    addUnownedSexAttribute(harness);
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Attribute' }),
+      'pedigreeSex',
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: VALUES_CONTROL }),
+    );
+    const firstLabel = await screen.findByRole('textbox', {
+      name: 'Option 1 label',
+    });
+    await harness.user.clear(firstLabel);
+    await harness.user.type(firstLabel, 'Female at birth');
+    // The save this test is about is one that would otherwise land, rather
+    // than one already refused for a draft the schema will not take.
+    expect(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    ).toBeEnabled();
+
+    bindTheAttributeToThePedigree(harness);
+
+    // The draft is kept and shown — it was made in this session, and throwing
+    // it away would say something the refusal says for itself.
+    expect(screen.getByRole('textbox', { name: 'Option 1 label' })).toHaveValue(
+      'Female at birth',
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Save attribute' }),
+      ).toBeDisabled(),
+    );
+    expect(screen.getByText(OWNED_OPTIONS_REFUSAL)).toBeInTheDocument();
+    // The launch control goes with the ownership, and the values the prompt
+    // now offers are the interface's.
+    expect(
+      screen.queryByRole('button', { name: VALUES_CONTROL }),
+    ).not.toBeInTheDocument();
+    expect(
+      lockedRows(screen.getByRole('table', { name: LOCKED_VALUES })),
+    ).toEqual(BIOLOGICAL_SEX_OPTIONS.map(({ label, value }) => [label, value]));
   });
 });
 

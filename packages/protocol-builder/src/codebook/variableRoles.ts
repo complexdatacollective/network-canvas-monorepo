@@ -45,6 +45,19 @@ const messages = defineMessages({
   },
 });
 
+/**
+ * The refusal about an option set an interface owns, for the surfaces that say
+ * it BEFORE a save rather than as a field's error.
+ *
+ * An editor whose attribute becomes interface-owned while it is open holds a
+ * draft that can no longer be written, and it says so where the draft is —
+ * above the editor, in the same words the save-time refusal uses, so a
+ * researcher who meets both meets one sentence rather than two accounts of one
+ * rule. Exported as the descriptor rather than as encoded words: the reader's
+ * language is chosen where it is rendered.
+ */
+export const interfaceOwnedOptionsRefusal = messages.interfaceOwnedOptions;
+
 export type WriterClass = 'validated' | 'unvalidated';
 
 export type VariableRoleMap = Readonly<
