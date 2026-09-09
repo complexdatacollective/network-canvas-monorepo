@@ -7,7 +7,7 @@ import {
 import { v4 as uuid } from 'uuid';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
+import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { contract } from '../../contract/contract.ts';
 import { InMemoryProtocolStore, type HostPrincipal } from './protocolStore.ts';
@@ -77,6 +77,11 @@ function buildRouter(
   resources: InMemoryResourceStore,
 ) {
   const assets = (): SectionDoc => store.read(ASSETS).document;
+  // Resources are scoped by protocol like everything else here: this host's
+  // staged files and its asset manifest belong to one protocol, so a caller
+  // naming another one is asking a host that does not exist.
+  const elsewhere = (input: Readonly<{ protocolId: string }>): boolean =>
+    input.protocolId !== protocolId;
 
   return {
     acquireLock: os.acquireLock.handler(({ input, context, errors }) => {
@@ -136,10 +141,37 @@ function buildRouter(
       if (!store.has(input.sectionId)) {
         throw errors.SECTION_NOT_FOUND({ data: input });
       }
+      // The manifest is worked out before anything is written and committed
+      // in the section's own revision, so a refused submit leaves the staged
+      // resources staged and the protocol as it was.
+      const promotion = input.promote;
+      const already =
+        promotion === undefined
+          ? undefined
+          : resources.completedPromotion(promotion.promotionId);
+      let entries: Record<string, unknown> | undefined;
+      let promoted = already;
+      if (promotion !== undefined && already === undefined) {
+        const manifest = resources.manifestFor(
+          promotion.resourceIds,
+          promotion.secretHandles,
+        );
+        if (manifest.status === 'failed') {
+          throw errors.PROMOTION_FAILED({
+            data: {
+              sectionId: input.sectionId,
+              failure: manifest.failure,
+            },
+          });
+        }
+        entries = manifest.data.entries;
+        promoted = manifest.data.promoted;
+      }
       const outcome = store.submit(
         input.sectionId,
         input.document,
         context.principal,
+        entries,
       );
       if (outcome.status === 'notLockHolder') {
         throw errors.NOT_LOCK_HOLDER({
@@ -154,7 +186,17 @@ function buildRouter(
           data: { sectionId: input.sectionId, issues: outcome.issues },
         });
       }
-      return { revision: outcome.revision };
+      if (promotion !== undefined && entries !== undefined) {
+        resources.completePromotion(
+          promotion.promotionId,
+          promoted ?? [],
+          promotion.resourceIds,
+        );
+      }
+      return {
+        revision: outcome.revision,
+        ...(promoted === undefined ? {} : { promoted }),
+      };
     }),
 
     create: os.create.handler(({ input, errors }) => {
@@ -162,10 +204,36 @@ function buildRouter(
         throw errors.PROTOCOL_NOT_FOUND({ data: input });
       }
       const outcome = store.create(input.kind, input.document, input.position);
+      if (outcome.status === 'exists') {
+        throw errors.SECTION_EXISTS({
+          data: { sectionId: outcome.sectionId },
+        });
+      }
       if (outcome.status === 'invalidShape') {
         throw errors.INVALID_SHAPE({
           data: { sectionId: outcome.sectionId, issues: outcome.issues },
         });
+      }
+      return outcome;
+    }),
+
+    delete: os.delete.handler(({ input, context, errors }) => {
+      if (input.protocolId !== protocolId) {
+        throw errors.PROTOCOL_NOT_FOUND({ data: input });
+      }
+      if (!store.has(input.sectionId)) {
+        throw errors.SECTION_NOT_FOUND({ data: input });
+      }
+      const ref = parseSectionId(input.sectionId);
+      if (ref.kind !== 'stage') {
+        throw errors.SECTION_NOT_FOUND({ data: input });
+      }
+      const outcome = store.deleteStage(ref.stageId, context.principal);
+      if (outcome.status === 'blocked') {
+        throw errors.SECTIONS_LOCKED({ data: { blocked: outcome.blocked } });
+      }
+      if (outcome.status === 'referenced') {
+        throw new Error('deleting a stage cannot leave references behind');
       }
       return outcome;
     }),
@@ -186,6 +254,11 @@ function buildRouter(
               data: { blocked: outcome.blocked },
             });
           }
+          if (outcome.status === 'referenced') {
+            throw errors.REFERENCES_REMAIN({
+              data: { remaining: outcome.remaining },
+            });
+          }
           return outcome;
         },
       ),
@@ -204,13 +277,19 @@ function buildRouter(
               data: { blocked: outcome.blocked },
             });
           }
+          if (outcome.status === 'referenced') {
+            throw errors.REFERENCES_REMAIN({
+              data: { remaining: outcome.remaining },
+            });
+          }
           return outcome;
         },
       ),
     },
 
     resources: {
-      list: os.resources.list.handler(({ input }) => {
+      list: os.resources.list.handler(({ input, errors }) => {
+        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
         const all = [
           ...resources.committedDescriptors(assets()),
           ...resources.stagedDescriptors(),
@@ -226,39 +305,25 @@ function buildRouter(
         };
       }),
 
-      stage: os.resources.stage.handler(({ input }) =>
-        resources.stage(input.requestId, input.request),
-      ),
-
-      promote: os.resources.promote.handler(({ input }) => {
-        const manifest = resources.manifestFor(
-          input.promotionId,
-          input.resourceIds,
-        );
-        if (manifest.status === 'failed') return manifest;
-        const revision = store.mergeAssets(manifest.data.entries);
-        resources.completePromotion(input.promotionId, input.resourceIds);
-        return {
-          status: 'ok' as const,
-          data: {
-            id: input.promotionId,
-            promoted: manifest.data.promoted,
-            revision,
-          },
-        };
+      stage: os.resources.stage.handler(({ input, errors }) => {
+        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        return resources.stage(input.requestId, input.request);
       }),
 
-      discard: os.resources.discard.handler(({ input }) =>
-        resources.discard(input.resourceId),
-      ),
+      discard: os.resources.discard.handler(({ input, errors }) => {
+        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        return resources.discard(input.resourceId);
+      }),
 
-      inspect: os.resources.inspect.handler(({ input }) =>
-        resources.inspect(assets(), input.resourceId),
-      ),
+      inspect: os.resources.inspect.handler(({ input, errors }) => {
+        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        return resources.inspect(assets(), input.resourceId);
+      }),
 
-      preview: os.resources.preview.handler(({ input }) =>
-        resources.preview(assets(), input.resourceId),
-      ),
+      preview: os.resources.preview.handler(({ input, errors }) => {
+        if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        return resources.preview(assets(), input.resourceId);
+      }),
     },
   };
 }

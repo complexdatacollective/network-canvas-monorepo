@@ -136,12 +136,16 @@ function updateSectionList(
   deps: ChannelDeps,
   sectionId: ProtocolSectionId,
   state: 'present' | 'removed',
+  awaited = false,
 ): void {
-  const key = deps.utils.listSections.queryKey({
+  const options = deps.utils.listSections.queryOptions({
     input: { protocolId: deps.protocolId },
   });
+  const key = options.queryKey;
+  let applied = false;
   deps.queryClient.setQueryData<SectionList>(key, (current) => {
     if (current === undefined) return current;
+    applied = true;
     const has = current.sectionIds.includes(sectionId);
     if (state === 'present') {
       return has ? current : { sectionIds: [...current.sectionIds, sectionId] };
@@ -150,6 +154,16 @@ function updateSectionList(
       ? { sectionIds: current.sectionIds.filter((id) => id !== sectionId) }
       : current;
   });
+  if (applied || awaited) return;
+  // The list is still on its way, and the answer was formed before this
+  // section existed — nothing refetches it afterwards, so the delta is applied
+  // again once that answer is in the cache. A list nobody is asking for needs
+  // no repair: the first component to ask reads the section in.
+  if (deps.queryClient.getQueryState(key)?.fetchStatus !== 'fetching') return;
+  void deps.queryClient
+    .ensureQueryData(options)
+    .then(() => updateSectionList(deps, sectionId, state, true))
+    .catch(() => undefined);
 }
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {

@@ -13,6 +13,7 @@ import type { ProtocolEvent } from '../schemas.ts';
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
+const EGO_FORM = sectionId({ kind: 'stage', stageId: 'ego-form-1' });
 
 const WRITER = {
   sessionId: 'writer-session',
@@ -102,5 +103,66 @@ describe('an event iterator over a socket that drops mid-stream', () => {
     ]);
     expect(revisions).toEqual([...revisions].sort((a, b) => (a < b ? -1 : 1)));
     expect(new Set(revisions).size).toBe(revisions.length);
+  });
+
+  it('leaves the lock a client holds where it is when the socket drops', async () => {
+    served = await createWebSocketHost({
+      sections: sectionsFromProtocol(FIXTURE),
+    });
+    const { host, client, dropConnection } = served;
+
+    const held = await client.acquireLock({
+      protocolId: host.protocolId,
+      sectionId: INFORMATION,
+    });
+    const labels: string[] = [];
+    const controller = new AbortController();
+    const channel = streamProtocolEvents(
+      client,
+      host.protocolId,
+      (event) => {
+        if (event.type === 'revision')
+          labels.push(String(event.document?.label));
+      },
+      controller.signal,
+    );
+
+    // Another section, written to tell the channel apart from a channel that
+    // is merely quiet: the one under test holds the lock this test is about.
+    const writer = host.asCollaborator(WRITER);
+    const other = await writer.acquireLock({
+      protocolId: host.protocolId,
+      sectionId: EGO_FORM,
+    });
+    const write = async (label: string) => {
+      await writer.submit({
+        protocolId: host.protocolId,
+        sectionId: EGO_FORM,
+        document: { ...other.document, label },
+        revision: other.revision,
+      });
+    };
+    await write('before the drop');
+    await until(() => labels.includes('before the drop'), 'the first revision');
+
+    dropConnection();
+    await write('after the drop');
+    await until(
+      () => labels.includes('after the drop'),
+      'the revision after the drop',
+    );
+
+    // The watch has been torn down and resumed on a new socket; the editor
+    // behind it never stopped holding its draft, so its save is still taken.
+    const written = await client.submit({
+      protocolId: host.protocolId,
+      sectionId: INFORMATION,
+      document: { ...held.document, label: 'Saved after the drop' },
+      revision: held.revision,
+    });
+    expect(written.revision.sequence).toBeGreaterThan(held.revision.sequence);
+
+    controller.abort();
+    await channel;
   });
 });

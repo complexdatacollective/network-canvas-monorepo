@@ -2,7 +2,10 @@ import { eventIterator, oc, type RouterContractClient } from '@orpc/contract';
 import { z } from 'zod';
 
 import {
+  existenceErrors,
   lockErrors,
+  lockedSectionErrors,
+  promotionErrors,
   protocolErrors,
   refactorErrors,
   shapeErrors,
@@ -13,24 +16,24 @@ import {
   CreateInputSchema,
   CreateResultSchema,
   DeleteEntityTypeInputSchema,
+  DeleteSectionInputSchema,
   DeleteVariableInputSchema,
   ProtocolEventSchema,
   ProtocolScopedInputSchema,
-  RefactorResultSchema,
   ResourceDiscardInputSchema,
+  ResourceDiscardResultSchema,
   ResourceInspectionSchema,
   ResourceListInputSchema,
   ResourceListSchema,
   ResourcePreviewSchema,
-  ResourcePromoteInputSchema,
-  ResourcePromotionSchema,
   ResourceScopedInputSchema,
-  RevisionSchema,
   SectionAtRevisionSchema,
+  SectionChangeResultSchema,
   SectionListSchema,
   StageResourceInputSchema,
   StagedResourceSchema,
   SubmitInputSchema,
+  SubmitResultSchema,
   WatchProtocolInputSchema,
   resourceResult,
 } from './schemas.ts';
@@ -84,29 +87,50 @@ export const contract = {
     .output(eventIterator(ProtocolEventSchema)),
 
   /**
-   * Writes the whole section as one revision.
+   * Writes the whole section as one revision, with the staged resources it
+   * names promoted into the same one.
    *
-   * Exactly two refusals: the caller does not hold the lock, and the document
-   * is not shaped like this section. A draft that is invalid across sections —
-   * a stage naming a variable a collaborator has just deleted — is written,
-   * because drafts tolerate transient invalidity and validity is enforced at
-   * publication.
+   * Three refusals: the caller does not hold the lock, the document is not
+   * shaped like this section, and the resources it asked to promote cannot be
+   * committed. None of them writes anything — a section and the bytes it
+   * points at are committed together or not at all. A draft that is invalid
+   * across sections — a stage naming a variable a collaborator has just
+   * deleted — is written, because drafts tolerate transient invalidity and
+   * validity is enforced at publication.
    */
   submit: base
     .errors(lockErrors)
     .errors(shapeErrors)
+    .errors(promotionErrors)
     .input(SubmitInputSchema)
-    .output(z.object({ revision: RevisionSchema })),
+    .output(SubmitResultSchema),
 
   /**
    * Creates a section and registers its pointer — a stage's place in the stage
    * order — in the same revision. The host mints the id and serialises the
-   * call, so it needs no lock.
+   * call, so it needs no lock. A singleton the protocol already has —
+   * `codebookEgo` — is refused rather than overwritten.
    */
   create: base
     .errors(shapeErrors)
+    .errors(existenceErrors)
     .input(CreateInputSchema)
     .output(CreateResultSchema),
+
+  /**
+   * Removes a stage and its place in the stage order in one revision.
+   *
+   * Server-mediated like the refactors below and for the same reason: the two
+   * writes cannot be made under one lock, and a stage left out of the order —
+   * or an order naming a stage that is gone — is a protocol that cannot be
+   * assembled. It takes no lock of its own and refuses while any editor holds
+   * either section, including one in this session whose draft would put the
+   * stage back.
+   */
+  delete: base
+    .errors(lockedSectionErrors)
+    .input(DeleteSectionInputSchema)
+    .output(SectionChangeResultSchema),
 
   /**
    * Changes that cannot be contained in one section, so they cannot be made
@@ -114,25 +138,34 @@ export const contract = {
    * holds what. Codebook dialogs issue these; no stage editor does.
    */
   refactor: {
-    /** Removes a codebook variable and strips every reference to it. */
+    /**
+     * Removes a codebook variable and the references to it the schema
+     * declares, or refuses naming the ones it cannot remove: a reference
+     * inside a list — a prompt, a form field, a filter rule — goes with the
+     * entry holding it, and one that is a property of a stage cannot be
+     * removed without inventing what the stage then means.
+     */
     deleteVariable: base
       .errors(refactorErrors)
       .input(DeleteVariableInputSchema)
-      .output(RefactorResultSchema),
-    /** Removes an entity type, its section, and every reference to it. */
+      .output(SectionChangeResultSchema),
+    /** Removes an entity type and its section, on the same terms. */
     deleteEntityType: base
       .errors(refactorErrors)
       .input(DeleteEntityTypeInputSchema)
-      .output(RefactorResultSchema),
+      .output(SectionChangeResultSchema),
   },
 
   /**
    * Protocol resources: the asset manifest's entries and their bytes.
    *
-   * An imported file is staged for the life of the stage edit, promoted with
-   * the stage's submit, and discarded with its cancel. Secret material never
-   * comes back out: staging one yields the asset id a field references and an
-   * opaque handle promotion resolves.
+   * An imported file is staged for the life of the stage edit, promoted by
+   * the stage's `submit`, and discarded with its cancel. There is no promotion
+   * of its own: bytes committed without the section naming them, or a section
+   * naming bytes that were never committed, are the two half-written states a
+   * separate procedure would make reachable. Secret material never comes back
+   * out: staging one yields the asset id a field references and an opaque
+   * handle the submit's promotion resolves.
    */
   resources: {
     list: base
@@ -141,12 +174,9 @@ export const contract = {
     stage: base
       .input(StageResourceInputSchema)
       .output(resourceResult(StagedResourceSchema)),
-    promote: base
-      .input(ResourcePromoteInputSchema)
-      .output(resourceResult(ResourcePromotionSchema)),
     discard: base
       .input(ResourceDiscardInputSchema)
-      .output(resourceResult(z.undefined())),
+      .output(ResourceDiscardResultSchema),
     inspect: base
       .input(ResourceScopedInputSchema)
       .output(resourceResult(ResourceInspectionSchema)),
