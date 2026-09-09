@@ -313,12 +313,17 @@ describe('dispatching to a named editor', () => {
       .mockImplementation(() => undefined);
 
     try {
+      // `Information` will not do here once a family lands: an explicit `{}`
+      // is merged OVER the package's own registry rather than replacing it,
+      // so an interface a landed family already claims stays claimed no
+      // matter what a host passes. `sociogram-1` is still awaiting its
+      // family, so nothing — package or host — has claimed it.
       expect(() =>
-        renderStageEditor({ stageId: 'information-1', registry: {} }),
+        renderStageEditor({ stageId: 'sociogram-1', registry: {} }),
       ).toThrow(UnregisteredStageTypeError);
       expect(() =>
-        renderStageEditor({ stageId: 'information-1', registry: {} }),
-      ).toThrow(/"Information" interface/);
+        renderStageEditor({ stageId: 'sociogram-1', registry: {} }),
+      ).toThrow(/"Sociogram" interface/);
     } finally {
       consoleError.mockRestore();
     }
@@ -330,10 +335,16 @@ describe('dispatching to a named editor', () => {
       .mockImplementation(() => undefined);
 
     try {
-      // `Information` is still awaiting its family, so the package's own
-      // registry cannot render it — and says so rather than rendering a blank
-      // page.
-      expect(() => renderStageEditor({ stageId: 'information-1' })).toThrow(
+      // An interface a landed family claims opens in that family's editor with
+      // no registry passed at all, which is how a host reaches one.
+      const harness = renderStageEditor({ stageId: 'information-1' });
+      expect(harness.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+        'Information',
+      );
+
+      // An interface still awaiting its family says so rather than rendering a
+      // blank page.
+      expect(() => renderStageEditor({ stageId: 'sociogram-1' })).toThrow(
         UnregisteredStageTypeError,
       );
     } finally {
