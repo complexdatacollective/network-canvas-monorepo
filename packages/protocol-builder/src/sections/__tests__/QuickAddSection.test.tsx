@@ -7,6 +7,7 @@ import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import QuickAddSection from '../QuickAddSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
 import { changeSubjectTo } from './changeSubject.ts';
+import { holdTheHost } from './holdTheHost.ts';
 
 const quickAdd = <QuickAddSection />;
 
@@ -14,43 +15,6 @@ const offered = () =>
   within(screen.getByRole('combobox', { name: /Attribute filled in/ }))
     .getAllByRole('option')
     .map((option) => (option as HTMLOptionElement).value);
-
-/**
- * Holds the host's answer to the next compound edits until the returned
- * function is called, so a test can do something else while one is in flight.
- *
- * The real host still decides — this only delays when it is asked, which is
- * the one thing a request that answers within the click cannot be made to do.
- * Answering is what the returned function waits for, so an assertion after it
- * is about a settled editor.
- */
-const holdTheHost = (
-  harness: ReturnType<typeof renderStageEditor>,
-): (() => Promise<void>) => {
-  const { host } = harness;
-  const answer = host.submit.bind(host);
-  let release: () => void = () => undefined;
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  // The host answers synchronously; the session accepts a promise from
-  // `onCompoundEdit` and awaits it, which is what makes holding the answer
-  // possible at all — so the replacement is written to the contract the
-  // session has and cast through it.
-  const deferred = async (...request: Parameters<typeof answer>) => {
-    await held;
-    return answer(...request);
-  };
-  host.submit = deferred as unknown as typeof host.submit;
-
-  return async () => {
-    host.submit = answer;
-    release();
-    await act(async () => {
-      await held;
-    });
-  };
-};
 
 /**
  * A control pressed in the window between the host taking editing away and
