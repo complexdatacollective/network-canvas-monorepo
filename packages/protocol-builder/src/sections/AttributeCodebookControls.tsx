@@ -21,7 +21,7 @@ import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import { sectionIdForCodebookSubject } from '../codebook/editing.ts';
 import {
   useCodebookSectionDocument,
-  useSubjectStillCollected,
+  useWhereTheAnswerLands,
 } from '../codebook/useCodebookVariableEdits.ts';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
 import { optionsShapeFor } from '../codebook/variableOptions.ts';
@@ -307,6 +307,15 @@ export default function AttributeCodebookControls({
      */
     subject: CodebookSubject;
     /**
+     * What the row's attribute picker held when the editor opened, which is
+     * the field a created attribute would be written into.
+     *
+     * Captured with the subject because the pair is one fact — where the
+     * answer was asked from — and read back through `useWhereTheAnswerLands`
+     * when it arrives.
+     */
+    fillsIn: string;
+    /**
      * That subject's document as it stood when the editor opened, for the
      * renders after it has gone. See `editingDocument`, which prefers the
      * live one.
@@ -344,7 +353,9 @@ export default function AttributeCodebookControls({
   const [createdElsewhere, setCreatedElsewhere] = useState<string | undefined>(
     undefined,
   );
-  const subjectStillCollected = useSubjectStillCollected(subject);
+  // The row's own picker is what a create here fills in, so it is the second
+  // half of where the answer lands: see `useWhereTheAnswerLands`.
+  const whereTheAnswerLands = useWhereTheAnswerLands(subject, () => chosen);
   /**
    * The row dialog these controls sit in, remembered rather than walked up to.
    *
@@ -641,6 +652,7 @@ export default function AttributeCodebookControls({
       name: asString(asRecord(picked).name) ?? chosen,
       variableId: surface === 'create' ? uuid() : chosen,
       subject,
+      fillsIn: chosen,
       openedDocument: codebookDocument,
       component: pickedComponent,
     });
@@ -795,19 +807,26 @@ export default function AttributeCodebookControls({
             createRequestId={() => uuid()}
             onSubmitRequest={submitEdit}
             onComplete={(variableId, variableName) => {
-              // Which codebook the attribute was written into was decided when
-              // this editor opened, and the row underneath can be repointed at
-              // another type while the request is with the host. Asked HERE
-              // rather than of `editorReadOnly`, which is a fact about the
-              // render the researcher pressed Create in: this runs afterwards,
-              // out of a closure made before the stage moved.
+              // Which codebook the attribute was written into, and which field
+              // it was going to fill in, were both decided when this editor
+              // opened — and either can move while the request is with the
+              // host. Asked HERE rather than of `editorReadOnly`, which is a
+              // fact about the render the researcher pressed Create in: this
+              // runs afterwards, out of a closure made before the protocol
+              // moved. The one reading of that question is
+              // `useWhereTheAnswerLands`.
               //
               // A record key belongs to exactly one type, so a row that has
               // moved can neither resolve this id nor save it — it would leave
               // the field pointing into a codebook it does not read. The write
               // itself landed and stands; only the assignment does not happen,
               // and the researcher is told where the attribute went.
-              if (subjectStillCollected(openEditor.subject)) {
+              if (
+                whereTheAnswerLands({
+                  subject: openEditor.subject,
+                  fillsIn: openEditor.fillsIn,
+                }) === 'here'
+              ) {
                 // The picker now names something that exists, which is what
                 // takes this row out of inventing anything.
                 setFieldValue(VARIABLE_FIELD, variableId);

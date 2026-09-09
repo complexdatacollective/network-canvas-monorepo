@@ -1,6 +1,7 @@
 import {
   type ComponentType,
   createContext,
+  type RefObject,
   useCallback,
   useContext,
   useEffect,
@@ -26,7 +27,7 @@ import { duplicateFormFieldIndices } from '@codaco/protocol-validation';
 import {
   useCreateCodebookVariable,
   useSetVariableComponent,
-  useSubjectStillCollected,
+  useWhereTheAnswerLands,
 } from '../codebook/useCodebookVariableEdits.ts';
 import {
   buildVariableRoleMap,
@@ -430,6 +431,13 @@ const messages = defineMessages({
     description:
       'Shown in the collapsed row of a form’s list of questions when the attribute it records into has been deleted from the codebook.',
   },
+  controlLandedElsewhere: {
+    id: 'protocolBuilder.formFields.controlLandedElsewhere',
+    defaultMessage:
+      'The input control for “{variableName}” was changed, but this field no longer collects that attribute, so the field was not saved.',
+    description:
+      'Refusal shown above the fields of a form field’s dialog when the researcher’s choice of input control was recorded in the codebook — the protocol’s definition of what an interview records — and, while that was happening, someone else pointed this field at a different attribute. variableName is the attribute’s researcher-facing name and is not translated.',
+  },
   previewCollects: {
     id: 'protocolBuilder.formFields.previewCollects',
     defaultMessage: 'Collects "{name}" as {type}.',
@@ -589,6 +597,41 @@ type FormFieldsScope = Readonly<{
    * Carried so the picker and the save-time gate build the same role map.
    */
   answeredFor: string | undefined;
+  /**
+   * The attribute the row being edited COLLECTS, as the list holds it now.
+   *
+   * Not what the dialog is showing: the row on screen is a draft, and the row
+   * the save commits is that draft re-seated on whatever has arrived for it
+   * (`reseatEditedRow`) — so a field the researcher never touched is the
+   * list's, however long the dialog has been open. That is the attribute every
+   * codebook write this row makes is ABOUT, and the one
+   * `useWhereTheAnswerLands` reads when the write comes back.
+   *
+   * A ref, and one for the whole section rather than one per row, because the
+   * save handler belongs to the LIST — it is the list field's `onBeforeSave`,
+   * made once for every row it will ever open — while the live row is known
+   * only to the editor mounted inside the open dialog. One row's dialog is
+   * open at a time, so one cell is unambiguous; the editor fills it while it
+   * is mounted and empties it as it goes.
+   */
+  rowUnderEdit: RefObject<RowUnderEdit | undefined>;
+}>;
+
+/**
+ * What the row on screen is answering, as its own save reads it back.
+ *
+ * Two questions, both asked of the row the RESEARCHER is looking at rather
+ * than of anything a save closed over: which attribute every codebook write
+ * this row makes is about, and whether this row has an input-control field for
+ * a refusal to sit under. An attribute deleted while a control write was with
+ * the host has no control left to offer, so the field is gone — and a refusal
+ * filed against a field that is not in the document reaches the researcher as
+ * a dialog that will not close, nothing on screen, and
+ * `focusFirstError(): no element found in DOM` in the console.
+ */
+type RowUnderEdit = Readonly<{
+  variable: string;
+  offersAControl: boolean;
 }>;
 
 const FormFieldsScopeContext = createContext<FormFieldsScope | undefined>(
@@ -746,7 +789,10 @@ export default function FormFieldsSection({
   const { identity } = useStageEditorForm();
   const answeredFor =
     draftUnvalidatedVariables === undefined ? undefined : identity.id;
-  const onBeforeSave = useCommitFormField(codebookSubject, intl);
+  // See `FormFieldsScope.rowUnderEdit`: the open row fills this in, and the
+  // list's save handler reads it when a codebook write comes back.
+  const rowUnderEdit = useRef<RowUnderEdit | undefined>(undefined);
+  const onBeforeSave = useCommitFormField(codebookSubject, rowUnderEdit, intl);
   const editorValidate = useFormFieldValidate(
     codebookSubject,
     fieldsPath,
@@ -760,6 +806,7 @@ export default function FormFieldsSection({
       subject: codebookSubject,
       draftUnvalidated,
       answeredFor,
+      rowUnderEdit,
     }),
     [answeredFor, codebookSubject, draftUnvalidated, fieldsPath],
   );
@@ -848,11 +895,20 @@ function normalizeFormField(value: unknown): unknown {
  */
 function useCommitFormField(
   codebookSubject: CodebookSubject | undefined,
+  rowUnderEdit: RefObject<RowUnderEdit | undefined>,
   intl: IntlShape,
 ): (value: unknown) => Promise<unknown> {
+  const { protocolContext } = useStageEditorForm();
   const createVariable = useCreateCodebookVariable(codebookSubject);
   const setComponent = useSetVariableComponent(codebookSubject);
-  const subjectStillCollected = useSubjectStillCollected(codebookSubject);
+  // Both writes below are round trips, and both are ABOUT the attribute the
+  // row's picker names — which is the attribute the row commits, because
+  // `useAttributeThatFollowsTheRow` keeps it so. One reading for both, and the
+  // same one the codebook editors' own create uses.
+  const whereTheAnswerLands = useWhereTheAnswerLands(
+    codebookSubject,
+    () => rowUnderEdit.current?.variable,
+  );
 
   return useCallback(
     async (value: unknown) => {
@@ -893,12 +949,56 @@ function useCommitFormField(
       if (value.variable !== NEW_VARIABLE) {
         const variableId = asString(value.variable) ?? '';
         const outcome = await setComponent(variableId, component);
-        return outcome.status === 'refused'
-          ? {
-              success: false,
-              fieldErrors: { [INPUT_CONTROL]: outcome.message },
-            }
-          : value;
+        if (outcome.status === 'refused') {
+          // Under the control the researcher chose it with, wherever that
+          // control is still on screen. It is not always: an attribute a
+          // collaborator deleted inside this very write has no control left to
+          // offer, so `InputControlField` has gone and the row is standing on
+          // `NoInputControlOffered` instead. Filed there anyway, the refusal
+          // would be a save that will not go through with nothing on screen
+          // saying so, which is what `NO_INPUT_CONTROL` above is written for —
+          // so it goes where the dialog reports everything about a whole draft
+          // instead.
+          return rowUnderEdit.current?.offersAControl === true
+            ? {
+                success: false,
+                fieldErrors: { [INPUT_CONTROL]: outcome.message },
+              }
+            : { success: false, formErrors: [outcome.message] };
+        }
+        // The control belongs to the attribute rather than to the field, so
+        // this write reaches every form that collects it — and the row it was
+        // made from is the only thing that says which attribute the researcher
+        // was answering about. A collaborator can rebind that row inside the
+        // write, and the row this save commits is then a row about something
+        // else: committing it would leave the control recorded against one
+        // attribute and the field asking for another, from a save the
+        // researcher was told succeeded.
+        //
+        // Nothing to answer for where nothing was written: an unchanged
+        // control is not a change anybody has to be told about, and the row
+        // commits whichever attribute arrived for it.
+        if (
+          outcome.status === 'written' &&
+          codebookSubject !== undefined &&
+          whereTheAnswerLands({
+            subject: codebookSubject,
+            fillsIn: variableId,
+          }) !== 'here'
+        ) {
+          return {
+            success: false,
+            formErrors: [
+              createMessageError(messages.controlLandedElsewhere, {
+                variableName: variableDisplayName(
+                  variablesForSubject(protocolContext, codebookSubject),
+                  variableId,
+                ),
+              }),
+            ],
+          };
+        }
+        return value;
       }
 
       const name = asString(value[NEW_VARIABLE_NAME])?.trim() ?? '';
@@ -936,6 +1036,12 @@ function useCommitFormField(
       // the type this form collects about does not have — a stage the schema
       // refuses, built out of a save the researcher was told succeeded.
       //
+      // The same question as the control write above asks, of the same guard:
+      // the row still wants an attribute invented for it — a create is the
+      // researcher's own answer to the picker, so nothing arriving for the row
+      // moves it — and the type it was invented in is still the one this form
+      // collects.
+      //
       // What is refused is the ROW, and what the researcher is told is not that
       // the create failed: it landed, and pressing Add again would ask the
       // codebook for a name it already holds. So the sentence is the one the
@@ -944,7 +1050,10 @@ function useCommitFormField(
       // point the field at something this stage collects, or leave it.
       if (
         codebookSubject === undefined ||
-        !subjectStillCollected(codebookSubject)
+        whereTheAnswerLands({
+          subject: codebookSubject,
+          fillsIn: NEW_VARIABLE,
+        }) !== 'here'
       ) {
         return {
           success: false,
@@ -961,8 +1070,9 @@ function useCommitFormField(
       codebookSubject,
       createVariable,
       intl,
+      protocolContext,
       setComponent,
-      subjectStillCollected,
+      whereTheAnswerLands,
     ],
   );
 }
@@ -1132,7 +1242,7 @@ function hasUnvalidatedUseFor(
  */
 function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
-  const { subject } = useFormFieldsScope();
+  const { subject, rowUnderEdit } = useFormFieldsScope();
   const inventing = useInventingAttribute(item);
   const newType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
   const typeOptions = useMemo(
@@ -1155,11 +1265,33 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   // control invented in the codebook editor is back on screen, and what the
   // control is an answer about has to be remembered across that gap.
   const control = useAttributeControl(item);
+  // Before the control, because the control is an answer ABOUT the attribute:
+  // a row that follows an arrival to another attribute has to be showing that
+  // attribute before anything is derived from it.
+  useAttributeThatFollowsTheRow(
+    asString(item.variable) ?? '',
+    asString(useRowValue('variable')),
+  );
   useControlThatFollowsTheAttribute(
     control.binding,
     control.seeded,
     asString(useRowValue(INPUT_CONTROL)),
   );
+  // What every codebook write this row makes is about. Written on every render
+  // rather than from an effect, the way the shared list keeps its own view of
+  // the row it is editing: a save reads this in the middle of an await, and an
+  // effect that has not run yet would answer with the previous render's row.
+  //
+  // Not cleared when this unmounts. A dialog dismissed while its save is still
+  // with the host leaves that save to commit the row it was made on, and the
+  // last thing this editor showed is what that save is still about — cleared,
+  // it would read as a row that had moved and refuse an edit nothing is wrong
+  // with. Every save starts from an open editor, so there is no reader for
+  // which this is somebody else's row.
+  rowUnderEdit.current = {
+    variable: control.chosen,
+    offersAControl: control.options.length > 0,
+  };
 
   return (
     <>
@@ -1356,6 +1488,63 @@ function InputControlField({
       initialValue={seeded}
     />
   );
+}
+
+/**
+ * Keeps the picker saying what the ROW collects, until the researcher answers
+ * it themselves.
+ *
+ * The dialog holds a draft of one row, and the row it commits is that draft
+ * re-seated on whatever arrived for the row while it was open
+ * (`reseatEditedRow`): a field the researcher never touched is the list's, not
+ * the dialog's. The attribute is the one field of a form-field row where a
+ * dialog that goes on showing the old answer is not merely stale — everything
+ * else in the dialog is an answer ABOUT it. The kind of answer offered, which
+ * input controls exist, which codebook editors are on offer, and above all
+ * WHICH ATTRIBUTE this row's save writes a control onto are all derived from
+ * what the picker says, so a picker left behind by a collaborator's rebind
+ * turns a save into a change to an attribute the researcher never looked at,
+ * recorded against a field that collects a different one.
+ *
+ * `initialValue` cannot follow it, for the reason
+ * `useControlThatFollowsTheAttribute` gives below: a field keeps its value
+ * across a change of initial value by design, and keeps it across an unmount
+ * as well. So the arrival is written through the store, exactly as the
+ * codebook's own answer is.
+ *
+ * Answered ONCE and it is theirs: a researcher who has chosen an attribute —
+ * or asked for one to be invented — has answered the question the row asks,
+ * and their answer wins the re-seat as any contested leaf does. This is the
+ * same rule `reseedStageForm` states for the stage's own controls, said for a
+ * row: a key the arrival moved is written, a key it left alone is the
+ * researcher's. The first render records what it found without writing
+ * anything, because the picker has just registered from the same value.
+ *
+ * A row still being written has no committed attribute at all (`committed` is
+ * empty), and nothing arrives for it: a new row is in no list yet.
+ */
+function useAttributeThatFollowsTheRow(
+  committed: string,
+  live: string | undefined,
+): void {
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const shown = useRef({ committed, answered: false });
+
+  useEffect(() => {
+    const previous = shown.current;
+    // Nothing is registered yet, so there is nothing anyone can have answered
+    // and nothing to write over.
+    if (live === undefined) return;
+    const answered = previous.answered || live !== previous.committed;
+    shown.current = { committed, answered };
+    // An empty arrival is not an answer: the schema refuses a field that
+    // collects nothing, and blanking the picker would take away the very
+    // reference the researcher has to resolve.
+    if (answered || committed === '' || committed === previous.committed) {
+      return;
+    }
+    setFieldValue('variable', committed);
+  }, [committed, live, setFieldValue]);
 }
 
 /**
