@@ -12,9 +12,16 @@ import DialogArrayField, {
 import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
+import { variablesForSubject } from '../../protocol-context.ts';
 import BuilderSection from '../BuilderSection.tsx';
+import { usePedigreeVariableIndexes } from '../pedigree/entityTypeReset.ts';
+import { slotCrossClassIssue } from '../pedigree/slotWiring.ts';
 import { useRowRenderers } from '../rowRenderers.tsx';
-import { DiseaseEditor, DiseasePreview } from './DiseaseRow.tsx';
+import {
+  DiseaseEditor,
+  DiseasePreview,
+  useDiseaseSubject,
+} from './DiseaseRow.tsx';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
 import { sourceStageNodeType } from './sourceStage.ts';
 
@@ -49,14 +56,65 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  *
  * Names are compared by the schema's own key, so a name this editor accepts is
  * one the saved protocol is still valid under on every device it is opened on.
+ *
+ * A third rule is the shared pedigree one, and it is stated twice on purpose:
+ * a disease writes its attribute from the tree the participant draws, without
+ * validation, so it may take neither an attribute another interface slot owns
+ * nor one a form elsewhere collects. The picker never offers such an
+ * attribute; this gate is what catches one that reached the row another way —
+ * an imported protocol, or a draft made before the rule. The row's own
+ * COMMITTED attribute escapes, found BY ROW ID rather than by the row the
+ * dialog opened on, so a conflict this edit did not introduce leaves the
+ * researcher an editor they can close.
  */
 export default function DiseasesSection() {
   const intl = useAppIntl();
-  const { protocolContext } = useStageEditorForm();
+  const { committedFields, protocolContext } = useStageEditorForm();
+  const { roleMap, slotMap } = usePedigreeVariableIndexes();
+  const subject = useDiseaseSubject();
   const sourceStageId = useStageValue('sourceStageId');
   const rows = useStageValue(DISEASES_FIELD);
   const waiting =
     sourceStageNodeType(protocolContext, sourceStageId) === undefined;
+
+  const allVariables = useMemo(
+    () =>
+      subject === null ? {} : variablesForSubject(protocolContext, subject),
+    [protocolContext, subject],
+  );
+
+  /** This row's own saved attribute, found by the row's stable id. */
+  const committedVariableFor = useCallback(
+    (rowId: unknown): string => {
+      const committed: unknown = committedFields[DISEASES_FIELD];
+      if (!Array.isArray(committed) || typeof rowId !== 'string') return '';
+      const row = committed.find(
+        (candidate) => isRecord(candidate) && candidate.id === rowId,
+      );
+      const variable = isRecord(row) ? row.variable : undefined;
+      return typeof variable === 'string' ? variable : '';
+    },
+    [committedFields],
+  );
+
+  const onBeforeSave = useCallback(
+    (value: unknown) => {
+      if (!isRecord(value)) return value;
+      const issue = slotCrossClassIssue({
+        roleMap,
+        slotMap,
+        subject,
+        variableId: value.variable,
+        committedValue: committedVariableFor(value.id),
+        // No `ownSlot`: a disease mapping fills no interface slot of its own.
+        writerClass: 'unvalidated',
+        allVariables,
+      });
+      if (issue === undefined) return value;
+      return { success: false, fieldErrors: { variable: [issue] } };
+    },
+    [allVariables, committedVariableFor, roleMap, slotMap, subject],
+  );
 
   const editorValidate = useCallback<DialogArrayEditorValidate>(
     (values, context) => {
@@ -149,6 +207,7 @@ export default function DiseasesSection() {
         editorFieldsComponent={editorFieldsComponent}
         previewComponent={previewComponent}
         editorValidate={editorValidate}
+        onBeforeSave={onBeforeSave}
         editorDialogSize="editor"
         normalizeItem={withoutAbsentValues}
         sortable

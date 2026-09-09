@@ -12,7 +12,9 @@ import {
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import {
   crossClassPickIssue,
+  draftValidatedElsewhereMessage,
   validatedElsewhereMessage,
+  variableDisplayName,
 } from '../../form/arrayFields/crossClassPick.ts';
 import DialogArrayField from '../../form/arrayFields/DialogArrayField.tsx';
 import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
@@ -28,9 +30,11 @@ import {
   NominationPromptPreview,
 } from './NominationPromptRow.tsx';
 import { pedigreeMessages } from './pedigreeMessages.ts';
+import { draftRowVariables } from './slotWiring.ts';
 
 const PROMPTS_FIELD = 'nominationPrompts';
 const NODE_TYPE_FIELD = 'nodeConfig.type';
+const FORM_FIELD = 'nodeConfig.form';
 
 /**
  * The refusal a switched-on but empty list earns.
@@ -70,11 +74,15 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * attribute, and once here at save time, which is what catches a draft that
  * predates the rule or an imported protocol that never met it:
  *
- * 1. it may not take an attribute a form elsewhere collects, whose validation
- *    the toggle would bypass; and
+ * 1. it may not take an attribute a form collects, whose validation the toggle
+ *    would bypass — a form anywhere else in the protocol, or THIS stage's own
+ *    family member form, which is unsaved and so appears in no protocol the
+ *    role map is built from; and
  * 2. it may never take one the pedigree itself derives — the participant
- *    marker above all — and that rule has NO unchanged-pick escape, because
- *    re-saving such a prompt would go on overwriting the marker.
+ *    marker above all, whether the pedigree has been bound to it since the
+ *    last save or only in this unsaved edit — and that rule has NO
+ *    unchanged-pick escape, because re-saving such a prompt would go on
+ *    overwriting the marker.
  *
  * The escape for rule 1 is anchored to the stage's own COMMITTED prompts,
  * found BY ROW ID rather than by the row the dialog opened on. The two differ
@@ -85,9 +93,19 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export default function NominationPromptsSection() {
   const intl = useAppIntl();
   const { committedFields, protocolContext } = useStageEditorForm();
-  const { roleMap, slotMap } = usePedigreeVariableIndexes();
+  const { roleMap, slotMap, draftSlotMap } = usePedigreeVariableIndexes();
   const nodeType = useStageValue(NODE_TYPE_FIELD);
+  const formRows = useStageValue(FORM_FIELD);
   const waiting = typeof nodeType !== 'string';
+
+  /**
+   * What this stage's own unsaved form collects, which the picker excludes and
+   * this gate refuses — the same list, so the two cannot disagree about a pick.
+   */
+  const draftFormVariables = useMemo(
+    () => draftRowVariables(formRows),
+    [formRows],
+  );
 
   const subject: CodebookSubject | null = useMemo(
     () =>
@@ -120,14 +138,37 @@ export default function NominationPromptsSection() {
       if (subject === null || !isRecord(value)) return value;
       const variable = typeof value.variable === 'string' ? value.variable : '';
 
-      const ownedIssue = interfaceOwnedPickIssue(slotMap, subject, variable);
+      const ownedIssue =
+        interfaceOwnedPickIssue(slotMap, subject, variable) ??
+        interfaceOwnedPickIssue(draftSlotMap, subject, variable);
       if (ownedIssue !== undefined) {
         return { success: false, fieldErrors: { variable: [ownedIssue] } };
       }
 
+      const committed = committedVariableFor(value.id);
+      // The form on the same screen, in its own words: told the attribute is
+      // "collected by a form elsewhere in this protocol", a researcher goes
+      // looking through their other stages for a field one section above.
+      if (
+        variable !== '' &&
+        variable !== committed &&
+        draftFormVariables.includes(variable)
+      ) {
+        return {
+          success: false,
+          fieldErrors: {
+            variable: [
+              draftValidatedElsewhereMessage(
+                variableDisplayName(allVariables, variable),
+              ),
+            ],
+          },
+        };
+      }
+
       const issue = crossClassPickIssue({
         variableId: variable,
-        originalVariableId: committedVariableFor(value.id),
+        originalVariableId: committed,
         hasConflictingUse: (variableId) =>
           hasValidatedUse(roleMap, subject, variableId),
         allVariables,
@@ -138,7 +179,15 @@ export default function NominationPromptsSection() {
       }
       return value;
     },
-    [allVariables, committedVariableFor, roleMap, slotMap, subject],
+    [
+      allVariables,
+      committedVariableFor,
+      draftFormVariables,
+      draftSlotMap,
+      roleMap,
+      slotMap,
+      subject,
+    ],
   );
 
   const promptsValidation = useMemo(
