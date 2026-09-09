@@ -114,6 +114,12 @@ const messages = defineMessages({
     description:
       'Why an edit that would change the codebook alongside the interview step being edited did not happen: one is already running.',
   },
+  compoundDuringFinish: {
+    id: 'protocolBuilder.session.compoundDuringFinish',
+    defaultMessage: 'the stage is being saved',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: the step itself is in the middle of being saved. "stage" is one step of an interview.',
+  },
   compoundHostError: {
     id: 'protocolBuilder.session.compoundHostError',
     defaultMessage: 'the compound edit failed',
@@ -330,6 +336,7 @@ export type CompoundEditFailureReason =
   | 'invalid-response'
   | 'lease-lost'
   | 'pending-commands'
+  | 'save-in-flight'
   | 'stale-base'
   | 'stale-epoch'
   | 'stale-result'
@@ -731,6 +738,21 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
   private nextBatchId = 1;
   private validationVersion = 0;
   private compoundEditInFlight = false;
+  /**
+   * Whether a finish is deciding the stage right now.
+   *
+   * The other side of `CompoundEditInFlightError`, and the same rule read the
+   * other way round: the two halves of a compound edit are applied together,
+   * and a finish reads the stage ONCE — before it validates, and long before a
+   * slow host answers. A compound edit that starts inside that window is
+   * answered by a section whose stage has already been committed without it,
+   * so the attribute is created and nothing references it.
+   *
+   * Refused rather than queued, for the reason a save is: the request was
+   * built from the draft as it stood when the control was pressed, and holding
+   * it until the save lands would apply it to a stage that has moved on.
+   */
+  private finishInFlight = false;
   private readonly resources: StagedResourceTracker | undefined;
   /**
    * The key the current finish's content is promoted under, and the content it
@@ -912,6 +934,14 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       return compoundFailure(
         'compound-in-flight',
         createMessageError(messages.compoundInFlight),
+      );
+    }
+    // See `finishInFlight`: the save has already read the stage this edit's
+    // other half would change.
+    if (this.finishInFlight) {
+      return compoundFailure(
+        'save-in-flight',
+        createMessageError(messages.compoundDuringFinish),
       );
     }
 
@@ -1220,6 +1250,29 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     // Before anything is validated or flushed: see `CompoundEditInFlightError`
     // for why a save may not overtake the answer a section is waiting on.
     if (this.compoundEditInFlight) throw new CompoundEditInFlightError();
+    // And the same rule the other way round, held for the whole save rather
+    // than only its apply: the commit below reads the stage once, before it
+    // validates, so every await under it is a window in which a compound edit
+    // would be answered by a section whose stage has already been committed
+    // without the half that belongs here. See `finishInFlight`.
+    this.finishInFlight = true;
+    try {
+      await this.commitStage();
+    } finally {
+      this.finishInFlight = false;
+    }
+  }
+
+  /**
+   * The save itself, once `finish` has decided this session may make it.
+   *
+   * Its own method so the reservation above is a plain `try`/`finally` around
+   * the whole of it. There are several ways out of a commit — a draft that
+   * will not validate, a promotion that fails, a host that throws — and a
+   * reservation left standing by any one of them would refuse every codebook
+   * edit for the rest of the session.
+   */
+  private async commitStage(): Promise<void> {
     const validation = await this.validate();
     const validatedProtocol = this.snapshot.validatedProtocol;
     if (validation.status !== 'valid' || validatedProtocol === null) {

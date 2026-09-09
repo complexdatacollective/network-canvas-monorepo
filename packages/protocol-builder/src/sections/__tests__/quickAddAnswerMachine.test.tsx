@@ -64,6 +64,14 @@ import { holdTheHost } from './holdTheHost.ts';
  *                                    confirmation go with it            about a write that did land
  * ```
  *
+ * The last of those events has a mirror image the section cannot reach from
+ * here: a create or a require asked for AFTER a save has begun. The save reads
+ * the stage once, before it validates, so an answer applied inside that window
+ * is created in the codebook and referenced by nothing. The rule is the same
+ * one — the two may not overlap in either order — and it is stated where a
+ * host can be made slow enough to reach it, in `session.test.ts`; this
+ * harness's host answers a finish within the click.
+ *
  * The invariants below are what that table asserts, and they are asserted over
  * random interleavings as well as over the four cells a review found.
  */

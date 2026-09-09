@@ -768,6 +768,62 @@ describe('ProtocolBuilderSessionStore', () => {
     });
   });
 
+  it('refuses a compound edit asked for once a save has begun', async () => {
+    let letTheSaveLand: (() => void) | undefined;
+    const saveIsOut = new Promise<void>((resolve) => {
+      letTheSaveLand = resolve;
+    });
+    const committed: FinishRequest[] = [];
+    // A host that takes its time, which is every real one: the stage and its
+    // codebook go over a wire.
+    const onFinish = async (request: FinishRequest) => {
+      committed.push(request);
+      await saveIsOut;
+    };
+    const onCompoundEdit = vi.fn().mockResolvedValue({
+      status: 'applied',
+      update: {
+        protocolSections: {
+          [currentStageSection]: {
+            ...currentStageDocument,
+            subject: { entity: 'node', type: 'person' },
+          },
+          [nodeSection]: { name: 'Person' },
+        },
+        manifestRevision: revision(2n),
+      },
+    });
+    const { session } = createSession({ onFinish, onCompoundEdit });
+
+    const saving = session.finish();
+    await vi.waitFor(() => {
+      expect(committed).toHaveLength(1);
+    });
+
+    // The researcher presses Create while the save they asked for first is
+    // still on its way. The stage this save carries was read before it, so an
+    // edit made here would be created in the codebook and referenced by
+    // nothing.
+    await expect(
+      session.requestCompoundEdit(compoundRequest()),
+    ).resolves.toMatchObject({ status: 'failed', reason: 'save-in-flight' });
+    expect(onCompoundEdit).not.toHaveBeenCalled();
+    expect(committed[0]?.stageDocument).not.toHaveProperty('subject');
+    expect(session.getSnapshot().editedSection.fields).not.toHaveProperty(
+      'subject',
+    );
+
+    letTheSaveLand?.();
+    await saving;
+
+    // Settled, it is the researcher's to ask for again — the refusal is the
+    // save's, and it lasts exactly as long as the save does.
+    await expect(
+      session.requestCompoundEdit(compoundRequest()),
+    ).resolves.toMatchObject({ status: 'applied' });
+    expect(onCompoundEdit).toHaveBeenCalledOnce();
+  });
+
   it('rejects malformed compound requests before invoking the host', async () => {
     const onCompoundEdit = vi.fn();
     const { session } = createSession({ onCompoundEdit });
