@@ -1,9 +1,11 @@
 import { createElement, useId, useMemo, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import {
@@ -60,6 +62,20 @@ const readEntries = (value: unknown): EdgeEntry[] =>
 /** One field of a connection's form, as tolerantly as a stored one arrives. */
 const isFormFieldRow = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * Whether this entry's form asks the participant anything.
+ *
+ * Read as tolerantly as the entry itself: a form is whatever the protocol
+ * holds, and only a list with something in it is a form the researcher would
+ * miss.
+ */
+const asksAnything = (entry: EdgeEntry): boolean => {
+  const form = entry.form;
+  if (typeof form !== 'object' || form === null) return false;
+  const fields = Reflect.get(form, 'fields');
+  return Array.isArray(fields) && fields.length > 0;
+};
 
 /**
  * The entries for exactly these types, keeping every entry that survives.
@@ -120,6 +136,7 @@ function EdgeTypesField({
   'aria-labelledby': ariaLabelledBy,
 }: EdgeTypesFieldProps) {
   const intl = useAppIntl();
+  const { confirm } = useDialog();
   const entries = readEntries(value);
   const checked = entries.map((entry) => entry.subject.type);
   /**
@@ -161,6 +178,72 @@ function EdgeTypesField({
     );
   }
 
+  const applyTypes = (types: readonly string[]) => {
+    // An emptied list is spelled the way the protocol schema spells "this
+    // stage draws no connections": the key is not there. An empty array
+    // would say something else — a configured capability holding nothing.
+    const nextEntries = entriesForTypes(entries, types, uuid);
+    onChange?.(nextEntries.length === 0 ? undefined : nextEntries);
+  };
+
+  /**
+   * The types the researcher has just asked for, once they have agreed to what
+   * unticking costs.
+   *
+   * Unticking a connection type removes its whole ENTRY, and the entry carries
+   * the questions asked about that kind of connection: rechecking the type
+   * builds a fresh empty one, so a form dropped here cannot be got back without
+   * abandoning the entire stage edit. Asked before the value moves, like every
+   * other question this package puts before a loss, and asked only about the
+   * entries that would actually lose something — an entry with no form is not a
+   * decision worth interrupting.
+   *
+   * One question per entry losing a form, answered in turn: a refused one keeps
+   * its type where it was in the list, rather than being appended somewhere the
+   * researcher did not put it.
+   */
+  const requestTypes = (types: readonly string[]) => {
+    const losing = entries.filter(
+      (entry) => !types.includes(entry.subject.type) && asksAnything(entry),
+    );
+    if (losing.length === 0) {
+      applyTypes(types);
+      return;
+    }
+    void (async () => {
+      const kept = new Set<string>();
+      for (const entry of losing) {
+        const typeName =
+          options.find((option) => option.value === entry.subject.type)
+            ?.label ?? entry.subject.type;
+        const confirmed = await confirm({
+          title: intl.formatMessage(
+            networkCanvasMessages.edgeFormDiscardTitle,
+            { typeName },
+          ),
+          description: intl.formatMessage(
+            networkCanvasMessages.edgeFormDiscardDescription,
+          ),
+          confirmLabel: intl.formatMessage(
+            networkCanvasMessages.edgeFormDiscardConfirm,
+          ),
+          cancelLabel: intl.formatMessage(commonMessages.cancel),
+          intent: 'warning',
+          onConfirm: () => undefined,
+        });
+        if (confirmed !== true) kept.add(entry.subject.type);
+      }
+      applyTypes([
+        ...entries
+          .map((entry) => entry.subject.type)
+          .filter((type) => types.includes(type) || kept.has(type)),
+        ...types.filter(
+          (type) => !entries.some((entry) => entry.subject.type === type),
+        ),
+      ]);
+    })();
+  };
+
   return (
     <CheckboxGroupField
       id={id}
@@ -169,12 +252,7 @@ function EdgeTypesField({
       options={choices}
       value={checked}
       onChange={(next) => {
-        const types = (next ?? []).map(String);
-        // An emptied list is spelled the way the protocol schema spells "this
-        // stage draws no connections": the key is not there. An empty array
-        // would say something else — a configured capability holding nothing.
-        const nextEntries = entriesForTypes(entries, types, uuid);
-        onChange?.(nextEntries.length === 0 ? undefined : nextEntries);
+        requestTypes((next ?? []).map(String));
       }}
       onBlur={onBlur}
       onFocus={onFocus}

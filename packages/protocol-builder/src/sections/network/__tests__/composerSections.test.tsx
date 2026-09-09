@@ -354,6 +354,14 @@ describe('what a network composer lets the participant build', () => {
     await harness.user.click(
       await screen.findByRole('checkbox', { name: 'knows' }),
     );
+    // The entry asks the participant something, and unticking takes that with
+    // it — so the researcher is asked first. See the confirmation's own suite
+    // below.
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Stop drawing these and delete the form',
+      }),
+    );
 
     const request = await harness.submit();
     expect(Object.hasOwn(request?.stageDocument ?? {}, 'edges')).toBe(false);
@@ -1251,5 +1259,80 @@ describe('a connection type the codebook has lost', () => {
         'This protocol has no connection types yet. Create one to let the participant connect nodes.',
       ),
     ).toBeNull();
+  });
+});
+
+/**
+ * Unticking a connection type whose form is configured.
+ *
+ * The entry is more than the type it names: it carries the questions asked
+ * about that kind of connection, and rechecking the type builds a fresh empty
+ * one. So the questions could be deleted by one click on a tick box, with no
+ * warning and no way back short of abandoning the whole stage edit.
+ */
+describe('a connection type whose form already asks something', () => {
+  const DISCARD_QUESTION = 'This will delete the form for "knows" connections';
+
+  it('asks before the form goes, and keeps it when the answer is no', async () => {
+    const harness = renderStageEditor(openWithConfiguredEdge());
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'knows' }),
+    );
+
+    const question = await screen.findByRole('dialog', {
+      name: DISCARD_QUESTION,
+    });
+    await harness.user.click(
+      within(question).getByRole('button', { name: 'Cancel' }),
+    );
+
+    // The type is still ticked, and the entry — its id and its fields — is
+    // exactly the one the stage opened with.
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: 'knows' })).toBeChecked(),
+    );
+    const request = await harness.submit();
+    expect(request?.stageDocument.edges).toEqual([CONFIGURED_EDGE]);
+  });
+
+  it('takes the entry away when the answer is yes', async () => {
+    const harness = renderStageEditor(openWithConfiguredEdge());
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'knows' }),
+    );
+    const question = await screen.findByRole('dialog', {
+      name: DISCARD_QUESTION,
+    });
+    await harness.user.click(
+      within(question).getByRole('button', {
+        name: 'Stop drawing these and delete the form',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: 'knows' })).not.toBeChecked(),
+    );
+    const request = await harness.submit();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'edges')).toBe(false);
+  });
+
+  /**
+   * And nothing is asked about an entry that would lose nothing: a tick list
+   * that stopped to confirm every untick would be asking about a decision that
+   * costs the researcher nothing at all.
+   */
+  it('asks nothing when the type it removes has no form', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'knows' }),
+    );
+    await harness.user.click(screen.getByRole('checkbox', { name: 'knows' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const request = await harness.submit();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'edges')).toBe(false);
   });
 });

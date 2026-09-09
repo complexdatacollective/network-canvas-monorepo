@@ -847,6 +847,25 @@ export const networkCanvasMessages = defineMessages({
     description:
       'Title of the dialog a researcher fills in to change a question one connection type’s form already asks. typeName is the edge type’s researcher-facing name, shown inside straight double quotes.',
   },
+  edgeFormDiscardTitle: {
+    id: 'protocolBuilder.networkCanvas.edgeFormDiscardTitle',
+    defaultMessage: 'This will delete the form for "{typeName}" connections',
+    description:
+      'Title of the confirmation raised when a researcher unticks a connection type whose form already asks the participant something. typeName is the edge type’s researcher-facing name, shown inside straight double quotes.',
+  },
+  edgeFormDiscardDescription: {
+    id: 'protocolBuilder.networkCanvas.edgeFormDiscardDescription',
+    defaultMessage:
+      'The questions written for this connection type belong to it, so unticking the type removes them too. Ticking it again starts an empty form.',
+    description:
+      'Body of the confirmation raised when a researcher unticks a connection type whose form is configured, saying what is lost and that it does not come back.',
+  },
+  edgeFormDiscardConfirm: {
+    id: 'protocolBuilder.networkCanvas.edgeFormDiscardConfirm',
+    defaultMessage: 'Stop drawing these and delete the form',
+    description:
+      'Button that goes ahead with unticking a connection type and discarding the form configured for it.',
+  },
   edgeFormEmptyState: {
     id: 'protocolBuilder.networkCanvas.edgeFormEmptyState',
     defaultMessage:
