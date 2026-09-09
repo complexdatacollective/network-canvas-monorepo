@@ -3,8 +3,10 @@
 **Date:** 2026-09-09
 **Last updated:** 2026-09-09
 **Status:** Draft for discussion
-**Scope:** the `@codaco/protocol-builder` package: its host contract, form
-primitives, and the nineteen named stage editors; the Studio proof host
+**Scope:** the `@codaco/protocol-builder` package: its host contract, state
+and subscriptions, form primitives, and the nineteen named stage editors; the
+Studio proof host; the Architect and Studio hosts as far as the contract
+requires
 **Supersedes:** the implementation sequence in
 [2026-08-27-protocol-builder-extraction.md](./2026-08-27-protocol-builder-extraction.md)
 from the family editors onward, and that document's command-buffering and
@@ -27,11 +29,13 @@ The package on `main` is about 60,000 source lines before the five family
 branches land another 25,000; one section file is 1,883 lines, `session.ts`
 is 2,860, and 38 hooks are exported. Nearly all of that is machinery for
 problems the locking model removes. This plan replaces the session with a
-host contract of three operations — lock, subscribe, submit — deletes the
-package's own form framework in favour of Fresco's `<Form>`, cuts extracted
-generality the editors never reach, and rebuilds the nineteen editors as
-declarative section lists. The target is an editor of one file under 200
-lines that never inspects a lock or a codebook.
+host contract the package owns (an oRPC contract: lock, subscribe, submit,
+create, and the server-mediated refactor), keeps sections read by other
+components in a TanStack Query cache fed by one revision channel per open
+protocol, keeps the section under edit in Fresco's `<Form>` and nowhere
+else, cuts extracted generality the editors never reach, and rebuilds the
+nineteen editors as declarative section lists. The target is an editor of
+one file under 200 lines that never inspects a lock or a codebook.
 
 ## Where the size came from
 
@@ -74,9 +78,10 @@ Three mechanisms account for it.
   editor re-reads anything at write time. Submit writes the whole section.
 - **Other sections are read through subscriptions, in the component that
   reads them.** An entity select field subscribes to the node entity
-  sections; a skip-logic destination field subscribes to the stage index. The
-  stage editor form holds no subscriptions for its children. This replaces
-  Architect's Redux selector pattern one for one.
+  sections and takes its options from that and nothing else; its selected
+  value is form state. A skip-logic destination field subscribes to the stage
+  index. The stage editor form holds no subscriptions for its children. This
+  replaces Architect's Redux selector pattern one for one.
 - **Edits outside the stage commit immediately.** A codebook dialog opened
   from a stage editor takes its own lock (or, for a new section, uses the
   host's atomic create), saves, and creates a revision. The stage editor's
@@ -90,41 +95,54 @@ Three mechanisms account for it.
 - **Only what the editors reach.** Rule, validation, and resource code keeps
   the paths the nineteen editors exercise. Architect keeps its own copies of
   the rest until it adopts the package.
-- **A finding changes the host contract or the form, never the section that
-  surfaced it.** Applied from the first review round, not the ninth.
+- **Hosts may change to fit the package.** Architect's editing slices are
+  replaced by the package's state; Studio takes the dependencies the contract
+  needs. Getting the package right comes first.
+- **A finding changes the host contract, the state layer, or the form, never
+  the section that surfaced it.** Applied from the first review round, not
+  the ninth.
 
 ## Target architecture
 
-### Host contract: lock, subscribe, submit
+### Host contract: an oRPC contract the package owns
 
 The session, controller, compound-edit request, auxiliary codebook sessions,
-and epoch-stamped command outcomes are replaced by one small port with three
-operations. Studio's server and Architect's Redux host both implement it;
-the in-memory proof host implements it for tests and Storybook.
+and epoch-stamped command outcomes are replaced by one contract, defined
+contract-first with `@orpc/contract` (already used by `@codaco/studio-rpc`)
+and exported by the package. Studio serves it over its transport; Architect
+serves the same contract in-process with an oRPC router client, no network;
+the in-memory proof host serves it for tests and Storybook. Hosts never see
+the package's state library.
 
-- **Lock.** `acquire(sectionId)` returns the section document and holds the
-  lock until `release`. If the lock is held by someone else, the editor opens
-  read-only with the holder's presence, per #1275. Lock loss in normal
-  operation does not happen; if it does, the host refuses the next submit and
-  the editor reports it and discards the draft. There is no re-acquire,
-  takeover, or recovery machinery in the package. Data loss on a lost lock is
-  accepted.
-- **Subscribe.** `subscribe(sectionId | selector)` delivers a section's
-  current document and every later revision. Only components that read
-  another section subscribe, and each subscribes to exactly what it reads.
-  The subscription carries the revision's author so a field can say who
-  changed the thing it references.
-- **Submit.** `submit(sectionId, document)` writes the whole section as one
-  revision. The host checks two things: the caller holds the lock, and the
-  document has the section's shape. Semantic invalidity across sections (the
-  stage now references a deleted variable) is never a reason to refuse: #1275
-  says drafts tolerate transient invalidity, and validity is enforced at
-  publication. A separate `create(kind, document)` atomically creates a new
-  section and registers its pointer in the protocol; it needs no client lock.
-- **Compound refactors** — delete a variable and strip it from every prompt
-  — remain server-mediated operations that acquire every affected lock or fail
-  naming the holders (#1275). They belong to the codebook dialogs and the
-  host. No stage editor issues one.
+- **Lock.** `acquireLock(sectionId)` returns the section document and holds
+  the lock until `releaseLock`. If the lock is held by someone else, the
+  editor opens read-only with the holder's presence, per #1275. Lock loss in
+  normal operation does not happen; if it does, the host refuses the next
+  submit and the editor reports it and discards the draft. There is no
+  re-acquire, takeover, or recovery machinery in the package. Data loss on a
+  lost lock is accepted.
+- **Read and watch.** `getSection(sectionId)` returns a document at a
+  revision. `watchProtocol(protocolId, { since })` is an event iterator that
+  yields every section revision, lock change, and presence change for the
+  protocol from the given cursor. One channel per open protocol (see "State
+  and subscriptions").
+- **Submit.** `submit(sectionId, document, { revision })` writes the whole
+  section as one revision. The host checks two things: the caller holds the
+  lock, and the document has the section's shape. Semantic invalidity across
+  sections (the stage now references a deleted variable) is never a reason to
+  refuse: #1275 says drafts tolerate transient invalidity, and validity is
+  enforced at publication.
+- **Create.** `create(kind, document)` atomically creates a new section and
+  registers its pointer in the protocol. It needs no client lock; the host
+  serialises it.
+- **Compound refactor.** Delete a variable and strip it from every prompt,
+  and its kin, remain server-mediated operations that acquire every affected
+  lock or fail naming the holders (#1275). They belong to the codebook
+  dialogs and the host. No stage editor issues one.
+- **Resources.** The gateway keeps list, stage, promote, discard, inspect,
+  and preview, as procedures on the same contract. Imported files stay staged
+  for the life of the stage edit, are promoted with the stage's submit, and
+  are discarded with its cancel. Secrets stay opaque staged handles.
 
 What the editor does with this: acquire the stage lock on open; hold the
 stage document in its `<Form>`; let its fields validate their own values
@@ -132,12 +150,63 @@ against whatever they subscribe to; on save, run the section's schema
 validation for the researcher's benefit and submit the form's values whole;
 release on close.
 
-### Resources
+### State and subscriptions: two layers
 
-Imported files stay staged with the host for the life of the stage edit and
-are promoted with the stage's submit, discarded with its cancel. Secrets stay
-opaque staged handles. The gateway keeps list, stage, promote, discard,
-inspect, and preview; it gains nothing the nineteen editors do not call.
+The package uses TanStack Query for sections that components read and
+Fresco's Zustand form for the section being edited. That is the ordinary
+client-state versus server-state split. RTK Query was considered and
+rejected: it would put a Redux store in the package for capability TanStack
+Query provides without one, and oRPC's TanStack integration gives typed
+query keys from the contract for free.
+
+**Component layer: subscriptions live where the data is used.** Section
+components call package hooks — `useEntityTypes('node')`,
+`useStageIndex()`, `useSection(id)` — each of which is a TanStack Query
+observer on a key derived from the contract (`orpc.getSection.queryKey`).
+Components never import TanStack Query or oRPC; the two hooks
+`useSection`-style readers and `useSectionMutation(kind)` are the whole
+surface, and lock and presence handling lives inside them.
+
+**Transport layer: one channel per open protocol feeds the cache.**
+`<ProtocolBuilder>` mounts one `useProtocolChannel(protocolId)` that
+consumes `watchProtocol` and writes every revision into the cache with
+`queryClient.setQueryData` under the section's key. It holds no React state.
+This is preferred over a server subscription per component because:
+
+- a per-key subscription has a gap between "fetch the section" and "the
+  stream is live", and every subscription would have to reconcile missed
+  revisions by number; one channel with one cursor does that once;
+- component mount and unmount churn (dialogs, StrictMode double mounts, list
+  re-keying) would open and close server subscriptions at React's rhythm;
+- lock and presence changes ride the same stream as the data, in order;
+- the cost is revisions for sections nobody in this tab reads, which at human
+  editing rates is nothing; if it ever matters, the channel takes a section
+  filter and no component changes.
+
+**Re-rendering is bounded by the component's key and `select`, not by the
+channel.** The channel writes to the cache from outside any render; TanStack
+Query notifies only the observers of the key that changed; structural
+sharing makes a deep-equal revision a no-op; `select` narrows an observer to
+the slice it renders (a picker selecting `{ id, name, color }` per node type
+does not re-render when a variable inside that type changes); form fields are
+Zustand subscriptions and never live in the query cache.
+
+**Settings that follow from the stream being authoritative.** Section queries
+use `staleTime: Infinity` and no refetch on focus; the only refetch is on
+reconnect, where the channel resumes from the last revision seen. Tag
+invalidation is not used; a host that cannot push (none planned) would be the
+only reason to add it.
+
+**Dependencies.** `@tanstack/react-query` and `@orpc/contract` in the
+package; `@orpc/client` and `@orpc/server` in the hosts. Studio already
+depends on the contract package. Architect gains the client and server for an
+in-process router.
+
+**Architect.** The package's state replaces `stageEditorDraft`, the codebook
+transaction metadata, and the editing history hooks. Architect's persistent
+store keeps the committed protocol and app state; its host implementation is
+a router whose `watchProtocol` is a store subscription and whose `submit`
+is a reducer. That is a smaller Architect than today.
 
 ### Form: Fresco's, with two additions
 
@@ -152,8 +221,8 @@ Fresco's `<Form>` gains what the editors genuinely need and nothing more:
 
 `DialogArrayField`, `editedRow.ts`, edited-row scopes, dormant values,
 own-write markers, and binding memory are deleted. "Invent an attribute from
-a row" is a codebook dialog that creates the attribute immediately and hands
-its id back to the row's field.
+a row" is a codebook dialog that creates the attribute immediately (through
+`create`) and hands its id back to the row's field.
 
 ### Editors: section lists
 
@@ -181,7 +250,7 @@ runtime test that `missingStageEditors` is empty.
   printable summary imports and drops the rest.
 - Variable validation keeps the schema-driven checks; contradiction analysis
   beyond what a single dialog can produce goes back to Architect.
-- The testing harness keeps `renderStageEditor`, the fixture host, and the
+- The testing harness keeps `renderStageEditor`, the in-memory host, and the
   collaborator-edit helper; per-family helper forests are replaced by those.
 
 ### Salvage from the current branches
@@ -201,12 +270,17 @@ Everything else is rewritten against the new contract.
 Three PRs, each off `main`, opened one at a time, each small enough to be
 read whole.
 
-1. **Host contract: lock, subscribe, submit.** The port, the in-memory host,
-   the create and compound-refactor operations, and tests that fail when a
-   submit without the lock is accepted, a subscription misses a revision, or
-   a create leaves a dangling pointer. `main`'s four merged editors (the form
-   family) are re-pointed at it in the same PR so there is never a second
-   implementation of the contract.
+1. **Contract and state.** The oRPC contract, the in-memory host, the
+   Architect in-process router, `<ProtocolBuilder>` with the query client and
+   the protocol channel, the two component hooks, and tests that fail when a
+   submit without the lock is accepted, a revision is missed across a
+   reconnect, a create leaves a dangling pointer, or a revision to one section
+   re-renders an observer of another. Two spikes land here because they are
+   the least-trodden paths: oRPC's event iterator over a WebSocket that drops
+   mid-stream and resumes from a cursor, and one contract served by two hosts
+   (Studio over the wire, Architect in-process) with the same router types.
+   `main`'s four merged editors (the form family) are re-pointed at the
+   contract in the same PR so there is never a second implementation.
 2. **Form: sub-forms and row identity.** The two Fresco additions, deletion of
    the package's form framework, and the four merged editors rewritten as
    section lists to prove the pattern.
@@ -215,9 +289,9 @@ read whole.
    proof-host stories (#1493) and the release gates (#1494).
 
 Architect adoption (#1491, #1492) is decided after PR 3, when the package's
-size makes the cost of adopting it visible. Its host is trivial under this
-contract: locks always granted, subscriptions are selectors, submit is a
-reducer.
+size makes the cost of adopting it visible. Its host is small under this
+contract: locks always granted, `watchProtocol` a store subscription,
+`submit` a reducer.
 
 ## Review rules for this work
 
@@ -229,8 +303,9 @@ They apply from the first PR here:
 - A finding changes code only for a failure a researcher can reach, a false
   claim the PR makes, or a silent boundary; the rest is resolved with the
   evidence.
-- A fix lands in the host contract or the form, never in a section. A section
-  that needs its own check is a design finding against the contract.
+- A fix lands in the contract, the state layer, or the form, never in a
+  section. A section that needs its own check is a design finding against
+  the contract.
 - A mechanism found twice gets one enumeration test over its interleavings
   before a third patch.
 
@@ -249,6 +324,14 @@ They apply from the first PR here:
   the stage editor form.
 - Compound refactors are server-mediated and belong to codebook dialogs, not
   stage editors.
+- Hosts may be changed to fit the package: Architect's editing slices are
+  replaced, Studio takes new dependencies.
+- State layer: TanStack Query for read sections, fed by one revision channel
+  per open protocol; the host contract is an oRPC contract owned by the
+  package. RTK Query considered and rejected (Redux store in the package for
+  no added capability; a cached copy of Architect's store).
+- Whole-protocol channel rather than per-component server subscriptions;
+  re-render scope set by query key and `select`.
 
 ## Decisions for Josh
 
@@ -258,13 +341,16 @@ They apply from the first PR here:
   S7's rounds) or from the package as it was before the family work landed.
 - Whether Architect adoption comes back into this plan's scope once the
   package is small, or stays a separate decision.
-- Whether Studio's adapter work should track PR 1 directly, since the host
+- Whether Studio's adapter work should track PR 1 directly, since the
   contract is what it implements.
 
 ## Assumptions
 
 - Studio's collaboration model (#1275) and sync ADR (#1247) are unchanged;
   this plan narrows how the package uses them, not what they say.
+- oRPC's event iterators and TanStack Query's push-into-cache pattern behave
+  as documented in the versions the catalog pins; PR 1's spikes are where this
+  is checked.
 - Fresco's `<Form>` can take the two additions without breaking Fresco's own
   consumers; this is checked in PR 2 with Fresco's tests and Storybook.
 - The `all-interfaces` e2e fixture remains the source of representative
