@@ -50,6 +50,7 @@ const ask = (
     writerClass: 'validated' | 'unvalidated';
     committedValue: string;
     draftConflicting: readonly string[];
+    draftLabelVariable?: string;
   }>,
 ) => {
   const offered = slotPickerOptions({
@@ -60,6 +61,9 @@ const ask = (
     currentValue: input.committedValue,
     writerClass: input.writerClass,
     draftConflicting: input.draftConflicting,
+    ...(input.draftLabelVariable === undefined
+      ? {}
+      : { draftLabelVariable: input.draftLabelVariable }),
   });
   const refusalFor = (variableId: string) =>
     slotCrossClassIssue({
@@ -70,6 +74,9 @@ const ask = (
       committedValue: input.committedValue,
       writerClass: input.writerClass,
       draftConflicting: input.draftConflicting,
+      ...(input.draftLabelVariable === undefined
+        ? {}
+        : { draftLabelVariable: input.draftLabelVariable }),
       allVariables: VARIABLES,
     });
   /**
@@ -131,6 +138,27 @@ describe('the attributes one pedigree slot may bind', () => {
   });
 
   /**
+   * The display label is what the participant TYPES for each relative, and a
+   * structural slot writes what the pedigree derives — so one attribute cannot
+   * be both. The interview settles it in the slot's favour
+   * (`FamilyPedigree/store.ts` spreads the node's attributes and then writes
+   * the relationship over them), which is the researcher's name for that
+   * person replaced by "sibling".
+   */
+  it('never offers a structural slot the attribute the display label names', () => {
+    const { offered, refusalFor } = ask({
+      options: TEXT_POOL,
+      writerClass: 'unvalidated',
+      committedValue: 'kinship',
+      draftConflicting: [],
+      draftLabelVariable: 'fm_name',
+    });
+
+    expect(offered).toEqual(['kinship']);
+    expect(refusalFor('fm_name')).toBeDefined();
+  });
+
+  /**
    * A protocol that arrives already holding the conflict stays editable. The
    * pick is the slot's own committed value, so dropping it from the list would
    * blank the control and then write the blank over the very reference the
@@ -168,6 +196,24 @@ describe('what a refused pedigree pick is told', () => {
     expect(refusalTextFor('unwell')).toBe(
       '"unwell" is collected by this stage’s own form, so it cannot also be written by this slot (values written here would bypass its validation)',
     );
+  });
+
+  it('tells a structural slot the display label is that attribute', () => {
+    const { refusalTextFor } = ask({
+      options: TEXT_POOL,
+      writerClass: 'unvalidated',
+      committedValue: 'kinship',
+      draftConflicting: [],
+      draftLabelVariable: 'fm_name',
+    });
+
+    const refusal = refusalTextFor('fm_name');
+    expect(refusal).toBe(
+      '"fm_name" is the display label this stage shows each family member by, so it cannot also be written by this slot (what this slot derives would replace the name the participant entered)',
+    );
+    // Not the form's refusal: the display label is the control one line above,
+    // and a researcher sent looking for a form field never added one.
+    expect(refusal).not.toContain('form');
   });
 
   /**

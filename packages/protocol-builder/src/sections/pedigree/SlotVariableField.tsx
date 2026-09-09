@@ -53,6 +53,11 @@ export type SlotVariableFieldProps = Readonly<{
    * writer class.
    */
   draftConflicting?: readonly string[];
+  /**
+   * The attribute this stage's display label names right now, which no
+   * structural slot may also write. See `slotWiring`'s own note.
+   */
+  draftLabelVariable?: string;
   /** The attribute type a newly created attribute is given. */
   variableType: VariableType;
   /** The canonical value set the interface owns, seeded and locked. */
@@ -82,6 +87,7 @@ export default function SlotVariableField({
   writerClass,
   ownSlot,
   draftConflicting,
+  draftLabelVariable,
   variableType,
   lockedOptions,
   createLabel,
@@ -119,11 +125,13 @@ export default function SlotVariableField({
         ...(ownSlot === undefined ? {} : { ownSlot }),
         writerClass,
         ...(draftConflicting === undefined ? {} : { draftConflicting }),
+        ...(draftLabelVariable === undefined ? {} : { draftLabelVariable }),
         draftSlotMap,
       }),
     [
       currentValue,
       draftConflicting,
+      draftLabelVariable,
       draftSlotMap,
       options,
       ownSlot,
@@ -155,6 +163,7 @@ export default function SlotVariableField({
     ownSlot,
     writerClass,
     draftConflicting,
+    draftLabelVariable,
     allVariables,
   });
   judgeAgainst.current = {
@@ -166,6 +175,7 @@ export default function SlotVariableField({
     ownSlot,
     writerClass,
     draftConflicting,
+    draftLabelVariable,
     allVariables,
   };
 

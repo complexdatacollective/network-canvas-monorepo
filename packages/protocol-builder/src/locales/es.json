@@ -564,6 +564,7 @@
   "protocolBuilder.pedigree.nominationVariableRequired": "Elige el atributo que registra esta pregunta.",
   "protocolBuilder.pedigree.nominationWaitingDescription": "Elige un tipo de nodo antes de escribir las preguntas de nominación de esta genealogía.",
   "protocolBuilder.pedigree.slotDraftFormCollectsRefusal": "«{attributeName}» lo recoge el propio formulario de esta etapa, así que tampoco puede escribirlo esta ranura (los valores escritos aquí se saltarían su validación)",
+  "protocolBuilder.pedigree.slotDraftLabelCollectsRefusal": "«{attributeName}» es la etiqueta visible con la que esta etapa muestra a cada familiar, así que esta ranura tampoco puede escribirlo (lo que esta ranura derive sustituiría el nombre que introdujo la persona participante)",
   "protocolBuilder.pedigree.slotDraftSlotDerivesRefusal": "«{attributeName}» lo escribe sin validación otra ranura de esta etapa, así que tampoco puede recogerse aquí (los valores que escribe esa ranura se saltan la validación de este atributo)",
   "protocolBuilder.pedigree.slotEmptyState": "Todavía no hay atributos de este tipo que se puedan usar aquí. Crea uno para continuar.",
   "protocolBuilder.pedigree.slotUnvalidatedElsewhereRefusal": "«{attributeName}» lo escribe otra etapa sin validación, así que tampoco puede recogerse aquí (los valores que escribe esa etapa se saltan la validación de este atributo)",

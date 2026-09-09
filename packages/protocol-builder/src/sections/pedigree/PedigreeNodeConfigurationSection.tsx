@@ -113,6 +113,7 @@ export default function PedigreeNodeConfigurationSection() {
   const nodeType = useStageValue(TYPE_FIELD);
   const formRows = useStageValue(FORM_FIELD);
   const nominationRows = useStageValue(NOMINATION_PROMPTS_FIELD);
+  const labelDraft = useStageValue(LABEL_FIELD);
   const egoDraft = useStageValue(EGO_SLOT.path);
   const relationshipDraft = useStageValue(RELATIONSHIP_SLOT.path);
   const biologicalSexDraft = useStageValue(BIOLOGICAL_SEX_FIELD);
@@ -185,6 +186,23 @@ export default function PedigreeNodeConfigurationSection() {
     ],
     [biologicalSexDraft, egoDraft, nominationRows, relationshipDraft],
   );
+
+  /**
+   * The attribute the display label names right now, which no structural slot
+   * may also write.
+   *
+   * The label is a VALIDATED writer whose value the participant types, and the
+   * three slots below are derived from the tree they draw — so a slot bound to
+   * the same attribute overwrites that typed name at finalization. The label
+   * already refuses what the slots claim (`draftUnvalidatedVariables`); this is
+   * the same rule read from the other end, which was missing: both controls
+   * accepted the pick, and the researcher was told nothing until an export
+   * showed "parent" where a person's name should have been.
+   */
+  const draftLabelVariable =
+    typeof labelDraft === 'string' && labelDraft !== ''
+      ? labelDraft
+      : undefined;
 
   const dependentNarrativeStages = useMemo(
     () =>
@@ -279,6 +297,9 @@ export default function PedigreeNodeConfigurationSection() {
             writerClass="unvalidated"
             ownSlot={EGO_SLOT.slot}
             draftConflicting={draftFormVariables}
+            {...(draftLabelVariable === undefined
+              ? {}
+              : { draftLabelVariable })}
             variableType="boolean"
             createLabel={pedigreeMessages.nodeEgoCreateLabel}
             createDescription={pedigreeMessages.nodeEgoCreateDescription}
@@ -293,6 +314,9 @@ export default function PedigreeNodeConfigurationSection() {
             writerClass="unvalidated"
             ownSlot={RELATIONSHIP_SLOT.slot}
             draftConflicting={draftFormVariables}
+            {...(draftLabelVariable === undefined
+              ? {}
+              : { draftLabelVariable })}
             variableType="text"
             createLabel={pedigreeMessages.nodeRelationshipCreateLabel}
             createDescription={
@@ -308,6 +332,9 @@ export default function PedigreeNodeConfigurationSection() {
             options={biologicalSexVariables}
             writerClass="unvalidated"
             draftConflicting={draftFormVariables}
+            {...(draftLabelVariable === undefined
+              ? {}
+              : { draftLabelVariable })}
             variableType="categorical"
             lockedOptions={INTERFACE_OWNED_OPTION_SETS.biologicalSex.options}
             createLabel={pedigreeMessages.nodeBiologicalSexCreateLabel}

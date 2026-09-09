@@ -785,6 +785,13 @@ export const pedigreeMessages = defineMessages({
     description:
       'Refusal shown under a pedigree slot the interface writes directly, when the attribute picked is already collected by the family member form one section above — so both are on the screen the researcher is looking at, and the wording must not send them searching their other stages. attributeName is the codebook name of the attribute, which is not translated.',
   },
+  slotDraftLabelCollectsRefusal: {
+    id: 'protocolBuilder.pedigree.slotDraftLabelCollectsRefusal',
+    defaultMessage:
+      '"{attributeName}" is the display label this stage shows each family member by, so it cannot also be written by this slot (what this slot derives would replace the name the participant entered)',
+    description:
+      'Refusal shown under a pedigree slot the interface writes directly, when the attribute picked is the one the display label control — a few lines above, in the same section — already names. attributeName is the codebook name of the attribute, which is not translated.',
+  },
   slotDraftSlotDerivesRefusal: {
     id: 'protocolBuilder.pedigree.slotDraftSlotDerivesRefusal',
     defaultMessage:

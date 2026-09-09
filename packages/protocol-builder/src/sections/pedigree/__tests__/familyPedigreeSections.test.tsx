@@ -545,42 +545,56 @@ describe('the attributes a pedigree may bind', () => {
   });
 
   /**
-   * What is left for the gate once the picker offers nothing it refuses: a
-   * slot already holding an attribute when the conflicting writer appears.
-   * The display label is bound to a new attribute, and the relationship slot —
-   * whose own picker cannot see the label's unsaved pick — then takes it too.
+   * The display label the researcher has just chosen is a claim like any
+   * other, and the structural slots have to see it.
    *
-   * The words matter as much as the refusal. The display label names the
-   * attribute each family member is SHOWN by; told that it "cannot be used as
-   * a form field", a researcher goes looking for a form field they never
-   * added.
+   * The label holds what the participant TYPES for each relative; a structural
+   * slot holds what the pedigree DERIVES from the tree the participant draws.
+   * Bound to one attribute they are the same key, and the interview settles it
+   * in the slot's favour — `FamilyPedigree/store.ts` spreads each node's
+   * attributes and then writes the relationship over them — so the name a
+   * participant entered is exported as "parent".
+   *
+   * The same rule read from the other end, and the one the pickers used to
+   * disagree about.
+   *
+   * The display label's own picker has always dropped what a slot claims; the
+   * slots did not drop what the LABEL claims, so a researcher could bind an
+   * unused attribute as the display label and then pick it for the
+   * relationship in the same edit, with both controls accepting it. What is
+   * left is a save-time gate for a draft that never came through a picker — an
+   * imported protocol, an arrival — and `slotWiring.test.ts` asks it for that
+   * refusal, and for its words, directly.
    */
-  it('refuses a display label another slot in this stage has since taken', async () => {
+  it('never offers the relationship slot the attribute just made the display label', async () => {
     const harness = renderStageEditor(openFixture());
     addFamilyMemberVariable(harness, 'preferred_name', {
       name: 'preferred_name',
       type: 'text',
     });
 
-    // The label takes it first, so it escapes its own picker's exclusion as
-    // the pick the control is already holding.
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Display label' }),
-      'preferred_name',
+    // On offer while nothing has claimed it, so the exclusion below is a
+    // change rather than a list that was always this short.
+    await waitFor(() =>
+      expect(optionsOf('Relationship to participant')).toEqual([
+        'fm_relationship_to_ego',
+        'preferred_name',
+      ]),
     );
-    // The relationship slot's own picker reads the saved protocol and this
-    // stage's form; neither knows the display label just took this attribute.
+
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Relationship to participant' }),
+      screen.getByRole('combobox', { name: 'Display label' }),
       'preferred_name',
     );
 
-    expect(await harness.submit()).toBeNull();
-    expect(
-      await screen.findByText(
-        '"preferred_name" is written without validation by another slot in this stage, so it cannot also be collected here (the values that slot writes bypass this attribute’s validation)',
-      ),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(optionsOf('Relationship to participant')).toEqual([
+        'fm_relationship_to_ego',
+      ]),
+    );
+    // And the pedigree still saves, with each control holding its own
+    // attribute: the exclusion withholds a pick, it does not block the stage.
+    expect(await harness.submit()).not.toBeNull();
   });
 });
 

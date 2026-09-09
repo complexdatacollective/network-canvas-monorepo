@@ -154,6 +154,23 @@ export type SlotPickerOptionsInput<T extends SlotVariableOption> = Readonly<{
    * `draftExclusiveSlotClaims`.
    */
   draftSlotMap?: ExclusiveVariableSlotMap;
+  /**
+   * The attribute this stage's DISPLAY LABEL names right now, which no
+   * structural slot may also write.
+   *
+   * Kept apart from `draftConflicting` because it is a different fact and
+   * earns different words: the label is not a form field the researcher can go
+   * and find, it is the control one line above, and the interview writes each
+   * relative's typed name into it. A slot bound to the same attribute
+   * overwrites that name at finalization — `FamilyPedigree/store.ts` spreads
+   * the node's attributes and then writes the relationship over them — so the
+   * person a participant called "Mum" is exported as "parent".
+   *
+   * Live rather than committed, for the reason every other draft input here is
+   * live: a label chosen in this session is in no protocol yet, and one just
+   * changed must free its old attribute at once.
+   */
+  draftLabelVariable?: string;
 }>;
 
 /**
@@ -196,6 +213,7 @@ export function slotPickerOptions<T extends SlotVariableOption>({
   writerClass,
   draftConflicting,
   draftSlotMap,
+  draftLabelVariable,
 }: SlotPickerOptionsInput<T>): T[] {
   if (subject === null) return [];
   const crossClassFiltered =
@@ -210,10 +228,18 @@ export function slotPickerOptions<T extends SlotVariableOption>({
             option.value === currentValue ||
             !draftConflicting.includes(option.value),
         );
+  const labelFiltered =
+    draftLabelVariable === undefined || draftLabelVariable === ''
+      ? draftFiltered
+      : draftFiltered.filter(
+          (option) =>
+            option.value === currentValue ||
+            option.value !== draftLabelVariable,
+        );
   const savedOwnerFiltered = excludeInterfaceOwned(
     slotMap,
     subject,
-    draftFiltered,
+    labelFiltered,
     currentValue,
     ownSlot,
   );
@@ -248,6 +274,9 @@ export type SlotCrossClassInput = Readonly<{
   /** See `SlotPickerOptionsInput.draftSlotMap`; the same map, so the picker
    * and this gate refuse the same picks. */
   draftSlotMap?: ExclusiveVariableSlotMap;
+  /** See `SlotPickerOptionsInput.draftLabelVariable`; the same pick, so the
+   * picker and this gate refuse it together. */
+  draftLabelVariable?: string;
   /** The subject's codebook attributes, read only for display names. */
   allVariables: Readonly<Variables>;
 }>;
@@ -260,10 +289,12 @@ export type SlotCrossClassInput = Readonly<{
  * 1. another interface slot owns outright in the SAVED protocol (the picker
  *    already drops those, so this catches a stale draft or an imported
  *    protocol); or
- * 2. this stage's own UNSAVED draft already claims in the opposite writer
+ * 2. this stage's own display label names in this unsaved edit, which the
+ *    interview would overwrite with whatever the slot derives; or
+ * 3. this stage's own UNSAVED draft already claims in the opposite writer
  *    class — both classes live on one stage form; or
- * 3. another exclusive slot of this stage has taken in this unsaved edit; or
- * 4. the saved protocol already claims in the opposite writer class.
+ * 4. another exclusive slot of this stage has taken in this unsaved edit; or
+ * 5. the saved protocol already claims in the opposite writer class.
  *
  * The order is most specific first: an attribute both an unsaved form field
  * and an unsaved slot claim earns the cross-class refusal, which says what the
@@ -283,6 +314,7 @@ export function slotCrossClassIssue({
   writerClass,
   draftConflicting,
   draftSlotMap,
+  draftLabelVariable,
   allVariables,
 }: SlotCrossClassInput): string | undefined {
   if (subject === null) return undefined;
@@ -294,6 +326,12 @@ export function slotCrossClassIssue({
 
   const ownedIssue = interfaceOwnedPickIssue(slotMap, subject, pick, ownSlot);
   if (ownedIssue !== undefined) return ownedIssue;
+
+  if (pick === draftLabelVariable) {
+    return createMessageError(pedigreeMessages.slotDraftLabelCollectsRefusal, {
+      attributeName: variableDisplayName(allVariables, pick),
+    });
+  }
 
   if (draftConflicting?.includes(pick) === true) {
     return draftCrossClassMessage[writerClass](

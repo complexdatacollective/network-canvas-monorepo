@@ -2259,6 +2259,10 @@
     "defaultMessage": "\"{attributeName}\" is collected by this stage’s own form, so it cannot also be written by this slot (values written here would bypass its validation)",
     "description": "Refusal shown under a pedigree slot the interface writes directly, when the attribute picked is already collected by the family member form one section above — so both are on the screen the researcher is looking at, and the wording must not send them searching their other stages. attributeName is the codebook name of the attribute, which is not translated."
   },
+  "protocolBuilder.pedigree.slotDraftLabelCollectsRefusal": {
+    "defaultMessage": "\"{attributeName}\" is the display label this stage shows each family member by, so it cannot also be written by this slot (what this slot derives would replace the name the participant entered)",
+    "description": "Refusal shown under a pedigree slot the interface writes directly, when the attribute picked is the one the display label control — a few lines above, in the same section — already names. attributeName is the codebook name of the attribute, which is not translated."
+  },
   "protocolBuilder.pedigree.slotDraftSlotDerivesRefusal": {
     "defaultMessage": "\"{attributeName}\" is written without validation by another slot in this stage, so it cannot also be collected here (the values that slot writes bypass this attribute’s validation)",
     "description": "Refusal shown under the display label — the one pedigree slot whose value is collected through a form field — when the attribute picked is already written directly by another slot of the same stage. Deliberately says \"slot\" rather than \"form field\": told it cannot be used as a form field, a researcher goes looking for a form field they never added. attributeName is the codebook name of the attribute, which is not translated."
