@@ -62,7 +62,9 @@ const holdTheHost = (
  * a handler the session is about to refuse by throwing. The harness's own
  * `setReadOnly` flushes that render before it returns, which is the one state
  * this scenario is not about, so the access change is made straight on the
- * session and the click is dispatched before anything is flushed.
+ * session and the click is dispatched before anything is flushed. React warns
+ * that the update was not wrapped in `act`, which is the point: wrapping it
+ * would draw the disabled control this window exists to be in front of.
  */
 const clickAsEditingIsRevoked = async (
   harness: ReturnType<typeof renderStageEditor>,
