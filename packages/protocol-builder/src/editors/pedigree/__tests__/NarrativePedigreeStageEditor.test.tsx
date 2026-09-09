@@ -51,6 +51,32 @@ const narrativePedigreeStageWith = (extra: SectionDoc) => {
   };
 };
 
+/**
+ * The fixture's source pedigree, recording who is affected by `hasConditionX`.
+ *
+ * A disease may only be mapped to an attribute a nomination prompt of the
+ * source pedigree records — anything else is never set, so the stage would
+ * draw an unmarked family — and the fixture's own pedigree has no nomination
+ * prompts. Built from that pedigree rather than written out here, so
+ * everything this stage resolves through it, its node type above all, stays
+ * the fixture's.
+ */
+function sourcePedigreeRecordingConditionX(): SectionDoc {
+  const source = loadFixtureStage(SOURCE_STAGE_ID);
+  return {
+    id: source.id,
+    type: source.type,
+    ...source.fields,
+    nominationPrompts: [
+      {
+        id: 'nomination-1',
+        text: 'Who in your family has condition X?',
+        variable: 'hasConditionX',
+      },
+    ],
+  };
+}
+
 /** A stage of this interface that does not exist yet, as a host creates one. */
 const openNewStage = () =>
   renderStageEditor({
@@ -60,6 +86,7 @@ const openNewStage = () =>
       fields: getInterfaceTemplate('NarrativePedigree'),
     },
     editor: narrativePedigreeEditor,
+    otherStages: { [SOURCE_STAGE_ID]: sourcePedigreeRecordingConditionX() },
   });
 
 /**

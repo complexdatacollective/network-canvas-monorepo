@@ -26,11 +26,6 @@ const narrativePedigreeSections = (
   </>
 );
 
-const FAMILY_MEMBER_SECTION = sectionId({
-  kind: 'codebookNode',
-  typeId: 'family_member',
-});
-
 /**
  * The fixture narrative pedigree, with whatever the test needs replaced.
  *
@@ -154,6 +149,29 @@ function reorderStages(
   });
 }
 
+/**
+ * The source pedigree replaced, as a collaborator's change arriving mid-edit.
+ *
+ * The same route `reorderStages` takes, for the one section a change to the
+ * pedigree touches: the HOST issues the revision and the session is told about
+ * the result under it, so a later compound edit is still judged against a base
+ * the host recognises.
+ */
+function replaceSourcePedigree(
+  harness: StageEditorHarness,
+  pedigree: SectionDoc,
+): void {
+  const applied = harness.host.receiveAuthoritativeSections({
+    [sectionId({ kind: 'stage', stageId: 'family-pedigree-1' })]: pedigree,
+  });
+  act(() => {
+    harness.session.receiveAuthoritativeUpdate({
+      protocolSections: applied.protocolSections,
+      manifestRevision: applied.manifestRevision,
+    });
+  });
+}
+
 /** The fixture's only pedigree, moved to the end of the interview. */
 const movePedigreeLast = (stages: string[]): string[] => [
   ...stages.filter((id) => id !== 'family-pedigree-1'),
@@ -179,20 +197,28 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * The source pedigree, collecting one of its node type's attributes through a
- * form field of its own.
+ * The source pedigree, recording or collecting attributes of its node type.
  *
- * A pedigree's form field is a VALIDATED writer: what the participant types is
- * checked before it is stored. A disease mapping writes the same attribute
- * from the tree the participant draws, with no validation at all, so the two
- * may never name one attribute — the protocol reports a role conflict for it,
- * and the values the pedigree writes would bypass the field's validation.
+ * `records` gives it a nomination prompt per attribute — the participant is
+ * asked who in the family it applies to, and everyone they name is marked with
+ * it. That is the one surface that ever sets a family member's disease boolean,
+ * so it is what a disease may be mapped to, and the fixture's own pedigree has
+ * none.
+ *
+ * `collects` gives it a member-form field instead. A form field is a VALIDATED
+ * writer: what the participant types is checked before it is stored. A disease
+ * mapping writes the same attribute from the tree the participant draws, with
+ * no validation at all, so the two may never name one attribute — the protocol
+ * reports a role conflict for it, and the values the pedigree writes would
+ * bypass the field's validation.
  *
  * Built from the fixture's own pedigree rather than written out here, so this
  * stays a real source stage: everything the narrative pedigree resolves
  * through it — its node type above all — is the fixture's.
  */
-function sourcePedigreeCollecting(variable: string): SectionDoc {
+function sourcePedigree(
+  change: Readonly<{ records?: readonly string[]; collects?: string }>,
+): SectionDoc {
   const source = loadFixtureStage('family-pedigree-1');
   const nodeConfig = source.fields.nodeConfig;
   if (!isRecord(nodeConfig)) {
@@ -206,10 +232,40 @@ function sourcePedigreeCollecting(variable: string): SectionDoc {
     ...source.fields,
     nodeConfig: {
       ...nodeConfig,
-      form: [{ variable, prompt: 'How would you describe them?' }],
+      ...(change.collects === undefined
+        ? {}
+        : {
+            form: [
+              {
+                variable: change.collects,
+                prompt: 'How would you describe them?',
+              },
+            ],
+          }),
     },
+    ...(change.records === undefined
+      ? {}
+      : {
+          nominationPrompts: change.records.map((variable, index) => ({
+            id: `nomination-${index + 1}`,
+            text: `Who in your family has ${variable}?`,
+            variable,
+          })),
+        }),
   };
 }
+
+/** The fixture's pedigree, recording the attribute its narrative one maps. */
+const recordingTheFixtureDisease = {
+  'family-pedigree-1': sourcePedigree({ records: ['hasConditionX'] }),
+};
+
+/** The same, recording the second boolean the codebook updates add too. */
+const recordingBothConditions = {
+  'family-pedigree-1': sourcePedigree({
+    records: ['hasConditionX', 'hasConditionY'],
+  }),
+};
 
 describe('the pedigree a narrative pedigree draws', () => {
   it('opens on the stage as the protocol holds it', async () => {
@@ -452,7 +508,10 @@ describe('the diseases a narrative pedigree defines', () => {
   });
 
   it('refuses a second disease that reuses a name', async () => {
-    const harness = renderStageEditor(openFixture());
+    const harness = renderStageEditor({
+      ...openFixture(),
+      otherStages: recordingBothConditions,
+    });
     harness.receiveCodebookUpdate({
       node: { family_member: familyMemberCodebook({ add: A_SECOND_BOOLEAN }) },
     });
@@ -487,7 +546,10 @@ describe('the diseases a narrative pedigree defines', () => {
   });
 
   it('never offers an attribute a sibling disease already maps', async () => {
-    const harness = renderStageEditor(openFixture());
+    const harness = renderStageEditor({
+      ...openFixture(),
+      otherStages: recordingBothConditions,
+    });
     harness.receiveCodebookUpdate({
       node: { family_member: familyMemberCodebook({ add: A_SECOND_BOOLEAN }) },
     });
@@ -512,8 +574,16 @@ describe('the diseases a narrative pedigree defines', () => {
     const harness = renderStageEditor({
       stage: narrativePedigreeStageWith({ diseases: [] }),
       sections: narrativePedigreeSections,
+      // The pedigree both nominates `hasConditionX` and collects it through a
+      // form field — a protocol a merge or an import can produce, and the one
+      // arrangement in which the form rule is the ONLY thing keeping the
+      // attribute off the list. Given a source that merely fails to nominate
+      // it, this test would pass with the form rule deleted.
       otherStages: {
-        'family-pedigree-1': sourcePedigreeCollecting('hasConditionX'),
+        'family-pedigree-1': sourcePedigree({
+          records: ['hasConditionX', 'hasConditionY'],
+          collects: 'hasConditionX',
+        }),
       },
     });
     harness.receiveCodebookUpdate({
@@ -545,7 +615,7 @@ describe('the diseases a narrative pedigree defines', () => {
       stageId: 'narrative-pedigree-1',
       sections: narrativePedigreeSections,
       otherStages: {
-        'family-pedigree-1': sourcePedigreeCollecting('hasConditionX'),
+        'family-pedigree-1': sourcePedigree({ collects: 'hasConditionX' }),
       },
     });
 
@@ -567,35 +637,94 @@ describe('the diseases a narrative pedigree defines', () => {
     expect(await screen.findByText('Condition Z')).toBeInTheDocument();
   });
 
-  it('creates an attribute for a disease as one compound edit', async () => {
-    const harness = renderStageEditor(openFixture());
+  /**
+   * The defect this rule exists for. A Family Pedigree writes a family
+   * member's disease boolean in one place only — a nomination prompt, where the
+   * participant is asked who a question applies to and everyone they name is
+   * marked. An attribute no nomination prompt records is therefore never `true`,
+   * and the genetics engine treats only an explicit `true` as affected: a
+   * disease mapped to one draws an unmarked family in every interview, and
+   * nothing — not the schema, not the editor — says so.
+   *
+   * So the picker offers what the source pedigree RECORDS, and the dialog
+   * carries no create-an-attribute affordance: an attribute created from here
+   * is by definition one nothing collects. The empty message is what sends the
+   * researcher to the place it can come from.
+   */
+  it('offers nothing, and no way to create one, when the pedigree records nothing', async () => {
+    const harness = renderStageEditor({
+      stage: narrativePedigreeStageWith({ diseases: [] }),
+      sections: narrativePedigreeSections,
+    });
+    harness.receiveCodebookUpdate({
+      node: { family_member: familyMemberCodebook({ add: A_SECOND_BOOLEAN }) },
+    });
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Edit disease' }),
+      screen.getByRole('button', { name: 'Create new disease' }),
     );
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Create a new affected-status attribute',
-      }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Attribute name' }),
-      'hasConditionZ',
-    );
-    const submissions = vi.spyOn(harness.host, 'submit');
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create attribute' }),
-    );
+    const disease = within(await screen.findByRole('dialog'));
 
-    await waitFor(() => expect(submissions).toHaveBeenCalledTimes(1));
     expect(
-      submissions.mock.calls[0]?.[0].edits.map((edit) => edit.sectionId),
-    ).toEqual([FAMILY_MEMBER_SECTION]);
-    await waitFor(() =>
-      expect(
-        screen.getByRole('combobox', { name: 'Affected-status attribute' }),
-      ).not.toHaveValue('hasConditionX'),
+      disease.queryByRole('combobox', { name: 'Affected-status attribute' }),
+    ).not.toBeInTheDocument();
+    expect(
+      disease.getByText(
+        'The source pedigree does not record who is affected by anything yet. Add a nomination prompt to it asking who has this condition, and it can be mapped here.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      disease.queryByRole('button', { name: /Create.*attribute/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * The save gate says the same thing as the picker, for the row the picker
+   * never judged: the nomination prompt recording this attribute was removed
+   * while the dialog was open, so the pick is one nothing collects by the time
+   * it is saved. Its own committed attribute still escapes — that is the test
+   * above this one.
+   */
+  it('refuses a mapping the pedigree stopped recording while the dialog was open', async () => {
+    const harness = renderStageEditor({
+      stage: narrativePedigreeStageWith({ diseases: [] }),
+      sections: narrativePedigreeSections,
+      otherStages: recordingBothConditions,
+    });
+    harness.receiveCodebookUpdate({
+      node: { family_member: familyMemberCodebook({ add: A_SECOND_BOOLEAN }) },
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new disease' }),
     );
+    const disease = within(await screen.findByRole('dialog'));
+    await harness.user.type(
+      disease.getByRole('textbox', { name: 'Disease name' }),
+      'Condition Y',
+    );
+    await harness.user.selectOptions(
+      disease.getByRole('combobox', { name: 'Color' }),
+      'node-color-seq-2',
+    );
+    await harness.user.selectOptions(
+      disease.getByRole('combobox', { name: 'Affected-status attribute' }),
+      'hasConditionY',
+    );
+    await chooseOption(harness, 'Inheritance pattern', 'Autosomal recessive');
+
+    replaceSourcePedigree(
+      harness,
+      sourcePedigree({ records: ['hasConditionX'] }),
+    );
+    await harness.user.click(disease.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await screen.findByText(
+        'Nothing records this attribute, so nobody would be marked with it. Add a nomination prompt to the source pedigree asking who has this condition, then map it here.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
 
@@ -786,6 +915,10 @@ describe('the batch a source change makes', () => {
       sourceStageId: 'a-pedigree-that-was-deleted',
     }),
     sections: narrativePedigreeSections,
+    // The pedigree these tests switch TO records the attribute the disease
+    // they then describe is mapped to; without a nomination prompt recording it,
+    // that attribute is one the picker rightly never offers.
+    otherStages: recordingTheFixtureDisease,
   });
 
   const draftOf = (harness: StageEditorHarness) =>

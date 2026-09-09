@@ -175,6 +175,13 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Refusal shown under the attribute control in the disease dialog when a sibling disease already records who is affected under the attribute just chosen. An attribute is one field of data recorded about a person.',
   },
+  diseasesNotRecorded: {
+    id: 'protocolBuilder.narrativePedigree.diseasesNotRecorded',
+    defaultMessage:
+      'Nothing records this attribute, so nobody would be marked with it. Add a nomination prompt to the source pedigree asking who has this condition, then map it here.',
+    description:
+      'Refusal shown under the attribute control in the disease dialog when the chosen attribute is one no nomination prompt of the source Family Pedigree stage records — a mapping to it draws an unmarked family in every interview. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name; "Nomination prompts" is the name of that part of the pedigree editor.',
+  },
   diseasesDuplicateLabel: {
     id: 'protocolBuilder.narrativePedigree.diseasesDuplicateLabel',
     defaultMessage:
@@ -248,35 +255,22 @@ export const narrativePedigreeMessages = defineMessages({
   diseaseVariableHint: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableHint',
     defaultMessage:
-      'The boolean attribute of the source pedigree that records who is affected.',
+      'Only attributes a nomination prompt of the source pedigree records are offered. This stage draws what that prompt collected; it collects nothing itself.',
     description:
-      'Guidance under the affected-status control. Boolean is a yes/no attribute; the source pedigree is the earlier stage that collected the family.',
+      'Guidance under the affected-status control, saying why the list is as short as it is. A nomination prompt is the part of a Family Pedigree stage that asks the participant who in the family a question applies to and marks everyone they name; "Nomination prompts" is what that part of the pedigree editor is called, so the two should read the same. The source pedigree is the earlier stage that collected the family.',
   },
   diseaseVariableEmpty: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableEmpty',
     defaultMessage:
-      'The source pedigree has no boolean attributes a disease can be mapped to.',
+      'The source pedigree does not record who is affected by anything yet. Add a nomination prompt to it asking who has this condition, and it can be mapped here.',
     description:
-      'Said in place of the affected-status list when the family collected by the source stage records nothing a disease could be read from.',
+      'Said in place of the affected-status list when no nomination prompt of the source Family Pedigree stage records an attribute this stage could draw. It names the one place the attribute can come from, because a disease mapped to anything else marks nobody. "Nomination prompts" is the name of that part of the pedigree editor.',
   },
   diseaseVariableRequired: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableRequired',
     defaultMessage: 'Choose the attribute that records who is affected.',
     description:
       'Refusal shown under the affected-status control when the researcher saves the dialog without choosing one.',
-  },
-  diseaseCreateVariableLabel: {
-    id: 'protocolBuilder.narrativePedigree.diseaseCreateVariableLabel',
-    defaultMessage: 'Create a new affected-status attribute',
-    description:
-      'Button inside the disease dialog that adds a new yes/no field to the source pedigree’s own family members, for a condition the study does not record yet.',
-  },
-  diseaseCreateVariableDescription: {
-    id: 'protocolBuilder.narrativePedigree.diseaseCreateVariableDescription',
-    defaultMessage:
-      'Create a boolean attribute recording who is affected by this disease',
-    description:
-      'Says what the attribute being created is for, inside the dialog that creates it. Boolean is a yes/no attribute. No full stop, because it reads as a caption above the form rather than as a sentence of prose.',
   },
   diseaseInheritanceLabel: {
     id: 'protocolBuilder.narrativePedigree.diseaseInheritanceLabel',
