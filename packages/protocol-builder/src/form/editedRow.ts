@@ -9,9 +9,9 @@ import { createContext } from 'react';
  * using this resource?" is the one that matters — therefore cannot read the
  * stage form alone, because the row on screen is not in it yet.
  *
- * Provided by `DialogArrayField`'s editor, which is the only thing that knows
- * both halves: `listPath` comes from the list's own document binding, and
- * `read` is the same merge the save commits, so the two cannot answer
+ * Provided by the row dialog, which is the only thing that knows both halves:
+ * `listPath` is the name the section mounts its list under, and `read`
+ * assembles the row exactly as the save commits it, so the two cannot answer
  * differently about the same draft.
  *
  * Where in the list the row sits is deliberately NOT here. A dialog outlives

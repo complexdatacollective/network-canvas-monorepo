@@ -5,8 +5,8 @@ import { defineMessages } from '@codaco/app-i18n/messages';
  *
  * One file for the whole area rather than descriptors beside each section's
  * markup, because a good half of what this family says is rendered somewhere
- * ELSE — in `BuilderSection`'s confirmation, in `DialogArrayField`'s row
- * affordances, in the shared form-fields section, and in a field error that
+ * ELSE — in `BuilderSection`'s confirmation, in a row's own affordances and
+ * the confirmation a removal raises, in the shared form-fields section, and in a field error that
  * travelled to the form's error region as an encoded string. A translator
  * reading this file sees the whole of a pedigree at once, including the parts
  * no pedigree component renders.

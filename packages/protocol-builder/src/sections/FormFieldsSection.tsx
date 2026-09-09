@@ -600,11 +600,11 @@ type FormFieldsScope = Readonly<{
    * `useWhereTheAnswerLands` reads when the write comes back.
    *
    * A ref, and one for the whole section rather than one per row, because the
-   * save handler belongs to the LIST — it is the list field's `onBeforeSave`,
-   * made once for every row it will ever open — while the live row is known
-   * only to the editor mounted inside the open dialog. One row's dialog is
-   * open at a time, so one cell is unambiguous; the editor fills it while it
-   * is mounted and empties it as it goes.
+   * save gate belongs to the LIST — it is the list's `beforeSave`, made once
+   * for every row it will ever open — while the live row is known only to the
+   * editor mounted inside the open dialog. One row's dialog is open at a time,
+   * so one cell is unambiguous; the editor fills it while it is mounted and
+   * empties it as it goes.
    */
   rowUnderEdit: RefObject<RowUnderEdit | undefined>;
 }>;

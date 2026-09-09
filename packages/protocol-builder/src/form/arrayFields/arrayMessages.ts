@@ -7,11 +7,10 @@ import { defineMessage } from '@codaco/app-i18n/messages';
  * on a second declaration — so a message several of these modules say lives
  * here rather than in whichever of them happened to need it first.
  *
- * Only the generic row noun qualifies today. It is the word three separate
- * sentences are built around — a refused write (`arrayWriteRefusal`), a
- * refused removal (`useConfirmRowRemoval`) and a row's own affordances
- * (`DialogArrayField`) — and it reaches all three the same way: as the
- * descriptor a list hands over for its rows, never as a translated word a
+ * Only the generic row noun qualifies today. It is the word two separate
+ * sentences are built around — a refused removal (`useConfirmRowRemoval`) and
+ * a row's own affordances (`rowDialog`) — and it reaches both the same way: as
+ * the descriptor a list hands over for its rows, never as a translated word a
  * caller has already resolved.
  */
 
