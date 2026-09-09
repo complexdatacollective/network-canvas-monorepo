@@ -79,6 +79,9 @@ const INHERITANCE_UNAVAILABLE = createMessageError(
   narrativePedigreeMessages.diseaseInheritanceUnavailable,
 );
 
+/** What `unrecordedNames` signs as when no row maps anything unrecorded. */
+const NOTHING_UNRECORDED = JSON.stringify([]);
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -365,17 +368,26 @@ export default function DiseasesSection() {
   // when there is something to report, or an error already standing that it
   // would now clear, so an untouched empty list is not given the "add at least
   // one" refusal nobody has earned yet.
-  const unrecordedCount = unrecordedNames(rows).length;
+  //
+  // Keyed on the refusal the rows would earn rather than on how many rows earn
+  // it. The sentence NAMES them, and one change to the source pedigree can
+  // invalidate one disease and repair another at the same time — a nomination
+  // prompt moved from one condition to the other leaves the count exactly as
+  // it was. Watching the count, the re-run never happened: the badges moved to
+  // the row now at fault while the standing sentence went on naming the row
+  // that had just been repaired, sending the researcher to fix a mapping that
+  // was already right.
+  const unrecordedSignature = JSON.stringify(unrecordedNames(rows));
   useEffect(() => {
     const state = storeApi.getState();
     if (
-      unrecordedCount === 0 &&
+      unrecordedSignature === NOTHING_UNRECORDED &&
       state.getFieldErrors(DISEASES_FIELD) === null
     ) {
       return;
     }
     void state.validateField(DISEASES_FIELD);
-  }, [storeApi, unrecordedCount]);
+  }, [storeApi, unrecordedSignature]);
 
   const { editorFieldsComponent, previewComponent } = useRowRenderers(
     DiseaseEditor,

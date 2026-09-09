@@ -673,7 +673,9 @@ describe('the diseases a narrative pedigree defines', () => {
     // so nothing on screen says the row is holding a value the protocol will
     // not take.
     expect(
-      disease.getAllByRole('radio').filter((radio) => radio.checked),
+      disease
+        .getAllByRole<HTMLInputElement>('radio')
+        .filter((radio) => radio.checked),
     ).toEqual([]);
     expect(
       disease.getByRole('combobox', { name: 'Inheritance pattern' }),
@@ -929,6 +931,59 @@ describe('the diseases a narrative pedigree defines', () => {
  * sat untouched, and for the row an import brought in.
  */
 describe('a disease the source pedigree stopped recording', () => {
+  /**
+   * The standing refusal names the rows at fault, so it has to follow WHICH
+   * rows those are — not merely how many there are.
+   *
+   * One change to the source pedigree can invalidate one disease and repair
+   * another at the same time: a collaborator moving a nomination prompt from
+   * one condition to the other leaves the number of unrecorded rows exactly as
+   * it was. Watching the count alone, the re-run never happened, and the
+   * sentence under the list went on naming the disease that had just been
+   * fixed while the badge sat on a different row — sending the researcher to
+   * repair a mapping that was already right.
+   */
+  it('renames the standing refusal when the unrecorded rows change', async () => {
+    const harness = renderStageEditor({
+      stage: narrativePedigreeStageWith({
+        diseases: [
+          fixtureDisease(),
+          {
+            ...fixtureDisease(),
+            id: 'disease-2',
+            label: 'Condition Y',
+            variable: 'hasConditionY',
+            color: NodeColorSequence[1],
+          },
+        ],
+      }),
+      sections: narrativePedigreeSections,
+      otherStages: recordingTheFixtureDisease(),
+    });
+    harness.receiveCodebookUpdate({
+      node: { family_member: familyMemberCodebook({ add: A_SECOND_BOOLEAN }) },
+    });
+
+    const namesConditionY =
+      'Condition Y maps an attribute the source pedigree does not record, so nobody in the family would be marked with it. Add a nomination prompt to that pedigree asking who has it, or remove the disease.';
+    const namesConditionX =
+      'Condition X maps an attribute the source pedigree does not record, so nobody in the family would be marked with it. Add a nomination prompt to that pedigree asking who has it, or remove the disease.';
+    // Where it starts: the pedigree records X, so the row mapping Y is the one
+    // nothing would ever mark, and the refusal under the list says so.
+    expect(await harness.submit()).toBeNull();
+    expect(await screen.findByText(namesConditionY)).toBeInTheDocument();
+
+    // The collaborator moves the one nomination prompt from X to Y. Both rows
+    // change verdict, and the count of them does not.
+    replaceSourcePedigree(
+      harness,
+      sourcePedigreeDocument({ records: ['hasConditionY'] }),
+    );
+
+    expect(await screen.findByText(namesConditionX)).toBeInTheDocument();
+    expect(screen.queryByText(namesConditionY)).not.toBeInTheDocument();
+  });
+
   it('refuses the save and names the disease', async () => {
     const harness = renderStageEditor(openRecordedFixture());
     expect(
