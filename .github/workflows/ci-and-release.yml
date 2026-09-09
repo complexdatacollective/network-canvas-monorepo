@@ -476,7 +476,14 @@ jobs:
       # `fresco#build`'s `passThroughEnv` (strict env mode strips undeclared
       # variables), which keeps it out of the task hash so the seeded cache
       # stays valid for runs that don't set it.
-      - run: pnpm exec turbo run build test typecheck
+      - run: pnpm exec turbo run build typecheck
+        env:
+          SKIP_ENV_VALIDATION: 'true'
+      # The test suites run one at a time, for the reason the `test` job
+      # gives: a single vitest already fills the runner, and suites run in
+      # parallel starve each other into timeouts. A starved failure here
+      # would abort the run and leave every suite still queued unseeded.
+      - run: pnpm exec turbo run test --concurrency=1
         env:
           SKIP_ENV_VALIDATION: 'true'
 
@@ -717,20 +724,21 @@ jobs:
         # The only workspace suite whose assertions are wall-clock budgets
         # rather than logic: a spawnSync of the Node entrypoint capped at 10s,
         # a 180s seeding hook, 30s operational probes, and a 150ms delivery
-        # lease that a starved event loop cannot renew. `turbo run test` uses
-        # turbo's default concurrency of 10 and each vitest opens workers of
-        # its own, so on a 4-vCPU runner this suite shares the machine with the
-        # jsdom suites (architect, protocol-builder, interview, fresco-ui,
-        # interviewer) and those budgets lapse. Measured across #1693's runs it
-        # passes at or under 408s of suite wall time and failed at every
+        # lease that a starved event loop cannot renew. Before the step below
+        # capped turbo's concurrency, this suite shared the 4-vCPU runner with
+        # the jsdom suites (architect, protocol-builder, interview, fresco-ui,
+        # interviewer) and those budgets lapsed. Measured across #1693's runs
+        # it passes at or under 408s of suite wall time and failed at every
         # observed time above that (509s, 519s, 527s, 583s, 847s, 851s).
         #
         # It is selected far more often than it is touched, because
         # @codaco/protocol-utilities dev-depends on @codaco/fresco-ui: every
         # fresco-ui change re-hashes it through `^topo`. Running it first, by
-        # itself, costs a cache replay on the PRs that do not affect it and
-        # hands it the whole runner on the ones that do; the `--affected` pass
-        # below then replays it from the cache this step just wrote.
+        # itself, costs a cache replay on the PRs that do not affect it, and
+        # on the ones that do it keeps this suite's verdict and cache entry
+        # independent of the others: turbo schedules nothing further once a
+        # task fails, so queued behind a failing suite it would never run. The
+        # `--affected` pass below replays it from the cache this step wrote.
         continue-on-error: true
         run: pnpm exec turbo run '@codaco/studio-server#test' --concurrency=1
       - name: Run tests (PRs run only affected tasks)
@@ -756,6 +764,19 @@ jobs:
           # quality-support, so changing only a scripts/*.test.mjs file does
           # not invalidate workspace unit tests. Docs, changesets, and
           # markdown are inert to tests as well.
+          #
+          # `--concurrency=1`: one suite at a time. Turbo's default runs up to
+          # ten tasks at once, and every vitest sizes its fork pool to the
+          # runner's CPUs (three workers on the 4-vCPU runner, behind a main
+          # process that serves their module transforms), so a single suite
+          # already fills the machine and each further one only divides it. A
+          # fresco-ui change invalidates thirteen suites: run 34372974092
+          # (#1796) had nine in flight at once, every protocol-builder file
+          # took 4–5× as long as in a lightly loaded run (including one that
+          # renders nothing), and ten tests timed out at 20s. Serialising the
+          # suites cannot cost wall time — the runner is saturated either way
+          # — and it hands each suite the whole machine, so per-test budgets
+          # measure the test again rather than the queue. MEASUREMENTS_TBD
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
             && [[ -n "$DIFF_BASE_SHA" ]] \
             && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
@@ -765,12 +786,13 @@ jobs:
               ':(exclude)pnpm-lock.yaml' \
               ':(exclude)scripts/*.test.mjs' ':(exclude)*.md'; then
             echo "Running test tasks affected by $DIFF_BASE_SHA..HEAD"
-            TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test --affected
+            TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test \
+              --affected --concurrency=1
             exit 0
           fi
 
           echo "Running the full test suite for $GITHUB_EVENT_NAME"
-          pnpm exec turbo run test
+          pnpm exec turbo run test --concurrency=1
       - name: Verify every test task passed
         if: always()
         env:
