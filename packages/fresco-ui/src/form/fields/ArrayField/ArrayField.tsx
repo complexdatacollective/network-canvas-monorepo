@@ -22,7 +22,10 @@ import {
 } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { MotionButton } from '../../../Button';
@@ -98,6 +101,24 @@ const messages = defineMessages({
     defaultMessage: 'No items added yet. Click "Add Item" to get started.',
     description:
       'Default empty state of the list field; mention the add button by its default label.',
+  },
+  confirmDeleteTitle: {
+    id: 'frescoUi.arrayField.confirmDeleteTitle',
+    defaultMessage: 'Delete this {itemLabel}?',
+    description:
+      'Title of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+  confirmDeleteDescription: {
+    id: 'frescoUi.arrayField.confirmDeleteDescription',
+    defaultMessage: 'This {itemLabel} will be removed from the list.',
+    description:
+      'Body of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+  confirmDeleteAction: {
+    id: 'frescoUi.arrayField.confirmDeleteAction',
+    defaultMessage: 'Delete {itemLabel}',
+    description:
+      'Confirm button of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
   },
 });
 
@@ -319,8 +340,24 @@ type ArrayFieldCustomProps<T extends Record<string, unknown>> = {
   /**
    * Function that returns a new item template when adding a new item.
    * Note: You don't need to include an 'id' property - ArrayField handles ID generation internally.
+   *
+   * Optional: a list whose rows are filled in from nothing — every field of a
+   * new row answered in the editor, no seeded defaults — adds an empty item,
+   * which is what `DialogEditing` and every row dialog written after it does
+   * with the template it has to pass today.
    */
-  itemTemplate: () => Partial<T>;
+  itemTemplate?: () => Partial<T>;
+
+  /**
+   * This list's own noun for one of its rows ("prompt", "option"), as a
+   * DESCRIPTOR rather than a string, so the word a researcher reads is one
+   * extraction sees and a translator can answer for.
+   *
+   * Given, the delete confirmation names what is being deleted instead of
+   * asking the generic "Are you sure?"; absent, it keeps that generic copy,
+   * which is all a list with no word for its rows can honestly say.
+   */
+  itemLabel?: MessageDescriptor;
   addButtonLabel?: string;
   emptyStateMessage?: string;
   confirmDelete?: boolean;
@@ -639,7 +676,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
   getId,
   itemComponent: ItemComponent,
   editorComponent: EditorComponent,
-  itemTemplate,
+  // A row whose every field is answered in the editor starts from nothing.
+  itemTemplate = () => ({}),
+  itemLabel,
   addButtonLabel,
   emptyStateMessage,
   confirmDelete = true,
@@ -931,8 +970,23 @@ export default function ArrayField<T extends Record<string, unknown>>({
       };
 
       if (confirmDelete) {
+        // A named list says what is going; an unnamed one keeps `confirm`'s
+        // own "Are you sure? This action cannot be undone.", which is all it
+        // can honestly say.
+        const named = itemLabel
+          ? { itemLabel: intl.formatMessage(itemLabel) }
+          : undefined;
+
         await confirm({
-          confirmLabel: intl.formatMessage(commonMessages.delete),
+          title: named
+            ? intl.formatMessage(messages.confirmDeleteTitle, named)
+            : undefined,
+          description: named
+            ? intl.formatMessage(messages.confirmDeleteDescription, named)
+            : undefined,
+          confirmLabel: named
+            ? intl.formatMessage(messages.confirmDeleteAction, named)
+            : intl.formatMessage(commonMessages.delete),
           onConfirm: removeAndAnnounce,
           // On confirm the row — and the Delete control that opened this — is
           // gone, so focus has nowhere to return to. The add button is the
@@ -952,6 +1006,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
       intl,
       isDraft,
       isInteractionDisabled,
+      itemLabel,
       items,
       removeItem,
     ],

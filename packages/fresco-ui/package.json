@@ -119,6 +119,7 @@
     "./form/fields/Boolean": "./src/form/fields/Boolean.tsx",
     "./form/fields/Checkbox": "./src/form/fields/Checkbox.tsx",
     "./form/fields/CheckboxGroup": "./src/form/fields/CheckboxGroup.tsx",
+    "./form/fields/ColorPicker": "./src/form/fields/ColorPicker.tsx",
     "./form/fields/Combobox/Combobox": "./src/form/fields/Combobox/Combobox.tsx",
     "./form/fields/Combobox/shared": "./src/form/fields/Combobox/shared.ts",
     "./form/fields/DatePicker": "./src/form/fields/DatePicker.tsx",
@@ -600,6 +601,10 @@
       "./form/fields/CheckboxGroup": {
         "types": "./dist/form/fields/CheckboxGroup.d.ts",
         "default": "./dist/form/fields/CheckboxGroup.js"
+      },
+      "./form/fields/ColorPicker": {
+        "types": "./dist/form/fields/ColorPicker.d.ts",
+        "default": "./dist/form/fields/ColorPicker.js"
       },
       "./form/fields/Combobox/Combobox": {
         "types": "./dist/form/fields/Combobox/Combobox.d.ts",

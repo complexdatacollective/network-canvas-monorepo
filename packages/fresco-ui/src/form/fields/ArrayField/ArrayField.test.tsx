@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MotionConfig } from 'motion/react';
@@ -16,6 +17,7 @@ import DialogProvider from '../../../dialogs/DialogProvider';
 import Surface from '../../../layout/Surface';
 import ArrayField, {
   ArrayFieldDragHandle,
+  stripManagedProperties,
   type ArrayFieldEditorProps,
   type ArrayFieldProps,
   type ArrayFieldItemProps,
@@ -93,6 +95,32 @@ function TestEditor({
       <button
         type="button"
         onClick={() => onSave?.({ id: item.id, label: item.label })}
+      >
+        Save editor
+      </button>
+      <button type="button" onClick={onCancel}>
+        Cancel editor
+      </button>
+    </dialog>
+  );
+}
+
+/** An editor that shows the item it was opened on, template and all. */
+function TemplateReportingEditor({
+  item,
+  onSave,
+  onCancel,
+}: ArrayFieldEditorProps<Item>) {
+  if (!item) return null;
+
+  return (
+    <dialog open>
+      <span data-testid="new-item">
+        {JSON.stringify(stripManagedProperties<Item>(item))}
+      </span>
+      <button
+        type="button"
+        onClick={() => onSave?.(stripManagedProperties<Item>(item))}
       >
         Save editor
       </button>
@@ -723,5 +751,109 @@ describe('ArrayField', () => {
     await user.click(screen.getByRole('button', { name: 'Add Item' }));
 
     expect(onChange).toHaveBeenCalledWith([{ label: 'immediate' }]);
+  });
+
+  describe('without an itemTemplate', () => {
+    // Written out rather than through `renderField`, which passes a template:
+    // the prop being omissible at all is half of what these pin.
+    const renderTemplateless = (
+      props: Partial<ArrayFieldProps<Item>> & {
+        onChange: (v?: Item[]) => void;
+      },
+    ) =>
+      render(
+        <DialogProvider>
+          <ArrayField<Item>
+            value={[]}
+            itemComponent={TestItem}
+            confirmDelete={false}
+            {...props}
+          />
+        </DialogProvider>,
+      );
+
+    it('opens the editor on an item with nothing in it', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      renderTemplateless({
+        onChange,
+        editorComponent: TemplateReportingEditor,
+      });
+
+      await user.click(screen.getByRole('button', { name: 'Add Item' }));
+
+      // Every field of the new row is answered in the editor, so the row it
+      // opens on carries nothing the list invented for it.
+      expect(screen.getByTestId('new-item')).toHaveTextContent('{}');
+
+      await user.click(screen.getByRole('button', { name: 'Save editor' }));
+
+      expect(onChange).toHaveBeenCalledWith([{}]);
+    });
+
+    it('appends an item with nothing in it when there is no editor', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      renderTemplateless({ onChange, immediateAdd: true });
+
+      await user.click(screen.getByRole('button', { name: 'Add Item' }));
+
+      expect(onChange).toHaveBeenCalledWith([{}]);
+    });
+  });
+
+  describe('the delete confirmation', () => {
+    const promptLabel = {
+      id: 'test.arrayField.prompt',
+      defaultMessage: 'prompt',
+    };
+
+    const renderDeletableRow = (props: Partial<ArrayFieldProps<Item>> = {}) =>
+      renderField({
+        value: [{ id: 'one', label: 'one' }],
+        getId: (item) => item.id,
+        confirmDelete: true,
+        ...props,
+      });
+
+    it('names the row when the list has a word for its rows', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      renderDeletableRow({ itemLabel: promptLabel, onChange });
+
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+      expect(
+        await screen.findByText('Delete this prompt?'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('This prompt will be removed from the list.'),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Delete prompt' }));
+
+      expect(onChange).toHaveBeenCalledWith([]);
+    });
+
+    it('keeps the generic wording when the list has no word for its rows', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      renderDeletableRow({ onChange });
+
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+      expect(await screen.findByText('Are you sure?')).toBeInTheDocument();
+      expect(
+        screen.getByText('This action cannot be undone.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/prompt/)).toBeNull();
+
+      // `Delete` is the row's own control as well as the confirm button, so
+      // the confirm is the one inside the dialog.
+      const dialog = screen.getByRole('dialog');
+      await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+      expect(onChange).toHaveBeenCalledWith([]);
+    });
   });
 });
