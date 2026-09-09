@@ -29,6 +29,10 @@ const GRACE: HostPrincipal = {
 
 const REQUEST_ID = 'request-1';
 
+/** The edit that imported the file, and a second one open beside it. */
+const IMPORTING_EDIT = 'edit-1';
+const OTHER_EDIT = 'edit-2';
+
 const PORTRAIT = () =>
   ({
     kind: 'content',
@@ -39,9 +43,12 @@ const PORTRAIT = () =>
     bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
   }) as const;
 
+/** Somebody making resource calls: a connection, and the edit they are in. */
+type Caller = Readonly<{ client: InMemoryClient; editId: string }>;
+
 /**
- * One way of getting at a staged resource, asked once by the session that
- * staged it and once by a collaborator.
+ * One way of getting at a staged resource, asked once by the edit that staged
+ * it and once by each edit that did not.
  *
  * `reaches` answers whether the caller got at THAT resource — the same
  * question for a list, a preview and a promotion, so the table below says what
@@ -53,25 +60,26 @@ type Reach = Readonly<{
   procedure: string;
   name: string;
   reaches: (
-    caller: InMemoryClient,
-    owner: InMemoryClient,
+    caller: Caller,
+    owner: Caller,
     host: InMemoryHost,
     staged: string,
   ) => Promise<boolean>;
   /**
-   * Whether the session that staged the resource reaches it this way. False
-   * only where the way itself is wrong for anybody: a request id reused by a
+   * Whether the edit that staged the resource reaches it this way. False only
+   * where the way itself is wrong for anybody: a request id reused by a
    * different picker is a different intent, not a retry.
    */
   byOwner: boolean;
 }>;
 
 async function stagedList(
-  client: InMemoryClient,
+  caller: Caller,
   host: InMemoryHost,
 ): Promise<string[]> {
-  const listed = await client.resources.list({
+  const listed = await caller.client.resources.list({
     protocolId: host.protocolId,
+    editId: caller.editId,
     status: 'staged',
   });
   if (listed.status !== 'ok') throw new Error(listed.failure.message);
@@ -91,8 +99,9 @@ const REACHES: readonly Reach[] = [
     name: 'staging again under the same request id',
     byOwner: true,
     reaches: async (caller, _owner, host, staged) => {
-      const again = await caller.resources.stage({
+      const again = await caller.client.resources.stage({
         protocolId: host.protocolId,
+        editId: caller.editId,
         requestId: REQUEST_ID,
         request: PORTRAIT(),
       });
@@ -108,8 +117,9 @@ const REACHES: readonly Reach[] = [
     // needs one cannot promote it.
     byOwner: false,
     reaches: async (caller, _owner, host, staged) => {
-      const secret = await caller.resources.stage({
+      const secret = await caller.client.resources.stage({
         protocolId: host.protocolId,
+        editId: caller.editId,
         requestId: REQUEST_ID,
         request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
       });
@@ -121,8 +131,9 @@ const REACHES: readonly Reach[] = [
     name: 'inspecting it',
     byOwner: true,
     reaches: async (caller, _owner, host, staged) => {
-      const inspected = await caller.resources.inspect({
+      const inspected = await caller.client.resources.inspect({
         protocolId: host.protocolId,
+        editId: caller.editId,
         resourceId: staged,
       });
       return inspected.status === 'ok';
@@ -133,8 +144,9 @@ const REACHES: readonly Reach[] = [
     name: 'previewing its bytes',
     byOwner: true,
     reaches: async (caller, _owner, host, staged) => {
-      const preview = await caller.resources.preview({
+      const preview = await caller.client.resources.preview({
         protocolId: host.protocolId,
+        editId: caller.editId,
         resourceId: staged,
       });
       return preview.status === 'ok';
@@ -145,8 +157,9 @@ const REACHES: readonly Reach[] = [
     name: 'discarding it by id',
     byOwner: true,
     reaches: async (caller, owner, host, staged) => {
-      const discarded = await caller.resources.discard({
+      const discarded = await caller.client.resources.discard({
         protocolId: host.protocolId,
+        editId: caller.editId,
         resourceId: staged,
       });
       const gone = !(await stagedList(owner, host)).includes(staged);
@@ -156,11 +169,16 @@ const REACHES: readonly Reach[] = [
   {
     procedure: 'resources.discard',
     name: 'discarding the whole edit',
-    // The cancel of one edit. A collaborator's cancel taking away the file
-    // this edit is about to submit is the failure the scoping is for.
+    // The cancel of one edit. Another edit's cancel taking away the file this
+    // one is about to submit is the failure the scoping is for — and a
+    // researcher with a codebook dialog open over a stage editor has two
+    // edits in one session.
     byOwner: true,
     reaches: async (caller, owner, host, staged) => {
-      await caller.resources.discard({ protocolId: host.protocolId });
+      await caller.client.resources.discard({
+        protocolId: host.protocolId,
+        editId: caller.editId,
+      });
       return !(await stagedList(owner, host)).includes(staged);
     },
   },
@@ -169,18 +187,19 @@ const REACHES: readonly Reach[] = [
     name: 'promoting it with a submit',
     byOwner: true,
     reaches: async (caller, _owner, host, staged) => {
-      const held = await caller.acquireLock({
+      const held = await caller.client.acquireLock({
         protocolId: host.protocolId,
         sectionId: INFORMATION,
       });
       if (held.lock !== 'held') throw new Error('the lock was not granted');
       const { isSuccess } = await safe(
-        caller.submit({
+        caller.client.submit({
           protocolId: host.protocolId,
+          requestId: 'write-1',
           sectionId: INFORMATION,
           document: held.document,
           revision: held.revision,
-          promote: { promotionId: 'promotion-1', resourceIds: [staged] },
+          promote: { editId: caller.editId, resourceIds: [staged] },
         }),
       );
       return isSuccess;
@@ -193,14 +212,15 @@ const REACHES: readonly Reach[] = [
     reaches: async (caller, _owner, host, staged) => {
       const { id: _id, ...template } = host.store.read(INFORMATION).document;
       const { isSuccess } = await safe(
-        caller.create({
+        caller.client.create({
           protocolId: host.protocolId,
+          requestId: 'write-1',
           kind: 'stage',
           document: {
             ...template,
             items: [{ id: 'item-1', type: 'asset', content: staged }],
           },
-          promote: { promotionId: 'promotion-1', resourceIds: [staged] },
+          promote: { editId: caller.editId, resourceIds: [staged] },
         }),
       );
       return isSuccess;
@@ -208,22 +228,49 @@ const REACHES: readonly Reach[] = [
   },
 ];
 
-/** A host with one image staged by Ada, and the resource id it minted. */
+/** A host with one image staged by Ada's first edit, and the id it minted. */
 async function hostWithAdasImport(): Promise<
-  Readonly<{ host: InMemoryHost; staged: string }>
+  Readonly<{ host: InMemoryHost; owner: Caller; staged: string }>
 > {
   const host = createInMemoryHost({
     sections: sectionsFromProtocol(FIXTURE),
     principal: ADA,
   });
+  const owner: Caller = { client: host.client, editId: IMPORTING_EDIT };
   const staged = await host.client.resources.stage({
     protocolId: host.protocolId,
+    editId: IMPORTING_EDIT,
     requestId: REQUEST_ID,
     request: PORTRAIT(),
   });
   if (staged.status !== 'ok') throw new Error(staged.failure.message);
-  return { host, staged: staged.data.descriptor.id };
+  return { host, owner, staged: staged.data.descriptor.id };
 }
+
+/**
+ * Who asks, on top of the edit that staged the file: Ada's second editor, and
+ * a collaborator.
+ *
+ * The collaborator names the SAME edit, so the two rows separate the two
+ * boundaries: one edit cannot reach another's staging in one session, and one
+ * session cannot reach another's however the edit is named.
+ */
+const OTHERS: readonly Readonly<{
+  name: string;
+  caller: (host: InMemoryHost) => Caller;
+}>[] = [
+  {
+    name: 'another edit in the same session',
+    caller: (host) => ({ client: host.client, editId: OTHER_EDIT }),
+  },
+  {
+    name: 'a collaborator naming the same edit',
+    caller: (host) => ({
+      client: host.asCollaborator(GRACE),
+      editId: IMPORTING_EDIT,
+    }),
+  },
+];
 
 describe('a staged resource belongs to the edit that staged it', () => {
   it('enumerates every procedure that reaches one', () => {
@@ -243,27 +290,32 @@ describe('a staged resource belongs to the edit that staged it', () => {
   });
 
   for (const reach of REACHES) {
-    it(`${reach.name} reaches it only for the session that staged it`, async () => {
+    it(`${reach.name} reaches it only for the edit that staged it`, async () => {
       const forOwner = await hostWithAdasImport();
-      const owner = await reach.reaches(
-        forOwner.host.client,
-        forOwner.host.client,
-        forOwner.host,
-        forOwner.staged,
-      );
+      const reached: Record<string, boolean> = {
+        'the edit that staged it': await reach.reaches(
+          forOwner.owner,
+          forOwner.owner,
+          forOwner.host,
+          forOwner.staged,
+        ),
+      };
+      const expected: Record<string, boolean> = {
+        'the edit that staged it': reach.byOwner,
+      };
 
-      const forCollaborator = await hostWithAdasImport();
-      const collaborator = await reach.reaches(
-        forCollaborator.host.asCollaborator(GRACE),
-        forCollaborator.host.client,
-        forCollaborator.host,
-        forCollaborator.staged,
-      );
+      for (const other of OTHERS) {
+        const subject = await hostWithAdasImport();
+        reached[other.name] = await reach.reaches(
+          other.caller(subject.host),
+          subject.owner,
+          subject.host,
+          subject.staged,
+        );
+        expected[other.name] = false;
+      }
 
-      expect({ owner, collaborator }).toEqual({
-        owner: reach.byOwner,
-        collaborator: false,
-      });
+      expect(reached).toEqual(expected);
     });
   }
 });

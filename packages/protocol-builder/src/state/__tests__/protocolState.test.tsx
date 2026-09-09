@@ -16,6 +16,13 @@ import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
 import { useEntityTypes, useSection, useSectionMutation } from '../hooks.ts';
 
+/** The edit these calls are made from: one editor, open throughout. */
+const EDIT = 'edit-1';
+
+/** A fresh idempotency key: every write below is its own intent. */
+let writes = 0;
+const nextRequestId = (): string => `write-${++writes}`;
+
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
@@ -87,6 +94,7 @@ describe('the protocol state layer', () => {
     });
     await collaborator.submit({
       protocolId: host.protocolId,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Renamed by Grace' },
       revision: held.revision,
@@ -121,6 +129,7 @@ describe('the protocol state layer', () => {
     host.store.disconnectWatchers();
     await collaborator.submit({
       protocolId: host.protocolId,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Written while disconnected' },
       revision: held.revision,
@@ -165,6 +174,7 @@ describe('the protocol state layer', () => {
     });
     await collaborator.submit({
       protocolId: host.protocolId,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Renamed by Grace' },
       revision: held.revision,
@@ -218,6 +228,7 @@ describe('the protocol state layer', () => {
     });
     await collaborator.submit({
       protocolId: host.protocolId,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Renamed by Grace' },
       revision: held.revision,
@@ -296,6 +307,7 @@ describe('the protocol state layer', () => {
     // not have it is still on its way, and nothing refetches the list.
     await host.client.create({
       protocolId: host.protocolId,
+      requestId: nextRequestId(),
       kind: 'codebookNode',
       document: {
         name: 'Place',
@@ -453,6 +465,7 @@ describe('the protocol state layer', () => {
     const host = newHost();
     const staged = await host.client.resources.stage({
       protocolId: host.protocolId,
+      editId: EDIT,
       requestId: 'request-1',
       request: {
         kind: 'content',
@@ -556,7 +569,7 @@ function PromotingEditor({
         onClick={() => {
           if (document === undefined) return;
           void submit(document, {
-            promotionId: 'promotion-1',
+            editId: EDIT,
             resourceIds: [resourceId],
           }).then((result) => {
             if (result.status !== 'written') {
