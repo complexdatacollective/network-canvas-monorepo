@@ -484,7 +484,14 @@ function CreateSubjectType({
         // there, and the dialog outliving the question is what keeps focus on
         // a live control — the confirm returns focus to the Save it was raised
         // from, and the dialog then returns it to its own trigger.
-        const confirmed = await confirmEntityTypeChange(question);
+        // The created type travels with the question: a "yes" is judged on the
+        // codebook as it stands when it is given, and a collaborator deleting
+        // this type while the researcher reads the question is exactly what
+        // that judgement is for.
+        const confirmed = await confirmEntityTypeChange(question, {
+          entityType: entity,
+          typeId,
+        });
         if (confirmed) select();
         setSession(null);
       })();
