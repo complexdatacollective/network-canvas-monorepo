@@ -17,7 +17,7 @@ import { assembleProtocolSections } from './protocol-document.ts';
 import { sectionShapeIssues } from './section-validation.ts';
 import { sectionId, type ProtocolSectionId } from './taxonomy.ts';
 
-export type DocumentPath = (string | number)[];
+type DocumentPath = (string | number)[];
 
 /** One place a section names something: a reference, at its path. */
 export type SectionReference = {
@@ -165,7 +165,7 @@ export function entityTypeReferences(
  * attribute, has no such entry: there is nothing to remove that leaves a stage
  * the researcher would recognise, so the host says so rather than guessing.
  */
-export function withoutReference(
+function withoutReference(
   document: SectionDoc,
   path: readonly (string | number)[],
 ): SectionDoc | undefined {
