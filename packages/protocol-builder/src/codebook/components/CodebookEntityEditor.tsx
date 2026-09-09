@@ -17,6 +17,9 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import ColorPickerField, {
+  type ColorSwatchOption,
+} from '@codaco/fresco-ui/form/fields/ColorPicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelect from '@codaco/fresco-ui/form/fields/Select/Native';
 import { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
@@ -169,11 +172,11 @@ const messages = defineMessages({
     description:
       'Guidance under the colour field. entity is node, edge or ego. A colour reference is a position in the protocol’s palette rather than a literal colour.',
   },
-  colorPlaceholder: {
-    id: 'protocolBuilder.codebookEntity.colorPlaceholder',
-    defaultMessage: 'Choose a color…',
+  colorOutsidePalette: {
+    id: 'protocolBuilder.codebookEntity.colorOutsidePalette',
+    defaultMessage: 'Current color ({color})',
     description:
-      'Placeholder shown in the colour field of the entity editor before a choice is made.',
+      'Name of the extra swatch offered when the entity type is already stored with a colour this protocol’s palette does not contain, so the researcher can see and keep what it has. color is the stored reference.',
   },
   shapeLabel: {
     id: 'protocolBuilder.codebookEntity.shapeLabel',
@@ -245,15 +248,37 @@ const EDGE_COLOR_OPTIONS = EdgeColorSequence.map((value, index) => ({
   index: index + 1,
 }));
 
+/**
+ * The palette, plus whatever this entity type is already stored with.
+ *
+ * A colour outside the sequence is offered as a swatch of its own rather than
+ * dropped: the picker would otherwise show nothing selected for a type that
+ * has a colour, and the first swatch the researcher touched would silently
+ * replace a value they never saw.
+ */
 const colorOptions = (
   sequence: readonly Readonly<{ value: string; index: number }>[],
   label: MessageDescriptor,
+  current: string,
   intl: IntlShape,
-) =>
-  sequence.map(({ value, index }) => ({
+): ColorSwatchOption[] => {
+  const palette = sequence.map(({ value, index }) => ({
     value,
     label: intl.formatMessage(label, { index }),
   }));
+  if (current === '' || palette.some(({ value }) => value === current)) {
+    return palette;
+  }
+  return [
+    ...palette,
+    {
+      value: current,
+      label: intl.formatMessage(messages.colorOutsidePalette, {
+        color: current,
+      }),
+    },
+  ];
+};
 
 const shapeOptions = (intl: IntlShape) =>
   NodeShapes.map((value) => ({
@@ -372,13 +397,24 @@ export function CodebookEntityFields({
     );
   }
 
+  const currentColor = stringValue(draft.color);
   const colors =
     subject.entity === 'node'
-      ? colorOptions(NODE_COLOR_OPTIONS, messages.nodeColorOption, intl)
-      : colorOptions(EDGE_COLOR_OPTIONS, messages.edgeColorOption, intl);
+      ? colorOptions(
+          NODE_COLOR_OPTIONS,
+          messages.nodeColorOption,
+          currentColor,
+          intl,
+        )
+      : colorOptions(
+          EDGE_COLOR_OPTIONS,
+          messages.edgeColorOption,
+          currentColor,
+          intl,
+        );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div>
       <UnconnectedField
         name="name"
         label={intl.formatMessage(messages.nameLabel, {
@@ -404,13 +440,12 @@ export function CodebookEntityFields({
         hint={intl.formatMessage(messages.colorHint, {
           entity: subject.entity,
         })}
-        component={NativeSelect}
-        value={stringValue(draft.color)}
+        component={ColorPickerField}
+        value={currentColor}
         onChange={(value) =>
           onChange(replaceDraftProperty(draft, 'color', value))
         }
         options={colors}
-        placeholder={intl.formatMessage(messages.colorPlaceholder)}
         required
         disabled={disabled}
         errors={errors.color === undefined ? undefined : [errors.color]}

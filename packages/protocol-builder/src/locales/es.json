@@ -84,7 +84,7 @@
   "protocolBuilder.codebookEntity.codebookTitle": "Libro de códigos",
   "protocolBuilder.codebookEntity.colorHint": "{entity, select, node {Elige una referencia de color para este tipo de nodo.} edge {Elige una referencia de color para este tipo de vínculo.} other {Elige una referencia de color para esta definición de ego.}}",
   "protocolBuilder.codebookEntity.colorLabel": "Color del protocolo",
-  "protocolBuilder.codebookEntity.colorPlaceholder": "Elige un color…",
+  "protocolBuilder.codebookEntity.colorOutsidePalette": "Color actual ({color})",
   "protocolBuilder.codebookEntity.colorRequired": "Elige un color.",
   "protocolBuilder.codebookEntity.createAttribute": "Crear atributo",
   "protocolBuilder.codebookEntity.createAttributeLabel": "{entity, select, node {Crear atributo para el tipo de nodo: {name}} edge {Crear atributo para el tipo de vínculo: {name}} other {Crear atributo para los atributos de Ego}}",

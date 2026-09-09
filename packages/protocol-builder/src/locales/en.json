@@ -339,9 +339,9 @@
     "defaultMessage": "Protocol color",
     "description": "Label of the field choosing which position in the protocol’s palette this entity type is drawn in."
   },
-  "protocolBuilder.codebookEntity.colorPlaceholder": {
-    "defaultMessage": "Choose a color…",
-    "description": "Placeholder shown in the colour field of the entity editor before a choice is made."
+  "protocolBuilder.codebookEntity.colorOutsidePalette": {
+    "defaultMessage": "Current color ({color})",
+    "description": "Name of the extra swatch offered when the entity type is already stored with a colour this protocol’s palette does not contain, so the researcher can see and keep what it has. color is the stored reference."
   },
   "protocolBuilder.codebookEntity.colorRequired": {
     "defaultMessage": "Choose a color.",

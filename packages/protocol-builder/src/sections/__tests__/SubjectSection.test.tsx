@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
@@ -312,9 +313,15 @@ describe('creating the type a stage needs without leaving it', () => {
     expect(
       await screen.findByRole('textbox', { name: 'Node type name' }),
     ).toHaveValue('');
+    // The palette names positions rather than colours, so the swatch the draft
+    // arrives with is the one standing at its reference's place in the node
+    // sequence.
+    const colorPosition =
+      NodeColorSequence.findIndex((reference) => reference === color) + 1;
+    expect(colorPosition).toBeGreaterThan(0);
     expect(
-      screen.getByRole('combobox', { name: 'Protocol color' }),
-    ).toHaveValue(color);
+      screen.getByRole('radio', { name: `Node color ${colorPosition}` }),
+    ).toBeChecked();
     expect(screen.getByRole('combobox', { name: 'Default shape' })).toHaveValue(
       shape,
     );
