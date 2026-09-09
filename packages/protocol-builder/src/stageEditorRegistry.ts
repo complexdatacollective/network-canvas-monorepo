@@ -21,13 +21,12 @@
  * stageEditorRegistry.test.tsx` holds that shape in place.
  *
  * AN EDITOR DECLARES ITS PART AWAY FROM HERE — through `defineStageEditor`,
- * or `defineStageEditorPart` in `stage-editor-contract.ts` for a part composed
- * by hand — never in this module. This module imports every part, so a part
- * module that imported anything from this one would close a cycle: whichever
- * of the two a program reaches first, the other is half-evaluated, and
- * `REGISTRY_PARTS` reads a binding that does not hold its part yet. Neither
- * helper's module imports this one, which is what makes both safe for an
- * editor to import, and `defineStageEditorPart` is deliberately NOT
+ * in `editors/defineStageEditor.tsx` — never in this module. This module
+ * imports every part, so a part module that imported anything from this one
+ * would close a cycle: whichever of the two a program reaches first, the other
+ * is half-evaluated, and `REGISTRY_PARTS` reads a binding that does not hold
+ * its part yet. That helper's module does not import this one, which is what
+ * makes it safe for an editor to import, and it is deliberately NOT
  * re-exported from here: an editor that reached it through this module would
  * close the cycle again, and only sometimes.
  */
@@ -106,8 +105,10 @@ export function composeStageEditorRegistry(
  * Written as a tuple rather than as a spread of imports so that the exact key
  * set of each part survives into the type system — which is what makes the
  * checks below compile-time facts rather than comments. Each entry must come
- * from `defineStageEditor` or `defineStageEditorPart`, for the reason the
- * latter's own comment gives.
+ * from `defineStageEditor`, whose `Record<T, …>` return is what keeps that key
+ * set exact: a part widened to `StageEditorRegistryPart` has every key
+ * optional, so `keyof` it is every stage type, and both checks below then pass
+ * while saying nothing.
  */
 const REGISTRY_PARTS = [
   // One imported part per line, alphabetically, each with a trailing comma.

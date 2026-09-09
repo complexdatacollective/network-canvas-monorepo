@@ -1,4 +1,4 @@
-import { defineStageEditorPart } from '../src/stage-editor-contract.ts';
+import { defineStageEditor } from '../src/editors/defineStageEditor.tsx';
 import {
   type Assert,
   type AwaitingListIsComplete,
@@ -6,18 +6,20 @@ import {
   type RegisteredIn,
   type UnregisteredIn,
 } from '../src/stageEditorRegistry.ts';
-import { EgoFormEditor, InformationEditor } from './fixtures.ts';
 
 /**
  * The control: two families, no overlap, and a list that names every interface
  * they leave alone.
  *
  * Without this, the probes beside it would still pass if the machinery simply
- * refused everything.
+ * refused everything. The parts are declared the way every family declares
+ * one — `defineStageEditor`, from its own module — which is also the control
+ * for `partFromRegistry.ts`: reached from there, the same call must be
+ * refused.
  */
 const PARTS = [
-  defineStageEditorPart({ Information: InformationEditor }),
-  defineStageEditorPart({ EgoForm: EgoFormEditor }),
+  defineStageEditor('Information', []),
+  defineStageEditor('EgoForm', []),
 ] as const;
 
 export const AWAITING = [
@@ -49,8 +51,8 @@ export type Disjoint = Assert<PartsAreDisjoint<typeof PARTS>>;
 type Exactly<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 
 /**
- * The claim `defineStageEditorPart` exists to make: these parts claim these
- * two interfaces and no others.
+ * The claim `defineStageEditor`'s `Record<T, …>` return exists to make: these
+ * parts claim these two interfaces and no others.
  *
  * Widen either part to `StageEditorRegistryPart` — or make the helper return
  * that type — and this becomes every stage type, which is the failure the
