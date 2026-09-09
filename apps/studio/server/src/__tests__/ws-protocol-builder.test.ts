@@ -324,6 +324,18 @@ describe.skipIf(!db || !env.auth)('the protocol-builder host over /ws', () => {
     expect(behind.lock).toBe('readOnly');
     if (behind.lock !== 'readOnly') return;
     expect(behind.holder.sessionId).toBe(theirs?.sessionId);
+
+    // Given back before the test ends: the stage index and the asset manifest
+    // are the sections a create and a promoting write have to take, so a test
+    // that keeps them refuses every later one in this suite.
+    await holder.protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+    await watcher.protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: 'assets',
+    });
   });
 
   /**

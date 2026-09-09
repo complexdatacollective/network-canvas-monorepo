@@ -4,7 +4,10 @@ import {
   contract,
   type ProtocolBuilderClient,
 } from '@codaco/protocol-builder/contract';
-import type { Revision } from '@codaco/protocol-builder/contract/schemas';
+import type {
+  Presence,
+  Revision,
+} from '@codaco/protocol-builder/contract/schemas';
 import { contentHash } from '@codaco/studio-sync/apply';
 import {
   sectionReferenceAt,
@@ -31,7 +34,7 @@ import { getCanonicalProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from './architectStore.ts';
 import { ProtocolRevisions } from './protocolRevisions.ts';
-import { STAGE_ORDER_SECTION } from './protocolSections.ts';
+import { ASSETS_SECTION, STAGE_ORDER_SECTION } from './protocolSections.ts';
 import { ResourceBridge } from './resourceBridge.ts';
 import {
   createSection,
@@ -117,6 +120,20 @@ export function createArchitectRouter(store: ArchitectStore) {
       }
       const before = revisions.read(input.sectionId);
       if (before === undefined) throw errors.SECTION_NOT_FOUND({ data: input });
+      const promotion = input.promote;
+      const already =
+        promotion === undefined
+          ? undefined
+          : resources.completedPromotion(promotion.promotionId);
+      // This id's attempt is already committed, so this call is the retry of
+      // an answer that was lost: it is told what that attempt wrote. Answered
+      // before the lock is looked at, because writing again would make a
+      // revision nothing changed in — and would refuse outright once the
+      // editor had given its lock back, turning a save that succeeded into one
+      // the researcher is told to discard a draft over.
+      if (already !== undefined) {
+        return { revision: already.revision, promoted: already.promoted };
+      }
       if (revisions.holderOf(input.sectionId) === undefined) {
         throw errors.NOT_LOCK_HOLDER({ data: { sectionId: input.sectionId } });
       }
@@ -126,16 +143,22 @@ export function createArchitectRouter(store: ArchitectStore) {
           data: { sectionId: input.sectionId, issues },
         });
       }
+      // The manifest is a section like any other and a promotion writes it,
+      // so it is taken on the terms every write outside the caller's own lock
+      // uses. An editor holding it would submit its own whole manifest next,
+      // over the entry this promotion added.
+      const held =
+        promotion === undefined
+          ? []
+          : heldSections(revisions, [ASSETS_SECTION], input.sectionId);
+      if (held.length > 0) {
+        throw errors.SECTIONS_LOCKED({ data: { blocked: held } });
+      }
       // The promotion is settled before anything is written: a submit that
       // cannot commit the resources it names writes neither them nor the
       // section, so the protocol never points at bytes that are not there.
-      const promotion = input.promote;
-      const already =
-        promotion === undefined
-          ? undefined
-          : resources.completedPromotion(promotion.promotionId);
       const planned =
-        promotion === undefined || already !== undefined
+        promotion === undefined
           ? undefined
           : resources.planPromotion(
               promotion.resourceIds,
@@ -146,19 +169,20 @@ export function createArchitectRouter(store: ArchitectStore) {
           data: { sectionId: input.sectionId, failure: planned.failure },
         });
       }
-      const promoted = already ?? planned?.data.promoted;
-      const complete = () => {
+      const promoted = planned?.data.promoted;
+      const complete = (revision: Revision) => {
         if (promotion === undefined || planned === undefined) return;
         resources.completePromotion(
           promotion.promotionId,
           planned.data.promoted,
           planned.data.ids,
+          revision,
         );
       };
       // Architect's timeline refuses to record a content-identical change, so
       // a resubmit of what is already committed is not a revision here either.
       if (contentHash(input.document) === before.revision.contentHash) {
-        complete();
+        complete(before.revision);
         return {
           revision: before.revision,
           ...(promoted === undefined ? {} : { promoted }),
@@ -174,16 +198,65 @@ export function createArchitectRouter(store: ArchitectStore) {
       }
       const after = revisions.read(input.sectionId);
       if (after === undefined) throw errors.SECTION_NOT_FOUND({ data: input });
-      complete();
+      complete(after.revision);
       return {
         revision: after.revision,
         ...(promoted === undefined ? {} : { promoted }),
       };
     }),
 
+    /**
+     * Creates a section and registers its pointer in the same revision.
+     *
+     * It holds no lock, so the pointer section it writes — the stage index —
+     * and the manifest a promotion writes have to be free: an editor holding
+     * either has a whole-section draft that does not know about this create,
+     * and its next submit would take the new stage back out of the order or
+     * the promoted entry back out of the manifest.
+     *
+     * `promote` is here for the reason a submit cannot cover: a stage being
+     * ADDED can carry a file the researcher imported while composing it, and
+     * there is no earlier revision of that stage to have promoted it with.
+     */
     create: os.create.handler(async ({ input, errors }) => {
       if (!isOpen(input.protocolId)) {
         throw errors.PROTOCOL_NOT_FOUND({ data: input });
+      }
+      const promotion = input.promote;
+      const already =
+        promotion === undefined
+          ? undefined
+          : resources.completedPromotion(promotion.promotionId);
+      // This id's attempt is already committed, so this call is the retry of
+      // an answer that was lost: the section is named from the record rather
+      // than minted again, because a second create would put a second copy of
+      // the stage in the protocol and the retry would never learn of the first.
+      if (already?.createdSection !== undefined) {
+        return {
+          sectionId: sectionId(parseSectionId(already.createdSection)),
+          revision: already.revision,
+          promoted: already.promoted,
+        };
+      }
+      const held = heldSections(revisions, [
+        ...(input.kind === 'stage' ? [STAGE_ORDER_SECTION] : []),
+        ...(promotion === undefined ? [] : [ASSETS_SECTION]),
+      ]);
+      if (held.length > 0) {
+        throw errors.SECTIONS_LOCKED({ data: { blocked: held } });
+      }
+      // Settled before anything is written, so a promotion that cannot be
+      // committed leaves the protocol without the section. The refusal names
+      // no section: the host mints an id only for one it is going to write.
+      const planned =
+        promotion === undefined
+          ? undefined
+          : resources.planPromotion(
+              promotion.resourceIds,
+              promotion.secretHandles,
+            );
+      if (planned?.status === 'failed') {
+        throw errors.PROMOTION_FAILED({ data: { failure: planned.failure } });
       }
       const { result } = await revisions.write(() =>
         createSection(store, input.kind, input.document, input.position),
@@ -207,7 +280,20 @@ export function createArchitectRouter(store: ArchitectStore) {
           },
         });
       }
-      return { sectionId: result.sectionId, revision: created.revision };
+      if (promotion !== undefined && planned !== undefined) {
+        resources.completePromotion(
+          promotion.promotionId,
+          planned.data.promoted,
+          planned.data.ids,
+          created.revision,
+          result.sectionId,
+        );
+      }
+      return {
+        sectionId: result.sectionId,
+        revision: created.revision,
+        ...(planned === undefined ? {} : { promoted: planned.data.promoted }),
+      };
     }),
 
     /**
@@ -217,11 +303,10 @@ export function createArchitectRouter(store: ArchitectStore) {
      * session's own lock included: a stage editor holding the section would
      * put the stage back with its next whole-section submit.
      *
-     * A stage another stage depends on — a skip destination, a pedigree
-     * source — cannot be deleted here at all, because Architect's own reducer
-     * refuses it. The contract's `delete` has no error for a reference, so
-     * the refusal arrives as its other one, naming the sections in the way
-     * without a holder.
+     * A stage other stages depend on is refused naming them, not swept: a skip
+     * destination or the pedigree a narrative describes is a decision made
+     * about that other stage, and rewriting it as a side effect of removing
+     * this one is not a deletion anybody asked for.
      */
     delete: os.delete.handler(async ({ input, errors }) => {
       if (!isOpen(input.protocolId)) {
@@ -234,27 +319,19 @@ export function createArchitectRouter(store: ArchitectStore) {
       ) {
         throw errors.SECTION_NOT_FOUND({ data: input });
       }
-      const held = [input.sectionId, STAGE_ORDER_SECTION].filter(
-        (id) => revisions.holderOf(id) !== undefined,
-      );
+      const held = heldSections(revisions, [
+        input.sectionId,
+        STAGE_ORDER_SECTION,
+      ]);
       if (held.length > 0) {
-        throw errors.SECTIONS_LOCKED({
-          data: {
-            blocked: held.map((id) => ({
-              sectionId: id,
-              holder: revisions.holderOf(id),
-            })),
-          },
-        });
+        throw errors.SECTIONS_LOCKED({ data: { blocked: held } });
       }
       const { result, changed } = await revisions.write(() =>
         deleteStageSection(store, ref.stageId),
       );
       if (result.status === 'referenced') {
-        throw errors.SECTIONS_LOCKED({
-          data: {
-            blocked: result.sectionIds.map((id) => ({ sectionId: id })),
-          },
+        throw errors.REFERENCES_REMAIN({
+          data: { remaining: result.remaining },
         });
       }
       const [revision] = [...changed.values()];
@@ -391,6 +468,35 @@ export function createArchitectRouter(store: ArchitectStore) {
       ),
     },
   };
+}
+
+type SectionHolder = Readonly<{
+  sectionId: ProtocolSectionId;
+  holder?: Presence;
+}>;
+
+/**
+ * The sections of `ids` an editor holds that a write may not write through.
+ *
+ * `writing` names the one section the caller is changing under its own lock —
+ * a submit's own — which is the only one of the list it may write. There is a
+ * single principal here, so every other held section is this researcher's own
+ * editor, and it is still a refusal: that editor's draft does not know about
+ * this write and its next whole-section submit would undo it.
+ */
+function heldSections(
+  revisions: ProtocolRevisions,
+  ids: readonly ProtocolSectionId[],
+  writing?: ProtocolSectionId,
+): SectionHolder[] {
+  const blocked: SectionHolder[] = [];
+  for (const id of ids) {
+    if (id === writing) continue;
+    const holder = revisions.holderOf(id);
+    if (holder === undefined) continue;
+    blocked.push({ sectionId: id, holder });
+  }
+  return blocked;
 }
 
 /** The client `<ProtocolBuilder>` is handed: the router, called in process. */

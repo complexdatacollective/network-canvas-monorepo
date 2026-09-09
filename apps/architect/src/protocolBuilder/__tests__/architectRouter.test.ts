@@ -22,7 +22,7 @@ import {
   createArchitectClient,
   createArchitectRouter,
 } from '../createArchitectRouter.ts';
-import { STAGE_ORDER_SECTION } from '../protocolSections.ts';
+import { ASSETS_SECTION, STAGE_ORDER_SECTION } from '../protocolSections.ts';
 
 /**
  * The bytes an import wrote, standing in for Architect's IndexedDB asset
@@ -546,6 +546,200 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(getAssetManifest(store.getState())[id]).toBeUndefined();
   });
 
+  it('replays what a retried promoting submit already wrote', async () => {
+    const { store, client } = openProtocol();
+    const id = await importResource(client);
+    const held = await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const promote = { promotionId: 'promotion-1', resourceIds: [id] };
+    const written = await client.submit({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+      document: { ...held.document, label: 'Saved once' },
+      revision: held.revision,
+      promote,
+    });
+    // The editor closed on the answer it never received, giving the lock back.
+    await client.releaseLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+
+    const retried = await client.submit({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+      document: { ...held.document, label: 'Saved once' },
+      revision: held.revision,
+      promote,
+    });
+
+    // Refusing here would turn a save that succeeded into one the researcher
+    // is told to discard a draft over.
+    expect(retried.revision).toEqual(written.revision);
+    expect(retried.promoted?.map((entry) => entry.id)).toEqual([id]);
+    expect(stageLabel(store, 'information-1')).toBe('Saved once');
+  });
+
+  it('refuses a create while an editor holds the stage index', async () => {
+    const { store, client } = openProtocol();
+    const before = stageIds(store);
+    await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: STAGE_ORDER_SECTION,
+    });
+
+    const { definedError, isSuccess } = await safe(
+      client.create({
+        protocolId: PROTOCOL_ID,
+        kind: 'stage',
+        document: { type: 'Information', label: 'Refused', title: 'Refused' },
+      }),
+    );
+
+    // The editor holding the index has a whole-section draft that does not
+    // know about the new stage, and its next submit would take the pointer out
+    // while leaving the stage behind — a protocol that cannot be assembled.
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('SECTIONS_LOCKED');
+    expect(definedError?.data).toMatchObject({
+      blocked: [{ sectionId: STAGE_ORDER_SECTION }],
+    });
+    expect(stageIds(store)).toEqual(before);
+  });
+
+  it('refuses a promoting submit while an editor holds the asset manifest', async () => {
+    const { store, client } = openProtocol();
+    const id = await importResource(client);
+    await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: ASSETS_SECTION,
+    });
+    const held = await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+
+    const { definedError, isSuccess } = await safe(
+      client.submit({
+        protocolId: PROTOCOL_ID,
+        sectionId: INFORMATION,
+        document: { ...held.document, label: 'Renamed beside a promotion' },
+        revision: held.revision,
+        promote: { promotionId: 'promotion-1', resourceIds: [id] },
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('SECTIONS_LOCKED');
+    expect(definedError?.data).toMatchObject({
+      blocked: [{ sectionId: ASSETS_SECTION }],
+    });
+    expect(stageLabel(store, 'information-1')).toBe('Information');
+    // Nothing was promoted, so the resource is still the edit's to take back.
+    await client.resources.discard({ protocolId: PROTOCOL_ID });
+    expect(getAssetManifest(store.getState())[id]).toBeUndefined();
+  });
+
+  /**
+   * A stage being ADDED has no revision to submit, so the create is the only
+   * place a file imported while composing it can become the protocol's.
+   */
+  it('promotes an imported resource with the stage being created', async () => {
+    const { store, client } = openProtocol();
+    const id = await importResource(client);
+    const template = await client.getSection({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const { id: _id, ...withoutId } = template.document;
+
+    const created = await client.create({
+      protocolId: PROTOCOL_ID,
+      kind: 'stage',
+      document: { ...withoutId, label: 'Carries the photograph' },
+      promote: { promotionId: 'promotion-1', resourceIds: [id] },
+    });
+
+    expect(created.promoted?.map((entry) => entry.status)).toEqual([
+      'committed',
+    ]);
+    const stage = await client.getSection({
+      protocolId: PROTOCOL_ID,
+      sectionId: created.sectionId,
+    });
+    expect(stage.revision.sequence).toBe(created.revision.sequence);
+    // The edit that brought the file in has ended in a create, so a later
+    // cancel must not take the saved protocol's resource away with it.
+    await client.resources.discard({ protocolId: PROTOCOL_ID });
+    expect(getAssetManifest(store.getState())[id]).toBeDefined();
+  });
+
+  it('replays the stage a retried create already made, rather than a second one', async () => {
+    const { store, client } = openProtocol();
+    const id = await importResource(client);
+    const promote = { promotionId: 'promotion-1', resourceIds: [id] };
+    const document = {
+      type: 'Information',
+      label: 'Made once',
+      title: 'Made once',
+      items: [],
+    };
+    const created = await client.create({
+      protocolId: PROTOCOL_ID,
+      kind: 'stage',
+      document,
+      promote,
+    });
+    const afterFirst = stageIds(store);
+
+    const retried = await client.create({
+      protocolId: PROTOCOL_ID,
+      kind: 'stage',
+      document,
+      promote,
+    });
+
+    // A second create would mint a second stage id, and the retry would be
+    // told about a stage its first attempt never made.
+    expect(retried.sectionId).toBe(created.sectionId);
+    expect(retried.revision).toEqual(created.revision);
+    expect(stageIds(store)).toEqual(afterFirst);
+  });
+
+  it('creates no stage when the promotion it carries cannot be committed', async () => {
+    const { store, client } = openProtocol();
+    const before = stageIds(store);
+
+    const { definedError, isSuccess } = await safe(
+      client.create({
+        protocolId: PROTOCOL_ID,
+        kind: 'stage',
+        document: {
+          type: 'Information',
+          label: 'Never made',
+          title: 'Never made',
+          items: [],
+        },
+        promote: { promotionId: 'promotion-1', resourceIds: ['never-staged'] },
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('PROMOTION_FAILED');
+    // No section id: the host mints one only for a section it will write.
+    expect(definedError?.data).toEqual({
+      failure: {
+        reason: 'not-found',
+        message: 'no such staged resource',
+        retryable: false,
+        resourceId: 'never-staged',
+      },
+    });
+    expect(stageIds(store)).toEqual(before);
+  });
+
   it('removes a stage and its place in the stage index in one revision', async () => {
     const { store, client } = openProtocol();
 
@@ -591,7 +785,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(stageIds(store)).toContain('information-1');
   });
 
-  it('refuses to delete a stage another stage is built on, naming it', async () => {
+  it('refuses to delete a stage another stage is built on, naming where', async () => {
     const { store, client } = openProtocol();
 
     const { definedError, isSuccess } = await safe(
@@ -601,19 +795,75 @@ describe("Architect's in-process protocol-builder host", () => {
       }),
     );
 
+    // Naming the section is not enough: the dialog telling the researcher what
+    // is in the way points at the field, so the path is part of the refusal.
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('SECTIONS_LOCKED');
-    expect(definedError?.data).toMatchObject({
-      blocked: [
+    expect(definedError?.code).toBe('REFERENCES_REMAIN');
+    expect(definedError?.data).toEqual({
+      remaining: [
         {
           sectionId: sectionId({
             kind: 'stage',
             stageId: 'narrative-pedigree-1',
           }),
+          path: ['sourceStageId'],
         },
       ],
     });
     expect(stageIds(store)).toContain('family-pedigree-1');
+  });
+
+  /**
+   * The dependants come from the schema's stage-reference tags rather than
+   * from the two the timeline happens to guard, so a reference reached from a
+   * path this host never enumerated refuses the deletion just the same.
+   */
+  it('refuses to delete a stage a skip destination points at', async () => {
+    const { store, client } = openProtocol();
+    const held = await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    await client.submit({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+      document: {
+        ...held.document,
+        skipLogic: {
+          action: 'SKIP',
+          filter: {
+            rules: [
+              { type: 'node', id: 'rule-1', options: { operator: 'EXISTS' } },
+            ],
+          },
+          destination: { type: 'stage', stageId: 'geospatial-1' },
+        },
+      },
+      revision: held.revision,
+    });
+    await client.releaseLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+
+    const { definedError, isSuccess } = await safe(
+      client.delete({
+        protocolId: PROTOCOL_ID,
+        sectionId: sectionId({ kind: 'stage', stageId: 'geospatial-1' }),
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('REFERENCES_REMAIN');
+    expect(definedError?.data).toEqual({
+      remaining: [
+        {
+          sectionId: INFORMATION,
+          path: ['skipLogic', 'destination', 'stageId'],
+        },
+      ],
+    });
+    expect(stageIds(store)).toContain('geospatial-1');
   });
 
   it('creates the ego codebook a protocol does not have yet', async () => {

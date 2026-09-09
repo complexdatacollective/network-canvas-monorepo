@@ -7,7 +7,7 @@ import {
 
 const SETTINGS_SECTION = sectionId({ kind: 'settings' });
 export const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
-const ASSETS_SECTION = sectionId({ kind: 'assets' });
+export const ASSETS_SECTION = sectionId({ kind: 'assets' });
 
 /**
  * Architect's committed protocol, split into the sections the host contract

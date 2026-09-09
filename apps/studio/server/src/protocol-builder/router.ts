@@ -307,18 +307,27 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         if (session === null) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
         }
-        // The promotion is planned before anything is written: its bytes go to
-        // the object store, where nothing names them, and only the section
-        // write below puts them in the manifest. A refused submit therefore
-        // leaves the protocol as it was and the resources still staged.
         const store = staged.for(stagingKey(session));
         const promotion = input.promote;
         const already =
           promotion === undefined
             ? undefined
             : store.completedPromotion(promotion.promotionId);
+        // This id's attempt is already committed, so this call is the retry of
+        // an answer that was lost: it is told what that attempt wrote. Writing
+        // again would make a revision nothing changed in, and would refuse
+        // outright once the editor had given its lock back — turning a save
+        // that succeeded into one the researcher is told to discard a draft
+        // over.
+        if (already !== undefined) {
+          return { revision: already.revision, promoted: already.promoted };
+        }
+        // The promotion is planned before anything is written: its bytes go to
+        // the object store, where nothing names them, and only the section
+        // write below puts them in the manifest. A refused submit therefore
+        // leaves the protocol as it was and the resources still staged.
         const planned =
-          promotion === undefined || already !== undefined
+          promotion === undefined
             ? undefined
             : await store.plan(
                 deps.assetStore,
@@ -351,6 +360,9 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             },
           });
         }
+        if (outcome.status === 'blocked') {
+          throw errors.SECTIONS_LOCKED({ data: { blocked: outcome.blocked } });
+        }
         if (outcome.status === 'invalidShape') {
           throw errors.INVALID_SHAPE({
             data: { sectionId: input.sectionId, issues: outcome.issues },
@@ -361,9 +373,10 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             promotion.promotionId,
             planned.data.promoted,
             promotion.resourceIds,
+            outcome.revision,
           );
         }
-        const promoted = already ?? planned?.data.promoted;
+        const promoted = planned?.data.promoted;
         return {
           revision: outcome.revision,
           ...(promoted === undefined ? {} : { promoted }),
@@ -371,22 +384,73 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       },
     ),
 
+    /**
+     * Creates a section and registers its pointer in the same revision.
+     *
+     * `promote` is here for the reason a submit cannot cover: a stage being
+     * ADDED can carry a file the researcher imported while composing it, and
+     * there is no earlier revision of that stage to have promoted it with. The
+     * section, its pointer and the manifest entries are one revision, so a
+     * promotion that cannot be committed refuses the create outright and
+     * writes nothing.
+     */
     create: os.protocolBuilder.create.handler(
       async ({ input, context, errors }) => {
         const session = await openSession(context, input.protocolId);
         if (session === null) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
         }
+        const store = staged.for(stagingKey(session));
+        const promotion = input.promote;
+        const already =
+          promotion === undefined
+            ? undefined
+            : store.completedPromotion(promotion.promotionId);
+        // This id's attempt is already committed, so this call is the retry of
+        // an answer that was lost. The section is named from the record rather
+        // than minted again, because a second create would put a second copy
+        // of the stage in the protocol and the retry would never learn of the
+        // first.
+        if (already?.createdSection !== undefined) {
+          return {
+            sectionId: makeSectionId(parseSectionId(already.createdSection)),
+            revision: already.revision,
+            promoted: already.promoted,
+          };
+        }
+        // Planned before anything is written, so a promotion that cannot be
+        // committed leaves the protocol without the section and the staged
+        // resources staged. The refusal names no section: the host mints an id
+        // only for one it is going to write.
+        const planned =
+          promotion === undefined
+            ? undefined
+            : await store.plan(
+                deps.assetStore,
+                promotion.resourceIds,
+                promotion.secretHandles,
+              );
+        if (planned?.status === 'failed') {
+          throw errors.PROMOTION_FAILED({ data: { failure: planned.failure } });
+        }
         const result = await create(session, {
           kind: input.kind,
           document: input.document,
           ...(input.position === undefined ? {} : { position: input.position }),
+          ...(planned === undefined
+            ? {}
+            : { assetEntries: planned.data.entries }),
           mintId: randomUUID,
         });
         publish(session, result.events);
         if (result.outcome.status === 'exists') {
           throw errors.SECTION_EXISTS({
             data: { sectionId: result.outcome.sectionId },
+          });
+        }
+        if (result.outcome.status === 'blocked') {
+          throw errors.SECTIONS_LOCKED({
+            data: { blocked: result.outcome.blocked },
           });
         }
         if (result.outcome.status === 'invalidShape') {
@@ -397,9 +461,19 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             },
           });
         }
+        if (promotion !== undefined && planned !== undefined) {
+          store.completePromotion(
+            promotion.promotionId,
+            planned.data.promoted,
+            promotion.resourceIds,
+            result.outcome.revision,
+            result.outcome.sectionId,
+          );
+        }
         return {
           sectionId: result.outcome.sectionId,
           revision: result.outcome.revision,
+          ...(planned === undefined ? {} : { promoted: planned.data.promoted }),
         };
       },
     ),
@@ -411,6 +485,11 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
      * one lock, and it takes neither of them, so a stage or an order any
      * editor holds — including one on this connection, whose draft would put
      * the stage back — refuses the change.
+     *
+     * A stage other stages depend on is refused naming them, not swept: a skip
+     * destination or the pedigree a narrative describes is a decision made
+     * about that other stage, and rewriting it as a side effect of removing
+     * this one is not a deletion anybody asked for.
      */
     delete: os.protocolBuilder.delete.handler(
       async ({ input, context, errors }) => {
@@ -433,7 +512,9 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           });
         }
         if (result.outcome.status === 'referenced') {
-          throw new Error('deleting a stage cannot leave references behind');
+          throw errors.REFERENCES_REMAIN({
+            data: { remaining: result.outcome.remaining },
+          });
         }
         return result.outcome;
       },

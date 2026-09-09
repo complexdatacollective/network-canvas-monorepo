@@ -19,6 +19,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   assembledProtocol,
   entityTypeReferences,
+  stageReferences,
   sweepReferences,
   variableReferences,
   type CodebookSubject,
@@ -92,6 +93,7 @@ export type AcquireOutcome =
 export type SubmitOutcome =
   | { status: 'written'; revision: Revision }
   | { status: 'notLockHolder'; holder?: Presence }
+  | { status: 'blocked'; blocked: SectionHolder[] }
   | { status: 'invalidShape'; issues: SectionIssue[] };
 
 export type CreatableSectionKind =
@@ -103,6 +105,7 @@ export type CreatableSectionKind =
 export type CreateOutcome =
   | { status: 'created'; sectionId: ProtocolSectionId; revision: Revision }
   | { status: 'exists'; sectionId: ProtocolSectionId }
+  | { status: 'blocked'; blocked: SectionHolder[] }
   | {
       status: 'invalidShape';
       sectionId: ProtocolSectionId;
@@ -151,6 +154,9 @@ export function sessionPresence(
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
+
+const ASSETS = makeSectionId({ kind: 'assets' });
+const STAGE_ORDER = makeSectionId({ kind: 'stageOrder' });
 
 function createdSectionId(
   kind: CreatableSectionKind,
@@ -283,6 +289,36 @@ async function lockedHolder(
   );
   const row = result.rows[0] as { holder: Presence | null } | undefined;
   return row?.holder ?? undefined;
+}
+
+/**
+ * The sections of `ids` an editor holds that this write may not write through,
+ * with who holds each.
+ *
+ * `owned` names the sections the caller is changing under its own lock — the
+ * section a submit is for, the codebook section a dialog has open and is
+ * deleting from. Every other section the write touches has to be free, this
+ * owner's own included: two editors in one tab are one owner, and a draft
+ * lives in its form rather than in the draft head, so a write under one of
+ * them is undone by that editor's next whole-section submit.
+ */
+async function blockedBy(
+  client: pg.PoolClient,
+  session: ProtocolBuilderSession,
+  ids: Iterable<ProtocolSectionId>,
+  owned: ReadonlySet<ProtocolSectionId>,
+): Promise<SectionHolder[]> {
+  const owner = sessionOwner(session);
+  const teamId = session.tenantDb.teamId;
+  const blocked: SectionHolder[] = [];
+  for (const sectionId of ids) {
+    const lease = await lockLease(client, teamId, session.draftId, sectionId);
+    if (lease === undefined || !lease.live) continue;
+    if (lease.owner === owner && owned.has(sectionId)) continue;
+    const holder = await lockedHolder(client, teamId, session.draftId, lease);
+    blocked.push({ sectionId, ...(holder === undefined ? {} : { holder }) });
+  }
+  return blocked;
 }
 
 async function headSection(
@@ -581,12 +617,13 @@ function committedEvent(
  *
  * `assetEntries` is the submit's promotion: the bytes behind them are already
  * with the host, and this is where they and the section naming them become a
- * single revision, so a refused submit writes neither. The two refusals here
+ * single revision, so a refused submit writes neither. The three refusals here
  * are returned rather than thrown so no audit event is written for a change
- * that did not happen: the caller does not hold the lock, and the document is
- * not shaped like this section. A draft that is invalid across sections is
- * written, because drafts tolerate transient invalidity and validity is
- * enforced at publication.
+ * that did not happen: the caller does not hold the lock, the document is not
+ * shaped like this section, and — for a submit that promotes — an editor holds
+ * the asset manifest the promotion writes. A draft that is invalid across
+ * sections is written, because drafts tolerate transient invalidity and
+ * validity is enforced at publication.
  */
 export async function submit(
   session: ProtocolBuilderSession,
@@ -637,12 +674,28 @@ export async function submit(
         [sectionId, document],
       ]);
       if (assetEntries !== undefined) {
-        const assetsId = makeSectionId({ kind: 'assets' });
-        const assets = await headSection(client, session, assetsId);
+        // The manifest is a section like any other and a promotion writes it,
+        // so it is taken on the terms every cross-section write uses. An
+        // editor holding it would submit its own whole manifest next, over the
+        // entry this promotion added, leaving the saved section naming a
+        // resource the protocol no longer has.
+        const blocked = await blockedBy(
+          client,
+          session,
+          [ASSETS],
+          new Set([sectionId]),
+        );
+        if (blocked.length > 0) {
+          return {
+            status: 'unchanged',
+            result: { status: 'blocked', blocked },
+          };
+        }
+        const assets = await headSection(client, session, ASSETS);
         if (assets === undefined) {
           throw new Error(`draft ${session.draftId} has no assets section`);
         }
-        writes.set(assetsId, { ...assets.document, ...assetEntries });
+        writes.set(ASSETS, { ...assets.document, ...assetEntries });
       }
       const written = await writeSections(client, session, { head, writes });
       events.push(...written.events);
@@ -664,9 +717,18 @@ export async function submit(
 }
 
 /**
- * Creates a section and registers its pointer — a stage's place in the stage
- * order — in the same revision. The host mints the id and serialises the call
- * under the draft-head lock, so it needs no lock of its own.
+ * Creates a section, registers its pointer — a stage's place in the stage
+ * order — and writes the asset manifest entries handed with it, as one
+ * revision. The host mints the id and serialises the call under the draft-head
+ * lock, so it needs no lock of its own.
+ *
+ * `assetEntries` is the create's promotion, there for the reason a submit
+ * cannot cover: a stage being ADDED can carry a file the researcher imported
+ * while composing it, and there is no earlier revision of that stage to have
+ * promoted it with. It and the pointer section are taken on the same terms —
+ * this call holds no lock, so an editor holding either blocks it, whoever they
+ * are, since their next whole-section submit would take the new pointer or the
+ * new manifest entry straight back out.
  *
  * The ego codebook is the one creatable singleton: a protocol whose researcher
  * has given the participant no attributes yet has no such section, and adding
@@ -679,6 +741,7 @@ export async function create(
     kind: CreatableSectionKind;
     document: SectionDoc;
     position?: number;
+    assetEntries?: Readonly<Record<string, unknown>>;
     mintId: () => string;
   },
 ): Promise<Published<CreateOutcome>> {
@@ -694,6 +757,24 @@ export async function create(
         draftId: session.draftId,
       });
       const head = await lockDraftHead(client, teamId, session.draftId);
+      const touched = [
+        ...(input.kind === 'stage' ? [STAGE_ORDER] : []),
+        ...(input.assetEntries === undefined ? [] : [ASSETS]),
+      ];
+      if (touched.length > 0) {
+        const blocked = await blockedBy(
+          client,
+          session,
+          touched,
+          new Set<ProtocolSectionId>(),
+        );
+        if (blocked.length > 0) {
+          return {
+            status: 'unchanged',
+            result: { status: 'blocked', blocked },
+          };
+        }
+      }
       const id = input.kind === 'codebookEgo' ? undefined : input.mintId();
       const target = createdSectionId(input.kind, id);
       if (head.sectionHashes[target] !== undefined) {
@@ -719,22 +800,24 @@ export async function create(
         [target, created],
       ]);
       if (input.kind === 'stage' && id !== undefined) {
-        const orderId = makeSectionId({ kind: 'stageOrder' });
-        const order = await headSection(client, session, orderId);
+        const order = await headSection(client, session, STAGE_ORDER);
         if (order === undefined) {
           throw new Error(`draft ${session.draftId} has no stageOrder section`);
         }
-        const stages = Array.isArray(order.document.stages)
-          ? order.document.stages.filter(
-              (entry): entry is string => typeof entry === 'string',
-            )
-          : [];
+        const stages = stageList(order.document);
         const at =
           input.position === undefined
             ? stages.length
             : Math.min(input.position, stages.length);
         stages.splice(at, 0, id);
-        writes.set(orderId, { ...order.document, stages });
+        writes.set(STAGE_ORDER, { ...order.document, stages });
+      }
+      if (input.assetEntries !== undefined) {
+        const assets = await headSection(client, session, ASSETS);
+        if (assets === undefined) {
+          throw new Error(`draft ${session.draftId} has no assets section`);
+        }
+        writes.set(ASSETS, { ...assets.document, ...input.assetEntries });
       }
       const written = await writeSections(client, session, { head, writes });
       events.push(...written.events);
@@ -786,7 +869,6 @@ async function refactor(
   ) => Promise<RefactorPlan | undefined>,
   operationTypes: CommitDetails['operationTypes'],
 ): Promise<Published<RefactorOutcome | undefined>> {
-  const owner = sessionOwner(session);
   const teamId = session.tenantDb.teamId;
   const events: LoggedProtocolEvent[] = [];
   const outcome = await runAuditedCommand<RefactorOutcome | undefined>(
@@ -810,27 +892,7 @@ async function refactor(
       }
       const { writes, owned } = planned;
 
-      const blocked: SectionHolder[] = [];
-      for (const sectionId of writes.keys()) {
-        const lease = await lockLease(
-          client,
-          teamId,
-          session.draftId,
-          sectionId,
-        );
-        if (lease === undefined || !lease.live) continue;
-        if (lease.owner === owner && owned.has(sectionId)) continue;
-        const holder = await lockedHolder(
-          client,
-          teamId,
-          session.draftId,
-          lease,
-        );
-        blocked.push({
-          sectionId,
-          ...(holder === undefined ? {} : { holder }),
-        });
-      }
+      const blocked = await blockedBy(client, session, writes.keys(), owned);
       if (blocked.length > 0) {
         return { status: 'unchanged', result: { status: 'blocked', blocked } };
       }
@@ -866,6 +928,13 @@ async function refactor(
  * naming a section that is gone, is a protocol that cannot be assembled. It
  * takes no lock of its own — `owned` is empty — so a stage or an order any
  * editor holds, this connection included, refuses the change.
+ *
+ * A stage other stages depend on is refused, not swept. The refactors strip
+ * the references they remove because a codebook dialog is the researcher
+ * deciding a variable is gone; nothing here is a decision about ANOTHER stage,
+ * and a sweep would silently rewrite a collaborator's skip logic — or cut a
+ * NarrativePedigree from the pedigree it describes — as a side effect of
+ * removing something else.
  */
 export function deleteStage(
   session: ProtocolBuilderSession,
@@ -876,8 +945,16 @@ export function deleteStage(
     async (client, head) => {
       const target = makeSectionId({ kind: 'stage', stageId });
       if (head.sectionHashes[target] === undefined) return undefined;
-      const orderId = makeSectionId({ kind: 'stageOrder' });
-      const order = await headSection(client, session, orderId);
+      const documents = await headDocuments(client, session, head);
+      const remaining = stageReferences(assembledProtocol(documents), stageId);
+      if (remaining.length > 0) {
+        return {
+          writes: new Map<ProtocolSectionId, SectionDoc | undefined>(),
+          owned: new Set<ProtocolSectionId>(),
+          remaining,
+        };
+      }
+      const order = await headSection(client, session, STAGE_ORDER);
       if (order === undefined) {
         throw new Error(`draft ${session.draftId} has no stageOrder section`);
       }
@@ -887,7 +964,7 @@ export function deleteStage(
       return {
         writes: new Map<ProtocolSectionId, SectionDoc | undefined>([
           [target, undefined],
-          [orderId, { ...order.document, stages }],
+          [STAGE_ORDER, { ...order.document, stages }],
         ]),
         owned: new Set<ProtocolSectionId>(),
       };

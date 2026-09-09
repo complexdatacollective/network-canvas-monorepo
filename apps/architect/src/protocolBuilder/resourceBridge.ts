@@ -7,6 +7,7 @@ import type {
   ResourceListInputSchema,
   ResourcePreviewSchema,
   ResourceSecretStorageSchema,
+  Revision,
   StageResourceInputSchema,
 } from '@codaco/protocol-builder/contract/schemas';
 import {
@@ -42,6 +43,18 @@ export type DiscardOutcome =
 export type StagedResource = Readonly<{
   descriptor: Descriptor;
   handle?: string;
+}>;
+
+/** What one `promotionId` committed, for the retry that asks about it again. */
+export type CompletedPromotion = Readonly<{
+  revision: Revision;
+  promoted: Descriptor[];
+  /**
+   * The section a `create` minted for this promotion. A retried create cannot
+   * be answered without it: the host would mint a second stage id, and the
+   * retry would be told about a stage its first attempt never made.
+   */
+  createdSection?: string;
 }>;
 
 /**
@@ -84,7 +97,7 @@ export class ResourceBridge {
   readonly #byRequest = new Map<string, string>();
   readonly #handles = new Map<string, string>();
   readonly #staged = new Set<string>();
-  readonly #promotions = new Map<string, Descriptor[]>();
+  readonly #promotions = new Map<string, CompletedPromotion>();
 
   constructor(store: ArchitectStore) {
     this.#store = store;
@@ -139,13 +152,16 @@ export class ResourceBridge {
   }
 
   /**
-   * The promotion this id already made, if it made one.
+   * The write this promotion id already made, if it made one: the revision it
+   * reached and what it committed.
    *
-   * `promotionId` is stable across an uncertain retry, so a submit whose
-   * answer was lost is repeated with the same id: it is told what was
-   * promoted rather than refused for something it cannot see.
+   * `promotionId` is stable across an uncertain retry, so a write whose answer
+   * was lost is repeated with the same id and is told what that attempt did.
+   * Answering it is the whole of the retry: writing again would make a second
+   * revision of a save that already succeeded, and for a create a second copy
+   * of the stage.
    */
-  completedPromotion(promotionId: string): Descriptor[] | undefined {
+  completedPromotion(promotionId: string): CompletedPromotion | undefined {
     return this.#promotions.get(promotionId);
   }
 
@@ -177,8 +193,14 @@ export class ResourceBridge {
     promotionId: string,
     promoted: readonly Descriptor[],
     ids: readonly string[],
+    revision: Revision,
+    createdSection?: string,
   ): void {
-    this.#promotions.set(promotionId, [...promoted]);
+    this.#promotions.set(promotionId, {
+      revision,
+      promoted: [...promoted],
+      ...(createdSection === undefined ? {} : { createdSection }),
+    });
     for (const id of ids) this.#staged.delete(id);
   }
 

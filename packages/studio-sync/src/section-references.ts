@@ -10,6 +10,7 @@
 import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
+  collectStageReferences,
 } from '@codaco/protocol-validation';
 
 import type { SectionDoc } from './apply.ts';
@@ -153,6 +154,28 @@ export function entityTypeReferences(
     })
     .map((hit) => sectionReferenceAt(hit.path, stageIds));
   return [...types, ...attributes];
+}
+
+/**
+ * Every reference to one STAGE the current schema declares: a skip-logic
+ * destination, the FamilyPedigree a NarrativePedigree describes the people of,
+ * and whatever a stage type is tagged with next.
+ *
+ * The stage's own place in the stage order is not among them. That pointer is
+ * how the protocol holds the stage rather than something naming it, and a
+ * deletion rewrites it in the same revision; counting it would refuse every
+ * deletion there is. Nor is a reference the stage makes to itself, which the
+ * schema refuses a protocol for anyway.
+ */
+export function stageReferences(
+  { protocol, stageIds }: AssembledProtocol,
+  stageId: string,
+): SectionReference[] {
+  const own = sectionId({ kind: 'stage', stageId });
+  return collectStageReferences(protocol)
+    .filter((hit) => hit.stageId === stageId)
+    .map((hit) => sectionReferenceAt(hit.path, stageIds))
+    .filter((reference) => reference.sectionId !== own);
 }
 
 /**

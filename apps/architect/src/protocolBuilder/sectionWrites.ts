@@ -10,6 +10,10 @@ import {
 } from '@codaco/protocol-validation';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
+  stageReferences,
+  type SectionReference,
+} from '@codaco/studio-sync/section-references';
+import {
   SettingsSectionSchema,
   StageOrderSectionSchema,
   type SectionIssue,
@@ -27,11 +31,7 @@ import {
   updateTypeAsync,
 } from '~/ducks/modules/protocol/codebook';
 import { commitStageEditorDraft } from '~/ducks/modules/protocol/commitStageEditorDraft';
-import {
-  actionCreators as stageActionCreators,
-  getFamilyPedigreeDependentStages,
-  getSkipDestinationDependentStages,
-} from '~/ducks/modules/protocol/stages';
+import { actionCreators as stageActionCreators } from '~/ducks/modules/protocol/stages';
 import { getAssetManifest, getCanonicalProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from './architectStore.ts';
@@ -259,7 +259,7 @@ export function submitSection(
 
 export type SectionDeletion =
   | Readonly<{ status: 'deleted' }>
-  | Readonly<{ status: 'referenced'; sectionIds: ProtocolSectionId[] }>;
+  | Readonly<{ status: 'referenced'; remaining: SectionReference[] }>;
 
 /**
  * Removes a stage and its place in the stage order in one dispatch.
@@ -267,26 +267,26 @@ export type SectionDeletion =
  * `deleteStage` is the action Architect already deletes a stage with, and the
  * stage order is derived from the stage list, so both changes are one write.
  * The action drops a deletion another stage depends on and says nothing, so
- * the dependency is read here first: the caller gets a refusal naming the
- * stages in the way rather than a success that deleted nothing.
+ * the dependants are read here first: the caller gets a refusal naming where
+ * the stage is still named rather than a success that deleted nothing.
+ *
+ * They come from the schema's own stage-reference tags rather than from the
+ * two dependencies the timeline happens to guard, so a stage type that gains a
+ * pointer at another stage is covered the moment its schema is tagged.
  */
 export async function deleteStageSection(
   store: ArchitectStore,
   stageId: string,
 ): Promise<SectionDeletion> {
-  const stages = getCanonicalProtocol(store.getState())?.stages ?? [];
-  const dependents = [
-    ...getSkipDestinationDependentStages(stages, stageId),
-    ...getFamilyPedigreeDependentStages(stages, stageId),
-  ];
-  if (dependents.length > 0) {
-    const sectionIds = new Set(
-      dependents.map((stage) =>
-        sectionId({ kind: 'stage', stageId: stage.id }),
-      ),
-    );
-    return { status: 'referenced', sectionIds: [...sectionIds] };
-  }
+  const protocol = getCanonicalProtocol(store.getState());
+  const remaining =
+    protocol === null
+      ? []
+      : stageReferences(
+          { protocol, stageIds: protocol.stages.map((stage) => stage.id) },
+          stageId,
+        );
+  if (remaining.length > 0) return { status: 'referenced', remaining };
   await store.dispatch(stageActionCreators.deleteStage(stageId)).unwrap();
   return { status: 'deleted' };
 }

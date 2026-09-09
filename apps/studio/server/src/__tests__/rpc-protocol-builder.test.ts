@@ -756,6 +756,390 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     );
   });
 
+  /**
+   * The dependants come from the schema's own stage-reference tags, so a stage
+   * naming another one from a path this host never enumerated refuses the
+   * deletion just the same.
+   */
+  it('refuses to delete a stage another stage jumps to, naming where', async () => {
+    const destination = await createStage(ADA, 'Jumped to');
+    const source = await createStage(ADA, 'Jumps somewhere');
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: source.sectionId,
+    });
+    await asClient(ADA).protocolBuilder.submit({
+      protocolId,
+      sectionId: source.sectionId,
+      document: {
+        ...held.document,
+        skipLogic: {
+          action: 'SKIP',
+          filter: {
+            rules: [
+              { type: 'node', id: 'rule-1', options: { operator: 'EXISTS' } },
+            ],
+          },
+          destination: {
+            type: 'stage',
+            stageId: destination.sectionId.slice('stage:'.length),
+          },
+        },
+      },
+      revision: held.revision,
+    });
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: source.sectionId,
+    });
+
+    const { error } = await safe(
+      asClient(ADA).protocolBuilder.delete({
+        protocolId,
+        sectionId: destination.sectionId,
+      }),
+    );
+
+    // Rewriting a collaborator's skip logic as a side effect of removing
+    // something else is not a deletion anybody asked for, so the dependants are
+    // named — with the field, which is what a dialog points the researcher at.
+    if (!isDefinedError(error) || error.code !== 'REFERENCES_REMAIN') {
+      throw error ?? new Error('the deletion was not refused at all');
+    }
+    expect(error.data.remaining).toEqual([
+      {
+        sectionId: source.sectionId,
+        path: ['skipLogic', 'destination', 'stageId'],
+      },
+    ]);
+    const order = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+    expect(order.document.stages).toContain(
+      destination.sectionId.slice('stage:'.length),
+    );
+  });
+
+  it('refuses a promoting submit while an editor holds the asset manifest', async () => {
+    const stage = await createStage(ADA, 'Promotes behind a held manifest');
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      requestId: 'blocked-manifest-secret',
+      request: { kind: 'secret', name: 'Blocked token', value: 'pk.blocked' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const handle = staged.data.handle;
+    if (handle === undefined) throw new Error('a secret has no handle');
+    const manifest = await asClient(GRACE).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: 'assets',
+    });
+    expect(manifest.lock).toBe('held');
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+
+    try {
+      const { error } = await safe(
+        asClient(ADA).protocolBuilder.submit({
+          protocolId,
+          sectionId: stage.sectionId,
+          document: { ...held.document, label: 'Renamed' },
+          revision: held.revision,
+          promote: {
+            promotionId: 'promotion-4',
+            resourceIds: [staged.data.descriptor.id],
+            secretHandles: [handle],
+          },
+        }),
+      );
+
+      // The editor holding the manifest would submit its own whole manifest
+      // next, over the entry this promotion added — leaving the saved section
+      // naming a resource the protocol no longer has.
+      if (!isDefinedError(error) || error.code !== 'SECTIONS_LOCKED') {
+        throw error ?? new Error('the submit was not refused at all');
+      }
+      expect(error.data.blocked.map((entry) => entry.sectionId)).toEqual([
+        'assets',
+      ]);
+      expect(error.data.blocked[0]?.holder?.userId).toBe(
+        GRACE.principal.userId,
+      );
+      const after = await asClient(ADA).protocolBuilder.getSection({
+        protocolId,
+        sectionId: stage.sectionId,
+      });
+      expect(after.revision).toEqual(held.revision);
+      expect(manifest.document[staged.data.descriptor.id]).toBeUndefined();
+    } finally {
+      await asClient(GRACE).protocolBuilder.releaseLock({
+        protocolId,
+        sectionId: 'assets',
+      });
+      await asClient(ADA).protocolBuilder.releaseLock({
+        protocolId,
+        sectionId: stage.sectionId,
+      });
+    }
+  });
+
+  it('refuses a create while an editor holds the stage index', async () => {
+    const before = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+    const held = await asClient(GRACE).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+    expect(held.lock).toBe('held');
+
+    try {
+      const { error } = await safe(createStage(ADA, 'Never registered'));
+
+      // The editor holding the index has a whole-section draft that does not
+      // know about the new stage: its next submit would take the pointer out
+      // and leave the section behind, which is a protocol that cannot be
+      // assembled.
+      if (!isDefinedError(error) || error.code !== 'SECTIONS_LOCKED') {
+        throw error ?? new Error('the create was not refused at all');
+      }
+      expect(error.data.blocked.map((entry) => entry.sectionId)).toEqual([
+        'stageOrder',
+      ]);
+      expect(error.data.blocked[0]?.holder?.userId).toBe(
+        GRACE.principal.userId,
+      );
+    } finally {
+      await asClient(GRACE).protocolBuilder.releaseLock({
+        protocolId,
+        sectionId: 'stageOrder',
+      });
+    }
+    const after = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+    expect(after.document.stages).toEqual(before.document.stages);
+  });
+
+  /**
+   * A stage being ADDED has no revision to submit, so the create is the only
+   * place a resource imported while composing it can become the protocol's.
+   */
+  it('promotes a staged resource with the stage being created', async () => {
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      requestId: 'created-with-secret',
+      request: { kind: 'secret', name: 'Created token', value: 'pk.created' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const handle = staged.data.handle;
+    if (handle === undefined) throw new Error('a secret has no handle');
+
+    const created = await asClient(ADA).protocolBuilder.create({
+      protocolId,
+      kind: 'stage',
+      document: {
+        type: 'Information',
+        label: 'Carries a secret',
+        title: 'Carries a secret',
+        items: [],
+      },
+      promote: {
+        promotionId: 'promotion-5',
+        resourceIds: [staged.data.descriptor.id],
+        secretHandles: [handle],
+      },
+    });
+
+    expect(created.promoted?.map((entry) => entry.status)).toEqual([
+      'committed',
+    ]);
+    const assets = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'assets',
+    });
+    expect(assets.document[staged.data.descriptor.id]).toMatchObject({
+      name: 'Created token',
+      type: 'apikey',
+    });
+    const order = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+    // The section, its pointer and the manifest entry are one revision, which
+    // is what a watcher reading the stream in order sees.
+    expect(assets.revision.sequence).toBe(created.revision.sequence);
+    expect(order.revision.sequence).toBe(created.revision.sequence);
+  });
+
+  it('creates no stage when the promotion it carries cannot be committed', async () => {
+    const before = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+
+    const { error } = await safe(
+      asClient(ADA).protocolBuilder.create({
+        protocolId,
+        kind: 'stage',
+        document: {
+          type: 'Information',
+          label: 'Never made',
+          title: 'Never made',
+          items: [],
+        },
+        promote: { promotionId: 'promotion-6', resourceIds: ['never-staged'] },
+      }),
+    );
+
+    if (!isDefinedError(error) || error.code !== 'PROMOTION_FAILED') {
+      throw error ?? new Error('the create was not refused at all');
+    }
+    // No section id: the host mints one only for a section it will write.
+    expect(error.data.sectionId).toBeUndefined();
+    expect(error.data.failure).toMatchObject({
+      reason: 'not-found',
+      resourceId: 'never-staged',
+    });
+    const after = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+    expect(after.document.stages).toEqual(before.document.stages);
+  });
+
+  it('replays the stage a retried create already made, rather than a second one', async () => {
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      requestId: 'retried-create-secret',
+      request: { kind: 'secret', name: 'Retried token', value: 'pk.retried' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const handle = staged.data.handle;
+    if (handle === undefined) throw new Error('a secret has no handle');
+    const document = {
+      type: 'Information',
+      label: 'Made once',
+      title: 'Made once',
+      items: [],
+    };
+    const promote = {
+      promotionId: 'promotion-7',
+      resourceIds: [staged.data.descriptor.id],
+      secretHandles: [handle],
+    };
+    const created = await asClient(ADA).protocolBuilder.create({
+      protocolId,
+      kind: 'stage',
+      document,
+      promote,
+    });
+    const afterFirst = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+
+    const retried = await asClient(ADA).protocolBuilder.create({
+      protocolId,
+      kind: 'stage',
+      document,
+      promote,
+    });
+
+    // A second create would mint a second stage id, and the retry would be
+    // told about a stage its first attempt never made.
+    expect(retried.sectionId).toBe(created.sectionId);
+    expect(retried.revision).toEqual(created.revision);
+    const order = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+    expect(order.document.stages).toEqual(afterFirst.document.stages);
+  });
+
+  it('replays what a retried promoting submit already wrote', async () => {
+    const stage = await createStage(ADA, 'Saved once');
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      requestId: 'retried-submit-secret',
+      request: { kind: 'secret', name: 'Resubmitted', value: 'pk.resubmitted' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const handle = staged.data.handle;
+    if (handle === undefined) throw new Error('a secret has no handle');
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    const promote = {
+      promotionId: 'promotion-8',
+      resourceIds: [staged.data.descriptor.id],
+      secretHandles: [handle],
+    };
+    const written = await asClient(ADA).protocolBuilder.submit({
+      protocolId,
+      sectionId: stage.sectionId,
+      document: { ...held.document, label: 'Saved once' },
+      revision: held.revision,
+      promote,
+    });
+    // The editor closed on the answer it never received, giving the lock back.
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+
+    const retried = await asClient(ADA).protocolBuilder.submit({
+      protocolId,
+      sectionId: stage.sectionId,
+      document: { ...held.document, label: 'Saved once' },
+      revision: held.revision,
+      promote,
+    });
+
+    // Refusing here would turn a save that succeeded into one the researcher
+    // is told to discard a draft over.
+    expect(retried.revision).toEqual(written.revision);
+    expect(retried.promoted?.map((entry) => entry.id)).toEqual([
+      staged.data.descriptor.id,
+    ]);
+  });
+
+  it('keeps a staged resource out of another editor’s discard', async () => {
+    const staged = await asClient(GRACE).protocolBuilder.resources.stage({
+      protocolId,
+      requestId: 'grace-keeps-this',
+      request: { kind: 'secret', name: 'Grace’s token', value: 'pk.grace' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const resourceId = staged.data.descriptor.id;
+
+    const byId = await asClient(ADA).protocolBuilder.resources.discard({
+      protocolId,
+      resourceId,
+    });
+    const wholesale = await asClient(ADA).protocolBuilder.resources.discard({
+      protocolId,
+    });
+
+    // A protocol has as many edits open as it has editors, and cancelling one
+    // must not take away the file another is about to submit.
+    expect(byId).toMatchObject({ status: 'failed' });
+    expect(wholesale).toStrictEqual({ status: 'ok' });
+    const listed = await asClient(GRACE).protocolBuilder.resources.list({
+      protocolId,
+    });
+    if (listed.status !== 'ok') throw new Error('listing failed');
+    expect(listed.data.resources.map((entry) => entry.id)).toContain(
+      resourceId,
+    );
+  });
+
   it('creates the ego codebook a protocol does not have yet, once', async () => {
     const { error: gone } = await safe(
       asClient(ADA).protocolBuilder.getSection({

@@ -16,6 +16,7 @@ import {
   type ResourceInspectionSchema,
   type ResourcePreviewSchema,
   type ResourceSecretStorageSchema,
+  type Revision,
   type StageResourceInputSchema,
 } from '@codaco/protocol-builder/contract/schemas';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -49,6 +50,18 @@ type StagedEntry = {
   handle?: string;
   bytes?: Blob;
   secret?: string;
+};
+
+/** What one `promotionId` committed, for the retry that asks about it again. */
+export type CompletedPromotion = {
+  revision: Revision;
+  promoted: Descriptor[];
+  /**
+   * The section a `create` minted for this promotion. A retried create cannot
+   * be answered without it: the host would mint a second stage id, and the
+   * retry would be told about a stage its first attempt never made.
+   */
+  createdSection?: string;
 };
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
@@ -131,7 +144,7 @@ export class StagedResources {
   readonly secretStorage: SecretStorage = 'plaintext';
   readonly #staged = new Map<string, StagedEntry>();
   readonly #byRequest = new Map<string, string>();
-  readonly #promoted = new Map<string, Descriptor[]>();
+  readonly #promoted = new Map<string, CompletedPromotion>();
   readonly #mintId: () => string;
 
   constructor(mintId: () => string) {
@@ -196,13 +209,17 @@ export class StagedResources {
   }
 
   /**
-   * The promotion this id already made, if it made one.
+   * The write this promotion id already made, if it made one: the revision it
+   * reached and what it committed.
    *
-   * `promotionId` is stable across an uncertain retry, so a submit whose answer
-   * was lost is repeated with the same id: it is told what was committed rather
-   * than refused for a write it cannot see.
+   * `promotionId` is stable across an uncertain retry, so a write whose answer
+   * was lost is repeated with the same id and is told what that attempt did.
+   * Answering it is the whole of the retry: writing again would make a second
+   * revision of a save that already succeeded — and would be refused outright
+   * once the editor had given its lock back — while a second create would put
+   * a second copy of the stage in the protocol.
    */
-  completedPromotion(promotionId: string): Descriptor[] | undefined {
+  completedPromotion(promotionId: string): CompletedPromotion | undefined {
     return this.#promoted.get(promotionId);
   }
 
@@ -281,8 +298,14 @@ export class StagedResources {
     promotionId: string,
     promoted: readonly Descriptor[],
     resourceIds: readonly string[],
+    revision: Revision,
+    createdSection?: string,
   ): void {
-    this.#promoted.set(promotionId, [...promoted]);
+    this.#promoted.set(promotionId, {
+      revision,
+      promoted: [...promoted],
+      ...(createdSection === undefined ? {} : { createdSection }),
+    });
     for (const resourceId of resourceIds) this.#staged.delete(resourceId);
   }
 
