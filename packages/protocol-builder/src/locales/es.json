@@ -131,6 +131,7 @@
   "protocolBuilder.codebookVariable.createSubmit": "Crear atributo",
   "protocolBuilder.codebookVariable.createTitle": "Crear atributo",
   "protocolBuilder.codebookVariable.description": "Define el nombre del atributo, el tipo de dato y los valores disponibles.",
+  "protocolBuilder.codebookVariable.draftInterfaceOwnedPick": "Otra parte de la etapa que estás editando ya establece este atributo, así que tampoco se puede usar aquí. Elige otro atributo.",
   "protocolBuilder.codebookVariable.editTitle": "Editar atributo",
   "protocolBuilder.codebookVariable.failureTitle": "Atributo no guardado",
   "protocolBuilder.codebookVariable.heldAnswerValuesCaption": "Un atributo de sí/no se escribe aquí como dos respuestas, una que registra «true» y otra que registra «false». Las respuestas de este registran otra cosa, así que se muestran tal como están, y al guardar no se modifican.",

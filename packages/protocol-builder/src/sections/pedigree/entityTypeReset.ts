@@ -7,8 +7,26 @@ import {
   type VariableRoleMap,
 } from '../../codebook/variableRoles.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
-import { useDiscardStageValues } from '../../form/stageFormHooks.ts';
+import {
+  useDiscardStageValues,
+  useStageValue,
+} from '../../form/stageFormHooks.ts';
+import type { CodebookSubject } from '../../protocol-context.ts';
 import { useOnResearcherChange } from '../researcherChange.ts';
+import {
+  draftExclusiveSlotClaims,
+  PEDIGREE_EXCLUSIVE_SLOTS,
+} from './slotWiring.ts';
+
+const NODE_TYPE_PATH = 'nodeConfig.type';
+const EDGE_TYPE_PATH = 'edgeConfig.type';
+
+/** The type a live slot pick names an attribute of, while one is chosen. */
+const subjectOf = (
+  entity: 'node' | 'edge',
+  type: unknown,
+): CodebookSubject | null =>
+  typeof type === 'string' ? { entity, type } : null;
 
 /**
  * The two indexes every pedigree picker asks about a pick: which attributes an
@@ -19,18 +37,96 @@ import { useOnResearcherChange } from '../researcherChange.ts';
  * the stage being edited: the pedigree's own saved slots are exactly what makes
  * a second slot's pick a conflict, and each picker escapes its own committed
  * value instead.
+ *
+ * A THIRD index goes with them: the slot claims the researcher has made in
+ * this unsaved edit, which no protocol carries yet. Two exclusive slots taking
+ * one attribute in a single session — the pedigree has two that each accept
+ * any boolean of the edge type — passed both pickers and both gates, and the
+ * protocol refused the whole stage at the save.
+ *
+ * Kept apart from the saved claims rather than merged into them so that a
+ * refusal can say which it is, and so that a more specific refusal about the
+ * same pick still wins: see `slotCrossClassIssue`, which consults them in
+ * order, and `draftExclusiveSlotClaims`, where the live claims are shaped.
  */
 export function usePedigreeVariableIndexes(): Readonly<{
   roleMap: VariableRoleMap;
   slotMap: ExclusiveVariableSlotMap;
+  draftSlotMap: ExclusiveVariableSlotMap;
 }> {
   const { protocolContext } = useStageEditorForm();
+  const nodeType = useStageValue(NODE_TYPE_PATH);
+  const edgeType = useStageValue(EDGE_TYPE_PATH);
+  const ego = useStageValue(PEDIGREE_EXCLUSIVE_SLOTS.egoVariable.path);
+  const relationship = useStageValue(
+    PEDIGREE_EXCLUSIVE_SLOTS.relationshipVariable.path,
+  );
+  const relationshipType = useStageValue(
+    PEDIGREE_EXCLUSIVE_SLOTS.relationshipTypeVariable.path,
+  );
+  const isActive = useStageValue(
+    PEDIGREE_EXCLUSIVE_SLOTS.isActiveVariable.path,
+  );
+  const isGestationalCarrier = useStageValue(
+    PEDIGREE_EXCLUSIVE_SLOTS.isGestationalCarrierVariable.path,
+  );
+  const gameteRole = useStageValue(
+    PEDIGREE_EXCLUSIVE_SLOTS.gameteRoleVariable.path,
+  );
+
+  const draftClaims = useMemo(() => {
+    const nodeSubject = subjectOf('node', nodeType);
+    const edgeSubject = subjectOf('edge', edgeType);
+    return draftExclusiveSlotClaims([
+      {
+        subject: nodeSubject,
+        slot: PEDIGREE_EXCLUSIVE_SLOTS.egoVariable.slot,
+        variableId: ego,
+      },
+      {
+        subject: nodeSubject,
+        slot: PEDIGREE_EXCLUSIVE_SLOTS.relationshipVariable.slot,
+        variableId: relationship,
+      },
+      {
+        subject: edgeSubject,
+        slot: PEDIGREE_EXCLUSIVE_SLOTS.relationshipTypeVariable.slot,
+        variableId: relationshipType,
+      },
+      {
+        subject: edgeSubject,
+        slot: PEDIGREE_EXCLUSIVE_SLOTS.isActiveVariable.slot,
+        variableId: isActive,
+      },
+      {
+        subject: edgeSubject,
+        slot: PEDIGREE_EXCLUSIVE_SLOTS.isGestationalCarrierVariable.slot,
+        variableId: isGestationalCarrier,
+      },
+      {
+        subject: edgeSubject,
+        slot: PEDIGREE_EXCLUSIVE_SLOTS.gameteRoleVariable.slot,
+        variableId: gameteRole,
+      },
+    ]);
+  }, [
+    edgeType,
+    ego,
+    gameteRole,
+    isActive,
+    isGestationalCarrier,
+    nodeType,
+    relationship,
+    relationshipType,
+  ]);
+
   return useMemo(
     () => ({
       roleMap: buildVariableRoleMap(protocolContext),
       slotMap: buildExclusiveVariableSlotMap(protocolContext),
+      draftSlotMap: draftClaims,
     }),
-    [protocolContext],
+    [draftClaims, protocolContext],
   );
 }
 
