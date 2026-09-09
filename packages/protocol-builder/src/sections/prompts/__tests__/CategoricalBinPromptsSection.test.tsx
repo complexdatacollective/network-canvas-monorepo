@@ -1344,6 +1344,88 @@ describe('dismissing a codebook editor while its save is in flight', () => {
   });
 });
 
+/**
+ * A prompt binning by an attribute whose VALUES another interface owns.
+ *
+ * The Family Pedigree derives biological sex from the structure a participant
+ * builds, and the genetics engine branches on those exact values — so the
+ * option set belongs to that interface however the attribute is reached, and a
+ * bin prompt may still legitimately sort family members by it. The two things
+ * that follows from are what this describes: the researcher can SEE what the
+ * prompt will offer without being able to change it, and an editor already
+ * open when the ownership arrives is refused rather than left writable.
+ */
+describe('a prompt whose attribute’s values an interface owns', () => {
+  /** The canonical set the pedigree schema fixes, written out. */
+  const BIOLOGICAL_SEX_OPTIONS = [
+    { value: 'female', label: 'Female' },
+    { value: 'male', label: 'Male' },
+    {
+      value: 'intersex',
+      label: 'Intersex or a variation in sex characteristics',
+    },
+    { value: 'unknown', label: 'Don’t know' },
+    { value: 'preferNotToSay', label: 'Prefer not to say' },
+  ] as const;
+
+  /** The sentence over the read-only list, from `PromptAttributeField`. */
+  const LOCKED_VALUES =
+    'These values are set by the interface that uses this attribute, so they cannot be changed here.';
+
+  const VALUES_CONTROL = "Change this attribute's values";
+
+  /** A bin over family members, which is the type the pedigree describes. */
+  const openBinningFamilyMembers = (prompt: Record<string, unknown>) => ({
+    stage: {
+      type: 'CategoricalBin' as const,
+      fields: {
+        label: 'Categorical Bin',
+        subject: { entity: 'node', type: 'family_member' },
+        prompts: [prompt],
+      },
+    },
+    sections: <CategoricalBinPromptsSection />,
+  });
+
+  /** The label/value pairs one read-only list shows, in the order it shows them. */
+  const lockedRows = (table: HTMLElement): string[][] =>
+    within(table)
+      .getAllByRole('row')
+      .map((row) =>
+        within(row)
+          .queryAllByRole('cell')
+          .map((cell) => cell.textContent ?? ''),
+      )
+      .filter((cells) => cells.length > 0);
+
+  it('shows the values the prompt will offer, not only the reason they are fixed', async () => {
+    const harness = renderStageEditor(
+      openBinningFamilyMembers({
+        id: 'prompt-a',
+        text: 'Which of these are they?',
+        variable: 'biologicalSex',
+      }),
+    );
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+
+    // The bins themselves: a researcher who cannot read them cannot tell what
+    // this prompt asks, and the explanation alone says only that they are not
+    // theirs to change.
+    const locked = await screen.findByRole('table', { name: LOCKED_VALUES });
+    expect(lockedRows(locked)).toEqual(
+      BIOLOGICAL_SEX_OPTIONS.map(({ label, value }) => [label, value]),
+    );
+    // And still read-only: the list is shown INSTEAD of the control that would
+    // edit it, rather than beside it.
+    expect(
+      screen.queryByRole('button', { name: VALUES_CONTROL }),
+    ).not.toBeInTheDocument();
+  });
+});
+
 function personVariables(harness: {
   session: { getSnapshot(): { protocolSections: Record<string, unknown> } };
 }): Record<string, unknown> {

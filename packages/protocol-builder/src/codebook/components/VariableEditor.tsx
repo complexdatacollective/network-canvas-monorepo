@@ -1,4 +1,4 @@
-import { Lock, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import {
   createElement,
   type FormEvent,
@@ -79,6 +79,7 @@ import {
   type ParameterShape,
 } from '../variableParameters.ts';
 import { VARIABLE_TYPE_OPTIONS } from '../variableTypeLabels.ts';
+import LockedOptions from './LockedOptions.tsx';
 import VariableBooleanAnswerFields from './VariableBooleanAnswerFields.tsx';
 import VariableParameterFields from './VariableParameterFields.tsx';
 
@@ -273,18 +274,6 @@ const messages = defineMessages({
       'These values are managed by the interface and cannot be changed.',
     description:
       'Caption over the read-only list of allowed answers for an attribute whose answers one kind of interview step owns. An interface is one kind of interview step.',
-  },
-  lockedOptionLabelHeader: {
-    id: 'protocolBuilder.codebookVariable.lockedOptionLabelHeader',
-    defaultMessage: 'Label',
-    description:
-      'Column heading over what a participant reads for each allowed answer, in the read-only list of answers an interview step owns.',
-  },
-  lockedOptionValueHeader: {
-    id: 'protocolBuilder.codebookVariable.lockedOptionValueHeader',
-    defaultMessage: 'Value',
-    description:
-      'Column heading over what the export records for each allowed answer, in the read-only list of answers an interview step owns.',
   },
 });
 
@@ -1508,52 +1497,4 @@ function failureFrom(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-/**
- * A list of answers as they stand, with the reason they cannot be edited here.
- *
- * Two things read it: an option list one kind of interview step owns, and the
- * answers of a boolean this editor's two-answer fieldset cannot show. Both are
- * the same thing to the researcher — what a participant will be offered, and
- * an editor saying it is not theirs to change — so the caption is what differs
- * between them, and it is passed in rather than chosen from a flag.
- */
-function LockedOptions({
-  options,
-  caption,
-}: {
-  options: readonly Readonly<{
-    label: string;
-    value: string | number | boolean;
-  }>[];
-  caption: string;
-}) {
-  const intl = useAppIntl();
-  return (
-    <div className="bg-surface-2 text-surface-2-contrast relative rounded p-4">
-      <Lock aria-hidden="true" className="absolute top-4 right-4 size-4" />
-      <table className="w-full text-sm">
-        <caption className="pr-8 pb-2 text-left">{caption}</caption>
-        <thead>
-          <tr className="text-left">
-            <th className="pb-2 font-bold">
-              {intl.formatMessage(messages.lockedOptionLabelHeader)}
-            </th>
-            <th className="pb-2 font-bold">
-              {intl.formatMessage(messages.lockedOptionValueHeader)}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {options.map((option, index) => (
-            <tr key={`${String(option.value)}-${index}`}>
-              <td className="py-1">{option.label}</td>
-              <td className="font-monospace py-1">{String(option.value)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
 }

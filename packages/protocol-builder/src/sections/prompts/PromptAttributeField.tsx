@@ -11,6 +11,7 @@ import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import LockedOptions from '../../codebook/components/LockedOptions.tsx';
 import VariableEditor from '../../codebook/components/VariableEditor.tsx';
 import {
   type CodebookVariableDraft,
@@ -428,10 +429,19 @@ export default function PromptAttributeField({
           )}
         </div>
       )}
+      {/* The values themselves, and not only the reason they are fixed: they
+          ARE the bins this prompt sorts into, or the points of the scale it
+          offers, and a researcher who cannot see them cannot tell what the
+          prompt asks. The same surface the codebook editor shows them on
+          (`LockedOptions`), so the one thing that differs between the two
+          places a locked list appears is the sentence over it. */}
       {picked !== undefined && lockedOptions !== undefined && (
-        <p className="text-muted mt-4 text-sm">
-          {intl.formatMessage(messages.lockedOptions)}
-        </p>
+        <div className="mt-4">
+          <LockedOptions
+            options={lockedOptions}
+            caption={intl.formatMessage(messages.lockedOptions)}
+          />
+        </div>
       )}
       {overLimit && (
         <Alert variant="warning" className="mt-6">
