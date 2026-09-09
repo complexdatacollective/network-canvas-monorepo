@@ -1,6 +1,8 @@
 import { createMessageError } from '@codaco/app-i18n/messages';
 import {
   FAMILY_PEDIGREE_SLOTS,
+  type InterfaceOwnedOption,
+  optionsMatchInterfaceOwnedSet,
   type Variable,
   type VariableOption,
   type Variables,
@@ -377,11 +379,26 @@ export function slotCrossClassIssue({
  * pre-existing conflict is somebody's authoring decision; an attribute that is
  * gone, or is now a different kind of thing, is not a decision anybody made
  * and nothing can be recorded under it.
+ *
+ * The VALUES are the third way an attribute stops being usable, and the one
+ * the type check cannot see: three of the pedigree's slots need a canonical
+ * set the interface owns, and an attribute whose options a collaborator has
+ * edited is still categorical. The pickers already drop such an attribute —
+ * they ask the schema's own `optionsMatchInterfaceOwnedSet` — so asking it
+ * here too is what stops the picker and the gate disagreeing about a pick the
+ * control is already holding.
  */
 export function unusableVariableIssue(
   allVariables: Readonly<Variables>,
   variableId: unknown,
   expectedType: VariableType,
+  /**
+   * The canonical value set this slot's interface owns, where it owns one.
+   *
+   * Omitted by every slot whose values are the researcher's — a boolean
+   * marker, a text label — for which any value set is legitimate authoring.
+   */
+  expectedOptions?: readonly InterfaceOwnedOption[],
 ): string | undefined {
   if (typeof variableId !== 'string' || variableId === '') return undefined;
   const variable = allVariables[variableId];
@@ -390,9 +407,19 @@ export function unusableVariableIssue(
       attributeName: variableId,
     });
   }
-  return variable.type === expectedType
+  if (variable.type !== expectedType) {
+    return createMessageError(pedigreeMessages.variableTypeChangedRefusal, {
+      attributeName: variableDisplayName(allVariables, variableId),
+    });
+  }
+  if (expectedOptions === undefined) return undefined;
+  const held = optionsOf(variable);
+  return optionsMatchInterfaceOwnedSet(
+    held === undefined ? undefined : [...held],
+    expectedOptions,
+  )
     ? undefined
-    : createMessageError(pedigreeMessages.variableTypeChangedRefusal, {
+    : createMessageError(pedigreeMessages.variableOptionsChangedRefusal, {
         attributeName: variableDisplayName(allVariables, variableId),
       });
 }
