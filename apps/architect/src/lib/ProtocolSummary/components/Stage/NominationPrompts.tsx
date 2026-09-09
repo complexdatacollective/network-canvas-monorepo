@@ -8,36 +8,36 @@ import MiniTable from '../MiniTable';
 import Variable from '../Variable';
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
-  diseaseNominationPrompts: {
-    id: 'architect.protocolSummary.stage.diseaseNominationPrompts.diseaseNominationPrompts',
-    defaultMessage: 'Disease Nomination Prompts',
+  nominationPrompts: {
+    id: 'architect.protocolSummary.stage.nominationPrompts.nominationPrompts',
+    defaultMessage: 'Nomination Prompts',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / DiseaseNominationPrompts.',
+      'The title text in lib / ProtocolSummary / components / Stage / NominationPrompts. A Family Pedigree stage asks these after the family is built; each records a condition or trait as a boolean attribute of the family members the participant picks.',
   },
 });
 
-type DiseasePrompt = {
+type NominationPrompt = {
   id: string;
   text: string;
   variable: string;
 };
 
-type DiseaseNominationPromptsProps = {
-  diseaseNominationStep?: DiseasePrompt[] | null;
+type NominationPromptsProps = {
+  nominationPrompts?: NominationPrompt[] | null;
 };
 
-const DiseaseNominationPrompts = ({
-  diseaseNominationStep = null,
-}: DiseaseNominationPromptsProps) => {
+const NominationPrompts = ({
+  nominationPrompts = null,
+}: NominationPromptsProps) => {
   const intl = useAppIntl();
-  if (!diseaseNominationStep || diseaseNominationStep.length === 0) {
+  if (!nominationPrompts || nominationPrompts.length === 0) {
     return null;
   }
 
   return (
-    <SectionFrame title={intl.formatMessage(messages.diseaseNominationPrompts)}>
+    <SectionFrame title={intl.formatMessage(messages.nominationPrompts)}>
       <UnorderedList>
-        {diseaseNominationStep.map((prompt) => (
+        {nominationPrompts.map((prompt) => (
           <li className="my-5" key={prompt.id}>
             <div className="break-inside-avoid">
               <Markdown label={prompt.text} />
@@ -58,4 +58,4 @@ const DiseaseNominationPrompts = ({
   );
 };
 
-export default DiseaseNominationPrompts;
+export default NominationPrompts;

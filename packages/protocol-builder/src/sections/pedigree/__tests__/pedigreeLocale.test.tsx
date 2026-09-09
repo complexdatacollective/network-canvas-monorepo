@@ -9,7 +9,10 @@ import BoundaryOptionsSection from '../BoundaryOptionsSection.tsx';
 import FramingConfigSection from '../FramingConfigSection.tsx';
 import NominationPromptsSection from '../NominationPromptsSection.tsx';
 import PedigreeNodeConfigurationSection from '../PedigreeNodeConfigurationSection.tsx';
-import { familyPedigreeStageWith } from './pedigreeFixtures.tsx';
+import {
+  familyPedigreeStageWith,
+  familyPedigreeStageWithout,
+} from './pedigreeFixtures.tsx';
 
 shimMarkdownEditorMeasurement();
 
@@ -218,8 +221,12 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
   });
 
   it('reads a refused save back in Spanish', async () => {
+    // The fixture pedigree already asks one question, so the switch below
+    // would turn it OFF (and ask for confirmation) rather than on: open a
+    // pedigree that asks nothing, which is the one whose empty switch-on is
+    // the refusal this test reads.
     const harness = renderStageEditor({
-      stageId: 'family-pedigree-1',
+      stage: familyPedigreeStageWithout(['nominationPrompts']),
       locale: 'es',
       sections: <NominationPromptsSection />,
     });

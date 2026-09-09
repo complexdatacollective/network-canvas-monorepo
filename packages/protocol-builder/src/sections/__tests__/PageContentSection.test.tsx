@@ -136,6 +136,7 @@ describe('a page shown before a task begins', () => {
     'framing',
     'boundaries',
     'censusPrompt',
+    'nominationPrompts',
   ];
 
   it('has no heading of its own, and can be switched off entirely', async () => {

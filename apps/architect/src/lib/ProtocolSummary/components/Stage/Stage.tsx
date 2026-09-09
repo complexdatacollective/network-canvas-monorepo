@@ -14,7 +14,6 @@ import SummaryContext from '../SummaryContext';
 import Anonymisation from './Anonymisation';
 import Behaviours from './Behaviours';
 import DataSource from './DataSource';
-import DiseaseNominationPrompts from './DiseaseNominationPrompts';
 import FamilyTreeVariables from './FamilyTreeVariables';
 import Filter from './Filter';
 import Form from './Form';
@@ -23,6 +22,7 @@ import IntroductionPanel from './IntroductionPanel';
 import Items from './Items';
 import MapOptions from './MapOptions';
 import NameGenerationStep from './NameGenerationStep';
+import NominationPrompts from './NominationPrompts';
 import PageHeading from './PageHeading';
 import Panels from './Panels';
 import Presets from './Presets';
@@ -187,7 +187,10 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         };
       }
     | undefined;
-  const diseaseNominationStep = configuration.diseaseNominationStep as
+  // FamilyPedigree: the attribute nomination steps asked after the family is
+  // built. (`diseaseNominationStep` was the legacy FamilyTreeCensus key; no
+  // current schema stage carries it, so it is not read here.)
+  const nominationPrompts = configuration.nominationPrompts as
     | Array<{
         id: string;
         text: string;
@@ -333,9 +336,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       />
       <ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />
       <NameGenerationStep nameGenerationStep={nameGenerationStep ?? null} />
-      <DiseaseNominationPrompts
-        diseaseNominationStep={diseaseNominationStep ?? null}
-      />
+      <NominationPrompts nominationPrompts={nominationPrompts ?? null} />
       <Anonymisation
         explanationText={explanationText ?? null}
         validation={validation ?? null}

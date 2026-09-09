@@ -51,10 +51,10 @@ export function addFamilyMemberVariable(
 /**
  * The fixture pedigree, with whatever the test needs added to it.
  *
- * The shared all-interfaces protocol carries no nomination prompts and no
- * family-member form, so the paths that edit them have to be seeded here — but
- * from the fixture stage rather than from a hand-written one, so a test still
- * fails when the fixture and the schema disagree.
+ * The shared all-interfaces protocol carries one nomination prompt and no
+ * family-member form, so a test that needs a particular prompt list, or a
+ * form, seeds it here — but over the fixture stage rather than a hand-written
+ * one, so a test still fails when the fixture and the schema disagree.
  */
 export function familyPedigreeStageWith(extra: SectionDoc): Readonly<{
   id: string;
@@ -69,5 +69,38 @@ export function familyPedigreeStageWith(extra: SectionDoc): Readonly<{
     id: seeded.id,
     type: 'FamilyPedigree',
     fields: { ...seeded.fields, ...extra },
+  };
+}
+
+/**
+ * The fixture pedigree with the named keys taken away.
+ *
+ * The fixture asks one nomination question, so a test about a pedigree that
+ * asks nothing has to remove it rather than find it absent — and removing it
+ * from the fixture stage, like adding to it above, keeps the rest of the stage
+ * the one the app is tested against.
+ */
+export function familyPedigreeStageWithout(keys: readonly string[]): Readonly<{
+  id: string;
+  type: 'FamilyPedigree';
+  fields: SectionDoc;
+}> {
+  const seeded = loadFixtureStage('family-pedigree-1');
+  if (seeded.type !== 'FamilyPedigree') {
+    throw new Error('The fixture stage "family-pedigree-1" changed interface.');
+  }
+  for (const key of keys) {
+    if (!Object.hasOwn(seeded.fields, key)) {
+      throw new Error(
+        `The fixture stage "family-pedigree-1" has no "${key}" to take away, so removing it proves nothing.`,
+      );
+    }
+  }
+  return {
+    id: seeded.id,
+    type: 'FamilyPedigree',
+    fields: Object.fromEntries(
+      Object.entries(seeded.fields).filter(([key]) => !keys.includes(key)),
+    ),
   };
 }

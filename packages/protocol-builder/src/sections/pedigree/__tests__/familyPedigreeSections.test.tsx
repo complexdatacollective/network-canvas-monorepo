@@ -23,6 +23,7 @@ import PedigreeNodeConfigurationSection from '../PedigreeNodeConfigurationSectio
 import {
   addFamilyMemberVariable,
   familyPedigreeStageWith,
+  familyPedigreeStageWithout,
 } from './pedigreeFixtures.tsx';
 
 /** See `FormFieldsSection`'s own `NEW_VARIABLE` sentinel. */
@@ -925,7 +926,8 @@ describe('the way a family member form reaches the document', () => {
 
 /**
  * Nomination prompts are the pedigree's optional list, edited through a row
- * dialog. The fixture protocol has none, so the rows are seeded here.
+ * dialog. The rows are seeded here rather than read off the fixture, so the
+ * tests say exactly what they open.
  */
 describe('the pedigree’s nomination prompts', () => {
   it('saves a list it opened, unchanged', async () => {
@@ -977,7 +979,10 @@ describe('the pedigree’s nomination prompts', () => {
   });
 
   it('is switched off entirely when the pedigree asks nothing', async () => {
-    const harness = renderStageEditor(openFixture());
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWithout(['nominationPrompts']),
+      sections: pedigreeSections,
+    });
 
     await waitFor(() =>
       expect(
