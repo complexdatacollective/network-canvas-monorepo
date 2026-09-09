@@ -11,10 +11,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import StageNameInput from '../fields/StageNameInput.tsx';
 import { REQUIRED } from '../form/requiredField.ts';
-import {
-  SectionScopeContext,
-  useStageEditorForm,
-} from '../form/stageEditorContext.ts';
+import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
 import { interfaceDisplayName } from '../interfaces/interfaceNames.ts';
 import {
@@ -154,22 +151,20 @@ export default function StageNameSection({
           })}
         </Paragraph>
       )}
-      <SectionScopeContext value={sectionId}>
-        <Field<typeof StageNameInput>
-          name="label"
-          component={StageNameInput}
-          // The hero input is the visible heading, so the label exists for
-          // assistive technology — but it still has to exist, because it is
-          // what the outline and a host's problem panel call this field.
-          label={stageNameLabel}
-          labelHidden
-          placeholder={intl.formatMessage(messages.placeholder)}
-          characterLimit={STAGE_NAME_LIMIT}
-          required={REQUIRED}
-          autoFocus={autoFocus ?? isNewStage}
-          onFieldBlur={onLabelBlur}
-        />
-      </SectionScopeContext>
+      <Field<typeof StageNameInput>
+        name="label"
+        component={StageNameInput}
+        // The hero input is the visible heading, so the label exists for
+        // assistive technology — but it still has to exist, because it is
+        // what the outline and a host's problem panel call this field.
+        label={stageNameLabel}
+        labelHidden
+        placeholder={intl.formatMessage(messages.placeholder)}
+        characterLimit={STAGE_NAME_LIMIT}
+        required={REQUIRED}
+        autoFocus={autoFocus ?? isNewStage}
+        onFieldBlur={onLabelBlur}
+      />
       <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
         <Badge color="neon-coral">{interfaceName}</Badge>
         {documentationUrl !== undefined && (

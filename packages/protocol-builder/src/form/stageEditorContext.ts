@@ -109,14 +109,3 @@ export function useStageEditorForm(): StageEditorFormContextValue {
   }
   return context;
 }
-
-/**
- * The section a field is being rendered inside. Sections provide it; the
- * package's field wrapper reads it so the outline can say which section an
- * error or a missing value belongs to.
- */
-export const SectionScopeContext = createContext<string | null>(null);
-
-export function useSectionScope(): string | null {
-  return useContext(SectionScopeContext);
-}

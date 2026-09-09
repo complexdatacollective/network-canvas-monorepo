@@ -6,10 +6,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Section from '@codaco/fresco-ui/Section';
 
-import {
-  SectionScopeContext,
-  useStageEditorForm,
-} from '../form/stageEditorContext.ts';
+import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import {
   useDiscardStageValues,
   useStageHasAnyValue,
@@ -234,9 +231,7 @@ export default function BuilderSection({
     setResetGeneration((generation) => generation + 1);
   });
 
-  const body = (
-    <SectionScopeContext value={sectionId}>{children}</SectionScopeContext>
-  );
+  const body = children;
 
   if (capability === undefined) {
     return (

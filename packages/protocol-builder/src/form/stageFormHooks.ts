@@ -1,13 +1,11 @@
-import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
+import { useCallback, useRef, useSyncExternalStore } from 'react';
 
 import {
   type FieldNameMode,
   resolveFieldPath,
-  useFieldNamespacePath,
 } from '@codaco/fresco-ui/form/FieldNamespace';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import {
-  formatObjectPath,
   getValue,
   type ObjectPath,
   omitValue,
@@ -26,7 +24,6 @@ import {
   type StageFormDraft,
 } from '../stageDocument.ts';
 import { withoutValueAt } from './absentValues.ts';
-import { mountedPathsOf } from './stageDraftFromSubmission.ts';
 import {
   type StageFormStoreApi,
   useStageEditorForm,
@@ -34,88 +31,6 @@ import {
 
 /** fresco-ui does not publish its store type, so it is recovered from the api. */
 type FormStoreState = ReturnType<StageFormStoreApi['getState']>;
-
-/**
- * Where a field actually lives, and what it should start out holding.
- *
- * A field's name is not always its path: an enclosing `FieldNamespace`
- * prefixes it, and `nameMode="opaque"` makes a name containing dots a single
- * segment rather than a route through the document. Both are resolved here
- * exactly as Fresco's `Field` resolves them, so the name the outline asks the
- * store about and the path the value is read from are the ones the field is
- * really registered under.
- *
- * **The document the editor opened on is the account of what a path holds once
- * saved.** That is enough on its own because everything that throws a value
- * away writes the document first: a capability the researcher switches off is
- * unset there before the form is emptied (`useDiscardStageValues`), so a
- * control arriving under that path afterwards — a list behind a collapsed
- * group, say — reads the same absence every other reader does.
- *
- * **The live form is the account of an edit that has not been saved yet**, and
- * only for as long as something is mounted to hold it. A field registered at a
- * CONTAINER carries everything beneath it, so a leaf mounting later under one
- * — a group of advanced options opened for the first time — has an account of
- * its path already on screen, and it is newer than the draft. Seeded from the
- * committed draft instead, such a leaf showed the value the researcher had
- * just replaced, and then wrote it back over their edit on the next save:
- * `stageDraftFromSubmission` replays the deeper field after the container
- * above it, so the stale reading won.
- *
- * Beneath a mounted ancestor the form is asked and answers for the whole path,
- * absence included — a container the researcher has emptied says there is
- * nothing there, and the committed draft must not put it back. With no
- * mounted ancestor the form holds no account of the path at all (a value
- * PARKED by an unmounted field is deliberately not one: the submit drops a
- * parked write a mounted field overlaps), and the committed draft answers.
- *
- * The value is memoised because `initialValue` is a dependency of the effect
- * that registers a field: an unstable one re-registers it on every render.
- */
-export function useResolvedFieldIdentity(
-  name: string,
-  nameMode: FieldNameMode = 'legacy',
-): Readonly<{ registeredName: string; seedValue: unknown }> {
-  const { committedFields, storeApi } = useStageEditorForm();
-  const namespace = useFieldNamespacePath();
-
-  return useMemo(() => {
-    const path = resolveFieldPath(namespace, name, nameMode);
-    const live = liveValueBeneathAMountedAncestor(storeApi, path);
-    return {
-      registeredName: formatObjectPath(path),
-      seedValue: live.mounted ? live.value : getValue(committedFields, path),
-    };
-  }, [committedFields, name, nameMode, namespace, storeApi]);
-}
-
-/**
- * What the form holds at `path`, and whether anything mounted is holding it.
- *
- * The two answers have to be separable: a container that does not hold the key
- * and a path no mounted field reaches are both `undefined` to a plain read,
- * and they mean opposite things — the first is the researcher's own emptiness,
- * the second is nothing to say.
- *
- * Only a STRICT ancestor counts. A field registered at the path itself is the
- * field being seeded remounting into its own dormant value, which the form
- * store restores by itself.
- */
-function liveValueBeneathAMountedAncestor(
-  storeApi: StageFormStoreApi,
-  path: ObjectPath,
-): Readonly<{ mounted: boolean; value: unknown }> {
-  if (path.length < 2) return { mounted: false, value: undefined };
-  const state = storeApi.getState();
-  const mounted = mountedPathsOf(storeApi).some(
-    (candidate) =>
-      candidate.length < path.length &&
-      candidate.every((segment, index) => path[index] === segment),
-  );
-  return mounted
-    ? { mounted: true, value: getValue(state.getFormValues(), path) }
-    : { mounted: false, value: undefined };
-}
 
 /**
  * The value that caused a discard, and where it lives in the stage draft.
