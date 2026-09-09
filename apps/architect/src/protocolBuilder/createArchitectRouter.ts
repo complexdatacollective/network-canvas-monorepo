@@ -110,7 +110,11 @@ export function createArchitectRouter(store: ArchitectStore) {
       if (!isOpen(input.protocolId)) {
         throw errors.PROTOCOL_NOT_FOUND({ data: input });
       }
-      const since = input.since ?? lastEventId;
+      // `lastEventId` is where this connection actually got to; `since` is
+      // where it asked to start. A transport resuming a dropped iterator
+      // re-invokes it with the same input, so reading the input alone would
+      // hand the client everything it had already been given.
+      const since = laterCursor(input.since, lastEventId);
       for await (const entry of revisions.watch(since, signal)) {
         yield withEventMeta(entry.event, { id: entry.cursor });
       }
@@ -448,36 +452,73 @@ export function createArchitectRouter(store: ArchitectStore) {
       ),
     },
 
+    /**
+     * The resource lifecycle, on the protocol that is open.
+     *
+     * Each of these names its protocol as every other procedure does, and is
+     * refused the same way when that protocol is not the open one: Architect
+     * holds one store, so a call from an editor the researcher has since
+     * closed would otherwise import into — or discard from — whichever
+     * protocol they opened next.
+     */
     resources: {
-      list: os.resources.list.handler(({ input }) => resources.list(input)),
+      list: os.resources.list.handler(({ input, errors }) => {
+        if (!isOpen(input.protocolId)) {
+          throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        }
+        return resources.list(input);
+      }),
 
-      stage: os.resources.stage.handler(
-        async ({ input }) =>
-          (
-            await revisions.write(() =>
-              resources.stage(input.editId, input.requestId, input.request),
-            )
-          ).result,
-      ),
+      stage: os.resources.stage.handler(async ({ input, errors }) => {
+        if (!isOpen(input.protocolId)) {
+          throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        }
+        return (
+          await revisions.write(() =>
+            resources.stage(input.editId, input.requestId, input.request),
+          )
+        ).result;
+      }),
 
-      discard: os.resources.discard.handler(
-        async ({ input }) =>
-          (
-            await revisions.write(() =>
-              resources.discard(input.editId, input.resourceId),
-            )
-          ).result,
-      ),
+      discard: os.resources.discard.handler(async ({ input, errors }) => {
+        if (!isOpen(input.protocolId)) {
+          throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        }
+        return (
+          await revisions.write(() =>
+            resources.discard(input.editId, input.resourceId),
+          )
+        ).result;
+      }),
 
-      inspect: os.resources.inspect.handler(({ input }) =>
-        resources.inspect(input.resourceId, input.editId),
-      ),
+      inspect: os.resources.inspect.handler(({ input, errors }) => {
+        if (!isOpen(input.protocolId)) {
+          throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        }
+        return resources.inspect(input.resourceId, input.editId);
+      }),
 
-      preview: os.resources.preview.handler(({ input }) =>
-        resources.preview(input.resourceId, input.editId),
-      ),
+      preview: os.resources.preview.handler(({ input, errors }) => {
+        if (!isOpen(input.protocolId)) {
+          throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        }
+        return resources.preview(input.resourceId, input.editId);
+      }),
     },
   };
+}
+
+/**
+ * The later of two cursors, either of which may be absent. This host's cursors
+ * are its own event counter, which is what makes them comparable.
+ */
+function laterCursor(
+  since: string | undefined,
+  lastEventId: string | undefined,
+): string | undefined {
+  if (since === undefined) return lastEventId;
+  if (lastEventId === undefined) return since;
+  return Number(lastEventId) > Number(since) ? lastEventId : since;
 }
 
 type SectionHolder = Readonly<{

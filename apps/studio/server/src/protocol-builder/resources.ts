@@ -415,24 +415,48 @@ function committedDescriptor(
  * the second edit its own researcher has open.
  */
 export class StagedResourceRegistry {
-  readonly #byEdit = new Map<string, StagedResources>();
+  readonly #byEdit = new Map<string, OpenEdit>();
   readonly #mintId: () => string;
 
   constructor(mintId: () => string) {
     this.#mintId = mintId;
   }
 
-  for(key: string): StagedResources {
+  for(key: string, owner: string, at: number): StagedResources {
     const existing = this.#byEdit.get(key);
-    if (existing !== undefined) return existing;
-    const created = new StagedResources(this.#mintId);
-    this.#byEdit.set(key, created);
-    return created;
+    if (existing !== undefined) return existing.resources;
+    const resources = new StagedResources(this.#mintId);
+    this.#byEdit.set(key, { owner, resources, touchedAt: at });
+    return resources;
   }
 
   /** What one edit staged, if that edit has staged anything. */
   opened(key: string): StagedResources | undefined {
-    return this.#byEdit.get(key);
+    return this.#byEdit.get(key)?.resources;
+  }
+
+  /** An owner that called is here, so every edit it has open is too. */
+  touch(prefix: string, at: number): void {
+    for (const [key, edit] of this.#byEdit) {
+      if (key.startsWith(prefix)) edit.touchedAt = at;
+    }
+  }
+
+  /**
+   * Drops what an owner that has gone quiet was holding.
+   *
+   * The unary plane has no close to observe — a client whose network refuses
+   * WebSockets, or a script — so the only sign of life there is a call, and an
+   * owner that has made none since `before` has gone. One with a channel is
+   * left alone however long the researcher spends not calling anything, for
+   * the reason its leases are: losing an import under an open editor is not a
+   * thing that may happen.
+   */
+  expire(before: number, connected: (owner: string) => boolean): void {
+    for (const [key, edit] of this.#byEdit) {
+      if (edit.touchedAt > before || connected(edit.owner)) continue;
+      this.#byEdit.delete(key);
+    }
   }
 
   /**
@@ -445,3 +469,10 @@ export class StagedResourceRegistry {
     }
   }
 }
+
+/** One open edit's staging, and what says its owner is still here. */
+type OpenEdit = {
+  owner: string;
+  resources: StagedResources;
+  touchedAt: number;
+};

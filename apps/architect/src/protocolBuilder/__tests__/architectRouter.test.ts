@@ -144,12 +144,17 @@ type Seen = Readonly<{ event: ProtocolEvent; cursor: string | undefined }>;
 async function open(
   client: ProtocolBuilderClient,
   since?: string,
+  /** What a resumed iterator carries: the cursor this connection reached. */
+  lastEventId?: string,
 ): Promise<Readonly<{ seen: Seen[]; close: () => Promise<void> }>> {
   const seen: Seen[] = [];
   const controller = new AbortController();
   const events = await client.watchProtocol(
     { protocolId: PROTOCOL_ID, ...(since === undefined ? {} : { since }) },
-    { signal: controller.signal },
+    {
+      signal: controller.signal,
+      ...(lastEventId === undefined ? {} : { lastEventId }),
+    },
   );
   const draining = (async () => {
     try {
@@ -188,8 +193,12 @@ afterEach(async () => {
   for (const close of streams.splice(0)) await close();
 });
 
-const openStream = async (client: ProtocolBuilderClient, since?: string) => {
-  const stream = await open(client, since);
+const openStream = async (
+  client: ProtocolBuilderClient,
+  since?: string,
+  lastEventId?: string,
+) => {
+  const stream = await open(client, since, lastEventId);
   streams.push(stream.close);
   return stream;
 };
@@ -330,6 +339,15 @@ describe("Architect's in-process protocol-builder host", () => {
     const replayed = revisionsOf(resumed.seen);
     expect(replayed.map((entry) => entry.event.sectionId)).toEqual([EGO_FORM]);
     expect(replayed[0]?.event.document?.label).toBe('After the drop');
+
+    // A transport resuming a dropped iterator re-invokes it with the same
+    // input and the cursor this connection actually reached. Starting from the
+    // input would replay the whole tail again, on every reconnect, so the
+    // resume reads whichever of the two is further on.
+    const reached = replayed[0]?.cursor;
+    expect(reached).toBeDefined();
+    const again = await openStream(client, cursor, reached);
+    expect(revisionsOf(again.seen)).toEqual([]);
   });
 
   it('records a submit and a create as one undoable step each', async () => {
@@ -614,6 +632,68 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(listed.data.resources.map((entry) => entry.status)).not.toContain(
       'staged',
     );
+  });
+
+  /**
+   * Architect has one protocol open at a time, and a resource call names the
+   * protocol it belongs to. A stage editor that closed with the protocol
+   * behind it can still have an import or a cancel in flight, and the store it
+   * would reach is whichever protocol the researcher opened next — so the call
+   * is refused rather than served against the wrong protocol. Every other
+   * procedure here refuses it already, and the contract declares the same
+   * error on these five.
+   */
+  it('refuses a resource call naming a protocol that is no longer open', async () => {
+    const { store, client } = openProtocol();
+    const id = await importResource(client);
+    const before = getAssetManifest(store.getState());
+
+    store.dispatch(setActiveProtocolId('another-protocol'));
+
+    const refused = await Promise.all([
+      safe(client.resources.list({ protocolId: PROTOCOL_ID, editId: EDIT })),
+      safe(
+        client.resources.stage({
+          protocolId: PROTOCOL_ID,
+          editId: EDIT,
+          requestId: 'import-after-switch',
+          request: {
+            kind: 'content',
+            contentKind: 'image',
+            name: 'A second photograph',
+            source: 'other.png',
+            contentType: 'image/png',
+            bytes: new Blob([new Uint8Array([4, 5, 6])], { type: 'image/png' }),
+          },
+        }),
+      ),
+      safe(client.resources.discard({ protocolId: PROTOCOL_ID, editId: EDIT })),
+      safe(
+        client.resources.inspect({
+          protocolId: PROTOCOL_ID,
+          editId: EDIT,
+          resourceId: id,
+        }),
+      ),
+      safe(
+        client.resources.preview({
+          protocolId: PROTOCOL_ID,
+          editId: EDIT,
+          resourceId: id,
+        }),
+      ),
+    ]);
+
+    expect(refused.map((outcome) => outcome.definedError?.code)).toEqual([
+      'PROTOCOL_NOT_FOUND',
+      'PROTOCOL_NOT_FOUND',
+      'PROTOCOL_NOT_FOUND',
+      'PROTOCOL_NOT_FOUND',
+      'PROTOCOL_NOT_FOUND',
+    ]);
+    // Neither the import nor the discard reached the protocol that is open
+    // now: the manifest is exactly what the refused calls found.
+    expect(getAssetManifest(store.getState())).toEqual(before);
   });
 
   /**

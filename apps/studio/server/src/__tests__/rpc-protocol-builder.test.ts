@@ -22,6 +22,7 @@ import type { AssetStore } from '../assets.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import {
   createProtocolBuilderRuntime,
+  IDLE_MS,
   RECONNECT_GRACE_MS,
   type ProtocolBuilderRuntime,
 } from '../protocol-builder/runtime.ts';
@@ -1545,6 +1546,80 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     );
   });
 
+  /**
+   * A staging area is this process's memory, and the unary plane — a client
+   * whose network refuses WebSockets — has no close to observe: a tab that
+   * imports a file and then goes away leaves nothing behind to say so. The
+   * same idle bound that ends such a caller's leases ends what it staged, and
+   * an owner with a channel open keeps every import it made however long the
+   * researcher spends not calling anything.
+   */
+  it('drops what a caller with no channel staged once the idle bound passes', async () => {
+    // A tab of Ada's that never opens one, which is the whole population this
+    // bound is for.
+    const unary = clientOn(router, {
+      ...ADA,
+      connectionId: 'pb-ada-unary-connection',
+      clientSessionId: 'pb-ada-unary-tab',
+    });
+    const abandoned = await unary.protocolBuilder.resources.stage({
+      protocolId,
+      editId: EDIT,
+      requestId: 'unary-import',
+      request: {
+        kind: 'secret',
+        name: 'A token nobody saved',
+        value: 'pk.gone',
+      },
+    });
+    const watch = await watching(asClient(GRACE), protocolId);
+    try {
+      const watched = await asClient(GRACE).protocolBuilder.resources.stage({
+        protocolId,
+        editId: OTHER_EDIT,
+        requestId: 'watched-import',
+        request: {
+          kind: 'secret',
+          name: 'A token being thought about',
+          value: 'pk.kept',
+        },
+      });
+      if (abandoned.status !== 'ok' || watched.status !== 'ok') {
+        throw new Error('staging failed');
+      }
+
+      now += IDLE_MS + 1;
+      // Somebody else's call, so neither of the two above is refreshed by
+      // being the one that asked.
+      await asClient(ADA).protocolBuilder.listSections({ protocolId });
+
+      const gone = await unary.protocolBuilder.resources.list({
+        protocolId,
+        editId: EDIT,
+        status: 'staged',
+      });
+      const kept = await asClient(GRACE).protocolBuilder.resources.list({
+        protocolId,
+        editId: OTHER_EDIT,
+        status: 'staged',
+      });
+      if (gone.status !== 'ok' || kept.status !== 'ok') {
+        throw new Error('listing failed');
+      }
+      expect(gone.data.resources.map((entry) => entry.id)).not.toContain(
+        abandoned.data.descriptor.id,
+      );
+      // Losing an import under an open editor is not a thing that may happen:
+      // a channel keeps the staging as it keeps the lease.
+      expect(kept.data.resources.map((entry) => entry.id)).toContain(
+        watched.data.descriptor.id,
+      );
+    } finally {
+      await watch.close();
+      now = Date.now();
+    }
+  });
+
   it('creates the ego codebook a protocol does not have yet, once', async () => {
     const { error: gone } = await safe(
       asClient(ADA).protocolBuilder.getSection({
@@ -1634,6 +1709,17 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     expect(replayed.map((entry) => entry.event)).toEqual(
       tail.map((entry) => entry.event),
     );
+
+    // A transport resuming a dropped iterator re-invokes it with the same
+    // input and the cursor this connection actually reached. Starting from the
+    // input would hand the client the whole tail a second time, on every
+    // reconnect, so the resume reads whichever of the two is further on.
+    const resumed = await drain(
+      asClient(GRACE),
+      { protocolId, since: resumeFrom },
+      cursors.at(-1),
+    );
+    expect(resumed).toEqual([]);
   });
 
   /**
@@ -1689,6 +1775,42 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   });
 
   /**
+   * Presence is a connection's: a colleague's cursor is drawn from a socket
+   * and goes when that socket does. A unary call has no connection at all, and
+   * the cookie session it falls back to for ownership is shared by every tab
+   * of a browser and never ends — so a lock taken over `/rpc` adds no
+   * participant, because nothing would ever be able to remove it.
+   */
+  it('adds no participant for a lock taken without a connection', async () => {
+    const sectionId = stageSection(reference.stageId);
+    const unary = createRouterClient(router, {
+      context: {
+        principal: ADA.principal,
+        requestId: randomUUID(),
+        clientSessionId: 'pb-ada-unary-tab',
+      },
+    });
+    const watch = await watching(asClient(GRACE), protocolId);
+    try {
+      const taken = await unary.protocolBuilder.acquireLock({
+        protocolId,
+        sectionId,
+      });
+      expect(taken.lock).toBe('held');
+
+      const present = runtime.presence
+        .list(draftId)
+        .map((who) => who.sessionId);
+      // The socket is here; the unary caller is not.
+      expect(present).toContain(GRACE.connectionId);
+      expect(present).not.toContain(ADA.principal.sessionId);
+    } finally {
+      await unary.protocolBuilder.releaseLock({ protocolId, sectionId });
+      await watch.close();
+    }
+  });
+
+  /**
    * A researcher with an editor open holds the lock for as long as they are
    * connected, however long they spend thinking, and keeps it across the
    * socket that took it: a blip is a reconnection, not a departure. Studio's
@@ -1702,7 +1824,8 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     const sectionId = stageSection(reference.stageId);
     const owner = `${ADA.principal.userId}:${ADA.clientSessionId}`;
     const watch = await watching(asClient(ADA), protocolId);
-    let strandedAt = Date.now();
+    /** When the channel ended, which is when the reconnect grace starts. */
+    let strandedAt: number;
     try {
       await asClient(ADA).protocolBuilder.acquireLock({
         protocolId,
@@ -1816,16 +1939,21 @@ type WatchedEvent = { cursor: string | undefined; event: ProtocolEvent };
 async function drain(
   client: {
     protocolBuilder: {
-      watchProtocol: (input: {
-        protocolId: string;
-        since?: string;
-      }) => Promise<AsyncIterable<ProtocolEvent>>;
+      watchProtocol: (
+        input: { protocolId: string; since?: string },
+        options?: { lastEventId?: string },
+      ) => Promise<AsyncIterable<ProtocolEvent>>;
     };
   },
   input: { protocolId: string; since?: string },
+  /** What a resumed iterator carries: the cursor this connection reached. */
+  lastEventId?: string,
 ): Promise<WatchedEvent[]> {
   const events: WatchedEvent[] = [];
-  const stream = await client.protocolBuilder.watchProtocol(input);
+  const stream = await client.protocolBuilder.watchProtocol(
+    input,
+    lastEventId === undefined ? {} : { lastEventId },
+  );
   for await (const event of stream) {
     const cursor = getEventMeta(event)?.id;
     if (cursor === undefined) break;

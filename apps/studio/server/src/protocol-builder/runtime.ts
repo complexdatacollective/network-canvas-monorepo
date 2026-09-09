@@ -33,14 +33,15 @@ const RENEW_INTERVAL_MS = 10_000;
 export const RECONNECT_GRACE_MS = 20_000;
 
 /**
- * How long a lease outlives an owner that has never opened a channel.
+ * How long a lease — and the imports staged beside it — outlives an owner that
+ * has never opened a channel.
  *
  * Studio's editor opens one, so this is the unary plane alone: a script, or a
  * client whose network refuses WebSockets. There is no connection to end
  * there, so the only sign of life is a call, and the bound is wide enough that
  * a researcher reading a section does not lose it mid-thought.
  */
-const IDLE_MS = 5 * 60_000;
+export const IDLE_MS = 5 * 60_000;
 
 type HeldLease = {
   sync: SyncServer;
@@ -129,6 +130,15 @@ export class LeaseKeeper {
   drop(draftId: string, sectionId: string, owner: string): void {
     this.#held.delete(leaseKey(draftId, sectionId, owner));
     this.#stopWhenIdle();
+  }
+
+  /**
+   * Whether this owner still has a channel: one open, or one whose reconnect
+   * grace has not run out. What keeps its leases out of the idle bound is what
+   * keeps the imports it staged, so both ask this.
+   */
+  connected(owner: string): boolean {
+    return this.#connections.has(owner);
   }
 
   /** Every section this owner still holds here, as far as this process knows. */
@@ -268,14 +278,18 @@ export type ProtocolBuilderRuntime = {
   publisher: ProtocolEventPublisher;
   presence: PresenceRegistry;
   leases: LeaseKeeper;
+  /** The clock everything here reads, so a test can reach the bounds above. */
+  now: () => number;
 };
 
 export function createProtocolBuilderRuntime(
   now?: () => number,
 ): ProtocolBuilderRuntime {
+  const clock = now ?? Date.now;
   return {
     publisher: new ProtocolEventPublisher(),
     presence: new PresenceRegistry(),
-    leases: new LeaseKeeper(now),
+    leases: new LeaseKeeper(clock),
+    now: clock,
   };
 }

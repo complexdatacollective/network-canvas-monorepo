@@ -45,7 +45,7 @@ import {
   SECRET_STORAGE,
   StagedResourceRegistry,
 } from './resources.ts';
-import type { ProtocolBuilderRuntime } from './runtime.ts';
+import { IDLE_MS, type ProtocolBuilderRuntime } from './runtime.ts';
 import { resolveProtocolSession } from './tenancy.ts';
 import {
   readWriteReceipt,
@@ -105,7 +105,16 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       clientSessionId: clientSessionOf(context, principal),
       memberships,
     });
-    if (session !== null) runtime.leases.touch(sessionOwner(session));
+    if (session !== null) {
+      runtime.leases.touch(sessionOwner(session));
+      // A call is the only sign of life the unary plane gives, so it says both
+      // things: this owner is still here with everything it has staged, and
+      // whoever has made none for the idle bound is not.
+      staged.touch(ownerPrefix(session), runtime.now());
+      staged.expire(runtime.now() - IDLE_MS, (owner) =>
+        runtime.leases.connected(owner),
+      );
+    }
     return session;
   };
 
@@ -123,6 +132,14 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
   /** Everything one owner has staged, whichever edit staged it. */
   const ownerPrefix = (session: ProtocolBuilderSession) =>
     `${session.draftId}\u0000${sessionOwner(session)}\u0000`;
+
+  /** This edit's staging area, opened now if it has none yet. */
+  const stagingFor = (session: ProtocolBuilderSession, editId: string) =>
+    staged.for(
+      stagingKey(session, editId),
+      sessionOwner(session),
+      runtime.now(),
+    );
 
   const publish = (
     session: ProtocolBuilderSession,
@@ -197,10 +214,17 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             owner: sessionOwner(session),
             epoch: result.lease.epoch,
           });
-          runtime.presence.join(
-            session.draftId,
-            sessionPresence(session, 'editing', input.sectionId),
-          );
+          // Presence is a connection's, and a unary call has none: the cookie
+          // session it falls back to for ownership is shared by every tab of a
+          // browser and never ends, so a participant joined for it is one
+          // nothing could ever remove. The lock event this publishes is what
+          // tells a colleague who has the section.
+          if (context.connectionId !== undefined) {
+            runtime.presence.join(
+              session.draftId,
+              sessionPresence(session, 'editing', input.sectionId),
+            );
+          }
         }
         publish(session, result.events);
         if (result.lease !== undefined) publishPresence(session);
@@ -287,12 +311,18 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           sessionPresence(session, 'viewing'),
         );
         publishPresence(session);
+        // `lastEventId` is where this connection actually got to; `since` is
+        // where it asked to start. A transport resuming a dropped iterator
+        // re-invokes it with the same input, so reading the input alone would
+        // hand the client everything it had already been given, on every
+        // reconnect.
+        const from = laterCursor(input.since, lastEventId);
         const backlog = await readProtocolEvents(
           session.tenantDb,
           session.draftId,
-          input.since ?? lastEventId,
+          from,
         );
-        let last = backlog.at(-1)?.cursor ?? input.since ?? lastEventId;
+        let last = backlog.at(-1)?.cursor ?? from;
         for (const entry of backlog) {
           yield withEventMeta(entry.event, { id: entry.cursor });
         }
@@ -344,7 +374,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         const store =
           promotion === undefined
             ? undefined
-            : staged.for(stagingKey(session, promotion.editId));
+            : stagingFor(session, promotion.editId);
         // The promotion is planned before anything is written: its bytes go to
         // the object store, where nothing names them, and only the section
         // write below puts them in the manifest. A refused submit therefore
@@ -438,7 +468,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         const store =
           promotion === undefined
             ? undefined
-            : staged.for(stagingKey(session, promotion.editId));
+            : stagingFor(session, promotion.editId);
         // Planned before anything is written, so a promotion that cannot be
         // committed leaves the protocol without the section and the staged
         // resources staged. The refusal names no section: the host mints an id
@@ -612,9 +642,10 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           if (session === null) {
             throw errors.PROTOCOL_NOT_FOUND({ data: input });
           }
-          return staged
-            .for(stagingKey(session, input.editId))
-            .stage(input.requestId, input.request);
+          return stagingFor(session, input.editId).stage(
+            input.requestId,
+            input.request,
+          );
         },
       ),
 
@@ -626,9 +657,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           }
           // Only what this edit staged: a stage editor's cancel must not take
           // away the file the codebook dialog over it is about to submit.
-          return staged
-            .for(stagingKey(session, input.editId))
-            .discard(input.resourceId);
+          return stagingFor(session, input.editId).discard(input.resourceId);
         },
       ),
 
@@ -667,6 +696,19 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
       ),
     },
   };
+}
+
+/**
+ * The later of two cursors, either of which may be absent. A draft's cursors
+ * are one gapless sequence, which is what makes them comparable.
+ */
+function laterCursor(
+  since: string | undefined,
+  lastEventId: string | undefined,
+): string | undefined {
+  if (since === undefined) return lastEventId;
+  if (lastEventId === undefined) return since;
+  return BigInt(lastEventId) > BigInt(since) ? lastEventId : since;
 }
 
 /**
