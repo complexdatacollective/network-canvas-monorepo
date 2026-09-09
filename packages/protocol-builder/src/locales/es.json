@@ -923,6 +923,7 @@
   "protocolBuilder.searchOptions.toleranceHint": "Un ajuste más estricto acota una lista de personas parecidas; uno más flexible perdona las erratas.",
   "protocolBuilder.searchOptions.toleranceLabel": "Con qué exactitud debe coincidir una búsqueda",
   "protocolBuilder.searchOptions.toleranceRequired": "Elige con qué exactitud debe coincidir una búsqueda.",
+  "protocolBuilder.searchOptions.toleranceSaved": "Ajuste guardado ({value, number})",
   "protocolBuilder.searchOptions.toleranceSmallDifferences": "Permitir pequeñas diferencias",
   "protocolBuilder.searchOptions.toleranceTypos": "Permitir erratas y faltas de ortografía",
   "protocolBuilder.searchOptions.waitingDescription": "Elige un archivo de datos para la lista antes de configurar su búsqueda.",

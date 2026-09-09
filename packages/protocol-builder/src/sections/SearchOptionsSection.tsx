@@ -12,6 +12,7 @@ import {
 } from '@codaco/fresco-ui/form/validation/helpers';
 
 import ProtocolField from '../form/ProtocolField.tsx';
+import { useStageValue } from '../form/stageFormHooks.ts';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 import {
   DATA_SOURCE,
@@ -99,6 +100,12 @@ const messages = defineMessages({
     description:
       'The loosest of four search tolerances: a word the participant spelled wrongly still finds the person.',
   },
+  toleranceSaved: {
+    id: 'protocolBuilder.searchOptions.toleranceSaved',
+    defaultMessage: 'Saved setting ({value, number})',
+    description:
+      'Label of the extra position the tolerance scale offers when the stage was saved with a tolerance that is not one of the four named ones — an older protocol, or one authored elsewhere. value is the number the stage holds, which is what the researcher has to be able to see and keep. Kept short: it is read as one tick label beside the four named ones.',
+  },
   matchRequired: {
     id: 'protocolBuilder.searchOptions.matchRequired',
     defaultMessage:
@@ -147,7 +154,9 @@ const SEARCH_CAPABILITY: SectionCapability = {
  * allows, and a researcher choosing "Exact" is not choosing 0, they are saying
  * what they want the search to do.
  */
-const toleranceOptions = (intl: IntlShape) => [
+type Option = Readonly<{ value: number; label: string }>;
+
+const toleranceOptions = (intl: IntlShape): Option[] => [
   { value: 0, label: intl.formatMessage(messages.toleranceExact) },
   { value: 0.25, label: intl.formatMessage(messages.toleranceClose) },
   {
@@ -156,6 +165,39 @@ const toleranceOptions = (intl: IntlShape) => [
   },
   { value: 0.75, label: intl.formatMessage(messages.toleranceTypos) },
 ];
+
+/**
+ * The scale as it has to be for the value this stage actually holds.
+ *
+ * The four tolerances are the settings a researcher CHOOSES, but the schema
+ * takes any number and a protocol authored elsewhere — or by an older editor —
+ * can hold one that is not among them. The scale renders from its option list,
+ * so such a value is no position at all: the control reads as unanswered, the
+ * thumb parks on the middle option, and the first interaction anywhere near it
+ * records that middle option over a setting nobody asked to change.
+ *
+ * So the held value is offered back as a position of its own, in its numeric
+ * place, exactly as a roster list offers back a column its data file no longer
+ * carries: the control shows what the stage holds, and nothing is lost to a
+ * stray click. It is not a choice — it disappears the moment the researcher
+ * moves to a named setting, which is what stops it becoming a fifth tolerance
+ * that anyone could pick.
+ */
+const withSavedTolerance = (
+  offered: Option[],
+  held: unknown,
+  intl: IntlShape,
+): Option[] => {
+  if (typeof held !== 'number' || !Number.isFinite(held)) return offered;
+  if (offered.some((option) => option.value === held)) return offered;
+  return [
+    ...offered,
+    {
+      value: held,
+      label: intl.formatMessage(messages.toleranceSaved, { value: held }),
+    },
+  ].toSorted((one, other) => one.value - other.value);
+};
 
 const CheckboxGroup = CheckboxGroupField as ComponentType<
   Record<string, unknown>
@@ -227,7 +269,14 @@ export default function SearchOptionsSection() {
     [columns.names, orphans.options],
   );
 
-  const tolerances = useMemo(() => toleranceOptions(intl), [intl]);
+  // Read live rather than from the committed draft: the extra position has to
+  // go the moment the researcher moves to a named setting, or the value they
+  // just left would stay choosable.
+  const heldTolerance = useStageValue(FUZZINESS);
+  const tolerances = useMemo(
+    () => withSavedTolerance(toleranceOptions(intl), heldTolerance, intl),
+    [heldTolerance, intl],
+  );
 
   /**
    * Built here rather than as a module constant, because one of its rules has

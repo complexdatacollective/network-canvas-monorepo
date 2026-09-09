@@ -970,6 +970,87 @@ describe('how a participant searches a roster', () => {
   });
 
   /**
+   * The schema takes any number for a tolerance, and the four named settings
+   * are only the ones a researcher can CHOOSE — the shared fixture itself is
+   * saved with 0.4. A scale renders from its option list, so a value that is
+   * not on it is no position at all: the control reads as unanswered and its
+   * thumb parks on the middle setting, which the next interaction anywhere
+   * near it would record over the researcher's own value.
+   */
+  it('shows a tolerance the stage was saved with, off the four settings', async () => {
+    renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        searchOptions: { fuzziness: 0.4, matchProperties: ['name'] },
+      }),
+      sections: <SearchOptionsSection />,
+    });
+
+    expect(await screen.findByRole('slider')).toHaveAttribute(
+      'aria-valuetext',
+      'Saved setting (0.4)',
+    );
+    // In its numeric place among the four, so moving one step either way is a
+    // step to the neighbouring setting rather than a jump.
+    expect(
+      screen.getAllByText(
+        /^(Exact match only|Allow close matches|Allow small differences|Saved setting \(0\.4\)|Allow typos and misspellings)$/,
+      ).length,
+    ).toBeGreaterThanOrEqual(5);
+  });
+
+  it('keeps that tolerance when the researcher changes something else', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        searchOptions: { fuzziness: 0.4, matchProperties: ['name'] },
+      }),
+      sections: <SearchOptionsSection />,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'age' }),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.searchOptions).toMatchObject({
+      fuzziness: 0.4,
+    });
+  });
+
+  /**
+   * And it is not a fifth tolerance: it is only ever on offer while the stage
+   * still holds it, so a researcher who moves to a named setting cannot get
+   * back to it by picking it again.
+   */
+  it('stops offering it once a named setting is chosen', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        searchOptions: { fuzziness: 0.4, matchProperties: ['name'] },
+      }),
+      sections: <SearchOptionsSection />,
+    });
+
+    const slider = await screen.findByRole('slider');
+    slider.focus();
+    await harness.user.keyboard('{ArrowRight}');
+
+    await waitFor(() =>
+      expect(screen.getByRole('slider')).toHaveAttribute(
+        'aria-valuetext',
+        'Allow small differences',
+      ),
+    );
+    expect(screen.queryByText('Saved setting (0.4)')).toBeNull();
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.searchOptions).toMatchObject({
+      fuzziness: 0.5,
+    });
+  });
+
+  /**
    * The other half of the same hole. A stage arriving with attributes and no
    * tolerance is refused by the schema as `searchOptions.fuzziness`, and used
    * to pass here because the empty tolerance excused itself whenever it was

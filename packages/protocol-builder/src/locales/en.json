@@ -3695,6 +3695,10 @@
     "defaultMessage": "Choose how closely a search must match.",
     "description": "Refusal shown against the tolerance scale when roster search is switched on and no tolerance has been chosen."
   },
+  "protocolBuilder.searchOptions.toleranceSaved": {
+    "defaultMessage": "Saved setting ({value, number})",
+    "description": "Label of the extra position the tolerance scale offers when the stage was saved with a tolerance that is not one of the four named ones — an older protocol, or one authored elsewhere. value is the number the stage holds, which is what the researcher has to be able to see and keep. Kept short: it is read as one tick label beside the four named ones."
+  },
   "protocolBuilder.searchOptions.toleranceSmallDifferences": {
     "defaultMessage": "Allow small differences",
     "description": "The third of four search tolerances, between \"Close matches only\" and \"Allow typos and misspellings\"."
