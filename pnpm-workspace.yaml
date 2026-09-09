@@ -114,7 +114,7 @@ catalog:
   drizzle-orm: 1.0.0-rc.4
   effect: ^3.22.1
   electron: ^43.0.0
-  electron-builder: ^26.15.2
+  electron-builder: ^26.16.1
   electron-vite: ^6.0.0-beta.1
   # ICU/localisation linting, run under oxlint's jsPlugins (descriptor
   # hygiene, ICU validity, call-site placeholder checking).
