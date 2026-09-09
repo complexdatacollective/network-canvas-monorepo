@@ -22,6 +22,7 @@ import * as informationStories from '../editors/forms/InformationStageEditor.sto
 import * as quickAddStories from '../editors/nameGenerators/NameGeneratorQuickAddStageEditor.stories.tsx';
 import * as nameGeneratorStories from '../editors/nameGenerators/NameGeneratorStageEditor.stories.tsx';
 import { nameGeneratorStageEditors } from '../editors/nameGeneratorStageEditors.ts';
+import * as familyPedigreeEditorStories from '../editors/pedigree/FamilyPedigreeStageEditor.stories.tsx';
 import * as shellStories from '../form/StageEditorShell.stories.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
@@ -371,10 +372,18 @@ describe('every story of a surface that writes its own heading', () => {
     // Every stage editor that has landed. An editor writes no heading of its
     // own — it composes the shared name heading and shared sections — so what
     // is asked of each is that the sections IT chose, and the alerts they
-    // raise, land where the composition says they do.
+    // raise, land where the composition says they do. A whole editor is also
+    // the only surface that puts both depths on screen at once, which is where
+    // a section actually sits inside another one: a heading written at a fixed
+    // level is right at the depth its author happened to be looking at and
+    // wrong one rung down.
     ...from('AlterEdgeFormStageEditor', composeStories(alterEdgeFormStories)),
     ...from('AlterFormStageEditor', composeStories(alterFormStories)),
     ...from('EgoFormStageEditor', composeStories(egoFormStories)),
+    ...from(
+      'FamilyPedigreeStageEditor',
+      composeStories(familyPedigreeEditorStories),
+    ),
     ...from('InformationStageEditor', composeStories(informationStories)),
     ...from('NameGeneratorStageEditor', composeStories(nameGeneratorStories)),
     ...from(

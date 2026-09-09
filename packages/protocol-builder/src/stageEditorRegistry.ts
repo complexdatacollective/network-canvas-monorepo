@@ -32,6 +32,7 @@ import type { StageType } from '@codaco/protocol-validation';
 
 import { formStageEditors } from './editors/formStageEditors.ts';
 import { nameGeneratorStageEditors } from './editors/nameGeneratorStageEditors.ts';
+import { pedigreeAndAnonymisationStageEditors } from './editors/pedigreeAndAnonymisationStageEditors.ts';
 import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
 
 /**
@@ -106,6 +107,7 @@ const REGISTRY_PARTS = [
   // One imported part per line, alphabetically, each with a trailing comma.
   formStageEditors,
   nameGeneratorStageEditors,
+  pedigreeAndAnonymisationStageEditors,
 ] as const satisfies readonly StageEditorRegistryPart[];
 
 export const stageEditorRegistry: StageEditorRegistryPart =
@@ -201,7 +203,6 @@ export const AWAITING_STAGE_EDITORS = [
   'Anonymisation',
   'CategoricalBin',
   'DyadCensus',
-  'FamilyPedigree',
   'Geospatial',
   'NameGeneratorRoster',
   'Narrative',
