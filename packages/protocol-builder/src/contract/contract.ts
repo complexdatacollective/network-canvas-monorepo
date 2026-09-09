@@ -100,8 +100,9 @@ export const contract = {
    * just deleted — is written, because drafts tolerate transient invalidity
    * and validity is enforced at publication.
    *
-   * A promotion is made once for its `promotionId`: a retry after a lost
-   * answer is told what that attempt wrote rather than writing again.
+   * The write is made once for its `requestId`: a retry after a lost answer is
+   * told what that attempt wrote — the revision and what it promoted — rather
+   * than writing again.
    */
   submit: base
     .errors(lockErrors)
@@ -125,6 +126,10 @@ export const contract = {
    * stage to have promoted it with. The section, its pointer and the manifest
    * entries are one revision, so a promotion that cannot be committed refuses
    * the create outright and writes nothing.
+   *
+   * A create is made once for its `requestId`, whether or not it promotes
+   * anything: it mints an id, so a retry that was not recognised would leave
+   * the protocol holding the stage twice and tell the client about only one.
    */
   create: base
     .errors(shapeErrors)
@@ -191,6 +196,11 @@ export const contract = {
    * separate procedure would make reachable. Secret material never comes back
    * out: staging one yields the asset id a field references and an opaque
    * handle the submit's promotion resolves.
+   *
+   * Every one of them names the edit it is made for, and reaches no other
+   * edit's staging — a session with a codebook dialog open over a stage editor
+   * is two edits, and either cancel would otherwise discard what the other was
+   * about to submit.
    */
   resources: {
     list: base

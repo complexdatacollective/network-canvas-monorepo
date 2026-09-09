@@ -11,6 +11,14 @@ import {
   type InMemoryHost,
 } from '../createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../sectionsFromProtocol.ts';
+import { committedSource } from './committedSource.ts';
+
+/** The edit these calls are made from: one editor, open throughout. */
+const EDIT = 'edit-1';
+
+/** A fresh idempotency key: every write below is its own intent. */
+let writes = 0;
+const nextRequestId = (): string => `write-${++writes}`;
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
@@ -48,10 +56,11 @@ async function submitHeld(
   subject: InMemoryHost,
   section: ReturnType<typeof sectionId>,
   promote?: Readonly<{
-    promotionId: string;
+    editId: string;
     resourceIds: string[];
     secretHandles?: string[];
   }>,
+  requestId = nextRequestId(),
 ) {
   const held = await subject.client.acquireLock({
     protocolId: subject.protocolId,
@@ -59,6 +68,7 @@ async function submitHeld(
   });
   return subject.client.submit({
     protocolId: subject.protocolId,
+    requestId,
     sectionId: section,
     document: held.document,
     revision: held.revision,
@@ -82,6 +92,7 @@ async function watchCursors(
   for (const label of ['one', 'two']) {
     await subject.client.submit({
       protocolId: subject.protocolId,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label },
       revision: held.revision,
@@ -99,10 +110,69 @@ async function watchCursors(
   return cursors;
 }
 
+const PORTRAIT_BYTES = () =>
+  new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
+
+/** A second edit, open beside the first in the same session. */
+const OTHER_EDIT = 'edit-2';
+
+/** A file imported as `portrait.png` by one edit, whatever is inside it. */
+async function stagePortraitBytes(
+  subject: InMemoryHost,
+  editId: string,
+  requestId: string,
+  bytes: Blob,
+): Promise<string> {
+  const staged = await subject.client.resources.stage({
+    protocolId: subject.protocolId,
+    editId,
+    requestId,
+    request: {
+      kind: 'content',
+      contentKind: 'image',
+      name: 'Portrait',
+      source: 'portrait.png',
+      contentType: 'image/png',
+      bytes,
+    },
+  });
+  if (staged.status !== 'ok') throw new Error(staged.failure.message);
+  return staged.data.descriptor.id;
+}
+
+/** The bytes this host hands back for a committed resource. */
+async function committedBytes(
+  subject: InMemoryHost,
+  resourceId: string,
+): Promise<string> {
+  const preview = await subject.client.resources.preview({
+    protocolId: subject.protocolId,
+    resourceId,
+  });
+  if (preview.status !== 'ok') throw new Error(preview.failure.message);
+  return preview.data.url;
+}
+
+async function dataUrl(bytes: Blob): Promise<string> {
+  const encoded = Buffer.from(await bytes.arrayBuffer()).toString('base64');
+  return `data:image/png;base64,${encoded}`;
+}
+
+function manifestSource(subject: InMemoryHost, resourceId: string): unknown {
+  const entry = subject.store.read(sectionId({ kind: 'assets' })).document[
+    resourceId
+  ];
+  if (typeof entry !== 'object' || entry === null) {
+    throw new Error(`no manifest entry for ${resourceId}`);
+  }
+  return (entry as Record<string, unknown>).source;
+}
+
 /** A staged image, as an edit that imported a file holds one. */
 async function stagePortrait(subject: InMemoryHost): Promise<string> {
   const staged = await subject.client.resources.stage({
     protocolId: subject.protocolId,
+    editId: EDIT,
     requestId: 'request-1',
     request: {
       kind: 'content',
@@ -153,6 +223,7 @@ describe('the in-memory host', () => {
     const { definedError, isSuccess } = await safe(
       subject.client.submit({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { ...before.document, label: 'Renamed by a non-holder' },
         revision: before.revision,
@@ -186,6 +257,7 @@ describe('the in-memory host', () => {
     const { definedError, isSuccess } = await safe(
       subject.client.submit({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { ...readOnly.document, label: 'Renamed by a spectator' },
         revision: readOnly.revision,
@@ -211,6 +283,7 @@ describe('the in-memory host', () => {
     });
     const { revision } = await subject.client.submit({
       protocolId: subject.protocolId,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Renamed by the holder' },
       revision: held.revision,
@@ -231,6 +304,7 @@ describe('the in-memory host', () => {
     const { definedError, isSuccess } = await safe(
       subject.client.submit({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { id: 'information-1', type: 'NotAnInterface' },
         revision: subject.store.read(INFORMATION).revision,
@@ -249,6 +323,7 @@ describe('the in-memory host', () => {
 
     const created = await subject.client.create({
       protocolId: subject.protocolId,
+      requestId: nextRequestId(),
       kind: 'stage',
       document: withoutId,
       position: 1,
@@ -283,9 +358,10 @@ describe('the in-memory host', () => {
 
     const created = await subject.client.create({
       protocolId: subject.protocolId,
+      requestId: nextRequestId(),
       kind: 'stage',
       document: informationNaming(subject, staged),
-      promote: { promotionId: 'promotion-1', resourceIds: [staged] },
+      promote: { editId: EDIT, resourceIds: [staged] },
     });
 
     expect(created.promoted).toEqual([
@@ -295,7 +371,7 @@ describe('the in-memory host', () => {
     expect(assets.document[staged]).toMatchObject({
       name: 'Portrait',
       type: 'image',
-      source: 'portrait.png',
+      source: await committedSource(PORTRAIT_BYTES(), 'portrait.png'),
     });
     // The section, the pointer that holds it and the manifest are one
     // revision, which is what a watcher reading the stream in order sees.
@@ -316,9 +392,10 @@ describe('the in-memory host', () => {
     const { definedError, isSuccess } = await safe(
       subject.client.create({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         kind: 'stage',
         document: informationNaming(subject, 'never-staged'),
-        promote: { promotionId: 'promotion-1', resourceIds: ['never-staged'] },
+        promote: { editId: EDIT, resourceIds: ['never-staged'] },
       }),
     );
 
@@ -348,9 +425,12 @@ describe('the in-memory host', () => {
     const create = () =>
       subject.client.create({
         protocolId: subject.protocolId,
+        // The same request id: one intent, asked again because its answer was
+        // lost.
+        requestId: 'write-again',
         kind: 'stage',
         document: informationNaming(subject, staged),
-        promote: { promotionId: 'promotion-1', resourceIds: [staged] },
+        promote: { editId: EDIT, resourceIds: [staged] },
       });
 
     const first = await create();
@@ -371,6 +451,7 @@ describe('the in-memory host', () => {
     const { definedError, isSuccess } = await safe(
       subject.client.create({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         kind: 'stage',
         document: { type: 'NotAnInterface' },
       }),
@@ -542,6 +623,7 @@ describe('the in-memory host', () => {
         await safe(
           subject.client.resources.stage({
             protocolId: elsewhere,
+            editId: EDIT,
             requestId: 'request-1',
             request: {
               kind: 'content',
@@ -560,19 +642,27 @@ describe('the in-memory host', () => {
         await safe(
           subject.client.submit({
             protocolId: elsewhere,
+            requestId: nextRequestId(),
             sectionId: INFORMATION,
             document: subject.store.read(INFORMATION).document,
             revision: subject.store.read(INFORMATION).revision,
-            promote: { promotionId: 'promotion-1', resourceIds: [] },
+            promote: { editId: EDIT, resourceIds: [] },
           }),
         )
       ).definedError?.code,
-      (await safe(subject.client.resources.discard({ protocolId: elsewhere })))
-        .definedError?.code,
+      (
+        await safe(
+          subject.client.resources.discard({
+            protocolId: elsewhere,
+            editId: EDIT,
+          }),
+        )
+      ).definedError?.code,
       (
         await safe(
           subject.client.resources.inspect({
             protocolId: elsewhere,
+            editId: EDIT,
             resourceId: 'whatever',
           }),
         )
@@ -581,6 +671,7 @@ describe('the in-memory host', () => {
         await safe(
           subject.client.resources.preview({
             protocolId: elsewhere,
+            editId: EDIT,
             resourceId: 'whatever',
           }),
         )
@@ -599,6 +690,7 @@ describe('the in-memory host', () => {
     const subject = host();
     const staged = await subject.client.resources.stage({
       protocolId: subject.protocolId,
+      editId: EDIT,
       requestId: 'request-1',
       request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
     });
@@ -612,10 +704,11 @@ describe('the in-memory host', () => {
     const withoutHandle = await safe(
       subject.client.submit({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: held.document,
         revision: held.revision,
-        promote: { promotionId: 'promotion-1', resourceIds: [resourceId] },
+        promote: { editId: EDIT, resourceIds: [resourceId] },
       }),
     );
 
@@ -625,7 +718,7 @@ describe('the in-memory host', () => {
     ).toBeUndefined();
 
     const withHandle = await submitHeld(subject, INFORMATION, {
-      promotionId: 'promotion-2',
+      editId: EDIT,
       resourceIds: [resourceId],
       ...(staged.data.handle === undefined
         ? {}
@@ -642,6 +735,7 @@ describe('the in-memory host', () => {
     const subject = host();
     const staged = await subject.client.resources.stage({
       protocolId: subject.protocolId,
+      editId: EDIT,
       requestId: 'request-1',
       request: {
         kind: 'content',
@@ -655,10 +749,14 @@ describe('the in-memory host', () => {
     if (staged.status !== 'ok') throw new Error('staging failed');
 
     const promote = () =>
-      submitHeld(subject, INFORMATION, {
-        promotionId: 'promotion-1',
-        resourceIds: [staged.data.descriptor.id],
-      });
+      submitHeld(
+        subject,
+        INFORMATION,
+        { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
+        // The same request id: one save, asked again because its answer was
+        // lost.
+        'write-again',
+      );
     const first = await promote();
     const committed = subject.store.read(sectionId({ kind: 'assets' }));
     const again = await promote();
@@ -672,7 +770,7 @@ describe('the in-memory host', () => {
     );
     expect(committed.document[staged.data.descriptor.id]).toMatchObject({
       name: 'Portrait',
-      source: 'portrait.png',
+      source: await committedSource(PORTRAIT_BYTES(), 'portrait.png'),
     });
   });
 
@@ -688,10 +786,11 @@ describe('the in-memory host', () => {
     const { definedError, isSuccess } = await safe(
       subject.client.submit({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { ...held.document, label: 'Renamed beside a bad promotion' },
         revision: held.revision,
-        promote: { promotionId: 'promotion-1', resourceIds: ['never-staged'] },
+        promote: { editId: EDIT, resourceIds: ['never-staged'] },
       }),
     );
 
@@ -714,6 +813,7 @@ describe('the in-memory host', () => {
     const subject = host();
     const staged = await subject.client.resources.stage({
       protocolId: subject.protocolId,
+      editId: EDIT,
       requestId: 'request-1',
       request: {
         kind: 'content',
@@ -727,7 +827,7 @@ describe('the in-memory host', () => {
     if (staged.status !== 'ok') throw new Error('staging failed');
 
     const written = await submitHeld(subject, INFORMATION, {
-      promotionId: 'promotion-1',
+      editId: EDIT,
       resourceIds: [staged.data.descriptor.id],
     });
 
@@ -739,6 +839,42 @@ describe('the in-memory host', () => {
     expect(subject.store.read(INFORMATION).revision.sequence).toBe(
       written.revision.sequence,
     );
+  });
+
+  it('keeps two imports of one filename as two assets', async () => {
+    const subject = host();
+    const mine = PORTRAIT_BYTES();
+    const theirs = new Blob([new Uint8Array([4, 5, 6, 7])], {
+      type: 'image/png',
+    });
+
+    const first = await stagePortraitBytes(subject, EDIT, 'request-1', mine);
+    await submitHeld(subject, INFORMATION, {
+      editId: EDIT,
+      resourceIds: [first],
+    });
+    const second = await stagePortraitBytes(
+      subject,
+      OTHER_EDIT,
+      'request-2',
+      theirs,
+    );
+    await subject.client.create({
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: informationNaming(subject, second),
+      promote: { editId: OTHER_EDIT, resourceIds: [second] },
+    });
+
+    // Committed bytes are named by their content. Keyed by the filename the
+    // researcher picked, the second import would have taken the first one's
+    // place and every stage already naming it would show the new picture.
+    expect(manifestSource(subject, first)).not.toEqual(
+      manifestSource(subject, second),
+    );
+    expect(await committedBytes(subject, first)).toBe(await dataUrl(mine));
+    expect(await committedBytes(subject, second)).toBe(await dataUrl(theirs));
   });
 
   it('removes a stage and its place in the stage order in one revision', async () => {
@@ -813,6 +949,7 @@ describe('the in-memory host', () => {
 
     const created = await subject.client.create({
       protocolId: subject.protocolId,
+      requestId: nextRequestId(),
       kind: 'codebookEgo',
       document: {
         variables: {
@@ -837,6 +974,7 @@ describe('the in-memory host', () => {
     const { definedError, isSuccess } = await safe(
       subject.client.create({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         kind: 'codebookEgo',
         document: { variables: {} },
       }),
@@ -917,6 +1055,7 @@ describe('the in-memory host', () => {
 
     const written = await subject.client.submit({
       protocolId: subject.protocolId,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Saved after the stream ended' },
       revision: held.revision,
@@ -932,6 +1071,7 @@ describe('the in-memory host', () => {
     const { isSuccess } = await safe(
       subject.client.resources.stage({
         protocolId: subject.protocolId,
+        editId: EDIT,
         requestId: 'request-1',
         request: {
           kind: 'content',
@@ -947,6 +1087,7 @@ describe('the in-memory host', () => {
     expect(isSuccess).toBe(false);
     const staged = await subject.client.resources.list({
       protocolId: subject.protocolId,
+      editId: EDIT,
       status: 'staged',
     });
     expect(staged.status === 'ok' && staged.data.resources).toEqual([]);
@@ -956,6 +1097,7 @@ describe('the in-memory host', () => {
     const subject = host();
     const staged = await subject.client.resources.stage({
       protocolId: subject.protocolId,
+      editId: EDIT,
       requestId: 'request-1',
       request: {
         kind: 'content',
@@ -975,6 +1117,7 @@ describe('the in-memory host', () => {
     });
     const listed = await subject.client.resources.list({
       protocolId: subject.protocolId,
+      editId: EDIT,
       status: 'staged',
     });
     expect(listed.status === 'ok' && listed.data.resources).toEqual([]);
@@ -984,6 +1127,7 @@ describe('the in-memory host', () => {
     const subject = host();
     const staged = await subject.client.resources.stage({
       protocolId: subject.protocolId,
+      editId: EDIT,
       requestId: 'request-1',
       request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
     });
@@ -996,6 +1140,7 @@ describe('the in-memory host', () => {
     const collaborator = subject.asCollaborator(COLLABORATOR);
     const listed = await collaborator.resources.list({
       protocolId: subject.protocolId,
+      editId: EDIT,
       status: 'staged',
     });
     if (listed.status !== 'ok') throw new Error('listing failed');
@@ -1005,6 +1150,7 @@ describe('the in-memory host', () => {
     // The session that staged it still has it: this is scoping, not hiding.
     const mine = await subject.client.resources.list({
       protocolId: subject.protocolId,
+      editId: EDIT,
       status: 'staged',
     });
     if (mine.status !== 'ok') throw new Error('listing failed');
@@ -1019,11 +1165,12 @@ describe('the in-memory host', () => {
     const forged = await safe(
       collaborator.submit({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: held.document,
         revision: held.revision,
         promote: {
-          promotionId: 'promotion-1',
+          editId: EDIT,
           resourceIds: [staged.data.descriptor.id],
           secretHandles: [`staged-secret:${staged.data.descriptor.id}`],
         },
@@ -1042,6 +1189,7 @@ describe('the in-memory host', () => {
     const subject = host();
     const staged = await subject.client.resources.stage({
       protocolId: subject.protocolId,
+      editId: EDIT,
       requestId: 'request-1',
       request: {
         kind: 'content',
@@ -1054,13 +1202,23 @@ describe('the in-memory host', () => {
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
     const promotion = {
-      promotionId: 'promotion-1',
+      editId: EDIT,
       resourceIds: [staged.data.descriptor.id],
     };
 
-    const first = await submitHeld(subject, INFORMATION, promotion);
+    const first = await submitHeld(
+      subject,
+      INFORMATION,
+      promotion,
+      'write-again',
+    );
     const committed = subject.store.read(INFORMATION);
-    const again = await submitHeld(subject, INFORMATION, promotion);
+    const again = await submitHeld(
+      subject,
+      INFORMATION,
+      promotion,
+      'write-again',
+    );
 
     // The answer to the first can be lost. What the retry is told is what that
     // attempt wrote — the same revision, not a second one nothing changed in.
@@ -1073,6 +1231,7 @@ describe('the in-memory host', () => {
     });
     const afterRelease = await subject.client.submit({
       protocolId: subject.protocolId,
+      requestId: 'write-again',
       sectionId: INFORMATION,
       document: committed.document,
       revision: committed.revision,
