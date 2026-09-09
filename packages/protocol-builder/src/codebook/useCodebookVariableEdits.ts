@@ -56,9 +56,16 @@ export type CreateCodebookVariable = (
   variable: NewCodebookVariable,
 ) => Promise<CreateCodebookVariableOutcome>;
 
-/** Nothing to write, or nothing was written — either way, carry on. */
 export type SetVariableComponentOutcome =
+  /**
+   * There was nothing to write: the codebook already collects the attribute
+   * with this control. Told apart from `written` because a caller that has to
+   * answer for the write — where it landed, what to say about it — has nothing
+   * to answer for when no write was made.
+   */
   | Readonly<{ status: 'unchanged' }>
+  /** The codebook now says so. */
+  | Readonly<{ status: 'written' }>
   | Readonly<{ status: 'refused'; message: string }>;
 
 export type SetVariableComponent = (
@@ -136,6 +143,21 @@ const messages = defineMessages({
       'What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name.',
   },
 });
+
+/**
+ * The package's one sentence for "inventing the attribute did not happen, and
+ * there is nothing more specific to say about why".
+ *
+ * Exported because the event is not this hook's alone. Anything that asks for
+ * an attribute to be created can be refused by something that gives no reason
+ * of its own — a session that will not carry the request, a caller that throws
+ * instead of answering — and what has to be said is the same fact each time:
+ * nothing was written, so the name is still theirs and pressing Create again
+ * is the right next move. A second wording of it would be a second thing for a
+ * researcher to learn. Said about its own surface by
+ * `CreatableVariablePickerControl`.
+ */
+export const createVariableRefused = messages.refusedUnchanged;
 
 /**
  * What ONE refusal from the codebook schema says to the researcher, or
@@ -497,7 +519,7 @@ export function useSetVariableComponent(
           message: intl.formatMessage(messages.refusedControlUnchanged),
         };
       }
-      if (result.status === 'applied') return { status: 'unchanged' };
+      if (result.status === 'applied') return { status: 'written' };
       return {
         status: 'refused',
         message: compoundFailureMessage({ kind: 'result', result }, intl),
@@ -517,14 +539,19 @@ export function useSetVariableComponent(
  * researcher asked for it — and a record key belongs to exactly one type, so
  * the row the id would be written into is now a row about something else, which
  * can neither resolve it nor save it. The write is not undone; only the
- * assignment must not happen. Callers say so with `createdUnassigned`.
+ * assignment must not happen.
  *
  * A getter reading a ref rather than a value, because the answer is needed
  * AFTER an await, in a closure made before it: read as a value it would be the
  * subject as it stood when the researcher pressed the button, which is the one
  * thing already known.
+ *
+ * Half of `useWhereTheAnswerLands` below, which is what every caller asks —
+ * the other half being the field the answer would be written into. Nothing
+ * outside this module asks only this half: a write that landed on the right
+ * type and the wrong attribute is as wrong as one that landed on neither.
  */
-export function useSubjectStillCollected(
+function useSubjectStillCollected(
   subject: CodebookSubject | undefined,
 ): (startedWith: CodebookSubject) => boolean {
   const live = useRef(subject);
@@ -537,6 +564,74 @@ export function useSubjectStillCollected(
         sectionIdForCodebookSubject(startedWith)
     );
   }, []);
+}
+
+/** Where a codebook round trip's answer belongs by the time it arrives. */
+export type AnswerLands = 'here' | 'onAnotherType' | 'besideAnotherAttribute';
+
+/**
+ * What a codebook round trip was asked FOR.
+ *
+ * Both halves are captured when the request goes out, because both of them are
+ * what the answer will be applied to: the codebook section the write was
+ * addressed to, and the attribute the surface asking for it was pointed at.
+ */
+export type CodebookAnswerTarget = Readonly<{
+  subject: CodebookSubject;
+  /** The attribute the surface filled in when the request went out. */
+  fillsIn: string | undefined;
+}>;
+
+/**
+ * Reads, when a codebook round trip ANSWERS, whether it still belongs where it
+ * was asked from.
+ *
+ * The package's ONE reading of that question, because every codebook write a
+ * stage editor makes is a round trip the researcher can act inside and a
+ * collaborator can move the protocol underneath — and each of them then applies
+ * its answer to a surface that may have moved: an attribute is selected into a
+ * picker, a control is recorded for the attribute a row collects, a rule is
+ * added to the attribute a slot names.
+ *
+ * Two ways to get it wrong, and they are the two answers other than `here`.
+ * The stage can be repointed at another type inside the write
+ * (`onAnotherType`): a record key belongs to exactly one type, so the write
+ * landed in a codebook this surface no longer reads, and applying the answer
+ * would leave a reference that can neither be resolved nor saved. And the
+ * FIELD the answer would be written into can move (`besideAnotherAttribute`):
+ * a researcher re-answering a picker while a create is in flight, or a
+ * collaborator rebinding the row a control was being chosen for. Applying the
+ * answer there writes it about an attribute nobody was looking at.
+ *
+ * Neither undoes the write — it landed where it was addressed, which is where
+ * the researcher asked for it — so what is in question is only what happens
+ * HERE, and callers say what happened: `createdUnassigned` for an attribute
+ * that exists and was not taken, and the row's own refusal for a control
+ * recorded beside the attribute a field has since stopped collecting.
+ *
+ * `fillsIn` is read through a function rather than taken as a value because
+ * the answer is needed AFTER an await, in a closure made before it: read as a
+ * value it would be what the surface held when the button was pressed, which
+ * is the one thing already known. A caller holding it as a render value passes
+ * `() => value` — the reader is refreshed on every render, so that reads live
+ * too.
+ */
+export function useWhereTheAnswerLands(
+  subject: CodebookSubject | undefined,
+  fillsIn: () => string | undefined,
+): (asked: CodebookAnswerTarget) => AnswerLands {
+  const subjectStillCollected = useSubjectStillCollected(subject);
+  const live = useRef(fillsIn);
+  live.current = fillsIn;
+  return useCallback(
+    (asked) => {
+      if (!subjectStillCollected(asked.subject)) return 'onAnotherType';
+      return live.current() === asked.fillsIn
+        ? 'here'
+        : 'besideAnotherAttribute';
+    },
+    [subjectStillCollected],
+  );
 }
 
 /**

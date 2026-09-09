@@ -5,7 +5,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useSyncExternalStore,
 } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -31,6 +30,7 @@ import {
   type RuleSetValue,
 } from '../rules/ruleSet.ts';
 import { FilterRuleSetField } from '../rules/RuleSetField.tsx';
+import { useRowValue } from './AttributeCodebookControls.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 import {
   type RowEditorProps,
@@ -741,30 +741,4 @@ function PanelPreview({ item }: RowPreviewProps) {
       </p>
     </div>
   );
-}
-
-/**
- * A value of the row dialog's OWN form, live.
- *
- * A row editor reading the stage behind it would never see the researcher
- * change anything: the panel's choices only exist in the dialog's store until
- * the row is saved.
- */
-function useRowValue(name: string): unknown {
-  const storeApi = useContext(FormStoreContext);
-
-  const subscribe = useCallback(
-    (onStoreChange: () => void) =>
-      storeApi === undefined
-        ? () => undefined
-        : storeApi.subscribe(onStoreChange),
-    [storeApi],
-  );
-  const getSnapshot = useCallback((): unknown => {
-    if (storeApi === undefined) return undefined;
-    const state = storeApi.getState();
-    return state.hasValue(name) ? state.getValue(name) : undefined;
-  }, [name, storeApi]);
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

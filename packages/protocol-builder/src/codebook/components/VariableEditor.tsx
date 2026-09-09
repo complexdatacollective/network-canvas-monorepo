@@ -366,8 +366,17 @@ type VariableEditorCommonProps = Readonly<{
   onSubmitRequest(
     request: CompoundEditRequest,
   ): Promise<AuxiliaryCodebookSubmitResult> | AuxiliaryCodebookSubmitResult;
-  /** Receives the stable record id after the compound edit is accepted. */
-  onComplete(variableId: string): void;
+  /**
+   * Receives the stable record id after the compound edit is accepted, and the
+   * researcher-facing name it was written under.
+   *
+   * The NAME as well as the id, because a caller that can no longer use what
+   * was created has to say where it went, and the id is a record key the
+   * researcher has never seen. Read off the draft this editor submitted rather
+   * than out of the codebook afterwards: what a caller is told is what it
+   * asked the host to write.
+   */
+  onComplete(variableId: string, variableName: string): void;
   onDraftChange?(draft: CodebookVariableDraft): void;
   allowedVariableTypes?: readonly VariableType[];
   lockedOptions?: readonly VariableOption[] | null;
@@ -765,7 +774,10 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
         result.status === 'applied' &&
         !draftSession.getSnapshot().authoritativeChanged
       ) {
-        onComplete(variableId);
+        onComplete(
+          variableId,
+          typeof submittedDraft.name === 'string' ? submittedDraft.name : '',
+        );
       }
     } catch (error: unknown) {
       if (error instanceof InvalidCodebookDraftError) {

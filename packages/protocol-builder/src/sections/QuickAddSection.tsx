@@ -3,7 +3,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { v4 as uuid } from 'uuid';
@@ -19,8 +18,10 @@ import { resolveFieldErrorTarget } from '@codaco/fresco-ui/form/utils/focusFirst
 import { compoundFailureMessage } from '../codebook/compoundFailureCopy.ts';
 import { buildUpdateVariableRequest } from '../codebook/editing.ts';
 import {
+  type AnswerLands,
+  type CodebookAnswerTarget,
   useCreateCodebookVariable,
-  useSubjectStillCollected,
+  useWhereTheAnswerLands,
 } from '../codebook/useCodebookVariableEdits.ts';
 import {
   buildVariableRoleMap,
@@ -273,76 +274,6 @@ const codebookDocumentFor = (
     : protocolContext.codebook[subject.entity]?.[subject.type];
 
 /**
- * What this section was pointed at when a codebook round trip was asked for.
- *
- * Both writes this section makes are answered by the host after a delay the
- * researcher can act inside — the attribute picker stays live while an answer
- * is on its way, and so does the type picker above it — and both then apply
- * their answer to that picker: one selects the attribute it created, the other
- * says the attribute the picker names now has to be answered.
- */
-type QuickAddTarget = Readonly<{
-  subject: CodebookSubject;
-  /** The attribute the stage filled in when the request went out. */
-  fillsIn: string | undefined;
-}>;
-
-/** Where a round trip's answer belongs by the time it arrives. */
-type AnswerLands = 'here' | 'onAnotherType' | 'besideAnotherAttribute';
-
-/**
- * The one reading of "does this answer still belong where it was asked from?",
- * written once because it is asked twice: when an answer ARRIVES, to decide
- * what to do with it, and on every render afterwards, to decide whether what
- * was said about it is still true of the draft on screen.
- */
-const answerLandsIn = (
-  subjectStillCollected: boolean,
-  fillsInNow: string | undefined,
-  fillsInWhenAsked: string | undefined,
-): AnswerLands => {
-  if (!subjectStillCollected) return 'onAnotherType';
-  return fillsInNow === fillsInWhenAsked ? 'here' : 'besideAnotherAttribute';
-};
-
-/**
- * Reads, when a round trip ANSWERS, whether it still belongs where it was
- * asked from.
- *
- * The write itself is never undone: it landed in the codebook of the type the
- * request named, which is the type the stage was about when the researcher
- * asked for it. Only what happens HERE is in question, and there are two ways
- * to get it wrong — an answer written into a picker the researcher has since
- * re-answered replaces a newer, deliberate choice with an older one, and an
- * answer that finds the section moved on and says nothing leaves a change to
- * the whole protocol that nobody was told about.
- *
- * A getter over refs rather than values, because the answer is needed AFTER an
- * await, inside a closure made before it: read as values they would be what
- * the section held when the button was pressed, which is the one thing already
- * known. `useSubjectStillCollected` is the package's own reading of the first
- * half; the second asks the same question of the field the answer would be
- * written into.
- */
-function useWhereTheAnswerLands(
-  subject: CodebookSubject | undefined,
-  fillsIn: string | undefined,
-): (asked: QuickAddTarget) => AnswerLands {
-  const subjectStillCollected = useSubjectStillCollected(subject);
-  const live = useRef(fillsIn);
-  live.current = fillsIn;
-  return useCallback(
-    (asked) =>
-      answerLandsIn(
-        subjectStillCollected(asked.subject),
-        live.current,
-        asked.fillsIn,
-      ),
-    [subjectStillCollected],
-  );
-}
-
-/**
  * A codebook write this section made, and what it has left to say about it.
  *
  * Both notices this section shows are about a write that LANDED and was not
@@ -390,18 +321,22 @@ function useLandedAnswer(
   record: (answer: LandedAnswer) => void;
   forget: () => void;
 }> {
-  const subjectStillCollected = useSubjectStillCollected(subject);
+  // The same reading the answer itself was judged by, asked again of the draft
+  // on screen: `useWhereTheAnswerLands` is the package's one answer to "does
+  // this still belong where it was asked from?", and a second one here could
+  // say something the arrival did not. `fillsIn` is a render value, so it is
+  // passed as a reader over it.
+  const answerLands = useWhereTheAnswerLands(subject, () => fillsIn);
   const [landed, setLanded] = useState<LandedAnswer | undefined>(undefined);
   const moved =
     landed !== undefined &&
-    answerLandsIn(
-      subjectStillCollected(landed.subject),
-      fillsIn,
+    answerLands({
+      subject: landed.subject,
       // The row named the attribute the answer is about exactly when the
       // answer belongs `here`, whichever write asked for it: the create's
       // answer IS its variable id, and the require's was asked about it.
-      landed.variableId,
-    ) !== landed.landedAs;
+      fillsIn: landed.variableId,
+    }) !== landed.landedAs;
   const forget = useCallback(() => {
     setLanded(undefined);
   }, []);
@@ -555,7 +490,7 @@ function QuickAddAnswerRequirement({
   const subject = useStageSubject('node');
   const { protocolContext } = useStageEditorForm();
   const requireAnswer = useRequireCodebookAnswer(subject);
-  const answerLands = useWhereTheAnswerLands(subject, variableId);
+  const answerLands = useWhereTheAnswerLands(subject, () => variableId);
   const [problem, setProblem] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   /**
@@ -595,7 +530,7 @@ function QuickAddAnswerRequirement({
   const accept = async () => {
     if (subject === undefined || variable === undefined) return;
     if (variableId === undefined) return;
-    const asked: QuickAddTarget = { subject, fillsIn: variableId };
+    const asked: CodebookAnswerTarget = { subject, fillsIn: variableId };
     const variableName = variable.name;
     setBusy(true);
     try {
@@ -813,7 +748,7 @@ function NewQuickAddAttribute({
   const { storeApi } = useStageEditorForm();
   const subject = useStageSubject('node');
   const createVariable = useCreateCodebookVariable(subject);
-  const answerLands = useWhereTheAnswerLands(subject, fillsIn);
+  const answerLands = useWhereTheAnswerLands(subject, () => fillsIn);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   /**
@@ -845,7 +780,7 @@ function NewQuickAddAttribute({
     // `answerLands` holds the section's own reading of both halves, and the
     // notice is anchored to the same subject.
     if (subject === undefined) return;
-    const asked: QuickAddTarget = { subject, fillsIn };
+    const asked: CodebookAnswerTarget = { subject, fillsIn };
     setBusy(true);
     try {
       const outcome = await createVariable({
