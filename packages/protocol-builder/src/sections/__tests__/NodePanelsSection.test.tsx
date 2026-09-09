@@ -593,17 +593,34 @@ describe('the side panels a name generator shows', () => {
    * fires for it: nothing changed. An imported file has no edges, so the rule
    * could never match and the panel would silently show nobody — which is why
    * the save has to be refused rather than the state saved.
+   *
+   * The refusal is the stage's own schema now (`panelsSchema` refines it,
+   * reading nothing but the stage), so the editor meets it at save rather than
+   * letting it through to publication.
    */
-  /*
-    A panel that reads an imported file may not filter on a connection rule,
-    and the stage editor no longer catches it. The rule is written into
-    `@codaco/protocol-validation`'s WHOLE-PROTOCOL refinement rather than into
-    `stageSchema`, and this editor validates the stage's own schema at save —
-    so the refusal that used to live here is now made at publication. Moving
-    the rule onto `stageSchema`, where it belongs (it reads nothing but the
-    stage), would bring it back; that is a change to a published schema package
-    and does not belong in this PR.
-  */
+  it('refuses a panel that arrives reading a file with a connection rule', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        { ...panelWithAnEdgeRule, dataSource: 'roster_data' },
+      ]),
+      sections: panels,
+    });
+
+    expect(
+      await screen.findByText('People you named earlier'),
+    ).toBeInTheDocument();
+
+    expect(await harness.submit()).toBeNull();
+    // Said where the researcher can act on it: the schema anchors the problem
+    // at the panel's own rule, so it belongs to the section holding it rather
+    // than to one sentence at the top of the page.
+    expect(
+      harness.outline().find((section) => section.title === 'Side panels')
+        ?.state,
+    ).toContain(
+      'External-data panel filters cannot use edge rules; rules must target node attributes.',
+    );
+  });
 
   /**
    * A network imported in this edit is not in the protocol's manifest yet: it
