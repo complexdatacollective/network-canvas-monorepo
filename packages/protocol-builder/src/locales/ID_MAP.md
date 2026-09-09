@@ -336,8 +336,8 @@ for something else or reopens a decision that has been made:
   changed, so the only surface that can tell a researcher what actually
   happened is the one that knows which attribute the editor was opened on.
 
-`sections/stage-heading/StageHeading.tsx` holds no copy either: it composes
-`StageNameSection` from the protocol's own stage order.
+`sections/stage-heading/StageHeadingSection.tsx` holds no copy either: it
+composes `StageNameSection` from the protocol's own stage order.
 
 `sections/collectableTypes.ts` DOES hold copy, and used not to. It was a list
 of schema tokens offered as their own labels — a researcher choosing what kind
