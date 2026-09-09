@@ -258,6 +258,15 @@ const refusalMessage = (
  * yet are all things the researcher can act on, and all of them mean the same
  * thing to the caller — nothing was written, so do not commit the row.
  *
+ * The REQUEST is no exception, which is why it is awaited inside a `try`. A
+ * session that has stopped accepting changes refuses this one by throwing
+ * (`assertEditable`), and access is taken away by a message from the host: it
+ * lands before React has re-rendered the control the researcher is looking at,
+ * so the click already on its way reaches a handler that is about to be
+ * refused. Every caller here marks itself busy across the await and clears it
+ * afterwards, and a rejection escaping this promise left that mark set for
+ * good — the control never came back, even once editing did.
+ *
  * What each refusal READS like is `compoundFailureCopy`'s, exactly as it is for
  * the three codebook editors: a compound result's own `message` is written for
  * whoever reads a log, and it lands here on the control the researcher was
@@ -330,7 +339,19 @@ export function useCreateCodebookVariable(
         };
       }
 
-      const result = await controller.requestCompoundEdit(request);
+      let result;
+      try {
+        result = await controller.requestCompoundEdit(request);
+      } catch {
+        // Nothing more specific to say: the session refused to carry the
+        // request at all, so no host answered and there is no failure of its
+        // own to read. `CreatableVariablePickerControl` answers a caller that
+        // throws the same way, for the same reason.
+        return {
+          status: 'refused',
+          message: intl.formatMessage(messages.refusedUnchanged),
+        };
+      }
       if (result.status === 'applied') {
         return { status: 'created', variableId };
       }
@@ -463,7 +484,18 @@ export function useSetVariableComponent(
         };
       }
 
-      const result = await controller.requestCompoundEdit(request);
+      // Awaited inside a `try` for the reason `useCreateCodebookVariable`
+      // gives: a session that has stopped accepting changes refuses the
+      // request by throwing, and this hook's contract is that it answers.
+      let result;
+      try {
+        result = await controller.requestCompoundEdit(request);
+      } catch {
+        return {
+          status: 'refused',
+          message: intl.formatMessage(messages.refusedControlUnchanged),
+        };
+      }
       if (result.status === 'applied') return { status: 'unchanged' };
       return {
         status: 'refused',

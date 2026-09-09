@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -12,6 +12,31 @@ const offered = () =>
   within(screen.getByRole('combobox', { name: /Attribute filled in/ }))
     .getAllByRole('option')
     .map((option) => (option as HTMLOptionElement).value);
+
+/**
+ * A control pressed in the window between the host taking editing away and
+ * React drawing that fact.
+ *
+ * Access arrives as a message from the host, and the section is not redrawn
+ * until React gets to the update — so the control the researcher is looking at
+ * is still the enabled one, and the click that was already on its way reaches
+ * a handler the session is about to refuse by throwing. The harness's own
+ * `setReadOnly` flushes that render before it returns, which is the one state
+ * this scenario is not about, so the access change is made straight on the
+ * session and the click is dispatched before anything is flushed.
+ */
+const clickAsEditingIsRevoked = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  control: HTMLElement,
+): Promise<void> => {
+  harness.session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+  control.dispatchEvent(
+    new MouseEvent('click', { bubbles: true, cancelable: true }),
+  );
+  await act(async () => {
+    await Promise.resolve();
+  });
+};
 
 describe('what a quick-add name generator records', () => {
   it('shows the attribute the stage fills in, and saves it unchanged', async () => {
@@ -159,6 +184,45 @@ describe('what a quick-add name generator records', () => {
   });
 
   /**
+   * The Create button is disabled while the codebook write is in flight, so a
+   * write that never answers is a control that never comes back: the
+   * researcher is left with a dead button and the name they typed, and taking
+   * editing back does not revive it.
+   *
+   * The session refuses a request it cannot carry by throwing rather than by
+   * answering, and that is the one answer the create did not have a path for.
+   */
+  it('gives the Create button back when the session refuses the write outright', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+    });
+
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: /Create a new attribute/ }),
+      'nickname',
+    );
+    await clickAsEditingIsRevoked(
+      harness,
+      screen.getByRole('button', { name: 'Create the attribute' }),
+    );
+
+    harness.setReadOnly(false);
+    expect(
+      screen.getByRole('button', { name: 'Create the attribute' }),
+    ).toBeEnabled();
+    // Nothing was written, and the name is still there to try again with.
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).not.toContain('nickname');
+    expect(
+      screen.getByRole('textbox', { name: /Create a new attribute/ }),
+    ).toHaveValue('nickname');
+  });
+
+  /**
    * A collaborator adding an attribute is not this session's edit. It has to
    * reach the picker, and it must not be echoed back as a command of ours.
    */
@@ -275,6 +339,38 @@ describe('a quick-add attribute that need not be answered', () => {
     expect(
       within(await screen.findByRole('status')).getByText(
         'This attribute now has to be answered, everywhere the protocol uses it.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The offer's own button carries the same guard as the create beside it, and
+   * for the same reason: it is disabled while the codebook write is in flight,
+   * so a write that throws instead of answering leaves the offer on screen
+   * with no way to accept it.
+   */
+  it('gives the offer back when the session refuses the write outright', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+    });
+
+    await screen.findByText('This attribute can be left empty');
+    await clickAsEditingIsRevoked(
+      harness,
+      screen.getByRole('button', { name: 'Require an answer' }),
+    );
+
+    harness.setReadOnly(false);
+    expect(
+      screen.getByRole('button', { name: 'Require an answer' }),
+    ).toBeEnabled();
+    expect(personVariable(harness, 'name')).not.toMatchObject({
+      validation: { required: true },
+    });
+    expect(
+      screen.getByText(
+        'This attribute could not be changed, so nothing was changed. Try again.',
       ),
     ).toBeInTheDocument();
   });

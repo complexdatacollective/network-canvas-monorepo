@@ -351,14 +351,21 @@ function QuickAddAnswerRequirement({
 
   const accept = async () => {
     setBusy(true);
-    const outcome = await requireAnswer(variableId);
-    setBusy(false);
-    if (outcome.status === 'refused') {
-      setProblem(outcome.message);
-      return;
+    try {
+      const outcome = await requireAnswer(variableId);
+      if (outcome.status === 'refused') {
+        setProblem(outcome.message);
+        return;
+      }
+      setProblem(undefined);
+      setRequiredHere(variableId);
+    } finally {
+      // In a `finally` because the button is disabled while this is true: an
+      // offer that ended in a throw would otherwise leave the researcher
+      // looking at a control that never comes back, with no way to try again.
+      // Same guard, and the same reason, as `CreatableVariablePickerControl`.
+      setBusy(false);
     }
-    setProblem(undefined);
-    setRequiredHere(variableId);
   };
 
   return (
@@ -438,7 +445,19 @@ function useRequireCodebookAnswer(subject: CodebookSubject | undefined) {
         };
       }
 
-      const result = await controller.requestCompoundEdit(request);
+      // Awaited inside a `try` for the reason `useCreateCodebookVariable`
+      // gives: a session that has stopped accepting changes refuses the
+      // request by throwing rather than answering, and this hook promises an
+      // outcome. A rejection escaping it left the caller marked busy for good.
+      let result;
+      try {
+        result = await controller.requestCompoundEdit(request);
+      } catch {
+        return {
+          status: 'refused',
+          message: intl.formatMessage(messages.refusedUnchanged),
+        };
+      }
       return result.status === 'applied'
         ? { status: 'required' }
         : {
@@ -475,23 +494,32 @@ function NewQuickAddAttribute() {
       return;
     }
     setBusy(true);
-    const outcome = await createVariable({
-      name: trimmed,
-      type: QUICK_ADD_TYPE,
-      component: 'Text',
-      validation: QUICK_ADD_VALIDATION,
-    });
-    setBusy(false);
-    if (outcome.status === 'refused') {
-      setProblem(outcome.message);
-      return;
+    try {
+      const outcome = await createVariable({
+        name: trimmed,
+        type: QUICK_ADD_TYPE,
+        component: 'Text',
+        validation: QUICK_ADD_VALIDATION,
+      });
+      if (outcome.status === 'refused') {
+        setProblem(outcome.message);
+        return;
+      }
+      setProblem(undefined);
+      setName('');
+      // Written into the form rather than dispatched to the session: the
+      // picker above is a registered field, and a command that went round it
+      // would be overwritten by whatever the control still held when the
+      // stage saved.
+      storeApi.getState().setFieldValue(QUICK_ADD, outcome.variableId);
+    } finally {
+      // In a `finally` because the button is disabled while this is true: a
+      // create that ended in a throw would otherwise leave the researcher
+      // looking at a Create button that never comes back, with no way to try
+      // again. Same guard, and the same reason, as
+      // `CreatableVariablePickerControl`.
+      setBusy(false);
     }
-    setProblem(undefined);
-    setName('');
-    // Written into the form rather than dispatched to the session: the picker
-    // above is a registered field, and a command that went round it would be
-    // overwritten by whatever the control still held when the stage saved.
-    storeApi.getState().setFieldValue(QUICK_ADD, outcome.variableId);
   }, [createVariable, intl, name, storeApi]);
 
   if (subject === undefined) return null;
