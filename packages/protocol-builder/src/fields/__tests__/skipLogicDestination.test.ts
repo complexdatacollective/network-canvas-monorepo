@@ -145,20 +145,63 @@ describe('where the stage sits', () => {
    * options and the numbering are built from.
    */
   it('keeps the place of an existing stage that could not be read', () => {
-    expect(
-      stagePlacement(stages, 'unreadable', undefined, [
-        'stage-1',
-        'unreadable',
-        'stage-2',
-        'stage-3',
-      ]),
-    ).toEqual({ index: 1, isNew: false });
+    const order = ['stage-1', 'unreadable', 'stage-2', 'stage-3'];
+
+    // The order it was placed in travels with the placement: it is what the
+    // numbering counts in, and asking for it twice is how the two came to
+    // disagree. See `stageNumber`.
+    expect(stagePlacement(stages, 'unreadable', undefined, order)).toEqual({
+      index: 1,
+      isNew: false,
+      stageOrder: order,
+    });
   });
 
   it('still places a stage neither the order nor the interview holds', () => {
-    expect(
-      stagePlacement(stages, 'stage-new', 1, ['stage-1', 'stage-2', 'stage-3']),
-    ).toEqual({ index: 1, isNew: true });
+    const order = ['stage-1', 'stage-2', 'stage-3'];
+
+    expect(stagePlacement(stages, 'stage-new', 1, order)).toEqual({
+      index: 1,
+      isNew: true,
+      stageOrder: order,
+    });
+  });
+
+  /**
+   * The host inserts into the order the PROTOCOL states, so the position it
+   * gives is an index in that list — which names the stages the schema refuses
+   * as well as the ones that could be read. Applied straight to the readable
+   * ones, an unreadable stage before the insertion point is counted as if it
+   * were not there and the new stage lands one place too late, after a stage
+   * it actually runs before.
+   */
+  it('translates a creation position through the stages it cannot read', () => {
+    const order = ['stage-1', 'unreadable', 'stage-2', 'stage-3'];
+
+    // Position 2 is between the unreadable stage and `stage-2`, which is
+    // readable index 1 — not index 2, where `stage-2` sits.
+    expect(stagePlacement(stages, 'stage-new', 2, order)).toEqual({
+      index: 1,
+      isNew: true,
+      stageOrder: order,
+    });
+    expect(stagePlacement(stages, 'stage-new', 3, order)).toEqual({
+      index: 2,
+      isNew: true,
+      stageOrder: order,
+    });
+    // Past the end of the order, and before its start, still land inside the
+    // readable list.
+    expect(stagePlacement(stages, 'stage-new', 9, order)).toEqual({
+      index: 3,
+      isNew: true,
+      stageOrder: order,
+    });
+    expect(stagePlacement(stages, 'stage-new', -1, order)).toEqual({
+      index: 0,
+      isNew: true,
+      stageOrder: order,
+    });
   });
 });
 
@@ -178,6 +221,31 @@ describe('the destinations on offer', () => {
     // Inserted at index 1, the stage currently second becomes the third.
     expect(
       labels(skipLogicDestinationOptions(stages, { index: 1, isNew: true })),
+    ).toEqual([
+      'Next available stage',
+      'Stage 3 — Middle',
+      'Stage 4 — Untitled stage',
+      'End the interview',
+    ]);
+  });
+
+  /**
+   * The same numbering, and the same reason: the researcher reads "Stage 3"
+   * against a timeline that holds every stage the interview runs, including
+   * one whose own document the schema refuses. Counted in the readable stages
+   * alone, every destination behind an unreadable stage was offered under the
+   * number of a different row of that timeline.
+   */
+  it('counts the stages nobody can read when numbering a destination', () => {
+    const order = ['stage-1', 'unreadable', 'stage-2', 'stage-3'];
+
+    expect(
+      labels(
+        skipLogicDestinationOptions(
+          stages,
+          stagePlacement(stages, 'stage-1', undefined, order),
+        ),
+      ),
     ).toEqual([
       'Next available stage',
       'Stage 3 — Middle',

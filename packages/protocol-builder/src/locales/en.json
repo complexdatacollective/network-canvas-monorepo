@@ -883,6 +883,14 @@
     "defaultMessage": "This change could not be saved, and nothing was altered. Wait a moment and try again.",
     "description": "Refusal shown in a codebook editor when saving was refused for a reason there are no words for — it threw with no explanation a researcher could act on, or the application it is running in named a reason this editor does not know. The last resort."
   },
+  "protocolBuilder.confirmingSelect.choiceGone": {
+    "defaultMessage": "What you chose is no longer one of the options here, so nothing has changed. Choose again.",
+    "description": "Body of the message refusing a confirmed change whose chosen option is no longer offered. Addressed to the researcher authoring the protocol, and it says what did NOT happen: the change was not applied and nothing the stage was carrying was thrown away."
+  },
+  "protocolBuilder.confirmingSelect.choiceGoneTitle": {
+    "defaultMessage": "That choice is no longer available",
+    "description": "Title of the message shown when a researcher confirms a change that costs the stage something, and the option they picked stopped being one this control offers while the question was open — a collaborator deleted or moved what it named. The change is refused."
+  },
   "protocolBuilder.contentBlock.audioHint": {
     "defaultMessage": "The audio the participant can play when they reach this block.",
     "description": "Guidance under the file picker of a block that plays an audio recording."
@@ -1138,6 +1146,10 @@
   "protocolBuilder.formFields.controlDatePicker": {
     "defaultMessage": "Date picker",
     "description": "Choice offered for the control a participant answers with: a calendar they choose a date from."
+  },
+  "protocolBuilder.formFields.controlLandedElsewhere": {
+    "defaultMessage": "The input control for “{variableName}” was changed, but this field no longer collects that attribute, so the field was not saved.",
+    "description": "Refusal shown above the fields of a form field’s dialog when the researcher’s choice of input control was recorded in the codebook — the protocol’s definition of what an interview records — and, while that was happening, someone else pointed this field at a different attribute. variableName is the attribute’s researcher-facing name and is not translated."
   },
   "protocolBuilder.formFields.controlLikertScale": {
     "defaultMessage": "Likert scale",
@@ -1539,13 +1551,13 @@
     "defaultMessage": "Color {position}",
     "description": "How one entry of the disease-colour list is named. The palette’s colours have no names of their own — they are the study’s own theme colours — so they are counted instead. position identifies which one, counting from 1."
   },
-  "protocolBuilder.narrativePedigree.diseaseColorPlaceholder": {
-    "defaultMessage": "Select a color...",
-    "description": "Placeholder shown in the disease-colour control while no colour has been chosen. The trailing dots are an ellipsis written as three full stops."
-  },
   "protocolBuilder.narrativePedigree.diseaseColorRequired": {
     "defaultMessage": "Choose a color for this disease.",
     "description": "Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one."
+  },
+  "protocolBuilder.narrativePedigree.diseaseColorUnavailable": {
+    "defaultMessage": "This disease is set to a color the palette does not have. Choose one of the colors shown.",
+    "description": "Refusal shown under the disease-colour control when the row holds a colour that is not one of the ones offered — an import or a merge left it there — so nothing is shown as chosen and the protocol would refuse the stage."
   },
   "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
     "defaultMessage": "How the disease is passed on. Mendelian patterns let the pedigree infer carrier and at-risk statuses from biological relationships and recorded sex; multifactorial and unknown show affected status only.",
@@ -1562,6 +1574,10 @@
   "protocolBuilder.narrativePedigree.diseaseInheritanceRequired": {
     "defaultMessage": "Choose how this disease is inherited.",
     "description": "Refusal shown under the inheritance-pattern control when the researcher saves the dialog without choosing one."
+  },
+  "protocolBuilder.narrativePedigree.diseaseInheritanceUnavailable": {
+    "defaultMessage": "This disease is set to an inheritance pattern this editor does not know. Choose one from the list.",
+    "description": "Refusal shown under the inheritance-pattern control when the row holds a pattern that is not one of the ones offered — an import or a merge left it there — so the control can only read the stored value back, and the protocol would refuse the stage. An inheritance pattern is how a condition travels from parent to child."
   },
   "protocolBuilder.narrativePedigree.diseaseMarksNobody": {
     "defaultMessage": "Nothing records this attribute",
@@ -5080,12 +5096,12 @@
     "description": "Shown in place of the select when nothing can be picked — the caller offered no attributes at all. An attribute is a variable the protocol’s codebook defines. Callers that can say something more specific pass their own sentence instead."
   },
   "protocolBuilder.variablePicker.missingAttribute": {
-    "defaultMessage": "This attribute is no longer in the codebook. Choose another one.",
-    "description": "Shown under the select when the attribute a researcher’s stored choice names has been deleted from the protocol’s codebook, so the choice has to be made again."
+    "defaultMessage": "This attribute is not available here. Choose another one.",
+    "description": "Shown under the select when the attribute a researcher’s stored choice names is not among the ones this control was given to offer — it may have been deleted from the protocol’s codebook, or ruled out by whatever the choice is being made for. Worded for what the control actually knows: it is handed a list of attributes and a stored choice, and cannot tell those two cases apart."
   },
   "protocolBuilder.variablePicker.missingOptionLabel": {
-    "defaultMessage": "{attributeId} — this attribute is no longer in the codebook",
-    "description": "Name of the one option standing for an attribute the protocol’s codebook no longer defines. attributeId is the raw stored identifier — there is no name left to show, because the definition it would have come from has been deleted."
+    "defaultMessage": "{attributeId} — this attribute is not available here",
+    "description": "Name of the one option standing for an attribute that is not among the ones this control was given to offer. attributeId is the raw stored identifier — there is no name to show, because no definition of it reached this control."
   },
   "protocolBuilder.variablePicker.placeholder": {
     "defaultMessage": "Select an attribute…",
