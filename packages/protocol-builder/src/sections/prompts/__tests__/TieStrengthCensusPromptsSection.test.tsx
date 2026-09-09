@@ -87,11 +87,12 @@ describe('the questions a tie-strength census asks about a pair', () => {
    * have.
    *
    * Left in place it is unsaveable and unexplained: the picker kept the stale
-   * pick on offer as "no longer in the codebook" — which is not true, it
-   * belongs to the other connection type — the row dialog accepted it, and the
-   * refusal only arrived at the stage save, in the schema's words about a
-   * codebook the researcher was not looking at. Cleared, the prompt says what
-   * it needs, in the dialog the researcher is still in.
+   * pick on offer as one that is "not available here" — all it can say, and it
+   * does not say where the attribute went, which is nowhere: it belongs to the
+   * other connection type — the row dialog accepted it, and the refusal only
+   * arrived at the stage save, in the schema's words about a codebook the
+   * researcher was not looking at. Cleared, the prompt says what it needs, in
+   * the dialog the researcher is still in.
    */
   it('clears the scale when the connection type changes under it', async () => {
     const harness = renderStageEditor(openEditor());
@@ -352,7 +353,7 @@ describe('a codebook that changes while a tie-strength prompt is open', () => {
 
     expect(
       await screen.findByText(
-        'This attribute is no longer in the codebook. Choose another one.',
+        'This attribute is not available here. Choose another one.',
       ),
     ).toBeInTheDocument();
     expect(dispatch).not.toHaveBeenCalled();

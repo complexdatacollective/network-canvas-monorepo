@@ -273,7 +273,7 @@ describe('a codebook that changes while the Categorical Bin editor is open', () 
 
     expect(
       await screen.findByText(
-        'This attribute is no longer in the codebook. Choose another one.',
+        'This attribute is not available here. Choose another one.',
       ),
     ).toBeInTheDocument();
     expect(dispatch).not.toHaveBeenCalled();

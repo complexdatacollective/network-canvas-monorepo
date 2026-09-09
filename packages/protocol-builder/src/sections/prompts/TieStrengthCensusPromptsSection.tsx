@@ -177,10 +177,11 @@ function TieStrengthGuidance() {
  * `edgeVariable` names an attribute OF `createEdge`, so a prompt that keeps
  * its scale across a change of connection type names an attribute the new type
  * does not have. Nothing downstream can rescue that: the picker keeps the
- * current pick on offer so that reopening a prompt never loses it, and it can
- * only report the stale one as no longer in the codebook — which is not what
- * happened, the attribute is still there on the connection type the researcher
- * just moved away from. The prompt is then accepted by its own dialog and
+ * current pick on offer so that reopening a prompt never loses it, and all it
+ * can say of the stale one is that it is not available here — it is handed a
+ * list and a stored choice, so it cannot say the attribute is sitting on the
+ * connection type the researcher just moved away from, which is the one thing
+ * that would explain this. The prompt is then accepted by its own dialog and
  * refused by the stage save, in the schema's words about a codebook the
  * researcher is not looking at.
  *
