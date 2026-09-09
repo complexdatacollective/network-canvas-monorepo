@@ -90,7 +90,7 @@ export type StageEditorShellProps = Readonly<{
  * after a save the host refused.
  */
 export default function StageEditorShell(props: StageEditorShellProps) {
-  const { identity, committedFields, unavailable } = useStageEdit();
+  const { identity, committedFields, access } = useStageEdit();
   const intl = useAppIntl();
   const [discarded, setDiscarded] = useState(0);
   const [lostMessage, setLostMessage] = useState<string | undefined>(undefined);
@@ -103,7 +103,7 @@ export default function StageEditorShell(props: StageEditorShellProps) {
   // A stage the protocol will not open is the one case that has to be said
   // rather than waited out: the document is never arriving, so a form waiting
   // for it is a page that never finishes opening.
-  if (unavailable) {
+  if (access === 'unavailable') {
     return (
       <Alert variant="destructive">
         {intl.formatMessage(messages.stageUnavailable)}

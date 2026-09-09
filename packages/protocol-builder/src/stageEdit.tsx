@@ -59,17 +59,16 @@ export type StageEdit = Readonly<{
   /**
    * Whether this editor may write yet.
    *
-   * Three states rather than two, because "not editable" covers a stage
-   * somebody else holds AND one whose acquire has not been answered: they read
-   * differently — only the first has a holder to name — and a form that let
-   * the researcher type before the host had granted the lock would be a draft
-   * the first save loses.
+   * Four states rather than two, because "not editable" covers a stage
+   * somebody else holds, one whose acquire has not been answered, and one the
+   * protocol would not open at all: they read differently — only the first has
+   * a holder to name, and only the last is worth saying rather than waiting
+   * out — and a form that let the researcher type before the host had granted
+   * the lock would be a draft the first save loses.
    */
   access: SectionAccess;
   /** Who is editing this stage, when it is somebody else. */
   holder: Presence | undefined;
-  /** The protocol would not open this stage: it is gone, or out of reach. */
-  unavailable: boolean;
   save(fields: StageFormDraft): Promise<StageSaveOutcome>;
 }>;
 
@@ -148,7 +147,7 @@ function EditingStage({
   const formId = useFormId(requestedFormId);
   const section = useSectionMutation(sectionId);
   const staged = useStagedResources();
-  const { submit, access, holder, unavailable } = section;
+  const { submit, access, holder } = section;
 
   const opened = useMemo(
     () =>
@@ -188,10 +187,9 @@ function EditingStage({
       committedFields: opened?.fields,
       access,
       holder,
-      unavailable,
       save,
     }),
-    [access, formId, holder, identity, opened, save, unavailable],
+    [access, formId, holder, identity, opened, save],
   );
 
   return <StageEditContext value={edit}>{children}</StageEditContext>;
@@ -276,8 +274,6 @@ function CreatingStage({
       // call, so a stage being added is editable from its first keystroke.
       access: 'editing',
       holder: undefined,
-      // A stage the protocol does not hold yet cannot have gone.
-      unavailable: false,
       save,
     }),
     [committedFields, creation, formId, identity, save],
