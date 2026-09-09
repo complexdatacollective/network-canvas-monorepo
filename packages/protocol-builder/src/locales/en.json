@@ -2171,6 +2171,10 @@
     "defaultMessage": "Manual mode",
     "description": "Name of the choice where the stage does not arrange nodes at all and the participant places every one of them by hand. Offered as one of two cards; the sentence under it is layoutModeManualDescription."
   },
+  "protocolBuilder.networkCanvas.layoutModeManualNarrativeDescription": {
+    "defaultMessage": "Shows every node at the position already stored in the attribute the preset positions by. A node that attribute holds no position for is left off the canvas.",
+    "description": "Says what the participant sees in manual layout mode on a narrative stage, which shows a network that has already been built rather than asking the participant to place anything. Said instead of layoutModeManualDescription, whose bucket of unplaced nodes belongs to the stages that collect positions. A preset is one saved way of looking at the network."
+  },
   "protocolBuilder.networkCanvas.nodeFormAddLabel": {
     "defaultMessage": "Create new node attribute field",
     "description": "Button that opens the dialog for adding one more question to the node form. Whole rather than a generic \"Add\", because the same stage editor shows a connection list beside it and the two would otherwise be indistinguishable to anyone navigating by a list of buttons."
@@ -2552,8 +2556,8 @@
     "description": "Refusal shown under the quick-add attribute picker when the attribute chosen is already written somewhere that bypasses the codebook’s validation rules — a canvas grouping, a highlight, a stamp — which cannot be mixed with an attribute collected through those rules. variableName is the attribute’s researcher-facing name, shown inside straight double quotes."
   },
   "protocolBuilder.networkCanvas.repositioningHint": {
-    "defaultMessage": "The participant can drag nodes to new positions. Their positions are stored in the attribute the preset uses for layout, so moving a node here changes it everywhere that attribute is used.",
-    "description": "Guidance under the allow-moving-nodes switch on a narrative stage, where each preset names the attribute the positions are stored in."
+    "defaultMessage": "The participant can drag nodes around while they talk. Nothing is recorded: the attribute the preset positions by is left as it is, and the nodes are back where the preset put them the next time the stage is opened.",
+    "description": "Guidance under the allow-moving-nodes switch on a narrative stage. A narrative stage is a canvas the researcher and participant talk over, and moving a node on it is a way of pointing at things rather than an answer, so the movement is deliberately not stored. A preset is one saved way of looking at the network."
   },
   "protocolBuilder.networkCanvas.repositioningLabel": {
     "defaultMessage": "Allow moving nodes",

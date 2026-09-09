@@ -176,6 +176,47 @@ describe('the narrative stage editor', () => {
   });
 
   /**
+   * What the editor says the stage does, checked against what the stage does.
+   *
+   * Narrative's runtime initialises its layout with `persist: false` and hands
+   * the canvas no drag handler, so a node the participant moves is never
+   * written anywhere; and with automatic layout off it filters out the nodes
+   * the preset's attribute holds no position for and restores the rest from
+   * their stored coordinates, rather than putting every node in a bucket for
+   * the participant to place. The editor said the opposite of both. A
+   * researcher plans a study around what this page tells them, so wrong copy
+   * here is a false claim about what the study collects, not a typo.
+   */
+  it('describes moving a node as the temporary thing it is', async () => {
+    const harness = openFixture();
+    await waitFor(() => expect(harness.outline()).toHaveLength(9));
+
+    expect(
+      screen.getByText(/Nothing is recorded/, { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/positions are stored in the attribute/, {
+        exact: false,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('describes manual layout as a narrative stage performs it', async () => {
+    const harness = openFixture();
+    await waitFor(() => expect(harness.outline()).toHaveLength(9));
+
+    expect(
+      screen.getByText(
+        /Shows every node at the position already stored in the attribute the preset positions by/,
+      ),
+    ).toBeInTheDocument();
+    // The shared sentence belongs to the stages that COLLECT positions.
+    expect(
+      screen.queryByText(/bucket/, { exact: false }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
    * The refusal has to be attributable: a researcher looking at the outline
    * has to be told which section is holding the save up, not only that
    * something is.

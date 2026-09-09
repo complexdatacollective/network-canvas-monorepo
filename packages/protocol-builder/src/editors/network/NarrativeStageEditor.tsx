@@ -5,6 +5,7 @@ import AutomaticLayoutSection from '../../sections/network/AutomaticLayoutSectio
 import BackgroundSection from '../../sections/network/BackgroundSection.tsx';
 import NarrativeBehavioursSection from '../../sections/network/NarrativeBehavioursSection.tsx';
 import NarrativePresetsSection from '../../sections/network/NarrativePresetsSection.tsx';
+import { networkCanvasMessages } from '../../sections/network/networkCanvasMessages.ts';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageHeading from '../../sections/StageHeading.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
@@ -39,6 +40,13 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl('narrative');
  * mentions and nothing on screen can change. The save would not lose it: a
  * submit writes each mounted field at its OWN path and leaves the keys beside
  * it alone.
+ *
+ * Its manual-mode sentence is this interface's own. The shared one describes
+ * the stages that COLLECT positions, where every node starts in a bucket at
+ * the foot of the canvas waiting to be placed; a narrative stage places
+ * nothing, and shows each node at the position its preset's attribute already
+ * holds — leaving out the ones it holds no position for. The two are opposite
+ * starting states, so the section is told which one this is.
  */
 export function NarrativeStageEditor({
   controller,
@@ -53,7 +61,11 @@ export function NarrativeStageEditor({
       <SubjectSection entity="node" filter />
       <NarrativePresetsSection />
       <BackgroundSection allowsImage />
-      <AutomaticLayoutSection />
+      <AutomaticLayoutSection
+        manualDescription={
+          networkCanvasMessages.layoutModeManualNarrativeDescription
+        }
+      />
       <NarrativeBehavioursSection />
       <SkipLogicSection />
       <InterviewerGuidanceSection />

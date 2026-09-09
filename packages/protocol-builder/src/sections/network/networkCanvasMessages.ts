@@ -109,6 +109,13 @@ export const networkCanvasMessages = defineMessages({
     description:
       'Says what the participant sees in manual layout mode. The "bucket" is the holding area at the foot of the canvas that unplaced nodes wait in; the quotation marks are in the English because it is a nickname for that area rather than a formal name.',
   },
+  layoutModeManualNarrativeDescription: {
+    id: 'protocolBuilder.networkCanvas.layoutModeManualNarrativeDescription',
+    defaultMessage:
+      'Shows every node at the position already stored in the attribute the preset positions by. A node that attribute holds no position for is left off the canvas.',
+    description:
+      'Says what the participant sees in manual layout mode on a narrative stage, which shows a network that has already been built rather than asking the participant to place anything. Said instead of layoutModeManualDescription, whose bucket of unplaced nodes belongs to the stages that collect positions. A preset is one saved way of looking at the network.',
+  },
   layoutModeAutomaticLabel: {
     id: 'protocolBuilder.networkCanvas.layoutModeAutomaticLabel',
     defaultMessage: 'Automatic mode',
@@ -282,9 +289,9 @@ export const networkCanvasMessages = defineMessages({
   repositioningHint: {
     id: 'protocolBuilder.networkCanvas.repositioningHint',
     defaultMessage:
-      'The participant can drag nodes to new positions. Their positions are stored in the attribute the preset uses for layout, so moving a node here changes it everywhere that attribute is used.',
+      'The participant can drag nodes around while they talk. Nothing is recorded: the attribute the preset positions by is left as it is, and the nodes are back where the preset put them the next time the stage is opened.',
     description:
-      'Guidance under the allow-moving-nodes switch on a narrative stage, where each preset names the attribute the positions are stored in.',
+      'Guidance under the allow-moving-nodes switch on a narrative stage. A narrative stage is a canvas the researcher and participant talk over, and moving a node on it is a way of pointing at things rather than an answer, so the movement is deliberately not stored. A preset is one saved way of looking at the network.',
   },
 
   // The list of saved ways of looking at the network.

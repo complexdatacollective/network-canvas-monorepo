@@ -11,6 +11,7 @@ import ComposerEdgeConfigurationSection from '../ComposerEdgeConfigurationSectio
 import ComposerNodeConfigurationSection from '../ComposerNodeConfigurationSection.tsx';
 import NarrativeBehavioursSection from '../NarrativeBehavioursSection.tsx';
 import NarrativePresetsSection from '../NarrativePresetsSection.tsx';
+import { networkCanvasMessages } from '../networkCanvasMessages.ts';
 
 /**
  * The canvas sections read in Spanish.
@@ -154,7 +155,33 @@ describe('the canvas sections, read in Spanish', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'El participante puede arrastrar los nodos a nuevas posiciones. Sus posiciones se guardan en el atributo que la vista predefinida usa para la disposición, así que mover un nodo aquí lo cambia en todos los sitios donde se use ese atributo.',
+        'El participante puede arrastrar los nodos mientras habla. No se registra nada: el atributo con el que la vista predefinida coloca los nodos se deja tal cual, y los nodos vuelven a donde los puso la vista predefinida la próxima vez que se abre la etapa.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The manual-mode sentence a narrative stage supplies instead of the shared
+   * one, which is where a descriptor handed across that seam as a resolved
+   * string would show up: the sociogram's own wording is translated above, and
+   * this one would render in English beside it.
+   */
+  it('reads a narrative stage’s own manual-mode wording in Spanish', () => {
+    renderStageEditor({
+      stageId: 'narrative-1',
+      locale: 'es',
+      sections: (
+        <AutomaticLayoutSection
+          manualDescription={
+            networkCanvasMessages.layoutModeManualNarrativeDescription
+          }
+        />
+      ),
+    });
+
+    expect(
+      screen.getByText(
+        'Muestra cada nodo en la posición ya guardada en el atributo con el que la vista predefinida los coloca. Un nodo para el que ese atributo no tenga posición se queda fuera del lienzo.',
       ),
     ).toBeInTheDocument();
   });
