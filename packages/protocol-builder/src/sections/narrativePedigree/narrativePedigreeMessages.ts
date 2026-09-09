@@ -68,6 +68,12 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Heading of the warning shown when the stage this one was pointed at can no longer be used. The sentence under it says which of the three things went wrong.',
   },
+  sourceStageOption: {
+    id: 'protocolBuilder.narrativePedigree.sourceStageOption',
+    defaultMessage: 'Stage {position, number} \u2014 {stageLabel}',
+    description:
+      'One Family Pedigree stage offered as the one this stage draws its family from. position is where that stage will sit in the finished interview, counting from one; stageLabel is the researcher\u2019s own name for it and is not translated. The number is shown because two stages may carry the same name.',
+  },
   sourceUnusableOption: {
     id: 'protocolBuilder.narrativePedigree.sourceUnusableOption',
     defaultMessage: '{stageId} — this stage can no longer be used',
@@ -94,6 +100,26 @@ export const narrativePedigreeMessages = defineMessages({
       'The Family Pedigree stage this one reads now runs after it, so the family would still be empty. Move it earlier in the interview, or choose a pedigree that runs before this stage.',
     description:
       'Shown when the stage this one draws its family from has been moved to run later in the interview, so the participant would not have built the family yet.',
+  },
+
+  sourceChangeTitle: {
+    id: 'protocolBuilder.narrativePedigree.sourceChangeTitle',
+    defaultMessage: 'This will remove every disease',
+    description:
+      'Title of the confirmation shown before a researcher points this stage at a different Family Pedigree stage. Every disease it draws names an attribute of the current pedigree\u2019s family members, so changing the pedigree discards all of them.',
+  },
+  sourceChangeDescription: {
+    id: 'protocolBuilder.narrativePedigree.sourceChangeDescription',
+    defaultMessage:
+      'Each disease names an attribute of the family members the current pedigree collects, so none of them would still describe the new one. Choosing a different pedigree removes them all, and choosing this one again does not bring them back.',
+    description:
+      'Body of the confirmation shown before a narrative pedigree\u2019s source changes, saying what the change discards and that reversing the choice does not undo it.',
+  },
+  sourceChangeConfirm: {
+    id: 'protocolBuilder.narrativePedigree.sourceChangeConfirm',
+    defaultMessage: 'Change the pedigree',
+    description:
+      'Button that confirms pointing a narrative pedigree at a different Family Pedigree stage and discarding every disease that described the previous one.',
   },
 
   // ── The list of conditions drawn on that family ───────────────────────────
@@ -181,6 +207,19 @@ export const narrativePedigreeMessages = defineMessages({
       'Nothing records this attribute, so nobody would be marked with it. Add a nomination prompt to the source pedigree asking who has this condition, then map it here.',
     description:
       'Refusal shown under the attribute control in the disease dialog when the chosen attribute is one no nomination prompt of the source Family Pedigree stage records — a mapping to it draws an unmarked family in every interview. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name; "Nomination prompts" is the name of that part of the pedigree editor.',
+  },
+  diseasesMarkNobody: {
+    id: 'protocolBuilder.narrativePedigree.diseasesMarkNobody',
+    defaultMessage:
+      '{count, plural, one {{diseaseNames} maps an attribute the source pedigree does not record, so nobody in the family would be marked with it. Add a nomination prompt to that pedigree asking who has it, or remove the disease.} other {{diseaseNames} map attributes the source pedigree does not record, so nobody in the family would be marked with them. Add a nomination prompt to that pedigree for each of them, or remove those diseases.}}',
+    description:
+      'Refusal shown above the disease list when one or more diseases already in it map an attribute no nomination prompt of the source Family Pedigree stage records \u2014 usually because a collaborator deleted that prompt, or the protocol was imported that way. count is how many such diseases there are; diseaseNames is their names, already joined into one phrase in the reader\u2019s language. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name.',
+  },
+  diseaseMarksNobody: {
+    id: 'protocolBuilder.narrativePedigree.diseaseMarksNobody',
+    defaultMessage: 'Nothing records this attribute',
+    description:
+      'Badge shown on a collapsed row of the disease list when that disease maps an attribute the source Family Pedigree stage does not record, so the disease would mark nobody. Terse because it sits inside a row beside the disease\u2019s name.',
   },
   diseasesDuplicateLabel: {
     id: 'protocolBuilder.narrativePedigree.diseasesDuplicateLabel',

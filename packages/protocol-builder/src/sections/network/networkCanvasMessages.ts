@@ -256,7 +256,7 @@ export const networkCanvasMessages = defineMessages({
     defaultMessage:
       'Choose what the participant may do to the picture while they tell their story.',
     description:
-      'Description of the canvas-interaction section on a narrative stage, where the participant is shown the network they have already built and asked to talk about it. The sociogram’s wording is sociogramCanvasInteractionDescription.',
+      'Description of the canvas-interaction section on a narrative stage, where the participant is shown the network they have already built and asked to talk about it.',
   },
   freeDrawLabel: {
     id: 'protocolBuilder.networkCanvas.freeDrawLabel',
@@ -281,21 +281,7 @@ export const networkCanvasMessages = defineMessages({
     defaultMessage:
       'The participant can drag nodes to new positions. Their positions are stored in the attribute the preset uses for layout, so moving a node here changes it everywhere that attribute is used.',
     description:
-      'Guidance under the allow-moving-nodes switch on a narrative stage, where each preset names the attribute the positions are stored in. The sociogram’s wording is sociogramRepositioningHint.',
-  },
-  sociogramCanvasInteractionDescription: {
-    id: 'protocolBuilder.networkCanvas.sociogramCanvasInteractionDescription',
-    defaultMessage:
-      'Choose what the participant may do to the canvas while they work through the prompts.',
-    description:
-      'Description of the canvas-interaction section on a sociogram stage, where the participant is working through a series of tasks rather than talking over a finished picture. Replaces canvasInteractionDescription.',
-  },
-  sociogramRepositioningHint: {
-    id: 'protocolBuilder.networkCanvas.sociogramRepositioningHint',
-    defaultMessage:
-      'The participant can drag nodes to new positions. Each position is stored in the attribute the prompt they are answering names, so moving a node here changes it everywhere that attribute is used.',
-    description:
-      'Guidance under the allow-moving-nodes switch on a sociogram stage, where the prompt rather than a preset names the attribute the positions are stored in. Replaces repositioningHint.',
+      'Guidance under the allow-moving-nodes switch on a narrative stage, where each preset names the attribute the positions are stored in.',
   },
 
   // The list of saved ways of looking at the network.
@@ -793,6 +779,24 @@ export const networkCanvasMessages = defineMessages({
     defaultMessage: 'Leave every type unticked to draw no connections at all.',
     description:
       'Guidance under the prompt connection-types tick list, saying that ticking nothing is a real answer rather than an unfinished one.',
+  },
+  /**
+   * Names an edge type the researcher's prompt still displays and the codebook
+   * no longer defines.
+   *
+   * A stored id nothing describes any more is kept and shown rather than
+   * quietly dropped, exactly as `VariablePicker.missingOptionLabel` keeps a
+   * deleted attribute: the tick list renders from the codebook, so an id no
+   * choice carries left the prompt holding a reference the researcher could
+   * neither see nor untick — and the protocol went on being refused for it
+   * with no way to repair the prompt short of deleting the whole thing.
+   */
+  promptMissingEdgeType: {
+    id: 'protocolBuilder.networkCanvas.promptMissingEdgeType',
+    defaultMessage:
+      '{edgeTypeId} — this edge type is no longer in the codebook',
+    description:
+      'Name of the one tick-list choice standing for an edge type a prompt still displays and the protocol’s codebook no longer defines. edgeTypeId is the raw stored identifier — there is no name left to show, because the definition it would have come from has been deleted. An edge type is a kind of relationship between two network members.',
   },
   promptEmptyPreview: {
     id: 'protocolBuilder.networkCanvas.promptEmptyPreview',

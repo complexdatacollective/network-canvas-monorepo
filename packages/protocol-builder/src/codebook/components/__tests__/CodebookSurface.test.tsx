@@ -35,6 +35,7 @@ const context: ProtocolBuilderProtocolContext = {
   },
   assets: {},
   orderedStages: [],
+  stageOrder: [],
   issues: [
     {
       sectionId: 'codebook:node:missing',
@@ -132,6 +133,7 @@ describe('CodebookSurface', () => {
           codebook: { node: {}, edge: {} },
           assets: {},
           orderedStages: [],
+          stageOrder: [],
           issues: [],
         }}
         onCreateEntity={onCreateEntity}

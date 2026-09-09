@@ -1983,6 +1983,10 @@
     "defaultMessage": "Choose how this disease is inherited.",
     "description": "Refusal shown under the inheritance-pattern control when the researcher saves the dialog without choosing one."
   },
+  "protocolBuilder.narrativePedigree.diseaseMarksNobody": {
+    "defaultMessage": "Nothing records this attribute",
+    "description": "Badge shown on a collapsed row of the disease list when that disease maps an attribute the source Family Pedigree stage does not record, so the disease would mark nobody. Terse because it sits inside a row beside the disease’s name."
+  },
   "protocolBuilder.narrativePedigree.diseaseNameHint": {
     "defaultMessage": "Shown to the participant in the pedigree's key, so it should be a name they recognize.",
     "description": "Guidance under the disease-name field. The key is the legend drawn beside the family tree, naming what each colour means."
@@ -2063,6 +2067,10 @@
     "defaultMessage": "Diseases",
     "description": "Label of the list of conditions inside the diseases section. The same word as the section heading, and translated once for each: the heading names the part of the stage, and this names the control."
   },
+  "protocolBuilder.narrativePedigree.diseasesMarkNobody": {
+    "defaultMessage": "{count, plural, one {{diseaseNames} maps an attribute the source pedigree does not record, so nobody in the family would be marked with it. Add a nomination prompt to that pedigree asking who has it, or remove the disease.} other {{diseaseNames} map attributes the source pedigree does not record, so nobody in the family would be marked with them. Add a nomination prompt to that pedigree for each of them, or remove those diseases.}}",
+    "description": "Refusal shown above the disease list when one or more diseases already in it map an attribute no nomination prompt of the source Family Pedigree stage records — usually because a collaborator deleted that prompt, or the protocol was imported that way. count is how many such diseases there are; diseaseNames is their names, already joined into one phrase in the reader’s language. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name."
+  },
   "protocolBuilder.narrativePedigree.diseasesNotRecorded": {
     "defaultMessage": "Nothing records this attribute, so nobody would be marked with it. Add a nomination prompt to the source pedigree asking who has this condition, then map it here.",
     "description": "Refusal shown under the attribute control in the disease dialog when the chosen attribute is one no nomination prompt of the source Family Pedigree stage records — a mapping to it draws an unmarked family in every interview. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name; \"Nomination prompts\" is the name of that part of the pedigree editor."
@@ -2111,6 +2119,18 @@
     "defaultMessage": "The Family Pedigree stage this one reads now runs after it, so the family would still be empty. Move it earlier in the interview, or choose a pedigree that runs before this stage.",
     "description": "Shown when the stage this one draws its family from has been moved to run later in the interview, so the participant would not have built the family yet."
   },
+  "protocolBuilder.narrativePedigree.sourceChangeConfirm": {
+    "defaultMessage": "Change the pedigree",
+    "description": "Button that confirms pointing a narrative pedigree at a different Family Pedigree stage and discarding every disease that described the previous one."
+  },
+  "protocolBuilder.narrativePedigree.sourceChangeDescription": {
+    "defaultMessage": "Each disease names an attribute of the family members the current pedigree collects, so none of them would still describe the new one. Choosing a different pedigree removes them all, and choosing this one again does not bring them back.",
+    "description": "Body of the confirmation shown before a narrative pedigree’s source changes, saying what the change discards and that reversing the choice does not undo it."
+  },
+  "protocolBuilder.narrativePedigree.sourceChangeTitle": {
+    "defaultMessage": "This will remove every disease",
+    "description": "Title of the confirmation shown before a researcher points this stage at a different Family Pedigree stage. Every disease it draws names an attribute of the current pedigree’s family members, so changing the pedigree discards all of them."
+  },
   "protocolBuilder.narrativePedigree.sourceDescription": {
     "defaultMessage": "Choose the Family Pedigree stage whose family this stage visualizes.",
     "description": "Description of the pedigree-source section. \"Family Pedigree\" is the name of another kind of interview step, the one in which the participant builds their family tree; a stage is one step of an interview."
@@ -2146,6 +2166,10 @@
   "protocolBuilder.narrativePedigree.sourceProblemTitle": {
     "defaultMessage": "This stage has no family to show",
     "description": "Heading of the warning shown when the stage this one was pointed at can no longer be used. The sentence under it says which of the three things went wrong."
+  },
+  "protocolBuilder.narrativePedigree.sourceStageOption": {
+    "defaultMessage": "Stage {position, number} — {stageLabel}",
+    "description": "One Family Pedigree stage offered as the one this stage draws its family from. position is where that stage will sit in the finished interview, counting from one; stageLabel is the researcher’s own name for it and is not translated. The number is shown because two stages may carry the same name."
   },
   "protocolBuilder.narrativePedigree.sourceTitle": {
     "defaultMessage": "Pedigree source",
@@ -2217,7 +2241,7 @@
   },
   "protocolBuilder.networkCanvas.canvasInteractionDescription": {
     "defaultMessage": "Choose what the participant may do to the picture while they tell their story.",
-    "description": "Description of the canvas-interaction section on a narrative stage, where the participant is shown the network they have already built and asked to talk about it. The sociogram’s wording is sociogramCanvasInteractionDescription."
+    "description": "Description of the canvas-interaction section on a narrative stage, where the participant is shown the network they have already built and asked to talk about it."
   },
   "protocolBuilder.networkCanvas.canvasInteractionTitle": {
     "defaultMessage": "Canvas interaction",
@@ -2807,6 +2831,10 @@
     "defaultMessage": "Choose the attribute this prompt stores positions in.",
     "description": "Refusal shown under the prompt position-attribute picker when the researcher saves a prompt without choosing one."
   },
+  "protocolBuilder.networkCanvas.promptMissingEdgeType": {
+    "defaultMessage": "{edgeTypeId} — this edge type is no longer in the codebook",
+    "description": "Name of the one tick-list choice standing for an edge type a prompt still displays and the protocol’s codebook no longer defines. edgeTypeId is the raw stored identifier — there is no name left to show, because the definition it would have come from has been deleted. An edge type is a kind of relationship between two network members."
+  },
   "protocolBuilder.networkCanvas.promptPositionsDescription": {
     "defaultMessage": "Where the participant's placements are remembered.",
     "description": "Description of the prompt node-positions group."
@@ -2877,15 +2905,11 @@
   },
   "protocolBuilder.networkCanvas.repositioningHint": {
     "defaultMessage": "The participant can drag nodes to new positions. Their positions are stored in the attribute the preset uses for layout, so moving a node here changes it everywhere that attribute is used.",
-    "description": "Guidance under the allow-moving-nodes switch on a narrative stage, where each preset names the attribute the positions are stored in. The sociogram’s wording is sociogramRepositioningHint."
+    "description": "Guidance under the allow-moving-nodes switch on a narrative stage, where each preset names the attribute the positions are stored in."
   },
   "protocolBuilder.networkCanvas.repositioningLabel": {
     "defaultMessage": "Allow moving nodes",
     "description": "Label of the switch letting the participant drag nodes to new places on the canvas."
-  },
-  "protocolBuilder.networkCanvas.sociogramCanvasInteractionDescription": {
-    "defaultMessage": "Choose what the participant may do to the canvas while they work through the prompts.",
-    "description": "Description of the canvas-interaction section on a sociogram stage, where the participant is working through a series of tasks rather than talking over a finished picture. Replaces canvasInteractionDescription."
   },
   "protocolBuilder.networkCanvas.sociogramPromptsDescription": {
     "defaultMessage": "Write the tasks the participant works through on the canvas, and drag them into the order they do them.",
@@ -2902,10 +2926,6 @@
   "protocolBuilder.networkCanvas.sociogramPromptsWaitingDescription": {
     "defaultMessage": "Choose what this stage works with before writing its prompts.",
     "description": "Shown in place of the sociogram prompts description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against."
-  },
-  "protocolBuilder.networkCanvas.sociogramRepositioningHint": {
-    "defaultMessage": "The participant can drag nodes to new positions. Each position is stored in the attribute the prompt they are answering names, so moving a node here changes it everywhere that attribute is used.",
-    "description": "Guidance under the allow-moving-nodes switch on a sociogram stage, where the prompt rather than a preset names the attribute the positions are stored in. Replaces repositioningHint."
   },
   "protocolBuilder.networkCanvas.tapBehaviourLabel": {
     "defaultMessage": "Tap behavior",
@@ -3746,6 +3766,10 @@
   "protocolBuilder.pedigree.variableGoneRefusal": {
     "defaultMessage": "\"{attributeName}\" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.",
     "description": "Refusal shown under a pedigree attribute control when the attribute it holds has been deleted from the codebook — by a collaborator, or in another part of this session — while this editor was open. attributeName is the codebook name of the attribute, or its stored identifier when there is no definition left to take a name from; neither is translated."
+  },
+  "protocolBuilder.pedigree.variableOptionsChangedRefusal": {
+    "defaultMessage": "\"{attributeName}\" no longer offers the exact values this control needs, because they were changed somewhere else. Choose another attribute.",
+    "description": "Refusal shown under a pedigree attribute control whose slot uses a fixed set of values the interface owns — biological sex, relationship type, or gamete role — when the attribute it holds still exists and is still a list of answers, but the values it offers have been edited elsewhere and no longer match that fixed set. attributeName is the codebook name of the attribute, which is not translated."
   },
   "protocolBuilder.pedigree.variableTypeChangedRefusal": {
     "defaultMessage": "\"{attributeName}\" is no longer the kind of attribute this control can use, because its type was changed somewhere else. Choose another attribute.",

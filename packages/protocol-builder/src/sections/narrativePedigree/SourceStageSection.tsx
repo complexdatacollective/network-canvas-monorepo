@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import {
   createMessageError,
@@ -6,9 +6,9 @@ import {
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
-import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
+import ConfirmingSelectField from '../../fields/ConfirmingSelectField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
@@ -16,9 +16,17 @@ import {
   useStageValue,
 } from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
+import {
+  type EntityTypeChangeWords,
+  useEntityTypeChangeConfirmation,
+} from '../pedigree/entityTypeReset.ts';
 import { useOnResearcherChange } from '../researcherChange.ts';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
-import { resolveSourceStages, type SourceStageProblem } from './sourceStage.ts';
+import {
+  resolveSourceStages,
+  type SourceStageOption,
+  type SourceStageProblem,
+} from './sourceStage.ts';
 
 const SOURCE_FIELD = 'sourceStageId';
 const DISEASES_FIELD = 'diseases';
@@ -50,6 +58,21 @@ const PROBLEM_MESSAGES: Readonly<
 });
 
 /**
+ * What a source change costs, in this stage's own words.
+ *
+ * Declared beside the field the reset discards, so a path added to one is
+ * visibly missing from the other. `useEntityTypeChangeConfirmation` is the
+ * shared question a destructive pick asks — the same one a pedigree's type
+ * chips ask — so the two cannot judge "there is something to lose"
+ * differently, or one of them quietly stop asking.
+ */
+const SOURCE_CHANGE_WORDS: EntityTypeChangeWords = Object.freeze({
+  title: narrativePedigreeMessages.sourceChangeTitle,
+  description: narrativePedigreeMessages.sourceChangeDescription,
+  confirmLabel: narrativePedigreeMessages.sourceChangeConfirm,
+});
+
+/**
  * The family this stage draws, and the stage that collected it.
  *
  * Every disease mapping names an attribute of the source pedigree's node type,
@@ -57,6 +80,15 @@ const PROBLEM_MESSAGES: Readonly<
  * rather than left to fail validation later: the researcher reconfigures
  * against the new family, instead of saving a stage that points at attributes
  * the new node type does not have.
+ *
+ * Which is why the choice is held back until the researcher has agreed to it.
+ * An option in a listbox is one click, and the reset it triggers cannot be
+ * taken back by choosing the old pedigree again — the diseases are gone, and
+ * the researcher has to notice and reach for undo. The question is asked
+ * through `useEntityTypeChangeConfirmation` and by `ConfirmingSelectField`,
+ * before the value moves, which is the same seam and the same moment a
+ * pedigree's own type chips use: one definition of "is there anything to
+ * lose", so no destructive pick in this package can quietly stop asking.
  *
  * The removal goes through `useDiscardStageValues`, which is the one seam a
  * reset goes through, and it is one batch: the chosen source first, the
@@ -75,6 +107,13 @@ export default function SourceStageSection() {
     useStageEditorForm();
   const sourceStageId = useStageValue(SOURCE_FIELD);
   const discardStageValues = useDiscardStageValues();
+  // Asked of the SAME field the reset below discards, so the question can
+  // neither appear over a change that costs nothing — a stage that has mapped
+  // no disease yet — nor stay silent over one that costs something.
+  const confirmSourceChange = useEntityTypeChangeConfirmation(
+    [DISEASES_FIELD],
+    SOURCE_CHANGE_WORDS,
+  );
 
   // Where the stage runs decides which pedigrees precede it, and a stage being
   // created is not in the order to be found in: the session carries the
@@ -91,6 +130,30 @@ export default function SourceStageSection() {
     [creation?.position, identity.id, protocolContext, sourceStageId],
   );
 
+  /**
+   * Each pedigree named by where it runs as well as by what it is called.
+   *
+   * A stage label is required to be non-empty and is not required to be
+   * unique, and a researcher may rename a generated name — so two Family
+   * Pedigree stages can read identically here while collecting different
+   * families. Numbered, they cannot; the same reason, and the same phrasing,
+   * as the skip-logic destination control.
+   *
+   * No untitled variant, because there is no untitled stage to name: only
+   * stages the protocol schema accepted reach `orderedStages`, and it requires
+   * a label.
+   */
+  const numbered = useCallback(
+    (option: SourceStageOption) => ({
+      value: option.value,
+      label: intl.formatMessage(narrativePedigreeMessages.sourceStageOption, {
+        position: option.position,
+        stageLabel: option.label,
+      }),
+    }),
+    [intl],
+  );
+
   // A stored choice the list no longer contains is still offered, as the
   // current one and labelled with what is wrong: blanking the control would
   // hide the very reference the researcher has to resolve, and would then
@@ -98,9 +161,9 @@ export default function SourceStageSection() {
   const selectOptions = useMemo<{ value: string; label: string }[]>(
     () =>
       problem === null || typeof sourceStageId !== 'string'
-        ? options.map((option) => ({ ...option }))
+        ? options.map(numbered)
         : [
-            ...options.map((option) => ({ ...option })),
+            ...options.map(numbered),
             {
               value: sourceStageId,
               label: intl.formatMessage(
@@ -109,7 +172,7 @@ export default function SourceStageSection() {
               ),
             },
           ],
-    [intl, options, problem, sourceStageId],
+    [intl, numbered, options, problem, sourceStageId],
   );
 
   /**
@@ -204,9 +267,10 @@ export default function SourceStageSection() {
           session's own complaint about the missing source with no field to
           attribute it to. Mounted and empty, the section reports the
           prerequisite nobody has met yet. */}
-      <ProtocolField<typeof StyledSelectField>
+      <ProtocolField<typeof ConfirmingSelectField>
         name={SOURCE_FIELD}
-        component={StyledSelectField}
+        component={ConfirmingSelectField}
+        confirmChange={confirmSourceChange}
         label={intl.formatMessage(narrativePedigreeMessages.sourceLabel)}
         hint={intl.formatMessage(narrativePedigreeMessages.sourceHint)}
         placeholder={intl.formatMessage(

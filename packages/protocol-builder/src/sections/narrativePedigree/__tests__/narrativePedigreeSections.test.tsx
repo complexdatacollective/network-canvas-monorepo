@@ -9,6 +9,8 @@ import {
   fixtureProtocolSections,
   fixtureStageIds,
   loadFixtureStage,
+  recordingTheFixtureDisease,
+  sourcePedigreeDocument,
 } from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
@@ -178,6 +180,47 @@ const movePedigreeLast = (stages: string[]): string[] => [
   'family-pedigree-1',
 ];
 
+/**
+ * How the source control names the fixture's only pedigree.
+ *
+ * Every option carries the number the stage will have in the finished
+ * interview, so two pedigrees a researcher gave one name can still be told
+ * apart. Read off the fixture's own order rather than written down, because
+ * the number is a fact about the fixture and not about this rule; `displaced`
+ * is for a stage being CREATED, which pushes everything at or after its own
+ * index one place down.
+ */
+const fixturePedigreeOption = (displaced = false): string =>
+  `Stage ${fixtureStageIds().indexOf('family-pedigree-1') + (displaced ? 2 : 1)} — Family Pedigree`;
+
+/** What the confirmation before a source change offers as its answer. */
+const CONFIRM_SOURCE_CHANGE = 'Change the pedigree';
+
+/**
+ * Chooses a source pedigree on a stage that has diseases to lose, and agrees
+ * to losing them.
+ *
+ * Every disease names an attribute of the current pedigree's family members,
+ * so a different pedigree leaves none of them usable and the reset that
+ * follows the choice throws them all away. That is asked about first, which
+ * means a test driving this stage answers the question the researcher is
+ * asked rather than skipping it.
+ */
+async function chooseSourcePedigree(
+  harness: StageEditorHarness,
+  optionLabel: string,
+): Promise<void> {
+  await chooseOption(harness, 'Source stage', optionLabel);
+  await harness.user.click(
+    await screen.findByRole('button', { name: CONFIRM_SOURCE_CHANGE }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('button', { name: CONFIRM_SOURCE_CHANGE }),
+    ).not.toBeInTheDocument(),
+  );
+}
+
 /** The pedigrees the source control is currently offering, by their labels. */
 async function offeredSources(harness: StageEditorHarness): Promise<string[]> {
   await harness.user.click(
@@ -193,79 +236,27 @@ const A_SECOND_BOOLEAN = {
   hasConditionY: { name: 'hasConditionY', type: 'boolean' },
 } as const;
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/**
- * The source pedigree, recording or collecting attributes of its node type.
- *
- * `records` gives it a nomination prompt per attribute — the participant is
- * asked who in the family it applies to, and everyone they name is marked with
- * it. That is the one surface that ever sets a family member's disease boolean,
- * so it is what a disease may be mapped to, and the fixture's own pedigree has
- * none.
- *
- * `collects` gives it a member-form field instead. A form field is a VALIDATED
- * writer: what the participant types is checked before it is stored. A disease
- * mapping writes the same attribute from the tree the participant draws, with
- * no validation at all, so the two may never name one attribute — the protocol
- * reports a role conflict for it, and the values the pedigree writes would
- * bypass the field's validation.
- *
- * Built from the fixture's own pedigree rather than written out here, so this
- * stays a real source stage: everything the narrative pedigree resolves
- * through it — its node type above all — is the fixture's.
- */
-function sourcePedigree(
-  change: Readonly<{ records?: readonly string[]; collects?: string }>,
-): SectionDoc {
-  const source = loadFixtureStage('family-pedigree-1');
-  const nodeConfig = source.fields.nodeConfig;
-  if (!isRecord(nodeConfig)) {
-    throw new Error(
-      'The fixture stage "family-pedigree-1" no longer configures a node type.',
-    );
-  }
-  return {
-    id: source.id,
-    type: source.type,
-    ...source.fields,
-    nodeConfig: {
-      ...nodeConfig,
-      ...(change.collects === undefined
-        ? {}
-        : {
-            form: [
-              {
-                variable: change.collects,
-                prompt: 'How would you describe them?',
-              },
-            ],
-          }),
-    },
-    ...(change.records === undefined
-      ? {}
-      : {
-          nominationPrompts: change.records.map((variable, index) => ({
-            id: `nomination-${index + 1}`,
-            text: `Who in your family has ${variable}?`,
-            variable,
-          })),
-        }),
-  };
-}
-
-/** The fixture's pedigree, recording the attribute its narrative one maps. */
-const recordingTheFixtureDisease = {
-  'family-pedigree-1': sourcePedigree({ records: ['hasConditionX'] }),
-};
-
 /** The same, recording the second boolean the codebook updates add too. */
 const recordingBothConditions = {
-  'family-pedigree-1': sourcePedigree({
+  'family-pedigree-1': sourcePedigreeDocument({
     records: ['hasConditionX', 'hasConditionY'],
   }),
 };
+
+/**
+ * The fixture narrative pedigree over a pedigree that RECORDS the disease it
+ * maps.
+ *
+ * The fixture protocol's own Family Pedigree has no nomination prompts at all,
+ * so the attribute its narrative pedigree draws is one nothing ever sets — a
+ * stage the disease list now refuses to save, and rightly. Every test below
+ * that asserts a save therefore states the source pedigree the stage would
+ * need, rather than asserting a save the editor declines.
+ */
+const openRecordedFixture = () => ({
+  ...openFixture(),
+  otherStages: recordingTheFixtureDisease(),
+});
 
 describe('the pedigree a narrative pedigree draws', () => {
   it('opens on the stage as the protocol holds it', async () => {
@@ -288,14 +279,14 @@ describe('the pedigree a narrative pedigree draws', () => {
   });
 
   it('saves the stage it opened, unchanged', async () => {
-    const harness = renderStageEditor(openFixture());
+    const harness = renderStageEditor(openRecordedFixture());
 
     // The stage's name belongs to a section this mount does not include.
     await harness.roundTrip({ unowned: ['label'] });
   });
 
   it('saves an edit to every key it owns', async () => {
-    const harness = renderStageEditor(openFixture());
+    const harness = renderStageEditor(openRecordedFixture());
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Show possible (at-risk) statuses' }),
@@ -392,7 +383,9 @@ describe('a narrative pedigree the host is creating', () => {
   it('offers the pedigrees it will run after', async () => {
     const harness = renderStageEditor(createAt(fixtureStageIds().length));
 
-    expect(await offeredSources(harness)).toEqual(['Family Pedigree']);
+    expect(await offeredSources(harness)).toEqual([
+      fixturePedigreeOption(true),
+    ]);
   });
 
   /**
@@ -444,6 +437,10 @@ describe('saving a narrative pedigree whose source cannot be used', () => {
     renderStageEditor({
       stage: narrativePedigreeStageWith({}),
       sections: narrativePedigreeSections,
+      // See `openRecordedFixture`: the fixture's own pedigree records nothing,
+      // and one of these claims is that the stage saves once the pedigree is
+      // back before it.
+      otherStages: recordingTheFixtureDisease(),
     });
 
   it('refuses a source that now runs after this stage', async () => {
@@ -457,6 +454,32 @@ describe('saving a narrative pedigree whose source cannot be used', () => {
       ),
     ).toBeInTheDocument();
     expect(await harness.submit()).toBeNull();
+  });
+
+  /**
+   * The same refusal for a stage the schema itself refuses.
+   *
+   * A narrative pedigree an import left with no diseases is one
+   * `protocolContextFromSections` cannot read, so it is absent from
+   * `orderedStages` — and read from that list alone it looked like a stage the
+   * interview does not hold at all, placed as a new one arriving last. Every
+   * pedigree was then offered to it, the one that now runs AFTER it included,
+   * with nothing said. The interview's own order still names it, and that is
+   * where it runs.
+   */
+  it('refuses a later source on a stage the schema cannot read', async () => {
+    const harness = renderStageEditor({
+      stage: narrativePedigreeStageWith({ diseases: [] }),
+      sections: narrativePedigreeSections,
+    });
+
+    reorderStages(harness, movePedigreeLast);
+
+    expect(
+      await screen.findByText(
+        'The Family Pedigree stage this one reads now runs after it, so the family would still be empty. Move it earlier in the interview, or choose a pedigree that runs before this stage.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('refuses a source that has left the interview', async () => {
@@ -580,7 +603,7 @@ describe('the diseases a narrative pedigree defines', () => {
       // attribute off the list. Given a source that merely fails to nominate
       // it, this test would pass with the form rule deleted.
       otherStages: {
-        'family-pedigree-1': sourcePedigree({
+        'family-pedigree-1': sourcePedigreeDocument({
           records: ['hasConditionX', 'hasConditionY'],
           collects: 'hasConditionX',
         }),
@@ -615,7 +638,9 @@ describe('the diseases a narrative pedigree defines', () => {
       stageId: 'narrative-pedigree-1',
       sections: narrativePedigreeSections,
       otherStages: {
-        'family-pedigree-1': sourcePedigree({ collects: 'hasConditionX' }),
+        'family-pedigree-1': sourcePedigreeDocument({
+          collects: 'hasConditionX',
+        }),
       },
     });
 
@@ -715,7 +740,7 @@ describe('the diseases a narrative pedigree defines', () => {
 
     replaceSourcePedigree(
       harness,
-      sourcePedigree({ records: ['hasConditionX'] }),
+      sourcePedigreeDocument({ records: ['hasConditionX'] }),
     );
     await harness.user.click(disease.getByRole('button', { name: 'Add' }));
 
@@ -725,6 +750,84 @@ describe('the diseases a narrative pedigree defines', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
+
+/**
+ * A disease only READS: the Family Pedigree writes a family member's disease
+ * boolean in exactly one place, a nomination prompt of the source pedigree.
+ * An attribute no prompt of it records is therefore never `true`, and the
+ * genetics engine treats only an explicit `true` as affected — so a disease
+ * mapped to one draws an unmarked family in every interview, with nothing in
+ * the protocol schema to say so.
+ *
+ * The picker keeps such an attribute off the list and `onBeforeSave` refuses a
+ * pick that stops qualifying while the dialog is open. Neither sees a row that
+ * is already there: `onBeforeSave` runs only when a row dialog is saved, and
+ * it lets the row's own committed attribute through. So the LIST has to state
+ * the rule as well — for the row a collaborator invalidated while this editor
+ * sat untouched, and for the row an import brought in.
+ */
+describe('a disease the source pedigree stopped recording', () => {
+  it('refuses the save and names the disease', async () => {
+    const harness = renderStageEditor(openRecordedFixture());
+    expect(
+      screen.queryByText('Nothing records this attribute'),
+    ).not.toBeInTheDocument();
+
+    // The collaborator's pedigree records nothing at all, which is the shape
+    // the fixture's own pedigree has: the prompt behind this disease is gone.
+    replaceSourcePedigree(harness, sourcePedigreeDocument({}));
+
+    // The section is reported as having a problem straight away — that is what
+    // the re-run validation is for — and the researcher reads the sentence
+    // under the list when they try to save.
+    await waitFor(() =>
+      expect(
+        harness.outline().find((section) => section.title === 'Diseases')
+          ?.state,
+      ).toBe('Has a problem'),
+    );
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        'Condition X maps an attribute the source pedigree does not record, so nobody in the family would be marked with it. Add a nomination prompt to that pedigree asking who has it, or remove the disease.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The refusal names the rows; the row is where the researcher acts. The
+   * badge is on screen the moment the prompt goes, rather than at the next
+   * submit.
+   */
+  it('marks the row it is about', async () => {
+    const harness = renderStageEditor(openRecordedFixture());
+
+    replaceSourcePedigree(harness, sourcePedigreeDocument({}));
+
+    expect(
+      await screen.findByText('Nothing records this attribute'),
+    ).toBeInTheDocument();
+  });
+
+  /** And it lets go again once the pedigree records the attribute anew. */
+  it('saves again once the pedigree records it again', async () => {
+    const harness = renderStageEditor(openRecordedFixture());
+    replaceSourcePedigree(harness, sourcePedigreeDocument({}));
+    expect(await harness.submit()).toBeNull();
+
+    replaceSourcePedigree(
+      harness,
+      sourcePedigreeDocument({ records: ['hasConditionX'] }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Nothing records this attribute'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(await harness.submit()).not.toBeNull();
   });
 });
 
@@ -757,6 +860,57 @@ describe('a source stage that is no longer usable', () => {
   });
 
   /**
+   * The reset is destructive and a listbox option is one click away, so the
+   * researcher is asked first.
+   *
+   * Undo is not an answer to this: it is a way back from a change the
+   * researcher meant to make, and what this prevents is the one they did not —
+   * a stray choice taking every disease with it, with nothing said, and
+   * choosing the old pedigree again bringing none of them back. The question
+   * is the same seam the pedigree's own type chips ask through
+   * (`useEntityTypeChangeConfirmation`), asked of the very field the reset
+   * discards.
+   */
+  it('asks before a different source discards the diseases', async () => {
+    const harness = renderStageEditor(withMissingSource());
+
+    await chooseOption(harness, 'Source stage', fixturePedigreeOption());
+
+    expect(
+      await screen.findByText('This will remove every disease'),
+    ).toBeInTheDocument();
+    // Nothing has moved while the question stands: the choice is held back
+    // rather than made and offered back.
+    expect(harness.session.getSnapshot().editedSection.fields).toMatchObject({
+      sourceStageId: 'a-pedigree-that-was-deleted',
+      diseases: [{ id: 'disease-1', label: 'Condition X' }],
+    });
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  it('leaves the stage exactly as it was when the researcher says no', async () => {
+    const harness = renderStageEditor(withMissingSource());
+
+    await chooseOption(harness, 'Source stage', fixturePedigreeOption());
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Cancel' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: CONFIRM_SOURCE_CHANGE }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText('Condition X')).toBeInTheDocument();
+    // The control is back on the stored choice too, rather than showing a
+    // pedigree the stage does not read.
+    expect(
+      screen.getByRole('combobox', { name: 'Source stage' }),
+    ).toHaveTextContent('a-pedigree-that-was-deleted');
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  /**
    * Every disease names an attribute of the source pedigree's node type, so a
    * different source invalidates all of them at once. They go rather than
    * being left to fail validation later, and they go as the loss of a whole
@@ -770,7 +924,7 @@ describe('a source stage that is no longer usable', () => {
   it('drops the diseases that described it when another source is chosen', async () => {
     const harness = renderStageEditor(withMissingSource());
 
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseSourcePedigree(harness, fixturePedigreeOption());
 
     await waitFor(() =>
       expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
@@ -803,8 +957,13 @@ describe('a source stage that is no longer usable', () => {
       sections: narrativePedigreeSections,
     });
 
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseOption(harness, 'Source stage', fixturePedigreeOption());
 
+    // Nothing was asked: a stage with no disease has nothing to lose, and a
+    // question about nothing is one a researcher learns to dismiss unread.
+    expect(
+      screen.queryByRole('button', { name: CONFIRM_SOURCE_CHANGE }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('combobox', { name: 'Source stage' }),
     ).toHaveTextContent('Family Pedigree');
@@ -842,7 +1001,7 @@ describe('a source stage that is no longer usable', () => {
     });
     expect(screen.getByText('Condition X')).toBeInTheDocument();
 
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseSourcePedigree(harness, fixturePedigreeOption());
 
     await waitFor(() =>
       expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
@@ -918,7 +1077,7 @@ describe('the batch a source change makes', () => {
     // The pedigree these tests switch TO records the attribute the disease
     // they then describe is mapped to; without a nomination prompt recording it,
     // that attribute is one the picker rightly never offers.
-    otherStages: recordingTheFixtureDisease,
+    otherStages: recordingTheFixtureDisease(),
   });
 
   const draftOf = (harness: StageEditorHarness) =>
@@ -934,7 +1093,7 @@ describe('the batch a source change makes', () => {
   it('carries the chosen pedigree and the diseases it invalidated together', async () => {
     const harness = renderStageEditor(withMissingSource());
 
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseSourcePedigree(harness, fixturePedigreeOption());
 
     await waitFor(() => expect(harness.pendingCommands()).toHaveLength(1));
     expect(
@@ -954,7 +1113,7 @@ describe('the batch a source change makes', () => {
    */
   it('does not bring the old diseases back with the next one added', async () => {
     const harness = renderStageEditor(withMissingSource());
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseSourcePedigree(harness, fixturePedigreeOption());
     await waitFor(() =>
       expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
     );
@@ -1028,8 +1187,11 @@ describe('the batch a source change makes', () => {
       sections: narrativePedigreeSections,
     });
 
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseOption(harness, 'Source stage', fixturePedigreeOption());
 
+    expect(
+      screen.queryByRole('button', { name: CONFIRM_SOURCE_CHANGE }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('combobox', { name: 'Source stage' }),
     ).toHaveTextContent('Family Pedigree');
@@ -1051,7 +1213,7 @@ describe('the batch a source change makes', () => {
    */
   it('comes back whole, source included, when the session undoes it', async () => {
     const harness = renderStageEditor(withMissingSource());
-    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await chooseSourcePedigree(harness, fixturePedigreeOption());
     await waitFor(() =>
       expect(draftOf(harness).sourceStageId).toBe('family-pedigree-1'),
     );

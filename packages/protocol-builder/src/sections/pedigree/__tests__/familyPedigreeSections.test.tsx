@@ -111,11 +111,16 @@ const outlineStateOf = (
 ): string | undefined =>
   harness.outline().find((section) => section.title === title)?.state;
 
-/** The family member form as the session holds it right now. */
-const formRows = (harness: StageEditorHarness): unknown[] => {
+/** The node configuration as the session holds it right now. */
+const nodeConfigOf = (harness: StageEditorHarness): Record<string, unknown> => {
   const nodeConfig =
     harness.session.getSnapshot().editedSection.fields.nodeConfig;
-  const form = isRecord(nodeConfig) ? nodeConfig.form : undefined;
+  return isRecord(nodeConfig) ? nodeConfig : {};
+};
+
+/** The family member form as the session holds it right now. */
+const formRows = (harness: StageEditorHarness): unknown[] => {
+  const form = nodeConfigOf(harness).form;
   return Array.isArray(form) ? form : [];
 };
 
@@ -135,6 +140,9 @@ const FAMILY_MEMBER_SECTION = sectionId({
   kind: 'codebookNode',
   typeId: 'family_member',
 });
+
+/** The other node type the fixture carries, which a pedigree can move to. */
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
 /**
  * jsdom has no layout, and the markdown editor a nomination prompt is written
@@ -182,6 +190,77 @@ const removeFamilyMemberVariable = (
   const { [variableId]: _gone, ...rest } = variables;
   harness.receiveCodebookUpdate({
     node: { family_member: { ...section, variables: rest } },
+  });
+};
+
+const NARRATIVE_PEDIGREE_SECTION = sectionId({
+  kind: 'stage',
+  stageId: 'narrative-pedigree-1',
+});
+
+/**
+ * The fixture's narrative pedigree, repointed at another pedigree as a
+ * collaborator's change.
+ *
+ * The same two-ended arrival `receiveCodebookUpdate` makes, for a STAGE
+ * section rather than a codebook one: the host issues the revision and the
+ * session is told about it under that revision, so this is one protocol seen
+ * from both ends. A narrative pedigree naming a pedigree is what refuses that
+ * pedigree's node type change, and it is a thing a collaborator can do at any
+ * moment — including while the researcher is being asked about a change.
+ */
+const readNarrativePedigreeFrom = (
+  harness: StageEditorHarness,
+  sourceStageId: string,
+): void => {
+  const section =
+    harness.session.getSnapshot().protocolSections[NARRATIVE_PEDIGREE_SECTION];
+  if (section === undefined) {
+    throw new Error('the fixture protocol has no "narrative-pedigree-1" stage');
+  }
+  if (section.sourceStageId === sourceStageId) {
+    throw new Error(
+      `"narrative-pedigree-1" already reads "${sourceStageId}", so pointing it there proves nothing.`,
+    );
+  }
+  const applied = harness.host.receiveAuthoritativeSections({
+    [NARRATIVE_PEDIGREE_SECTION]: { ...section, sourceStageId },
+  });
+  act(() => {
+    harness.session.receiveAuthoritativeUpdate({
+      protocolSections: applied.protocolSections,
+      manifestRevision: applied.manifestRevision,
+    });
+  });
+};
+
+/**
+ * One attribute of the family member type, REDEFINED by a collaborator.
+ *
+ * The third thing that can happen to an attribute a control is holding, beside
+ * `addFamilyMemberVariable` and `removeFamilyMemberVariable`: it stays, under
+ * the same id, describing something else.
+ */
+const redefineFamilyMemberVariable = (
+  harness: StageEditorHarness,
+  variableId: string,
+  variable: Readonly<Record<string, unknown>>,
+): void => {
+  const section =
+    harness.session.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+  const variables = isRecord(section?.variables) ? section.variables : {};
+  if (!Object.hasOwn(variables, variableId)) {
+    throw new Error(
+      `"family_member" has no "${variableId}" attribute, so redefining one proves nothing.`,
+    );
+  }
+  harness.receiveCodebookUpdate({
+    node: {
+      family_member: {
+        ...section,
+        variables: { ...variables, [variableId]: variable },
+      },
+    },
   });
 };
 
@@ -253,9 +332,9 @@ async function addFormFieldCollecting(
 function variableIdByName(
   harness: StageEditorHarness,
   name: string,
+  section: typeof FAMILY_MEMBER_SECTION = FAMILY_MEMBER_SECTION,
 ): string | undefined {
-  const definition =
-    harness.host.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+  const definition = harness.host.getSnapshot().protocolSections[section];
   const variables = isRecord(definition) ? definition.variables : undefined;
   if (!isRecord(variables)) return undefined;
   return Object.entries(variables).find(
@@ -915,6 +994,52 @@ describe('a codebook that changes while the pedigree is open', () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * Three of the pedigree's slots need an EXACT value set, not merely a list
+   * of answers: the interview and the genetics engine branch on those values,
+   * and the protocol refuses an attribute bound to one of them whose options
+   * differ.
+   *
+   * A collaborator editing those values leaves the attribute in the codebook,
+   * still categorical, so the deleted-or-retyped gate had nothing to say about
+   * it — while the picker, which asks the schema's own comparison, drops it at
+   * once. The stage was still refused, but by whole-protocol validation,
+   * against a path: the researcher was stopped from finishing with nothing on
+   * screen naming the control that had to change.
+   */
+  it('refuses to save a slot whose canonical values a collaborator changed', async () => {
+    const harness = renderStageEditor(openFixture());
+    expect(
+      screen.getByRole('combobox', { name: 'Biological sex' }),
+    ).toHaveValue('biologicalSex');
+
+    redefineFamilyMemberVariable(harness, 'biologicalSex', {
+      name: 'biologicalSex',
+      type: 'categorical',
+      options: [
+        { value: 'female', label: 'Female' },
+        { value: 'male', label: 'Male' },
+      ],
+    });
+
+    // The control goes on holding it — which is the gap this gate closes: the
+    // attribute is still there and still categorical, so nothing else refuses
+    // it until whole-protocol validation does.
+    expect(
+      screen.getByRole('combobox', { name: 'Biological sex' }),
+    ).toHaveValue('biologicalSex');
+
+    // The refusal is the point rather than the save: the stage was refused
+    // before this gate too, by the whole protocol. What is asserted is WHERE
+    // the researcher reads it — under the control they have to change.
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        '"biologicalSex" no longer offers the exact values this control needs, because they were changed somewhere else. Choose another attribute.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('offers an attribute a collaborator added, without echoing a command', async () => {
     const harness = renderStageEditor(openFixture());
     expect(harness.pendingCommands()).toEqual([]);
@@ -1162,6 +1287,83 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     expect(
       screen.getByRole('button', { name: 'Create attribute' }),
     ).toBeDisabled();
+  });
+
+  /**
+   * The slot repointed at another type while the codebook was answering.
+   *
+   * The submit handler inside the editor captured this dialog's `onComplete`
+   * before it awaited the host, so the answer is applied by a closure that
+   * still believes what was true when the request left: the slot named
+   * attributes of the type the attribute is being created on. Repointed since
+   * — by this researcher, by an undo, by a collaborator — the slot now names
+   * another type's attributes, and binding the new attribute to it writes a
+   * reference to the OLD type's codebook into the new type's slot, which
+   * nothing on screen explains and whole-protocol validation refuses.
+   *
+   * The undo is what moves the type here: it is the one route that moves the
+   * draft underneath a dialog the researcher cannot dismiss while the request
+   * is in flight.
+   */
+  it('binds nothing when the slot moves to another type while the codebook answers', async () => {
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Change the node type' }),
+    );
+    await waitFor(() => expect(nodeConfigOf(harness).type).toBe('person'));
+
+    const release = holdTheCompoundEdit(harness);
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create a new display label attribute',
+      }),
+    );
+    const creator = within(await screen.findByRole('dialog'));
+    await harness.user.type(
+      creator.getByRole('textbox', { name: 'Attribute name' }),
+      'nickname',
+    );
+    await harness.user.click(
+      creator.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    // The type moves back while the host is still holding the request, so the
+    // attribute in flight belongs to a type this slot no longer names.
+    act(() => {
+      harness.session.undo();
+    });
+    await waitFor(() =>
+      expect(nodeConfigOf(harness).type).toBe('family_member'),
+    );
+
+    release();
+    // The attribute itself is created — the researcher asked for it, and the
+    // codebook edit was already with the host — and the dialog closes.
+    await waitFor(() =>
+      expect(variableIdByName(harness, 'nickname', PERSON_SECTION)).toEqual(
+        expect.any(String),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    // But nothing is bound to it: the slot is left holding what the undo
+    // restored, rather than a "person" attribute under "family_member".
+    //
+    // Read from the CONTROL rather than from the session, because an ordinary
+    // field change waits for the submit that flushes it: the session would go
+    // on reporting the undone value while the form the researcher is about to
+    // save already held the dangling one.
+    expect(screen.getByRole('combobox', { name: 'Display label' })).toHaveValue(
+      'fm_name',
+    );
+    // And the stage still saves, which is what the dangling reference cost:
+    // an attribute of "person" under "family_member" is refused at the gate,
+    // leaving the researcher unable to finish a stage they never changed.
+    const request = await harness.submit();
+    expect(request?.stageDocument.nodeConfig).toEqual(FIXTURE_NODE_CONFIG);
   });
 
   it('is not offered to a spectator', () => {
@@ -1474,14 +1676,6 @@ describe('a pedigree whose node type changes', () => {
     );
   };
 
-  const nodeConfigOf = (
-    harness: StageEditorHarness,
-  ): Record<string, unknown> => {
-    const nodeConfig =
-      harness.session.getSnapshot().editedSection.fields.nodeConfig;
-    return isRecord(nodeConfig) ? nodeConfig : {};
-  };
-
   /**
    * A narrative pedigree resolves every disease it draws through its source
    * pedigree's `nodeConfig.type`, so a type change under one leaves it naming
@@ -1511,6 +1705,48 @@ describe('a pedigree whose node type changes', () => {
     ).not.toBeInTheDocument();
     expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
     expect(harness.pendingCommands()).toEqual([]);
+  });
+
+  /**
+   * The same refusal, when the dependency arrives while the question is open.
+   *
+   * The confirmation is awaited, and the handler that resumes when it is
+   * answered is a closure from the render that put the question: it holds the
+   * `blockChangeReason` as it stood then, which was none. A collaborator
+   * pointing a narrative pedigree at this stage in the meantime made the
+   * change one that may not happen at all — but the confirmed change went
+   * through, discarding the source configuration the narrative stage resolves
+   * its diseases against and leaving that stage naming attributes the new type
+   * does not have.
+   *
+   * Refused rather than merely re-confirmed: the researcher agreed to what a
+   * change costs THIS stage, which is a different question from whether the
+   * change is allowed at all.
+   */
+  it('refuses a confirmed change a stage began depending on while the question was open', async () => {
+    const harness = renderStageEditor(openUnreadWithNominationPrompts());
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    const confirm = await screen.findByRole('button', {
+      name: 'Change the node type',
+    });
+
+    readNarrativePedigreeFrom(harness, UNREAD_PEDIGREE_ID);
+
+    await harness.user.click(confirm);
+
+    expect(
+      await screen.findByText('This node type cannot be changed'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/"Narrative Pedigree" reads this pedigree/),
+    ).toBeInTheDocument();
+    expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG);
+    expect(
+      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
+    ).toEqual(NOMINATION_ROWS);
+    expect(harness.pendingCommands()).toEqual([]);
+    expect(screen.getByText('Who has been unwell?')).toBeInTheDocument();
   });
 
   /**

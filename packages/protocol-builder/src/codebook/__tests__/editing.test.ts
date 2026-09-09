@@ -28,6 +28,7 @@ const EMPTY_CONTEXT = {
   codebook: { node: {}, edge: {} },
   assets: {},
   orderedStages: [],
+  stageOrder: [],
   issues: [],
 } as const;
 
@@ -247,6 +248,7 @@ describe('codebook variable requests', () => {
           },
           assets: {},
           orderedStages: [],
+          stageOrder: [],
           issues: [],
         },
         draft: { name: 'age', type: 'number' },

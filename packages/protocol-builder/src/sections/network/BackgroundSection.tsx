@@ -166,9 +166,16 @@ export default function BackgroundSection({
       // own keys are present rather than by a discriminant field, so these
       // unsets ARE the switch. The control that issues them is not a stage
       // value at all — it is the mode below, which no draft holds.
-      discardStageValues(
+      //
+      // The mode follows the discard rather than the click. A session that has
+      // had editing taken away since this handler was built refuses the batch
+      // and keeps the values, so a mode moved anyway would show one
+      // background's controls over the other's draft — and the next save would
+      // write both.
+      const discarded = discardStageValues(
         nextMode === 'image' ? [CIRCLES_FIELD, SKEW_FIELD] : [IMAGE_FIELD],
       );
+      if (!discarded) return;
       setOverride(nextMode);
     },
     [discardStageValues, mode],
