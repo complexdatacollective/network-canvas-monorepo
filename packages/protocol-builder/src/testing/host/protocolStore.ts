@@ -58,6 +58,7 @@ export type CreateOutcome =
       sectionId: ProtocolSectionId;
       revision: Revision;
     }>
+  | Readonly<{ status: 'exists'; sectionId: ProtocolSectionId }>
   | Readonly<{
       status: 'invalidShape';
       sectionId: ProtocolSectionId;
@@ -75,7 +76,11 @@ export type RefactorOutcome =
 
 type SectionWrite = readonly [ProtocolSectionId, SectionDoc | undefined];
 
-export type CreatableSectionKind = 'stage' | 'codebookNode' | 'codebookEdge';
+export type CreatableSectionKind =
+  | 'stage'
+  | 'codebookNode'
+  | 'codebookEdge'
+  | 'codebookEgo';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -143,22 +148,29 @@ export class InMemoryProtocolStore {
     };
   }
 
+  /**
+   * Who holds this section, whether or not they are watching the protocol.
+   *
+   * A lock outlives the stream that reported it, so the presence map can have
+   * nothing for its owner; the lock itself still names the session that took
+   * it, and a read-only editor has to be told who has it either way.
+   */
   holderOf(id: ProtocolSectionId): Presence | undefined {
     const owner = this.#locks.get(id);
-    return owner === undefined
-      ? undefined
-      : this.#presence.get(owner.sessionId);
+    if (owner === undefined) return undefined;
+    return (
+      this.#presence.get(owner.sessionId) ??
+      this.#presenceOf(owner, 'editing', id)
+    );
   }
 
   acquire(id: ProtocolSectionId, principal: HostPrincipal): AcquireOutcome {
     const state = this.read(id);
     const owner = this.#locks.get(id);
     if (owner !== undefined && owner.sessionId !== principal.sessionId) {
-      return {
-        lock: 'readOnly',
-        ...state,
-        holder: this.#presenceOf(owner, 'editing', id),
-      };
+      const holder = this.holderOf(id);
+      if (holder === undefined) throw new Error(`no holder for locked ${id}`);
+      return { lock: 'readOnly', ...state, holder };
     }
     this.#locks.set(id, principal);
     this.#setPresence(principal, 'editing', id);
@@ -180,10 +192,19 @@ export class InMemoryProtocolStore {
     this.#publishPresence();
   }
 
+  /**
+   * Writes the section, and the asset manifest entries handed with it, as one
+   * revision.
+   *
+   * The entries are the submit's promotion: the bytes behind them are already
+   * with the host, and this is where they and the section naming them become
+   * a single revision. A refusal writes neither.
+   */
   submit(
     id: ProtocolSectionId,
     document: SectionDoc,
     principal: HostPrincipal,
+    assetEntries?: Readonly<Record<string, unknown>>,
   ): SubmitOutcome {
     this.read(id);
     const owner = this.#locks.get(id);
@@ -193,7 +214,9 @@ export class InMemoryProtocolStore {
     const issues = shapeIssues(id, document);
     if (issues.length > 0) return { status: 'invalidShape', issues };
     const sequence = this.#advance();
-    return { status: 'written', revision: this.#write(id, document, sequence) };
+    const revision = this.#write(id, document, sequence);
+    if (assetEntries !== undefined) this.#mergeAssets(assetEntries, sequence);
+    return { status: 'written', revision };
   }
 
   create(
@@ -201,21 +224,50 @@ export class InMemoryProtocolStore {
     document: SectionDoc,
     position: number | undefined,
   ): CreateOutcome {
-    const id = this.#nextId();
-    const target =
-      kind === 'stage'
-        ? sectionId({ kind: 'stage', stageId: id })
-        : sectionId({ kind, typeId: id });
+    // The ego codebook is the one creatable singleton: a protocol whose
+    // researcher has not given the participant any attributes yet has no such
+    // section, and adding the first one is what creates it.
+    const id = kind === 'codebookEgo' ? undefined : this.#nextId();
+    const target = createdSectionId(kind, id);
+    if (this.#sections.has(target)) {
+      return { status: 'exists', sectionId: target };
+    }
     const created: SectionDoc =
-      kind === 'stage' ? { ...document, id } : document;
+      kind === 'stage' && id !== undefined ? { ...document, id } : document;
     const issues = shapeIssues(target, created);
     if (issues.length > 0) {
       return { status: 'invalidShape', sectionId: target, issues };
     }
     const sequence = this.#advance();
     const revision = this.#write(target, created, sequence);
-    if (kind === 'stage') this.#registerStagePointer(id, position, sequence);
+    if (kind === 'stage' && id !== undefined) {
+      this.#registerStagePointer(id, position, sequence);
+    }
     return { status: 'created', sectionId: target, revision };
+  }
+
+  /**
+   * Removes a stage and its place in the stage order in one revision.
+   *
+   * Both writes or neither: a stage section the order does not name, or an
+   * order naming a section that is gone, is a protocol `assembleProtocolSections`
+   * refuses. Held sections block it on the terms every cross-section change
+   * uses, since the deleting caller holds neither.
+   */
+  deleteStage(stageId: string, principal: HostPrincipal): RefactorOutcome {
+    const target = sectionId({ kind: 'stage', stageId });
+    this.read(target);
+    const orderId = sectionId({ kind: 'stageOrder' });
+    const order = this.read(orderId).document;
+    const stages = stageList(order).filter((entry) => entry !== stageId);
+    return this.#applyRefactor(
+      [
+        [target, undefined],
+        [orderId, { ...order, stages }],
+      ],
+      principal,
+      new Set(),
+    );
   }
 
   /**
@@ -269,19 +321,6 @@ export class InMemoryProtocolStore {
     for (const watcher of this.#watchers) watcher.close();
   }
 
-  /**
-   * Merges manifest entries into the `assets` section as one revision.
-   *
-   * Host-serialised like `create`, and for the same reason: promoted bytes and
-   * the manifest entries naming them have to land together, and no client can
-   * hold a lock spanning both.
-   */
-  mergeAssets(entries: Readonly<Record<string, unknown>>): Revision {
-    const id = sectionId({ kind: 'assets' });
-    const assets = this.read(id).document;
-    return this.#write(id, { ...assets, ...entries }, this.#advance());
-  }
-
   async *watch(
     principal: HostPrincipal,
     since: string | undefined,
@@ -312,7 +351,7 @@ export class InMemoryProtocolStore {
       signal?.removeEventListener('abort', stop);
       this.#watchers.delete(queue);
       queue.close();
-      this.#leave(principal);
+      this.#departed(principal);
     }
   }
 
@@ -339,23 +378,16 @@ export class InMemoryProtocolStore {
     const documents = this.#documentsWith(seed);
     const rewritten = new Map<ProtocolSectionId, SectionDoc>();
     let remaining = referencesTo(documents);
-    for (let removed = true; removed; remaining = referencesTo(documents)) {
-      removed = false;
-      for (const reference of inRemovalOrder(remaining)) {
-        const current = documents[reference.sectionId];
-        if (current === undefined) continue;
-        const next = withoutReference(current, reference.path);
-        if (next === undefined) continue;
-        if (shapeIssues(reference.sectionId, next).length > 0) continue;
-        documents[reference.sectionId] = next;
-        rewritten.set(reference.sectionId, next);
-        removed = true;
-        break;
-      }
-      if (!removed) break;
+    while (remaining.length > 0) {
+      if (!removeOneReference(documents, rewritten, remaining)) break;
+      remaining = referencesTo(documents);
     }
     if (remaining.length > 0) return { status: 'referenced', remaining };
-    return this.#applyRefactor([...seed, ...rewritten], principal);
+    return this.#applyRefactor(
+      [...seed, ...rewritten],
+      principal,
+      new Set(seed.map(([id]) => id)),
+    );
   }
 
   /** Every section document, with a refactor's own writes folded in. */
@@ -369,16 +401,25 @@ export class InMemoryProtocolStore {
     return documents;
   }
 
+  /**
+   * `owned` names the sections the caller is changing under its own lock — the
+   * codebook section a dialog has open and is deleting from. Every other
+   * section this change writes has to be free, this session's own included: a
+   * stage editor and a codebook dialog in one tab are one session, and the
+   * stage's draft lives in its form, so a sweep that rewrote the stage under it
+   * would be undone by that editor's next whole-section submit.
+   */
   #applyRefactor(
     writes: readonly SectionWrite[],
     principal: HostPrincipal,
+    owned: ReadonlySet<ProtocolSectionId>,
   ): RefactorOutcome {
     const blocked: SectionHolder[] = [];
     for (const [id] of writes) {
       const owner = this.#locks.get(id);
-      if (owner !== undefined && owner.sessionId !== principal.sessionId) {
-        blocked.push({ sectionId: id, holder: this.holderOf(id) });
-      }
+      if (owner === undefined) continue;
+      if (owner.sessionId === principal.sessionId && owned.has(id)) continue;
+      blocked.push({ sectionId: id, holder: this.holderOf(id) });
     }
     if (blocked.length > 0) return { status: 'blocked', blocked };
     const sequence = this.#advance();
@@ -404,11 +445,7 @@ export class InMemoryProtocolStore {
   ): void {
     const orderId = sectionId({ kind: 'stageOrder' });
     const order = this.read(orderId).document;
-    const stages = Array.isArray(order.stages)
-      ? order.stages.filter(
-          (entry): entry is string => typeof entry === 'string',
-        )
-      : [];
+    const stages = stageList(order);
     const at = position === undefined ? stages.length : position;
     stages.splice(at, 0, stageId);
     this.#write(orderId, { ...order, stages }, sequence);
@@ -434,6 +471,14 @@ export class InMemoryProtocolStore {
       document: stored,
     });
     return revision;
+  }
+
+  #mergeAssets(
+    entries: Readonly<Record<string, unknown>>,
+    sequence: bigint,
+  ): void {
+    const id = sectionId({ kind: 'assets' });
+    this.#write(id, { ...this.read(id).document, ...entries }, sequence);
   }
 
   #remove(id: ProtocolSectionId, sequence: bigint): Revision {
@@ -495,16 +540,58 @@ export class InMemoryProtocolStore {
     );
   }
 
-  #leave(principal: HostPrincipal): void {
-    for (const [id, owner] of this.#locks) {
-      if (owner.sessionId === principal.sessionId) {
-        this.#locks.delete(id);
-        this.#publish({ type: 'lock', sectionId: id });
-      }
-    }
+  /**
+   * The principal's stream ended, so they are no longer present.
+   *
+   * Their locks are not touched. A dropped socket ends the stream and the
+   * channel resumes on a new one, while the editor behind it never stopped
+   * holding its draft: releasing here would refuse that editor's next save
+   * for a reconnect it never saw. A lock ends with `releaseLock` or with the
+   * session, which a host that has sessions ends itself.
+   */
+  #departed(principal: HostPrincipal): void {
     this.#presence.delete(principal.sessionId);
     this.#publishPresence();
   }
+}
+
+/**
+ * Removes the first reference the sweep can take, reporting whether it took
+ * one. One at a time, because removing a list entry moves every path after it.
+ */
+function removeOneReference(
+  documents: Record<string, SectionDoc>,
+  rewritten: Map<ProtocolSectionId, SectionDoc>,
+  remaining: readonly SectionReference[],
+): boolean {
+  for (const reference of inRemovalOrder(remaining)) {
+    const current = documents[reference.sectionId];
+    if (current === undefined) continue;
+    const next = withoutReference(current, reference.path);
+    if (next === undefined) continue;
+    if (shapeIssues(reference.sectionId, next).length > 0) continue;
+    documents[reference.sectionId] = next;
+    rewritten.set(reference.sectionId, next);
+    return true;
+  }
+  return false;
+}
+
+function createdSectionId(
+  kind: CreatableSectionKind,
+  id: string | undefined,
+): ProtocolSectionId {
+  if (kind === 'codebookEgo') return sectionId({ kind: 'codebookEgo' });
+  if (id === undefined) throw new Error(`a ${kind} section needs an id`);
+  return kind === 'stage'
+    ? sectionId({ kind: 'stage', stageId: id })
+    : sectionId({ kind, typeId: id });
+}
+
+function stageList(order: SectionDoc): string[] {
+  return Array.isArray(order.stages)
+    ? order.stages.filter((entry): entry is string => typeof entry === 'string')
+    : [];
 }
 
 function copyOf(entry: LoggedEvent): LoggedEvent {

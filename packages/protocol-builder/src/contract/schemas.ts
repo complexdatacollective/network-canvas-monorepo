@@ -147,63 +147,6 @@ export const ProtocolEventSchema = z.discriminatedUnion('type', [
 
 export type ProtocolEvent = z.output<typeof ProtocolEventSchema>;
 
-export const SubmitInputSchema = z.object({
-  protocolId: ProtocolIdSchema,
-  sectionId: SectionIdSchema,
-  document: SectionDocumentSchema,
-  /**
-   * The revision the submitted document was edited from. The holder of the
-   * lock is the only writer, so this is never a reason to refuse a submit; the
-   * host records it so a revision can say what it was derived from.
-   */
-  revision: RevisionSchema,
-});
-
-/** Sections a host mints. The rest of the taxonomy is a protocol's singletons. */
-export const CreatableSectionKindSchema = z.enum([
-  'stage',
-  'codebookNode',
-  'codebookEdge',
-]);
-
-export const CreateInputSchema = z.object({
-  protocolId: ProtocolIdSchema,
-  kind: CreatableSectionKindSchema,
-  document: SectionDocumentSchema,
-  /** Where a created stage lands in the stage order; appended when absent. */
-  position: z.number().int().nonnegative().optional(),
-});
-
-export const CreateResultSchema = z.object({
-  sectionId: SectionIdSchema,
-  revision: RevisionSchema,
-});
-
-export const CodebookSubjectSchema = z.discriminatedUnion('entity', [
-  z.object({ entity: z.literal('node'), type: z.string().min(1) }),
-  z.object({ entity: z.literal('edge'), type: z.string().min(1) }),
-  z.object({ entity: z.literal('ego') }),
-]);
-
-export type CodebookSubject = z.output<typeof CodebookSubjectSchema>;
-
-export const DeleteVariableInputSchema = z.object({
-  protocolId: ProtocolIdSchema,
-  subject: CodebookSubjectSchema,
-  variableId: z.string().min(1),
-});
-
-export const DeleteEntityTypeInputSchema = z.object({
-  protocolId: ProtocolIdSchema,
-  entity: z.enum(['node', 'edge']),
-  typeId: z.string().min(1),
-});
-
-export const RefactorResultSchema = z.object({
-  revision: RevisionSchema,
-  changedSections: z.array(SectionIdSchema),
-});
-
 export const ResourceContentKindSchema = z.enum([
   'audio',
   'geojson',
@@ -263,6 +206,101 @@ export function resourceResult<TData extends z.ZodType>(data: TData) {
   ]);
 }
 
+/**
+ * The staged resources a submit commits along with the section naming them.
+ *
+ * The bytes and the manifest entries for them are written in the section's own
+ * revision: a refused submit promotes nothing, and a written section never
+ * names a resource whose promotion failed.
+ */
+export const ResourcePromotionRequestSchema = z.object({
+  /** Stable across an uncertain retry, so a host promotes the intent once. */
+  promotionId: z.string().min(1),
+  resourceIds: z.array(z.string().min(1)),
+  secretHandles: z.array(z.string().min(1)).optional(),
+});
+
+export const SubmitInputSchema = z.object({
+  protocolId: ProtocolIdSchema,
+  sectionId: SectionIdSchema,
+  document: SectionDocumentSchema,
+  /**
+   * The revision the submitted document was edited from. The holder of the
+   * lock is the only writer, so this is never a reason to refuse a submit; the
+   * host records it so a revision can say what it was derived from.
+   */
+  revision: RevisionSchema,
+  promote: ResourcePromotionRequestSchema.optional(),
+});
+
+export const SubmitResultSchema = z.object({
+  revision: RevisionSchema,
+  /** What `promote` committed; absent when the submit promoted nothing. */
+  promoted: z.array(ResourceDescriptorSchema).optional(),
+});
+
+/** Sections a host mints. The rest of the taxonomy is a protocol's singletons. */
+export const CreatableSectionKindSchema = z.enum([
+  'stage',
+  'codebookNode',
+  'codebookEdge',
+  'codebookEgo',
+]);
+
+export const CreateInputSchema = z.object({
+  protocolId: ProtocolIdSchema,
+  kind: CreatableSectionKindSchema,
+  document: SectionDocumentSchema,
+  /** Where a created stage lands in the stage order; appended when absent. */
+  position: z.number().int().nonnegative().optional(),
+});
+
+export const CreateResultSchema = z.object({
+  sectionId: SectionIdSchema,
+  revision: RevisionSchema,
+});
+
+export const CodebookSubjectSchema = z.discriminatedUnion('entity', [
+  z.object({ entity: z.literal('node'), type: z.string().min(1) }),
+  z.object({ entity: z.literal('edge'), type: z.string().min(1) }),
+  z.object({ entity: z.literal('ego') }),
+]);
+
+export type CodebookSubject = z.output<typeof CodebookSubjectSchema>;
+
+export const DeleteVariableInputSchema = z.object({
+  protocolId: ProtocolIdSchema,
+  subject: CodebookSubjectSchema,
+  variableId: z.string().min(1),
+});
+
+export const DeleteEntityTypeInputSchema = z.object({
+  protocolId: ProtocolIdSchema,
+  entity: z.enum(['node', 'edge']),
+  typeId: z.string().min(1),
+});
+
+/**
+ * A stage section's id. Stages are the only sections `delete` removes: a
+ * codebook type goes with `refactor.deleteEntityType`, which also sweeps the
+ * references to it, and the rest of the taxonomy is a protocol's singletons.
+ */
+export const StageSectionIdSchema = SectionIdSchema.refine(
+  (id) => parseSectionId(id).kind === 'stage',
+  'not a stage section id',
+);
+
+export const DeleteSectionInputSchema = z.object({
+  protocolId: ProtocolIdSchema,
+  sectionId: StageSectionIdSchema,
+});
+
+/** What one atomic change wrote, and which sections it wrote. */
+export const SectionChangeResultSchema = z.object({
+  revision: RevisionSchema,
+  changedSections: z.array(SectionIdSchema),
+});
+
 export const ResourceListInputSchema = z.object({
   protocolId: ProtocolIdSchema,
   kinds: z.array(ResourceKindSchema).optional(),
@@ -320,26 +358,26 @@ export const StagedResourceSchema = z.object({
   handle: z.string().min(1).optional(),
 });
 
-export const ResourcePromoteInputSchema = z.object({
-  protocolId: ProtocolIdSchema,
-  /** Stable across an uncertain retry, so a host promotes the intent once. */
-  promotionId: z.string().min(1),
-  resourceIds: z.array(z.string().min(1)),
-  secretHandles: z.array(z.string().min(1)).optional(),
-});
-
-export const ResourcePromotionSchema = z.object({
-  id: z.string().min(1),
-  promoted: z.array(ResourceDescriptorSchema),
-  /** The revision that carries both the bytes and their manifest entries. */
-  revision: RevisionSchema,
-});
-
 export const ResourceDiscardInputSchema = z.object({
   protocolId: ProtocolIdSchema,
   /** Absent discards every resource staged in this edit. */
   resourceId: z.string().min(1).optional(),
 });
+
+/**
+ * A discard has nothing to answer with, so its success is the status alone:
+ * `resourceResult(z.undefined())` would put the whole outcome on a `data` key
+ * whose only value is `undefined`, which a transport that drops undefined
+ * keys — or a schema that requires the key to be present — turns into a
+ * result no branch of the union matches.
+ */
+export const ResourceDiscardResultSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('ok') }),
+  z.object({
+    status: z.literal('failed'),
+    failure: ResourceGatewayFailureSchema,
+  }),
+]);
 
 export const ResourceScopedInputSchema = z.object({
   protocolId: ProtocolIdSchema,
