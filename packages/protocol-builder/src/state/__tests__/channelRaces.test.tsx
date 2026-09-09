@@ -25,6 +25,10 @@ import {
 } from '../context.ts';
 import { useEntityTypes, useSection } from '../hooks.ts';
 
+/** A fresh idempotency key: every write below is its own intent. */
+let writes = 0;
+const nextRequestId = (): string => `write-${++writes}`;
+
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
@@ -134,6 +138,7 @@ const RACES: readonly Race[] = [
       });
       await collaborator.submit({
         protocolId: host.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { ...held.document, label: 'Renamed by Grace' },
         revision: held.revision,
@@ -183,6 +188,7 @@ const RACES: readonly Race[] = [
     cause: async (host) => {
       await host.client.create({
         protocolId: host.protocolId,
+        requestId: nextRequestId(),
         kind: 'codebookNode',
         document: {
           name: 'Place',

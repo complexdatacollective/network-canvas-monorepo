@@ -1,5 +1,4 @@
 import { safe } from '@orpc/client';
-import { getProcedureContractOrThrow } from '@orpc/contract';
 import { describe, expect, it } from 'vitest';
 
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
@@ -8,13 +7,20 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import { contract } from '../../../contract/contract.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
 } from '../createInMemoryHost.ts';
 import type { HostPrincipal } from '../protocolStore.ts';
 import { sectionsFromProtocol } from '../sectionsFromProtocol.ts';
+import { procedurePaths } from './contractProcedures.ts';
+
+/** The edit these calls are made from: one editor, open throughout. */
+const EDIT = 'edit-1';
+
+/** A fresh idempotency key: every write below is its own intent. */
+let writes = 0;
+const nextRequestId = (): string => `write-${++writes}`;
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
@@ -104,6 +110,7 @@ function hostWithSpareType(): InMemoryHost {
 async function stagePortrait(host: InMemoryHost): Promise<string> {
   const staged = await host.client.resources.stage({
     protocolId: host.protocolId,
+    editId: EDIT,
     requestId: 'request-1',
     request: {
       kind: 'content',
@@ -183,6 +190,7 @@ const CALLS: readonly Call[] = [
     run: async (host) =>
       host.client.submit({
         protocolId: host.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: {
           ...host.store.read(INFORMATION).document,
@@ -200,10 +208,11 @@ const CALLS: readonly Call[] = [
       const resourceId = await stagePortrait(host);
       return host.client.submit({
         protocolId: host.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: host.store.read(INFORMATION).document,
         revision: host.store.read(INFORMATION).revision,
-        promote: { promotionId: 'promotion-1', resourceIds: [resourceId] },
+        promote: { editId: EDIT, resourceIds: [resourceId] },
       });
     },
   },
@@ -214,6 +223,7 @@ const CALLS: readonly Call[] = [
       const { id: _id, ...template } = host.store.read(INFORMATION).document;
       return host.client.create({
         protocolId: host.protocolId,
+        requestId: nextRequestId(),
         kind: 'stage',
         document: template,
       });
@@ -227,12 +237,13 @@ const CALLS: readonly Call[] = [
       const { id: _id, ...template } = host.store.read(INFORMATION).document;
       return host.client.create({
         protocolId: host.protocolId,
+        requestId: nextRequestId(),
         kind: 'stage',
         document: {
           ...template,
           items: [{ id: 'item-1', type: 'asset', content: resourceId }],
         },
-        promote: { promotionId: 'promotion-1', resourceIds: [resourceId] },
+        promote: { editId: EDIT, resourceIds: [resourceId] },
       });
     },
   },
@@ -242,6 +253,7 @@ const CALLS: readonly Call[] = [
     run: (host) =>
       host.client.create({
         protocolId: host.protocolId,
+        requestId: nextRequestId(),
         kind: 'codebookNode',
         document: {
           name: 'Place',
@@ -257,6 +269,7 @@ const CALLS: readonly Call[] = [
     run: (host) =>
       host.client.create({
         protocolId: host.protocolId,
+        requestId: nextRequestId(),
         kind: 'codebookEdge',
         document: { name: 'Knows', color: 'edge-color-seq-1' },
       }),
@@ -268,6 +281,7 @@ const CALLS: readonly Call[] = [
     run: (host) =>
       host.client.create({
         protocolId: host.protocolId,
+        requestId: nextRequestId(),
         kind: 'codebookEgo',
         document: {
           variables: {
@@ -327,7 +341,10 @@ const CALLS: readonly Call[] = [
       await stagePortrait(host);
     },
     run: (host) =>
-      host.client.resources.discard({ protocolId: host.protocolId }),
+      host.client.resources.discard({
+        protocolId: host.protocolId,
+        editId: EDIT,
+      }),
   },
   {
     procedure: 'resources.inspect',
@@ -335,6 +352,7 @@ const CALLS: readonly Call[] = [
     run: (host) =>
       host.client.resources.inspect({
         protocolId: host.protocolId,
+        editId: EDIT,
         resourceId: 'geo_data',
       }),
   },
@@ -344,6 +362,7 @@ const CALLS: readonly Call[] = [
     run: (host) =>
       host.client.resources.preview({
         protocolId: host.protocolId,
+        editId: EDIT,
         resourceId: 'geo_data',
       }),
   },
@@ -354,7 +373,7 @@ describe('every write, against every lock on every section it touches', () => {
     // A procedure nobody exercises escapes the enumeration below entirely, so
     // the contract itself says what the list has to contain.
     expect([...new Set(CALLS.map((call) => call.procedure))].sort()).toEqual(
-      procedurePaths(contract).sort(),
+      procedurePaths().sort(),
     );
   });
 
@@ -508,29 +527,4 @@ function snapshot(host: InMemoryHost): Snapshot {
     );
   }
   return state;
-}
-
-/** Every procedure in the contract, as dotted paths. */
-function procedurePaths(router: object, prefix: string[] = []): string[] {
-  const paths: string[] = [];
-  for (const [key, value] of Object.entries(router)) {
-    const path = [...prefix, key];
-    if (isProcedure(path)) {
-      paths.push(path.join('.'));
-      continue;
-    }
-    if (typeof value === 'object' && value !== null) {
-      paths.push(...procedurePaths(value, path));
-    }
-  }
-  return paths;
-}
-
-function isProcedure(path: readonly string[]): boolean {
-  try {
-    getProcedureContractOrThrow(contract, path);
-    return true;
-  } catch {
-    return false;
-  }
 }

@@ -6,6 +6,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { v4 as uuid } from 'uuid';
 import type { z } from 'zod';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -276,6 +277,12 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       const { data, definedError, isSuccess } = await safe(
         client.submit({
           protocolId,
+          // One id for this save, so a transport that re-sends the request
+          // after a lost answer is told what the first attempt wrote rather
+          // than writing again. Per save rather than per edit: the next save
+          // is a different document, and an id shared with the last one would
+          // be answered with the revision that one wrote.
+          requestId: uuid(),
           sectionId: id,
           document,
           revision: section.revision,
