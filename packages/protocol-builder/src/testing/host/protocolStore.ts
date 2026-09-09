@@ -265,7 +265,7 @@ export class InMemoryProtocolStore {
       ...(assetEntries === undefined ? [] : [ASSETS]),
     ];
     if (touched.length > 0) {
-      const blocked = this.#blockedBy(touched, new Set());
+      const blocked = this.#blockedBy(touched, new Set<ProtocolSectionId>());
       if (blocked.length > 0) return { status: 'blocked', blocked };
     }
     // The ego codebook is the one creatable singleton: a protocol whose
