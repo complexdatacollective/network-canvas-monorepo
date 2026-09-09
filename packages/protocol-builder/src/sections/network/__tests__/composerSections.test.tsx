@@ -1,5 +1,11 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -347,6 +353,14 @@ describe('what a network composer lets the participant build', () => {
 
     await harness.user.click(
       await screen.findByRole('checkbox', { name: 'knows' }),
+    );
+    // The entry asks the participant something, and unticking takes that with
+    // it — so the researcher is asked first. See the confirmation's own suite
+    // below.
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Stop drawing these and delete the form',
+      }),
     );
 
     const request = await harness.submit();
@@ -1083,5 +1097,784 @@ describe('what a composer field’s control accepts', () => {
 
     const request = await harness.submit();
     expect(savedFields(request)).toEqual([DATED_FIELD]);
+  });
+});
+
+/**
+ * Which entry a connection form is written into.
+ *
+ * `id` is not unique by schema — the composer's own refinement requires unique
+ * edge TYPES and says nothing about entry ids — so a protocol authored
+ * elsewhere, or migrated, can hold two entries carrying the same one. Addressed
+ * by id, one form's edit lands on both of them: the second connection type
+ * would silently be given the first's questions, which name attributes it does
+ * not have.
+ */
+describe('two connection entries carrying the same id', () => {
+  const SHARED_ID_EDGES: SectionDoc[] = [
+    {
+      id: 'composer-edge-shared',
+      subject: { entity: 'edge', type: 'knows' },
+      form: { fields: [{ variable: 'edgeNotes', component: 'TextArea' }] },
+    },
+    // No form of its own: everything a "family_edge" connection records is
+    // owned by the Family Pedigree interface, so a form here could ask nothing
+    // — and an entry with no form is what the defect fills in, from a
+    // neighbour's questions about a different edge type.
+    {
+      id: 'composer-edge-shared',
+      subject: { entity: 'edge', type: 'family_edge' },
+    },
+  ];
+
+  const openWithSharedIds = () => {
+    const { type, fields } = loadFixtureStage('network-composer-1');
+    return {
+      stage: {
+        id: 'network-composer-shared-ids',
+        type,
+        fields: { ...fields, edges: SHARED_ID_EDGES },
+      },
+      sections,
+    };
+  };
+
+  it('writes a form into the connection type it belongs to, and no other', async () => {
+    const harness = renderStageEditor(openWithSharedIds());
+
+    // The first of the two lists on screen: the entries are shown in the
+    // order the stage holds them, so this one is "knows".
+    await harness.user.click(
+      (
+        await screen.findAllByRole('button', {
+          name: 'Edit connection attribute field',
+        })
+      )[0]!,
+    );
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.type(
+      field.getByRole('textbox', { name: 'Question' }),
+      'How did you meet?',
+    );
+    await harness.user.click(field.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    const edges = request?.stageDocument.edges;
+    expect(Array.isArray(edges) ? edges[0] : undefined).toEqual({
+      id: 'composer-edge-shared',
+      subject: { entity: 'edge', type: 'knows' },
+      form: {
+        fields: [
+          {
+            variable: 'edgeNotes',
+            component: 'TextArea',
+            label: 'How did you meet?',
+          },
+        ],
+      },
+    });
+    // The other entry is untouched: its questions are about ITS edge type, and
+    // `relationshipType` is not an attribute a "knows" connection has.
+    expect(Array.isArray(edges) ? edges[1] : undefined).toEqual(
+      SHARED_ID_EDGES[1],
+    );
+  });
+});
+
+/**
+ * A connection type this stage draws and the protocol no longer defines.
+ *
+ * A collaborator deleted the type, or the stage was authored against a
+ * different codebook. The tick list renders from the codebook and the ticks
+ * from the value, so the entry stayed in `edges` with no box to untick: the
+ * researcher could not see the reference, could not remove it, and the stage
+ * went on naming a kind of connection that does not exist.
+ */
+describe('a connection type the codebook has lost', () => {
+  const LOST_EDGE = 'former_edge';
+  const LOST_EDGE_CHOICE = `${LOST_EDGE} — this edge type is no longer in the codebook`;
+
+  const openDrawingALostType = () => {
+    const { type, fields } = loadFixtureStage('network-composer-1');
+    return {
+      stage: {
+        id: 'network-composer-lost-edge',
+        type,
+        fields: {
+          ...fields,
+          edges: [
+            {
+              id: 'composer-edge-lost',
+              subject: { entity: 'edge', type: LOST_EDGE },
+            },
+          ],
+        },
+      },
+      sections,
+    };
+  };
+
+  it('shows it, ticked, so the researcher can take it out', async () => {
+    const harness = renderStageEditor(openDrawingALostType());
+
+    const lost = await screen.findByRole('checkbox', {
+      name: LOST_EDGE_CHOICE,
+    });
+    expect(lost).toBeChecked();
+
+    await harness.user.click(lost);
+    // Unticking must not take the box away mid-gesture: the researcher has to
+    // be able to see what they have just done.
+    expect(
+      screen.getByRole('checkbox', { name: LOST_EDGE_CHOICE }),
+    ).not.toBeChecked();
+
+    const request = await harness.submit();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'edges')).toBe(false);
+  });
+
+  /**
+   * And when the deleted type was the last one the codebook had.
+   *
+   * The empty-state paragraph replaced the whole control, so the dangling
+   * entry had nowhere at all to be shown — the one case where the researcher
+   * has no way out but abandoning the stage.
+   */
+  it('shows it even when the protocol has no connection types left', async () => {
+    const harness = renderStageEditor(openDrawingALostType());
+    act(() => {
+      harness.receiveCodebookUpdate({
+        edge: { knows: null, family_edge: null },
+      });
+    });
+
+    expect(
+      await screen.findByRole('checkbox', { name: LOST_EDGE_CHOICE }),
+    ).toBeChecked();
+    expect(
+      screen.queryByText(
+        'This protocol has no connection types yet. Create one to let the participant connect nodes.',
+      ),
+    ).toBeNull();
+  });
+});
+
+/**
+ * Unticking a connection type whose form is configured.
+ *
+ * The entry is more than the type it names: it carries the questions asked
+ * about that kind of connection, and rechecking the type builds a fresh empty
+ * one. So the questions could be deleted by one click on a tick box, with no
+ * warning and no way back short of abandoning the whole stage edit.
+ */
+describe('a connection type whose form already asks something', () => {
+  const DISCARD_QUESTION = 'This will delete the form for "knows" connections';
+
+  it('asks before the form goes, and keeps it when the answer is no', async () => {
+    const harness = renderStageEditor(openWithConfiguredEdge());
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'knows' }),
+    );
+
+    const question = await screen.findByRole('dialog', {
+      name: DISCARD_QUESTION,
+    });
+    await harness.user.click(
+      within(question).getByRole('button', { name: 'Cancel' }),
+    );
+
+    // The type is still ticked, and the entry — its id and its fields — is
+    // exactly the one the stage opened with.
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: 'knows' })).toBeChecked(),
+    );
+    const request = await harness.submit();
+    expect(request?.stageDocument.edges).toEqual([CONFIGURED_EDGE]);
+  });
+
+  it('takes the entry away when the answer is yes', async () => {
+    const harness = renderStageEditor(openWithConfiguredEdge());
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'knows' }),
+    );
+    const question = await screen.findByRole('dialog', {
+      name: DISCARD_QUESTION,
+    });
+    await harness.user.click(
+      within(question).getByRole('button', {
+        name: 'Stop drawing these and delete the form',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: 'knows' })).not.toBeChecked(),
+    );
+    const request = await harness.submit();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'edges')).toBe(false);
+  });
+
+  /**
+   * And nothing is asked about an entry that would lose nothing: a tick list
+   * that stopped to confirm every untick would be asking about a decision that
+   * costs the researcher nothing at all.
+   */
+  it('asks nothing when the type it removes has no form', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'knows' }),
+    );
+    await harness.user.click(screen.getByRole('checkbox', { name: 'knows' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const request = await harness.submit();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'edges')).toBe(false);
+  });
+});
+
+/**
+ * Creating a connection type from inside the composer.
+ *
+ * Node and edge types share one namespace, which `CodebookSchema` enforces and
+ * `SubjectSection`'s own create dialog has always applied. Judged against the
+ * edge names alone, this dialog accepted a connection named like a node type
+ * and the refusal arrived from the schema after the researcher had finished
+ * it, with no name-field error to act on.
+ */
+describe('naming a connection type created from a composer', () => {
+  /**
+   * Holds the compound edit open, and hands back the release.
+   *
+   * The one window this dialog's guard is about: the host has the request and
+   * has not answered, which is when a dismissal unmounts the editor and leaves
+   * the answer with nobody to show it to.
+   */
+  const holdTheCompoundEdit = (harness: StageEditorHarness) => {
+    const send = harness.session.requestCompoundEdit.bind(harness.session);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
+      async (request) => {
+        await held;
+        return send(request);
+      },
+    );
+    return () => {
+      release();
+    };
+  };
+
+  const openCreator = async (harness: StageEditorHarness, name: string) => {
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create a new connection type',
+      }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Edge type name' }),
+      name,
+    );
+  };
+
+  /**
+   * A refusal arriving after the dialog has gone is shown to nobody, and a
+   * success arriving after it ticks a connection type on the stage that the
+   * researcher watched no editor finish.
+   */
+  it('withholds every way out until the codebook answers', async () => {
+    const harness = renderStageEditor(openEditor());
+    const release = holdTheCompoundEdit(harness);
+
+    await openCreator(harness, 'housemates');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+
+    // Escape and a press outside are the two routes left; the close button is
+    // taken away rather than left on screen doing nothing.
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(document.body);
+    expect(screen.getByRole('textbox', { name: 'Edge type name' })).toHaveValue(
+      'housemates',
+    );
+    expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
+
+    release();
+    // And the answer lands on the surface that asked for it: the stage now
+    // draws the connection type the codebook now holds.
+    expect(
+      await screen.findByRole('checkbox', { name: 'housemates' }),
+    ).toBeChecked();
+  });
+
+  /**
+   * A lease taken back mid-draft.
+   *
+   * The name the researcher is typing exists nowhere but this editor, so
+   * unmounting it to report the lost lease would throw their work away to say
+   * something the editor says for itself once its save is refused. The launch
+   * control goes, because a create nobody may start is not on offer.
+   */
+  it('keeps an open connection-type draft when the lease is lost', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await openCreator(harness, 'housemates');
+    act(() => {
+      harness.setReadOnly();
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Create a new connection type' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('textbox', { name: 'Edge type name' })).toHaveValue(
+      'housemates',
+    );
+    expect(screen.getByRole('button', { name: 'Save entity' })).toBeDisabled();
+  });
+
+  it('refuses a name a node type already uses, whatever the case', async () => {
+    const harness = renderStageEditor(openEditor());
+    const submit = vi.spyOn(harness.host, 'submit');
+
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create a new connection type',
+      }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Edge type name' }),
+      'Person',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+
+    expect(
+      await screen.findByText('A type named "Person" already exists.'),
+    ).toBeInTheDocument();
+    // Refused here rather than by the host: nothing was asked of it, and the
+    // codebook still holds the two connection types the stage opened with.
+    expect(submit).not.toHaveBeenCalled();
+    expect(
+      Object.values(harness.hostCodebook().edge ?? {}).map(
+        (definition) => definition.name,
+      ),
+    ).toEqual(['family_edge', 'knows']);
+  });
+});
+
+/**
+ * What a spectator may do to a composer's forms.
+ *
+ * The node form is mounted through `ProtocolField`, which hands it the
+ * session's read-only state; each connection form is mounted directly, because
+ * it is reached through a row's position rather than a path of its own — so it
+ * was told nothing, and answered only to the disabled fieldset it happens to
+ * sit inside. That made its buttons inert without making the list read-only:
+ * the reorder handle a spectator can do nothing with was still rendered, where
+ * the node list beside it offers none. Asked of the session instead, so what
+ * the researcher is offered cannot depend on which way the list was mounted.
+ */
+describe('a composer whose stage is held by somebody else', () => {
+  it('offers no editing of a connection form either', async () => {
+    const harness = renderStageEditor(openWithConfiguredForms());
+    // Both lists are on screen and editable first, so what follows is the
+    // lease being lost rather than a control that was never rendered.
+    expect(
+      await screen.findByRole('button', {
+        name: 'Create new attribute field for "knows" connections',
+      }),
+    ).toBeInTheDocument();
+
+    act(() => {
+      harness.setReadOnly();
+    });
+
+    // The node form's own list is the measure: it answers to the session, and
+    // the connection list beside it has to answer to it the same way.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', {
+          name: 'Create new node attribute field',
+        }),
+      ).toBeDisabled(),
+    );
+    expect(
+      screen.getByRole('button', {
+        name: 'Create new attribute field for "knows" connections',
+      }),
+    ).toBeDisabled();
+    // And the row's own affordances. Deleting is the one that cannot be
+    // undone by waiting: it lands on the local draft at once, and is saved
+    // when access comes back.
+    for (const control of screen.getAllByRole('button', {
+      name: 'Remove node attribute field',
+    })) {
+      expect(control).toBeDisabled();
+    }
+    expect(
+      screen.getByRole('button', { name: 'Remove connection attribute field' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Edit connection attribute field' }),
+    ).toBeDisabled();
+    // Reordering is not offered at all to a spectator, on either list — the
+    // one affordance an enclosing disabled fieldset does not take away, and so
+    // the one that shows whether this list was told anything.
+    expect(screen.queryAllByRole('button', { name: /^Reorder/ })).toHaveLength(
+      0,
+    );
+  });
+});
+
+/**
+ * Whether a composer field tells the participant what a valid answer is.
+ *
+ * `showValidationHints` is on `ComposerFormFieldSchema` and the interview
+ * runtime honours it — `selectors/forms.ts` hands it to every rendered field,
+ * where it becomes a readable summary of the attribute's own rules. The row
+ * editor registered no control for it, so a researcher could neither switch it
+ * on for a field they were writing nor change it on one that arrived with it.
+ */
+describe('validation hints on a composer form field', () => {
+  const HINTS_SWITCH = 'Show validation hints';
+
+  it('records the researcher switching them on', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Node attributes' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create new node attribute field',
+      }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      'age',
+    );
+    await harness.user.click(field.getByRole('switch', { name: HINTS_SWITCH }));
+    await harness.user.click(field.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.nodeForm).toEqual({
+      fields: [
+        {
+          id: expect.any(String) as unknown as string,
+          variable: 'age',
+          component: 'Number',
+          showValidationHints: true,
+        },
+      ],
+    });
+  });
+
+  /**
+   * And a field that arrived with them on comes back with them on: a switch
+   * that started in its off position would turn the setting off for every
+   * imported field whose row was ever opened.
+   */
+  it('gives an imported field its setting back, and lets it be switched off', async () => {
+    const { type, fields } = loadFixtureStage('network-composer-1');
+    const harness = renderStageEditor({
+      stage: {
+        id: 'network-composer-hints',
+        type,
+        fields: {
+          ...fields,
+          nodeForm: {
+            fields: [
+              {
+                id: 'composer-node-field-1',
+                variable: 'name',
+                component: 'Text',
+                showValidationHints: true,
+              },
+            ],
+          },
+        },
+      },
+      sections,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit node attribute field' }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    expect(field.getByRole('switch', { name: HINTS_SWITCH })).toBeChecked();
+
+    await harness.user.click(field.getByRole('switch', { name: HINTS_SWITCH }));
+    await harness.user.click(field.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    // Switched off is spelled by the key not being there, which is the
+    // schema's own default — the same rule the shared form-fields section
+    // applies to the same property.
+    expect(request?.stageDocument.nodeForm).toEqual({
+      fields: [
+        { id: 'composer-node-field-1', variable: 'name', component: 'Text' },
+      ],
+    });
+  });
+});
+
+/**
+ * A composer field that inherits its control's settings.
+ *
+ * `ComposerFormFieldSchema` leaves `parameters` optional, and the interview
+ * runtime reads `fieldParameters ?? codebookParameters` (interview's
+ * `selectors/forms.ts`) — so a field with no block of its own runs on the
+ * codebook attribute's. Seeded from the row alone, the editor showed those
+ * settings as blank, refused a scale that validly inherits its two end labels
+ * for not having them, and turned one apparent override into a block holding
+ * only the setting just typed.
+ */
+describe('a composer field with no settings of its own', () => {
+  const SCALE = {
+    name: 'closeness_scale',
+    type: 'scalar',
+    parameters: { minLabel: 'Not at all close', maxLabel: 'Extremely close' },
+  } as const;
+
+  const INHERITING_FIELD: SectionDoc = {
+    id: 'composer-node-field-scale',
+    variable: 'closeness_scale',
+    component: 'VisualAnalogScale',
+  };
+
+  const openInheritingField = () => {
+    const { type, fields } = loadFixtureStage('network-composer-1');
+    return {
+      stage: {
+        id: 'network-composer-inherited',
+        type,
+        fields: { ...fields, nodeForm: { fields: [INHERITING_FIELD] } },
+      },
+      sections,
+    };
+  };
+
+  const openTheRow = async (harness: StageEditorHarness) => {
+    addPersonVariable(harness, SCALE.name, SCALE);
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit node attribute field' }),
+    );
+    return within(await screen.findByRole('dialog'));
+  };
+
+  it('shows what it inherits, and says where it comes from', async () => {
+    const harness = renderStageEditor(openInheritingField());
+    const field = await openTheRow(harness);
+
+    expect(field.getByRole('textbox', { name: 'Minimum label' })).toHaveValue(
+      'Not at all close',
+    );
+    expect(field.getByRole('textbox', { name: 'Maximum label' })).toHaveValue(
+      'Extremely close',
+    );
+    expect(
+      field.getByText(
+        'These come from the "closeness_scale" attribute, and this field follows them. Change any of them and this field keeps its own instead.',
+      ),
+    ).toBeVisible();
+  });
+
+  /**
+   * And saving it untouched leaves it inheriting.
+   *
+   * Written back as a copy of what it was inheriting, the field would stop
+   * following the attribute — a decision the researcher never made, taken
+   * because a dialog was opened.
+   */
+  it('is saved without a block of its own when nothing is changed', async () => {
+    const harness = renderStageEditor(openInheritingField());
+    const field = await openTheRow(harness);
+
+    // Refused for missing end labels while the block read as empty, so this
+    // save is itself half of the claim.
+    await harness.user.click(field.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    const nodeForm = request?.stageDocument.nodeForm;
+    expect(isRecord(nodeForm) ? nodeForm.fields : undefined).toEqual([
+      INHERITING_FIELD,
+    ]);
+  });
+
+  /**
+   * And changing one of them keeps the rest.
+   *
+   * The block is written whole, so a field that overrides one end of the scale
+   * still says what the other end means — edited over blanks it wrote only the
+   * setting just typed, and the participant met a scale labelled at one end.
+   */
+  it('keeps the settings it did not change when one is overridden', async () => {
+    const harness = renderStageEditor(openInheritingField());
+    const field = await openTheRow(harness);
+
+    await harness.user.clear(
+      field.getByRole('textbox', { name: 'Minimum label' }),
+    );
+    await harness.user.type(
+      field.getByRole('textbox', { name: 'Minimum label' }),
+      'Strangers',
+    );
+    await harness.user.click(field.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    const nodeForm = request?.stageDocument.nodeForm;
+    expect(isRecord(nodeForm) ? nodeForm.fields : undefined).toEqual([
+      {
+        ...INHERITING_FIELD,
+        parameters: {
+          minLabel: 'Strangers',
+          maxLabel: 'Extremely close',
+        },
+      },
+    ]);
+    // The attribute itself is untouched: what this field asks for is this
+    // field's, and the codebook goes on meaning what it meant.
+    expect(
+      harness.hostCodebook().node?.person?.variables?.closeness_scale,
+    ).toEqual(SCALE);
+  });
+});
+
+/**
+ * The two kinds of writer a composer has, meeting on one attribute.
+ *
+ * A form field collects its answer through the codebook's own rules; the
+ * grouping the participant lassoes and taps writes membership straight onto the
+ * node, around them. The schema's role-conflict rule refuses the pair — but the
+ * role map the pickers read is built with the EDITED stage excluded, so a
+ * composer's own live picks were invisible to it, and one attribute could be
+ * bound to both inside a single stage: participant grouping storing values that
+ * bypass the attribute's validation.
+ */
+describe('an attribute this composer already writes the other way', () => {
+  /**
+   * A categorical attribute nothing else in the protocol claims.
+   *
+   * The fixture's own `contactType` is written by a categorical bin elsewhere,
+   * so it is already kept out of every form — and a claim about this stage
+   * would hold for that reason instead.
+   */
+  const addSpareCategorical = (harness: StageEditorHarness) =>
+    addPersonVariable(harness, 'household', {
+      name: 'household',
+      type: 'categorical',
+      options: [
+        { label: 'Same household', value: 'same' },
+        { label: 'Different household', value: 'different' },
+      ],
+    });
+
+  const openTheNodeFieldPicker = async (harness: StageEditorHarness) => {
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create new node attribute field',
+      }),
+    );
+    return within(await screen.findByRole('dialog'));
+  };
+
+  it('is not offered to the node form once the stage groups by it', async () => {
+    const harness = renderStageEditor(openEditor());
+    addSpareCategorical(harness);
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Node attributes' }),
+    );
+
+    // Offered first, so what follows is the grouping pick and not an attribute
+    // this picker never showed.
+    const before = await openTheNodeFieldPicker(harness);
+    expect(
+      within(before.getByRole('combobox', { name: 'Attribute' })).getByRole(
+        'option',
+        { name: 'household' },
+      ),
+    ).toBeInTheDocument();
+    await harness.user.click(before.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Grouping attribute' }),
+      'household',
+    );
+
+    const after = await openTheNodeFieldPicker(harness);
+    expect(
+      within(after.getByRole('combobox', { name: 'Attribute' })).queryByRole(
+        'option',
+        { name: 'household' },
+      ),
+    ).toBeNull();
+  });
+
+  /**
+   * And the other way round: an attribute this stage's own form collects is
+   * not offered to the grouping tool, which would write it without validating
+   * it.
+   */
+  it('is not offered to the grouping once the node form collects it', async () => {
+    const harness = renderStageEditor(openEditor());
+    addSpareCategorical(harness);
+
+    const grouping = await screen.findByRole('combobox', {
+      name: 'Grouping attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(grouping).getByRole('option', { name: 'household' }),
+      ).toBeInTheDocument(),
+    );
+
+    // Bound to a field of this stage's own form, which collects it through the
+    // codebook's rules.
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Node attributes' }),
+    );
+    const field = await openTheNodeFieldPicker(harness);
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      'household',
+    );
+    await harness.user.click(field.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    await waitFor(() =>
+      expect(
+        within(
+          screen.getByRole('combobox', { name: 'Grouping attribute' }),
+        ).queryByRole('option', { name: 'household' }),
+      ).toBeNull(),
+    );
   });
 });

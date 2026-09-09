@@ -138,9 +138,8 @@ describe('the narrative pedigree sections, read in Spanish', () => {
       disease.getByRole('textbox', { name: 'Nombre de la enfermedad' }),
     ).toBeInTheDocument();
     // The palette has no names, so each swatch is counted — the one message in
-    // this dialog carrying a placeholder.
-    expect(
-      disease.getByRole('option', { name: 'Color 2' }),
-    ).toBeInTheDocument();
+    // this dialog carrying a placeholder. The count is what a researcher who
+    // cannot see the swatch has to go on, so it is the swatch's own name.
+    expect(disease.getByRole('radio', { name: 'Color 2' })).toBeInTheDocument();
   });
 });

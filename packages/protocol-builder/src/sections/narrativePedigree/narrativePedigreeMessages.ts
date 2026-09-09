@@ -267,17 +267,18 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Guidance under the disease-colour control. A pedigree is a family tree.',
   },
-  diseaseColorPlaceholder: {
-    id: 'protocolBuilder.narrativePedigree.diseaseColorPlaceholder',
-    defaultMessage: 'Select a color...',
-    description:
-      'Placeholder shown in the disease-colour control while no colour has been chosen. The trailing dots are an ellipsis written as three full stops.',
-  },
   diseaseColorRequired: {
     id: 'protocolBuilder.narrativePedigree.diseaseColorRequired',
     defaultMessage: 'Choose a color for this disease.',
     description:
       'Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one.',
+  },
+  diseaseColorUnavailable: {
+    id: 'protocolBuilder.narrativePedigree.diseaseColorUnavailable',
+    defaultMessage:
+      'This disease is set to a color the palette does not have. Choose one of the colors shown.',
+    description:
+      'Refusal shown under the disease-colour control when the row holds a colour that is not one of the ones offered — an import or a merge left it there — so nothing is shown as chosen and the protocol would refuse the stage.',
   },
   diseaseColorOption: {
     id: 'protocolBuilder.narrativePedigree.diseaseColorOption',
@@ -335,6 +336,13 @@ export const narrativePedigreeMessages = defineMessages({
     defaultMessage: 'Choose how this disease is inherited.',
     description:
       'Refusal shown under the inheritance-pattern control when the researcher saves the dialog without choosing one.',
+  },
+  diseaseInheritanceUnavailable: {
+    id: 'protocolBuilder.narrativePedigree.diseaseInheritanceUnavailable',
+    defaultMessage:
+      'This disease is set to an inheritance pattern this editor does not know. Choose one from the list.',
+    description:
+      'Refusal shown under the inheritance-pattern control when the row holds a pattern that is not one of the ones offered — an import or a merge left it there — so the control can only read the stored value back, and the protocol would refuse the stage. An inheritance pattern is how a condition travels from parent to child.',
   },
   diseaseUnnamed: {
     id: 'protocolBuilder.narrativePedigree.diseaseUnnamed',
