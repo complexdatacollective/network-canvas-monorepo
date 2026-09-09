@@ -129,7 +129,11 @@ function buildRouter(
       if (input.protocolId !== protocolId) {
         throw errors.PROTOCOL_NOT_FOUND({ data: input });
       }
-      const since = input.since ?? lastEventId;
+      // `lastEventId` is where this connection actually got to; `since` is
+      // where it asked to start. A transport resuming a dropped socket
+      // re-invokes with the same input, so starting from the input would hand
+      // the client everything it had already been given.
+      const since = laterCursor(input.since, lastEventId);
       for await (const entry of store.watch(context.principal, since, signal)) {
         yield withEventMeta(entry.event, { id: entry.cursor });
       }
@@ -162,6 +166,7 @@ function buildRouter(
       let promoted: ResourceDescriptor[] | undefined;
       if (promotion !== undefined) {
         const manifest = resources.manifestFor(
+          context.principal.sessionId,
           promotion.resourceIds,
           promotion.secretHandles,
         );
@@ -212,7 +217,7 @@ function buildRouter(
       };
     }),
 
-    create: os.create.handler(({ input, errors }) => {
+    create: os.create.handler(({ input, context, errors }) => {
       if (input.protocolId !== protocolId) {
         throw errors.PROTOCOL_NOT_FOUND({ data: input });
       }
@@ -240,6 +245,7 @@ function buildRouter(
       let promoted: ResourceDescriptor[] | undefined;
       if (promotion !== undefined) {
         const manifest = resources.manifestFor(
+          context.principal.sessionId,
           promotion.resourceIds,
           promotion.secretHandles,
         );
@@ -374,11 +380,14 @@ function buildRouter(
     },
 
     resources: {
-      list: os.resources.list.handler(({ input, errors }) => {
+      list: os.resources.list.handler(({ input, context, errors }) => {
         if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        // Committed resources are the protocol's; staged ones are this edit's,
+        // and another editor's imports are no more part of this protocol than
+        // the draft that will name them.
         const all = [
           ...resources.committedDescriptors(assets()),
-          ...resources.stagedDescriptors(),
+          ...resources.stagedDescriptors(context.principal.sessionId),
         ].filter(
           (descriptor) =>
             (input.kinds === undefined ||
@@ -391,25 +400,50 @@ function buildRouter(
         };
       }),
 
-      stage: os.resources.stage.handler(({ input, errors }) => {
+      stage: os.resources.stage.handler(({ input, context, errors }) => {
         if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
-        return resources.stage(input.requestId, input.request);
+        return resources.stage(
+          context.principal.sessionId,
+          input.requestId,
+          input.request,
+        );
       }),
 
-      discard: os.resources.discard.handler(({ input, errors }) => {
+      discard: os.resources.discard.handler(({ input, context, errors }) => {
         if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
-        return resources.discard(input.resourceId);
+        return resources.discard(context.principal.sessionId, input.resourceId);
       }),
 
-      inspect: os.resources.inspect.handler(({ input, errors }) => {
+      inspect: os.resources.inspect.handler(({ input, context, errors }) => {
         if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
-        return resources.inspect(assets(), input.resourceId);
+        return resources.inspect(
+          assets(),
+          input.resourceId,
+          context.principal.sessionId,
+        );
       }),
 
-      preview: os.resources.preview.handler(({ input, errors }) => {
+      preview: os.resources.preview.handler(({ input, context, errors }) => {
         if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
-        return resources.preview(assets(), input.resourceId);
+        return resources.preview(
+          assets(),
+          input.resourceId,
+          context.principal.sessionId,
+        );
       }),
     },
   };
+}
+
+/**
+ * The later of two cursors, either of which may be absent. This host's cursors
+ * are its own event counter, which is what makes them comparable.
+ */
+function laterCursor(
+  since: string | undefined,
+  lastEventId: string | undefined,
+): string | undefined {
+  if (since === undefined) return lastEventId;
+  if (lastEventId === undefined) return since;
+  return Number(lastEventId) > Number(since) ? lastEventId : since;
 }

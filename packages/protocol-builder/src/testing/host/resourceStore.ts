@@ -30,6 +30,13 @@ export type DiscardOutcome =
   | Readonly<{ status: 'failed'; failure: Failure }>;
 
 type StagedEntry = Readonly<{
+  /**
+   * The session that staged this. Staging belongs to the edit that imported
+   * the file: a collaborator cancelling their own edit must not take away
+   * what somebody else is about to submit, and nobody may promote bytes they
+   * never staged.
+   */
+  owner: string;
   descriptor: Descriptor;
   handle?: string;
   bytes?: Blob;
@@ -75,6 +82,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** A staging request's identity: whose it is, what it asked for, and its id. */
+function requestKey(
+  sessionId: string,
+  kind: string,
+  requestId: string,
+): string {
+  return `${sessionId}\u0000${kind}\u0000${requestId}`;
+}
+
 function descriptorFromManifestEntry(
   id: string,
   entry: Record<string, unknown>,
@@ -106,9 +122,11 @@ const KindSchema = z.enum([
  * Staged resources for the in-memory host: bytes and secrets an edit imported,
  * kept until its submit promotes them or its cancel drops them.
  *
- * One staging area per protocol rather than one per connection, which a host
- * serving several editors would need: a `discard` with no id here drops
- * everything staged, not everything this caller staged.
+ * Every staged entry belongs to the session that staged it, and no procedure
+ * reaches another session's: a protocol has as many edits open as it has
+ * editors, and staging that ignored them would let one editor's cancel take
+ * away the file another was about to submit. Committed resources are the
+ * protocol's and are shared by everyone.
  */
 export class InMemoryResourceStore {
   readonly secretStorage: SecretStorage = 'plaintext';
@@ -130,8 +148,20 @@ export class InMemoryResourceStore {
     this.#content = new Map(Object.entries(content));
   }
 
-  stagedDescriptors(): Descriptor[] {
-    return [...this.#staged.values()].map((entry) => entry.descriptor);
+  /** A staged entry, if this session is the one that staged it. */
+  #owned(sessionId: string, resourceId: string): StagedEntry | undefined {
+    const entry = this.#staged.get(resourceId);
+    return entry?.owner === sessionId ? entry : undefined;
+  }
+
+  #ownedBy(sessionId: string): StagedEntry[] {
+    return [...this.#staged.values()].filter(
+      (entry) => entry.owner === sessionId,
+    );
+  }
+
+  stagedDescriptors(sessionId: string): Descriptor[] {
+    return this.#ownedBy(sessionId).map((entry) => entry.descriptor);
   }
 
   committedDescriptors(assets: SectionDoc): Descriptor[] {
@@ -145,10 +175,16 @@ export class InMemoryResourceStore {
   }
 
   stage(
+    sessionId: string,
     requestId: string,
     request: StageRequest,
   ): ResourceOutcome<Readonly<{ descriptor: Descriptor; handle?: string }>> {
-    const existingId = this.#byRequest.get(requestId);
+    // The kind is part of the key because the contract asks only that a
+    // request id be stable across a retry of one intent, not that it be unique
+    // across the pickers an editor has open: a secret answered with an earlier
+    // upload's descriptor is a resource the submit cannot promote.
+    const key = requestKey(sessionId, request.kind, requestId);
+    const existingId = this.#byRequest.get(key);
     const existing =
       existingId === undefined ? undefined : this.#staged.get(existingId);
     if (existing !== undefined) {
@@ -163,6 +199,7 @@ export class InMemoryResourceStore {
     const entry: StagedEntry =
       request.kind === 'secret'
         ? {
+            owner: sessionId,
             descriptor: {
               id,
               kind: 'apikey',
@@ -178,6 +215,7 @@ export class InMemoryResourceStore {
             secret: request.value,
           }
         : {
+            owner: sessionId,
             descriptor: {
               id,
               kind: request.contentKind,
@@ -190,7 +228,7 @@ export class InMemoryResourceStore {
             bytes: request.bytes,
           };
     this.#staged.set(id, entry);
-    this.#byRequest.set(requestId, id);
+    this.#byRequest.set(key, id);
     return {
       status: 'ok',
       data: {
@@ -207,6 +245,7 @@ export class InMemoryResourceStore {
    * completed, so a refused submit leaves staging as it was.
    */
   manifestFor(
+    sessionId: string,
     resourceIds: readonly string[],
     secretHandles: readonly string[] | undefined,
   ): ResourceOutcome<
@@ -215,7 +254,7 @@ export class InMemoryResourceStore {
     const entries: Record<string, unknown> = {};
     const promoted: Descriptor[] = [];
     for (const resourceId of resourceIds) {
-      const entry = this.#staged.get(resourceId);
+      const entry = this.#owned(sessionId, resourceId);
       if (entry === undefined) {
         return failure('not-found', 'no such staged resource', resourceId);
       }
@@ -291,20 +330,32 @@ export class InMemoryResourceStore {
     }
   }
 
-  discard(resourceId: string | undefined): DiscardOutcome {
+  /** Drops what this session staged: one resource, or its whole edit. */
+  discard(sessionId: string, resourceId: string | undefined): DiscardOutcome {
     if (resourceId === undefined) {
-      this.#staged.clear();
-      this.#byRequest.clear();
+      for (const [id, entry] of this.#staged) {
+        if (entry.owner === sessionId) this.#staged.delete(id);
+      }
+      for (const key of this.#byRequest.keys()) {
+        if (key.startsWith(requestKey(sessionId, '', ''))) {
+          this.#byRequest.delete(key);
+        }
+      }
       return { status: 'ok' };
     }
-    if (!this.#staged.delete(resourceId)) {
+    if (this.#owned(sessionId, resourceId) === undefined) {
       return failure('not-found', 'no such staged resource', resourceId);
     }
+    this.#staged.delete(resourceId);
     return { status: 'ok' };
   }
 
-  inspect(assets: SectionDoc, resourceId: string): ResourceOutcome<Inspection> {
-    const descriptor = this.#descriptor(assets, resourceId);
+  inspect(
+    assets: SectionDoc,
+    resourceId: string,
+    sessionId: string,
+  ): ResourceOutcome<Inspection> {
+    const descriptor = this.#descriptor(assets, resourceId, sessionId);
     if (descriptor === undefined) {
       return failure('not-found', 'no such resource', resourceId);
     }
@@ -314,8 +365,9 @@ export class InMemoryResourceStore {
   async preview(
     assets: SectionDoc,
     resourceId: string,
+    sessionId: string,
   ): Promise<ResourceOutcome<Preview>> {
-    const descriptor = this.#descriptor(assets, resourceId);
+    const descriptor = this.#descriptor(assets, resourceId, sessionId);
     if (descriptor === undefined) {
       return failure('not-found', 'no such resource', resourceId);
     }
@@ -323,7 +375,7 @@ export class InMemoryResourceStore {
       return failure('unsupported-kind', 'a secret has no preview', resourceId);
     }
     const bytes =
-      this.#staged.get(resourceId)?.bytes ??
+      this.#owned(sessionId, resourceId)?.bytes ??
       (descriptor.source === undefined
         ? undefined
         : this.#content.get(descriptor.source));
@@ -344,8 +396,12 @@ export class InMemoryResourceStore {
     };
   }
 
-  #descriptor(assets: SectionDoc, resourceId: string): Descriptor | undefined {
-    const staged = this.#staged.get(resourceId);
+  #descriptor(
+    assets: SectionDoc,
+    resourceId: string,
+    sessionId: string,
+  ): Descriptor | undefined {
+    const staged = this.#owned(sessionId, resourceId);
     if (staged !== undefined) return staged.descriptor;
     const entry = assets[resourceId];
     return isRecord(entry)

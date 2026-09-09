@@ -1,4 +1,4 @@
-import { safe } from '@orpc/client';
+import { getEventMeta, safe } from '@orpc/client';
 import { describe, expect, it } from 'vitest';
 
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
@@ -64,6 +64,39 @@ async function submitHeld(
     revision: held.revision,
     ...(promote === undefined ? {} : { promote }),
   });
+}
+
+/**
+ * The cursors of the protocol's first `count` events, read from a watch that
+ * is then closed. Two writes under one lock produce four: the lock, the
+ * presence that follows it, and a revision each.
+ */
+async function watchCursors(
+  subject: InMemoryHost,
+  count: number,
+): Promise<string[]> {
+  const held = await subject.client.acquireLock({
+    protocolId: subject.protocolId,
+    sectionId: INFORMATION,
+  });
+  for (const label of ['one', 'two']) {
+    await subject.client.submit({
+      protocolId: subject.protocolId,
+      sectionId: INFORMATION,
+      document: { ...held.document, label },
+      revision: held.revision,
+    });
+  }
+  const events = await subject.client.watchProtocol({
+    protocolId: subject.protocolId,
+  });
+  const cursors: string[] = [];
+  for await (const event of events) {
+    cursors.push(String(getEventMeta(event)?.id));
+    if (cursors.length === count) break;
+  }
+  await events.return?.(undefined);
+  return cursors;
 }
 
 /** A staged image, as an edit that imported a file holds one. */
@@ -947,7 +980,7 @@ describe('the in-memory host', () => {
     expect(listed.status === 'ok' && listed.data.resources).toEqual([]);
   });
 
-  it('gives a staged secret a handle its resource id does not reveal', async () => {
+  it('keeps a staged secret to the session that staged it', async () => {
     const subject = host();
     const staged = await subject.client.resources.stage({
       protocolId: subject.protocolId,
@@ -956,19 +989,28 @@ describe('the in-memory host', () => {
     });
     if (staged.status !== 'ok') throw new Error('staging a secret failed');
 
-    // What a collaborator can see of somebody else's staged secret is the
-    // resource id `list` gives it, so a handle worked out from that id is one
-    // it can forge — and the handle is the whole of what stops it promoting
-    // that secret into the protocol this host writes in plaintext.
+    // Neither half of what promoting somebody else's secret would take is
+    // reachable from another session: staging is that edit's, so a
+    // collaborator is not shown the resource id, and the handle is minted
+    // independently of that id, so it cannot be worked out from one either.
     const collaborator = subject.asCollaborator(COLLABORATOR);
     const listed = await collaborator.resources.list({
       protocolId: subject.protocolId,
       status: 'staged',
     });
     if (listed.status !== 'ok') throw new Error('listing failed');
-    const seen = listed.data.resources.map((resource) => resource.id);
-    expect(seen).toEqual([staged.data.descriptor.id]);
+    expect(listed.data.resources).toEqual([]);
     expect(staged.data.handle).not.toContain(staged.data.descriptor.id);
+
+    // The session that staged it still has it: this is scoping, not hiding.
+    const mine = await subject.client.resources.list({
+      protocolId: subject.protocolId,
+      status: 'staged',
+    });
+    if (mine.status !== 'ok') throw new Error('listing failed');
+    expect(mine.data.resources.map((resource) => resource.id)).toEqual([
+      staged.data.descriptor.id,
+    ]);
 
     const held = await collaborator.acquireLock({
       protocolId: subject.protocolId,
@@ -1061,6 +1103,28 @@ describe('the in-memory host', () => {
     expect(definedError?.data).toMatchObject({
       sectionId: sectionId({ kind: 'codebookNode', typeId: 'ghost' }),
     });
+  });
+
+  it('resumes from the cursor the transport says the client reached', async () => {
+    const subject = host();
+    const cursors = await watchCursors(subject, 4);
+
+    // A transport resuming a dropped socket re-invokes the handler with the
+    // same input and the id of the last event it delivered. Starting from the
+    // input would hand this connection everything between the two again, and
+    // the channel applies what it is given.
+    const resumed = await subject.client.watchProtocol(
+      { protocolId: subject.protocolId, since: cursors[0] },
+      { lastEventId: cursors[2] },
+    );
+    const replayed: string[] = [];
+    for await (const event of resumed) {
+      replayed.push(String(getEventMeta(event)?.id));
+      break;
+    }
+    await resumed.return?.(undefined);
+
+    expect(replayed).toEqual([cursors[3]]);
   });
 
   it('keeps a holder editing when its watch stream starts again', async () => {
