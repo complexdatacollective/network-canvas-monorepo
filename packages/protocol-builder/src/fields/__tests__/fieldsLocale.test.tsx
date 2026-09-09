@@ -234,13 +234,11 @@ describe('the fields in this directory, read in Spanish', () => {
 
     expect(
       screen.getByRole('option', {
-        name: 'gone — este atributo ya no está en el libro de códigos',
+        name: 'gone — este atributo no está disponible aquí',
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        'Este atributo ya no está en el libro de códigos. Elige otro.',
-      ),
+      screen.getByText('Este atributo no está disponible aquí. Elige otro.'),
     ).toBeInTheDocument();
     // The placeholder is still offered while a dangling choice is showing.
     expect(
