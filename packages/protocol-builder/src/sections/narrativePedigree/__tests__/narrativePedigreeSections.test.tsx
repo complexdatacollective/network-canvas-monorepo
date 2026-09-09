@@ -920,6 +920,50 @@ describe('a source stage that is no longer usable', () => {
   });
 
   /**
+   * The question is awaited, and the interview does not hold still while it
+   * stands.
+   *
+   * What resumes when the researcher answers is a closure from the render that
+   * asked, holding the pedigree they picked — while a collaborator can delete
+   * it, re-type it, or move it below this stage. Applied anyway, the answer
+   * costs them every disease the question warned about AND leaves the stage
+   * pointing at a pedigree it may not read: the control's own latest render
+   * has already stopped offering it. The same live-read-at-write family the
+   * shared confirm reads the codebook back through.
+   */
+  it('refuses a confirmed source the interview has moved in the meantime', async () => {
+    const harness = renderStageEditor(withMissingSource());
+
+    await chooseOption(harness, 'Source stage', fixturePedigreeOption());
+    await screen.findByRole('button', { name: CONFIRM_SOURCE_CHANGE });
+    // The collaborator's move, arriving while the question stands: the
+    // pedigree now runs after this stage, so it is not one this stage may
+    // read and the control has stopped offering it.
+    reorderStages(harness, movePedigreeLast);
+    await harness.user.click(
+      screen.getByRole('button', { name: CONFIRM_SOURCE_CHANGE }),
+    );
+
+    // The stage is as it was: the choice was not applied, and nothing it was
+    // carrying was thrown away for it.
+    await waitFor(() =>
+      expect(harness.session.getSnapshot().editedSection.fields).toMatchObject({
+        sourceStageId: 'a-pedigree-that-was-deleted',
+        diseases: [{ id: 'disease-1', label: 'Condition X' }],
+      }),
+    );
+    expect(screen.getByText('Condition X')).toBeInTheDocument();
+    expect(harness.pendingCommands()).toEqual([]);
+    // And the researcher is told what did not happen, rather than left to
+    // notice that their answer did nothing.
+    expect(
+      await screen.findByText(
+        'What you chose is no longer one of the options here, so nothing has changed. Choose again.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
    * Every disease names an attribute of the source pedigree's node type, so a
    * different source invalidates all of them at once. They go rather than
    * being left to fail validation later, and they go as the loss of a whole

@@ -883,6 +883,14 @@
     "defaultMessage": "This change could not be saved, and nothing was altered. Wait a moment and try again.",
     "description": "Refusal shown in a codebook editor when saving was refused for a reason there are no words for — it threw with no explanation a researcher could act on, or the application it is running in named a reason this editor does not know. The last resort."
   },
+  "protocolBuilder.confirmingSelect.choiceGone": {
+    "defaultMessage": "What you chose is no longer one of the options here, so nothing has changed. Choose again.",
+    "description": "Body of the message refusing a confirmed change whose chosen option is no longer offered. Addressed to the researcher authoring the protocol, and it says what did NOT happen: the change was not applied and nothing the stage was carrying was thrown away."
+  },
+  "protocolBuilder.confirmingSelect.choiceGoneTitle": {
+    "defaultMessage": "That choice is no longer available",
+    "description": "Title of the message shown when a researcher confirms a change that costs the stage something, and the option they picked stopped being one this control offers while the question was open — a collaborator deleted or moved what it named. The change is refused."
+  },
   "protocolBuilder.contentBlock.audioHint": {
     "defaultMessage": "The audio the participant can play when they reach this block.",
     "description": "Guidance under the file picker of a block that plays an audio recording."

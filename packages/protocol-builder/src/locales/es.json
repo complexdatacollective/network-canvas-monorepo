@@ -220,6 +220,8 @@
   "protocolBuilder.compoundFailure.staleResult": "Ya hay abierta una versión más reciente del protocolo, así que este cambio no se ha aplicado. Inténtalo de nuevo.",
   "protocolBuilder.compoundFailure.unavailable": "Este editor no puede cambiar el libro de códigos ahora mismo. Vuelve a cargar el protocolo e inténtalo de nuevo.",
   "protocolBuilder.compoundFailure.unexplained": "No se ha podido guardar este cambio, y no se ha modificado nada. Espera un momento e inténtalo de nuevo.",
+  "protocolBuilder.confirmingSelect.choiceGone": "Lo que elegiste ya no es una de las opciones aquí, así que no ha cambiado nada. Elige de nuevo.",
+  "protocolBuilder.confirmingSelect.choiceGoneTitle": "Esa opción ya no está disponible",
   "protocolBuilder.contentBlock.audioHint": "El audio que el participante puede reproducir cuando llega a este bloque.",
   "protocolBuilder.contentBlock.audioRequired": "Elige el archivo de audio que reproduce este bloque.",
   "protocolBuilder.contentBlock.contentLabel": "Contenido",
