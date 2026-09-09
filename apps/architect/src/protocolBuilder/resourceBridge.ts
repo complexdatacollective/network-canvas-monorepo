@@ -34,6 +34,11 @@ export type ResourceOutcome<TData> =
   | Readonly<{ status: 'ok'; data: TData }>
   | Readonly<{ status: 'failed'; failure: Failure }>;
 
+/** A discard has nothing to answer with, so its success is the status alone. */
+export type DiscardOutcome =
+  | Readonly<{ status: 'ok' }>
+  | Readonly<{ status: 'failed'; failure: Failure }>;
+
 export type StagedResource = Readonly<{
   descriptor: Descriptor;
   handle?: string;
@@ -71,14 +76,15 @@ function failed(
  * is the protocol's own — so `stage` here commits, and what the lifecycle
  * still buys is the bookkeeping that follows it. This object remembers the
  * resources the open edit brought in, so `discard` can take them back out and
- * `promote` can stop treating them as the edit's to remove.
+ * the submit that promotes them can stop treating them as the edit's to
+ * remove.
  */
 export class ResourceBridge {
   readonly #store: ArchitectStore;
   readonly #byRequest = new Map<string, string>();
   readonly #handles = new Map<string, string>();
   readonly #staged = new Set<string>();
-  readonly #promotions = new Set<string>();
+  readonly #promotions = new Map<string, Descriptor[]>();
 
   constructor(store: ArchitectStore) {
     this.#store = store;
@@ -132,14 +138,26 @@ export class ResourceBridge {
     }
   }
 
-  promote(
-    promotionId: string,
+  /**
+   * The promotion this id already made, if it made one.
+   *
+   * `promotionId` is stable across an uncertain retry, so a submit whose
+   * answer was lost is repeated with the same id: it is told what was
+   * promoted rather than refused for something it cannot see.
+   */
+  completedPromotion(promotionId: string): Descriptor[] | undefined {
+    return this.#promotions.get(promotionId);
+  }
+
+  /**
+   * What a promotion would commit, or why it cannot be made. Nothing here
+   * changes: the submit that carries the promotion completes it, so a refused
+   * submit leaves the edit's resources still the edit's to discard.
+   */
+  planPromotion(
     resourceIds: readonly string[],
     secretHandles: readonly string[] | undefined,
-  ): ResourceOutcome<Readonly<{ promoted: Descriptor[] }>> {
-    if (this.#promotions.has(promotionId)) {
-      return failed('invalid-request', 'this promotion has already been made');
-    }
+  ): ResourceOutcome<Readonly<{ promoted: Descriptor[]; ids: string[] }>> {
     const ids = [
       ...resourceIds,
       ...(secretHandles ?? []).map((handle) => this.#handles.get(handle) ?? ''),
@@ -152,17 +170,24 @@ export class ResourceBridge {
       }
       promoted.push({ ...descriptor, status: 'committed' });
     }
-    this.#promotions.add(promotionId);
-    for (const id of ids) this.#staged.delete(id);
-    return { status: 'ok', data: { promoted } };
+    return { status: 'ok', data: { promoted, ids } };
   }
 
-  discard(resourceId: string | undefined): ResourceOutcome<undefined> {
+  completePromotion(
+    promotionId: string,
+    promoted: readonly Descriptor[],
+    ids: readonly string[],
+  ): void {
+    this.#promotions.set(promotionId, [...promoted]);
+    for (const id of ids) this.#staged.delete(id);
+  }
+
+  discard(resourceId: string | undefined): DiscardOutcome {
     if (resourceId === undefined) {
       for (const id of this.#staged) this.#store.dispatch(deleteAsset(id));
       this.#staged.clear();
       this.#byRequest.clear();
-      return { status: 'ok', data: undefined };
+      return { status: 'ok' };
     }
     if (!this.#staged.delete(resourceId)) {
       return failed(
@@ -172,7 +197,7 @@ export class ResourceBridge {
       );
     }
     this.#store.dispatch(deleteAsset(resourceId));
-    return { status: 'ok', data: undefined };
+    return { status: 'ok' };
   }
 
   async inspect(resourceId: string): Promise<ResourceOutcome<Inspection>> {

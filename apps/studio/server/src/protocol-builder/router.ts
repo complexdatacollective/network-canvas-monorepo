@@ -13,6 +13,7 @@ import { contract } from '@codaco/studio-rpc';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId as makeSectionId,
+  parseSectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
@@ -25,9 +26,9 @@ import {
   acquireLock,
   create,
   deleteEntityType,
+  deleteStage,
   deleteVariable,
   listSectionIds,
-  mergeAssets,
   readSection,
   releaseConnection,
   releaseLock,
@@ -283,7 +284,35 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         if (session === null) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
         }
-        const result = await submit(session, input.sectionId, input.document);
+        // The promotion is planned before anything is written: its bytes go to
+        // the object store, where nothing names them, and only the section
+        // write below puts them in the manifest. A refused submit therefore
+        // leaves the protocol as it was and the resources still staged.
+        const store = staged.for(stagingKey(session));
+        const promotion = input.promote;
+        const already =
+          promotion === undefined
+            ? undefined
+            : store.completedPromotion(promotion.promotionId);
+        const planned =
+          promotion === undefined || already !== undefined
+            ? undefined
+            : await store.plan(
+                deps.assetStore,
+                promotion.resourceIds,
+                promotion.secretHandles,
+              );
+        if (planned?.status === 'failed') {
+          throw errors.PROMOTION_FAILED({
+            data: { sectionId: input.sectionId, failure: planned.failure },
+          });
+        }
+        const result = await submit(
+          session,
+          input.sectionId,
+          input.document,
+          planned?.data.entries,
+        );
         publish(session, result.events);
         const outcome = result.outcome;
         if (outcome === undefined) {
@@ -304,7 +333,18 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
             data: { sectionId: input.sectionId, issues: outcome.issues },
           });
         }
-        return { revision: outcome.revision };
+        if (promotion !== undefined && planned !== undefined) {
+          store.completePromotion(
+            promotion.promotionId,
+            planned.data.promoted,
+            promotion.resourceIds,
+          );
+        }
+        const promoted = already ?? planned?.data.promoted;
+        return {
+          revision: outcome.revision,
+          ...(promoted === undefined ? {} : { promoted }),
+        };
       },
     ),
 
@@ -321,6 +361,11 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           mintId: randomUUID,
         });
         publish(session, result.events);
+        if (result.outcome.status === 'exists') {
+          throw errors.SECTION_EXISTS({
+            data: { sectionId: result.outcome.sectionId },
+          });
+        }
         if (result.outcome.status === 'invalidShape') {
           throw errors.INVALID_SHAPE({
             data: {
@@ -333,6 +378,41 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           sectionId: result.outcome.sectionId,
           revision: result.outcome.revision,
         };
+      },
+    ),
+
+    /**
+     * Removes a stage and its place in the stage order in one revision.
+     *
+     * Server-mediated like the refactors: the two writes cannot be made under
+     * one lock, and it takes neither of them, so a stage or an order any
+     * editor holds — including one on this connection, whose draft would put
+     * the stage back — refuses the change.
+     */
+    delete: os.protocolBuilder.delete.handler(
+      async ({ input, context, errors }) => {
+        const session = await openSession(context, input.protocolId);
+        if (session === null) {
+          throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        }
+        const ref = parseSectionId(input.sectionId);
+        if (ref.kind !== 'stage') {
+          throw errors.SECTION_NOT_FOUND({ data: input });
+        }
+        const result = await deleteStage(session, ref.stageId);
+        publish(session, result.events);
+        if (result.outcome === undefined) {
+          throw errors.SECTION_NOT_FOUND({ data: input });
+        }
+        if (result.outcome.status === 'blocked') {
+          throw errors.SECTIONS_LOCKED({
+            data: { blocked: result.outcome.blocked },
+          });
+        }
+        if (result.outcome.status === 'referenced') {
+          throw new Error('deleting a stage cannot leave references behind');
+        }
+        return result.outcome;
       },
     ),
 
@@ -404,43 +484,6 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         },
       ),
 
-      promote: os.protocolBuilder.resources.promote.handler(
-        async ({ input, context, errors }) => {
-          const session = await openSession(context, input.protocolId);
-          if (session === null) {
-            throw errors.PROTOCOL_NOT_FOUND({ data: input });
-          }
-          const store = staged.for(stagingKey(session));
-          const plan = await store.plan(
-            deps.assetStore,
-            input.promotionId,
-            input.resourceIds,
-          );
-          if (plan.status === 'failed') return plan;
-          const merged = await mergeAssets(session, plan.data.entries);
-          publish(session, merged.events);
-          if (merged.outcome === undefined) {
-            return {
-              status: 'failed' as const,
-              failure: {
-                reason: 'promotion-failed' as const,
-                message: 'this protocol has no asset manifest',
-                retryable: true,
-              },
-            };
-          }
-          store.completePromotion(input.promotionId, input.resourceIds);
-          return {
-            status: 'ok' as const,
-            data: {
-              id: input.promotionId,
-              promoted: plan.data.promoted,
-              revision: merged.outcome,
-            },
-          };
-        },
-      ),
-
       discard: os.protocolBuilder.resources.discard.handler(
         async ({ input, context, errors }) => {
           const session = await openSession(context, input.protocolId);
@@ -481,10 +524,10 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
 type AppliedRefactor = Extract<RefactorOutcome, { status: 'applied' }>;
 
 /**
- * A refactor either took every section it writes, or it took none and names
- * who has them. A subject that does not exist is a NOT_FOUND, which the
- * contract's own errors do not cover — they name a protocol or a section, and
- * this is neither.
+ * A refactor either took every section it writes and left nothing naming what
+ * it removed, or it made no change and says which of the two stopped it. A
+ * subject that does not exist is a NOT_FOUND, which the contract's own errors
+ * do not cover — they name a protocol or a section, and this is neither.
  */
 function applied(
   outcome: RefactorOutcome | undefined,
@@ -494,11 +537,22 @@ function applied(
         blocked: Extract<RefactorOutcome, { status: 'blocked' }>['blocked'];
       };
     }) => Error;
+    REFERENCES_REMAIN: (options: {
+      data: {
+        remaining: Extract<
+          RefactorOutcome,
+          { status: 'referenced' }
+        >['remaining'];
+      };
+    }) => Error;
   },
 ): AppliedRefactor {
   if (outcome === undefined) throw new ORPCError('NOT_FOUND');
   if (outcome.status === 'blocked') {
     throw errors.SECTIONS_LOCKED({ data: { blocked: outcome.blocked } });
+  }
+  if (outcome.status === 'referenced') {
+    throw errors.REFERENCES_REMAIN({ data: { remaining: outcome.remaining } });
   }
   return outcome;
 }

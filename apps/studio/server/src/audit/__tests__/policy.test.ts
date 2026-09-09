@@ -336,9 +336,9 @@ describe('audit mutation policy', () => {
     expect(
       RPC_MUTATION_AUDIT_POLICIES['protocolBuilder.refactor.deleteVariable'],
     ).toEqual({ kind: 'required' });
-    expect(
-      RPC_MUTATION_AUDIT_POLICIES['protocolBuilder.resources.promote'],
-    ).toEqual({ kind: 'required' });
+    expect(RPC_MUTATION_AUDIT_POLICIES['protocolBuilder.delete']).toEqual({
+      kind: 'required',
+    });
     assertReasons(RPC_MUTATION_AUDIT_POLICIES);
     assertReasons(NON_RPC_MUTATION_AUDIT_POLICIES);
     assertReasons(NO_AUDIT_TRANSACTION_POLICIES);

@@ -63,30 +63,66 @@ function researcher(slug: string): Researcher {
 const ADA = researcher('ada');
 const GRACE = researcher('grace');
 
-/**
- * A variable one stage's prompt names, taken from the sample protocol rather
- * than written here: the refactor under test is "strip every reference", and a
- * hand-written pair could stop being a reference without the test noticing.
- */
-function referencedVariable(protocol: CurrentProtocol): {
+type VariableReference = {
   typeId: string;
   variableId: string;
   stageId: string;
-} {
+};
+
+function subjectTypeOf(stage: unknown): string | undefined {
+  const subject: unknown = (stage as { subject?: unknown }).subject;
+  const type = (subject as { type?: unknown } | null | undefined)?.type;
+  return typeof type === 'string' ? type : undefined;
+}
+
+function formFields(stage: unknown): unknown[] | undefined {
+  const form: unknown = (stage as { form?: unknown }).form;
+  const fields = (form as { fields?: unknown } | null | undefined)?.fields;
+  return Array.isArray(fields) ? fields : undefined;
+}
+
+/**
+ * A variable one stage's form names, alongside other fields.
+ *
+ * Taken from the sample protocol rather than written here: the refactor under
+ * test sweeps every reference the schema declares, and a hand-written pair
+ * could stop being a reference without the test noticing. A form field is the
+ * reference to pick because it is one the host can remove — the field goes and
+ * the stage is still a stage — and because nothing in the sample protocol
+ * reaches this variable from a prompt, which is all the host used to look at.
+ */
+function strippableVariable(protocol: CurrentProtocol): VariableReference {
   for (const stage of protocol.stages) {
-    const prompts: unknown = (stage as { prompts?: unknown }).prompts;
-    const subject: unknown = (stage as { subject?: unknown }).subject;
-    if (!Array.isArray(prompts) || typeof subject !== 'object') continue;
-    const type = (subject as { type?: unknown } | null)?.type;
-    if (typeof type !== 'string') continue;
-    for (const prompt of prompts) {
-      const variable = (prompt as { variable?: unknown }).variable;
-      if (typeof variable === 'string') {
-        return { typeId: type, variableId: variable, stageId: stage.id };
-      }
+    const type = subjectTypeOf(stage);
+    const fields = formFields(stage);
+    if (type === undefined || fields === undefined || fields.length < 2) {
+      continue;
+    }
+    const variable = (fields[0] as { variable?: unknown }).variable;
+    if (typeof variable === 'string') {
+      return { typeId: type, variableId: variable, stageId: stage.id };
     }
   }
-  throw new Error('the sample protocol names no variable from a prompt');
+  throw new Error('the sample protocol names no variable from a form field');
+}
+
+/**
+ * A variable that is a stage's only prompt: removing the prompt would leave a
+ * stage with none, so this is a reference no host can sweep away.
+ */
+function soleVariablePrompt(protocol: CurrentProtocol): VariableReference {
+  for (const stage of protocol.stages) {
+    const prompts: unknown = (stage as { prompts?: unknown }).prompts;
+    const type = subjectTypeOf(stage);
+    if (type === undefined || !Array.isArray(prompts) || prompts.length !== 1) {
+      continue;
+    }
+    const variable = (prompts[0] as { variable?: unknown }).variable;
+    if (typeof variable === 'string') {
+      return { typeId: type, variableId: variable, stageId: stage.id };
+    }
+  }
+  throw new Error('the sample protocol has no stage with one variable prompt');
 }
 
 describe.skipIf(!db)('the protocol-builder host surface', () => {
@@ -94,7 +130,10 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   let clients: Map<Researcher, ReturnType<typeof clientFor>>;
   let protocolId: string;
   let draftId: string;
-  let reference: ReturnType<typeof referencedVariable>;
+  let reference: VariableReference;
+  let unstrippable: VariableReference;
+  /** A protocol whose researcher has given the participant no attributes. */
+  let egolessProtocolId: string;
   let router: ReturnType<typeof createRpcRouter>;
   let runtime: ProtocolBuilderRuntime;
   /**
@@ -122,6 +161,14 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
 
   const stageSection = (stageId: string) => `stage:${stageId}`;
 
+  /** A stage of this test's own, so nothing here reads another test's edit. */
+  const createStage = (who: Researcher, label: string) =>
+    asClient(who).protocolBuilder.create({
+      protocolId,
+      kind: 'stage',
+      document: { type: 'Information', label, title: label, items: [] },
+    });
+
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     const scratch = await createScratchSchema(db);
@@ -147,10 +194,17 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         'utf8',
       ),
     ) as CurrentProtocol;
-    reference = referencedVariable(protocol);
+    reference = strippableVariable(protocol);
+    unstrippable = soleVariablePrompt(protocol);
     const store = new ProtocolStore(createTenantDb(scratch.app, TEAM_ID));
     const created = await store.createProtocol({ protocol });
     protocolId = created.protocolId;
+    const { ego: _ego, ...codebook } = protocol.codebook;
+    egolessProtocolId = (
+      await store.createProtocol({
+        protocol: { ...protocol, name: 'No ego yet', codebook },
+      })
+    ).protocolId;
     const draft = await store.latestDraftId(protocolId);
     if (draft === undefined) throw new Error('the new protocol has no draft');
     draftId = draft;
@@ -366,18 +420,24 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     expect(after.document).toEqual(before.document);
   });
 
+  /**
+   * The sweep is the schema's, not a list of paths this host happens to know:
+   * the variable it removes here is named by a form field and by nothing else,
+   * so a host that only stripped prompts would delete it and leave the stage
+   * pointing at a variable that is gone.
+   */
   it('applies a refactor once every section it writes is free', async () => {
     const sectionId = stageSection(reference.stageId);
     const stageBefore = await asClient(ADA).protocolBuilder.getSection({
       protocolId,
       sectionId,
     });
-    const promptsBefore = stageBefore.document.prompts;
-    if (!Array.isArray(promptsBefore)) throw new Error('stage has no prompts');
+    const fieldsBefore = formFields(stageBefore.document);
+    if (fieldsBefore === undefined) throw new Error('stage has no form');
     expect(
-      promptsBefore.filter(
-        (prompt) =>
-          (prompt as { variable?: unknown }).variable === reference.variableId,
+      fieldsBefore.filter(
+        (field) =>
+          (field as { variable?: unknown }).variable === reference.variableId,
       ),
     ).not.toHaveLength(0);
 
@@ -403,15 +463,339 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       protocolId,
       sectionId,
     });
-    expect(stage.document.prompts).toEqual(
-      promptsBefore.filter(
-        (prompt) =>
-          (prompt as { variable?: unknown }).variable !== reference.variableId,
+    expect(formFields(stage.document)).toEqual(
+      fieldsBefore.filter(
+        (field) =>
+          (field as { variable?: unknown }).variable !== reference.variableId,
       ),
     );
     // Every section of one refactor carries one sequence.
     expect(stage.revision.sequence).toBe(applied.revision.sequence);
     expect(codebook.revision.sequence).toBe(applied.revision.sequence);
+  });
+
+  it('refuses a deletion whose references it cannot remove, and names them', async () => {
+    const sectionId = stageSection(unstrippable.stageId);
+    const codebookSection = `codebook:node:${unstrippable.typeId}`;
+    const before = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: codebookSection,
+    });
+
+    const { error } = await safe(
+      asClient(ADA).protocolBuilder.refactor.deleteVariable({
+        protocolId,
+        subject: { entity: 'node', type: unstrippable.typeId },
+        variableId: unstrippable.variableId,
+      }),
+    );
+
+    // Dropping the prompt would leave a stage with none, and no other reading
+    // of "remove this reference" is one the researcher asked for — so the
+    // change is refused whole, naming what is still using the variable.
+    if (!isDefinedError(error) || error.code !== 'REFERENCES_REMAIN') {
+      throw error ?? new Error('the deletion was not refused at all');
+    }
+    expect(error.data.remaining).toContainEqual({
+      sectionId,
+      path: ['prompts', 0, 'variable'],
+    });
+    const after = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: codebookSection,
+    });
+    expect(after.document).toEqual(before.document);
+  });
+
+  /**
+   * The bytes and the section naming them are one revision, so the two states
+   * a separate promotion procedure made reachable — a manifest entry nothing
+   * points at, a section pointing at bytes that were never committed — are not
+   * states this host can be left in.
+   */
+  it('promotes a staged resource in the submitting section’s own revision', async () => {
+    const stage = await createStage(ADA, 'Names a secret');
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      requestId: 'promoted-secret',
+      request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const handle = staged.data.handle;
+    if (handle === undefined) throw new Error('a secret has no handle');
+
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    const written = await asClient(ADA).protocolBuilder.submit({
+      protocolId,
+      sectionId: stage.sectionId,
+      document: { ...held.document, label: 'Names a secret' },
+      revision: held.revision,
+      promote: {
+        promotionId: 'promotion-1',
+        resourceIds: [staged.data.descriptor.id],
+        secretHandles: [handle],
+      },
+    });
+
+    expect(written.promoted?.map((entry) => entry.status)).toEqual([
+      'committed',
+    ]);
+    const assets = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'assets',
+    });
+    expect(assets.document[staged.data.descriptor.id]).toMatchObject({
+      name: 'Mapbox token',
+      type: 'apikey',
+    });
+    // One sequence across both sections is what "atomic" means to a watcher
+    // reading the stream in order.
+    expect(assets.revision.sequence).toBe(written.revision.sequence);
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+  });
+
+  it('writes neither the section nor the manifest when a promotion fails', async () => {
+    const stage = await createStage(ADA, 'Renamed beside a bad promotion');
+    const assetsBefore = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'assets',
+    });
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+
+    const { error } = await safe(
+      asClient(ADA).protocolBuilder.submit({
+        protocolId,
+        sectionId: stage.sectionId,
+        document: { ...held.document, label: 'Renamed' },
+        revision: held.revision,
+        promote: { promotionId: 'promotion-2', resourceIds: ['never-staged'] },
+      }),
+    );
+
+    if (!isDefinedError(error) || error.code !== 'PROMOTION_FAILED') {
+      throw error ?? new Error('the submit was not refused at all');
+    }
+    expect(error.data).toMatchObject({
+      sectionId: stage.sectionId,
+      failure: { reason: 'not-found', resourceId: 'never-staged' },
+    });
+    const after = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    expect(after.document.label).toBe('Renamed beside a bad promotion');
+    expect(after.revision).toEqual(held.revision);
+    const assets = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'assets',
+    });
+    expect(assets.document).toEqual(assetsBefore.document);
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+  });
+
+  it('promotes a staged secret only for the handle staging answered with', async () => {
+    const stage = await createStage(ADA, 'Promotes a secret it cannot name');
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      requestId: 'unhandled-secret',
+      request: { kind: 'secret', name: 'Another token', value: 'pk.other' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+
+    const { error } = await safe(
+      asClient(ADA).protocolBuilder.submit({
+        protocolId,
+        sectionId: stage.sectionId,
+        document: held.document,
+        revision: held.revision,
+        promote: {
+          promotionId: 'promotion-3',
+          resourceIds: [staged.data.descriptor.id],
+        },
+      }),
+    );
+
+    // The staged id is listed to everyone in the protocol; the value it stands
+    // for is not, and writing it into the manifest is what puts a credential
+    // into the file the researcher sends on.
+    if (!isDefinedError(error) || error.code !== 'PROMOTION_FAILED') {
+      throw error ?? new Error('the submit was not refused at all');
+    }
+    expect(error.data.failure.reason).toBe('invalid-request');
+    const assets = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'assets',
+    });
+    expect(assets.document[staged.data.descriptor.id]).toBeUndefined();
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+  });
+
+  it('answers a discard with the status alone', async () => {
+    const staged = await asClient(GRACE).protocolBuilder.resources.stage({
+      protocolId,
+      requestId: 'discarded-secret',
+      request: { kind: 'secret', name: 'Throwaway', value: 'pk.throwaway' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+
+    const discarded = await asClient(GRACE).protocolBuilder.resources.discard({
+      protocolId,
+      resourceId: staged.data.descriptor.id,
+    });
+
+    // The whole answer is the status: a `data` key whose only value is
+    // `undefined` is one a transport may drop and a schema then rejects.
+    expect(discarded).toStrictEqual({ status: 'ok' });
+    const again = await asClient(GRACE).protocolBuilder.resources.discard({
+      protocolId,
+      resourceId: staged.data.descriptor.id,
+    });
+    expect(again).toStrictEqual({
+      status: 'failed',
+      failure: {
+        reason: 'not-found',
+        message: 'no such staged resource',
+        retryable: false,
+        resourceId: staged.data.descriptor.id,
+      },
+    });
+  });
+
+  it('removes a stage and its place in the stage order in one revision', async () => {
+    const created = await createStage(ADA, 'Created to be deleted');
+    const stageId = created.sectionId.slice('stage:'.length);
+
+    const deleted = await asClient(ADA).protocolBuilder.delete({
+      protocolId,
+      sectionId: created.sectionId,
+    });
+
+    expect(deleted.changedSections).toEqual([created.sectionId, 'stageOrder']);
+    const order = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+    // A pointer left behind, or a section left out of the order, is a protocol
+    // that cannot be assembled at all.
+    expect(order.document.stages).not.toContain(stageId);
+    expect(order.revision.sequence).toBe(deleted.revision.sequence);
+    const { error } = await safe(
+      asClient(ADA).protocolBuilder.getSection({
+        protocolId,
+        sectionId: created.sectionId,
+      }),
+    );
+    expect(isDefinedError(error) && error.code).toBe('SECTION_NOT_FOUND');
+    const listed = await asClient(ADA).protocolBuilder.listSections({
+      protocolId,
+    });
+    expect(listed.sectionIds).not.toContain(created.sectionId);
+  });
+
+  it('refuses to delete a stage an editor holds, and names them', async () => {
+    const created = await createStage(ADA, 'Held while someone deletes it');
+    const held = await asClient(GRACE).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: created.sectionId,
+    });
+    expect(held.lock).toBe('held');
+
+    try {
+      const { error } = await safe(
+        asClient(ADA).protocolBuilder.delete({
+          protocolId,
+          sectionId: created.sectionId,
+        }),
+      );
+
+      if (!isDefinedError(error) || error.code !== 'SECTIONS_LOCKED') {
+        throw error ?? new Error('the deletion was not refused at all');
+      }
+      expect(error.data.blocked.map((entry) => entry.sectionId)).toEqual([
+        created.sectionId,
+      ]);
+      expect(error.data.blocked[0]?.holder?.userId).toBe(
+        GRACE.principal.userId,
+      );
+    } finally {
+      await asClient(GRACE).protocolBuilder.releaseLock({
+        protocolId,
+        sectionId: created.sectionId,
+      });
+    }
+    const order = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: 'stageOrder',
+    });
+    expect(order.document.stages).toContain(
+      created.sectionId.slice('stage:'.length),
+    );
+  });
+
+  it('creates the ego codebook a protocol does not have yet, once', async () => {
+    const { error: gone } = await safe(
+      asClient(ADA).protocolBuilder.getSection({
+        protocolId: egolessProtocolId,
+        sectionId: 'codebook:ego',
+      }),
+    );
+    expect(isDefinedError(gone) && gone.code).toBe('SECTION_NOT_FOUND');
+
+    const created = await asClient(ADA).protocolBuilder.create({
+      protocolId: egolessProtocolId,
+      kind: 'codebookEgo',
+      document: {
+        variables: {
+          ego_age: { name: 'ego_age', type: 'number', component: 'Number' },
+        },
+      },
+    });
+    expect(created.sectionId).toBe('codebook:ego');
+    const ego = await asClient(ADA).protocolBuilder.getSection({
+      protocolId: egolessProtocolId,
+      sectionId: 'codebook:ego',
+    });
+    expect(ego.document.variables).toMatchObject({
+      ego_age: { name: 'ego_age' },
+    });
+
+    // Adding the first ego attribute is what creates the section, and a second
+    // create is a mistake rather than a way to replace what is there.
+    const { error } = await safe(
+      asClient(ADA).protocolBuilder.create({
+        protocolId: egolessProtocolId,
+        kind: 'codebookEgo',
+        document: { variables: {} },
+      }),
+    );
+    if (!isDefinedError(error) || error.code !== 'SECTION_EXISTS') {
+      throw error ?? new Error('the second create was not refused');
+    }
+    expect(error.data.sectionId).toBe('codebook:ego');
+    const unchanged = await asClient(ADA).protocolBuilder.getSection({
+      protocolId: egolessProtocolId,
+      sectionId: 'codebook:ego',
+    });
+    expect(unchanged.document).toEqual(ego.document);
   });
 
   it('replays from a cursor with nothing missed and nothing repeated', async () => {

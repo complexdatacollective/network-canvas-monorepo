@@ -27,7 +27,11 @@ import {
   updateTypeAsync,
 } from '~/ducks/modules/protocol/codebook';
 import { commitStageEditorDraft } from '~/ducks/modules/protocol/commitStageEditorDraft';
-import { actionCreators as stageActionCreators } from '~/ducks/modules/protocol/stages';
+import {
+  actionCreators as stageActionCreators,
+  getFamilyPedigreeDependentStages,
+  getSkipDestinationDependentStages,
+} from '~/ducks/modules/protocol/stages';
 import { getAssetManifest, getCanonicalProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from './architectStore.ts';
@@ -44,13 +48,18 @@ export type SectionWrite =
 
 export type SectionCreation =
   | Readonly<{ status: 'created'; sectionId: ProtocolSectionId }>
+  | Readonly<{ status: 'exists'; sectionId: ProtocolSectionId }>
   | Readonly<{
       status: 'refused';
       sectionId: ProtocolSectionId;
       issues: SectionIssue[];
     }>;
 
-export type CreatableSectionKind = 'stage' | 'codebookNode' | 'codebookEdge';
+export type CreatableSectionKind =
+  | 'stage'
+  | 'codebookNode'
+  | 'codebookEdge'
+  | 'codebookEgo';
 
 type ParseFailure = Readonly<{
   issues: ReadonlyArray<
@@ -248,6 +257,40 @@ export function submitSection(
   }
 }
 
+export type SectionDeletion =
+  | Readonly<{ status: 'deleted' }>
+  | Readonly<{ status: 'referenced'; sectionIds: ProtocolSectionId[] }>;
+
+/**
+ * Removes a stage and its place in the stage order in one dispatch.
+ *
+ * `deleteStage` is the action Architect already deletes a stage with, and the
+ * stage order is derived from the stage list, so both changes are one write.
+ * The action drops a deletion another stage depends on and says nothing, so
+ * the dependency is read here first: the caller gets a refusal naming the
+ * stages in the way rather than a success that deleted nothing.
+ */
+export async function deleteStageSection(
+  store: ArchitectStore,
+  stageId: string,
+): Promise<SectionDeletion> {
+  const stages = getCanonicalProtocol(store.getState())?.stages ?? [];
+  const dependents = [
+    ...getSkipDestinationDependentStages(stages, stageId),
+    ...getFamilyPedigreeDependentStages(stages, stageId),
+  ];
+  if (dependents.length > 0) {
+    const sectionIds = new Set(
+      dependents.map((stage) =>
+        sectionId({ kind: 'stage', stageId: stage.id }),
+      ),
+    );
+    return { status: 'referenced', sectionIds: [...sectionIds] };
+  }
+  await store.dispatch(stageActionCreators.deleteStage(stageId)).unwrap();
+  return { status: 'deleted' };
+}
+
 /**
  * Creates a section and registers its pointer in the same dispatch.
  *
@@ -275,6 +318,21 @@ export async function createSection(
         ...(position === undefined ? {} : { index: position }),
       }),
     );
+    return { status: 'created', sectionId: target };
+  }
+
+  // The ego codebook is the one creatable singleton: a protocol whose
+  // researcher has given the participant no attributes yet has no such
+  // section, and adding the first one is what creates it.
+  if (kind === 'codebookEgo') {
+    const target = sectionId({ kind });
+    if (getCanonicalProtocol(store.getState())?.codebook.ego !== undefined) {
+      return { status: 'exists', sectionId: target };
+    }
+    const parsed = EgoDefinitionSchema.safeParse(document);
+    if (!parsed.success)
+      return { ...refuseParse(parsed.error), sectionId: target };
+    await writeEntityDefinition(store, 'ego', EGO_TYPE, parsed.data);
     return { status: 'created', sectionId: target };
   }
 

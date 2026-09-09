@@ -33,6 +33,11 @@ export type ResourceOutcome<TData> =
   | { status: 'ok'; data: TData }
   | { status: 'failed'; failure: Failure };
 
+/** A discard has nothing to answer with, so its success is the status alone. */
+export type DiscardOutcome =
+  | { status: 'ok' }
+  | { status: 'failed'; failure: Failure };
+
 /** Manifest entries a promotion writes, and the bytes it must store first. */
 export type PromotionPlan = {
   entries: Record<string, unknown>;
@@ -126,7 +131,7 @@ export class StagedResources {
   readonly secretStorage: SecretStorage = 'plaintext';
   readonly #staged = new Map<string, StagedEntry>();
   readonly #byRequest = new Map<string, string>();
-  readonly #promoted = new Set<string>();
+  readonly #promoted = new Map<string, Descriptor[]>();
   readonly #mintId: () => string;
 
   constructor(mintId: () => string) {
@@ -191,18 +196,27 @@ export class StagedResources {
   }
 
   /**
+   * The promotion this id already made, if it made one.
+   *
+   * `promotionId` is stable across an uncertain retry, so a submit whose answer
+   * was lost is repeated with the same id: it is told what was committed rather
+   * than refused for a write it cannot see.
+   */
+  completedPromotion(promotionId: string): Descriptor[] | undefined {
+    return this.#promoted.get(promotionId);
+  }
+
+  /**
    * Stores the bytes and returns the manifest entries naming them. Writing
-   * those entries into the `assets` section is the caller's half, so bytes and
-   * manifest land in one revision.
+   * those entries into the `assets` section is the submit's half, so the bytes
+   * and the section naming them land in one revision — and until it does,
+   * nothing here is committed and the staged resources are still staged.
    */
   async plan(
     store: AssetStore | undefined,
-    promotionId: string,
     resourceIds: readonly string[],
+    secretHandles: readonly string[] | undefined,
   ): Promise<ResourceOutcome<PromotionPlan>> {
-    if (this.#promoted.has(promotionId)) {
-      return failure('invalid-request', 'this promotion has already been made');
-    }
     const entries: Record<string, unknown> = {};
     const promoted: Descriptor[] = [];
     for (const resourceId of resourceIds) {
@@ -211,6 +225,21 @@ export class StagedResources {
         return failure('not-found', 'no such staged resource', resourceId);
       }
       if (entry.secret !== undefined) {
+        // The handle staging answered with is the only way to promote the
+        // secret behind it. A staged resource id is listed to everyone in the
+        // protocol; the value it stands for is not, and writing it into the
+        // manifest is what puts a credential into the file the researcher
+        // sends on.
+        if (
+          entry.handle === undefined ||
+          secretHandles?.includes(entry.handle) !== true
+        ) {
+          return failure(
+            'invalid-request',
+            'promoting a staged secret needs the handle staging returned',
+            resourceId,
+          );
+        }
         entries[resourceId] = {
           name: entry.descriptor.name,
           type: 'apikey',
@@ -248,21 +277,25 @@ export class StagedResources {
     return { status: 'ok', data: { entries, promoted } };
   }
 
-  completePromotion(promotionId: string, resourceIds: readonly string[]): void {
-    this.#promoted.add(promotionId);
+  completePromotion(
+    promotionId: string,
+    promoted: readonly Descriptor[],
+    resourceIds: readonly string[],
+  ): void {
+    this.#promoted.set(promotionId, [...promoted]);
     for (const resourceId of resourceIds) this.#staged.delete(resourceId);
   }
 
-  discard(resourceId: string | undefined): ResourceOutcome<undefined> {
+  discard(resourceId: string | undefined): DiscardOutcome {
     if (resourceId === undefined) {
       this.#staged.clear();
       this.#byRequest.clear();
-      return { status: 'ok', data: undefined };
+      return { status: 'ok' };
     }
     if (!this.#staged.delete(resourceId)) {
       return failure('not-found', 'no such staged resource', resourceId);
     }
-    return { status: 'ok', data: undefined };
+    return { status: 'ok' };
   }
 
   committed(assets: SectionDoc): Descriptor[] {

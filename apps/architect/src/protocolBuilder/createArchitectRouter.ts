@@ -5,12 +5,12 @@ import {
   type ProtocolBuilderClient,
 } from '@codaco/protocol-builder/contract';
 import type { Revision } from '@codaco/protocol-builder/contract/schemas';
-import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
+import { contentHash } from '@codaco/studio-sync/apply';
 import {
-  validateSection,
-  validateStageSectionIdentity,
-  type SectionIssue,
-} from '@codaco/studio-sync/section-validation';
+  sectionReferenceAt,
+  type SectionReference,
+} from '@codaco/studio-sync/section-references';
+import { sectionShapeIssues } from '@codaco/studio-sync/section-validation';
 import {
   parseSectionId,
   sectionId,
@@ -31,25 +31,15 @@ import { getCanonicalProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from './architectStore.ts';
 import { ProtocolRevisions } from './protocolRevisions.ts';
-import { ASSETS_SECTION } from './protocolSections.ts';
+import { STAGE_ORDER_SECTION } from './protocolSections.ts';
 import { ResourceBridge } from './resourceBridge.ts';
-import { createSection, submitSection } from './sectionWrites.ts';
+import {
+  createSection,
+  deleteStageSection,
+  submitSection,
+} from './sectionWrites.ts';
 
 const os = implement(contract);
-
-function shapeIssues(
-  id: ProtocolSectionId,
-  document: SectionDoc,
-): SectionIssue[] {
-  const result = validateSection(id, document);
-  const issues = result.success ? [] : [...result.issues];
-  const ref = parseSectionId(id);
-  if (ref.kind === 'stage') {
-    const identity = validateStageSectionIdentity(ref.stageId, document);
-    if (!identity.success) issues.push(...identity.issues);
-  }
-  return issues;
-}
 
 /**
  * The protocol-builder host contract, served from Architect's Redux store.
@@ -130,16 +120,49 @@ export function createArchitectRouter(store: ArchitectStore) {
       if (revisions.holderOf(input.sectionId) === undefined) {
         throw errors.NOT_LOCK_HOLDER({ data: { sectionId: input.sectionId } });
       }
-      const issues = shapeIssues(input.sectionId, input.document);
+      const issues = sectionShapeIssues(input.sectionId, input.document);
       if (issues.length > 0) {
         throw errors.INVALID_SHAPE({
           data: { sectionId: input.sectionId, issues },
         });
       }
+      // The promotion is settled before anything is written: a submit that
+      // cannot commit the resources it names writes neither them nor the
+      // section, so the protocol never points at bytes that are not there.
+      const promotion = input.promote;
+      const already =
+        promotion === undefined
+          ? undefined
+          : resources.completedPromotion(promotion.promotionId);
+      const planned =
+        promotion === undefined || already !== undefined
+          ? undefined
+          : resources.planPromotion(
+              promotion.resourceIds,
+              promotion.secretHandles,
+            );
+      if (planned?.status === 'failed') {
+        throw errors.PROMOTION_FAILED({
+          data: { sectionId: input.sectionId, failure: planned.failure },
+        });
+      }
+      const promoted = already ?? planned?.data.promoted;
+      const complete = () => {
+        if (promotion === undefined || planned === undefined) return;
+        resources.completePromotion(
+          promotion.promotionId,
+          planned.data.promoted,
+          planned.data.ids,
+        );
+      };
       // Architect's timeline refuses to record a content-identical change, so
       // a resubmit of what is already committed is not a revision here either.
       if (contentHash(input.document) === before.revision.contentHash) {
-        return { revision: before.revision };
+        complete();
+        return {
+          revision: before.revision,
+          ...(promoted === undefined ? {} : { promoted }),
+        };
       }
       const { result } = await revisions.write(() =>
         submitSection(store, parseSectionId(input.sectionId), input.document),
@@ -151,7 +174,11 @@ export function createArchitectRouter(store: ArchitectStore) {
       }
       const after = revisions.read(input.sectionId);
       if (after === undefined) throw errors.SECTION_NOT_FOUND({ data: input });
-      return { revision: after.revision };
+      complete();
+      return {
+        revision: after.revision,
+        ...(promoted === undefined ? {} : { promoted }),
+      };
     }),
 
     create: os.create.handler(async ({ input, errors }) => {
@@ -161,6 +188,9 @@ export function createArchitectRouter(store: ArchitectStore) {
       const { result } = await revisions.write(() =>
         createSection(store, input.kind, input.document, input.position),
       );
+      if (result.status === 'exists') {
+        throw errors.SECTION_EXISTS({ data: { sectionId: result.sectionId } });
+      }
       if (result.status === 'refused') {
         throw errors.INVALID_SHAPE({
           data: { sectionId: result.sectionId, issues: result.issues },
@@ -181,15 +211,81 @@ export function createArchitectRouter(store: ArchitectStore) {
     }),
 
     /**
+     * Removes a stage and its place in the stage order in one revision.
+     *
+     * It takes no lock and refuses while either section is held, this
+     * session's own lock included: a stage editor holding the section would
+     * put the stage back with its next whole-section submit.
+     *
+     * A stage another stage depends on — a skip destination, a pedigree
+     * source — cannot be deleted here at all, because Architect's own reducer
+     * refuses it. The contract's `delete` has no error for a reference, so
+     * the refusal arrives as its other one, naming the sections in the way
+     * without a holder.
+     */
+    delete: os.delete.handler(async ({ input, errors }) => {
+      if (!isOpen(input.protocolId)) {
+        throw errors.PROTOCOL_NOT_FOUND({ data: input });
+      }
+      const ref = parseSectionId(input.sectionId);
+      if (
+        ref.kind !== 'stage' ||
+        revisions.read(input.sectionId) === undefined
+      ) {
+        throw errors.SECTION_NOT_FOUND({ data: input });
+      }
+      const held = [input.sectionId, STAGE_ORDER_SECTION].filter(
+        (id) => revisions.holderOf(id) !== undefined,
+      );
+      if (held.length > 0) {
+        throw errors.SECTIONS_LOCKED({
+          data: {
+            blocked: held.map((id) => ({
+              sectionId: id,
+              holder: revisions.holderOf(id),
+            })),
+          },
+        });
+      }
+      const { result, changed } = await revisions.write(() =>
+        deleteStageSection(store, ref.stageId),
+      );
+      if (result.status === 'referenced') {
+        throw errors.SECTIONS_LOCKED({
+          data: {
+            blocked: result.sectionIds.map((id) => ({ sectionId: id })),
+          },
+        });
+      }
+      const [revision] = [...changed.values()];
+      if (
+        revision === undefined ||
+        revisions.read(input.sectionId) !== undefined
+      ) {
+        throw new Error(`the store kept ${input.sectionId} after a delete`);
+      }
+      // The deleted section leads, as every host reports this change.
+      const changedSections = [...changed.keys()].filter(
+        (id) => id !== input.sectionId,
+      );
+      return {
+        revision,
+        changedSections: [input.sectionId, ...changedSections],
+      };
+    }),
+
+    /**
      * Architect's compound codebook operations, as the contract's refactors.
      *
      * A section is never held by anyone else — the only lock table is this
      * router's — but a refactor is still refusable here, because Architect
      * deletes a variable or a type only when nothing references it and has no
      * path that strips the references out of the stages naming them (#1392).
-     * That refusal reaches the contract as its other one: the change took none
-     * of the sections it has to write, named without a holder. Giving Architect
-     * the stripping path Studio has belongs with the adoption in PR 4.
+     * That is the contract's `REFERENCES_REMAIN`: the change would leave
+     * references this host cannot remove, and they are named where a codebook
+     * dialog can show the researcher what is using the thing they are deleting.
+     * Giving Architect the stripping path Studio has belongs with the adoption
+     * in PR 4.
      */
     refactor: {
       deleteVariable: os.refactor.deleteVariable.handler(
@@ -225,9 +321,9 @@ export function createArchitectRouter(store: ArchitectStore) {
           } catch (error) {
             const state = store.getState();
             if (getIsUsed(state)[input.variableId] !== true) throw error;
-            throw errors.SECTIONS_LOCKED({
+            throw errors.REFERENCES_REMAIN({
               data: {
-                blocked: blockedBy(
+                remaining: remainingReferences(
                   state,
                   getVariableUsageHits(state, input.variableId),
                 ),
@@ -260,8 +356,8 @@ export function createArchitectRouter(store: ArchitectStore) {
               getEntityTypeUsageHitsById(state).get(input.typeId) ?? []
             ).filter((hit) => hit.entity === input.entity);
             if (hits.length === 0) throw error;
-            throw errors.SECTIONS_LOCKED({
-              data: { blocked: blockedBy(state, hits) },
+            throw errors.REFERENCES_REMAIN({
+              data: { remaining: remainingReferences(state, hits) },
             });
           }
         },
@@ -279,34 +375,6 @@ export function createArchitectRouter(store: ArchitectStore) {
             )
           ).result,
       ),
-
-      promote: os.resources.promote.handler(({ input }) => {
-        const outcome = resources.promote(
-          input.promotionId,
-          input.resourceIds,
-          input.secretHandles,
-        );
-        if (outcome.status === 'failed') return outcome;
-        const assets = revisions.read(ASSETS_SECTION);
-        if (assets === undefined) {
-          return {
-            status: 'failed' as const,
-            failure: {
-              reason: 'unavailable' as const,
-              message: 'this protocol has no asset manifest',
-              retryable: true,
-            },
-          };
-        }
-        return {
-          status: 'ok' as const,
-          data: {
-            id: input.promotionId,
-            promoted: outcome.data.promoted,
-            revision: assets.revision,
-          },
-        };
-      }),
 
       discard: os.resources.discard.handler(
         async ({ input }) =>
@@ -333,38 +401,22 @@ export function createArchitectClient(
 }
 
 /**
- * The sections a refused refactor would have had to write, from the reference
- * hits the codebook's own "Used In" column is built from.
+ * The references a refused refactor would have left behind, from the hits the
+ * codebook's own "Used In" column is built from.
  *
- * A hit sitting somewhere with no section of its own — a reference the section
- * taxonomy does not address — contributes nothing rather than a guess: the
- * list says which sections are in the way, and a short list is honest where an
- * invented entry is not.
+ * The hits carry protocol coordinates, which the section translation turns
+ * into a section and a path inside it — the same reading every host gives, so
+ * a dialog naming what is still using a variable says the same thing wherever
+ * it is hosted.
  */
-function blockedBy(
+function remainingReferences(
   state: RootState,
-  hits: readonly { path: readonly (string | number)[] }[],
-): { sectionId: ProtocolSectionId }[] {
-  const stages = getCanonicalProtocol(state)?.stages ?? [];
-  const blocked = new Set<ProtocolSectionId>();
-  for (const { path } of hits) {
-    const [root, first, second] = path;
-    if (root === 'stages' && typeof first === 'number') {
-      const stage = stages[first];
-      if (stage !== undefined) {
-        blocked.add(sectionId({ kind: 'stage', stageId: stage.id }));
-      }
-      continue;
-    }
-    if (root !== 'codebook') continue;
-    if (first === 'ego') blocked.add(sectionId({ kind: 'codebookEgo' }));
-    else if (first === 'node' && typeof second === 'string') {
-      blocked.add(sectionId({ kind: 'codebookNode', typeId: second }));
-    } else if (first === 'edge' && typeof second === 'string') {
-      blocked.add(sectionId({ kind: 'codebookEdge', typeId: second }));
-    }
-  }
-  return [...blocked].map((section) => ({ sectionId: section }));
+  hits: readonly { path: (string | number)[] }[],
+): SectionReference[] {
+  const stageIds = (getCanonicalProtocol(state)?.stages ?? []).map(
+    (stage) => stage.id,
+  );
+  return hits.map((hit) => sectionReferenceAt(hit.path, stageIds));
 }
 
 /**

@@ -17,9 +17,16 @@ import type {
 } from '@codaco/protocol-builder/contract/schemas';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
+  assembledProtocol,
+  entityTypeReferences,
+  sweepReferences,
+  variableReferences,
+  type CodebookSubject,
+  type SectionReference,
+} from '@codaco/studio-sync/section-references';
+import {
+  sectionShapeIssues,
   type SectionIssue,
-  validateSection,
-  validateStageSectionIdentity,
 } from '@codaco/studio-sync/section-validation';
 import {
   parseSectionId,
@@ -81,10 +88,15 @@ export type SubmitOutcome =
   | { status: 'notLockHolder'; holder?: Presence }
   | { status: 'invalidShape'; issues: SectionIssue[] };
 
-export type CreatableSectionKind = 'stage' | 'codebookNode' | 'codebookEdge';
+export type CreatableSectionKind =
+  | 'stage'
+  | 'codebookNode'
+  | 'codebookEdge'
+  | 'codebookEgo';
 
 export type CreateOutcome =
   | { status: 'created'; sectionId: ProtocolSectionId; revision: Revision }
+  | { status: 'exists'; sectionId: ProtocolSectionId }
   | {
       status: 'invalidShape';
       sectionId: ProtocolSectionId;
@@ -99,12 +111,8 @@ export type RefactorOutcome =
       revision: Revision;
       changedSections: ProtocolSectionId[];
     }
-  | { status: 'blocked'; blocked: SectionHolder[] };
-
-export type CodebookSubject =
-  | { entity: 'node'; type: string }
-  | { entity: 'edge'; type: string }
-  | { entity: 'ego' };
+  | { status: 'blocked'; blocked: SectionHolder[] }
+  | { status: 'referenced'; remaining: SectionReference[] };
 
 /** A write's outcome and the events it logged, for the caller to publish. */
 export type Published<T> = { outcome: T; events: LoggedProtocolEvent[] };
@@ -138,18 +146,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function shapeIssues(
-  id: ProtocolSectionId,
-  document: SectionDoc,
-): SectionIssue[] {
-  const result = validateSection(id, document);
-  const issues = result.success ? [] : [...result.issues];
-  const ref = parseSectionId(id);
-  if (ref.kind === 'stage') {
-    const identity = validateStageSectionIdentity(ref.stageId, document);
-    if (!identity.success) issues.push(...identity.issues);
-  }
-  return issues;
+function createdSectionId(
+  kind: CreatableSectionKind,
+  id: string | undefined,
+): ProtocolSectionId {
+  if (kind === 'codebookEgo') return makeSectionId({ kind: 'codebookEgo' });
+  if (id === undefined) throw new Error(`a ${kind} section needs an id`);
+  return kind === 'stage'
+    ? makeSectionId({ kind: 'stage', stageId: id })
+    : makeSectionId({ kind, typeId: id });
 }
 
 function codebookSectionId(subject: CodebookSubject): ProtocolSectionId {
@@ -158,27 +163,6 @@ function codebookSectionId(subject: CodebookSubject): ProtocolSectionId {
     return makeSectionId({ kind: 'codebookNode', typeId: subject.type });
   }
   return makeSectionId({ kind: 'codebookEdge', typeId: subject.type });
-}
-
-/**
- * Drops every prompt naming the variable, or nothing when none does.
- *
- * "Every prompt" is the whole of what a reference is here: the editors reach
- * variables from prompts, and a host that also rewrote sort orders or filter
- * rules would be guessing at semantics `@codaco/protocol-validation` owns.
- */
-function stripPrompts(
-  document: SectionDoc,
-  variableId: string,
-): SectionDoc | undefined {
-  const prompts = document.prompts;
-  if (!Array.isArray(prompts)) return undefined;
-  const kept = prompts.filter(
-    (prompt) => !(isRecord(prompt) && prompt.variable === variableId),
-  );
-  return kept.length === prompts.length
-    ? undefined
-    : { ...document, prompts: kept };
 }
 
 const SECTION_AT_HEAD = `
@@ -586,18 +570,23 @@ function committedEvent(
 }
 
 /**
- * Writes the whole section as one revision.
+ * Writes the whole section, and the asset manifest entries handed with it, as
+ * one revision.
  *
- * Exactly two refusals, both returned rather than thrown so no audit event is
- * written for a change that did not happen: the caller does not hold the lock,
- * and the document is not shaped like this section. A draft that is invalid
- * across sections is written, because drafts tolerate transient invalidity and
- * validity is enforced at publication.
+ * `assetEntries` is the submit's promotion: the bytes behind them are already
+ * with the host, and this is where they and the section naming them become a
+ * single revision, so a refused submit writes neither. The two refusals here
+ * are returned rather than thrown so no audit event is written for a change
+ * that did not happen: the caller does not hold the lock, and the document is
+ * not shaped like this section. A draft that is invalid across sections is
+ * written, because drafts tolerate transient invalidity and validity is
+ * enforced at publication.
  */
 export async function submit(
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
   document: SectionDoc,
+  assetEntries?: Readonly<Record<string, unknown>>,
 ): Promise<Published<SubmitOutcome | undefined>> {
   const owner = sessionOwner(session);
   const teamId = session.tenantDb.teamId;
@@ -631,17 +620,25 @@ export async function submit(
           },
         };
       }
-      const issues = shapeIssues(sectionId, document);
+      const issues = sectionShapeIssues(sectionId, document);
       if (issues.length > 0) {
         return {
           status: 'unchanged',
           result: { status: 'invalidShape', issues },
         };
       }
-      const written = await writeSections(client, session, {
-        head,
-        writes: new Map([[sectionId, document]]),
-      });
+      const writes = new Map<ProtocolSectionId, SectionDoc | undefined>([
+        [sectionId, document],
+      ]);
+      if (assetEntries !== undefined) {
+        const assetsId = makeSectionId({ kind: 'assets' });
+        const assets = await headSection(client, session, assetsId);
+        if (assets === undefined) {
+          throw new Error(`draft ${session.draftId} has no assets section`);
+        }
+        writes.set(assetsId, { ...assets.document, ...assetEntries });
+      }
+      const written = await writeSections(client, session, { head, writes });
       events.push(...written.events);
       return {
         status: 'succeeded',
@@ -650,7 +647,7 @@ export async function submit(
           committedEvent(auditContext, protocol, {
             draftId: session.draftId,
             revision: written.revision.sequence,
-            affectedSectionIds: [sectionId],
+            affectedSectionIds: [...writes.keys()],
             operationTypes: ['set'],
           }),
         ],
@@ -664,6 +661,11 @@ export async function submit(
  * Creates a section and registers its pointer — a stage's place in the stage
  * order — in the same revision. The host mints the id and serialises the call
  * under the draft-head lock, so it needs no lock of its own.
+ *
+ * The ego codebook is the one creatable singleton: a protocol whose researcher
+ * has given the participant no attributes yet has no such section, and adding
+ * the first one is what creates it. A singleton the protocol already has is
+ * refused rather than overwritten.
  */
 export async function create(
   session: ProtocolBuilderSession,
@@ -686,16 +688,21 @@ export async function create(
         draftId: session.draftId,
       });
       const head = await lockDraftHead(client, teamId, session.draftId);
-      const id = input.mintId();
-      const target =
-        input.kind === 'stage'
-          ? makeSectionId({ kind: 'stage', stageId: id })
-          : makeSectionId({ kind: input.kind, typeId: id });
+      const id = input.kind === 'codebookEgo' ? undefined : input.mintId();
+      const target = createdSectionId(input.kind, id);
+      if (head.sectionHashes[target] !== undefined) {
+        return {
+          status: 'unchanged',
+          result: { status: 'exists', sectionId: target },
+        };
+      }
       // A stage document carries its own id, and the section it lands in is
       // keyed by that id: the host mints both together so they cannot differ.
       const created: SectionDoc =
-        input.kind === 'stage' ? { ...input.document, id } : input.document;
-      const issues = shapeIssues(target, created);
+        input.kind === 'stage' && id !== undefined
+          ? { ...input.document, id }
+          : input.document;
+      const issues = sectionShapeIssues(target, created);
       if (issues.length > 0) {
         return {
           status: 'unchanged',
@@ -705,7 +712,7 @@ export async function create(
       const writes = new Map<ProtocolSectionId, SectionDoc | undefined>([
         [target, created],
       ]);
-      if (input.kind === 'stage') {
+      if (input.kind === 'stage' && id !== undefined) {
         const orderId = makeSectionId({ kind: 'stageOrder' });
         const order = await headSection(client, session, orderId);
         if (order === undefined) {
@@ -746,54 +753,20 @@ export async function create(
   return { outcome, events };
 }
 
-/**
- * Merges manifest entries into the `assets` section as one revision.
- *
- * Host-serialised like `create`, and for the same reason: promoted bytes and
- * the manifest entries naming them have to land together, and no client can
- * hold a lock spanning both.
- */
-export async function mergeAssets(
-  session: ProtocolBuilderSession,
-  entries: Readonly<Record<string, unknown>>,
-): Promise<Published<Revision | undefined>> {
-  const teamId = session.tenantDb.teamId;
-  const events: LoggedProtocolEvent[] = [];
-  const outcome = await runAuditedCommand<Revision | undefined>(
-    auditedContext(session),
-    async (client, auditContext) => {
-      await lockProtocolActorMembership(client, auditedContext(session));
-      const protocol = await lockProtocolDraft(client, {
-        teamId,
-        protocolId: session.protocolId,
-        draftId: session.draftId,
-      });
-      const head = await lockDraftHead(client, teamId, session.draftId);
-      const assetsId = makeSectionId({ kind: 'assets' });
-      const assets = await headSection(client, session, assetsId);
-      if (assets === undefined)
-        return { status: 'unchanged', result: undefined };
-      const written = await writeSections(client, session, {
-        head,
-        writes: new Map([[assetsId, { ...assets.document, ...entries }]]),
-      });
-      events.push(...written.events);
-      return {
-        status: 'succeeded',
-        result: written.revision,
-        events: [
-          committedEvent(auditContext, protocol, {
-            draftId: session.draftId,
-            revision: written.revision.sequence,
-            affectedSectionIds: [assetsId],
-            operationTypes: ['set'],
-          }),
-        ],
-      };
-    },
-  );
-  return { outcome, events };
-}
+type RefactorPlan = {
+  writes: Map<ProtocolSectionId, SectionDoc | undefined>;
+  /**
+   * The sections the caller is changing under its own lock — the codebook
+   * section a dialog has open and is deleting from. Every other section the
+   * change writes has to be free, this caller's own included: a stage editor
+   * and a codebook dialog in one tab are one connection, and the stage's draft
+   * lives in its form, so a sweep under it would be undone by that editor's
+   * next whole-section submit.
+   */
+  owned: ReadonlySet<ProtocolSectionId>;
+  /** References the change cannot remove, so it must not be made at all. */
+  remaining?: SectionReference[];
+};
 
 /**
  * A change that cannot be contained in one section, so it cannot be made under
@@ -804,7 +777,7 @@ async function refactor(
   plan: (
     client: pg.PoolClient,
     head: HeadState,
-  ) => Promise<Map<ProtocolSectionId, SectionDoc | undefined> | undefined>,
+  ) => Promise<RefactorPlan | undefined>,
   operationTypes: CommitDetails['operationTypes'],
 ): Promise<Published<RefactorOutcome | undefined>> {
   const owner = sessionOwner(session);
@@ -820,9 +793,16 @@ async function refactor(
         draftId: session.draftId,
       });
       const head = await lockDraftHead(client, teamId, session.draftId);
-      const writes = await plan(client, head);
-      if (writes === undefined)
+      const planned = await plan(client, head);
+      if (planned === undefined)
         return { status: 'unchanged', result: undefined };
+      if (planned.remaining !== undefined && planned.remaining.length > 0) {
+        return {
+          status: 'unchanged',
+          result: { status: 'referenced', remaining: planned.remaining },
+        };
+      }
+      const { writes, owned } = planned;
 
       const blocked: SectionHolder[] = [];
       for (const sectionId of writes.keys()) {
@@ -832,9 +812,8 @@ async function refactor(
           session.draftId,
           sectionId,
         );
-        if (lease === undefined || !lease.live || lease.owner === owner) {
-          continue;
-        }
+        if (lease === undefined || !lease.live) continue;
+        if (lease.owner === owner && owned.has(sectionId)) continue;
         const holder = await lockedHolder(
           client,
           teamId,
@@ -874,6 +853,43 @@ async function refactor(
   return { outcome, events };
 }
 
+/**
+ * Removes a stage and its place in the stage order in one revision.
+ *
+ * Both writes or neither: a stage section the order does not name, or an order
+ * naming a section that is gone, is a protocol that cannot be assembled. It
+ * takes no lock of its own — `owned` is empty — so a stage or an order any
+ * editor holds, this connection included, refuses the change.
+ */
+export function deleteStage(
+  session: ProtocolBuilderSession,
+  stageId: string,
+): Promise<Published<RefactorOutcome | undefined>> {
+  return refactor(
+    session,
+    async (client, head) => {
+      const target = makeSectionId({ kind: 'stage', stageId });
+      if (head.sectionHashes[target] === undefined) return undefined;
+      const orderId = makeSectionId({ kind: 'stageOrder' });
+      const order = await headSection(client, session, orderId);
+      if (order === undefined) {
+        throw new Error(`draft ${session.draftId} has no stageOrder section`);
+      }
+      const stages = stageList(order.document).filter(
+        (entry) => entry !== stageId,
+      );
+      return {
+        writes: new Map<ProtocolSectionId, SectionDoc | undefined>([
+          [target, undefined],
+          [orderId, { ...order.document, stages }],
+        ]),
+        owned: new Set<ProtocolSectionId>(),
+      };
+    },
+    ['unset', 'set'],
+  );
+}
+
 export function deleteVariable(
   session: ProtocolBuilderSession,
   input: { subject: CodebookSubject; variableId: string },
@@ -888,12 +904,16 @@ export function deleteVariable(
         ? { ...state.document.variables }
         : {};
       delete variables[input.variableId];
-      const writes = new Map<ProtocolSectionId, SectionDoc | undefined>([
-        [ownerSection, { ...state.document, variables }],
-      ]);
-      const stages = await headStageDocuments(client, session, head);
-      stripEveryReference(stages, [input.variableId], writes);
-      return writes;
+      return sweptPlan(
+        await headDocuments(client, session, head),
+        [[ownerSection, { ...state.document, variables }]],
+        (documents) =>
+          variableReferences(
+            assembledProtocol(documents),
+            input.subject,
+            input.variableId,
+          ),
+      );
     },
     ['unset', 'set'],
   );
@@ -911,65 +931,72 @@ export function deleteEntityType(
           ? { entity: 'node', type: input.typeId }
           : { entity: 'edge', type: input.typeId },
       );
-      const state = await headSection(client, session, ownerSection);
-      if (state === undefined) return undefined;
-      const writes = new Map<ProtocolSectionId, SectionDoc | undefined>([
-        [ownerSection, undefined],
-      ]);
-      const variableIds = isRecord(state.document.variables)
-        ? Object.keys(state.document.variables)
-        : [];
-      const stages = await headStageDocuments(client, session, head);
-      stripEveryReference(stages, variableIds, writes);
-      return writes;
+      if (head.sectionHashes[ownerSection] === undefined) return undefined;
+      return sweptPlan(
+        await headDocuments(client, session, head),
+        [[ownerSection, undefined]],
+        (documents) =>
+          entityTypeReferences(
+            assembledProtocol(documents),
+            input.entity,
+            input.typeId,
+          ),
+      );
     },
     ['unset', 'set'],
   );
 }
 
-/** Every stage document at the draft's head, in one read. */
-async function headStageDocuments(
+/**
+ * The codebook change, plus every section that stops naming what it removes.
+ *
+ * The references come from the protocol schema rather than from the two or
+ * three paths a host happens to know, so a stage naming a variable from a form
+ * field or a filter rule is rewritten like one naming it from a prompt. What
+ * the sweep cannot remove is reported instead: applying the change anyway
+ * would leave the protocol naming something that no longer exists.
+ */
+function sweptPlan(
+  documents: Record<string, SectionDoc>,
+  seed: readonly (readonly [ProtocolSectionId, SectionDoc | undefined])[],
+  referencesTo: (
+    documents: Readonly<Record<string, SectionDoc>>,
+  ) => SectionReference[],
+): RefactorPlan {
+  for (const [id, document] of seed) {
+    if (document === undefined) delete documents[id];
+    else documents[id] = document;
+  }
+  const sweep = sweepReferences(documents, referencesTo);
+  return {
+    writes: new Map([...seed, ...sweep.rewritten]),
+    owned: new Set(seed.map(([id]) => id)),
+    remaining: sweep.remaining,
+  };
+}
+
+function stageList(order: SectionDoc): string[] {
+  return Array.isArray(order.stages)
+    ? order.stages.filter((entry): entry is string => typeof entry === 'string')
+    : [];
+}
+
+/** Every section document at the draft's head, in one read. */
+async function headDocuments(
   client: pg.PoolClient,
   session: ProtocolBuilderSession,
   head: HeadState,
-): Promise<Map<ProtocolSectionId, SectionDoc>> {
-  const stageHashes: Record<string, string> = {};
-  for (const [id, hash] of Object.entries(head.sectionHashes)) {
-    if (parseSectionId(id).kind === 'stage') stageHashes[id] = hash;
-  }
-  const documents = new Map<ProtocolSectionId, SectionDoc>();
-  if (Object.keys(stageHashes).length === 0) return documents;
+): Promise<Record<string, SectionDoc>> {
+  const documents: Record<string, SectionDoc> = {};
+  if (Object.keys(head.sectionHashes).length === 0) return documents;
   const result = await client.query(
     `SELECT entry.key AS section_id, s.doc
      FROM jsonb_each_text($1::jsonb) AS entry
      JOIN sections s ON s.team_id = $2 AND s.hash = entry.value`,
-    [JSON.stringify(stageHashes), session.tenantDb.teamId],
+    [JSON.stringify(head.sectionHashes), session.tenantDb.teamId],
   );
   for (const row of result.rows as { section_id: string; doc: SectionDoc }[]) {
-    documents.set(makeSectionId(parseSectionId(row.section_id)), row.doc);
+    documents[makeSectionId(parseSectionId(row.section_id))] = row.doc;
   }
   return documents;
-}
-
-/**
- * Strips every prompt naming any of the variables, accumulating into `writes`
- * so a stage touched by two of them is rewritten from the previous rewrite
- * rather than from what storage still holds.
- */
-function stripEveryReference(
-  stages: ReadonlyMap<ProtocolSectionId, SectionDoc>,
-  variableIds: readonly string[],
-  writes: Map<ProtocolSectionId, SectionDoc | undefined>,
-): void {
-  for (const [sectionId, stored] of stages) {
-    let document = writes.get(sectionId) ?? stored;
-    let changed = false;
-    for (const variableId of variableIds) {
-      const stripped = stripPrompts(document, variableId);
-      if (stripped === undefined) continue;
-      document = stripped;
-      changed = true;
-    }
-    if (changed) writes.set(sectionId, document);
-  }
 }

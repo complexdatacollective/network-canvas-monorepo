@@ -49,14 +49,40 @@ type OpenProtocol = Readonly<{
   client: ProtocolBuilderClient;
 }>;
 
-const openProtocol = (): OpenProtocol => {
+const openProtocol = (
+  options: Readonly<{ withEgo?: boolean }> = {},
+): OpenProtocol => {
   const store = configureStore({ reducer: rootReducer });
   store.dispatch(setActiveProtocolId(PROTOCOL_ID));
   // Parsed rather than cast: a fixture that stopped being a schema-8 protocol
   // would otherwise reach the router as one and fail somewhere less obvious.
-  store.dispatch(setActiveProtocol(CurrentProtocolSchema.parse(allInterfaces)));
+  const protocol = CurrentProtocolSchema.parse(allInterfaces);
+  const { ego: _ego, ...codebook } = protocol.codebook;
+  store.dispatch(
+    setActiveProtocol(
+      options.withEgo === false ? { ...protocol, codebook } : protocol,
+    ),
+  );
   return { store, client: createArchitectClient(store) };
 };
+
+/** A file imported through the resource lifecycle, as an open edit's own. */
+async function importResource(client: ProtocolBuilderClient): Promise<string> {
+  const staged = await client.resources.stage({
+    protocolId: PROTOCOL_ID,
+    requestId: 'import-1',
+    request: {
+      kind: 'content',
+      contentKind: 'image',
+      name: 'A photograph',
+      source: 'photo.png',
+      contentType: 'image/png',
+      bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+    },
+  });
+  if (staged.status !== 'ok') throw new Error('staging failed');
+  return staged.data.descriptor.id;
+}
 
 const stageLabel = (store: ArchitectStore, stageId: string): string =>
   getCanonicalProtocol(store.getState())?.stages.find(
@@ -351,12 +377,10 @@ describe("Architect's in-process protocol-builder host", () => {
   /**
    * Architect refuses to delete a variable a stage still names, where the
    * contract's other hosts strip the references and delete it instead. The
-   * refusal still has to arrive as one of the contract's own errors — an
-   * editor can do nothing with a thrown string — so it comes back as the
-   * refactor's other refusal: it took none of the sections it has to write,
-   * and it names them.
+   * refusal names what is still using the variable, in the section coordinates
+   * a codebook dialog shows the researcher.
    */
-  it('refuses to delete a referenced codebook variable, naming the sections in the way', async () => {
+  it('refuses to delete a referenced codebook variable, naming what still uses it', async () => {
     const { store, client } = openProtocol();
 
     const { definedError } = await safe(
@@ -367,15 +391,15 @@ describe("Architect's in-process protocol-builder host", () => {
       }),
     );
 
-    expect(definedError?.code).toBe('SECTIONS_LOCKED');
-    if (definedError?.code !== 'SECTIONS_LOCKED') return;
-    const { blocked } = definedError.data;
-    expect(blocked.map((entry) => entry.sectionId)).toContain(
+    expect(definedError?.code).toBe('REFERENCES_REMAIN');
+    if (definedError?.code !== 'REFERENCES_REMAIN') return;
+    const { remaining } = definedError.data;
+    expect(remaining.map((entry) => entry.sectionId)).toContain(
       sectionId({ kind: 'stage', stageId: 'name-generator-1' }),
     );
-    // Named without a holder: one editor here, so the sections are in the way
-    // rather than taken.
-    expect(blocked.every((entry) => entry.holder === undefined)).toBe(true);
+    // A section and a path inside it: "somewhere in this stage" is not
+    // something a dialog can point at.
+    expect(remaining.every((entry) => entry.path.length > 0)).toBe(true);
     expect(personVariables(store).name).toBeDefined();
   });
 
@@ -455,11 +479,211 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
     });
 
-    expect(discarded.status).toBe('ok');
+    // The whole answer is the status: a `data` key whose only value is
+    // `undefined` is one a transport may drop and a schema then rejects.
+    expect(discarded).toStrictEqual({ status: 'ok' });
     expect(getAssetManifest(store.getState())).toEqual(before);
     // Nothing in the protocol names the bytes any more, which is the condition
     // Architect's own orphan sweep collects them on.
     expect(Object.keys(getAssetManifest(store.getState()))).not.toContain(id);
+  });
+
+  it('keeps an imported resource the submit that names it promoted', async () => {
+    const { store, client } = openProtocol();
+    const id = await importResource(client);
+
+    const held = await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const written = await client.submit({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+      document: { ...held.document, label: 'Names the photograph' },
+      revision: held.revision,
+      promote: { promotionId: 'promotion-1', resourceIds: [id] },
+    });
+
+    // The edit that brought the file in has ended in a save, so cancelling a
+    // later edit must not take the saved protocol's resource away with it.
+    expect(written.promoted?.map((entry) => entry.status)).toEqual([
+      'committed',
+    ]);
+    await client.resources.discard({ protocolId: PROTOCOL_ID });
+    expect(getAssetManifest(store.getState())[id]).toBeDefined();
+  });
+
+  it('writes neither the stage nor the promotion when a promotion fails', async () => {
+    const { store, client } = openProtocol();
+    const id = await importResource(client);
+    const manifest = { ...getAssetManifest(store.getState()) };
+
+    const held = await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const { definedError, isSuccess } = await safe(
+      client.submit({
+        protocolId: PROTOCOL_ID,
+        sectionId: INFORMATION,
+        document: { ...held.document, label: 'Renamed beside a bad promotion' },
+        revision: held.revision,
+        promote: { promotionId: 'promotion-1', resourceIds: ['never-staged'] },
+      }),
+    );
+
+    // The section and the resources it names are one revision or nothing.
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('PROMOTION_FAILED');
+    expect(definedError?.data).toMatchObject({
+      sectionId: INFORMATION,
+      failure: { reason: 'not-found', resourceId: 'never-staged' },
+    });
+    expect(stageLabel(store, 'information-1')).toBe('Information');
+    expect(getAssetManifest(store.getState())).toEqual(manifest);
+    // The resource this edit imported is still the edit's to take back.
+    await client.resources.discard({ protocolId: PROTOCOL_ID });
+    expect(getAssetManifest(store.getState())[id]).toBeUndefined();
+  });
+
+  it('removes a stage and its place in the stage index in one revision', async () => {
+    const { store, client } = openProtocol();
+
+    const deleted = await client.delete({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+
+    expect(stageIds(store)).not.toContain('information-1');
+    expect(deleted.changedSections).toEqual([INFORMATION, STAGE_ORDER_SECTION]);
+    const order = await client.getSection({
+      protocolId: PROTOCOL_ID,
+      sectionId: STAGE_ORDER_SECTION,
+    });
+    // A pointer left behind, or a stage left out of the order, is a protocol
+    // that cannot be assembled at all.
+    expect(order.document.stages).toEqual(stageIds(store));
+    expect(order.revision.sequence).toBe(deleted.revision.sequence);
+    const { definedError } = await safe(
+      client.getSection({ protocolId: PROTOCOL_ID, sectionId: INFORMATION }),
+    );
+    expect(definedError?.code).toBe('SECTION_NOT_FOUND');
+  });
+
+  it('refuses to delete a stage an editor still holds', async () => {
+    const { store, client } = openProtocol();
+    await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+
+    const { definedError, isSuccess } = await safe(
+      client.delete({ protocolId: PROTOCOL_ID, sectionId: INFORMATION }),
+    );
+
+    // The editor holding the stage would put it back with its next submit, so
+    // its own session is no more allowed to delete it than anybody else is.
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('SECTIONS_LOCKED');
+    expect(definedError?.data).toMatchObject({
+      blocked: [{ sectionId: INFORMATION }],
+    });
+    expect(stageIds(store)).toContain('information-1');
+  });
+
+  it('refuses to delete a stage another stage is built on, naming it', async () => {
+    const { store, client } = openProtocol();
+
+    const { definedError, isSuccess } = await safe(
+      client.delete({
+        protocolId: PROTOCOL_ID,
+        sectionId: sectionId({ kind: 'stage', stageId: 'family-pedigree-1' }),
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('SECTIONS_LOCKED');
+    expect(definedError?.data).toMatchObject({
+      blocked: [
+        {
+          sectionId: sectionId({
+            kind: 'stage',
+            stageId: 'narrative-pedigree-1',
+          }),
+        },
+      ],
+    });
+    expect(stageIds(store)).toContain('family-pedigree-1');
+  });
+
+  it('creates the ego codebook a protocol does not have yet', async () => {
+    const { store, client } = openProtocol({ withEgo: false });
+    expect(
+      getCanonicalProtocol(store.getState())?.codebook.ego,
+    ).toBeUndefined();
+
+    const created = await client.create({
+      protocolId: PROTOCOL_ID,
+      kind: 'codebookEgo',
+      document: {
+        variables: {
+          ego_age: { name: 'ego_age', type: 'number', component: 'Number' },
+        },
+      },
+    });
+
+    // Adding the first ego attribute is what creates the section, and there is
+    // no other way to bring one into being.
+    expect(created.sectionId).toBe(sectionId({ kind: 'codebookEgo' }));
+    expect(
+      getCanonicalProtocol(store.getState())?.codebook.ego?.variables,
+    ).toMatchObject({ ego_age: { name: 'ego_age' } });
+  });
+
+  it('refuses to create an ego codebook the protocol already has', async () => {
+    const { store, client } = openProtocol();
+    const before = getCanonicalProtocol(store.getState())?.codebook.ego;
+
+    const { definedError, isSuccess } = await safe(
+      client.create({
+        protocolId: PROTOCOL_ID,
+        kind: 'codebookEgo',
+        document: { variables: {} },
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('SECTION_EXISTS');
+    expect(definedError?.data).toMatchObject({
+      sectionId: sectionId({ kind: 'codebookEgo' }),
+    });
+    expect(getCanonicalProtocol(store.getState())?.codebook.ego).toEqual(
+      before,
+    );
+  });
+
+  it('keeps a lock when the stream that reported it ends', async () => {
+    const { store, client } = openProtocol();
+    const held = await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const stream = await open(client);
+
+    // The stream ends, as a dropped socket ends it; the channel resumes on a
+    // new one, and the editor behind it never stopped holding its draft.
+    await stream.close();
+
+    const written = await client.submit({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+      document: { ...held.document, label: 'Saved after the stream ended' },
+      revision: held.revision,
+    });
+    expect(written.revision.sequence).toBeGreaterThan(held.revision.sequence);
+    expect(stageLabel(store, 'information-1')).toBe(
+      'Saved after the stream ended',
+    );
   });
 
   it('lists the committed asset manifest as resources', async () => {

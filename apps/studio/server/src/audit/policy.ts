@@ -44,12 +44,13 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
   // mutation `protocols.commitSection` is, so they carry the same required
   // event; its locks are the same lease coordination `acquireSection` is, so
   // they carry none. Staging and discarding an import commit nothing at all —
-  // a staged file lives in the editing process until a promotion writes it.
+  // a staged file lives in the editing process until the submit that names it
+  // promotes it, and that submit is the audited write.
   'protocolBuilder.submit': { kind: 'required' },
   'protocolBuilder.create': { kind: 'required' },
+  'protocolBuilder.delete': { kind: 'required' },
   'protocolBuilder.refactor.deleteVariable': { kind: 'required' },
   'protocolBuilder.refactor.deleteEntityType': { kind: 'required' },
-  'protocolBuilder.resources.promote': { kind: 'required' },
   'protocolBuilder.acquireLock': {
     kind: 'none',
     reason: 'Lease acquisition is explicitly excluded from the team audit log.',
@@ -61,7 +62,7 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
   'protocolBuilder.resources.stage': {
     kind: 'none',
     reason:
-      'A staged import is held in the editing process and written by nothing; only its promotion reaches storage, and that is audited.',
+      'A staged import is held in the editing process and written by nothing; only the submit that promotes it reaches storage, and that is audited.',
   },
   'protocolBuilder.resources.discard': {
     kind: 'none',
