@@ -527,19 +527,30 @@ function CreateEdgeType() {
     [codebook],
   );
 
-  if (readOnly) return null;
+  /*
+    The trigger goes when editing does, because a create nobody may start is
+    not on offer. An editor already OPEN stays: the name the researcher is
+    typing exists nowhere else, and unmounting it with the trigger would throw
+    that away without a word — to report something `CodebookEntityEditor` says
+    for itself once its save is refused. `readOnly` is what it takes for
+    exactly this, and it is the rule `SubjectSection`'s own create dialog and
+    the row dialogs already follow after a lease is lost.
+  */
+  if (readOnly && session === null) return null;
 
   return (
     <>
-      <Button
-        ref={triggerRef}
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setSession({ key: uuid(), typeId: uuid() })}
-      >
-        {intl.formatMessage(networkCanvasMessages.createEdgeTypeLabel)}
-      </Button>
+      {!readOnly && (
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setSession({ key: uuid(), typeId: uuid() })}
+        >
+          {intl.formatMessage(networkCanvasMessages.createEdgeTypeLabel)}
+        </Button>
+      )}
       {session !== null && (
         <Dialog
           open
@@ -570,6 +581,7 @@ function CreateEdgeType() {
             )}
             subject={{ entity: 'edge', type: session.typeId }}
             initialDraft={NEW_ENTITY_DRAFT.edge}
+            readOnly={readOnly}
             existingEntityNames={existingEntityNames}
             onSubmit={async (request) => {
               setSubmitting(true);

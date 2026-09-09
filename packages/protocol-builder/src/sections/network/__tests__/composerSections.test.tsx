@@ -1414,6 +1414,33 @@ describe('naming a connection type created from a composer', () => {
     ).toBeChecked();
   });
 
+  /**
+   * A lease taken back mid-draft.
+   *
+   * The name the researcher is typing exists nowhere but this editor, so
+   * unmounting it to report the lost lease would throw their work away to say
+   * something the editor says for itself once its save is refused. The launch
+   * control goes, because a create nobody may start is not on offer.
+   */
+  it('keeps an open connection-type draft when the lease is lost', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await openCreator(harness, 'housemates');
+    act(() => {
+      harness.setReadOnly();
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Create a new connection type' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('textbox', { name: 'Edge type name' })).toHaveValue(
+      'housemates',
+    );
+    expect(screen.getByRole('button', { name: 'Save entity' })).toBeDisabled();
+  });
+
   it('refuses a name a node type already uses, whatever the case', async () => {
     const harness = renderStageEditor(openEditor());
     const submit = vi.spyOn(harness.host, 'submit');
