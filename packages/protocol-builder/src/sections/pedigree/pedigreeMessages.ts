@@ -792,6 +792,20 @@ export const pedigreeMessages = defineMessages({
     description:
       'Refusal shown under a pedigree slot the interface writes directly, when the attribute picked is already collected by the family member form one section above — so both are on the screen the researcher is looking at, and the wording must not send them searching their other stages. attributeName is the codebook name of the attribute, which is not translated.',
   },
+  variableGoneRefusal: {
+    id: 'protocolBuilder.pedigree.variableGoneRefusal',
+    defaultMessage:
+      '"{attributeName}" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+    description:
+      'Refusal shown under a pedigree attribute control when the attribute it holds has been deleted from the codebook — by a collaborator, or in another part of this session — while this editor was open. attributeName is the codebook name of the attribute, or its stored identifier when there is no definition left to take a name from; neither is translated.',
+  },
+  variableTypeChangedRefusal: {
+    id: 'protocolBuilder.pedigree.variableTypeChangedRefusal',
+    defaultMessage:
+      '"{attributeName}" is no longer the kind of attribute this control can use, because its type was changed somewhere else. Choose another attribute.',
+    description:
+      'Refusal shown under a pedigree attribute control when the attribute it holds still exists but has been given a different type — a true/false attribute turned into a list of answers, say — so the interface can no longer write or read it. attributeName is the codebook name of the attribute, which is not translated.',
+  },
   slotDraftLabelCollectsRefusal: {
     id: 'protocolBuilder.pedigree.slotDraftLabelCollectsRefusal',
     defaultMessage:

@@ -158,6 +158,33 @@ Document.prototype.elementFromPoint ??= () => null;
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/**
+ * The family member type WITHOUT one of its attributes, as a collaborator's
+ * change.
+ *
+ * The mirror of `addFamilyMemberVariable`: it reaches the host first and the
+ * session under the revision the host issued, so what the editor is looking at
+ * afterwards is a protocol that really lost the attribute rather than a story
+ * the session alone has been told.
+ */
+const removeFamilyMemberVariable = (
+  harness: StageEditorHarness,
+  variableId: string,
+): void => {
+  const section =
+    harness.session.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+  const variables = isRecord(section?.variables) ? section.variables : {};
+  if (!Object.hasOwn(variables, variableId)) {
+    throw new Error(
+      `"family_member" has no "${variableId}" attribute, so removing one proves nothing.`,
+    );
+  }
+  const { [variableId]: _gone, ...rest } = variables;
+  harness.receiveCodebookUpdate({
+    node: { family_member: { ...section, variables: rest } },
+  });
+};
+
 /** The id the seeded boolean below is filed under. */
 const SEEDED_UNWELL = 'seeded-unwell';
 
@@ -840,6 +867,54 @@ describe('the pedigree’s nomination prompts', () => {
  * all, without it writing that change back as if this session had made it.
  */
 describe('a codebook that changes while the pedigree is open', () => {
+  /**
+   * The row dialog's own save, over an attribute that has just gone.
+   *
+   * The picker is built from the live codebook, so it stops offering the
+   * attribute at once — but the row is already holding it, the required rule
+   * sees a nonempty value, and this gate asked only about who else writes it.
+   * So Save closed the row over a reference whole-protocol validation then
+   * refuses, and the researcher had to find the row that was blocking their
+   * stage with nothing on screen marking it.
+   */
+  it('refuses a nomination prompt whose attribute a collaborator deleted', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit nomination prompt' }),
+    );
+    await screen.findByRole('dialog');
+    removeFamilyMemberVariable(harness, 'hasConditionX');
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText(
+        '"hasConditionX" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+      ),
+    ).toBeInTheDocument();
+    // The dialog stays open, holding the prompt the researcher wrote, rather
+    // than closing over a row the stage cannot save.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * The same rule at the stage's own save, for the slots — which have no
+   * dialog of their own to hold open.
+   */
+  it('refuses to save a slot whose attribute a collaborator deleted', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    removeFamilyMemberVariable(harness, 'fm_name');
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        '"fm_name" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('offers an attribute a collaborator added, without echoing a command', async () => {
     const harness = renderStageEditor(openFixture());
     expect(harness.pendingCommands()).toEqual([]);

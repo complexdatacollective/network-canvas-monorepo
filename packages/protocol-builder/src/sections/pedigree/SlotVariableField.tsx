@@ -23,6 +23,7 @@ import {
   slotCrossClassIssue,
   slotPickerOptions,
   type SlotVariableOption,
+  unusableVariableIssue,
 } from './slotWiring.ts';
 
 const NO_VARIABLES: Readonly<Variables> = Object.freeze({});
@@ -155,6 +156,7 @@ export default function SlotVariableField({
    * slot: the whole point of the draft half of the rule.
    */
   const judgeAgainst = useRef({
+    variableType,
     roleMap,
     slotMap,
     draftSlotMap,
@@ -167,6 +169,7 @@ export default function SlotVariableField({
     allVariables,
   });
   judgeAgainst.current = {
+    variableType,
     roleMap,
     slotMap,
     draftSlotMap,
@@ -182,6 +185,16 @@ export default function SlotVariableField({
   const crossClassValidation = useMemo(
     () =>
       messageRuleValidation([
+        // Asked first: an attribute that has been deleted or retyped under the
+        // slot is not a conflict with another writer, it is a reference to
+        // something that cannot hold what this slot writes — and saying so is
+        // more use than naming whoever else was writing it.
+        (value: unknown) =>
+          unusableVariableIssue(
+            judgeAgainst.current.allVariables,
+            value,
+            judgeAgainst.current.variableType,
+          ),
         (value: unknown) =>
           slotCrossClassIssue({
             ...judgeAgainst.current,

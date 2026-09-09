@@ -569,6 +569,8 @@
   "protocolBuilder.pedigree.slotDraftSlotDerivesRefusal": "«{attributeName}» lo escribe sin validación otra ranura de esta etapa, así que tampoco puede recogerse aquí (los valores que escribe esa ranura se saltan la validación de este atributo)",
   "protocolBuilder.pedigree.slotEmptyState": "Todavía no hay atributos de este tipo que se puedan usar aquí. Crea uno para continuar.",
   "protocolBuilder.pedigree.slotUnvalidatedElsewhereRefusal": "«{attributeName}» lo escribe otra etapa sin validación, así que tampoco puede recogerse aquí (los valores que escribe esa etapa se saltan la validación de este atributo)",
+  "protocolBuilder.pedigree.variableGoneRefusal": "«{attributeName}» ya no está en el libro de códigos, así que no puede registrarse nada con él. Elige otro atributo.",
+  "protocolBuilder.pedigree.variableTypeChangedRefusal": "«{attributeName}» ya no es del tipo de atributo que este control puede usar, porque su tipo se cambió en otro sitio. Elige otro atributo.",
   "protocolBuilder.promptsSection.addLabel": "Crear nueva pregunta",
   "protocolBuilder.promptsSection.addTitle": "Crear pregunta",
   "protocolBuilder.promptsSection.atLeastOne": "Crea al menos una pregunta. Una etapa sin preguntas no le pregunta nada al participante.",

@@ -12,6 +12,7 @@ import {
   slotCrossClassIssue,
   slotPickerOptions,
   type SlotVariableOption,
+  unusableVariableIssue,
 } from '../slotWiring.ts';
 
 const SUBJECT: CodebookSubject = { entity: 'node', type: 'family_member' };
@@ -234,5 +235,55 @@ describe('what a refused pedigree pick is told', () => {
       '"kinship" is written without validation by another slot in this stage, so it cannot also be collected here (the values that slot writes bypass this attribute’s validation)',
     );
     expect(refusal).not.toContain('form field');
+  });
+});
+
+/**
+ * The codebook moving under a control that is already holding an attribute.
+ *
+ * Everything else in this module asks who ELSE writes an attribute. This asks
+ * whether the attribute is still one this control can use at all, which is the
+ * question a collaborator's deletion or retyping raises — and the one no gate
+ * was asking, so a save closed over a reference the whole-protocol check then
+ * refused.
+ */
+describe('an attribute a pedigree control can no longer use', () => {
+  it('says nothing about an attribute of the type the control needs', () => {
+    expect(
+      unusableVariableIssue(VARIABLES, 'is_ego', 'boolean'),
+    ).toBeUndefined();
+  });
+
+  it('says nothing about a control holding nothing yet', () => {
+    expect(unusableVariableIssue(VARIABLES, '', 'boolean')).toBeUndefined();
+    expect(
+      unusableVariableIssue(VARIABLES, undefined, 'boolean'),
+    ).toBeUndefined();
+  });
+
+  /**
+   * Named by its stored id, because there is no definition left to take a name
+   * from — the same treatment a deleted type gets in `EntitySelectField`.
+   */
+  it('names an attribute that has left the codebook', () => {
+    const issue = unusableVariableIssue(
+      VARIABLES,
+      'deleted_attribute',
+      'boolean',
+    );
+
+    expect(issue).toBeDefined();
+    expect(issue === undefined ? '' : readMessage(issue)).toBe(
+      '"deleted_attribute" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+    );
+  });
+
+  it('refuses one whose type has been changed under the control', () => {
+    const issue = unusableVariableIssue(VARIABLES, 'fm_name', 'boolean');
+
+    expect(issue).toBeDefined();
+    expect(issue === undefined ? '' : readMessage(issue)).toBe(
+      '"fm_name" is no longer the kind of attribute this control can use, because its type was changed somewhere else. Choose another attribute.',
+    );
   });
 });

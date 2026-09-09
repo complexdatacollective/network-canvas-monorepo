@@ -4,6 +4,7 @@ import {
   type Variable,
   type VariableOption,
   type Variables,
+  type VariableType,
 } from '@codaco/protocol-validation';
 
 import {
@@ -357,6 +358,43 @@ export function slotCrossClassIssue({
     allVariables,
     message: crossClassMessage[writerClass],
   });
+}
+
+/**
+ * Why an attribute a pedigree control HOLDS can no longer be used, or
+ * `undefined` while it can.
+ *
+ * The codebook is live: a collaborator can delete the attribute a slot or a
+ * nomination prompt names, or change its type, while this editor is open. The
+ * picker stops offering it at once — it is built from the same codebook — but
+ * the value the control is already holding stays, and every gate here was
+ * asking only about who ELSE writes the attribute. So a save closed the row or
+ * the stage over a reference the whole-protocol check then refused, sending
+ * the researcher to find a row nothing on screen had marked.
+ *
+ * There is deliberately no committed-value escape. Every other rule in this
+ * module lets a pick that arrived with the protocol through, because a
+ * pre-existing conflict is somebody's authoring decision; an attribute that is
+ * gone, or is now a different kind of thing, is not a decision anybody made
+ * and nothing can be recorded under it.
+ */
+export function unusableVariableIssue(
+  allVariables: Readonly<Variables>,
+  variableId: unknown,
+  expectedType: VariableType,
+): string | undefined {
+  if (typeof variableId !== 'string' || variableId === '') return undefined;
+  const variable = allVariables[variableId];
+  if (variable === undefined) {
+    return createMessageError(pedigreeMessages.variableGoneRefusal, {
+      attributeName: variableId,
+    });
+  }
+  return variable.type === expectedType
+    ? undefined
+    : createMessageError(pedigreeMessages.variableTypeChangedRefusal, {
+        attributeName: variableDisplayName(allVariables, variableId),
+      });
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
