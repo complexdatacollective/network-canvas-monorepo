@@ -111,7 +111,7 @@ export function assertDeclaredStageType(
 export type FixtureStage = Readonly<{
   id: string;
   type: StageType;
-  /** Everything but `id` and `type`, which the session owns. */
+  /** Everything but `id` and `type`, which the section owns. */
   fields: SectionDoc;
 }>;
 
@@ -137,7 +137,7 @@ export function fixtureStageIds(): string[] {
 }
 
 /**
- * One stage of the fixture, split into what the session owns and what the
+ * One stage of the fixture, split into what the section owns and what the
  * editor edits.
  *
  * Throws rather than answering with a blank stage: a test naming a stage that

@@ -91,10 +91,8 @@ after the fact is marked in place.
 | `resourceSecret`            | `resources/components/ResourceSecretControl.tsx`                                                                                                                                              | i18n-1b   |
 | `resourcePreview`           | `resources/components/ResourcePreview.tsx`                                                                                                                                                    | i18n-1b   |
 | `resourceSummary`           | `resources/components/ResourceSummary.tsx`                                                                                                                                                    | i18n-1b   |
-| `resourceFailure`           | `resources/resourceMessages.ts` (declared), produced by `resources/gateway*.ts`, `lifecycle.ts`, `references.ts`, `InMemoryResourceGateway.ts`                                                | i18n-1b   |
-| `session`                   | `session.ts`                                                                                                                                                                                  | i18n-1b   |
+| `resourceFailure`           | `resources/resourceMessages.ts` (declared), produced by `resources/client.tsx` and `resources/components/useResourceAttempt.ts`                                                               | i18n-1b   |
 | `protocolContext`           | `protocol-context.ts`                                                                                                                                                                         | i18n-1b   |
-| `compoundEdit`              | `compound-edit/InMemoryCompoundHost.ts`, `compound-edit/compoundRequestMessages.ts`                                                                                                           | i18n-1b   |
 | `codebookEntity`            | `codebook/components/CodebookSurface.tsx`, `codebook/components/CodebookEntityEditor.tsx`                                                                                                     | i18n-2a   |
 | `codebookVariable`          | `codebook/variableTypeLabels.ts`, `codebook/components/VariableEditor.tsx`, `codebook/variableRoles.ts`, `codebook/variableOptions.ts`, `codebook/components/VariableBooleanAnswerFields.tsx` | i18n-2a   |
 | `variableValidation`        | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/codebookMessages.ts`              | i18n-2a   |
@@ -116,6 +114,7 @@ after the fact is marked in place.
 | `schemaProblem`             | `form/schemaProblems.ts`                                                                                                                                                                      | sections  |
 | `variableParameters`        | `codebook/variableParameters.ts`, `codebook/components/VariableParameterFields.tsx`                                                                                                           | sections  |
 | `compoundFailure`           | `codebook/compoundFailureCopy.ts`                                                                                                                                                             | sections  |
+| `stageEdit`                 | `stageEdit.tsx`                                                                                                                                                                               | rework    |
 | `sortOrder`                 | `fields/sortOrderOptions.ts`, `sections/prompts/SortOrderRows.tsx`                                                                                                                            | sections  |
 | `formFields`                | `sections/FormFieldsSection.tsx`, `sections/collectableTypes.ts`                                                                                                                              | sections  |
 | `attributeCodebookControls` | `sections/AttributeCodebookControls.tsx`                                                                                                                                                      | sections  |
@@ -144,9 +143,9 @@ the shell's action slot standing in for a host that rendered none, so its words
 are the shell's chrome like the refusals already declared there. It covers
 `form/readOnlyRefusal.ts` for the reason the `*Messages.ts` rule below gives:
 the read-only refusal is decided in more than one place — the shell, for a save
-or a structural write the session declines, and a control that finds the lease
-gone when the researcher answers a question about a change — and a shared
-sentence has exactly one declaration.
+or a structural write it declines, and a control that finds the stage read-only
+when the researcher answers a question about a change — and a shared sentence
+has exactly one declaration.
 
 The `*Messages.ts` files are the homes for copy more than one module renders —
 `extractMessages` throws when the same id is declared twice, so a shared string
@@ -157,18 +156,15 @@ has to have exactly one:
   and `RulePreview.tsx`), and `ruleEditor.required` (`RuleEditorDialog.tsx` and
   `RuleValueField.tsx`).
 - `resources/resourceMessages.ts` — every `resourceFailure.*` descriptor, so a
-  gateway adapter author and a translator each read one list. The copy is
-  produced by the gateway, its contract, `lifecycle.ts` and `references.ts`,
-  and rendered by the pickers.
-- `compound-edit/compoundRequestMessages.ts` — the refusals the session writes
-  before sending a compound edit and a host writes again on receiving one,
-  which is why `compoundEdit.request*` lives in neither module.
+  host adapter author and a translator each read one list. The copy is produced
+  by `resources/client.tsx` and rendered by the pickers.
 - `codebook/codebookMessages.ts` — the saving copy the entity editor and the
   validation editor both show, and the missing-comparison refusal both
   validation editors produce. It declares ids in two areas, which is allowed:
   an area names the copy's subject, and a file is only obliged to be the single
-  home of each id. A blocked save is NOT here: every refused codebook change,
-  blocked included, is read once by `codebook/compoundFailureCopy.ts`.
+  home of each id. A refused save is NOT here: every refused codebook change,
+  one held by a collaborator included, is read once by
+  `codebook/compoundFailureCopy.ts`.
 - `form/arrayFields/arrayMessages.ts` — the generic row noun every array-field
   sentence is built around.
 - `sections/pedigree/pedigreeMessages.ts` — one file per interface family,
@@ -182,9 +178,6 @@ has to have exactly one:
   conversion moved every one of those ids beside the section that owns it, so the
   file is gone; the ids are unchanged, because a renamed id is a translation
   silently orphaned.
-
-`controller.ts` renders no copy of its own, so the `session` area covers
-`session.ts` alone until it does.
 
 Two areas own the same sentence in two modules, and the sentence is declared
 once: `form/arrayFields/crossClassPick.ts` re-exports the cross-class refusals
