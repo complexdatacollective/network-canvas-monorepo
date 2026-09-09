@@ -1163,6 +1163,10 @@
     "defaultMessage": "This edge type cannot be changed",
     "description": "Title of the message shown when a researcher tries to change the edge type of a stage something else in the protocol depends on, and the change is refused. An edge type is a kind of relationship between two network members, such as a friendship."
   },
+  "protocolBuilder.entitySelect.edgeChangeTargetDeletedTitle": {
+    "defaultMessage": "That edge type has been deleted",
+    "description": "Title of the message shown when a researcher confirms a change of a stage’s edge type and the type they chose has been deleted from the codebook in the meantime, so the change is refused. An edge type is a kind of relationship between two network members, such as a friendship."
+  },
   "protocolBuilder.entitySelect.edgeEmptyState": {
     "defaultMessage": "This protocol has no edge types yet.",
     "description": "Shown in place of the chips when a researcher is asked to choose an edge type and the protocol’s codebook defines none. An edge type is a kind of relationship between two network members, such as a friendship."
@@ -1177,11 +1181,15 @@
   },
   "protocolBuilder.entitySelect.missingType": {
     "defaultMessage": "This type is no longer in the codebook. Choose another one.",
-    "description": "Shown under the chips when the node or edge type a researcher’s stored choice names has been deleted from the protocol’s codebook, so the choice has to be made again."
+    "description": "Shown when the node or edge type a researcher’s choice names has been deleted from the protocol’s codebook, so the choice has to be made again: under the chips when it is the stored choice, and in the message refusing a confirmed change whose target was deleted while the question was open."
   },
   "protocolBuilder.entitySelect.nodeChangeBlockedTitle": {
     "defaultMessage": "This node type cannot be changed",
     "description": "Title of the message shown when a researcher tries to change the node type of a stage something else in the protocol depends on, and the change is refused. A node type is a kind of network member the study records, such as a person or a place."
+  },
+  "protocolBuilder.entitySelect.nodeChangeTargetDeletedTitle": {
+    "defaultMessage": "That node type has been deleted",
+    "description": "Title of the message shown when a researcher confirms a change of a stage’s node type and the type they chose has been deleted from the codebook in the meantime, so the change is refused. A node type is a kind of network member the study records, such as a person or a place."
   },
   "protocolBuilder.entitySelect.nodeEmptyState": {
     "defaultMessage": "This protocol has no node types yet.",

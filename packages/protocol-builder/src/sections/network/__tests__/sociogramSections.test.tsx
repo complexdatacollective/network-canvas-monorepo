@@ -1,5 +1,5 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -14,6 +14,7 @@ import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx'
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import AutomaticLayoutSection from '../AutomaticLayoutSection.tsx';
 import BackgroundSection from '../BackgroundSection.tsx';
+import { networkCanvasMessages } from '../networkCanvasMessages.ts';
 import SociogramPromptsSection from '../SociogramPromptsSection.tsx';
 
 const sections = (
@@ -491,6 +492,57 @@ describe('a connection type this protocol does not define', () => {
     });
   });
 
+  /**
+   * And the same for a type the researcher ticks HERE, which a collaborator
+   * then deletes.
+   *
+   * Derived from the committed list alone, the repair could not see it: the
+   * tick list dropped the box while the live field kept the id, so Save wrote
+   * a display reference the researcher could neither see nor remove. The id is
+   * in the prompt either way, and either way the only way out of it is being
+   * shown.
+   */
+  it('shows a type the researcher ticked and a collaborator then deleted', async () => {
+    const harness = renderStageEditor(openEditor());
+    // A connection type a collaborator adds while this dialog is open reaches
+    // the tick list without the dialog asking for it, which is what makes it
+    // tickable and then losable.
+    act(() => {
+      harness.receiveCodebookUpdate({
+        edge: { [LOST_EDGE]: { name: 'Former' } },
+      });
+    });
+
+    const prompt = await openPrompt(harness);
+    await harness.user.click(prompt.getByRole('checkbox', { name: 'Former' }));
+
+    act(() => {
+      harness.receiveCodebookUpdate({ edge: { [LOST_EDGE]: null } });
+    });
+
+    const lost = await prompt.findByRole('checkbox', {
+      name: LOST_EDGE_CHOICE,
+    });
+    expect(lost).toBeChecked();
+
+    await harness.user.click(lost);
+    // Unticking must not take the box away mid-gesture: the researcher has to
+    // be able to see what they have just done.
+    expect(
+      prompt.getByRole('checkbox', { name: LOST_EDGE_CHOICE }),
+    ).not.toBeChecked();
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]?.edges).toEqual({
+      display: ['knows'],
+      create: 'knows',
+    });
+  });
+
   it('lets the researcher untick it, which repairs the prompt', async () => {
     const { harness, prompt } = await openLostEdgePrompt();
 
@@ -818,5 +870,378 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     expect(prompts(request?.stageDocument ?? {})[0]).not.toHaveProperty(
       'sortOrder',
     );
+  });
+});
+
+/**
+ * The attribute a prompt needs, created from inside the prompt's own dialog.
+ *
+ * Two dialogs are then open at once — the prompt's, and the editor for the
+ * attribute — so the inner one is reached through the control it owns rather
+ * than by asking for "the dialog": which of the two `getByRole` answers with
+ * is not this test's to depend on.
+ */
+const attributeCreator = async (): Promise<ReturnType<typeof within>> => {
+  const name = await screen.findByRole('textbox', { name: 'Attribute name' });
+  const dialog = name.closest('[role="dialog"]');
+  if (dialog === null) {
+    throw new Error('the attribute editor is not inside a dialog');
+  }
+  return within(dialog as HTMLElement);
+};
+
+/** Opens the position-attribute creator from inside the first prompt. */
+const openAttributeCreator = async (
+  harness: StageEditorHarness,
+): Promise<ReturnType<typeof within>> => {
+  const prompt = await openPrompt(harness);
+  await harness.user.click(
+    prompt.getByRole('button', { name: 'Create a new position attribute' }),
+  );
+  return attributeCreator();
+};
+
+/**
+ * A prompt that collects a connection without drawing it.
+ *
+ * `edges.create` and `edges.display` are independent: the interview's canvas
+ * selector filters the ties it renders strictly by `edges.display`, so a
+ * prompt naming a type to create and showing none collects that tie invisibly.
+ * It is a configuration researchers use — `edges-full-matrix`, the end-to-end
+ * scenario covering these two keys, has a prompt of exactly this shape and
+ * asserts the tie does not appear — so an editor that repaired it on sight
+ * changed what a participant experiences, silently, on a stage nobody meant to
+ * alter.
+ */
+describe('a prompt that draws a connection it does not show', () => {
+  const COLLECTS_WITHOUT_SHOWING = {
+    id: 'sociogram-prompt-1',
+    text: 'Place the people who know each other close together',
+    layout: { layoutVariable: 'layout' },
+    edges: { create: 'knows', display: [] },
+  };
+
+  it('saves it exactly as it arrived', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding(COLLECTS_WITHOUT_SHOWING),
+    );
+
+    const prompt = await openPrompt(harness);
+    expect(
+      prompt.getByRole('option', { name: /Create a connection/ }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]).toEqual(
+      COLLECTS_WITHOUT_SHOWING,
+    );
+  });
+
+  /**
+   * And the tick box for it is neither locked nor spoken for. The notice
+   * saying the created type is always shown belongs to the type the researcher
+   * has just chosen, which the editor does put in the list; said over a stored
+   * create-only prompt it was a false claim beside a box that was unticked and
+   * could not be ticked.
+   */
+  it('lets the researcher show that connection after all', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding(COLLECTS_WITHOUT_SHOWING),
+    );
+
+    const prompt = await openPrompt(harness);
+    expect(
+      prompt.queryByText(
+        enIntl.formatMessage(
+          networkCanvasMessages.promptCreatedEdgeAlwaysShown,
+        ),
+      ),
+    ).not.toBeInTheDocument();
+    const box = prompt.getByRole('checkbox', { name: /knows/ });
+    expect(box).not.toBeChecked();
+    expect(box).toBeEnabled();
+
+    await harness.user.click(box);
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]?.edges).toEqual({
+      create: 'knows',
+      display: ['knows'],
+    });
+  });
+});
+
+/**
+ * What tapping a node does, and what the prompt saves for it.
+ *
+ * `highlight.allowHighlighting` is the flag the interview gates tap-to-mark
+ * on, and `highlight.variable` is read for the node's COLOUR whatever the flag
+ * holds. So the two are different configurations, and one rule decides both
+ * halves of this family: the FLAG says whether the prompt writes the
+ * attribute, and the attribute alone never does.
+ *
+ * Enumerated rather than asserted case by case, because each of the three tap
+ * choices has to be right against each of the three committed prompts — no
+ * highlight at all, one that only colours, one that already marks — and the
+ * two failures this replaces were each one cell of that table. A prompt sent
+ * to "mark the node" and back kept the `true` written on the way in beside an
+ * attribute the chooser had just cleared; and a colouring prompt switched to
+ * marking escaped the writer-conflict check as an unchanged pick, because the
+ * check read the attribute and not the flag.
+ */
+describe('what tapping a node does, against what the prompt already said', () => {
+  const HIGHLIGHT_ATTRIBUTE = 'highlighted';
+
+  const promptSaying = (
+    highlight?: Record<string, unknown>,
+  ): Record<string, unknown> => ({
+    id: 'sociogram-prompt-1',
+    text: 'Place the people who know each other close together',
+    layout: { layoutVariable: 'layout' },
+    ...(highlight === undefined ? {} : { highlight }),
+  });
+
+  const NOTHING = /Nothing/;
+  const CREATE_EDGE = /Create a connection/;
+  const MARK = /Mark the node/;
+
+  type Case = Readonly<{
+    /** What the protocol holds for this prompt's `highlight`. */
+    committed?: Record<string, unknown>;
+    /** Whether a form elsewhere collects the attribute, making it validated. */
+    collected?: boolean;
+    /** The tap choices the researcher makes, in order. */
+    taps: readonly RegExp[];
+    /** An attribute chosen while "mark the node" is the current choice. */
+    marks?: string;
+    /** An edge type chosen while "create a connection" is the current choice. */
+    draws?: string;
+    /** The prompt's `highlight` after the save, or a refusal instead. */
+    expected: Record<string, unknown> | undefined | 'refused';
+  }>;
+
+  const cases: Readonly<Record<string, Case>> = {
+    'a prompt with no highlight, marked': {
+      taps: [MARK],
+      marks: HIGHLIGHT_ATTRIBUTE,
+      expected: { allowHighlighting: true, variable: HIGHLIGHT_ATTRIBUTE },
+    },
+    'a prompt with no highlight, marked and then left alone again': {
+      taps: [MARK, NOTHING],
+      expected: undefined,
+    },
+    'a prompt with no highlight, marked and then set to draw instead': {
+      taps: [MARK, CREATE_EDGE],
+      draws: 'family_edge',
+      expected: undefined,
+    },
+    'a colouring prompt, opened and saved': {
+      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
+      taps: [],
+      expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
+    },
+    'a colouring prompt whose attribute a form collects, switched to marking': {
+      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
+      collected: true,
+      taps: [MARK],
+      expected: 'refused',
+    },
+    'a marking prompt whose attribute a form already collects, opened and saved':
+      {
+        committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: true },
+        collected: true,
+        taps: [],
+        expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: true },
+      },
+    'a marking prompt, told to do nothing': {
+      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: true },
+      taps: [NOTHING],
+      expected: { allowHighlighting: false },
+    },
+  };
+
+  it.each(Object.entries(cases))('%s', async (_name, scenario) => {
+    const harness = renderStageEditor(
+      sociogramHolding(promptSaying(scenario.committed)),
+    );
+    if (scenario.collected === true) {
+      collectInAForm(harness, HIGHLIGHT_ATTRIBUTE);
+    }
+
+    const prompt = await openPrompt(harness);
+    for (const tap of scenario.taps) {
+      await harness.user.click(prompt.getByRole('option', { name: tap }));
+      if (tap === MARK && scenario.marks !== undefined) {
+        await harness.user.selectOptions(
+          await prompt.findByRole('combobox', { name: 'Attribute marked' }),
+          scenario.marks,
+        );
+      }
+      if (tap === CREATE_EDGE && scenario.draws !== undefined) {
+        await harness.user.click(
+          await prompt.findByRole('radio', { name: scenario.draws }),
+        );
+      }
+    }
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+
+    if (scenario.expected === 'refused') {
+      // The dialog staying open IS the refusal, and the reason is the one the
+      // codebook editor gives for the same conflict.
+      await prompt.findByText(
+        readMessage(validatedElsewhereMessage(HIGHLIGHT_ATTRIBUTE)),
+      );
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      return;
+    }
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const request = await harness.submit();
+    const saved = prompts(request?.stageDocument ?? {})[0];
+    if (scenario.expected === undefined) {
+      // Absent, not empty: an unanswered question saved as an answer is
+      // content in the researcher's protocol that the researcher did not
+      // write.
+      expect(saved).not.toHaveProperty('highlight');
+      return;
+    }
+    expect(saved?.highlight).toEqual(scenario.expected);
+  });
+});
+
+/** The id the codebook now files an attribute of this name under. */
+const personVariableIdByName = (
+  harness: StageEditorHarness,
+  name: string,
+): string | undefined => {
+  const person = harness.host.getSnapshot().protocolSections[PERSON_SECTION];
+  const variables = person?.variables;
+  if (typeof variables !== 'object' || variables === null) return undefined;
+  return Object.entries(variables).find(
+    ([, variable]) =>
+      typeof variable === 'object' &&
+      variable !== null &&
+      Reflect.get(variable, 'name') === name,
+  )?.[0];
+};
+
+describe('creating an attribute a prompt needs without leaving the stage', () => {
+  /**
+   * A lease taken back while the researcher is naming a new attribute.
+   *
+   * The name exists nowhere but this editor, so unmounting it to report the
+   * lost lease throws the researcher's work away in order to say something the
+   * editor says for itself once its own save is refused. The launch control
+   * goes, because a create nobody may start is not on offer; the editor that
+   * is already open stays, which is the rule the row dialog around
+   * `AttributeCodebookControls` and the pedigree's `CreateVariableButton`
+   * already follow.
+   */
+  it('keeps an open attribute draft when the lease is lost', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const creator = await openAttributeCreator(harness);
+    await harness.user.type(
+      creator.getByRole('textbox', { name: 'Attribute name' }),
+      'seating',
+    );
+
+    harness.setReadOnly();
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', {
+          name: 'Create a new position attribute',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'seating',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    ).toBeDisabled();
+  });
+
+  /**
+   * Holds the compound edit open, and hands back the release.
+   *
+   * The one window this dialog's guard is about: the host has the request and
+   * has not answered, which is when a dismissal unmounts the editor and leaves
+   * the answer with nobody to show it to.
+   */
+  const holdTheCompoundEdit = (harness: StageEditorHarness) => {
+    const send = harness.session.requestCompoundEdit.bind(harness.session);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(harness.session, 'requestCompoundEdit').mockImplementation(
+      async (request) => {
+        await held;
+        return send(request);
+      },
+    );
+    return () => {
+      release();
+    };
+  };
+
+  /**
+   * A refusal arriving after the dialog has gone is shown to nobody, and a
+   * success arriving after it points the prompt at an attribute the researcher
+   * watched no editor finish. The dialog therefore withholds every way out
+   * until the host answers, exactly as the nested editors in
+   * `AttributeCodebookControls` do.
+   */
+  it('withholds every way out until the codebook answers', async () => {
+    const harness = renderStageEditor(openEditor());
+    const release = holdTheCompoundEdit(harness);
+
+    const creator = await openAttributeCreator(harness);
+    await harness.user.type(
+      creator.getByRole('textbox', { name: 'Attribute name' }),
+      'seating',
+    );
+    await harness.user.click(
+      creator.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    // Escape and a press outside are the two routes left; the close button is
+    // taken away rather than left on screen doing nothing.
+    await harness.user.keyboard('{Escape}');
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'seating',
+    );
+    expect(
+      within(
+        screen
+          .getByRole('textbox', { name: 'Attribute name' })
+          .closest('[role="dialog"]') as HTMLElement,
+      ).queryAllByRole('button', { name: 'Close' }),
+    ).toHaveLength(0);
+
+    release();
+    // And the answer lands on the surface that asked for it: the prompt now
+    // positions its nodes with the attribute the codebook now holds.
+    await waitFor(() =>
+      expect(personVariableIdByName(harness, 'seating')).toEqual(
+        expect.any(String),
+      ),
+    );
+    const prompt = within(await screen.findByRole('dialog'));
+    expect(
+      prompt.getByRole('combobox', { name: 'Position attribute' }),
+    ).toHaveValue(personVariableIdByName(harness, 'seating'));
   });
 });
