@@ -1,3 +1,4 @@
+import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -8,6 +9,7 @@ import type {
   ResourceInspectionSchema,
   ResourcePreviewSchema,
   ResourceSecretStorageSchema,
+  Revision,
   StageResourceInputSchema,
 } from '../../contract/schemas.ts';
 
@@ -32,6 +34,12 @@ type StagedEntry = Readonly<{
   handle?: string;
   bytes?: Blob;
   secret?: string;
+}>;
+
+/** What one `promotionId` committed, for the retry that asks about it again. */
+type CompletedPromotion = Readonly<{
+  revision: Revision;
+  promoted: Descriptor[];
 }>;
 
 function failure(
@@ -100,7 +108,7 @@ export class InMemoryResourceStore {
   readonly secretStorage: SecretStorage = 'plaintext';
   readonly #staged = new Map<string, StagedEntry>();
   readonly #byRequest = new Map<string, string>();
-  readonly #promoted = new Map<string, Descriptor[]>();
+  readonly #promoted = new Map<string, CompletedPromotion>();
   /**
    * What staging knew about each promoted resource. The asset manifest records
    * a name, a type and a source; the MIME type and the size are the host's to
@@ -140,6 +148,11 @@ export class InMemoryResourceStore {
     if (existing !== undefined) {
       return { status: 'ok', data: existing };
     }
+    if (request.kind === 'content' && request.bytes.size === 0) {
+      // An empty file promotes into a manifest entry an interview would try to
+      // show: an image with no pixels, a roster with no network.
+      return failure('invalid-content', 'that file is empty');
+    }
     const id = this.#nextId();
     const entry: StagedEntry =
       request.kind === 'secret'
@@ -150,7 +163,12 @@ export class InMemoryResourceStore {
               name: request.name,
               status: 'staged',
             },
-            handle: `staged-secret:${id}`,
+            // Minted independently of the resource id, which `list` shows to
+            // everyone in the protocol: a handle derived from that id would be
+            // one any collaborator could work out, and the handle is the whole
+            // of what stops a secret being promoted by somebody who never
+            // staged it.
+            handle: `staged-secret:${uuid()}`,
             secret: request.value,
           }
         : {
@@ -229,14 +247,17 @@ export class InMemoryResourceStore {
   }
 
   /**
-   * The promotion this id already made, if it made one.
+   * The submit this promotion id already made, if it made one: the revision it
+   * wrote and what it committed.
    *
    * `promotionId` is stable across an uncertain retry, so a client whose
-   * answer was lost asks again with the same id: it is told what was committed
-   * rather than that the bytes and manifest entries it cannot see are somebody
-   * else's problem.
+   * answer was lost asks again with the same id and is told what that attempt
+   * committed. Answering it is the whole of the retry: writing the section a
+   * second time would make a revision nothing changed in, and by then the
+   * editor may have given the lock back, which would turn a save that
+   * succeeded into a refusal the researcher is told to discard a draft over.
    */
-  completedPromotion(promotionId: string): Descriptor[] | undefined {
+  completedPromotion(promotionId: string): CompletedPromotion | undefined {
     return this.#promoted.get(promotionId);
   }
 
@@ -244,8 +265,9 @@ export class InMemoryResourceStore {
     promotionId: string,
     promoted: readonly Descriptor[],
     resourceIds: readonly string[],
+    revision: Revision,
   ): void {
-    this.#promoted.set(promotionId, [...promoted]);
+    this.#promoted.set(promotionId, { revision, promoted: [...promoted] });
     for (const descriptor of promoted) {
       this.#committed.set(descriptor.id, descriptor);
     }

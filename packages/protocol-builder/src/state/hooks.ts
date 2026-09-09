@@ -17,9 +17,11 @@ import {
 
 import type {
   Presence,
+  ResourceDescriptor,
   ResourceGatewayFailureSchema,
   ResourcePromotionRequestSchema,
   Revision,
+  SectionHolderSchema,
   SectionIssueSchema,
 } from '../contract/schemas.ts';
 import {
@@ -36,6 +38,7 @@ export type SectionAtRevision = Readonly<{
 export type SectionIssue = z.output<typeof SectionIssueSchema>;
 export type ResourcePromotion = z.output<typeof ResourcePromotionRequestSchema>;
 export type ResourceFailure = z.output<typeof ResourceGatewayFailureSchema>;
+export type SectionHolder = z.output<typeof SectionHolderSchema>;
 
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
@@ -125,8 +128,19 @@ export function useStageIndex(): readonly StageSummary[] {
 }
 
 export type SubmitResult =
-  | Readonly<{ status: 'written'; revision: Revision }>
+  /**
+   * `promoted` describes what the submit's promotion committed — the host's
+   * own metadata for each resource, which staging did not know — so an editor
+   * can settle the staged rows it was holding. Absent when nothing was
+   * promoted.
+   */
+  | Readonly<{
+      status: 'written';
+      revision: Revision;
+      promoted?: readonly ResourceDescriptor[];
+    }>
   | Readonly<{ status: 'notLockHolder'; holder?: Presence }>
+  | Readonly<{ status: 'sectionsLocked'; blocked: readonly SectionHolder[] }>
   | Readonly<{ status: 'invalidShape'; issues: readonly SectionIssue[] }>
   | Readonly<{ status: 'promotionFailed'; failure: ResourceFailure }>;
 
@@ -236,7 +250,13 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           ...(promote === undefined ? {} : { promote }),
         }),
       );
-      if (isSuccess) return { status: 'written', revision: data.revision };
+      if (isSuccess) {
+        return {
+          status: 'written',
+          revision: data.revision,
+          ...(data.promoted === undefined ? {} : { promoted: data.promoted }),
+        };
+      }
       if (definedError?.code === 'NOT_LOCK_HOLDER') {
         return {
           status: 'notLockHolder',
@@ -244,6 +264,9 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
             ? {}
             : { holder: definedError.data.holder }),
         };
+      }
+      if (definedError?.code === 'SECTIONS_LOCKED') {
+        return { status: 'sectionsLocked', blocked: definedError.data.blocked };
       }
       if (definedError?.code === 'INVALID_SHAPE') {
         return { status: 'invalidShape', issues: definedError.data.issues };

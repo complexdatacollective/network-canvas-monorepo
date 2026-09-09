@@ -389,6 +389,50 @@ describe('the protocol state layer', () => {
     });
   });
 
+  it('hands the editor what its submit promoted', async () => {
+    const host = newHost();
+    const staged = await host.client.resources.stage({
+      protocolId: host.protocolId,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Portrait',
+        source: 'portrait.png',
+        contentType: 'image/png',
+        bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+      },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+
+    render(
+      <ProtocolBuilder
+        client={silentChannel(host.client)}
+        protocolId={host.protocolId}
+      >
+        <PromotingEditor
+          id={INFORMATION}
+          resourceId={staged.data.descriptor.id}
+        />
+      </ProtocolBuilder>,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'save' })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'save' }));
+
+    // The host answers a promoting submit with what it committed — metadata
+    // staging never had — and this hook is what a component has instead of the
+    // client, so an editor that cannot see it cannot settle the staged rows it
+    // was holding.
+    await waitFor(() => {
+      expect(screen.getByLabelText('promoted').textContent).toBe(
+        'Portrait: committed',
+      );
+    });
+  });
+
   it('names the holder from the acquire, without waiting for a lock event', async () => {
     const host = newHost();
     await host.asCollaborator(COLLABORATOR).acquireLock({
@@ -427,6 +471,43 @@ function Editor({ id }: Readonly<{ id: ProtocolSectionId }>) {
           if (document === undefined) return;
           void submit({ ...document, label: 'Saved' }).then((result) => {
             setSaved(result.status);
+          });
+        }}
+      >
+        save
+      </button>
+    </>
+  );
+}
+
+/** An editor whose save promotes a resource it staged during the edit. */
+function PromotingEditor({
+  id,
+  resourceId,
+}: Readonly<{ id: ProtocolSectionId; resourceId: string }>) {
+  const { document, submit } = useSectionMutation(id);
+  const [promoted, setPromoted] = useState('none');
+  return (
+    <>
+      <output aria-label="promoted">{promoted}</output>
+      <button
+        type="button"
+        disabled={document === undefined}
+        onClick={() => {
+          if (document === undefined) return;
+          void submit(document, {
+            promotionId: 'promotion-1',
+            resourceIds: [resourceId],
+          }).then((result) => {
+            if (result.status !== 'written') {
+              setPromoted(result.status);
+              return;
+            }
+            setPromoted(
+              (result.promoted ?? [])
+                .map((resource) => `${resource.name}: ${resource.status}`)
+                .join(', '),
+            );
           });
         }}
       >

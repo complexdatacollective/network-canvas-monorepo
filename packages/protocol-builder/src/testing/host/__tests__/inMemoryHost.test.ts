@@ -794,6 +794,195 @@ describe('the in-memory host', () => {
     });
     expect(staged.status === 'ok' && staged.data.resources).toEqual([]);
   });
+
+  it('refuses to stage a file with nothing in it', async () => {
+    const subject = host();
+    const staged = await subject.client.resources.stage({
+      protocolId: subject.protocolId,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Empty',
+        source: 'empty.png',
+        contentType: 'image/png',
+        bytes: new Blob([], { type: 'image/png' }),
+      },
+    });
+
+    // Staged, it would promote into a manifest entry naming an image with no
+    // pixels, which the interview would try to show.
+    expect(staged).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'invalid-content' },
+    });
+    const listed = await subject.client.resources.list({
+      protocolId: subject.protocolId,
+      status: 'staged',
+    });
+    expect(listed.status === 'ok' && listed.data.resources).toEqual([]);
+  });
+
+  it('gives a staged secret a handle its resource id does not reveal', async () => {
+    const subject = host();
+    const staged = await subject.client.resources.stage({
+      protocolId: subject.protocolId,
+      requestId: 'request-1',
+      request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging a secret failed');
+
+    // What a collaborator can see of somebody else's staged secret is the
+    // resource id `list` gives it, so a handle worked out from that id is one
+    // it can forge — and the handle is the whole of what stops it promoting
+    // that secret into the protocol this host writes in plaintext.
+    const collaborator = subject.asCollaborator(COLLABORATOR);
+    const listed = await collaborator.resources.list({
+      protocolId: subject.protocolId,
+      status: 'staged',
+    });
+    if (listed.status !== 'ok') throw new Error('listing failed');
+    const seen = listed.data.resources.map((resource) => resource.id);
+    expect(seen).toEqual([staged.data.descriptor.id]);
+    expect(staged.data.handle).not.toContain(staged.data.descriptor.id);
+
+    const held = await collaborator.acquireLock({
+      protocolId: subject.protocolId,
+      sectionId: INFORMATION,
+    });
+    const forged = await safe(
+      collaborator.submit({
+        protocolId: subject.protocolId,
+        sectionId: INFORMATION,
+        document: held.document,
+        revision: held.revision,
+        promote: {
+          promotionId: 'promotion-1',
+          resourceIds: [staged.data.descriptor.id],
+          secretHandles: [`staged-secret:${staged.data.descriptor.id}`],
+        },
+      }),
+    );
+
+    expect(forged.definedError?.code).toBe('PROMOTION_FAILED');
+    expect(
+      subject.store.read(sectionId({ kind: 'assets' })).document[
+        staged.data.descriptor.id
+      ],
+    ).toBeUndefined();
+  });
+
+  it('answers a retried submit with the revision it already wrote', async () => {
+    const subject = host();
+    const staged = await subject.client.resources.stage({
+      protocolId: subject.protocolId,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Portrait',
+        source: 'portrait.png',
+        contentType: 'image/png',
+        bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+      },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const promotion = {
+      promotionId: 'promotion-1',
+      resourceIds: [staged.data.descriptor.id],
+    };
+
+    const first = await submitHeld(subject, INFORMATION, promotion);
+    const committed = subject.store.read(INFORMATION);
+    const again = await submitHeld(subject, INFORMATION, promotion);
+
+    // The answer to the first can be lost. What the retry is told is what that
+    // attempt wrote — the same revision, not a second one nothing changed in.
+    expect(again).toEqual(first);
+    expect(subject.store.read(INFORMATION)).toEqual(committed);
+
+    await subject.client.releaseLock({
+      protocolId: subject.protocolId,
+      sectionId: INFORMATION,
+    });
+    const afterRelease = await subject.client.submit({
+      protocolId: subject.protocolId,
+      sectionId: INFORMATION,
+      document: committed.document,
+      revision: committed.revision,
+      promote: promotion,
+    });
+
+    // By the time a retry goes out the editor may have closed and given the
+    // lock back. Refusing then would tell the researcher to discard a draft
+    // that was saved.
+    expect(afterRelease).toEqual(first);
+  });
+
+  it('says which section a refactor cannot find', async () => {
+    const subject = host();
+    const { definedError, isSuccess } = await safe(
+      subject.client.refactor.deleteEntityType({
+        protocolId: subject.protocolId,
+        entity: 'node',
+        typeId: 'ghost',
+      }),
+    );
+
+    // A stale client deleting a type another editor has already removed gets
+    // the refusal the contract declares, not an internal failure that reaches
+    // a caller over a transport as nothing it can act on.
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('SECTION_NOT_FOUND');
+    expect(definedError?.data).toMatchObject({
+      sectionId: sectionId({ kind: 'codebookNode', typeId: 'ghost' }),
+    });
+  });
+
+  it('keeps a holder editing when its watch stream starts again', async () => {
+    const subject = host();
+    await subject.client.acquireLock({
+      protocolId: subject.protocolId,
+      sectionId: PERSON,
+    });
+    const first = await subject.client.watchProtocol({
+      protocolId: subject.protocolId,
+    });
+    await first.next();
+    await first.return(undefined);
+
+    const second = await subject.client.watchProtocol({
+      protocolId: subject.protocolId,
+    });
+    await second.next();
+    const holder = subject.store.holderOf(PERSON);
+    await second.return(undefined);
+
+    // The lock survives the drop, so the editor behind it is still editing.
+    // Rejoining as a viewer would tell every read-only editor of that section
+    // that nobody is in it.
+    expect(holder).toMatchObject({
+      displayName: 'Ada',
+      mode: 'editing',
+      sectionId: PERSON,
+    });
+  });
+
+  it('keeps the section it was seeded with when the seed is changed after', () => {
+    const seed = sectionsFromProtocol(FIXTURE);
+    const subject = createInMemoryHost({ sections: seed });
+    const document = seed[INFORMATION];
+    if (document === undefined) throw new Error('no information section');
+
+    document.label = 'Changed behind the store';
+
+    // Holding the caller's object would let it change the protocol with no
+    // lock check, no revision, no event, and a content hash that no longer
+    // describes what is stored.
+    expect(subject.store.read(INFORMATION).document.label).not.toBe(
+      'Changed behind the store',
+    );
+  });
 });
 
 /** The protocol as its sections currently stand, ready to be assembled. */

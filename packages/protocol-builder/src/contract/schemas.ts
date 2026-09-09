@@ -178,6 +178,8 @@ export const ResourceDescriptorSchema = z.object({
   contentType: z.string().optional(),
 });
 
+export type ResourceDescriptor = z.output<typeof ResourceDescriptorSchema>;
+
 export const ResourceFailureReasonSchema = z.enum([
   'invalid-content',
   'invalid-request',

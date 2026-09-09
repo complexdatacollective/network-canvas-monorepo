@@ -10,6 +10,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { contract } from '../../contract/contract.ts';
+import type { ResourceDescriptor } from '../../contract/schemas.ts';
 import { InMemoryProtocolStore, type HostPrincipal } from './protocolStore.ts';
 import { InMemoryResourceStore } from './resourceStore.ts';
 
@@ -149,9 +150,17 @@ function buildRouter(
         promotion === undefined
           ? undefined
           : resources.completedPromotion(promotion.promotionId);
+      // This id's attempt is already committed, so this call is the retry of
+      // an answer that was lost: it is told what that attempt wrote. Writing
+      // again would make a revision nothing changed in, and would refuse
+      // outright once the editor had given its lock back — turning a save that
+      // succeeded into one the researcher is told to discard a draft over.
+      if (already !== undefined) {
+        return { revision: already.revision, promoted: already.promoted };
+      }
       let entries: Record<string, unknown> | undefined;
-      let promoted = already;
-      if (promotion !== undefined && already === undefined) {
+      let promoted: ResourceDescriptor[] | undefined;
+      if (promotion !== undefined) {
         const manifest = resources.manifestFor(
           promotion.resourceIds,
           promotion.secretHandles,
@@ -181,16 +190,20 @@ function buildRouter(
           },
         });
       }
+      if (outcome.status === 'blocked') {
+        throw errors.SECTIONS_LOCKED({ data: { blocked: outcome.blocked } });
+      }
       if (outcome.status === 'invalidShape') {
         throw errors.INVALID_SHAPE({
           data: { sectionId: input.sectionId, issues: outcome.issues },
         });
       }
-      if (promotion !== undefined && entries !== undefined) {
+      if (promotion !== undefined) {
         resources.completePromotion(
           promotion.promotionId,
           promoted ?? [],
           promotion.resourceIds,
+          outcome.revision,
         );
       }
       return {
@@ -208,6 +221,9 @@ function buildRouter(
         throw errors.SECTION_EXISTS({
           data: { sectionId: outcome.sectionId },
         });
+      }
+      if (outcome.status === 'blocked') {
+        throw errors.SECTIONS_LOCKED({ data: { blocked: outcome.blocked } });
       }
       if (outcome.status === 'invalidShape') {
         throw errors.INVALID_SHAPE({
@@ -232,6 +248,11 @@ function buildRouter(
       if (outcome.status === 'blocked') {
         throw errors.SECTIONS_LOCKED({ data: { blocked: outcome.blocked } });
       }
+      if (outcome.status === 'notFound') {
+        throw errors.SECTION_NOT_FOUND({
+          data: { sectionId: outcome.sectionId },
+        });
+      }
       if (outcome.status === 'referenced') {
         throw new Error('deleting a stage cannot leave references behind');
       }
@@ -252,6 +273,11 @@ function buildRouter(
           if (outcome.status === 'blocked') {
             throw errors.SECTIONS_LOCKED({
               data: { blocked: outcome.blocked },
+            });
+          }
+          if (outcome.status === 'notFound') {
+            throw errors.SECTION_NOT_FOUND({
+              data: { sectionId: outcome.sectionId },
             });
           }
           if (outcome.status === 'referenced') {
@@ -275,6 +301,11 @@ function buildRouter(
           if (outcome.status === 'blocked') {
             throw errors.SECTIONS_LOCKED({
               data: { blocked: outcome.blocked },
+            });
+          }
+          if (outcome.status === 'notFound') {
+            throw errors.SECTION_NOT_FOUND({
+              data: { sectionId: outcome.sectionId },
             });
           }
           if (outcome.status === 'referenced') {
